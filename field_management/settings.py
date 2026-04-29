@@ -153,3 +153,6 @@ CACHES = {
 
 # Internal IPs for debugging
 INTERNAL_IPS = ['127.0.0.1']
+# Media files (User uploaded content)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
