@@ -1,0 +1,364 @@
+{% extends "field_app/base.html" %}
+
+{% block title %}Assign Assessor - Field Management System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <!-- Header Card -->
+            <div class="card shadow-lg border-0 mb-4" style="
+                background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+                color: white;
+                border-radius: 15px;
+            ">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h2 class="mb-1">
+                                <i class="fas fa-user-tie me-2"></i>Assign Assessor
+                            </h2>
+                            <p class="mb-0 opacity-75">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Assign an assessor to evaluate student applications
+                            </p>
+                        </div>
+                        <div class="bg-white text-primary rounded-circle p-3" style="width: 70px; height: 70px;">
+                            <i class="fas fa-handshake fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Form Card -->
+            <div class="card shadow-lg border-0" style="border-radius: 15px;">
+                <div class="card-body p-4">
+                    {% if messages %}
+                    <div class="mb-4">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-triangle{% endif %} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Form -->
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Student Selection -->
+                        <div class="mb-4">
+                            <label for="student" class="form-label fw-bold">
+                                <i class="fas fa-user-graduate me-2 text-primary"></i>
+                                Select Student
+                            </label>
+                            <select class="form-select form-select-lg py-3" id="student" name="student" required style="
+                                border: 2px solid #e0e0e0;
+                                border-radius: 10px;
+                                transition: all 0.3s;
+                            ">
+                                <option value="" selected disabled>-- Choose a student --</option>
+                                {% for student in students %}
+                                <option value="{{ student.id }}">
+                                    {{ student.get_full_name }} - {{ student.email }} 
+                                    (School: {{ student.school.name|default:"No School" }})
+                                </option>
+                                {% empty %}
+                                <option disabled>No students available</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb me-1 text-warning"></i>
+                                Select a student who needs assessor assignment
+                            </div>
+                        </div>
+
+                        <!-- Assessor Selection -->
+                        <div class="mb-4">
+                            <label for="assessor" class="form-label fw-bold">
+                                <i class="fas fa-user-tie me-2 text-success"></i>
+                                Select Assessor
+                            </label>
+                            <select class="form-select form-select-lg py-3" id="assessor" name="assessor" required style="
+                                border: 2px solid #e0e0e0;
+                                border-radius: 10px;
+                                transition: all 0.3s;
+                            ">
+                                <option value="" selected disabled>-- Choose an assessor --</option>
+                                {% for assessor in assessors %}
+                                <option value="{{ assessor.id }}">
+                                    {{ assessor.get_full_name }} - {{ assessor.email }}
+                                    (Region: {{ assessor.region|default:"All" }})
+                                </option>
+                                {% empty %}
+                                <option disabled>No assessors available</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb me-1 text-warning"></i>
+                                Choose an assessor to evaluate this student
+                            </div>
+                        </div>
+
+                        <!-- Subject Selection -->
+                        <div class="mb-4">
+                            <label for="subject" class="form-label fw-bold">
+                                <i class="fas fa-book me-2 text-info"></i>
+                                Select Subject (Optional)
+                            </label>
+                            <select class="form-select form-select-lg py-3" id="subject" name="subject" style="
+                                border: 2px solid #e0e0e0;
+                                border-radius: 10px;
+                                transition: all 0.3s;
+                            ">
+                                <option value="" selected>-- All subjects (default) --</option>
+                                {% for subject in subjects %}
+                                <option value="{{ subject.id }}">
+                                    {{ subject.name }} - {{ subject.code }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb me-1 text-warning"></i>
+                                Specify subject if assessor is for a particular subject
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <label for="notes" class="form-label fw-bold">
+                                <i class="fas fa-sticky-note me-2 text-secondary"></i>
+                                Assignment Notes
+                            </label>
+                            <textarea class="form-control py-3" id="notes" name="notes" rows="3" style="
+                                border: 2px solid #e0e0e0;
+                                border-radius: 10px;
+                                resize: vertical;
+                                transition: all 0.3s;
+                            " placeholder="Add any special instructions or notes for the assessor..."></textarea>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-4 border-top">
+                            <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-lg px-4">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                            
+                            <div class="btn-group" role="group">
+                                <button type="submit" class="btn btn-primary btn-lg px-5" name="action" value="assign">
+                                    <i class="fas fa-user-check me-2"></i>Assign Assessor
+                                </button>
+                                
+                                <a href="{% url 'bulk_assign_assessors' %}" class="btn btn-success btn-lg px-4">
+                                    <i class="fas fa-users me-2"></i>Bulk Assign
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Statistics -->
+                    <div class="row mt-5 pt-4 border-top">
+                        <div class="col-md-4">
+                            <div class="text-center p-3 rounded" style="background: #f0f8ff;">
+                                <div class="h2 fw-bold text-primary mb-1">{{ total_students }}</div>
+                                <div class="text-muted">
+                                    <i class="fas fa-user-graduate me-1"></i>Total Students
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-3 rounded" style="background: #f0fff4;">
+                                <div class="h2 fw-bold text-success mb-1">{{ total_assessors }}</div>
+                                <div class="text-muted">
+                                    <i class="fas fa-user-tie me-1"></i>Available Assessors
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-3 rounded" style="background: #fff0f5;">
+                                <div class="h2 fw-bold text-danger mb-1">{{ assigned_count }}</div>
+                                <div class="text-muted">
+                                    <i class="fas fa-link me-1"></i>Already Assigned
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Assignments Table -->
+            {% if recent_assignments %}
+            <div class="card shadow-sm border-0 mt-4" style="border-radius: 15px;">
+                <div class="card-header bg-white border-0 pt-4">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2 text-primary"></i>
+                        Recent Assignments
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead style="background: #f8f9fa;">
+                                <tr>
+                                    <th><i class="fas fa-user-graduate"></i> Student</th>
+                                    <th><i class="fas fa-user-tie"></i> Assessor</th>
+                                    <th><i class="fas fa-calendar"></i> Date</th>
+                                    <th><i class="fas fa-book"></i> Subject</th>
+                                    <th><i class="fas fa-cog"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in recent_assignments %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ assignment.student.get_full_name }}</strong><br>
+                                        <small class="text-muted">{{ assignment.student.email }}</small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ assignment.assessor.get_full_name }}</strong><br>
+                                        <small class="text-muted">{{ assignment.assessor.email }}</small>
+                                    </td>
+                                    <td>{{ assignment.assigned_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if assignment.subject %}
+                                        <span class="badge bg-info">{{ assignment.subject.name }}</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">All Subjects</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" data-bs-toggle="tooltip" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" data-bs-toggle="tooltip" title="Remove">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for Enhanced UI -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+
+    // Hover effects for selects
+    const selects = document.querySelectorAll('select');
+    selects.forEach(select => {
+        select.addEventListener('focus', function() {
+            this.style.borderColor = '#4CAF50';
+            this.style.boxShadow = '0 0 0 0.2rem rgba(76, 175, 80, 0.25)';
+        });
+        select.addEventListener('blur', function() {
+            this.style.borderColor = '#e0e0e0';
+            this.style.boxShadow = 'none';
+        });
+    });
+
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Auto-select based on URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const studentId = urlParams.get('student_id');
+    const assessorId = urlParams.get('assessor_id');
+    
+    if (studentId) {
+        document.getElementById('student').value = studentId;
+    }
+    if (assessorId) {
+        document.getElementById('assessor').value = assessorId;
+    }
+
+    // Add loading animation on submit
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', function() {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Assigning...';
+            this.disabled = true;
+        });
+    }
+});
+</script>
+
+<style>
+    /* Custom Styles */
+    .form-select:focus, .form-control:focus {
+        border-color: #4CAF50 !important;
+        box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25) !important;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #43A047 0%, #1B5E20 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #2196F3 0%, #0D47A1 100%);
+        border: none;
+    }
+    
+    .btn-success:hover {
+        background: linear-gradient(135deg, #1976D2 0%, #0A3A73 100%);
+        transform: translateY(-2px);
+    }
+    
+    .card {
+        transition: transform 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    
+    /* Table row hover effect */
+    .table-hover tbody tr:hover {
+        background-color: rgba(76, 175, 80, 0.05);
+        cursor: pointer;
+    }
+    
+    /* Badge styles */
+    .badge {
+        font-size: 0.8em;
+        padding: 5px 10px;
+        border-radius: 20px;
+    }
+</style>
+{% endblock %}

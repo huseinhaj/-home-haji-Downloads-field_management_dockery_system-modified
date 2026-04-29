@@ -1,0 +1,29 @@
+name,code,level
+Kusoma,P01,primary
+Kuandika,P02,primary
+Hesabu,P03,primary
+Maarifa ya Jamii,P04,primary
+Stadi za Kazi,P05,primary
+Sayansi,P06,primary
+Elimu ya Dini,P07,primary
+Uchoraji,P08,primary
+Muziki,P09,primary
+Michezo,P10,primary
+Mathematics,S01,secondary
+English Language,S02,secondary
+Physics,S03,secondary
+Chemistry,S04,secondary
+Biology,S05,secondary
+Kiswahili,S06,secondary
+Geography,S07,secondary
+History,S08,secondary
+Civics,S09,secondary
+Book-Keeping,S10,secondary
+Commerce,S11,secondary
+Agriculture,S12,secondary
+Computer Studies,S13,secondary
+Bible Knowledge,S14,secondary
+Islamic Knowledge,S15,secondary
+French,S16,secondary
+Arabic,S17,secondary
+

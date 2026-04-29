@@ -1,0 +1,184 @@
+[
+{
+  "model": "field_app.region",
+  "pk": 1,
+  "fields": {
+    "name": "Arusha"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 2,
+  "fields": {
+    "name": "Coast"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 3,
+  "fields": {
+    "name": "Dar Es Salaam"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 4,
+  "fields": {
+    "name": "Dodoma"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 5,
+  "fields": {
+    "name": "Geita"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 6,
+  "fields": {
+    "name": "Iringa"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 7,
+  "fields": {
+    "name": "Kagera"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 8,
+  "fields": {
+    "name": "Katavi"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 9,
+  "fields": {
+    "name": "Kigoma"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 10,
+  "fields": {
+    "name": "Kilimanjaro"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 11,
+  "fields": {
+    "name": "Lindi"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 12,
+  "fields": {
+    "name": "Manyara"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 13,
+  "fields": {
+    "name": "Mara"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 14,
+  "fields": {
+    "name": "Mbeya"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 15,
+  "fields": {
+    "name": "Morogoro"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 16,
+  "fields": {
+    "name": "Mtwara"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 17,
+  "fields": {
+    "name": "Mwanza"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 18,
+  "fields": {
+    "name": "Njombe"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 19,
+  "fields": {
+    "name": "Rukwa"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 20,
+  "fields": {
+    "name": "Ruvuma"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 21,
+  "fields": {
+    "name": "Shinyanga"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 22,
+  "fields": {
+    "name": "Simiyu"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 23,
+  "fields": {
+    "name": "Singida"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 24,
+  "fields": {
+    "name": "Songwe"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 25,
+  "fields": {
+    "name": "Tabora"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 26,
+  "fields": {
+    "name": "Tanga"
+  }
+}
+]

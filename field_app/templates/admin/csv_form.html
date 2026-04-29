@@ -1,0 +1,32 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>Upload Assessors CSV File</h1>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Upload CSV" class="default">
+</form>
+
+<br>
+<div style="background: #f8f8f8; padding: 15px; border-radius: 5px;">
+    <h3>📋 CSV Format Example:</h3>
+    <pre>
+full_name,phone_number,email,school_name
+John Doe,+255123456789,john@assessor.edu.tz,Mlimani Primary
+Jane Smith,+255987654321,jane@assessor.edu.tz,Mbezi Secondary
+    </pre>
+    
+    <h3>📝 Required Columns:</h3>
+    <ul>
+        <li><strong>full_name</strong> - Jina kamili la assessor</li>
+        <li><strong>phone_number</strong> - Namba ya simu</li>
+        <li><strong>email</strong> - Barua pepe (itatumika kwa login)</li>
+        <li><strong>school_name</strong> - Jina la shule</li>
+    </ul>
+</div>
+
+<a href="../" style="display: inline-block; margin-top: 20px; padding: 10px 15px; background: #417690; color: white; text-decoration: none; border-radius: 4px;">
+    ← Back to Assessor List
+</a>
+{% endblock %}

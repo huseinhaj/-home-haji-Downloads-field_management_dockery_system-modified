@@ -1,0 +1,92 @@
+<!-- field_app/templates/field_app/bulk_upload_assessors.html -->
+{% extends 'admin/base_site.html' %}
+{% load static %}
+
+{% block content %}
+<div class="module">
+    <h1 style="color: #417690; border-bottom: 2px solid #417690; padding-bottom: 10px;">🚀 Bulk Upload Assessors</h1>
+    
+    <div class="help">
+        <h3 style="color: #417690; margin-top: 0;">📋 CSV Format Instructions:</h3>
+        <p>Create a CSV file with the following columns:</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Description</th>
+                    <th>Required</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>full_name</strong></td>
+                    <td>Full name of assessor</td>
+                    <td>✅ Required</td>
+                    <td>John Doe</td>
+                </tr>
+                <tr>
+                    <td><strong>phone_number</strong></td>
+                    <td>Phone number with country code</td>
+                    <td>✅ Required</td>
+                    <td>+255123456789</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h4 style="color: #417690;">🎯 Example CSV Content:</h4>
+        <pre>
+full_name,phone_number
+John Doe,+255123456789
+Mary Smith,+255987654321
+David Johnson,+255111223344
+        </pre>
+        
+        <div class="important-note">
+            <strong>💡 Important Information:</strong> 
+            <ul>
+                <li>✅ System will auto-create email addresses (e.g., john.doe@assessor.edu.tz)</li>
+                <li>✅ System will auto-generate secure passwords</li>
+                <li>✅ Check Django console for generated login credentials</li>
+            </ul>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="form-row">
+            <label for="csv_file" style="display: block; margin-bottom: 10px; font-weight: bold; font-size: 16px;">
+                📁 Select CSV File:
+            </label>
+            <input type="file" name="csv_file" id="csv_file" accept=".csv" required 
+                   style="padding: 10px; border: 2px dashed #417690; border-radius: 6px; width: 100%; background: #fafafa;">
+        </div>
+        
+        <div class="submit-row">
+            <input type="submit" value="🚀 Upload and Process CSV" class="button default">
+            <a href="../" class="button">
+                👨‍🏫 View All Assessors
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.querySelector('form').addEventListener('submit', function(e) {
+    const fileInput = document.getElementById('csv_file');
+    const submitBtn = this.querySelector('input[type="submit"]');
+    
+    if (!fileInput.value) {
+        alert('❌ Please select a CSV file to upload.');
+        e.preventDefault();
+        return;
+    }
+    
+    // Show loading state
+    submitBtn.value = '⏳ Processing... Please wait';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}

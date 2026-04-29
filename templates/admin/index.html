@@ -1,0 +1,430 @@
+{% extends "admin/index.html" %}
+
+{% block extrahead %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<!-- ===== ENHANCED DASHBOARD WIDGET ===== -->
+<div class="dashboard-widget" style="
+    background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 35px;
+    box-shadow: 0 10px 30px rgba(26, 35, 126, 0.25),
+                0 4px 6px rgba(26, 35, 126, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: white;
+    position: relative;
+    overflow: hidden;
+">
+    <!-- Background Pattern -->
+    <div style="
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+        background-size: 30px 30px;
+        opacity: 0.3;
+        z-index: 1;
+    "></div>
+    
+    <div style="position: relative; z-index: 2;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 25px;">
+            <div style="flex: 1; min-width: 300px;">
+                <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 20px;">
+                    <div style="
+                        width: 60px;
+                        height: 60px;
+                        background: linear-gradient(135deg, #FFD700 0%, #FFC107 100%);
+                        border-radius: 14px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: #1a237e;
+                        font-size: 26px;
+                        box-shadow: 0 6px 15px rgba(255, 193, 7, 0.3);
+                        border: 2px solid rgba(255, 255, 255, 0.3);
+                    ">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <div>
+                        <h2 style="
+                            margin: 0; 
+                            color: white; 
+                            font-size: 28px;
+                            font-weight: 700;
+                            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                            letter-spacing: -0.5px;
+                        ">
+                            Premium Dashboard
+                        </h2>
+                        <p style="
+                            margin: 8px 0 0 0; 
+                            color: rgba(255, 255, 255, 0.85);
+                            font-size: 15px;
+                            max-width: 500px;
+                            line-height: 1.5;
+                        ">
+                            <i class="fas fa-star" style="color: #FFD700;"></i>
+                            Complete system overview with real-time analytics, AI insights, and advanced management tools
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Features Badges -->
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 25px;">
+                    <div class="feature-badge" style="
+                        background: linear-gradient(135deg, rgba(255, 64, 129, 0.2) 0%, rgba(245, 0, 87, 0.2) 100%);
+                        backdrop-filter: blur(10px);
+                        padding: 10px 18px;
+                        border-radius: 12px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        color: #FF4081;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        border: 1px solid rgba(255, 64, 129, 0.3);
+                        box-shadow: 0 3px 8px rgba(255, 64, 129, 0.15);
+                        transition: all 0.3s ease;
+                    ">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Live Analytics</span>
+                    </div>
+                    
+                    <div class="feature-badge" style="
+                        background: linear-gradient(135deg, rgba(0, 230, 118, 0.2) 0%, rgba(0, 200, 83, 0.2) 100%);
+                        backdrop-filter: blur(10px);
+                        padding: 10px 18px;
+                        border-radius: 12px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        color: #00E676;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        border: 1px solid rgba(0, 230, 118, 0.3);
+                        box-shadow: 0 3px 8px rgba(0, 230, 118, 0.15);
+                        transition: all 0.3s ease;
+                    ">
+                        <i class="fas fa-brain"></i>
+                        <span>AI Insights</span>
+                    </div>
+                    
+                    <div class="feature-badge" style="
+                        background: linear-gradient(135deg, rgba(41, 121, 255, 0.2) 0%, rgba(30, 136, 229, 0.2) 100%);
+                        backdrop-filter: blur(10px);
+                        padding: 10px 18px;
+                        border-radius: 12px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        color: #2979FF;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        border: 1px solid rgba(41, 121, 255, 0.3);
+                        box-shadow: 0 3px 8px rgba(41, 121, 255, 0.15);
+                        transition: all 0.3s ease;
+                    ">
+                        <i class="fas fa-bolt"></i>
+                        <span>Real-Time</span>
+                    </div>
+                    
+                    <div class="feature-badge" style="
+                        background: linear-gradient(135deg, rgba(213, 0, 249, 0.2) 0%, rgba(186, 0, 233, 0.2) 100%);
+                        backdrop-filter: blur(10px);
+                        padding: 10px 18px;
+                        border-radius: 12px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        color: #D500F9;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        border: 1px solid rgba(213, 0, 249, 0.3);
+                        box-shadow: 0 3px 8px rgba(213, 0, 249, 0.15);
+                        transition: all 0.3s ease;
+                    ">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Secure</span>
+                    </div>
+                </div>
+                
+                <!-- Stats Counter -->
+                <div style="
+                    display: flex;
+                    align-items: center;
+                    gap: 25px;
+                    margin-top: 30px;
+                    padding: 15px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                ">
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 800; color: #FFD700; line-height: 1;">24/7</div>
+                        <div style="font-size: 12px; color: rgba(255, 255, 255, 0.7);">Uptime</div>
+                    </div>
+                    <div style="width: 1px; height: 40px; background: rgba(255, 255, 255, 0.2);"></div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 800; color: #00E676; line-height: 1;">99.9%</div>
+                        <div style="font-size: 12px; color: rgba(255, 255, 255, 0.7);">Reliability</div>
+                    </div>
+                    <div style="width: 1px; height: 40px; background: rgba(255, 255, 255, 0.2);"></div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; font-weight: 800; color: #FF4081; line-height: 1;">0.2s</div>
+                        <div style="font-size: 12px; color: rgba(255, 255, 255, 0.7);">Response</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons Panel -->
+            <div style="
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+                min-width: 280px;
+                background: rgba(255, 255, 255, 0.05);
+                backdrop-filter: blur(10px);
+                padding: 25px;
+                border-radius: 16px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            ">
+                <h3 style="
+                    margin: 0 0 15px 0;
+                    color: white;
+                    font-size: 18px;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                ">
+                    <i class="fas fa-bolt" style="color: #FFD700;"></i>
+                    Quick Actions
+                </h3>
+                
+                <a href="{% url 'admin_dashboard' %}" class="primary-dashboard-btn" style="
+                    background: linear-gradient(135deg, #FFD700 0%, #FFC107 100%);
+                    color: #1a237e;
+                    padding: 16px 28px;
+                    border-radius: 12px;
+                    text-decoration: none;
+                    text-align: center;
+                    font-weight: 700;
+                    font-size: 16px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 12px;
+                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+                    border: 2px solid rgba(255, 255, 255, 0.3);
+                    position: relative;
+                    overflow: hidden;
+                ">
+                    <span style="position: relative; z-index: 2;">
+                        <i class="fas fa-external-link-alt"></i>
+                        LAUNCH DASHBOARD
+                    </span>
+                    <div style="
+                        position: absolute;
+                        top: 0;
+                        left: -100%;
+                        width: 100%;
+                        height: 100%;
+                        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+                        transition: 0.6s;
+                    " class="btn-shine"></div>
+                </a>
+                
+                <a href="{% url 'admin_dashboard' %}?view=quick" class="secondary-btn" style="
+                    background: rgba(255, 255, 255, 0.1);
+                    color: white;
+                    padding: 14px 24px;
+                    border-radius: 10px;
+                    text-decoration: none;
+                    text-align: center;
+                    font-weight: 600;
+                    font-size: 14px;
+                    border: 2px solid rgba(255, 255, 255, 0.2);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                    transition: all 0.3s ease;
+                    backdrop-filter: blur(10px);
+                ">
+                    <i class="fas fa-eye"></i>
+                    <span>Preview Mode</span>
+                </a>
+                
+                <a href="{% url 'admin_dashboard' %}?view=fullscreen" class="tertiary-btn" style="
+                    background: transparent;
+                    color: #00E676;
+                    padding: 12px 20px;
+                    border-radius: 10px;
+                    text-decoration: none;
+                    text-align: center;
+                    font-weight: 500;
+                    font-size: 13px;
+                    border: 2px solid rgba(0, 230, 118, 0.4);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    transition: all 0.3s ease;
+                ">
+                    <i class="fas fa-expand-alt"></i>
+                    <span>Full Screen View</span>
+                </a>
+                
+                <!-- Info -->
+                <div style="
+                    margin-top: 10px;
+                    padding: 12px;
+                    background: rgba(255, 64, 129, 0.1);
+                    border-radius: 8px;
+                    border-left: 4px solid #FF4081;
+                    font-size: 12px;
+                    color: rgba(255, 255, 255, 0.8);
+                ">
+                    <i class="fas fa-info-circle" style="color: #FF4081; margin-right: 8px;"></i>
+                    Exclusive admin features available
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Hover Effects */
+    .primary-dashboard-btn:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 12px 30px rgba(255, 215, 0, 0.6),
+                    0 4px 8px rgba(255, 215, 0, 0.3);
+        color: #1a237e !important;
+    }
+    
+    .primary-dashboard-btn:hover .btn-shine {
+        left: 100%;
+    }
+    
+    .secondary-btn:hover {
+        background: rgba(255, 255, 255, 0.2) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+    }
+    
+    .tertiary-btn:hover {
+        background: rgba(0, 230, 118, 0.1) !important;
+        border-color: #00E676 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 230, 118, 0.2);
+    }
+    
+    .feature-badge:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    /* Animation for widget */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .dashboard-widget {
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    /* Pulse animation for stats */
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+    
+    .primary-dashboard-btn {
+        animation: pulse 2s infinite;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add shine effect on hover
+    const primaryBtn = document.querySelector('.primary-dashboard-btn');
+    if (primaryBtn) {
+        primaryBtn.addEventListener('mouseenter', function() {
+            this.style.animation = 'none';
+        });
+        primaryBtn.addEventListener('mouseleave', function() {
+            this.style.animation = 'pulse 2s infinite';
+        });
+    }
+    
+    // Add hover sound effect (optional)
+    const buttons = document.querySelectorAll('.primary-dashboard-btn, .secondary-btn, .tertiary-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        });
+    });
+    
+    // Add ripple effect
+    buttons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            const ripple = document.createElement('span');
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            
+            ripple.style.cssText = `
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.6);
+                transform: scale(0);
+                animation: ripple 0.6s linear;
+                width: ${size}px;
+                height: ${size}px;
+                top: ${y}px;
+                left: ${x}px;
+                pointer-events: none;
+            `;
+            
+            this.appendChild(ripple);
+            
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        });
+    });
+});
+
+// Add CSS for ripple effect
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes ripple {
+        to {
+            transform: scale(4);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+</script>
+
+{{ block.super }}
+{% endblock %}

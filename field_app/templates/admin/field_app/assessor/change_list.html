@@ -1,0 +1,83 @@
+# field_app/admin.py - SIMPLE VERSION
+
+class AssessorAdmin(admin.ModelAdmin):
+    list_display = ['full_name', 'phone_number', 'email', 'is_active']
+    list_filter = ['is_active']
+    search_fields = ['full_name', 'phone_number', 'email']
+    
+    # 🔥 ONDOA: change_list_template kwa sasa
+    # change_list_template = "admin/field_app/assessor/change_list.html"
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('import-csv/', self.import_csv, name='import_csv'),
+        ]
+        return my_urls + urls
+
+    def import_csv(self, request):
+        if request.method == "POST":
+            csv_file = request.FILES["csv_file"]
+            
+            # Read CSV file
+            data_set = csv_file.read().decode('UTF-8')
+            io_string = io.StringIO(data_set)
+            reader = csv.DictReader(io_string)
+            
+            success_count = 0
+            error_count = 0
+            
+            for row_num, row in enumerate(reader, 1):
+                try:
+                    full_name = row.get('full_name', '').strip()
+                    phone_number = row.get('phone_number', '').strip()
+                    email = row.get('email', '').strip().lower()
+                    school_name = row.get('school_name', '').strip()
+                    
+                    print(f"📝 Processing: {full_name} - {email}")
+                    
+                    # Validate required fields
+                    if not all([full_name, phone_number, email]):
+                        messages.error(request, f"Row {row_num}: Missing required fields")
+                        error_count += 1
+                        continue
+                    
+                    # Create assessor
+                    if Assessor.objects.filter(email=email).exists():
+                        messages.warning(request, f"Row {row_num}: Assessor with email {email} already exists")
+                        error_count += 1
+                        continue
+                    
+                    assessor = Assessor(
+                        full_name=full_name,
+                        phone_number=phone_number,
+                        email=email
+                    )
+                    assessor.save()
+                    
+                    success_count += 1
+                    messages.success(request, f"✅ Created assessor: {full_name}")
+                    
+                except Exception as e:
+                    messages.error(request, f"Row {row_num}: Error - {str(e)}")
+                    error_count += 1
+            
+            if success_count > 0:
+                messages.success(request, f'✅ Successfully imported {success_count} assessors')
+            
+            return redirect("..")
+        
+        # Simple form display without template
+        return HttpResponse(f"""
+        <html>
+        <body>
+            <h1>📁 Import Assessors from CSV</h1>
+            <form method="post" enctype="multipart/form-data">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{csrf_token}">
+                <input type="file" name="csv_file" accept=".csv">
+                <input type="submit" value="Upload CSV">
+            </form>
+            <p><strong>CSV Format:</strong> full_name,phone_number,email,school_name</p>
+        </body>
+        </html>
+        """)

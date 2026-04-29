@@ -1,0 +1,182 @@
+{% extends "admin/index.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    :root {
+        --bold: #0A2B5E !important;
+        --medium: #C8900A !important;
+        --light: #EEF1F6 !important;
+        --white: #FFFFFF !important;
+        --text-dark: #1A1A2E !important;
+        --text-gray: #4A5568 !important;
+        --border: #CBD5E0 !important;
+        --success: #10B981 !important;
+        --danger: #EF4444 !important;
+        --warning: #F59E0B !important;
+        --info: #3B82F6 !important;
+    }
+    
+    /* Dashboard Widget */
+    .dashboard-widget {
+        background: var(--white) !important;
+        border-radius: 8px !important;
+        padding: 25px !important;
+        margin-bottom: 30px !important;
+        box-shadow: 0 4px 16px rgba(10,43,94,0.08) !important;
+        border: 1px solid var(--border) !important;
+    }
+    
+    .widget-icon {
+        width: 50px !important;
+        height: 50px !important;
+        background: var(--bold) !important;
+        border-radius: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: var(--white) !important;
+        font-size: 22px !important;
+    }
+    
+    .widget-title {
+        margin: 0 !important;
+        color: var(--text-dark) !important;
+        font-weight: 600 !important;
+    }
+    
+    .widget-subtitle {
+        margin: 5px 0 0 0 !important;
+        color: var(--text-gray) !important;
+    }
+    
+    .feature-badge {
+        background: rgba(10, 43, 94, 0.1) !important;
+        padding: 8px 15px !important;
+        border-radius: 6px !important;
+        font-size: 13px !important;
+        color: var(--bold) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .feature-badge:hover {
+        transform: translateY(-1px) !important;
+    }
+    
+    .feature-badge-gold {
+        background: rgba(200, 144, 10, 0.1) !important;
+        color: var(--medium) !important;
+    }
+    
+    .feature-badge-info {
+        background: rgba(59, 130, 246, 0.1) !important;
+        color: var(--info) !important;
+    }
+    
+    .primary-dashboard-btn {
+        background: var(--bold) !important;
+        color: var(--white) !important;
+        padding: 12px 25px !important;
+        border-radius: 6px !important;
+        text-decoration: none !important;
+        text-align: center !important;
+        font-weight: 600 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 10px !important;
+        transition: all 0.2s ease !important;
+        border: none !important;
+    }
+    
+    .primary-dashboard-btn:hover {
+        background: #0C3570 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(10, 43, 94, 0.25) !important;
+    }
+    
+    .secondary-dashboard-btn {
+        background: transparent !important;
+        color: var(--bold) !important;
+        padding: 10px 20px !important;
+        border-radius: 6px !important;
+        text-decoration: none !important;
+        text-align: center !important;
+        font-weight: 600 !important;
+        border: 2px solid var(--bold) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .secondary-dashboard-btn:hover {
+        background: rgba(10, 43, 94, 0.05) !important;
+        transform: translateY(-1px) !important;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .dashboard-widget {
+            padding: 20px !important;
+        }
+        .primary-dashboard-btn, .secondary-dashboard-btn {
+            width: 100% !important;
+        }
+        .flex-container {
+            flex-direction: column !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-widget">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
+        <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                <div class="widget-icon">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <div>
+                    <h3 class="widget-title">Advanced Dashboard</h3>
+                    <p class="widget-subtitle">Access detailed analytics and reports</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px;">
+                <span class="feature-badge">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Analytics</span>
+                </span>
+                <span class="feature-badge feature-badge-gold">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                </span>
+                <span class="feature-badge feature-badge-info">
+                    <i class="fas fa-cogs"></i>
+                    <span>Settings</span>
+                </span>
+            </div>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px; min-width: 200px;">
+            <a href="{% url 'admin_dashboard' %}" class="primary-dashboard-btn">
+                <i class="fas fa-external-link-alt"></i>
+                <span>Open Dashboard</span>
+            </a>
+            
+            <a href="{% url 'admin_dashboard' %}?view=quick" class="secondary-dashboard-btn">
+                <i class="fas fa-bolt"></i>
+                <span>Quick View</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+{{ block.super }}
+{% endblock %}

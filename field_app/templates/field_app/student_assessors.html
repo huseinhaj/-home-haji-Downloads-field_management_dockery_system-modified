@@ -1,0 +1,160 @@
+{% extends 'field_app/base.html' %}
+{% block title %}My Assessors{% endblock %}
+{% block content %}
+<style>
+    .assessor-card {
+        border-left: 4px solid #28a745;
+    }
+    .contact-info {
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+</style>
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h1 class="h3 mb-2">👨‍🏫 My Assessors</h1>
+                    <p class="mb-0">
+                        <strong>School:</strong> {{ school.name }} | 
+                        <strong>Location:</strong> {{ school.district.name }}, {{ school.district.region.name }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assessors List -->
+    <div class="row">
+        {% for assignment in school_assessments %}
+        <div class="col-md-6 mb-4">
+            <div class="card assessor-card shadow h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        {{ assignment.assessor.full_name }}
+                        <span class="badge bg-secondary float-end">
+                            {{ assignment.assessor.assessor_type|title }}
+                        </span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="contact-info p-3 mb-3">
+                        <h6>📞 Contact Information:</h6>
+                        <p class="mb-1">
+                            <strong>Phone:</strong> 
+                            <a href="tel:{{ assignment.assessor.phone_number }}" class="text-decoration-none">
+                                {{ assignment.assessor.phone_number }}
+                            </a>
+                        </p>
+                        <p class="mb-0">
+                            <strong>Email:</strong> 
+                            <a href="mailto:{{ assignment.assessor.email }}" class="text-decoration-none">
+                                {{ assignment.assessor.email }}
+                            </a>
+                        </p>
+                    </div>
+                    
+                    {% if assignment.assessor.specialization %}
+                    <p class="mb-2">
+                        <strong>Specialization:</strong> 
+                        {{ assignment.assessor.specialization }}
+                    </p>
+                    {% endif %}
+                    
+                    {% if assignment.assessment_date %}
+                    <p class="mb-2">
+                        <strong>Scheduled Assessment:</strong> 
+                        {{ assignment.assessment_date }}
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-white">
+                    <small class="text-muted">
+                        Assigned on: {{ assignment.assigned_date|date:"M d, Y" }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <h4>No Assessors Assigned Yet</h4>
+                    <p class="text-muted">
+                        No assessors have been assigned to your school yet. 
+                        Please check back later.
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Assessment Status -->
+    {% if student_assessments %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">📊 My Assessment Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Assessor</th>
+                                    <th>Status</th>
+                                    <th>Scheduled Date</th>
+                                    <th>Score</th>
+                                    <th>Feedback</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assessment in student_assessments %}
+                                <tr>
+                                    <td>{{ assessment.assessor.full_name }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if assessment.status == 'completed' %}bg-success
+                                            {% elif assessment.status == 'scheduled' %}bg-primary
+                                            {% else %}bg-warning{% endif %}">
+                                            {{ assessment.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if assessment.assessment_date %}
+                                            {{ assessment.assessment_date|date:"M d, Y" }}
+                                        {% else %}
+                                            Not scheduled
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if assessment.score %}
+                                            {{ assessment.score }}%
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if assessment.feedback %}
+                                            {{ assessment.feedback|truncatewords:10 }}
+                                        {% else %}
+                                            No feedback yet
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

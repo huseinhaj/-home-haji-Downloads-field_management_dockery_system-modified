@@ -1,0 +1,245 @@
+[
+{
+  "model": "field_app.subject",
+  "pk": 1,
+  "fields": {
+    "name": "Kusoma",
+    "code": "P01",
+    "level": "primary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 2,
+  "fields": {
+    "name": "Kuandika",
+    "code": "P02",
+    "level": "primary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 3,
+  "fields": {
+    "name": "Hesabu",
+    "code": "P03",
+    "level": "primary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 4,
+  "fields": {
+    "name": "Maarifa ya Jamii",
+    "code": "P04",
+    "level": "primary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 5,
+  "fields": {
+    "name": "Stadi za Kazi",
+    "code": "P05",
+    "level": "primary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 6,
+  "fields": {
+    "name": "Sayansi",
+    "code": "P06",
+    "level": "primary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 7,
+  "fields": {
+    "name": "Elimu ya Dini",
+    "code": "P07",
+    "level": "primary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 8,
+  "fields": {
+    "name": "Uchoraji",
+    "code": "P08",
+    "level": "primary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 9,
+  "fields": {
+    "name": "Muziki",
+    "code": "P09",
+    "level": "primary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 10,
+  "fields": {
+    "name": "Michezo",
+    "code": "P10",
+    "level": "primary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 11,
+  "fields": {
+    "name": "Mathematics",
+    "code": "S01",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 12,
+  "fields": {
+    "name": "English Language",
+    "code": "S02",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 13,
+  "fields": {
+    "name": "Physics",
+    "code": "S03",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 14,
+  "fields": {
+    "name": "Chemistry",
+    "code": "S04",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 15,
+  "fields": {
+    "name": "Biology",
+    "code": "S05",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 16,
+  "fields": {
+    "name": "Kiswahili",
+    "code": "S06",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 17,
+  "fields": {
+    "name": "Geography",
+    "code": "S07",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 18,
+  "fields": {
+    "name": "History",
+    "code": "S08",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 19,
+  "fields": {
+    "name": "Civics",
+    "code": "S09",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 20,
+  "fields": {
+    "name": "Book-Keeping",
+    "code": "S10",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 21,
+  "fields": {
+    "name": "Commerce",
+    "code": "S11",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 22,
+  "fields": {
+    "name": "Agriculture",
+    "code": "S12",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 23,
+  "fields": {
+    "name": "Computer Studies",
+    "code": "S13",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 24,
+  "fields": {
+    "name": "Bible Knowledge",
+    "code": "S14",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 25,
+  "fields": {
+    "name": "Islamic Knowledge",
+    "code": "S15",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 26,
+  "fields": {
+    "name": "French",
+    "code": "S16",
+    "level": "secondary"
+  }
+},
+{
+  "model": "field_app.subject",
+  "pk": 27,
+  "fields": {
+    "name": "Arabic",
+    "code": "S17",
+    "level": "secondary"
+  }
+}
+]

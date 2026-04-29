@@ -1,0 +1,268 @@
+{% extends 'field_app/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card" style="border: 1px solid var(--border); border-radius: 8px;">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background: var(--bold); border-bottom: 3px solid var(--medium); border-radius: 8px 8px 0 0;">
+                    <h4 class="mb-0 text-white">
+                        <i class="fas fa-history" style="color: var(--medium);"></i>
+                        Historia ya Logbook
+                    </h4>
+                    <div>
+                        <a href="{% url 'logbook_download_options' %}" class="btn" style="background: var(--medium); color: var(--white); border: none; border-radius: 6px; padding: 5px 12px; font-size: 0.85rem; font-weight: 600;">
+                            <i class="fas fa-download"></i> Pakua PDF
+                        </a>
+                        <a href="{% url 'submit_logbook' %}" class="btn" style="background: var(--white); color: var(--bold); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; font-size: 0.85rem; font-weight: 600; margin-left: 8px;">
+                            <i class="fas fa-plus"></i> Logbook Mpya
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body" style="background: var(--white);">
+
+                    <!-- Filters Section -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <form method="get" class="row g-2">
+                                <div class="col-md-6">
+                                    <label style="color: var(--text-dark); font-weight: 600; font-size: 0.85rem;">Chagua Wiki:</label>
+                                    <input type="week" name="week" class="form-control" 
+                                           value="{{ request.GET.week }}"
+                                           style="border: 1.5px solid var(--border); border-radius: 6px;">
+                                </div>
+                                <div class="col-md-6">
+                                    <label style="color: var(--text-dark); font-weight: 600; font-size: 0.85rem;">Chagua Mwezi:</label>
+                                    <input type="month" name="month" class="form-control"
+                                           value="{{ request.GET.month }}"
+                                           style="border: 1.5px solid var(--border); border-radius: 6px;">
+                                </div>
+                                <div class="col-md-12 mt-2">
+                                    <button type="submit" class="btn btn-sm" style="background: var(--bold); color: var(--white); border: none; border-radius: 6px; padding: 6px 16px;">
+                                        <i class="fas fa-filter"></i> Chuja
+                                    </button>
+                                    <a href="{% url 'logbook_history' %}" class="btn btn-sm" style="background: transparent; color: var(--text-gray); border: 1.5px solid var(--border); border-radius: 6px; padding: 6px 16px; text-decoration: none;">
+                                        <i class="fas fa-times"></i> Ondoa Michujo
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="alert" style="background: var(--light); border-left: 4px solid var(--medium); color: var(--text-dark);">
+                                <strong>Jumla:</strong> {{ entries.count }} ingizo
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logbook Entries -->
+                    {% for entry in entries %}
+                    <div class="card mb-3" style="border: 1px solid var(--border); border-radius: 8px; {% if entry.is_location_verified and entry.is_at_school %}border-left: 4px solid var(--success);{% elif entry.is_location_verified and not entry.is_at_school %}border-left: 4px solid var(--warning);{% else %}border-left: 4px solid var(--text-gray);{% endif %}">
+                        <div class="card-header d-flex justify-content-between align-items-center" style="background: var(--light); border-bottom: 1px solid var(--border); border-radius: 8px 8px 0 0;">
+                            <h5 class="mb-0" style="color: var(--text-dark);">
+                                <i class="fas fa-calendar me-2" style="color: var(--medium);"></i>{{ entry.get_day_of_week_display }} - {{ entry.date }}
+                            </h5>
+                            <div>
+                                {% if entry.is_location_verified %}
+                                    {% if entry.is_at_school %}
+                                        <span class="badge" style="background: var(--success); color: white;">
+                                            <i class="fas fa-check-circle me-1"></i>Eneo Imethibitishwa - Karibu na Shule
+                                        </span>
+                                    {% else %}
+                                        <span class="badge" style="background: var(--warning); color: white;">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>Eneo Imethibitishwa - Mbali na Shule
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge" style="background: var(--text-gray); color: white;">
+                                        <i class="fas fa-question-circle me-1"></i>Eneo Haijathibitishwa
+                                    </span>
+                                {% endif %}
+                                
+                                {% if entry.morning_check_in %}
+                                    <span class="badge" style="background: var(--bold); color: white;">
+                                        <i class="fas fa-clock me-1"></i>Ingia: {{ entry.morning_check_in|time }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 style="color: var(--text-dark); font-weight: 600; font-size: 0.9rem;">
+                                        <i class="fas fa-sun me-2" style="color: var(--medium);"></i>Shughuli za Asubuhi:
+                                    </h6>
+                                    <p style="color: var(--text-gray); {% if not entry.morning_activity %}font-style: italic;{% endif %}">
+                                        {{ entry.morning_activity|default:"Haijajazwa"|linebreaks }}
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 style="color: var(--text-dark); font-weight: 600; font-size: 0.9rem;">
+                                        <i class="fas fa-cloud-sun me-2" style="color: var(--medium);"></i>Shughuli za Mchana:
+                                    </h6>
+                                    <p style="color: var(--text-gray); {% if not entry.afternoon_activity %}font-style: italic;{% endif %}">
+                                        {{ entry.afternoon_activity|default:"Haijajazwa"|linebreaks }}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <h6 style="color: var(--text-dark); font-weight: 600; font-size: 0.9rem;">
+                                        <i class="fas fa-exclamation-triangle me-2" style="color: var(--warning);"></i>Changamoto:
+                                    </h6>
+                                    <p style="color: var(--text-gray); {% if not entry.challenges_faced %}font-style: italic;{% endif %}">
+                                        {{ entry.challenges_faced|default:"Hakuna changamoto zilizorekodiwa"|linebreaks }}
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 style="color: var(--text-dark); font-weight: 600; font-size: 0.9rem;">
+                                        <i class="fas fa-graduation-cap me-2" style="color: var(--bold);"></i>Mafunzo:
+                                    </h6>
+                                    <p style="color: var(--text-gray); {% if not entry.lessons_learned %}font-style: italic;{% endif %}">
+                                        {{ entry.lessons_learned|default:"Hakuna mafunzo yaliyorekodiwa"|linebreaks }}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Location Section -->
+                            <div class="row mt-4 pt-3" style="border-top: 1px solid var(--border);">
+                                <div class="col-12">
+                                    <h6 style="color: var(--text-dark); font-weight: 600; font-size: 0.9rem;">
+                                        <i class="fas fa-map-marker-alt me-2" style="color: var(--medium);"></i>Eneo la Kujaza Logbook:
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            {% if entry.latitude and entry.longitude %}
+                                                <p class="mb-1">
+                                                    <strong style="color: var(--text-dark);">GPS:</strong> 
+                                                    <span class="badge" style="background: var(--bold); color: white;">{{ entry.latitude|floatformat:6 }}, {{ entry.longitude|floatformat:6 }}</span>
+                                                </p>
+                                                <a href="https://maps.google.com/?q={{ entry.latitude }},{{ entry.longitude }}" 
+                                                   target="_blank" class="btn btn-sm" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 6px; margin-top: 5px;">
+                                                    <i class="fas fa-external-link-alt me-1"></i>Angalia Ramani
+                                                </a>
+                                            {% else %}
+                                                <p class="text-muted mb-1">
+                                                    <strong style="color: var(--text-dark);">GPS:</strong> Hakuna data ya eneo
+                                                </p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6">
+                                            {% if entry.location_address %}
+                                                <p class="mb-1"><strong style="color: var(--text-dark);">Anwani:</strong></p>
+                                                <p class="small" style="color: var(--text-gray);">{{ entry.location_address }}</p>
+                                            {% else %}
+                                                <p class="text-muted">Hakuna anwani iliyorekodiwa</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-book fa-3x mb-3" style="color: var(--text-gray);"></i>
+                        <h5 style="color: var(--text-dark);">Hakuna ingizo la logbook lililopatikana</h5>
+                        <p style="color: var(--text-gray);">Bofya "Logbook Mpya" kuanza kujaza logbook yako</p>
+                        <a href="{% url 'submit_logbook' %}" class="btn" style="background: var(--bold); color: var(--white); border: none; border-radius: 6px; padding: 10px 24px;">
+                            <i class="fas fa-plus"></i> Anza Logbook Mpya
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Additional styles for consistency */
+    .form-control:focus {
+        border-color: var(--bold) !important;
+        box-shadow: 0 0 0 3px rgba(10,43,94,0.1) !important;
+        outline: none;
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+        transition: all 0.2s ease;
+    }
+    
+    a.btn:hover {
+        transform: translateY(-1px);
+        transition: all 0.2s ease;
+    }
+    
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 4px 12px rgba(10,43,94,0.1);
+    }
+    
+    /* Badge styles */
+    .badge {
+        font-weight: 600;
+        padding: 0.35rem 0.65rem;
+        border-radius: 6px;
+    }
+    
+    /* Alert styles */
+    .alert {
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0;
+    }
+    
+    /* Form labels */
+    label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+    
+    /* Form controls */
+    .form-control {
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+        transition: all 0.15s ease;
+    }
+    
+    /* Card header text */
+    .card-header h5, .card-header h4 {
+        font-weight: 600;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .card-header {
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-start !important;
+        }
+        
+        .card-header div {
+            width: 100%;
+        }
+        
+        .card-header .btn {
+            width: 100%;
+            margin: 2px 0 !important;
+        }
+        
+        .filter-section {
+            flex-direction: column;
+        }
+        
+        .text-end {
+            text-align: left !important;
+            margin-top: 15px;
+        }
+    }
+</style>
+{% endblock %}

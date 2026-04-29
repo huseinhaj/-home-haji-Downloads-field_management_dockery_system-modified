@@ -1,0 +1,664 @@
+{% extends "field_app/base.html" %}
+{% load static %}
+
+{% block title %}Register — Field Placement Management System{% endblock %}
+
+{% block content %}
+<style>
+    /* ── RESET & ROOT ── */
+    html, body,
+    .pg-wrap, .container, .container-fluid,
+    .main-content, .wrapper, .page-wrapper,
+    .content-wrapper, .register-container, .register-card {
+        background: #EEF1F6 !important;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: 100vh !important;
+        background: #EEF1F6 !important;
+    }
+
+    :root {
+        --bold:       #0A2B5E;
+        --medium:     #C8900A;
+        --light:      #EEF1F6;
+        --white:      #FFFFFF;
+        --text-dark:  #1A1A2E;
+        --text-gray:  #4A5568;
+        --border:     #CBD5E0;
+        --error:      #DC2626;
+        --success:    #059669;
+    }
+
+    /* ── PAGE WRAPPER ── */
+    .reg-page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--light);
+    }
+
+    /* ── TOP BAR ── */
+    .reg-top-bar {
+        background: var(--bold);
+        padding: 5px 0;
+        text-align: center;
+        font-size: 11px;
+        color: rgba(255,255,255,0.82);
+        letter-spacing: 1.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        border-bottom: 2px solid var(--medium);
+    }
+
+    /* ── GOVERNMENT HEADER — logo LEFT ── */
+    .reg-gov-header {
+        background: var(--bold);
+        padding: 14px 40px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 18px;
+        border-bottom: 3px solid var(--medium);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    .reg-coat {
+        width: 72px; height: 72px; flex-shrink: 0;
+    }
+
+    .reg-coat img {
+        width: 100%; height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+    }
+
+    .reg-gov-titles { line-height: 1.4; }
+
+    .reg-gov-titles .t1 {
+        font-size: 11px; color: rgba(255,255,255,0.75);
+        letter-spacing: 2px; text-transform: uppercase; font-weight: 500;
+    }
+
+    .reg-gov-titles .t2 {
+        font-size: 19px; color: var(--white);
+        font-weight: 700; letter-spacing: 0.3px; margin: 3px 0 2px;
+    }
+
+    .reg-gov-titles .t3 {
+        font-size: 12.5px; color: var(--medium);
+        font-weight: 500; letter-spacing: 0.2px;
+    }
+
+    /* ── NAV ── */
+    .reg-nav {
+        background: var(--white);
+        padding: 0 40px;
+        display: flex; align-items: center;
+        border-bottom: 2px solid var(--border);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .reg-nav-item {
+        font-size: 13px; color: var(--text-gray);
+        padding: 11px 18px;
+        border-right: 1px solid #E2E8F0;
+        cursor: pointer; transition: all 0.15s;
+        font-weight: 500; text-decoration: none;
+        display: flex; align-items: center; gap: 7px;
+    }
+
+    .reg-nav-item:first-child { border-left: 1px solid #E2E8F0; }
+
+    .reg-nav-item.active { background: var(--bold); color: var(--white); font-weight: 600; }
+    .reg-nav-item:hover:not(.active) { background: #EBF0FA; color: var(--bold); }
+
+    /* ── CONTENT AREA ── */
+    .reg-content-area {
+        flex: 1;
+        padding: 36px 30px;
+        display: flex;
+        justify-content: center;
+    }
+
+    /* ── REGISTER CARD ── */
+    .register-container {
+        width: 100%;
+        max-width: 860px;
+    }
+
+    .register-card {
+        background: var(--white) !important;
+        border-radius: 8px !important;
+        border: 1px solid var(--border) !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 16px rgba(10,43,94,0.10) !important;
+    }
+
+    /* Card Header */
+    .register-header {
+        background: var(--bold) !important;
+        padding: 16px 22px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 14px !important;
+        border-bottom: 3px solid var(--medium) !important;
+    }
+
+    .register-icon {
+        width: 42px !important; height: 42px !important;
+        background: var(--medium) !important;
+        border-radius: 8px !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+    }
+
+    .register-icon i { font-size: 18px !important; color: var(--white) !important; }
+
+    .register-header h1 {
+        font-size: 17px !important; color: var(--white) !important;
+        font-weight: 700 !important; margin: 0 !important;
+    }
+
+    .register-header p {
+        font-size: 11.5px !important; color: rgba(255,255,255,0.75) !important;
+        margin: 3px 0 0 0 !important;
+    }
+
+    /* Form */
+    .register-form {
+        padding: 28px !important;
+        background: var(--white) !important;
+    }
+
+    .form-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 20px !important;
+    }
+
+    .form-group { margin-bottom: 0 !important; }
+
+    .form-label {
+        display: block !important;
+        font-size: 12.5px !important;
+        font-weight: 600 !important;
+        color: var(--text-dark) !important;
+        margin-bottom: 7px !important;
+    }
+
+    .form-label i { color: var(--medium) !important; margin-right: 6px !important; }
+
+    .required-star { color: var(--error) !important; margin-left: 2px !important; }
+
+    .form-input {
+        width: 100% !important;
+        padding: 11px 14px !important;
+        font-size: 13.5px !important;
+        color: var(--text-dark) !important;
+        border: 1.5px solid var(--border) !important;
+        border-radius: 6px !important;
+        background: #FAFBFD !important;
+        font-family: inherit !important;
+        outline: none !important;
+        transition: all 0.15s !important;
+        box-sizing: border-box !important;
+    }
+
+    .form-input:focus {
+        border-color: var(--bold) !important;
+        background: var(--white) !important;
+        box-shadow: 0 0 0 3px rgba(10,43,94,0.09) !important;
+    }
+
+    .form-input::placeholder { color: #B0BCCF !important; font-size: 12.5px !important; }
+
+    .password-container { position: relative !important; }
+
+    .password-toggle {
+        position: absolute !important; right: 11px !important;
+        top: 50% !important; transform: translateY(-50%) !important;
+        background: none !important; border: none !important;
+        cursor: pointer !important; color: #90A0B7 !important; font-size: 14px !important;
+    }
+
+    .password-toggle:hover { color: var(--bold) !important; }
+
+    .form-error {
+        display: block !important;
+        color: var(--error) !important;
+        font-size: 11px !important;
+        margin-top: 5px !important;
+        padding: 5px 10px !important;
+        background: rgba(220,38,38,0.07) !important;
+        border-radius: 5px !important;
+        border-left: 3px solid var(--error) !important;
+    }
+
+    /* Password Requirements */
+    .password-requirements {
+        background: #F7F9FC !important;
+        border-radius: 8px !important;
+        border: 1px solid var(--border) !important;
+        border-left: 4px solid var(--medium) !important;
+        padding: 14px 16px !important;
+        grid-column: span 2 !important;
+    }
+
+    .requirements-title {
+        color: var(--text-dark) !important; font-weight: 700 !important;
+        font-size: 12px !important; margin-bottom: 10px !important;
+        display: flex !important; align-items: center !important; gap: 7px !important;
+        text-transform: uppercase !important; letter-spacing: 0.5px !important;
+    }
+
+    .requirements-title i { color: var(--medium) !important; }
+
+    .requirements-list {
+        list-style: none !important; padding: 0 !important; margin: 0 !important;
+        display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px !important;
+    }
+
+    .requirements-list li {
+        color: var(--text-gray) !important; font-size: 12px !important;
+        padding: 4px 0 4px 20px !important; position: relative !important;
+    }
+
+    .requirements-list li:before {
+        content: "✓" !important; position: absolute !important; left: 0 !important;
+        color: var(--medium) !important; font-weight: bold !important;
+    }
+
+    /* Strength Meter */
+    .strength-meter {
+        height: 4px !important; background: #E2E8F0 !important;
+        border-radius: 3px !important; margin-top: 8px !important; overflow: hidden !important;
+    }
+
+    .strength-fill { height: 100% !important; width: 0 !important; border-radius: 3px !important; transition: width 0.3s !important; }
+    .strength-0 { background: #DC2626 !important; width: 20% !important; }
+    .strength-1 { background: #F59E0B !important; width: 40% !important; }
+    .strength-2 { background: #FBBF24 !important; width: 60% !important; }
+    .strength-3 { background: #10B981 !important; width: 80% !important; }
+    .strength-4 { background: #059669 !important; width: 100% !important; }
+
+    /* Submit */
+    .submit-container {
+        grid-column: span 2 !important; text-align: center !important; margin-top: 8px !important;
+    }
+
+    .submit-btn {
+        background: var(--bold) !important; color: var(--white) !important;
+        border: none !important; border-radius: 6px !important;
+        padding: 12px 35px !important; font-size: 14px !important;
+        font-weight: 700 !important; cursor: pointer !important;
+        transition: all 0.2s !important; width: 100% !important; max-width: 340px !important;
+        display: inline-flex !important; align-items: center !important;
+        justify-content: center !important; gap: 9px !important; font-family: inherit !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    .submit-btn:hover {
+        background: #0C3570 !important; transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(10,43,94,0.25) !important;
+    }
+
+    /* Login Link */
+    .login-link {
+        text-align: center !important; margin-top: 20px !important;
+        padding-top: 16px !important; border-top: 1px solid #E2E8F0 !important;
+        grid-column: span 2 !important;
+    }
+
+    .login-link p { color: var(--text-gray) !important; font-size: 13px !important; margin: 0 !important; }
+    .login-link a { color: var(--bold) !important; font-weight: 700 !important; text-decoration: none !important; }
+    .login-link a:hover { text-decoration: underline !important; }
+
+    /* Alerts */
+    .messages-container { grid-column: span 2 !important; margin-bottom: 18px !important; }
+
+    .alert {
+        padding: 11px 14px !important; border-radius: 7px !important;
+        margin-bottom: 10px !important; font-size: 13px !important;
+        display: flex !important; align-items: center !important; gap: 9px !important;
+    }
+
+    .alert-success { background: rgba(5,150,105,0.09) !important; border: 1px solid var(--success) !important; color: #065F46 !important; }
+    .alert-error   { background: rgba(220,38,38,0.09) !important; border: 1px solid var(--error) !important; color: #991B1B !important; }
+
+    /* Card Footer */
+    .form-footer {
+        background: #F7F9FC !important; border-top: 1px solid #E2E8F0 !important;
+        padding: 11px 22px !important; display: flex !important; align-items: center !important; gap: 8px !important;
+    }
+
+    .form-footer i { color: #2E7D32 !important; font-size: 12px !important; }
+    .form-footer span { font-size: 11px !important; color: #2E7D32 !important; }
+
+    /* Page Footer */
+    .reg-footer {
+        background: var(--bold);
+        padding: 11px 40px;
+        display: flex; align-items: center; justify-content: space-between;
+        border-top: 3px solid var(--medium);
+        flex-wrap: wrap; gap: 8px;
+    }
+
+    .reg-footer p { font-size: 11px; color: rgba(255,255,255,0.65); }
+    .reg-footer .ver { font-size: 11px; color: var(--medium); font-weight: 700; }
+
+    /* Animation */
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-group {
+        animation: fadeUp 0.35s ease both;
+    }
+
+    .form-group:nth-child(1) { animation-delay: 0.04s; }
+    .form-group:nth-child(2) { animation-delay: 0.08s; }
+    .form-group:nth-child(3) { animation-delay: 0.12s; }
+    .form-group:nth-child(4) { animation-delay: 0.16s; }
+    .form-group:nth-child(5) { animation-delay: 0.20s; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .reg-gov-header { padding: 12px 20px; gap: 13px; }
+        .reg-coat { width: 54px; height: 54px; }
+        .reg-gov-titles .t2 { font-size: 15px; }
+        .reg-nav { padding: 0 15px; overflow-x: auto; }
+        .reg-nav-item { font-size: 12px; padding: 9px 12px; white-space: nowrap; }
+        .reg-content-area { padding: 22px 14px; }
+        .register-form { padding: 18px !important; }
+        .form-grid { grid-template-columns: 1fr !important; }
+        .password-requirements,
+        .submit-container,
+        .login-link,
+        .messages-container { grid-column: span 1 !important; }
+        .requirements-list { grid-template-columns: 1fr !important; }
+        .submit-btn { max-width: 100% !important; }
+    }
+</style>
+
+<div class="reg-page">
+
+    <div class="reg-top-bar">
+        <i class="fas fa-globe" style="margin-right:6px;"></i>
+        United Republic of Tanzania &nbsp;|&nbsp; Jamhuri ya Muungano wa Tanzania
+    </div>
+
+    <!-- GOVERNMENT HEADER — logo LEFT -->
+    <div class="reg-gov-header">
+        <div class="reg-coat">
+            <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Tanzania Coat of Arms">
+        </div>
+        <div class="reg-gov-titles">
+            <div class="t1">United Republic of Tanzania — Serikali ya Jamhuri ya Muungano</div>
+            <div class="t2">Ministry of Education, Science and Technology</div>
+            <div class="t3">Field Placement Management System (FPMS) &mdash; Student Placement Portal</div>
+        </div>
+    </div>
+
+    <!-- NAV -->
+    <div class="reg-nav">
+        <a class="reg-nav-item" href="{% url 'login' %}"><i class="fas fa-graduation-cap"></i> Student Portal</a>
+        <a class="reg-nav-item" href="#"><i class="fas fa-info-circle"></i> About FPMS</a>
+        <a class="reg-nav-item" href="#"><i class="fas fa-question-circle"></i> Help Center</a>
+        <a class="reg-nav-item active" href="#"><i class="fas fa-user-plus"></i> Register</a>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="reg-content-area">
+        <div class="register-container">
+            <div class="register-card">
+
+                <!-- Card Header -->
+                <div class="register-header">
+                    <div class="register-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div>
+                        <h1>Create Student Account</h1>
+                        <p>Join the Field Placement Management System</p>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <div class="register-form">
+                    <form method="post" action="{% url 'register' %}" novalidate>
+                        {% csrf_token %}
+
+                        <div class="form-grid">
+
+                            <!-- Alerts -->
+                            {% if messages %}
+                            <div class="messages-container">
+                                {% for message in messages %}
+                                <div class="alert alert-{% if message.tags == 'error' %}error{% else %}success{% endif %}">
+                                    <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
+                                    {{ message }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            {% if form.non_field_errors %}
+                            <div class="messages-container">
+                                {% for error in form.non_field_errors %}
+                                <div class="alert alert-error">
+                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            <!-- Full Name -->
+                            <div class="form-group">
+                                <label for="{{ form.full_name.id_for_label }}" class="form-label">
+                                    <i class="fas fa-user"></i>Full Name <span class="required-star">*</span>
+                                </label>
+                                <input type="text"
+                                       name="{{ form.full_name.name }}"
+                                       id="{{ form.full_name.id_for_label }}"
+                                       class="form-input"
+                                       value="{{ form.full_name.value|default:'' }}"
+                                       placeholder="Enter your full name" required>
+                                {% if form.full_name.errors %}
+                                <span class="form-error">{{ form.full_name.errors.0 }}</span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Email -->
+                            <div class="form-group">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">
+                                    <i class="fas fa-envelope"></i>Email Address <span class="required-star">*</span>
+                                </label>
+                                <input type="email"
+                                       name="{{ form.email.name }}"
+                                       id="{{ form.email.id_for_label }}"
+                                       class="form-input"
+                                       value="{{ form.email.value|default:'' }}"
+                                       placeholder="email@college.ac.tz" required>
+                                {% if form.email.errors %}
+                                <span class="form-error">{{ form.email.errors.0 }}</span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Phone -->
+                            <div class="form-group">
+                                <label for="{{ form.phone_number.id_for_label }}" class="form-label">
+                                    <i class="fas fa-phone"></i>Phone Number <span class="required-star">*</span>
+                                </label>
+                                <input type="tel"
+                                       name="{{ form.phone_number.name }}"
+                                       id="{{ form.phone_number.id_for_label }}"
+                                       class="form-input"
+                                       value="{{ form.phone_number.value|default:'' }}"
+                                       placeholder="+255 712 345 678" required>
+                                {% if form.phone_number.errors %}
+                                <span class="form-error">{{ form.phone_number.errors.0 }}</span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Spacer for grid alignment -->
+                            <div></div>
+
+                            <!-- Password -->
+                            <div class="form-group">
+                                <label for="{{ form.password1.id_for_label }}" class="form-label">
+                                    <i class="fas fa-lock"></i>Password <span class="required-star">*</span>
+                                </label>
+                                <div class="password-container">
+                                    <input type="password"
+                                           name="{{ form.password1.name }}"
+                                           id="{{ form.password1.id_for_label }}"
+                                           class="form-input"
+                                           placeholder="Create a strong password" required>
+                                    <button type="button" class="password-toggle"
+                                            onclick="togglePwd('{{ form.password1.id_for_label }}')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="strength-meter">
+                                    <div class="strength-fill" id="passwordStrength"></div>
+                                </div>
+                                {% if form.password1.errors %}
+                                <span class="form-error">{{ form.password1.errors.0 }}</span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Confirm Password -->
+                            <div class="form-group">
+                                <label for="{{ form.password2.id_for_label }}" class="form-label">
+                                    <i class="fas fa-lock"></i>Confirm Password <span class="required-star">*</span>
+                                </label>
+                                <div class="password-container">
+                                    <input type="password"
+                                           name="{{ form.password2.name }}"
+                                           id="{{ form.password2.id_for_label }}"
+                                           class="form-input"
+                                           placeholder="Re-enter your password" required>
+                                    <button type="button" class="password-toggle"
+                                            onclick="togglePwd('{{ form.password2.id_for_label }}')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                {% if form.password2.errors %}
+                                <span class="form-error">{{ form.password2.errors.0 }}</span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Password Requirements -->
+                            <div class="password-requirements">
+                                <div class="requirements-title">
+                                    <i class="fas fa-shield-alt"></i> Password Requirements
+                                </div>
+                                <ul class="requirements-list">
+                                    <li>At least 8 characters</li>
+                                    <li>At least one uppercase letter (A–Z)</li>
+                                    <li>At least one lowercase letter (a–z)</li>
+                                    <li>At least one number (0–9)</li>
+                                    <li>At least one special character (!@#$%&amp;*)</li>
+                                </ul>
+                            </div>
+
+                            <!-- Submit -->
+                            <div class="submit-container">
+                                <button type="submit" class="submit-btn">
+                                    <i class="fas fa-user-plus"></i> Create Account
+                                </button>
+                            </div>
+
+                            <!-- Login Link -->
+                            <div class="login-link">
+                                <p>Already have an account? <a href="{% url 'login' %}">Login here &rarr;</a></p>
+                            </div>
+
+                        </div><!-- /form-grid -->
+                    </form>
+                </div>
+
+                <!-- Card Footer -->
+                <div class="form-footer">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Your information is protected by Tanzania Government IT Standards &mdash; TCRA Compliant</span>
+                </div>
+            </div><!-- /register-card -->
+        </div><!-- /register-container -->
+    </div><!-- /reg-content-area -->
+
+    <!-- PAGE FOOTER -->
+    <div class="reg-footer">
+    <p>&copy; {% now "Y" %} Ministry of Education, Science and Technology &mdash; United Republic of Tanzania. All rights reserved.</p>
+    <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>FPMS v2.1.0</span>
+</div>
+
+</div><!-- /reg-page -->
+
+<script>
+    function togglePwd(inputId) {
+        const inp = document.getElementById(inputId);
+        const ico = inp.nextElementSibling.querySelector('i');
+        if (inp.type === 'password') {
+            inp.type = 'text';
+            ico.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            inp.type = 'password';
+            ico.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    }
+
+    // Strength meter
+    const pwd1 = document.getElementById('{{ form.password1.id_for_label }}');
+    if (pwd1) {
+        pwd1.addEventListener('input', function () {
+            const p = this.value;
+            let s = 0;
+            if (p.length >= 8)  s++;
+            if (p.length >= 12) s++;
+            if (/[A-Z]/.test(p)) s++;
+            if (/[a-z]/.test(p)) s++;
+            if (/[0-9]/.test(p)) s++;
+            if (/[^A-Za-z0-9]/.test(p)) s++;
+            document.getElementById('passwordStrength').className =
+                'strength-fill strength-' + Math.min(Math.floor(s / 2), 4);
+        });
+    }
+
+    // Password match highlight
+    const pwd2 = document.getElementById('{{ form.password2.id_for_label }}');
+    if (pwd1 && pwd2) {
+        pwd2.addEventListener('input', function () {
+            this.style.borderColor =
+                this.value === '' ? '#CBD5E0' :
+                this.value === pwd1.value ? '#0A2B5E' : '#DC2626';
+        });
+    }
+
+    // Form submit guard
+    const regForm = document.querySelector('form');
+    if (regForm) {
+        regForm.addEventListener('submit', function (e) {
+            let ok = true;
+            regForm.querySelectorAll('.form-input[required]').forEach(inp => {
+                if (!inp.value.trim()) { inp.style.borderColor = '#DC2626'; ok = false; }
+            });
+            if (pwd1 && pwd2 && pwd1.value !== pwd2.value) {
+                pwd2.style.borderColor = '#DC2626'; ok = false;
+            }
+            if (!ok) {
+                e.preventDefault();
+                alert('Tafadhali jaza sehemu zote zinazohitajika vizuri.');
+            } else {
+                const btn = regForm.querySelector('.submit-btn');
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+                btn.disabled = true;
+            }
+        });
+    }
+</script>
+{% endblock %}

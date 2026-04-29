@@ -1,0 +1,689 @@
+<!-- field_app/templates/field_app/assessor_login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessor Login | FPMS - Field Placement Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bold: #0A2B5E;
+            --medium: #C8900A;
+            --light: #EEF1F6;
+            --white: #FFFFFF;
+            --text-dark: #1A1A2E;
+            --text-gray: #4A5568;
+            --border: #CBD5E0;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --info: #3B82F6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .pg-wrap {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* TOP NOTICE BAR */
+        .top-bar {
+            background: var(--bold);
+            padding: 5px 0;
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255,255,255,0.85);
+            letter-spacing: 1.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--medium);
+        }
+
+        /* GOVERNMENT HEADER — logo LEFT, text CENTER */
+        .gov-header {
+            background: var(--bold);
+            padding: 14px 40px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 3px solid var(--medium);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+            position: relative;
+        }
+
+        .coat-of-arms {
+            width: 72px;
+            height: 72px;
+            flex-shrink: 0;
+        }
+
+        .coat-of-arms img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+        }
+
+        .gov-titles {
+            line-height: 1.4;
+            text-align: center;
+            flex: 1;
+        }
+
+        .gov-titles .t1 {
+            font-size: 11px;
+            color: rgba(255,255,255,0.75);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        .gov-titles .t2 {
+            font-size: 19px;
+            color: var(--white);
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            margin: 3px 0 2px;
+        }
+
+        .gov-titles .t3 {
+            font-size: 12.5px;
+            color: var(--medium);
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+
+        /* Empty div for spacing to balance the header (logo left, text center) */
+        .gov-spacer {
+            width: 72px;
+            visibility: hidden;
+        }
+
+        /* MAIN CONTENT - CENTERED LOGIN ONLY */
+        .main-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 30px;
+            max-width: 500px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* LOGIN CARD */
+        .login-panel {
+            background: var(--white);
+            border-radius: 8px;
+            width: 100%;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(10,43,94,0.10);
+        }
+
+        .panel-head {
+            background: var(--bold);
+            padding: 16px 22px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 3px solid var(--medium);
+        }
+
+        .panel-head-icon {
+            width: 42px;
+            height: 42px;
+            background: var(--medium);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .panel-head-icon i {
+            font-size: 18px;
+            color: var(--white);
+        }
+
+        .panel-head h2 {
+            font-size: 17px;
+            color: var(--white);
+            font-weight: 700;
+        }
+
+        .panel-head p {
+            font-size: 11.5px;
+            color: rgba(255,255,255,0.75);
+            margin-top: 2px;
+        }
+
+        .panel-body {
+            padding: 26px 26px 22px;
+        }
+
+        /* Form Fields */
+        .field-label {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .field-wrap {
+            margin-bottom: 18px;
+        }
+
+        .input-row {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .inp-icon {
+            position: absolute;
+            left: 11px;
+            display: flex;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .inp-icon i {
+            font-size: 13px;
+            color: #90A0B7;
+        }
+
+        .field-input {
+            width: 100%;
+            padding: 11px 11px 11px 35px;
+            font-size: 13.5px;
+            color: var(--text-dark);
+            border: 1.5px solid var(--border);
+            border-radius: 6px;
+            background: #FAFBFD;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.15s;
+        }
+
+        .field-input:focus {
+            border-color: var(--bold);
+            background: var(--white);
+            box-shadow: 0 0 0 3px rgba(10,43,94,0.09);
+        }
+
+        .field-input::placeholder {
+            color: #B0BCCF;
+            font-size: 12.5px;
+        }
+
+        .toggle-btn {
+            position: absolute;
+            right: 11px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #90A0B7;
+            font-size: 14px;
+        }
+
+        .toggle-btn:hover {
+            color: var(--bold);
+        }
+
+        /* Buttons */
+        .btn-signin {
+            width: 100%;
+            padding: 12px;
+            background: var(--bold);
+            color: var(--white);
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-signin:hover {
+            background: #0C3570;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(10,43,94,0.25);
+        }
+
+        .btn-reset-pwd {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            color: var(--bold);
+            border: 1.5px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            font-family: inherit;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-reset-pwd:hover {
+            background: #EBF0FA;
+            border-color: var(--bold);
+        }
+
+        .divider-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 18px 0;
+        }
+
+        .divider-line span {
+            font-size: 11px;
+            color: #A0AEC0;
+            font-weight: 600;
+        }
+
+        .divider-line::before,
+        .divider-line::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #E2E8F0;
+        }
+
+        .login-note {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 12.5px;
+            color: var(--text-gray);
+        }
+
+        .login-note a {
+            color: var(--bold);
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .login-note a:hover {
+            text-decoration: underline;
+        }
+
+        .panel-foot {
+            background: #F7F9FC;
+            border-top: 1px solid #E2E8F0;
+            padding: 11px 22px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-foot i {
+            font-size: 12px;
+            color: var(--success);
+        }
+
+        .panel-foot span {
+            font-size: 11px;
+            color: var(--success);
+        }
+
+        /* Alert Messages */
+        .error-message,
+        .success-message,
+        .warning-message,
+        .info-message {
+            padding: 10px 13px;
+            border-radius: 6px;
+            font-size: 12.5px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .error-message {
+            background: #FEE2E2;
+            color: #B91C1C;
+            border-left: 3px solid var(--danger);
+        }
+
+        .success-message {
+            background: #D1FAE5;
+            color: #065F46;
+            border-left: 3px solid var(--success);
+        }
+
+        .warning-message {
+            background: #FEF3C7;
+            color: #92400E;
+            border-left: 3px solid var(--warning);
+        }
+
+        .info-message {
+            background: #DBEAFE;
+            color: #1E40AF;
+            border-left: 3px solid var(--info);
+        }
+
+        /* Footer */
+        .gov-footer {
+            background: var(--bold);
+            padding: 11px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 3px solid var(--medium);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .gov-footer p {
+            font-size: 11px;
+            color: rgba(255,255,255,0.65);
+        }
+
+        .gov-footer .ver {
+            font-size: 11px;
+            color: var(--medium);
+            font-weight: 700;
+        }
+
+        /* Modal Styles */
+        .modal-content {
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .modal-header {
+            background: var(--bold);
+            color: var(--white);
+            border-bottom: 2px solid var(--medium);
+            border-radius: 8px 8px 0 0;
+        }
+
+        .modal-header .btn-close {
+            filter: brightness(0) invert(1);
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--border);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .gov-header {
+                padding: 12px 20px;
+            }
+            .coat-of-arms {
+                width: 54px;
+                height: 54px;
+            }
+            .gov-spacer {
+                width: 54px;
+            }
+            .gov-titles .t2 {
+                font-size: 15px;
+            }
+            .gov-titles .t3 {
+                font-size: 11px;
+            }
+            .main-area {
+                padding: 25px 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .panel-body {
+                padding: 18px;
+            }
+            .gov-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .gov-titles {
+                margin-top: 10px;
+            }
+            .gov-spacer {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="pg-wrap">
+        <!-- TOP NOTICE BAR -->
+        <div class="top-bar">
+            <i class="fas fa-globe" style="margin-right:6px;"></i>
+            United Republic of Tanzania &nbsp;|&nbsp; Jamhuri ya Muungano wa Tanzania
+        </div>
+
+        <!-- GOVERNMENT HEADER — logo LEFT, text CENTER -->
+        <div class="gov-header">
+            <div class="coat-of-arms">
+                {% load static %}
+                <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Tanzania Coat of Arms">
+            </div>
+            <div class="gov-titles">
+                <div class="t1">United Republic of Tanzania — Serikali ya Jamhuri ya Muungano</div>
+                <div class="t2">Ministry of Education, Science and Technology</div>
+                <div class="t3">Field Placement Management System (FPMS) &mdash; Assessor Portal</div>
+            </div>
+            <div class="gov-spacer"></div>
+        </div>
+
+        <!-- MAIN CONTENT - CENTERED LOGIN ONLY -->
+        <div class="main-area">
+            <!-- LOGIN PANEL -->
+            <div class="login-panel">
+                <div class="panel-head">
+                    <div class="panel-head-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                    <div>
+                        <h2>Assessor Login</h2>
+                        <p>Access your field assessment portal</p>
+                    </div>
+                </div>
+
+                <div class="panel-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="{% if message.tags == 'error' %}error-message{% elif message.tags == 'success' %}success-message{% elif message.tags == 'warning' %}warning-message{% else %}info-message{% endif %}">
+                                <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'success' %}fa-check-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    {% if student_warning %}
+                    <div class="warning-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>Student Account Detected!</strong><br>
+                            You are logged in as a student: <strong>{{ student_name }}</strong><br>
+                            Please logout and use the assessor login page with your assessor credentials.
+                            <div class="mt-2">
+                                <a href="{{ logout_url }}" class="btn btn-sm" style="background: var(--warning); color: white; border: none; border-radius: 4px; padding: 5px 12px; text-decoration: none;">
+                                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="{% url 'assessor_login' %}">
+                        {% csrf_token %}
+
+                        <div class="field-wrap">
+                            <label class="field-label">Email Address</label>
+                            <div class="input-row">
+                                <div class="inp-icon"><i class="fas fa-envelope"></i></div>
+                                <input type="email" name="email" id="email" class="field-input"
+                                       placeholder="e.g. assessor@college.ac.tz" required
+                                       value="{% if request.POST.email %}{{ request.POST.email }}{% endif %}">
+                            </div>
+                        </div>
+
+                        <div class="field-wrap">
+                            <label class="field-label">Password</label>
+                            <div class="input-row">
+                                <div class="inp-icon"><i class="fas fa-lock"></i></div>
+                                <input type="password" name="password" id="password" class="field-input"
+                                       placeholder="Enter your password" style="padding-right:38px;" required>
+                                <button type="button" class="toggle-btn" onclick="togglePwd()">
+                                    <i class="fas fa-eye" id="eyeIco"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-signin">
+                            <i class="fas fa-sign-in-alt"></i> LOGIN AS ASSESSOR
+                        </button>
+                    </form>
+
+                    <div class="divider-line"><span>OR</span></div>
+
+                    <button type="button" class="btn-reset-pwd" data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
+                        <i class="fas fa-sync-alt"></i> Reset Password
+                    </button>
+
+                    <div class="login-note">
+                        Don't have assessor credentials? <a href="{% url 'login' %}">Student Login →</a>
+                    </div>
+                </div>
+
+                <div class="panel-foot">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Secured by Tanzania Government IT Standards — Authorized Assessor Access Only</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="gov-footer">
+            <p>&copy; {% now "Y" %} Ministry of Education, Science and Technology — United Republic of Tanzania. All rights reserved.</p>
+            <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>FPMS v2.1.0 | Assessor Portal</span>
+        </div>
+    </div>
+
+    <!-- RESET PASSWORD MODAL -->
+    <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resetPasswordModalLabel">
+                        <i class="fas fa-sync-alt me-2"></i>Reset Password
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'assessor_password_reset' %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <p style="color: var(--text-gray); font-size: 0.85rem;">Enter your registered email address. We will send you a <strong style="color: var(--bold);">new temporary password</strong> to your email.</p>
+                        
+                        <div class="field-wrap">
+                            <label class="field-label">Email Address</label>
+                            <div class="input-row">
+                                <div class="inp-icon"><i class="fas fa-envelope"></i></div>
+                                <input type="email" class="field-input" id="reset_email" name="email" 
+                                       placeholder="Enter your registered email" required>
+                            </div>
+                        </div>
+                        
+                        <div class="info-message mt-3">
+                            <i class="fas fa-info-circle"></i>
+                            <div>
+                                <strong>How it works:</strong>
+                                <ol class="mt-1 mb-0" style="padding-left: 1.25rem;">
+                                    <li>Enter your email address</li>
+                                    <li>A new temporary password will be sent to your email</li>
+                                    <li>Login with the new password</li>
+                                    <li>Change your password immediately after login</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn" data-bs-dismiss="modal" style="background: var(--light); color: var(--text-dark); border: 1px solid var(--border); border-radius: 6px;">Cancel</button>
+                        <button type="submit" class="btn" style="background: var(--medium); color: white; border: none; border-radius: 6px;">
+                            <i class="fas fa-paper-plane me-1"></i>Send New Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function togglePwd() {
+            const inp = document.getElementById('password');
+            const ico = document.getElementById('eyeIco');
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                ico.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                inp.type = 'password';
+                ico.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        // Auto focus on email field
+        document.addEventListener('DOMContentLoaded', function() {
+            const emailField = document.getElementById('email');
+            if (emailField) {
+                emailField.focus();
+            }
+        });
+
+        // Form validation
+        const loginForm = document.querySelector('form[action*="assessor_login"]');
+        if (loginForm) {
+            loginForm.addEventListener('submit', function(e) {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                if (!email || !password) {
+                    e.preventDefault();
+                    alert('Please enter both email and password.');
+                }
+            });
+        }
+
+        // Clear reset form when modal is hidden
+        const resetModal = document.getElementById('resetPasswordModal');
+        if (resetModal) {
+            resetModal.addEventListener('hidden.bs.modal', function() {
+                const resetEmail = document.getElementById('reset_email');
+                if (resetEmail) {
+                    resetEmail.value = '';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

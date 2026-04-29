@@ -1,0 +1,348 @@
+{% extends 'field_app/base.html' %}
+{% load static %}
+
+{% block title %}Assessor - Student Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- BREADCRUMB -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb p-3 rounded-3" style="background: var(--light);">
+            <li class="breadcrumb-item">
+                <a href="{% url 'assessor_dashboard' %}" class="text-decoration-none" style="color: var(--bold);">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page" style="color: var(--text-gray);">
+                <i class="fas fa-user-graduate me-2"></i>Student Details
+            </li>
+        </ol>
+    </nav>
+
+    <!-- HEADER CARD -->
+    <div class="card border-0 shadow-sm mb-4 overflow-hidden" style="border: 1px solid var(--border); border-radius: 8px;">
+        <div class="card-header py-4 position-relative" style="background: var(--bold); border-bottom: 3px solid var(--medium);">
+            <div class="position-relative">
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                    <div>
+                        <h3 class="mb-2 text-white">
+                            <i class="fas fa-university me-3" style="color: var(--medium);"></i>{{ school.name }}
+                        </h3>
+                        <p class="mb-0 text-white-50">
+                            <i class="fas fa-map-marker-alt me-2"></i> 
+                            {{ school.district.name }}, {{ school.district.region.name }}
+                        </p>
+                    </div>
+                    <div class="mt-3 mt-md-0 p-3 rounded-3" style="background: rgba(255,255,255,0.1);">
+                        <h5 class="mb-1 text-white">Assessor: {{ assessor.full_name }}</h5>
+                        <p class="mb-0 text-white-50">{{ assessor.email }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body p-4" style="background: var(--white);">
+            <div class="row g-4">
+                <!-- LEFT COLUMN - SCHOOL INFO -->
+                <div class="col-lg-4 col-md-5">
+                    <div class="card h-100" style="border: 1px solid var(--border); border-radius: 8px;">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h5 class="mb-0" style="color: var(--bold);">
+                                <i class="fas fa-info-circle me-2" style="color: var(--medium);"></i>School Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group list-group-flush">
+                                <div class="list-group-item border-0 px-0 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(10, 43, 94, 0.1);">
+                                            <i class="fas fa-graduation-cap" style="color: var(--bold);"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block">Type</small>
+                                            <strong style="color: var(--text-dark);">{{ school.level }}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item border-0 px-0 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(59, 130, 246, 0.1);">
+                                            <i class="fas fa-map-marked-alt" style="color: var(--info);"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted d-block">Location</small>
+                                            <div>
+                                                <div class="fw-medium" style="color: var(--text-dark);">{{ school.district.name }}</div>
+                                                <small class="text-muted">{{ school.district.region.name }} Region</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="list-group-item border-0 px-0 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(16, 185, 129, 0.1);">
+                                            <i class="fas fa-users" style="color: var(--success);"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">Capacity</small>
+                                            <div>
+                                                <div class="fw-medium" style="color: var(--text-dark);">{{ school.current_students }} / {{ school.capacity }}</div>
+                                                <div class="progress mt-2" style="height: 6px; background: var(--border); border-radius: 4px;">
+                                                    <div class="progress-bar" style="width: {% widthratio school.current_students school.capacity 100 %}%; background: var(--bold); border-radius: 4px;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- RIGHT COLUMN - STUDENTS TABLE -->
+                <div class="col-lg-8 col-md-7">
+                    <div class="card h-100" style="border: 1px solid var(--border); border-radius: 8px;">
+                        <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0" style="color: var(--bold);">
+                                <i class="fas fa-user-graduate me-2" style="color: var(--medium);"></i>Students
+                            </h5>
+                            {% if students %}
+                            <span class="badge px-3 py-2" style="background: var(--bold); color: var(--white);">
+                                {{ students.count }} Student{{ students.count|pluralize }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body p-0">
+                            {% if students %}
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead style="background: var(--light);">
+                                        <tr>
+                                            <th class="ps-4 py-3" style="width: 50px; color: var(--text-dark);">#</th>
+                                            <th class="py-3" style="color: var(--text-dark);">Student</th>
+                                            <th class="py-3" style="color: var(--text-dark);">Contact</th>
+                                            <th class="py-3" style="color: var(--text-dark);">Status</th>
+                                            <th class="py-3 text-end pe-4" style="color: var(--text-dark);">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for student in students %}
+                                        <tr class="border-bottom" style="border-color: var(--border);">
+                                            <td class="ps-4 py-3 fw-semibold text-muted">{{ forloop.counter }}</td>
+                                            <td class="py-3">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="student-avatar me-3">
+                                                        <div class="d-flex align-items-center justify-content-center rounded-circle fw-bold" style="width: 40px; height: 40px; background: rgba(10, 43, 94, 0.1); color: var(--bold);">
+                                                            {{ student.full_name|first|upper }}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-medium" style="color: var(--text-dark);">{{ student.full_name }}</div>
+                                                        <small class="text-muted">ID: {{ student.id|slice:":8" }}...</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="py-3">
+                                                <div class="contact-info">
+                                                    <div class="mb-1">
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-envelope me-1"></i>
+                                                            {{ student.user.email|default:"No email" }}
+                                                        </small>
+                                                    </div>
+                                                    <div>
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-phone me-1"></i>
+                                                            {{ student.phone_number|default:"No phone" }}
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="py-3">
+                                                {% with assessment=student_assessments|dictsort:"student.id"|first %}
+                                                    {% if assessment %}
+                                                        {% if assessment.score %}
+                                                        <span class="badge px-3 py-2" style="background: #D1FAE5; color: #065F46; border: 1px solid var(--success);">
+                                                            <i class="fas fa-check-circle me-1"></i>Assessed
+                                                        </span>
+                                                        {% else %}
+                                                        <span class="badge px-3 py-2" style="background: #FEF3C7; color: #92400E; border: 1px solid var(--warning);">
+                                                            <i class="fas fa-clock me-1"></i>Pending
+                                                        </span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                    <span class="badge px-3 py-2" style="background: var(--light); color: var(--text-gray); border: 1px solid var(--border);">
+                                                        <i class="fas fa-hourglass-start me-1"></i>Not Started
+                                                    </span>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </td>
+                                            <td class="py-3 text-end pe-4">
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-sm px-3 rounded-start" style="background: transparent; color: var(--bold); border: 1px solid var(--bold);">
+                                                        <i class="fas fa-eye me-1"></i>View
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm px-3 rounded-end" style="background: var(--success); color: white; border: none;">
+                                                        <i class="fas fa-clipboard-check me-1"></i>Assess
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- OTHER ASSESSORS SECTION -->
+            {% if other_assessors %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card" style="border: 1px solid var(--border); border-radius: 8px;">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h5 class="mb-0" style="color: var(--text-dark);">
+                                <i class="fas fa-user-friends me-2" style="color: var(--medium);"></i>Other Assessors at This School
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                {% for other in other_assessors %}
+                                <div class="col-md-4">
+                                    <div class="p-3 border rounded-3 hover-lift" style="border-color: var(--border); border-radius: 8px;">
+                                        <div class="d-flex align-items-center">
+                                            <div class="d-flex align-items-center justify-content-center rounded-circle fw-bold me-3" style="width: 50px; height: 50px; background: rgba(10, 43, 94, 0.1); color: var(--bold);">
+                                                {{ other.full_name|first|upper }}
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1" style="color: var(--text-dark);">{{ other.full_name }}</h6>
+                                                <div class="text-muted small">
+                                                    <div class="mb-1">
+                                                        <i class="fas fa-envelope me-1"></i>{{ other.email }}
+                                                    </div>
+                                                    {% if other.phone_number %}
+                                                    <div>
+                                                        <i class="fas fa-phone me-1"></i>{{ other.phone_number }}
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- ACTION BUTTONS -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <a href="{% url 'assessor_dashboard' %}" class="btn px-4 py-2 rounded-pill" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold);">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn px-4 py-2 rounded-start" style="background: transparent; color: var(--bold); border: 1px solid var(--bold);">
+                                <i class="fas fa-download me-2"></i>Export
+                            </button>
+                            <button type="button" class="btn px-4 py-2 rounded-end" style="background: var(--bold); color: var(--white); border: none;">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
+    }
+    
+    .hover-lift {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .hover-lift:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(10, 43, 94, 0.1);
+        border-color: var(--bold) !important;
+    }
+    
+    .table thead th {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--border);
+    }
+    
+    .table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+    
+    .table tbody tr:hover {
+        background-color: rgba(10, 43, 94, 0.03);
+    }
+    
+    .badge {
+        font-weight: 500;
+        letter-spacing: 0.3px;
+        border-radius: 20px;
+    }
+    
+    .rounded-pill {
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        border-radius: 40px !important;
+    }
+    
+    .btn {
+        transition: all 0.2s ease;
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding: 0.5rem;
+        }
+        
+        .card-header .d-flex {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .btn-group {
+            width: 100%;
+        }
+        
+        .btn-group .btn {
+            flex: 1;
+        }
+        
+        .d-flex.justify-content-between {
+            flex-direction: column;
+            align-items: center !important;
+        }
+    }
+</style>
+{% endblock %}

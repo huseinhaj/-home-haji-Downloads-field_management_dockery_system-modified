@@ -1,0 +1,21 @@
+<!-- templates/admin/index.html -->
+{% extends "admin/index.html" %}
+
+{% block sidebar %}
+<div id="content-related">
+    <div class="module" id="quick-actions-module">
+        <h2>Quick Actions</h2>
+        <ul class="actionlist">
+            <li>
+                <a href="/admin/bulk-upload-assessors/">📊 Bulk Upload Assessors</a>
+                <p>Upload CSV to assign multiple assessors to schools</p>
+            </li>
+            <li>
+                <a href="{{ region_pinning_url }}">📍 Region Pinning</a>
+                <p>Manage region availability</p>
+            </li>
+        </ul>
+    </div>
+</div>
+{{ block.super }}
+{% endblock %}

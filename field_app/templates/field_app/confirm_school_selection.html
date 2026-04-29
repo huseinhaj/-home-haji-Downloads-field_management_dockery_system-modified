@@ -1,0 +1,23 @@
+{% extends 'field_app/base.html' %}
+{% block content %}
+
+<h2>Thibitisha Uchaguzi wa Shule</h2>
+
+<p>Je, unathibitisha kuchagua shule hii?</p>
+
+<ul>
+    <li><strong>Jina la Shule:</strong> {{ school.name }}</li>
+    <li><strong>Wilaya:</strong> {{ school.district.name }}</li>
+    <li><strong>Mkoa:</strong> {{ school.district.region.name }}</li>
+    <li><strong>Viwanja vya wanafunzi:</strong> {{ school.current_students }} / {{ school.capacity }}</li>
+</ul>
+
+<form method="post" action="{% url 'confirm_school_selection' district.id %}">
+    {% csrf_token %}
+    <input type="hidden" name="school_id" value="{{ school.id }}">
+    <button type="submit" name="confirm" class="btn btn-success">Thibitisha</button>
+    <button type="submit" name="cancel" class="btn btn-danger">Ghairi</button>
+</form>
+
+{% endblock %}
+

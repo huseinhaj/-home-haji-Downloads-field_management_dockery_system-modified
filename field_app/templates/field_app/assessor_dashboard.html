@@ -1,0 +1,761 @@
+<!-- field_app/templates/field_app/assessor_dashboard.html -->
+{% extends 'field_app/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --bold: #0A2B5E;
+        --medium: #C8900A;
+        --light: #EEF1F6;
+        --white: #FFFFFF;
+        --text-dark: #1A1A2E;
+        --text-gray: #4A5568;
+        --border: #CBD5E0;
+        --success: #10B981;
+        --danger: #EF4444;
+        --warning: #F59E0B;
+        --info: #3B82F6;
+    }
+
+    body {
+        background: var(--light);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+        background: var(--white);
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(10, 43, 94, 0.08);
+        border: 1px solid var(--border);
+    }
+
+    /* Header Cards */
+    .header-card {
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+
+    .header-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
+    }
+
+    .header-card.welcome-card {
+        background: var(--white);
+        border-left: 6px solid var(--medium);
+    }
+
+    .stats-card {
+        background: var(--bold);
+        color: var(--white);
+        border-radius: 8px;
+        text-align: center;
+        padding: 25px 15px;
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.15);
+    }
+
+    .stats-card h2 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .stats-card p {
+        font-size: 1rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .stats-card.teal {
+        background: linear-gradient(135deg, var(--success), #059669);
+    }
+
+    /* Table Styles */
+    .schools-table {
+        background: var(--white);
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        margin-bottom: 30px;
+    }
+
+    .table-header {
+        background: var(--bold);
+        color: var(--white);
+        padding: 15px 20px;
+        border-bottom: 3px solid var(--medium);
+    }
+
+    .table-header h5 {
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .table-header .badge {
+        background: var(--medium);
+        color: var(--white);
+        font-size: 0.85rem;
+        padding: 6px 12px;
+        border-radius: 6px;
+    }
+
+    .table thead th {
+        background-color: var(--light);
+        border-bottom: 2px solid var(--border);
+        font-weight: 600;
+        color: var(--text-dark);
+        padding: 12px 15px;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+
+    .table tbody td {
+        padding: 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-gray);
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: var(--light);
+    }
+
+    /* Progress Bar */
+    .progress-container {
+        width: 150px;
+    }
+
+    .progress {
+        height: 8px;
+        border-radius: 4px;
+        background-color: var(--border);
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        border-radius: 4px;
+        background: var(--bold);
+    }
+
+    /* School Cards */
+    .school-card {
+        background: var(--white);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        margin-bottom: 25px;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+
+    .school-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
+        border-color: var(--medium);
+    }
+
+    .school-card-header {
+        background: var(--light);
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .school-card-header h5 {
+        color: var(--text-dark);
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .school-card-header .badge {
+        background: var(--bold);
+        color: var(--white);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+
+    .school-card-body {
+        padding: 20px;
+    }
+
+    /* Student List */
+    .student-item {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        transition: background-color 0.2s ease;
+    }
+
+    .student-item:hover {
+        background-color: var(--light);
+    }
+
+    .student-item:last-child {
+        border-bottom: none;
+    }
+
+    .student-info h6 {
+        color: var(--text-dark);
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .student-meta {
+        font-size: 0.8rem;
+        color: var(--text-gray);
+    }
+
+    .student-meta i {
+        width: 16px;
+        text-align: center;
+        margin-right: 5px;
+        color: var(--medium);
+    }
+
+    /* Status Badges */
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-completed {
+        background: #D1FAE5;
+        color: #065F46;
+        border: 1px solid var(--success);
+    }
+
+    .badge-in-progress {
+        background: #FEF3C7;
+        color: #92400E;
+        border: 1px solid var(--warning);
+    }
+
+    .badge-pending {
+        background: var(--light);
+        color: var(--text-gray);
+        border: 1px solid var(--border);
+    }
+
+    /* Subjects Tags */
+    .subject-tag {
+        display: inline-block;
+        background: var(--light);
+        color: var(--bold);
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        margin-right: 5px;
+        margin-bottom: 5px;
+        font-weight: 500;
+        border: 1px solid var(--border);
+    }
+
+    /* Action Buttons */
+    .action-btn {
+        padding: 6px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .action-btn-primary {
+        background: var(--bold);
+        color: var(--white);
+        border: none;
+    }
+
+    .action-btn-primary:hover {
+        background: #0C3570;
+        color: var(--white);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(10, 43, 94, 0.25);
+    }
+
+    .action-btn-outline {
+        background: transparent;
+        border: 1.5px solid var(--bold);
+        color: var(--bold);
+    }
+
+    .action-btn-outline:hover {
+        background: var(--bold);
+        color: var(--white);
+        transform: translateY(-1px);
+    }
+
+    .action-btn-success {
+        background: var(--success);
+        color: var(--white);
+        border: none;
+    }
+
+    .action-btn-success:hover {
+        background: #059669;
+        transform: translateY(-1px);
+        color: var(--white);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: var(--text-gray);
+        margin-bottom: 20px;
+    }
+
+    .empty-state h5 {
+        color: var(--text-dark);
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .empty-state p {
+        color: var(--text-gray);
+        max-width: 400px;
+        margin: 0 auto 25px;
+    }
+
+    /* Text Colors */
+    .text-purple-600 {
+        color: var(--bold);
+    }
+
+    .bg-purple-100 {
+        background: rgba(10, 43, 94, 0.1);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        body {
+            padding: 10px;
+        }
+
+        .dashboard-container {
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .stats-card h2 {
+            font-size: 2rem;
+        }
+
+        .table-responsive {
+            border-radius: 8px;
+        }
+
+        .school-card {
+            margin-bottom: 20px;
+        }
+
+        .school-card-body {
+            padding: 15px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        body {
+            padding: 5px;
+        }
+
+        .dashboard-container {
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .table-header {
+            padding: 12px 15px;
+        }
+
+        .stats-card {
+            padding: 15px 10px;
+        }
+
+        .stats-card h2 {
+            font-size: 1.5rem;
+        }
+        
+        .action-btn {
+            padding: 4px 12px;
+            font-size: 0.7rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-3 mb-lg-0">
+            <div class="header-card welcome-card p-4">
+                <div class="d-flex align-items-start">
+                    <div class="me-3">
+                        <div class="rounded-circle bg-purple-100 p-3 d-inline-flex">
+                            <i class="fas fa-chalkboard-teacher fa-2x text-purple-600"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h4 class="mb-2" style="color: var(--text-dark);">
+                            Welcome back, <span style="color: var(--bold);">{{ assessor.full_name }}</span>
+                        </h4>
+                        <p class="mb-1" style="color: var(--text-gray);">
+                            <i class="fas fa-calendar-alt me-2" style="color: var(--medium);"></i>
+                            Academic Year: <strong style="color: var(--bold);">{{ current_year.year|default:"Not Set" }}</strong>
+                        </p>
+                        <p class="mb-0" style="color: var(--text-gray);">
+                            <i class="fas fa-user-tie me-2" style="color: var(--medium);"></i>
+                            Assessor ID: <strong style="color: var(--bold);">{{ assessor.assessor_id|default:"N/A" }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="stats-card">
+                        <h2>{{ total_schools }}</h2>
+                        <p>Assigned Schools</p>
+                        <div class="mt-2">
+                            <i class="fas fa-school fa-lg opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="stats-card teal">
+                        <h2>{{ total_students }}</h2>
+                        <p>Total Students</p>
+                        <div class="mt-2">
+                            <i class="fas fa-user-graduate fa-lg opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schools Table -->
+    <div class="schools-table">
+        <div class="table-header d-flex justify-content-between align-items-center">
+            <h5>
+                <i class="fas fa-school me-2"></i>
+                My Assigned Schools
+            </h5>
+            <span class="badge">
+                {{ total_schools }} school{{ total_schools|pluralize }}
+            </span>
+        </div>
+        
+        <div class="table-responsive">
+            {% if schools_data %}
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th width="50">#</th>
+                        <th>School Name</th>
+                        <th>Location</th>
+                        <th width="100">Students</th>
+                        <th width="160">Progress</th>
+                        <th width="120">Status</th>
+                        <th width="120">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in schools_data %}
+                    <tr>
+                        <td class="fw-bold text-center" style="color: var(--bold);">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="fw-semibold" style="color: var(--text-dark);">{{ data.school.name }}</div>
+                            <small class="d-block" style="color: var(--text-gray);">
+                                <i class="fas fa-graduation-cap me-1"></i>
+                                {{ data.school.level }}
+                            </small>
+                        </td>
+                        <td>
+                            <div class="fw-medium" style="color: var(--text-dark);">{{ data.school.district.name }}</div>
+                            <small style="color: var(--text-gray);">
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                {{ data.school.district.region.name }}
+                            </small>
+                        </td>
+                        <td>
+                            <div class="text-center">
+                                <span class="badge rounded-pill p-2" style="background: var(--bold); color: white; font-size: 0.9rem;">
+                                    {{ data.students_count }}
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if data.students_count > 0 %}
+                            <div class="progress-container">
+                                {% widthratio data.completed_student_assessments data.students_count 100 as progress %}
+                                <div class="progress mb-2">
+                                    <div class="progress-bar" style="width: {{ progress }}%"></div>
+                                </div>
+                                <small class="d-block text-center" style="color: var(--text-gray);">
+                                    {{ progress }}% • {{ data.completed_student_assessments }}/{{ data.students_count }}
+                                </small>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">No students</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if data.students_count > 0 %}
+                                {% if data.completed_student_assessments == data.students_count %}
+                                <span class="status-badge badge-completed">
+                                    <i class="fas fa-check me-1"></i>Completed
+                                </span>
+                                {% elif data.completed_student_assessments > 0 %}
+                                <span class="status-badge badge-in-progress">
+                                    <i class="fas fa-spinner me-1"></i>In Progress
+                                </span>
+                                {% else %}
+                                <span class="status-badge badge-pending">
+                                    <i class="fas fa-clock me-1"></i>Pending
+                                </span>
+                                {% endif %}
+                            {% else %}
+                            <span class="text-muted">No Students</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'assessor_student_detail' data.school.id %}" 
+                               class="action-btn action-btn-primary">
+                                <i class="fas fa-users me-1"></i>
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-school"></i>
+                <h5>No Schools Assigned</h5>
+                <p>You haven't been assigned to any schools yet. Please contact the administrator for school assignments.</p>
+                <a href="{% url 'logout' %}" class="action-btn action-btn-outline">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Return to Login
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Students by School -->
+    {% if schools_data %}
+    <div class="row mt-4">
+        <div class="col-12 mb-3">
+            <h4 style="color: var(--text-dark);">
+                <i class="fas fa-user-graduate me-2" style="color: var(--medium);"></i>
+                Students Overview by School
+            </h4>
+            <p style="color: var(--text-gray);">Detailed view of students in each assigned school</p>
+        </div>
+        
+        {% for data in schools_data %}
+        {% if data.students_count > 0 %}
+        <div class="col-lg-6 mb-4">
+            <div class="school-card">
+                <div class="school-card-header">
+                    <div>
+                        <h5>{{ data.school.name }}</h5>
+                        <small style="color: var(--text-gray);">
+                            <i class="fas fa-map-marker-alt me-1"></i>
+                            {{ data.school.district.name }}, {{ data.school.district.region.name }}
+                        </small>
+                    </div>
+                    <span class="badge">
+                        {{ data.students_count }} student{{ data.students_count|pluralize }}
+                    </span>
+                </div>
+                
+                <div class="school-card-body">
+                    <!-- Progress Summary -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0" style="color: var(--text-dark);">Assessment Progress</h6>
+                            <span class="badge" style="background: var(--bold); color: white;">
+                                {% widthratio data.completed_student_assessments data.students_count 100 %}% Complete
+                            </span>
+                        </div>
+                        <div class="progress mb-2" style="height: 10px;">
+                            {% widthratio data.completed_student_assessments data.students_count 100 as progress %}
+                            <div class="progress-bar" style="width: {{ progress }}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small style="color: var(--text-gray);">
+                                Completed: {{ data.completed_student_assessments }}
+                            </small>
+                            <small style="color: var(--text-gray);">
+                                Pending: {{ data.pending_student_assessments }}
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- Students List -->
+                    <h6 class="mb-3" style="color: var(--text-dark);">
+                        <i class="fas fa-list me-2" style="color: var(--medium);"></i>
+                        Recent Students
+                    </h6>
+                    
+                    <div class="student-list">
+                        {% for student_info in data.students|slice:":5" %}
+                        <div class="student-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="student-info flex-grow-1">
+                                    <h6>{{ student_info.student.full_name }}</h6>
+                                    <div class="student-meta">
+                                        <div>
+                                            <i class="fas fa-id-card"></i>
+                                            {{ student_info.student.registration_number|default:"No ID" }}
+                                        </div>
+                                        <div>
+                                            <i class="fas fa-graduation-cap"></i>
+                                            Class: {{ student_info.student.current_class|default:"-" }}
+                                        </div>
+                                        {% if student_info.phone %}
+                                        <div>
+                                            <i class="fas fa-phone"></i>
+                                            {{ student_info.phone }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Subjects -->
+                                    {% if student_info.approved_subjects %}
+                                    <div class="mt-2">
+                                        <small class="d-block mb-1" style="color: var(--text-gray);">Approved Subjects:</small>
+                                        <div>
+                                            {% for subject in student_info.approved_subjects|slice:":3" %}
+                                            <span class="subject-tag">{{ subject }}</span>
+                                            {% endfor %}
+                                            {% if student_info.approved_subjects|length > 3 %}
+                                            <span class="subject-tag">+{{ student_info.approved_subjects|length|add:"-3" }} more</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="ms-3 text-end">
+                                    {% if student_info.is_completed %}
+                                    <span class="status-badge badge-completed">
+                                        <i class="fas fa-check me-1"></i>Assessed
+                                    </span>
+                                    {% elif student_info.assessment %}
+                                    <span class="status-badge badge-in-progress">
+                                        <i class="fas fa-spinner me-1"></i>In Progress
+                                    </span>
+                                    {% else %}
+                                    <span class="status-badge badge-pending">
+                                        <i class="fas fa-clock me-1"></i>Pending
+                                    </span>
+                                    {% endif %}
+                                    
+                                    <div class="mt-2">
+                                        {% if student_info.assessment %}
+                                        <a href="{% url 'assessor_student_detail' data.school.id %}" 
+                                           class="action-btn action-btn-outline" style="font-size: 0.7rem;">
+                                            <i class="fas fa-edit me-1"></i>
+                                            Edit
+                                        </a>
+                                        {% else %}
+                                        <a href="{% url 'assessor_student_detail' data.school.id %}" 
+                                           class="action-btn action-btn-success" style="font-size: 0.7rem;">
+                                            <i class="fas fa-play me-1"></i>
+                                            Start
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if data.students_count > 5 %}
+                    <div class="text-center mt-3">
+                        <a href="{% url 'assessor_student_detail' data.school.id %}" 
+                           class="action-btn action-btn-primary">
+                            <i class="fas fa-arrow-right me-2"></i>
+                            View All {{ data.students_count }} Students
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add animations to cards
+        const cards = document.querySelectorAll('.school-card, .header-card');
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                card.style.transition = 'all 0.5s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+
+        // Auto-update progress bars
+        const progressBars = document.querySelectorAll('.progress-bar');
+        progressBars.forEach(bar => {
+            const width = bar.style.width;
+            bar.style.width = '0';
+            
+            setTimeout(() => {
+                bar.style.transition = 'width 1.5s ease-in-out';
+                bar.style.width = width;
+            }, 300);
+        });
+    });
+</script>
+{% endblock %}

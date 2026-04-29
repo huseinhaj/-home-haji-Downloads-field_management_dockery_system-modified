@@ -1,0 +1,146 @@
+{% extends 'field_app/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card" style="border: 1px solid var(--border); border-radius: 8px;">
+                <div class="card-header" style="background: var(--bold); border-bottom: 3px solid var(--medium); border-radius: 8px 8px 0 0;">
+                    <h4 class="mb-0 text-white">
+                        <i class="fas fa-download" style="color: var(--medium);"></i>
+                        Pakua Logbook yako
+                    </h4>
+                </div>
+                <div class="card-body" style="background: var(--white);">
+                    <!-- Statistics Cards -->
+                    <div class="row mb-4 g-3">
+                        <div class="col-md-6">
+                            <div class="card text-center" style="border: 1px solid var(--border); border-radius: 8px;">
+                                <div class="card-body">
+                                    <h1 class="display-4 mb-0" style="color: var(--bold);">{{ total_entries }}</h1>
+                                    <p class="card-text" style="color: var(--text-gray);">Jumla ya Maingizo</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card text-center" style="border: 1px solid var(--border); border-radius: 8px;">
+                                <div class="card-body">
+                                    <h1 class="display-4 mb-0" style="color: var(--success);">{{ this_week_entries }}</h1>
+                                    <p class="card-text" style="color: var(--text-gray);">Maingizo ya Wiki Hii</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Download Options -->
+                    <div class="row g-3">
+                        <!-- Today's Logbook -->
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100" style="border: 1px solid var(--border); border-radius: 8px; transition: all 0.3s ease;">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-calendar-day fa-3x mb-3" style="color: var(--bold);"></i>
+                                    <h5 style="color: var(--text-dark);">Logbook ya Leo</h5>
+                                    <p style="color: var(--text-gray);">Pakua logbook ya leo tu</p>
+                                    <a href="{% url 'download_logbook_pdf' 'today' %}" class="btn" style="background: var(--bold); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
+                                        <i class="fas fa-download"></i> Pakua Leo
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Weekly Logbook -->
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100" style="border: 1px solid var(--border); border-radius: 8px; transition: all 0.3s ease;">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-calendar-week fa-3x mb-3" style="color: var(--success);"></i>
+                                    <h5 style="color: var(--text-dark);">Logbook ya Wiki</h5>
+                                    <p style="color: var(--text-gray);">Pakua logbook ya wiki hii</p>
+                                    <a href="{% url 'download_logbook_pdf' 'week' %}" class="btn" style="background: var(--success); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
+                                        <i class="fas fa-download"></i> Pakua Wiki
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Monthly Logbook -->
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100" style="border: 1px solid var(--border); border-radius: 8px; transition: all 0.3s ease;">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-calendar-alt fa-3x mb-3" style="color: var(--medium);"></i>
+                                    <h5 style="color: var(--text-dark);">Logbook ya Mwezi</h5>
+                                    <p style="color: var(--text-gray);">Pakua logbook ya mwezi huu</p>
+                                    <a href="{% url 'download_logbook_pdf' 'month' %}" class="btn" style="background: var(--medium); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
+                                        <i class="fas fa-download"></i> Pakua Mwezi
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- All Logbooks -->
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100" style="border: 1px solid var(--border); border-radius: 8px; transition: all 0.3s ease;">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-archive fa-3x mb-3" style="color: var(--info);"></i>
+                                    <h5 style="color: var(--text-dark);">Logbook Zote</h5>
+                                    <p style="color: var(--text-gray);">Pakua logbook zote ulizojaza</p>
+                                    <a href="{% url 'download_logbook_pdf' 'all' %}" class="btn" style="background: var(--info); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
+                                        <i class="fas fa-download"></i> Pakua Zote
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Back Button -->
+                    <div class="text-center mt-4">
+                        <a href="{% url 'logbook_history' %}" class="btn" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 6px; padding: 8px 24px;">
+                            <i class="fas fa-arrow-left"></i> Rudi kwenye Historia
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Card hover effect */
+    .card.h-100 {
+        transition: all 0.3s ease;
+    }
+    
+    .card.h-100:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
+    }
+    
+    /* Button hover effect */
+    .btn {
+        transition: all 0.2s ease;
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(10, 43, 94, 0.2);
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 1rem;
+        }
+        
+        .display-4 {
+            font-size: 2rem;
+        }
+        
+        .card-body {
+            padding: 1rem;
+        }
+        
+        .fa-3x {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock %}

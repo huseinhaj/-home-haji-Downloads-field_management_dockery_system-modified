@@ -1,0 +1,453 @@
+{% extends 'field_app/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card" style="border: 1px solid var(--border); border-radius: 8px;">
+                <div class="card-header" style="background: var(--bold); border-bottom: 3px solid var(--medium); border-radius: 8px 8px 0 0;">
+                    <h4 class="mb-0 text-white">
+                        <i class="fas fa-book" style="color: var(--medium);"></i>
+                        Logbook - {{ today_name }} ({{ today }})
+                    </h4>
+                </div>
+                <div class="card-body" style="background: var(--white);">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" style="border-left: 4px solid {% if message.tags == 'success' %}var(--success){% elif message.tags == 'error' %}var(--danger){% else %}var(--medium){% endif %};">
+                                <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} me-2"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <!-- School Information -->
+                    <div class="alert mb-3" style="background: var(--light); border-left: 4px solid var(--medium); color: var(--text-dark);">
+                        <strong><i class="fas fa-school" style="color: var(--bold);"></i> Shule yako:</strong> {{ school.name }}
+                        <br>
+                        <small style="color: var(--text-gray);">{{ school.district.name }}, {{ school.district.region.name }}</small>
+                    </div>
+
+                    <!-- LOCATION VERIFICATION SECTION -->
+                    <div class="card mb-4" style="border: 1px solid var(--border); border-radius: 8px;">
+                        <div class="card-header" style="background: var(--medium); color: var(--white); border-radius: 8px 8px 0 0;">
+                            <h5 class="mb-0">
+                                <i class="fas fa-map-marker-alt"></i>
+                                Hatua ya 1: Thibitisha Eneo Lako (LAZIMA)
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert mb-3" style="background: var(--light); border-left: 4px solid var(--bold);">
+                                <strong style="color: var(--bold);">📌 Maelekezo:</strong>
+                                <ul class="mb-0 small" style="color: var(--text-gray);">
+                                    <li>Bonyeza kitufe cha "📍 Thibitisha Eneo Langu" hapa chini</li>
+                                    <li>Ruhusu tovuti kutumia eneo lako unapoombwa</li>
+                                    <li>Subiri ujumbe wa "✅ Eneo limehakikiwa"</li>
+                                    <li>Kisha utaweza kujaza logbook</li>
+                                </ul>
+                            </div>
+                            
+                            <div id="locationStatus" class="alert mb-3" style="background: var(--light); border-left: 4px solid var(--text-gray);">
+                                <i class="fas fa-hourglass-half me-2" style="color: var(--text-gray);"></i>
+                                <strong style="color: var(--text-dark);">⚠️ Hajathibitishwa:</strong> Bado haujathibitisha eneo lako
+                            </div>
+                            
+                            <button type="button" id="verifyLocationBtn" class="btn w-100 mb-3" style="background: var(--bold); color: var(--white); border: none; border-radius: 6px; padding: 12px; font-weight: 600;">
+                                <i class="fas fa-location-arrow me-2"></i>
+                                📍 Thibitisha Eneo Langu
+                            </button>
+                            
+                            <div id="locationDetails" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="border rounded p-2 mb-2" style="border-color: var(--border);">
+                                            <small class="text-muted">Latitude:</small>
+                                            <strong style="color: var(--bold);"><span id="displayLat">-</span></strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="border rounded p-2 mb-2" style="border-color: var(--border);">
+                                            <small class="text-muted">Longitude:</small>
+                                            <strong style="color: var(--bold);"><span id="displayLng">-</span></strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="border rounded p-2 mb-2" style="border-color: var(--border);">
+                                    <small class="text-muted">Anwani:</small>
+                                    <div id="displayAddress" class="small" style="color: var(--text-gray);">-</div>
+                                </div>
+                                <div id="dodomaCheck" class="alert" style="display: none; background: #D1FAE5; border-left: 4px solid var(--success); color: #065F46;">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    <strong>✅ Uko Dodoma!</strong> Eneo lako limehakikiwa.
+                                </div>
+                                <div id="outsideDodoma" class="alert" style="display: none; background: #FEF3C7; border-left: 4px solid var(--warning); color: #92400E;">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>⚠️ Uko nje ya Dodoma!</strong> Logbook itasajiliwa kwa tahadhari.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LOGBOOK FORM SECTION (HIDDEN UNTIL LOCATION VERIFIED) -->
+                    <div id="logbookFormSection" style="display: none;">
+                        <div class="alert mb-3" style="background: #D1FAE5; border-left: 4px solid var(--success); color: #065F46;">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>✅ Eneo limehakikiwa!</strong> Sasa unaweza kujaza logbook yako.
+                        </div>
+
+                        <form method="post" id="logbookForm">
+                            {% csrf_token %}
+                            
+                            <!-- Hidden fields for location data -->
+                            <input type="hidden" name="latitude" id="latitudeInput" value="">
+                            <input type="hidden" name="longitude" id="longitudeInput" value="">
+                            <input type="hidden" name="location_address" id="addressInput" value="">
+                            <input type="hidden" name="is_location_verified" id="isVerifiedInput" value="false">
+                            
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold" style="color: var(--text-dark);">{{ form.morning_activity.label }}</label>
+                                        {{ form.morning_activity }}
+                                        {% if form.morning_activity.errors %}
+                                            <div class="text-danger small">{{ form.morning_activity.errors }}</div>
+                                        {% endif %}
+                                        <small class="text-muted">Eleza shughuli ulizofanya asubuhi</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold" style="color: var(--text-dark);">{{ form.afternoon_activity.label }}</label>
+                                        {{ form.afternoon_activity }}
+                                        {% if form.afternoon_activity.errors %}
+                                            <div class="text-danger small">{{ form.afternoon_activity.errors }}</div>
+                                        {% endif %}
+                                        <small class="text-muted">Eleza shughuli ulizofanya mchana</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold" style="color: var(--text-dark);">{{ form.challenges_faced.label }}</label>
+                                        {{ form.challenges_faced }}
+                                        {% if form.challenges_faced.errors %}
+                                            <div class="text-danger small">{{ form.challenges_faced.errors }}</div>
+                                        {% endif %}
+                                        <small class="text-muted">Changamoto zozote ulizokutana nazo</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold" style="color: var(--text-dark);">{{ form.lessons_learned.label }}</label>
+                                        {{ form.lessons_learned }}
+                                        {% if form.lessons_learned.errors %}
+                                            <div class="text-danger small">{{ form.lessons_learned.errors }}</div>
+                                        {% endif %}
+                                        <small class="text-muted">Mafunzo uliyojifunza</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-lg" id="submitBtn" style="background: var(--bold); color: var(--white); border: none; border-radius: 6px; padding: 12px; font-weight: 700;">
+                                    <i class="fas fa-save me-2"></i>
+                                    Hifadhi Logbook
+                                </button>
+                                <a href="{% url 'logbook_history' %}" class="btn btn-lg" style="background: transparent; color: var(--bold); border: 2px solid var(--bold); border-radius: 6px; padding: 12px; font-weight: 600; text-align: center; text-decoration: none;">
+                                    <i class="fas fa-history me-2"></i>
+                                    Angalia Historia ya Logbook
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- LOCKED MESSAGE (SHOWN WHEN LOCATION NOT VERIFIED) -->
+                    <div id="lockedMessage" class="alert text-center mb-0" style="background: #FEF3C7; border-left: 4px solid var(--warning); color: #92400E;">
+                        <i class="fas fa-lock fa-2x mb-2 d-block"></i>
+                        <strong>Form imefungwa</strong>
+                        <br>
+                        <small>Tafadhali thibitisha eneo lako kwanza ili uweze kujaza logbook.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Consistent with login page */
+    textarea {
+        width: 100%;
+        min-height: 100px;
+        padding: 10px;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        font-family: inherit;
+        background: #FAFBFD;
+        transition: all 0.15s ease;
+    }
+    textarea:focus {
+        outline: none;
+        border-color: var(--bold);
+        box-shadow: 0 0 0 3px rgba(10,43,94,0.1);
+        background: var(--white);
+    }
+    
+    #verifyLocationBtn {
+        transition: all 0.2s ease;
+    }
+    #verifyLocationBtn:hover {
+        background: #0C3570 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(10,43,94,0.25);
+    }
+    #verifyLocationBtn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    #submitBtn {
+        transition: all 0.2s ease;
+    }
+    #submitBtn:hover {
+        background: #0C3570 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(10,43,94,0.25);
+    }
+    
+    .btn-outline-custom {
+        transition: all 0.2s ease;
+    }
+    .btn-outline-custom:hover {
+        background: var(--bold);
+        color: var(--white);
+        transform: translateY(-1px);
+    }
+    
+    .alert {
+        transition: all 0.3s ease;
+        border-radius: 6px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .text-muted {
+        color: var(--text-gray) !important;
+        font-size: 0.75rem;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM elements
+    const verifyBtn = document.getElementById('verifyLocationBtn');
+    const locationStatus = document.getElementById('locationStatus');
+    const locationDetails = document.getElementById('locationDetails');
+    const logbookFormSection = document.getElementById('logbookFormSection');
+    const lockedMessage = document.getElementById('lockedMessage');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Display elements
+    const displayLat = document.getElementById('displayLat');
+    const displayLng = document.getElementById('displayLng');
+    const displayAddress = document.getElementById('displayAddress');
+    const dodomaCheck = document.getElementById('dodomaCheck');
+    const outsideDodoma = document.getElementById('outsideDodoma');
+    
+    // Input elements
+    const latitudeInput = document.getElementById('latitudeInput');
+    const longitudeInput = document.getElementById('longitudeInput');
+    const addressInput = document.getElementById('addressInput');
+    const isVerifiedInput = document.getElementById('isVerifiedInput');
+    
+    let locationVerified = false;
+    let currentLat = null;
+    let currentLng = null;
+    
+    // Dodoma coordinates bounds
+    const DODOMA_LAT_MIN = -6.8;
+    const DODOMA_LAT_MAX = -5.5;
+    const DODOMA_LNG_MIN = 35.0;
+    const DODOMA_LNG_MAX = 36.5;
+    
+    function isInDodoma(lat, lng) {
+        return (lat >= DODOMA_LAT_MIN && lat <= DODOMA_LAT_MAX) &&
+               (lng >= DODOMA_LNG_MIN && lng <= DODOMA_LNG_MAX);
+    }
+    
+    function enableForm() {
+        locationVerified = true;
+        logbookFormSection.style.display = 'block';
+        lockedMessage.style.display = 'none';
+        locationStatus.style.background = '#D1FAE5';
+        locationStatus.style.borderLeft = '4px solid var(--success)';
+        locationStatus.style.color = '#065F46';
+        locationStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i><strong>✅ Eneo limehakikiwa!</strong> Sasa unaweza kujaza logbook.';
+        isVerifiedInput.value = 'true';
+        
+        if (submitBtn) {
+            submitBtn.disabled = false;
+        }
+    }
+    
+    function disableForm() {
+        locationVerified = false;
+        logbookFormSection.style.display = 'none';
+        lockedMessage.style.display = 'block';
+        locationStatus.style.background = 'var(--light)';
+        locationStatus.style.borderLeft = '4px solid var(--text-gray)';
+        locationStatus.style.color = 'var(--text-dark)';
+        locationStatus.innerHTML = '<i class="fas fa-hourglass-half me-2"></i><strong>⚠️ Hajathibitishwa:</strong> Bado haujathibitisha eneo lako';
+        isVerifiedInput.value = 'false';
+        
+        if (submitBtn) {
+            submitBtn.disabled = true;
+        }
+    }
+    
+    function updateLocationDisplay(lat, lng, address) {
+        displayLat.textContent = lat.toFixed(6);
+        displayLng.textContent = lng.toFixed(6);
+        displayAddress.textContent = address || 'Anwani haipatikani';
+        
+        latitudeInput.value = lat;
+        longitudeInput.value = lng;
+        addressInput.value = address || `${lat}, ${lng}`;
+    }
+    
+    function checkLocationAndEnable(lat, lng) {
+        const inDodoma = isInDodoma(lat, lng);
+        
+        if (inDodoma) {
+            dodomaCheck.style.display = 'block';
+            outsideDodoma.style.display = 'none';
+            locationStatus.style.background = '#D1FAE5';
+            locationStatus.style.borderLeft = '4px solid var(--success)';
+            locationStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i><strong>✅ Eneo limehakikiwa!</strong> Uko Dodoma.';
+            enableForm();
+        } else {
+            dodomaCheck.style.display = 'none';
+            outsideDodoma.style.display = 'block';
+            outsideDodoma.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>⚠️ Uko nje ya Dodoma!</strong><br>
+                Mahali ulipo: Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)}<br>
+                Logbook itasajiliwa kwa tahadhari.`;
+            locationStatus.style.background = '#D1FAE5';
+            locationStatus.style.borderLeft = '4px solid var(--success)';
+            locationStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i><strong>✅ Eneo limehakikiwa!</strong> (Nje ya Dodoma - tahadhari)';
+            enableForm();
+        }
+    }
+    
+    verifyBtn.addEventListener('click', function() {
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Inatafuta eneo lako...';
+        locationStatus.style.background = 'var(--light)';
+        locationStatus.style.borderLeft = '4px solid var(--info)';
+        locationStatus.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Inapata eneo lako... Tafadhali subiri';
+        
+        if (!navigator.geolocation) {
+            locationStatus.style.background = '#FEE2E2';
+            locationStatus.style.borderLeft = '4px solid var(--danger)';
+            locationStatus.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Kivinjari chako hakitumii GPS. Tafadhali tumia kivinjari kingine.';
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<i class="fas fa-location-arrow me-2"></i>📍 Thibitisha Eneo Langu';
+            return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                currentLat = position.coords.latitude;
+                currentLng = position.coords.longitude;
+                
+                console.log(`📍 Location obtained: Lat=${currentLat}, Lng=${currentLng}`);
+                
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const address = data.display_name || `${currentLat}, ${currentLng}`;
+                        updateLocationDisplay(currentLat, currentLng, address);
+                        locationDetails.style.display = 'block';
+                        checkLocationAndEnable(currentLat, currentLng);
+                        
+                        verifyBtn.disabled = false;
+                        verifyBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>✅ Eneo Limehakikiwa';
+                        verifyBtn.style.opacity = '0.7';
+                    })
+                    .catch(error => {
+                        console.error('Geocoding error:', error);
+                        updateLocationDisplay(currentLat, currentLng, `${currentLat}, ${currentLng}`);
+                        locationDetails.style.display = 'block';
+                        checkLocationAndEnable(currentLat, currentLng);
+                        
+                        verifyBtn.disabled = false;
+                        verifyBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>✅ Eneo Limehakikiwa';
+                        verifyBtn.style.opacity = '0.7';
+                    });
+            },
+            function(error) {
+                console.error('Geolocation error:', error);
+                let errorMessage = '';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = 'Umekataa ruhusa ya eneo. Tafadhali ruhusu tovuti kutumia eneo lako kwenye mipangilio ya kivinjari.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = 'Taarifa za eneo hazipatikani. Hakikisha GPS imewasha na uko sehemu yenye mawimbi mazuri.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = 'Muda wa kupata eneo umekwisha. Tafadhali jaribu tena katika eneo lenye mawimbi bora.';
+                        break;
+                    default:
+                        errorMessage = 'Hitilafu isiyojulikana. Jaribu tena.';
+                }
+                locationStatus.style.background = '#FEE2E2';
+                locationStatus.style.borderLeft = '4px solid var(--danger)';
+                locationStatus.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i><strong>Error:</strong> ${errorMessage}`;
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = '<i class="fas fa-location-arrow me-2"></i>📍 Jaribu Tena';
+                disableForm();
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            }
+        );
+    });
+    
+    // Form submission validation
+    const logbookForm = document.getElementById('logbookForm');
+    if (logbookForm) {
+        logbookForm.addEventListener('submit', function(e) {
+            if (!locationVerified || isVerifiedInput.value !== 'true') {
+                e.preventDefault();
+                locationStatus.style.background = '#FEE2E2';
+                locationStatus.style.borderLeft = '4px solid var(--danger)';
+                locationStatus.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i><strong>Haujathibitisha eneo lako!</strong> Tafadhali thibitisha eneo lako kwanza kabla ya kuwasilisha logbook.';
+                verifyBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return false;
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Inahifadhi...';
+            }
+        });
+    }
+    
+    disableForm();
+});
+</script>
+{% endblock %}

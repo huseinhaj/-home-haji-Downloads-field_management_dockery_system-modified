@@ -1,0 +1,202 @@
+{% extends 'field_app/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4" style="border: 1px solid var(--border); border-radius: 8px;">
+        <div class="card-header" style="background: var(--bold); border-bottom: 3px solid var(--medium); border-radius: 8px 8px 0 0;">
+            <h4 class="mb-0 text-white">
+                <i class="fas fa-map-marker-alt me-2" style="color: var(--medium);"></i>📍 Manage Regions & Academic Years
+            </h4>
+        </div>
+        <div class="card-body" style="background: var(--white);">
+            
+            <!-- Academic Year Section -->
+            <div class="card mb-4" style="border: 1px solid var(--border); border-radius: 8px;">
+                <div class="card-header" style="background: var(--light); border-bottom: 1px solid var(--border);">
+                    <h4 class="mb-0" style="color: var(--bold);">
+                        <i class="fas fa-calendar-alt me-2" style="color: var(--medium);"></i>📅 Academic Year Management
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Current Active Year -->
+                        <div class="col-md-6">
+                            <div class="alert mb-3" style="background: #DBEAFE; border-left: 4px solid var(--info); color: #1E40AF; border-radius: 6px;">
+                                <strong>Current Active Year:</strong>
+                                <h3 class="mt-2 mb-0" style="color: var(--bold);">{{ current_year.year }}</h3>
+                            </div>
+                        </div>
+                        
+                        <!-- Change Year Form -->
+                        <div class="col-md-6">
+                            <form method="POST" action="{% url 'change_academic_year' %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold" style="color: var(--text-dark);">Change to:</label>
+                                    <select name="academic_year_id" class="form-select" required style="border: 1.5px solid var(--border); border-radius: 6px;">
+                                        <option value="">Select academic year...</option>
+                                        {% for year in all_years %}
+                                        <option value="{{ year.id }}" {% if year.id == current_year.id %}selected{% endif %}>
+                                            {{ year.year }} {% if year.is_active %}(Active){% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn" style="background: var(--medium); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
+                                    <i class="fas fa-exchange-alt me-2"></i>Change Year
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Create New Year -->
+                    <hr style="border-color: var(--border);">
+                    <form method="POST" action="{% url 'create_academic_year' %}" class="row g-3">
+                        {% csrf_token %}
+                        <div class="col-md-4">
+                            <input type="text" name="year_name" class="form-control" 
+                                   placeholder="e.g., 2027/2028" pattern="\d{4}/\d{4}" required
+                                   style="border: 1.5px solid var(--border); border-radius: 6px;">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn" style="background: var(--success); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
+                                <i class="fas fa-plus me-2"></i>Create New Year
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Regions Management -->
+            <div class="card" style="border: 1px solid var(--border); border-radius: 8px;">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background: var(--light); border-bottom: 1px solid var(--border);">
+                    <h4 class="mb-0" style="color: var(--bold);">
+                        <i class="fas fa-globe-africa me-2" style="color: var(--medium);"></i>🗺️ Region Visibility
+                    </h4>
+                    <form method="POST" action="{% url 'reset_all_region_pins' %}" 
+                          onsubmit="return confirm('Are you sure? This will make ALL regions visible!')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm" style="background: var(--warning); color: var(--white); border: none; border-radius: 6px;">
+                            <i class="fas fa-eye me-1"></i>Show All Regions
+                        </button>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <div class="alert mb-3" style="background: var(--light); border-left: 4px solid var(--medium); border-radius: 6px;">
+                        <strong style="color: var(--bold);">Academic Year: {{ current_year.year }}</strong><br>
+                        <span style="color: var(--text-gray);">
+                            <i class="fas fa-lock me-1"></i> = Hidden from students | 
+                            <i class="fas fa-check-circle me-1" style="color: var(--success);"></i> = Visible to students
+                        </span>
+                    </div>
+                    
+                    <div class="row">
+                        {% for region in all_regions %}
+                        <div class="col-md-3 mb-2">
+                            <form method="POST" action="{% url 'toggle_region_pin' region.id %}" style="display: inline; width: 100%;">
+                                {% csrf_token %}
+                                {% if region.is_pinned %}
+                                    <button type="submit" class="btn btn-sm w-100" style="background: #FEE2E2; color: var(--danger); border: 1px solid var(--danger); border-radius: 6px;">
+                                        <i class="fas fa-lock me-1"></i> {{ region.name }} (Hidden)
+                                    </button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-sm w-100" style="background: #D1FAE5; color: var(--success); border: 1px solid var(--success); border-radius: 6px;">
+                                        <i class="fas fa-check-circle me-1"></i> {{ region.name }} (Visible)
+                                    </button>
+                                {% endif %}
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Summary Section -->
+            <div class="card mt-4" style="border: 1px solid var(--border); border-radius: 8px;">
+                <div class="card-header" style="background: var(--light); border-bottom: 1px solid var(--border);">
+                    <h4 class="mb-0" style="color: var(--bold);">
+                        <i class="fas fa-chart-pie me-2" style="color: var(--medium);"></i>📊 Summary
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="alert mb-0" style="background: #FEE2E2; border-left: 4px solid var(--danger); border-radius: 6px;">
+                                <strong style="color: var(--danger);"><i class="fas fa-lock me-1"></i> Hidden Regions:</strong>
+                                <h3 class="mt-2 mb-0" style="color: var(--danger);">{{ hidden_count }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert mb-0" style="background: #D1FAE5; border-left: 4px solid var(--success); border-radius: 6px;">
+                                <strong style="color: var(--success);"><i class="fas fa-check-circle me-1"></i> Visible Regions:</strong>
+                                <h3 class="mt-2 mb-0" style="color: var(--success);">{{ visible_count }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert mb-0" style="background: #DBEAFE; border-left: 4px solid var(--info); border-radius: 6px;">
+                                <strong style="color: var(--info);"><i class="fas fa-globe me-1"></i> Total Regions:</strong>
+                                <h3 class="mt-2 mb-0" style="color: var(--info);">{{ total_regions }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
+    }
+    
+    .form-select:focus, .form-control:focus {
+        border-color: var(--bold) !important;
+        box-shadow: 0 0 0 3px rgba(10, 43, 94, 0.1) !important;
+        outline: none;
+    }
+    
+    .btn {
+        transition: all 0.2s ease;
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 1rem;
+        }
+        
+        .row .col-md-3 {
+            width: 50%;
+        }
+        
+        .card-header .d-flex {
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-start;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .row .col-md-3 {
+            width: 100%;
+        }
+        
+        .btn-sm {
+            width: 100%;
+        }
+        
+        .row.g-3 {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}

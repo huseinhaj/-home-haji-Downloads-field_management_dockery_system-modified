@@ -1,0 +1,288 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Chagua Shule - Field Placement System{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            {% if district and district.region %}
+                <a href="{% url 'select_district' district.region.id %}" class="btn btn-sm" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 20px;">
+                    <i class="fas fa-arrow-left me-1"></i> Rudi Wilaya
+                </a>
+            {% else %}
+                <a href="{% url 'select_region' %}" class="btn btn-sm" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 20px;">
+                    <i class="fas fa-arrow-left me-1"></i> Rudi Mikoa
+                </a>
+            {% endif %}
+        </div>
+        <div class="text-center">
+            <h1 class="h3 fw-bold mb-0" style="color: var(--bold);">
+                <i class="fas fa-school me-2" style="color: var(--medium);"></i>📚 Chagua Shule
+            </h1>
+            <p class="mb-0" style="color: var(--text-gray);">Katika Wilaya ya <span class="fw-bold" style="color: var(--bold);">{{ district.name }}</span></p>
+        </div>
+        <div class="text-end">
+            <span class="badge rounded-pill px-3 py-2" style="background: var(--bold); color: var(--white);">
+                {{ available_schools_count }}/{{ total_schools }} Inapatikana
+            </span>
+        </div>
+    </div>
+
+    <div class="border-top border-2 mb-4" style="border-color: var(--medium) !important; opacity: 0.5;"></div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-3">
+            <div class="card text-center p-3 rounded-3" style="border: none; background: var(--bold); color: var(--white);">
+                <h4 class="mb-0">{{ total_schools }}</h4>
+                <small>Jumla ya Shule</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3 rounded-3" style="border: none; background: var(--success); color: var(--white);">
+                <h4 class="mb-0">{{ available_schools_count }}</h4>
+                <small>Zinazopatikana</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3 rounded-3" style="border: none; background: var(--warning); color: var(--white);">
+                <h4 class="mb-0">{{ pinned_schools_count }}</h4>
+                <small>Zisizopatikana</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3 rounded-3" style="border: none; background: var(--text-gray); color: var(--white);">
+                <h4 class="mb-0">{{ full_schools_count }}</h4>
+                <small>Zilizojaa</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & Level Filter Form -->
+    <form method="get" class="row g-2 align-items-center mb-4">
+        <div class="col-md-4">
+            <select name="level" class="form-select shadow-sm rounded-pill" style="border: 1.5px solid var(--border);">
+                <option value="Primary" {% if selected_level == 'Primary' %}selected{% endif %}>Shule ya Msingi</option>
+                <option value="Secondary" {% if selected_level == 'Secondary' %}selected{% endif %}>Shule ya Sekondari</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <input type="text" name="q" value="{{ query }}" placeholder="Tafuta jina la shule..." class="form-control shadow-sm rounded-pill" style="border: 1.5px solid var(--border);">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn w-100 rounded-pill shadow-sm" style="background: var(--bold); color: var(--white);">
+                Tafuta <i class="fas fa-search ms-1"></i>
+            </button>
+        </div>
+    </form>
+
+    <!-- Legend -->
+    <div class="alert mb-4 rounded-3" style="background: var(--light); border: 1px solid var(--border);">
+        <div class="row text-center">
+            <div class="col-md-4">
+                <span class="badge me-2" style="background: var(--success);">●</span> Inapatikana
+            </div>
+            <div class="col-md-4">
+                <span class="badge me-2" style="background: var(--warning);">●</span> Haipatikani (Imezuiliwa)
+            </div>
+            <div class="col-md-4">
+                <span class="badge me-2" style="background: var(--text-gray);">●</span> Imefikia Ujazo
+            </div>
+        </div>
+    </div>
+
+    <!-- School Cards -->
+    <div class="row g-4">
+        {% for school in schools %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm rounded-3 overflow-hidden hover-lift" style="border: 1px solid var(--border); transition: all 0.3s ease;">
+                
+                <!-- Card Header based on status -->
+                <div class="card-header text-white text-center py-3
+                    {% if school.is_pinned %}" style="background: var(--warning);"
+                    {% elif not school.is_selectable %}" style="background: var(--text-gray);"
+                    {% else %}" style="background: var(--bold); border-bottom: 2px solid var(--medium);"
+                    {% endif %}>
+                    <h5 class="mb-0">{{ school.name }}</h5>
+                    <small>{{ school.get_level_display }}</small>
+                    
+                    <!-- Status badges -->
+                    {% if school.is_pinned %}
+                        <div class="mt-1">
+                            <span class="badge" style="background: var(--danger);">
+                                <i class="fas fa-ban me-1"></i>Haipatikani
+                            </span>
+                        </div>
+                    {% elif not school.is_selectable %}
+                        <div class="mt-1">
+                            <span class="badge" style="background: var(--danger);">
+                                <i class="fas fa-times-circle me-1"></i>Imefikia Ujazo
+                            </span>
+                        </div>
+                    {% else %}
+                        <div class="mt-1">
+                            <span class="badge" style="background: var(--success);">
+                                <i class="fas fa-check-circle me-1"></i>Inapatikana
+                            </span>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body" style="background: var(--white);">
+                    <p class="mb-2" style="color: var(--text-gray);">
+                        Ujazo: <strong style="color: var(--bold);">{{ school.current_students }}</strong> / {{ school.capacity }}
+                    </p>
+                    <div class="progress mb-2" style="height: 8px; background: var(--border); border-radius: 4px;">
+                        {% if school.occupancy_percentage >= 90 %}
+                        <div class="progress-bar" role="progressbar" style="width: {{ school.occupancy_percentage }}%; background: var(--danger); border-radius: 4px;"></div>
+                        {% elif school.occupancy_percentage >= 70 %}
+                        <div class="progress-bar" role="progressbar" style="width: {{ school.occupancy_percentage }}%; background: var(--warning); border-radius: 4px;"></div>
+                        {% else %}
+                        <div class="progress-bar" role="progressbar" style="width: {{ school.occupancy_percentage }}%; background: var(--bold); border-radius: 4px;"></div>
+                        {% endif %}
+                    </div>
+                    <p class="text-end small mb-0" style="color: var(--text-gray);">{{ school.occupancy_percentage }}% ujazo</p>
+                    
+                    <!-- Pin reason for pinned schools -->
+                    {% if school.is_pinned %}
+                    <div class="alert mt-3 py-2 small" style="background: #FEF3C7; border-left: 4px solid var(--warning); color: #92400E;">
+                        <strong><i class="fas fa-exclamation-triangle me-1"></i>Sababu:</strong><br>
+                        {{ school.pin_notes|default:"Shule imezuiliwa kwa sasa" }}
+                        {% if school.problem_type %}
+                        <br><strong>Shida:</strong> {{ school.problem_type }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer bg-transparent border-0 py-3" style="background: var(--light);">
+                    {% if school.is_pinned %}
+                        <button class="btn rounded-pill w-100" style="background: var(--warning); color: var(--white);" disabled>
+                            <i class="fas fa-ban me-1"></i>Haipatikani Kwa Sasa
+                        </button>
+                        <small class="text-muted d-block text-center mt-1">
+                            Shule hii imezuiliwa kwa mafunzo ya uwanja
+                        </small>
+                    
+                    {% elif not school.is_selectable %}
+                        <button class="btn rounded-pill w-100" style="background: var(--text-gray); color: var(--white);" disabled>
+                            <i class="fas fa-times-circle me-1"></i>Imefikia Ujazo
+                        </button>
+                    
+                    {% else %}
+                        {% if not selected_school %}
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="school_id" value="{{ school.id }}">
+                            <input type="hidden" name="action" value="select">
+                            <button type="submit" class="btn rounded-pill w-100" style="background: transparent; color: var(--bold); border: 2px solid var(--bold);">
+                                <i class="fas fa-check-circle me-1"></i>Chagua Shule
+                            </button>
+                        </form>
+                        {% elif selected_school.id == school.id %}
+                        <div class="d-flex gap-2">
+                            <form method="post" class="w-50">
+                                {% csrf_token %}
+                                <input type="hidden" name="school_id" value="{{ school.id }}">
+                                <button name="action" value="confirm" class="btn rounded-pill w-100" style="background: var(--success); color: var(--white);">
+                                    <i class="fas fa-check me-1"></i>Thibitisha
+                                </button>
+                            </form>
+                            <form method="post" class="w-50">
+                                {% csrf_token %}
+                                <input type="hidden" name="school_id" value="{{ school.id }}">
+                                <button name="action" value="cancel" class="btn rounded-pill w-100" style="background: var(--text-gray); color: var(--white);">
+                                    <i class="fas fa-times me-1"></i>Ghairi
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <button disabled class="btn btn-sm rounded-pill w-100" style="background: var(--border); color: var(--text-gray);">
+                            <i class="fas fa-clock me-1"></i>Shule Nyingine Imechaguliwa
+                        </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not schools %}
+    <div class="card mt-5 text-center p-5" style="border: 1px solid var(--border); border-radius: 8px;">
+        <i class="fas fa-school fa-4x mb-4" style="color: var(--text-gray);"></i>
+        <h3 style="color: var(--text-dark);">Hakuna Shule Zilizopatikana</h3>
+        <p style="color: var(--text-gray);">Hakuna shule zilizopatikana kwenye utafutaji wako.</p>
+        <div class="d-flex justify-content-center gap-2">
+            <a href="{% url 'select_school' district.id %}" class="btn mt-3 rounded-pill" style="background: var(--bold); color: var(--white);">
+                <i class="fas fa-redo me-1"></i> Onyesha Zote
+            </a>
+            {% if district and district.region %}
+                <a href="{% url 'select_district' district.region.id %}" class="btn mt-3 rounded-pill" style="background: transparent; color: var(--bold); border: 2px solid var(--bold);">
+                    <i class="fas fa-arrow-left me-1"></i> Rudi Wilaya
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .hover-lift:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 15px 25px rgba(10, 43, 94, 0.15);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .form-select:focus, .form-control:focus {
+        border-color: var(--bold) !important;
+        box-shadow: 0 0 0 3px rgba(10, 43, 94, 0.1);
+        outline: none;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 1rem;
+        }
+        
+        .h3 {
+            font-size: 1.2rem;
+        }
+        
+        .btn-sm {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+        }
+        
+        .stat-cards .card {
+            margin-bottom: 0.5rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .d-flex.justify-content-between {
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
+        
+        .text-end {
+            text-align: center !important;
+        }
+        
+        .row.g-2 {
+            flex-direction: column;
+        }
+        
+        .col-md-2 {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}

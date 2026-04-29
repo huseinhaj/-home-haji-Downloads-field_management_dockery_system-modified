@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+  body {
+    background: linear-gradient(135deg, #28a745, #dc3545); /* green to red */
+  }
+
+  .star-frame {
+    position: relative;
+    background-color: #e6ffee;
+    border: 4px solid black;
+    border-radius: 1rem;
+    padding: 2rem;
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  }
+
+  .star-frame::before,
+  .star-frame::after {
+    content: "";
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    background-image: radial-gradient(white 2px, transparent 1px);
+    background-size: 30px 30px;
+    animation: star-glow 5s linear infinite;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .star-frame::after {
+    animation-delay: 2.5s;
+  }
+
+  @keyframes star-glow {
+    from {
+      transform: translate(0, 0) rotate(0deg);
+    }
+    to {
+      transform: translate(-50px, -50px) rotate(360deg);
+    }
+  }
+</style>
+
+<div class="min-h-screen flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-2xl w-full star-frame">
+
+    <h2 class="text-3xl font-extrabold text-center text-green-800 mb-8">
+      ✨ Chagua Mikoa kwa Mwaka wa Field
+    </h2>
+
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+      <div class="space-y-4 text-gray-800 text-base">
+        {{ form.as_p }}
+      </div>
+
+      <div class="flex justify-end">
+        <button
+          type="submit"
+          class="px-6 py-3 bg-green-700 text-white text-sm font-bold rounded-lg shadow-md hover:bg-green-800 transition duration-300"
+        >
+          ✅ Tuma Pinning ya Mikoa
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+{% endblock %}
+

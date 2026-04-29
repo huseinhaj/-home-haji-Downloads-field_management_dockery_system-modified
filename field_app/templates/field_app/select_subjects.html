@@ -1,0 +1,236 @@
+{% extends 'field_app/base.html' %}
+
+{% block title %}Chagua Somo - Field Placement System{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'select_school' school.id %}" class="btn btn-sm" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 20px;">
+                <i class="fas fa-arrow-left me-1"></i> Rudi Shule
+            </a>
+        </div>
+        <div class="text-center">
+            <h1 class="h3 fw-bold mb-0" style="color: var(--bold);">
+                <i class="fas fa-book me-2" style="color: var(--medium);"></i>📚 Chagua Somo la Kufundisha
+            </h1>
+            <p class="mb-0" style="color: var(--text-gray);">Katika Shule ya <span class="fw-bold" style="color: var(--bold);">{{ school.name }}</span></p>
+        </div>
+        <div class="text-end">
+            <span class="badge rounded-pill px-3 py-2" style="background: var(--bold); color: var(--white);">
+                {{ subject_capacities|length }} Masomo
+            </span>
+        </div>
+    </div>
+
+    <div class="border-top border-2 mb-4" style="border-color: var(--medium) !important; opacity: 0.5;"></div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-dismissible fade show rounded-3 mb-3" 
+                 style="{% if message.tags == 'error' %}background: #FEE2E2; border-left: 4px solid var(--danger); color: #991B1B;
+                        {% elif message.tags == 'success' %}background: #D1FAE5; border-left: 4px solid var(--success); color: #065F46;
+                        {% else %}background: #DBEAFE; border-left: 4px solid var(--info); color: #1E40AF;{% endif %}">
+                <i class="fas fa-{% if message.tags == 'error' %}exclamation-triangle{% elif message.tags == 'success' %}check-circle{% else %}info-circle{% endif %} me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-4">
+            <div class="card text-center p-3 rounded-3" style="border: none; background: var(--bold); color: var(--white);">
+                <h4 class="mb-0">{{ subject_capacities|length }}</h4>
+                <small>Jumla ya Masomo</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center p-3 rounded-3" style="border: none; background: var(--success); color: var(--white);">
+                <h4 class="mb-0">{{ available_subjects_count }}</h4>
+                <small>Yanayopatikana</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center p-3 rounded-3" style="border: none; background: var(--warning); color: var(--white);">
+                <h4 class="mb-0">{{ pending_applications_count }}</h4>
+                <small>Maombi Yanayosubiri</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Existing Applications Table -->
+    {% if all_applications %}
+    <div class="card shadow-sm rounded-3 mb-4" style="border: 1px solid var(--border);">
+        <div class="card-header rounded-top-3" style="background: var(--light); border-bottom: 1px solid var(--border);">
+            <h5 class="mb-0 fw-bold" style="color: var(--bold);">
+                <i class="fas fa-list me-2" style="color: var(--medium);"></i>Maombi Yako Yaliyopo
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background: var(--light);">
+                        <tr>
+                            <th style="color: var(--text-dark);">Somo</th>
+                            <th style="color: var(--text-dark);">Hali</th>
+                            <th style="color: var(--text-dark);">Tarehe ya Ombi</th>
+                            <th style="color: var(--text-dark);">Kitendo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for application in all_applications %}
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td class="fw-bold" style="color: var(--text-dark);">{{ application.subject.name }}</td>
+                            <td>
+                                {% if application.status == 'approved' %}
+                                    <span class="badge rounded-pill" style="background: var(--success); color: white;">
+                                        <i class="fas fa-check-circle me-1"></i>Imethibitishwa
+                                    </span>
+                                {% elif application.status == 'pending' %}
+                                    <span class="badge rounded-pill" style="background: var(--warning); color: white;">
+                                        <i class="fas fa-clock me-1"></i>Inasubiri
+                                    </span>
+                                {% else %}
+                                    <span class="badge rounded-pill" style="background: var(--danger); color: white;">
+                                        <i class="fas fa-times-circle me-1"></i>Imekataliwa
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td style="color: var(--text-gray);">{{ application.application_date|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                {% if application.status == 'pending' %}
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="subject_id" value="{{ application.subject.id }}">
+                                    <button type="submit" name="action" value="cancel_application" 
+                                            class="btn btn-sm rounded-pill" 
+                                            style="background: transparent; color: var(--danger); border: 1px solid var(--danger);"
+                                            onclick="return confirm('Unahakika unataka kufuta ombi la {{ application.subject.name }}?')">
+                                        <i class="fas fa-trash me-1"></i>Futa
+                                    </button>
+                                </form>
+                                {% else %}
+                                    <span class="small" style="color: var(--text-gray);">Haiwezi kubadilishwa</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- New Application Form -->
+    <div class="card shadow-sm rounded-3" style="border: 1px solid var(--border);">
+        <div class="card-header rounded-top-3" style="background: var(--bold); border-bottom: 2px solid var(--medium);">
+            <h5 class="mb-0 text-white">
+                <i class="fas fa-plus-circle me-2" style="color: var(--medium);"></i>Omba Somo Jipya
+            </h5>
+        </div>
+        <div class="card-body p-4">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="mb-4">
+                    <label for="subject_id" class="form-label fw-bold" style="color: var(--text-dark);">Chagua Somo</label>
+                    <select id="subject_id" name="subject_id" required
+                        class="form-select form-select-lg shadow-sm rounded-pill" 
+                        style="border: 1.5px solid var(--border);">
+                        <option value="" disabled selected>--- Chagua Somo ---</option>
+                        {% for sc in subject_capacities %}
+                            {% if sc.subject.id not in applied_subject_ids %}
+                                <option value="{{ sc.subject.id }}">
+                                    {{ sc.subject.name }} (Nafasi: {{ sc.current_students }}/{{ sc.max_students }})
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <div class="form-text mt-2" style="color: var(--text-gray);">
+                        <i class="fas fa-info-circle me-1" style="color: var(--medium);"></i>
+                        Chagua somo ambalo hujaomba tayari. Nafasi iliyobaki inaonyeshwa kwenye mabano.
+                    </div>
+                </div>
+
+                <input type="hidden" name="action" value="apply" />
+
+                <button type="submit" class="btn btn-lg rounded-pill w-100" style="background: var(--bold); color: var(--white);">
+                    <i class="fas fa-paper-plane me-2"></i>Wasilisha Ombi
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-lift:hover {
+        transform: translateY(-4px);
+        transition: transform 0.3s ease;
+    }
+    
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(10, 43, 94, 0.03);
+    }
+    
+    .form-select:focus, .btn:focus {
+        border-color: var(--bold) !important;
+        box-shadow: 0 0 0 3px rgba(10, 43, 94, 0.1) !important;
+        outline: none;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 1rem;
+        }
+        
+        .h3 {
+            font-size: 1.2rem;
+        }
+        
+        .btn-sm {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+        }
+        
+        .stat-cards .card {
+            margin-bottom: 0.5rem;
+        }
+        
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .d-flex.justify-content-between {
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
+        
+        .text-end {
+            text-align: center !important;
+        }
+        
+        .btn-lg {
+            font-size: 1rem;
+            padding: 0.5rem 1rem;
+        }
+    }
+</style>
+{% endblock %}

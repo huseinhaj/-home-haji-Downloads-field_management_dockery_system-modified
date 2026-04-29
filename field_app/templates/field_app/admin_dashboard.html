@@ -1,0 +1,413 @@
+{% extends 'field_app/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card" style="border: 1px solid var(--border); border-radius: 8px; background: var(--white);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <div>
+                            <h1 class="h2 fw-bold mb-2" style="color: var(--text-dark);">
+                                <i class="fas fa-chalkboard-user me-2" style="color: var(--medium);"></i>
+                                Tanzania Teacher Colleges
+                            </h1>
+                            <p class="mb-0" style="color: var(--text-gray);">
+                                <i class="fas fa-chart-line me-2"></i>Field Placement Management System | Admin Dashboard
+                            </p>
+                        </div>
+                        <div class="text-end mt-3 mt-md-0">
+                            <span class="badge px-3 py-2 rounded-pill" style="background: var(--bold); color: white;">
+                                <i class="fas fa-shield-alt me-2"></i>Administrator
+                            </span>
+                            <p class="small mt-2 mb-0" style="color: var(--text-gray);">
+                                <i class="fas fa-calendar-alt me-1"></i>{{ current_date|date:"F d, Y" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats - Row 1 -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card" style="border: none; border-radius: 12px; background: var(--bold);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="display-6 fw-bold mb-2 text-white">{{ total_applications|default:"0" }}</h2>
+                            <p class="mb-0 text-white-50">
+                                <i class="fas fa-file-alt me-2"></i>Total Applications
+                            </p>
+                            <small class="text-white-50">Student Teacher Applications</small>
+                        </div>
+                        <i class="fas fa-layer-group fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card" style="border: none; border-radius: 12px; background: var(--success);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="display-6 fw-bold mb-2 text-white">{{ approved_applications|default:"0" }}</h2>
+                            <p class="mb-0 text-white-50">
+                                <i class="fas fa-check-circle me-2"></i>Approved
+                            </p>
+                            <small class="text-white-50">Applications Approved</small>
+                        </div>
+                        <i class="fas fa-thumbs-up fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card" style="border: none; border-radius: 12px; background: var(--warning);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="display-6 fw-bold mb-2 text-white">{{ pending_applications.count|default:"0" }}</h2>
+                            <p class="mb-0 text-white-50">
+                                <i class="fas fa-clock me-2"></i>Pending Review
+                            </p>
+                            <small class="text-white-50">Awaiting Decision</small>
+                        </div>
+                        <i class="fas fa-hourglass-half fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card" style="border: none; border-radius: 12px; background: var(--info);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="display-6 fw-bold mb-2 text-white">{{ total_assessors|default:"0" }}</h2>
+                            <p class="mb-0 text-white-50">
+                                <i class="fas fa-chalkboard-user me-2"></i>Total Assessors
+                            </p>
+                            <small class="text-white-50">Field Placement Assessors</small>
+                        </div>
+                        <i class="fas fa-users fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats - Row 2 -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card" style="border: none; border-radius: 12px; background: var(--danger);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="display-6 fw-bold mb-2 text-white">{{ total_schools|default:"0" }}</h2>
+                            <p class="mb-0 text-white-50">
+                                <i class="fas fa-school me-2"></i>Partner Schools
+                            </p>
+                            <small class="text-white-50">Teaching Practice Schools</small>
+                        </div>
+                        <i class="fas fa-building fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card" style="border: none; border-radius: 12px; background: var(--medium);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="display-6 fw-bold mb-2 text-white">{{ total_school_assignments|default:"0" }}</h2>
+                            <p class="mb-0 text-white-50">
+                                <i class="fas fa-tasks me-2"></i>Assignments
+                            </p>
+                            <small class="text-white-50">Assessor-School Assignments</small>
+                        </div>
+                        <i class="fas fa-link fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card" style="border: none; border-radius: 12px; background: #e67e22;">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="display-6 fw-bold mb-2 text-white">{{ completed_assessments|default:"0" }}</h2>
+                            <p class="mb-0 text-white-50">
+                                <i class="fas fa-check-double me-2"></i>Completed
+                            </p>
+                            <small class="text-white-50">Assessments Done</small>
+                        </div>
+                        <i class="fas fa-flag-checkered fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card" style="border: none; border-radius: 12px; background: #16a085;">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="display-6 fw-bold mb-2 text-white">{{ active_assessors|default:"0" }}</h2>
+                            <p class="mb-0 text-white-50">
+                                <i class="fas fa-user-check me-2"></i>Active Assessors
+                            </p>
+                            <small class="text-white-50">Currently Active</small>
+                        </div>
+                        <i class="fas fa-user-graduate fa-3x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card" style="border: 1px solid var(--border); border-radius: 8px; background: var(--white);">
+                <div class="card-header bg-transparent border-0 pt-4 pb-0">
+                    <h4 class="fw-bold mb-0" style="color: var(--text-dark);">
+                        <i class="fas fa-bolt me-2" style="color: var(--medium);"></i>Quick Actions
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-xl-3 col-md-6">
+                            <a href="{% url 'bulk_assign_assessors' %}" class="quick-action-btn" style="background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 20px 10px; text-align: center; text-decoration: none; display: block; height: 100%; transition: all 0.3s ease;">
+                                <i class="fas fa-users fa-2x mb-2" style="color: var(--bold);"></i>
+                                <h6 class="fw-bold mb-2" style="color: var(--text-dark);">Bulk Assign Assessors</h6>
+                                <small style="color: var(--text-gray);">Assign multiple assessors to schools at once</small>
+                            </a>
+                        </div>
+                        <div class="col-xl-3 col-md-6">
+                            <a href="{% url 'manage_regions' %}" class="quick-action-btn" style="background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 20px 10px; text-align: center; text-decoration: none; display: block; height: 100%; transition: all 0.3s ease;">
+                                <i class="fas fa-globe-africa fa-2x mb-2" style="color: var(--medium);"></i>
+                                <h6 class="fw-bold mb-2" style="color: var(--text-dark);">Manage Regions</h6>
+                                <small style="color: var(--text-gray);">Control region visibility & academic years</small>
+                            </a>
+                        </div>
+                        <div class="col-xl-3 col-md-6">
+                            <a href="{% url 'assessor_list' %}" class="quick-action-btn" style="background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 20px 10px; text-align: center; text-decoration: none; display: block; height: 100%; transition: all 0.3s ease;">
+                                <i class="fas fa-chalkboard-user fa-2x mb-2" style="color: var(--success);"></i>
+                                <h6 class="fw-bold mb-2" style="color: var(--text-dark);">View Assessors</h6>
+                                <small style="color: var(--text-gray);">Manage field placement assessors</small>
+                            </a>
+                        </div>
+                        <div class="col-xl-3 col-md-6">
+                            <a href="/admin/" class="quick-action-btn" style="background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 20px 10px; text-align: center; text-decoration: none; display: block; height: 100%; transition: all 0.3s ease;">
+                                <i class="fas fa-cog fa-2x mb-2" style="color: var(--info);"></i>
+                                <h6 class="fw-bold mb-2" style="color: var(--text-dark);">System Settings</h6>
+                                <small style="color: var(--text-gray);">Advanced configuration and settings</small>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pending Applications -->
+    <div class="card mb-4" style="border: 1px solid var(--border); border-radius: 8px; background: var(--white);">
+        <div class="card-header bg-transparent border-0 pt-4 pb-0">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <h4 class="fw-bold mb-0" style="color: var(--text-dark);">
+                    <i class="fas fa-clock me-2" style="color: var(--warning);"></i>
+                    Pending Applications 
+                    <span class="badge ms-2" style="background: var(--warning); color: white;">{{ pending_applications.count }}</span>
+                </h4>
+                <small style="color: var(--text-gray);">Requires immediate attention</small>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if pending_applications %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead style="background: var(--light);">
+                        <tr>
+                            <th class="border-0" style="color: var(--text-dark);">Student Teacher Details</th>
+                            <th class="border-0" style="color: var(--text-dark);">Subject & Partner School</th>
+                            <th class="border-0" style="color: var(--text-dark);">Application Date</th>
+                            <th class="border-0 text-end" style="color: var(--text-dark);">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for application in pending_applications %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm me-3 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: var(--bold); color: white;">
+                                        {{ application.student.full_name|first|upper }}
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1 fw-bold" style="color: var(--text-dark);">{{ application.student.full_name }}</h6>
+                                        <small style="color: var(--text-gray);">{{ application.student.user.email }}</small>
+                                        <br>
+                                        <small style="color: var(--text-gray);">
+                                            <i class="fas fa-phone-alt me-1"></i>{{ application.student.phone_number|default:"No phone" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <span class="badge mb-2 px-3 py-2 rounded-pill" style="background: var(--info); color: white;">
+                                        <i class="fas fa-book me-1"></i>{{ application.subject.name }}
+                                    </span>
+                                    <small style="color: var(--text-gray);">
+                                        <i class="fas fa-school me-1"></i>
+                                        {{ application.school.name|truncatechars:30 }}
+                                    </small>
+                                    <small style="color: var(--text-gray);">
+                                        <i class="fas fa-location-dot me-1"></i>
+                                        {{ application.school.district.name }}, {{ application.school.district.region.name }}
+                                    </small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="fw-semibold" style="color: var(--text-dark);">{{ application.application_date|date:"M d, Y" }}</span>
+                                <br>
+                                <small style="color: var(--text-gray);">{{ application.application_date|timesince }} ago</small>
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'approve_application' application.id %}" 
+                                   class="btn" style="background: var(--bold); color: white; border: none; border-radius: 6px; padding: 8px 20px;">
+                                    <i class="fas fa-eye me-2"></i>Review
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <div class="mb-4">
+                    <i class="fas fa-check-circle fa-4x" style="color: var(--success); opacity: 0.25;"></i>
+                </div>
+                <h4 class="mb-3" style="color: var(--text-gray);">All Clear!</h4>
+                <p style="color: var(--text-gray);">No pending applications to review at this moment.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Recent Assignments -->
+    {% if recent_assignments %}
+    <div class="card" style="border: 1px solid var(--border); border-radius: 8px; background: var(--white);">
+        <div class="card-header bg-transparent border-0 pt-4 pb-0">
+            <h4 class="fw-bold mb-0" style="color: var(--text-dark);">
+                <i class="fas fa-history me-2" style="color: var(--medium);"></i>
+                Recent Assessor Assignments
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead style="background: var(--light);">
+                        <tr>
+                            <th style="color: var(--text-dark);">Assessor</th>
+                            <th style="color: var(--text-dark);">Partner School</th>
+                            <th style="color: var(--text-dark);">Assignment Date</th>
+                            <th style="color: var(--text-dark);">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assignment in recent_assignments %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <strong style="color: var(--text-dark);">{{ assignment.assessor.full_name }}</strong>
+                                    <br>
+                                    <small style="color: var(--text-gray);">{{ assignment.assessor.email }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <strong style="color: var(--text-dark);">{{ assignment.school.name }}</strong>
+                                    <br>
+                                    <small style="color: var(--text-gray);">{{ assignment.school.district.name }}</small>
+                                </div>
+                            </td>
+                            <td style="color: var(--text-gray);">{{ assignment.assessment_date|date:"M d, Y" }}</td>
+                            <td>
+                                {% if assignment.is_completed %}
+                                <span class="badge rounded-pill" style="background: var(--success); color: white;">
+                                    <i class="fas fa-check me-1"></i>Completed
+                                </span>
+                                {% else %}
+                                <span class="badge rounded-pill" style="background: var(--warning); color: white;">
+                                    <i class="fas fa-spinner me-1"></i>Pending
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    /* Quick action button hover effect */
+    .quick-action-btn {
+        transition: all 0.3s ease;
+    }
+    
+    .quick-action-btn:hover {
+        border-color: var(--bold) !important;
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(10, 43, 94, 0.1);
+    }
+    
+    /* Table hover effect */
+    .table-hover tbody tr:hover {
+        background: var(--light);
+    }
+    
+    /* Card hover effect */
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
+    }
+    
+    /* Avatar styles */
+    .avatar-sm {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 18px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .display-6 {
+            font-size: 1.5rem;
+        }
+        
+        .quick-action-btn {
+            padding: 15px 10px;
+        }
+        
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+    }
+</style>
+{% endblock %}

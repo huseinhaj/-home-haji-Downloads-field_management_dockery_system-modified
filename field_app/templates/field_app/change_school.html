@@ -1,0 +1,598 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Badili Shule - Field Placement System{% endblock %}
+{% block content %}
+<style>
+    :root {
+        --bold: #0A2B5E;
+        --medium: #C8900A;
+        --light: #EEF1F6;
+        --white: #FFFFFF;
+        --text-dark: #1A1A2E;
+        --text-gray: #4A5568;
+        --border: #CBD5E0;
+        --success: #10B981;
+        --danger: #EF4444;
+        --warning: #F59E0B;
+        --info: #3B82F6;
+    }
+
+    .premium-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(10, 43, 94, 0.08);
+        transition: all 0.3s ease;
+    }
+
+    .premium-card:hover {
+        box-shadow: 0 8px 24px rgba(10, 43, 94, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .tz-btn {
+        background: var(--bold);
+        border: none;
+        border-radius: 6px;
+        color: var(--white);
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .tz-btn:hover {
+        background: #0C3570;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(10, 43, 94, 0.25);
+        color: var(--white);
+    }
+
+    .tz-badge {
+        background: var(--bold);
+        color: var(--white);
+        font-weight: 600;
+        border-radius: 6px;
+    }
+
+    .tz-badge-gold {
+        background: var(--medium);
+        color: var(--white);
+        font-weight: 600;
+        border-radius: 6px;
+    }
+
+    .school-card {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background: var(--white);
+    }
+
+    .school-card:hover {
+        border-color: var(--medium);
+        background: rgba(200, 144, 10, 0.05);
+        transform: translateY(-2px);
+    }
+
+    .school-card.selected {
+        border-color: var(--bold);
+        background: rgba(10, 43, 94, 0.05);
+        border-left: 4px solid var(--bold);
+    }
+
+    .skeleton-loader {
+        background: linear-gradient(90deg, var(--border) 25%, var(--light) 50%, var(--border) 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+        border-radius: 8px;
+    }
+
+    @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    .progress-tz {
+        background: rgba(10, 43, 94, 0.1);
+        border-radius: 8px;
+        height: 6px;
+        overflow: hidden;
+    }
+
+    .progress-tz .progress-bar {
+        background: var(--bold);
+    }
+
+    .progress-tz .progress-bar-warning {
+        background: var(--warning);
+    }
+
+    .progress-tz .progress-bar-danger {
+        background: var(--danger);
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border);
+        border-top: 4px solid var(--bold);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .alert-success-custom {
+        background: #D1FAE5;
+        color: #065F46;
+        border-left: 4px solid var(--success);
+        border-radius: 6px;
+    }
+
+    .alert-danger-custom {
+        background: #FEE2E2;
+        color: #991B1B;
+        border-left: 4px solid var(--danger);
+        border-radius: 6px;
+    }
+
+    .form-select, .form-control {
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        transition: all 0.15s ease;
+    }
+
+    .form-select:focus, .form-control:focus {
+        border-color: var(--bold);
+        box-shadow: 0 0 0 3px rgba(10, 43, 94, 0.1);
+        outline: none;
+    }
+
+    .form-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .btn-secondary {
+        background: var(--light);
+        color: var(--text-dark);
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        padding: 10px 24px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        background: var(--border);
+        transform: translateY(-1px);
+    }
+
+    .page-link {
+        color: var(--bold);
+        border-color: var(--border);
+    }
+
+    .page-link:hover {
+        background: var(--light);
+        border-color: var(--bold);
+        color: var(--bold);
+    }
+
+    .page-item.active .page-link {
+        background: var(--bold);
+        border-color: var(--bold);
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header Card -->
+            <div class="premium-card p-4 mb-4">
+                <div class="text-center">
+                    <h2 style="color: var(--bold);">
+                        <i class="fas fa-exchange-alt me-2" style="color: var(--medium);"></i>Badili Shule
+                    </h2>
+                    
+                    {% if can_change %}
+                    <div class="alert-success-custom mt-3 p-3">
+                        <strong>✅ Unaweza Kubadili Shule!</strong><br>
+                        <span>Siku zilizosalia: {{ remaining_days }} | Nafasi zilizosalia: {{ remaining_changes }}</span>
+                    </div>
+                    {% else %}
+                    <div class="alert-danger-custom mt-3 p-3">
+                        <strong>❌ HUWEZI KUBADILI SHULE!</strong><br>
+                        Muda wako wa wiki moja umeisha
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Current School Info -->
+            <div class="premium-card p-4 mb-4">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <div class="rounded-circle p-3" style="background: rgba(10, 43, 94, 0.1);">
+                            <i class="fas fa-school fa-2x" style="color: var(--bold);"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <small class="text-muted">Shule Yako ya Sasa</small>
+                        <h4 style="color: var(--bold);">{{ current_school.name }}</h4>
+                        <small class="text-muted">
+                            {{ current_school.district.name }}, {{ current_school.district.region.name }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            {% if can_change %}
+            <!-- Filters Section -->
+            <div class="premium-card p-4 mb-4">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-map-marker-alt me-1" style="color: var(--medium);"></i>Wilaya
+                        </label>
+                        <select id="districtSelect" class="form-select">
+                            <option value="">-- Chagua Wilaya --</option>
+                            {% for district in districts %}
+                            <option value="{{ district.id }}">{{ district.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-chalkboard me-1" style="color: var(--medium);"></i>Kiwango
+                        </label>
+                        <select id="levelSelect" class="form-select">
+                            <option value="Secondary">Secondary</option>
+                            <option value="Primary">Primary</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">&nbsp;</label>
+                        <button id="searchBtn" class="btn tz-btn w-100">
+                            <i class="fas fa-search me-1"></i>Tafuta
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mt-2">
+                    <input type="text" id="searchInput" class="form-control" 
+                           placeholder="🔍 Tafuta shule kwa jina...">
+                </div>
+            </div>
+            
+            <!-- Schools List (Dynamic) -->
+            <div class="premium-card p-4">
+                <h5 class="mb-3" style="color: var(--text-dark);">
+                    <i class="fas fa-school me-2" style="color: var(--medium);"></i>Shule Zinazopatikana
+                    <span id="schoolsCount" class="badge tz-badge ms-2">0</span>
+                </h5>
+                
+                <div id="schoolsContainer">
+                    <!-- Loading spinner -->
+                    <div class="text-center py-5" id="loadingSpinner">
+                        <div class="spinner mx-auto mb-3"></div>
+                        <p style="color: var(--text-gray);">Inapakia shule...</p>
+                    </div>
+                </div>
+                
+                <!-- Pagination -->
+                <div id="paginationContainer" class="mt-4" style="display: none;">
+                    <nav>
+                        <ul class="pagination justify-content-center" id="pagination"></ul>
+                    </nav>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-end gap-3 mt-4 pt-3 border-top" style="border-top-color: var(--border) !important;">
+                    <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-times me-2"></i>Ghairi
+                    </a>
+                    <button id="confirmChangeBtn" class="btn tz-btn" disabled>
+                        <i class="fas fa-check-circle me-2"></i>Thibitisha Kubadili
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    let selectedSchoolId = null;
+    let isLoading = false;
+    
+    // Load schools when district changes
+    document.getElementById('districtSelect')?.addEventListener('change', function() {
+        if (this.value) {
+            currentPage = 1;
+            selectedSchoolId = null;
+            document.getElementById('confirmChangeBtn').disabled = true;
+            loadSchools();
+        } else {
+            document.getElementById('schoolsContainer').innerHTML = '<div class="text-center py-5"><p class="text-muted">Tafadhali chagua wilaya kwanza</p></div>';
+            document.getElementById('paginationContainer').style.display = 'none';
+        }
+    });
+    
+    // Search button
+    document.getElementById('searchBtn')?.addEventListener('click', function() {
+        if (document.getElementById('districtSelect').value) {
+            currentPage = 1;
+            loadSchools();
+        }
+    });
+    
+    // Search input - debounced
+    let searchTimeout;
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            if (document.getElementById('districtSelect').value) {
+                currentPage = 1;
+                loadSchools();
+            }
+        }, 500);
+    });
+    
+    // Level change
+    document.getElementById('levelSelect')?.addEventListener('change', function() {
+        if (document.getElementById('districtSelect').value) {
+            currentPage = 1;
+            loadSchools();
+        }
+    });
+    
+    // Load schools via AJAX
+    async function loadSchools() {
+        const districtId = document.getElementById('districtSelect').value;
+        if (!districtId) return;
+        
+        const level = document.getElementById('levelSelect').value;
+        const search = document.getElementById('searchInput').value;
+        
+        isLoading = true;
+        showLoading();
+        
+        try {
+            const url = `/api/schools-for-change/?district_id=${districtId}&level=${level}&search=${encodeURIComponent(search)}&page=${currentPage}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                renderSchools(data.schools);
+                renderPagination(data);
+                document.getElementById('schoolsCount').innerText = data.total;
+            } else {
+                showError('Hitilafu katika kupakia shule');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Hitilafu ya mtandao. Tafadhali jaribu tena.');
+        } finally {
+            isLoading = false;
+        }
+    }
+    
+    function showLoading() {
+        document.getElementById('schoolsContainer').innerHTML = `
+            <div class="row">
+                ${[...Array(6)].map(() => `
+                <div class="col-md-6 mb-3">
+                    <div class="p-3 skeleton-loader" style="height: 140px;"></div>
+                </div>
+                `).join('')}
+            </div>
+        `;
+        document.getElementById('paginationContainer').style.display = 'none';
+    }
+    
+    function renderSchools(schools) {
+        if (!schools || schools.length === 0) {
+            document.getElementById('schoolsContainer').innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-school fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Hakuna shule zinazopatikana katika wilaya hii</p>
+                </div>
+            `;
+            document.getElementById('paginationContainer').style.display = 'none';
+            return;
+        }
+        
+        let html = '<div class="row">';
+        schools.forEach(school => {
+            const isSelected = selectedSchoolId === school.id;
+            let progressBarClass = '';
+            let progressColor = '';
+            
+            if (school.occupancy_percentage > 80) {
+                progressBarClass = 'progress-bar-danger';
+                progressColor = 'var(--danger)';
+            } else if (school.occupancy_percentage > 60) {
+                progressBarClass = 'progress-bar-warning';
+                progressColor = 'var(--warning)';
+            } else {
+                progressBarClass = '';
+                progressColor = 'var(--bold)';
+            }
+            
+            html += `
+                <div class="col-md-6 mb-3">
+                    <div class="school-card p-3 ${isSelected ? 'selected' : ''}" onclick="selectSchool(${school.id}, this)">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0 fw-bold" style="color: var(--text-dark);">${escapeHtml(school.name)}</h6>
+                            <span class="badge tz-badge-gold">${school.level}</span>
+                        </div>
+                        <p class="small mb-2" style="color: var(--text-gray);">
+                            <i class="fas fa-map-marker-alt me-1" style="color: var(--medium);"></i>
+                            ${escapeHtml(school.district)}, ${escapeHtml(school.region)}
+                        </p>
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span style="color: var(--text-gray);">Wanafunzi: ${school.current_students}/${school.capacity}</span>
+                            <span style="color: var(--bold);">Nafasi: ${school.available_spots}</span>
+                        </div>
+                        <div class="progress-tz">
+                            <div class="progress-bar ${progressBarClass}" style="width: ${school.occupancy_percentage}%; background: ${progressColor};"></div>
+                        </div>
+                        <div class="mt-2 text-end">
+                            <small style="color: var(--text-gray);">${school.occupancy_percentage}% imejaa</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        document.getElementById('schoolsContainer').innerHTML = html;
+        document.getElementById('paginationContainer').style.display = schools.length > 0 ? 'block' : 'none';
+    }
+    
+    function renderPagination(data) {
+        if (data.total_pages <= 1) {
+            document.getElementById('paginationContainer').style.display = 'none';
+            return;
+        }
+        
+        let paginationHtml = '';
+        
+        if (data.has_previous) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${data.page - 1})">← Awali</a></li>`;
+        }
+        
+        // Show page numbers
+        const startPage = Math.max(1, data.page - 2);
+        const endPage = Math.min(data.total_pages, data.page + 2);
+        
+        if (startPage > 1) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(1)">1</a></li>`;
+            if (startPage > 2) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHtml += `<li class="page-item ${i === data.page ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="goToPage(${i})">${i}</a>
+            </li>`;
+        }
+        
+        if (endPage < data.total_pages) {
+            if (endPage < data.total_pages - 1) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${data.total_pages})">${data.total_pages}</a></li>`;
+        }
+        
+        if (data.has_next) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${data.page + 1})">Ifuatayo →</a></li>`;
+        }
+        
+        document.getElementById('pagination').innerHTML = paginationHtml;
+    }
+    
+    function goToPage(page) {
+        currentPage = page;
+        loadSchools();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    function selectSchool(schoolId, element) {
+        selectedSchoolId = schoolId;
+        document.getElementById('confirmChangeBtn').disabled = false;
+        
+        // Update UI
+        document.querySelectorAll('.school-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        element.classList.add('selected');
+    }
+    
+    // Confirm change
+    document.getElementById('confirmChangeBtn')?.addEventListener('click', async function() {
+        if (!selectedSchoolId) {
+            alert('Tafadhali chagua shule unayotaka kubadili');
+            return;
+        }
+        
+        if (!confirm('Je, una uhakika unataka kubadili shule?\n\nUtapoteza maombi yako yote yaliyosubiri kwenye shule ya zamani.')) {
+            return;
+        }
+        
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Inachakata...';
+        
+        try {
+            const response = await fetch('/api/confirm-change-school/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ school_id: selectedSchoolId })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert(data.message);
+                window.location.href = '/dashboard/';
+            } else {
+                alert(data.error || 'Hitilafu imetokea');
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-check-circle me-2"></i>Thibitisha Kubadili';
+            }
+        } catch (error) {
+            alert('Hitilafu ya mtandao. Tafadhali jaribu tena.');
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-check-circle me-2"></i>Thibitisha Kubadili';
+        }
+    });
+    
+    // Helper functions
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function showError(message) {
+        document.getElementById('schoolsContainer').innerHTML = `
+            <div class="alert-danger-custom text-center p-4">
+                <i class="fas fa-exclamation-triangle me-2"></i>${message}
+            </div>
+        `;
+    }
+    
+    // Auto-load if district is pre-selected (optional)
+    document.addEventListener('DOMContentLoaded', function() {
+        const districtSelect = document.getElementById('districtSelect');
+        if (districtSelect && districtSelect.options.length > 1) {
+            // Don't auto-load, let user choose
+        }
+    });
+</script>
+{% endblock %}

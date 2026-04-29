@@ -1,0 +1,2550 @@
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib import messages
+from django.contrib.gis.geos import Point
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.contrib.gis.db.models.functions import Distance
+from datetime import datetime, timedelta
+from django.shortcuts import render, redirect, get_object_or_404
+from django.db.models import Count, Case, When, Value, BooleanField, F, Q
+from django.http import HttpResponse, JsonResponse
+from django.core.mail import send_mail
+from django.http import HttpResponseNotAllowed
+from django.urls import reverse
+from django.db.models import F
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+import csv
+import io
+import secrets
+import string
+
+from .forms import BulkAssignForm
+from .models import Assessor, School, SchoolAssessment, StudentTeacher, StudentAssessment
+
+from geopy.distance import geodesic
+from io import BytesIO
+import json
+from .forms import AssessorLoginForm
+
+from django.utils import timezone
+from django.core.files.base import ContentFile
+from .models import SchoolRequirement, StudentApplication
+from reportlab.pdfgen import canvas
+from .forms import RegionFieldInputForm
+from .models import AcademicYear, Region, RegionPin, SchoolPin
+from .models import (
+    Region, District, School, StudentTeacher, Subject,
+    SchoolSubjectCapacity, LogbookEntry, ApprovalLetter
+)
+from .forms import (
+    CustomLoginForm, StudentRegistrationForm,
+    StudentTeacherForm, LogbookForm
+)
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+# =========================
+# HELPER FUNCTIONS
+# =========================
+
+def get_or_create_student_profile(user):
+    """Hakikisha kila user ana StudentTeacher profile"""
+    try:
+        return StudentTeacher.objects.get(user=user)
+    except StudentTeacher.DoesNotExist:
+        email_username = user.email.split('@')[0] if user.email else user.username
+        return StudentTeacher.objects.create(
+            user=user,
+            full_name=email_username,
+            phone_number='Not provided'
+        )
+
+def is_assessor(user):
+    """Check if user is an assessor"""
+    return hasattr(user, 'assessor')
+
+def generate_random_password(length=12):
+    """Generate random password for new assessors"""
+    alphabet = string.ascii_letters + string.digits + "@#$%"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+# =========================
+# AUTHENTICATION VIEWS
+# =========================
+
+def register(request):
+    if request.method == 'POST':
+        form = StudentRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.email = form.cleaned_data['email']
+            user.set_password(form.cleaned_data['password1'])
+            user.save()
+
+            full_name = form.cleaned_data['full_name']
+            phone_number = form.cleaned_data['phone_number']
+            StudentTeacher.objects.create(user=user, full_name=full_name, phone_number=phone_number)
+
+            messages.success(request, 'Account created successfully. Please login.')
+            return redirect('login')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = StudentRegistrationForm()
+
+    return render(request, 'field_app/registration/register.html', {
+        'form': form,
+        'hide_navbar': True
+    })
+
+def login_view(request):
+    if request.method == 'POST':
+        form = CustomLoginForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            
+            get_or_create_student_profile(user)
+            
+            try:
+                assessor = Assessor.objects.get(user=user)
+                return redirect('assessor_dashboard')
+            except Assessor.DoesNotExist:
+                return redirect('dashboard')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = CustomLoginForm()
+    return render(request, 'field_app/registration/login.html', {'form': form})
+
+def logout_view(request):
+    logout(request)
+    messages.success(request, "You have been logged out successfully.")
+    return redirect('login')
+
+# =========================
+# ASSESSOR LOGIN VIEW
+# =========================
+
+def assessor_login(request):
+    """Login page specifically for assessors"""
+    if request.user.is_authenticated:
+        try:
+            Assessor.objects.get(user=request.user)
+            return redirect('assessor_dashboard')
+        except Assessor.DoesNotExist:
+            return redirect('dashboard')
+    
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        
+        if email and password:
+            try:
+                user = User.objects.get(email=email)
+                
+                try:
+                    assessor = Assessor.objects.get(user=user)
+                    
+                    user = authenticate(request, username=user.email, password=password)
+                    
+                    if user is not None:
+                        login(request, user)
+                        messages.success(request, f"Welcome Assessor {assessor.full_name}!")
+                        return redirect('assessor_dashboard')
+                    else:
+                        messages.error(request, "Invalid password. Please try again.")
+                        
+                except Assessor.DoesNotExist:
+                    messages.error(request, "This email is not registered as an assessor.")
+                    
+            except User.DoesNotExist:
+                messages.error(request, "No account found with this email address.")
+        else:
+            messages.error(request, "Please provide both email and password.")
+    
+    return render(request, 'field_app/assessor_login.html')
+
+# =========================
+# STUDENT DASHBOARD & APPLICATION VIEWS
+# =========================
+
+@login_required
+def dashboard(request):
+    student = get_or_create_student_profile(request.user)
+
+    try:
+        assessor = Assessor.objects.get(user=request.user)
+        return redirect('assessor_dashboard')
+    except Assessor.DoesNotExist:
+        pass
+
+    current_year = AcademicYear.objects.filter(is_active=True).first()
+
+    if current_year:
+        pinned_region_ids = RegionPin.objects.filter(
+            academic_year=current_year,
+            is_pinned=True
+        ).values_list('region_id', flat=True)
+        pinned_regions = Region.objects.filter(id__in=pinned_region_ids)
+    else:
+        pinned_regions = Region.objects.none()
+    
+    assessors = []
+    if student.selected_school:
+        school_assessments = SchoolAssessment.objects.filter(
+            school=student.selected_school
+        ).select_related('assessor')
+        
+        for assessment in school_assessments:
+            assessors.append({
+                'assessor': assessment.assessor,
+                'assignment_date': assessment.assessment_date,
+                'is_completed': assessment.is_completed
+            })
+    
+    applications = []
+    approved_applications_count = 0
+    pending_applications_count = 0
+    has_approved_applications = False
+    school_has_completed_quota = False
+    can_download_group_letter = False
+    approved_students_count = 0
+    group_letter_quota = 5
+    
+    if student:
+        applications = StudentApplication.objects.filter(student=student).select_related('subject', 'school')
+        
+        approved_applications_count = applications.filter(status='approved').count()
+        pending_applications_count = applications.filter(status='pending').count()
+        has_approved_applications = approved_applications_count > 0
+        
+        if student.selected_school:
+            school = student.selected_school
+            
+            approved_students_count = StudentApplication.objects.filter(
+                school=school,
+                status='approved'
+            ).count()
+            
+            school_has_completed_quota = approved_students_count >= group_letter_quota
+            
+            can_download_group_letter = (
+                school_has_completed_quota and 
+                has_approved_applications
+            )
+
+    logbook_entries = []
+    if student:
+        logbook_entries = LogbookEntry.objects.filter(student=student).order_by('-date')[:5]
+
+    return render(request, 'field_app/dashboard.html', {
+        'regions': pinned_regions,
+        'current_year': current_year,
+        'student': student,
+        'applications': applications,
+        'approved_applications_count': approved_applications_count,
+        'pending_applications_count': pending_applications_count,
+        'has_approved_applications': has_approved_applications,
+        'school_has_completed_quota': school_has_completed_quota,
+        'can_download_group_letter': can_download_group_letter,
+        'approved_students_count': approved_students_count,
+        'group_letter_quota': group_letter_quota,
+        'logbook_entries': logbook_entries,
+        'assessors': assessors,
+    })
+
+@login_required
+def apply_for_subject(request, subject_id, school_id):
+    subject = get_object_or_404(Subject, id=subject_id)
+    school = get_object_or_404(School, id=school_id)
+    
+    student = get_or_create_student_profile(request.user)
+    
+    existing_application = StudentApplication.objects.filter(
+        student=student,
+        subject=subject,
+        school=school
+    ).first()
+    
+    if existing_application:
+        messages.info(request, f"You have already applied for {subject.name}")
+        return redirect('select_subjects', school_id=school.id)
+    
+    try:
+        capacity = SchoolSubjectCapacity.objects.get(school=school, subject=subject)
+        if capacity.current_students >= capacity.max_students:
+            messages.error(request, f"{subject.name} is already full at {school.name}")
+            return redirect('select_subjects', school_id=school.id)
+    except SchoolSubjectCapacity.DoesNotExist:
+        messages.error(request, f"{subject.name} is not available at {school.name}")
+        return redirect('select_subjects', school_id=school.id)
+    
+    StudentApplication.objects.create(
+        student=student,
+        subject=subject,
+        school=school,
+        status='pending'
+    )
+    
+    messages.success(request, f"Application for {subject.name} submitted successfully! Waiting for approval.")
+    return redirect('dashboard')
+
+# =========================
+# SCHOOL & SUBJECT SELECTION VIEWS
+# =========================
+
+@login_required
+def select_region(request):
+    current_year = AcademicYear.objects.filter(is_active=True).first()
+
+    if current_year:
+        pinned_regions = RegionPin.objects.filter(academic_year=current_year)
+        pinned_dict = {rp.region_id: rp.is_pinned for rp in pinned_regions}
+
+        regions = Region.objects.all().order_by('name')
+        for region in regions:
+            region.is_pinned = pinned_dict.get(region.id, False)
+    else:
+        regions = Region.objects.all().order_by('name')
+        for region in regions:
+            region.is_pinned = False
+
+    return render(request, 'field_app/select_region.html', {'regions': regions})
+
+@login_required
+def select_district(request, region_id):
+    region = get_object_or_404(Region, id=region_id)
+    districts = District.objects.filter(region=region)
+    request.session['selected_region_id'] = region.id
+    return render(request, 'field_app/select_district.html', {'districts': districts, 'region': region})
+
+@login_required
+def select_school(request, district_id):
+    district = get_object_or_404(District, id=district_id)
+    current_year = AcademicYear.objects.filter(is_active=True).first()
+    
+    pinned_school_ids = []
+    pinned_schools_info = {}
+    if current_year:
+        pinned_schools = SchoolPin.objects.filter(
+            academic_year=current_year,
+            is_pinned=True
+        ).select_related('problem_details')
+        
+        for pin in pinned_schools:
+            pinned_school_ids.append(pin.school_id)
+            pinned_schools_info[pin.school_id] = {
+                'reason': pin.get_pin_reason_display() if hasattr(pin, 'get_pin_reason_display') else 'Manual',
+                'problem_type': pin.problem_details.get_problem_type_display() if pin.problem_details else 'Manual',
+                'notes': pin.notes
+            }
+
+    search_query = request.GET.get('q', '')
+    selected_level = request.GET.get('level', 'Secondary')
+    raw_schools = School.objects.filter(district=district, level=selected_level)
+
+    if search_query:
+        raw_schools = raw_schools.filter(name__icontains=search_query)
+
+    schools = []
+    for school in raw_schools:
+        school.is_pinned = school.id in pinned_school_ids
+        if school.is_pinned:
+            school.pin_info = pinned_schools_info.get(school.id, {})
+            school.pin_reason = school.pin_info.get('reason', 'Manual Pin')
+            school.problem_type = school.pin_info.get('problem_type', '')
+            school.pin_notes = school.pin_info.get('notes', 'This school is temporarily unavailable')
+        else:
+            school.pin_reason = ''
+            school.problem_type = ''
+            school.pin_notes = ''
+        
+        school.is_selectable = not school.is_pinned and (school.current_students < school.capacity)
+        
+        if school.capacity > 0:
+            occupancy = round((school.current_students / school.capacity) * 100)
+        else:
+            occupancy = 0
+        school.occupancy_percentage = occupancy
+        schools.append(school)
+
+    total_schools = len(schools)
+    pinned_schools_count = sum(1 for s in schools if s.is_pinned)
+    available_schools_count = sum(1 for s in schools if s.is_selectable)
+    full_schools_count = sum(1 for s in schools if not s.is_pinned and not s.is_selectable)
+
+    selected_school_id = request.session.get('selected_school_id')
+    selected_school = School.objects.filter(id=selected_school_id, district=district).first() if selected_school_id else None
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        school_id = request.POST.get('school_id')
+
+        if action == 'cancel':
+            if selected_school:
+                selected_school.current_students = F('current_students') - 1
+                selected_school.save()
+                request.session.pop('selected_school_id', None)
+                messages.success(request, 'You have cancelled your selected school.')
+                return redirect('select_school', district_id=district.id)
+
+        elif action == 'confirm':
+            if selected_school:
+                student = get_or_create_student_profile(request.user)
+                student.selected_school = selected_school
+                student.save()
+                
+                messages.success(request, 'School confirmed. Now select your teaching subjects.')
+                return redirect('select_subjects', school_id=selected_school.id)
+            else:
+                messages.error(request, 'No school selected to confirm.')
+
+        elif action == 'select':
+            school = get_object_or_404(School, id=school_id, district=district)
+            
+            current_year = AcademicYear.objects.filter(is_active=True).first()
+            is_pinned = False
+            pin_notes = "This school is temporarily unavailable"
+            
+            if current_year:
+                try:
+                    school_pin = SchoolPin.objects.get(school=school, academic_year=current_year)
+                    if school_pin.is_pinned:
+                        is_pinned = True
+                        pin_notes = school_pin.notes or "This school is temporarily unavailable"
+                except SchoolPin.DoesNotExist:
+                    is_pinned = False
+            
+            if is_pinned:
+                messages.error(request, f'This school is currently unavailable. Reason: {pin_notes}')
+                return redirect('select_school', district_id=district.id)
+            
+            if school.current_students >= school.capacity:
+                messages.error(request, 'This school is already full.')
+            else:
+                if selected_school:
+                    messages.error(request, 'You have already selected a school. Cancel it first.')
+                else:
+                    request.session['selected_school_id'] = school.id
+                    school.current_students = F('current_students') + 1
+                    school.save()
+                    messages.success(request, f'You selected {school.name}. Confirm or Cancel?')
+                    return redirect('select_school', district_id=district.id)
+
+    return render(request, 'field_app/select_school.html', {
+        'district': district,
+        'schools': schools,
+        'selected_school': selected_school,
+        'query': search_query,
+        'total_schools': total_schools,
+        'pinned_schools_count': pinned_schools_count,
+        'available_schools_count': available_schools_count,
+        'full_schools_count': full_schools_count,
+    })
+
+@login_required
+def select_subjects(request, school_id):
+    school = get_object_or_404(School, id=school_id)
+    subject_capacities = SchoolSubjectCapacity.objects.filter(school=school).select_related('subject')
+    
+    student = get_or_create_student_profile(request.user)
+    
+    existing_applications = StudentApplication.objects.filter(
+        student=student, 
+        school=school
+    ).select_related('subject')
+    
+    applied_subject_ids = {app.subject.id for app in existing_applications}
+
+    if request.method == 'POST':
+        subject_id = request.POST.get('subject_id')
+        action = request.POST.get('action')
+
+        if not subject_id:
+            messages.error(request, "No subject selected.")
+            return redirect('select_subjects', school_id=school.id)
+
+        try:
+            subject = Subject.objects.get(id=subject_id)
+        except Subject.DoesNotExist:
+            messages.error(request, "Subject does not exist.")
+            return redirect('select_subjects', school_id=school.id)
+
+        try:
+            capacity = SchoolSubjectCapacity.objects.get(school=school, subject=subject)
+        except SchoolSubjectCapacity.DoesNotExist:
+            messages.error(request, f"{subject.name} is not available at this school.")
+            return redirect('select_subjects', school_id=school.id)
+
+        if action == 'apply':
+            existing_application = StudentApplication.objects.filter(
+                student=student,
+                subject=subject,
+                school=school
+            ).first()
+            
+            if existing_application:
+                messages.info(request, f"You have already applied for {subject.name}")
+            else:
+                if capacity.current_students >= capacity.max_students:
+                    messages.error(request, f"{subject.name} is already full.")
+                else:
+                    StudentApplication.objects.create(
+                        student=student,
+                        subject=subject,
+                        school=school,
+                        status='pending'
+                    )
+                    
+                    messages.success(request, 
+                        f"✅ Application for {subject.name} submitted successfully! " 
+                        f"Waiting for Admin approval."
+                    )
+        
+        elif action == 'cancel_application':
+            application = StudentApplication.objects.filter(
+                student=student,
+                subject=subject,
+                school=school
+            ).first()
+            
+            if application:
+                application.delete()
+                messages.success(request, f"Application for {subject.name} cancelled.")
+            else:
+                messages.error(request, f"Cannot cancel application for {subject.name}.")
+
+        return redirect('select_subjects', school_id=school.id)
+
+    return render(request, 'field_app/select_subjects.html', {
+        'school': school,
+        'subject_capacities': subject_capacities,
+        'existing_applications': existing_applications,
+        'applied_subject_ids': applied_subject_ids,
+    })
+
+@login_required
+def get_subjects(request, school_id):
+    subject_caps = SchoolSubjectCapacity.objects.filter(school_id=school_id).select_related('subject')
+    data = [
+        {
+            'id': sc.subject.id,
+            'name': sc.subject.name,
+            'current': sc.current_students,
+            'max': sc.max_students
+        }
+        for sc in subject_caps
+    ]
+    return JsonResponse(data, safe=False)
+
+# =========================
+# LOGBOOK VIEWS
+# =========================
+
+@login_required
+def submit_logbook(request):
+    student = get_or_create_student_profile(request.user)
+    today = timezone.now().date()
+    
+    if today.weekday() >= 5:
+        messages.info(request, "Hakuna kazi ya uwanjani wikendi. Rudi tena Jumatatu.")
+        return redirect('dashboard')
+    
+    if not student.selected_school:
+        messages.error(request, "Lazima uchague shule kabla ya kujaza logbook.")
+        return redirect('select_region')
+    
+    school = student.selected_school
+    
+    logbook_entry, created = LogbookEntry.objects.get_or_create(
+        student=student,
+        date=today,
+        defaults={
+            'school': school,
+            'morning_check_in': timezone.now()
+        }
+    )
+    
+    if request.method == 'POST':
+        form = LogbookForm(request.POST, instance=logbook_entry)
+        
+        latitude = request.POST.get('latitude')
+        longitude = request.POST.get('longitude')
+        is_location_verified = request.POST.get('is_location_verified') == 'true'
+        
+        if not is_location_verified:
+            messages.error(request, 
+                "Hujaweza kujaza logbook. Lazima uthibitishe eneo lako la Dodoma kwanza."
+            )
+            return redirect('submit_logbook')
+        
+        if not latitude or not longitude:
+            messages.error(request, 
+                "Eneo halikupatikana. Tafadhali hakikisha umewasha GPS na kuruhusu eneo."
+            )
+            return redirect('submit_logbook')
+        
+        try:
+            logbook_entry.latitude = float(latitude)
+            logbook_entry.longitude = float(longitude)
+            logbook_entry.location_address = request.POST.get('location_address', '')
+            
+            lat = logbook_entry.latitude
+            lng = logbook_entry.longitude
+            
+            is_in_dodoma = (-6.5 <= lat <= -5.5) and (35.0 <= lng <= 36.0)
+            
+            if is_in_dodoma:
+                logbook_entry.is_location_verified = True
+                logbook_entry.is_at_school = True
+                messages.success(request, "✅ Eneo la Dodoma limehakikiwa! Logbook imesajiliwa.")
+            else:
+                logbook_entry.is_location_verified = False
+                logbook_entry.is_at_school = False
+                messages.warning(request, 
+                    "⚠️ Eneo lako halikuwa Dodoma. Logbook imesajiliwa lakini kwa tahadhari."
+                )
+                
+        except (ValueError, TypeError) as e:
+            messages.error(request, "Hitilafu katika usajili wa eneo.")
+            print(f"Location error: {e}")
+        
+        if form.is_valid():
+            entry = form.save(commit=False)
+            
+            if entry.afternoon_activity and not entry.afternoon_check_out:
+                entry.afternoon_check_out = timezone.now()
+            
+            entry.save()
+            
+            return redirect('logbook_history')
+        else:
+            messages.error(request, "Tafadhali kagua makosa yaliyomo.")
+    else:
+        form = LogbookForm(instance=logbook_entry)
+    
+    days_swahili = {
+        0: 'Jumatatu',
+        1: 'Jumanne', 
+        2: 'Jumatano',
+        3: 'Alhamisi',
+        4: 'Ijumaa'
+    }
+    
+    return render(request, 'field_app/logbook.html', {
+        'form': form,
+        'student': student,
+        'logbook_entry': logbook_entry,
+        'today': today,
+        'today_name': days_swahili.get(today.weekday(), 'Leo'),
+        'school': school,
+    })
+
+@login_required
+def logbook_history(request):
+    student = get_or_create_student_profile(request.user)
+    
+    week_filter = request.GET.get('week')
+    month_filter = request.GET.get('month')
+    
+    entries = LogbookEntry.objects.filter(student=student)
+    
+    if week_filter:
+        try:
+            year, week = map(int, week_filter.split('-W'))
+            start_date = datetime.strptime(f'{year}-W{week}-1', "%Y-W%W-%w").date()
+            end_date = start_date + timedelta(days=6)
+            entries = entries.filter(date__range=[start_date, end_date])
+        except ValueError:
+            messages.error(request, "Tarehe ya wiki si sahihi.")
+    
+    if month_filter:
+        try:
+            year, month = map(int, month_filter.split('-'))
+            entries = entries.filter(date__year=year, date__month=month)
+        except ValueError:
+            messages.error(request, "Tarehe ya mwezi si sahihi.")
+    
+    if not week_filter and not month_filter:
+        today = timezone.now().date()
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=4)
+        entries = entries.filter(date__range=[start_of_week, end_of_week])
+    
+    entries = entries.order_by('-date')
+    
+    return render(request, 'field_app/logbook_history.html', {
+        'entries': entries,
+        'student': student,
+    })
+
+@login_required
+def download_logbook_pdf(request, period='week'):
+    """Download logbook as PDF for specific period"""
+    student = get_or_create_student_profile(request.user)
+    
+    today = timezone.now().date()
+    start_date = end_date = today
+    
+    if period == 'today':
+        entries = LogbookEntry.objects.filter(student=student, date=today)
+        filename = f"logbook_{today}.pdf"
+        title = f"Logbook ya {today}"
+        
+    elif period == 'week':
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=4)
+        entries = LogbookEntry.objects.filter(
+            student=student, 
+            date__range=[start_of_week, end_of_week]
+        )
+        filename = f"logbook_week_{start_of_week}_to_{end_of_week}.pdf"
+        title = f"Logbook ya Wiki ya {start_of_week} mpaka {end_of_week}"
+        
+    elif period == 'month':
+        start_of_month = today.replace(day=1)
+        next_month = today.replace(day=28) + timedelta(days=4)
+        end_of_month = next_month - timedelta(days=next_month.day)
+        entries = LogbookEntry.objects.filter(
+            student=student,
+            date__range=[start_of_month, end_of_month]
+        )
+        filename = f"logbook_month_{today.year}_{today.month}.pdf"
+        title = f"Logbook ya Mwezi {today.month}/{today.year}"
+        
+    else:
+        entries = LogbookEntry.objects.filter(student=student)
+        filename = f"logbook_all_{today}.pdf"
+        title = f"Logbook Yote - {today}"
+    
+    entries = entries.order_by('date')
+    
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer)
+    
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(100, 800, title)
+    p.setFont("Helvetica", 10)
+    p.drawString(100, 780, f"Jina: {student.full_name}")
+    p.drawString(100, 765, f"Shule: {student.selected_school.name if student.selected_school else 'Haijachaguliwa'}")
+    p.drawString(400, 780, f"Tarehe ya Kuzaliwa: {today}")
+    
+    y_position = 740
+    for entry in entries:
+        if y_position < 100:
+            p.showPage()
+            y_position = 800
+            p.setFont("Helvetica-Bold", 12)
+            p.drawString(100, y_position, title + " (Endelea...)")
+            y_position = 780
+        
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(100, y_position, f"Siku: {entry.get_day_of_week_display()} - {entry.date}")
+        y_position -= 20
+        
+        p.setFont("Helvetica", 10)
+        p.drawString(120, y_position, "Shughuli za Asubuhi:")
+        y_position -= 15
+        p.setFont("Helvetica", 9)
+        morning_text = entry.morning_activity or "Hakuna data"
+        for line in morning_text.split('\n'):
+            p.drawString(140, y_position, line[:80])
+            y_position -= 12
+            if y_position < 100:
+                p.showPage()
+                y_position = 800
+        
+        y_position -= 5
+        p.setFont("Helvetica", 10)
+        p.drawString(120, y_position, "Shughuli za Mchana:")
+        y_position -= 15
+        p.setFont("Helvetica", 9)
+        afternoon_text = entry.afternoon_activity or "Hakuna data"
+        for line in afternoon_text.split('\n'):
+            p.drawString(140, y_position, line[:80])
+            y_position -= 12
+            if y_position < 100:
+                p.showPage()
+                y_position = 800
+        
+        y_position -= 5
+        p.setFont("Helvetica", 10)
+        p.drawString(120, y_position, "Changamoto:")
+        y_position -= 15
+        p.setFont("Helvetica", 9)
+        challenges_text = entry.challenges_faced or "Hakuna data"
+        for line in challenges_text.split('\n'):
+            p.drawString(140, y_position, line[:80])
+            y_position -= 12
+            if y_position < 100:
+                p.showPage()
+                y_position = 800
+        
+        y_position -= 5
+        p.setFont("Helvetica", 10)
+        p.drawString(120, y_position, "Mafunzo:")
+        y_position -= 15
+        p.setFont("Helvetica", 9)
+        lessons_text = entry.lessons_learned or "Hakuna data"
+        for line in lessons_text.split('\n'):
+            p.drawString(140, y_position, line[:80])
+            y_position -= 12
+            if y_position < 100:
+                p.showPage()
+                y_position = 800
+        
+        y_position -= 10
+        status = "Imehakikiwa" if entry.is_location_verified else "Haijahakikiwa"
+        p.drawString(120, y_position, f"Eneo: {status}")
+        y_position -= 20
+        
+        p.line(100, y_position, 500, y_position)
+        y_position -= 20
+    
+    p.showPage()
+    p.save()
+    
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+@login_required
+def logbook_download_options(request):
+    """Page for choosing download options"""
+    student = get_or_create_student_profile(request.user)
+    
+    total_entries = LogbookEntry.objects.filter(student=student).count()
+    this_week_entries = LogbookEntry.objects.filter(
+        student=student,
+        date__gte=timezone.now().date() - timedelta(days=7)
+    ).count()
+    
+    return render(request, 'field_app/logbook_download.html', {
+        'student': student,
+        'total_entries': total_entries,
+        'this_week_entries': this_week_entries,
+    })
+
+# =========================
+# ADMIN VIEWS
+# =========================
+
+def is_staff(user):
+    return user.is_staff
+
+@staff_member_required
+def admin_dashboard(request):
+    pending_applications = StudentApplication.objects.filter(status='pending').select_related('student', 'subject', 'school')
+    
+    total_applications = StudentApplication.objects.count()
+    approved_applications = StudentApplication.objects.filter(status='approved').count()
+    rejected_applications = StudentApplication.objects.filter(status='rejected').count()
+    
+    paginator = Paginator(pending_applications, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    schools = School.objects.annotate(
+        current_count=Count('studentteacher'),
+        is_full=Case(
+            When(capacity__lte=F('current_students'), then=Value(True)),
+            default=Value(False),
+            output_field=BooleanField()
+        )
+    )
+
+    total_assessors = Assessor.objects.count()
+    active_assessors = Assessor.objects.filter(is_active=True).count()
+    
+    total_school_assignments = SchoolAssessment.objects.count()
+    completed_assessments = SchoolAssessment.objects.filter(is_completed=True).count()
+    
+    recent_assignments = SchoolAssessment.objects.select_related(
+        'assessor', 'school'
+    ).order_by('-assessment_date')[:10]
+
+    context = {
+        'pending_applications': pending_applications,
+        'schools': schools,
+        'total_applications': total_applications,
+        'approved_applications': approved_applications,
+        'rejected_applications': rejected_applications,
+        'page_obj': page_obj,
+        'total_assessors': total_assessors,
+        'active_assessors': active_assessors,
+        'total_school_assignments': total_school_assignments,
+        'completed_assessments': completed_assessments,
+        'recent_assignments': recent_assignments,
+    }
+
+    return render(request, 'field_app/admin_dashboard.html', context)
+
+@staff_member_required
+def approve_application(request, application_id):
+    application = get_object_or_404(StudentApplication, id=application_id)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'approve':
+            application.status = 'approved'
+            application.approved_by = request.user
+            application.approval_date = timezone.now()
+            application.save()
+            
+            application.student.subjects.add(application.subject)
+            
+            try:
+                capacity = SchoolSubjectCapacity.objects.get(
+                    school=application.school, 
+                    subject=application.subject
+                )
+                capacity.current_students = F('current_students') + 1
+                capacity.save()
+            except SchoolSubjectCapacity.DoesNotExist:
+                SchoolSubjectCapacity.objects.create(
+                    school=application.school,
+                    subject=application.subject,
+                    current_students=1,
+                    max_students=5
+                )
+            
+            messages.success(request, f"Application for {application.subject.name} approved successfully!")
+            
+        elif action == 'reject':
+            application.status = 'rejected'
+            application.approved_by = request.user
+            application.approval_date = timezone.now()
+            application.save()
+            messages.success(request, f"Application for {application.subject.name} rejected.")
+        
+        return redirect('admin_dashboard')
+    
+    return render(request, 'field_app/approve_application.html', {'application': application})
+
+# =========================
+# DOWNLOAD LETTER VIEWS
+# =========================
+
+@login_required
+def download_individual_letter(request):
+    student = get_or_create_student_profile(request.user)
+    
+    approved_applications = StudentApplication.objects.filter(
+        student=student, 
+        status='approved'
+    )
+    
+    if not approved_applications.exists():
+        messages.error(request, "You don't have any approved applications to download a letter.")
+        return redirect('dashboard')
+
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer)
+    
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(100, 800, "INDIVIDUAL FIELD PLACEMENT APPROVAL LETTER")
+    
+    p.setFont("Helvetica", 12)
+    p.drawString(100, 770, f"Student Name: {student.full_name}")
+    p.drawString(100, 750, f"Student ID: {student.id}")
+    p.drawString(100, 730, f"Phone: {student.phone_number}")
+    p.drawString(100, 710, f"Email: {student.user.email}")
+    
+    if student.selected_school:
+        p.drawString(100, 680, f"Assigned School: {student.selected_school.name}")
+        p.drawString(100, 660, f"School District: {student.selected_school.district.name}")
+        p.drawString(100, 640, f"School Region: {student.selected_school.district.region.name}")
+    
+    p.drawString(100, 610, "Approved Teaching Subjects:")
+    y_position = 590
+    for application in approved_applications:
+        p.drawString(120, y_position, f"✓ {application.subject.name} at {application.school.name}")
+        y_position -= 20
+        if application.approval_date:
+            p.drawString(140, y_position, f"Approved on: {application.approval_date.strftime('%Y-%m-%d')}")
+            y_position -= 20
+    
+    p.drawString(100, 530, "This letter confirms that the above student has been approved")
+    p.drawString(100, 510, "for field placement teaching practice.")
+    p.drawString(100, 490, f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
+    
+    p.showPage()
+    p.save()
+    
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="individual_approval_{student.full_name}.pdf"'
+    return response
+
+@login_required
+def download_group_letter(request):
+    student = get_or_create_student_profile(request.user)
+    
+    if not student.selected_school:
+        messages.error(request, "Huna shule uliyochagua.")
+        return redirect('dashboard')
+    
+    school = student.selected_school
+    
+    group_letter_quota = 5
+    
+    approved_students_count = StudentApplication.objects.filter(
+        school=school,
+        status='approved'
+    ).count()
+    
+    student_has_approved_application = StudentApplication.objects.filter(
+        student=student,
+        school=school,
+        status='approved'
+    ).exists()
+    
+    if approved_students_count < group_letter_quota:
+        messages.error(request, 
+            f"Bado hatujafikia idadi ya wanafunzi {group_letter_quota} walioidhinishwa. " 
+            f"Kwa sasa kuna {approved_students_count}/{group_letter_quota}."
+        )
+        return redirect('dashboard')
+    
+    if not student_has_approved_application:
+        messages.error(request, 
+            "Huwezi kupata barua ya kikundi kwa sababu huna maombi yaliyoidhinishwa kwenye shule hii."
+        )
+        return redirect('dashboard')
+    
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer)
+    
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(100, 800, "BARUA YA UTHIBITISHO WA KIKUNDI")
+    p.drawString(100, 780, "Taasisi ya Ualimu Tanzania")
+    
+    p.setFont("Helvetica", 12)
+    p.drawString(100, 750, f"Jina la Shule: {school.name}")
+    p.drawString(100, 730, f"Wilaya: {school.district.name}")
+    p.drawString(100, 710, f"Mkoa: {school.district.region.name}")
+    p.drawString(100, 690, f"Idadi ya Wanafunzi Inayohitajika: {group_letter_quota}")
+    p.drawString(100, 670, f"Wanafunzi Walioidhinishwa: {approved_students_count}")
+    
+    p.drawString(100, 640, "Orodha ya Wanafunzi Walioidhinishwa:")
+    y_position = 620
+    
+    approved_applications = StudentApplication.objects.filter(
+        school=school,
+        status='approved'
+    ).select_related('student').distinct()
+    
+    for idx, application in enumerate(approved_applications, 1):
+        student_name = application.student.full_name
+        subject_name = application.subject.name
+        p.drawString(120, y_position, f"{idx}. {student_name} - {subject_name}")
+        y_position -= 20
+        if y_position < 100:
+            p.showPage()
+            p.setFont("Helvetica", 12)
+            y_position = 780
+    
+    p.drawString(100, y_position - 40, "Barua hii inathibitisha kuwa shule imefikia idadi ya wanafunzi 5")
+    p.drawString(100, y_position - 60, "wa kufanya mafunzo ya ualimu kwenye uwanja kama kikundi.")
+    p.drawString(100, y_position - 80, f"Imetolewa tarehe: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
+    
+    p.showPage()
+    p.save()
+    
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="barua_kikundi_{school.name}.pdf"'
+    
+    messages.success(request, "Barua ya kikundi imepakuliwa kikamilifu!")
+    return response
+
+def generate_approval_letter(school):
+    students = StudentTeacher.objects.filter(selected_school=school, approval_status='approved')
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="approval_{school.name}.pdf"'
+
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer)
+
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(100, 800, "FIELD PLACEMENT APPROVAL LETTER")
+    p.setFont("Helvetica", 12)
+
+    p.drawString(100, 770, f"School: {school.name}")
+    p.drawString(100, 750, f"District: {school.district.name}")
+    p.drawString(100, 730, f"Maximum Capacity: {school.capacity} students")
+
+    p.drawString(100, 700, "Approved Students:")
+    y_position = 680
+    for idx, student in enumerate(students, 1):
+        p.drawString(120, y_position, f"{idx}. {student.full_name}")
+        y_position -= 20
+
+    p.showPage()
+    p.save()
+
+    pdf = buffer.getvalue()
+    buffer.close()
+    response.write(pdf)
+
+    return response
+
+@login_required
+def download_approval_letter(request, school_id):
+    school = get_object_or_404(School, id=school_id)
+    return generate_approval_letter(school)
+
+# =========================
+# SCHOOL SELECTION CONFIRMATION
+# =========================
+
+@login_required
+def confirm_school_selection(request, district_id):
+    if request.method != 'POST':
+        return redirect('select_school', district_id=district_id)
+
+    school_id = request.POST.get('school_id')
+    if not school_id:
+        messages.error(request, "No school selected.")
+        return redirect('select_school', district_id=district_id)
+
+    district = get_object_or_404(District, id=district_id)
+    school = get_object_or_404(School, id=school_id)
+
+    school.refresh_from_db()
+    if school.current_students >= school.capacity:
+        messages.error(request, f"{school.name} is at full capacity!")
+        return redirect('select_school', district_id=district_id)
+
+    old_school_id = request.session.get('selected_school_id')
+    if old_school_id and old_school_id != school.id:
+        old_school = School.objects.filter(id=old_school_id).first()
+        if old_school:
+            old_school.current_students = F('current_students') - 1
+            old_school.save()
+
+    request.session['selected_school_id'] = school.id
+    school.current_students = F('current_students') + 1
+    school.save()
+    school.refresh_from_db()
+
+    student = get_or_create_student_profile(request.user)
+    student.selected_school = school
+    student.save()
+
+    messages.success(request, f"You have successfully selected {school.name}.")
+    return redirect('dashboard')
+
+# =========================
+# REGION PINNING VIEWS
+# =========================
+
+def region_pinning_view(request):
+    if request.method == 'POST':
+        form = RegionFieldInputForm(request.POST)
+        if form.is_valid():
+            year_name = form.cleaned_data['academic_year']
+            allowed_region_names = [
+                name.strip().lower() for name in form.cleaned_data['allowed_regions'].split(',')
+            ]
+
+            year, _ = AcademicYear.objects.get_or_create(
+                year=year_name,
+                defaults={'is_active': True}
+            )
+
+            RegionPin.objects.filter(academic_year=year).update(is_pinned=False)
+            SchoolPin.objects.filter(academic_year=year).update(is_pinned=False)
+
+            all_regions = Region.objects.all()
+            school_pins_to_update = []
+
+            for region in all_regions:
+                pinned = region.name.lower() not in allowed_region_names
+
+                region_pin, _ = RegionPin.objects.update_or_create(
+                    academic_year=year,
+                    region=region,
+                    defaults={'is_pinned': pinned}
+                )
+
+                schools = School.objects.filter(district__region=region)
+                for school in schools:
+                    sp, created = SchoolPin.objects.update_or_create(
+                        academic_year=year,
+                        school=school,
+                        defaults={'is_pinned': pinned}
+                    )
+                    school_pins_to_update.append(sp)
+
+            if school_pins_to_update:
+                SchoolPin.objects.bulk_update(school_pins_to_update, ['is_pinned'])
+
+            messages.success(request, "Region pinning updated successfully!")
+            return redirect('pinning_success')
+        else:
+            messages.error(request, "Form is not valid. Please check input.")
+    else:
+        form = RegionFieldInputForm()
+
+    return render(request, 'field_app/pin_regions_form.html', {'form': form})
+
+def pinning_success_view(request):
+    return render(request, 'field_app/pinning_success.html')
+
+# =========================
+# PROFILE VIEWS
+# =========================
+
+@login_required
+def profile_create(request):
+    student = get_or_create_student_profile(request.user)
+    
+    if request.method == 'POST':
+        form = StudentTeacherForm(request.POST, instance=student)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Profile updated successfully!')
+            return redirect('dashboard')
+    else:
+        form = StudentTeacherForm(instance=student)
+
+    return render(request, 'field_app/profile_create.html', {'form': form})
+
+# =========================
+# STUDENT LIST VIEWS (FOR ADMIN)
+# =========================
+
+@staff_member_required
+def student_list(request):
+    students = StudentTeacher.objects.all().select_related('user', 'selected_school')
+    
+    school_filter = request.GET.get('school')
+    if school_filter:
+        students = students.filter(selected_school__name__icontains=school_filter)
+    
+    status_filter = request.GET.get('status')
+    if status_filter:
+        students = students.filter(approval_status=status_filter)
+    
+    return render(request, 'field_app/student_list.html', {'students': students})
+
+@staff_member_required
+def approve_student(request, student_id):
+    student = get_object_or_404(StudentTeacher, id=student_id)
+    
+    if request.method == 'POST':
+        student.approval_status = 'approved'
+        student.approval_date = timezone.now()
+        student.save()
+        messages.success(request, f'Student {student.full_name} approved successfully!')
+        return redirect('student_list')
+    
+    return render(request, 'field_app/approve_student.html', {'student': student})
+
+# =========================
+# FILE UPLOAD VIEWS (FOR ADMIN)
+# =========================
+
+@staff_member_required
+def upload_school_data(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        uploaded_file = request.FILES['file']
+        messages.success(request, 'File uploaded successfully!')
+        return redirect('admin_dashboard')
+    
+    return render(request, 'field_app/upload.html')
+
+# =========================
+# ASSESSORS SYSTEM VIEWS
+# =========================
+
+@login_required
+def assessor_dashboard(request):
+    """Dashboard ya Assessor"""
+    try:
+        assessor = Assessor.objects.get(user=request.user)
+    except Assessor.DoesNotExist:
+        messages.error(request, "You are not registered as an assessor.")
+        return redirect('dashboard')
+    
+    school_assignments = SchoolAssessment.objects.filter(
+        assessor=assessor
+    ).select_related('school', 'school__district')
+    
+    total_schools = school_assignments.count()
+    completed_assessments = school_assignments.filter(is_completed=True).count()
+    pending_assessments = total_schools - completed_assessments
+    
+    login_info = {
+        'email': request.user.email,
+'email': request.user.email,
+        'last_login': request.user.last_login,
+        'date_joined': request.user.date_joined,
+    }
+    
+    schools_data = []
+    for assignment in school_assignments:
+        school = assignment.school
+        
+        students_count = StudentTeacher.objects.filter(
+            selected_school=school,
+            approval_status='approved'
+        ).count()
+        
+        other_assessments = SchoolAssessment.objects.filter(
+            school=school
+        ).exclude(assessor=assessor).select_related('assessor')
+        
+        other_assessors = [oa.assessor for oa in other_assessments]
+        
+        students = StudentTeacher.objects.filter(
+            selected_school=school,
+            approval_status='approved'
+        ).select_related('user')[:10]
+        
+        schools_data.append({
+            'school': school,
+            'assignment': assignment,
+            'students_count': students_count,
+            'students': students,
+            'other_assessors': other_assessors,
+        })
+    
+    return render(request, 'field_app/assessor_dashboard.html', {
+        'assessor': assessor,
+        'schools_data': schools_data,
+        'login_info': login_info,
+        'total_schools': total_schools,
+        'completed_assessments': completed_assessments,
+        'pending_assessments': pending_assessments,
+    })
+
+@login_required
+def my_assessors(request):
+    """Wanafunzi waone assessors wao"""
+    student = get_or_create_student_profile(request.user)
+    
+    if not student.selected_school:
+        messages.error(request, "You need to select a school first to see your assessors.")
+        return redirect('select_region')
+    
+    school = student.selected_school
+    
+    school_assessments = SchoolAssessment.objects.filter(school=school)
+    assessors_data = []
+    for assessment in school_assessments:
+        assessors_data.append({
+            'assessor': assessment.assessor,
+            'assessment_date': assessment.assessment_date,
+            'is_completed': assessment.is_completed,
+        })
+    
+    return render(request, 'field_app/my_assessors.html', {
+        'student': student,
+        'school': school,
+        'assessors_data': assessors_data,
+    })
+
+@staff_member_required
+def assign_assessor(request):
+    """Assign single assessor to school"""
+    if request.method == 'POST':
+        assessor_id = request.POST.get('assessor_id')
+        school_id = request.POST.get('school_id')
+        
+        assessor = get_object_or_404(Assessor, id=assessor_id)
+        school = get_object_or_404(School, id=school_id)
+        
+        existing = SchoolAssessment.objects.filter(assessor=assessor, school=school).first()
+        if existing:
+            messages.warning(request, f"Assessor {assessor.full_name} is already assigned to {school.name}")
+        else:
+            if not assessor.email:
+                messages.error(request, 
+                    f"Assessor {assessor.full_name} has no email address! "
+                    f"Cannot send credentials."
+                )
+                return redirect('assign_assessor')
+            
+            temp_password = None
+            is_new_account = False
+            
+            if not assessor.user:
+                temp_password = generate_random_password()
+                
+                username = assessor.email.split('@')[0]
+                
+                counter = 1
+                original_username = username
+                    username = f"{original_username}_{counter}"
+                
+                try:
+                    user = User.objects.create_user(
+                        username=username,
+                        email=assessor.email,
+                        password=temp_password,
+                        is_staff=False,
+                        is_superuser=False,
+                        is_active=True
+                    )
+                    assessor.user = user
+                    assessor.save()
+                    is_new_account = True
+                    
+                except Exception as e:
+                    messages.error(request, f"Failed to create user account: {str(e)}")
+                    return redirect('assign_assessor')
+            
+            school_assessment = SchoolAssessment.objects.create(
+                assessor=assessor,
+                school=school,
+                assessment_date=timezone.now().date()
+            )
+            
+            students = StudentTeacher.objects.filter(
+                selected_school=school,
+                approval_status='approved'
+            )
+            
+            student_assessments_created = 0
+            for student in students:
+                StudentAssessment.objects.create(
+                    assessor=assessor,
+                    student=student,
+                    school=school,
+                    assessment_date=timezone.now().date()
+                )
+                student_assessments_created += 1
+            
+            try:
+                login_url = request.build_absolute_uri(reverse('assessor_login'))
+                
+                subject = f'Field Placement Assessor Assignment - {school.name}'
+                
+                if is_new_account:
+                    password_info = f"""
+                    NEW ACCOUNT CREATED FOR YOU:
+                    
+                    Login Email: {assessor.email}
+                    Temporary Password: {temp_password}
+                    
+                    Please change your password immediately after first login.
+                    """
+                else:
+                    password_info = f"""
+                    USE YOUR EXISTING ACCOUNT:
+                    
+                    Login Email: {assessor.email}
+                    
+                    If you forgot your password, use 'Forgot Password' on login page.
+                    """
+                
+                message = f"""
+                FIELD PLACEMENT ASSESSOR ASSIGNMENT
+                {'=' * 50}
+                
+                Dear {assessor.full_name},
+                
+                You have been assigned as a Field Placement Assessor.
+                
+                ASSIGNMENT DETAILS:
+                • School: {school.name}
+                • District: {school.district.name} 
+                • Region: {school.district.region.name}
+                • Assignment Date: {timezone.now().strftime('%d/%m/%Y')}
+                • Number of Students: {student_assessments_created}
+                
+                YOUR LOGIN CREDENTIALS:
+                {password_info}
+                
+                LOGIN URL: {login_url}
+                
+                AFTER LOGIN, YOU CAN:
+                1. View assigned school details
+                2. See list of students assigned to you
+                3. Track student progress
+                4. Submit assessment reports
+                5. Monitor logbook entries
+                
+                IMPORTANT:
+                • Login using your email address
+                • First-time users must change password
+                • Contact administrator if you face issues
+                
+                Best regards,
+                Field Placement Coordination Unit
+                University of Dodoma
+                
+                This is an automated message. Please do not reply.
+                """
+                
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[assessor.email],
+                    fail_silently=False,
+                )
+                
+                if is_new_account:
+                    messages.success(request, 
+                        f"✅ Assessor {assessor.full_name} assigned successfully!<br>"
+                        f"• Email sent to: {assessor.email}<br>"
+                        f"• Temporary password: {temp_password}<br>"
+                        f"• Assigned to: {school.name}<br>"
+                        f"• Students: {student_assessments_created}"
+                    )
+                else:
+                    messages.success(request,
+                        f"✅ Assessor {assessor.full_name} assigned successfully!<br>"
+                        f"• Email sent to: {assessor.email}<br>"
+                        f"• Assigned to: {school.name}<br>"
+                        f"• Students: {student_assessments_created}"
+                    )
+                
+                print(f"📧 Email sent to assessor {assessor.email}")
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"❌ Email failed for {assessor.email}: {error_msg}")
+                
+                if is_new_account:
+                    messages.warning(request,
+                        f"⚠️ Assessor assigned but email failed!<br>"
+                        f"• Assessor: {assessor.full_name}<br>"
+                        f"• School: {school.name}<br>"
+                        f"• ERROR: {error_msg}<br>"
+                        f"• <strong>MANUAL CREDENTIALS:</strong><br>"
+                        f"Email: {assessor.email}<br>"
+                        f"Password: {temp_password}"
+                    )
+                else:
+                    messages.warning(request,
+                        f"⚠️ Assessor assigned but email failed!<br>"
+                        f"• Assessor: {assessor.full_name}<br>"
+                        f"• School: {school.name}<br>"
+                        f"• ERROR: {error_msg}"
+                    )
+        
+        return redirect('admin_dashboard')
+    
+    # GET REQUEST
+    assessors = Assessor.objects.filter(is_active=True).order_by('full_name')
+    schools = School.objects.all().order_by('name')
+    
+    assessors_with_email = []
+    assessors_without_email = []
+    
+    for assessor in assessors:
+        if assessor.email and '@' in assessor.email:
+            assessors_with_email.append(assessor)
+        else:
+            assessors_without_email.append(assessor)
+    
+    return render(request, 'field_app/assign_assessor.html', {
+        'assessors_with_email': assessors_with_email,
+        'assessors_without_email': assessors_without_email,
+        'schools': schools,
+    })
+
+# =========================
+# BULK ASSIGN ASSESSORS WITH PAGINATION
+# =========================
+
+@staff_member_required
+def bulk_assign_assessors(request):
+    """Bulk assign assessors to schools - FIXED VERSION"""
+    
+    print("\n" + "="*50)
+    print("DEBUG bulk_assign_assessors - Fixed version")
+    
+    # GET REQUEST: Show selection form
+    if request.method == 'GET':
+        # Get ALL assessors
+        all_assessors = Assessor.objects.all().order_by('full_name')
+        
+        # DEBUG: Print data to console
+        print(f"DEBUG: Found {all_assessors.count()} assessors in database")
+        for a in all_assessors[:10]:
+            print(f"  - {a.id}: {a.full_name} (email: {a.email})")
+        
+        # 🔥 CRITICAL FIX: Handle search with pagination
+        search_query = request.GET.get('q', '')
+        page_number = request.GET.get('page', 1)
+        schools_per_page = 50
+        
+        # Base queryset
+        schools_qs = School.objects.all().order_by('name')
+        
+        # Apply search filter
+        if search_query:
+            schools_qs = schools_qs.filter(
+                Q(name__icontains=search_query) |
+                Q(district__name__icontains=search_query) |
+                Q(district__region__name__icontains=search_query)
+            )
+        
+        print(f"DEBUG: Schools after search '{search_query}': {schools_qs.count()}")
+        
+        # Create paginator
+        paginator = Paginator(schools_qs, schools_per_page)
+        
+        try:
+            page_obj = paginator.page(page_number)
+        except PageNotAnInteger:
+            page_obj = paginator.page(1)
+        except EmptyPage:
+            page_obj = paginator.page(paginator.num_pages)
+        
+        # Get schools for current page
+        schools_on_page = list(page_obj.object_list)
+        
+        # 🔥 IMPORTANT: Get ALL schools for the current search (not just page)
+        # This is for the form submission to work correctly
+        all_filtered_schools = list(schools_qs.values_list('id', flat=True))
+        
+        # Get total counts
+        total_schools = School.objects.count()
+        total_assessors = Assessor.objects.count()
+        total_approved_students = StudentTeacher.objects.filter(
+            approval_status='approved'
+        ).count()
+        
+        # Get assessors without emails
+        assessors_no_email = list(
+            Assessor.objects.filter(
+                Q(email__isnull=True) | Q(email='')
+            ).values('id', 'full_name', 'email')
+        )
+        
+        # Get assignment counts for assessors
+        assessor_ids = [assessor.id for assessor in all_assessors]
+        assessor_school_counts = SchoolAssessment.objects.filter(
+            assessor_id__in=assessor_ids
+        ).values('assessor_id').annotate(schools_assigned=Count('school_id'))
+        
+        assessor_counts_dict = {item['assessor_id']: item['schools_assigned'] for item in assessor_school_counts}
+        
+        for assessor in all_assessors:
+            assessor.schools_assigned = assessor_counts_dict.get(assessor.id, 0)
+        
+        # Get assignment counts for schools on current page
+        school_ids_on_page = [school.id for school in schools_on_page]
+        assignment_counts = SchoolAssessment.objects.filter(
+            school_id__in=school_ids_on_page
+        ).values('school_id').annotate(assessors_count=Count('assessor_id'))
+        
+        assignment_dict = {item['school_id']: item['assessors_count'] for item in assignment_counts}
+        
+        for school in schools_on_page:
+            school.assessors_count = assignment_dict.get(school.id, 0)
+        
+        # Get student counts per school
+        student_counts = StudentTeacher.objects.filter(
+            selected_school_id__in=school_ids_on_page,
+            approval_status='approved'
+        ).values('selected_school_id').annotate(student_count=Count('id'))
+        
+        student_count_dict = {item['selected_school_id']: item['student_count'] for item in student_counts}
+        
+        for school in schools_on_page:
+            school.student_count = student_count_dict.get(school.id, 0)
+        
+        # Default date
+        default_date = (timezone.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        print(f"DEBUG: All filtered schools IDs: {all_filtered_schools[:10]}...")
+        print(f"DEBUG: Schools on page: {len(schools_on_page)}")
+        print("="*50 + "\n")
+        
+        return render(request, 'field_app/bulk_assign_assessors.html', {
+            'all_assessors': all_assessors,
+            'schools': schools_on_page,
+            'page_obj': page_obj,
+            'assessors_no_email': assessors_no_email,
+            'total_assessors': total_assessors,
+            'total_schools': total_schools,
+            'available_assessors': Assessor.objects.filter(
+                Q(email__isnull=False) & ~Q(email='')
+            ).count(),
+            'default_date': default_date,
+            'total_approved_students': total_approved_students,
+            'search_query': search_query,
+            'all_filtered_schools': all_filtered_schools,
+        })
+    
+    # 🔥 POST REQUEST: Process the bulk assignment
+    elif request.method == 'POST':
+        print("\n" + "="*50)
+        print("PROCESSING BULK ASSIGNMENT (POST REQUEST)")
+        
+        # Get form data
+        assessor_ids = request.POST.getlist('assessors')
+        selected_schools_from_checkboxes = request.POST.getlist('schools[]')
+        selected_schools_from_hidden = request.POST.get('selected_schools', '')
+        
+        # Combine both sources
+        school_ids = []
+        if selected_schools_from_checkboxes:
+            school_ids.extend(selected_schools_from_checkboxes)
+        
+        if selected_schools_from_hidden:
+            hidden_ids = [sid.strip() for sid in selected_schools_from_hidden.split(',') if sid.strip()]
+            school_ids.extend(hidden_ids)
+        
+        # Remove duplicates
+        school_ids = list(set(school_ids))
+        
+        assessment_date_str = request.POST.get('assessment_date', '')
+        
+        print(f"Selected assessors: {len(assessor_ids)}")
+        print(f"Selected schools: {len(school_ids)}")
+        print(f"Assessment date: {assessment_date_str}")
+        
+        if not assessor_ids:
+            messages.error(request, "Please select at least one assessor.")
+            return redirect('bulk_assign_assessors')
+        
+        if not school_ids:
+            messages.error(request, "Please select at least one school.")
+            return redirect('bulk_assign_assessors')
+        
+        # Check if selection is too large
+        if len(school_ids) > 200 or len(assessor_ids) > 50:
+            messages.warning(request, 
+                "Selection too large. Please select 200 schools or fewer, and 50 assessors or fewer."
+            )
+            return redirect('bulk_assign_assessors')
+        
+        # Parse date
+        try:
+            assessment_date = datetime.strptime(assessment_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            assessment_date = timezone.now().date()
+            print(f"Using default date: {assessment_date}")
+        
+        # Process assignment
+        try:
+            results = process_bulk_assignment_simple(assessor_ids, school_ids, assessment_date, request)
+            
+            # Store results in session
+            request.session['bulk_assignment_results'] = results
+            
+            print(f"✅ Bulk assignment completed: {results['assignments_created']} assignments created")
+            
+            # Redirect to results page
+            return redirect('bulk_assignment_results')
+            
+        except Exception as e:
+            messages.error(request, f"Error processing assignment: {str(e)}")
+            print(f"❌ ERROR: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return redirect('bulk_assign_assessors')
+    
+    # Handle other HTTP methods
+    else:
+        return HttpResponseNotAllowed(['GET', 'POST'])
+
+def process_bulk_assignment_simple(assessor_ids, school_ids, assessment_date, request):
+    """Simple version without background thread - WITH ACADEMIC YEAR LOGIC"""
+    print(f"\nProcessing bulk assignment for {len(assessor_ids)} assessors and {len(school_ids)} schools")
+    
+    # Get current academic year
+    current_year = AcademicYear.objects.filter(is_active=True).first()
+    if not current_year:
+        messages.error(request, "No active academic year found!")
+        return redirect('bulk_assign_assessors')
+    
+    # Get all data
+    assessors = Assessor.objects.filter(id__in=assessor_ids).select_related('user')
+    schools = School.objects.filter(id__in=school_ids)
+    
+    # Get approved students for all schools
+    approved_students = StudentTeacher.objects.filter(
+        selected_school_id__in=school_ids,
+        approval_status='approved'
+    ).select_related('selected_school')
+    
+    # Organize students by school
+    students_by_school = {}
+    for student in approved_students:
+        if student.selected_school_id not in students_by_school:
+            students_by_school[student.selected_school_id] = []
+        students_by_school[student.selected_school_id].append(student)
+    
+    # Process assignments
+    assignments_created = 0
+    email_results = []
+    
+    print(f"Starting assignment processing...")
+    print(f"Current Academic Year: {current_year.year}")
+    
+    for assessor in assessors:
+        print(f"\n{'='*50}")
+        print(f"Processing assessor: {assessor.full_name}")
+        print(f"Email: {assessor.email}")
+        
+        # 🔥 CRITICAL: Check academic year
+        needs_new_account = False
+        if assessor.current_academic_year != current_year:  # ✅ HAPA - current_academic_year ndiyo sahihi
+            print(f"  ⚡ New academic year detected!")
+            print(f"  ⚡ New academic year detected!")
+            print(f"  Old year: {assessor.current_academic_year.year if assessor.current_academic_year else 'None'}")
+            print(f"  New year: {current_year.year}")
+            needs_new_account = True
+            
+            # Update assessor's academic year
+            assessor.current_academic_year = current_year
+            assessor.save()
+        
+        # Check if user account exists
+        has_existing_account = bool(assessor.user)
+        print(f"  Has existing account: {has_existing_account}")
+        
+        # 🔥 CRITICAL: Check if email exists and is valid
+        if not assessor.email or '@' not in assessor.email:
+            email_results.append({
+                'assessor': assessor.full_name,
+                'status': '❌ Skipped - Invalid email address',
+                'email': assessor.email or 'No email',
+                'schools': [],
+                'is_new': False,
+                'temp_password': 'N/A - No valid email',
+                'academic_year': current_year.year
+            })
+            print(f"  ❌ Skipped - Invalid email: {assessor.email}")
+            continue
+        
+        # 🔥 LOGIC: Create user account only when needed
+        temp_password = None
+        is_new_account = False
+        
+        if needs_new_account or not has_existing_account:
+            # Generate random password for NEW academic year or NEW assessor
+            temp_password = generate_random_password()
+            print(f"  🔑 Generated password: {temp_password}")
+            
+            # Create username from email
+            username = assessor.email.split('@')[0]
+            
+            # Ensure unique username
+            counter = 1
+            
+            # If assessor has existing user, update it for new year
+            if has_existing_account and needs_new_account:
+                print(f"  🔄 Updating existing user for new academic year")
+                try:
+                    # Reset password for new academic year
+                    assessor.user.set_password(temp_password)
+                    assessor.user.save()
+                    is_new_account = True  # Treat as new account for credentials
+                    print(f"  ✅ Password reset for new academic year")
+                    
+                except Exception as e:
+                    email_results.append({
+                        'assessor': assessor.full_name,
+                        'status': f'❌ Password reset failed: {str(e)[:50]}',
+                        'email': assessor.email,
+                        'schools': [],
+                        'is_new': False,
+                        'temp_password': 'N/A - Reset failed',
+                        'academic_year': current_year.year
+                    })
+                    print(f"  ❌ Password reset failed: {str(e)}")
+                    continue
+                    
+            elif not has_existing_account:
+                # Create brand new user account
+                try:
+                    user = User.objects.create_user(
+                        username=username,
+                        email=assessor.email,
+                        password=temp_password,
+                        is_staff=False,
+                        is_active=True
+                    )
+                    assessor.user = user
+                    assessor.save()
+                    is_new_account = True
+                    print(f"  ✅ Created brand new user account")
+                    print(f"  📧 Email: {assessor.email}")
+                    print(f"  🔑 Password: {temp_password}")
+                    
+                except Exception as e:
+                    email_results.append({
+                        'assessor': assessor.full_name,
+                        'status': f'❌ User creation failed: {str(e)[:50]}',
+                        'email': assessor.email,
+                        'schools': [],
+                        'is_new': False,
+                        'temp_password': 'N/A - Creation failed',
+                        'academic_year': current_year.year
+                    })
+                    print(f"  ❌ User creation failed: {str(e)}")
+                    continue
+        else:
+            print(f"  ℹ️ Existing account for current year - no new credentials")
+        
+        # Assign to schools
+        schools_assigned = []
+        student_count_total = 0
+        for school in schools:
+            # Check if assignment already exists for THIS academic year
+            existing = SchoolAssessment.objects.filter(
+                assessor=assessor,
+                school=school,
+                academic_year=current_year
+            ).first()
+            
+            if not existing:
+                # Create school assessment WITH academic year
+                SchoolAssessment.objects.create(
+                    assessor=assessor,
+                    school=school,
+                    assessment_date=assessment_date,
+                    academic_year=current_year
+                )
+                
+                # Create student assessments
+                students = students_by_school.get(school.id, [])
+                student_assessments = []
+                for student in students:
+                    student_assessments.append(
+                        StudentAssessment(
+                            assessor=assessor,
+                            student=student,
+                            school=school,
+                            assessment_date=assessment_date,
+                            academic_year=current_year
+                        )
+                    )
+                
+                if student_assessments:
+                    StudentAssessment.objects.bulk_create(student_assessments)
+                
+                assignments_created += len(student_assessments)
+                student_count_total += len(student_assessments)
+                schools_assigned.append({
+                    'name': school.name,
+                    'students': len(student_assessments)
+                })
+                print(f"  ✅ Assigned to {school.name} ({len(student_assessments)} students)")
+            else:
+                print(f"  ℹ️ Already assigned to {school.name} for this academic year")
+        
+        # 🔥 CRITICAL: Send email with appropriate credentials
+        if schools_assigned:
+            try:
+                login_url = request.build_absolute_uri(reverse('assessor_login'))
+                
+                # Prepare email message based on account status
+                subject = f'Field Placement Assessor Assignment - {current_year.year}'
+                
+                # Email body - DIFFERENT FOR NEW VS EXISTING ASSESSORS
+                message_lines = [
+                    f"Dear {assessor.full_name},",
+                    "",
+                    f"FIELD PLACEMENT ASSESSOR ASSIGNMENT - ACADEMIC YEAR {current_year.year}",
+                    "="*60,
+                    "",
+                    f"Academic Year: {current_year.year}",
+                    "",
+                    "YOUR LOGIN INFORMATION:",
+                    f"• Login URL: {login_url}",
+                    f"• Email/Username: {assessor.email}",
+                ]
+                
+                # 🔥 SEND CREDENTIALS ONLY FOR:
+                # 1. New assessor (first time ever)
+                # 2. New academic year (password reset)
+                if is_new_account and temp_password:
+                    message_lines.append(f"• Password: {temp_password}")
+                    message_lines.append("")
+                    message_lines.append("IMPORTANT: This is your password for this academic year.")
+                    if needs_new_account and has_existing_account:
+                        message_lines.append("Your previous password has been reset for the new academic year.")
+                else:
+                    message_lines.append("• Password: Use your existing password")
+                
+                message_lines.extend([
+                    "",
+                    "YOUR ASSIGNMENTS FOR THIS ACADEMIC YEAR:",
+                    "="*50,
+                    f"• Total Schools Assigned: {len(schools_assigned)}",
+                    f"• Total Students: {student_count_total}",
+                    f"• Assessment Date: {assessment_date.strftime('%d/%m/%Y')}",
+                    "",
+                    "SCHOOLS ASSIGNED:",
+                    "-"*30,
+                ])
+                
+                # Add schools assigned
+                for i, school_info in enumerate(schools_assigned, 1):
+                    message_lines.append(f"{i}. {school_info['name']} - {school_info['students']} students")
+                
+                message_lines.extend([
+                    "",
+                    "INSTRUCTIONS:",
+                    "="*30,
+                    "1. Go to the login URL above",
+                    "2. Use your email as username",
+                    "3. Enter your password",
+                    "4. View your assigned schools and students",
+                    "",
+                    "NOTE FOR RETURNING ASSESSORS:",
+                    "-"*30,
+                    "If you were an assessor last year, your password may have been reset.",
+                    "Check your email for the new password if this is a new academic year.",
+                    "",
+                    "For technical issues, contact the system administrator.",
+                    "",
+                    "Best regards,",
+                    "Field Placement Coordination System",
+                    "University of Dodoma",
+                    "",
+                    "---",
+                    "This is an automated message. Please do not reply."
+                ])
+                
+                # Convert list to string
+                email_message = '\n'.join(message_lines)
+                
+                # Send email
+                print(f"  📧 Sending email to {assessor.email}...")
+                print(f"  🔐 Is new account: {is_new_account}")
+                print(f"  🔐 New academic year: {needs_new_account}")
+                print(f"  🔐 Password included: {'YES' if (is_new_account and temp_password) else 'NO'}")
+                
+                send_mail(
+                    subject=subject,
+                    message=email_message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[assessor.email],
+                    fail_silently=False,
+                )
+                
+                # Store result
+                result_data = {
+                    'assessor': assessor.full_name,
+                    'email': assessor.email,
+                    'status': '✅ Email sent successfully',
+                    'is_new': is_new_account,
+                    'is_new_year': needs_new_account,
+                    'schools': [s['name'] for s in schools_assigned],
+                    'schools_count': len(schools_assigned),
+                    'login_url': login_url,
+                    'student_count': student_count_total,
+                    'temp_password': temp_password if (is_new_account and temp_password) else 'Use existing password',
+                    'academic_year': current_year.year,
+                    'had_existing_account': has_existing_account,
+                }
+                
+                email_results.append(result_data)
+                
+                print(f"  ✅ Email sent to {assessor.email}")
+                if is_new_account and temp_password:
+                    print(f"  🔑 Password included in email: {temp_password}")
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"  ❌ Email failed: {error_msg}")
+                
+                # Still show success for assignment but note email failure
+                email_results.append({
+                    'assessor': assessor.full_name,
+                    'email': assessor.email,
+                    'status': f'⚠️ Assigned but email failed',
+                    'is_new': is_new_account,
+                    'is_new_year': needs_new_account,
+                    'schools': [s['name'] for s in schools_assigned],
+                    'schools_count': len(schools_assigned),
+                    'temp_password': temp_password if (is_new_account and temp_password) else 'Use existing password',
+                    'login_url': login_url,
+                    'error': error_msg,
+                    'student_count': student_count_total,
+                    'academic_year': current_year.year
+                })
+                
+                if is_new_account and temp_password:
+                    print(f"  🔑 Password (NEED TO MANUALLY SEND): {temp_password}")
+        else:
+            email_results.append({
+                'assessor': assessor.full_name,
+                'status': 'ℹ️ No new schools assigned for this academic year',
+                'email': assessor.email,
+                'schools': [],
+                'is_new': is_new_account,
+                'is_new_year': needs_new_account,
+                'temp_password': temp_password if (is_new_account and temp_password) else 'Use existing password',
+                'academic_year': current_year.year
+            })
+    
+    print(f"\n✅ Bulk assignment completed: {assignments_created} assignments created")
+    print(f"📧 Email summary:")
+    print(f"   - Sent successfully: {len([r for r in email_results if '✅' in r['status']])}")
+    print(f"   - Failed: {len([r for r in email_results if '❌' in r['status']])}")
+    print(f"   - New accounts created: {len([r for r in email_results if r.get('is_new')])}")
+    print(f"   - New academic year resets: {len([r for r in email_results if r.get('is_new_year')])}")
+    print("="*50)
+    
+    return {
+        'assignments_created': assignments_created,
+        'total_assessors': len(assessor_ids),
+        'total_schools': len(school_ids),
+        'email_results': email_results,
+        'date': assessment_date.strftime('%Y-%m-%d'),
+        'timestamp': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'academic_year': current_year.year,
+        'sent_count': len([r for r in email_results if '✅' in r['status']]),
+        'failed_count': len([r for r in email_results if '❌' in r['status']]),
+        'new_accounts_count': len([r for r in email_results if r.get('is_new')]),
+        'new_year_resets': len([r for r in email_results if r.get('is_new_year')]),
+    }
+@staff_member_required
+@csrf_exempt
+def ajax_search_schools(request):
+    """AJAX endpoint for searching ALL schools - UPDATED WITH SCHOOL LEVEL"""
+    search_query = request.GET.get('q', '').strip()
+    
+    if not search_query or len(search_query) < 2:
+        return JsonResponse({'results': [], 'count': 0, 'error': 'Search term too short'})
+    
+    # Search in all schools
+    schools = School.objects.filter(
+        Q(name__icontains=search_query) |
+        Q(district__name__icontains=search_query) |
+        Q(district__region__name__icontains=search_query)
+    ).select_related('district', 'district__region')[:100]
+    
+    results = []
+    for school in schools:
+        student_count = StudentTeacher.objects.filter(
+            selected_school=school,
+            approval_status='approved'
+        ).count()
+        
+        assessor_count = SchoolAssessment.objects.filter(school=school).count()
+        
+        results.append({
+            'id': school.id,
+            'name': school.name,
+            'district': school.district.name,
+            'region': school.district.region.name,
+            'level': school.level,
+            'students': student_count,
+            'assessors': assessor_count,
+            'capacity': school.capacity,
+            'current_students': school.current_students,
+        })
+    
+    return JsonResponse({
+        'results': results,
+        'count': len(results),
+        'search_term': search_query
+    })
+
+@staff_member_required
+def bulk_assignment_results(request):
+    """Show results of bulk assignment with credentials"""
+    results = request.session.get('bulk_assignment_results')
+    
+    if not results:
+        from django.core.cache import cache
+        for key in list(cache._cache.keys()):
+            if 'bulk_assignment_results' in key:
+                results = cache.get(key)
+                break
+        
+        if not results:
+            messages.info(request, "No assignment results found.")
+            return redirect('admin_dashboard')
+    
+    # Clear session after showing results
+    if 'bulk_assignment_results' in request.session:
+        del request.session['bulk_assignment_results']
+    
+    return render(request, 'field_app/bulk_assignment_results.html', {
+        'results': results
+    })
+
+@staff_member_required
+def assessor_list(request):
+    """List all assessors with their credentials"""
+    assessors = Assessor.objects.filter(is_active=True).select_related('user')
+    
+    for assessor in assessors:
+        assessor.assigned_schools = SchoolAssessment.objects.filter(
+            assessor=assessor
+        ).select_related('school')
+        
+        assessor.schools_count = assessor.assigned_schools.count()
+        
+        if assessor.user:
+            assessor.has_account = True
+            assessor.login_email = assessor.user.email
+            assessor.password_info = "Use existing password"
+        else:
+            assessor.has_account = False
+            assessor.login_email = assessor.email or "No email"
+            assessor.password_info = "No account created yet"
+    
+    return render(request, 'field_app/assessor_list.html', {
+        'assessors': assessors
+    })
+
+@staff_member_required
+def resend_credentials(request):
+    """Resend credentials to assessors - UPDATED: Only for new assessors without accounts"""
+    if request.method == 'POST':
+        assessor_ids = request.POST.getlist('assessor_ids')
+        assessors = Assessor.objects.filter(id__in=assessor_ids, is_active=True)
+        
+        results = []
+        for assessor in assessors:
+            if not assessor.user:
+                try:
+                    temp_password = generate_random_password()
+                    
+                    username = assessor.email.split('@')[0]
+                    counter = 1
+                    
+                    user = User.objects.create_user(
+                        username=username,
+                        email=assessor.email,
+                        password=temp_password,
+                        is_staff=False,
+                        is_active=True
+                    )
+                    assessor.user = user
+                    assessor.save()
+                    
+                    login_url = request.build_absolute_uri(reverse('assessor_login'))
+                    
+                    send_mail(
+                        'Field App - Your New Account Credentials',
+                        f'''
+                        Dear {assessor.full_name},
+                        
+                        A new account has been created for you as a Field Placement Assessor.
+                        
+                        Your login credentials:
+                        • Login URL: {login_url}
+                        • Email: {assessor.email}
+                        • Password: {temp_password}
+                        
+                        Please change your password after first login.
+                        
+                        Regards,
+                        Field App System
+                        ''',
+                        settings.DEFAULT_FROM_EMAIL,
+                        [assessor.email],
+                        fail_silently=False,
+                    )
+                    results.append(f"✅ New account created and credentials sent to {assessor.full_name}")
+                    
+                except Exception as e:
+                    results.append(f"❌ Failed to create account for {assessor.full_name}: {str(e)}")
+            else:
+                results.append(f"ℹ️ {assessor.full_name} already has an account. No email sent.")
+        
+        if results:
+            messages.success(request, f"Processed {len(results)} assessors.")
+        else:
+            messages.warning(request, "No action was taken.")
+        
+        return redirect('assessor_list')
+    
+    # GET request - show form
+    assessors_without_accounts = Assessor.objects.filter(
+        is_active=True, 
+        user__isnull=True,
+        email__isnull=False
+    ).exclude(email='')
+    
+    return render(request, 'field_app/resend_credentials.html', {
+        'assessors': assessors_without_accounts
+    })
+
+@staff_member_required
+@csrf_exempt
+def assessor_details_api(request, assessor_id):
+    """API endpoint for assessor details"""
+    if request.method == 'GET':
+        assessor = get_object_or_404(Assessor, id=assessor_id)
+        
+        school_assignments = SchoolAssessment.objects.filter(assessor=assessor)
+        schools_data = []
+        for assignment in school_assignments:
+            schools_data.append({
+                'name': assignment.school.name,
+                'district': assignment.school.district.name,
+                'level': assignment.school.level,
+                'assessment_date': assignment.assessment_date.strftime('%Y-%m-%d'),
+            })
+        
+        data = {
+            'id': assessor.id,
+            'full_name': assessor.full_name,
+            'email': assessor.email,
+            'phone_number': assessor.phone_number,
+            'is_active': assessor.is_active,
+            'has_account': bool(assessor.user),
+            'schools_count': len(schools_data),
+            'schools': schools_data,
+        }
+        
+        return JsonResponse(data)
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+@staff_member_required
+@csrf_exempt
+def send_test_email_api(request):
+    """API endpoint for sending test email"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            
+            if not email:
+                return JsonResponse({'success': False, 'message': 'Email is required'})
+            
+            send_mail(
+                subject='Field App - Test Email',
+                message='This is a test email from Field App.',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            
+            return JsonResponse({'success': True, 'message': 'Test email sent successfully'})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+@staff_member_required
+@csrf_exempt
+def resend_assessor_credentials_api(request, assessor_id):
+    """API endpoint for resending credentials to single assessor"""
+    if request.method == 'POST':
+        try:
+            assessor = get_object_or_404(Assessor, id=assessor_id)
+            
+            if not assessor.email:
+                return JsonResponse({'success': False, 'message': 'Assessor has no email'})
+            
+            if not assessor.user:
+                return JsonResponse({'success': False, 'message': 'Assessor has no user account'})
+            
+            login_url = request.build_absolute_uri(reverse('assessor_login'))
+            
+            send_mail(
+                subject='Field App - Your Login Credentials',
+                message=f'''
+                Dear {assessor.full_name},
+                
+                Your login credentials for Field App:
+                
+                Email: {assessor.email}
+                Login URL: {login_url}
+                
+                Use your existing password to login.
+                
+                Regards,
+                Field App System
+                ''',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[assessor.email],
+                fail_silently=False,
+            )
+            
+            return JsonResponse({'success': True, 'message': 'Credentials sent successfully'})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+# =========================
+# ASSESSOR STUDENT ASSESSMENT VIEW
+# =========================
+
+@login_required
+def assessor_student_detail(request, school_id):
+    """Assessor aone details za wanafunzi wa shule maalum"""
+    try:
+        assessor = Assessor.objects.get(user=request.user)
+    except Assessor.DoesNotExist:
+        messages.error(request, "You are not registered as an assessor.")
+        return redirect('dashboard')
+    
+    school = get_object_or_404(School, id=school_id)
+    
+    school_assignment = SchoolAssessment.objects.filter(
+        assessor=assessor,
+        school=school
+    ).first()
+    
+    if not school_assignment:
+        messages.error(request, "You are not assigned to this school.")
+        return redirect('assessor_dashboard')
+    
+    students = StudentTeacher.objects.filter(
+        selected_school=school,
+        approval_status='approved'
+    ).select_related('user')
+    
+    student_assessments = StudentAssessment.objects.filter(
+        assessor=assessor,
+        school=school
+    ).select_related('student')
+    
+    other_assessors_assessments = SchoolAssessment.objects.filter(
+        school=school
+    ).exclude(assessor=assessor).select_related('assessor')
+    
+    other_assessors = [oa.assessor for oa in other_assessors_assessments]
+    
+    return render(request, 'field_app/assessor_student_detail.html', {
+        'assessor': assessor,
+        'school': school,
+        'students': students,
+        'student_assessments': student_assessments,
+        'school_assignment': school_assignment,
+        'other_assessors': other_assessors,
+    })
+
+@login_required
+def assessor_student_assessment(request, student_id):
+    """Assessor assess specific student"""
+    try:
+        assessor = Assessor.objects.get(user=request.user)
+    except Assessor.DoesNotExist:
+        messages.error(request, "You are not registered as an assessor.")
+        return redirect('dashboard')
+    
+    student = get_object_or_404(StudentTeacher, id=student_id)
+    
+    school_assignment = SchoolAssessment.objects.filter(
+        assessor=assessor,
+        school=student.selected_school
+    ).first()
+    
+    if not school_assignment:
+        messages.error(request, "You are not assigned to assess this student.")
+        return redirect('assessor_dashboard')
+    
+    student_assessment, created = StudentAssessment.objects.get_or_create(
+        assessor=assessor,
+        student=student,
+        school=student.selected_school,
+        defaults={
+            'assessment_date': timezone.now().date()
+        }
+    )
+    
+    if request.method == 'POST':
+        student_assessment.attendance_score = request.POST.get('attendance_score')
+        student_assessment.participation_score = request.POST.get('participation_score')
+        student_assessment.teaching_skills_score = request.POST.get('teaching_skills_score')
+        student_assessment.lesson_planning_score = request.POST.get('lesson_planning_score')
+        student_assessment.classroom_management_score = request.POST.get('classroom_management_score')
+        student_assessment.overall_score = request.POST.get('overall_score')
+        student_assessment.comments = request.POST.get('comments')
+        student_assessment.is_completed = True
+        student_assessment.completed_date = timezone.now()
+        student_assessment.save()
+        
+        messages.success(request, f"Assessment for {student.full_name} submitted successfully!")
+        return redirect('assessor_student_detail', school_id=student.selected_school.id)
+    
+    logbook_entries = LogbookEntry.objects.filter(
+        student=student
+    ).order_by('-date')[:20]
+    
+    approved_subjects = student.subjects.all()
+    
+    return render(request, 'field_app/assessor_student_assessment.html', {
+        'assessor': assessor,
+        'student': student,
+        'student_assessment': student_assessment,
+        'logbook_entries': logbook_entries,
+        'approved_subjects': approved_subjects,
+        'school_assignment': school_assignment,
+    })
+@staff_member_required
+def reset_assessors_for_new_year(request):
+    """Reset all assessors for new academic year - Manual trigger"""
+    if request.method == 'POST':
+        current_year = AcademicYear.objects.filter(is_active=True).first()
+        if not current_year:
+            messages.error(request, "No active academic year found!")
+            return redirect('admin_dashboard')
+        
+        # Get previous year
+        previous_year = AcademicYear.objects.filter(
+            is_active=False
+        ).order_by('-year').first()
+        
+        # Count assessors from previous year
+        if previous_year:
+            previous_assessors = Assessor.objects.filter(academic_year=previous_year).count()
+        else:
+            previous_assessors = 0
+        
+        # Get assessors that need new credentials
+        assessors = Assessor.objects.filter(is_active=True)
+        
+        results = []
+        for assessor in assessors:
+            if assessor.user and assessor.email and '@' in assessor.email:
+                # Generate new password for new year
+                temp_password = generate_random_password()
+                
+                # Reset password
+                assessor.user.set_password(temp_password)
+                assessor.user.save()
+                
+                # Update academic year
+                assessor.current_academic_year = current_year
+                assessor.save()
+                
+                results.append({
+                    'name': assessor.full_name,
+                    'email': assessor.email,
+                    'password': temp_password,
+                    'status': '✅ Password reset for new year'
+                })
+        
+        request.session['new_year_credentials'] = results
+        
+        messages.success(request, 
+            f"✅ Reset {len(results)} assessors for new academic year {current_year.year}"
+        )
+        return redirect('new_year_credentials')
+    
+    return render(request, 'field_app/reset_new_year.html')
+
+@staff_member_required
+def new_year_credentials(request):
+    """Show credentials after new year reset"""
+    results = request.session.get('new_year_credentials', [])
+    
+    if not results:
+        messages.info(request, "No credentials found. Please reset assessors first.")
+        return redirect('reset_assessors_for_new_year')
+    
+    return render(request, 'field_app/new_year_credentials.html', {
+        'results': results,
+        'total': len(results)
+    })    
