@@ -3901,4 +3901,7 @@ urlpatterns = [
     path('', login_page, name='login_page'),  # Or use 'login_page_simple'
     path('login/', login_page, name='login'),  # If you want to replace default login
 ]
-"""    
+"""  
+def homepage(request):
+    """Homepage that includes meta tag for Google verification"""
+    return render(request, 'field_app/base.html')  
