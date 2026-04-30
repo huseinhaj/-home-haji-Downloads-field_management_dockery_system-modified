@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import TemplateView
 from django.contrib.auth import views as auth_views
 from field_app import views  # Changed from ". import views" to import from your app
 from field_app.admin import custom_admin_site
@@ -20,6 +21,7 @@ urlpatterns = [
     
     # Registration - now correctly pointing to your app's views
     path('accounts/register/', views.register, name='register'),
+    path('google56488196c8ab502c.html', TemplateView.as_view(template_name='field_app/google56488196c8ab502c.html'), name='google_verification'),
     
     # Your app's URLs
     path('', include('field_app.urls')),
