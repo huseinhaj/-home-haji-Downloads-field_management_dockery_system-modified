@@ -9,7 +9,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-fb+ynjt%l-8!48f7(t*_xekmcj%lkbo9m%p$qs5pn=moj@@41i'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'fallback-key-for-local-only')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -77,7 +77,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'field_db',
         'USER': 'field_user',
-        'PASSWORD': 'ukRDqwwIGn9OwMizhEcDhzJHgUVHNLan',
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
         'HOST': 'dpg-d7ltilugvqtc73c8mr50-a.oregon-postgres.render.com',
         'PORT': '5432',
     }
@@ -138,7 +138,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 EMAIL_HOST_USER = 'huseinhaj09@gmail.com'
-EMAIL_HOST_PASSWORD = 'lexmdrrljvyxqplo'
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')  # Inachukuliwa kutoka environment
 DEFAULT_FROM_EMAIL = 'Field Management System <huseinhaj09@gmail.com>'
 SERVER_EMAIL = 'huseinhaj09@gmail.com'
 EMAIL_TIMEOUT = 30
@@ -164,3 +164,5 @@ INTERNAL_IPS = ['127.0.0.1']
 # Media files (User uploaded content)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# Fanya redirects ziwe safe kwa Google
+SECURE_REDIRECT_EXEMPT = []
