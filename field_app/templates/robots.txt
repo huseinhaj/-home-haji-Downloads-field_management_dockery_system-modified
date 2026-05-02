@@ -1,0 +1,6 @@
+User-agent: Googlebot
+Disallow: /login/?next=
+Allow: /login/
+
+User-agent: *
+Disallow: /login/?next=

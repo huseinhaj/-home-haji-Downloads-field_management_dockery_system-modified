@@ -20,6 +20,7 @@ urlpatterns = [
     
     # Registration - now correctly pointing to your app's views
     path('accounts/register/', views.register, name='register'),
+    path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain')),
     
     
     # Your app's URLs
