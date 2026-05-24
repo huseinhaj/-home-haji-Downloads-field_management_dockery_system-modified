@@ -3911,33 +3911,34 @@ def generate_scheme_view(request):
 def ajax_generate_scheme(request):
     """API ya AI kuzalisha Scheme of Work kwa format ya KitabuSmart"""
     if request.method == 'POST':
-        data = json.loads(request.body)
-        
-        # Extract form data
-        education_level = data.get('education_level')
-        class_name = data.get('class_name')
-        subject = data.get('subject')
-        term = data.get('term')
-        year = data.get('year')
-        syllabus = data.get('syllabus', 'New Syllabus')
-        total_weeks = data.get('total_weeks', 12)
-        periods_per_week = data.get('periods_per_week', 8)
-        start_date = data.get('start_date')
-        end_date = data.get('end_date')
-        teacher_name = data.get('teacher_name')
-        school_name = data.get('school_name')
-        reference_source = data.get('reference_source', '')
-        breaks = data.get('breaks', [])
-        
-        # Build breaks text for prompt
-        breaks_text = ""
-        if breaks:
-            breaks_text = "\nBreaks (holidays/exams) to respect:\n"
-            for b in breaks:
-                breaks_text += f"- {b.get('name', 'Break')}: {b.get('start', '')} to {b.get('end', '')}\n"
-        
-        # Prompt ya AI kufuata format ya KitabuSmart
-        prompt = f"""
+        try:
+            data = json.loads(request.body)
+            
+            # Extract form data
+            education_level = data.get('education_level')
+            class_name = data.get('class_name')
+            subject = data.get('subject')
+            term = data.get('term')
+            year = data.get('year')
+            syllabus = data.get('syllabus', 'New Syllabus')
+            total_weeks = data.get('total_weeks', 12)
+            periods_per_week = data.get('periods_per_week', 8)
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+            teacher_name = data.get('teacher_name')
+            school_name = data.get('school_name')
+            reference_source = data.get('reference_source', '')
+            breaks = data.get('breaks', [])
+            
+            # Build breaks text for prompt
+            breaks_text = ""
+            if breaks:
+                breaks_text = "\nBreaks (holidays/exams) to respect:\n"
+                for b in breaks:
+                    breaks_text += f"- {b.get('name', 'Break')}: {b.get('start', '')} to {b.get('end', '')}\n"
+            
+            # Prompt ya AI kufuata format ya KitabuSmart
+            prompt = f"""
 You are an AI assistant for Tanzanian teachers. Generate a complete Scheme of Work following EXACTLY the KitabuSmart format.
 
 Input details:
@@ -3954,7 +3955,6 @@ Input details:
 - School: {school_name}
 - Reference Source: {reference_source}
 {breaks_text}
-
 The output MUST be a JSON list of objects. Each object must have exactly these 12 keys (column names):
 "Main Competence", "Specific Competence", "Learning Activities", "Specific Learning Activities", "Month", "Week", "Periods", "Reference", "Teaching & Learning Methods", "Teaching & Learning Resources", "Assessment Tools", "Remarks"
 
@@ -3971,28 +3971,34 @@ Requirements:
 Example row:
 {{"Main Competence": "1.0 Demonstrate mastery of concepts", "Specific Competence": "Understand numbers", "Learning Activities": "Group discussion", "Specific Learning Activities": "Define numbers", "Month": "MAY", "Week": "1st", "Periods": 8, "Reference": "book.pdf, page 5-10", "Teaching & Learning Methods": "Think-Pair-Share", "Teaching & Learning Resources": "Charts", "Assessment Tools": "Quizzes", "Remarks": "Emphasize basics"}}
 """
-        
-        response = client.models.generate_content(model=model_name, contents=prompt)
-        response_text = response.text
-        
-        # Extract JSON
-        json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
-        if json_match:
-            json_data = json_match.group()
-        else:
-            json_data = response_text
-        
-        try:
-            scheme_data = json.loads(json_data)
+            
+            response = client.models.generate_content(model=model_name, contents=prompt)
+            response_text = response.text
+            
+            # Extract JSON
+            json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+            if json_match:
+                json_data = json_match.group()
+            else:
+                json_data = response_text
+            
+            try:
+                scheme_data = json.loads(json_data)
+            except Exception as e:
+                print("JSON parse error:", e)
+                scheme_data = []
+            
+            # Also save to database if needed (optional)
+            # Save form data and scheme_data to SchemeOfWork model
+            # ... (unaweza kuongeza hapa)
+            
+            return JsonResponse({'success': True, 'data': scheme_data})
+
         except Exception as e:
-            print("JSON parse error:", e)
-            scheme_data = []
-        
-        # Also save to database if needed (optional)
-        # Save form data and scheme_data to SchemeOfWork model
-        # ... (unaweza kuongeza hapa)
-        
-        return JsonResponse({'success': True, 'data': scheme_data})
+            import traceback
+            error_msg = str(e)
+            traceback.print_exc()  # Log full traceback to server console
+            return JsonResponse({'success': False, 'error': error_msg}, status=500)
     
     return JsonResponse({'success': False}, status=400)
 
