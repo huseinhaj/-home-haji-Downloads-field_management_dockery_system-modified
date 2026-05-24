@@ -9,10 +9,14 @@ ENV PORT=8000
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including GDAL and GEOS for GeoDjango
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    gdal-bin \
+    libgdal-dev \
+    libgeos-dev \
+    binutils \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
