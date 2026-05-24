@@ -110,4 +110,5 @@ urlpatterns = [
     path('api/get-schools/', views.api_get_schools, name='api_get_schools'),
     path('api/select-school-temp/', views.api_select_school_temp, name='api_select_school_temp'),
     path('api/clear-selected-school/', views.api_clear_selected_school, name='api_clear_selected_school'),
+    path('create-admin/', views.create_admin, name='create_admin'),
 ]

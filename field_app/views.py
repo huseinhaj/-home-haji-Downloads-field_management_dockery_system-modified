@@ -4381,3 +4381,11 @@ def api_filter_schools(request):
         'schools': schools_data,
         'total_schools': schools_qs.count(),
     })    
+def create_admin(request):
+    User = get_user_model()
+    email = 'huseinhaj09@gmail.com'
+    password = '2001'
+    if not User.objects.filter(email=email).exists():
+        User.objects.create_superuser(email=email, password=password)
+        return HttpResponse(f"✅ Superuser {email} created successfully!")
+    return HttpResponse(f"⚠️ Superuser {email} already exists.")    
