@@ -676,3 +676,278 @@ class SchoolData(models.Model):
     def __str__(self):
         year = self.academic_year.year if self.academic_year else "No Year"
         return f"{self.school.name} Data ({year})"
+# =========================
+# SCHEME OF WORK (MUUNDO WA KAZI)
+# =========================
+
+class SchemeOfWork(models.Model):
+    TERM_CHOICES = [
+        ('I', 'Term I'),
+        ('II', 'Term II'),
+        ('III', 'Term III'),
+    ]
+    
+    LEVEL_CHOICES = [
+        ('primary', 'Primary School'),
+        ('ordinary', 'Ordinary Level'),
+        ('advanced', 'Advanced Level'),
+    ]
+    
+    # Relation to student and school
+    student = models.ForeignKey(StudentTeacher, on_delete=models.CASCADE, related_name='schemes')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='schemes')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='schemes')
+    
+    # Basic info
+    education_level = models.CharField(max_length=20, choices=LEVEL_CHOICES)
+    class_name = models.CharField(max_length=50)  # e.g., "Form 2"
+    term = models.CharField(max_length=10, choices=TERM_CHOICES)
+    year = models.IntegerField(default=2026)
+    syllabus = models.CharField(max_length=100, default='New Syllabus')
+    
+    # Schedule info
+    total_weeks = models.IntegerField(default=12)
+    periods_per_week = models.IntegerField(default=8)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    
+    # Teacher info
+    teacher_name = models.CharField(max_length=200)
+    reference_source = models.CharField(max_length=500, blank=True, null=True)
+    
+    # Reference file upload
+    reference_file = models.FileField(upload_to='scheme_references/', blank=True, null=True)
+    
+    # Generated data (JSON) - stores the table rows
+    scheme_data = models.JSONField(default=list, help_text="Generated scheme of work data")
+    
+    # Breaks (holidays/exams) stored as JSON
+    breaks = models.JSONField(default=list, blank=True, null=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    generated_by_ai = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['-year', '-created_at']
+        unique_together = ['student', 'subject', 'term', 'year']
+    
+    def __str__(self):
+        return f"{self.subject.name} - {self.class_name} - Term {self.term} {self.year}"
+    
+    @property
+    def total_entries(self):
+        return len(self.scheme_data) if self.scheme_data else 0
+
+
+# =========================
+# LESSON PLAN (MPANGO WA KIPINDI)
+# =========================
+
+class LessonPlan(models.Model):
+    EDUCATION_LEVEL_CHOICES = [
+        ('primary', 'Primary School'),
+        ('ordinary', 'Ordinary Level'),
+        ('advanced', 'Advanced Level'),
+    ]
+    
+    TERM_CHOICES = [
+        ('I', 'Term I'),
+        ('II', 'Term II'),
+        ('III', 'Term III'),
+    ]
+    
+    # Relation to student and school
+    student = models.ForeignKey(StudentTeacher, on_delete=models.CASCADE, related_name='lesson_plans')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='lesson_plans')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='lesson_plans')
+    scheme = models.ForeignKey(SchemeOfWork, on_delete=models.SET_NULL, null=True, blank=True, related_name='lesson_plans')
+    logbook_entry = models.ForeignKey(LogbookEntry, on_delete=models.SET_NULL, null=True, blank=True, related_name='lesson_plans')
+    
+    # Basic lesson info
+    education_level = models.CharField(max_length=20, choices=EDUCATION_LEVEL_CHOICES)
+    class_name = models.CharField(max_length=50)
+    term = models.CharField(max_length=10, choices=TERM_CHOICES)
+    year = models.IntegerField(default=2026)
+    
+    topic = models.CharField(max_length=200)
+    subtopic = models.CharField(max_length=200, blank=True, null=True)
+    date = models.DateField(default=timezone.now)
+    duration = models.IntegerField(default=40, help_text="Duration in minutes")
+    
+    # Teacher info
+    teacher_name = models.CharField(max_length=200)
+    council_name = models.CharField(max_length=200, blank=True, null=True)
+    region_name = models.CharField(max_length=200, blank=True, null=True)
+    office_name = models.CharField(max_length=200, blank=True, null=True)
+    
+    # Student attendance
+    total_students = models.IntegerField(default=0, blank=True, null=True)
+    present_students = models.IntegerField(default=0, blank=True, null=True)
+    
+    # Reference source
+    reference_source = models.CharField(max_length=500, blank=True, null=True)
+    reference_file = models.FileField(upload_to='lesson_references/', blank=True, null=True)
+    
+    # Competences
+    main_competence = models.TextField(blank=True, null=True)
+    specific_competence = models.TextField(blank=True, null=True)
+    previous_knowledge = models.TextField(blank=True, null=True)
+    
+    # Learning objectives and methods (stored as JSON arrays)
+    learning_objectives = models.JSONField(default=list, help_text="List of learning objectives")
+    teaching_methods = models.JSONField(default=list, help_text="List of teaching methods")
+    teaching_resources = models.JSONField(default=list, help_text="List of teaching resources")
+    
+    # Lesson development (stored as JSON)
+    # Structure: [{"time": "5 min", "stage": "Introduction", "teacher_activities": "...", "student_activities": "...", "assessment_criteria": "..."}]
+    lesson_development = models.JSONField(default=list)
+    
+    # Remarks
+    remarks = models.TextField(blank=True, null=True)
+    
+    # AI generation info
+    generated_by_ai = models.BooleanField(default=True)
+    ai_model_used = models.CharField(max_length=50, default='gemini-1.5-flash', blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-date', '-created_at']
+    
+    def __str__(self):
+        return f"{self.subject.name} - {self.topic} ({self.date})"
+    
+    def save(self, *args, **kwargs):
+        # Auto-set teacher name from student if not provided
+        if not self.teacher_name and self.student:
+            self.teacher_name = self.student.full_name
+        
+        # Auto-set school from student if not provided
+        if not self.school and self.student and self.student.selected_school:
+            self.school = self.student.selected_school
+        
+        super().save(*args, **kwargs)
+
+
+# =========================
+# UPLOADED REFERENCES (For tracking uploaded files)
+# =========================
+
+class UploadedReference(models.Model):
+    REFERENCE_TYPE_CHOICES = [
+        ('scheme', 'Scheme of Work'),
+        ('lesson', 'Lesson Plan'),
+        ('textbook', 'Textbook'),
+        ('syllabus', 'Syllabus'),
+        ('other', 'Other'),
+    ]
+    
+    user = models.ForeignKey(StudentTeacher, on_delete=models.CASCADE, related_name='uploaded_references')
+    file = models.FileField(upload_to='references/%Y/%m/')
+    original_name = models.CharField(max_length=255)
+    file_type = models.CharField(max_length=20, choices=REFERENCE_TYPE_CHOICES, default='other')
+    description = models.TextField(blank=True, null=True)
+    file_size = models.IntegerField(default=0, help_text="File size in bytes")
+    
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.original_name} - {self.user.full_name}"
+    
+    def save(self, *args, **kwargs):
+        if self.file and not self.file_size:
+            self.file_size = self.file.size
+        super().save(*args, **kwargs)
+
+
+# =========================
+# AI GENERATION LOG (For tracking and debugging)
+# =========================
+
+class AIGenerationLog(models.Model):
+    GENERATION_TYPE_CHOICES = [
+        ('scheme_of_work', 'Scheme of Work'),
+        ('lesson_plan', 'Lesson Plan'),
+    ]
+    
+    user = models.ForeignKey(StudentTeacher, on_delete=models.CASCADE, null=True, blank=True)
+    generation_type = models.CharField(max_length=20, choices=GENERATION_TYPE_CHOICES)
+    
+    # Input data (JSON)
+    input_data = models.JSONField(default=dict)
+    
+    # Output data (JSON)
+    output_data = models.JSONField(default=dict, null=True, blank=True)
+    
+    # Prompt sent to AI
+    prompt_sent = models.TextField(blank=True, null=True)
+    
+    # Response from AI
+    ai_response = models.TextField(blank=True, null=True)
+    
+    # Status and timing
+    was_successful = models.BooleanField(default=False)
+    error_message = models.TextField(blank=True, null=True)
+    
+    generation_time_ms = models.IntegerField(default=0, help_text="Generation time in milliseconds")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.get_generation_type_display()} - {self.created_at}"        
+# =========================
+# EDUCATION LEVELS & CLASSES
+# =========================
+
+class EducationLevel(models.Model):
+    name = models.CharField(max_length=50, unique=True)  # Primary, Ordinary Level, Advanced Level
+    code = models.CharField(max_length=20, unique=True)
+    order = models.IntegerField(default=0)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['order']
+
+class ClassLevel(models.Model):
+    education_level = models.ForeignKey(EducationLevel, on_delete=models.CASCADE, related_name='classes')
+    name = models.CharField(max_length=50)  # e.g., "Form 1", "Standard 1", "Form 5"
+    code = models.CharField(max_length=20)
+    order = models.IntegerField(default=0)
+    
+    def __str__(self):
+        return f"{self.education_level.name} - {self.name}"
+    
+    class Meta:
+        ordering = ['education_level', 'order']
+        unique_together = ['education_level', 'name']
+
+# =========================
+# TEXTBOOKS / REFERENCES
+# =========================
+
+class Textbook(models.Model):
+    LEVEL_CHOICES = [
+        ('primary', 'Primary School'),
+        ('ordinary', 'Ordinary Level'),
+        ('advanced', 'Advanced Level'),
+    ]
+    
+    title = models.CharField(max_length=200)
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, null=True, blank=True)
+    education_level = models.CharField(max_length=20, choices=LEVEL_CHOICES)
+    class_level = models.ForeignKey(ClassLevel, on_delete=models.CASCADE, null=True, blank=True)
+    publisher = models.CharField(max_length=100, default='TIE')
+    year = models.IntegerField(null=True, blank=True)
+    isbn = models.CharField(max_length=50, blank=True, null=True)
+    file = models.FileField(upload_to='textbooks/', blank=True, null=True)
+    cover_image = models.ImageField(upload_to='textbook_covers/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return f"{self.title} ({self.get_education_level_display()})"        

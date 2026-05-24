@@ -6,3 +6,4 @@ staticfiles/
 *.sqlite3
 .DS_Store
 *.zip
+.env

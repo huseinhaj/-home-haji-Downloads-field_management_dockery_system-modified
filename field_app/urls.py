@@ -1,4 +1,4 @@
-
+from django.views.generic import TemplateView
 from django.contrib.auth import views as auth_views 
 from django.views.generic import RedirectView
 from django.urls import path
@@ -98,5 +98,16 @@ urlpatterns = [
     path('api/assessor/<int:assessor_id>/details/', views.assessor_details_api, name='assessor_details_api'),
     #path('api/assessor/<int:assessor_id>/resend-credentials/', views.resend_assessor_credentials_api, name='resend_assessor_credentials_api'),
     #path('api/send-test-email/', views.send_test_email_api, name='send_test_email'),
-
+    path('generate-scheme/', views.generate_scheme_view, name='generate_scheme'),
+    path('ajax-generate-scheme/', views.ajax_generate_scheme, name='ajax_generate_scheme'),
+    path('download-scheme-pdf/', views.download_scheme_pdf, name='download_scheme_pdf'),
+    path('get-classes/', views.get_classes_by_level, name='get_classes'),
+    path('get-subjects-by-level/', views.get_subjects_by_level, name='get_subjects_by_level'),
+    path('get-textbooks/', views.get_textbooks_by_level, name='get_textbooks'),
+    # Lesson Plan URLs
+    path('lesson-plan/', views.lesson_plan_view, name='lesson_plan'),
+    path('ajax-generate-lessonplan/', views.ajax_generate_lessonplan, name='ajax_generate_lessonplan'),
+    path('api/get-schools/', views.api_get_schools, name='api_get_schools'),
+    path('api/select-school-temp/', views.api_select_school_temp, name='api_select_school_temp'),
+    path('api/clear-selected-school/', views.api_clear_selected_school, name='api_clear_selected_school'),
 ]

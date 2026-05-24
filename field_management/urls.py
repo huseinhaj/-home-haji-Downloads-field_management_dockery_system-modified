@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import TemplateView
 from django.contrib.auth import views as auth_views
 from field_app import views  # Changed from ". import views" to import from your app
 from field_app.admin import custom_admin_site

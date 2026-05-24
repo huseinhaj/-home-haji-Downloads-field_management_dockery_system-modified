@@ -1,0 +1,648 @@
+{% extends 'field_app/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}Generate Lesson Plan{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lesson-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(10,43,94,0.08);
+        overflow: hidden;
+    }
+    
+    .lesson-card .card-header {
+        background: linear-gradient(135deg, var(--bold) 0%, #0C3570 100%);
+        border-bottom: 3px solid var(--medium);
+        padding: 1.5rem;
+    }
+    
+    .lesson-card .card-header h3 {
+        font-size: 1.5rem;
+        margin: 0 0 0.25rem 0;
+        color: #ffffff !important;
+    }
+    
+    .lesson-card .card-header small {
+        opacity: 0.9;
+        font-size: 0.85rem;
+        color: #ffffff !important;
+    }
+    
+    .form-section {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+        transition: all 0.2s ease;
+    }
+    
+    .form-section:hover {
+        border-color: var(--medium);
+        box-shadow: 0 2px 8px rgba(200,144,10,0.1);
+    }
+    
+    .form-section-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--bold);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--medium);
+        display: inline-block;
+    }
+    
+    .form-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 0.4rem;
+    }
+    
+    .form-control, .form-select {
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        padding: 0.6rem 0.9rem;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+        background: #FAFBFD;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: var(--bold);
+        box-shadow: 0 0 0 3px rgba(10,43,94,0.1);
+        background: var(--white);
+    }
+    
+    .btn-generate {
+        background: linear-gradient(135deg, var(--bold) 0%, #0C3570 100%);
+        border: none;
+        border-radius: 40px;
+        padding: 0.9rem 2rem;
+        font-weight: 700;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(10,43,94,0.2);
+        color: #ffffff !important;
+    }
+    
+    .btn-generate:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(10,43,94,0.3);
+        background: linear-gradient(135deg, #0C3570 0%, var(--bold) 100%);
+        color: #ffffff !important;
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 3px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: #ffffff;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .result-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .result-card .card-header {
+        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+        color: white;
+        padding: 1rem 1.25rem;
+    }
+    
+    .lesson-development-table {
+        font-size: 0.8rem;
+        overflow-x: auto;
+    }
+    
+    .lesson-development-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .lesson-development-table th {
+        background: var(--light);
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid var(--border);
+    }
+    
+    .lesson-development-table td {
+        padding: 0.6rem;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    
+    .btn-outline-pdf {
+        border: 1.5px solid var(--danger);
+        color: var(--danger);
+        background: transparent;
+        border-radius: 30px;
+        padding: 0.4rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    
+    .btn-outline-pdf:hover {
+        background: var(--danger);
+        color: white;
+    }
+    
+    .btn-outline-word {
+        border: 1.5px solid var(--info);
+        color: var(--info);
+        background: transparent;
+        border-radius: 30px;
+        padding: 0.4rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    
+    .btn-outline-word:hover {
+        background: var(--info);
+        color: white;
+    }
+    
+    #loading p {
+        color: var(--bold) !important;
+        font-weight: 500;
+    }
+    
+    /* Disabled select styling */
+    select:disabled {
+        background-color: #e9ecef;
+        cursor: not-allowed;
+    }
+    
+    @media (max-width: 768px) {
+        .lesson-card .card-header h3 {
+            font-size: 1.2rem;
+        }
+        
+        .btn-generate {
+            padding: 0.7rem 1.5rem;
+            font-size: 0.9rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card lesson-card">
+                <div class="card-header">
+                    <h3 class="mb-1">
+                        <i class="fas fa-chalkboard-teacher me-2"></i>Lesson Plan Generator
+                    </h3>
+                    <small>Create comprehensive lesson plans aligned with TIE Tanzania standards</small>
+                </div>
+                <div class="card-body p-4">
+                    
+                    <form id="lessonPlanForm">
+                        {% csrf_token %}
+                        
+                        <!-- Basic Information -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-info-circle me-2"></i>Lesson Information
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Education Level *</label>
+                                    <select id="education_level" class="form-select" required>
+                                        <option value="">Select Education Level</option>
+                                        {% for level in education_levels %}
+                                        <option value="{{ level.id }}" data-level="{{ level.name }}">{{ level.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Class *</label>
+                                    <select id="class_level" class="form-select" required disabled>
+                                        <option value="">Select Education Level first</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Subject *</label>
+                                    <select id="subject" class="form-select" required>
+                                        <option value="">Select Subject</option>
+                                        {% for subject in subjects %}
+                                        <option value="{{ subject.id }}" data-name="{{ subject.name }}" data-level="{{ subject.level }}">{{ subject.name }} ({{ subject.get_level_display }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Topic *</label>
+                                    <input type="text" id="topic" class="form-control" placeholder="e.g., Logarithm" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Subtopic</label>
+                                    <input type="text" id="subtopic" class="form-control" placeholder="e.g., Introduction to algorithm">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Schedule -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-clock me-2"></i>Schedule Information
+                            </div>
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Term</label>
+                                    <select id="term" class="form-select">
+                                        <option value="I">Term I</option>
+                                        <option value="II">Term II</option>
+                                        <option value="III">Term III</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Year</label>
+                                    <input type="number" id="year" class="form-control" value="2026">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Duration (minutes)</label>
+                                    <input type="number" id="duration" class="form-control" value="40">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Teacher Name</label>
+                                    <input type="text" id="teacher_name" class="form-control" value="{{ request.user.email }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Students -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-users me-2"></i>Student Information
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Total Students</label>
+                                    <input type="number" id="total_students" class="form-control" placeholder="e.g., 52">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Present Students</label>
+                                    <input type="number" id="present_students" class="form-control" placeholder="e.g., 50">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Learning Objectives & Methods -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-bullseye me-2"></i>Learning Objectives & Methods
+                            </div>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Learning Objectives</label>
+                                    <textarea id="learning_objectives" class="form-control" rows="3" placeholder="Enter learning objectives (one per line)"></textarea>
+                                    <small class="text-muted">e.g., Students to understand algorithm in depth</small>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Teaching Methods</label>
+                                    <textarea id="teaching_methods" class="form-control" rows="2" placeholder="e.g., Lecture/Direct Instruction, Group Discussion"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Reference -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-book me-2"></i>Reference Source
+                            </div>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Reference Source (Optional)</label>
+                                    <input type="text" id="reference_source" class="form-control" placeholder="e.g., CURRICULUM FOR SECONDARY EDUCATION FORM I-IV">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="text-center mt-4">
+                            <button type="submit" id="generateBtn" class="btn btn-generate btn-lg px-5 py-3">
+                                <i class="fas fa-magic me-2"></i> Generate Lesson Plan
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Loading -->
+                    <div id="loading" class="text-center mt-4" style="display: none;">
+                        <div class="py-4">
+                            <div class="loading-spinner mb-3"></div>
+                            <p class="mb-1">Generating lesson plan with AI... Please wait</p>
+                            <small>This may take 15-30 seconds</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Results -->
+                    <div id="result" class="mt-4" style="display: none;"></div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('lessonPlanForm');
+        const generateBtn = document.getElementById('generateBtn');
+        const loadingDiv = document.getElementById('loading');
+        const resultDiv = document.getElementById('result');
+        
+        // Dynamic class dropdown based on education level
+        const educationLevelSelect = document.getElementById('education_level');
+        const classSelect = document.getElementById('class_level');
+        
+        educationLevelSelect.addEventListener('change', function() {
+            const levelId = this.value;
+            
+            if (levelId) {
+                // Get selected level text
+                const selectedOption = this.options[this.selectedIndex];
+                const levelName = selectedOption.getAttribute('data-level') || selectedOption.text;
+                
+                // Fetch classes for this education level
+                fetch(`/get-classes/?level_id=${levelId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        classSelect.innerHTML = '<option value="">Select Class</option>';
+                        if (data.length > 0) {
+                            data.forEach(cls => {
+                                classSelect.innerHTML += `<option value="${cls.id}" data-name="${cls.name}">${cls.name}</option>`;
+                            });
+                            classSelect.disabled = false;
+                        } else {
+                            classSelect.innerHTML = '<option value="">No classes available</option>';
+                            classSelect.disabled = true;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching classes:', error);
+                        classSelect.innerHTML = '<option value="">Error loading classes</option>';
+                        classSelect.disabled = true;
+                    });
+            } else {
+                classSelect.innerHTML = '<option value="">Select Education Level first</option>';
+                classSelect.disabled = true;
+            }
+        });
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Get values
+            const educationLevelSelect = document.getElementById('education_level');
+            const classSelect = document.getElementById('class_level');
+            const subjectSelect = document.getElementById('subject');
+            const topic = document.getElementById('topic').value;
+            
+            // Get text values from selects
+            const educationLevel = educationLevelSelect.options[educationLevelSelect.selectedIndex]?.getAttribute('data-level') || 
+                                   educationLevelSelect.options[educationLevelSelect.selectedIndex]?.text || 
+                                   educationLevelSelect.value;
+            
+            const className = classSelect.options[classSelect.selectedIndex]?.getAttribute('data-name') || 
+                             classSelect.options[classSelect.selectedIndex]?.text || 
+                             classSelect.value;
+            
+            const subject = subjectSelect.options[subjectSelect.selectedIndex]?.getAttribute('data-name') || 
+                           subjectSelect.options[subjectSelect.selectedIndex]?.text || 
+                           subjectSelect.value;
+            
+            // Validate required fields
+            if (!educationLevelSelect.value) {
+                alert('Please select Education Level');
+                return;
+            }
+            if (!classSelect.value) {
+                alert('Please select Class');
+                return;
+            }
+            if (!subjectSelect.value) {
+                alert('Please select Subject');
+                return;
+            }
+            if (!topic) {
+                alert('Please enter Topic');
+                return;
+            }
+            
+            const formData = {
+                education_level: educationLevel,
+                class_name: className,
+                subject: subject,
+                topic: topic,
+                subtopic: document.getElementById('subtopic').value,
+                term: document.getElementById('term').value,
+                year: document.getElementById('year').value,
+                duration: document.getElementById('duration').value,
+                total_students: document.getElementById('total_students').value,
+                present_students: document.getElementById('present_students').value,
+                learning_objectives: document.getElementById('learning_objectives').value,
+                teaching_methods: document.getElementById('teaching_methods').value,
+                reference_source: document.getElementById('reference_source').value,
+                teacher_name: document.getElementById('teacher_name').value
+            };
+            
+            // UI updates
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="loading-spinner me-2"></span> Generating...';
+            loadingDiv.style.display = 'block';
+            resultDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/ajax-generate-lessonplan/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                loadingDiv.style.display = 'none';
+                
+                if (data.success && data.data) {
+                    displayLessonPlan(data.data, formData);
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Generation failed: ${data.error || 'Please try again.'}
+                        </div>
+                    `;
+                    resultDiv.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                loadingDiv.style.display = 'none';
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Network error: ${error.message}
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i> Generate Lesson Plan';
+            }
+        });
+        
+        function displayLessonPlan(lesson, formData) {
+            const date = new Date().toLocaleDateString('en-GB');
+            
+            let html = `
+                <div class="result-card">
+                    <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                        <div>
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Lesson Plan Generated Successfully!</strong>
+                            <small class="d-block">${formData.subject} - ${formData.topic} (${formData.class_name})</small>
+                        </div>
+                        <div class="action-buttons mt-2 mt-md-0">
+                            <button class="btn-outline-pdf" onclick="downloadLessonPDF()">
+                                <i class="fas fa-file-pdf me-1"></i> PDF
+                            </button>
+                            <button class="btn-outline-word" onclick="exportLessonToWord()">
+                                <i class="fas fa-file-word me-1"></i> Word
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <!-- Lesson Info -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <p><strong>Teacher:</strong> ${formData.teacher_name}</p>
+                                <p><strong>Subject:</strong> ${formData.subject} | <strong>Class:</strong> ${formData.class_name}</p>
+                                <p><strong>Term:</strong> ${formData.term} | <strong>Year:</strong> ${formData.year}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Topic:</strong> ${formData.topic}</p>
+                                <p><strong>Subtopic:</strong> ${formData.subtopic || 'N/A'}</p>
+                                <p><strong>Duration:</strong> ${formData.duration} minutes</p>
+                                <p><strong>Date:</strong> ${date}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Competences -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold" style="color: var(--bold);">COMPETENCES</h6>
+                            <p><strong>Main Competence:</strong> ${lesson.main_competence || 'N/A'}</p>
+                            <p><strong>Specific Competence:</strong> ${lesson.specific_competence || 'N/A'}</p>
+                            <p><strong>Previous Knowledge:</strong> ${lesson.previous_knowledge || 'N/A'}</p>
+                        </div>
+                        
+                        <!-- Learning Objectives -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold" style="color: var(--bold);">LEARNING OBJECTIVES</h6>
+                            <ul>
+                                ${(lesson.learning_objectives || []).map(obj => `<li>${obj}</li>`).join('')}
+                            </ul>
+                        </div>
+                        
+                        <!-- Teaching Methods -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold" style="color: var(--bold);">TEACHING METHODS</h6>
+                            <ul>
+                                ${(lesson.teaching_methods || []).map(m => `<li>${m}</li>`).join('')}
+                            </ul>
+                        </div>
+                        
+                        <!-- Resources -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold" style="color: var(--bold);">TEACHING RESOURCES</h6>
+                            <ul>
+                                ${(lesson.teaching_resources || []).map(r => `<li>${r}</li>`).join('')}
+                            </ul>
+                        </div>
+                        
+                        <!-- Lesson Development -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold" style="color: var(--bold);">LESSON DEVELOPMENT</h6>
+                            <div class="lesson-development-table">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>Stage</th>
+                                            <th>Teacher Activities</th>
+                                            <th>Student Activities</th>
+                                            <th>Assessment Criteria</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${(lesson.lesson_development || []).map(step => `
+                                            <tr>
+                                                <td>${step.time || ''}</td>
+                                                <td>${step.stage || ''}</td>
+                                                <td>${step.teacher_activities || ''}</td>
+                                                <td>${step.student_activities || ''}</td>
+                                                <td>${step.assessment_criteria || ''}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Remarks -->
+                        <div class="mb-3">
+                            <h6 class="fw-bold" style="color: var(--bold);">REMARKS</h6>
+                            <p>${lesson.remarks || 'Encourage student participation'}</p>
+                        </div>
+                        
+                        <div class="text-muted small mt-3 pt-3 border-top">
+                            <i class="fas fa-robot me-1"></i>
+                            Generated by AI Lesson Plan System • ${date}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            resultDiv.innerHTML = html;
+            resultDiv.style.display = 'block';
+            window.scrollTo({ top: resultDiv.offsetTop - 20, behavior: 'smooth' });
+        }
+        
+        window.downloadLessonPDF = function() {
+            alert('PDF download functionality will be implemented soon.');
+        };
+        
+        window.exportLessonToWord = function() {
+            alert('Word export functionality will be implemented soon.');
+        };
+    });
+</script>
+{% endblock %}

@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.contrib.gis.geos import Point
+from .ai_utils import client, model_name
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.gis.db.models.functions import Distance
 from datetime import datetime, timedelta
@@ -20,6 +21,20 @@ from django.http import HttpResponseNotAllowed
 from django.urls import reverse
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
+import json
+import re
+from io import BytesIO
+from django.shortcuts import render, redirect
+from django.http import JsonResponse, HttpResponse
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from .ai_utils import client, model_name
+from .forms import SchemeOfWorkForm
+from .models import SchemeOfWork
 import csv
 import io
 import secrets
@@ -1170,136 +1185,109 @@ def select_region(request):
 def select_district(request, region_id):
     region = get_object_or_404(Region, id=region_id)
     districts = District.objects.filter(region=region)
+    
+    # ========== ADD REAL SCHOOL COUNTS FOR EACH DISTRICT ==========
+    for district in districts:
+        # Count schools in this district
+        district.school_count = School.objects.filter(district=district).count()
+        
+        # Count students (optional - unaweza kuondoka "0" kama ni ngumu)
+        # Kama hutaki kuonyesha wanafunzi, weka tu "0"
+        district.student_count = 0  # Au uondoe kabisa kwenye template
+    
     request.session['selected_region_id'] = region.id
-    return render(request, 'field_app/select_district.html', {'districts': districts, 'region': region})
+    
+    return render(request, 'field_app/select_district.html', {
+        'districts': districts,
+        'region': region,
+    })
 
 @login_required
 def select_school(request, district_id):
     district = get_object_or_404(District, id=district_id)
     current_year = AcademicYear.objects.filter(is_active=True).first()
     
-    # ========== FIX: Get ALL pinned schools for this year ==========
+    # Get pinned schools
     pinned_school_ids = []
-    pinned_schools_info = {}
-    
     if current_year:
-        # Get ALL pinned schools for this academic year
-        pinned_schools = SchoolPin.objects.filter(
-            academic_year=current_year,
-            is_pinned=True
-        ).select_related('problem_details')
-        
-        for pin in pinned_schools:
-            pinned_school_ids.append(pin.school_id)
-            pinned_schools_info[pin.school_id] = {
-                'reason': pin.get_pin_reason_display() if hasattr(pin, 'get_pin_reason_display') else 'Manual',
-                'notes': pin.notes
-            }
+        pinned_school_ids = list(SchoolPin.objects.filter(
+            academic_year=current_year, is_pinned=True
+        ).values_list('school_id', flat=True))
     
-    # Base queryset - all schools in this district
+    # Get parameters
     search_query = request.GET.get('q', '')
     selected_level = request.GET.get('level', 'Secondary')
-    raw_schools = School.objects.filter(district=district, level=selected_level)
     
+    # Get schools
+    schools_qs = School.objects.filter(district=district, level=selected_level)
     if search_query:
-        raw_schools = raw_schools.filter(name__icontains=search_query)
+        schools_qs = schools_qs.filter(name__icontains=search_query)
     
-    # Process schools
     schools = []
-    for school in raw_schools:
-        # Check if school is pinned
+    for school in schools_qs:
         school.is_pinned = school.id in pinned_school_ids
-        
-        # Store pin info if pinned
-        if school.is_pinned:
-            school.pin_info = pinned_schools_info.get(school.id, {})
-            school.pin_reason = school.pin_info.get('reason', 'Manual Pin')
-            school.pin_notes = school.pin_info.get('notes', 'This school is temporarily unavailable')
-        else:
-            school.pin_reason = ''
-            school.pin_notes = ''
-        
-        # 🔴 FIX: A school is selectable ONLY IF:
-        # 1. NOT pinned AND
-        # 2. Has capacity available
         school.is_selectable = (not school.is_pinned) and (school.current_students < school.capacity)
-        
-        # Calculate occupancy
-        if school.capacity > 0:
-            occupancy = round((school.current_students / school.capacity) * 100)
-        else:
-            occupancy = 0
-        school.occupancy_percentage = occupancy
-        
+        school.occupancy_percentage = round((school.current_students / school.capacity) * 100) if school.capacity > 0 else 0
         schools.append(school)
     
-    # Statistics
     total_schools = len(schools)
     pinned_schools_count = sum(1 for s in schools if s.is_pinned)
     available_schools_count = sum(1 for s in schools if s.is_selectable)
-    full_schools_count = sum(1 for s in schools if not s.is_pinned and not s.is_selectable)
+    full_schools_count = total_schools - pinned_schools_count - available_schools_count
     
-    # Get selected school from session
-    selected_school_id = request.session.get('selected_school_id')
-    selected_school = School.objects.filter(id=selected_school_id, district=district).first() if selected_school_id else None
+    # ========== SIMPLE SESSION LOGIC ==========
+    selected_school = None
+    temp_selected_id = request.session.get('temp_selected_school_id')
+    if temp_selected_id:
+        try:
+            selected_school = School.objects.get(id=temp_selected_id)
+        except School.DoesNotExist:
+            request.session.pop('temp_selected_school_id', None)
     
-    # Handle POST actions
+    # ========== HANDLE POST ==========
     if request.method == 'POST':
         action = request.POST.get('action')
         school_id = request.POST.get('school_id')
         
-        if action == 'cancel':
-            if selected_school:
-                # Decrement counter
-                School.objects.filter(id=selected_school.id).update(current_students=F('current_students') - 1)
-                request.session.pop('selected_school_id', None)
-                messages.success(request, 'You have cancelled your selected school.')
-                return redirect('select_school', district_id=district.id)
+        if action == 'select' and school_id:
+            school = get_object_or_404(School, id=school_id)
+            request.session['temp_selected_school_id'] = school.id
+            messages.info(request, f'Umchagua {school.name}. Bonyeza Thibitisha au Ghairi.')
+            return redirect(f"{request.path}?level={selected_level}&q={search_query}")
         
         elif action == 'confirm':
-            if selected_school:
-                student = get_or_create_student_profile(request.user)
-                student.selected_school = selected_school
-                student.save()
-                
-                messages.success(request, 'School confirmed. Now select your teaching subjects.')
-                return redirect('select_subjects', school_id=selected_school.id)
+            if temp_selected_id:
+                try:
+                    school = School.objects.get(id=temp_selected_id)
+                    student = get_or_create_student_profile(request.user)
+                    
+                    if student.selected_school:
+                        School.objects.filter(id=student.selected_school.id).update(current_students=F('current_students') - 1)
+                    
+                    student.selected_school = school
+                    student.save()
+                    School.objects.filter(id=school.id).update(current_students=F('current_students') + 1)
+                    
+                    request.session.pop('temp_selected_school_id', None)
+                    messages.success(request, f'Shule imethibitishwa: {school.name}')
+                    return redirect('select_subjects', school_id=school.id)
+                except:
+                    messages.error(request, 'Shule haipo')
             else:
-                messages.error(request, 'No school selected to confirm.')
+                messages.error(request, 'Hakuna shule iliyochaguliwa')
+            return redirect(f"{request.path}?level={selected_level}&q={search_query}")
         
-        elif action == 'select':
-            school = get_object_or_404(School, id=school_id, district=district)
-            
-            # 🔴 FIX: Check if school is pinned again (for security)
-            is_pinned = school.id in pinned_school_ids
-            
-            if is_pinned:
-                # Get pin reason
-                pin_info = pinned_schools_info.get(school.id, {})
-                pin_notes = pin_info.get('notes', 'This school is temporarily unavailable')
-                messages.error(request, f'This school is currently unavailable. Reason: {pin_notes}')
-                return redirect('select_school', district_id=district.id)
-            
-            # Check capacity
-            if school.current_students >= school.capacity:
-                messages.error(request, 'This school is already full.')
-                return redirect('select_school', district_id=district.id)
-            
-            # Check if already selected another school
-            if selected_school:
-                messages.error(request, 'You have already selected a school. Cancel it first.')
-            else:
-                # Select the school
-                request.session['selected_school_id'] = school.id
-                School.objects.filter(id=school.id).update(current_students=F('current_students') + 1)
-                messages.success(request, f'You selected {school.name}. Confirm or Cancel?')
-                return redirect('select_school', district_id=district.id)
+        elif action == 'cancel':
+            request.session.pop('temp_selected_school_id', None)
+            messages.success(request, 'Umeghairi uchaguzi wa shule')
+            return redirect(f"{request.path}?level={selected_level}&q={search_query}")
     
     return render(request, 'field_app/select_school.html', {
         'district': district,
         'schools': schools,
         'selected_school': selected_school,
         'query': search_query,
+        'selected_level': selected_level,
         'total_schools': total_schools,
         'pinned_schools_count': pinned_schools_count,
         'available_schools_count': available_schools_count,
@@ -3905,3 +3893,485 @@ urlpatterns = [
 def homepage(request):
     """Homepage that includes meta tag for Google verification"""
     return render(request, 'field_app/base.html')  
+# views.py
+
+
+def generate_scheme_view(request):
+    from .models import EducationLevel
+    
+    form = SchemeOfWorkForm()
+    education_levels = EducationLevel.objects.all().order_by('order')
+    
+    return render(request, 'field_app/generate_scheme.html', {
+        'form': form,
+        'education_levels': education_levels,
+    })
+@csrf_exempt
+@login_required
+def ajax_generate_scheme(request):
+    """API ya AI kuzalisha Scheme of Work kwa format ya KitabuSmart"""
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        
+        # Extract form data
+        education_level = data.get('education_level')
+        class_name = data.get('class_name')
+        subject = data.get('subject')
+        term = data.get('term')
+        year = data.get('year')
+        syllabus = data.get('syllabus', 'New Syllabus')
+        total_weeks = data.get('total_weeks', 12)
+        periods_per_week = data.get('periods_per_week', 8)
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        teacher_name = data.get('teacher_name')
+        school_name = data.get('school_name')
+        reference_source = data.get('reference_source', '')
+        breaks = data.get('breaks', [])
+        
+        # Build breaks text for prompt
+        breaks_text = ""
+        if breaks:
+            breaks_text = "\nBreaks (holidays/exams) to respect:\n"
+            for b in breaks:
+                breaks_text += f"- {b.get('name', 'Break')}: {b.get('start', '')} to {b.get('end', '')}\n"
+        
+        # Prompt ya AI kufuata format ya KitabuSmart
+        prompt = f"""
+You are an AI assistant for Tanzanian teachers. Generate a complete Scheme of Work following EXACTLY the KitabuSmart format.
+
+Input details:
+- Education Level: {education_level}
+- Class: {class_name}
+- Subject: {subject}
+- Term: {term} {year}
+- Syllabus: {syllabus}
+- Total Weeks: {total_weeks} weeks
+- Periods per Week: {periods_per_week}
+- Start Date: {start_date}
+- End Date: {end_date}
+- Teacher: {teacher_name}
+- School: {school_name}
+- Reference Source: {reference_source}
+{breaks_text}
+
+The output MUST be a JSON list of objects. Each object must have exactly these 12 keys (column names):
+"Main Competence", "Specific Competence", "Learning Activities", "Specific Learning Activities", "Month", "Week", "Periods", "Reference", "Teaching & Learning Methods", "Teaching & Learning Resources", "Assessment Tools", "Remarks"
+
+Requirements:
+1. Distribute content across {total_weeks} weeks, respecting any breaks (skip weeks that fall on breaks).
+2. For each week, assign appropriate Month (e.g., MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER).
+3. "Week" column should be like "1st", "2nd", "3rd", etc.
+4. "Periods" should be {periods_per_week} for normal weeks.
+5. "Reference" should include {reference_source} with page numbers (e.g., "ENGLISH_iv-vii.pdf, page 10-15").
+6. "Main Competence" should be numbered like "1.0 Demonstrate mastery of BASIC MATHEMATICS fundamental principles".
+7. Content must be realistic for {education_level} {class_name} {subject} in Tanzania.
+8. After the last week, add a row with remarks about examination preparation if needed.
+9. Return ONLY valid JSON, no extra text.
+Example row:
+{{"Main Competence": "1.0 Demonstrate mastery of concepts", "Specific Competence": "Understand numbers", "Learning Activities": "Group discussion", "Specific Learning Activities": "Define numbers", "Month": "MAY", "Week": "1st", "Periods": 8, "Reference": "book.pdf, page 5-10", "Teaching & Learning Methods": "Think-Pair-Share", "Teaching & Learning Resources": "Charts", "Assessment Tools": "Quizzes", "Remarks": "Emphasize basics"}}
+"""
+        
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        response_text = response.text
+        
+        # Extract JSON
+        json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+        if json_match:
+            json_data = json_match.group()
+        else:
+            json_data = response_text
+        
+        try:
+            scheme_data = json.loads(json_data)
+        except Exception as e:
+            print("JSON parse error:", e)
+            scheme_data = []
+        
+        # Also save to database if needed (optional)
+        # Save form data and scheme_data to SchemeOfWork model
+        # ... (unaweza kuongeza hapa)
+        
+        return JsonResponse({'success': True, 'data': scheme_data})
+    
+    return JsonResponse({'success': False}, status=400)
+
+@login_required
+def download_scheme_pdf(request):
+    """Generate PDF ya Scheme of Work kwa mtindo wa KitabuSmart"""
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        scheme_data = data.get('scheme_data')
+        subject = data.get('subject')
+        class_name = data.get('class_name')
+        term = data.get('term')
+        year = data.get('year')
+        syllabus = data.get('syllabus')
+        teacher_name = data.get('teacher_name')
+        school_name = data.get('school_name')
+        total_weeks = data.get('total_weeks')
+        
+        buffer = BytesIO()
+        # Use landscape orientation for wide table
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), 
+                                rightMargin=20, leftMargin=20, topMargin=30, bottomMargin=30)
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        # Title
+        title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=14, spaceAfter=10, alignment=1)
+        elements.append(Paragraph(f"{subject} - {class_name} - {term} {year} - {syllabus}", title_style))
+        elements.append(Spacer(1, 6))
+        
+        # Teacher and School info
+        info_style = ParagraphStyle('InfoStyle', parent=styles['Normal'], fontSize=9)
+        elements.append(Paragraph(f"Teacher: {teacher_name} | School: {school_name} | Total Weeks: {total_weeks}", info_style))
+        elements.append(Spacer(1, 12))
+        
+        if scheme_data:
+            headers = list(scheme_data[0].keys())
+            # Wrap long header text
+            wrapped_headers = [h.replace(' & ', '&\n') for h in headers]
+            table_data = [wrapped_headers]
+            
+            for row in scheme_data:
+                row_data = []
+                for h in headers:
+                    val = row.get(h, '')
+                    # Convert to string and handle long text
+                    row_data.append(str(val) if val else '')
+                table_data.append(row_data)
+            
+            # Calculate column widths based on content
+            col_widths = [70, 80, 70, 80, 50, 40, 40, 60, 70, 70, 60, 60]  # approximate
+            table = Table(table_data, colWidths=col_widths, repeatRows=1)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 7),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#ecf0f1')),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('FONTSIZE', (0, 1), (-1, -1), 6),
+                ('WORDWRAP', (0, 0), (-1, -1), True),
+            ]))
+            elements.append(table)
+        
+        doc.build(elements)
+        buffer.seek(0)
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Scheme_of_Work_{subject}_{class_name}.pdf"'
+        return response
+    
+    return HttpResponse("Invalid request", status=400)    
+# views.py - Ongeza hizi
+
+from django.http import JsonResponse
+from .models import EducationLevel, ClassLevel, Subject, Textbook
+
+def get_classes_by_level(request):
+    """AJAX endpoint to get classes based on education level"""
+    level_id = request.GET.get('level_id')
+    if level_id:
+        classes = ClassLevel.objects.filter(education_level_id=level_id).values('id', 'name')
+        return JsonResponse(list(classes), safe=False)
+    return JsonResponse([], safe=False)
+
+def get_subjects_by_level(request):
+    """AJAX endpoint to get subjects based on education level"""
+    level_id = request.GET.get('level_id')
+    if level_id:
+        try:
+            education_level = EducationLevel.objects.get(id=level_id)
+            level_name = education_level.name.lower()
+            
+            # Filter subjects based on education level
+            if 'primary' in level_name:
+                subjects = Subject.objects.filter(level='primary')
+            elif 'ordinary' in level_name or 'secondary' in level_name:
+                subjects = Subject.objects.filter(level='secondary')
+            else:
+                subjects = Subject.objects.all()
+            
+            return JsonResponse(list(subjects.values('id', 'name')), safe=False)
+        except:
+            return JsonResponse([], safe=False)
+    return JsonResponse([], safe=False)
+
+def get_textbooks_by_level(request):
+    """AJAX endpoint to get textbooks based on education level"""
+    level_id = request.GET.get('level_id')
+    if level_id:
+        try:
+            education_level = EducationLevel.objects.get(id=level_id)
+            textbooks = Textbook.objects.filter(
+                education_level=education_level.name.lower(),
+                is_active=True
+            ).values('id', 'title')
+            return JsonResponse(list(textbooks), safe=False)
+        except:
+            return JsonResponse([], safe=False)
+    return JsonResponse([], safe=False)    
+# =========================
+# LESSON PLAN GENERATOR VIEWS
+# =========================
+
+# =========================
+# LESSON PLAN GENERATOR VIEWS - CLEAN VERSION
+# =========================
+
+@login_required
+def lesson_plan_view(request):
+    """Display lesson plan generator form"""
+    from .models import EducationLevel, Subject
+    
+    education_levels = EducationLevel.objects.all().order_by('order')
+    subjects = Subject.objects.all().order_by('name')
+    
+    return render(request, 'field_app/lesson_plan.html', {
+        'education_levels': education_levels,
+        'subjects': subjects,
+    })
+
+
+@csrf_exempt
+@login_required
+def ajax_generate_lessonplan(request):
+    """Generate lesson plan using AI"""
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        
+        # Extract form data
+        education_level = data.get('education_level', '')
+        class_name = data.get('class_name', '')
+        subject = data.get('subject', '')
+        topic = data.get('topic', '')
+        subtopic = data.get('subtopic', '')
+        term = data.get('term', 'I')
+        year = data.get('year', 2026)
+        duration = data.get('duration', 40)
+        total_students = data.get('total_students', '')
+        present_students = data.get('present_students', '')
+        learning_objectives = data.get('learning_objectives', '')
+        teaching_methods = data.get('teaching_methods', '')
+        reference_source = data.get('reference_source', '')
+        
+        # Build AI prompt for lesson plan
+        prompt = f"""
+You are an AI assistant for Tanzanian teachers. Generate a detailed LESSON PLAN following TIE Tanzania standards.
+
+Input Details:
+- Education Level: {education_level}
+- Class: {class_name}
+- Subject: {subject}
+- Topic: {topic}
+- Subtopic: {subtopic}
+- Term: {term}
+- Year: {year}
+- Duration: {duration} minutes
+- Total Students: {total_students}
+- Present Students: {present_students}
+- Learning Objectives: {learning_objectives}
+- Teaching Methods: {teaching_methods}
+- Reference Source: {reference_source}
+
+Output must be a JSON object with the following structure:
+{{
+    "lesson_title": "Subject - Topic",
+    "date": "today's date",
+    "main_competence": "string",
+    "specific_competence": "string",
+    "previous_knowledge": "string",
+    "learning_objectives": ["objective 1", "objective 2"],
+    "teaching_methods": ["method 1", "method 2"],
+    "teaching_resources": ["resource 1", "resource 2"],
+    "lesson_development": [
+        {{
+            "time": "5 min",
+            "stage": "Introduction",
+            "teacher_activities": "string",
+            "student_activities": "string",
+            "assessment_criteria": "string"
+        }},
+        {{
+            "time": "15 min",
+            "stage": "Presentation",
+            "teacher_activities": "string",
+            "student_activities": "string",
+            "assessment_criteria": "string"
+        }},
+        {{
+            "time": "15 min",
+            "stage": "Practice",
+            "teacher_activities": "string",
+            "student_activities": "string",
+            "assessment_criteria": "string"
+        }},
+        {{
+            "time": "5 min",
+            "stage": "Conclusion",
+            "teacher_activities": "string",
+            "student_activities": "string",
+            "assessment_criteria": "string"
+        }}
+    ],
+    "remarks": "string"
+}}
+"""
+        
+        try:
+            from .ai_utils import client, model_name
+            response = client.models.generate_content(model=model_name, contents=prompt)
+            response_text = response.text
+            
+            import re
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                json_data = json_match.group()
+            else:
+                json_data = response_text
+            
+            lesson_data = json.loads(json_data)
+            return JsonResponse({'success': True, 'data': lesson_data})
+            
+        except Exception as e:
+            print(f"Lesson Plan generation error: {e}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False}, status=400)
+@login_required
+def api_get_schools(request):
+    """API endpoint for AJAX school search"""
+    district_id = request.GET.get('district_id')
+    level = request.GET.get('level', 'Secondary')
+    query = request.GET.get('q', '').strip()
+    
+    if not district_id:
+        return JsonResponse({'success': False, 'error': 'District ID required'})
+    
+    district = get_object_or_404(District, id=district_id)
+    current_year = get_current_academic_year()
+    
+    # Get pinned schools
+    pinned_school_ids = []
+    if current_year:
+        pinned_school_ids = list(SchoolPin.objects.filter(
+            academic_year=current_year,
+            is_pinned=True
+        ).values_list('school_id', flat=True))
+    
+    # Base queryset
+    schools_qs = School.objects.filter(district=district, level=level)
+    
+    if query:
+        schools_qs = schools_qs.filter(name__icontains=query)
+    
+    # Process schools
+    schools_data = []
+    available_count = 0
+    pinned_count = 0
+    full_count = 0
+    
+    for school in schools_qs:
+        is_pinned = school.id in pinned_school_ids
+        is_selectable = (not is_pinned) and (school.current_students < school.capacity)
+        
+        if is_pinned:
+            pinned_count += 1
+        elif not is_selectable:
+            full_count += 1
+        else:
+            available_count += 1
+        
+        occupancy = round((school.current_students / school.capacity) * 100) if school.capacity > 0 else 0
+        
+        schools_data.append({
+            'id': school.id,
+            'name': school.name,
+            'level_display': school.get_level_display(),
+            'current_students': school.current_students,
+            'capacity': school.capacity,
+            'occupancy_percentage': occupancy,
+            'is_pinned': is_pinned,
+            'is_selectable': is_selectable,
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'schools': schools_data,
+        'total_schools': schools_qs.count(),
+        'available_schools': available_count,
+        'pinned_schools': pinned_count,
+        'full_schools': full_count,
+    })
+@csrf_exempt
+@login_required
+def api_select_school_temp(request):
+    """Temporarily store selected school in session"""
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        school_id = data.get('school_id')
+        if school_id:
+            request.session['temp_selected_school_id'] = school_id
+            return JsonResponse({'success': True})
+    return JsonResponse({'success': False})        
+@csrf_exempt
+@login_required
+def api_clear_selected_school(request):
+    """Clear selected school from session"""
+    if request.method == 'POST':
+        request.session.pop('temp_selected_school', None)
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})    
+@login_required
+def api_filter_schools(request):
+    """API endpoint for filtering schools - shows only selected school"""
+    district_id = request.GET.get('district_id')
+    selected_school_id = request.GET.get('selected_school_id')
+    
+    if not district_id:
+        return JsonResponse({'success': False, 'error': 'District ID required'})
+    
+    district = get_object_or_404(District, id=district_id)
+    current_year = get_current_academic_year()
+    
+    # Get pinned schools
+    pinned_school_ids = []
+    if current_year:
+        pinned_school_ids = list(SchoolPin.objects.filter(
+            academic_year=current_year,
+            is_pinned=True
+        ).values_list('school_id', flat=True))
+    
+    # Get all schools first
+    schools_qs = School.objects.filter(district=district)
+    
+    # If selected_school_id is provided, show ONLY that school
+    if selected_school_id:
+        schools_qs = schools_qs.filter(id=selected_school_id)
+    
+    schools_data = []
+    for school in schools_qs:
+        is_pinned = school.id in pinned_school_ids
+        is_selectable = (not is_pinned) and (school.current_students < school.capacity)
+        occupancy = round((school.current_students / school.capacity) * 100) if school.capacity > 0 else 0
+        
+        schools_data.append({
+            'id': school.id,
+            'name': school.name,
+            'level_display': school.get_level_display(),
+            'current_students': school.current_students,
+            'capacity': school.capacity,
+            'occupancy_percentage': occupancy,
+            'is_pinned': is_pinned,
+            'is_selectable': is_selectable,
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'schools': schools_data,
+        'total_schools': schools_qs.count(),
+    })    

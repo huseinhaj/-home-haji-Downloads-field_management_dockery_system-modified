@@ -11,18 +11,27 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'fallback-key-for-local-only')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+# SECURITY WARNING: don't run with debug turned on in production
+DEBUG = True
 
 ALLOWED_HOSTS = ['*', '.onrender.com', 'home-haji-downloads-field-management.onrender.com', 'localhost', '127.0.0.1']
 # Ongeza hizi chini ya ALLOWED_HOSTS
+# Kutoka:
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+
+# Kuwa:
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+#SECURE_SSL_REDIRECT = True
+#SESSION_COOKIE_SECURE = True
+#CSRF_COOKIE_SECURE = True
+#SECURE_BROWSER_XSS_FILTER = True
+#SECURE_HSTS_SECONDS = 31536000  # 1 year
+#SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+#SECURE_HSTS_PRELOAD = True
 
 # Application definition
 INSTALLED_APPS = [
@@ -77,7 +86,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'field_db',
         'USER': 'field_user',
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'PASSWORD': 'ukRDqwwIGn9OwMizhEcDhzJHgUVHNLan',  # Direct password
         'HOST': 'dpg-d7ltilugvqtc73c8mr50-a.oregon-postgres.render.com',
         'PORT': '5432',
     }
