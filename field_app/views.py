@@ -3979,10 +3979,6 @@ Example row:
             response_text = response.text
             
             print(f"✅ Gemini response received ({len(response_text)} characters)")
-            # Extract JSON
-            json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
-            if json_match:
-                json_data = json_match.group()
             else:
                 json_data = response_text
             
