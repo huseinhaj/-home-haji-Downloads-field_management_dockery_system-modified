@@ -3,7 +3,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
-from django.contrib.gis.geos import Poinfrom .ai_utils import client, model_name
+from django.contrib.gis.geos import Point
+from .ai_utils import client, model_name
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.gis.db.models.functions import Distance
 from datetime import datetime, timedelta
