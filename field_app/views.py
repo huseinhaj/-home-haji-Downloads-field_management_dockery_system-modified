@@ -3,8 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
-from django.contrib.gis.geos import Point
-from .ai_utils import client, model_name
+from django.contrib.gis.geos import Poinfrom .ai_utils import client, model_name
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.gis.db.models.functions import Distance
 from datetime import datetime, timedelta
@@ -4109,25 +4108,26 @@ def lesson_plan_view(request):
 def ajax_generate_lessonplan(request):
     """Generate lesson plan using AI"""
     if request.method == 'POST':
-        data = json.loads(request.body)
-        
-        # Extract form data
-        education_level = data.get('education_level', '')
-        class_name = data.get('class_name', '')
-        subject = data.get('subject', '')
-        topic = data.get('topic', '')
-        subtopic = data.get('subtopic', '')
-        term = data.get('term', 'I')
-        year = data.get('year', 2026)
-        duration = data.get('duration', 40)
-        total_students = data.get('total_students', '')
-        present_students = data.get('present_students', '')
-        learning_objectives = data.get('learning_objectives', '')
-        teaching_methods = data.get('teaching_methods', '')
-        reference_source = data.get('reference_source', '')
-        
-        # Build AI prompt for lesson plan
-        prompt = f"""
+        try:
+            data = json.loads(request.body)
+            
+            # Extract form data
+            education_level = data.get('education_level', '')
+            class_name = data.get('class_name', '')
+            subject = data.get('subject', '')
+            topic = data.get('topic', '')
+            subtopic = data.get('subtopic', '')
+            term = data.get('term', 'I')
+            year = data.get('year', 2026)
+            duration = data.get('duration', 40)
+            total_students = data.get('total_students', '')
+            present_students = data.get('present_students', '')
+            learning_objectives = data.get('learning_objectives', '')
+            teaching_methods = data.get('teaching_methods', '')
+            reference_source = data.get('reference_source', '')
+            
+            # Build AI prompt for lesson plan
+            prompt = f"""
 You are an AI assistant for Tanzanian teachers. Generate a detailed LESSON PLAN following TIE Tanzania standards.
 
 Input Details:
@@ -4188,7 +4188,6 @@ Output must be a JSON object with the following structure:
     "remarks": "string"
 }}
 """
-        try:
             from .ai_utils import client, model_name
             
             # ========== CALL GEMINI AI ==========
@@ -4198,18 +4197,39 @@ Output must be a JSON object with the following structure:
             response_text = response.text
             
             print(f"✅ Gemini response received ({len(response_text)} characters)")
+            print(f"Response preview: {response_text[:200]}...")
             
             import re
-            json_match = re.search(r"{.*}", response_text, re.DOTALL)
+            import json
+            
+            # Clean response - remove markdown code blocks
+            cleaned_text = re.sub(r'```json\s*', '', response_text)
+            cleaned_text = re.sub(r'```\s*', '', cleaned_text)
+            
+            # Find JSON object
+            json_match = re.search(r'\{[^{]*\}', cleaned_text, re.DOTALL)
+            if not json_match:
+                json_match = re.search(r'\{.*\}', cleaned_text, re.DOTALL)
+            
             if json_match:
                 json_data = json_match.group()
-                json_data = response_text
+                print(f"Extracted JSON length: {len(json_data)}")
+                lesson_data = json.loads(json_data)
+                return JsonResponse({'success': True, 'data': lesson_data})
+            else:
+                print(f"Could not extract JSON. Response: {cleaned_text[:500]}")
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Could not extract JSON from AI response'
+                }, status=500)
             
-            lesson_data = json.loads(json_data)
-            return JsonResponse({'success': True, 'data': lesson_data})
-            
+        except json.JSONDecodeError as e:
+            print(f"JSON decode error: {e}")
+            return JsonResponse({'success': False, 'error': f'JSON parse error: {str(e)}'}, status=500)
         except Exception as e:
             print(f"Lesson Plan generation error: {e}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
     return JsonResponse({'success': False}, status=400)
