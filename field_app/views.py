@@ -4227,22 +4227,19 @@ Output must be a JSON object with the following structure:
     "remarks": "string"
 }}
 """
-        
         try:
             from .ai_utils import client, model_name
-            response = client.generate_content(
-        model=model_name,
-        # messages= [
-            # 
-            prompt
-        ],
-        temperature=0.5,
-        max_tokens=4096
-    )
+            
+            # ========== CALL GEMINI AI ==========
+            print("🤖 Calling Gemini AI for Lesson Plan...")
+            
+            response = client.generate_content(prompt)
             response_text = response.text
             
+            print(f"✅ Gemini response received ({len(response_text)} characters)")
+            
             import re
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            json_match = re.search(r"{.*}", response_text, re.DOTALL)
             if json_match:
                 json_data = json_match.group()
             else:
