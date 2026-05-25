@@ -4103,14 +4103,16 @@ def lesson_plan_view(request):
         'subjects': subjects,
     })
 
-
 @csrf_exempt
 @login_required
 def ajax_generate_lessonplan(request):
     """Generate lesson plan using AI"""
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
+            import json as json_module
+            import re
+            
+            data = json_module.loads(request.body)
             
             # Extract form data
             education_level = data.get('education_level', '')
@@ -4174,9 +4176,6 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
             
             print(f"✅ Gemini response received ({len(response_text)} characters)")
             
-            import re
-            import json
-            
             # Clean response
             cleaned_text = re.sub(r'```json\s*', '', response_text)
             cleaned_text = re.sub(r'```\s*', '', cleaned_text)
@@ -4188,7 +4187,7 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
             
             if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
                 json_data = cleaned_text[start_idx:end_idx + 1]
-                lesson_data = json.loads(json_data)
+                lesson_data = json_module.loads(json_data)
                 return JsonResponse({'success': True, 'data': lesson_data})
             else:
                 # Fallback response
