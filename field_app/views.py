@@ -3972,17 +3972,13 @@ Example row:
 {{"Main Competence": "1.0 Demonstrate mastery of concepts", "Specific Competence": "Understand numbers", "Learning Activities": "Group discussion", "Specific Learning Activities": "Define numbers", "Month": "MAY", "Week": "1st", "Periods": 8, "Reference": "book.pdf, page 5-10", "Teaching & Learning Methods": "Think-Pair-Share", "Teaching & Learning Resources": "Charts", "Assessment Tools": "Quizzes", "Remarks": "Emphasize basics"}}
 """
             
-            response = client.generate_content(
-        model=model_name,
-        # messages= [
-            # 
-            prompt
-        ],
-        temperature=0.5,
-        max_tokens=4096
-    )
+            # ========== CALL GEMINI AI ==========
+            print("🤖 Calling Gemini AI...")
+            
+            response = client.generate_content(prompt)
             response_text = response.text
             
+            print(f"✅ Gemini response received ({len(response_text)} characters)")
             # Extract JSON
             json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
             if json_match:
