@@ -1,18 +1,11 @@
-import google.generativeai as genai
+import openai
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY")
 
-if not api_key:
-    api_key = "AIzaSyCLfklrP_phMt3Yvm7CXuOXTDjc8isXuCQ"
+openai.api_key = os.getenv("OPENAI_API_KEY")
+model_name = "gpt-3.5-turbo"
 
-# Configure the API key
-genai.configure(api_key=api_key)
-
-# Create client
-client = genai.GenerativeModel(model_name="gemini-2.0-flash")
-model_name = "gemini-2.0-flash"
-
-print(f"✅ Gemini AI configured with: {model_name}")
+print(f"✅ OpenAI configured with model: {model_name}")
+print(f"🔑 API Key found: {bool(openai.api_key)}")
