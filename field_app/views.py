@@ -3972,7 +3972,7 @@ Example row:
 {{"Main Competence": "1.0 Demonstrate mastery of concepts", "Specific Competence": "Understand numbers", "Learning Activities": "Group discussion", "Specific Learning Activities": "Define numbers", "Month": "MAY", "Week": "1st", "Periods": 8, "Reference": "book.pdf, page 5-10", "Teaching & Learning Methods": "Think-Pair-Share", "Teaching & Learning Resources": "Charts", "Assessment Tools": "Quizzes", "Remarks": "Emphasize basics"}}
 """
             
-            response = client.models.generate_content(model=model_name, contents=prompt)
+            response = client.generate_content(contents=prompt)
             response_text = response.text
             
             # Extract JSON
@@ -4230,7 +4230,7 @@ Output must be a JSON object with the following structure:
         
         try:
             from .ai_utils import client, model_name
-            response = client.models.generate_content(model=model_name, contents=prompt)
+            response = client.generate_content(contents=prompt)
             response_text = response.text
             
             import re
