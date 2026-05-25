@@ -3972,8 +3972,16 @@ Example row:
 {{"Main Competence": "1.0 Demonstrate mastery of concepts", "Specific Competence": "Understand numbers", "Learning Activities": "Group discussion", "Specific Learning Activities": "Define numbers", "Month": "MAY", "Week": "1st", "Periods": 8, "Reference": "book.pdf, page 5-10", "Teaching & Learning Methods": "Think-Pair-Share", "Teaching & Learning Resources": "Charts", "Assessment Tools": "Quizzes", "Remarks": "Emphasize basics"}}
 """
             
-            response = client.generate_content(contents=prompt)
-            response_text = response.text
+            response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": "You are a Tanzanian teacher assistant. Generate Schemes of Work in valid JSON format only."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.5,
+        max_tokens=4096
+    )
+            response_text = response.choices[0].message.content
             
             # Extract JSON
             json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
@@ -4230,8 +4238,16 @@ Output must be a JSON object with the following structure:
         
         try:
             from .ai_utils import client, model_name
-            response = client.generate_content(contents=prompt)
-            response_text = response.text
+            response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": "You are a Tanzanian teacher assistant. Generate Schemes of Work in valid JSON format only."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.5,
+        max_tokens=4096
+    )
+            response_text = response.choices[0].message.content
             
             import re
             json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
