@@ -79,7 +79,6 @@ def get_assessor_email_template(assessor, school, temp_password, is_new_account,
             <p style="margin: 10px 0; color: #856404;">⚠️ Please change your password immediately after first login</p>
         </div>
         """
-    else:
         credential_html = f"""
         <div style="background-color: #e3f2fd; border-left: 4px solid #2196f3; padding: 20px; margin: 20px 0; border-radius: 8px;">
             <h3 style="margin-top: 0; color: #1976d2;">🔄 NEW ACADEMIC YEAR {assessor.current_academic_year.year if assessor.current_academic_year else '2024/2025'}</h3>
@@ -397,7 +396,6 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
                         'error': str(e)[:100]
                     })
                     continue
-            else:
                 print(f"✅ Already has credentials for {current_academic_year.year}")
                 credential_action = f"Already has credentials for {current_academic_year.year}"
                 send_email = False
@@ -451,10 +449,8 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
                     
                     if student_assessments_created > 0:
                         print(f"   📊 Total student assessments: {student_assessments_created}")
-                    else:
                         print(f"   ℹ️ No new student assessments needed")
                         
-                else:
                     skipped_assignments += 1
                     print(f"⚠️ SKIPPED: Assignment already exists for {assessor.full_name} -> {school.name}")
                 
@@ -616,7 +612,6 @@ University of Dodoma
                     'error': str(e)[:100],
                     'note': 'MANUALLY SHARE THESE CREDENTIALS'
                 })
-        else:
             status_msg = f'ℹ️ {assignments_for_this_assessor} new assignments created'
             if not send_email:
                 status_msg += ' (no email - already has credentials)'
@@ -736,9 +731,7 @@ def register(request):
 
             messages.success(request, 'Account created successfully. Please login.')
             return redirect('login')
-        else:
             messages.error(request, 'Please correct the errors below.')
-    else:
         form = StudentRegistrationForm()
 
     return render(request, 'field_app/registration/register.html', {
@@ -787,9 +780,7 @@ def login_view(request):
                 get_or_create_student_profile(user)
                 messages.success(request, "Login successful!")
                 return redirect('dashboard')
-        else:
             messages.error(request, 'Invalid credentials')
-    else:
         form = CustomLoginForm()
     
     return render(request, 'field_app/registration/login.html', {
@@ -809,7 +800,6 @@ def logout_view(request):
     
     if 'assessor' in referer or 'assessor_dashboard' in referer:
         return redirect('assessor_login')
-    else:
         return redirect('login')
 # =========================
 # ASSESSOR LOGIN VIEW
@@ -853,7 +843,6 @@ def assessor_login(request):
                 user = User.objects.get(email__iexact=email)
                 if user.check_password(password):
                     print(f"✅ Password check passed")
-                else:
                     messages.error(request, 'Invalid email or password.')
                     return render(request, 'field_app/assessor_login.html')
             except User.DoesNotExist:
@@ -929,7 +918,6 @@ def dashboard(request):
             is_pinned=True
         ).values_list('region_id', flat=True)
         pinned_regions = Region.objects.filter(id__in=pinned_region_ids)
-    else:
         pinned_regions = Region.objects.none()
     
     assessors = []
@@ -1273,7 +1261,6 @@ def select_school(request, district_id):
                     return redirect('select_subjects', school_id=school.id)
                 except:
                     messages.error(request, 'Shule haipo')
-            else:
                 messages.error(request, 'Hakuna shule iliyochaguliwa')
             return redirect(f"{request.path}?level={selected_level}&q={search_query}")
         
@@ -1337,10 +1324,8 @@ def select_subjects(request, school_id):
             
             if existing_application:
                 messages.info(request, f"You have already applied for {subject.name}")
-            else:
                 if capacity.current_students >= capacity.max_students:
                     messages.error(request, f"{subject.name} is already full.")
-                else:
                     StudentApplication.objects.create(
                         student=student,
                         subject=subject,
@@ -1363,7 +1348,6 @@ def select_subjects(request, school_id):
             if application:
                 application.delete()
                 messages.success(request, f"Application for {subject.name} cancelled.")
-            else:
                 messages.error(request, f"Cannot cancel application for {subject.name}.")
 
         return redirect('select_subjects', school_id=school.id)
@@ -1525,7 +1509,6 @@ def submit_logbook(request):
                 logbook_entry.is_location_verified = True
                 logbook_entry.is_at_school = True
                 print(f"   ✅ Location VERIFIED - in Dodoma")
-            else:
                 logbook_entry.is_location_verified = False
                 logbook_entry.is_at_school = False
                 print(f"   ⚠️ Location NOT in Dodoma - lat={lat}, lng={lng}")
@@ -1564,19 +1547,16 @@ def submit_logbook(request):
             
             if entry.is_location_verified:
                 messages.success(request, "✅ Logbook imesajiliwa kikamilifu! Eneo lako limehakikiwa.")
-            else:
                 messages.warning(request, 
                     f"⚠️ Logbook imesajiliwa lakini eneo lako halipo Dodoma.\n"
                     f"Mahali ulipo: Lat {lat:.4f}, Lng {lng:.4f}"
                 )
             
             return redirect('logbook_history')
-        else:
             messages.error(request, "Tafadhali kagua makosa yaliyomo kwenye fomu.")
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"{field}: {error}")
-    else:
         form = LogbookForm(instance=logbook_entry)
     
     days_swahili = {
@@ -1675,7 +1655,6 @@ def download_logbook_pdf(request, period=None, period_type=None):
         filename = f"logbook_all_{today}.pdf"
         title = f"Logbook Zote - {today}"
         
-    else:
         entries = LogbookEntry.objects.filter(student=student)
         filename = f"logbook_all_{today}.pdf"
         title = f"Logbook Zote - {today}"
@@ -1905,7 +1884,6 @@ def assign_assessor(request):
         existing = SchoolAssessment.objects.filter(assessor=assessor, school=school).first()
         if existing:
             messages.warning(request, f"Assessor {assessor.full_name} is already assigned to {school.name}")
-        else:
             if not assessor.email:
                 messages.error(request, 
                     f"Assessor {assessor.full_name} has no email address! "
@@ -1979,7 +1957,6 @@ def assign_assessor(request):
                     
                     Please change your password immediately after first login.
                     """
-                else:
                     password_info = f"""
                     USE YOUR EXISTING ACCOUNT:
                     
@@ -2043,7 +2020,6 @@ def assign_assessor(request):
                         f"• Assigned to: {school.name}<br>"
                         f"• Students: {student_assessments_created}"
                     )
-                else:
                     messages.success(request,
                         f"✅ Assessor {assessor.full_name} assigned successfully!<br>"
                         f"• Email sent to: {assessor.email}<br>"
@@ -2067,7 +2043,6 @@ def assign_assessor(request):
                         f"Email: {assessor.email}<br>"
                         f"Password: {temp_password}"
                     )
-                else:
                     messages.warning(request,
                         f"⚠️ Assessor assigned but email failed!<br>"
                         f"• Assessor: {assessor.full_name}<br>"
@@ -2087,7 +2062,6 @@ def assign_assessor(request):
     for assessor in assessors:
         if assessor.email and '@' in assessor.email:
             assessors_with_email.append(assessor)
-        else:
             assessors_without_email.append(assessor)
     
     return render(request, 'field_app/assign_assessor.html', {
@@ -2118,7 +2092,6 @@ def bulk_assign_assessors(request):
             elif not assessor.user:
                 assessor.needs_new_credentials = True
                 assessor.year_status = "Hakuna akaunti"
-            else:
                 assessor.needs_new_credentials = False
                 assessor.year_status = f"Tayari kwa {current_year.year}"
             
@@ -2250,7 +2223,6 @@ def bulk_assign_assessors(request):
             traceback.print_exc()
             return redirect('bulk_assign_assessors')
     
-    else:
         return HttpResponseNotAllowed(['GET', 'POST'])
 
 # views.py - FIX BULK ASSIGNMENT FUNCTION
@@ -2681,7 +2653,6 @@ def region_pinning_view(request):
                 regions_to_hide_names = [
                     name.strip().lower() for name in regions_data.split(',') if name.strip()
                 ]
-            else:
                 regions_to_hide_names = [name.strip().lower() for name in regions_data if name.strip()]
             
             print(f"📋 Regions to HIDE: {regions_to_hide_names}")
@@ -2700,7 +2671,6 @@ def region_pinning_view(request):
                         if er.lower() == region_name:
                             valid_regions.append(er)
                             break
-                else:
                     invalid_regions.append(region_name)
             
             if invalid_regions:
@@ -2717,7 +2687,6 @@ def region_pinning_view(request):
                         is_pinned=True
                     ).select_related('region')
                     currently_hidden = [pin.region.name for pin in current_pins]
-                else:
                     currently_hidden = []
                 
                 return render(request, 'field_app/pin_regions_form.html', {
@@ -2767,7 +2736,6 @@ def region_pinning_view(request):
                 
                 if is_pinned:
                     pinned_region_names.append(region.name)
-                else:
                     visible_region_names.append(region.name)
             
             # Bulk create region pins
@@ -2797,9 +2765,7 @@ def region_pinning_view(request):
                 if school_pins_to_create:
                     SchoolPin.objects.bulk_create(school_pins_to_create)
                     print(f"✅ Created {len(school_pins_to_create)} school pins for hidden regions")
-                else:
                     print(f"ℹ️ No schools found in hidden regions")
-            else:
                 print(f"ℹ️ No hidden regions - no school pins created")
                 school_pins_to_create = []
             
@@ -2818,7 +2784,6 @@ def region_pinning_view(request):
             # Success message
             if len(pinned_region_names) == 0:
                 message = f"✅ All {len(visible_region_names)} regions are now VISIBLE to students for {year.year}!"
-            else:
                 message = (
                     f"✅ Success for {year.year}!\n"
                     f"🔒 HIDDEN Regions ({len(pinned_region_names)}): {', '.join(pinned_region_names[:5])}"
@@ -2830,10 +2795,8 @@ def region_pinning_view(request):
             
             messages.success(request, message)
             return redirect('pinning_success')
-        else:
             messages.error(request, f"Please correct the errors below: {form.errors}")
             # Fall through to GET handling to show form with errors
-    else:
         form = RegionFieldInputForm()
     
     # GET request or form errors - show current status
@@ -2883,7 +2846,6 @@ def profile_create(request):
             form.save()
             messages.success(request, 'Profile updated successfully!')
             return redirect('dashboard')
-    else:
         form = StudentTeacherForm(instance=student)
 
     return render(request, 'field_app/profile_create.html', {'form': form})
@@ -2970,7 +2932,6 @@ def my_assessors(request):
         ).select_related('assessor')
         
         print(f"   Found {school_assessments.count()} assessors for {current_year.year}")
-    else:
         school_assessments = SchoolAssessment.objects.none()
         print(f"   No active academic year found!")
     
@@ -3006,7 +2967,6 @@ def assessor_list(request):
             assessor.has_account = True
             assessor.login_email = assessor.user.email
             assessor.password_info = "Use existing password"
-        else:
             assessor.has_account = False
             assessor.login_email = assessor.email or "No email"
             assessor.password_info = "No account created yet"
@@ -3401,7 +3361,6 @@ def api_get_schools_for_change(request):
         # Calculate occupancy
         if school.capacity > 0:
             occupancy = round((school.current_students / school.capacity) * 100)
-        else:
             occupancy = 0
         
         schools_data.append({
@@ -3460,7 +3419,6 @@ def toggle_region_pin(request, region_id):
                     }
                 )
             status = "HIDDEN"
-        else:
             # Unpin all schools (show)
             SchoolPin.objects.filter(
                 academic_year=current_year,
@@ -3526,7 +3484,6 @@ def create_academic_year(request):
         # Check if exists
         if AcademicYear.objects.filter(year=year_name).exists():
             messages.warning(request, f"Academic year {year_name} already exists!")
-        else:
             # Create new year (not active by default)
             AcademicYear.objects.create(
                 year=year_name,
@@ -3979,6 +3936,11 @@ Example row:
             response_text = response.text
             
             print(f"✅ Gemini response received ({len(response_text)} characters)")
+            
+            # Extract JSON
+            json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+            if json_match:
+                json_data = json_match.group()
             else:
                 json_data = response_text
             
@@ -4099,7 +4061,6 @@ def get_subjects_by_level(request):
                 subjects = Subject.objects.filter(level='primary')
             elif 'ordinary' in level_name or 'secondary' in level_name:
                 subjects = Subject.objects.filter(level='secondary')
-            else:
                 subjects = Subject.objects.all()
             
             return JsonResponse(list(subjects.values('id', 'name')), safe=False)
@@ -4242,7 +4203,6 @@ Output must be a JSON object with the following structure:
             json_match = re.search(r"{.*}", response_text, re.DOTALL)
             if json_match:
                 json_data = json_match.group()
-            else:
                 json_data = response_text
             
             lesson_data = json.loads(json_data)
@@ -4294,7 +4254,6 @@ def api_get_schools(request):
             pinned_count += 1
         elif not is_selectable:
             full_count += 1
-        else:
             available_count += 1
         
         occupancy = round((school.current_students / school.capacity) * 100) if school.capacity > 0 else 0
@@ -4402,7 +4361,6 @@ def create_admin(request):
         if not User.objects.filter(email=email).exists():
             User.objects.create_superuser(email=email, password=password)
             results.append(f"✅ Superuser {email} created!")
-        else:
             results.append(f"⚠️ Superuser {email} already exists.")
     
     return HttpResponse("<br>".join(results))
