@@ -4217,7 +4217,7 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
             traceback.print_exc()
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
-    return JsonResponse({'success': False}, status=400)s
+    return JsonResponse({'success': False}, status=400)
 @login_required
 def api_get_schools(request):
     """API endpoint for AJAX school search"""
