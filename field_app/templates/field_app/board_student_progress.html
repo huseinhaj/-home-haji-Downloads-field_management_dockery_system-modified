@@ -1,0 +1,346 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maendeleo — {{ student.full_name }}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--bold:#0A2B5E;--medium:#C8900A;--light:#EEF1F6;--white:#fff;--border:#CBD5E0;--text:#1A1A2E;--gray:#4A5568;--success:#10B981;--warning:#F59E0B;--danger:#EF4444;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;display:flex;flex-direction:column;}
+.top-nav{background:var(--bold);border-bottom:3px solid var(--medium);padding:0 32px;display:flex;align-items:center;justify-content:space-between;min-height:56px;}
+.top-nav .brand{color:var(--white);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
+.top-nav .brand i{color:var(--medium);}
+.top-nav .right{display:flex;align-items:center;gap:12px;}
+.top-nav .right span{color:rgba(255,255,255,.8);font-size:13px;}
+.top-nav a{color:rgba(255,255,255,.8);font-size:13px;text-decoration:none;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:5px;border:1px solid rgba(255,255,255,.2);transition:.15s;}
+.top-nav a:hover{background:rgba(255,255,255,.1);color:var(--white);}
+.breadcrumb{background:var(--white);padding:10px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;}
+.breadcrumb a{color:var(--bold);text-decoration:none;font-weight:600;}
+.breadcrumb a:hover{color:var(--medium);}
+.breadcrumb span{color:var(--gray);}
+.main{flex:1;padding:24px 32px;max-width:1300px;margin:0 auto;width:100%;}
+.layout{display:grid;grid-template-columns:1fr 340px;gap:20px;}
+.card{background:var(--white);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin-bottom:18px;}
+.card-hd{padding:13px 20px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:9px;background:var(--light);}
+.card-hd i{color:var(--medium);}
+.card-hd h3{font-size:14px;color:var(--bold);font-weight:700;margin:0;}
+.card-body{padding:16px 20px;}
+/* Student profile card */
+.profile-banner{background:var(--bold);padding:20px 24px;border-bottom:3px solid var(--medium);display:flex;align-items:center;gap:16px;}
+.profile-ava{width:52px;height:52px;background:rgba(200,144,10,.2);border-radius:50%;border:2px solid var(--medium);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.profile-ava i{font-size:22px;color:var(--medium);}
+.profile-info h2{font-size:17px;color:var(--white);font-weight:700;margin:0;}
+.profile-info p{font-size:12px;color:rgba(255,255,255,.7);margin:3px 0 0;}
+.stats-row{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+.stat-box{background:var(--white);border:1px solid var(--border);border-radius:7px;padding:12px 16px;flex:1;min-width:100px;text-align:center;}
+.stat-box .num{font-size:22px;font-weight:800;color:var(--bold);}
+.stat-box .lbl{font-size:11px;color:var(--gray);margin-top:2px;}
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:var(--light);color:var(--bold);font-size:12px;font-weight:700;padding:9px 12px;text-align:left;border-bottom:2px solid var(--border);}
+td{padding:9px 12px;color:var(--text);border-bottom:1px solid #F0F4F8;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#F7FAFF;}
+/* Comment form */
+.comment-form{background:var(--white);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin-bottom:18px;}
+.cf-hd{background:var(--bold);padding:14px 20px;border-bottom:3px solid var(--medium);}
+.cf-hd h3{font-size:14px;color:var(--white);font-weight:700;margin:0;}
+.cf-hd p{font-size:11.5px;color:rgba(255,255,255,.7);margin:3px 0 0;}
+.cf-body{padding:18px 20px;}
+.field-lbl{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;}
+.field-wrap{margin-bottom:14px;}
+select,textarea{width:100%;border:1.5px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;color:var(--text);background:#FAFBFD;outline:none;font-family:inherit;transition:.15s;}
+select:focus,textarea:focus{border-color:var(--bold);background:var(--white);box-shadow:0 0 0 3px rgba(10,43,94,.09);}
+textarea{resize:vertical;min-height:90px;}
+.btn-submit{width:100%;padding:11px;background:var(--medium);color:var(--white);border:none;border-radius:6px;font-size:13.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:.2s;}
+.btn-submit:hover{background:#b07a08;}
+/* Comments display */
+.comment-item{padding:14px 0;border-bottom:1px solid #F0F4F8;}
+.comment-item:last-child{border-bottom:none;}
+.ci-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;}
+.ci-author{font-size:13px;font-weight:700;color:var(--bold);}
+.ci-date{font-size:11.5px;color:var(--gray);}
+.ci-text{font-size:13px;color:var(--text);line-height:1.6;}
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11.5px;font-weight:600;}
+.s-excellent{background:rgba(16,185,129,.1);color:var(--success);border:1px solid rgba(16,185,129,.3);}
+.s-good{background:rgba(10,43,94,.08);color:var(--bold);border:1px solid rgba(10,43,94,.15);}
+.s-average{background:rgba(245,158,11,.1);color:var(--warning);border:1px solid rgba(245,158,11,.3);}
+.s-behind{background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.3);}
+.s-critical{background:rgba(127,0,0,.1);color:#7F0000;border:1px solid rgba(127,0,0,.3);}
+.no-data{text-align:center;padding:20px;color:var(--gray);font-size:13px;}
+.topic-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #F0F4F8;font-size:13px;}
+.topic-row:last-child{border-bottom:none;}
+.topic-subject{background:rgba(10,43,94,.08);color:var(--bold);border-radius:4px;padding:2px 8px;font-size:11.5px;font-weight:600;white-space:nowrap;}
+.msg-success{padding:10px 14px;background:#D1FAE5;color:#065F46;border-left:3px solid #059669;border-radius:6px;font-size:13px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.gov-footer{background:var(--bold);padding:11px 40px;display:flex;align-items:center;justify-content:space-between;border-top:3px solid var(--medium);flex-wrap:wrap;gap:8px;margin-top:20px;}
+.gov-footer p{font-size:11px;color:rgba(255,255,255,.65);margin:0;}
+.gov-footer .ver{font-size:11px;color:var(--medium);font-weight:700;}
+@media(max-width:1024px){.layout{grid-template-columns:1fr;}}
+@media(max-width:768px){.main{padding:14px;}.top-nav{padding:0 16px;}.breadcrumb{padding:8px 16px;}}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <div class="brand"><i class="fas fa-users"></i> Bodi ya Walimu — IMS</div>
+  <div class="right">
+    <span><i class="fas fa-user-tie" style="color:var(--medium);margin-right:5px;"></i>{{ bm.full_name }}</span>
+    <a href="{% url 'board_logout' %}"><i class="fas fa-sign-out-alt"></i> Toka</a>
+  </div>
+</nav>
+
+<div class="breadcrumb">
+  <a href="{% url 'board_home' %}"><i class="fas fa-home" style="margin-right:4px;"></i>Mikoa</a>
+  <span><i class="fas fa-chevron-right"></i></span>
+  {% if school %}
+  <a href="{% url 'board_district_list' school.district.region.id %}">{{ school.district.region.name }}</a>
+  <span><i class="fas fa-chevron-right"></i></span>
+  <a href="{% url 'board_school_list' school.district.id %}">{{ school.district.name }}</a>
+  <span><i class="fas fa-chevron-right"></i></span>
+  {% endif %}
+  <span style="color:var(--bold);font-weight:600;">{{ student.full_name }}</span>
+</div>
+
+<div class="main">
+  {% if messages %}
+  {% for msg in messages %}
+  <div class="msg-success"><i class="fas fa-check-circle"></i> {{ msg }}</div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- Profile Banner -->
+  <div class="card" style="margin-bottom:18px;">
+    <div class="profile-banner">
+      <div class="profile-ava"><i class="fas fa-user-graduate"></i></div>
+      <div class="profile-info">
+        <h2>{{ student.full_name }}</h2>
+        <p>{{ student.user.email }} {% if school %}&bull; {{ school.name }} ({{ school.get_level_display }}){% endif %}</p>
+      </div>
+    </div>
+    <div class="card-body" style="padding:14px 20px;">
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="num">{{ total_entries }}</div>
+          <div class="lbl">Logbook Zote</div>
+        </div>
+        <div class="stat-box">
+          <div class="num">{{ month_entry_count }}</div>
+          <div class="lbl">Mwezi Huu</div>
+        </div>
+        <div class="stat-box">
+          <div class="num">{{ lesson_plans|length }}</div>
+          <div class="lbl">Mipango ya Masomo</div>
+        </div>
+        <div class="stat-box">
+          <div class="num">{{ applications|length }}</div>
+          <div class="lbl">Masomo Yaliyoidhinishwa</div>
+        </div>
+        <div class="stat-box">
+          <div class="num">{{ board_comments|length }}</div>
+          <div class="lbl">Maoni ya Bodi</div>
+        </div>
+      </div>
+      <!-- Subjects -->
+      {% if applications %}
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        {% for app in applications %}
+        <span style="background:rgba(10,43,94,.08);color:var(--bold);border:1px solid rgba(10,43,94,.2);border-radius:5px;padding:4px 12px;font-size:12.5px;font-weight:600;">
+          <i class="fas fa-book" style="margin-right:4px;color:var(--medium);"></i>{{ app.subject.name }}
+        </span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- LEFT: Progress data -->
+    <div>
+      <!-- Topics Covered -->
+      <div class="card">
+        <div class="card-hd"><i class="fas fa-list-alt"></i><h3>Mada Zilizofundishwa (Hivi Karibuni)</h3></div>
+        <div class="card-body" style="padding:12px 20px;">
+          {% if topics_covered %}
+            {% for tc in topics_covered %}
+            <div class="topic-row">
+              {% if tc.subject %}
+              <span class="topic-subject">{{ tc.subject }}</span>
+              {% endif %}
+              <span style="flex:1;">{{ tc.topic|default:"—" }}</span>
+              <span style="font-size:11.5px;color:var(--gray);white-space:nowrap;">{{ tc.date|date:"d/m/Y" }}</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p class="no-data"><i class="fas fa-inbox" style="display:block;font-size:28px;color:#D1D9E8;margin-bottom:8px;"></i>Mwanafunzi hajaandika mada kwenye logbook bado.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Logbook Entries -->
+      <div class="card">
+        <div class="card-hd"><i class="fas fa-book-open"></i><h3>Logbook ya Hivi Karibuni ({{ logbook_display|length }} siku)</h3></div>
+        <div class="card-body" style="padding:0;">
+          {% if logbook_display %}
+          <table>
+            <thead>
+              <tr>
+                <th>Tarehe</th>
+                <th>Somo</th>
+                <th>Mada Kuu</th>
+                <th>Darasa</th>
+                <th>Wanafunzi</th>
+                <th>Vipindi</th>
+                <th>Aina</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in logbook_display %}
+              <tr>
+                <td>{{ item.entry.date|date:"d/m/Y" }}<br><span style="font-size:11px;color:var(--gray);">{{ item.entry.get_day_of_week_display }}</span></td>
+                <td style="font-weight:600;color:var(--bold);">{{ item.subject }}</td>
+                <td>{{ item.topic|truncatechars:30 }}</td>
+                <td>{{ item.class }}</td>
+                <td style="text-align:center;">{{ item.present }}</td>
+                <td style="text-align:center;">
+                  {% if item.num_periods %}
+                  <span style="background:rgba(10,43,94,.08);color:var(--bold);padding:2px 8px;border-radius:4px;font-size:11.5px;font-weight:700;">{{ item.num_periods }}</span>
+                  {% else %}—{% endif %}
+                </td>
+                <td>
+                  {% if item.activity %}
+                  <span style="font-size:11.5px;background:rgba(200,144,10,.1);color:#92400E;padding:2px 7px;border-radius:4px;">{{ item.activity }}</span>
+                  {% else %}—{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="no-data"><i class="fas fa-book" style="display:block;font-size:28px;color:#D1D9E8;margin-bottom:8px;"></i>Hakuna logbook iliyoandikwa.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Lesson Plans -->
+      {% if lesson_plans %}
+      <div class="card">
+        <div class="card-hd"><i class="fas fa-chalkboard-teacher"></i><h3>Mipango ya Masomo</h3></div>
+        <div class="card-body" style="padding:0;">
+          <table>
+            <thead>
+              <tr><th>Tarehe</th><th>Somo</th><th>Mada</th><th>Darasa</th><th>Muda</th></tr>
+            </thead>
+            <tbody>
+              {% for lp in lesson_plans %}
+              <tr>
+                <td>{{ lp.date|date:"d/m/Y" }}</td>
+                <td>{{ lp.subject.name }}</td>
+                <td>{{ lp.topic|truncatechars:40 }}</td>
+                <td>{{ lp.class_name }}</td>
+                <td>{{ lp.duration }} dk</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Scheme of Work summary -->
+      {% if schemes %}
+      <div class="card">
+        <div class="card-hd"><i class="fas fa-calendar-alt"></i><h3>Mpango wa Kazi (Scheme of Work)</h3></div>
+        <div class="card-body" style="padding:0;">
+          <table>
+            <thead>
+              <tr><th>Somo</th><th>Darasa</th><th>Term</th><th>Mwaka</th><th>Wiki</th></tr>
+            </thead>
+            <tbody>
+              {% for s in schemes %}
+              <tr>
+                <td>{{ s.subject.name }}</td>
+                <td>{{ s.class_name }}</td>
+                <td>{{ s.term }}</td>
+                <td>{{ s.year }}</td>
+                <td>{{ s.total_weeks }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- RIGHT: Comments -->
+    <div>
+      <!-- Add Comment Form -->
+      <div class="comment-form">
+        <div class="cf-hd">
+          <h3><i class="fas fa-comment-dots" style="margin-right:6px;"></i>Toa Maoni</h3>
+          <p>Andika maoni kuhusu maendeleo ya mwanafunzi huyu</p>
+        </div>
+        <div class="cf-body">
+          <form method="post" action="{% url 'board_add_comment' %}">
+            {% csrf_token %}
+            <input type="hidden" name="student_id" value="{{ student.id }}">
+            <div class="field-wrap">
+              <label class="field-lbl">Hali ya Maendeleo</label>
+              <select name="status">
+                <option value="excellent">✅ Vizuri Sana — Endelea Hivyo</option>
+                <option value="good" selected>👍 Vizuri — Kazi Nzuri</option>
+                <option value="average">⚠️ Wastani — Boresha</option>
+                <option value="behind">🔴 Nyuma — Akazane</option>
+                <option value="critical">🚨 Muhimu — Hatua ya Haraka</option>
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-lbl">Maoni Yako</label>
+              <textarea name="comment" placeholder="Andika maoni yako kuhusu maendeleo ya mwanafunzi huyu..." required></textarea>
+            </div>
+            <button type="submit" class="btn-submit">
+              <i class="fas fa-paper-plane"></i> Tuma Maoni
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Previous Comments -->
+      <div class="card">
+        <div class="card-hd"><i class="fas fa-comments"></i><h3>Maoni ya Awali ({{ board_comments|length }})</h3></div>
+        <div class="card-body" style="padding:12px 20px;">
+          {% if board_comments %}
+            {% for c in board_comments %}
+            <div class="comment-item">
+              <div class="ci-top">
+                <span class="ci-author"><i class="fas fa-user-tie" style="margin-right:5px;color:var(--medium);"></i>{{ c.board_member.full_name }}</span>
+                <span class="ci-date">{{ c.created_at|date:"d/m/Y H:i" }}</span>
+              </div>
+              <div style="margin-bottom:8px;">
+                {% if c.status == 'excellent' %}<span class="status-badge s-excellent"><i class="fas fa-star"></i> Vizuri Sana</span>
+                {% elif c.status == 'good' %}<span class="status-badge s-good"><i class="fas fa-thumbs-up"></i> Vizuri</span>
+                {% elif c.status == 'average' %}<span class="status-badge s-average"><i class="fas fa-exclamation-circle"></i> Wastani</span>
+                {% elif c.status == 'behind' %}<span class="status-badge s-behind"><i class="fas fa-exclamation-triangle"></i> Nyuma</span>
+                {% else %}<span class="status-badge s-critical"><i class="fas fa-bell"></i> Muhimu</span>{% endif %}
+              </div>
+              <p class="ci-text">{{ c.comment }}</p>
+            </div>
+            {% endfor %}
+          {% else %}
+          <p class="no-data"><i class="fas fa-comment-slash" style="display:block;font-size:28px;color:#D1D9E8;margin-bottom:8px;"></i>Hakuna maoni ya awali.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="gov-footer">
+  <p>&copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Jamhuri ya Muungano wa Tanzania.</p>
+  <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0 | Bodi ya Walimu</span>
+</div>
+</body>
+</html>

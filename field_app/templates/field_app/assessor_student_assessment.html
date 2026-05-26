@@ -1,0 +1,245 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tathmini — {{ student.full_name }}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--bold:#0A2B5E;--medium:#C8900A;--light:#EEF1F6;--white:#fff;--border:#CBD5E0;--text:#1A1A2E;--gray:#4A5568;--success:#10B981;--warning:#F59E0B;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;display:flex;flex-direction:column;}
+.top-nav{background:var(--bold);border-bottom:3px solid var(--medium);padding:0 32px;display:flex;align-items:center;justify-content:space-between;min-height:56px;}
+.top-nav .brand{color:var(--white);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
+.top-nav .brand i{color:var(--medium);}
+.top-nav a{color:rgba(255,255,255,.8);font-size:13px;text-decoration:none;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:5px;border:1px solid rgba(255,255,255,.2);transition:.15s;}
+.top-nav a:hover{background:rgba(255,255,255,.1);color:var(--white);}
+.top-nav .right{display:flex;align-items:center;gap:12px;}
+.top-nav .right span{color:rgba(255,255,255,.8);font-size:13px;}
+.breadcrumb{background:var(--white);padding:10px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;}
+.breadcrumb a{color:var(--bold);text-decoration:none;font-weight:600;}
+.breadcrumb a:hover{color:var(--medium);}
+.breadcrumb span{color:var(--gray);}
+.main{flex:1;padding:24px 32px;max-width:1100px;margin:0 auto;width:100%;}
+.card{background:var(--white);border-radius:8px;border:1px solid var(--border);margin-bottom:20px;}
+.card-hd{background:var(--bold);color:var(--white);padding:12px 20px;border-radius:7px 7px 0 0;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;border-bottom:3px solid var(--medium);}
+.card-hd i{color:var(--medium);}
+.card-body{padding:20px;}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+.info-item .lbl{font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+.info-item .val{font-size:13.5px;color:var(--text);font-weight:600;margin-top:2px;}
+.score-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:16px;}
+.score-item label{font-size:12px;color:var(--gray);font-weight:600;display:block;margin-bottom:4px;}
+.score-item input{width:100%;border:1px solid var(--border);border-radius:5px;padding:7px 10px;font-size:13px;color:var(--text);}
+.score-item input:focus{outline:none;border-color:var(--bold);}
+.form-group{margin-bottom:14px;}
+.form-group label{font-size:12px;color:var(--gray);font-weight:600;display:block;margin-bottom:4px;}
+.form-group textarea{width:100%;border:1px solid var(--border);border-radius:5px;padding:9px 12px;font-size:13px;color:var(--text);resize:vertical;min-height:80px;}
+.form-group textarea:focus{outline:none;border-color:var(--bold);}
+.btn-save{background:var(--bold);color:var(--white);border:none;border-radius:5px;padding:9px 22px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.btn-save:hover{background:#0C3570;}
+.btn-outline{background:transparent;color:var(--bold);border:1.5px solid var(--bold);border-radius:5px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+.btn-outline:hover{background:var(--light);}
+.lb-entry{border:1px solid var(--border);border-radius:7px;margin-bottom:14px;overflow:hidden;}
+.lb-entry-hd{background:var(--bold);color:var(--white);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;}
+.lb-entry-body{padding:14px 16px;}
+.lesson-period{background:var(--light);border-radius:5px;padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--medium);}
+.lesson-period .period-hd{font-weight:700;color:var(--bold);font-size:12.5px;margin-bottom:6px;}
+.lesson-detail{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;}
+.ld-item .ld-lbl{font-size:10.5px;color:var(--gray);font-weight:600;}
+.ld-item .ld-val{font-size:12px;color:var(--text);}
+.remark-form{border-top:1px solid var(--border);padding-top:12px;margin-top:12px;}
+.remark-form textarea{width:100%;border:1px solid var(--border);border-radius:5px;padding:8px 10px;font-size:12.5px;resize:vertical;min-height:60px;}
+.remark-form textarea:focus{outline:none;border-color:var(--bold);}
+.remark-existing{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.25);border-radius:5px;padding:8px 12px;font-size:12.5px;color:var(--text);margin-bottom:8px;}
+.remark-existing .re-lbl{font-size:11px;color:var(--success);font-weight:700;margin-bottom:3px;}
+.badge-ok{background:rgba(16,185,129,.1);color:var(--success);border:1px solid rgba(16,185,129,.3);border-radius:12px;padding:2px 9px;font-size:11px;font-weight:600;}
+.badge-warn{background:rgba(245,158,11,.1);color:var(--warning);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:2px 9px;font-size:11px;font-weight:600;}
+.msg-ok{background:rgba(16,185,129,.1);color:#065F46;border:1px solid rgba(16,185,129,.3);border-radius:6px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.gov-footer{background:var(--bold);padding:11px 40px;display:flex;align-items:center;justify-content:space-between;border-top:3px solid var(--medium);flex-wrap:wrap;gap:8px;margin-top:auto;}
+.gov-footer p{font-size:11px;color:rgba(255,255,255,.65);margin:0;}
+.gov-footer .ver{font-size:11px;color:var(--medium);font-weight:700;}
+@media(max-width:768px){.main{padding:14px;}.top-nav{padding:0 16px;}.breadcrumb{padding:8px 16px;}}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <div class="brand"><i class="fas fa-users"></i> IMS — Msimamizi</div>
+  <div class="right">
+    <span><i class="fas fa-user-tie" style="color:var(--medium);margin-right:5px;"></i>{{ assessor.full_name }}</span>
+    <a href="{% url 'assessor_dashboard' %}"><i class="fas fa-tachometer-alt"></i> Dashibodi</a>
+  </div>
+</nav>
+
+<div class="breadcrumb">
+  <a href="{% url 'assessor_dashboard' %}"><i class="fas fa-home" style="margin-right:4px;"></i>Dashibodi</a>
+  <span><i class="fas fa-chevron-right"></i></span>
+  <a href="{% url 'assessor_student_detail' student.selected_school.id %}">{{ student.selected_school.name }}</a>
+  <span><i class="fas fa-chevron-right"></i></span>
+  <span style="color:var(--bold);font-weight:600;">{{ student.full_name }}</span>
+</div>
+
+<div class="main">
+
+  {% if messages %}
+  {% for msg in messages %}
+  <div class="msg-ok"><i class="fas fa-check-circle"></i> {{ msg }}</div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- Student Info -->
+  <div class="card">
+    <div class="card-hd"><i class="fas fa-user-graduate"></i> Taarifa za Mwanafunzi</div>
+    <div class="card-body">
+      <div class="info-grid">
+        <div class="info-item"><div class="lbl">Jina Kamili</div><div class="val">{{ student.full_name }}</div></div>
+        <div class="info-item"><div class="lbl">Barua Pepe</div><div class="val" style="font-weight:400;">{{ student.user.email }}</div></div>
+        <div class="info-item"><div class="lbl">Shule</div><div class="val">{{ student.selected_school.name }}</div></div>
+        <div class="info-item"><div class="lbl">Hali ya Maombi</div>
+          <div class="val">
+            {% if student.approval_status == 'approved' %}<span class="badge-ok"><i class="fas fa-check-circle"></i> Imeidhinishwa</span>
+            {% else %}<span class="badge-warn"><i class="fas fa-clock"></i> Inasubiri</span>{% endif %}
+          </div>
+        </div>
+        <div class="info-item"><div class="lbl">Idadi ya Logbook</div><div class="val">{{ logbook_entries|length }} siku</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assessment Scores Form -->
+  <div class="card">
+    <div class="card-hd"><i class="fas fa-clipboard-check"></i> Tathmini ya Jumla</div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="form_type" value="assessment">
+        <div class="score-grid">
+          <div class="score-item">
+            <label>Mahudhurio (0–100)</label>
+            <input type="number" name="attendance_score" min="0" max="100" value="{{ student_assessment.attendance_score|default:'' }}" placeholder="0–100">
+          </div>
+          <div class="score-item">
+            <label>Ushiriki (0–100)</label>
+            <input type="number" name="participation_score" min="0" max="100" value="{{ student_assessment.participation_score|default:'' }}" placeholder="0–100">
+          </div>
+          <div class="score-item">
+            <label>Ujuzi wa Kufundisha (0–100)</label>
+            <input type="number" name="teaching_skills_score" min="0" max="100" value="{{ student_assessment.teaching_skills_score|default:'' }}" placeholder="0–100">
+          </div>
+          <div class="score-item">
+            <label>Mipango ya Masomo (0–100)</label>
+            <input type="number" name="lesson_planning_score" min="0" max="100" value="{{ student_assessment.lesson_planning_score|default:'' }}" placeholder="0–100">
+          </div>
+          <div class="score-item">
+            <label>Usimamizi wa Darasa (0–100)</label>
+            <input type="number" name="classroom_management_score" min="0" max="100" value="{{ student_assessment.classroom_management_score|default:'' }}" placeholder="0–100">
+          </div>
+          <div class="score-item">
+            <label>Alama ya Jumla (0–100)</label>
+            <input type="number" name="overall_score" min="0" max="100" value="{{ student_assessment.overall_score|default:'' }}" placeholder="0–100">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Maoni ya Jumla</label>
+          <textarea name="comments" placeholder="Andika maoni ya jumla kuhusu mwanafunzi...">{{ student_assessment.comments|default:'' }}</textarea>
+        </div>
+        <button type="submit" class="btn-save"><i class="fas fa-save"></i> Hifadhi Tathmini</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Logbook Entries with Remarks -->
+  <div class="card">
+    <div class="card-hd"><i class="fas fa-book-open"></i> Logbook — Ongeza Maoni kwa Kila Siku</div>
+    <div class="card-body" style="padding:14px;">
+      {% for entry in logbook_entries %}
+      <div class="lb-entry">
+        <div class="lb-entry-hd">
+          <span><i class="fas fa-calendar-day" style="margin-right:6px;color:var(--medium);"></i>{{ entry.date }} — {{ entry.get_day_of_week_display }}</span>
+          <span>
+            {% if entry.is_location_verified %}<span class="badge-ok"><i class="fas fa-map-marker-alt"></i> GPS OK</span>
+            {% else %}<span class="badge-warn"><i class="fas fa-map-marker-alt"></i> Bila GPS</span>{% endif %}
+            &nbsp;
+            {% if entry.lessons_data %}
+            <span style="background:rgba(200,144,10,.2);color:var(--medium);border-radius:10px;padding:2px 9px;font-size:11px;font-weight:700;">{{ entry.lessons_data|length }} vipindi</span>
+            {% endif %}
+          </span>
+        </div>
+        <div class="lb-entry-body">
+          {% if entry.lessons_data %}
+            {% for lesson in entry.lessons_data %}
+            <div class="lesson-period">
+              <div class="period-hd">Kipindi {{ lesson.period }} — {{ lesson.subject }} | {{ lesson.class }}</div>
+              <div class="lesson-detail">
+                <div class="ld-item"><div class="ld-lbl">Mada Kuu</div><div class="ld-val">{{ lesson.main_topic|default:"—" }}</div></div>
+                <div class="ld-item"><div class="ld-lbl">Waliopo / Waliojumuishwa</div><div class="ld-val">{{ lesson.present|default:"—" }} / {{ lesson.enrolled|default:"—" }}</div></div>
+                <div class="ld-item"><div class="ld-lbl">Aina</div><div class="ld-val">{{ lesson.activity_type|default:"—" }}</div></div>
+                <div class="ld-item"><div class="ld-lbl">Mbinu</div><div class="ld-val">{{ lesson.methods|default:"—" }}</div></div>
+              </div>
+            </div>
+            {% endfor %}
+          {% elif entry.morning_activity or entry.afternoon_activity %}
+            <p style="font-size:12.5px;color:var(--gray);margin-bottom:8px;">
+              <b>Asubuhi:</b> {{ entry.morning_activity|default:"—" }}<br>
+              <b>Mchana:</b> {{ entry.afternoon_activity|default:"—" }}
+            </p>
+          {% else %}
+            <p style="font-size:12.5px;color:var(--gray);">Hakuna data ya masomo.</p>
+          {% endif %}
+
+          <!-- Remarks Section -->
+          <div class="remark-form">
+            {% if entry.supervisor_remarks %}
+            <div class="remark-existing">
+              <div class="re-lbl"><i class="fas fa-check-circle"></i> Maoni ya Msimamizi (Yaliyohifadhiwa)</div>
+              {{ entry.supervisor_remarks }}
+            </div>
+            {% endif %}
+            <label style="font-size:11.5px;color:var(--gray);font-weight:600;display:block;margin-bottom:4px;">
+              <i class="fas fa-pen" style="color:var(--medium);margin-right:4px;"></i>
+              {% if entry.supervisor_remarks %}Badilisha Maoni{% else %}Ongeza Maoni{% endif %}
+            </label>
+            <textarea id="rmk-{{ entry.id }}" placeholder="Andika maoni kuhusu logbook ya siku hii...">{{ entry.supervisor_remarks|default:'' }}</textarea>
+            <button onclick="saveRemark({{ entry.id }})" style="margin-top:6px;background:var(--bold);color:var(--white);border:none;border-radius:5px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer;">
+              <i class="fas fa-save"></i> Hifadhi Maoni
+            </button>
+            <span id="rmk-msg-{{ entry.id }}" style="font-size:12px;margin-left:10px;display:none;"></span>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <p style="color:var(--gray);font-size:13px;text-align:center;padding:20px;">Mwanafunzi hajajaza logbook yoyote bado.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<div class="gov-footer">
+  <p>&copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Jamhuri ya Muungano wa Tanzania.</p>
+  <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0 | Msimamizi</span>
+</div>
+
+<script>
+function saveRemark(entryId) {
+  var remarks = document.getElementById('rmk-' + entryId).value.trim();
+  var msgEl = document.getElementById('rmk-msg-' + entryId);
+  if (!remarks) { msgEl.style.display='inline'; msgEl.style.color='#DC2626'; msgEl.textContent='Maoni hayawezi kuwa matupu.'; return; }
+  var csrfToken = '{{ csrf_token }}';
+  var fd = new FormData();
+  fd.append('remarks', remarks);
+  fd.append('csrfmiddlewaretoken', csrfToken);
+  fetch('/assessor/logbook/' + entryId + '/remark/', {method:'POST', body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      msgEl.style.display='inline';
+      if(d.ok){msgEl.style.color='#10B981';msgEl.textContent='✓ Yamehifadhiwa.';}
+      else{msgEl.style.color='#DC2626';msgEl.textContent=d.error||'Hitilafu.';}
+    })
+    .catch(function(){msgEl.style.display='inline';msgEl.style.color='#DC2626';msgEl.textContent='Hitilafu ya mtandao.';});
+}
+</script>
+</body>
+</html>

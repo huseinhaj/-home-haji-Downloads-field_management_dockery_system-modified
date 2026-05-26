@@ -1,17 +1,61 @@
-venv/
+# Version control
+.git/
+.gitignore
+
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
-*.log
-*.sqlite3
-.git/
-.gitignore
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Environment / secrets
 .env
-.DS_Store
+.env.*
+*.env
+
+# Logs
+*.log
+/tmp/
+
+# Static/media (regenerated at runtime)
+staticfiles/
 media/
 uploads/
-*.csv
-*.json
-*.tar.gz
+
+# Database
+*.sqlite3
+*.db
+
+# Backups
 *.backup
+*.backup2
+*.backup3
+*.backup_final
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Test/CI
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Node (if any)
 node_modules/
+
+# Misc
+*.csv
+*.tar.gz
+*.zip

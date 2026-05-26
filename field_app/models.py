@@ -336,6 +336,34 @@ class LogbookEntry(models.Model):
     date = models.DateField(default=timezone.now)
     day_of_week = models.CharField(max_length=10, choices=DAY_CHOICES)
     
+    # Teaching record fields
+    subject_taught = models.ForeignKey(
+        'Subject', on_delete=models.SET_NULL, null=True, blank=True, related_name='logbook_entries'
+    )
+    topic_taught = models.CharField(max_length=200, blank=True, null=True)
+    class_taught = models.CharField(max_length=50, blank=True, null=True, help_text="e.g. Form 2A, Standard 5")
+    num_students_present = models.IntegerField(null=True, blank=True)
+    activity_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('theory', 'Somo la Nadharia'),
+            ('practical', 'Vitendo/Maabara'),
+            ('revision', 'Mapitio'),
+            ('assessment', 'Tathmini/Mtihani'),
+            ('preparation', 'Maandalizi ya Somo'),
+            ('other', 'Nyingine'),
+        ],
+        blank=True, null=True
+    )
+
+    # TIE format: per-period lesson records stored as JSON list
+    lessons_data = models.JSONField(default=list, blank=True)
+    # General daily record
+    other_activities = models.TextField(blank=True, null=True)
+    supervisor_remarks = models.TextField(blank=True, null=True)
+    head_teacher_remarks = models.TextField(blank=True, null=True)
+
+    # Legacy fields (kept for backward compatibility)
     morning_activity = models.TextField(blank=True, null=True)
     afternoon_activity = models.TextField(blank=True, null=True)
     challenges_faced = models.TextField(blank=True, null=True)
@@ -357,6 +385,10 @@ class LogbookEntry(models.Model):
     class Meta:
         unique_together = ['student', 'date']
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['student', 'date']),
+            models.Index(fields=['student', '-date']),
+        ]
     
     def __str__(self):
         return f"{self.student.full_name} - {self.date}"
@@ -950,4 +982,71 @@ class Textbook(models.Model):
     is_active = models.BooleanField(default=True)
     
     def __str__(self):
-        return f"{self.title} ({self.get_education_level_display()})"        
+        return f"{self.title} ({self.get_education_level_display()})"
+
+
+# =========================
+# BODI YA WALIMU — Board Member & Comments
+# =========================
+
+class BoardMember(models.Model):
+    ROLE_CHOICES = [
+        ('inspector', 'Mkaguzi wa Shule'),
+        ('head_teacher', 'Mkuu wa Shule'),
+        ('deo', 'Afisa Elimu wa Wilaya (DEO)'),
+        ('reo', 'Afisa Elimu wa Mkoa (REO)'),
+        ('chair', 'Mwenyekiti wa Bodi'),
+        ('member', 'Mjumbe wa Bodi'),
+    ]
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='board_member'
+    )
+    full_name = models.CharField(max_length=200)
+    phone_number = models.CharField(max_length=20, blank=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member')
+    region = models.ForeignKey(
+        'Region', on_delete=models.SET_NULL, null=True, blank=True, related_name='board_members'
+    )
+    district = models.ForeignKey(
+        'District', on_delete=models.SET_NULL, null=True, blank=True, related_name='board_members'
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.full_name} ({self.get_role_display()})"
+
+
+class BoardComment(models.Model):
+    STATUS_CHOICES = [
+        ('excellent', 'Vizuri Sana — Endelea Hivyo'),
+        ('good', 'Vizuri — Kazi Nzuri'),
+        ('average', 'Wastani — Boresha'),
+        ('behind', 'Nyuma — Akazane'),
+        ('critical', 'Muhimu — Hatua ya Haraka'),
+    ]
+
+    board_member = models.ForeignKey(
+        BoardMember, on_delete=models.CASCADE, related_name='comments'
+    )
+    student = models.ForeignKey(
+        StudentTeacher, on_delete=models.CASCADE, related_name='board_comments'
+    )
+    school = models.ForeignKey('School', on_delete=models.CASCADE)
+    comment = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='good')
+    is_read = models.BooleanField(default=False)
+    academic_year = models.ForeignKey(
+        'AcademicYear', on_delete=models.SET_NULL, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['student', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.board_member.full_name} → {self.student.full_name} ({self.status})"

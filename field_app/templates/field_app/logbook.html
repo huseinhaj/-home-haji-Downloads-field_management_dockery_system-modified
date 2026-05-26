@@ -2,452 +2,551 @@
 {% load static %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 mx-auto">
-            <div class="card" style="border: 1px solid var(--border); border-radius: 8px;">
-                <div class="card-header" style="background: var(--bold); border-bottom: 3px solid var(--medium); border-radius: 8px 8px 0 0;">
-                    <h4 class="mb-0 text-white">
-                        <i class="fas fa-book" style="color: var(--medium);"></i>
-                        Logbook - {{ today_name }} ({{ today }})
-                    </h4>
-                </div>
-                <div class="card-body" style="background: var(--white);">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" style="border-left: 4px solid {% if message.tags == 'success' %}var(--success){% elif message.tags == 'error' %}var(--danger){% else %}var(--medium){% endif %};">
-                                <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} me-2"></i>
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-
-                    <!-- School Information -->
-                    <div class="alert mb-3" style="background: var(--light); border-left: 4px solid var(--medium); color: var(--text-dark);">
-                        <strong><i class="fas fa-school" style="color: var(--bold);"></i> Shule yako:</strong> {{ school.name }}
-                        <br>
-                        <small style="color: var(--text-gray);">{{ school.district.name }}, {{ school.district.region.name }}</small>
-                    </div>
-
-                    <!-- LOCATION VERIFICATION SECTION -->
-                    <div class="card mb-4" style="border: 1px solid var(--border); border-radius: 8px;">
-                        <div class="card-header" style="background: var(--medium); color: var(--white); border-radius: 8px 8px 0 0;">
-                            <h5 class="mb-0">
-                                <i class="fas fa-map-marker-alt"></i>
-                                Hatua ya 1: Thibitisha Eneo Lako (LAZIMA)
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="alert mb-3" style="background: var(--light); border-left: 4px solid var(--bold);">
-                                <strong style="color: var(--bold);">📌 Maelekezo:</strong>
-                                <ul class="mb-0 small" style="color: var(--text-gray);">
-                                    <li>Bonyeza kitufe cha "📍 Thibitisha Eneo Langu" hapa chini</li>
-                                    <li>Ruhusu tovuti kutumia eneo lako unapoombwa</li>
-                                    <li>Subiri ujumbe wa "✅ Eneo limehakikiwa"</li>
-                                    <li>Kisha utaweza kujaza logbook</li>
-                                </ul>
-                            </div>
-                            
-                            <div id="locationStatus" class="alert mb-3" style="background: var(--light); border-left: 4px solid var(--text-gray);">
-                                <i class="fas fa-hourglass-half me-2" style="color: var(--text-gray);"></i>
-                                <strong style="color: var(--text-dark);">⚠️ Hajathibitishwa:</strong> Bado haujathibitisha eneo lako
-                            </div>
-                            
-                            <button type="button" id="verifyLocationBtn" class="btn w-100 mb-3" style="background: var(--bold); color: var(--white); border: none; border-radius: 6px; padding: 12px; font-weight: 600;">
-                                <i class="fas fa-location-arrow me-2"></i>
-                                📍 Thibitisha Eneo Langu
-                            </button>
-                            
-                            <div id="locationDetails" style="display: none;">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="border rounded p-2 mb-2" style="border-color: var(--border);">
-                                            <small class="text-muted">Latitude:</small>
-                                            <strong style="color: var(--bold);"><span id="displayLat">-</span></strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="border rounded p-2 mb-2" style="border-color: var(--border);">
-                                            <small class="text-muted">Longitude:</small>
-                                            <strong style="color: var(--bold);"><span id="displayLng">-</span></strong>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="border rounded p-2 mb-2" style="border-color: var(--border);">
-                                    <small class="text-muted">Anwani:</small>
-                                    <div id="displayAddress" class="small" style="color: var(--text-gray);">-</div>
-                                </div>
-                                <div id="dodomaCheck" class="alert" style="display: none; background: #D1FAE5; border-left: 4px solid var(--success); color: #065F46;">
-                                    <i class="fas fa-check-circle me-2"></i>
-                                    <strong>✅ Uko Dodoma!</strong> Eneo lako limehakikiwa.
-                                </div>
-                                <div id="outsideDodoma" class="alert" style="display: none; background: #FEF3C7; border-left: 4px solid var(--warning); color: #92400E;">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>
-                                    <strong>⚠️ Uko nje ya Dodoma!</strong> Logbook itasajiliwa kwa tahadhari.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- LOGBOOK FORM SECTION (HIDDEN UNTIL LOCATION VERIFIED) -->
-                    <div id="logbookFormSection" style="display: none;">
-                        <div class="alert mb-3" style="background: #D1FAE5; border-left: 4px solid var(--success); color: #065F46;">
-                            <i class="fas fa-check-circle me-2"></i>
-                            <strong>✅ Eneo limehakikiwa!</strong> Sasa unaweza kujaza logbook yako.
-                        </div>
-
-                        <form method="post" id="logbookForm">
-                            {% csrf_token %}
-                            
-                            <!-- Hidden fields for location data -->
-                            <input type="hidden" name="latitude" id="latitudeInput" value="">
-                            <input type="hidden" name="longitude" id="longitudeInput" value="">
-                            <input type="hidden" name="location_address" id="addressInput" value="">
-                            <input type="hidden" name="is_location_verified" id="isVerifiedInput" value="false">
-                            
-                            <div class="row">
-                                <div class="col-12">
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold" style="color: var(--text-dark);">{{ form.morning_activity.label }}</label>
-                                        {{ form.morning_activity }}
-                                        {% if form.morning_activity.errors %}
-                                            <div class="text-danger small">{{ form.morning_activity.errors }}</div>
-                                        {% endif %}
-                                        <small class="text-muted">Eleza shughuli ulizofanya asubuhi</small>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-12">
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold" style="color: var(--text-dark);">{{ form.afternoon_activity.label }}</label>
-                                        {{ form.afternoon_activity }}
-                                        {% if form.afternoon_activity.errors %}
-                                            <div class="text-danger small">{{ form.afternoon_activity.errors }}</div>
-                                        {% endif %}
-                                        <small class="text-muted">Eleza shughuli ulizofanya mchana</small>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-12">
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold" style="color: var(--text-dark);">{{ form.challenges_faced.label }}</label>
-                                        {{ form.challenges_faced }}
-                                        {% if form.challenges_faced.errors %}
-                                            <div class="text-danger small">{{ form.challenges_faced.errors }}</div>
-                                        {% endif %}
-                                        <small class="text-muted">Changamoto zozote ulizokutana nazo</small>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-12">
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold" style="color: var(--text-dark);">{{ form.lessons_learned.label }}</label>
-                                        {{ form.lessons_learned }}
-                                        {% if form.lessons_learned.errors %}
-                                            <div class="text-danger small">{{ form.lessons_learned.errors }}</div>
-                                        {% endif %}
-                                        <small class="text-muted">Mafunzo uliyojifunza</small>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-lg" id="submitBtn" style="background: var(--bold); color: var(--white); border: none; border-radius: 6px; padding: 12px; font-weight: 700;">
-                                    <i class="fas fa-save me-2"></i>
-                                    Hifadhi Logbook
-                                </button>
-                                <a href="{% url 'logbook_history' %}" class="btn btn-lg" style="background: transparent; color: var(--bold); border: 2px solid var(--bold); border-radius: 6px; padding: 12px; font-weight: 600; text-align: center; text-decoration: none;">
-                                    <i class="fas fa-history me-2"></i>
-                                    Angalia Historia ya Logbook
-                                </a>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- LOCKED MESSAGE (SHOWN WHEN LOCATION NOT VERIFIED) -->
-                    <div id="lockedMessage" class="alert text-center mb-0" style="background: #FEF3C7; border-left: 4px solid var(--warning); color: #92400E;">
-                        <i class="fas fa-lock fa-2x mb-2 d-block"></i>
-                        <strong>Form imefungwa</strong>
-                        <br>
-                        <small>Tafadhali thibitisha eneo lako kwanza ili uweze kujaza logbook.</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <style>
-    /* Consistent with login page */
-    textarea {
-        width: 100%;
-        min-height: 100px;
-        padding: 10px;
-        border: 1.5px solid var(--border);
-        border-radius: 6px;
-        font-family: inherit;
-        background: #FAFBFD;
-        transition: all 0.15s ease;
-    }
-    textarea:focus {
-        outline: none;
-        border-color: var(--bold);
-        box-shadow: 0 0 0 3px rgba(10,43,94,0.1);
-        background: var(--white);
-    }
-    
-    #verifyLocationBtn {
-        transition: all 0.2s ease;
-    }
-    #verifyLocationBtn:hover {
-        background: #0C3570 !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(10,43,94,0.25);
-    }
-    #verifyLocationBtn:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-        transform: none;
-    }
-    
-    #submitBtn {
-        transition: all 0.2s ease;
-    }
-    #submitBtn:hover {
-        background: #0C3570 !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(10,43,94,0.25);
-    }
-    
-    .btn-outline-custom {
-        transition: all 0.2s ease;
-    }
-    .btn-outline-custom:hover {
-        background: var(--bold);
-        color: var(--white);
-        transform: translateY(-1px);
-    }
-    
-    .alert {
-        transition: all 0.3s ease;
-        border-radius: 6px;
-    }
-    
-    .form-label {
-        font-weight: 600;
-        color: var(--text-dark);
-        margin-bottom: 0.5rem;
-        font-size: 0.85rem;
-    }
-    
-    .text-muted {
-        color: var(--text-gray) !important;
-        font-size: 0.75rem;
-    }
+:root{--bold:#0A2B5E;--medium:#C8900A;--light:#EEF1F6;--white:#fff;--border:#CBD5E0;--text:#1A1A2E;--gray:#4A5568;--success:#10B981;--danger:#DC2626;--warning:#F59E0B;}
+.tie-wrap{max-width:900px;margin:0 auto;padding:20px 16px 40px;}
+.tie-card{background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:18px;}
+.tie-card-head{background:var(--bold);color:var(--white);padding:12px 20px;border-bottom:3px solid var(--medium);display:flex;align-items:center;gap:10px;}
+.tie-card-head h5{margin:0;font-size:14px;font-weight:700;}
+.tie-card-head .section-num{background:var(--medium);color:var(--white);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tie-card-body{padding:18px 20px;}
+.tie-hdr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.tie-hdr-grid.col3{grid-template-columns:1fr 1fr 1fr;}
+.field-grp{margin-bottom:0;}
+.field-lbl{font-size:11.5px;font-weight:700;color:var(--bold);margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:.3px;}
+.tie-input,.tie-select,.tie-textarea{width:100%;padding:9px 12px;font-size:13px;color:var(--text);border:1.5px solid var(--border);border-radius:6px;background:#FAFBFD;font-family:inherit;outline:none;transition:.15s;}
+.tie-input:focus,.tie-select:focus,.tie-textarea:focus{border-color:var(--bold);background:var(--white);box-shadow:0 0 0 3px rgba(10,43,94,.08);}
+.tie-textarea{resize:vertical;min-height:70px;}
+.school-info-bar{background:var(--light);border-left:4px solid var(--medium);border-radius:0 6px 6px 0;padding:10px 16px;margin-bottom:18px;font-size:13px;}
+.school-info-bar strong{color:var(--bold);}
+/* Lesson period card */
+.lesson-period{background:var(--white);border:2px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden;}
+.lesson-period-head{background:var(--light);border-bottom:2px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;}
+.lesson-period-head .period-label{font-size:13px;font-weight:700;color:var(--bold);display:flex;align-items:center;gap:8px;}
+.lesson-period-head .period-label i{color:var(--medium);}
+.btn-remove-period{background:rgba(220,38,38,.08);color:var(--danger);border:1px solid rgba(220,38,38,.2);border-radius:5px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-remove-period:hover{background:rgba(220,38,38,.15);}
+.lesson-period-body{padding:16px;}
+.period-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.period-grid.col3{grid-template-columns:1fr 1fr 1fr;}
+.period-section-title{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.btn-add-period{width:100%;padding:11px;background:rgba(10,43,94,.06);color:var(--bold);border:2px dashed rgba(10,43,94,.25);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;}
+.btn-add-period:hover{background:rgba(10,43,94,.1);border-color:var(--bold);}
+/* Location section */
+.loc-card{background:var(--white);border:1px solid var(--border);border-radius:8px;margin-bottom:18px;overflow:hidden;}
+.loc-head{background:var(--medium);color:var(--white);padding:11px 18px;display:flex;align-items:center;gap:8px;}
+.loc-head h5{margin:0;font-size:13px;font-weight:700;}
+.loc-body{padding:16px 18px;}
+.btn-loc{width:100%;padding:11px;background:var(--bold);color:var(--white);border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s;}
+.btn-loc:hover{background:#0C3570;}
+.btn-loc:disabled{opacity:.65;cursor:not-allowed;}
+.loc-status{padding:10px 14px;border-radius:6px;font-size:12.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px;background:var(--light);border-left:4px solid var(--gray);color:var(--text);}
+.loc-details{display:none;margin-top:10px;}
+.loc-detail-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
+.loc-detail-box{background:var(--light);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:12px;}
+.loc-detail-box small{color:var(--gray);display:block;margin-bottom:2px;}
+/* Submit area */
+.submit-area{margin-top:4px;}
+.btn-submit{width:100%;padding:14px;background:var(--bold);color:var(--white);border:none;border-radius:7px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:.2s;}
+.btn-submit:hover{background:#0C3570;}
+.btn-submit:disabled{opacity:.65;cursor:not-allowed;}
+.btn-history{display:block;width:100%;padding:11px;background:transparent;color:var(--bold);border:2px solid var(--bold);border-radius:7px;font-size:13px;font-weight:600;text-align:center;text-decoration:none;margin-top:10px;transition:.15s;}
+.btn-history:hover{background:var(--bold);color:var(--white);}
+.locked-msg{background:#FEF3C7;border-left:4px solid var(--warning);color:#92400E;padding:16px 18px;border-radius:6px;text-align:center;font-size:13px;}
+/* Section D - Supervisor remarks */
+.remarks-box{background:#F8F9FC;border:1px dashed var(--border);border-radius:6px;padding:14px;font-size:13px;color:var(--gray);min-height:60px;white-space:pre-line;}
+.remarks-empty{color:var(--gray);font-style:italic;font-size:12.5px;}
+@media(max-width:600px){.tie-hdr-grid,.period-grid,.period-grid.col3,.tie-hdr-grid.col3,.loc-detail-row{grid-template-columns:1fr;}}
 </style>
 
+<div class="tie-wrap">
+
+  {% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-3" style="border-left:4px solid {% if message.tags == 'success' %}var(--success){% elif message.tags == 'error' %}var(--danger){% else %}var(--medium){% endif %};font-size:13px;">
+    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- School info bar -->
+  <div class="school-info-bar">
+    <strong><i class="fas fa-school" style="color:var(--medium);margin-right:6px;"></i>{{ school.name }}</strong>
+    <span style="color:var(--gray);margin-left:8px;">{{ school.district.name }}, {{ school.district.region.name }}</span>
+  </div>
+
+  <!-- Page title -->
+  <div class="tie-card" style="margin-bottom:18px;">
+    <div class="tie-card-head">
+      <i class="fas fa-book" style="font-size:18px;color:var(--medium);"></i>
+      <div>
+        <h5 style="margin:0;">LOGBOOK YA MWALIMU MWANAFUNZI — TIE</h5>
+        <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,.75);">{{ today_name }}, {{ today }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOCATION VERIFICATION -->
+  <div class="loc-card">
+    <div class="loc-head">
+      <i class="fas fa-map-marker-alt"></i>
+      <h5>Thibitisha Eneo (LAZIMA kabla ya kujaza)</h5>
+    </div>
+    <div class="loc-body">
+      <div id="locStatus" class="loc-status">
+        <i class="fas fa-hourglass-half"></i>
+        <span>Bado haujathibitisha eneo lako</span>
+      </div>
+      <button type="button" id="btnVerifyLoc" class="btn-loc">
+        <i class="fas fa-location-arrow"></i> Thibitisha Eneo Langu
+      </button>
+      <div id="locDetails" class="loc-details">
+        <div class="loc-detail-row">
+          <div class="loc-detail-box"><small>Latitude</small><strong id="dispLat">—</strong></div>
+          <div class="loc-detail-box"><small>Longitude</small><strong id="dispLng">—</strong></div>
+        </div>
+        <div class="loc-detail-box" style="margin-bottom:8px;"><small>Anwani</small><div id="dispAddr" style="font-size:12px;color:var(--gray);">—</div></div>
+        <div id="inBoundsMsg" style="display:none;background:#D1FAE5;border-left:4px solid var(--success);color:#065F46;padding:8px 12px;border-radius:6px;font-size:12.5px;"><i class="fas fa-check-circle me-2"></i><strong>Eneo limehakikiwa!</strong></div>
+        <div id="outBoundsMsg" style="display:none;background:#FEF3C7;border-left:4px solid var(--warning);color:#92400E;padding:8px 12px;border-radius:6px;font-size:12.5px;"><i class="fas fa-exclamation-triangle me-2"></i>Uko nje ya eneo la shule — logbook itasajiliwa kwa tahadhari.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGBOOK FORM (hidden until location verified) -->
+  <div id="logbookForm" style="display:none;">
+  <form method="post" id="mainForm">
+    {% csrf_token %}
+    <!-- Hidden location fields -->
+    <input type="hidden" name="latitude" id="hidLat">
+    <input type="hidden" name="longitude" id="hidLng">
+    <input type="hidden" name="location_address" id="hidAddr">
+    <input type="hidden" name="is_location_verified" id="hidVerified" value="false">
+    <!-- Hidden TIE lessons JSON -->
+    <input type="hidden" name="lessons_data" id="hidLessonsData" value="[]">
+
+    <!-- SEHEMU A: Taarifa za Mwalimu na Shule -->
+    <div class="tie-card">
+      <div class="tie-card-head">
+        <div class="section-num">A</div>
+        <h5>Taarifa za Mwalimu na Shule</h5>
+      </div>
+      <div class="tie-card-body">
+        <div class="tie-hdr-grid col3">
+          <div class="field-grp">
+            <label class="field-lbl">Jina la Mwalimu</label>
+            <input type="text" class="tie-input" value="{{ student.full_name }}" readonly style="background:#F0F2F6;">
+          </div>
+          <div class="field-grp">
+            <label class="field-lbl">Shule ya Mafunzo</label>
+            <input type="text" class="tie-input" value="{{ school.name }}" readonly style="background:#F0F2F6;">
+          </div>
+          <div class="field-grp">
+            <label class="field-lbl">Tarehe</label>
+            <input type="text" class="tie-input" value="{{ today }}" readonly style="background:#F0F2F6;">
+          </div>
+        </div>
+        <div class="tie-hdr-grid" style="margin-top:12px;">
+          <div class="field-grp">
+            <label class="field-lbl">Siku ya Wiki</label>
+            <input type="text" class="tie-input" value="{{ today_name }}" readonly style="background:#F0F2F6;">
+          </div>
+          <div class="field-grp">
+            <label class="field-lbl">Wilaya / Mkoa</label>
+            <input type="text" class="tie-input" value="{{ school.district.name }}, {{ school.district.region.name }}" readonly style="background:#F0F2F6;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEHEMU B: Vipindi vya Masomo -->
+    <div class="tie-card">
+      <div class="tie-card-head">
+        <div class="section-num">B</div>
+        <h5>Rekodi za Vipindi vya Kufundisha</h5>
+      </div>
+      <div class="tie-card-body">
+        <div id="periodsContainer">
+          <!-- Periods added dynamically -->
+        </div>
+        <button type="button" id="btnAddPeriod" class="btn-add-period">
+          <i class="fas fa-plus-circle"></i> Ongeza Kipindi Kingine
+        </button>
+      </div>
+    </div>
+
+    <!-- SEHEMU C: Shughuli Nyingine na Tafakari -->
+    <div class="tie-card">
+      <div class="tie-card-head">
+        <div class="section-num">C</div>
+        <h5>Shughuli Nyingine na Tafakari ya Siku</h5>
+      </div>
+      <div class="tie-card-body">
+        <div class="field-grp" style="margin-bottom:14px;">
+          <label class="field-lbl">Shughuli Nyingine (zisizo za kufundisha)</label>
+          {{ form.other_activities }}
+          <small style="color:var(--gray);font-size:11.5px;">Mikutano, majukumu ya diwani, ziara, usimamizi wa mtihani, n.k.</small>
+        </div>
+        <div class="field-grp" style="margin-bottom:14px;">
+          <label class="field-lbl">Changamoto / Vikwazo</label>
+          {{ form.challenges_faced }}
+        </div>
+        <div class="field-grp">
+          <label class="field-lbl">Tafakari ya Kibinafsi / Mafunzo</label>
+          {{ form.lessons_learned }}
+          <small style="color:var(--gray);font-size:11.5px;">Ulijifunza nini leo? Utaboresha nini kesho?</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEHEMU D: Maoni ya Msimamizi (read-only for student) -->
+    {% if logbook_entry and logbook_entry.supervisor_remarks or logbook_entry and logbook_entry.head_teacher_remarks %}
+    <div class="tie-card">
+      <div class="tie-card-head">
+        <div class="section-num">D</div>
+        <h5>Maoni ya Msimamizi</h5>
+      </div>
+      <div class="tie-card-body">
+        {% if logbook_entry.supervisor_remarks %}
+        <div class="field-grp" style="margin-bottom:14px;">
+          <label class="field-lbl">Maoni ya Mkaguzi / Msimamizi</label>
+          <div class="remarks-box">{{ logbook_entry.supervisor_remarks }}</div>
+        </div>
+        {% endif %}
+        {% if logbook_entry.head_teacher_remarks %}
+        <div class="field-grp">
+          <label class="field-lbl">Maoni ya Mkuu wa Shule</label>
+          <div class="remarks-box">{{ logbook_entry.head_teacher_remarks }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Submit -->
+    <div class="submit-area">
+      <button type="submit" class="btn-submit" id="btnSubmit">
+        <i class="fas fa-save"></i> Hifadhi Logbook
+      </button>
+      <a href="{% url 'logbook_history' %}" class="btn-history">
+        <i class="fas fa-history me-2"></i> Angalia Historia ya Logbook
+      </a>
+    </div>
+
+  </form>
+  </div>
+
+  <!-- Locked message (visible until location verified) -->
+  <div id="lockedMsg" class="locked-msg">
+    <i class="fas fa-lock fa-2x d-block mb-2"></i>
+    <strong>Fomu imefungwa</strong><br>
+    <small>Tafadhali thibitisha eneo lako kwanza ili uweze kujaza logbook.</small>
+  </div>
+
+</div>
+
+<!-- Period template (hidden, cloned by JS) -->
+<template id="periodTemplate">
+  <div class="lesson-period" data-period-idx="">
+    <div class="lesson-period-head">
+      <div class="period-label"><i class="fas fa-chalkboard-teacher"></i> <span class="period-title">Kipindi cha 1</span></div>
+      <button type="button" class="btn-remove-period"><i class="fas fa-trash-alt me-1"></i>Ondoa</button>
+    </div>
+    <div class="lesson-period-body">
+      <div class="period-grid col3">
+        <div>
+          <label class="field-lbl">Darasa / Class</label>
+          <input type="text" class="tie-input p-class" placeholder="Mfano: Form 2A, Std 5">
+        </div>
+        <div>
+          <label class="field-lbl">Somo / Subject</label>
+          <select class="tie-select p-subject">
+            <option value="">— Chagua Somo —</option>
+            <optgroup label="Shule ya Msingi (Primary)">
+            {% for s in subjects %}{% if s.level == 'primary' %}
+            <option value="{{ s.name }}">{{ s.name }}</option>
+            {% endif %}{% endfor %}
+            </optgroup>
+            <optgroup label="Shule ya Sekondari (Secondary)">
+            {% for s in subjects %}{% if s.level == 'secondary' %}
+            <option value="{{ s.name }}">{{ s.name }}</option>
+            {% endif %}{% endfor %}
+            </optgroup>
+          </select>
+        </div>
+        <div>
+          <label class="field-lbl">Kipindi Namba</label>
+          <input type="number" class="tie-input p-num" placeholder="1" min="1" max="10">
+        </div>
+      </div>
+      <div class="period-grid">
+        <div>
+          <label class="field-lbl">Mada Kuu / Main Topic</label>
+          <input type="text" class="tie-input p-topic" placeholder="Mfano: Fractions, Photosynthesis">
+        </div>
+        <div>
+          <label class="field-lbl">Mada Ndogo / Subtopic</label>
+          <input type="text" class="tie-input p-subtopic" placeholder="Mfano: Adding fractions">
+        </div>
+      </div>
+      <div class="period-grid col3">
+        <div>
+          <label class="field-lbl">Wanafunzi Waliojisajili</label>
+          <input type="number" class="tie-input p-enrolled" placeholder="45" min="0">
+        </div>
+        <div>
+          <label class="field-lbl">Wanafunzi Waliopo</label>
+          <input type="number" class="tie-input p-present" placeholder="40" min="0">
+        </div>
+        <div>
+          <label class="field-lbl">Aina ya Shughuli</label>
+          <select class="tie-select p-activity">
+            <option value="">— Chagua —</option>
+            <option value="theory">Nadharia</option>
+            <option value="practical">Vitendo / Maabara</option>
+            <option value="revision">Mapitio</option>
+            <option value="assessment">Tathmini / Mtihani</option>
+            <option value="other">Nyingine</option>
+          </select>
+        </div>
+      </div>
+      <div class="period-section-title">Vifaa na Mbinu za Kufundishia</div>
+      <div class="period-grid">
+        <div>
+          <label class="field-lbl">Vifaa vya Kufundishia</label>
+          <input type="text" class="tie-input p-aids" placeholder="Ubao, vitabu, chati, kompyuta...">
+        </div>
+        <div>
+          <label class="field-lbl">Mbinu za Kufundishia</label>
+          <input type="text" class="tie-input p-methods" placeholder="Maswali na majibu, majadiliano...">
+        </div>
+      </div>
+      <div class="period-section-title">Maendeleo ya Somo</div>
+      <div class="field-grp" style="margin-bottom:10px;">
+        <label class="field-lbl">Utangulizi (dakika 5–10)</label>
+        <textarea class="tie-textarea p-intro" rows="2" placeholder="Mwalimu alifanya nini wakati wa utangulizi?"></textarea>
+      </div>
+      <div class="field-grp" style="margin-bottom:10px;">
+        <label class="field-lbl">Maendeleo ya Somo (Mwili wa Somo)</label>
+        <textarea class="tie-textarea p-development" rows="3" placeholder="Shughuli za msingi za somo — mwalimu na wanafunzi walifanya nini?"></textarea>
+      </div>
+      <div class="field-grp" style="margin-bottom:10px;">
+        <label class="field-lbl">Hitimisho / Muhtasari</label>
+        <textarea class="tie-textarea p-conclusion" rows="2" placeholder="Muhtasari wa somo, tathmini ya haraka..."></textarea>
+      </div>
+      <div class="period-section-title">Tathmini na Kazi ya Nyumbani</div>
+      <div class="period-grid">
+        <div>
+          <label class="field-lbl">Tathmini (Zoezi / Swali)</label>
+          <textarea class="tie-textarea p-assessment" rows="2" placeholder="Zoezi au swali la tathmini lililotolewa..."></textarea>
+        </div>
+        <div>
+          <label class="field-lbl">Kazi ya Nyumbani</label>
+          <textarea class="tie-textarea p-homework" rows="2" placeholder="Kazi iliyoachiwa nyumbani (kama ipo)..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // DOM elements
-    const verifyBtn = document.getElementById('verifyLocationBtn');
-    const locationStatus = document.getElementById('locationStatus');
-    const locationDetails = document.getElementById('locationDetails');
-    const logbookFormSection = document.getElementById('logbookFormSection');
-    const lockedMessage = document.getElementById('lockedMessage');
-    const submitBtn = document.getElementById('submitBtn');
-    
-    // Display elements
-    const displayLat = document.getElementById('displayLat');
-    const displayLng = document.getElementById('displayLng');
-    const displayAddress = document.getElementById('displayAddress');
-    const dodomaCheck = document.getElementById('dodomaCheck');
-    const outsideDodoma = document.getElementById('outsideDodoma');
-    
-    // Input elements
-    const latitudeInput = document.getElementById('latitudeInput');
-    const longitudeInput = document.getElementById('longitudeInput');
-    const addressInput = document.getElementById('addressInput');
-    const isVerifiedInput = document.getElementById('isVerifiedInput');
-    
-    let locationVerified = false;
-    let currentLat = null;
-    let currentLng = null;
-    
-    // Dodoma coordinates bounds
-    const DODOMA_LAT_MIN = -6.8;
-    const DODOMA_LAT_MAX = -5.5;
-    const DODOMA_LNG_MIN = 35.0;
-    const DODOMA_LNG_MAX = 36.5;
-    
-    function isInDodoma(lat, lng) {
-        return (lat >= DODOMA_LAT_MIN && lat <= DODOMA_LAT_MAX) &&
-               (lng >= DODOMA_LNG_MIN && lng <= DODOMA_LNG_MAX);
+(function(){
+  // ===== LOCATION =====
+  const btnLoc = document.getElementById('btnVerifyLoc');
+  const locStatus = document.getElementById('locStatus');
+  const locDetails = document.getElementById('locDetails');
+  const inBoundsMsg = document.getElementById('inBoundsMsg');
+  const outBoundsMsg = document.getElementById('outBoundsMsg');
+  const dispLat = document.getElementById('dispLat');
+  const dispLng = document.getElementById('dispLng');
+  const dispAddr = document.getElementById('dispAddr');
+  const hidLat = document.getElementById('hidLat');
+  const hidLng = document.getElementById('hidLng');
+  const hidAddr = document.getElementById('hidAddr');
+  const hidVerified = document.getElementById('hidVerified');
+  const logbookForm = document.getElementById('logbookForm');
+  const lockedMsg = document.getElementById('lockedMsg');
+
+  function showForm() {
+    logbookForm.style.display = 'block';
+    lockedMsg.style.display = 'none';
+  }
+  function hideForm() {
+    logbookForm.style.display = 'none';
+    lockedMsg.style.display = 'block';
+  }
+
+  function isTanzania(lat, lng) {
+    return lat >= -11.8 && lat <= -1.0 && lng >= 29.3 && lng <= 40.5;
+  }
+
+  btnLoc.addEventListener('click', function() {
+    if (!navigator.geolocation) {
+      locStatus.style.cssText = 'padding:10px 14px;border-radius:6px;font-size:12.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px;background:#FEE2E2;border-left:4px solid var(--danger);color:var(--danger);';
+      locStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Kivinjari chako hakitumii GPS.</span>';
+      return;
     }
-    
-    function enableForm() {
-        locationVerified = true;
-        logbookFormSection.style.display = 'block';
-        lockedMessage.style.display = 'none';
-        locationStatus.style.background = '#D1FAE5';
-        locationStatus.style.borderLeft = '4px solid var(--success)';
-        locationStatus.style.color = '#065F46';
-        locationStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i><strong>✅ Eneo limehakikiwa!</strong> Sasa unaweza kujaza logbook.';
-        isVerifiedInput.value = 'true';
-        
-        if (submitBtn) {
-            submitBtn.disabled = false;
-        }
-    }
-    
-    function disableForm() {
-        locationVerified = false;
-        logbookFormSection.style.display = 'none';
-        lockedMessage.style.display = 'block';
-        locationStatus.style.background = 'var(--light)';
-        locationStatus.style.borderLeft = '4px solid var(--text-gray)';
-        locationStatus.style.color = 'var(--text-dark)';
-        locationStatus.innerHTML = '<i class="fas fa-hourglass-half me-2"></i><strong>⚠️ Hajathibitishwa:</strong> Bado haujathibitisha eneo lako';
-        isVerifiedInput.value = 'false';
-        
-        if (submitBtn) {
-            submitBtn.disabled = true;
-        }
-    }
-    
-    function updateLocationDisplay(lat, lng, address) {
-        displayLat.textContent = lat.toFixed(6);
-        displayLng.textContent = lng.toFixed(6);
-        displayAddress.textContent = address || 'Anwani haipatikani';
-        
-        latitudeInput.value = lat;
-        longitudeInput.value = lng;
-        addressInput.value = address || `${lat}, ${lng}`;
-    }
-    
-    function checkLocationAndEnable(lat, lng) {
-        const inDodoma = isInDodoma(lat, lng);
-        
-        if (inDodoma) {
-            dodomaCheck.style.display = 'block';
-            outsideDodoma.style.display = 'none';
-            locationStatus.style.background = '#D1FAE5';
-            locationStatus.style.borderLeft = '4px solid var(--success)';
-            locationStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i><strong>✅ Eneo limehakikiwa!</strong> Uko Dodoma.';
-            enableForm();
+    btnLoc.disabled = true;
+    btnLoc.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inatafuta eneo...';
+    locStatus.style.cssText = 'padding:10px 14px;border-radius:6px;font-size:12.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px;background:var(--light);border-left:4px solid var(--bold);color:var(--text);';
+    locStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Inapata eneo lako...</span>';
+
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        hidLat.value = lat;
+        hidLng.value = lng;
+        hidVerified.value = 'true';
+        dispLat.textContent = lat.toFixed(6);
+        dispLng.textContent = lng.toFixed(6);
+        locDetails.style.display = 'block';
+        // Reverse geocode
+        fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng)
+          .then(r => r.json()).then(d => {
+            const addr = d.display_name || (lat + ', ' + lng);
+            dispAddr.textContent = addr;
+            hidAddr.value = addr;
+          }).catch(() => { dispAddr.textContent = lat + ', ' + lng; hidAddr.value = lat + ', ' + lng; });
+
+        if (isTanzania(lat, lng)) {
+          inBoundsMsg.style.display = 'block';
+          outBoundsMsg.style.display = 'none';
         } else {
-            dodomaCheck.style.display = 'none';
-            outsideDodoma.style.display = 'block';
-            outsideDodoma.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>
-                <strong>⚠️ Uko nje ya Dodoma!</strong><br>
-                Mahali ulipo: Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)}<br>
-                Logbook itasajiliwa kwa tahadhari.`;
-            locationStatus.style.background = '#D1FAE5';
-            locationStatus.style.borderLeft = '4px solid var(--success)';
-            locationStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i><strong>✅ Eneo limehakikiwa!</strong> (Nje ya Dodoma - tahadhari)';
-            enableForm();
+          inBoundsMsg.style.display = 'none';
+          outBoundsMsg.style.display = 'block';
         }
-    }
-    
-    verifyBtn.addEventListener('click', function() {
-        verifyBtn.disabled = true;
-        verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Inatafuta eneo lako...';
-        locationStatus.style.background = 'var(--light)';
-        locationStatus.style.borderLeft = '4px solid var(--info)';
-        locationStatus.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Inapata eneo lako... Tafadhali subiri';
-        
-        if (!navigator.geolocation) {
-            locationStatus.style.background = '#FEE2E2';
-            locationStatus.style.borderLeft = '4px solid var(--danger)';
-            locationStatus.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Kivinjari chako hakitumii GPS. Tafadhali tumia kivinjari kingine.';
-            verifyBtn.disabled = false;
-            verifyBtn.innerHTML = '<i class="fas fa-location-arrow me-2"></i>📍 Thibitisha Eneo Langu';
-            return;
-        }
-        
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                currentLat = position.coords.latitude;
-                currentLng = position.coords.longitude;
-                
-                console.log(`📍 Location obtained: Lat=${currentLat}, Lng=${currentLng}`);
-                
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const address = data.display_name || `${currentLat}, ${currentLng}`;
-                        updateLocationDisplay(currentLat, currentLng, address);
-                        locationDetails.style.display = 'block';
-                        checkLocationAndEnable(currentLat, currentLng);
-                        
-                        verifyBtn.disabled = false;
-                        verifyBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>✅ Eneo Limehakikiwa';
-                        verifyBtn.style.opacity = '0.7';
-                    })
-                    .catch(error => {
-                        console.error('Geocoding error:', error);
-                        updateLocationDisplay(currentLat, currentLng, `${currentLat}, ${currentLng}`);
-                        locationDetails.style.display = 'block';
-                        checkLocationAndEnable(currentLat, currentLng);
-                        
-                        verifyBtn.disabled = false;
-                        verifyBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>✅ Eneo Limehakikiwa';
-                        verifyBtn.style.opacity = '0.7';
-                    });
-            },
-            function(error) {
-                console.error('Geolocation error:', error);
-                let errorMessage = '';
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        errorMessage = 'Umekataa ruhusa ya eneo. Tafadhali ruhusu tovuti kutumia eneo lako kwenye mipangilio ya kivinjari.';
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        errorMessage = 'Taarifa za eneo hazipatikani. Hakikisha GPS imewasha na uko sehemu yenye mawimbi mazuri.';
-                        break;
-                    case error.TIMEOUT:
-                        errorMessage = 'Muda wa kupata eneo umekwisha. Tafadhali jaribu tena katika eneo lenye mawimbi bora.';
-                        break;
-                    default:
-                        errorMessage = 'Hitilafu isiyojulikana. Jaribu tena.';
-                }
-                locationStatus.style.background = '#FEE2E2';
-                locationStatus.style.borderLeft = '4px solid var(--danger)';
-                locationStatus.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i><strong>Error:</strong> ${errorMessage}`;
-                verifyBtn.disabled = false;
-                verifyBtn.innerHTML = '<i class="fas fa-location-arrow me-2"></i>📍 Jaribu Tena';
-                disableForm();
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 0
-            }
-        );
+        locStatus.style.cssText = 'padding:10px 14px;border-radius:6px;font-size:12.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px;background:#D1FAE5;border-left:4px solid var(--success);color:#065F46;';
+        locStatus.innerHTML = '<i class="fas fa-check-circle"></i><strong>Eneo limehakikiwa!</strong>';
+        btnLoc.disabled = false;
+        btnLoc.innerHTML = '<i class="fas fa-check-circle"></i> Eneo Limehakikiwa';
+        btnLoc.style.opacity = '0.7';
+        showForm();
+      },
+      function(err) {
+        let msg = 'Hitilafu ya GPS. Jaribu tena.';
+        if (err.code === 1) msg = 'Umekataa ruhusa ya eneo. Ruhusu GPS kwenye mipangilio ya kivinjari.';
+        if (err.code === 2) msg = 'Eneo halipatikani. Hakikisha GPS imewashwa.';
+        if (err.code === 3) msg = 'Muda wa GPS umekwisha. Jaribu tena.';
+        locStatus.style.cssText = 'padding:10px 14px;border-radius:6px;font-size:12.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px;background:#FEE2E2;border-left:4px solid var(--danger);color:var(--danger);';
+        locStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i><span>' + msg + '</span>';
+        btnLoc.disabled = false;
+        btnLoc.innerHTML = '<i class="fas fa-location-arrow"></i> Jaribu Tena';
+        hideForm();
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  });
+
+  // ===== LESSON PERIODS =====
+  const periodsContainer = document.getElementById('periodsContainer');
+  const btnAddPeriod = document.getElementById('btnAddPeriod');
+  const hidLessonsData = document.getElementById('hidLessonsData');
+  let periodCount = 0;
+
+  function addPeriod() {
+    periodCount++;
+    const tpl = document.getElementById('periodTemplate');
+    const clone = tpl.content.cloneNode(true);
+    const el = clone.querySelector('.lesson-period');
+    el.dataset.periodIdx = periodCount;
+    el.querySelector('.period-title').textContent = 'Kipindi cha ' + periodCount;
+    el.querySelector('.p-num').value = periodCount;
+    el.querySelector('.btn-remove-period').addEventListener('click', function() {
+      el.remove();
+      renumberPeriods();
     });
-    
-    // Form submission validation
-    const logbookForm = document.getElementById('logbookForm');
-    if (logbookForm) {
-        logbookForm.addEventListener('submit', function(e) {
-            if (!locationVerified || isVerifiedInput.value !== 'true') {
-                e.preventDefault();
-                locationStatus.style.background = '#FEE2E2';
-                locationStatus.style.borderLeft = '4px solid var(--danger)';
-                locationStatus.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i><strong>Haujathibitisha eneo lako!</strong> Tafadhali thibitisha eneo lako kwanza kabla ya kuwasilisha logbook.';
-                verifyBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                return false;
-            }
-            
-            const submitBtn = document.getElementById('submitBtn');
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Inahifadhi...';
-            }
-        });
+    periodsContainer.appendChild(clone);
+  }
+
+  function renumberPeriods() {
+    const periods = periodsContainer.querySelectorAll('.lesson-period');
+    periods.forEach(function(p, i) {
+      p.querySelector('.period-title').textContent = 'Kipindi cha ' + (i + 1);
+    });
+    periodCount = periods.length;
+  }
+
+  function collectLessons() {
+    const periods = periodsContainer.querySelectorAll('.lesson-period');
+    const lessons = [];
+    periods.forEach(function(p, i) {
+      lessons.push({
+        period: i + 1,
+        class: p.querySelector('.p-class').value.trim(),
+        subject: p.querySelector('.p-subject').value.trim(),
+        main_topic: p.querySelector('.p-topic').value.trim(),
+        subtopic: p.querySelector('.p-subtopic').value.trim(),
+        enrolled: parseInt(p.querySelector('.p-enrolled').value) || 0,
+        present: parseInt(p.querySelector('.p-present').value) || 0,
+        activity_type: p.querySelector('.p-activity').value,
+        teaching_aids: p.querySelector('.p-aids').value.trim(),
+        methods: p.querySelector('.p-methods').value.trim(),
+        introduction: p.querySelector('.p-intro').value.trim(),
+        development: p.querySelector('.p-development').value.trim(),
+        conclusion: p.querySelector('.p-conclusion').value.trim(),
+        assessment: p.querySelector('.p-assessment').value.trim(),
+        homework: p.querySelector('.p-homework').value.trim(),
+      });
+    });
+    return lessons;
+  }
+
+  btnAddPeriod.addEventListener('click', addPeriod);
+
+  // Start with 1 period
+  addPeriod();
+
+  // Pre-populate existing lessons_data if editing
+  {% if logbook_entry and logbook_entry.lessons_data %}
+  (function() {
+    const existing = {{ logbook_entry.lessons_data|safe }};
+    if (Array.isArray(existing) && existing.length > 0) {
+      // Remove the default period added above
+      periodsContainer.innerHTML = '';
+      periodCount = 0;
+      existing.forEach(function(lesson) {
+        addPeriod();
+        const p = periodsContainer.querySelectorAll('.lesson-period');
+        const el = p[p.length - 1];
+        if (el) {
+          el.querySelector('.p-class').value = lesson.class || '';
+          el.querySelector('.p-subject').value = lesson.subject || '';
+          el.querySelector('.p-num').value = lesson.period || '';
+          el.querySelector('.p-topic').value = lesson.main_topic || '';
+          el.querySelector('.p-subtopic').value = lesson.subtopic || '';
+          el.querySelector('.p-enrolled').value = lesson.enrolled || '';
+          el.querySelector('.p-present').value = lesson.present || '';
+          el.querySelector('.p-activity').value = lesson.activity_type || '';
+          el.querySelector('.p-aids').value = lesson.teaching_aids || '';
+          el.querySelector('.p-methods').value = lesson.methods || '';
+          el.querySelector('.p-intro').value = lesson.introduction || '';
+          el.querySelector('.p-development').value = lesson.development || '';
+          el.querySelector('.p-conclusion').value = lesson.conclusion || '';
+          el.querySelector('.p-assessment').value = lesson.assessment || '';
+          el.querySelector('.p-homework').value = lesson.homework || '';
+        }
+      });
     }
-    
-    disableForm();
-});
+  })();
+  {% endif %}
+
+  // ===== FORM SUBMIT =====
+  document.getElementById('mainForm').addEventListener('submit', function(e) {
+    if (hidVerified.value !== 'true') {
+      e.preventDefault();
+      locStatus.style.cssText = 'padding:10px 14px;border-radius:6px;font-size:12.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px;background:#FEE2E2;border-left:4px solid var(--danger);color:var(--danger);';
+      locStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i><span>Thibitisha eneo lako kwanza!</span>';
+      document.getElementById('btnVerifyLoc').scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
+    hidLessonsData.value = JSON.stringify(collectLessons());
+    const btn = document.getElementById('btnSubmit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inahifadhi...';
+  });
+
+  // Start hidden
+  hideForm();
+})();
 </script>
 {% endblock %}

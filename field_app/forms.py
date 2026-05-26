@@ -74,38 +74,31 @@ class LogbookForm(forms.ModelForm):
     class Meta:
         model = LogbookEntry
         fields = [
-            'morning_activity', 
-            'afternoon_activity', 
-            'challenges_faced', 
-            'lessons_learned'
+            'other_activities',
+            'challenges_faced',
+            'lessons_learned',
         ]
         widgets = {
-            'morning_activity': forms.Textarea(attrs={
-                'rows': 4, 
-                'placeholder': 'Shughuli za asubuhi...',
-                'class': 'form-control'
-            }),
-            'afternoon_activity': forms.Textarea(attrs={
-                'rows': 4, 
-                'placeholder': 'Shughuli za mchana...',
-                'class': 'form-control'
+            'other_activities': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Mikutano, majukumu ya shule, ziara, n.k...',
+                'class': 'form-control',
             }),
             'challenges_faced': forms.Textarea(attrs={
-                'rows': 3, 
-                'placeholder': 'Changamoto ulizokutana nazo...',
-                'class': 'form-control'
+                'rows': 3,
+                'placeholder': 'Changamoto ulizokutana nazo leo...',
+                'class': 'form-control',
             }),
             'lessons_learned': forms.Textarea(attrs={
-                'rows': 3, 
-                'placeholder': 'Mafunzo uliyoyapata...',
-                'class': 'form-control'
+                'rows': 3,
+                'placeholder': 'Mafunzo na tafakari ya kibinafsi...',
+                'class': 'form-control',
             }),
         }
         labels = {
-            'morning_activity': 'Shughuli za Asubuhi',
-            'afternoon_activity': 'Shughuli za Mchana',
-            'challenges_faced': 'Changamoto',
-            'lessons_learned': 'Mafunzo',
+            'other_activities': 'Shughuli Nyingine (Zisizo za Kufundisha)',
+            'challenges_faced': 'Changamoto / Vikwazo',
+            'lessons_learned': 'Tafakari ya Kibinafsi / Mafunzo',
         }
 
 class StudentTeacherForm(forms.ModelForm):

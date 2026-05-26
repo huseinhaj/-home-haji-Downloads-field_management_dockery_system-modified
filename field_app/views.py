@@ -1,64 +1,94 @@
-# views.py - COMPLETE UPDATED VERSION
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib import messages
-from django.contrib.gis.geos import Point
-from .ai_utils import client, model_name
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.contrib.gis.db.models.functions import Distance
-from datetime import datetime, timedelta
-from django.utils import timezone
-from django.db.models import Prefetch
-from django.core.cache import cache
-from django.core.exceptions import PermissionDenied
-#from .models import AcademicYear
-from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Count, Case, When, Value, BooleanField, F, Q
-from django.http import HttpResponse, JsonResponse
-from django.core.mail import send_mail
-from django.http import HttpResponseNotAllowed
-from django.urls import reverse
-from django.conf import settings
-from django.views.decorators.csrf import csrf_exempt
-import json
-import re
-from io import BytesIO
-from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from .ai_utils import client, model_name
-from .forms import SchemeOfWorkForm
-from .models import SchemeOfWork
 import csv
 import io
+import json
+import re
 import secrets
 import string
-import json
 from io import BytesIO
-from reportlab.pdfgen import canvas
+from datetime import datetime, timedelta
 
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.geos import Point
+from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
+from django.core.files.base import ContentFile
+from django.core.mail import send_mail
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Count, Case, When, Value, BooleanField, F, Q, Prefetch
+from django.http import HttpResponse, HttpResponseNotAllowed, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfgen import canvas
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+
+from geopy.distance import geodesic
+
+from .ai_utils import client, model_name
 from .forms import (
-    CustomLoginForm, StudentRegistrationForm, StudentTeacherForm, 
+    CustomLoginForm, StudentRegistrationForm, StudentTeacherForm,
     LogbookForm, AssessorLoginForm, BulkAssignForm, RegionFieldInputForm
 )
+from .forms import SchemeOfWorkForm
 from .models import (
-    Assessor, School, SchoolAssignment, StudentTeacher, 
-    StudentAssessment, SchoolAssessment, SchoolRequirement, 
-    StudentApplication, Region, RegionPin, SchoolPin, 
-    Region, District, Subject, SchoolSubjectCapacity, 
-    LogbookEntry, ApprovalLetter, AcademicYear
+    Assessor, School, SchoolAssignment, StudentTeacher,
+    StudentAssessment, SchoolAssessment, SchoolRequirement,
+    StudentApplication, Region, RegionPin, SchoolPin,
+    District, Subject, SchoolSubjectCapacity,
+    LogbookEntry, ApprovalLetter, AcademicYear, SchemeOfWork,
+    BoardMember, BoardComment, LessonPlan,
 )
-from geopy.distance import geodesic
-from django.core.files.base import ContentFile
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
+
+# =========================
+# CACHE HELPERS
+# =========================
+
+def _cached_active_year():
+    """Cache the active AcademicYear for 5 minutes."""
+    key = 'active_academic_year'
+    yr = cache.get(key)
+    if yr is None:
+        yr = AcademicYear.objects.filter(is_active=True).first()
+        cache.set(key, yr, 300)
+    return yr
+
+def _cached_subjects(student):
+    """Return all subjects grouped by level. Always show all so teacher can record any subject."""
+    key = 'all_subjects_list'
+    subs = cache.get(key)
+    if subs is None:
+        subs = list(Subject.objects.order_by('level', 'name'))
+        cache.set(key, subs, 600)
+    return subs
+
+
+def _cached_today_logbook(student, school, today):
+    """Cache today's logbook entry for 30s to avoid get_or_create hit on every page load."""
+    key = f'logbook_today_{student.id}_{today}'
+    entry = cache.get(key)
+    if entry is None:
+        entry, _ = LogbookEntry.objects.get_or_create(
+            student=student, date=today,
+            defaults={'school': school, 'morning_check_in': timezone.now()}
+        )
+        cache.set(key, entry, 30)
+    return entry
+
+
+def _invalidate_today_logbook(student, today):
+    cache.delete(f'logbook_today_{student.id}_{today}')
 
 # =========================
 # HELPER FUNCTIONS
@@ -73,18 +103,19 @@ def get_assessor_email_template(assessor, school, temp_password, is_new_account,
     if is_new_account:
         credential_html = f"""
         <div style="background-color: #fef9e6; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 8px;">
-            <h3 style="margin-top: 0; color: #d97706;">🆕 NEW ASSESSOR ACCOUNT</h3>
+            <h3 style="margin-top: 0; color: #d97706;">🆕 AKAUNTI MPYA YA ASSESSOR</h3>
             <p style="margin: 10px 0;"><strong>📧 Email:</strong> {assessor.email}</p>
-            <p style="margin: 10px 0;"><strong>🔑 Temporary Password:</strong> <code style="background-color: #fff3cd; padding: 4px 8px; border-radius: 4px; font-size: 16px;">{temp_password}</code></p>
-            <p style="margin: 10px 0; color: #856404;">⚠️ Please change your password immediately after first login</p>
+            <p style="margin: 10px 0;"><strong>🔑 Nywila ya Muda:</strong> <code style="background-color: #fff3cd; padding: 4px 8px; border-radius: 4px; font-size: 16px;">{temp_password}</code></p>
+            <p style="margin: 10px 0; color: #856404;">⚠️ Badilisha nywila yako mara tu baada ya kuingia mara ya kwanza</p>
         </div>
         """
+    else:
         credential_html = f"""
         <div style="background-color: #e3f2fd; border-left: 4px solid #2196f3; padding: 20px; margin: 20px 0; border-radius: 8px;">
-            <h3 style="margin-top: 0; color: #1976d2;">🔄 NEW ACADEMIC YEAR {assessor.current_academic_year.year if assessor.current_academic_year else '2024/2025'}</h3>
+            <h3 style="margin-top: 0; color: #1976d2;">🔄 MWAKA MPYA WA MASOMO {assessor.current_academic_year.year if assessor.current_academic_year else '2024/2025'}</h3>
             <p style="margin: 10px 0;"><strong>📧 Email:</strong> {assessor.email}</p>
-            <p style="margin: 10px 0;"><strong>🔑 New Password:</strong> <code style="background-color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 16px;">{temp_password}</code></p>
-            <p style="margin: 10px 0; color: #d32f2f;">🔐 Your password has been reset for the new academic year</p>
+            <p style="margin: 10px 0;"><strong>🔑 Nywila Mpya:</strong> <code style="background-color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 16px;">{temp_password}</code></p>
+            <p style="margin: 10px 0; color: #d32f2f;">🔐 Nywila yako imebadilishwa kwa mwaka mpya wa masomo</p>
         </div>
         """
     
@@ -329,24 +360,31 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
                 is_new = True
                 new_accounts_count += 1
                 send_email = True
-                
+
                 print(f"🔐 Generated password: {temp_password}")
-                
-                # Use email only - NO username field
-                user = User.objects.create_user(
-                    email=assessor.email,
-                    password=temp_password,
-                    is_staff=False,
-                    is_active=True
-                )
-                
+
+                # Check if user with this email already exists
+                existing_user = User.objects.filter(email=assessor.email).first()
+                if existing_user:
+                    user = existing_user
+                    user.set_password(temp_password)
+                    user.save()
+                    print(f"♻️ Reusing existing user account: {assessor.email}")
+                else:
+                    user = User.objects.create_user(
+                        email=assessor.email,
+                        password=temp_password,
+                        is_staff=False,
+                        is_active=True
+                    )
+                    print(f"✅ Account created with email: {assessor.email}")
+
                 assessor.user = user
                 assessor.current_academic_year = current_academic_year
                 assessor.save()
-                
-                print(f"✅ Account created with email: {assessor.email}")
+
                 print(f"✅ Academic year set: {current_academic_year.year}")
-                
+
             except Exception as e:
                 print(f"❌ ACCOUNT CREATION FAILED: {e}")
                 email_results.append({
@@ -425,12 +463,12 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
                     assignments_for_this_assessor += 1
                     print(f"✅ NEW assignment created: {assessor.full_name} -> {school.name}")
                     print(f"   Assignment ID: {assignment.id}")
-                    
+
                     approved_students = StudentTeacher.objects.filter(
                         selected_school=school,
                         approval_status='approved'
                     )
-                    
+
                     student_assessments_created = 0
                     for student in approved_students:
                         sa, sa_created = StudentAssessment.objects.get_or_create(
@@ -446,11 +484,12 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
                         if sa_created:
                             student_assessments_created += 1
                             print(f"   ✓ Created student assessment: {student.full_name}")
-                    
+
                     if student_assessments_created > 0:
                         print(f"   📊 Total student assessments: {student_assessments_created}")
+                    else:
                         print(f"   ℹ️ No new student assessments needed")
-                        
+                else:
                     skipped_assignments += 1
                     print(f"⚠️ SKIPPED: Assignment already exists for {assessor.full_name} -> {school.name}")
                 
@@ -660,16 +699,30 @@ University of Dodoma
         'note': f'Successfully created {assignments_created} new assignments for {current_academic_year.year}'
     }
 def get_or_create_student_profile(user):
-    """Hakikisha kila user ana StudentTeacher profile"""
+    """Hakikisha kila user ana StudentTeacher profile. Cached for 2 minutes."""
+    cache_key = f'student_profile_{user.pk}'
+    profile = cache.get(cache_key)
+    if profile is not None:
+        return profile
     try:
-        return StudentTeacher.objects.get(user=user)
+        profile = StudentTeacher.objects.select_related(
+            'selected_school', 'selected_school__district', 'selected_school__district__region'
+        ).get(user=user)
     except StudentTeacher.DoesNotExist:
         email_username = user.email.split('@')[0] if user.email else user.username
-        return StudentTeacher.objects.create(
+        profile = StudentTeacher.objects.create(
             user=user,
             full_name=email_username,
             phone_number='Not provided'
         )
+    cache.set(cache_key, profile, 120)
+    return profile
+
+
+def invalidate_student_cache(student):
+    """Call after saving student profile changes."""
+    cache.delete(f'student_profile_{student.user_id}')
+    cache.delete(f'student_subjects_{student.id}')
 
 def is_assessor(user):
     """Check if user is an assessor"""
@@ -731,7 +784,9 @@ def register(request):
 
             messages.success(request, 'Account created successfully. Please login.')
             return redirect('login')
+        else:
             messages.error(request, 'Please correct the errors below.')
+    else:
         form = StudentRegistrationForm()
 
     return render(request, 'field_app/registration/register.html', {
@@ -767,12 +822,12 @@ def login_view(request):
         form = CustomLoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
-            login(request, user)
-            
+            login(request, user, backend='field_app.backends.EmailBackend')
+
             try:
                 assessor = Assessor.objects.get(user=user)
-                messages.warning(request, 
-                    f"You are registered as an assessor. Please use the assessor login page."
+                messages.warning(request,
+                    "You are registered as an assessor. Please use the assessor login page."
                 )
                 logout(request)
                 return redirect('assessor_login')
@@ -780,9 +835,11 @@ def login_view(request):
                 get_or_create_student_profile(user)
                 messages.success(request, "Login successful!")
                 return redirect('dashboard')
+        else:
             messages.error(request, 'Invalid credentials')
+    else:
         form = CustomLoginForm()
-    
+
     return render(request, 'field_app/registration/login.html', {
         'form': form,
         'hide_navbar': True
@@ -792,15 +849,15 @@ def login_view(request):
 
 def logout_view(request):
     """Logout na upeleke kwenye appropriate login page based on user type"""
+    was_staff = request.user.is_authenticated and request.user.is_staff
+    was_assessor = request.user.is_authenticated and hasattr(request.user, 'assessor')
     logout(request)
     messages.success(request, "You have been logged out successfully.")
-    
-    # Check if user was an assessor (based on session or referer)
-    referer = request.META.get('HTTP_REFERER', '')
-    
-    if 'assessor' in referer or 'assessor_dashboard' in referer:
+    if was_staff:
+        return redirect('/admin/login/')
+    if was_assessor:
         return redirect('assessor_login')
-        return redirect('login')
+    return redirect('login')
 # =========================
 # ASSESSOR LOGIN VIEW
 # =========================
@@ -862,9 +919,9 @@ def assessor_login(request):
                 return render(request, 'field_app/assessor_login.html')
             
             # LOGIN SUCCESSFUL
-            login(request, user)
+            login(request, user, backend='field_app.backends.EmailBackend')
             print(f"✅ Login successful, redirecting to dashboard")
-            
+
             messages.success(request, f'Welcome Assessor {assessor.full_name}!')
             return redirect('assessor_dashboard')
             
@@ -877,10 +934,10 @@ def assessor_login(request):
                 # Link assessor to this user
                 assessor.user = user
                 assessor.save()
-                
+
                 # Login
-                login(request, user)
-                
+                login(request, user, backend='field_app.backends.EmailBackend')
+
                 messages.success(request, f'Welcome Assessor {assessor.full_name}!')
                 return redirect('assessor_dashboard')
                 
@@ -900,7 +957,11 @@ def assessor_login(request):
 @login_required
 def dashboard(request):
     """Student dashboard"""
-    
+
+    # Staff users belong in admin dashboard
+    if request.user.is_staff:
+        return redirect('admin_dashboard')
+
     # Check if user is assessor
     try:
         assessor = Assessor.objects.get(user=request.user)
@@ -910,7 +971,7 @@ def dashboard(request):
         pass
     
     student = get_or_create_student_profile(request.user)
-    current_year = AcademicYear.objects.filter(is_active=True).first()
+    current_year = _cached_active_year()
 
     if current_year:
         pinned_region_ids = RegionPin.objects.filter(
@@ -922,15 +983,14 @@ def dashboard(request):
     
     assessors = []
     if student.selected_school:
-        school_assessments = SchoolAssessment.objects.filter(
-            school=student.selected_school
-        ).select_related('assessor')
-        
-        for assessment in school_assessments:
+        qs = SchoolAssessment.objects.filter(school=student.selected_school)
+        if current_year:
+            qs = qs.filter(academic_year=current_year)
+        for assessment in qs.select_related('assessor'):
             assessors.append({
                 'assessor': assessment.assessor,
                 'assignment_date': assessment.assessment_date,
-                'is_completed': assessment.is_completed
+                'is_completed': assessment.is_completed,
             })
     
     applications = []
@@ -961,7 +1021,16 @@ def dashboard(request):
 
     logbook_entries = []
     if student:
-        logbook_entries = LogbookEntry.objects.filter(student=student).order_by('-date')[:5]
+        logbook_entries = LogbookEntry.objects.filter(
+            student=student
+        ).select_related('subject_taught').order_by('-date')[:5]
+
+    board_comments = []
+    if student:
+        board_comments = BoardComment.objects.filter(
+            student=student
+        ).select_related('board_member').order_by('-created_at')[:5]
+        BoardComment.objects.filter(student=student, is_read=False).update(is_read=True)
 
     return render(request, 'field_app/dashboard.html', {
         'regions': pinned_regions,
@@ -977,6 +1046,7 @@ def dashboard(request):
         'group_letter_quota': group_letter_quota,
         'logbook_entries': logbook_entries,
         'assessors': assessors,
+        'board_comments': board_comments,
     })
 
 # views.py - SAHIHISHA SEHEMU YA ASSESSOR DASHBOARD
@@ -1073,6 +1143,15 @@ def assessor_dashboard(request):
             # Get assessment
             assessment = assessment_map.get(student.id)
             
+            # Logbook stats for this student
+            logbook_entries = LogbookEntry.objects.filter(student=student)
+            logbook_total = logbook_entries.count()
+            logbook_verified = logbook_entries.filter(is_location_verified=True).count()
+            logbook_this_week = logbook_entries.filter(
+                date__gte=timezone.now().date() - timedelta(days=7)
+            ).count()
+            logbook_last = logbook_entries.order_by('-date').first()
+
             students_data.append({
                 'student': student,
                 'has_selected_school': has_selected_school,
@@ -1084,6 +1163,10 @@ def assessor_dashboard(request):
                 'score': assessment.score if assessment else None,
                 'email': student.user.email if student.user else "No email",
                 'phone': student.phone_number or "Not provided",
+                'logbook_total': logbook_total,
+                'logbook_verified': logbook_verified,
+                'logbook_this_week': logbook_this_week,
+                'logbook_last_date': logbook_last.date if logbook_last else None,
             })
             
             # Debug print
@@ -1126,13 +1209,15 @@ def assessor_dashboard(request):
             'academic_year': current_year.year if current_year else "Not Set",
         })
     
+    total_completed = sum(d['completed_student_assessments'] for d in schools_data)
+
     return render(request, 'field_app/assessor_dashboard.html', {
         'assessor': assessor,
         'schools_data': schools_data,
         'total_schools': school_assignments.count(),
         'total_students': total_students_all_schools,
+        'total_completed': total_completed,
         'current_year': current_year,
-        #'hide_navbar': True,  # 
     })
 @login_required
 def select_region(request):
@@ -1193,7 +1278,7 @@ def select_district(request, region_id):
 @login_required
 def select_school(request, district_id):
     district = get_object_or_404(District, id=district_id)
-    current_year = AcademicYear.objects.filter(is_active=True).first()
+    current_year = _cached_active_year()
     
     # Get pinned schools
     pinned_school_ids = []
@@ -1254,6 +1339,7 @@ def select_school(request, district_id):
                     
                     student.selected_school = school
                     student.save()
+                    invalidate_student_cache(student)
                     School.objects.filter(id=school.id).update(current_students=F('current_students') + 1)
                     
                     request.session.pop('temp_selected_school_id', None)
@@ -1321,33 +1407,34 @@ def select_subjects(request, school_id):
                 subject=subject,
                 school=school
             ).first()
-            
+
             if existing_application:
-                messages.info(request, f"You have already applied for {subject.name}")
-                if capacity.current_students >= capacity.max_students:
-                    messages.error(request, f"{subject.name} is already full.")
-                    StudentApplication.objects.create(
-                        student=student,
-                        subject=subject,
-                        school=school,
-                        status='pending'
-                    )
-                    
-                    messages.success(request, 
-                        f"✅ Application for {subject.name} submitted successfully! " 
-                        f"Waiting for Admin approval."
-                    )
-        
+                messages.info(request, f"You have already applied for {subject.name}.")
+            elif capacity.current_students >= capacity.max_students:
+                messages.error(request, f"{subject.name} is already full.")
+            else:
+                StudentApplication.objects.create(
+                    student=student,
+                    subject=subject,
+                    school=school,
+                    status='pending'
+                )
+                messages.success(request,
+                    f"✅ Application for {subject.name} submitted successfully! "
+                    f"Waiting for Admin approval."
+                )
+
         elif action == 'cancel_application':
             application = StudentApplication.objects.filter(
                 student=student,
                 subject=subject,
                 school=school
             ).first()
-            
+
             if application:
                 application.delete()
                 messages.success(request, f"Application for {subject.name} cancelled.")
+            else:
                 messages.error(request, f"Cannot cancel application for {subject.name}.")
 
         return redirect('select_subjects', school_id=school.id)
@@ -1414,159 +1501,120 @@ def submit_logbook(request):
         return redirect('select_region')
     
     school = student.selected_school
-    
-    # Get or create today's logbook entry
-    logbook_entry, created = LogbookEntry.objects.get_or_create(
-        student=student,
-        date=today,
-        defaults={
-            'school': school,
-            'morning_check_in': timezone.now()
-        }
-    )
+
+    logbook_entry = _cached_today_logbook(student, school, today)
     
     if request.method == 'POST':
         form = LogbookForm(request.POST, instance=logbook_entry)
-        
-        # Get location data from POST
+
         latitude = request.POST.get('latitude')
         longitude = request.POST.get('longitude')
-        is_location_verified_str = request.POST.get('is_location_verified', 'false')
-        
-        print(f"\n📍 LOCATION DEBUG:")
-        print(f"   Latitude: {latitude}")
-        print(f"   Longitude: {longitude}")
-        print(f"   is_location_verified from form: {is_location_verified_str}")
-        
-        # ========== FIX 1: Check if location verification is TRUE ==========
-        is_location_verified = is_location_verified_str == 'true'
-        
+        is_location_verified = request.POST.get('is_location_verified', 'false') == 'true'
+
+        days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
+
+        def _render_logbook(extra=None):
+            subjects = _cached_subjects(student)
+            ctx = {
+                'form': form, 'student': student, 'logbook_entry': logbook_entry,
+                'today': today, 'today_name': days_swahili.get(today.weekday(), 'Leo'),
+                'school': school, 'subjects': subjects,
+            }
+            if extra:
+                ctx.update(extra)
+            return render(request, 'field_app/logbook.html', ctx)
+
         if not is_location_verified:
-            messages.error(request, 
-                "❌ Hujaweza kujaza logbook. Lazima uthibitishe eneo lako la Dodoma kwanza.\n"
-                "Bonyeza kitufe cha 'Thibitisha Eneo Langu' kabla ya kuwasilisha logbook."
-            )
-            # Re-render with form and error
-            days_swahili = {
-                0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano',
-                3: 'Alhamisi', 4: 'Ijumaa'
-            }
-            return render(request, 'field_app/logbook.html', {
-                'form': form,
-                'student': student,
-                'logbook_entry': logbook_entry,
-                'today': today,
-                'today_name': days_swahili.get(today.weekday(), 'Leo'),
-                'school': school,
-                'location_error': True,  # Add flag for template
-            })
-        
-        # ========== FIX 2: Validate coordinates exist ==========
+            messages.error(request, "Thibiti eneo lako kwanza kabla ya kuwasilisha logbook.")
+            return _render_logbook({'location_error': True})
+
         if not latitude or not longitude:
-            messages.error(request, 
-                "❌ Eneo halikupatikana. Tafadhali:\n"
-                "1. Hakikisha umewasha GPS kwenye simu yako\n"
-                "2. Ruhusu tovuti kutumia eneo lako\n"
-                "3. Bonyeza 'Thibitisha Eneo Langu' tena"
-            )
-            days_swahili = {
-                0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano',
-                3: 'Alhamisi', 4: 'Ijumaa'
-            }
-            return render(request, 'field_app/logbook.html', {
-                'form': form,
-                'student': student,
-                'logbook_entry': logbook_entry,
-                'today': today,
-                'today_name': days_swahili.get(today.weekday(), 'Leo'),
-                'school': school,
-                'location_error': True,
-            })
-        
+            messages.error(request, "Eneo halipatikani. Washa GPS na ujaribu tena.")
+            return _render_logbook({'location_error': True})
+
         try:
-            # Save coordinates
-            logbook_entry.latitude = float(latitude)
-            logbook_entry.longitude = float(longitude)
+            lat = float(latitude)
+            lng = float(longitude)
+            logbook_entry.latitude = lat
+            logbook_entry.longitude = lng
             logbook_entry.location_address = request.POST.get('location_address', '')
-            
-            lat = logbook_entry.latitude
-            lng = logbook_entry.longitude
-            
-            # ========== FIX 3: Correct Dodoma coordinates check ==========
-            # Dodoma city coordinates: Approximately -6.162959, 35.751607
-            # Make bounding box a bit larger to be forgiving
-            # Dodoma region bounds: Latitude -4.0 to -7.5, Longitude 33.5 to 37.0
-            
-            # More accurate Dodoma Urban/West bounds
-            is_in_dodoma = (-6.5 <= lat <= -5.5) and (35.0 <= lng <= 36.5)
-            
-            print(f"   Checking Dodoma bounds:")
-            print(f"      Lat {lat} is between -6.5 and -5.5? {-6.5 <= lat <= -5.5}")
-            print(f"      Lng {lng} is between 35.0 and 36.5? {35.0 <= lng <= 36.5}")
-            print(f"      Result: {is_in_dodoma}")
-            
-            if is_in_dodoma:
-                logbook_entry.is_location_verified = True
-                logbook_entry.is_at_school = True
-                print(f"   ✅ Location VERIFIED - in Dodoma")
-                logbook_entry.is_location_verified = False
-                logbook_entry.is_at_school = False
-                print(f"   ⚠️ Location NOT in Dodoma - lat={lat}, lng={lng}")
-                
+
+            if school and school.latitude and school.longitude:
+                from geopy.distance import geodesic
+                distance_m = geodesic((lat, lng), (school.latitude, school.longitude)).meters
+                school_verified = distance_m <= 1000
+            else:
+                school_verified = (-11.8 <= lat <= -1.0) and (29.3 <= lng <= 40.5)
+
+            logbook_entry.is_location_verified = school_verified
+            logbook_entry.is_at_school = school_verified
+
         except (ValueError, TypeError) as e:
-            print(f"   ❌ Location conversion error: {e}")
-            messages.error(request, f"Hitilafu katika usajili wa eneo: {str(e)}")
-            days_swahili = {
-                0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano',
-                3: 'Alhamisi', 4: 'Ijumaa'
-            }
-            return render(request, 'field_app/logbook.html', {
-                'form': form,
-                'student': student,
-                'logbook_entry': logbook_entry,
-                'today': today,
-                'today_name': days_swahili.get(today.weekday(), 'Leo'),
-                'school': school,
-            })
-        
-        # Validate form
+            messages.error(request, f"Hitilafu ya eneo: {e}")
+            return _render_logbook()
+
         if form.is_valid():
             entry = form.save(commit=False)
-            
-            # Auto-set afternoon check-out if activity is filled
-            if entry.afternoon_activity and not entry.afternoon_check_out:
-                entry.afternoon_check_out = timezone.now()
-            
-            # Save with location data
+
+            import json as _json
+            try:
+                entry.lessons_data = _json.loads(request.POST.get('lessons_data', '[]'))
+            except (ValueError, TypeError):
+                entry.lessons_data = []
+
             entry.latitude = logbook_entry.latitude
             entry.longitude = logbook_entry.longitude
             entry.is_location_verified = logbook_entry.is_location_verified
             entry.is_at_school = logbook_entry.is_at_school
             entry.location_address = logbook_entry.location_address
             entry.save()
-            
+            _invalidate_today_logbook(student, today)
+
+            # Send email in background thread — never block the response
+            import threading
+            def _notify(school_id, student_name, entry_id, verified):
+                try:
+                    from .models import SchoolAssessment, AcademicYear
+                    from django.core.mail import send_mail as _send
+                    from django.conf import settings as _s
+                    yr = AcademicYear.objects.filter(is_active=True).first()
+                    asgn = SchoolAssessment.objects.filter(
+                        school_id=school_id, academic_year=yr
+                    ).select_related('assessor').first()
+                    if asgn and asgn.assessor.email:
+                        loc = "GPS Verified" if verified else "Not Verified"
+                        _send(
+                            subject=f"[IMS] Logbook Submitted — {student_name}",
+                            message=(
+                                f"Student {student_name} amewasilisha logbook.\n"
+                                f"Eneo: {loc}\n\nIngia IMS kuona maelezo."
+                            ),
+                            from_email=_s.DEFAULT_FROM_EMAIL,
+                            recipient_list=[asgn.assessor.email],
+                            fail_silently=True,
+                        )
+                except Exception:
+                    pass
+            threading.Thread(
+                target=_notify,
+                args=(school.id, student.full_name, entry.id, entry.is_location_verified),
+                daemon=True,
+            ).start()
+
             if entry.is_location_verified:
-                messages.success(request, "✅ Logbook imesajiliwa kikamilifu! Eneo lako limehakikiwa.")
-                messages.warning(request, 
-                    f"⚠️ Logbook imesajiliwa lakini eneo lako halipo Dodoma.\n"
-                    f"Mahali ulipo: Lat {lat:.4f}, Lng {lng:.4f}"
-                )
-            
+                messages.success(request, "✅ Logbook imesajiliwa kikamilifu!")
+            else:
+                messages.warning(request, "⚠️ Logbook imesajiliwa. Eneo halikuthibitishwa.")
+
             return redirect('logbook_history')
+        else:
             messages.error(request, "Tafadhali kagua makosa yaliyomo kwenye fomu.")
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f"{field}: {error}")
+    else:
         form = LogbookForm(instance=logbook_entry)
-    
-    days_swahili = {
-        0: 'Jumatatu',
-        1: 'Jumanne', 
-        2: 'Jumatano',
-        3: 'Alhamisi',
-        4: 'Ijumaa'
-    }
-    
+
+    subjects = _cached_subjects(student)
+    days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
+
     return render(request, 'field_app/logbook.html', {
         'form': form,
         'student': student,
@@ -1574,183 +1622,261 @@ def submit_logbook(request):
         'today': today,
         'today_name': days_swahili.get(today.weekday(), 'Leo'),
         'school': school,
+        'subjects': subjects,
     })
 @login_required
 def logbook_history(request):
     student = get_or_create_student_profile(request.user)
-    
+
     week_filter = request.GET.get('week')
     month_filter = request.GET.get('month')
-    
-    entries = LogbookEntry.objects.filter(student=student)
-    
+
+    entries = LogbookEntry.objects.filter(student=student).select_related('subject_taught', 'school')
+
     if week_filter:
         try:
             year, week = map(int, week_filter.split('-W'))
             start_date = datetime.strptime(f'{year}-W{week}-1', "%Y-W%W-%w").date()
-            end_date = start_date + timedelta(days=6)
-            entries = entries.filter(date__range=[start_date, end_date])
+            entries = entries.filter(date__range=[start_date, start_date + timedelta(days=6)])
         except ValueError:
             messages.error(request, "Tarehe ya wiki si sahihi.")
-    
-    if month_filter:
+
+    elif month_filter:
         try:
             year, month = map(int, month_filter.split('-'))
             entries = entries.filter(date__year=year, date__month=month)
         except ValueError:
             messages.error(request, "Tarehe ya mwezi si sahihi.")
-    
-    if not week_filter and not month_filter:
+
+    else:
         today = timezone.now().date()
         start_of_week = today - timedelta(days=today.weekday())
-        end_of_week = start_of_week + timedelta(days=4)
-        entries = entries.filter(date__range=[start_of_week, end_of_week])
-    
-    entries = entries.order_by('-date')
-    
+        entries = entries.filter(date__range=[start_of_week, start_of_week + timedelta(days=4)])
+
     return render(request, 'field_app/logbook_history.html', {
-        'entries': entries,
+        'entries': entries.order_by('-date'),
         'student': student,
     })
 
 @login_required
 def download_logbook_pdf(request, period=None, period_type=None):
-    """Download logbook as PDF - Flexible parameter handling"""
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors as rl_colors
+    from reportlab.lib.units import cm
+
     student = get_or_create_student_profile(request.user)
-    
-    # Handle both parameter names
     period_value = period or period_type or 'week'
-    
     today = timezone.now().date()
-    start_date = end_date = today
-    
+
     if period_value == 'today':
         entries = LogbookEntry.objects.filter(student=student, date=today)
         filename = f"logbook_{today}.pdf"
-        title = f"Logbook ya {today}"
-        
+        title = f"Logbook — {today}"
     elif period_value == 'week':
         start_of_week = today - timedelta(days=today.weekday())
         end_of_week = start_of_week + timedelta(days=4)
-        entries = LogbookEntry.objects.filter(
-            student=student, 
-            date__range=[start_of_week, end_of_week]
-        )
-        filename = f"logbook_week_{start_of_week}_to_{end_of_week}.pdf"
-        title = f"Logbook ya Wiki ya {start_of_week} mpaka {end_of_week}"
-        
+        entries = LogbookEntry.objects.filter(student=student, date__range=[start_of_week, end_of_week])
+        filename = f"logbook_wiki_{start_of_week}.pdf"
+        title = f"Logbook — Wiki {start_of_week} hadi {end_of_week}"
     elif period_value == 'month':
         start_of_month = today.replace(day=1)
         next_month = today.replace(day=28) + timedelta(days=4)
         end_of_month = next_month - timedelta(days=next_month.day)
-        entries = LogbookEntry.objects.filter(
-            student=student,
-            date__range=[start_of_month, end_of_month]
-        )
-        filename = f"logbook_month_{today.year}_{today.month}.pdf"
-        title = f"Logbook ya Mwezi {today.month}/{today.year}"
-        
-    elif period_value == 'all':
+        entries = LogbookEntry.objects.filter(student=student, date__range=[start_of_month, end_of_month])
+        filename = f"logbook_mwezi_{today.year}_{today.month:02d}.pdf"
+        title = f"Logbook — Mwezi {today.month}/{today.year}"
+    else:
         entries = LogbookEntry.objects.filter(student=student)
-        filename = f"logbook_all_{today}.pdf"
-        title = f"Logbook Zote - {today}"
-        
-        entries = LogbookEntry.objects.filter(student=student)
-        filename = f"logbook_all_{today}.pdf"
-        title = f"Logbook Zote - {today}"
-    
-    # Rest of your PDF generation code remains the same...
+        filename = f"logbook_zote_{today}.pdf"
+        title = "Logbook Zote"
+
     entries = entries.order_by('date')
-    
+
+    NAVY = rl_colors.HexColor('#0A2B5E')
+    GOLD = rl_colors.HexColor('#C8900A')
+    LIGHT = rl_colors.HexColor('#EEF1F6')
+    WHITE = rl_colors.white
+
     buffer = BytesIO()
-    p = canvas.Canvas(buffer)
-    
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(100, 800, title)
-    p.setFont("Helvetica", 10)
-    p.drawString(100, 780, f"Jina: {student.full_name}")
-    p.drawString(100, 765, f"Shule: {student.selected_school.name if student.selected_school else 'Haijachaguliwa'}")
-    p.drawString(400, 780, f"Tarehe: {today}")
-    
-    y_position = 740
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        leftMargin=1.5*cm, rightMargin=1.5*cm,
+        topMargin=1.5*cm, bottomMargin=1.5*cm,
+    )
+
+    styles = getSampleStyleSheet()
+    s_title = ParagraphStyle('title', fontName='Helvetica-Bold', fontSize=14, textColor=NAVY, spaceAfter=4)
+    s_sub = ParagraphStyle('sub', fontName='Helvetica', fontSize=9, textColor=rl_colors.HexColor('#4A5568'), spaceAfter=2)
+    s_head = ParagraphStyle('head', fontName='Helvetica-Bold', fontSize=10, textColor=WHITE)
+    s_label = ParagraphStyle('label', fontName='Helvetica-Bold', fontSize=8, textColor=NAVY)
+    s_body = ParagraphStyle('body', fontName='Helvetica', fontSize=8, textColor=rl_colors.HexColor('#1A1A2E'), leading=11)
+    s_small = ParagraphStyle('small', fontName='Helvetica', fontSize=7.5, textColor=rl_colors.HexColor('#4A5568'), leading=10)
+
+    school_name = student.selected_school.name if student.selected_school else '—'
+    district_name = (student.selected_school.district.name if student.selected_school and student.selected_school.district else '—')
+    current_year = _cached_active_year()
+    year_label = str(current_year) if current_year else '—'
+
+    story = []
+
+    # ── Cover header ──────────────────────────────────────────────────────────
+    story.append(Paragraph("WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA", ParagraphStyle('gov', fontName='Helvetica-Bold', fontSize=11, textColor=NAVY, alignment=1)))
+    story.append(Paragraph("Mfumo wa Ufuatiliaji wa Walimu Wanafunzi (IMS)", ParagraphStyle('gov2', fontName='Helvetica', fontSize=9, textColor=rl_colors.HexColor('#4A5568'), alignment=1, spaceAfter=6)))
+    story.append(HRFlowable(width="100%", thickness=2, color=GOLD, spaceAfter=6))
+    story.append(Paragraph(title, s_title))
+
+    info_data = [
+        [Paragraph('<b>Jina la Mwanafunzi:</b>', s_label), Paragraph(student.full_name, s_body),
+         Paragraph('<b>Shule:</b>', s_label), Paragraph(school_name, s_body)],
+        [Paragraph('<b>Wilaya:</b>', s_label), Paragraph(district_name, s_body),
+         Paragraph('<b>Mwaka wa Masomo:</b>', s_label), Paragraph(year_label, s_body)],
+        [Paragraph('<b>Tarehe ya Chapisha:</b>', s_label), Paragraph(str(today), s_body),
+         Paragraph('<b>Idadi ya Siku:</b>', s_label), Paragraph(str(entries.count()), s_body)],
+    ]
+    info_tbl = Table(info_data, colWidths=[3.5*cm, 5.5*cm, 3.5*cm, 5.5*cm])
+    info_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), LIGHT),
+        ('BOX', (0,0), (-1,-1), 0.5, NAVY),
+        ('INNERGRID', (0,0), (-1,-1), 0.3, rl_colors.HexColor('#CBD5E0')),
+        ('PADDING', (0,0), (-1,-1), 4),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+    ]))
+    story.append(info_tbl)
+    story.append(Spacer(1, 10))
+
+    # ── Per-entry ─────────────────────────────────────────────────────────────
+    day_names = {'Monday':'Jumatatu','Tuesday':'Jumanne','Wednesday':'Jumatano',
+                 'Thursday':'Alhamisi','Friday':'Ijumaa','Saturday':'Jumamosi','Sunday':'Jumapili'}
+
     for entry in entries:
-        if y_position < 100:
-            p.showPage()
-            y_position = 800
-            p.setFont("Helvetica-Bold", 12)
-            p.drawString(100, y_position, title + " (Endelea...)")
-            y_position = 780
-        
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(100, y_position, f"Siku: {entry.get_day_of_week_display()} - {entry.date}")
-        y_position -= 20
-        
-        p.setFont("Helvetica", 10)
-        p.drawString(120, y_position, "Shughuli za Asubuhi:")
-        y_position -= 15
-        p.setFont("Helvetica", 9)
-        morning_text = entry.morning_activity or "Hakuna data"
-        for line in morning_text.split('\n'):
-            if y_position < 100:
-                p.showPage()
-                y_position = 800
-                p.setFont("Helvetica", 9)
-            p.drawString(140, y_position, line[:80])
-            y_position -= 12
-        
-        y_position -= 5
-        p.setFont("Helvetica", 10)
-        p.drawString(120, y_position, "Shughuli za Mchana:")
-        y_position -= 15
-        p.setFont("Helvetica", 9)
-        afternoon_text = entry.afternoon_activity or "Hakuna data"
-        for line in afternoon_text.split('\n'):
-            if y_position < 100:
-                p.showPage()
-                y_position = 800
-                p.setFont("Helvetica", 9)
-            p.drawString(140, y_position, line[:80])
-            y_position -= 12
-        
-        y_position -= 5
-        p.setFont("Helvetica", 10)
-        p.drawString(120, y_position, "Changamoto:")
-        y_position -= 15
-        p.setFont("Helvetica", 9)
-        challenges_text = entry.challenges_faced or "Hakuna data"
-        for line in challenges_text.split('\n'):
-            if y_position < 100:
-                p.showPage()
-                y_position = 800
-                p.setFont("Helvetica", 9)
-            p.drawString(140, y_position, line[:80])
-            y_position -= 12
-        
-        y_position -= 5
-        p.setFont("Helvetica", 10)
-        p.drawString(120, y_position, "Mafunzo:")
-        y_position -= 15
-        p.setFont("Helvetica", 9)
-        lessons_text = entry.lessons_learned or "Hakuna data"
-        for line in lessons_text.split('\n'):
-            if y_position < 100:
-                p.showPage()
-                y_position = 800
-                p.setFont("Helvetica", 9)
-            p.drawString(140, y_position, line[:80])
-            y_position -= 12
-        
-        y_position -= 10
-        status = "Imehakikiwa" if entry.is_location_verified else "Haijahakikiwa"
-        p.drawString(120, y_position, f"Eneo: {status}")
-        y_position -= 20
-        
-        p.line(100, y_position, 500, y_position)
-        y_position -= 20
-    
-    p.showPage()
-    p.save()
-    
+        day_sw = day_names.get(entry.date.strftime('%A'), entry.date.strftime('%A'))
+        gps_status = "✓ Imehakikiwa" if entry.is_location_verified else "✗ Haijahakikiwa"
+        gps_color = rl_colors.HexColor('#10B981') if entry.is_location_verified else rl_colors.HexColor('#F59E0B')
+
+        # Day header row
+        day_hdr = Table(
+            [[Paragraph(f"{day_sw} — {entry.date}", s_head),
+              Paragraph(f"GPS: {gps_status}", ParagraphStyle('gps', fontName='Helvetica-Bold', fontSize=8, textColor=gps_color))]],
+            colWidths=[13*cm, 5*cm]
+        )
+        day_hdr.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), NAVY),
+            ('PADDING', (0,0), (-1,-1), 6),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('ALIGN', (1,0), (1,0), 'RIGHT'),
+        ]))
+        story.append(day_hdr)
+
+        # Lesson periods
+        lessons = entry.lessons_data if entry.lessons_data else []
+        if not lessons:
+            # Fallback to legacy fields
+            if entry.morning_activity or entry.afternoon_activity:
+                legacy_data = [
+                    [Paragraph('<b>Shughuli za Asubuhi</b>', s_label),
+                     Paragraph(entry.morning_activity or '—', s_body)],
+                    [Paragraph('<b>Shughuli za Mchana</b>', s_label),
+                     Paragraph(entry.afternoon_activity or '—', s_body)],
+                ]
+                leg_tbl = Table(legacy_data, colWidths=[4*cm, 14*cm])
+                leg_tbl.setStyle(TableStyle([
+                    ('BOX', (0,0), (-1,-1), 0.5, rl_colors.HexColor('#CBD5E0')),
+                    ('INNERGRID', (0,0), (-1,-1), 0.3, rl_colors.HexColor('#CBD5E0')),
+                    ('BACKGROUND', (0,0), (0,-1), LIGHT),
+                    ('PADDING', (0,0), (-1,-1), 4),
+                    ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                ]))
+                story.append(leg_tbl)
+            else:
+                story.append(Paragraph("Hakuna data ya masomo.", s_small))
+        else:
+            for lesson in lessons:
+                period_num = lesson.get('period', '?')
+                subj = lesson.get('subject', '—')
+                cls = lesson.get('class', '—')
+                main_topic = lesson.get('main_topic', '—')
+                subtopic = lesson.get('subtopic', '') or '—'
+                enrolled = lesson.get('enrolled', '—')
+                present = lesson.get('present', '—')
+                activity = lesson.get('activity_type', '—')
+                methods = lesson.get('methods', '') or '—'
+                aids = lesson.get('teaching_aids', '') or '—'
+                intro = lesson.get('introduction', '') or '—'
+                development = lesson.get('development', '') or '—'
+                conclusion = lesson.get('conclusion', '') or '—'
+                assessment = lesson.get('assessment', '') or '—'
+                homework = lesson.get('homework', '') or '—'
+
+                # Period header
+                period_hdr = Table(
+                    [[Paragraph(f"Kipindi {period_num}  |  {subj}  |  Darasa: {cls}  |  Waliojumuishwa: {enrolled}  |  Waliopo: {present}  |  Aina: {activity}",
+                               ParagraphStyle('ph', fontName='Helvetica-Bold', fontSize=8, textColor=WHITE))]],
+                    colWidths=[18*cm]
+                )
+                period_hdr.setStyle(TableStyle([
+                    ('BACKGROUND', (0,0), (-1,-1), GOLD),
+                    ('PADDING', (0,0), (-1,-1), 5),
+                ]))
+                story.append(period_hdr)
+
+                lesson_rows = [
+                    [Paragraph('<b>Mada Kuu</b>', s_label), Paragraph(main_topic, s_body),
+                     Paragraph('<b>Mada Ndogo</b>', s_label), Paragraph(subtopic, s_body)],
+                    [Paragraph('<b>Mbinu</b>', s_label), Paragraph(methods, s_body),
+                     Paragraph('<b>Vifaa vya Kufundishia</b>', s_label), Paragraph(aids, s_body)],
+                    [Paragraph('<b>Utangulizi</b>', s_label), Paragraph(intro, s_small),
+                     Paragraph('<b>Hitimisho</b>', s_label), Paragraph(conclusion, s_small)],
+                    [Paragraph('<b>Uendelezaji</b>', s_label), Paragraph(development, s_small),
+                     Paragraph('<b>Tathmini</b>', s_label), Paragraph(assessment, s_small)],
+                    [Paragraph('<b>Kazi ya Nyumbani</b>', s_label), Paragraph(homework, s_small),
+                     Paragraph('', s_label), Paragraph('', s_body)],
+                ]
+                lesson_tbl = Table(lesson_rows, colWidths=[3.5*cm, 5.5*cm, 3.5*cm, 5.5*cm])
+                lesson_tbl.setStyle(TableStyle([
+                    ('BOX', (0,0), (-1,-1), 0.5, rl_colors.HexColor('#CBD5E0')),
+                    ('INNERGRID', (0,0), (-1,-1), 0.3, rl_colors.HexColor('#CBD5E0')),
+                    ('BACKGROUND', (0,0), (0,-1), LIGHT),
+                    ('BACKGROUND', (2,0), (2,-1), LIGHT),
+                    ('PADDING', (0,0), (-1,-1), 4),
+                    ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                ]))
+                story.append(lesson_tbl)
+
+        # Other activities / challenges / reflection
+        extra_rows = []
+        if entry.other_activities:
+            extra_rows.append([Paragraph('<b>Shughuli Nyingine</b>', s_label), Paragraph(entry.other_activities, s_body)])
+        if entry.challenges_faced:
+            extra_rows.append([Paragraph('<b>Changamoto</b>', s_label), Paragraph(entry.challenges_faced, s_body)])
+        if entry.lessons_learned:
+            extra_rows.append([Paragraph('<b>Tafakuri</b>', s_label), Paragraph(entry.lessons_learned, s_body)])
+        if entry.supervisor_remarks:
+            extra_rows.append([Paragraph('<b>Maoni ya Msimamizi</b>', ParagraphStyle('sr', fontName='Helvetica-Bold', fontSize=8, textColor=NAVY)),
+                               Paragraph(entry.supervisor_remarks, s_body)])
+        if extra_rows:
+            extra_tbl = Table(extra_rows, colWidths=[4*cm, 14*cm])
+            extra_tbl.setStyle(TableStyle([
+                ('BOX', (0,0), (-1,-1), 0.5, rl_colors.HexColor('#CBD5E0')),
+                ('INNERGRID', (0,0), (-1,-1), 0.3, rl_colors.HexColor('#CBD5E0')),
+                ('BACKGROUND', (0,0), (0,-1), LIGHT),
+                ('PADDING', (0,0), (-1,-1), 4),
+                ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ]))
+            story.append(extra_tbl)
+
+        story.append(Spacer(1, 10))
+
+    if not entries.exists():
+        story.append(Spacer(1, 20))
+        story.append(Paragraph("Hakuna rekodi za logbook kwa kipindi kilichochaguliwa.", s_sub))
+
+    # Footer
+    story.append(HRFlowable(width="100%", thickness=1, color=GOLD, spaceBefore=10, spaceAfter=4))
+    story.append(Paragraph("© Wizara ya Elimu, Sayansi na Teknolojia — IMS v2.1.0",
+                           ParagraphStyle('footer', fontName='Helvetica', fontSize=7, textColor=rl_colors.HexColor('#4A5568'), alignment=1)))
+
+    doc.build(story)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -1779,15 +1905,16 @@ def logbook_download_options(request):
 @staff_member_required
 def admin_dashboard(request):
     pending_applications = StudentApplication.objects.filter(status='pending').select_related('student', 'subject', 'school')
-    
+
     total_applications = StudentApplication.objects.count()
     approved_applications = StudentApplication.objects.filter(status='approved').count()
     rejected_applications = StudentApplication.objects.filter(status='rejected').count()
-    
+    pending_count = StudentApplication.objects.filter(status='pending').count()
+
     paginator = Paginator(pending_applications, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     schools = School.objects.annotate(
         current_count=Count('studentteacher'),
         is_full=Case(
@@ -1799,13 +1926,52 @@ def admin_dashboard(request):
 
     total_assessors = Assessor.objects.count()
     active_assessors = Assessor.objects.filter(is_active=True).count()
-    
+
     total_school_assignments = SchoolAssessment.objects.count()
     completed_assessments = SchoolAssessment.objects.filter(is_completed=True).count()
-    
+
     recent_assignments = SchoolAssessment.objects.select_related(
         'assessor', 'school'
     ).order_by('-assessment_date')[:10]
+
+    # --- Chart data ---
+    # 1. Applications by status (donut chart)
+    chart_app_status = {
+        'labels': ['Approved', 'Pending', 'Rejected'],
+        'data': [approved_applications, pending_count, rejected_applications],
+    }
+
+    # 2. Students by region (bar chart)
+    region_qs = Region.objects.annotate(
+        student_count=Count('district__school__studentteacher', distinct=True)
+    ).order_by('-student_count')[:10]
+    chart_regions = {
+        'labels': list(region_qs.values_list('name', flat=True)),
+        'data': list(region_qs.values_list('student_count', flat=True)),
+    }
+
+    # 3. Logbook submissions – last 14 days (line chart)
+    today = timezone.now().date()
+    logbook_dates = []
+    logbook_counts = []
+    for i in range(13, -1, -1):
+        day = today - timedelta(days=i)
+        count = LogbookEntry.objects.filter(date=day).count()
+        logbook_dates.append(day.strftime('%b %d'))
+        logbook_counts.append(count)
+    chart_logbook = {
+        'labels': logbook_dates,
+        'data': logbook_counts,
+    }
+
+    # 4. Assessment coverage (schools with vs without active assessor assignment)
+    total_schools = School.objects.count()
+    schools_with_assessor = SchoolAssessment.objects.values('school').distinct().count()
+    schools_without_assessor = max(0, total_schools - schools_with_assessor)
+    chart_coverage = {
+        'labels': ['With Assessor', 'Without Assessor'],
+        'data': [schools_with_assessor, schools_without_assessor],
+    }
 
     context = {
         'pending_applications': pending_applications,
@@ -1819,7 +1985,12 @@ def admin_dashboard(request):
         'total_school_assignments': total_school_assignments,
         'completed_assessments': completed_assessments,
         'recent_assignments': recent_assignments,
-        
+        'total_schools': total_schools,
+        # Charts (JSON strings for template)
+        'chart_app_status_json': json.dumps(chart_app_status),
+        'chart_regions_json': json.dumps(chart_regions),
+        'chart_logbook_json': json.dumps(chart_logbook),
+        'chart_coverage_json': json.dumps(chart_coverage),
     }
 
     return render(request, 'field_app/admin_dashboard.html', context)
@@ -1896,28 +2067,25 @@ def assign_assessor(request):
             
             if not assessor.user:
                 temp_password = generate_random_password()
-                
-                username = assessor.email.split('@')[0]
-                
-                counter = 1
-                original_username = username
-                while User.objects.filter(username=username).exists():
-                    username = f"{original_username}_{counter}"
-                    counter += 1
-                
+
                 try:
-                    user = User.objects.create_user(
-                        username=username,
-                        email=assessor.email,
-                        password=temp_password,
-                        is_staff=False,
-                        is_superuser=False,
-                        is_active=True
-                    )
+                    existing_user = User.objects.filter(email=assessor.email).first()
+                    if existing_user:
+                        user = existing_user
+                        user.set_password(temp_password)
+                        user.save()
+                    else:
+                        user = User.objects.create_user(
+                            email=assessor.email,
+                            password=temp_password,
+                            is_staff=False,
+                            is_superuser=False,
+                            is_active=True
+                        )
                     assessor.user = user
                     assessor.save()
                     is_new_account = True
-                    
+
                 except Exception as e:
                     messages.error(request, f"Failed to create user account: {str(e)}")
                     return redirect('assign_assessor')
@@ -2086,12 +2254,16 @@ def bulk_assign_assessors(request):
         
         # Check each assessor's status for current year
         for assessor in all_assessors:
-            if not assessor.current_academic_year or assessor.current_academic_year != current_year:
-                assessor.needs_new_credentials = True
-                assessor.year_status = f"Mpya kwa {current_year.year}"
-            elif not assessor.user:
+            if not assessor.user:
+                # Assessor mpya kabisa - hana akaunti
                 assessor.needs_new_credentials = True
                 assessor.year_status = "Hakuna akaunti"
+            elif not assessor.current_academic_year or assessor.current_academic_year != current_year:
+                # Assessor ana akaunti lakini ni mwaka mpya
+                assessor.needs_new_credentials = True
+                assessor.year_status = f"Mpya kwa {current_year.year}"
+            else:
+                # Assessor ana akaunti na ni mwaka huohuo - shule tu zinaongezwa
                 assessor.needs_new_credentials = False
                 assessor.year_status = f"Tayari kwa {current_year.year}"
             
@@ -2385,6 +2557,31 @@ def assessor_student_assessment(request, student_id):
         'school_assignment': school_assignment,
     })
 
+
+@login_required
+def assessor_add_logbook_remark(request, entry_id):
+    """Assessor anaandika maoni kwenye logbook maalum ya mwanafunzi."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    try:
+        assessor = Assessor.objects.get(user=request.user)
+    except Assessor.DoesNotExist:
+        return JsonResponse({'ok': False, 'error': 'Hautambuliki kama msimamizi.'}, status=403)
+
+    entry = get_object_or_404(LogbookEntry, id=entry_id)
+    # Verify assessor is assigned to this student's school
+    if not SchoolAssessment.objects.filter(assessor=assessor, school=entry.student.selected_school).exists():
+        return JsonResponse({'ok': False, 'error': 'Huna ruhusa ya kuandika maoni hapa.'}, status=403)
+
+    remarks = request.POST.get('remarks', '').strip()
+    if not remarks:
+        return JsonResponse({'ok': False, 'error': 'Maoni hayawezi kuwa matupu.'}, status=400)
+
+    entry.supervisor_remarks = remarks
+    entry.save(update_fields=['supervisor_remarks'])
+    return JsonResponse({'ok': True, 'message': 'Maoni yamehifadhiwa.'})
+
+
 # =========================
 # STUDENT LIST VIEWS
 # =========================
@@ -2411,6 +2608,7 @@ def approve_student(request, student_id):
         student.approval_status = 'approved'
         student.approval_date = timezone.now()
         student.save()
+        invalidate_student_cache(student)
         messages.success(request, f'Student {student.full_name} approved successfully!')
         return redirect('student_list')
     
@@ -2795,8 +2993,9 @@ def region_pinning_view(request):
             
             messages.success(request, message)
             return redirect('pinning_success')
+        else:
             messages.error(request, f"Please correct the errors below: {form.errors}")
-            # Fall through to GET handling to show form with errors
+    else:
         form = RegionFieldInputForm()
     
     # GET request or form errors - show current status
@@ -2818,6 +3017,7 @@ def region_pinning_view(request):
         'hidden_count': len(currently_hidden),
         'visible_count': Region.objects.count() - len(currently_hidden),
     })
+@login_required
 def pinning_success_view(request):
     """Display summary after pinning regions"""
     summary = request.session.get('pinning_summary', {})
@@ -2846,6 +3046,9 @@ def profile_create(request):
             form.save()
             messages.success(request, 'Profile updated successfully!')
             return redirect('dashboard')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
         form = StudentTeacherForm(instance=student)
 
     return render(request, 'field_app/profile_create.html', {'form': form})
@@ -2901,6 +3104,7 @@ def confirm_school_selection(request, district_id):
     student = get_or_create_student_profile(request.user)
     student.selected_school = school
     student.save()
+    invalidate_student_cache(student)
 
     messages.success(request, f"You have successfully selected {school.name}.")
     return redirect('dashboard')
@@ -2924,16 +3128,13 @@ def my_assessors(request):
     print(f"   School: {school.name} (ID: {school.id})")
     print(f"   Current Academic Year: {current_year.year if current_year else 'None'}")
     
-    # 🔴 FIX: Filter by academic_year
     if current_year:
         school_assessments = SchoolAssessment.objects.filter(
             school=school,
-            academic_year=current_year  # ← MUHIMU: Filter kwa mwaka wa sasa
+            academic_year=current_year
         ).select_related('assessor')
-        
-        print(f"   Found {school_assessments.count()} assessors for {current_year.year}")
+    else:
         school_assessments = SchoolAssessment.objects.none()
-        print(f"   No active academic year found!")
     
     assessors_data = []
     for assessment in school_assessments:
@@ -3057,6 +3258,7 @@ def change_school(request):
     if not student.initial_school_selection_date:
         student.initial_school_selection_date = timezone.now()
         student.save()
+        invalidate_student_cache(student)
     
     # Calculate days passed
     days_passed = (timezone.now() - student.initial_school_selection_date).days
@@ -3128,6 +3330,7 @@ def change_school(request):
             student.school_change_count = F('school_change_count') + 1
             student.last_school_change_date = timezone.now()
             student.save()
+            invalidate_student_cache(student)
             
             # Refresh student to get updated count
             student.refresh_from_db()
@@ -3211,6 +3414,7 @@ def api_confirm_change_school(request):
     if not student.initial_school_selection_date:
         student.initial_school_selection_date = timezone.now()
         student.save()
+        invalidate_student_cache(student)
     
     days_passed = (timezone.now() - student.initial_school_selection_date).days
     if days_passed > 7:
@@ -3251,6 +3455,7 @@ def api_confirm_change_school(request):
         student.school_change_count += 1
         student.last_school_change_date = timezone.now()
         student.save()
+        invalidate_student_cache(student)
         
         # Delete pending applications for old school
         StudentApplication.objects.filter(
@@ -3643,23 +3848,31 @@ def assessor_password_reset(request):
             University of Dodoma
             """
             
-            send_mail(
-                subject='🔐 Password Reset - Field Placement System',
-                message=text_content,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[assessor.email],
-                html_message=html_content,
-                fail_silently=False,
-            )
-            
-            messages.success(request, 
-                f'✅ A new temporary password has been sent to {assessor.email}. '
-                f'Please check your inbox and spam folder.'
-            )
+            try:
+                send_mail(
+                    subject='🔐 Badilisha Nywila - Field Placement System',
+                    message=text_content,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[assessor.email],
+                    html_message=html_content,
+                    fail_silently=False,
+                )
+                messages.success(request,
+                    f'✅ Nywila mpya ya muda imetumwa kwa {assessor.email}. '
+                    f'Angalia inbox na spam folder yako.'
+                )
+            except Exception as email_error:
+                # Email ilishindwa — rudisha password ya zamani ili assessor asikwame
+                assessor.user.set_password(None)
+                assessor.user.save()
+                messages.error(request,
+                    f'❌ Imeshindwa kutuma email kwa {assessor.email}. '
+                    f'Wasiliana na msimamizi. ({str(email_error)[:80]})'
+                )
             return redirect('assessor_login')
-            
+
         except Assessor.DoesNotExist:
-            messages.error(request, f'No assessor found with email: {email}')
+            messages.error(request, f'Hakuna assessor aliyepatikana na email: {email}')
             return redirect('assessor_login')
     
     # GET request - redirect to login page
@@ -3853,12 +4066,13 @@ def homepage(request):
 # views.py
 
 
+@login_required
 def generate_scheme_view(request):
     from .models import EducationLevel
-    
+
     form = SchemeOfWorkForm()
     education_levels = EducationLevel.objects.all().order_by('order')
-    
+
     return render(request, 'field_app/generate_scheme.html', {
         'form': form,
         'education_levels': education_levels,
@@ -3932,7 +4146,7 @@ Example row:
             # ========== CALL GEMINI AI ==========
             print("🤖 Calling Gemini AI...")
             
-            response = client.generate_content(prompt)
+            response = client.models.generate_content(model=model_name, contents=prompt)
             response_text = response.text
             
             print(f"✅ Gemini response received ({len(response_text)} characters)")
@@ -4091,13 +4305,14 @@ def get_textbooks_by_level(request):
 # =========================
 
 @login_required
+@login_required
 def lesson_plan_view(request):
     """Display lesson plan generator form"""
     from .models import EducationLevel, Subject
-    
+
     education_levels = EducationLevel.objects.all().order_by('order')
     subjects = Subject.objects.all().order_by('name')
-    
+
     return render(request, 'field_app/lesson_plan.html', {
         'education_levels': education_levels,
         'subjects': subjects,
@@ -4171,7 +4386,7 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
             
             print("🤖 Calling Gemini AI for Lesson Plan...")
             
-            response = client.generate_content(prompt)
+            response = client.models.generate_content(model=model_name, contents=prompt)
             response_text = response.text
             
             print(f"✅ Gemini response received ({len(response_text)} characters)")
@@ -4349,22 +4564,492 @@ def api_filter_schools(request):
         'schools': schools_data,
         'total_schools': schools_qs.count(),
     })    
+def set_language(request):
+    """Switch UI language between English and Swahili. Stored in session."""
+    lang = request.GET.get('lang', 'en')
+    if lang not in ('en', 'sw'):
+        lang = 'en'
+    request.session['ui_lang'] = lang
+
+    # Ruhusu redirect kwa URLs za ndani tu (zuia open redirect)
+    next_url = request.GET.get('next') or request.META.get('HTTP_REFERER') or '/'
+    if next_url.startswith('http') or not next_url.startswith('/'):
+        next_url = '/'
+    return redirect(next_url)
+
+
+@staff_member_required
 def create_admin(request):
     User = get_user_model()
-    
-    # Create multiple admin accounts
-    admins = [
-        {'email': 'huseinhaj09@gmail.com', 'password': '2001'},
-        {'email': 'admin@example.com', 'password': 'admin123'},
-    ]
-    
-    results = []
-    for admin in admins:
-        email = admin['email']
-        password = admin['password']
-        if not User.objects.filter(email=email).exists():
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '').strip()
+        if not email or not password:
+            messages.error(request, "Email na password zinahitajika.")
+        elif User.objects.filter(email=email).exists():
+            messages.error(request, f"Mtumiaji mwenye email '{email}' tayari yupo.")
+        elif len(password) < 6:
+            messages.error(request, "Password iwe na herufi 6 au zaidi.")
+        else:
             User.objects.create_superuser(email=email, password=password)
-            results.append(f"✅ Superuser {email} created!")
-            results.append(f"⚠️ Superuser {email} already exists.")
-    
-    return HttpResponse("<br>".join(results))
+            messages.success(request, f"✅ Admin '{email}' ametengenezwa.")
+            return redirect('admin_dashboard')
+    return render(request, 'field_app/create_admin.html')
+
+
+# =========================
+# ADMIN REPORTS
+# =========================
+
+@staff_member_required
+def admin_report_pdf(request):
+    """Generate comprehensive admin report PDF"""
+    try:
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors as rl_colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import cm
+    except ImportError as e:
+        return HttpResponse(f"ReportLab library error: {e}", status=500)
+
+    # Alias so rest of code uses rl_colors not module-level colors
+    colors = rl_colors
+
+    try:
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        NAVY = colors.HexColor('#0A2B5E')
+        GOLD = colors.HexColor('#C8900A')
+        LIGHT = colors.HexColor('#EEF1F6')
+        LIGHT2 = colors.HexColor('#FFF8ED')
+
+        bold_style = ParagraphStyle('IMSBold', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=14, spaceAfter=6, textColor=NAVY)
+        sub_style  = ParagraphStyle('IMSSub',  parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=11, spaceAfter=4, textColor=GOLD)
+        norm_style = ParagraphStyle('IMSNorm', parent=styles['Normal'], fontSize=9, spaceAfter=4)
+
+        current_year = get_current_academic_year()
+        report_date  = timezone.now().strftime('%d %B %Y')
+
+        elements.append(Paragraph('INTERNSHIP MANAGEMENT SYSTEM (IMS)', bold_style))
+        elements.append(Paragraph('Teacher Colleges in Tanzania', sub_style))
+        elements.append(Paragraph(f'Comprehensive Report — {current_year.year if current_year else "N/A"} | Generated: {report_date}', norm_style))
+        elements.append(HRFlowable(width="100%", thickness=2, color=NAVY))
+        elements.append(Spacer(1, 0.3*cm))
+
+        # ── Summary stats ──
+        total_students    = StudentTeacher.objects.count()
+        approved_students = StudentTeacher.objects.filter(approval_status='approved').count()
+        pending_students  = StudentTeacher.objects.filter(approval_status='pending').count()
+        total_assessors   = Assessor.objects.count()
+        total_schools     = School.objects.count()
+        total_logbooks    = LogbookEntry.objects.count()
+        verified_logbooks = LogbookEntry.objects.filter(is_location_verified=True).count()
+
+        elements.append(Paragraph('SUMMARY STATISTICS', sub_style))
+        summary_data = [
+            ['Metric', 'Count'],
+            ['Total Students Registered', str(total_students)],
+            ['Approved Students', str(approved_students)],
+            ['Pending Students', str(pending_students)],
+            ['Total Assessors', str(total_assessors)],
+            ['Partner Schools', str(total_schools)],
+            ['Total Logbook Entries', str(total_logbooks)],
+            ['GPS Verified Entries', str(verified_logbooks)],
+        ]
+        summary_table = Table(summary_data, colWidths=[10*cm, 5*cm])
+        sum_style_cmds = [
+            ('BACKGROUND', (0,0), (-1,0), NAVY),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,-1), 9),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
+            ('ALIGN', (1,0), (1,-1), 'CENTER'),
+            ('PADDING', (0,0), (-1,-1), 6),
+        ]
+        for row_i in range(1, len(summary_data)):
+            bg = LIGHT if row_i % 2 == 0 else colors.white
+            sum_style_cmds.append(('BACKGROUND', (0,row_i), (-1,row_i), bg))
+        summary_table.setStyle(TableStyle(sum_style_cmds))
+        elements.append(summary_table)
+        elements.append(Spacer(1, 0.5*cm))
+
+        # ── Students table ──
+        elements.append(Paragraph('STUDENTS LIST', sub_style))
+        students = StudentTeacher.objects.select_related('user', 'selected_school', 'selected_school__district').order_by('full_name')
+        student_data = [['#', 'Full Name', 'Registration No.', 'School', 'District', 'Status', 'Logbook']]
+        for i, st in enumerate(students, 1):
+            logbook_count = LogbookEntry.objects.filter(student=st).count()
+            student_data.append([
+                str(i),
+                (st.full_name or '-')[:40],
+                st.registration_number or '-',
+                (st.selected_school.name if st.selected_school else 'Not Selected')[:30],
+                (st.selected_school.district.name if st.selected_school and st.selected_school.district else '-')[:20],
+                st.approval_status.title(),
+                str(logbook_count),
+            ])
+        st_table = Table(student_data, colWidths=[0.8*cm, 4.5*cm, 3*cm, 3.5*cm, 2.5*cm, 2*cm, 1.5*cm])
+        st_cmds = [
+            ('BACKGROUND', (0,0), (-1,0), NAVY),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,-1), 7),
+            ('GRID', (0,0), (-1,-1), 0.3, colors.HexColor('#CBD5E0')),
+            ('PADDING', (0,0), (-1,-1), 4),
+            ('ALIGN', (0,0), (0,-1), 'CENTER'),
+            ('ALIGN', (6,0), (6,-1), 'CENTER'),
+        ]
+        for row_i in range(1, len(student_data)):
+            st_cmds.append(('BACKGROUND', (0,row_i), (-1,row_i), LIGHT if row_i % 2 == 0 else colors.white))
+        st_table.setStyle(TableStyle(st_cmds))
+        elements.append(st_table)
+        elements.append(Spacer(1, 0.5*cm))
+
+        # ── Assessors table ──
+        elements.append(Paragraph('ASSESSORS LIST', sub_style))
+        assessors = Assessor.objects.all().order_by('full_name')
+        assessor_data = [['#', 'Full Name', 'Email', 'Phone', 'Academic Year', 'Schools']]
+        for i, a in enumerate(assessors, 1):
+            schools_count = SchoolAssessment.objects.filter(assessor=a, academic_year=current_year).count() if current_year else 0
+            assessor_data.append([
+                str(i),
+                (a.full_name or '-')[:35],
+                (a.email or '-')[:35],
+                a.phone_number or '-',
+                a.current_academic_year.year if a.current_academic_year else '-',
+                str(schools_count),
+            ])
+        a_table = Table(assessor_data, colWidths=[0.8*cm, 4*cm, 5*cm, 3*cm, 3*cm, 2*cm])
+        a_cmds = [
+            ('BACKGROUND', (0,0), (-1,0), GOLD),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,-1), 7),
+            ('GRID', (0,0), (-1,-1), 0.3, colors.HexColor('#CBD5E0')),
+            ('PADDING', (0,0), (-1,-1), 4),
+            ('ALIGN', (0,0), (0,-1), 'CENTER'),
+            ('ALIGN', (5,0), (5,-1), 'CENTER'),
+        ]
+        for row_i in range(1, len(assessor_data)):
+            a_cmds.append(('BACKGROUND', (0,row_i), (-1,row_i), LIGHT2 if row_i % 2 == 0 else colors.white))
+        a_table.setStyle(TableStyle(a_cmds))
+        elements.append(a_table)
+
+        doc.build(elements)
+        buffer.seek(0)
+        filename = f"IMS_Report_{timezone.now().strftime('%Y%m%d')}.pdf"
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as e:
+        import traceback
+        return HttpResponse(
+            f"<h3>PDF Generation Error</h3><pre>{traceback.format_exc()}</pre>",
+            status=500
+        )
+
+
+# ============================================================
+# BODI YA WALIMU — Teacher Board System
+# ============================================================
+
+def _get_board_member(request):
+    """Return BoardMember for current user or None."""
+    try:
+        return request.user.board_member
+    except Exception:
+        return None
+
+
+def board_login(request):
+    if request.user.is_authenticated and _get_board_member(request):
+        return redirect('board_home')
+
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '').strip()
+        user = authenticate(request, username=email, password=password,
+                            backend='field_app.backends.EmailBackend')
+        if user:
+            bm = None
+            try:
+                bm = user.board_member
+            except Exception:
+                pass
+            if bm and bm.is_active:
+                login(request, user, backend='field_app.backends.EmailBackend')
+                return redirect('board_home')
+        messages.error(request, 'Barua pepe au nywila si sahihi, au huna ruhusa ya Bodi ya Walimu.')
+
+    return render(request, 'field_app/board_login.html')
+
+
+def board_logout(request):
+    logout(request)
+    return redirect('board_login')
+
+
+@login_required
+def board_home(request):
+    bm = _get_board_member(request)
+    if not bm:
+        messages.error(request, 'Huna ruhusa ya Bodi ya Walimu.')
+        return redirect('board_login')
+
+    regions = Region.objects.all().order_by('name').annotate(
+        student_count=Count('district__school__studentteacher',
+                            filter=Q(district__school__studentteacher__selected_school__isnull=False),
+                            distinct=True),
+        district_count=Count('district', distinct=True),
+    )
+    return render(request, 'field_app/board_home.html', {
+        'bm': bm,
+        'regions': regions,
+    })
+
+
+@login_required
+def board_district_list(request, region_id):
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+    region = get_object_or_404(Region, id=region_id)
+    districts = District.objects.filter(region=region).order_by('name').annotate(
+        school_count=Count('school', distinct=True),
+        student_count=Count('school__studentteacher',
+                            filter=Q(school__studentteacher__selected_school__isnull=False),
+                            distinct=True),
+    )
+    return render(request, 'field_app/board_district_list.html', {
+        'bm': bm,
+        'region': region,
+        'districts': districts,
+    })
+
+
+@login_required
+def board_school_list(request, district_id):
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+    district = get_object_or_404(District, id=district_id)
+    schools = School.objects.filter(
+        district=district,
+        studentteacher__isnull=False
+    ).distinct().order_by('level', 'name').annotate(
+        student_count=Count('studentteacher', distinct=True),
+        logbook_count=Count('logbookentry', distinct=True),
+    )
+    def _lb_first_lesson(entry):
+        if entry and entry.lessons_data:
+            return entry.lessons_data[0]
+        return {}
+
+    students_data = []
+    for school in schools:
+        sts = StudentTeacher.objects.filter(selected_school=school).select_related('user')
+        for st in sts:
+            lb_count = LogbookEntry.objects.filter(student=st).count()
+            latest_lb = LogbookEntry.objects.filter(student=st).first()
+            latest_lp = LessonPlan.objects.filter(student=st, school=school).first()
+            first_lesson = _lb_first_lesson(latest_lb)
+            # Extract display fields — check lessons_data first, fallback to old fields
+            display_subject = (
+                first_lesson.get('subject') or
+                (latest_lb.subject_taught.name if latest_lb and latest_lb.subject_taught else '') or
+                (latest_lp.subject.name if latest_lp else '')
+            )
+            display_topic = (
+                first_lesson.get('main_topic') or
+                (latest_lb.topic_taught if latest_lb else '') or
+                (latest_lp.topic if latest_lp else '')
+            )
+            display_class = first_lesson.get('class') or (latest_lb.class_taught if latest_lb else '')
+            display_present = first_lesson.get('present') or (latest_lb.num_students_present if latest_lb else '')
+            display_activity = first_lesson.get('activity_type') or (latest_lb.activity_type if latest_lb else '')
+            students_data.append({
+                'student': st,
+                'school': school,
+                'logbook_count': lb_count,
+                'latest_logbook': latest_lb,
+                'latest_lesson': latest_lp,
+                'display_subject': display_subject,
+                'display_topic': display_topic,
+                'display_class': display_class,
+                'display_present': display_present,
+                'display_activity': display_activity,
+            })
+    return render(request, 'field_app/board_school_list.html', {
+        'bm': bm,
+        'district': district,
+        'schools': schools,
+        'students_data': students_data,
+    })
+
+
+@login_required
+def board_student_progress(request, student_id):
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+    student = get_object_or_404(StudentTeacher, id=student_id)
+    school = student.selected_school
+
+    logbook_entries = LogbookEntry.objects.filter(student=student).select_related('subject_taught').order_by('-date')[:30]
+    lesson_plans = LessonPlan.objects.filter(student=student).order_by('-date')[:10]
+    schemes = SchemeOfWork.objects.filter(student=student).order_by('-created_at')[:5]
+    applications = StudentApplication.objects.filter(student=student, status='approved').select_related('subject', 'school')
+    board_comments = BoardComment.objects.filter(student=student).select_related('board_member').order_by('-created_at')
+
+    from datetime import date as _date
+    today = _date.today()
+    month_entries = LogbookEntry.objects.filter(
+        student=student, date__year=today.year, date__month=today.month,
+    )
+    total_entries = LogbookEntry.objects.filter(student=student).count()
+
+    # Build enriched logbook list — extract lessons_data for display
+    logbook_display = []
+    for lb in logbook_entries:
+        lessons = lb.lessons_data or []
+        if lessons:
+            first = lessons[0]
+            disp_subject = first.get('subject', '') or (lb.subject_taught.name if lb.subject_taught else '—')
+            disp_topic   = first.get('main_topic', '') or lb.topic_taught or '—'
+            disp_class   = first.get('class', '') or lb.class_taught or '—'
+            disp_present = first.get('present', '') or lb.num_students_present or '—'
+            disp_activity = first.get('activity_type', '') or lb.activity_type or '—'
+            num_periods  = len(lessons)
+        else:
+            disp_subject  = lb.subject_taught.name if lb.subject_taught else '—'
+            disp_topic    = lb.topic_taught or '—'
+            disp_class    = lb.class_taught or '—'
+            disp_present  = lb.num_students_present or '—'
+            disp_activity = lb.activity_type or '—'
+            num_periods   = 0
+        logbook_display.append({
+            'entry': lb,
+            'subject': disp_subject,
+            'topic': disp_topic,
+            'class': disp_class,
+            'present': disp_present,
+            'activity': disp_activity,
+            'num_periods': num_periods,
+            'lessons': lessons,
+        })
+
+    # Topics covered — from lessons_data first, fallback to old fields
+    topics_covered = []
+    seen = set()
+    for lb in LogbookEntry.objects.filter(student=student).order_by('-date')[:50]:
+        if lb.lessons_data:
+            for lesson in lb.lessons_data:
+                key = (lesson.get('subject',''), lesson.get('main_topic',''))
+                if key not in seen and (key[0] or key[1]):
+                    seen.add(key)
+                    topics_covered.append({'subject': key[0], 'topic': key[1], 'date': lb.date})
+        elif lb.topic_taught:
+            key = (lb.subject_taught.name if lb.subject_taught else '', lb.topic_taught)
+            if key not in seen:
+                seen.add(key)
+                topics_covered.append({'subject': key[0], 'topic': key[1], 'date': lb.date})
+        if len(topics_covered) >= 20:
+            break
+
+    return render(request, 'field_app/board_student_progress.html', {
+        'bm': bm,
+        'student': student,
+        'school': school,
+        'logbook_entries': logbook_entries,
+        'logbook_display': logbook_display,
+        'lesson_plans': lesson_plans,
+        'schemes': schemes,
+        'applications': applications,
+        'board_comments': board_comments,
+        'month_entry_count': month_entries.count(),
+        'total_entries': total_entries,
+        'topics_covered': topics_covered,
+        'today': today,
+    })
+
+
+@login_required
+def board_add_comment(request):
+    if request.method != 'POST':
+        return redirect('board_home')
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+
+    student_id = request.POST.get('student_id', '').strip()
+    comment_text = request.POST.get('comment', '').strip()
+    status = request.POST.get('status', 'good')
+
+    if not student_id or not comment_text:
+        messages.error(request, 'Jaza maoni yote yanayohitajika.')
+        return redirect(request.META.get('HTTP_REFERER', 'board_home'))
+
+    student = get_object_or_404(StudentTeacher, id=student_id)
+    current_year = get_current_academic_year()
+
+    BoardComment.objects.create(
+        board_member=bm,
+        student=student,
+        school=student.selected_school,
+        comment=comment_text,
+        status=status,
+        academic_year=current_year,
+    )
+    messages.success(request, f'Maoni yametumwa kwa {student.full_name}.')
+    return redirect('board_student_progress', student_id=student.id)
+
+
+@staff_member_required
+def create_board_member(request):
+    """Admin: create a board member account."""
+    User = get_user_model()
+    regions = Region.objects.all().order_by('name')
+    districts = District.objects.all().order_by('name')
+
+    if request.method == 'POST':
+        full_name = request.POST.get('full_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '').strip()
+        phone = request.POST.get('phone_number', '').strip()
+        role = request.POST.get('role', 'member')
+        region_id = request.POST.get('region') or None
+        district_id = request.POST.get('district') or None
+
+        if not full_name or not email or not password:
+            messages.error(request, 'Jaza jina, barua pepe, na nywila.')
+        elif User.objects.filter(email=email).exists():
+            messages.error(request, f"Mtumiaji mwenye email '{email}' tayari yupo.")
+        elif len(password) < 6:
+            messages.error(request, 'Nywila iwe na herufi 6 au zaidi.')
+        else:
+            user = User.objects.create_user(email=email, password=password)
+            user.is_staff = False
+            user.save()
+            region = Region.objects.filter(id=region_id).first() if region_id else None
+            district = District.objects.filter(id=district_id).first() if district_id else None
+            BoardMember.objects.create(
+                user=user,
+                full_name=full_name,
+                phone_number=phone,
+                role=role,
+                region=region,
+                district=district,
+            )
+            messages.success(request, f'Mjumbe wa Bodi "{full_name}" ametengenezwa.')
+            return redirect('admin_dashboard')
+
+    return render(request, 'field_app/create_board_member.html', {
+        'regions': regions,
+        'districts': districts,
+        'role_choices': BoardMember.ROLE_CHOICES,
+    })

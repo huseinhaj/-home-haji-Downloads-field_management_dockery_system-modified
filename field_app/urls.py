@@ -1,20 +1,16 @@
-from django.views.generic import TemplateView
-from django.contrib.auth import views as auth_views 
-from django.views.generic import RedirectView
+from django.contrib.auth import views as auth_views
 from django.urls import path
 from . import views
 
 urlpatterns = [
     # =========================
-    # Badala ya redirect, tumia homepage view
-    path('', views.homepage, name='homepage'),  # Changed from RedirectView
+    path('', views.homepage, name='homepage'),
     path('password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
-    # CORE PAGES
     # =========================
-    path('', RedirectView.as_view(url='dashboard/')),  # Redirect root to dashboard
+    # CORE PAGES
     path('dashboard/', views.dashboard, name='dashboard'), 
     path('register/', views.register, name='register'),
     # urls.py
@@ -94,13 +90,16 @@ urlpatterns = [
     #path('assessor/resend-credentials/', views.resend_credentials, name='resend_credentials'),
     path('field/ajax-search-schools/', views.ajax_search_schools, name='ajax_search_schools'),
     # API endpoints
-    path('assessor/school/<int:school_id>/students/', views.assessor_student_detail, name='assessor_student_detail'),  # 🔥 ADD THIS LINE
+    path('assessor/school/<int:school_id>/students/', views.assessor_student_detail, name='assessor_student_detail'),
+    path('assessor/student/<int:student_id>/assessment/', views.assessor_student_assessment, name='assessor_student_assessment'),
+    path('assessor/logbook/<int:entry_id>/remark/', views.assessor_add_logbook_remark, name='assessor_add_logbook_remark'),
     path('api/assessor/<int:assessor_id>/details/', views.assessor_details_api, name='assessor_details_api'),
     #path('api/assessor/<int:assessor_id>/resend-credentials/', views.resend_assessor_credentials_api, name='resend_assessor_credentials_api'),
     #path('api/send-test-email/', views.send_test_email_api, name='send_test_email'),
     path('generate-scheme/', views.generate_scheme_view, name='generate_scheme'),
     path('ajax-generate-scheme/', views.ajax_generate_scheme, name='ajax_generate_scheme'),
     path('download-scheme-pdf/', views.download_scheme_pdf, name='download_scheme_pdf'),
+    path('admin-report-pdf/', views.admin_report_pdf, name='admin_report_pdf'),
     path('get-classes/', views.get_classes_by_level, name='get_classes'),
     path('get-subjects-by-level/', views.get_subjects_by_level, name='get_subjects_by_level'),
     path('get-textbooks/', views.get_textbooks_by_level, name='get_textbooks'),
@@ -111,4 +110,17 @@ urlpatterns = [
     path('api/select-school-temp/', views.api_select_school_temp, name='api_select_school_temp'),
     path('api/clear-selected-school/', views.api_clear_selected_school, name='api_clear_selected_school'),
     path('create-admin/', views.create_admin, name='create_admin'),
+    path('set-language/', views.set_language, name='set_language'),
+
+    # =========================
+    # BODI YA WALIMU — Teacher Board
+    # =========================
+    path('board/login/', views.board_login, name='board_login'),
+    path('board/logout/', views.board_logout, name='board_logout'),
+    path('board/', views.board_home, name='board_home'),
+    path('board/region/<int:region_id>/', views.board_district_list, name='board_district_list'),
+    path('board/district/<int:district_id>/', views.board_school_list, name='board_school_list'),
+    path('board/student/<int:student_id>/', views.board_student_progress, name='board_student_progress'),
+    path('board/comment/add/', views.board_add_comment, name='board_add_comment'),
+    path('create-board-member/', views.create_board_member, name='create_board_member'),
 ]
