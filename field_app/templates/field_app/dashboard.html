@@ -480,6 +480,12 @@
             </a>
         </li>
         <li class="sidebar-item">
+            <a href="{% if LANG == 'sw' %}{% url 'set_language' %}?lang=en&next={{ request.path }}{% else %}{% url 'set_language' %}?lang=sw&next={{ request.path }}{% endif %}" class="sidebar-link">
+                <i class="fas fa-globe"></i>
+                <span class="sidebar-text">{% if LANG == 'sw' %}English{% else %}Kiswahili{% endif %}</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
             <a href="{% url 'logout' %}" class="sidebar-link" style="margin-top: auto;">
                 <i class="fas fa-sign-out-alt"></i>
                 <span class="sidebar-text">{% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}</span>
