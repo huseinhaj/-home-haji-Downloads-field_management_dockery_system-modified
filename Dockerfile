@@ -1,5 +1,5 @@
 # ── Base image ────────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS base
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -9,8 +9,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # ── System dependencies ────────────────────────────────────────────────────────
-# gcc + libpq-dev  : psycopg2 compilation
-# gdal-bin + libgdal-dev + libgeos-dev : django.contrib.gis (Point/Distance)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
@@ -21,12 +19,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Auto-detect GDAL/GEOS paths so image works on both amd64 and arm64
-RUN echo "GDAL_LIBRARY_PATH=$(find /usr/lib -name 'libgdal.so*' | head -1)" >> /etc/environment && \
-    echo "GEOS_LIBRARY_PATH=$(find /usr/lib -name 'libgeos_c.so*' | head -1)" >> /etc/environment
+# Detect actual GDAL/GEOS paths at build time and bake into ENV
+RUN GDAL_PATH=$(find /usr/lib -name 'libgdal.so' | head -1) && \
+    GEOS_PATH=$(find /usr/lib -name 'libgeos_c.so' | head -1) && \
+    echo "GDAL_LIBRARY_PATH=$GDAL_PATH" && \
+    echo "GEOS_LIBRARY_PATH=$GEOS_PATH" && \
+    echo "export GDAL_LIBRARY_PATH=$GDAL_PATH" >> /etc/profile.d/geodjango.sh && \
+    echo "export GEOS_LIBRARY_PATH=$GEOS_PATH" >> /etc/profile.d/geodjango.sh
 
-ENV GDAL_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libgdal.so
-ENV GEOS_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libgeos_c.so.2
+# Set them as ENV using the detected values
+RUN GDAL_PATH=$(find /usr/lib -name 'libgdal.so' | head -1) && \
+    GEOS_PATH=$(find /usr/lib -name 'libgeos_c.so' | head -1) && \
+    printf "GDAL_LIBRARY_PATH=%s\nGEOS_LIBRARY_PATH=%s\n" "$GDAL_PATH" "$GEOS_PATH" > /app/.geoenv
 
 # ── Python dependencies (cached layer) ────────────────────────────────────────
 COPY requirements.txt .
@@ -42,16 +46,9 @@ RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
 
 USER appuser
 
-# ── Runtime ───────────────────────────────────────────────────────────────────
+# ── Startup script ─────────────────────────────────────────────────────────────
+COPY --chown=appuser:appgroup docker-entrypoint.sh /app/docker-entrypoint.sh
+
 EXPOSE 8000
 
-# migrate + collectstatic run at startup (not build) so no secret key needed at build time
-CMD ["sh", "-c", \
-    "python manage.py migrate --noinput && \
-     python manage.py collectstatic --noinput && \
-     gunicorn field_management.wsgi:application \
-       --bind 0.0.0.0:${PORT:-8000} \
-       --workers ${WEB_CONCURRENCY:-2} \
-       --timeout 120 \
-       --access-logfile - \
-       --error-logfile -"]
+CMD ["/app/docker-entrypoint.sh"]

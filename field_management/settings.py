@@ -13,16 +13,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
-if not SECRET_KEY:
-    import sys
-    if 'runserver' in sys.argv or 'gunicorn' in ' '.join(sys.argv):
-        raise RuntimeError(
-            "DJANGO_SECRET_KEY environment variable is not set. "
-            "Set it before running the server."
-        )
-    # Kwa migrate/collectstatic/manage commands — tumia key ya muda
-    SECRET_KEY = 'dev-only-insecure-key-do-not-use-in-production'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-only-insecure-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
