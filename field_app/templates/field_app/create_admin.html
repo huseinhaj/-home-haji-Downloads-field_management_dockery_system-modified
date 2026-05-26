@@ -1,0 +1,54 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Create Admin{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:500px;">
+    <div class="card shadow-sm" style="border:none; border-radius:10px; overflow:hidden;">
+        <div style="background:#0A2B5E; border-bottom:4px solid #C8900A; padding:1.2rem 1.5rem;">
+            <h4 class="mb-0 text-white fw-bold">
+                <i class="fas fa-user-plus me-2" style="color:#C8900A;"></i>
+                {% if LANG == 'sw' %}Ongeza Msimamizi Mpya{% else %}Create New Admin{% endif %}
+            </h4>
+            <p class="mb-0 mt-1" style="color:rgba(255,255,255,0.65); font-size:0.82rem;">
+                {% if LANG == 'sw' %}Tengeneza akaunti ya msimamizi wa mfumo{% else %}Create a system administrator account{% endif %}
+            </p>
+        </div>
+        <div class="card-body p-4" style="background:#fff;">
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} py-2">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="color:#0A2B5E;">
+                        <i class="fas fa-envelope me-1"></i>Email
+                    </label>
+                    <input type="email" name="email" class="form-control" required
+                           placeholder="admin@example.com"
+                           style="border:1.5px solid #CBD5E0; border-radius:6px;">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-semibold" style="color:#0A2B5E;">
+                        <i class="fas fa-lock me-1"></i>{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %}
+                    </label>
+                    <input type="password" name="password" class="form-control" required
+                           placeholder="{% if LANG == 'sw' %}Herufi 6 au zaidi{% else %}At least 6 characters{% endif %}"
+                           style="border:1.5px solid #CBD5E0; border-radius:6px;">
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit"
+                            style="background:#0A2B5E; color:#fff; border:none; border-radius:6px; padding:10px 24px; font-weight:700; flex:1;">
+                        <i class="fas fa-user-plus me-2"></i>
+                        {% if LANG == 'sw' %}Tengeneza{% else %}Create Admin{% endif %}
+                    </button>
+                    <a href="{% url 'admin_dashboard' %}"
+                       style="background:#EEF1F6; color:#0A2B5E; border:none; border-radius:6px; padding:10px 20px; font-weight:600; text-decoration:none; display:flex; align-items:center;">
+                        <i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

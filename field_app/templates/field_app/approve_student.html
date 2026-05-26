@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Approve Student: {{ student.user.get_full_name }}</h2>
-<p>Registration Number: {{ student.registration_number }}</p>
+<h2>{% if LANG == 'sw' %}Idhinisha Mwanafunzi:{% else %}Approve Student:{% endif %} {{ student.user.get_full_name }}</h2>
+<p>{% if LANG == 'sw' %}Nambari ya Usajili:{% else %}Registration Number:{% endif %} {{ student.registration_number }}</p>
 
 <form method="post">
     {% csrf_token %}
-    <button type="submit" class="btn btn-success">Approve Student</button>
-    <a href="{% url 'student_list' %}" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-success">{% if LANG == 'sw' %}Idhinisha Mwanafunzi{% else %}Approve Student{% endif %}</button>
+    <a href="{% url 'student_list' %}" class="btn btn-secondary">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</a>
 </form>
 {% endblock %}

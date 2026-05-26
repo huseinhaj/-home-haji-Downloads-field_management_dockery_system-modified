@@ -1,6 +1,6 @@
 {% extends 'field_app/base.html' %}
 
-{% block title %}Bulk Assign Assessors | Admin Panel{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Peana Wakaguzi kwa Wingi | Dashibodi ya Msimamizi{% else %}Bulk Assign Assessors | Admin Panel{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
@@ -13,7 +13,7 @@
                         <div>
                             <h2 class="display-6 fw-bold mb-2 text-white">{{ total_assessors }}</h2>
                             <p class="mb-0 text-white-50">
-                                <i class="fas fa-user-tie me-2"></i>Total Assessors
+                                <i class="fas fa-user-tie me-2"></i>{% if LANG == 'sw' %}Jumla ya Wakaguzi{% else %}Total Assessors{% endif %}
                             </p>
                         </div>
                         <i class="fas fa-chalkboard-teacher fa-2x text-white-50"></i>
@@ -28,7 +28,7 @@
                         <div>
                             <h2 class="display-6 fw-bold mb-2 text-white">{{ total_schools }}</h2>
                             <p class="mb-0 text-white-50">
-                                <i class="fas fa-school me-2"></i>Total Schools
+                                <i class="fas fa-school me-2"></i>{% if LANG == 'sw' %}Jumla ya Shule{% else %}Total Schools{% endif %}
                             </p>
                         </div>
                         <i class="fas fa-university fa-2x text-white-50"></i>
@@ -43,7 +43,7 @@
                         <div>
                             <h2 class="display-6 fw-bold mb-2 text-white">{{ total_approved_students }}</h2>
                             <p class="mb-0 text-white-50">
-                                <i class="fas fa-graduation-cap me-2"></i>Approved Students
+                                <i class="fas fa-graduation-cap me-2"></i>{% if LANG == 'sw' %}Wanafunzi Walioidhinishwa{% else %}Approved Students{% endif %}
                             </p>
                         </div>
                         <i class="fas fa-user-graduate fa-2x text-white-50"></i>
@@ -58,7 +58,7 @@
                         <div>
                             <h2 class="display-6 fw-bold mb-2 text-white">{{ available_assessors }}</h2>
                             <p class="mb-0 text-white-50">
-                                <i class="fas fa-check-circle me-2"></i>Available (with email)
+                                <i class="fas fa-check-circle me-2"></i>{% if LANG == 'sw' %}Wanaopatikana (wenye barua pepe){% else %}Available (with email){% endif %}
                             </p>
                         </div>
                         <i class="fas fa-envelope fa-2x text-white-50"></i>
@@ -80,14 +80,14 @@
                             </div>
                         </div>
                         <div>
-                            <h1 class="h2 fw-bold mb-1" style="color: var(--text-dark);">📋 Bulk Assign Assessors</h1>
-                            <p class="mb-0" style="color: var(--text-gray);">Assign multiple assessors to multiple schools simultaneously</p>
+                            <h1 class="h2 fw-bold mb-1" style="color: var(--text-dark);">📋 {% if LANG == 'sw' %}Peana Wakaguzi kwa Wingi{% else %}Bulk Assign Assessors{% endif %}</h1>
+                            <p class="mb-0" style="color: var(--text-gray);">{% if LANG == 'sw' %}Peana wakaguzi wengi kwa shule nyingi wakati mmoja{% else %}Assign multiple assessors to multiple schools simultaneously{% endif %}</p>
                             <div class="mt-2 small" style="color: var(--text-gray);">
                                 <i class="fas fa-info-circle me-1" style="color: var(--medium);"></i>
-                                Showing: {{ all_assessors|length }} assessors | 
-                                {{ schools|length }} schools on this page | 
-                                Total: {{ total_schools }} schools in database |
-                                <span id="searchStatus" class="text-success">Ready</span>
+                                {% if LANG == 'sw' %}Inaonyesha{% else %}Showing{% endif %}: {{ all_assessors|length }} {% if LANG == 'sw' %}wakaguzi{% else %}assessors{% endif %} |
+                                {{ schools|length }} {% if LANG == 'sw' %}shule kwenye ukurasa huu{% else %}schools on this page{% endif %} |
+                                {% if LANG == 'sw' %}Jumla{% else %}Total{% endif %}: {{ total_schools }} {% if LANG == 'sw' %}shule katika hifadhidata{% else %}schools in database{% endif %} |
+                                <span id="searchStatus" class="text-success">{% if LANG == 'sw' %}Tayari{% else %}Ready{% endif %}</span>
                             </div>
                         </div>
                     </div>
@@ -108,10 +108,10 @@
                     <div class="flex-grow-1">
                         <h5 class="alert-heading" style="color: #92400E;">
                             <i class="fas fa-exclamation-circle me-2"></i>
-                            Assessors Without Email Addresses
+                            {% if LANG == 'sw' %}Wakaguzi Wasio na Anwani za Barua Pepe{% else %}Assessors Without Email Addresses{% endif %}
                         </h5>
                         <p class="mb-2" style="color: #92400E;">
-                            The following {{ assessors_no_email|length }} assessor(s) don't have email addresses and won't receive notifications:
+                            {% if LANG == 'sw' %}Wakaguzi wafuatao {{ assessors_no_email|length }} hawana anwani za barua pepe na hawatapata arifa:{% else %}The following {{ assessors_no_email|length }} assessor(s) don't have email addresses and won't receive notifications:{% endif %}
                         </p>
                         <div class="mb-2">
                             {% for assessor in assessors_no_email %}
@@ -122,9 +122,9 @@
                         </div>
                         <p class="mb-0 small" style="color: #92400E;">
                             <i class="fas fa-info-circle me-1"></i>
-                            Add email addresses in the 
-                            <a href="{% url 'admin:field_app_assessor_changelist' %}" class="alert-link" style="color: var(--warning); font-weight: bold;">Admin Panel</a> 
-                            before assigning them to schools.
+                            {% if LANG == 'sw' %}Ongeza anwani za barua pepe katika{% else %}Add email addresses in the{% endif %}
+                            <a href="{% url 'admin:field_app_assessor_changelist' %}" class="alert-link" style="color: var(--warning); font-weight: bold;">{% if LANG == 'sw' %}Dashibodi ya Msimamizi{% else %}Admin Panel{% endif %}</a>
+                            {% if LANG == 'sw' %}kabla ya kuwapatia shule.{% else %}before assigning them to schools.{% endif %}
                         </p>
                     </div>
                 </div>
@@ -146,19 +146,19 @@
                     <div class="col-lg-6">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h3 class="fw-bold mb-0" style="color: var(--bold); border-bottom: 3px solid var(--medium); padding-bottom: 8px;">
-                                <i class="fas fa-user-tie me-2" style="color: var(--medium);"></i>Select Assessors
+                                <i class="fas fa-user-tie me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Chagua Wakaguzi{% else %}Select Assessors{% endif %}
                                 <span class="badge ms-2" style="background: var(--bold); color: white;" id="assessorCount">0</span>
                             </h3>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="selectAllAssessors" style="accent-color: var(--bold);">
                                 <label class="form-check-label" for="selectAllAssessors" style="color: var(--text-gray);">
-                                    Select All ({{ all_assessors|length }})
+                                    {% if LANG == 'sw' %}Chagua Wote{% else %}Select All{% endif %} ({{ all_assessors|length }})
                                 </label>
                             </div>
                         </div>
                         <div class="selection-panel" id="assessorsPanel" style="border: 1px solid var(--border); border-radius: 8px; padding: 20px; background: var(--light); max-height: 500px; overflow-y: auto;">
                             <div class="search-wrapper mb-3 position-relative">
-                                <input type="text" class="form-control" placeholder="🔍 Search {{ all_assessors|length }} assessors..." 
+                                <input type="text" class="form-control" placeholder="{% if LANG == 'sw' %}🔍 Tafuta wakaguzi {{ all_assessors|length }}...{% else %}🔍 Search {{ all_assessors|length }} assessors...{% endif %}"
                                        id="assessorSearch"
                                        style="border: 1.5px solid var(--border); border-radius: 6px;">
                                 <button type="button" class="clear-search position-absolute end-0 top-50 translate-middle-y me-2" 
@@ -184,7 +184,7 @@
                                                 <strong class="assessor-name" style="color: var(--text-dark);">{{ assessor.full_name }}</strong>
                                                 {% if not assessor.email %}
                                                 <span class="badge ms-2" style="background: var(--warning); color: white;">
-                                                    <i class="fas fa-exclamation-circle"></i> No Email
+                                                    <i class="fas fa-exclamation-circle"></i> {% if LANG == 'sw' %}Bila Barua Pepe{% else %}No Email{% endif %}
                                                 </span>
                                                 {% endif %}
                                                 <small class="text-muted d-block assessor-email">
@@ -192,16 +192,16 @@
                                                     {% if assessor.email %}
                                                     {{ assessor.email|truncatechars:25 }}
                                                     {% else %}
-                                                    <span style="color: var(--danger);">No email address</span>
+                                                    <span style="color: var(--danger);">{% if LANG == 'sw' %}Hakuna anwani ya barua pepe{% else %}No email address{% endif %}</span>
                                                     {% endif %}
                                                 </small>
                                                 <small class="text-muted d-block">
                                                     <i class="fas fa-phone me-1"></i>
-                                                    {{ assessor.phone_number|default:"No phone" }}
+                                                    {% if assessor.phone_number %}{{ assessor.phone_number }}{% else %}{% if LANG == 'sw' %}Hakuna simu{% else %}No phone{% endif %}{% endif %}
                                                 </small>
                                                 <small class="text-muted d-block">
                                                     <i class="fas fa-school me-1"></i>
-                                                    {{ assessor.schools_assigned|default:0 }} assigned school{{ assessor.schools_assigned|default:0|pluralize }}
+                                                    {% if assessor.schools_assigned %}{{ assessor.schools_assigned }}{% else %}0{% endif %} {% if LANG == 'sw' %}shule zilizopewa{% else %}assigned school{% if assessor.schools_assigned != 1 %}s{% endif %}{% endif %}
                                                 </small>
                                             </label>
                                         </div>
@@ -210,17 +210,17 @@
                                 {% else %}
                                     <div class="text-center py-4">
                                         <i class="fas fa-user-tie fa-3x mb-3" style="color: var(--text-gray);"></i>
-                                        <h5>No assessors available</h5>
-                                        <p>Add assessors in the admin panel first</p>
+                                        <h5>{% if LANG == 'sw' %}Hakuna wakaguzi wanaopatikana{% else %}No assessors available{% endif %}</h5>
+                                        <p>{% if LANG == 'sw' %}Ongeza wakaguzi katika dashibodi ya msimamizi kwanza{% else %}Add assessors in the admin panel first{% endif %}</p>
                                         <a href="{% url 'admin:field_app_assessor_add' %}" class="btn" style="background: var(--bold); color: white; border-radius: 6px;">
-                                            <i class="fas fa-plus me-1"></i> Add Assessor
+                                            <i class="fas fa-plus me-1"></i> {% if LANG == 'sw' %}Ongeza Mkaguzi{% else %}Add Assessor{% endif %}
                                         </a>
                                     </div>
                                 {% endif %}
                             </div>
                             <div id="assessorNoResults" class="text-center py-4" style="display: none;">
                                 <i class="fas fa-search fa-2x mb-2" style="color: var(--text-gray);"></i>
-                                <p style="color: var(--text-gray);">No assessors found matching your search</p>
+                                <p style="color: var(--text-gray);">{% if LANG == 'sw' %}Hakuna wakaguzi waliopatikana wanaolingana na utafutaji wako{% else %}No assessors found matching your search{% endif %}</p>
                             </div>
                         </div>
                     </div>
@@ -229,21 +229,21 @@
                     <div class="col-lg-6">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h3 class="fw-bold mb-0" style="color: var(--bold); border-bottom: 3px solid var(--medium); padding-bottom: 8px;">
-                                <i class="fas fa-school me-2" style="color: var(--medium);"></i>Select Schools
+                                <i class="fas fa-school me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Chagua Shule{% else %}Select Schools{% endif %}
                                 <span class="badge ms-2" style="background: var(--bold); color: white;" id="schoolCount">0</span>
                             </h3>
                             <div>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="selectAllSchools" style="accent-color: var(--bold);">
                                     <label class="form-check-label" for="selectAllSchools" style="color: var(--text-gray);">
-                                        Select All on Page ({{ schools|length }})
+                                        {% if LANG == 'sw' %}Chagua Zote Ukurasa Huu{% else %}Select All on Page{% endif %} ({{ schools|length }})
                                     </label>
                                 </div>
                                 <small class="text-muted d-block">
-                                    Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                    {% if LANG == 'sw' %}Ukurasa{% else %}Showing page{% endif %} {{ page_obj.number }} {% if LANG == 'sw' %}kati ya{% else %}of{% endif %} {{ page_obj.paginator.num_pages }}
                                 </small>
                                 <small class="text-muted d-block">
-                                    Total: {{ total_schools }} schools in database
+                                    {% if LANG == 'sw' %}Jumla:{% else %}Total:{% endif %} {{ total_schools }} {% if LANG == 'sw' %}shule katika hifadhidata{% else %}schools in database{% endif %}
                                 </small>
                             </div>
                         </div>
@@ -251,7 +251,7 @@
                             <!-- AJAX SEARCH INPUT -->
                             <div class="search-wrapper mb-3 position-relative">
                                 <input type="text" class="form-control" 
-                                       placeholder="🔍 Search ALL {{ total_schools }} schools..." 
+                                       placeholder="{% if LANG == 'sw' %}🔍 Tafuta shule ZOTE {{ total_schools }}...{% else %}🔍 Search ALL {{ total_schools }} schools...{% endif %}"
                                        id="schoolSearch"
                                        autocomplete="off"
                                        style="border: 1.5px solid var(--border); border-radius: 6px;">
@@ -267,10 +267,10 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <i class="fas fa-search me-2" style="color: var(--bold);"></i>
-                                        <span id="searchStatusText" style="color: var(--text-dark);">Searching...</span>
+                                        <span id="searchStatusText" style="color: var(--text-dark);">{% if LANG == 'sw' %}Inatafuta...{% else %}Searching...{% endif %}</span>
                                     </div>
                                     <button type="button" class="btn btn-sm" id="showAllSchoolsBtn" style="background: var(--bold); color: white; border: none; border-radius: 4px;">
-                                        <i class="fas fa-times me-1"></i>Show All
+                                        <i class="fas fa-times me-1"></i>{% if LANG == 'sw' %}Onyesha Zote{% else %}Show All{% endif %}
                                     </button>
                                 </div>
                             </div>
@@ -306,11 +306,11 @@
                                                     </small>
                                                     <small class="text-muted d-block school-students">
                                                         <i class="fas fa-users me-1"></i>
-                                                        {{ school.student_count|default:0 }} approved students
+                                                        {% if school.student_count %}{{ school.student_count }}{% else %}0{% endif %} {% if LANG == 'sw' %}wanafunzi walioidhinishwa{% else %}approved students{% endif %}
                                                     </small>
                                                     <small class="text-muted d-block">
                                                         <i class="fas fa-user-tie me-1"></i>
-                                                        {{ school.assessors_count|default:0 }} assigned assessor{{ school.assessors_count|default:0|pluralize }}
+                                                        {% if school.assessors_count %}{{ school.assessors_count }}{% else %}0{% endif %} {% if LANG == 'sw' %}mkaguzi aliyepewa{% else %}assigned assessor{% if school.assessors_count != 1 %}s{% endif %}{% endif %}
                                                     </small>
                                                 </label>
                                             </div>
@@ -319,8 +319,8 @@
                                     {% else %}
                                         <div class="text-center py-4">
                                             <i class="fas fa-school fa-3x mb-3" style="color: var(--text-gray);"></i>
-                                            <h5>No schools available</h5>
-                                            <p>Add schools in the admin panel first</p>
+                                            <h5>{% if LANG == 'sw' %}Hakuna shule zinazopatikana{% else %}No schools available{% endif %}</h5>
+                                            <p>{% if LANG == 'sw' %}Ongeza shule katika dashibodi ya msimamizi kwanza{% else %}Add schools in the admin panel first{% endif %}</p>
                                         </div>
                                     {% endif %}
                                 </div>
@@ -332,7 +332,7 @@
                             <!-- NO RESULTS MESSAGE -->
                             <div id="schoolNoResults" class="text-center py-4" style="display: none;">
                                 <i class="fas fa-search fa-2x mb-2" style="color: var(--text-gray);"></i>
-                                <p style="color: var(--text-gray);">No schools found matching your search</p>
+                                <p style="color: var(--text-gray);">{% if LANG == 'sw' %}Hakuna shule zilizopatikana zinazofanana na utafutaji wako{% else %}No schools found matching your search{% endif %}</p>
                             </div>
                             
                             <!-- PAGINATION -->
@@ -378,8 +378,8 @@
                                     {% endif %}
                                 </ul>
                                 <p class="text-center text-muted small mt-2 mb-0">
-                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} 
-                                    ({{ total_schools }} total schools)
+                                    {% if LANG == 'sw' %}Ukurasa{% else %}Page{% endif %} {{ page_obj.number }} {% if LANG == 'sw' %}kati ya{% else %}of{% endif %} {{ page_obj.paginator.num_pages }}
+                                    ({{ total_schools }} {% if LANG == 'sw' %}shule zote{% else %}total schools{% endif %})
                                 </p>
                                 {% endif %}
                             </nav>
@@ -391,29 +391,29 @@
                 <div class="row mt-4">
                     <div class="col-lg-6">
                         <h3 class="fw-bold mb-3" style="color: var(--bold); border-bottom: 3px solid var(--medium); padding-bottom: 8px;">
-                            <i class="fas fa-calendar-alt me-2" style="color: var(--medium);"></i>Assessment Details
+                            <i class="fas fa-calendar-alt me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Maelezo ya Tathmini{% else %}Assessment Details{% endif %}
                         </h3>
                         <div class="p-4" style="background: var(--light); border-radius: 8px;">
                             <div class="mb-3">
                                 <label class="form-label fw-bold" style="color: var(--text-dark);">
-                                    <i class="fas fa-calendar-day me-2"></i>Assessment Date
+                                    <i class="fas fa-calendar-day me-2"></i>{% if LANG == 'sw' %}Tarehe ya Tathmini{% else %}Assessment Date{% endif %}
                                 </label>
-                                <input type="date" name="assessment_date" class="form-control" 
+                                <input type="date" name="assessment_date" class="form-control"
                                        id="assessmentDate" value="{{ default_date }}" required
                                        style="border: 1.5px solid var(--border); border-radius: 6px;">
-                                <small class="text-muted">The date when assessments should take place</small>
+                                <small class="text-muted">{% if LANG == 'sw' %}Tarehe tathmini zitakapofanyika{% else %}The date when assessments should take place{% endif %}</small>
                             </div>
                             <div class="alert" style="background: var(--white); border-left: 4px solid var(--bold);">
                                 <h6 class="alert-heading mb-2" style="color: var(--text-dark);">
                                     <i class="fas fa-info-circle me-2" style="color: var(--medium);"></i>
-                                    What happens next?
+                                    {% if LANG == 'sw' %}Kitakachotokea baadaye?{% else %}What happens next?{% endif %}
                                 </h6>
                                 <ul class="mb-0 small" style="color: var(--text-gray);">
-                                    <li>Selected assessors will receive email notifications</li>
-                                    <li><strong>New assessors</strong> without accounts will get auto-generated accounts with passwords</li>
-                                    <li><strong>Existing assessors</strong> will use their current passwords</li>
-                                    <li>Credentials will be sent via email to each assessor</li>
-                                    <li>Each assessor can access all their assigned schools</li>
+                                    <li>{% if LANG == 'sw' %}Wakaguzi waliochaguliwa watapata arifa za barua pepe{% else %}Selected assessors will receive email notifications{% endif %}</li>
+                                    <li><strong>{% if LANG == 'sw' %}Wakaguzi wapya{% else %}New assessors{% endif %}</strong> {% if LANG == 'sw' %}wasio na akaunti watapata akaunti zinazozalishwa moja kwa moja na nywila{% else %}without accounts will get auto-generated accounts with passwords{% endif %}</li>
+                                    <li><strong>{% if LANG == 'sw' %}Wakaguzi waliopo{% else %}Existing assessors{% endif %}</strong> {% if LANG == 'sw' %}watatumia nywila zao za sasa{% else %}will use their current passwords{% endif %}</li>
+                                    <li>{% if LANG == 'sw' %}Vitambulisho vitatumwa kwa barua pepe kwa kila mkaguzi{% else %}Credentials will be sent via email to each assessor{% endif %}</li>
+                                    <li>{% if LANG == 'sw' %}Kila mkaguzi anaweza kufikia shule zake zote zilizopewa{% else %}Each assessor can access all their assigned schools{% endif %}</li>
                                 </ul>
                             </div>
                         </div>
@@ -422,42 +422,41 @@
                     <!-- Assignment Summary -->
                     <div class="col-lg-6">
                         <h3 class="fw-bold mb-3" style="color: var(--bold); border-bottom: 3px solid var(--medium); padding-bottom: 8px;">
-                            <i class="fas fa-chart-pie me-2" style="color: var(--medium);"></i>Assignment Summary
+                            <i class="fas fa-chart-pie me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Muhtasari wa Ugawaji{% else %}Assignment Summary{% endif %}
                         </h3>
                         <div class="p-4" style="background: linear-gradient(135deg, rgba(10,43,94,0.05), rgba(200,144,10,0.05)); border-radius: 8px;">
-                            <h5 class="fw-bold mb-3" style="color: var(--text-dark);">📊 Assignment Preview</h5>
+                            <h5 class="fw-bold mb-3" style="color: var(--text-dark);">📊 {% if LANG == 'sw' %}Muhtasari wa Awali wa Ugawaji{% else %}Assignment Preview{% endif %}</h5>
                             <div class="row text-center mb-3">
                                 <div class="col-6 mb-2">
                                     <div class="border rounded p-2" style="background: var(--white); border-color: var(--border);">
                                         <h4 class="fw-bold mb-1" style="color: var(--bold);" id="previewAssessors">0</h4>
-                                        <small class="text-muted">Assessors</small>
+                                        <small class="text-muted">{% if LANG == 'sw' %}Wakaguzi{% else %}Assessors{% endif %}</small>
                                     </div>
                                 </div>
                                 <div class="col-6 mb-2">
                                     <div class="border rounded p-2" style="background: var(--white); border-color: var(--border);">
                                         <h4 class="fw-bold mb-1" style="color: var(--success);" id="previewSchools">0</h4>
-                                        <small class="text-muted">Schools</small>
+                                        <small class="text-muted">{% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="mb-3">
                                 <p class="mb-2" style="color: var(--text-dark);">
                                     <i class="fas fa-calendar me-2" style="color: var(--medium);"></i>
-                                    Date: <strong id="previewDate">{{ default_date|date:"F d, Y" }}</strong>
+                                    {% if LANG == 'sw' %}Tarehe:{% else %}Date:{% endif %} <strong id="previewDate">{{ default_date|date:"F d, Y" }}</strong>
                                 </p>
                                 <p class="mb-0" style="color: var(--text-dark);">
                                     <i class="fas fa-users me-2" style="color: var(--medium);"></i>
-                                    Total assignments to create: 
+                                    {% if LANG == 'sw' %}Jumla ya ugawaji wa kuunda:{% else %}Total assignments to create:{% endif %}
                                     <strong class="fs-5" style="color: var(--bold);" id="totalAssignments">0</strong>
                                 </p>
                                 <small class="text-muted">
-                                    (Assessors × Schools = Total assignments)
+                                    {% if LANG == 'sw' %}(Wakaguzi × Shule = Jumla ya Ugawaji){% else %}(Assessors × Schools = Total assignments){% endif %}
                                 </small>
                             </div>
                             <div class="alert mt-3" id="noEmailWarning" style="display: none; background: #FEF3C7; border-left: 4px solid var(--warning);">
                                 <i class="fas fa-exclamation-triangle me-2" style="color: var(--warning);"></i>
-                                <span id="noEmailCount">0</span> assessor(s) without email addresses selected.
-                                They won't receive notifications.
+                                <span id="noEmailCount">0</span> {% if LANG == 'sw' %}mkaguzi(wakaguzi) wasio na anwani za barua pepe wamechaguliwa. Hawatapata arifa.{% else %}assessor(s) without email addresses selected. They won't receive notifications.{% endif %}
                             </div>
                         </div>
                     </div>
@@ -469,13 +468,13 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <a href="{% url 'admin_dashboard' %}" class="btn" style="background: transparent; color: var(--bold); border: 2px solid var(--bold); border-radius: 6px; padding: 10px 24px;">
-                                    <i class="fas fa-arrow-left me-2"></i>Cancel
+                                    <i class="fas fa-arrow-left me-2"></i>{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}
                                 </a>
                             </div>
                             <div>
                                 <button type="submit" class="btn" id="submitBtn" disabled style="background: var(--bold); color: var(--white); border: none; border-radius: 6px; padding: 12px 40px; font-weight: 600;">
                                     <i class="fas fa-user-check me-2"></i>
-                                    Assign Assessors to Schools
+                                    {% if LANG == 'sw' %}Peana Wakaguzi kwa Shule{% else %}Assign Assessors to Schools{% endif %}
                                     <span class="badge ms-2" id="submitCount" style="background: var(--medium); color: white;">0</span>
                                 </button>
                             </div>
@@ -677,11 +676,11 @@ function updateDatePreview() {
 // VALIDATE FORM
 function validateForm() {
     if (selectedAssessorIds.size === 0) {
-        alert('❌ Please select at least one assessor.');
+        alert('{% if LANG == "sw" %}❌ Tafadhali chagua mkaguzi mmoja angalau.{% else %}❌ Please select at least one assessor.{% endif %}');
         return false;
     }
     if (selectedSchoolIds.size === 0) {
-        alert('❌ Please select at least one school.');
+        alert('{% if LANG == "sw" %}❌ Tafadhali chagua shule moja angalau.{% else %}❌ Please select at least one school.{% endif %}');
         return false;
     }
     
@@ -694,17 +693,17 @@ function validateForm() {
     
     if (assessorsWithoutEmail.length > 0) {
         return confirm(
-            `⚠️ ${assessorsWithoutEmail.length} assessor(s) don't have email addresses:\n\n` +
+            `⚠️ ${assessorsWithoutEmail.length} {% if LANG == "sw" %}mkaguzi(wakaguzi) hawana anwani za barua pepe:\n\n{% else %}assessor(s) don't have email addresses:\n\n{% endif %}` +
             `${assessorsWithoutEmail.join(', ')}\n\n` +
-            `They won't receive email notifications. Continue anyway?`
+            `{% if LANG == "sw" %}Hawatapata arifa za barua pepe. Endelea?{% else %}They won't receive email notifications. Continue anyway?{% endif %}`
         );
     }
-    
+
     const totalAssignments = selectedAssessorIds.size * selectedSchoolIds.size;
     if (totalAssignments > 100) {
         return confirm(
-            `📊 You are about to create ${totalAssignments} assignments.\n` +
-            `This may take a few moments. Continue?`
+            `📊 {% if LANG == "sw" %}Unakaribia kuunda ${totalAssignments} ugawaji.\n{% else %}You are about to create ${totalAssignments} assignments.\n{% endif %}` +
+            `{% if LANG == "sw" %}Hii inaweza kuchukua dakika chache. Endelea?{% else %}This may take a few moments. Continue?{% endif %}`
         );
     }
     return true;
@@ -780,7 +779,7 @@ function initializeAjaxSchoolSearch() {
             }
             
             searchStatusContainer.style.display = 'block';
-            searchStatusText.innerHTML = `Searching for "<strong>${searchTerm}</strong>"...`;
+            searchStatusText.innerHTML = `{% if LANG == "sw" %}Inatafuta "<strong>${searchTerm}</strong>"...{% else %}Searching for "<strong>${searchTerm}</strong>"...{% endif %}`;
             
             searchTimeout = setTimeout(() => {
                 performAjaxSchoolSearch(searchTerm);
@@ -828,9 +827,9 @@ function initializeAjaxSchoolSearch() {
         isSearching = true;
         
         searchStatusContainer.style.display = 'block';
-        searchStatusText.innerHTML = `<span class="loading-spinner"></span> Searching for "<strong>${searchTerm}</strong>" in all schools...`;
-        
-        ajaxSearchResults.innerHTML = `<div class="ajax-loading"><div class="spinner-border text-primary mb-2" role="status"></div><p>Searching all schools for "${searchTerm}"...</p></div>`;
+        searchStatusText.innerHTML = `<span class="loading-spinner"></span> {% if LANG == "sw" %}Inatafuta "<strong>${searchTerm}</strong>" katika shule zote...{% else %}Searching for "<strong>${searchTerm}</strong>" in all schools...{% endif %}`;
+
+        ajaxSearchResults.innerHTML = `<div class="ajax-loading"><div class="spinner-border text-primary mb-2" role="status"></div><p>{% if LANG == "sw" %}Inatafuta shule zote kwa "${searchTerm}"...{% else %}Searching all schools for "${searchTerm}"...{% endif %}</p></div>`;
         showSearchResults();
         
         const searchUrl = `/field/ajax-search-schools/?q=${encodeURIComponent(searchTerm)}`;
@@ -845,7 +844,7 @@ function initializeAjaxSchoolSearch() {
                 const results = data.results || [];
                 const count = data.count || 0;
                 
-                searchStatusText.innerHTML = `Found <strong>${count}</strong> school${count !== 1 ? 's' : ''} matching "<strong>${searchTerm}</strong>"`;
+                searchStatusText.innerHTML = `{% if LANG == "sw" %}Zimepatikana <strong>${count}</strong> shule zinazofanana na "<strong>${searchTerm}</strong>"{% else %}Found <strong>${count}</strong> school${count !== 1 ? 's' : ''} matching "<strong>${searchTerm}</strong>"{% endif %}`;
                 
                 if (count === 0) {
                     schoolNoResults.style.display = 'block';
@@ -868,10 +867,10 @@ function initializeAjaxSchoolSearch() {
                                 <label class="form-check-label" for="ajax_school_${school.id}">
                                     <strong class="school-name">${escapeHtml(school.name)}</strong>
                                     ${levelText ? `<span class="badge ms-1" style="background: var(--medium); color: white;">${levelText}</span>` : ''}
-                                    <span class="badge bg-success ms-2">Search Result</span>
+                                    <span class="badge bg-success ms-2">{% if LANG == "sw" %}Matokeo ya Utafutaji{% else %}Search Result{% endif %}</span>
                                     <small class="text-muted d-block"><i class="fas fa-map-marker-alt me-1"></i>${escapeHtml(school.district)}, ${escapeHtml(school.region)}</small>
-                                    <small class="text-muted d-block"><i class="fas fa-users me-1"></i>${school.students || 0} approved students</small>
-                                    <small class="text-muted d-block"><i class="fas fa-user-tie me-1"></i>${school.assessors || 0} assigned assessor${school.assessors !== 1 ? 's' : ''}</small>
+                                    <small class="text-muted d-block"><i class="fas fa-users me-1"></i>${school.students || 0} {% if LANG == "sw" %}wanafunzi walioidhinishwa{% else %}approved students{% endif %}</small>
+                                    <small class="text-muted d-block"><i class="fas fa-user-tie me-1"></i>${school.assessors || 0} {% if LANG == "sw" %}mkaguzi aliyepewa{% else %}assigned assessor${school.assessors !== 1 ? 's' : ''}{% endif %}</small>
                                 </label>
                             </div>
                         </div>
@@ -887,8 +886,8 @@ function initializeAjaxSchoolSearch() {
             .catch(error => {
                 isSearching = false;
                 console.error('Search error:', error);
-                searchStatusText.innerHTML = `<span class="text-danger">Search failed: ${error.message}</span>`;
-                ajaxSearchResults.innerHTML = `<div class="alert alert-danger">Failed to search schools.</div>`;
+                searchStatusText.innerHTML = `<span class="text-danger">{% if LANG == "sw" %}Utafutaji umeshindwa: {% else %}Search failed: {% endif %}${error.message}</span>`;
+                ajaxSearchResults.innerHTML = `<div class="alert alert-danger">{% if LANG == "sw" %}Imeshindwa kutafuta shule.{% else %}Failed to search schools.{% endif %}</div>`;
             });
     }
     
@@ -985,14 +984,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const submitBtn = document.getElementById('submitBtn');
         const originalHTML = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>{% if LANG == "sw" %}Inashughulikia...{% else %}Processing...{% endif %}';
         submitBtn.disabled = true;
-        
+
         setTimeout(() => {
             if (submitBtn.disabled) {
                 submitBtn.innerHTML = originalHTML;
                 submitBtn.disabled = false;
-                alert('Submission is taking too long. Please try again.');
+                alert('{% if LANG == "sw" %}Uwasilishaji unachukua muda mrefu sana. Tafadhali jaribu tena.{% else %}Submission is taking too long. Please try again.{% endif %}');
             }
         }, 30000);
     });

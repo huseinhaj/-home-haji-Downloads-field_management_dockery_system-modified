@@ -35,16 +35,30 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class CustomAdminSite(AdminSite):
-    site_header = "Field Management Admin"
-    site_title = "Field Panel"
-    index_title = "Karibu Admin"
+    site_header = "Internship Management System (IMS)"
+    site_title = "IMS Admin"
+    index_title = "Internship Management System — Teacher Colleges Tanzania"
     index_template = 'admin/index.html'
+    login_template = 'admin/login_ims.html'
 
     def each_context(self, request):
         context = super().each_context(request)
         if request.user.is_staff:
             context['region_pinning_url'] = reverse('pin_regions')
         return context
+
+    def login(self, request, extra_context=None):
+        from django.http import HttpResponseRedirect
+        response = super().login(request, extra_context=extra_context)
+        # After a successful login Django redirects to admin index — send to admin-dashboard instead
+        if hasattr(response, 'url'):
+            try:
+                admin_index = reverse('custom_admin:index')
+            except Exception:
+                admin_index = '/admin/'
+            if response.url == admin_index or response.url.rstrip('/') == admin_index.rstrip('/'):
+                return HttpResponseRedirect('/admin-dashboard/')
+        return response
 
 custom_admin_site = CustomAdminSite(name='custom_admin')
 

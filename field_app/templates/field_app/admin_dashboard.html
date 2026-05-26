@@ -1,349 +1,509 @@
 {% extends 'field_app/base.html' %}
 
+{% block title %}Admin Dashboard{% endblock %}
+
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card" style="border: 1px solid var(--border); border-radius: 8px; background: var(--white);">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap">
-                        <div>
-                            <h1 class="h2 fw-bold mb-2" style="color: var(--text-dark);">
-                                <i class="fas fa-chalkboard-user me-2" style="color: var(--medium);"></i>
-                                Tanzania Teacher Colleges
-                            </h1>
-                            <p class="mb-0" style="color: var(--text-gray);">
-                                <i class="fas fa-chart-line me-2"></i>Field Placement Management System | Admin Dashboard
-                            </p>
-                        </div>
-                        <div class="text-end mt-3 mt-md-0">
-                            <span class="badge px-3 py-2 rounded-pill" style="background: var(--bold); color: white;">
-                                <i class="fas fa-shield-alt me-2"></i>Administrator
-                            </span>
-                            <p class="small mt-2 mb-0" style="color: var(--text-gray);">
-                                <i class="fas fa-calendar-alt me-1"></i>{{ current_date|date:"F d, Y" }}
-                            </p>
-                        </div>
-                    </div>
+<style>
+/* ═══════════════════════════════
+   ADMIN DASHBOARD — MINISTRY THEME
+   Colors: navy #0A2B5E | gold #C8900A | light #EEF1F6
+   ═══════════════════════════════ */
+
+.adm-wrap { background: #EEF1F6; min-height: calc(100vh - 120px); padding: 0; margin: -2rem; }
+
+/* ── Top banner ── */
+.adm-banner {
+    background: linear-gradient(135deg, #0A2B5E 0%, #0d3575 100%);
+    border-bottom: 4px solid #C8900A;
+    padding: 1.5rem 2rem;
+}
+.adm-banner h1 { color: #fff; font-size: 1.4rem; font-weight: 700; margin: 0; }
+.adm-banner .sub { color: rgba(255,255,255,0.7); font-size: 0.82rem; margin-top: 3px; }
+.adm-banner .badge-admin {
+    background: #C8900A; color: #fff; padding: 5px 14px;
+    border-radius: 20px; font-size: 0.78rem; font-weight: 700;
+}
+.adm-banner .date-txt { color: rgba(255,255,255,0.65); font-size: 0.8rem; margin-top: 4px; }
+
+/* ── Section header ── */
+.sec-hd {
+    display: flex; align-items: center; gap: 10px;
+    margin: 1.8rem 0 1rem;
+}
+.sec-hd .sec-line {
+    flex: 1; height: 2px;
+    background: linear-gradient(to right, #C8900A33, transparent);
+}
+.sec-hd .sec-title {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: #C8900A;
+    white-space: nowrap;
+}
+.sec-hd .sec-icon { color: #0A2B5E; font-size: 1rem; }
+
+/* ── Stat cards ── */
+.stat-card {
+    border-radius: 10px; border: none; overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(10,43,94,0.18); }
+.stat-card .sc-body { padding: 1.2rem 1.4rem; }
+.stat-card .sc-num { font-size: 2.2rem; font-weight: 800; color: #fff; line-height: 1; }
+.stat-card .sc-label { color: rgba(255,255,255,0.85); font-size: 0.78rem; font-weight: 600; margin-top: 4px; }
+.stat-card .sc-sub { color: rgba(255,255,255,0.55); font-size: 0.7rem; margin-top: 2px; }
+.stat-card .sc-icon { font-size: 2.4rem; color: rgba(255,255,255,0.25); }
+
+.sc-navy  { background: linear-gradient(135deg, #0A2B5E, #1a4a8e); }
+.sc-gold  { background: linear-gradient(135deg, #C8900A, #e0a020); }
+.sc-teal  { background: linear-gradient(135deg, #0d7a6e, #10a89a); }
+.sc-rust  { background: linear-gradient(135deg, #b84a0e, #d4621e); }
+.sc-slate { background: linear-gradient(135deg, #374151, #4b5563); }
+.sc-indigo{ background: linear-gradient(135deg, #3730a3, #4f46e5); }
+.sc-green { background: linear-gradient(135deg, #065f46, #059669); }
+.sc-rose  { background: linear-gradient(135deg, #9f1239, #e11d48); }
+
+/* ── Chart cards ── */
+.chart-card {
+    background: #fff; border-radius: 10px;
+    border: 1px solid #d1d9e8; overflow: hidden;
+}
+.chart-card .ch-head {
+    background: #0A2B5E; padding: 0.75rem 1.2rem;
+    display: flex; align-items: center; gap: 8px;
+}
+.chart-card .ch-head .ch-title { color: #fff; font-size: 0.82rem; font-weight: 700; margin: 0; }
+.chart-card .ch-head .ch-icon { color: #C8900A; font-size: 0.9rem; }
+.chart-card .ch-body { padding: 1rem; }
+
+/* ── Quick action buttons ── */
+.qa-btn {
+    background: #fff; border: 2px solid #d1d9e8; border-radius: 10px;
+    padding: 1.2rem 0.8rem; text-align: center; text-decoration: none;
+    display: block; transition: all 0.25s ease;
+}
+.qa-btn:hover {
+    border-color: #C8900A; transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(10,43,94,0.12);
+}
+.qa-btn .qa-icon { font-size: 1.8rem; margin-bottom: 8px; }
+.qa-btn .qa-label { color: #0A2B5E; font-weight: 700; font-size: 0.85rem; display: block; }
+.qa-btn .qa-sub { color: #6b7280; font-size: 0.72rem; display: block; margin-top: 3px; }
+
+/* ── Tables ── */
+.adm-table thead th {
+    background: #0A2B5E; color: #fff; font-size: 0.78rem;
+    font-weight: 700; letter-spacing: 0.5px; border: none; padding: 0.8rem 1rem;
+}
+.adm-table tbody tr:hover { background: #f0f4fa; }
+.adm-table td { font-size: 0.83rem; padding: 0.75rem 1rem; vertical-align: middle; border-color: #e5eaf3; }
+
+/* ── Section card ── */
+.sec-card { background: #fff; border-radius: 10px; border: 1px solid #d1d9e8; overflow: hidden; }
+.sec-card .sc-header {
+    background: #0A2B5E; padding: 0.9rem 1.4rem;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 3px solid #C8900A;
+}
+.sec-card .sc-header .sc-hd-title { color: #fff; font-size: 0.92rem; font-weight: 700; margin: 0; }
+.sec-card .sc-header .sc-hd-badge {
+    background: #C8900A; color: #fff; padding: 3px 12px;
+    border-radius: 12px; font-size: 0.75rem; font-weight: 700;
+}
+
+/* ── Badge styles ── */
+.bst-approved { background: #d1fae5; color: #065f46; border-radius: 6px; padding: 3px 10px; font-size: 0.75rem; font-weight: 700; }
+.bst-pending  { background: #fef3c7; color: #92400e; border-radius: 6px; padding: 3px 10px; font-size: 0.75rem; font-weight: 700; }
+.bst-rejected { background: #fee2e2; color: #991b1b; border-radius: 6px; padding: 3px 10px; font-size: 0.75rem; font-weight: 700; }
+
+/* Avatar */
+.adm-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #0A2B5E; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; flex-shrink: 0;
+}
+
+/* ── Inner padding wrapper ── */
+.adm-body { padding: 0 2rem 2rem; }
+
+@media (max-width: 768px) {
+    .adm-banner { padding: 1.2rem 1rem; }
+    .adm-body { padding: 0 1rem 1.5rem; }
+    .stat-card .sc-num { font-size: 1.7rem; }
+}
+</style>
+
+<div class="adm-wrap">
+
+    <!-- ════ BANNER ════ -->
+    <div class="adm-banner">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h1>
+                    <i class="fas fa-shield-alt me-2" style="color:#C8900A;"></i>
+                    {% if LANG == 'sw' %}Dashibodi ya Msimamizi{% else %}Administrator Dashboard{% endif %}
+                </h1>
+                <div class="sub">
+                    <i class="fas fa-university me-1"></i>
+                    {% if LANG == 'sw' %}Mfumo wa Usimamizi wa Mafunzo ya Vitendo — Vyuo vya Ualimu Tanzania{% else %}Internship Management System — Teacher Colleges Tanzania{% endif %}
+                </div>
+            </div>
+            <div class="text-end">
+                <div class="badge-admin">
+                    <i class="fas fa-user-shield me-1"></i>Administrator
+                </div>
+                <div class="date-txt mt-1">
+                    <i class="fas fa-calendar-alt me-1"></i>{{ current_date|date:"F d, Y" }}
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Quick Stats - Row 1 -->
-    <div class="row g-4 mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card" style="border: none; border-radius: 12px; background: var(--bold);">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+
+    <div class="adm-body">
+
+        <!-- ════ STATS ROW 1 — Applications ════ -->
+        <div class="sec-hd">
+            <i class="fas fa-chart-bar sec-icon"></i>
+            <span class="sec-title">{% if LANG == 'sw' %}Muhtasari wa Maombi{% else %}Applications Overview{% endif %}</span>
+            <div class="sec-line"></div>
+        </div>
+
+        <div class="row g-3 mb-2">
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card sc-navy">
+                    <div class="sc-body d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="display-6 fw-bold mb-2 text-white">{{ total_applications|default:"0" }}</h2>
-                            <p class="mb-0 text-white-50">
-                                <i class="fas fa-file-alt me-2"></i>Total Applications
-                            </p>
-                            <small class="text-white-50">Student Teacher Applications</small>
+                            <div class="sc-num">{{ total_applications|default:"0" }}</div>
+                            <div class="sc-label">{% if LANG == 'sw' %}Jumla ya Maombi{% else %}Total Applications{% endif %}</div>
+                            <div class="sc-sub">{% if LANG == 'sw' %}Wanafunzi Walimu{% else %}Student Teachers{% endif %}</div>
                         </div>
-                        <i class="fas fa-layer-group fa-3x text-white-50"></i>
+                        <i class="fas fa-layer-group sc-icon"></i>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card" style="border: none; border-radius: 12px; background: var(--success);">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card sc-green">
+                    <div class="sc-body d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="display-6 fw-bold mb-2 text-white">{{ approved_applications|default:"0" }}</h2>
-                            <p class="mb-0 text-white-50">
-                                <i class="fas fa-check-circle me-2"></i>Approved
-                            </p>
-                            <small class="text-white-50">Applications Approved</small>
+                            <div class="sc-num">{{ approved_applications|default:"0" }}</div>
+                            <div class="sc-label">{% if LANG == 'sw' %}Maombi Yaliyoidhinishwa{% else %}Approved{% endif %}</div>
+                            <div class="sc-sub">{% if LANG == 'sw' %}Yamekubaliwa{% else %}Applications Approved{% endif %}</div>
                         </div>
-                        <i class="fas fa-thumbs-up fa-3x text-white-50"></i>
+                        <i class="fas fa-check-circle sc-icon"></i>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card" style="border: none; border-radius: 12px; background: var(--warning);">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card sc-gold">
+                    <div class="sc-body d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="display-6 fw-bold mb-2 text-white">{{ pending_applications.count|default:"0" }}</h2>
-                            <p class="mb-0 text-white-50">
-                                <i class="fas fa-clock me-2"></i>Pending Review
-                            </p>
-                            <small class="text-white-50">Awaiting Decision</small>
+                            <div class="sc-num">{{ pending_applications.count|default:"0" }}</div>
+                            <div class="sc-label">{% if LANG == 'sw' %}Yanayosubiri{% else %}Pending Review{% endif %}</div>
+                            <div class="sc-sub">{% if LANG == 'sw' %}Yanahitaji uamuzi{% else %}Awaiting Decision{% endif %}</div>
                         </div>
-                        <i class="fas fa-hourglass-half fa-3x text-white-50"></i>
+                        <i class="fas fa-hourglass-half sc-icon"></i>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card" style="border: none; border-radius: 12px; background: var(--info);">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card sc-rose">
+                    <div class="sc-body d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="display-6 fw-bold mb-2 text-white">{{ total_assessors|default:"0" }}</h2>
-                            <p class="mb-0 text-white-50">
-                                <i class="fas fa-chalkboard-user me-2"></i>Total Assessors
-                            </p>
-                            <small class="text-white-50">Field Placement Assessors</small>
+                            <div class="sc-num">{{ rejected_applications|default:"0" }}</div>
+                            <div class="sc-label">{% if LANG == 'sw' %}Yaliyokataliwa{% else %}Rejected{% endif %}</div>
+                            <div class="sc-sub">{% if LANG == 'sw' %}Hayakubaliwa{% else %}Not Accepted{% endif %}</div>
                         </div>
-                        <i class="fas fa-users fa-3x text-white-50"></i>
+                        <i class="fas fa-times-circle sc-icon"></i>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Quick Stats - Row 2 -->
-    <div class="row g-4 mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card" style="border: none; border-radius: 12px; background: var(--danger);">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+
+        <!-- ════ STATS ROW 2 — System ════ -->
+        <div class="sec-hd">
+            <i class="fas fa-cogs sec-icon"></i>
+            <span class="sec-title">{% if LANG == 'sw' %}Muhtasari wa Mfumo{% else %}System Overview{% endif %}</span>
+            <div class="sec-line"></div>
+        </div>
+
+        <div class="row g-3 mb-2">
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card sc-indigo">
+                    <div class="sc-body d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="display-6 fw-bold mb-2 text-white">{{ total_schools|default:"0" }}</h2>
-                            <p class="mb-0 text-white-50">
-                                <i class="fas fa-school me-2"></i>Partner Schools
-                            </p>
-                            <small class="text-white-50">Teaching Practice Schools</small>
+                            <div class="sc-num">{{ total_assessors|default:"0" }}</div>
+                            <div class="sc-label">{% if LANG == 'sw' %}Wakaguzi Wote{% else %}Total Assessors{% endif %}</div>
+                            <div class="sc-sub">{{ active_assessors }} {% if LANG == 'sw' %}wanaofanya kazi{% else %}active{% endif %}</div>
                         </div>
-                        <i class="fas fa-building fa-3x text-white-50"></i>
+                        <i class="fas fa-chalkboard-teacher sc-icon"></i>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card" style="border: none; border-radius: 12px; background: var(--medium);">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card sc-teal">
+                    <div class="sc-body d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="display-6 fw-bold mb-2 text-white">{{ total_school_assignments|default:"0" }}</h2>
-                            <p class="mb-0 text-white-50">
-                                <i class="fas fa-tasks me-2"></i>Assignments
-                            </p>
-                            <small class="text-white-50">Assessor-School Assignments</small>
+                            <div class="sc-num">{{ total_schools|default:"0" }}</div>
+                            <div class="sc-label">{% if LANG == 'sw' %}Shule Washirika{% else %}Partner Schools{% endif %}</div>
+                            <div class="sc-sub">{% if LANG == 'sw' %}Shule za mafunzo{% else %}Teaching Practice Schools{% endif %}</div>
                         </div>
-                        <i class="fas fa-link fa-3x text-white-50"></i>
+                        <i class="fas fa-school sc-icon"></i>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card" style="border: none; border-radius: 12px; background: #e67e22;">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card sc-slate">
+                    <div class="sc-body d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="display-6 fw-bold mb-2 text-white">{{ completed_assessments|default:"0" }}</h2>
-                            <p class="mb-0 text-white-50">
-                                <i class="fas fa-check-double me-2"></i>Completed
-                            </p>
-                            <small class="text-white-50">Assessments Done</small>
+                            <div class="sc-num">{{ total_school_assignments|default:"0" }}</div>
+                            <div class="sc-label">{% if LANG == 'sw' %}Uhusiano wa Tathmini{% else %}Assessor Assignments{% endif %}</div>
+                            <div class="sc-sub">{% if LANG == 'sw' %}Wakaguzi–Shule{% else %}Assessor–School Links{% endif %}</div>
                         </div>
-                        <i class="fas fa-flag-checkered fa-3x text-white-50"></i>
+                        <i class="fas fa-link sc-icon"></i>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card" style="border: none; border-radius: 12px; background: #16a085;">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card sc-rust">
+                    <div class="sc-body d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="display-6 fw-bold mb-2 text-white">{{ active_assessors|default:"0" }}</h2>
-                            <p class="mb-0 text-white-50">
-                                <i class="fas fa-user-check me-2"></i>Active Assessors
-                            </p>
-                            <small class="text-white-50">Currently Active</small>
+                            <div class="sc-num">{{ completed_assessments|default:"0" }}</div>
+                            <div class="sc-label">{% if LANG == 'sw' %}Tathmini Zilizokamilika{% else %}Completed Assessments{% endif %}</div>
+                            <div class="sc-sub">{% if LANG == 'sw' %}Zimefanyika{% else %}Done{% endif %}</div>
                         </div>
-                        <i class="fas fa-user-graduate fa-3x text-white-50"></i>
+                        <i class="fas fa-flag-checkered sc-icon"></i>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Quick Actions -->
-    <div class="row g-4 mb-4">
-        <div class="col-12">
-            <div class="card" style="border: 1px solid var(--border); border-radius: 8px; background: var(--white);">
-                <div class="card-header bg-transparent border-0 pt-4 pb-0">
-                    <h4 class="fw-bold mb-0" style="color: var(--text-dark);">
-                        <i class="fas fa-bolt me-2" style="color: var(--medium);"></i>Quick Actions
-                    </h4>
+
+        <!-- ════ CHARTS ════ -->
+        <div class="sec-hd">
+            <i class="fas fa-chart-line sec-icon"></i>
+            <span class="sec-title">{% if LANG == 'sw' %}Takwimu na Grafu{% else %}Analytics & Charts{% endif %}</span>
+            <div class="sec-line"></div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-xl-3 col-md-6">
+                <div class="chart-card h-100">
+                    <div class="ch-head">
+                        <i class="fas fa-chart-pie ch-icon"></i>
+                        <span class="ch-title">{% if LANG == 'sw' %}Hali ya Maombi{% else %}Applications by Status{% endif %}</span>
+                    </div>
+                    <div class="ch-body d-flex justify-content-center align-items-center" style="min-height:200px;">
+                        <canvas id="chartAppStatus"></canvas>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row g-4">
-                        <div class="col-xl-3 col-md-6">
-                            <a href="{% url 'bulk_assign_assessors' %}" class="quick-action-btn" style="background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 20px 10px; text-align: center; text-decoration: none; display: block; height: 100%; transition: all 0.3s ease;">
-                                <i class="fas fa-users fa-2x mb-2" style="color: var(--bold);"></i>
-                                <h6 class="fw-bold mb-2" style="color: var(--text-dark);">Bulk Assign Assessors</h6>
-                                <small style="color: var(--text-gray);">Assign multiple assessors to schools at once</small>
-                            </a>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <a href="{% url 'manage_regions' %}" class="quick-action-btn" style="background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 20px 10px; text-align: center; text-decoration: none; display: block; height: 100%; transition: all 0.3s ease;">
-                                <i class="fas fa-globe-africa fa-2x mb-2" style="color: var(--medium);"></i>
-                                <h6 class="fw-bold mb-2" style="color: var(--text-dark);">Manage Regions</h6>
-                                <small style="color: var(--text-gray);">Control region visibility & academic years</small>
-                            </a>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <a href="{% url 'assessor_list' %}" class="quick-action-btn" style="background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 20px 10px; text-align: center; text-decoration: none; display: block; height: 100%; transition: all 0.3s ease;">
-                                <i class="fas fa-chalkboard-user fa-2x mb-2" style="color: var(--success);"></i>
-                                <h6 class="fw-bold mb-2" style="color: var(--text-dark);">View Assessors</h6>
-                                <small style="color: var(--text-gray);">Manage field placement assessors</small>
-                            </a>
-                        </div>
-                        <div class="col-xl-3 col-md-6">
-                            <a href="/admin/" class="quick-action-btn" style="background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 20px 10px; text-align: center; text-decoration: none; display: block; height: 100%; transition: all 0.3s ease;">
-                                <i class="fas fa-cog fa-2x mb-2" style="color: var(--info);"></i>
-                                <h6 class="fw-bold mb-2" style="color: var(--text-dark);">System Settings</h6>
-                                <small style="color: var(--text-gray);">Advanced configuration and settings</small>
-                            </a>
-                        </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="chart-card h-100">
+                    <div class="ch-head">
+                        <i class="fas fa-circle-half-stroke ch-icon"></i>
+                        <span class="ch-title">{% if LANG == 'sw' %}Ufunikaji wa Tathmini{% else %}Assessment Coverage{% endif %}</span>
+                    </div>
+                    <div class="ch-body d-flex justify-content-center align-items-center" style="min-height:200px;">
+                        <canvas id="chartCoverage"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6 col-12">
+                <div class="chart-card h-100">
+                    <div class="ch-head">
+                        <i class="fas fa-chart-line ch-icon"></i>
+                        <span class="ch-title">{% if LANG == 'sw' %}Maingizo ya Logbuku — Siku 14{% else %}Logbook Entries — Last 14 Days{% endif %}</span>
+                    </div>
+                    <div class="ch-body" style="min-height:200px;">
+                        <canvas id="chartLogbook"></canvas>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Pending Applications -->
-    <div class="card mb-4" style="border: 1px solid var(--border); border-radius: 8px; background: var(--white);">
-        <div class="card-header bg-transparent border-0 pt-4 pb-0">
-            <div class="d-flex justify-content-between align-items-center flex-wrap">
-                <h4 class="fw-bold mb-0" style="color: var(--text-dark);">
-                    <i class="fas fa-clock me-2" style="color: var(--warning);"></i>
-                    Pending Applications 
-                    <span class="badge ms-2" style="background: var(--warning); color: white;">{{ pending_applications.count }}</span>
-                </h4>
-                <small style="color: var(--text-gray);">Requires immediate attention</small>
+
+        <div class="row g-3 mb-2">
+            <div class="col-12">
+                <div class="chart-card">
+                    <div class="ch-head">
+                        <i class="fas fa-chart-bar ch-icon"></i>
+                        <span class="ch-title">{% if LANG == 'sw' %}Wanafunzi kwa Mkoa (Mikoa 10 ya Juu){% else %}Student Teachers by Region (Top 10){% endif %}</span>
+                    </div>
+                    <div class="ch-body">
+                        <canvas id="chartRegions" style="max-height:220px;"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="card-body">
-            {% if pending_applications %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead style="background: var(--light);">
-                        <tr>
-                            <th class="border-0" style="color: var(--text-dark);">Student Teacher Details</th>
-                            <th class="border-0" style="color: var(--text-dark);">Subject & Partner School</th>
-                            <th class="border-0" style="color: var(--text-dark);">Application Date</th>
-                            <th class="border-0 text-end" style="color: var(--text-dark);">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for application in pending_applications %}
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar-sm me-3 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: var(--bold); color: white;">
-                                        {{ application.student.full_name|first|upper }}
+
+        <!-- ════ QUICK ACTIONS ════ -->
+        <div class="sec-hd">
+            <i class="fas fa-bolt sec-icon"></i>
+            <span class="sec-title">{% if LANG == 'sw' %}Vitendo vya Haraka{% else %}Quick Actions{% endif %}</span>
+            <div class="sec-line"></div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-xl-2 col-md-4 col-6">
+                <a href="{% url 'bulk_assign_assessors' %}" class="qa-btn">
+                    <div class="qa-icon" style="color:#0A2B5E;"><i class="fas fa-users-gear"></i></div>
+                    <span class="qa-label">{% if LANG == 'sw' %}Assign Wakaguzi{% else %}Bulk Assign{% endif %}</span>
+                    <span class="qa-sub">{% if LANG == 'sw' %}Wakaguzi wengi kwa wakati mmoja{% else %}Assign multiple assessors{% endif %}</span>
+                </a>
+            </div>
+            <div class="col-xl-2 col-md-4 col-6">
+                <a href="{% url 'manage_regions' %}" class="qa-btn">
+                    <div class="qa-icon" style="color:#C8900A;"><i class="fas fa-globe-africa"></i></div>
+                    <span class="qa-label">{% if LANG == 'sw' %}Simamia Mikoa{% else %}Manage Regions{% endif %}</span>
+                    <span class="qa-sub">{% if LANG == 'sw' %}Dhibiti uonekano wa mikoa{% else %}Region visibility & years{% endif %}</span>
+                </a>
+            </div>
+            <div class="col-xl-2 col-md-4 col-6">
+                <a href="{% url 'assessor_list' %}" class="qa-btn">
+                    <div class="qa-icon" style="color:#059669;"><i class="fas fa-chalkboard-user"></i></div>
+                    <span class="qa-label">{% if LANG == 'sw' %}Orodha ya Wakaguzi{% else %}View Assessors{% endif %}</span>
+                    <span class="qa-sub">{% if LANG == 'sw' %}Simamia wakaguzi wote{% else %}Manage field assessors{% endif %}</span>
+                </a>
+            </div>
+            <div class="col-xl-2 col-md-4 col-6">
+                <a href="{% url 'admin_report_pdf' %}" class="qa-btn">
+                    <div class="qa-icon" style="color:#e11d48;"><i class="fas fa-file-pdf"></i></div>
+                    <span class="qa-label">{% if LANG == 'sw' %}Ripoti PDF{% else %}Full Report PDF{% endif %}</span>
+                    <span class="qa-sub">{% if LANG == 'sw' %}Pakua ripoti kamili{% else %}Download full report{% endif %}</span>
+                </a>
+            </div>
+            <div class="col-xl-2 col-md-4 col-6">
+                <a href="{% url 'create_admin' %}" class="qa-btn">
+                    <div class="qa-icon" style="color:#4f46e5;"><i class="fas fa-user-plus"></i></div>
+                    <span class="qa-label">{% if LANG == 'sw' %}Ongeza Msimamizi{% else %}Create Admin{% endif %}</span>
+                    <span class="qa-sub">{% if LANG == 'sw' %}Msimamizi mpya{% else %}Add new admin user{% endif %}</span>
+                </a>
+            </div>
+            <div class="col-xl-2 col-md-4 col-6">
+                <a href="/admin/" class="qa-btn">
+                    <div class="qa-icon" style="color:#374151;"><i class="fas fa-cog"></i></div>
+                    <span class="qa-label">{% if LANG == 'sw' %}Mipangilio{% else %}System Settings{% endif %}</span>
+                    <span class="qa-sub">{% if LANG == 'sw' %}Usanidi wa hali ya juu{% else %}Advanced configuration{% endif %}</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- ════ PENDING APPLICATIONS ════ -->
+        <div class="sec-hd">
+            <i class="fas fa-clock sec-icon"></i>
+            <span class="sec-title">{% if LANG == 'sw' %}Maombi Yanayosubiri{% else %}Pending Applications{% endif %}</span>
+            <div class="sec-line"></div>
+        </div>
+
+        <div class="sec-card mb-4">
+            <div class="sc-header">
+                <span class="sc-hd-title">
+                    <i class="fas fa-inbox me-2"></i>
+                    {% if LANG == 'sw' %}Maombi Yanayosubiri Idhini{% else %}Applications Awaiting Approval{% endif %}
+                </span>
+                <span class="sc-hd-badge">{{ pending_applications.count }}</span>
+            </div>
+            <div class="p-0">
+                {% if pending_applications %}
+                <div class="table-responsive">
+                    <table class="table adm-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>{% if LANG == 'sw' %}Mwanafunzi Mwalimu{% else %}Student Teacher{% endif %}</th>
+                                <th>{% if LANG == 'sw' %}Somo & Shule{% else %}Subject & School{% endif %}</th>
+                                <th>{% if LANG == 'sw' %}Tarehe ya Ombi{% else %}Applied{% endif %}</th>
+                                <th class="text-end">{% if LANG == 'sw' %}Kitendo{% else %}Action{% endif %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for application in pending_applications %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="adm-avatar">{{ application.student.full_name|first|upper }}</div>
+                                        <div>
+                                            <div class="fw-bold" style="color:#0A2B5E; font-size:0.85rem;">{{ application.student.full_name }}</div>
+                                            <small style="color:#6b7280;">{{ application.student.user.email }}</small>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h6 class="mb-1 fw-bold" style="color: var(--text-dark);">{{ application.student.full_name }}</h6>
-                                        <small style="color: var(--text-gray);">{{ application.student.user.email }}</small>
-                                        <br>
-                                        <small style="color: var(--text-gray);">
-                                            <i class="fas fa-phone-alt me-1"></i>{{ application.student.phone_number|default:"No phone" }}
-                                        </small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-column">
-                                    <span class="badge mb-2 px-3 py-2 rounded-pill" style="background: var(--info); color: white;">
+                                </td>
+                                <td>
+                                    <span style="background:#dbeafe; color:#1e40af; border-radius:5px; padding:2px 10px; font-size:0.75rem; font-weight:700;">
                                         <i class="fas fa-book me-1"></i>{{ application.subject.name }}
                                     </span>
-                                    <small style="color: var(--text-gray);">
-                                        <i class="fas fa-school me-1"></i>
-                                        {{ application.school.name|truncatechars:30 }}
-                                    </small>
-                                    <small style="color: var(--text-gray);">
-                                        <i class="fas fa-location-dot me-1"></i>
-                                        {{ application.school.district.name }}, {{ application.school.district.region.name }}
-                                    </small>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="fw-semibold" style="color: var(--text-dark);">{{ application.application_date|date:"M d, Y" }}</span>
-                                <br>
-                                <small style="color: var(--text-gray);">{{ application.application_date|timesince }} ago</small>
-                            </td>
-                            <td class="text-end">
-                                <a href="{% url 'approve_application' application.id %}" 
-                                   class="btn" style="background: var(--bold); color: white; border: none; border-radius: 6px; padding: 8px 20px;">
-                                    <i class="fas fa-eye me-2"></i>Review
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center py-5">
-                <div class="mb-4">
-                    <i class="fas fa-check-circle fa-4x" style="color: var(--success); opacity: 0.25;"></i>
+                                    <div class="mt-1" style="font-size:0.78rem; color:#6b7280;">
+                                        <i class="fas fa-school me-1"></i>{{ application.school.name|truncatechars:32 }}
+                                    </div>
+                                    <div style="font-size:0.75rem; color:#9ca3af;">
+                                        <i class="fas fa-location-dot me-1"></i>{{ application.school.district.name }}, {{ application.school.district.region.name }}
+                                    </div>
+                                </td>
+                                <td style="color:#374151; font-size:0.82rem;">
+                                    <div class="fw-semibold">{{ application.application_date|date:"M d, Y" }}</div>
+                                    <small style="color:#9ca3af;">{{ application.application_date|timesince }} ago</small>
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'approve_application' application.id %}"
+                                       style="background:#0A2B5E; color:#fff; border:none; border-radius:6px; padding:6px 16px; font-size:0.8rem; font-weight:700; text-decoration:none; display:inline-block;">
+                                        <i class="fas fa-eye me-1"></i>{% if LANG == 'sw' %}Kagua{% else %}Review{% endif %}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                <h4 class="mb-3" style="color: var(--text-gray);">All Clear!</h4>
-                <p style="color: var(--text-gray);">No pending applications to review at this moment.</p>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-check-circle fa-3x mb-3" style="color:#d1fae5;"></i>
+                    <h5 style="color:#6b7280;">{% if LANG == 'sw' %}Hakuna Maombi Yanayosubiri!{% else %}No Pending Applications{% endif %}</h5>
+                    <p style="color:#9ca3af; font-size:0.85rem;">{% if LANG == 'sw' %}Maombi yote yamepewa maamuzi.{% else %}All applications have been reviewed.{% endif %}</p>
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
-    </div>
-    
-    <!-- Recent Assignments -->
-    {% if recent_assignments %}
-    <div class="card" style="border: 1px solid var(--border); border-radius: 8px; background: var(--white);">
-        <div class="card-header bg-transparent border-0 pt-4 pb-0">
-            <h4 class="fw-bold mb-0" style="color: var(--text-dark);">
-                <i class="fas fa-history me-2" style="color: var(--medium);"></i>
-                Recent Assessor Assignments
-            </h4>
+
+        <!-- ════ RECENT ASSIGNMENTS ════ -->
+        {% if recent_assignments %}
+        <div class="sec-hd">
+            <i class="fas fa-history sec-icon"></i>
+            <span class="sec-title">{% if LANG == 'sw' %}Uhusiano wa Hivi Karibuni{% else %}Recent Assessor Assignments{% endif %}</span>
+            <div class="sec-line"></div>
         </div>
-        <div class="card-body">
+
+        <div class="sec-card mb-4">
+            <div class="sc-header">
+                <span class="sc-hd-title">
+                    <i class="fas fa-link me-2"></i>
+                    {% if LANG == 'sw' %}Uhusiano wa Wakaguzi na Shule{% else %}Assessor–School Assignments{% endif %}
+                </span>
+                <span class="sc-hd-badge">{{ recent_assignments|length }}</span>
+            </div>
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead style="background: var(--light);">
+                <table class="table adm-table mb-0">
+                    <thead>
                         <tr>
-                            <th style="color: var(--text-dark);">Assessor</th>
-                            <th style="color: var(--text-dark);">Partner School</th>
-                            <th style="color: var(--text-dark);">Assignment Date</th>
-                            <th style="color: var(--text-dark);">Status</th>
+                            <th>{% if LANG == 'sw' %}Mkaguzi{% else %}Assessor{% endif %}</th>
+                            <th>{% if LANG == 'sw' %}Shule Washirika{% else %}Partner School{% endif %}</th>
+                            <th>{% if LANG == 'sw' %}Tarehe{% else %}Date{% endif %}</th>
+                            <th>{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for assignment in recent_assignments %}
                         <tr>
                             <td>
-                                <div>
-                                    <strong style="color: var(--text-dark);">{{ assignment.assessor.full_name }}</strong>
-                                    <br>
-                                    <small style="color: var(--text-gray);">{{ assignment.assessor.email }}</small>
-                                </div>
+                                <div class="fw-bold" style="color:#0A2B5E; font-size:0.85rem;">{{ assignment.assessor.full_name }}</div>
+                                <small style="color:#6b7280;">{{ assignment.assessor.email }}</small>
                             </td>
                             <td>
-                                <div>
-                                    <strong style="color: var(--text-dark);">{{ assignment.school.name }}</strong>
-                                    <br>
-                                    <small style="color: var(--text-gray);">{{ assignment.school.district.name }}</small>
-                                </div>
+                                <div class="fw-bold" style="color:#374151; font-size:0.85rem;">{{ assignment.school.name }}</div>
+                                <small style="color:#9ca3af;">{{ assignment.school.district.name }}</small>
                             </td>
-                            <td style="color: var(--text-gray);">{{ assignment.assessment_date|date:"M d, Y" }}</td>
+                            <td style="color:#6b7280; font-size:0.82rem;">{{ assignment.assessment_date|date:"M d, Y" }}</td>
                             <td>
                                 {% if assignment.is_completed %}
-                                <span class="badge rounded-pill" style="background: var(--success); color: white;">
-                                    <i class="fas fa-check me-1"></i>Completed
-                                </span>
+                                <span class="bst-approved"><i class="fas fa-check me-1"></i>{% if LANG == 'sw' %}Imekamilika{% else %}Completed{% endif %}</span>
                                 {% else %}
-                                <span class="badge rounded-pill" style="background: var(--warning); color: white;">
-                                    <i class="fas fa-spinner me-1"></i>Pending
-                                </span>
+                                <span class="bst-pending"><i class="fas fa-spinner me-1"></i>{% if LANG == 'sw' %}Inaendelea{% else %}Pending{% endif %}</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -352,62 +512,115 @@
                 </table>
             </div>
         </div>
-    </div>
-    {% endif %}
-</div>
+        {% endif %}
 
-<style>
-    /* Quick action button hover effect */
-    .quick-action-btn {
-        transition: all 0.3s ease;
-    }
-    
-    .quick-action-btn:hover {
-        border-color: var(--bold) !important;
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(10, 43, 94, 0.1);
-    }
-    
-    /* Table hover effect */
-    .table-hover tbody tr:hover {
-        background: var(--light);
-    }
-    
-    /* Card hover effect */
-    .card {
-        transition: all 0.3s ease;
-    }
-    
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
-    }
-    
-    /* Avatar styles */
-    .avatar-sm {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 18px;
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .display-6 {
-            font-size: 1.5rem;
+    </div><!-- /adm-body -->
+</div><!-- /adm-wrap -->
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    var appStatus = {{ chart_app_status_json|safe }};
+    var regions   = {{ chart_regions_json|safe }};
+    var logbook   = {{ chart_logbook_json|safe }};
+    var coverage  = {{ chart_coverage_json|safe }};
+
+    var navy    = '#0A2B5E';
+    var gold    = '#C8900A';
+    var green   = '#059669';
+    var rose    = '#e11d48';
+    var amber   = '#f59e0b';
+    var indigo  = '#4f46e5';
+
+    // Donut — Applications by status
+    new Chart(document.getElementById('chartAppStatus'), {
+        type: 'doughnut',
+        data: {
+            labels: appStatus.labels,
+            datasets: [{
+                data: appStatus.data,
+                backgroundColor: [green, amber, rose],
+                borderWidth: 3,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 11, font: { size: 11 } } } },
+            cutout: '62%'
         }
-        
-        .quick-action-btn {
-            padding: 15px 10px;
+    });
+
+    // Donut — Coverage
+    new Chart(document.getElementById('chartCoverage'), {
+        type: 'doughnut',
+        data: {
+            labels: coverage.labels,
+            datasets: [{
+                data: coverage.data,
+                backgroundColor: [navy, '#d1d9e8'],
+                borderWidth: 3,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 11, font: { size: 11 } } } },
+            cutout: '62%'
         }
-        
-        .table-responsive {
-            font-size: 0.85rem;
+    });
+
+    // Line — Logbook entries
+    new Chart(document.getElementById('chartLogbook'), {
+        type: 'line',
+        data: {
+            labels: logbook.labels,
+            datasets: [{
+                label: 'Entries',
+                data: logbook.data,
+                borderColor: gold,
+                backgroundColor: gold + '22',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 3,
+                pointBackgroundColor: gold,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: '#f0f4fa' } },
+                x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+            }
         }
-    }
-</style>
+    });
+
+    // Bar — Students by region
+    new Chart(document.getElementById('chartRegions'), {
+        type: 'bar',
+        data: {
+            labels: regions.labels,
+            datasets: [{
+                label: '{% if LANG == "sw" %}Wanafunzi{% else %}Students{% endif %}',
+                data: regions.data,
+                backgroundColor: navy + 'cc',
+                borderColor: navy,
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: '#f0f4fa' } },
+                x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+            }
+        }
+    });
+})();
+</script>
 {% endblock %}

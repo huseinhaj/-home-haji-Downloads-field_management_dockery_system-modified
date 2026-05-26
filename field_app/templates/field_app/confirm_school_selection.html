@@ -1,22 +1,22 @@
 {% extends 'field_app/base.html' %}
 {% block content %}
 
-<h2>Thibitisha Uchaguzi wa Shule</h2>
+<h2>{% if LANG == 'sw' %}Thibitisha Uchaguzi wa Shule{% else %}Confirm School Selection{% endif %}</h2>
 
-<p>Je, unathibitisha kuchagua shule hii?</p>
+<p>{% if LANG == 'sw' %}Je, unathibitisha kuchagua shule hii?{% else %}Do you confirm selecting this school?{% endif %}</p>
 
 <ul>
-    <li><strong>Jina la Shule:</strong> {{ school.name }}</li>
-    <li><strong>Wilaya:</strong> {{ school.district.name }}</li>
-    <li><strong>Mkoa:</strong> {{ school.district.region.name }}</li>
-    <li><strong>Viwanja vya wanafunzi:</strong> {{ school.current_students }} / {{ school.capacity }}</li>
+    <li><strong>{% if LANG == 'sw' %}Jina la Shule:{% else %}School Name:{% endif %}</strong> {{ school.name }}</li>
+    <li><strong>{% if LANG == 'sw' %}Wilaya:{% else %}District:{% endif %}</strong> {{ school.district.name }}</li>
+    <li><strong>{% if LANG == 'sw' %}Mkoa:{% else %}Region:{% endif %}</strong> {{ school.district.region.name }}</li>
+    <li><strong>{% if LANG == 'sw' %}Viwanja vya wanafunzi:{% else %}Student Capacity:{% endif %}</strong> {{ school.current_students }} / {{ school.capacity }}</li>
 </ul>
 
 <form method="post" action="{% url 'confirm_school_selection' district.id %}">
     {% csrf_token %}
     <input type="hidden" name="school_id" value="{{ school.id }}">
-    <button type="submit" name="confirm" class="btn btn-success">Thibitisha</button>
-    <button type="submit" name="cancel" class="btn btn-danger">Ghairi</button>
+    <button type="submit" name="confirm" class="btn btn-success">{% if LANG == 'sw' %}Thibitisha{% else %}Confirm{% endif %}</button>
+    <button type="submit" name="cancel" class="btn btn-danger">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
 </form>
 
 {% endblock %}

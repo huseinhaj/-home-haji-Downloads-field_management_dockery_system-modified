@@ -1,0 +1,128 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bodi ya Walimu — IMS</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--bold:#0A2B5E;--medium:#C8900A;--light:#EEF1F6;--white:#fff;--border:#CBD5E0;--text:#1A1A2E;--gray:#4A5568;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;display:flex;flex-direction:column;}
+.top-bar{background:var(--bold);padding:5px 0;text-align:center;font-size:11px;color:rgba(255,255,255,0.85);letter-spacing:1.5px;font-weight:600;text-transform:uppercase;border-bottom:2px solid var(--medium);}
+.gov-header{background:var(--bold);padding:14px 40px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--medium);box-shadow:0 2px 8px rgba(0,0,0,.18);}
+.coat{width:72px;height:72px;flex-shrink:0;}
+.coat img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));}
+.gov-titles{text-align:center;flex:1;line-height:1.4;}
+.gov-titles .t1{font-size:11px;color:rgba(255,255,255,.75);letter-spacing:2px;text-transform:uppercase;font-weight:500;}
+.gov-titles .t2{font-size:19px;color:var(--white);font-weight:700;margin:3px 0 2px;}
+.gov-titles .t3{font-size:12.5px;color:var(--medium);font-weight:500;}
+.spacer{width:72px;visibility:hidden;}
+.nav-stripe{background:var(--white);padding:0 40px;display:flex;align-items:center;border-bottom:2px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.nav-item{font-size:13px;color:var(--gray);padding:11px 18px;border-right:1px solid #E2E8F0;font-weight:500;text-decoration:none;display:flex;align-items:center;gap:7px;}
+.nav-item:first-child{border-left:1px solid #E2E8F0;}
+.nav-item.active{background:var(--bold);color:var(--white);font-weight:600;}
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 30px;}
+.panel{background:var(--white);border-radius:8px;width:100%;max-width:460px;border:1px solid var(--border);overflow:hidden;box-shadow:0 4px 16px rgba(10,43,94,.10);}
+.p-head{background:var(--bold);padding:16px 22px;display:flex;align-items:center;gap:12px;border-bottom:3px solid var(--medium);}
+.p-ico{width:42px;height:42px;background:var(--medium);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.p-ico i{font-size:18px;color:var(--white);}
+.p-head h2{font-size:17px;color:var(--white);font-weight:700;margin:0;}
+.p-head p{font-size:11.5px;color:rgba(255,255,255,.75);margin:2px 0 0;}
+.p-body{padding:26px 26px 22px;}
+.field-lbl{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;}
+.field-wrap{margin-bottom:18px;}
+.inp-row{position:relative;display:flex;align-items:center;}
+.inp-ico{position:absolute;left:11px;display:flex;align-items:center;pointer-events:none;}
+.inp-ico i{font-size:13px;color:#90A0B7;}
+.inp{width:100%;padding:11px 11px 11px 35px;font-size:13.5px;color:var(--text);border:1.5px solid var(--border);border-radius:6px;background:#FAFBFD;outline:none;transition:all .15s;}
+.inp:focus{border-color:var(--bold);background:var(--white);box-shadow:0 0 0 3px rgba(10,43,94,.09);}
+.eye-btn{position:absolute;right:11px;background:none;border:none;cursor:pointer;color:#90A0B7;font-size:14px;}
+.eye-btn:hover{color:var(--bold);}
+.btn-sign{width:100%;padding:12px;background:var(--bold);color:var(--white);border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.8px;display:flex;align-items:center;justify-content:center;gap:9px;font-family:inherit;transition:all .2s;}
+.btn-sign:hover{background:#0C3570;transform:translateY(-1px);box-shadow:0 4px 12px rgba(10,43,94,.25);}
+.err{padding:10px 13px;border-radius:6px;font-size:12.5px;margin-bottom:16px;display:flex;align-items:center;gap:8px;background:#FEE2E2;color:#B91C1C;border-left:3px solid #DC2626;}
+.p-foot{background:#F7F9FC;border-top:1px solid #E2E8F0;padding:11px 22px;display:flex;align-items:center;gap:8px;}
+.p-foot i{font-size:12px;color:#2E7D32;}
+.p-foot span{font-size:11px;color:#2E7D32;}
+.gov-footer{background:var(--bold);padding:11px 40px;display:flex;align-items:center;justify-content:space-between;border-top:3px solid var(--medium);flex-wrap:wrap;gap:8px;}
+.gov-footer p{font-size:11px;color:rgba(255,255,255,.65);margin:0;}
+.gov-footer .ver{font-size:11px;color:var(--medium);font-weight:700;}
+@media(max-width:768px){.gov-header{padding:12px 20px;}.coat{width:54px;height:54px;}.spacer{width:54px;}.gov-titles .t2{font-size:15px;}.nav-stripe{padding:0 15px;overflow-x:auto;}.nav-item{font-size:12px;padding:9px 13px;white-space:nowrap;}.main{padding:25px 16px;}}
+@media(max-width:480px){.p-body{padding:18px;}.gov-header{flex-direction:column;text-align:center;}.spacer{display:none;}}
+</style>
+</head>
+<body>
+
+<div class="top-bar"><i class="fas fa-globe" style="margin-right:6px;"></i>United Republic of Tanzania &nbsp;|&nbsp; Jamhuri ya Muungano wa Tanzania</div>
+
+<div class="gov-header">
+  <div class="coat"><img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Nembo ya Tanzania"></div>
+  <div class="gov-titles">
+    <div class="t1">United Republic of Tanzania — Serikali ya Jamhuri ya Muungano</div>
+    <div class="t2">Wizara ya Elimu, Sayansi na Teknolojia</div>
+    <div class="t3">Internship Management System (IMS) &mdash; Bodi ya Walimu</div>
+  </div>
+  <div class="spacer"></div>
+</div>
+
+<div class="nav-stripe">
+  <span class="nav-item active"><i class="fas fa-users"></i> Bodi ya Walimu</span>
+  <span class="nav-item"><i class="fas fa-info-circle"></i> Kuhusu IMS</span>
+  <span class="nav-item"><i class="fas fa-question-circle"></i> Msaada</span>
+</div>
+
+<div class="main">
+  <div class="panel">
+    <div class="p-head">
+      <div class="p-ico"><i class="fas fa-users"></i></div>
+      <div>
+        <h2>Ingia — Bodi ya Walimu</h2>
+        <p>Mfumo wa Ufuatiliaji wa Walimu Wanafunzi</p>
+      </div>
+    </div>
+    <div class="p-body">
+      {% if messages %}
+        {% for msg in messages %}
+        <div class="err"><i class="fas fa-exclamation-circle"></i> {{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+
+      <form method="post" action="{% url 'board_login' %}">
+        {% csrf_token %}
+        <div class="field-wrap">
+          <label class="field-lbl">Barua Pepe</label>
+          <div class="inp-row">
+            <div class="inp-ico"><i class="fas fa-envelope"></i></div>
+            <input type="email" name="email" class="inp" placeholder="barua@pepe.yako" required autofocus>
+          </div>
+        </div>
+        <div class="field-wrap">
+          <label class="field-lbl">Nywila</label>
+          <div class="inp-row">
+            <div class="inp-ico"><i class="fas fa-lock"></i></div>
+            <input type="password" name="password" id="pwd" class="inp" placeholder="Weka nywila yako" style="padding-right:38px;" required>
+            <button type="button" class="eye-btn" onclick="togglePwd()"><i class="fas fa-eye" id="eyeIco"></i></button>
+          </div>
+        </div>
+        <button type="submit" class="btn-sign"><i class="fas fa-sign-in-alt"></i> INGIA KAMA MJUMBE WA BODI</button>
+      </form>
+    </div>
+    <div class="p-foot">
+      <i class="fas fa-shield-alt"></i>
+      <span>Mfumo Salama — Viwango vya IT vya Serikali ya Tanzania</span>
+    </div>
+  </div>
+</div>
+
+<div class="gov-footer">
+  <p>&copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Jamhuri ya Muungano wa Tanzania.</p>
+  <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0 | Bodi ya Walimu</span>
+</div>
+
+<script>
+function togglePwd(){var i=document.getElementById('pwd'),c=document.getElementById('eyeIco');if(i.type==='password'){i.type='text';c.classList.replace('fa-eye','fa-eye-slash');}else{i.type='password';c.classList.replace('fa-eye-slash','fa-eye');}}
+</script>
+</body>
+</html>

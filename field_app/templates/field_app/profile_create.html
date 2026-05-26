@@ -1,10 +1,10 @@
 {% extends 'field_app/base.html' %}
 
 {% block content %}
-<h2>Create Your Profile</h2>
+<h2>{% if LANG == 'sw' %}Tengeneza Wasifu Wako{% else %}Create Your Profile{% endif %}</h2>
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Save Profile</button>
+    <button type="submit" class="btn btn-primary">{% if LANG == 'sw' %}Hifadhi Wasifu{% else %}Save Profile{% endif %}</button>
 </form>
 {% endblock %}

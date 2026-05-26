@@ -2,7 +2,7 @@
 {% load static %}
 {% load widget_tweaks %}
 
-{% block title %}Generate Lesson Plan{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Tengeneza Mpango wa Somo{% else %}Generate Lesson Plan{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -215,9 +215,9 @@
             <div class="card lesson-card">
                 <div class="card-header">
                     <h3 class="mb-1">
-                        <i class="fas fa-chalkboard-teacher me-2"></i>Lesson Plan Generator
+                        <i class="fas fa-chalkboard-teacher me-2"></i>{% if LANG == 'sw' %}Mtengenezaji wa Mpango wa Somo{% else %}Lesson Plan Generator{% endif %}
                     </h3>
-                    <small>Create comprehensive lesson plans aligned with TIE Tanzania standards</small>
+                    <small>{% if LANG == 'sw' %}Unda mipango ya masomo ya kina inayofuata viwango vya TIE Tanzania{% else %}Create comprehensive lesson plans aligned with TIE Tanzania standards{% endif %}</small>
                 </div>
                 <div class="card-body p-4">
                     
@@ -227,28 +227,28 @@
                         <!-- Basic Information -->
                         <div class="form-section">
                             <div class="form-section-title">
-                                <i class="fas fa-info-circle me-2"></i>Lesson Information
+                                <i class="fas fa-info-circle me-2"></i>{% if LANG == 'sw' %}Taarifa za Somo{% else %}Lesson Information{% endif %}
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">Education Level *</label>
+                                    <label class="form-label">{% if LANG == 'sw' %}Kiwango cha Elimu *{% else %}Education Level *{% endif %}</label>
                                     <select id="education_level" class="form-select" required>
-                                        <option value="">Select Education Level</option>
+                                        <option value="">{% if LANG == 'sw' %}Chagua Kiwango cha Elimu{% else %}Select Education Level{% endif %}</option>
                                         {% for level in education_levels %}
                                         <option value="{{ level.id }}" data-level="{{ level.name }}">{{ level.name }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">Class *</label>
+                                    <label class="form-label">{% if LANG == 'sw' %}Darasa *{% else %}Class *{% endif %}</label>
                                     <select id="class_level" class="form-select" required disabled>
-                                        <option value="">Select Education Level first</option>
+                                        <option value="">{% if LANG == 'sw' %}Chagua Kiwango cha Elimu kwanza{% else %}Select Education Level first{% endif %}</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">Subject *</label>
+                                    <label class="form-label">{% if LANG == 'sw' %}Somo *{% else %}Subject *{% endif %}</label>
                                     <select id="subject" class="form-select" required>
-                                        <option value="">Select Subject</option>
+                                        <option value="">{% if LANG == 'sw' %}Chagua Somo{% else %}Select Subject{% endif %}</option>
                                         {% for subject in subjects %}
                                         <option value="{{ subject.id }}" data-name="{{ subject.name }}" data-level="{{ subject.level }}">{{ subject.name }} ({{ subject.get_level_display }})</option>
                                         {% endfor %}
@@ -257,107 +257,107 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Topic *</label>
-                                    <input type="text" id="topic" class="form-control" placeholder="e.g., Logarithm" required>
+                                    <label class="form-label">{% if LANG == 'sw' %}Mada *{% else %}Topic *{% endif %}</label>
+                                    <input type="text" id="topic" class="form-control" placeholder="{% if LANG == 'sw' %}mfano, Logarithm{% else %}e.g., Logarithm{% endif %}" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Subtopic</label>
-                                    <input type="text" id="subtopic" class="form-control" placeholder="e.g., Introduction to algorithm">
+                                    <label class="form-label">{% if LANG == 'sw' %}Mada Ndogo{% else %}Subtopic{% endif %}</label>
+                                    <input type="text" id="subtopic" class="form-control" placeholder="{% if LANG == 'sw' %}mfano, Utangulizi wa algorithm{% else %}e.g., Introduction to algorithm{% endif %}">
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Schedule -->
                         <div class="form-section">
                             <div class="form-section-title">
-                                <i class="fas fa-clock me-2"></i>Schedule Information
+                                <i class="fas fa-clock me-2"></i>{% if LANG == 'sw' %}Taarifa za Ratiba{% else %}Schedule Information{% endif %}
                             </div>
                             <div class="row">
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label">Term</label>
+                                    <label class="form-label">{% if LANG == 'sw' %}Muhula{% else %}Term{% endif %}</label>
                                     <select id="term" class="form-select">
-                                        <option value="I">Term I</option>
-                                        <option value="II">Term II</option>
-                                        <option value="III">Term III</option>
+                                        <option value="I">{% if LANG == 'sw' %}Muhula wa I{% else %}Term I{% endif %}</option>
+                                        <option value="II">{% if LANG == 'sw' %}Muhula wa II{% else %}Term II{% endif %}</option>
+                                        <option value="III">{% if LANG == 'sw' %}Muhula wa III{% else %}Term III{% endif %}</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label">Year</label>
+                                    <label class="form-label">{% if LANG == 'sw' %}Mwaka{% else %}Year{% endif %}</label>
                                     <input type="number" id="year" class="form-control" value="2026">
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label">Duration (minutes)</label>
+                                    <label class="form-label">{% if LANG == 'sw' %}Muda (dakika){% else %}Duration (minutes){% endif %}</label>
                                     <input type="number" id="duration" class="form-control" value="40">
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label">Teacher Name</label>
+                                    <label class="form-label">{% if LANG == 'sw' %}Jina la Mwalimu{% else %}Teacher Name{% endif %}</label>
                                     <input type="text" id="teacher_name" class="form-control" value="{{ request.user.email }}">
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Students -->
                         <div class="form-section">
                             <div class="form-section-title">
-                                <i class="fas fa-users me-2"></i>Student Information
+                                <i class="fas fa-users me-2"></i>{% if LANG == 'sw' %}Taarifa za Wanafunzi{% else %}Student Information{% endif %}
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Total Students</label>
-                                    <input type="number" id="total_students" class="form-control" placeholder="e.g., 52">
+                                    <label class="form-label">{% if LANG == 'sw' %}Jumla ya Wanafunzi{% else %}Total Students{% endif %}</label>
+                                    <input type="number" id="total_students" class="form-control" placeholder="{% if LANG == 'sw' %}mfano, 52{% else %}e.g., 52{% endif %}">
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Present Students</label>
-                                    <input type="number" id="present_students" class="form-control" placeholder="e.g., 50">
+                                    <label class="form-label">{% if LANG == 'sw' %}Wanafunzi Waliopo{% else %}Present Students{% endif %}</label>
+                                    <input type="number" id="present_students" class="form-control" placeholder="{% if LANG == 'sw' %}mfano, 50{% else %}e.g., 50{% endif %}">
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Learning Objectives & Methods -->
                         <div class="form-section">
                             <div class="form-section-title">
-                                <i class="fas fa-bullseye me-2"></i>Learning Objectives & Methods
+                                <i class="fas fa-bullseye me-2"></i>{% if LANG == 'sw' %}Malengo ya Kujifunza na Mbinu{% else %}Learning Objectives & Methods{% endif %}
                             </div>
                             <div class="row">
                                 <div class="col-12 mb-3">
-                                    <label class="form-label">Learning Objectives</label>
-                                    <textarea id="learning_objectives" class="form-control" rows="3" placeholder="Enter learning objectives (one per line)"></textarea>
-                                    <small class="text-muted">e.g., Students to understand algorithm in depth</small>
+                                    <label class="form-label">{% if LANG == 'sw' %}Malengo ya Kujifunza{% else %}Learning Objectives{% endif %}</label>
+                                    <textarea id="learning_objectives" class="form-control" rows="3" placeholder="{% if LANG == 'sw' %}Ingiza malengo ya kujifunza (moja kwa kila mstari){% else %}Enter learning objectives (one per line){% endif %}"></textarea>
+                                    <small class="text-muted">{% if LANG == 'sw' %}mfano, Wanafunzi waelewe algorithm kwa kina{% else %}e.g., Students to understand algorithm in depth{% endif %}</small>
                                 </div>
                                 <div class="col-12 mb-3">
-                                    <label class="form-label">Teaching Methods</label>
-                                    <textarea id="teaching_methods" class="form-control" rows="2" placeholder="e.g., Lecture/Direct Instruction, Group Discussion"></textarea>
+                                    <label class="form-label">{% if LANG == 'sw' %}Mbinu za Kufundishia{% else %}Teaching Methods{% endif %}</label>
+                                    <textarea id="teaching_methods" class="form-control" rows="2" placeholder="{% if LANG == 'sw' %}mfano, Mihadhara/Maelekezo ya Moja kwa Moja, Majadiliano ya Kikundi{% else %}e.g., Lecture/Direct Instruction, Group Discussion{% endif %}"></textarea>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Reference -->
                         <div class="form-section">
                             <div class="form-section-title">
-                                <i class="fas fa-book me-2"></i>Reference Source
+                                <i class="fas fa-book me-2"></i>{% if LANG == 'sw' %}Chanzo cha Marejeleo{% else %}Reference Source{% endif %}
                             </div>
                             <div class="row">
                                 <div class="col-12 mb-3">
-                                    <label class="form-label">Reference Source (Optional)</label>
-                                    <input type="text" id="reference_source" class="form-control" placeholder="e.g., CURRICULUM FOR SECONDARY EDUCATION FORM I-IV">
+                                    <label class="form-label">{% if LANG == 'sw' %}Chanzo cha Marejeleo (Si Lazima){% else %}Reference Source (Optional){% endif %}</label>
+                                    <input type="text" id="reference_source" class="form-control" placeholder="{% if LANG == 'sw' %}mfano, MTAALA WA ELIMU YA SEKONDARI FOMU I-IV{% else %}e.g., CURRICULUM FOR SECONDARY EDUCATION FORM I-IV{% endif %}">
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Submit Button -->
                         <div class="text-center mt-4">
                             <button type="submit" id="generateBtn" class="btn btn-generate btn-lg px-5 py-3">
-                                <i class="fas fa-magic me-2"></i> Generate Lesson Plan
+                                <i class="fas fa-magic me-2"></i> {% if LANG == 'sw' %}Tengeneza Mpango wa Somo{% else %}Generate Lesson Plan{% endif %}
                             </button>
                         </div>
                     </form>
-                    
+
                     <!-- Loading -->
                     <div id="loading" class="text-center mt-4" style="display: none;">
                         <div class="py-4">
                             <div class="loading-spinner mb-3"></div>
-                            <p class="mb-1">Generating lesson plan with AI... Please wait</p>
-                            <small>This may take 15-30 seconds</small>
+                            <p class="mb-1">{% if LANG == 'sw' %}Inaunda mpango wa somo kwa AI... Tafadhali subiri{% else %}Generating lesson plan with AI... Please wait{% endif %}</p>
+                            <small>{% if LANG == 'sw' %}Hii inaweza kuchukua sekunde 15-30{% else %}This may take 15-30 seconds{% endif %}</small>
                         </div>
                     </div>
                     
@@ -395,24 +395,24 @@
                 fetch(`/get-classes/?level_id=${levelId}`)
                     .then(response => response.json())
                     .then(data => {
-                        classSelect.innerHTML = '<option value="">Select Class</option>';
+                        classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Darasa{% else %}Select Class{% endif %}</option>';
                         if (data.length > 0) {
                             data.forEach(cls => {
                                 classSelect.innerHTML += `<option value="${cls.id}" data-name="${cls.name}">${cls.name}</option>`;
                             });
                             classSelect.disabled = false;
                         } else {
-                            classSelect.innerHTML = '<option value="">No classes available</option>';
+                            classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Hakuna madarasa yanayopatikana{% else %}No classes available{% endif %}</option>';
                             classSelect.disabled = true;
                         }
                     })
                     .catch(error => {
                         console.error('Error fetching classes:', error);
-                        classSelect.innerHTML = '<option value="">Error loading classes</option>';
+                        classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Hitilafu ya kupakia madarasa{% else %}Error loading classes{% endif %}</option>';
                         classSelect.disabled = true;
                     });
             } else {
-                classSelect.innerHTML = '<option value="">Select Education Level first</option>';
+                classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Kiwango cha Elimu kwanza{% else %}Select Education Level first{% endif %}</option>';
                 classSelect.disabled = true;
             }
         });
@@ -441,19 +441,19 @@
             
             // Validate required fields
             if (!educationLevelSelect.value) {
-                alert('Please select Education Level');
+                alert('{% if LANG == "sw" %}Tafadhali chagua Kiwango cha Elimu{% else %}Please select Education Level{% endif %}');
                 return;
             }
             if (!classSelect.value) {
-                alert('Please select Class');
+                alert('{% if LANG == "sw" %}Tafadhali chagua Darasa{% else %}Please select Class{% endif %}');
                 return;
             }
             if (!subjectSelect.value) {
-                alert('Please select Subject');
+                alert('{% if LANG == "sw" %}Tafadhali chagua Somo{% else %}Please select Subject{% endif %}');
                 return;
             }
             if (!topic) {
-                alert('Please enter Topic');
+                alert('{% if LANG == "sw" %}Tafadhali ingiza Mada{% else %}Please enter Topic{% endif %}');
                 return;
             }
             
@@ -476,7 +476,7 @@
             
             // UI updates
             generateBtn.disabled = true;
-            generateBtn.innerHTML = '<span class="loading-spinner me-2"></span> Generating...';
+            generateBtn.innerHTML = '<span class="loading-spinner me-2"></span> {% if LANG == "sw" %}Inaunda...{% else %}Generating...{% endif %}';
             loadingDiv.style.display = 'block';
             resultDiv.style.display = 'none';
             
@@ -499,7 +499,7 @@
                     resultDiv.innerHTML = `
                         <div class="alert alert-danger">
                             <i class="fas fa-exclamation-triangle me-2"></i>
-                            Generation failed: ${data.error || 'Please try again.'}
+                            {% if LANG == "sw" %}Imeshindwa kuunda:{% else %}Generation failed:{% endif %} ${data.error || '{% if LANG == "sw" %}Tafadhali jaribu tena.{% else %}Please try again.{% endif %}'}
                         </div>
                     `;
                     resultDiv.style.display = 'block';
@@ -510,13 +510,13 @@
                 resultDiv.innerHTML = `
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        Network error: ${error.message}
+                        {% if LANG == "sw" %}Hitilafu ya mtandao:{% else %}Network error:{% endif %} ${error.message}
                     </div>
                 `;
                 resultDiv.style.display = 'block';
             } finally {
                 generateBtn.disabled = false;
-                generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i> Generate Lesson Plan';
+                generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i> {% if LANG == "sw" %}Tengeneza Mpango wa Somo{% else %}Generate Lesson Plan{% endif %}';
             }
         });
         
@@ -528,7 +528,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
                         <div>
                             <i class="fas fa-check-circle me-2"></i>
-                            <strong>Lesson Plan Generated Successfully!</strong>
+                            <strong>{% if LANG == "sw" %}Mpango wa Somo Umetengenezwa!{% else %}Lesson Plan Generated Successfully!{% endif %}</strong>
                             <small class="d-block">${formData.subject} - ${formData.topic} (${formData.class_name})</small>
                         </div>
                         <div class="action-buttons mt-2 mt-md-0">
@@ -544,62 +544,62 @@
                         <!-- Lesson Info -->
                         <div class="row mb-4">
                             <div class="col-md-6">
-                                <p><strong>Teacher:</strong> ${formData.teacher_name}</p>
-                                <p><strong>Subject:</strong> ${formData.subject} | <strong>Class:</strong> ${formData.class_name}</p>
-                                <p><strong>Term:</strong> ${formData.term} | <strong>Year:</strong> ${formData.year}</p>
+                                <p><strong>{% if LANG == "sw" %}Mwalimu:{% else %}Teacher:{% endif %}</strong> ${formData.teacher_name}</p>
+                                <p><strong>{% if LANG == "sw" %}Somo:{% else %}Subject:{% endif %}</strong> ${formData.subject} | <strong>{% if LANG == "sw" %}Darasa:{% else %}Class:{% endif %}</strong> ${formData.class_name}</p>
+                                <p><strong>{% if LANG == "sw" %}Muhula:{% else %}Term:{% endif %}</strong> ${formData.term} | <strong>{% if LANG == "sw" %}Mwaka:{% else %}Year:{% endif %}</strong> ${formData.year}</p>
                             </div>
                             <div class="col-md-6">
-                                <p><strong>Topic:</strong> ${formData.topic}</p>
-                                <p><strong>Subtopic:</strong> ${formData.subtopic || 'N/A'}</p>
-                                <p><strong>Duration:</strong> ${formData.duration} minutes</p>
-                                <p><strong>Date:</strong> ${date}</p>
+                                <p><strong>{% if LANG == "sw" %}Mada:{% else %}Topic:{% endif %}</strong> ${formData.topic}</p>
+                                <p><strong>{% if LANG == "sw" %}Mada Ndogo:{% else %}Subtopic:{% endif %}</strong> ${formData.subtopic || 'N/A'}</p>
+                                <p><strong>{% if LANG == "sw" %}Muda:{% else %}Duration:{% endif %}</strong> ${formData.duration} {% if LANG == "sw" %}dakika{% else %}minutes{% endif %}</p>
+                                <p><strong>{% if LANG == "sw" %}Tarehe:{% else %}Date:{% endif %}</strong> ${date}</p>
                             </div>
                         </div>
                         
                         <!-- Competences -->
                         <div class="mb-4">
-                            <h6 class="fw-bold" style="color: var(--bold);">COMPETENCES</h6>
-                            <p><strong>Main Competence:</strong> ${lesson.main_competence || 'N/A'}</p>
-                            <p><strong>Specific Competence:</strong> ${lesson.specific_competence || 'N/A'}</p>
-                            <p><strong>Previous Knowledge:</strong> ${lesson.previous_knowledge || 'N/A'}</p>
+                            <h6 class="fw-bold" style="color: var(--bold);">{% if LANG == "sw" %}UWEZO{% else %}COMPETENCES{% endif %}</h6>
+                            <p><strong>{% if LANG == "sw" %}Uwezo Mkuu:{% else %}Main Competence:{% endif %}</strong> ${lesson.main_competence || 'N/A'}</p>
+                            <p><strong>{% if LANG == "sw" %}Uwezo Maalum:{% else %}Specific Competence:{% endif %}</strong> ${lesson.specific_competence || 'N/A'}</p>
+                            <p><strong>{% if LANG == "sw" %}Maarifa ya Awali:{% else %}Previous Knowledge:{% endif %}</strong> ${lesson.previous_knowledge || 'N/A'}</p>
                         </div>
-                        
+
                         <!-- Learning Objectives -->
                         <div class="mb-4">
-                            <h6 class="fw-bold" style="color: var(--bold);">LEARNING OBJECTIVES</h6>
+                            <h6 class="fw-bold" style="color: var(--bold);">{% if LANG == "sw" %}MALENGO YA KUJIFUNZA{% else %}LEARNING OBJECTIVES{% endif %}</h6>
                             <ul>
                                 ${(lesson.learning_objectives || []).map(obj => `<li>${obj}</li>`).join('')}
                             </ul>
                         </div>
-                        
+
                         <!-- Teaching Methods -->
                         <div class="mb-4">
-                            <h6 class="fw-bold" style="color: var(--bold);">TEACHING METHODS</h6>
+                            <h6 class="fw-bold" style="color: var(--bold);">{% if LANG == "sw" %}MBINU ZA KUFUNDISHIA{% else %}TEACHING METHODS{% endif %}</h6>
                             <ul>
                                 ${(lesson.teaching_methods || []).map(m => `<li>${m}</li>`).join('')}
                             </ul>
                         </div>
-                        
+
                         <!-- Resources -->
                         <div class="mb-4">
-                            <h6 class="fw-bold" style="color: var(--bold);">TEACHING RESOURCES</h6>
+                            <h6 class="fw-bold" style="color: var(--bold);">{% if LANG == "sw" %}VIFAA VYA KUFUNDISHIA{% else %}TEACHING RESOURCES{% endif %}</h6>
                             <ul>
                                 ${(lesson.teaching_resources || []).map(r => `<li>${r}</li>`).join('')}
                             </ul>
                         </div>
-                        
+
                         <!-- Lesson Development -->
                         <div class="mb-4">
-                            <h6 class="fw-bold" style="color: var(--bold);">LESSON DEVELOPMENT</h6>
+                            <h6 class="fw-bold" style="color: var(--bold);">{% if LANG == "sw" %}MAENDELEO YA SOMO{% else %}LESSON DEVELOPMENT{% endif %}</h6>
                             <div class="lesson-development-table">
                                 <table class="table table-bordered">
                                     <thead>
                                         <tr>
-                                            <th>Time</th>
-                                            <th>Stage</th>
-                                            <th>Teacher Activities</th>
-                                            <th>Student Activities</th>
-                                            <th>Assessment Criteria</th>
+                                            <th>{% if LANG == "sw" %}Muda{% else %}Time{% endif %}</th>
+                                            <th>{% if LANG == "sw" %}Hatua{% else %}Stage{% endif %}</th>
+                                            <th>{% if LANG == "sw" %}Shughuli za Mwalimu{% else %}Teacher Activities{% endif %}</th>
+                                            <th>{% if LANG == "sw" %}Shughuli za Mwanafunzi{% else %}Student Activities{% endif %}</th>
+                                            <th>{% if LANG == "sw" %}Vigezo vya Tathmini{% else %}Assessment Criteria{% endif %}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -616,16 +616,16 @@
                                 </table>
                             </div>
                         </div>
-                        
+
                         <!-- Remarks -->
                         <div class="mb-3">
-                            <h6 class="fw-bold" style="color: var(--bold);">REMARKS</h6>
-                            <p>${lesson.remarks || 'Encourage student participation'}</p>
+                            <h6 class="fw-bold" style="color: var(--bold);">{% if LANG == "sw" %}MAONI{% else %}REMARKS{% endif %}</h6>
+                            <p>${lesson.remarks || '{% if LANG == "sw" %}Wahimize wanafunzi kushiriki{% else %}Encourage student participation{% endif %}'}</p>
                         </div>
-                        
+
                         <div class="text-muted small mt-3 pt-3 border-top">
                             <i class="fas fa-robot me-1"></i>
-                            Generated by AI Lesson Plan System • ${date}
+                            {% if LANG == "sw" %}Imetengenezwa na Mfumo wa AI wa Mpango wa Somo{% else %}Generated by AI Lesson Plan System{% endif %} • ${date}
                         </div>
                     </div>
                 </div>
@@ -637,11 +637,11 @@
         }
         
         window.downloadLessonPDF = function() {
-            alert('PDF download functionality will be implemented soon.');
+            alert('{% if LANG == "sw" %}Utendaji wa kupakua PDF utatekelezwa hivi karibuni.{% else %}PDF download functionality will be implemented soon.{% endif %}');
         };
-        
+
         window.exportLessonToWord = function() {
-            alert('Word export functionality will be implemented soon.');
+            alert('{% if LANG == "sw" %}Utendaji wa kuhamisha Word utatekelezwa hivi karibuni.{% else %}Word export functionality will be implemented soon.{% endif %}');
         };
     });
 </script>

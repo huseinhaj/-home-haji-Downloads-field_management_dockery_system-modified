@@ -1,5 +1,5 @@
 {% extends 'field_app/base.html' %}
-{% block title %}Badili Shule - Field Placement System{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Badili Shule{% else %}Change School{% endif %} - Internship Management System{% endblock %}
 {% block content %}
 <style>
     :root {
@@ -198,18 +198,18 @@
             <div class="premium-card p-4 mb-4">
                 <div class="text-center">
                     <h2 style="color: var(--bold);">
-                        <i class="fas fa-exchange-alt me-2" style="color: var(--medium);"></i>Badili Shule
+                        <i class="fas fa-exchange-alt me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Badili Shule{% else %}Change School{% endif %}
                     </h2>
                     
                     {% if can_change %}
                     <div class="alert-success-custom mt-3 p-3">
-                        <strong>✅ Unaweza Kubadili Shule!</strong><br>
-                        <span>Siku zilizosalia: {{ remaining_days }} | Nafasi zilizosalia: {{ remaining_changes }}</span>
+                        <strong>✅ {% if LANG == 'sw' %}Unaweza Kubadili Shule!{% else %}You Can Change School!{% endif %}</strong><br>
+                        <span>{% if LANG == 'sw' %}Siku zilizosalia: {{ remaining_days }} | Nafasi zilizosalia: {{ remaining_changes }}{% else %}Days remaining: {{ remaining_days }} | Changes remaining: {{ remaining_changes }}{% endif %}</span>
                     </div>
                     {% else %}
                     <div class="alert-danger-custom mt-3 p-3">
-                        <strong>❌ HUWEZI KUBADILI SHULE!</strong><br>
-                        Muda wako wa wiki moja umeisha
+                        <strong>❌ {% if LANG == 'sw' %}HUWEZI KUBADILI SHULE!{% else %}YOU CANNOT CHANGE SCHOOL!{% endif %}</strong><br>
+                        {% if LANG == 'sw' %}Muda wako wa wiki moja umeisha{% else %}Your one-week change period has expired{% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -224,7 +224,7 @@
                         </div>
                     </div>
                     <div>
-                        <small class="text-muted">Shule Yako ya Sasa</small>
+                        <small class="text-muted">{% if LANG == 'sw' %}Shule Yako ya Sasa{% else %}Your Current School{% endif %}</small>
                         <h4 style="color: var(--bold);">{{ current_school.name }}</h4>
                         <small class="text-muted">
                             {{ current_school.district.name }}, {{ current_school.district.region.name }}
@@ -239,10 +239,10 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">
-                            <i class="fas fa-map-marker-alt me-1" style="color: var(--medium);"></i>Wilaya
+                            <i class="fas fa-map-marker-alt me-1" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Wilaya{% else %}District{% endif %}
                         </label>
                         <select id="districtSelect" class="form-select">
-                            <option value="">-- Chagua Wilaya --</option>
+                            <option value="">-- {% if LANG == 'sw' %}Chagua Wilaya{% else %}Select District{% endif %} --</option>
                             {% for district in districts %}
                             <option value="{{ district.id }}">{{ district.name }}</option>
                             {% endfor %}
@@ -251,7 +251,7 @@
                     
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold">
-                            <i class="fas fa-chalkboard me-1" style="color: var(--medium);"></i>Kiwango
+                            <i class="fas fa-chalkboard me-1" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Kiwango{% else %}Level{% endif %}
                         </label>
                         <select id="levelSelect" class="form-select">
                             <option value="Secondary">Secondary</option>
@@ -262,21 +262,21 @@
                     <div class="col-md-2 mb-3">
                         <label class="form-label">&nbsp;</label>
                         <button id="searchBtn" class="btn tz-btn w-100">
-                            <i class="fas fa-search me-1"></i>Tafuta
+                            <i class="fas fa-search me-1"></i>{% if LANG == 'sw' %}Tafuta{% else %}Search{% endif %}
                         </button>
                     </div>
                 </div>
                 
                 <div class="mt-2">
                     <input type="text" id="searchInput" class="form-control" 
-                           placeholder="🔍 Tafuta shule kwa jina...">
+                           placeholder="{% if LANG == 'sw' %}🔍 Tafuta shule kwa jina...{% else %}🔍 Search school by name...{% endif %}">
                 </div>
             </div>
             
             <!-- Schools List (Dynamic) -->
             <div class="premium-card p-4">
                 <h5 class="mb-3" style="color: var(--text-dark);">
-                    <i class="fas fa-school me-2" style="color: var(--medium);"></i>Shule Zinazopatikana
+                    <i class="fas fa-school me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Shule Zinazopatikana{% else %}Available Schools{% endif %}
                     <span id="schoolsCount" class="badge tz-badge ms-2">0</span>
                 </h5>
                 
@@ -284,7 +284,7 @@
                     <!-- Loading spinner -->
                     <div class="text-center py-5" id="loadingSpinner">
                         <div class="spinner mx-auto mb-3"></div>
-                        <p style="color: var(--text-gray);">Inapakia shule...</p>
+                        <p style="color: var(--text-gray);">{% if LANG == 'sw' %}Inapakia shule...{% else %}Loading schools...{% endif %}</p>
                     </div>
                 </div>
                 
@@ -298,10 +298,10 @@
                 <!-- Action Buttons -->
                 <div class="d-flex justify-content-end gap-3 mt-4 pt-3 border-top" style="border-top-color: var(--border) !important;">
                     <a href="{% url 'dashboard' %}" class="btn btn-secondary">
-                        <i class="fas fa-times me-2"></i>Ghairi
+                        <i class="fas fa-times me-2"></i>{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}
                     </a>
                     <button id="confirmChangeBtn" class="btn tz-btn" disabled>
-                        <i class="fas fa-check-circle me-2"></i>Thibitisha Kubadili
+                        <i class="fas fa-check-circle me-2"></i>{% if LANG == 'sw' %}Thibitisha Kubadili{% else %}Confirm Change{% endif %}
                     </button>
                 </div>
             </div>
@@ -323,7 +323,7 @@
             document.getElementById('confirmChangeBtn').disabled = true;
             loadSchools();
         } else {
-            document.getElementById('schoolsContainer').innerHTML = '<div class="text-center py-5"><p class="text-muted">Tafadhali chagua wilaya kwanza</p></div>';
+            document.getElementById('schoolsContainer').innerHTML = '<div class="text-center py-5"><p class="text-muted">{% if LANG == "sw" %}Tafadhali chagua wilaya kwanza{% else %}Please select a district first{% endif %}</p></div>';
             document.getElementById('paginationContainer').style.display = 'none';
         }
     });
@@ -377,11 +377,11 @@
                 renderPagination(data);
                 document.getElementById('schoolsCount').innerText = data.total;
             } else {
-                showError('Hitilafu katika kupakia shule');
+                showError('{% if LANG == "sw" %}Hitilafu katika kupakia shule{% else %}Error loading schools{% endif %}');
             }
         } catch (error) {
             console.error('Error:', error);
-            showError('Hitilafu ya mtandao. Tafadhali jaribu tena.');
+            showError('{% if LANG == "sw" %}Hitilafu ya mtandao. Tafadhali jaribu tena.{% else %}Network error. Please try again.{% endif %}');
         } finally {
             isLoading = false;
         }
@@ -405,7 +405,7 @@
             document.getElementById('schoolsContainer').innerHTML = `
                 <div class="text-center py-5">
                     <i class="fas fa-school fa-3x text-muted mb-3"></i>
-                    <p class="text-muted">Hakuna shule zinazopatikana katika wilaya hii</p>
+                    <p class="text-muted">{% if LANG == "sw" %}Hakuna shule zinazopatikana katika wilaya hii{% else %}No schools available in this district{% endif %}</p>
                 </div>
             `;
             document.getElementById('paginationContainer').style.display = 'none';
@@ -441,14 +441,14 @@
                             ${escapeHtml(school.district)}, ${escapeHtml(school.region)}
                         </p>
                         <div class="d-flex justify-content-between small mb-2">
-                            <span style="color: var(--text-gray);">Wanafunzi: ${school.current_students}/${school.capacity}</span>
-                            <span style="color: var(--bold);">Nafasi: ${school.available_spots}</span>
+                            <span style="color: var(--text-gray);">{% if LANG == "sw" %}Wanafunzi:{% else %}Students:{% endif %} ${school.current_students}/${school.capacity}</span>
+                            <span style="color: var(--bold);">{% if LANG == "sw" %}Nafasi:{% else %}Spots:{% endif %} ${school.available_spots}</span>
                         </div>
                         <div class="progress-tz">
                             <div class="progress-bar ${progressBarClass}" style="width: ${school.occupancy_percentage}%; background: ${progressColor};"></div>
                         </div>
                         <div class="mt-2 text-end">
-                            <small style="color: var(--text-gray);">${school.occupancy_percentage}% imejaa</small>
+                            <small style="color: var(--text-gray);">${school.occupancy_percentage}% {% if LANG == "sw" %}imejaa{% else %}occupied{% endif %}</small>
                         </div>
                     </div>
                 </div>
@@ -469,7 +469,7 @@
         let paginationHtml = '';
         
         if (data.has_previous) {
-            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${data.page - 1})">← Awali</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${data.page - 1})">← {% if LANG == "sw" %}Awali{% else %}Previous{% endif %}</a></li>`;
         }
         
         // Show page numbers
@@ -493,7 +493,7 @@
         }
         
         if (data.has_next) {
-            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${data.page + 1})">Ifuatayo →</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="goToPage(${data.page + 1})">{% if LANG == "sw" %}Ifuatayo{% else %}Next{% endif %} →</a></li>`;
         }
         
         document.getElementById('pagination').innerHTML = paginationHtml;
@@ -519,16 +519,16 @@
     // Confirm change
     document.getElementById('confirmChangeBtn')?.addEventListener('click', async function() {
         if (!selectedSchoolId) {
-            alert('Tafadhali chagua shule unayotaka kubadili');
+            alert('{% if LANG == "sw" %}Tafadhali chagua shule unayotaka kubadili{% else %}Please select a school you want to change to{% endif %}');
             return;
         }
-        
-        if (!confirm('Je, una uhakika unataka kubadili shule?\n\nUtapoteza maombi yako yote yaliyosubiri kwenye shule ya zamani.')) {
+
+        if (!confirm('{% if LANG == "sw" %}Je, una uhakika unataka kubadili shule?\n\nUtapoteza maombi yako yote yaliyosubiri kwenye shule ya zamani.{% else %}Are you sure you want to change school?\n\nYou will lose all your pending requests at the old school.{% endif %}')) {
             return;
         }
-        
+
         this.disabled = true;
-        this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Inachakata...';
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>{% if LANG == "sw" %}Inachakata...{% else %}Processing...{% endif %}';
         
         try {
             const response = await fetch('/api/confirm-change-school/', {
@@ -546,14 +546,14 @@
                 alert(data.message);
                 window.location.href = '/dashboard/';
             } else {
-                alert(data.error || 'Hitilafu imetokea');
+                alert(data.error || '{% if LANG == "sw" %}Hitilafu imetokea{% else %}An error occurred{% endif %}');
                 this.disabled = false;
-                this.innerHTML = '<i class="fas fa-check-circle me-2"></i>Thibitisha Kubadili';
+                this.innerHTML = '<i class="fas fa-check-circle me-2"></i>{% if LANG == "sw" %}Thibitisha Kubadili{% else %}Confirm Change{% endif %}';
             }
         } catch (error) {
-            alert('Hitilafu ya mtandao. Tafadhali jaribu tena.');
+            alert('{% if LANG == "sw" %}Hitilafu ya mtandao. Tafadhali jaribu tena.{% else %}Network error. Please try again.{% endif %}');
             this.disabled = false;
-            this.innerHTML = '<i class="fas fa-check-circle me-2"></i>Thibitisha Kubadili';
+            this.innerHTML = '<i class="fas fa-check-circle me-2"></i>{% if LANG == "sw" %}Thibitisha Kubadili{% else %}Confirm Change{% endif %}';
         }
     });
     

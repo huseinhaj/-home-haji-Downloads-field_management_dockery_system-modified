@@ -1,7 +1,7 @@
 {% extends "field_app/base.html" %}
 {% load static %}
 
-{% block title %}Register — Field Placement Management System{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Jiandikishe — Mfumo wa Usimamizi wa Mafunzo ya Vitendo{% else %}Register — Internship Management System{% endif %}{% endblock %}
 
 {% block content %}
 <style>
@@ -399,16 +399,16 @@
         <div class="reg-gov-titles">
             <div class="t1">United Republic of Tanzania — Serikali ya Jamhuri ya Muungano</div>
             <div class="t2">Ministry of Education, Science and Technology</div>
-            <div class="t3">Field Placement Management System (FPMS) &mdash; Student Placement Portal</div>
+            <div class="t3">Internship Management System (IMS) &mdash; Student Placement Portal</div>
         </div>
     </div>
 
     <!-- NAV -->
     <div class="reg-nav">
-        <a class="reg-nav-item" href="{% url 'login' %}"><i class="fas fa-graduation-cap"></i> Student Portal</a>
-        <a class="reg-nav-item" href="#"><i class="fas fa-info-circle"></i> About FPMS</a>
-        <a class="reg-nav-item" href="#"><i class="fas fa-question-circle"></i> Help Center</a>
-        <a class="reg-nav-item active" href="#"><i class="fas fa-user-plus"></i> Register</a>
+        <a class="reg-nav-item" href="{% url 'login' %}"><i class="fas fa-graduation-cap"></i> {% if LANG == 'sw' %}Tovuti ya Mwanafunzi{% else %}Student Portal{% endif %}</a>
+        <a class="reg-nav-item" href="#"><i class="fas fa-info-circle"></i> {% if LANG == 'sw' %}Kuhusu IMS{% else %}About IMS{% endif %}</a>
+        <a class="reg-nav-item" href="#"><i class="fas fa-question-circle"></i> {% if LANG == 'sw' %}Kituo cha Msaada{% else %}Help Center{% endif %}</a>
+        <a class="reg-nav-item active" href="#"><i class="fas fa-user-plus"></i> {% if LANG == 'sw' %}Jiandikishe{% else %}Register{% endif %}</a>
     </div>
 
     <!-- CONTENT -->
@@ -422,8 +422,8 @@
                         <i class="fas fa-user-plus"></i>
                     </div>
                     <div>
-                        <h1>Create Student Account</h1>
-                        <p>Join the Field Placement Management System</p>
+                        <h1>{% if LANG == 'sw' %}Fungua Akaunti ya Mwanafunzi{% else %}Create Student Account{% endif %}</h1>
+                        <p>{% if LANG == 'sw' %}Jiunge na Mfumo wa Usimamizi wa Mafunzo ya Vitendo{% else %}Join the Internship Management System{% endif %}</p>
                     </div>
                 </div>
 
@@ -459,14 +459,14 @@
                             <!-- Full Name -->
                             <div class="form-group">
                                 <label for="{{ form.full_name.id_for_label }}" class="form-label">
-                                    <i class="fas fa-user"></i>Full Name <span class="required-star">*</span>
+                                    <i class="fas fa-user"></i>{% if LANG == 'sw' %}Jina Kamili{% else %}Full Name{% endif %} <span class="required-star">*</span>
                                 </label>
                                 <input type="text"
                                        name="{{ form.full_name.name }}"
                                        id="{{ form.full_name.id_for_label }}"
                                        class="form-input"
                                        value="{{ form.full_name.value|default:'' }}"
-                                       placeholder="Enter your full name" required>
+                                       placeholder="{% if LANG == 'sw' %}Ingiza jina lako kamili{% else %}Enter your full name{% endif %}" required>
                                 {% if form.full_name.errors %}
                                 <span class="form-error">{{ form.full_name.errors.0 }}</span>
                                 {% endif %}
@@ -475,7 +475,7 @@
                             <!-- Email -->
                             <div class="form-group">
                                 <label for="{{ form.email.id_for_label }}" class="form-label">
-                                    <i class="fas fa-envelope"></i>Email Address <span class="required-star">*</span>
+                                    <i class="fas fa-envelope"></i>{% if LANG == 'sw' %}Anwani ya Barua pepe{% else %}Email Address{% endif %} <span class="required-star">*</span>
                                 </label>
                                 <input type="email"
                                        name="{{ form.email.name }}"
@@ -491,7 +491,7 @@
                             <!-- Phone -->
                             <div class="form-group">
                                 <label for="{{ form.phone_number.id_for_label }}" class="form-label">
-                                    <i class="fas fa-phone"></i>Phone Number <span class="required-star">*</span>
+                                    <i class="fas fa-phone"></i>{% if LANG == 'sw' %}Nambari ya Simu{% else %}Phone Number{% endif %} <span class="required-star">*</span>
                                 </label>
                                 <input type="tel"
                                        name="{{ form.phone_number.name }}"
@@ -510,14 +510,14 @@
                             <!-- Password -->
                             <div class="form-group">
                                 <label for="{{ form.password1.id_for_label }}" class="form-label">
-                                    <i class="fas fa-lock"></i>Password <span class="required-star">*</span>
+                                    <i class="fas fa-lock"></i>{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %} <span class="required-star">*</span>
                                 </label>
                                 <div class="password-container">
                                     <input type="password"
                                            name="{{ form.password1.name }}"
                                            id="{{ form.password1.id_for_label }}"
                                            class="form-input"
-                                           placeholder="Create a strong password" required>
+                                           placeholder="{% if LANG == 'sw' %}Tengeneza nywila imara{% else %}Create a strong password{% endif %}" required>
                                     <button type="button" class="password-toggle"
                                             onclick="togglePwd('{{ form.password1.id_for_label }}')">
                                         <i class="fas fa-eye"></i>
@@ -534,14 +534,14 @@
                             <!-- Confirm Password -->
                             <div class="form-group">
                                 <label for="{{ form.password2.id_for_label }}" class="form-label">
-                                    <i class="fas fa-lock"></i>Confirm Password <span class="required-star">*</span>
+                                    <i class="fas fa-lock"></i>{% if LANG == 'sw' %}Thibitisha Nywila{% else %}Confirm Password{% endif %} <span class="required-star">*</span>
                                 </label>
                                 <div class="password-container">
                                     <input type="password"
                                            name="{{ form.password2.name }}"
                                            id="{{ form.password2.id_for_label }}"
                                            class="form-input"
-                                           placeholder="Re-enter your password" required>
+                                           placeholder="{% if LANG == 'sw' %}Ingiza tena nywila yako{% else %}Re-enter your password{% endif %}" required>
                                     <button type="button" class="password-toggle"
                                             onclick="togglePwd('{{ form.password2.id_for_label }}')">
                                         <i class="fas fa-eye"></i>
@@ -555,27 +555,27 @@
                             <!-- Password Requirements -->
                             <div class="password-requirements">
                                 <div class="requirements-title">
-                                    <i class="fas fa-shield-alt"></i> Password Requirements
+                                    <i class="fas fa-shield-alt"></i> {% if LANG == 'sw' %}Mahitaji ya Nywila{% else %}Password Requirements{% endif %}
                                 </div>
                                 <ul class="requirements-list">
-                                    <li>At least 8 characters</li>
-                                    <li>At least one uppercase letter (A–Z)</li>
-                                    <li>At least one lowercase letter (a–z)</li>
-                                    <li>At least one number (0–9)</li>
-                                    <li>At least one special character (!@#$%&amp;*)</li>
+                                    <li>{% if LANG == 'sw' %}Angalau herufi 8{% else %}At least 8 characters{% endif %}</li>
+                                    <li>{% if LANG == 'sw' %}Angalau herufi moja kubwa (A–Z){% else %}At least one uppercase letter (A–Z){% endif %}</li>
+                                    <li>{% if LANG == 'sw' %}Angalau herufi moja ndogo (a–z){% else %}At least one lowercase letter (a–z){% endif %}</li>
+                                    <li>{% if LANG == 'sw' %}Angalau nambari moja (0–9){% else %}At least one number (0–9){% endif %}</li>
+                                    <li>{% if LANG == 'sw' %}Angalau alama moja maalum (!@#$%&amp;*){% else %}At least one special character (!@#$%&amp;*){% endif %}</li>
                                 </ul>
                             </div>
 
                             <!-- Submit -->
                             <div class="submit-container">
                                 <button type="submit" class="submit-btn">
-                                    <i class="fas fa-user-plus"></i> Create Account
+                                    <i class="fas fa-user-plus"></i> {% if LANG == 'sw' %}Fungua Akaunti{% else %}Create Account{% endif %}
                                 </button>
                             </div>
 
                             <!-- Login Link -->
                             <div class="login-link">
-                                <p>Already have an account? <a href="{% url 'login' %}">Login here &rarr;</a></p>
+                                <p>{% if LANG == 'sw' %}Je, tayari una akaunti? <a href="{% url 'login' %}">Ingia hapa &rarr;</a>{% else %}Already have an account? <a href="{% url 'login' %}">Login here &rarr;</a>{% endif %}</p>
                             </div>
 
                         </div><!-- /form-grid -->
@@ -585,7 +585,7 @@
                 <!-- Card Footer -->
                 <div class="form-footer">
                     <i class="fas fa-shield-alt"></i>
-                    <span>Your information is protected by Tanzania Government IT Standards &mdash; TCRA Compliant</span>
+                    <span>{% if LANG == 'sw' %}Taarifa zako zinalindwa na Viwango vya TEHAMA vya Serikali ya Tanzania &mdash; Inakidhi TCRA{% else %}Your information is protected by Tanzania Government IT Standards &mdash; TCRA Compliant{% endif %}</span>
                 </div>
             </div><!-- /register-card -->
         </div><!-- /register-container -->
@@ -594,7 +594,7 @@
     <!-- PAGE FOOTER -->
     <div class="reg-footer">
     <p>&copy; {% now "Y" %} Ministry of Education, Science and Technology &mdash; United Republic of Tanzania. All rights reserved.</p>
-    <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>FPMS v2.1.0</span>
+    <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0</span>
 </div>
 
 </div><!-- /reg-page -->

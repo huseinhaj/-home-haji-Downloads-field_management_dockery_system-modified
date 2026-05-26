@@ -1,761 +1,372 @@
-<!-- field_app/templates/field_app/assessor_dashboard.html -->
 {% extends 'field_app/base.html' %}
 {% load static %}
-
-{% block extra_css %}
-<style>
-    :root {
-        --bold: #0A2B5E;
-        --medium: #C8900A;
-        --light: #EEF1F6;
-        --white: #FFFFFF;
-        --text-dark: #1A1A2E;
-        --text-gray: #4A5568;
-        --border: #CBD5E0;
-        --success: #10B981;
-        --danger: #EF4444;
-        --warning: #F59E0B;
-        --info: #3B82F6;
-    }
-
-    body {
-        background: var(--light);
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        min-height: 100vh;
-        padding: 20px;
-    }
-
-    .dashboard-container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 20px;
-        background: var(--white);
-        border-radius: 8px;
-        box-shadow: 0 4px 16px rgba(10, 43, 94, 0.08);
-        border: 1px solid var(--border);
-    }
-
-    /* Header Cards */
-    .header-card {
-        border-radius: 8px;
-        border: 1px solid var(--border);
-        overflow: hidden;
-        transition: all 0.3s ease;
-        height: 100%;
-    }
-
-    .header-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
-    }
-
-    .header-card.welcome-card {
-        background: var(--white);
-        border-left: 6px solid var(--medium);
-    }
-
-    .stats-card {
-        background: var(--bold);
-        color: var(--white);
-        border-radius: 8px;
-        text-align: center;
-        padding: 25px 15px;
-        height: 100%;
-        transition: all 0.3s ease;
-    }
-
-    .stats-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.15);
-    }
-
-    .stats-card h2 {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 5px;
-    }
-
-    .stats-card p {
-        font-size: 1rem;
-        opacity: 0.9;
-        margin: 0;
-    }
-
-    .stats-card.teal {
-        background: linear-gradient(135deg, var(--success), #059669);
-    }
-
-    /* Table Styles */
-    .schools-table {
-        background: var(--white);
-        border-radius: 8px;
-        overflow: hidden;
-        border: 1px solid var(--border);
-        margin-bottom: 30px;
-    }
-
-    .table-header {
-        background: var(--bold);
-        color: var(--white);
-        padding: 15px 20px;
-        border-bottom: 3px solid var(--medium);
-    }
-
-    .table-header h5 {
-        margin: 0;
-        font-weight: 600;
-    }
-
-    .table-header .badge {
-        background: var(--medium);
-        color: var(--white);
-        font-size: 0.85rem;
-        padding: 6px 12px;
-        border-radius: 6px;
-    }
-
-    .table thead th {
-        background-color: var(--light);
-        border-bottom: 2px solid var(--border);
-        font-weight: 600;
-        color: var(--text-dark);
-        padding: 12px 15px;
-        text-transform: uppercase;
-        font-size: 0.75rem;
-        letter-spacing: 0.5px;
-    }
-
-    .table tbody td {
-        padding: 15px;
-        vertical-align: middle;
-        border-bottom: 1px solid var(--border);
-        color: var(--text-gray);
-    }
-
-    .table tbody tr {
-        transition: all 0.2s ease;
-    }
-
-    .table tbody tr:hover {
-        background-color: var(--light);
-    }
-
-    /* Progress Bar */
-    .progress-container {
-        width: 150px;
-    }
-
-    .progress {
-        height: 8px;
-        border-radius: 4px;
-        background-color: var(--border);
-        overflow: hidden;
-    }
-
-    .progress-bar {
-        border-radius: 4px;
-        background: var(--bold);
-    }
-
-    /* School Cards */
-    .school-card {
-        background: var(--white);
-        border-radius: 8px;
-        border: 1px solid var(--border);
-        overflow: hidden;
-        margin-bottom: 25px;
-        transition: all 0.3s ease;
-        height: 100%;
-    }
-
-    .school-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
-        border-color: var(--medium);
-    }
-
-    .school-card-header {
-        background: var(--light);
-        padding: 15px 20px;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .school-card-header h5 {
-        color: var(--text-dark);
-        font-weight: 600;
-        margin: 0;
-    }
-
-    .school-card-header .badge {
-        background: var(--bold);
-        color: var(--white);
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-weight: 500;
-    }
-
-    .school-card-body {
-        padding: 20px;
-    }
-
-    /* Student List */
-    .student-item {
-        padding: 12px;
-        border-bottom: 1px solid var(--border);
-        transition: background-color 0.2s ease;
-    }
-
-    .student-item:hover {
-        background-color: var(--light);
-    }
-
-    .student-item:last-child {
-        border-bottom: none;
-    }
-
-    .student-info h6 {
-        color: var(--text-dark);
-        font-weight: 600;
-        margin-bottom: 5px;
-    }
-
-    .student-meta {
-        font-size: 0.8rem;
-        color: var(--text-gray);
-    }
-
-    .student-meta i {
-        width: 16px;
-        text-align: center;
-        margin-right: 5px;
-        color: var(--medium);
-    }
-
-    /* Status Badges */
-    .status-badge {
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-    }
-
-    .badge-completed {
-        background: #D1FAE5;
-        color: #065F46;
-        border: 1px solid var(--success);
-    }
-
-    .badge-in-progress {
-        background: #FEF3C7;
-        color: #92400E;
-        border: 1px solid var(--warning);
-    }
-
-    .badge-pending {
-        background: var(--light);
-        color: var(--text-gray);
-        border: 1px solid var(--border);
-    }
-
-    /* Subjects Tags */
-    .subject-tag {
-        display: inline-block;
-        background: var(--light);
-        color: var(--bold);
-        padding: 3px 8px;
-        border-radius: 4px;
-        font-size: 0.7rem;
-        margin-right: 5px;
-        margin-bottom: 5px;
-        font-weight: 500;
-        border: 1px solid var(--border);
-    }
-
-    /* Action Buttons */
-    .action-btn {
-        padding: 6px 16px;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 0.8rem;
-        transition: all 0.2s ease;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-    }
-
-    .action-btn-primary {
-        background: var(--bold);
-        color: var(--white);
-        border: none;
-    }
-
-    .action-btn-primary:hover {
-        background: #0C3570;
-        color: var(--white);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(10, 43, 94, 0.25);
-    }
-
-    .action-btn-outline {
-        background: transparent;
-        border: 1.5px solid var(--bold);
-        color: var(--bold);
-    }
-
-    .action-btn-outline:hover {
-        background: var(--bold);
-        color: var(--white);
-        transform: translateY(-1px);
-    }
-
-    .action-btn-success {
-        background: var(--success);
-        color: var(--white);
-        border: none;
-    }
-
-    .action-btn-success:hover {
-        background: #059669;
-        transform: translateY(-1px);
-        color: var(--white);
-    }
-
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-    }
-
-    .empty-state i {
-        font-size: 4rem;
-        color: var(--text-gray);
-        margin-bottom: 20px;
-    }
-
-    .empty-state h5 {
-        color: var(--text-dark);
-        font-weight: 600;
-        margin-bottom: 10px;
-    }
-
-    .empty-state p {
-        color: var(--text-gray);
-        max-width: 400px;
-        margin: 0 auto 25px;
-    }
-
-    /* Text Colors */
-    .text-purple-600 {
-        color: var(--bold);
-    }
-
-    .bg-purple-100 {
-        background: rgba(10, 43, 94, 0.1);
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        body {
-            padding: 10px;
-        }
-
-        .dashboard-container {
-            padding: 15px;
-            border-radius: 8px;
-        }
-
-        .stats-card h2 {
-            font-size: 2rem;
-        }
-
-        .table-responsive {
-            border-radius: 8px;
-        }
-
-        .school-card {
-            margin-bottom: 20px;
-        }
-
-        .school-card-body {
-            padding: 15px;
-        }
-    }
-
-    @media (max-width: 576px) {
-        body {
-            padding: 5px;
-        }
-
-        .dashboard-container {
-            padding: 10px;
-            border-radius: 8px;
-        }
-
-        .table-header {
-            padding: 12px 15px;
-        }
-
-        .stats-card {
-            padding: 15px 10px;
-        }
-
-        .stats-card h2 {
-            font-size: 1.5rem;
-        }
-        
-        .action-btn {
-            padding: 4px 12px;
-            font-size: 0.7rem;
-        }
-    }
-</style>
-{% endblock %}
+{% block title %}Assessor Dashboard{% endblock %}
 
 {% block content %}
-<div class="dashboard-container">
-    <!-- Header Section -->
-    <div class="row mb-4">
-        <div class="col-lg-8 mb-3 mb-lg-0">
-            <div class="header-card welcome-card p-4">
-                <div class="d-flex align-items-start">
-                    <div class="me-3">
-                        <div class="rounded-circle bg-purple-100 p-3 d-inline-flex">
-                            <i class="fas fa-chalkboard-teacher fa-2x text-purple-600"></i>
-                        </div>
-                    </div>
-                    <div class="flex-grow-1">
-                        <h4 class="mb-2" style="color: var(--text-dark);">
-                            Welcome back, <span style="color: var(--bold);">{{ assessor.full_name }}</span>
-                        </h4>
-                        <p class="mb-1" style="color: var(--text-gray);">
-                            <i class="fas fa-calendar-alt me-2" style="color: var(--medium);"></i>
-                            Academic Year: <strong style="color: var(--bold);">{{ current_year.year|default:"Not Set" }}</strong>
-                        </p>
-                        <p class="mb-0" style="color: var(--text-gray);">
-                            <i class="fas fa-user-tie me-2" style="color: var(--medium);"></i>
-                            Assessor ID: <strong style="color: var(--bold);">{{ assessor.assessor_id|default:"N/A" }}</strong>
-                        </p>
-                    </div>
-                </div>
-            </div>
+<style>
+/* ═══════════════════════════════════
+   ASSESSOR DASHBOARD — MINISTRY THEME
+   navy #0A2B5E | gold #C8900A | light #EEF1F6
+   ═══════════════════════════════════ */
+.asd-wrap { background:#EEF1F6; margin:-2rem; min-height:calc(100vh - 120px); }
+
+/* Banner */
+.asd-banner {
+  background:linear-gradient(135deg,#0A2B5E 0%,#0d3575 100%);
+  border-bottom:4px solid #C8900A;
+  padding:1.4rem 2rem;
+}
+.asd-banner h1 { color:#fff; font-size:1.3rem; font-weight:800; margin:0; }
+.asd-banner .sub { color:rgba(255,255,255,0.65); font-size:0.8rem; margin-top:3px; }
+
+/* Info cards row */
+.info-card {
+  background:#fff; border-radius:10px;
+  border-left:5px solid #C8900A;
+  padding:1.2rem 1.4rem;
+  box-shadow:0 2px 8px rgba(10,43,94,0.07);
+}
+.info-card .ic-label { color:#6b7280; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; }
+.info-card .ic-value { color:#0A2B5E; font-size:1rem; font-weight:700; margin-top:2px; }
+
+/* Stat cards */
+.stat-card { border-radius:10px; padding:1.2rem 1.4rem; text-align:center; }
+.stat-card .sc-num { font-size:2.2rem; font-weight:800; color:#fff; line-height:1; }
+.stat-card .sc-lbl { color:rgba(255,255,255,0.8); font-size:0.78rem; font-weight:600; margin-top:4px; }
+.sc-navy { background:linear-gradient(135deg,#0A2B5E,#1a4a8e); }
+.sc-gold { background:linear-gradient(135deg,#C8900A,#e0a020); }
+.sc-teal { background:linear-gradient(135deg,#0d7a6e,#10a89a); }
+
+/* Section header */
+.sec-hd { display:flex; align-items:center; gap:10px; margin:1.6rem 0 0.8rem; }
+.sec-hd .sec-line { flex:1; height:2px; background:linear-gradient(to right,#C8900A33,transparent); }
+.sec-hd .sec-title { font-size:0.75rem; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#C8900A; white-space:nowrap; }
+
+/* School card */
+.school-block { background:#fff; border-radius:10px; border:1px solid #d1d9e8; overflow:hidden; margin-bottom:1.5rem; }
+.school-block .sb-head {
+  background:#0A2B5E; padding:0.85rem 1.2rem;
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:3px solid #C8900A;
+}
+.school-block .sb-head .sb-name { color:#fff; font-weight:700; font-size:0.95rem; }
+.school-block .sb-head .sb-loc { color:rgba(255,255,255,0.65); font-size:0.75rem; margin-top:2px; }
+.school-block .sb-head .sb-badge {
+  background:#C8900A; color:#fff; border-radius:12px;
+  padding:3px 12px; font-size:0.75rem; font-weight:700; white-space:nowrap;
+}
+
+/* Progress */
+.prog-bar-wrap { background:#EEF1F6; border-radius:6px; height:8px; overflow:hidden; }
+.prog-bar-fill { background:linear-gradient(to right,#0A2B5E,#1a4a8e); height:100%; border-radius:6px; transition:width 1.2s ease; }
+
+/* Student row */
+.stu-row { padding:0.9rem 1.2rem; border-bottom:1px solid #f0f4fa; transition:background 0.15s; }
+.stu-row:last-child { border-bottom:none; }
+.stu-row:hover { background:#f7f9fd; }
+.stu-avatar { width:38px; height:38px; border-radius:50%; background:#0A2B5E; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.9rem; flex-shrink:0; }
+.stu-name { color:#0A2B5E; font-weight:700; font-size:0.88rem; }
+.stu-meta { color:#6b7280; font-size:0.75rem; }
+.stu-meta i { color:#C8900A; }
+
+/* Logbook mini stats */
+.lb-mini { background:#EEF1F6; border-radius:6px; padding:6px 10px; display:flex; gap:14px; flex-wrap:wrap; }
+.lb-mini span { font-size:0.73rem; color:#374151; }
+.lb-mini span strong { color:#0A2B5E; }
+.lb-mini span.verified strong { color:#059669; }
+.lb-mini span.week strong { color:#C8900A; }
+
+/* Status badges */
+.bst-done  { background:#d1fae5; color:#065f46; border-radius:6px; padding:3px 10px; font-size:0.72rem; font-weight:700; }
+.bst-prog  { background:#fef3c7; color:#92400e; border-radius:6px; padding:3px 10px; font-size:0.72rem; font-weight:700; }
+.bst-wait  { background:#EEF1F6; color:#374151; border-radius:6px; padding:3px 10px; font-size:0.72rem; font-weight:700; }
+
+/* Subject tags */
+.subj-tag { background:#dbeafe; color:#1e40af; border-radius:4px; padding:2px 7px; font-size:0.7rem; font-weight:600; display:inline-block; margin:1px 2px; }
+
+/* View all btn */
+.view-all-btn {
+  display:block; text-align:center; padding:10px;
+  background:#EEF1F6; color:#0A2B5E; font-weight:700; font-size:0.82rem;
+  text-decoration:none; border-top:1px solid #d1d9e8; transition:background 0.2s;
+}
+.view-all-btn:hover { background:#dbe4f0; color:#0A2B5E; }
+
+/* Table summary */
+.sum-table { width:100%; border-collapse:collapse; }
+.sum-table thead th { background:#0A2B5E; color:#fff; padding:0.7rem 1rem; font-size:0.78rem; font-weight:700; border:none; }
+.sum-table tbody td { padding:0.65rem 1rem; font-size:0.82rem; border-bottom:1px solid #f0f4fa; color:#374151; }
+.sum-table tbody tr:hover { background:#f7f9fd; }
+.sum-table tbody td:first-child { color:#0A2B5E; font-weight:600; }
+
+.asd-body { padding:0 2rem 2rem; }
+@media(max-width:768px){ .asd-banner{padding:1.2rem 1rem;} .asd-body{padding:0 1rem 1.5rem;} }
+</style>
+
+<div class="asd-wrap">
+
+  <!-- BANNER -->
+  <div class="asd-banner">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <h1><i class="fas fa-chalkboard-teacher me-2" style="color:#C8900A;"></i>
+          {% if LANG == 'sw' %}Dashibodi ya Mkaguzi{% else %}Assessor Dashboard{% endif %}
+        </h1>
+        <div class="sub">
+          <i class="fas fa-university me-1"></i>
+          {% if LANG == 'sw' %}Mfumo wa Usimamizi wa Mafunzo ya Vitendo{% else %}Internship Management System — Teacher Colleges Tanzania{% endif %}
         </div>
-        
-        <div class="col-lg-4">
-            <div class="row g-3">
-                <div class="col-6">
-                    <div class="stats-card">
-                        <h2>{{ total_schools }}</h2>
-                        <p>Assigned Schools</p>
-                        <div class="mt-2">
-                            <i class="fas fa-school fa-lg opacity-75"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="stats-card teal">
-                        <h2>{{ total_students }}</h2>
-                        <p>Total Students</p>
-                        <div class="mt-2">
-                            <i class="fas fa-user-graduate fa-lg opacity-75"></i>
-                        </div>
-                    </div>
-                </div>
+      </div>
+      <div class="text-end">
+        <span style="background:#C8900A; color:#fff; padding:5px 14px; border-radius:20px; font-size:0.78rem; font-weight:700;">
+          <i class="fas fa-user-tie me-1"></i>Assessor
+        </span>
+        <div class="sub mt-1"><i class="fas fa-calendar-alt me-1"></i>{{ current_year.year|default:"—" }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="asd-body">
+
+    <!-- ASSESSOR INFO + STATS -->
+    <div class="row g-3 mt-1 mb-1">
+      <div class="col-lg-6">
+        <div class="info-card h-100">
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:52px; height:52px; border-radius:50%; background:#0A2B5E; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i class="fas fa-user-tie fa-lg" style="color:#C8900A;"></i>
             </div>
+            <div>
+              <div class="ic-label">{% if LANG == 'sw' %}Jina la Mkaguzi{% else %}Assessor Name{% endif %}</div>
+              <div class="ic-value">{{ assessor.full_name }}</div>
+              <div style="color:#6b7280; font-size:0.78rem; margin-top:2px;">
+                <i class="fas fa-envelope me-1" style="color:#C8900A;"></i>{{ assessor.email|default:"—" }}
+                {% if assessor.phone_number %}
+                &nbsp;&nbsp;<i class="fas fa-phone me-1" style="color:#C8900A;"></i>{{ assessor.phone_number }}
+                {% endif %}
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+      <div class="col-lg-2 col-4">
+        <div class="stat-card sc-navy">
+          <div class="sc-num">{{ total_schools }}</div>
+          <div class="sc-lbl"><i class="fas fa-school me-1"></i>{% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}</div>
+        </div>
+      </div>
+      <div class="col-lg-2 col-4">
+        <div class="stat-card sc-gold">
+          <div class="sc-num">{{ total_students }}</div>
+          <div class="sc-lbl"><i class="fas fa-user-graduate me-1"></i>{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</div>
+        </div>
+      </div>
+      <div class="col-lg-2 col-4">
+        <div class="stat-card sc-teal">
+          <div class="sc-num">{{ total_completed }}</div>
+          <div class="sc-lbl"><i class="fas fa-check me-1"></i>{% if LANG == 'sw' %}Tathmini{% else %}Assessed{% endif %}</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Schools Table -->
-    <div class="schools-table">
-        <div class="table-header d-flex justify-content-between align-items-center">
-            <h5>
-                <i class="fas fa-school me-2"></i>
-                My Assigned Schools
-            </h5>
-            <span class="badge">
-                {{ total_schools }} school{{ total_schools|pluralize }}
-            </span>
-        </div>
-        
-        <div class="table-responsive">
-            {% if schools_data %}
-            <table class="table mb-0">
-                <thead>
-                    <tr>
-                        <th width="50">#</th>
-                        <th>School Name</th>
-                        <th>Location</th>
-                        <th width="100">Students</th>
-                        <th width="160">Progress</th>
-                        <th width="120">Status</th>
-                        <th width="120">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for data in schools_data %}
-                    <tr>
-                        <td class="fw-bold text-center" style="color: var(--bold);">{{ forloop.counter }}</td>
-                        <td>
-                            <div class="fw-semibold" style="color: var(--text-dark);">{{ data.school.name }}</div>
-                            <small class="d-block" style="color: var(--text-gray);">
-                                <i class="fas fa-graduation-cap me-1"></i>
-                                {{ data.school.level }}
-                            </small>
-                        </td>
-                        <td>
-                            <div class="fw-medium" style="color: var(--text-dark);">{{ data.school.district.name }}</div>
-                            <small style="color: var(--text-gray);">
-                                <i class="fas fa-map-marker-alt me-1"></i>
-                                {{ data.school.district.region.name }}
-                            </small>
-                        </td>
-                        <td>
-                            <div class="text-center">
-                                <span class="badge rounded-pill p-2" style="background: var(--bold); color: white; font-size: 0.9rem;">
-                                    {{ data.students_count }}
-                                </span>
-                            </div>
-                        </td>
-                        <td>
-                            {% if data.students_count > 0 %}
-                            <div class="progress-container">
-                                {% widthratio data.completed_student_assessments data.students_count 100 as progress %}
-                                <div class="progress mb-2">
-                                    <div class="progress-bar" style="width: {{ progress }}%"></div>
-                                </div>
-                                <small class="d-block text-center" style="color: var(--text-gray);">
-                                    {{ progress }}% • {{ data.completed_student_assessments }}/{{ data.students_count }}
-                                </small>
-                            </div>
-                            {% else %}
-                            <span class="text-muted">No students</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if data.students_count > 0 %}
-                                {% if data.completed_student_assessments == data.students_count %}
-                                <span class="status-badge badge-completed">
-                                    <i class="fas fa-check me-1"></i>Completed
-                                </span>
-                                {% elif data.completed_student_assessments > 0 %}
-                                <span class="status-badge badge-in-progress">
-                                    <i class="fas fa-spinner me-1"></i>In Progress
-                                </span>
-                                {% else %}
-                                <span class="status-badge badge-pending">
-                                    <i class="fas fa-clock me-1"></i>Pending
-                                </span>
-                                {% endif %}
-                            {% else %}
-                            <span class="text-muted">No Students</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{% url 'assessor_student_detail' data.school.id %}" 
-                               class="action-btn action-btn-primary">
-                                <i class="fas fa-users me-1"></i>
-                                View
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-school"></i>
-                <h5>No Schools Assigned</h5>
-                <p>You haven't been assigned to any schools yet. Please contact the administrator for school assignments.</p>
-                <a href="{% url 'logout' %}" class="action-btn action-btn-outline">
-                    <i class="fas fa-sign-out-alt me-2"></i>
-                    Return to Login
+    <!-- SCHOOLS OVERVIEW TABLE -->
+    <div class="sec-hd">
+      <i class="fas fa-school" style="color:#0A2B5E;"></i>
+      <span class="sec-title">{% if LANG == 'sw' %}Shule Zangu Zilizopewa{% else %}My Assigned Schools{% endif %}</span>
+      <div class="sec-line"></div>
+      <span style="background:#C8900A; color:#fff; border-radius:12px; padding:2px 12px; font-size:0.75rem; font-weight:700;">{{ total_schools }}</span>
+    </div>
+
+    <div class="school-block">
+      {% if schools_data %}
+      <div class="table-responsive">
+        <table class="sum-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>{% if LANG == 'sw' %}Jina la Shule{% else %}School{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Mahali{% else %}Location{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Maendeleo{% else %}Progress{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for data in schools_data %}
+            <tr>
+              <td style="color:#9ca3af;">{{ forloop.counter }}</td>
+              <td>
+                <div class="fw-bold" style="color:#0A2B5E;">{{ data.school.name }}</div>
+                <small style="color:#9ca3af;">{{ data.school.level }}</small>
+              </td>
+              <td>
+                <div>{{ data.school.district.name }}</div>
+                <small style="color:#9ca3af;">{{ data.school.district.region.name }}</small>
+              </td>
+              <td>
+                <span style="background:#dbeafe; color:#1e40af; border-radius:6px; padding:3px 10px; font-weight:700; font-size:0.8rem;">
+                  {{ data.students_count }}
+                </span>
+              </td>
+              <td style="min-width:120px;">
+                {% if data.students_count > 0 %}
+                {% widthratio data.completed_student_assessments data.students_count 100 as pct %}
+                <div class="prog-bar-wrap mb-1">
+                  <div class="prog-bar-fill" style="width:{{ pct }}%;"></div>
+                </div>
+                <small style="color:#6b7280;">{{ pct }}% ({{ data.completed_student_assessments }}/{{ data.students_count }})</small>
+                {% else %}
+                <small style="color:#9ca3af;">—</small>
+                {% endif %}
+              </td>
+              <td>
+                {% if data.students_count == 0 %}
+                <span class="bst-wait">No Students</span>
+                {% elif data.completed_student_assessments == data.students_count %}
+                <span class="bst-done"><i class="fas fa-check me-1"></i>{% if LANG == 'sw' %}Imekamilika{% else %}Complete{% endif %}</span>
+                {% elif data.completed_student_assessments > 0 %}
+                <span class="bst-prog"><i class="fas fa-spinner me-1"></i>{% if LANG == 'sw' %}Inaendelea{% else %}In Progress{% endif %}</span>
+                {% else %}
+                <span class="bst-wait"><i class="fas fa-clock me-1"></i>{% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}</span>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{% url 'assessor_student_detail' data.school.id %}"
+                   style="background:#0A2B5E; color:#fff; border-radius:6px; padding:5px 14px; font-size:0.78rem; font-weight:700; text-decoration:none; white-space:nowrap;">
+                  <i class="fas fa-users me-1"></i>{% if LANG == 'sw' %}Angalia{% else %}View{% endif %}
                 </a>
-            </div>
-            {% endif %}
-        </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <i class="fas fa-school fa-3x mb-3" style="color:#d1d9e8;"></i>
+        <h5 style="color:#6b7280;">{% if LANG == 'sw' %}Bado hujapewa shule{% else %}No Schools Assigned Yet{% endif %}</h5>
+        <p style="color:#9ca3af; font-size:0.85rem;">{% if LANG == 'sw' %}Wasiliana na msimamizi kwa mgawo wa shule.{% else %}Contact the administrator for school assignments.{% endif %}</p>
+      </div>
+      {% endif %}
     </div>
 
-    <!-- Students by School -->
+    <!-- STUDENTS BY SCHOOL (detailed) -->
     {% if schools_data %}
-    <div class="row mt-4">
-        <div class="col-12 mb-3">
-            <h4 style="color: var(--text-dark);">
-                <i class="fas fa-user-graduate me-2" style="color: var(--medium);"></i>
-                Students Overview by School
-            </h4>
-            <p style="color: var(--text-gray);">Detailed view of students in each assigned school</p>
-        </div>
-        
-        {% for data in schools_data %}
-        {% if data.students_count > 0 %}
-        <div class="col-lg-6 mb-4">
-            <div class="school-card">
-                <div class="school-card-header">
-                    <div>
-                        <h5>{{ data.school.name }}</h5>
-                        <small style="color: var(--text-gray);">
-                            <i class="fas fa-map-marker-alt me-1"></i>
-                            {{ data.school.district.name }}, {{ data.school.district.region.name }}
-                        </small>
-                    </div>
-                    <span class="badge">
-                        {{ data.students_count }} student{{ data.students_count|pluralize }}
-                    </span>
-                </div>
-                
-                <div class="school-card-body">
-                    <!-- Progress Summary -->
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0" style="color: var(--text-dark);">Assessment Progress</h6>
-                            <span class="badge" style="background: var(--bold); color: white;">
-                                {% widthratio data.completed_student_assessments data.students_count 100 %}% Complete
-                            </span>
-                        </div>
-                        <div class="progress mb-2" style="height: 10px;">
-                            {% widthratio data.completed_student_assessments data.students_count 100 as progress %}
-                            <div class="progress-bar" style="width: {{ progress }}%"></div>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <small style="color: var(--text-gray);">
-                                Completed: {{ data.completed_student_assessments }}
-                            </small>
-                            <small style="color: var(--text-gray);">
-                                Pending: {{ data.pending_student_assessments }}
-                            </small>
-                        </div>
-                    </div>
-                    
-                    <!-- Students List -->
-                    <h6 class="mb-3" style="color: var(--text-dark);">
-                        <i class="fas fa-list me-2" style="color: var(--medium);"></i>
-                        Recent Students
-                    </h6>
-                    
-                    <div class="student-list">
-                        {% for student_info in data.students|slice:":5" %}
-                        <div class="student-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="student-info flex-grow-1">
-                                    <h6>{{ student_info.student.full_name }}</h6>
-                                    <div class="student-meta">
-                                        <div>
-                                            <i class="fas fa-id-card"></i>
-                                            {{ student_info.student.registration_number|default:"No ID" }}
-                                        </div>
-                                        <div>
-                                            <i class="fas fa-graduation-cap"></i>
-                                            Class: {{ student_info.student.current_class|default:"-" }}
-                                        </div>
-                                        {% if student_info.phone %}
-                                        <div>
-                                            <i class="fas fa-phone"></i>
-                                            {{ student_info.phone }}
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <!-- Subjects -->
-                                    {% if student_info.approved_subjects %}
-                                    <div class="mt-2">
-                                        <small class="d-block mb-1" style="color: var(--text-gray);">Approved Subjects:</small>
-                                        <div>
-                                            {% for subject in student_info.approved_subjects|slice:":3" %}
-                                            <span class="subject-tag">{{ subject }}</span>
-                                            {% endfor %}
-                                            {% if student_info.approved_subjects|length > 3 %}
-                                            <span class="subject-tag">+{{ student_info.approved_subjects|length|add:"-3" }} more</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                
-                                <div class="ms-3 text-end">
-                                    {% if student_info.is_completed %}
-                                    <span class="status-badge badge-completed">
-                                        <i class="fas fa-check me-1"></i>Assessed
-                                    </span>
-                                    {% elif student_info.assessment %}
-                                    <span class="status-badge badge-in-progress">
-                                        <i class="fas fa-spinner me-1"></i>In Progress
-                                    </span>
-                                    {% else %}
-                                    <span class="status-badge badge-pending">
-                                        <i class="fas fa-clock me-1"></i>Pending
-                                    </span>
-                                    {% endif %}
-                                    
-                                    <div class="mt-2">
-                                        {% if student_info.assessment %}
-                                        <a href="{% url 'assessor_student_detail' data.school.id %}" 
-                                           class="action-btn action-btn-outline" style="font-size: 0.7rem;">
-                                            <i class="fas fa-edit me-1"></i>
-                                            Edit
-                                        </a>
-                                        {% else %}
-                                        <a href="{% url 'assessor_student_detail' data.school.id %}" 
-                                           class="action-btn action-btn-success" style="font-size: 0.7rem;">
-                                            <i class="fas fa-play me-1"></i>
-                                            Start
-                                        </a>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    
-                    {% if data.students_count > 5 %}
-                    <div class="text-center mt-3">
-                        <a href="{% url 'assessor_student_detail' data.school.id %}" 
-                           class="action-btn action-btn-primary">
-                            <i class="fas fa-arrow-right me-2"></i>
-                            View All {{ data.students_count }} Students
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
+    <div class="sec-hd">
+      <i class="fas fa-user-graduate" style="color:#0A2B5E;"></i>
+      <span class="sec-title">{% if LANG == 'sw' %}Wanafunzi kwa Shule{% else %}Students by School{% endif %}</span>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="row g-3">
+      {% for data in schools_data %}
+      {% if data.students_count > 0 %}
+      <div class="col-xl-6 col-12">
+        <div class="school-block">
+          <div class="sb-head">
+            <div>
+              <div class="sb-name"><i class="fas fa-school me-2" style="color:#C8900A;"></i>{{ data.school.name }}</div>
+              <div class="sb-loc"><i class="fas fa-location-dot me-1"></i>{{ data.school.district.name }}, {{ data.school.district.region.name }}</div>
             </div>
+            <span class="sb-badge">{{ data.students_count }} {% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</span>
+          </div>
+
+          <!-- Mini progress -->
+          <div style="padding:0.75rem 1.2rem; background:#f7f9fd; border-bottom:1px solid #f0f4fa;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <small style="color:#6b7280; font-weight:600;">{% if LANG == 'sw' %}Maendeleo ya Tathmini{% else %}Assessment Progress{% endif %}</small>
+              <small style="color:#0A2B5E; font-weight:700;">
+                {% widthratio data.completed_student_assessments data.students_count 100 as pct2 %}{{ pct2 }}%
+              </small>
+            </div>
+            <div class="prog-bar-wrap">
+              <div class="prog-bar-fill" style="width:{{ pct2 }}%;"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+              <small style="color:#059669;">✓ {{ data.completed_student_assessments }} {% if LANG == 'sw' %}imekamilika{% else %}done{% endif %}</small>
+              <small style="color:#f59e0b;">⏳ {{ data.pending_student_assessments }} {% if LANG == 'sw' %}inasubiri{% else %}pending{% endif %}</small>
+            </div>
+          </div>
+
+          <!-- Students list -->
+          {% for student_info in data.students|slice:":5" %}
+          <div class="stu-row">
+            <div class="d-flex align-items-start gap-2">
+              <div class="stu-avatar">{{ student_info.student.full_name|first|upper }}</div>
+              <div class="flex-grow-1">
+                <div class="stu-name">{{ student_info.student.full_name }}</div>
+                <div class="stu-meta d-flex gap-3 flex-wrap mt-1">
+                  {% if student_info.student.registration_number %}
+                  <span><i class="fas fa-id-card"></i> {{ student_info.student.registration_number }}</span>
+                  {% endif %}
+                  {% if student_info.phone %}
+                  <span><i class="fas fa-phone"></i> {{ student_info.phone }}</span>
+                  {% endif %}
+                </div>
+                {% if student_info.approved_subjects %}
+                <div class="mt-1">
+                  {% for subj in student_info.approved_subjects|slice:":3" %}
+                  <span class="subj-tag">{{ subj }}</span>
+                  {% endfor %}
+                  {% if student_info.approved_subjects|length > 3 %}
+                  <span class="subj-tag" style="background:#EEF1F6; color:#374151;">+{{ student_info.approved_subjects|length|add:"-3" }}</span>
+                  {% endif %}
+                </div>
+                {% endif %}
+                <!-- Logbook mini stats -->
+                <div class="lb-mini mt-2">
+                  <span><i class="fas fa-book me-1" style="color:#0A2B5E;"></i>{% if LANG == 'sw' %}Jumla{% else %}Total{% endif %}: <strong>{{ student_info.logbook_total }}</strong></span>
+                  <span class="week"><i class="fas fa-calendar-week me-1" style="color:#C8900A;"></i>{% if LANG == 'sw' %}Wiki{% else %}Week{% endif %}: <strong>{{ student_info.logbook_this_week }}</strong></span>
+                  <span class="verified"><i class="fas fa-map-marker-alt me-1" style="color:#059669;"></i>GPS: <strong>{{ student_info.logbook_verified }}</strong></span>
+                  {% if student_info.logbook_last_date %}
+                  <span><i class="fas fa-clock me-1"></i>{{ student_info.logbook_last_date }}</span>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="ms-1 text-end flex-shrink-0">
+                {% if student_info.is_completed %}
+                <span class="bst-done"><i class="fas fa-check me-1"></i>{% if LANG == 'sw' %}Amekaguliwa{% else %}Assessed{% endif %}</span>
+                {% elif student_info.assessment %}
+                <span class="bst-prog"><i class="fas fa-spinner me-1"></i>{% if LANG == 'sw' %}Inaendelea{% else %}In Progress{% endif %}</span>
+                {% else %}
+                <span class="bst-wait"><i class="fas fa-clock me-1"></i>{% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}</span>
+                {% endif %}
+                <div class="mt-2">
+                  <a href="{% url 'assessor_student_detail' data.school.id %}"
+                     style="background:{% if student_info.assessment %}#EEF1F6{% else %}#0A2B5E{% endif %}; color:{% if student_info.assessment %}#0A2B5E{% else %}#fff{% endif %}; border-radius:5px; padding:4px 12px; font-size:0.72rem; font-weight:700; text-decoration:none; white-space:nowrap;">
+                    {% if student_info.assessment %}<i class="fas fa-edit me-1"></i>{% if LANG == 'sw' %}Hariri{% else %}Edit{% endif %}
+                    {% else %}<i class="fas fa-play me-1"></i>{% if LANG == 'sw' %}Anza{% else %}Start{% endif %}{% endif %}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+
+          {% if data.students_count > 5 %}
+          <a href="{% url 'assessor_student_detail' data.school.id %}" class="view-all-btn">
+            <i class="fas fa-arrow-right me-2"></i>
+            {% if LANG == 'sw' %}Angalia Wanafunzi Wote {{ data.students_count }}{% else %}View All {{ data.students_count }} Students{% endif %}
+          </a>
+          {% endif %}
         </div>
-        {% endif %}
-        {% endfor %}
+      </div>
+      {% endif %}
+      {% endfor %}
     </div>
     {% endif %}
-</div>
+
+  </div><!-- /asd-body -->
+</div><!-- /asd-wrap -->
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add animations to cards
-        const cards = document.querySelectorAll('.school-card, .header-card');
-        cards.forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            
-            setTimeout(() => {
-                card.style.transition = 'all 0.5s ease';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, index * 100);
-        });
-
-        // Auto-update progress bars
-        const progressBars = document.querySelectorAll('.progress-bar');
-        progressBars.forEach(bar => {
-            const width = bar.style.width;
-            bar.style.width = '0';
-            
-            setTimeout(() => {
-                bar.style.transition = 'width 1.5s ease-in-out';
-                bar.style.width = width;
-            }, 300);
-        });
-    });
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.prog-bar-fill').forEach(function(bar) {
+    var w = bar.style.width;
+    bar.style.width = '0';
+    setTimeout(function(){ bar.style.width = w; }, 200);
+  });
+});
 </script>
 {% endblock %}

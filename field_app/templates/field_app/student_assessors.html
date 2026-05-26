@@ -1,5 +1,5 @@
 {% extends 'field_app/base.html' %}
-{% block title %}My Assessors{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Wakaguzi Wangu{% else %}My Assessors{% endif %}{% endblock %}
 {% block content %}
 <style>
     .assessor-card {
@@ -17,10 +17,10 @@
         <div class="col-12">
             <div class="card bg-light">
                 <div class="card-body">
-                    <h1 class="h3 mb-2">👨‍🏫 My Assessors</h1>
+                    <h1 class="h3 mb-2">👨‍🏫 {% if LANG == 'sw' %}Wakaguzi Wangu{% else %}My Assessors{% endif %}</h1>
                     <p class="mb-0">
-                        <strong>School:</strong> {{ school.name }} | 
-                        <strong>Location:</strong> {{ school.district.name }}, {{ school.district.region.name }}
+                        <strong>{% if LANG == 'sw' %}Shule:{% else %}School:{% endif %}</strong> {{ school.name }} |
+                        <strong>{% if LANG == 'sw' %}Mahali:{% else %}Location:{% endif %}</strong> {{ school.district.name }}, {{ school.district.region.name }}
                     </p>
                 </div>
             </div>
@@ -42,15 +42,15 @@
                 </div>
                 <div class="card-body">
                     <div class="contact-info p-3 mb-3">
-                        <h6>📞 Contact Information:</h6>
+                        <h6>📞 {% if LANG == 'sw' %}Mawasiliano:{% else %}Contact Information:{% endif %}</h6>
                         <p class="mb-1">
-                            <strong>Phone:</strong> 
+                            <strong>{% if LANG == 'sw' %}Simu:{% else %}Phone:{% endif %}</strong>
                             <a href="tel:{{ assignment.assessor.phone_number }}" class="text-decoration-none">
                                 {{ assignment.assessor.phone_number }}
                             </a>
                         </p>
                         <p class="mb-0">
-                            <strong>Email:</strong> 
+                            <strong>{% if LANG == 'sw' %}Barua Pepe:{% else %}Email:{% endif %}</strong>
                             <a href="mailto:{{ assignment.assessor.email }}" class="text-decoration-none">
                                 {{ assignment.assessor.email }}
                             </a>
@@ -59,21 +59,21 @@
                     
                     {% if assignment.assessor.specialization %}
                     <p class="mb-2">
-                        <strong>Specialization:</strong> 
+                        <strong>{% if LANG == 'sw' %}Utaalamu:{% else %}Specialization:{% endif %}</strong>
                         {{ assignment.assessor.specialization }}
                     </p>
                     {% endif %}
-                    
+
                     {% if assignment.assessment_date %}
                     <p class="mb-2">
-                        <strong>Scheduled Assessment:</strong> 
+                        <strong>{% if LANG == 'sw' %}Tathmini Iliyopangwa:{% else %}Scheduled Assessment:{% endif %}</strong>
                         {{ assignment.assessment_date }}
                     </p>
                     {% endif %}
                 </div>
                 <div class="card-footer bg-white">
                     <small class="text-muted">
-                        Assigned on: {{ assignment.assigned_date|date:"M d, Y" }}
+                        {% if LANG == 'sw' %}Imepewa tarehe:{% else %}Assigned on:{% endif %} {{ assignment.assigned_date|date:"M d, Y" }}
                     </small>
                 </div>
             </div>
@@ -82,10 +82,9 @@
         <div class="col-12">
             <div class="card shadow">
                 <div class="card-body text-center py-5">
-                    <h4>No Assessors Assigned Yet</h4>
+                    <h4>{% if LANG == 'sw' %}Hakuna Wakaguzi Waliopo{% else %}No Assessors Assigned Yet{% endif %}</h4>
                     <p class="text-muted">
-                        No assessors have been assigned to your school yet. 
-                        Please check back later.
+                        {% if LANG == 'sw' %}Hakuna wakaguzi waliopewa shule yako bado. Tafadhali angalia baadaye.{% else %}No assessors have been assigned to your school yet. Please check back later.{% endif %}
                     </p>
                 </div>
             </div>
@@ -99,18 +98,18 @@
         <div class="col-12">
             <div class="card shadow">
                 <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">📊 My Assessment Status</h5>
+                    <h5 class="mb-0">📊 {% if LANG == 'sw' %}Hali Yangu ya Tathmini{% else %}My Assessment Status{% endif %}</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>Assessor</th>
-                                    <th>Status</th>
-                                    <th>Scheduled Date</th>
-                                    <th>Score</th>
-                                    <th>Feedback</th>
+                                    <th>{% if LANG == 'sw' %}Mkaguzi{% else %}Assessor{% endif %}</th>
+                                    <th>{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+                                    <th>{% if LANG == 'sw' %}Tarehe Iliyopangwa{% else %}Scheduled Date{% endif %}</th>
+                                    <th>{% if LANG == 'sw' %}Alama{% else %}Score{% endif %}</th>
+                                    <th>{% if LANG == 'sw' %}Maoni{% else %}Feedback{% endif %}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -129,7 +128,7 @@
                                         {% if assessment.assessment_date %}
                                             {{ assessment.assessment_date|date:"M d, Y" }}
                                         {% else %}
-                                            Not scheduled
+                                            {% if LANG == 'sw' %}Haijapangwa{% else %}Not scheduled{% endif %}
                                         {% endif %}
                                     </td>
                                     <td>
@@ -143,7 +142,7 @@
                                         {% if assessment.feedback %}
                                             {{ assessment.feedback|truncatewords:10 }}
                                         {% else %}
-                                            No feedback yet
+                                            {% if LANG == 'sw' %}Hakuna maoni bado{% else %}No feedback yet{% endif %}
                                         {% endif %}
                                     </td>
                                 </tr>

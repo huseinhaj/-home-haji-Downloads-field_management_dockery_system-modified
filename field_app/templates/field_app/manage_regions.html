@@ -5,7 +5,7 @@
     <div class="card mb-4" style="border: 1px solid var(--border); border-radius: 8px;">
         <div class="card-header" style="background: var(--bold); border-bottom: 3px solid var(--medium); border-radius: 8px 8px 0 0;">
             <h4 class="mb-0 text-white">
-                <i class="fas fa-map-marker-alt me-2" style="color: var(--medium);"></i>📍 Manage Regions & Academic Years
+                <i class="fas fa-map-marker-alt me-2" style="color: var(--medium);"></i>📍 {% if LANG == 'sw' %}Simamia Mikoa na Miaka ya Masomo{% else %}Manage Regions & Academic Years{% endif %}
             </h4>
         </div>
         <div class="card-body" style="background: var(--white);">
@@ -14,7 +14,7 @@
             <div class="card mb-4" style="border: 1px solid var(--border); border-radius: 8px;">
                 <div class="card-header" style="background: var(--light); border-bottom: 1px solid var(--border);">
                     <h4 class="mb-0" style="color: var(--bold);">
-                        <i class="fas fa-calendar-alt me-2" style="color: var(--medium);"></i>📅 Academic Year Management
+                        <i class="fas fa-calendar-alt me-2" style="color: var(--medium);"></i>📅 {% if LANG == 'sw' %}Usimamizi wa Mwaka wa Masomo{% else %}Academic Year Management{% endif %}
                     </h4>
                 </div>
                 <div class="card-body">
@@ -22,7 +22,7 @@
                         <!-- Current Active Year -->
                         <div class="col-md-6">
                             <div class="alert mb-3" style="background: #DBEAFE; border-left: 4px solid var(--info); color: #1E40AF; border-radius: 6px;">
-                                <strong>Current Active Year:</strong>
+                                <strong>{% if LANG == 'sw' %}Mwaka Unaofanya Kazi Sasa:{% else %}Current Active Year:{% endif %}</strong>
                                 <h3 class="mt-2 mb-0" style="color: var(--bold);">{{ current_year.year }}</h3>
                             </div>
                         </div>
@@ -32,18 +32,18 @@
                             <form method="POST" action="{% url 'change_academic_year' %}">
                                 {% csrf_token %}
                                 <div class="mb-3">
-                                    <label class="form-label fw-bold" style="color: var(--text-dark);">Change to:</label>
+                                    <label class="form-label fw-bold" style="color: var(--text-dark);">{% if LANG == 'sw' %}Badilisha kwenda:{% else %}Change to:{% endif %}</label>
                                     <select name="academic_year_id" class="form-select" required style="border: 1.5px solid var(--border); border-radius: 6px;">
-                                        <option value="">Select academic year...</option>
+                                        <option value="">{% if LANG == 'sw' %}Chagua mwaka wa masomo...{% else %}Select academic year...{% endif %}</option>
                                         {% for year in all_years %}
                                         <option value="{{ year.id }}" {% if year.id == current_year.id %}selected{% endif %}>
-                                            {{ year.year }} {% if year.is_active %}(Active){% endif %}
+                                            {{ year.year }} {% if year.is_active %}({% if LANG == 'sw' %}Hai{% else %}Active{% endif %}){% endif %}
                                         </option>
                                         {% endfor %}
                                     </select>
                                 </div>
                                 <button type="submit" class="btn" style="background: var(--medium); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
-                                    <i class="fas fa-exchange-alt me-2"></i>Change Year
+                                    <i class="fas fa-exchange-alt me-2"></i>{% if LANG == 'sw' %}Badilisha Mwaka{% else %}Change Year{% endif %}
                                 </button>
                             </form>
                         </div>
@@ -54,13 +54,13 @@
                     <form method="POST" action="{% url 'create_academic_year' %}" class="row g-3">
                         {% csrf_token %}
                         <div class="col-md-4">
-                            <input type="text" name="year_name" class="form-control" 
-                                   placeholder="e.g., 2027/2028" pattern="\d{4}/\d{4}" required
+                            <input type="text" name="year_name" class="form-control"
+                                   placeholder="{% if LANG == 'sw' %}mfano, 2027/2028{% else %}e.g., 2027/2028{% endif %}" pattern="\d{4}/\d{4}" required
                                    style="border: 1.5px solid var(--border); border-radius: 6px;">
                         </div>
                         <div class="col-md-2">
                             <button type="submit" class="btn" style="background: var(--success); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
-                                <i class="fas fa-plus me-2"></i>Create New Year
+                                <i class="fas fa-plus me-2"></i>{% if LANG == 'sw' %}Unda Mwaka Mpya{% else %}Create New Year{% endif %}
                             </button>
                         </div>
                     </form>
@@ -71,22 +71,22 @@
             <div class="card" style="border: 1px solid var(--border); border-radius: 8px;">
                 <div class="card-header d-flex justify-content-between align-items-center" style="background: var(--light); border-bottom: 1px solid var(--border);">
                     <h4 class="mb-0" style="color: var(--bold);">
-                        <i class="fas fa-globe-africa me-2" style="color: var(--medium);"></i>🗺️ Region Visibility
+                        <i class="fas fa-globe-africa me-2" style="color: var(--medium);"></i>🗺️ {% if LANG == 'sw' %}Uonekano wa Mkoa{% else %}Region Visibility{% endif %}
                     </h4>
-                    <form method="POST" action="{% url 'reset_all_region_pins' %}" 
-                          onsubmit="return confirm('Are you sure? This will make ALL regions visible!')">
+                    <form method="POST" action="{% url 'reset_all_region_pins' %}"
+                          onsubmit="return confirm('{% if LANG == 'sw' %}Je, una uhakika? Hii itafanya mikoa YOTE ionekane!{% else %}Are you sure? This will make ALL regions visible!{% endif %}')">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm" style="background: var(--warning); color: var(--white); border: none; border-radius: 6px;">
-                            <i class="fas fa-eye me-1"></i>Show All Regions
+                            <i class="fas fa-eye me-1"></i>{% if LANG == 'sw' %}Onyesha Mikoa Yote{% else %}Show All Regions{% endif %}
                         </button>
                     </form>
                 </div>
                 <div class="card-body">
                     <div class="alert mb-3" style="background: var(--light); border-left: 4px solid var(--medium); border-radius: 6px;">
-                        <strong style="color: var(--bold);">Academic Year: {{ current_year.year }}</strong><br>
+                        <strong style="color: var(--bold);">{% if LANG == 'sw' %}Mwaka wa Masomo:{% else %}Academic Year:{% endif %} {{ current_year.year }}</strong><br>
                         <span style="color: var(--text-gray);">
-                            <i class="fas fa-lock me-1"></i> = Hidden from students | 
-                            <i class="fas fa-check-circle me-1" style="color: var(--success);"></i> = Visible to students
+                            <i class="fas fa-lock me-1"></i> = {% if LANG == 'sw' %}Imefichwa kutoka kwa wanafunzi{% else %}Hidden from students{% endif %} |
+                            <i class="fas fa-check-circle me-1" style="color: var(--success);"></i> = {% if LANG == 'sw' %}Inaonekana kwa wanafunzi{% else %}Visible to students{% endif %}
                         </span>
                     </div>
                     
@@ -97,11 +97,11 @@
                                 {% csrf_token %}
                                 {% if region.is_pinned %}
                                     <button type="submit" class="btn btn-sm w-100" style="background: #FEE2E2; color: var(--danger); border: 1px solid var(--danger); border-radius: 6px;">
-                                        <i class="fas fa-lock me-1"></i> {{ region.name }} (Hidden)
+                                        <i class="fas fa-lock me-1"></i> {{ region.name }} ({% if LANG == 'sw' %}Imefichwa{% else %}Hidden{% endif %})
                                     </button>
                                 {% else %}
                                     <button type="submit" class="btn btn-sm w-100" style="background: #D1FAE5; color: var(--success); border: 1px solid var(--success); border-radius: 6px;">
-                                        <i class="fas fa-check-circle me-1"></i> {{ region.name }} (Visible)
+                                        <i class="fas fa-check-circle me-1"></i> {{ region.name }} ({% if LANG == 'sw' %}Inaonekana{% else %}Visible{% endif %})
                                     </button>
                                 {% endif %}
                             </form>
@@ -115,26 +115,26 @@
             <div class="card mt-4" style="border: 1px solid var(--border); border-radius: 8px;">
                 <div class="card-header" style="background: var(--light); border-bottom: 1px solid var(--border);">
                     <h4 class="mb-0" style="color: var(--bold);">
-                        <i class="fas fa-chart-pie me-2" style="color: var(--medium);"></i>📊 Summary
+                        <i class="fas fa-chart-pie me-2" style="color: var(--medium);"></i>📊 {% if LANG == 'sw' %}Muhtasari{% else %}Summary{% endif %}
                     </h4>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-4">
                             <div class="alert mb-0" style="background: #FEE2E2; border-left: 4px solid var(--danger); border-radius: 6px;">
-                                <strong style="color: var(--danger);"><i class="fas fa-lock me-1"></i> Hidden Regions:</strong>
+                                <strong style="color: var(--danger);"><i class="fas fa-lock me-1"></i> {% if LANG == 'sw' %}Mikoa Iliyofichwa:{% else %}Hidden Regions:{% endif %}</strong>
                                 <h3 class="mt-2 mb-0" style="color: var(--danger);">{{ hidden_count }}</h3>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="alert mb-0" style="background: #D1FAE5; border-left: 4px solid var(--success); border-radius: 6px;">
-                                <strong style="color: var(--success);"><i class="fas fa-check-circle me-1"></i> Visible Regions:</strong>
+                                <strong style="color: var(--success);"><i class="fas fa-check-circle me-1"></i> {% if LANG == 'sw' %}Mikoa Inayoonekana:{% else %}Visible Regions:{% endif %}</strong>
                                 <h3 class="mt-2 mb-0" style="color: var(--success);">{{ visible_count }}</h3>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="alert mb-0" style="background: #DBEAFE; border-left: 4px solid var(--info); border-radius: 6px;">
-                                <strong style="color: var(--info);"><i class="fas fa-globe me-1"></i> Total Regions:</strong>
+                                <strong style="color: var(--info);"><i class="fas fa-globe me-1"></i> {% if LANG == 'sw' %}Jumla ya Mikoa:{% else %}Total Regions:{% endif %}</strong>
                                 <h3 class="mt-2 mb-0" style="color: var(--info);">{{ total_regions }}</h3>
                             </div>
                         </div>

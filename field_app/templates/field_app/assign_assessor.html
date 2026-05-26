@@ -1,6 +1,6 @@
 {% extends "field_app/base.html" %}
 
-{% block title %}Assign Assessor - Field Management System{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Peana Mkaguzi - Mfumo wa Usimamizi wa Shambani{% else %}Assign Assessor - Internship Management System{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container py-5">
@@ -16,11 +16,11 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <h2 class="mb-1">
-                                <i class="fas fa-user-tie me-2"></i>Assign Assessor
+                                <i class="fas fa-user-tie me-2"></i>{% if LANG == 'sw' %}Peana Mkaguzi{% else %}Assign Assessor{% endif %}
                             </h2>
                             <p class="mb-0 opacity-75">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Assign an assessor to evaluate student applications
+                                {% if LANG == 'sw' %}Peana mkaguzi kutathmini maombi ya wanafunzi{% else %}Assign an assessor to evaluate student applications{% endif %}
                             </p>
                         </div>
                         <div class="bg-white text-primary rounded-circle p-3" style="width: 70px; height: 70px;">
@@ -48,31 +48,31 @@
                     <!-- Form -->
                     <form method="post" class="needs-validation" novalidate>
                         {% csrf_token %}
-                        
+
                         <!-- Student Selection -->
                         <div class="mb-4">
                             <label for="student" class="form-label fw-bold">
                                 <i class="fas fa-user-graduate me-2 text-primary"></i>
-                                Select Student
+                                {% if LANG == 'sw' %}Chagua Mwanafunzi{% else %}Select Student{% endif %}
                             </label>
                             <select class="form-select form-select-lg py-3" id="student" name="student" required style="
                                 border: 2px solid #e0e0e0;
                                 border-radius: 10px;
                                 transition: all 0.3s;
                             ">
-                                <option value="" selected disabled>-- Choose a student --</option>
+                                <option value="" selected disabled>{% if LANG == 'sw' %}-- Chagua mwanafunzi --{% else %}-- Choose a student --{% endif %}</option>
                                 {% for student in students %}
                                 <option value="{{ student.id }}">
-                                    {{ student.get_full_name }} - {{ student.email }} 
-                                    (School: {{ student.school.name|default:"No School" }})
+                                    {{ student.get_full_name }} - {{ student.email }}
+                                    ({% if LANG == 'sw' %}Shule{% else %}School{% endif %}: {% if student.school.name %}{{ student.school.name }}{% else %}{% if LANG == 'sw' %}Hakuna Shule{% else %}No School{% endif %}{% endif %})
                                 </option>
                                 {% empty %}
-                                <option disabled>No students available</option>
+                                <option disabled>{% if LANG == 'sw' %}Hakuna wanafunzi wanaopatikana{% else %}No students available{% endif %}</option>
                                 {% endfor %}
                             </select>
                             <div class="form-text">
                                 <i class="fas fa-lightbulb me-1 text-warning"></i>
-                                Select a student who needs assessor assignment
+                                {% if LANG == 'sw' %}Chagua mwanafunzi anayehitaji kupewa mkaguzi{% else %}Select a student who needs assessor assignment{% endif %}
                             </div>
                         </div>
 
@@ -80,26 +80,26 @@
                         <div class="mb-4">
                             <label for="assessor" class="form-label fw-bold">
                                 <i class="fas fa-user-tie me-2 text-success"></i>
-                                Select Assessor
+                                {% if LANG == 'sw' %}Chagua Mkaguzi{% else %}Select Assessor{% endif %}
                             </label>
                             <select class="form-select form-select-lg py-3" id="assessor" name="assessor" required style="
                                 border: 2px solid #e0e0e0;
                                 border-radius: 10px;
                                 transition: all 0.3s;
                             ">
-                                <option value="" selected disabled>-- Choose an assessor --</option>
+                                <option value="" selected disabled>{% if LANG == 'sw' %}-- Chagua mkaguzi --{% else %}-- Choose an assessor --{% endif %}</option>
                                 {% for assessor in assessors %}
                                 <option value="{{ assessor.id }}">
                                     {{ assessor.get_full_name }} - {{ assessor.email }}
-                                    (Region: {{ assessor.region|default:"All" }})
+                                    ({% if LANG == 'sw' %}Mkoa{% else %}Region{% endif %}: {% if assessor.region %}{{ assessor.region }}{% else %}{% if LANG == 'sw' %}Wote{% else %}All{% endif %}{% endif %})
                                 </option>
                                 {% empty %}
-                                <option disabled>No assessors available</option>
+                                <option disabled>{% if LANG == 'sw' %}Hakuna wakaguzi wanaopatikana{% else %}No assessors available{% endif %}</option>
                                 {% endfor %}
                             </select>
                             <div class="form-text">
                                 <i class="fas fa-lightbulb me-1 text-warning"></i>
-                                Choose an assessor to evaluate this student
+                                {% if LANG == 'sw' %}Chagua mkaguzi kutathmini mwanafunzi huyu{% else %}Choose an assessor to evaluate this student{% endif %}
                             </div>
                         </div>
 
@@ -107,14 +107,14 @@
                         <div class="mb-4">
                             <label for="subject" class="form-label fw-bold">
                                 <i class="fas fa-book me-2 text-info"></i>
-                                Select Subject (Optional)
+                                {% if LANG == 'sw' %}Chagua Somo (Si Lazima){% else %}Select Subject (Optional){% endif %}
                             </label>
                             <select class="form-select form-select-lg py-3" id="subject" name="subject" style="
                                 border: 2px solid #e0e0e0;
                                 border-radius: 10px;
                                 transition: all 0.3s;
                             ">
-                                <option value="" selected>-- All subjects (default) --</option>
+                                <option value="" selected>{% if LANG == 'sw' %}-- Masomo yote (kawaida) --{% else %}-- All subjects (default) --{% endif %}</option>
                                 {% for subject in subjects %}
                                 <option value="{{ subject.id }}">
                                     {{ subject.name }} - {{ subject.code }}
@@ -123,7 +123,7 @@
                             </select>
                             <div class="form-text">
                                 <i class="fas fa-lightbulb me-1 text-warning"></i>
-                                Specify subject if assessor is for a particular subject
+                                {% if LANG == 'sw' %}Bainisha somo ikiwa mkaguzi ni kwa somo maalum{% else %}Specify subject if assessor is for a particular subject{% endif %}
                             </div>
                         </div>
 
@@ -131,29 +131,29 @@
                         <div class="mb-4">
                             <label for="notes" class="form-label fw-bold">
                                 <i class="fas fa-sticky-note me-2 text-secondary"></i>
-                                Assignment Notes
+                                {% if LANG == 'sw' %}Maelezo ya Ugawaji{% else %}Assignment Notes{% endif %}
                             </label>
                             <textarea class="form-control py-3" id="notes" name="notes" rows="3" style="
                                 border: 2px solid #e0e0e0;
                                 border-radius: 10px;
                                 resize: vertical;
                                 transition: all 0.3s;
-                            " placeholder="Add any special instructions or notes for the assessor..."></textarea>
+                            " placeholder="{% if LANG == 'sw' %}Ongeza maagizo maalum au maelezo kwa mkaguzi...{% else %}Add any special instructions or notes for the assessor...{% endif %}"></textarea>
                         </div>
 
                         <!-- Action Buttons -->
                         <div class="d-flex justify-content-between align-items-center mt-4 pt-4 border-top">
                             <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-lg px-4">
-                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                                <i class="fas fa-arrow-left me-2"></i>{% if LANG == 'sw' %}Rudi Dashibodi{% else %}Back to Dashboard{% endif %}
                             </a>
-                            
+
                             <div class="btn-group" role="group">
                                 <button type="submit" class="btn btn-primary btn-lg px-5" name="action" value="assign">
-                                    <i class="fas fa-user-check me-2"></i>Assign Assessor
+                                    <i class="fas fa-user-check me-2"></i>{% if LANG == 'sw' %}Peana Mkaguzi{% else %}Assign Assessor{% endif %}
                                 </button>
-                                
+
                                 <a href="{% url 'bulk_assign_assessors' %}" class="btn btn-success btn-lg px-4">
-                                    <i class="fas fa-users me-2"></i>Bulk Assign
+                                    <i class="fas fa-users me-2"></i>{% if LANG == 'sw' %}Peana kwa Wingi{% else %}Bulk Assign{% endif %}
                                 </a>
                             </div>
                         </div>
@@ -165,7 +165,7 @@
                             <div class="text-center p-3 rounded" style="background: #f0f8ff;">
                                 <div class="h2 fw-bold text-primary mb-1">{{ total_students }}</div>
                                 <div class="text-muted">
-                                    <i class="fas fa-user-graduate me-1"></i>Total Students
+                                    <i class="fas fa-user-graduate me-1"></i>{% if LANG == 'sw' %}Jumla ya Wanafunzi{% else %}Total Students{% endif %}
                                 </div>
                             </div>
                         </div>
@@ -173,7 +173,7 @@
                             <div class="text-center p-3 rounded" style="background: #f0fff4;">
                                 <div class="h2 fw-bold text-success mb-1">{{ total_assessors }}</div>
                                 <div class="text-muted">
-                                    <i class="fas fa-user-tie me-1"></i>Available Assessors
+                                    <i class="fas fa-user-tie me-1"></i>{% if LANG == 'sw' %}Wakaguzi Wanaopatikana{% else %}Available Assessors{% endif %}
                                 </div>
                             </div>
                         </div>
@@ -181,7 +181,7 @@
                             <div class="text-center p-3 rounded" style="background: #fff0f5;">
                                 <div class="h2 fw-bold text-danger mb-1">{{ assigned_count }}</div>
                                 <div class="text-muted">
-                                    <i class="fas fa-link me-1"></i>Already Assigned
+                                    <i class="fas fa-link me-1"></i>{% if LANG == 'sw' %}Tayari Wamepewa{% else %}Already Assigned{% endif %}
                                 </div>
                             </div>
                         </div>
@@ -195,7 +195,7 @@
                 <div class="card-header bg-white border-0 pt-4">
                     <h5 class="mb-0">
                         <i class="fas fa-history me-2 text-primary"></i>
-                        Recent Assignments
+                        {% if LANG == 'sw' %}Ugawaji wa Hivi Karibuni{% else %}Recent Assignments{% endif %}
                     </h5>
                 </div>
                 <div class="card-body">
@@ -203,11 +203,11 @@
                         <table class="table table-hover">
                             <thead style="background: #f8f9fa;">
                                 <tr>
-                                    <th><i class="fas fa-user-graduate"></i> Student</th>
-                                    <th><i class="fas fa-user-tie"></i> Assessor</th>
-                                    <th><i class="fas fa-calendar"></i> Date</th>
-                                    <th><i class="fas fa-book"></i> Subject</th>
-                                    <th><i class="fas fa-cog"></i> Actions</th>
+                                    <th><i class="fas fa-user-graduate"></i> {% if LANG == 'sw' %}Mwanafunzi{% else %}Student{% endif %}</th>
+                                    <th><i class="fas fa-user-tie"></i> {% if LANG == 'sw' %}Mkaguzi{% else %}Assessor{% endif %}</th>
+                                    <th><i class="fas fa-calendar"></i> {% if LANG == 'sw' %}Tarehe{% else %}Date{% endif %}</th>
+                                    <th><i class="fas fa-book"></i> {% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+                                    <th><i class="fas fa-cog"></i> {% if LANG == 'sw' %}Vitendo{% else %}Actions{% endif %}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -226,18 +226,18 @@
                                         {% if assignment.subject %}
                                         <span class="badge bg-info">{{ assignment.subject.name }}</span>
                                         {% else %}
-                                        <span class="badge bg-secondary">All Subjects</span>
+                                        <span class="badge bg-secondary">{% if LANG == 'sw' %}Masomo Yote{% else %}All Subjects{% endif %}</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-primary" data-bs-toggle="tooltip" title="View Details">
+                                            <button class="btn btn-outline-primary" data-bs-toggle="tooltip" title="{% if LANG == 'sw' %}Angalia Maelezo{% else %}View Details{% endif %}">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            <button class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Edit">
+                                            <button class="btn btn-outline-warning" data-bs-toggle="tooltip" title="{% if LANG == 'sw' %}Hariri{% else %}Edit{% endif %}">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button class="btn btn-outline-danger" data-bs-toggle="tooltip" title="Remove">
+                                            <button class="btn btn-outline-danger" data-bs-toggle="tooltip" title="{% if LANG == 'sw' %}Futa{% else %}Remove{% endif %}">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('student_id');
     const assessorId = urlParams.get('assessor_id');
-    
+
     if (studentId) {
         document.getElementById('student').value = studentId;
     }
@@ -304,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const submitBtn = document.querySelector('button[type="submit"]');
     if (submitBtn) {
         submitBtn.addEventListener('click', function() {
-            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Assigning...';
+            this.innerHTML = '{% if LANG == "sw" %}<i class="fas fa-spinner fa-spin me-2"></i>Inapeana...{% else %}<i class="fas fa-spinner fa-spin me-2"></i>Assigning...{% endif %}';
             this.disabled = true;
         });
     }
@@ -317,43 +317,43 @@ document.addEventListener('DOMContentLoaded', function() {
         border-color: #4CAF50 !important;
         box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25) !important;
     }
-    
+
     .btn-primary {
         background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
         border: none;
         transition: all 0.3s ease;
     }
-    
+
     .btn-primary:hover {
         background: linear-gradient(135deg, #43A047 0%, #1B5E20 100%);
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
     }
-    
+
     .btn-success {
         background: linear-gradient(135deg, #2196F3 0%, #0D47A1 100%);
         border: none;
     }
-    
+
     .btn-success:hover {
         background: linear-gradient(135deg, #1976D2 0%, #0A3A73 100%);
         transform: translateY(-2px);
     }
-    
+
     .card {
         transition: transform 0.3s ease;
     }
-    
+
     .card:hover {
         transform: translateY(-5px);
     }
-    
+
     /* Table row hover effect */
     .table-hover tbody tr:hover {
         background-color: rgba(76, 175, 80, 0.05);
         cursor: pointer;
     }
-    
+
     /* Badge styles */
     .badge {
         font-size: 0.8em;

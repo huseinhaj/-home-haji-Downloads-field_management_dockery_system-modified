@@ -1,0 +1,104 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bodi — {{ region.name }}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--bold:#0A2B5E;--medium:#C8900A;--light:#EEF1F6;--white:#fff;--border:#CBD5E0;--text:#1A1A2E;--gray:#4A5568;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;display:flex;flex-direction:column;}
+.top-nav{background:var(--bold);border-bottom:3px solid var(--medium);padding:0 32px;display:flex;align-items:center;justify-content:space-between;min-height:56px;}
+.top-nav .brand{color:var(--white);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
+.top-nav .brand i{color:var(--medium);}
+.top-nav .user-info{display:flex;align-items:center;gap:16px;}
+.top-nav .user-info span{color:rgba(255,255,255,.8);font-size:13px;}
+.top-nav a{color:rgba(255,255,255,.8);font-size:13px;text-decoration:none;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:5px;border:1px solid rgba(255,255,255,.2);transition:.15s;}
+.top-nav a:hover{background:rgba(255,255,255,.1);color:var(--white);}
+.breadcrumb{background:var(--white);padding:10px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:13px;}
+.breadcrumb a{color:var(--bold);text-decoration:none;font-weight:600;}
+.breadcrumb a:hover{color:var(--medium);}
+.breadcrumb span{color:var(--gray);}
+.main{flex:1;padding:28px 32px;max-width:1200px;margin:0 auto;width:100%;}
+.page-hd{background:var(--white);border-radius:8px;padding:20px 24px;margin-bottom:24px;border:1px solid var(--border);border-left:4px solid var(--medium);}
+.page-hd h1{font-size:20px;color:var(--bold);font-weight:700;margin:0;}
+.page-hd p{font-size:13px;color:var(--gray);margin:4px 0 0;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+.dist-card{background:var(--white);border-radius:8px;border:1px solid var(--border);overflow:hidden;transition:.2s;text-decoration:none;display:block;}
+.dist-card:hover{border-color:var(--bold);box-shadow:0 4px 16px rgba(10,43,94,.12);transform:translateY(-2px);}
+.dc-head{background:var(--bold);padding:12px 18px;border-bottom:3px solid var(--medium);display:flex;align-items:center;gap:10px;}
+.dc-ico{width:34px;height:34px;background:rgba(200,144,10,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+.dc-ico i{color:var(--medium);font-size:15px;}
+.dc-head h3{font-size:14px;color:var(--white);font-weight:700;margin:0;}
+.dc-body{padding:14px 18px;}
+.dc-stat{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--gray);margin-bottom:6px;}
+.dc-stat strong{color:var(--bold);font-weight:700;}
+.dc-footer{padding:10px 18px 14px;display:flex;align-items:center;justify-content:flex-end;}
+.btn-view{background:var(--bold);color:var(--white);border:none;border-radius:5px;padding:7px 16px;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;text-decoration:none;}
+.btn-view:hover{background:#0C3570;}
+.empty{text-align:center;padding:40px 20px;background:var(--white);border-radius:8px;border:1px solid var(--border);}
+.empty i{font-size:40px;color:#D1D9E8;margin-bottom:12px;}
+.empty p{color:var(--gray);font-size:13.5px;}
+.gov-footer{background:var(--bold);padding:11px 40px;display:flex;align-items:center;justify-content:space-between;border-top:3px solid var(--medium);flex-wrap:wrap;gap:8px;}
+.gov-footer p{font-size:11px;color:rgba(255,255,255,.65);margin:0;}
+.gov-footer .ver{font-size:11px;color:var(--medium);font-weight:700;}
+@media(max-width:768px){.main{padding:16px;}.grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:480px){.grid{grid-template-columns:1fr;}.top-nav{padding:0 16px;}}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <div class="brand"><i class="fas fa-users"></i> Bodi ya Walimu — IMS</div>
+  <div class="user-info">
+    <span><i class="fas fa-user-tie" style="margin-right:5px;color:var(--medium);"></i>{{ bm.full_name }}</span>
+    <a href="{% url 'board_logout' %}"><i class="fas fa-sign-out-alt"></i> Toka</a>
+  </div>
+</nav>
+
+<div class="breadcrumb">
+  <a href="{% url 'board_home' %}"><i class="fas fa-home" style="margin-right:4px;"></i>Mikoa</a>
+  <span><i class="fas fa-chevron-right"></i></span>
+  <span style="color:var(--bold);font-weight:600;">{{ region.name }}</span>
+</div>
+
+<div class="main">
+  <div class="page-hd">
+    <h1><i class="fas fa-building" style="color:var(--medium);margin-right:8px;"></i>Wilaya za {{ region.name }}</h1>
+    <p>Chagua wilaya ili uone shule na walimu wanafunzi waliopo</p>
+  </div>
+
+  {% if districts %}
+  <div class="grid">
+    {% for district in districts %}
+    <a href="{% url 'board_school_list' district.id %}" class="dist-card">
+      <div class="dc-head">
+        <div class="dc-ico"><i class="fas fa-map-pin"></i></div>
+        <h3>{{ district.name }}</h3>
+      </div>
+      <div class="dc-body">
+        <div class="dc-stat"><span><i class="fas fa-school" style="margin-right:5px;"></i>Shule</span><strong>{{ district.school_count }}</strong></div>
+        <div class="dc-stat"><span><i class="fas fa-user-graduate" style="margin-right:5px;"></i>Walimu Wanafunzi</span><strong>{{ district.student_count }}</strong></div>
+      </div>
+      <div class="dc-footer">
+        <span class="btn-view"><i class="fas fa-arrow-right"></i> Angalia Shule</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">
+    <div><i class="fas fa-building"></i></div>
+    <p>Hakuna wilaya zilizorekodiwa kwa mkoa huu.</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="gov-footer">
+  <p>&copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Jamhuri ya Muungano wa Tanzania.</p>
+  <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0 | Bodi ya Walimu</span>
+</div>
+</body>
+</html>

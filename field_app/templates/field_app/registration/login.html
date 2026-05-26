@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="vgtcw2d_toovh2Wsrh0nXvzIhNqPAaG_cmKHAvW48ZM" />
-    <title>FPMS | Field Placement Management System - MoEST Tanzania</title>
+    <title>IMS | Internship Management System - Teacher Colleges in Tanzania</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
@@ -361,20 +361,27 @@
     <!-- GOVERNMENT HEADER — logo LEFT, text CENTER -->
     <div class="gov-header">
         <div class="coat-of-arms">
-            <img src="https://i.imgur.com/GUou4GD.png" alt="Tanzania Coat of Arms">
+            {% load static %}
+            <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Tanzania Coat of Arms">
         </div>
         <div class="gov-titles">
             <div class="t1">United Republic of Tanzania — Serikali ya Jamhuri ya Muungano</div>
-            <div class="t2">Ministry of Education, Science and Technology</div>
-            <div class="t3">Field Placement Management System (FPMS) &mdash; Student Placement Portal</div>
+            <div class="t2">{% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia{% else %}Ministry of Education, Science and Technology{% endif %}</div>
+            <div class="t3">Internship Management System (IMS) &mdash; {% if LANG == 'sw' %}Lango la Mwanafunzi{% else %}Student Placement Portal{% endif %}</div>
         </div>
-        <div class="gov-spacer"></div>
+        <!-- Language toggle -->
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:60px;">
+            <a href="/set-language/?lang=en&amp;next={{ request.path }}"
+               style="color:{% if LANG == 'en' %}#C8900A{% else %}rgba(255,255,255,0.5){% endif %};font-size:12px;font-weight:700;text-decoration:none;">EN</a>
+            <a href="/set-language/?lang=sw&amp;next={{ request.path }}"
+               style="color:{% if LANG == 'sw' %}#C8900A{% else %}rgba(255,255,255,0.5){% endif %};font-size:12px;font-weight:700;text-decoration:none;">SW</a>
+        </div>
     </div>
 
     <!-- NAV -->
     <div class="nav-stripe">
         <a class="nav-item active" href="#"><i class="fas fa-graduation-cap"></i> Student Portal</a>
-        <a class="nav-item" href="#"><i class="fas fa-info-circle"></i> About FPMS</a>
+        <a class="nav-item" href="#"><i class="fas fa-info-circle"></i> About IMS</a>
         <a class="nav-item" href="#"><i class="fas fa-question-circle"></i> Help Center</a>
         <a class="nav-item" href="#"><i class="fas fa-envelope"></i> Contact</a>
     </div>
@@ -386,8 +393,8 @@
             <div class="panel-head">
                 <div class="panel-head-icon"><i class="fas fa-user-lock"></i></div>
                 <div>
-                    <h2>Student Login</h2>
-                    <p>Access your field placement portal</p>
+                    <h2>{% if LANG == 'sw' %}Ingia - Mwanafunzi{% else %}Student Login{% endif %}</h2>
+                    <p>{% if LANG == 'sw' %}Fikia lango lako la mafunzo ya vitendo{% else %}Access your field placement portal{% endif %}</p>
                 </div>
             </div>
 
@@ -405,20 +412,20 @@
                     {% csrf_token %}
 
                     <div class="field-wrap">
-                        <label class="field-label">Registration Number / Email</label>
+                        <label class="field-label">{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %}</label>
                         <div class="input-row">
                             <div class="inp-icon"><i class="fas fa-id-card"></i></div>
                             <input type="text" name="username" id="username" class="field-input"
-                                   placeholder="e.g. S2024/0001 or email@college.ac.tz" required>
+                                   placeholder="{% if LANG == 'sw' %}mfano: jina@chuo.ac.tz{% else %}e.g. email@college.ac.tz{% endif %}" required>
                         </div>
                     </div>
 
                     <div class="field-wrap">
-                        <label class="field-label">Password</label>
+                        <label class="field-label">{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %}</label>
                         <div class="input-row">
                             <div class="inp-icon"><i class="fas fa-lock"></i></div>
                             <input type="password" name="password" id="password" class="field-input"
-                                   placeholder="Enter your password" style="padding-right:38px;" required>
+                                   placeholder="{% if LANG == 'sw' %}Weka nywila yako{% else %}Enter your password{% endif %}" style="padding-right:38px;" required>
                             <button type="button" class="toggle-btn" onclick="togglePwd()">
                                 <i class="fas fa-eye" id="eyeIco"></i>
                             </button>
@@ -427,37 +434,32 @@
 
                     <div class="remember-row">
                         <label class="chk-label">
-                            <input type="checkbox" name="remember"> Remember Me
+                            <input type="checkbox" name="remember"> {% if LANG == 'sw' %}Nikumbuke{% else %}Remember Me{% endif %}
                         </label>
-                        <a href="{% url 'password_reset' %}" class="forgot-a">Forgot Password?</a>
+                        <a href="{% url 'password_reset' %}" class="forgot-a">{% if LANG == 'sw' %}Umesahau Nywila?{% else %}Forgot Password?{% endif %}</a>
                     </div>
 
                     <button type="submit" class="btn-signin">
-                        <i class="fas fa-sign-in-alt"></i> SIGN IN
+                        <i class="fas fa-sign-in-alt"></i> {% if LANG == 'sw' %}INGIA{% else %}SIGN IN{% endif %}
                     </button>
                 </form>
 
-                <div class="divider-line"><span>OR</span></div>
-
-                <a href="/admin/" class="btn-admin">
-                    <i class="fas fa-user-shield"></i> Admin Portal Access
-                </a>
-
                 <div class="register-note">
-                    New student? <a href="{% url 'register' %}">Create account &rarr;</a>
+                    {% if LANG == 'sw' %}Mwanafunzi mpya? <a href="{% url 'register' %}">Fungua akaunti &rarr;</a>
+                    {% else %}New student? <a href="{% url 'register' %}">Create account &rarr;</a>{% endif %}
                 </div>
             </div>
 
             <div class="panel-foot">
                 <i class="fas fa-shield-alt"></i>
-                <span>Secured by Tanzania Government IT Standards &mdash; TCRA Compliant</span>
+                <span>{% if LANG == 'sw' %}Imelindwa na Viwango vya IT vya Serikali ya Tanzania{% else %}Secured by Tanzania Government IT Standards &mdash; TCRA Compliant{% endif %}</span>
             </div>
         </div>
     </div>
 
     <div class="gov-footer">
     <p>&copy; {% now "Y" %} Ministry of Education, Science and Technology &mdash; United Republic of Tanzania. All rights reserved.</p>
-    <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>FPMS v2.1.0</span>
+    <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0</span>
 </div>
 </div>
 

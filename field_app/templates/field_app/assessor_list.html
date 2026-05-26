@@ -1,6 +1,6 @@
 {% extends 'field_app/base.html' %}
 
-{% block title %}Assessors List{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Orodha ya Wakaguzi{% else %}Assessors List{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
@@ -11,41 +11,41 @@
                     <div class="d-flex justify-content-between align-items-center flex-wrap">
                         <h4 class="mb-0 text-white">
                             <i class="fas fa-user-tie me-2" style="color: var(--medium);"></i>
-                            Assessors Management
+                            {% if LANG == 'sw' %}Usimamizi wa Wakaguzi{% else %}Assessors Management{% endif %}
                         </h4>
                         <div class="mt-2 mt-md-0">
                             <a href="{% url 'bulk_assign_assessors' %}" class="btn btn-sm" style="background: var(--medium); color: var(--white); border: none; border-radius: 6px;">
-                                <i class="fas fa-plus me-1"></i> Bulk Assign
+                                <i class="fas fa-plus me-1"></i> {% if LANG == 'sw' %}Peana kwa Wingi{% else %}Bulk Assign{% endif %}
                             </a>
                         </div>
                     </div>
                 </div>
                 <div class="card-body" style="background: var(--white);">
-                    
+
                     <!-- Statistics Cards -->
                     <div class="row mb-4 g-3">
                         <div class="col-md-3 col-sm-6">
                             <div class="card text-center p-3" style="border: none; background: var(--bold); color: var(--white); border-radius: 8px;">
                                 <h3 class="card-title mb-0">{{ assessors|length }}</h3>
-                                <p class="card-text mb-0">Total Assessors</p>
+                                <p class="card-text mb-0">{% if LANG == 'sw' %}Jumla ya Wakaguzi{% else %}Total Assessors{% endif %}</p>
                             </div>
                         </div>
                         <div class="col-md-3 col-sm-6">
                             <div class="card text-center p-3" style="border: none; background: var(--success); color: var(--white); border-radius: 8px;">
                                 <h3 class="card-title mb-0">{{ assessors_with_accounts }}</h3>
-                                <p class="card-text mb-0">With Accounts</p>
+                                <p class="card-text mb-0">{% if LANG == 'sw' %}Wenye Akaunti{% else %}With Accounts{% endif %}</p>
                             </div>
                         </div>
                         <div class="col-md-3 col-sm-6">
                             <div class="card text-center p-3" style="border: none; background: var(--info); color: var(--white); border-radius: 8px;">
                                 <h3 class="card-title mb-0">{{ assessors_without_accounts }}</h3>
-                                <p class="card-text mb-0">Without Accounts</p>
+                                <p class="card-text mb-0">{% if LANG == 'sw' %}Wasio na Akaunti{% else %}Without Accounts{% endif %}</p>
                             </div>
                         </div>
                         <div class="col-md-3 col-sm-6">
                             <div class="card text-center p-3" style="border: none; background: var(--warning); color: var(--white); border-radius: 8px;">
                                 <h3 class="card-title mb-0">{{ assessors_without_email }}</h3>
-                                <p class="card-text mb-0">Without Email</p>
+                                <p class="card-text mb-0">{% if LANG == 'sw' %}Wasio na Barua Pepe{% else %}Without Email{% endif %}</p>
                             </div>
                         </div>
                     </div>
@@ -57,23 +57,23 @@
                                 <span class="input-group-text" style="background: var(--light); border: 1.5px solid var(--border); border-right: none;">
                                     <i class="fas fa-search" style="color: var(--text-gray);"></i>
                                 </span>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="searchInput" 
-                                       placeholder="Search assessors by name, email, or phone..."
+                                <input type="text"
+                                       class="form-control"
+                                       id="searchInput"
+                                       placeholder="{% if LANG == 'sw' %}Tafuta wakaguzi kwa jina, barua pepe, au simu...{% else %}Search assessors by name, email, or phone...{% endif %}"
                                        style="border: 1.5px solid var(--border); border-left: none;">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="btn-group float-md-end" role="group">
                                 <button type="button" class="btn filter-btn active" data-filter="all" style="background: var(--bold); color: var(--white); border: none; border-radius: 6px 0 0 6px;">
-                                    All ({{ assessors|length }})
+                                    {% if LANG == 'sw' %}Wote{% else %}All{% endif %} ({{ assessors|length }})
                                 </button>
                                 <button type="button" class="btn filter-btn" data-filter="with-account" style="background: var(--success); color: var(--white); border: none;">
-                                    With Account ({{ assessors_with_accounts }})
+                                    {% if LANG == 'sw' %}Wenye Akaunti{% else %}With Account{% endif %} ({{ assessors_with_accounts }})
                                 </button>
                                 <button type="button" class="btn filter-btn" data-filter="without-email" style="background: var(--warning); color: var(--white); border: none; border-radius: 0 6px 6px 0;">
-                                    No Email ({{ assessors_without_email }})
+                                    {% if LANG == 'sw' %}Bila Barua Pepe{% else %}No Email{% endif %} ({{ assessors_without_email }})
                                 </button>
                             </div>
                         </div>
@@ -88,26 +88,26 @@
                                         <input type="checkbox" id="selectAll" class="form-check-input" style="accent-color: var(--bold);">
                                     </th>
                                     <th style="border-color: var(--border); color: var(--text-dark);">#</th>
-                                    <th style="border-color: var(--border); color: var(--text-dark);">Full Name</th>
-                                    <th style="border-color: var(--border); color: var(--text-dark);">Email</th>
-                                    <th style="border-color: var(--border); color: var(--text-dark);">Phone</th>
-                                    <th style="border-color: var(--border); color: var(--text-dark);">Account Status</th>
-                                    <th style="border-color: var(--border); color: var(--text-dark);">Schools Assigned</th>
-                                    <th style="border-color: var(--border); color: var(--text-dark);">Status</th>
-                                    <th style="border-color: var(--border); color: var(--text-dark);">Actions</th>
+                                    <th style="border-color: var(--border); color: var(--text-dark);">{% if LANG == 'sw' %}Jina Kamili{% else %}Full Name{% endif %}</th>
+                                    <th style="border-color: var(--border); color: var(--text-dark);">{% if LANG == 'sw' %}Barua Pepe{% else %}Email{% endif %}</th>
+                                    <th style="border-color: var(--border); color: var(--text-dark);">{% if LANG == 'sw' %}Simu{% else %}Phone{% endif %}</th>
+                                    <th style="border-color: var(--border); color: var(--text-dark);">{% if LANG == 'sw' %}Hali ya Akaunti{% else %}Account Status{% endif %}</th>
+                                    <th style="border-color: var(--border); color: var(--text-dark);">{% if LANG == 'sw' %}Shule Zilizopewa{% else %}Schools Assigned{% endif %}</th>
+                                    <th style="border-color: var(--border); color: var(--text-dark);">{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+                                    <th style="border-color: var(--border); color: var(--text-dark);">{% if LANG == 'sw' %}Vitendo{% else %}Actions{% endif %}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for assessor in assessors %}
-                                <tr class="assessor-row" 
+                                <tr class="assessor-row"
                                     data-filter="{% if not assessor.has_account %}no-account{% else %}with-account{% endif %} {% if not assessor.email %}without-email{% endif %}"
                                     data-name="{{ assessor.full_name|lower }}"
                                     data-email="{{ assessor.email|default:''|lower }}"
                                     data-phone="{{ assessor.phone_number|default:''|lower }}">
                                     <td>
-                                        <input type="checkbox" 
-                                               class="form-check-input assessor-checkbox" 
-                                               name="assessor_ids" 
+                                        <input type="checkbox"
+                                               class="form-check-input assessor-checkbox"
+                                               name="assessor_ids"
                                                value="{{ assessor.id }}"
                                                style="accent-color: var(--bold);">
                                     </td>
@@ -127,22 +127,24 @@
                                         </a>
                                         {% else %}
                                         <span style="color: var(--danger);">
-                                            <i class="fas fa-times-circle me-1"></i> No email
+                                            <i class="fas fa-times-circle me-1"></i> {% if LANG == 'sw' %}Hakuna barua pepe{% else %}No email{% endif %}
                                         </span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ assessor.phone_number|default:"-" }}</td>
+                                    <td>
+                                        {% if assessor.phone_number %}{{ assessor.phone_number }}{% else %}-{% endif %}
+                                    </td>
                                     <td>
                                         {% if assessor.has_account %}
                                         <span class="badge" style="background: var(--success); color: white;">
-                                            <i class="fas fa-check-circle me-1"></i> Active Account
+                                            <i class="fas fa-check-circle me-1"></i> {% if LANG == 'sw' %}Akaunti Hai{% else %}Active Account{% endif %}
                                         </span>
                                         <small class="d-block text-muted">
-                                            Username: {{ assessor.user.username|default:"-" }}
+                                            {% if LANG == 'sw' %}Jina la mtumiaji{% else %}Username{% endif %}: {% if assessor.user.username %}{{ assessor.user.username }}{% else %}-{% endif %}
                                         </small>
                                         {% else %}
                                         <span class="badge" style="background: var(--warning); color: white;">
-                                            <i class="fas fa-exclamation-triangle me-1"></i> No Account
+                                            <i class="fas fa-exclamation-triangle me-1"></i> {% if LANG == 'sw' %}Hakuna Akaunti{% else %}No Account{% endif %}
                                         </span>
                                         {% endif %}
                                      </td>
@@ -150,7 +152,7 @@
                                         <div class="schools-container">
                                             {% if assessor.schools_count > 0 %}
                                             <span class="badge" style="background: var(--bold); color: white;">
-                                                {{ assessor.schools_count }} school{{ assessor.schools_count|pluralize }}
+                                                {{ assessor.schools_count }} {% if LANG == 'sw' %}shule{% else %}school{{ assessor.schools_count|pluralize }}{% endif %}
                                             </span>
                                             <div class="mt-1">
                                                 {% for assignment in assessor.assigned_schools|slice:":3" %}
@@ -161,45 +163,45 @@
                                                 {% endfor %}
                                                 {% if assessor.schools_count > 3 %}
                                                 <small class="text-muted">
-                                                    +{{ assessor.schools_count|add:"-3" }} more...
+                                                    +{{ assessor.schools_count|add:"-3" }} {% if LANG == 'sw' %}zaidi...{% else %}more...{% endif %}
                                                 </small>
                                                 {% endif %}
                                             </div>
                                             {% else %}
-                                            <span class="badge" style="background: var(--text-gray); color: white;">No schools</span>
+                                            <span class="badge" style="background: var(--text-gray); color: white;">{% if LANG == 'sw' %}Hakuna shule{% else %}No schools{% endif %}</span>
                                             {% endif %}
                                         </div>
                                      </td>
                                     <td>
                                         {% if assessor.is_active %}
-                                        <span class="badge" style="background: var(--success); color: white;">Active</span>
+                                        <span class="badge" style="background: var(--success); color: white;">{% if LANG == 'sw' %}Hai{% else %}Active{% endif %}</span>
                                         {% else %}
-                                        <span class="badge" style="background: var(--danger); color: white;">Inactive</span>
+                                        <span class="badge" style="background: var(--danger); color: white;">{% if LANG == 'sw' %}Haifanyi Kazi{% else %}Inactive{% endif %}</span>
                                         {% endif %}
                                      </td>
                                     <td>
                                         <div class="btn-group" role="group">
-                                            <button type="button" 
-                                                    class="btn btn-sm" 
+                                            <button type="button"
+                                                    class="btn btn-sm"
                                                     style="background: transparent; color: var(--bold); border: 1px solid var(--bold); border-radius: 4px 0 0 4px;"
-                                                    data-bs-toggle="tooltip" 
-                                                    title="View Details"
+                                                    data-bs-toggle="tooltip"
+                                                    title="{% if LANG == 'sw' %}Angalia Maelezo{% else %}View Details{% endif %}"
                                                     onclick="viewAssessorDetails({{ assessor.id }})">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            <a href="{% url 'admin:field_app_assessor_change' assessor.id %}" 
-                                               class="btn btn-sm" 
+                                            <a href="{% url 'admin:field_app_assessor_change' assessor.id %}"
+                                               class="btn btn-sm"
                                                style="background: transparent; color: var(--medium); border: 1px solid var(--medium); border-radius: 0;"
-                                               data-bs-toggle="tooltip" 
-                                               title="Edit">
+                                               data-bs-toggle="tooltip"
+                                               title="{% if LANG == 'sw' %}Hariri{% else %}Edit{% endif %}">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             {% if assessor.email and assessor.has_account %}
-                                            <button type="button" 
-                                                    class="btn btn-sm" 
+                                            <button type="button"
+                                                    class="btn btn-sm"
                                                     style="background: transparent; color: var(--info); border: 1px solid var(--info); border-radius: 0 4px 4px 0;"
-                                                    data-bs-toggle="tooltip" 
-                                                    title="Send Credentials"
+                                                    data-bs-toggle="tooltip"
+                                                    title="{% if LANG == 'sw' %}Tuma Vitambulisho{% else %}Send Credentials{% endif %}"
                                                     onclick="sendCredentials('{{ assessor.id }}', '{{ assessor.full_name }}')">
                                                 <i class="fas fa-paper-plane"></i>
                                             </button>
@@ -211,8 +213,8 @@
                                 <tr>
                                     <td colspan="9" class="text-center py-4" style="color: var(--text-gray);">
                                         <i class="fas fa-user-tie fa-3x mb-3"></i>
-                                        <h5>No assessors found</h5>
-                                        <p>Add assessors in the admin panel first</p>
+                                        <h5>{% if LANG == 'sw' %}Hakuna wakaguzi waliopatikana{% else %}No assessors found{% endif %}</h5>
+                                        <p>{% if LANG == 'sw' %}Ongeza wakaguzi katika dashibodi ya msimamizi kwanza{% else %}Add assessors in the admin panel first{% endif %}</p>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -225,23 +227,23 @@
                         <div class="card-header" style="background: var(--light); border-bottom: 1px solid var(--border);">
                             <h5 class="mb-0" style="color: var(--text-dark);">
                                 <i class="fas fa-tasks me-2" style="color: var(--medium);"></i>
-                                Bulk Actions
+                                {% if LANG == 'sw' %}Vitendo vya Wingi{% else %}Bulk Actions{% endif %}
                             </h5>
                         </div>
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                                 <div>
-                                    <span id="selectedCount" style="color: var(--bold); font-weight: bold;">0</span> assessor(s) selected
+                                    <span id="selectedCount" style="color: var(--bold); font-weight: bold;">0</span> {% if LANG == 'sw' %}mkaguzi(wakaguzi) wamechaguliwa{% else %}assessor(s) selected{% endif %}
                                 </div>
                                 <div>
                                     <button type="button" class="btn" onclick="bulkResendCredentials()" style="background: var(--warning); color: white; border: none; border-radius: 6px;">
-                                        <i class="fas fa-envelope me-1"></i> Resend Credentials
+                                        <i class="fas fa-envelope me-1"></i> {% if LANG == 'sw' %}Tuma Tena Vitambulisho{% else %}Resend Credentials{% endif %}
                                     </button>
                                     <button type="button" class="btn ms-2" onclick="bulkDeactivate()" style="background: var(--danger); color: white; border: none; border-radius: 6px;">
-                                        <i class="fas fa-user-slash me-1"></i> Deactivate
+                                        <i class="fas fa-user-slash me-1"></i> {% if LANG == 'sw' %}Zima{% else %}Deactivate{% endif %}
                                     </button>
                                     <button type="button" class="btn ms-2" onclick="bulkActivate()" style="background: var(--success); color: white; border: none; border-radius: 6px;">
-                                        <i class="fas fa-user-check me-1"></i> Activate
+                                        <i class="fas fa-user-check me-1"></i> {% if LANG == 'sw' %}Washa{% else %}Activate{% endif %}
                                     </button>
                                 </div>
                             </div>
@@ -254,13 +256,13 @@
                         <ul class="pagination justify-content-center">
                             {% if assessors.has_previous %}
                             <li class="page-item">
-                                <a class="page-link" href="?page=1" style="color: var(--bold); border-color: var(--border);">&laquo; First</a>
+                                <a class="page-link" href="?page=1" style="color: var(--bold); border-color: var(--border);">&laquo; {% if LANG == 'sw' %}Kwanza{% else %}First{% endif %}</a>
                             </li>
                             <li class="page-item">
-                                <a class="page-link" href="?page={{ assessors.previous_page_number }}" style="color: var(--bold); border-color: var(--border);">Previous</a>
+                                <a class="page-link" href="?page={{ assessors.previous_page_number }}" style="color: var(--bold); border-color: var(--border);">{% if LANG == 'sw' %}Iliyopita{% else %}Previous{% endif %}</a>
                             </li>
                             {% endif %}
-                            
+
                             {% for num in assessors.paginator.page_range %}
                                 {% if assessors.number == num %}
                                 <li class="page-item active">
@@ -272,13 +274,13 @@
                                 </li>
                                 {% endif %}
                             {% endfor %}
-                            
+
                             {% if assessors.has_next %}
                             <li class="page-item">
-                                <a class="page-link" href="?page={{ assessors.next_page_number }}" style="color: var(--bold); border-color: var(--border);">Next</a>
+                                <a class="page-link" href="?page={{ assessors.next_page_number }}" style="color: var(--bold); border-color: var(--border);">{% if LANG == 'sw' %}Inayofuata{% else %}Next{% endif %}</a>
                             </li>
                             <li class="page-item">
-                                <a class="page-link" href="?page={{ assessors.paginator.num_pages }}" style="color: var(--bold); border-color: var(--border);">Last &raquo;</a>
+                                <a class="page-link" href="?page={{ assessors.paginator.num_pages }}" style="color: var(--bold); border-color: var(--border);">{% if LANG == 'sw' %}Mwisho{% else %}Last{% endif %} &raquo;</a>
                             </li>
                             {% endif %}
                         </ul>
@@ -295,18 +297,18 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content" style="border: 1px solid var(--border); border-radius: 8px;">
             <div class="modal-header" style="background: var(--bold); border-bottom: 2px solid var(--medium);">
-                <h5 class="modal-title text-white">Assessor Details</h5>
+                <h5 class="modal-title text-white">{% if LANG == 'sw' %}Maelezo ya Mkaguzi{% else %}Assessor Details{% endif %}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="assessorDetailsContent">
                 <div class="text-center py-4">
                     <div class="spinner-border" style="color: var(--bold);" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                        <span class="visually-hidden">{% if LANG == 'sw' %}Inapakia...{% else %}Loading...{% endif %}</span>
                     </div>
                 </div>
             </div>
             <div class="modal-footer" style="border-top: 1px solid var(--border);">
-                <button type="button" class="btn" data-bs-dismiss="modal" style="background: var(--light); color: var(--text-dark); border: 1px solid var(--border); border-radius: 6px;">Close</button>
+                <button type="button" class="btn" data-bs-dismiss="modal" style="background: var(--light); color: var(--text-dark); border: 1px solid var(--border); border-radius: 6px;">{% if LANG == 'sw' %}Funga{% else %}Close{% endif %}</button>
             </div>
         </div>
     </div>
@@ -316,102 +318,102 @@
     .assessor-row:hover {
         background-color: rgba(10, 43, 94, 0.03);
     }
-    
+
     .badge {
         font-weight: 500;
         border-radius: 6px;
     }
-    
+
     .table th {
         font-weight: 600;
         border-bottom: 2px solid var(--border);
     }
-    
+
     .table td {
         vertical-align: middle;
         border-color: var(--border);
     }
-    
+
     .filter-btn {
         transition: all 0.2s ease;
     }
-    
+
     .filter-btn:hover {
         transform: translateY(-1px);
         opacity: 0.9;
     }
-    
+
     .filter-btn.active {
         opacity: 1;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
-    
+
     #bulkActionsCard {
         transition: all 0.3s ease;
     }
-    
+
     .btn-group .btn {
         transition: all 0.2s ease;
     }
-    
+
     .btn-group .btn:hover {
         transform: translateY(-1px);
     }
-    
+
     .page-link {
         transition: all 0.2s ease;
     }
-    
+
     .page-link:hover {
         background: var(--light);
         border-color: var(--bold);
         color: var(--bold);
     }
-    
+
     .form-control:focus, .input-group-text:focus-within {
         border-color: var(--bold) !important;
         box-shadow: 0 0 0 3px rgba(10, 43, 94, 0.1) !important;
         outline: none;
     }
-    
+
     /* Responsive */
     @media (max-width: 768px) {
         .container-fluid {
             padding: 0.5rem;
         }
-        
+
         .btn-group {
             width: 100%;
         }
-        
+
         .btn-group .btn {
             flex: 1;
             font-size: 0.75rem;
             padding: 0.375rem 0.5rem;
         }
-        
+
         .float-md-end {
             float: none !important;
             margin-top: 10px;
         }
-        
+
         .d-flex.justify-content-between {
             flex-direction: column;
             align-items: flex-start !important;
             gap: 15px;
         }
     }
-    
+
     @media print {
         .btn, .modal, .pagination, #bulkActionsCard, .filter-btn, .btn-group {
             display: none !important;
         }
-        
+
         .card {
             border: 1px solid #dee2e6 !important;
             box-shadow: none !important;
         }
-        
+
         .table {
             border: 1px solid #dee2e6;
         }
@@ -426,12 +428,12 @@ let selectedAssessors = new Set();
 document.getElementById('searchInput').addEventListener('keyup', function() {
     const searchTerm = this.value.toLowerCase();
     const rows = document.querySelectorAll('.assessor-row');
-    
+
     rows.forEach(row => {
         const name = row.getAttribute('data-name');
         const email = row.getAttribute('data-email');
         const phone = row.getAttribute('data-phone');
-        
+
         if (name.includes(searchTerm) || email.includes(searchTerm) || phone.includes(searchTerm)) {
             row.style.display = '';
         } else {
@@ -445,10 +447,10 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
-        
+
         const filter = this.getAttribute('data-filter');
         const rows = document.querySelectorAll('.assessor-row');
-        
+
         rows.forEach(row => {
             if (filter === 'all') {
                 row.style.display = '';
@@ -516,24 +518,24 @@ function viewAssessorDetails(assessorId) {
                 <div class="row">
                     <div class="col-md-4">
                         <div class="text-center mb-3">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle" 
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle"
                                  style="width: 80px; height: 80px; background: var(--bold);">
                                 <i class="fas fa-user-tie fa-2x text-white"></i>
                             </div>
                             <h5 class="mt-3" style="color: var(--text-dark);">${data.full_name}</h5>
-                            <p class="text-muted">Assessor</p>
+                            <p class="text-muted">{% if LANG == "sw" %}Mkaguzi{% else %}Assessor{% endif %}</p>
                         </div>
                     </div>
                     <div class="col-md-8">
-                        <h6 style="color: var(--text-dark);">Contact Information</h6>
+                        <h6 style="color: var(--text-dark);">{% if LANG == "sw" %}Mawasiliano{% else %}Contact Information{% endif %}</h6>
                         <table class="table table-sm">
-                            <tr><th style="width: 30%;">Email:</th><td>${data.email ? `<a href="mailto:${data.email}" style="color: var(--bold);">${data.email}</a>` : '<span class="text-danger">No email</span>'}</td></tr>
-                            <tr><th>Phone:</th><td>${data.phone_number || '-'}</td></tr>
-                            <tr><th>Status:</th><td>${data.is_active ? '<span class="badge" style="background: var(--success); color: white;">Active</span>' : '<span class="badge" style="background: var(--danger); color: white;">Inactive</span>'}</td></tr>
-                            <tr><th>Account:</th><td>${data.has_account ? '<span class="badge" style="background: var(--success); color: white;">Has User Account</span>' : '<span class="badge" style="background: var(--warning); color: white;">No User Account</span>'}</td></tr>
+                            <tr><th style="width: 30%;">{% if LANG == "sw" %}Barua Pepe:{% else %}Email:{% endif %}</th><td>${data.email ? `<a href="mailto:${data.email}" style="color: var(--bold);">${data.email}</a>` : '<span class="text-danger">{% if LANG == "sw" %}Hakuna barua pepe{% else %}No email{% endif %}</span>'}</td></tr>
+                            <tr><th>{% if LANG == "sw" %}Simu:{% else %}Phone:{% endif %}</th><td>${data.phone_number || '-'}</td></tr>
+                            <tr><th>{% if LANG == "sw" %}Hali:{% else %}Status:{% endif %}</th><td>${data.is_active ? '<span class="badge" style="background: var(--success); color: white;">{% if LANG == "sw" %}Hai{% else %}Active{% endif %}</span>' : '<span class="badge" style="background: var(--danger); color: white;">{% if LANG == "sw" %}Haifanyi Kazi{% else %}Inactive{% endif %}</span>'}</td></tr>
+                            <tr><th>{% if LANG == "sw" %}Akaunti:{% else %}Account:{% endif %}</th><td>${data.has_account ? '<span class="badge" style="background: var(--success); color: white;">{% if LANG == "sw" %}Ana Akaunti{% else %}Has User Account{% endif %}</span>' : '<span class="badge" style="background: var(--warning); color: white;">{% if LANG == "sw" %}Hana Akaunti{% else %}No User Account{% endif %}</span>'}</td></tr>
                         </table>
-                        <h6 class="mt-4" style="color: var(--text-dark);">Assigned Schools</h6>
-                        ${data.schools_count > 0 ? `<div class="list-group">${data.schools.map(school => `<div class="list-group-item" style="border-color: var(--border);"><div class="d-flex justify-content-between"><div><strong style="color: var(--text-dark);">${school.name}</strong><br><small class="text-muted">${school.district}</small></div><div><span class="badge" style="background: var(--info); color: white;">${school.assessment_date}</span></div></div></div>`).join('')}</div><p class="mt-2"><small>Total: ${data.schools_count} schools</small></p>` : '<p class="text-muted">No schools assigned</p>'}
+                        <h6 class="mt-4" style="color: var(--text-dark);">{% if LANG == "sw" %}Shule Zilizopewa{% else %}Assigned Schools{% endif %}</h6>
+                        ${data.schools_count > 0 ? `<div class="list-group">${data.schools.map(school => `<div class="list-group-item" style="border-color: var(--border);"><div class="d-flex justify-content-between"><div><strong style="color: var(--text-dark);">${school.name}</strong><br><small class="text-muted">${school.district}</small></div><div><span class="badge" style="background: var(--info); color: white;">${school.assessment_date}</span></div></div></div>`).join('')}</div><p class="mt-2"><small>{% if LANG == "sw" %}Jumla:{% else %}Total:{% endif %} ${data.schools_count} {% if LANG == "sw" %}shule{% else %}schools{% endif %}</small></p>` : '<p class="text-muted">{% if LANG == "sw" %}Hakuna shule zilizopewa{% else %}No schools assigned{% endif %}</p>'}
                     </div>
                 </div>
             `;
@@ -542,12 +544,12 @@ function viewAssessorDetails(assessorId) {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to load assessor details');
+            alert('{% if LANG == "sw" %}Imeshindwa kupakia maelezo ya mkaguzi{% else %}Failed to load assessor details{% endif %}');
         });
 }
 
 function sendCredentials(assessorId, assessorName) {
-    if (confirm(`Send credentials to ${assessorName}?`)) {
+    if (confirm(`{% if LANG == "sw" %}Tuma vitambulisho kwa {% else %}Send credentials to {% endif %}${assessorName}?`)) {
         fetch(`/field-app/api/assessor/${assessorId}/resend-credentials/`, {
             method: 'POST',
             headers: {
@@ -559,38 +561,38 @@ function sendCredentials(assessorId, assessorName) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Credentials sent successfully!');
+                alert('{% if LANG == "sw" %}Vitambulisho vimetumwa kwa mafanikio!{% else %}Credentials sent successfully!{% endif %}');
             } else {
-                alert('Failed to send credentials: ' + data.message);
+                alert('{% if LANG == "sw" %}Imeshindwa kutuma vitambulisho: {% else %}Failed to send credentials: {% endif %}' + data.message);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to send credentials');
+            alert('{% if LANG == "sw" %}Imeshindwa kutuma vitambulisho{% else %}Failed to send credentials{% endif %}');
         });
     }
 }
 
 function bulkResendCredentials() {
     if (selectedAssessors.size === 0) {
-        alert('Please select at least one assessor');
+        alert('{% if LANG == "sw" %}Tafadhali chagua mkaguzi mmoja angalau{% else %}Please select at least one assessor{% endif %}');
         return;
     }
-    if (confirm(`Send credentials to ${selectedAssessors.size} assessor(s)?`)) {
+    if (confirm(`{% if LANG == "sw" %}Tuma vitambulisho kwa {% else %}Send credentials to {% endif %}${selectedAssessors.size} {% if LANG == "sw" %}mkaguzi(wakaguzi)?{% else %}assessor(s)?{% endif %}`)) {
         console.log('Resending credentials to:', Array.from(selectedAssessors));
     }
 }
 
 function bulkDeactivate() {
     if (selectedAssessors.size === 0) return;
-    if (confirm(`Deactivate ${selectedAssessors.size} assessor(s)?`)) {
+    if (confirm(`{% if LANG == "sw" %}Zima {% else %}Deactivate {% endif %}${selectedAssessors.size} {% if LANG == "sw" %}mkaguzi(wakaguzi)?{% else %}assessor(s)?{% endif %}`)) {
         console.log('Deactivating:', Array.from(selectedAssessors));
     }
 }
 
 function bulkActivate() {
     if (selectedAssessors.size === 0) return;
-    if (confirm(`Activate ${selectedAssessors.size} assessor(s)?`)) {
+    if (confirm(`{% if LANG == "sw" %}Washa {% else %}Activate {% endif %}${selectedAssessors.size} {% if LANG == "sw" %}mkaguzi(wakaguzi)?{% else %}assessor(s)?{% endif %}`)) {
         console.log('Activating:', Array.from(selectedAssessors));
     }
 }

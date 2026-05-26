@@ -1,6 +1,6 @@
 {% extends 'field_app/base.html' %}
 
-{% block title %}Chagua Somo - Field Placement System{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Chagua Somo{% else %}Select Subject{% endif %} - Internship Management System{% endblock %}
 
 {% block content %}
 <div class="container my-5">
@@ -8,18 +8,18 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <a href="{% url 'select_school' school.id %}" class="btn btn-sm" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 20px;">
-                <i class="fas fa-arrow-left me-1"></i> Rudi Shule
+                <i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Rudi Shule{% else %}Back to School{% endif %}
             </a>
         </div>
         <div class="text-center">
             <h1 class="h3 fw-bold mb-0" style="color: var(--bold);">
-                <i class="fas fa-book me-2" style="color: var(--medium);"></i>📚 Chagua Somo la Kufundisha
+                <i class="fas fa-book me-2" style="color: var(--medium);"></i>📚 {% if LANG == 'sw' %}Chagua Somo la Kufundisha{% else %}Select a Subject to Teach{% endif %}
             </h1>
-            <p class="mb-0" style="color: var(--text-gray);">Katika Shule ya <span class="fw-bold" style="color: var(--bold);">{{ school.name }}</span></p>
+            <p class="mb-0" style="color: var(--text-gray);">{% if LANG == 'sw' %}Katika Shule ya{% else %}At School:{% endif %} <span class="fw-bold" style="color: var(--bold);">{{ school.name }}</span></p>
         </div>
         <div class="text-end">
             <span class="badge rounded-pill px-3 py-2" style="background: var(--bold); color: var(--white);">
-                {{ subject_capacities|length }} Masomo
+                {{ subject_capacities|length }} {% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}
             </span>
         </div>
     </div>
@@ -45,19 +45,19 @@
         <div class="col-md-4">
             <div class="card text-center p-3 rounded-3" style="border: none; background: var(--bold); color: var(--white);">
                 <h4 class="mb-0">{{ subject_capacities|length }}</h4>
-                <small>Jumla ya Masomo</small>
+                <small>{% if LANG == 'sw' %}Jumla ya Masomo{% else %}Total Subjects{% endif %}</small>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card text-center p-3 rounded-3" style="border: none; background: var(--success); color: var(--white);">
                 <h4 class="mb-0">{{ available_subjects_count }}</h4>
-                <small>Yanayopatikana</small>
+                <small>{% if LANG == 'sw' %}Yanayopatikana{% else %}Available{% endif %}</small>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card text-center p-3 rounded-3" style="border: none; background: var(--warning); color: var(--white);">
                 <h4 class="mb-0">{{ pending_applications_count }}</h4>
-                <small>Maombi Yanayosubiri</small>
+                <small>{% if LANG == 'sw' %}Maombi Yanayosubiri{% else %}Pending Applications{% endif %}</small>
             </div>
         </div>
     </div>
@@ -67,7 +67,7 @@
     <div class="card shadow-sm rounded-3 mb-4" style="border: 1px solid var(--border);">
         <div class="card-header rounded-top-3" style="background: var(--light); border-bottom: 1px solid var(--border);">
             <h5 class="mb-0 fw-bold" style="color: var(--bold);">
-                <i class="fas fa-list me-2" style="color: var(--medium);"></i>Maombi Yako Yaliyopo
+                <i class="fas fa-list me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Maombi Yako Yaliyopo{% else %}Your Existing Applications{% endif %}
             </h5>
         </div>
         <div class="card-body p-0">
@@ -75,10 +75,10 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead style="background: var(--light);">
                         <tr>
-                            <th style="color: var(--text-dark);">Somo</th>
-                            <th style="color: var(--text-dark);">Hali</th>
-                            <th style="color: var(--text-dark);">Tarehe ya Ombi</th>
-                            <th style="color: var(--text-dark);">Kitendo</th>
+                            <th style="color: var(--text-dark);">{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+                            <th style="color: var(--text-dark);">{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+                            <th style="color: var(--text-dark);">{% if LANG == 'sw' %}Tarehe ya Ombi{% else %}Application Date{% endif %}</th>
+                            <th style="color: var(--text-dark);">{% if LANG == 'sw' %}Kitendo{% else %}Action{% endif %}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -88,15 +88,15 @@
                             <td>
                                 {% if application.status == 'approved' %}
                                     <span class="badge rounded-pill" style="background: var(--success); color: white;">
-                                        <i class="fas fa-check-circle me-1"></i>Imethibitishwa
+                                        <i class="fas fa-check-circle me-1"></i>{% if LANG == 'sw' %}Imethibitishwa{% else %}Approved{% endif %}
                                     </span>
                                 {% elif application.status == 'pending' %}
                                     <span class="badge rounded-pill" style="background: var(--warning); color: white;">
-                                        <i class="fas fa-clock me-1"></i>Inasubiri
+                                        <i class="fas fa-clock me-1"></i>{% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}
                                     </span>
                                 {% else %}
                                     <span class="badge rounded-pill" style="background: var(--danger); color: white;">
-                                        <i class="fas fa-times-circle me-1"></i>Imekataliwa
+                                        <i class="fas fa-times-circle me-1"></i>{% if LANG == 'sw' %}Imekataliwa{% else %}Rejected{% endif %}
                                     </span>
                                 {% endif %}
                             </td>
@@ -110,11 +110,11 @@
                                             class="btn btn-sm rounded-pill" 
                                             style="background: transparent; color: var(--danger); border: 1px solid var(--danger);"
                                             onclick="return confirm('Unahakika unataka kufuta ombi la {{ application.subject.name }}?')">
-                                        <i class="fas fa-trash me-1"></i>Futa
+                                        <i class="fas fa-trash me-1"></i>{% if LANG == 'sw' %}Futa{% else %}Delete{% endif %}
                                     </button>
                                 </form>
                                 {% else %}
-                                    <span class="small" style="color: var(--text-gray);">Haiwezi kubadilishwa</span>
+                                    <span class="small" style="color: var(--text-gray);">{% if LANG == 'sw' %}Haiwezi kubadilishwa{% else %}Cannot be changed{% endif %}</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -130,7 +130,7 @@
     <div class="card shadow-sm rounded-3" style="border: 1px solid var(--border);">
         <div class="card-header rounded-top-3" style="background: var(--bold); border-bottom: 2px solid var(--medium);">
             <h5 class="mb-0 text-white">
-                <i class="fas fa-plus-circle me-2" style="color: var(--medium);"></i>Omba Somo Jipya
+                <i class="fas fa-plus-circle me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Omba Somo Jipya{% else %}Apply for New Subject{% endif %}
             </h5>
         </div>
         <div class="card-body p-4">
@@ -138,29 +138,29 @@
                 {% csrf_token %}
                 
                 <div class="mb-4">
-                    <label for="subject_id" class="form-label fw-bold" style="color: var(--text-dark);">Chagua Somo</label>
+                    <label for="subject_id" class="form-label fw-bold" style="color: var(--text-dark);">{% if LANG == 'sw' %}Chagua Somo{% else %}Select Subject{% endif %}</label>
                     <select id="subject_id" name="subject_id" required
                         class="form-select form-select-lg shadow-sm rounded-pill" 
                         style="border: 1.5px solid var(--border);">
-                        <option value="" disabled selected>--- Chagua Somo ---</option>
+                        <option value="" disabled selected>{% if LANG == 'sw' %}--- Chagua Somo ---{% else %}--- Select a Subject ---{% endif %}</option>
                         {% for sc in subject_capacities %}
                             {% if sc.subject.id not in applied_subject_ids %}
                                 <option value="{{ sc.subject.id }}">
-                                    {{ sc.subject.name }} (Nafasi: {{ sc.current_students }}/{{ sc.max_students }})
+                                    {{ sc.subject.name }} ({% if LANG == 'sw' %}Nafasi{% else %}Slots{% endif %}: {{ sc.current_students }}/{{ sc.max_students }})
                                 </option>
                             {% endif %}
                         {% endfor %}
                     </select>
                     <div class="form-text mt-2" style="color: var(--text-gray);">
                         <i class="fas fa-info-circle me-1" style="color: var(--medium);"></i>
-                        Chagua somo ambalo hujaomba tayari. Nafasi iliyobaki inaonyeshwa kwenye mabano.
+                        {% if LANG == 'sw' %}Chagua somo ambalo hujaomba tayari. Nafasi iliyobaki inaonyeshwa kwenye mabano.{% else %}Select a subject you have not yet applied for. Available slots are shown in parentheses.{% endif %}
                     </div>
                 </div>
 
                 <input type="hidden" name="action" value="apply" />
 
                 <button type="submit" class="btn btn-lg rounded-pill w-100" style="background: var(--bold); color: var(--white);">
-                    <i class="fas fa-paper-plane me-2"></i>Wasilisha Ombi
+                    <i class="fas fa-paper-plane me-2"></i>{% if LANG == 'sw' %}Wasilisha Ombi{% else %}Submit Application{% endif %}
                 </button>
             </form>
         </div>

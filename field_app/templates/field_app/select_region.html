@@ -1,6 +1,6 @@
 {% extends 'field_app/base.html' %}
 
-{% block title %}Chagua Mkoa - Field Placement System{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Chagua Mkoa{% else %}Select Region{% endif %} - Internship Management System{% endblock %}
 
 {% block content %}
 <div class="container my-5">
@@ -8,18 +8,18 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <a href="{% url 'dashboard' %}" class="btn btn-sm" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 20px;">
-                <i class="fas fa-arrow-left me-1"></i> Rudi Dashboard
+                <i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Rudi Dashboard{% else %}Back to Dashboard{% endif %}
             </a>
         </div>
         <div class="text-center">
             <h1 class="h3 fw-bold mb-0" style="color: var(--bold);">
-                <i class="fas fa-map-marker-alt me-2" style="color: var(--medium);"></i>🗺️ Chagua Mkoa Wako
+                <i class="fas fa-map-marker-alt me-2" style="color: var(--medium);"></i>🗺️ {% if LANG == 'sw' %}Chagua Mkoa Wako{% else %}Select Your Region{% endif %}
             </h1>
-            <p class="mb-0" style="color: var(--text-gray);">Anzisha safari yako ya ualimu</p>
+            <p class="mb-0" style="color: var(--text-gray);">{% if LANG == 'sw' %}Anzisha safari yako ya ualimu{% else %}Start your teaching practice journey{% endif %}</p>
         </div>
         <div class="text-end">
             <span class="badge rounded-pill px-3 py-2" style="background: var(--bold); color: var(--white);">
-                {{ regions.count }} Mikoa
+                {{ regions.count }} {% if LANG == 'sw' %}Mikoa{% else %}Regions{% endif %}
             </span>
         </div>
     </div>
@@ -39,12 +39,12 @@
                         <div class="mb-3">
                             <i class="fas fa-lock fa-3x" style="color: var(--text-gray);"></i>
                         </div>
-                        <p class="mb-0" style="color: var(--text-gray);">Mkoa huu umefungwa kwa sasa</p>
-                        <small style="color: var(--danger);">📌 Haupatikani</small>
+                        <p class="mb-0" style="color: var(--text-gray);">{% if LANG == 'sw' %}Mkoa huu umefungwa kwa sasa{% else %}This region is currently closed{% endif %}</p>
+                        <small style="color: var(--danger);">📌 {% if LANG == 'sw' %}Haupatikani{% else %}Unavailable{% endif %}</small>
                     </div>
                     <div class="card-footer bg-transparent border-0 py-2" style="background: var(--light);">
                         <button class="btn rounded-pill w-100" style="background: var(--text-gray); color: var(--white);" disabled>
-                            <i class="fas fa-ban me-1"></i> Haipatikani
+                            <i class="fas fa-ban me-1"></i> {% if LANG == 'sw' %}Haipatikani{% else %}Unavailable{% endif %}
                         </button>
                     </div>
                 </div>
@@ -59,12 +59,12 @@
                             <div class="mb-3">
                                 <i class="fas fa-globe-africa fa-3x" style="color: var(--medium);"></i>
                             </div>
-                            <p class="mb-0" style="color: var(--text-gray);">Bonyeza kuchagua na kuendelea</p>
+                            <p class="mb-0" style="color: var(--text-gray);">{% if LANG == 'sw' %}Bonyeza kuchagua na kuendelea{% else %}Click to select and continue{% endif %}</p>
                         </div>
                         <div class="card-footer bg-transparent border-0 py-2" style="background: var(--light);">
                             <div class="d-grid">
                                 <button class="btn btn-sm rounded-pill" style="background: var(--bold); color: var(--white);">
-                                    Endelea <i class="fas fa-chevron-right ms-1"></i>
+                                    {% if LANG == 'sw' %}Endelea{% else %}Continue{% endif %} <i class="fas fa-chevron-right ms-1"></i>
                                 </button>
                             </div>
                         </div>
@@ -74,12 +74,12 @@
         </div>
         {% endfor %}
     </div>
-    
+
     <div class="mt-5 text-center">
         <div class="d-inline-block border rounded-pill px-4 py-2" style="border-color: var(--border) !important;">
             <small style="color: var(--text-gray);">
                 <i class="fas fa-info-circle me-1" style="color: var(--medium);"></i>
-                Mikoa yote: <strong style="color: var(--bold);">{{ regions.count }}</strong>
+                {% if LANG == 'sw' %}Mikoa yote:{% else %}Total regions:{% endif %} <strong style="color: var(--bold);">{{ regions.count }}</strong>
             </small>
         </div>
     </div>

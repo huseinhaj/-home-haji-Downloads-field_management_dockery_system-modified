@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assessor Login | FPMS - Field Placement Management System</title>
+    <title>Assessor Login | IMS - Internship Management System - Teacher Colleges in Tanzania</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -491,10 +491,16 @@
             </div>
             <div class="gov-titles">
                 <div class="t1">United Republic of Tanzania — Serikali ya Jamhuri ya Muungano</div>
-                <div class="t2">Ministry of Education, Science and Technology</div>
-                <div class="t3">Field Placement Management System (FPMS) &mdash; Assessor Portal</div>
+                <div class="t2">{% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia{% else %}Ministry of Education, Science and Technology{% endif %}</div>
+                <div class="t3">Internship Management System (IMS) &mdash; {% if LANG == 'sw' %}Lango la Mkaguzi{% else %}Assessor Portal{% endif %}</div>
             </div>
-            <div class="gov-spacer"></div>
+            <!-- Language toggle -->
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:60px;">
+                <a href="/set-language/?lang=en&amp;next={{ request.path }}"
+                   style="color:{% if LANG == 'en' %}#C8900A{% else %}rgba(255,255,255,0.5){% endif %};font-size:12px;font-weight:700;text-decoration:none;">EN</a>
+                <a href="/set-language/?lang=sw&amp;next={{ request.path }}"
+                   style="color:{% if LANG == 'sw' %}#C8900A{% else %}rgba(255,255,255,0.5){% endif %};font-size:12px;font-weight:700;text-decoration:none;">SW</a>
+            </div>
         </div>
 
         <!-- MAIN CONTENT - CENTERED LOGIN ONLY -->
@@ -504,8 +510,8 @@
                 <div class="panel-head">
                     <div class="panel-head-icon"><i class="fas fa-chalkboard-teacher"></i></div>
                     <div>
-                        <h2>Assessor Login</h2>
-                        <p>Access your field assessment portal</p>
+                        <h2>{% if LANG == 'sw' %}Ingia - Mkaguzi{% else %}Assessor Login{% endif %}</h2>
+                        <p>{% if LANG == 'sw' %}Fikia lango lako la tathmini shuleni{% else %}Access your field assessment portal{% endif %}</p>
                     </div>
                 </div>
 
@@ -539,21 +545,21 @@
                         {% csrf_token %}
 
                         <div class="field-wrap">
-                            <label class="field-label">Email Address</label>
+                            <label class="field-label">{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %}</label>
                             <div class="input-row">
                                 <div class="inp-icon"><i class="fas fa-envelope"></i></div>
                                 <input type="email" name="email" id="email" class="field-input"
-                                       placeholder="e.g. assessor@college.ac.tz" required
+                                       placeholder="{% if LANG == 'sw' %}mfano: mkaguzi@chuo.ac.tz{% else %}e.g. assessor@college.ac.tz{% endif %}" required
                                        value="{% if request.POST.email %}{{ request.POST.email }}{% endif %}">
                             </div>
                         </div>
 
                         <div class="field-wrap">
-                            <label class="field-label">Password</label>
+                            <label class="field-label">{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %}</label>
                             <div class="input-row">
                                 <div class="inp-icon"><i class="fas fa-lock"></i></div>
                                 <input type="password" name="password" id="password" class="field-input"
-                                       placeholder="Enter your password" style="padding-right:38px;" required>
+                                       placeholder="{% if LANG == 'sw' %}Weka nywila yako{% else %}Enter your password{% endif %}" style="padding-right:38px;" required>
                                 <button type="button" class="toggle-btn" onclick="togglePwd()">
                                     <i class="fas fa-eye" id="eyeIco"></i>
                                 </button>
@@ -561,19 +567,15 @@
                         </div>
 
                         <button type="submit" class="btn-signin">
-                            <i class="fas fa-sign-in-alt"></i> LOGIN AS ASSESSOR
+                            <i class="fas fa-sign-in-alt"></i> {% if LANG == 'sw' %}INGIA KAMA MKAGUZI{% else %}LOGIN AS ASSESSOR{% endif %}
                         </button>
                     </form>
 
-                    <div class="divider-line"><span>OR</span></div>
+                    <div class="divider-line"><span>{% if LANG == 'sw' %}AU{% else %}OR{% endif %}</span></div>
 
                     <button type="button" class="btn-reset-pwd" data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
-                        <i class="fas fa-sync-alt"></i> Reset Password
+                        <i class="fas fa-sync-alt"></i> {% if LANG == 'sw' %}Badilisha Nywila{% else %}Reset Password{% endif %}
                     </button>
-
-                    <div class="login-note">
-                        Don't have assessor credentials? <a href="{% url 'login' %}">Student Login →</a>
-                    </div>
                 </div>
 
                 <div class="panel-foot">
@@ -586,7 +588,7 @@
         <!-- FOOTER -->
         <div class="gov-footer">
             <p>&copy; {% now "Y" %} Ministry of Education, Science and Technology — United Republic of Tanzania. All rights reserved.</p>
-            <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>FPMS v2.1.0 | Assessor Portal</span>
+            <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0 | Assessor Portal</span>
         </div>
     </div>
 

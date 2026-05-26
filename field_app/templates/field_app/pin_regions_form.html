@@ -47,7 +47,7 @@
   <div class="max-w-2xl w-full star-frame">
 
     <h2 class="text-3xl font-extrabold text-center text-green-800 mb-8">
-      ✨ Chagua Mikoa kwa Mwaka wa Field
+      ✨ {% if LANG == 'sw' %}Chagua Mikoa kwa Mwaka wa Field{% else %}Select Regions for the Field Year{% endif %}
     </h2>
 
     <form method="post" class="space-y-6">
@@ -61,7 +61,7 @@
           type="submit"
           class="px-6 py-3 bg-green-700 text-white text-sm font-bold rounded-lg shadow-md hover:bg-green-800 transition duration-300"
         >
-          ✅ Tuma Pinning ya Mikoa
+          ✅ {% if LANG == 'sw' %}Tuma Pinning ya Mikoa{% else %}Submit Region Pinning{% endif %}
         </button>
       </div>
     </form>

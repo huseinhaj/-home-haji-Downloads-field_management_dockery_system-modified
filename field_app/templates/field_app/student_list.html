@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Student List</h2>
+<h2>{% if LANG == 'sw' %}Orodha ya Wanafunzi{% else %}Student List{% endif %}</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>Name</th>
-            <th>Registration Number</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th>{% if LANG == 'sw' %}Jina{% else %}Name{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Nambari ya Usajili{% else %}Registration Number{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Vitendo{% else %}Actions{% endif %}</th>
         </tr>
     </thead>
     <tbody>
@@ -18,14 +18,14 @@
             <td>{{ student.registration_number }}</td>
             <td>
                 {% if student.is_approved %}
-                    <span class="badge bg-success">Approved</span>
+                    <span class="badge bg-success">{% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}</span>
                 {% else %}
-                    <span class="badge bg-warning">Pending</span>
+                    <span class="badge bg-warning">{% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}</span>
                 {% endif %}
             </td>
             <td>
                 {% if not student.is_approved %}
-                <a href="{% url 'approve_student' student.id %}" class="btn btn-sm btn-primary">Approve</a>
+                <a href="{% url 'approve_student' student.id %}" class="btn btn-sm btn-primary">{% if LANG == 'sw' %}Idhinisha{% else %}Approve{% endif %}</a>
                 {% endif %}
             </td>
         </tr>

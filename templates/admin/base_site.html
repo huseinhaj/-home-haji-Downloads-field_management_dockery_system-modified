@@ -1,0 +1,115 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | IMS Admin{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+  <a href="{% url 'admin:index' %}">
+    <i class="fas fa-shield-alt" style="color:#C8900A; margin-right:8px;"></i>
+    IMS Admin
+  </a>
+</h1>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  /* ── Ministry of Education colour scheme ── */
+  :root {
+    --ims-navy:  #0A2B5E;
+    --ims-gold:  #C8900A;
+    --ims-light: #EEF1F6;
+  }
+
+  /* Header / navigation bar */
+  #header {
+    background: var(--ims-navy) !important;
+    border-bottom: 4px solid var(--ims-gold) !important;
+    color: #fff !important;
+  }
+  #header a, #header a:link, #header a:visited { color: #fff !important; }
+  #header a:hover { color: var(--ims-gold) !important; }
+  #branding h1, #branding h1 a, #branding h1 a:link { color: #fff !important; font-size: 1.1rem; }
+
+  /* Navigation bar (nav_global) */
+  div#nav-global a { color: rgba(255,255,255,0.85) !important; }
+  div#nav-global a:hover { color: var(--ims-gold) !important; }
+
+  /* User tools (top right logout etc.) */
+  #user-tools, #user-tools a { color: rgba(255,255,255,0.8) !important; }
+  #user-tools a:hover { color: var(--ims-gold) !important; }
+
+  /* Breadcrumbs */
+  div.breadcrumbs {
+    background: var(--ims-light) !important;
+    border-bottom: 1px solid #d1d9e8 !important;
+    color: var(--ims-navy) !important;
+  }
+  div.breadcrumbs a { color: var(--ims-navy) !important; font-weight: 600; }
+  div.breadcrumbs a:hover { color: var(--ims-gold) !important; }
+
+  /* Sidebar */
+  #nav-sidebar { border-right: 1px solid #d1d9e8 !important; }
+  .sidebar-toggle-icon { background: var(--ims-navy) !important; }
+
+  /* Module headings */
+  .module caption, .inline-group h2 {
+    background: var(--ims-navy) !important;
+    color: #fff !important;
+    padding: 8px 12px !important;
+    border-bottom: 2px solid var(--ims-gold) !important;
+  }
+
+  /* App header in index */
+  .app-list-icon, .app-icon { color: var(--ims-gold) !important; }
+  th.column-header { background: var(--ims-navy) !important; color: #fff !important; }
+
+  /* Submit row (Save buttons) */
+  .submit-row input[type=submit],
+  .submit-row a.deletelink-box { border-radius: 5px; }
+  input[type=submit][value="Save"],
+  input[type=submit][value="Save and add another"],
+  input[type=submit][value="Save and continue editing"] {
+    background: var(--ims-navy) !important;
+    border: none !important;
+    border-radius: 5px !important;
+  }
+  input[type=submit]:hover { background: #0d3575 !important; }
+
+  /* Links */
+  a, a:link { color: var(--ims-navy); }
+  a:hover { color: var(--ims-gold); }
+
+  /* Pagination */
+  .paginator .this-page {
+    background: var(--ims-navy) !important;
+    color: #fff !important;
+    border-radius: 4px;
+  }
+  .paginator a { color: var(--ims-navy) !important; }
+
+  /* Change list header */
+  #changelist-search input[type="submit"] {
+    background: var(--ims-navy) !important;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+  }
+
+  /* Messages */
+  li.success { background: #d1fae5 !important; border-left: 4px solid #059669 !important; color: #065f46 !important; }
+  li.error   { background: #fee2e2 !important; border-left: 4px solid #ef4444 !important; color: #991b1b !important; }
+  li.warning { background: #fef3c7 !important; border-left: 4px solid #f59e0b !important; color: #92400e !important; }
+
+  /* Top navbar subtitle */
+  #site-name a::after {
+    content: " | Internship Management System";
+    font-size: 0.72rem;
+    font-weight: 400;
+    opacity: 0.65;
+    margin-left: 4px;
+  }
+</style>
+{% endblock %}

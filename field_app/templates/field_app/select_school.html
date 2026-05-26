@@ -1,21 +1,21 @@
 {% extends 'field_app/base.html' %}
-{% block title %}Chagua Shule - Field Placement System{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Chagua Shule{% else %}Select School{% endif %} - Internship Management System{% endblock %}
 
 {% block content %}
 <div class="container my-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <a href="{% url 'select_district' district.region.id %}" class="btn btn-sm" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 20px;">
-                <i class="fas fa-arrow-left me-1"></i> Rudi Wilaya
+                <i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Rudi Wilaya{% else %}Back to District{% endif %}
             </a>
         </div>
         <div class="text-center">
-            <h1 class="h3 fw-bold mb-0" style="color: var(--bold);">📚 Chagua Shule</h1>
-            <p class="mb-0" style="color: var(--text-gray);">Wilaya ya {{ district.name }}</p>
+            <h1 class="h3 fw-bold mb-0" style="color: var(--bold);">📚 {% if LANG == 'sw' %}Chagua Shule{% else %}Select School{% endif %}</h1>
+            <p class="mb-0" style="color: var(--text-gray);">{% if LANG == 'sw' %}Wilaya ya {% else %}District: {% endif %}{{ district.name }}</p>
         </div>
         <div class="text-end">
             <span class="badge rounded-pill px-3 py-2" style="background: var(--bold); color: var(--white);">
-                {{ available_schools_count }}/{{ total_schools }} Inapatikana
+                {{ available_schools_count }}/{{ total_schools }} {% if LANG == 'sw' %}Inapatikana{% else %}Available{% endif %}
             </span>
         </div>
     </div>
@@ -26,32 +26,32 @@
     <form method="get" class="row g-2 align-items-center mb-4">
         <div class="col-md-4">
             <select name="level" class="form-select">
-                <option value="Primary" {% if selected_level == 'Primary' %}selected{% endif %}>Shule ya Msingi</option>
-                <option value="Secondary" {% if selected_level == 'Secondary' %}selected{% endif %}>Shule ya Sekondari</option>
+                <option value="Primary" {% if selected_level == 'Primary' %}selected{% endif %}>{% if LANG == 'sw' %}Shule ya Msingi{% else %}Primary School{% endif %}</option>
+                <option value="Secondary" {% if selected_level == 'Secondary' %}selected{% endif %}>{% if LANG == 'sw' %}Shule ya Sekondari{% else %}Secondary School{% endif %}</option>
             </select>
         </div>
         <div class="col-md-6">
-            <input type="text" name="q" value="{{ query }}" placeholder="Tafuta jina la shule..." class="form-control">
+            <input type="text" name="q" value="{{ query }}" placeholder="{% if LANG == 'sw' %}Tafuta jina la shule...{% else %}Search school name...{% endif %}" class="form-control">
         </div>
         <div class="col-md-2">
-            <button type="submit" class="btn w-100 rounded-pill" style="background: var(--bold); color: var(--white);">Tafuta</button>
+            <button type="submit" class="btn w-100 rounded-pill" style="background: var(--bold); color: var(--white);">{% if LANG == 'sw' %}Tafuta{% else %}Search{% endif %}</button>
         </div>
     </form>
 
     <!-- Statistics Cards -->
     <div class="row mb-4 g-3">
-        <div class="col-md-3"><div class="card text-center p-3 bg-primary text-white"><h4>{{ total_schools }}</h4><small>Jumla</small></div></div>
-        <div class="col-md-3"><div class="card text-center p-3 bg-success text-white"><h4>{{ available_schools_count }}</h4><small>Zinazopatikana</small></div></div>
-        <div class="col-md-3"><div class="card text-center p-3 bg-warning text-white"><h4>{{ pinned_schools_count }}</h4><small>Zisizopatikana</small></div></div>
-        <div class="col-md-3"><div class="card text-center p-3 bg-secondary text-white"><h4>{{ full_schools_count }}</h4><small>Zilizojaa</small></div></div>
+        <div class="col-md-3"><div class="card text-center p-3 bg-primary text-white"><h4>{{ total_schools }}</h4><small>{% if LANG == 'sw' %}Jumla{% else %}Total{% endif %}</small></div></div>
+        <div class="col-md-3"><div class="card text-center p-3 bg-success text-white"><h4>{{ available_schools_count }}</h4><small>{% if LANG == 'sw' %}Zinazopatikana{% else %}Available{% endif %}</small></div></div>
+        <div class="col-md-3"><div class="card text-center p-3 bg-warning text-white"><h4>{{ pinned_schools_count }}</h4><small>{% if LANG == 'sw' %}Zisizopatikana{% else %}Unavailable{% endif %}</small></div></div>
+        <div class="col-md-3"><div class="card text-center p-3 bg-secondary text-white"><h4>{{ full_schools_count }}</h4><small>{% if LANG == 'sw' %}Zilizojaa{% else %}Full{% endif %}</small></div></div>
     </div>
 
     <!-- Legend -->
     <div class="alert mb-4 bg-light">
         <div class="row text-center">
-            <div class="col-md-4"><span class="badge bg-success">●</span> Inapatikana</div>
-            <div class="col-md-4"><span class="badge bg-warning">●</span> Haipatikani</div>
-            <div class="col-md-4"><span class="badge bg-secondary">●</span> Imejaa</div>
+            <div class="col-md-4"><span class="badge bg-success">●</span> {% if LANG == 'sw' %}Inapatikana{% else %}Available{% endif %}</div>
+            <div class="col-md-4"><span class="badge bg-warning">●</span> {% if LANG == 'sw' %}Haipatikani{% else %}Unavailable{% endif %}</div>
+            <div class="col-md-4"><span class="badge bg-secondary">●</span> {% if LANG == 'sw' %}Imejaa{% else %}Full{% endif %}</div>
         </div>
     </div>
 
@@ -60,20 +60,20 @@
     <div class="alert alert-info mb-4" style="background: rgba(10,43,94,0.1); border-left: 4px solid var(--medium);">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <strong><i class="fas fa-check-circle me-2" style="color: var(--success);"></i>Shule Uliyochagua:</strong>
+                <strong><i class="fas fa-check-circle me-2" style="color: var(--success);"></i>{% if LANG == 'sw' %}Shule Uliyochagua:{% else %}Selected School:{% endif %}</strong>
                 <span class="fw-bold ms-2">{{ selected_school.name }}</span>
-                <span class="text-muted ms-2">(Ujazo: {{ selected_school.current_students }}/{{ selected_school.capacity }})</span>
+                <span class="text-muted ms-2">({% if LANG == 'sw' %}Ujazo{% else %}Capacity{% endif %}: {{ selected_school.current_students }}/{{ selected_school.capacity }})</span>
             </div>
             <div>
                 <form method="post" style="display: inline-block;">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="confirm">
-                    <button type="submit" class="btn btn-success btn-sm me-2">Thibitisha</button>
+                    <button type="submit" class="btn btn-success btn-sm me-2">{% if LANG == 'sw' %}Thibitisha{% else %}Confirm{% endif %}</button>
                 </form>
                 <form method="post" style="display: inline-block;">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="cancel">
-                    <button type="submit" class="btn btn-danger btn-sm">Ghairi</button>
+                    <button type="submit" class="btn btn-danger btn-sm">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
                 </form>
             </div>
         </div>
@@ -94,14 +94,14 @@
                     <small>{{ school.get_level_display }}</small>
                     <div class="mt-1">
                         <span class="badge" style="background:rgba(0,0,0,0.3);">
-                            {% if school.is_pinned %}Haipatikani
-                            {% elif not school.is_selectable %}Imejaa
-                            {% else %}Inapatikana{% endif %}
+                            {% if school.is_pinned %}{% if LANG == 'sw' %}Haipatikani{% else %}Unavailable{% endif %}
+                            {% elif not school.is_selectable %}{% if LANG == 'sw' %}Imejaa{% else %}Full{% endif %}
+                            {% else %}{% if LANG == 'sw' %}Inapatikana{% else %}Available{% endif %}{% endif %}
                         </span>
                     </div>
                 </div>
                 <div class="card-body">
-                    <p class="mb-2">Ujazo: <strong>{{ school.current_students }}</strong> / {{ school.capacity }}</p>
+                    <p class="mb-2">{% if LANG == 'sw' %}Ujazo{% else %}Capacity{% endif %}: <strong>{{ school.current_students }}</strong> / {{ school.capacity }}</p>
                     <div class="progress mb-2" style="height:8px;">
                         <div class="progress-bar" style="width:{{ school.occupancy_percentage }}%;
                             background:{% if school.occupancy_percentage >= 90 %}var(--danger)
@@ -109,12 +109,12 @@
                                     {% else %}var(--bold){% endif %};">
                         </div>
                     </div>
-                    <p class="text-end small mb-0">{{ school.occupancy_percentage }}% ujazo</p>
+                    <p class="text-end small mb-0">{{ school.occupancy_percentage }}% {% if LANG == 'sw' %}ujazo{% else %}full{% endif %}</p>
                 </div>
                 <div class="card-footer bg-transparent border-0 py-3" style="background:var(--light);">
                     {% if school.is_pinned or not school.is_selectable %}
                         <button class="btn rounded-pill w-100" style="background: var(--text-gray); color: var(--white);" disabled>
-                            {% if school.is_pinned %}Haipatikani{% else %}Imejaa{% endif %}
+                            {% if school.is_pinned %}{% if LANG == 'sw' %}Haipatikani{% else %}Unavailable{% endif %}{% else %}{% if LANG == 'sw' %}Imejaa{% else %}Full{% endif %}{% endif %}
                         </button>
                     {% else %}
                         {% if selected_school and selected_school.id == school.id %}
@@ -122,12 +122,12 @@
                                 <form method="post" style="width:50%;margin:0">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="confirm">
-                                    <button type="submit" class="btn rounded-pill w-100" style="background: var(--success); color: var(--white);">Thibitisha</button>
+                                    <button type="submit" class="btn rounded-pill w-100" style="background: var(--success); color: var(--white);">{% if LANG == 'sw' %}Thibitisha{% else %}Confirm{% endif %}</button>
                                 </form>
                                 <form method="post" style="width:50%;margin:0">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="cancel">
-                                    <button type="submit" class="btn rounded-pill w-100" style="background: var(--text-gray); color: var(--white);">Ghairi</button>
+                                    <button type="submit" class="btn rounded-pill w-100" style="background: var(--text-gray); color: var(--white);">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
                                 </form>
                             </div>
                         {% else %}
@@ -137,7 +137,7 @@
                                 <input type="hidden" name="school_id" value="{{ school.id }}">
                                 <button type="submit" class="btn rounded-pill w-100" 
                                     style="background: transparent; color: var(--bold); border: 2px solid var(--bold);">
-                                    <i class="fas fa-check-circle me-1"></i>Chagua Shule
+                                    <i class="fas fa-check-circle me-1"></i>{% if LANG == 'sw' %}Chagua Shule{% else %}Select School{% endif %}
                                 </button>
                             </form>
                         {% endif %}
@@ -149,8 +149,8 @@
         <div class="col-12">
             <div class="alert alert-warning text-center p-5">
                 <i class="fas fa-school fa-3x mb-3"></i>
-                <h4>Hakuna shule zilizopatikana</h4>
-                <a href="{% url 'select_school' district.id %}" class="btn btn-primary mt-3">Onyesha zote</a>
+                <h4>{% if LANG == 'sw' %}Hakuna shule zilizopatikana{% else %}No schools found{% endif %}</h4>
+                <a href="{% url 'select_school' district.id %}" class="btn btn-primary mt-3">{% if LANG == 'sw' %}Onyesha zote{% else %}Show all{% endif %}</a>
             </div>
         </div>
         {% endfor %}

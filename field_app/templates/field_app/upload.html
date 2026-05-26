@@ -1,7 +1,6 @@
-<h2>Upload Annual Requirement Document</h2>
+<h2>{% if LANG == 'sw' %}Pakia Hati ya Mahitaji ya Kila Mwaka{% else %}Upload Annual Requirement Document{% endif %}</h2>
 <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
   {{ form }}
-  <button type="submit">Upload</button>
+  <button type="submit">{% if LANG == 'sw' %}Pakia{% else %}Upload{% endif %}</button>
 </form>
-

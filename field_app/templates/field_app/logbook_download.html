@@ -8,7 +8,7 @@
                 <div class="card-header" style="background: var(--bold); border-bottom: 3px solid var(--medium); border-radius: 8px 8px 0 0;">
                     <h4 class="mb-0 text-white">
                         <i class="fas fa-download" style="color: var(--medium);"></i>
-                        Pakua Logbook yako
+                        {% if LANG == 'sw' %}Pakua Logbook yako{% else %}Download Your Logbook{% endif %}
                     </h4>
                 </div>
                 <div class="card-body" style="background: var(--white);">
@@ -18,7 +18,7 @@
                             <div class="card text-center" style="border: 1px solid var(--border); border-radius: 8px;">
                                 <div class="card-body">
                                     <h1 class="display-4 mb-0" style="color: var(--bold);">{{ total_entries }}</h1>
-                                    <p class="card-text" style="color: var(--text-gray);">Jumla ya Maingizo</p>
+                                    <p class="card-text" style="color: var(--text-gray);">{% if LANG == 'sw' %}Jumla ya Maingizo{% else %}Total Entries{% endif %}</p>
                                 </div>
                             </div>
                         </div>
@@ -26,7 +26,7 @@
                             <div class="card text-center" style="border: 1px solid var(--border); border-radius: 8px;">
                                 <div class="card-body">
                                     <h1 class="display-4 mb-0" style="color: var(--success);">{{ this_week_entries }}</h1>
-                                    <p class="card-text" style="color: var(--text-gray);">Maingizo ya Wiki Hii</p>
+                                    <p class="card-text" style="color: var(--text-gray);">{% if LANG == 'sw' %}Maingizo ya Wiki Hii{% else %}This Week's Entries{% endif %}</p>
                                 </div>
                             </div>
                         </div>
@@ -39,62 +39,62 @@
                             <div class="card h-100" style="border: 1px solid var(--border); border-radius: 8px; transition: all 0.3s ease;">
                                 <div class="card-body text-center">
                                     <i class="fas fa-calendar-day fa-3x mb-3" style="color: var(--bold);"></i>
-                                    <h5 style="color: var(--text-dark);">Logbook ya Leo</h5>
-                                    <p style="color: var(--text-gray);">Pakua logbook ya leo tu</p>
+                                    <h5 style="color: var(--text-dark);">{% if LANG == 'sw' %}Logbook ya Leo{% else %}Today's Logbook{% endif %}</h5>
+                                    <p style="color: var(--text-gray);">{% if LANG == 'sw' %}Pakua logbook ya leo tu{% else %}Download today's logbook only{% endif %}</p>
                                     <a href="{% url 'download_logbook_pdf' 'today' %}" class="btn" style="background: var(--bold); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
-                                        <i class="fas fa-download"></i> Pakua Leo
+                                        <i class="fas fa-download"></i> {% if LANG == 'sw' %}Pakua Leo{% else %}Download Today{% endif %}
                                     </a>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Weekly Logbook -->
                         <div class="col-md-6 mb-3">
                             <div class="card h-100" style="border: 1px solid var(--border); border-radius: 8px; transition: all 0.3s ease;">
                                 <div class="card-body text-center">
                                     <i class="fas fa-calendar-week fa-3x mb-3" style="color: var(--success);"></i>
-                                    <h5 style="color: var(--text-dark);">Logbook ya Wiki</h5>
-                                    <p style="color: var(--text-gray);">Pakua logbook ya wiki hii</p>
+                                    <h5 style="color: var(--text-dark);">{% if LANG == 'sw' %}Logbook ya Wiki{% else %}Weekly Logbook{% endif %}</h5>
+                                    <p style="color: var(--text-gray);">{% if LANG == 'sw' %}Pakua logbook ya wiki hii{% else %}Download this week's logbook{% endif %}</p>
                                     <a href="{% url 'download_logbook_pdf' 'week' %}" class="btn" style="background: var(--success); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
-                                        <i class="fas fa-download"></i> Pakua Wiki
+                                        <i class="fas fa-download"></i> {% if LANG == 'sw' %}Pakua Wiki{% else %}Download Week{% endif %}
                                     </a>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Monthly Logbook -->
                         <div class="col-md-6 mb-3">
                             <div class="card h-100" style="border: 1px solid var(--border); border-radius: 8px; transition: all 0.3s ease;">
                                 <div class="card-body text-center">
                                     <i class="fas fa-calendar-alt fa-3x mb-3" style="color: var(--medium);"></i>
-                                    <h5 style="color: var(--text-dark);">Logbook ya Mwezi</h5>
-                                    <p style="color: var(--text-gray);">Pakua logbook ya mwezi huu</p>
+                                    <h5 style="color: var(--text-dark);">{% if LANG == 'sw' %}Logbook ya Mwezi{% else %}Monthly Logbook{% endif %}</h5>
+                                    <p style="color: var(--text-gray);">{% if LANG == 'sw' %}Pakua logbook ya mwezi huu{% else %}Download this month's logbook{% endif %}</p>
                                     <a href="{% url 'download_logbook_pdf' 'month' %}" class="btn" style="background: var(--medium); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
-                                        <i class="fas fa-download"></i> Pakua Mwezi
+                                        <i class="fas fa-download"></i> {% if LANG == 'sw' %}Pakua Mwezi{% else %}Download Month{% endif %}
                                     </a>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- All Logbooks -->
                         <div class="col-md-6 mb-3">
                             <div class="card h-100" style="border: 1px solid var(--border); border-radius: 8px; transition: all 0.3s ease;">
                                 <div class="card-body text-center">
                                     <i class="fas fa-archive fa-3x mb-3" style="color: var(--info);"></i>
-                                    <h5 style="color: var(--text-dark);">Logbook Zote</h5>
-                                    <p style="color: var(--text-gray);">Pakua logbook zote ulizojaza</p>
+                                    <h5 style="color: var(--text-dark);">{% if LANG == 'sw' %}Logbook Zote{% else %}All Logbooks{% endif %}</h5>
+                                    <p style="color: var(--text-gray);">{% if LANG == 'sw' %}Pakua logbook zote ulizojaza{% else %}Download all your logbooks{% endif %}</p>
                                     <a href="{% url 'download_logbook_pdf' 'all' %}" class="btn" style="background: var(--info); color: var(--white); border: none; border-radius: 6px; padding: 8px 20px;">
-                                        <i class="fas fa-download"></i> Pakua Zote
+                                        <i class="fas fa-download"></i> {% if LANG == 'sw' %}Pakua Zote{% else %}Download All{% endif %}
                                     </a>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Back Button -->
                     <div class="text-center mt-4">
                         <a href="{% url 'logbook_history' %}" class="btn" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 6px; padding: 8px 24px;">
-                            <i class="fas fa-arrow-left"></i> Rudi kwenye Historia
+                            <i class="fas fa-arrow-left"></i> {% if LANG == 'sw' %}Rudi kwenye Historia{% else %}Back to History{% endif %}
                         </a>
                     </div>
                 </div>
