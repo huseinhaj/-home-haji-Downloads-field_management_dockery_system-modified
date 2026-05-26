@@ -544,8 +544,8 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎓 Field Placement System</h1>
-            <p>University of Dodoma</p>
+            <h1>🎓 Mfumo wa Ufuatiliaji wa Walimu Wanafunzi</h1>
+            <p>Wizara ya Elimu, Sayansi na Teknolojia</p>
         </div>
         <div class="content">
             <div class="greeting">👋 Dear {assessor.full_name},</div>
@@ -572,8 +572,8 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
             </div>
         </div>
         <div class="footer">
-            <p>University of Dodoma - Field Placement System</p>
-            <p>📧 This is an automated message. Please do not reply.</p>
+            <p>Wizara ya Elimu, Sayansi na Teknolojia — IMS v2.1.0</p>
+            <p>📧 Ujumbe huu umetumwa kiotomatiki. Tafadhali usijibu.</p>
         </div>
     </div>
 </body>
@@ -604,8 +604,8 @@ IMPORTANT INSTRUCTIONS:
 3. Login to see your assigned schools and students
 
 Best regards,
-Field Placement Coordination System
-University of Dodoma
+Kitengo cha Uratibu wa Mafunzo ya Uwanjani
+Wizara ya Elimu, Sayansi na Teknolojia
 """
                 
                 subject = f'🎓 Field Placement Credentials & Assignments - {current_academic_year.year}'
@@ -2166,10 +2166,10 @@ def assign_assessor(request):
                 • Contact administrator if you face issues
                 
                 Best regards,
-                Field Placement Coordination Unit
-                University of Dodoma
-                
-                This is an automated message. Please do not reply.
+                Kitengo cha Uratibu wa Mafunzo ya Uwanjani
+                Wizara ya Elimu, Sayansi na Teknolojia
+
+                Ujumbe huu umetumwa kiotomatiki. Tafadhali usijibu.
                 """
                 
                 send_mail(
@@ -3802,7 +3802,7 @@ def assessor_password_reset(request):
                 <div class="container">
                     <div class="header">
                         <h2>🔐 Password Reset</h2>
-                        <p>Field Placement System - University of Dodoma</p>
+                        <p>Mfumo wa Ufuatiliaji wa Walimu Wanafunzi (IMS)</p>
                     </div>
                     <div class="content">
                         <p>Dear <strong>{assessor.full_name}</strong>,</p>
@@ -3820,7 +3820,7 @@ def assessor_password_reset(request):
                     </div>
                     <div class="footer">
                         <p>This is an automated message. Please do not reply.</p>
-                        <p>© {timezone.now().year} University of Dodoma - Field Placement System</p>
+                        <p>© {timezone.now().year} Wizara ya Elimu, Sayansi na Teknolojia — IMS v2.1.0</p>
                     </div>
                 </div>
             </body>
@@ -3844,8 +3844,8 @@ def assessor_password_reset(request):
             IMPORTANT: Change this password immediately after logging in.
             
             Best regards,
-            Field Placement System
-            University of Dodoma
+            Mfumo wa Ufuatiliaji wa Walimu Wanafunzi (IMS)
+            Wizara ya Elimu, Sayansi na Teknolojia
             """
             
             try:

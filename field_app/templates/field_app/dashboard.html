@@ -1,5 +1,5 @@
 {% extends 'field_app/base.html' %}
-{% block title %}Dashboard - Field Placement System{% endblock %}
+{% block title %}Dashboard - Internship Management System{% endblock %}
 {% block content %}
 <style>
     :root {
@@ -325,65 +325,108 @@
         border-color: var(--bold);
     }
 
-    /* Mobile styles */
-    @media (max-width: 768px) {
-        .sidebar-tz {
-            width: 60px;
-        }
-        
-        .sidebar-tz.expanded {
-            width: 200px;
-        }
-        
-        .main-content {
-            margin-left: 60px;
-            width: calc(100% - 60px);
-            padding: 0.5rem;
-        }
-        
-        .main-content.expanded {
-            margin-left: 200px;
-            width: calc(100% - 200px);
-        }
-        
-        .container-fluid {
-            padding-left: 8px;
-            padding-right: 8px;
-        }
-        
-        .premium-card {
-            margin-bottom: 0.75rem;
-        }
-        
-        .btn {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.85rem;
-        }
-        
-        .sidebar-toggle-btn {
-            width: 35px;
-            height: 35px;
-        }
+    /* Mobile hamburger button - inaonekana kwenye simu tu */
+    .mobile-menu-btn {
+        display: none;
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 1100;
+        background: var(--bold);
+        border: none;
+        color: var(--white);
+        width: 42px;
+        height: 42px;
+        border-radius: 8px;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
-    /* Auto-expand on hover for desktop */
+    /* Overlay ya giza nyuma ya sidebar kwenye simu */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+    }
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    /* Desktop: sidebar ipo na inafanya kazi kama kawaida */
     @media (min-width: 769px) {
         .sidebar-tz:not(.expanded):hover {
             width: 250px;
         }
-        
         .sidebar-tz:not(.expanded):hover ~ .main-content {
             margin-left: 250px;
             width: calc(100% - 250px);
         }
-        
         .sidebar-tz:not(.expanded):hover .sidebar-text {
             opacity: 1;
             width: auto;
             margin-left: 0.5rem;
         }
     }
+
+    /* Mobile: sidebar inafichwa chini, inaonekana kama overlay tu */
+    @media (max-width: 768px) {
+        .mobile-menu-btn {
+            display: flex;
+        }
+
+        .sidebar-tz {
+            left: -280px;
+            width: 250px !important;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .sidebar-tz.mobile-open {
+            left: 0;
+        }
+
+        /* Main content inachukua nafasi yote kwenye simu */
+        .main-content {
+            margin-left: 0 !important;
+            width: 100% !important;
+            padding: 0.75rem 0.5rem;
+            padding-top: 3.5rem; /* nafasi ya mobile hamburger button */
+        }
+
+        .container-fluid {
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+
+        .premium-card {
+            margin-bottom: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        /* Sidebar texts zinaonekana daima kwenye mobile overlay */
+        .sidebar-tz .sidebar-text {
+            opacity: 1 !important;
+            width: auto !important;
+            margin-left: 0.5rem !important;
+        }
+    }
 </style>
+
+<!-- Mobile hamburger button (inaonekana kwenye simu tu) -->
+<button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- Overlay ya giza (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <!-- Sidebar -->
 <nav class="sidebar-tz" id="sidebar">
@@ -397,37 +440,49 @@
         <li class="sidebar-item">
             <a href="{% url 'select_region' %}" class="sidebar-link">
                 <i class="fas fa-paper-plane"></i>
-                <span class="sidebar-text">Submit Application</span>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Wasilisha Maombi{% else %}Submit Application{% endif %}</span>
             </a>
         </li>
         <li class="sidebar-item">
             <a href="{% url 'submit_logbook' %}" class="sidebar-link">
                 <i class="fas fa-book-medical"></i>
-                <span class="sidebar-text">Write Logbook</span>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Andika Logbook{% else %}Write Logbook{% endif %}</span>
             </a>
         </li>
         <li class="sidebar-item">
-    <a href="{% url 'generate_scheme' %}" class="sidebar-link">
-        <i class="fas fa-calendar-alt"></i>
-        <span class="sidebar-text">Scheme of Work</span>
-    </a>
-</li>
+            <a href="{% url 'generate_scheme' %}" class="sidebar-link">
+                <i class="fas fa-calendar-alt"></i>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Mpango wa Kazi{% else %}Scheme of Work{% endif %}</span>
+            </a>
+        </li>
         <li class="sidebar-item">
-    <a href="{% url 'lesson_plan' %}" class="sidebar-link">
-        <i class="fas fa-chalkboard-teacher"></i>
-        <span class="sidebar-text">Lesson Plan</span>
-    </a>
-</li>
+            <a href="{% url 'lesson_plan' %}" class="sidebar-link">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Mpango wa Somo{% else %}Lesson Plan{% endif %}</span>
+            </a>
+        </li>
         <li class="sidebar-item">
             <a href="{% url 'logbook_history' %}" class="sidebar-link">
                 <i class="fas fa-history"></i>
-                <span class="sidebar-text">History</span>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Historia{% else %}History{% endif %}</span>
             </a>
         </li>
         <li class="sidebar-item">
             <a href="{% url 'logbook_download_options' %}" class="sidebar-link">
                 <i class="fas fa-download"></i>
-                <span class="sidebar-text">Download</span>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Pakua{% else %}Download{% endif %}</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'my_assessors' %}" class="sidebar-link">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Wakaguzi Wangu{% else %}My Assessors{% endif %}</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'logout' %}" class="sidebar-link" style="margin-top: auto;">
+                <i class="fas fa-sign-out-alt"></i>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}</span>
             </a>
         </li>
     </ul>
@@ -443,15 +498,17 @@
                     <div class="row align-items-center">
                         <div class="col-md-8">
                             <h1 class="welcome-title" style="color: var(--bold); margin-bottom: 0.5rem;">
-                                Karibu, {{ student.full_name|default:user.email }}! 🇹🇿
+                                {% if LANG == 'sw' %}Karibu{% else %}Welcome{% endif %}, {{ student.full_name|default:user.email }}! 🇹🇿
                             </h1>
                             <p class="normal-text" style="color: var(--text-gray); margin-bottom: 1rem;">
-                                Professional Teaching Practice Platform - Fulfill Your Teaching Dreams
+                                {% if LANG == 'sw' %}Mfumo wa Kitaaluma wa Mazoezi ya Ufundishaji - Timiza Ndoto Yako{% else %}Professional Teaching Practice Platform - Fulfill Your Teaching Dreams{% endif %}
                             </p>
                             <div class="d-flex flex-wrap gap-2">
                                 <span class="tz-badge px-3 py-2">
                                     <i class="fas fa-user-graduate me-1"></i>
-                                    {{ student.approval_status|default:"Pending"|title }}
+                                    {% if student.approval_status == 'approved' %}Imeidhinishwa
+                                    {% elif student.approval_status == 'rejected' %}Imekataliwa
+                                    {% else %}Inasubiri Idhini{% endif %}
                                 </span>
                                 {% if student.selected_school %}
                                 <span class="badge" style="background: var(--light); color: var(--text-dark); border: 1px solid var(--border); padding: 0.5rem 1rem;">
@@ -481,7 +538,7 @@
                         </div>
                         <div>
                             <h4 class="fw-bold mb-1 normal-text" style="color: var(--bold);">{{ applications|length }}</h4>
-                            <p class="mb-0 small-text" style="color: var(--text-gray);">Applications</p>
+                            <p class="mb-0 small-text" style="color: var(--text-gray);">{% if LANG == 'sw' %}Maombi{% else %}Applications{% endif %}</p>
                         </div>
                     </div>
                 </div>
@@ -495,7 +552,7 @@
                         </div>
                         <div>
                             <h4 class="fw-bold mb-1 normal-text" style="color: var(--bold);">{{ approved_applications_count }}</h4>
-                            <p class="mb-0 small-text" style="color: var(--text-gray);">Approved</p>
+                            <p class="mb-0 small-text" style="color: var(--text-gray);">{% if LANG == 'sw' %}Zilizoidhinishwa{% else %}Approved{% endif %}</p>
                         </div>
                     </div>
                 </div>
@@ -509,7 +566,7 @@
                         </div>
                         <div>
                             <h4 class="fw-bold mb-1 normal-text" style="color: var(--bold);">{{ pending_applications_count }}</h4>
-                            <p class="mb-0 small-text" style="color: var(--text-gray);">Pending</p>
+                            <p class="mb-0 small-text" style="color: var(--text-gray);">{% if LANG == 'sw' %}Zinasubiri{% else %}Pending{% endif %}</p>
                         </div>
                     </div>
                 </div>
@@ -523,7 +580,7 @@
                         </div>
                         <div>
                             <h4 class="fw-bold mb-1 normal-text" style="color: var(--bold);">{{ logbook_entries|length }}</h4>
-                            <p class="mb-0 small-text" style="color: var(--text-gray);">Logbook Entries</p>
+                            <p class="mb-0 small-text" style="color: var(--text-gray);">{% if LANG == 'sw' %}Maingizo ya Logbook{% else %}Logbook Entries{% endif %}</p>
                         </div>
                     </div>
                 </div>
@@ -538,7 +595,7 @@
                 <div class="premium-card p-3 mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3 class="section-title m-0" style="color: var(--bold);">
-                            <i class="fas fa-tasks me-2" style="color: var(--medium);"></i>My Subject Applications
+                            <i class="fas fa-tasks me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Maombi Yangu ya Masomo{% else %}My Subject Applications{% endif %}
                         </h3>
                         <span class="tz-badge px-2 py-1">{{ applications|length }}</span>
                     </div>
@@ -572,17 +629,17 @@
                                         {% if application.status == 'approved' %}
                                             <span class="badge px-2 py-1 small-text" style="background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success);">
                                                 <span class="status-dot-tz status-approved-tz"></span>
-                                                Approved
+                                                Imeidhinishwa
                                             </span>
                                         {% elif application.status == 'rejected' %}
                                             <span class="badge px-2 py-1 small-text" style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger);">
                                                 <span class="status-dot-tz status-rejected-tz"></span>
-                                                Rejected
+                                                Imekataliwa
                                             </span>
                                         {% else %}
                                             <span class="badge px-2 py-1 small-text" style="background: rgba(200, 144, 10, 0.1); color: var(--medium); border: 1px solid var(--medium);">
                                                 <span class="status-dot-tz status-pending-tz"></span>
-                                                Pending
+                                                Inasubiri
                                             </span>
                                         {% endif %}
                                     </td>
@@ -609,7 +666,7 @@
                 <!-- Download Section -->
                 <div class="premium-card p-3">
                     <h3 class="section-title mb-3" style="color: var(--bold);">
-                        <i class="fas fa-download me-2" style="color: var(--medium);"></i>Download Confirmation Letters
+                        <i class="fas fa-download me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Pakua Barua za Uthibitisho{% else %}Download Confirmation Letters{% endif %}
                     </h3>
                     <div class="row g-3">
                         <!-- Individual Letter -->
@@ -687,7 +744,7 @@
                 <!-- School Information -->
                 <div class="premium-card p-3 mb-3">
                     <h3 class="section-title mb-3" style="color: var(--bold);">
-                        <i class="fas fa-school me-2" style="color: var(--medium);"></i>School Information
+                        <i class="fas fa-school me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Taarifa za Shule{% else %}School Information{% endif %}
                     </h3>
 
                     {% if student.selected_school %}
@@ -703,11 +760,11 @@
                             <div class="row text-center">
                                 <div class="col-6">
                                     <div class="fw-bold normal-text" style="color: var(--bold);">{{ approved_students_count }}</div>
-                                    <div class="small-text" style="color: var(--text-gray);">Approved</div>
+                                    <div class="small-text" style="color: var(--text-gray);">Walioidhinishwa</div>
                                 </div>
                                 <div class="col-6">
                                     <div class="fw-bold normal-text" style="color: var(--bold);">{{ group_letter_quota }}</div>
-                                    <div class="small-text" style="color: var(--text-gray);">Required</div>
+                                    <div class="small-text" style="color: var(--text-gray);">Wanaohitajika</div>
                                 </div>
                             </div>
                             {% if school_has_completed_quota %}
@@ -764,34 +821,117 @@
                     {% endif %}
                 </div>
 
+                <!-- My Assessors -->
+                <div class="premium-card p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="section-title m-0" style="color: var(--bold);">
+                            <i class="fas fa-chalkboard-teacher me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Wakaguzi Wangu{% else %}My Assessors{% endif %}
+                        </h3>
+                        <a href="{% url 'my_assessors' %}" class="tz-btn btn-sm px-3 py-1 small-text">
+                            {% if LANG == 'sw' %}Zaidi{% else %}View All{% endif %}
+                        </a>
+                    </div>
+
+                    {% if assessors %}
+                        {% for item in assessors %}
+                        <div class="premium-card p-2 mb-2 d-flex align-items-center gap-3">
+                            <div class="tz-icon d-flex align-items-center justify-content-center flex-shrink-0" style="width:40px;height:40px;">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <div class="fw-bold small-text" style="color:var(--text-dark);">{{ item.assessor.full_name }}</div>
+                                {% if item.assessor.phone %}
+                                <div class="small-text" style="color:var(--text-gray);">
+                                    <i class="fas fa-phone me-1"></i>{{ item.assessor.phone }}
+                                </div>
+                                {% endif %}
+                                {% if item.assessor.user.email %}
+                                <div class="small-text" style="color:var(--text-gray);">
+                                    <i class="fas fa-envelope me-1"></i>{{ item.assessor.user.email|truncatechars:28 }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <span class="badge small-text {% if item.is_completed %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                {% if item.is_completed %}Done{% else %}Active{% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <div class="tz-icon p-2 mx-auto mb-2 d-flex align-items-center justify-content-center" style="width:48px;height:48px;">
+                                <i class="fas fa-chalkboard-teacher"></i>
+                            </div>
+                            <p class="small-text mb-0" style="color:var(--text-gray);">
+                                {% if student.selected_school %}
+                                    {% if LANG == 'sw' %}Hakuna mkaguzi aliyepewa shule hii bado{% else %}No assessor assigned to your school yet{% endif %}
+                                {% else %}
+                                    {% if LANG == 'sw' %}Chagua shule kwanza{% else %}Select a school first{% endif %}
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Board Comments -->
+                {% if board_comments %}
+                <div class="premium-card p-3 mb-3">
+                    <h3 class="section-title mb-3" style="color: var(--bold);">
+                        <i class="fas fa-comment-dots me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Maoni ya Bodi ya Walimu{% else %}Teacher Board Comments{% endif %}
+                    </h3>
+                    {% for comment in board_comments %}
+                    <div class="premium-card p-3 mb-2" style="border-left: 4px solid
+                        {% if comment.status == 'excellent' %}var(--success)
+                        {% elif comment.status == 'good' %}var(--bold)
+                        {% elif comment.status == 'average' %}var(--warning)
+                        {% else %}var(--danger){% endif %};">
+                        <div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-1">
+                            <span class="fw-bold small-text" style="color:var(--text-dark);">
+                                <i class="fas fa-user-tie me-1" style="color:var(--medium);"></i>{{ comment.board_member.full_name }}
+                            </span>
+                            <span class="badge small-text
+                                {% if comment.status == 'excellent' %}bg-success
+                                {% elif comment.status == 'good' %}bg-primary
+                                {% elif comment.status == 'average' %}bg-warning text-dark
+                                {% elif comment.status == 'behind' %}bg-danger
+                                {% else %}bg-danger{% endif %}">
+                                {{ comment.get_status_display|truncatechars:20 }}
+                            </span>
+                        </div>
+                        <p class="small-text mb-1" style="color:var(--text-gray);">{{ comment.comment|truncatechars:120 }}</p>
+                        <span class="small-text" style="color:var(--text-gray);font-size:11px;">{{ comment.created_at|date:"d/m/Y" }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
                 <!-- Quick Actions -->
                 <div class="premium-card p-3 mb-3">
                     <h3 class="section-title mb-3" style="color: var(--bold);">
-                        <i class="fas fa-bolt me-2" style="color: var(--medium);"></i>Quick Actions
+                        <i class="fas fa-bolt me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Vitendo vya Haraka{% else %}Quick Actions{% endif %}
                     </h3>
                     <div class="row g-2">
                         <div class="col-6">
                             <a href="{% url 'select_region' %}" class="premium-card p-2 text-center text-decoration-none d-block" style="border-color: var(--border);">
                                 <i class="fas fa-plus-circle fa-lg mb-1" style="color: var(--bold);"></i>
-                                <div class="fw-bold small-text" style="color: var(--text-dark);">Submit Application</div>
+                                <div class="fw-bold small-text" style="color: var(--text-dark);">{% if LANG == 'sw' %}Wasilisha Maombi{% else %}Submit Application{% endif %}</div>
                             </a>
                         </div>
                         <div class="col-6">
                             <a href="{% url 'submit_logbook' %}" class="premium-card p-2 text-center text-decoration-none d-block" style="border-color: var(--border);">
                                 <i class="fas fa-book-medical fa-lg mb-1" style="color: var(--bold);"></i>
-                                <div class="fw-bold small-text" style="color: var(--text-dark);">Write Logbook</div>
+                                <div class="fw-bold small-text" style="color: var(--text-dark);">{% if LANG == 'sw' %}Andika Logbook{% else %}Write Logbook{% endif %}</div>
                             </a>
                         </div>
                         <div class="col-6">
                             <a href="{% url 'logbook_history' %}" class="premium-card p-2 text-center text-decoration-none d-block" style="border-color: var(--border);">
                                 <i class="fas fa-history fa-lg mb-1" style="color: var(--bold);"></i>
-                                <div class="fw-bold small-text" style="color: var(--text-dark);">History</div>
+                                <div class="fw-bold small-text" style="color: var(--text-dark);">{% if LANG == 'sw' %}Historia{% else %}History{% endif %}</div>
                             </a>
                         </div>
                         <div class="col-6">
                             <a href="{% url 'logbook_download_options' %}" class="premium-card p-2 text-center text-decoration-none d-block" style="border-color: var(--border);">
                                 <i class="fas fa-download fa-lg mb-1" style="color: var(--bold);"></i>
-                                <div class="fw-bold small-text" style="color: var(--text-dark);">Download</div>
+                                <div class="fw-bold small-text" style="color: var(--text-dark);">{% if LANG == 'sw' %}Pakua{% else %}Download{% endif %}</div>
                             </a>
                         </div>
                     </div>
@@ -801,10 +941,10 @@
                 <div class="premium-card p-3">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3 class="section-title m-0" style="color: var(--bold);">
-                            <i class="fas fa-book-open me-2" style="color: var(--medium);"></i>Recent Logbook
+                            <i class="fas fa-book-open me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Logbook ya Hivi Karibuni{% else %}Recent Logbook{% endif %}
                         </h3>
                         <a href="{% url 'submit_logbook' %}" class="tz-btn btn-sm px-3 py-1 small-text">
-                            <i class="fas fa-plus me-1"></i>New
+                            <i class="fas fa-plus me-1"></i>{% if LANG == 'sw' %}Mpya{% else %}New{% endif %}
                         </a>
                     </div>
 
@@ -816,7 +956,7 @@
                                 <span class="fw-bold small-text" style="color: var(--text-dark);">{{ entry.date|date:"d/m/Y" }}</span>
                                 <span class="badge px-2 py-1 small-text" style="background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success);">
                                     <i class="fas fa-map-marker-alt me-1"></i>
-                                    {% if entry.is_location_verified %}Verified{% else %}Pending{% endif %}
+                                    {% if entry.is_location_verified %}Imehakikiwa{% else %}Haijahakikiwa{% endif %}
                                 </span>
                             </div>
                             <div class="d-flex justify-content-between small-text mb-1" style="color: var(--text-gray);">
@@ -858,75 +998,100 @@
         const mainContent = document.getElementById('mainContent');
         const sidebarToggle = document.getElementById('sidebarToggle');
         const toggleIcon = document.getElementById('toggleIcon');
-        
-        // Check if sidebar state is saved
-        const isExpanded = localStorage.getItem('sidebarExpanded') === 'true';
-        
-        if (isExpanded) {
-            expandSidebar();
-        }
-        
-        // Toggle sidebar on button click
-        sidebarToggle.addEventListener('click', function() {
-            if (sidebar.classList.contains('expanded')) {
-                collapseSidebar();
-                localStorage.setItem('sidebarExpanded', 'false');
-            } else {
-                expandSidebar();
-                localStorage.setItem('sidebarExpanded', 'true');
-            }
-        });
-        
-        // Auto-expand on hover (for desktop only)
-        if (window.innerWidth > 768) {
-            sidebar.addEventListener('mouseenter', function() {
-                if (!sidebar.classList.contains('expanded')) {
-                    expandSidebar();
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        const isMobile = () => window.innerWidth <= 768;
+
+        // ── DESKTOP: toggle expand/collapse ──
+        if (sidebarToggle) {
+            const isExpanded = localStorage.getItem('sidebarExpanded') === 'true';
+            if (isExpanded && !isMobile()) expandDesktop();
+
+            sidebarToggle.addEventListener('click', function() {
+                if (isMobile()) return; // desktop button tu
+                if (sidebar.classList.contains('expanded')) {
+                    collapseDesktop();
+                    localStorage.setItem('sidebarExpanded', 'false');
+                } else {
+                    expandDesktop();
+                    localStorage.setItem('sidebarExpanded', 'true');
                 }
             });
-            
+        }
+
+        // Desktop hover
+        if (!isMobile()) {
+            sidebar.addEventListener('mouseenter', function() {
+                if (!sidebar.classList.contains('expanded')) expandDesktop();
+            });
             sidebar.addEventListener('mouseleave', function() {
                 if (sidebar.classList.contains('expanded') && localStorage.getItem('sidebarExpanded') !== 'true') {
-                    collapseSidebar();
+                    collapseDesktop();
                 }
             });
         }
-        
-        function collapseSidebar() {
-            sidebar.classList.remove('expanded');
-            mainContent.classList.remove('expanded');
-            toggleIcon.classList.remove('fa-times');
-            toggleIcon.classList.add('fa-bars');
-        }
-        
-        function expandSidebar() {
-            sidebar.classList.add('expanded');
-            mainContent.classList.add('expanded');
-            toggleIcon.classList.remove('fa-bars');
-            toggleIcon.classList.add('fa-times');
-        }
-        
-        // Auto-refresh every 45 seconds
-        setInterval(() => {
-            window.location.reload();
-        }, 45000);
-        
-        // Add smooth animations to cards
-        const cards = document.querySelectorAll('.premium-card');
-        cards.forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-2px)';
+
+        // ── MOBILE: hamburger button inafungua sidebar kama overlay ──
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', function() {
+                openMobileSidebar();
             });
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0)';
+        }
+        if (overlay) {
+            overlay.addEventListener('click', function() {
+                closeMobileSidebar();
+            });
+        }
+
+        // Kufunga sidebar ukibonyeza link yoyote kwenye mobile
+        sidebar.querySelectorAll('.sidebar-link').forEach(link => {
+            link.addEventListener('click', function() {
+                if (isMobile()) closeMobileSidebar();
             });
         });
-        
-        // Show notification if group letter is ready
+
+        function expandDesktop() {
+            sidebar.classList.add('expanded');
+            mainContent.classList.add('expanded');
+            if (toggleIcon) {
+                toggleIcon.classList.replace('fa-bars', 'fa-times');
+            }
+        }
+
+        function collapseDesktop() {
+            sidebar.classList.remove('expanded');
+            mainContent.classList.remove('expanded');
+            if (toggleIcon) {
+                toggleIcon.classList.replace('fa-times', 'fa-bars');
+            }
+        }
+
+        function openMobileSidebar() {
+            sidebar.classList.add('mobile-open');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMobileSidebar() {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Recheck on resize
+        window.addEventListener('resize', function() {
+            if (!isMobile()) {
+                closeMobileSidebar();
+            }
+        });
+
+        // ── Group letter notification ──
         {% if can_download_group_letter %}
         setTimeout(() => {
             if (!localStorage.getItem('groupLetterNotified')) {
-                alert('🎉 CONGRATULATIONS! Your school now has 5 approved students. You can download the Group Letter!');
+                const msg = '{% if LANG == "sw" %}🎉 HONGERA! Shule yako sasa ina wanafunzi 5 walioidhinishwa. Unaweza kupakua Barua ya Kikundi!{% else %}🎉 CONGRATULATIONS! Your school now has 5 approved students. You can download the Group Letter!{% endif %}';
+                alert(msg);
                 localStorage.setItem('groupLetterNotified', 'true');
             }
         }, 1000);
