@@ -1,9 +1,31 @@
 venv/
 __pycache__/
 *.pyc
+*.pyo
 *.log
 staticfiles/
 *.sqlite3
 .DS_Store
 *.zip
 .env
+.env.*
+*.env
+
+# Backup files
+*.backup
+*.backup2
+*.backup3
+*.backup_final
+*.bak
+
+# Token/secret files
+save
+cive
+
+# Media uploads
+media/
+uploads/
+
+# IDE
+.vscode/
+.idea/
