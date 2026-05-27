@@ -120,6 +120,7 @@ urlpatterns = [
     path('board/', views.board_home, name='board_home'),
     path('board/region/<int:region_id>/', views.board_district_list, name='board_district_list'),
     path('board/district/<int:district_id>/', views.board_school_list, name='board_school_list'),
+    path('board/district/<int:district_id>/report/', views.board_deo_report, name='board_deo_report'),
     path('board/student/<int:student_id>/', views.board_student_progress, name='board_student_progress'),
     path('board/comment/add/', views.board_add_comment, name='board_add_comment'),
     path('create-board-member/', views.create_board_member, name='create_board_member'),

@@ -46,7 +46,7 @@ from .models import (
     StudentApplication, Region, RegionPin, SchoolPin,
     District, Subject, SchoolSubjectCapacity,
     LogbookEntry, ApprovalLetter, AcademicYear, SchemeOfWork,
-    BoardMember, BoardComment, LessonPlan,
+    BoardMember, BoardComment, LessonPlan, MonthlyReport,
 )
 
 User = get_user_model()
@@ -4889,6 +4889,155 @@ def board_school_list(request, district_id):
         'district': district,
         'schools': schools,
         'students_data': students_data,
+    })
+
+
+@login_required
+def board_deo_report(request, district_id):
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+    district = get_object_or_404(District, id=district_id)
+
+    HOLIDAY_MONTHS = {5, 8, 12}
+    now = timezone.now()
+    selected_month = int(request.GET.get('month', now.month))
+    selected_year = int(request.GET.get('year', now.year))
+
+    existing = MonthlyReport.objects.filter(
+        district=district, month=selected_month, year=selected_year
+    ).first()
+
+    if request.method == 'POST' and 'generate' in request.POST:
+        if selected_month in HOLIDAY_MONTHS:
+            messages.error(request, 'Ripoti haizalishwi kwa miezi ya likizo (Mei, Agosti, Desemba).')
+            return redirect(request.path + f'?month={selected_month}&year={selected_year}')
+
+        entries = LogbookEntry.objects.filter(
+            date__month=selected_month,
+            date__year=selected_year,
+            school__district=district,
+        ).select_related('student', 'subject_taught', 'school')
+
+        if not entries.exists():
+            messages.warning(request, 'Hakuna rekodi za logbook kwa mwezi huu katika wilaya hii.')
+            return redirect(request.path + f'?month={selected_month}&year={selected_year}')
+
+        # Build summary data per student
+        from collections import defaultdict
+        student_summary = defaultdict(lambda: {
+            'name': '', 'school': '', 'level': '', 'subject': '',
+            'topics': [], 'days_recorded': 0,
+        })
+        for entry in entries:
+            sid = entry.student_id
+            st = entry.student
+            student_summary[sid]['name'] = st.full_name
+            student_summary[sid]['school'] = entry.school.name if entry.school else ''
+            student_summary[sid]['level'] = entry.school.level if entry.school else ''
+            student_summary[sid]['days_recorded'] += 1
+            if entry.lessons_data:
+                for lesson in entry.lessons_data:
+                    if lesson.get('main_topic'):
+                        student_summary[sid]['topics'].append(lesson['main_topic'])
+                    if not student_summary[sid]['subject'] and lesson.get('subject'):
+                        student_summary[sid]['subject'] = lesson['subject']
+            elif entry.topic_taught:
+                student_summary[sid]['topics'].append(entry.topic_taught)
+                if not student_summary[sid]['subject'] and entry.subject_taught:
+                    student_summary[sid]['subject'] = entry.subject_taught.name
+
+        # Months remaining in year
+        months_remaining = 12 - selected_month
+
+        summary_text = ""
+        for sid, data in student_summary.items():
+            topics_count = len(data['topics'])
+            unique_topics = list(dict.fromkeys(data['topics']))[:10]
+            summary_text += (
+                f"- {data['name']} | Shule: {data['school']} ({data['level']}) | "
+                f"Somo: {data['subject'] or 'Haijabainishwa'} | "
+                f"Mada {topics_count} | Siku {data['days_recorded']} | "
+                f"Mada za mwisho: {', '.join(unique_topics[:5]) or 'Hakuna'}\n"
+            )
+
+        month_name_map = dict(MonthlyReport.MONTH_CHOICES)
+        prompt = f"""Wewe ni mshauri wa elimu kwa Tanzania. Toa ripoti ya kina kwa DEO (Afisa Elimu wa Wilaya) ya wilaya ya {district.name} kwa mwezi wa {month_name_map[selected_month]} {selected_year}.
+
+Data ya walimu wanafunzi (student teachers) waliofanya kazi mwezi huu:
+{summary_text}
+
+Miezi iliyobaki mwaka huu: {months_remaining}
+
+Toa ripoti ifuatayo kwa muundo wa JSON:
+{{
+  "muhtasari": "Muhtasari mfupi wa mwezi (2-3 sentensi)",
+  "secondary": [
+    {{
+      "nafasi": 1,
+      "jina": "Jina la mwalimu mwanafunzi",
+      "shule": "Jina la shule",
+      "somo": "Somo analofundisha",
+      "mada_zote": 10,
+      "siku": 20,
+      "hali": "vizuri|wastani|nyuma",
+      "mapendekezo": "Pendekezo fupi la kibinafsi kulingana na miezi iliyobaki"
+    }}
+  ],
+  "primary": [
+    {{
+      "nafasi": 1,
+      "jina": "Jina la mwalimu mwanafunzi",
+      "shule": "Jina la shule",
+      "somo": "Somo analofundisha",
+      "mada_zote": 8,
+      "siku": 18,
+      "hali": "vizuri|wastani|nyuma",
+      "mapendekezo": "Pendekezo fupi la kibinafsi"
+    }}
+  ],
+  "hitimisho": "Hitimisho na mapendekezo ya jumla kwa DEO (3-4 sentensi)"
+}}
+
+Panga walimu kwa secondary na primary tofauti. Mpanga kutoka mwenye mada nyingi zaidi hadi chache. Mwalimu mwenye mada nyingi zaidi 'vizuri', wastani 'wastani', chini ya wastani 'nyuma'. Jibu kwa JSON tu bila maelezo mengine."""
+
+        try:
+            from .ai_utils import client, model_name as ai_model
+            response = client.models.generate_content(model=ai_model, contents=prompt)
+            raw = response.text.strip()
+            raw = re.sub(r'^```(?:json)?\s*', '', raw)
+            raw = re.sub(r'\s*```$', '', raw)
+            ai_data = json.loads(raw)
+        except Exception as e:
+            messages.error(request, f'Hitilafu ya AI: {e}')
+            return redirect(request.path + f'?month={selected_month}&year={selected_year}')
+
+        report, _ = MonthlyReport.objects.update_or_create(
+            district=district, month=selected_month, year=selected_year,
+            defaults={'ai_content': ai_data, 'generated_by': bm},
+        )
+        existing = report
+        messages.success(request, 'Ripoti imezalishwa kwa mafanikio.')
+
+    available_months = [
+        (m, n) for m, n in MonthlyReport.MONTH_CHOICES if m not in HOLIDAY_MONTHS
+    ]
+    past_reports = MonthlyReport.objects.filter(district=district).order_by('-year', '-month')
+
+    available_years = list(range(2024, 2046))
+
+    return render(request, 'field_app/board_deo_report.html', {
+        'bm': bm,
+        'district': district,
+        'selected_month': selected_month,
+        'selected_year': selected_year,
+        'existing': existing,
+        'available_months': available_months,
+        'available_years': available_years,
+        'past_reports': past_reports,
+        'holiday_months': HOLIDAY_MONTHS,
+        'is_holiday': selected_month in HOLIDAY_MONTHS,
+        'month_name': dict(MonthlyReport.MONTH_CHOICES).get(selected_month, ''),
     })
 
 

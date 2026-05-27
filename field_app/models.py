@@ -1050,3 +1050,36 @@ class BoardComment(models.Model):
 
     def __str__(self):
         return f"{self.board_member.full_name} → {self.student.full_name} ({self.status})"
+
+
+# =========================
+# DEO Monthly AI Report
+# =========================
+
+class MonthlyReport(models.Model):
+    MONTH_CHOICES = [
+        (1, 'Januari'), (2, 'Februari'), (3, 'Machi'), (4, 'Aprili'),
+        (5, 'Mei'), (6, 'Juni'), (7, 'Julai'), (8, 'Agosti'),
+        (9, 'Septemba'), (10, 'Oktoba'), (11, 'Novemba'), (12, 'Desemba'),
+    ]
+
+    district = models.ForeignKey(
+        'District', on_delete=models.CASCADE, related_name='monthly_reports'
+    )
+    month = models.PositiveSmallIntegerField(choices=MONTH_CHOICES)
+    year = models.PositiveSmallIntegerField()
+    generated_by = models.ForeignKey(
+        'BoardMember', on_delete=models.SET_NULL, null=True, blank=True
+    )
+    ai_content = models.JSONField(default=dict)
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('district', 'month', 'year')
+        ordering = ['-year', '-month']
+        indexes = [
+            models.Index(fields=['district', 'year', 'month']),
+        ]
+
+    def __str__(self):
+        return f"Ripoti {self.get_month_display()} {self.year} — {self.district.name}"

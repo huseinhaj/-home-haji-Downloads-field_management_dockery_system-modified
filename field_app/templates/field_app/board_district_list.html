@@ -26,8 +26,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;
 .page-hd h1{font-size:20px;color:var(--bold);font-weight:700;margin:0;}
 .page-hd p{font-size:13px;color:var(--gray);margin:4px 0 0;}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
-.dist-card{background:var(--white);border-radius:8px;border:1px solid var(--border);overflow:hidden;transition:.2s;text-decoration:none;display:block;}
-.dist-card:hover{border-color:var(--bold);box-shadow:0 4px 16px rgba(10,43,94,.12);transform:translateY(-2px);}
+.dist-card{background:var(--white);border-radius:8px;border:1px solid var(--border);overflow:hidden;transition:.2s;display:block;}
 .dc-head{background:var(--bold);padding:12px 18px;border-bottom:3px solid var(--medium);display:flex;align-items:center;gap:10px;}
 .dc-ico{width:34px;height:34px;background:rgba(200,144,10,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;}
 .dc-ico i{color:var(--medium);font-size:15px;}
@@ -73,7 +72,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;
   {% if districts %}
   <div class="grid">
     {% for district in districts %}
-    <a href="{% url 'board_school_list' district.id %}" class="dist-card">
+    <div class="dist-card" style="cursor:default;">
       <div class="dc-head">
         <div class="dc-ico"><i class="fas fa-map-pin"></i></div>
         <h3>{{ district.name }}</h3>
@@ -82,10 +81,11 @@ body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;
         <div class="dc-stat"><span><i class="fas fa-school" style="margin-right:5px;"></i>Shule</span><strong>{{ district.school_count }}</strong></div>
         <div class="dc-stat"><span><i class="fas fa-user-graduate" style="margin-right:5px;"></i>Walimu Wanafunzi</span><strong>{{ district.student_count }}</strong></div>
       </div>
-      <div class="dc-footer">
-        <span class="btn-view"><i class="fas fa-arrow-right"></i> Angalia Shule</span>
+      <div class="dc-footer" style="gap:8px;">
+        <a href="{% url 'board_school_list' district.id %}" class="btn-view"><i class="fas fa-arrow-right"></i> Angalia Shule</a>
+        <a href="{% url 'board_deo_report' district.id %}" class="btn-view" style="background:var(--medium);"><i class="fas fa-chart-bar"></i> Ripoti</a>
       </div>
-    </a>
+    </div>
     {% endfor %}
   </div>
   {% else %}
