@@ -19,17 +19,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Detect actual GDAL/GEOS paths at build time and bake into ENV
-RUN GDAL_PATH=$(find /usr/lib -name 'libgdal.so' | head -1) && \
-    GEOS_PATH=$(find /usr/lib -name 'libgeos_c.so' | head -1) && \
-    echo "GDAL_LIBRARY_PATH=$GDAL_PATH" && \
-    echo "GEOS_LIBRARY_PATH=$GEOS_PATH" && \
-    echo "export GDAL_LIBRARY_PATH=$GDAL_PATH" >> /etc/profile.d/geodjango.sh && \
-    echo "export GEOS_LIBRARY_PATH=$GEOS_PATH" >> /etc/profile.d/geodjango.sh
-
-# Set them as ENV using the detected values
-RUN GDAL_PATH=$(find /usr/lib -name 'libgdal.so' | head -1) && \
-    GEOS_PATH=$(find /usr/lib -name 'libgeos_c.so' | head -1) && \
+# Detect actual GDAL/GEOS versioned library paths at build time.
+# We search for the versioned .so (e.g. libgdal.so.35) under the main
+# multiarch lib dir only, explicitly excluding the ogdi sub-directory
+# which ships its own incompatible libgdal.so that lacks GDALVersionInfo.
+RUN GDAL_PATH=$(find /usr/lib/x86_64-linux-gnu -maxdepth 1 -name 'libgdal.so.*' | sort -V | tail -1) && \
+    GEOS_PATH=$(find /usr/lib/x86_64-linux-gnu -maxdepth 1 -name 'libgeos_c.so.*' | sort -V | tail -1) && \
+    echo "Detected GDAL_LIBRARY_PATH=$GDAL_PATH" && \
+    echo "Detected GEOS_LIBRARY_PATH=$GEOS_PATH" && \
     printf "GDAL_LIBRARY_PATH=%s\nGEOS_LIBRARY_PATH=%s\n" "$GDAL_PATH" "$GEOS_PATH" > /app/.geoenv
 
 # ── Python dependencies (cached layer) ────────────────────────────────────────
