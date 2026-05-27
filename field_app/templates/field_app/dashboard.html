@@ -464,25 +464,19 @@
         <li class="sidebar-item">
             <a href="{% url 'logbook_history' %}" class="sidebar-link">
                 <i class="fas fa-history"></i>
-                <span class="sidebar-text">{% if LANG == 'sw' %}Historia{% else %}History{% endif %}</span>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Historia ya Logbook{% else %}Logbook History{% endif %}</span>
             </a>
         </li>
         <li class="sidebar-item">
             <a href="{% url 'logbook_download_options' %}" class="sidebar-link">
                 <i class="fas fa-download"></i>
-                <span class="sidebar-text">{% if LANG == 'sw' %}Pakua{% else %}Download{% endif %}</span>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Pakua Logbook{% else %}Download Logbook{% endif %}</span>
             </a>
         </li>
         <li class="sidebar-item">
             <a href="{% url 'my_assessors' %}" class="sidebar-link">
                 <i class="fas fa-chalkboard-teacher"></i>
                 <span class="sidebar-text">{% if LANG == 'sw' %}Wakaguzi Wangu{% else %}My Assessors{% endif %}</span>
-            </a>
-        </li>
-        <li class="sidebar-item">
-            <a href="{% if LANG == 'sw' %}{% url 'set_language' %}?lang=en&next={{ request.path }}{% else %}{% url 'set_language' %}?lang=sw&next={{ request.path }}{% endif %}" class="sidebar-link">
-                <i class="fas fa-globe"></i>
-                <span class="sidebar-text">{% if LANG == 'sw' %}English{% else %}Kiswahili{% endif %}</span>
             </a>
         </li>
         <li class="sidebar-item">
