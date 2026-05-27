@@ -35,11 +35,12 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # SSL/HTTPS settings
-# SECURE_SSL_REDIRECT = False kwa sababu Railway inashughulikia SSL redirect yenyewe
+# Railway handles SSL termination — tell Django to trust X-Forwarded-Proto header
 SECURE_SSL_REDIRECT = False
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Sessions — use cached_db to avoid a DB round-trip per request for session reads
-SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+# Sessions — use db backend (simpler, avoids per-worker cache sync issues on Railway)
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
