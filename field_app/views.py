@@ -973,13 +973,13 @@ def dashboard(request):
     student = get_or_create_student_profile(request.user)
     current_year = _cached_active_year()
 
+    pinned_regions = Region.objects.none()
     if current_year:
         pinned_region_ids = RegionPin.objects.filter(
             academic_year=current_year,
             is_pinned=True
         ).values_list('region_id', flat=True)
         pinned_regions = Region.objects.filter(id__in=pinned_region_ids)
-        pinned_regions = Region.objects.none()
     
     assessors = []
     if student.selected_school:
