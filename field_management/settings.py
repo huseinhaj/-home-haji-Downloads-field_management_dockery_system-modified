@@ -32,6 +32,10 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.railway.app',
     'https://*.up.railway.app',
     'https://home-haji-downloads-fieldmanagementdockerysy-production.up.railway.app',
+    'http://localhost',
+    'http://localhost:8000',
+    'http://127.0.0.1',
+    'http://127.0.0.1:8000',
 ]
 
 # SSL/HTTPS settings
