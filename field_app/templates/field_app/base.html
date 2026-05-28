@@ -14,58 +14,65 @@
 
     <style>
         :root {
-            /* Login page colors - MoEST Tanzania Theme */
-            --bold: #0A2B5E;
-            --medium: #C8900A;
-            --light: #EEF1F6;
-            --white: #FFFFFF;
-            --text-dark: #1A1A2E;
+            --bold:      #0A2B5E;
+            --bold-deep: #071E42;
+            --medium:    #C8900A;
+            --medium-dk: #A97308;
+            --light:     #EEF1F6;
+            --white:     #FFFFFF;
+            --text-dark: #0F1923;
             --text-gray: #4A5568;
-            --border: #CBD5E0;
-            
-            /* Additional consistent colors */
-            --success: #10B981;
-            --danger: #EF4444;
-            --warning: #F59E0B;
-            --info: #3B82F6;
+            --border:    #C4CEDB;
+            --border-strong: rgba(10,43,94,.18);
+            --success: #0EA271;
+            --danger:  #DC2626;
+            --warning: #D97706;
+            --info:    #2563EB;
+            --radius:  4px;
+            --radius-lg: 6px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 8px rgba(10,43,94,.07);
+            --shadow-md: 0 2px 6px rgba(0,0,0,.09), 0 4px 16px rgba(10,43,94,.11);
         }
+
+        *, *::before, *::after { box-sizing: border-box; }
 
         body {
             background: var(--light);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-size: 14px;
+            line-height: 1.55;
+            color: var(--text-dark);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Navigation - consistent with login page header */
         {% if not hide_navbar %}
         .navbar {
             background: var(--bold) !important;
-            border-bottom: 3px solid var(--medium);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-            padding: 0.75rem 1rem;
+            border-bottom: 4px solid var(--medium);
+            box-shadow: 0 2px 12px rgba(0,0,0,.22);
+            padding: 0.6rem 1rem;
         }
         {% endif %}
-        
+
         .navbar-brand {
-            font-weight: 700;
+            font-weight: 800;
             color: var(--white) !important;
-            font-size: 1.3rem;
+            font-size: 1.15rem;
+            letter-spacing: -.2px;
         }
-        
-        .navbar-brand i {
-            color: var(--medium);
-        }
-        
+        .navbar-brand i { color: var(--medium); }
+
         .welcome-text {
-            color: rgba(255,255,255,0.85);
-            font-size: 0.9rem;
+            color: rgba(255,255,255,.82);
+            font-size: 0.82rem;
             font-weight: 500;
         }
-        
+
         .main-content {
-            padding: 2rem;
+            padding: 1.75rem;
             max-width: 1400px;
             margin: 0 auto;
             flex: 1;
@@ -84,23 +91,21 @@
 
         .registration-container {
             background: var(--white);
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(10,43,94,0.15);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
             width: 100%;
             max-width: 500px;
             padding: 2rem;
             position: relative;
             overflow: hidden;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-strong);
         }
 
         .registration-container::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 6px;
+            top: 0; left: 0; right: 0;
+            height: 5px;
             background: var(--medium);
         }
 
@@ -131,17 +136,19 @@
 
         .form-control {
             border: 1.5px solid var(--border);
-            border-radius: 6px;
-            padding: 0.7rem 1rem;
-            font-size: 0.9rem;
-            transition: all 0.15s ease;
+            border-radius: var(--radius);
+            padding: 0.62rem 0.9rem;
+            font-size: 0.88rem;
+            transition: border-color .14s, box-shadow .14s;
             background: #FAFBFD;
+            color: var(--text-dark);
         }
 
         .form-control:focus {
             border-color: var(--bold);
-            box-shadow: 0 0 0 3px rgba(10,43,94,0.1);
+            box-shadow: 0 0 0 3px rgba(10,43,94,.1);
             background: var(--white);
+            outline: none;
         }
 
         .form-text {
@@ -180,27 +187,25 @@
         .btn-register {
             background: var(--bold);
             border: none;
-            border-radius: 6px;
+            border-radius: var(--radius);
             color: var(--white);
             font-weight: 700;
-            padding: 0.75rem 1.5rem;
+            padding: 0.7rem 1.5rem;
             width: 100%;
-            transition: all 0.2s ease;
+            transition: background .15s, box-shadow .15s;
             margin-top: 1rem;
-            font-size: 0.95rem;
-            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+            letter-spacing: .4px;
+            text-transform: uppercase;
         }
 
         .btn-register:hover {
-            background: #0C3570;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(10,43,94,0.25);
+            background: var(--bold-deep);
+            box-shadow: 0 4px 14px rgba(10,43,94,.28);
             color: var(--white);
         }
 
-        .btn-register:active {
-            transform: translateY(0);
-        }
+        .btn-register:active { opacity: .92; }
 
         .login-link {
             text-align: center;
@@ -225,39 +230,21 @@
 
         /* Error Messages - consistent with login page */
         .alert {
-            border-radius: 6px;
+            border-radius: var(--radius);
             border: none;
-            padding: 0.75rem 1rem;
-            margin-bottom: 1.5rem;
-            font-size: 0.85rem;
+            padding: 0.7rem 1rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.84rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            font-weight: 500;
         }
-
-        .alert-success {
-            background: #D1FAE5;
-            color: #065F46;
-            border-left: 4px solid var(--success);
-        }
-
-        .alert-error, .alert-danger {
-            background: #FEE2E2;
-            color: #991B1B;
-            border-left: 4px solid var(--danger);
-        }
-
-        .alert-info {
-            background: #DBEAFE;
-            color: #1E40AF;
-            border-left: 4px solid var(--info);
-        }
-
-        .alert-warning {
-            background: #FEF3C7;
-            color: #92400E;
-            border-left: 4px solid var(--warning);
-        }
+        .alert-success  { background: #D1FAE5; color: #064E3B; border-left: 5px solid var(--success); }
+        .alert-error,
+        .alert-danger   { background: #FEE2E2; color: #7F1D1D; border-left: 5px solid var(--danger); }
+        .alert-info     { background: #DBEAFE; color: #1E3A8A; border-left: 5px solid var(--info); }
+        .alert-warning  { background: #FEF3C7; color: #78350F; border-left: 5px solid var(--warning); }
 
         /* Responsive Design */
         @media (max-width: 768px) {
@@ -457,46 +444,27 @@
 
         /* Dropdown Menu Styles - consistent with theme */
         .dropdown-menu {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(10,43,94,0.1);
-            padding: 0.5rem;
+            border: 1.5px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 0.35rem;
+            min-width: 180px;
         }
 
         .dropdown-item {
-            border-radius: 6px;
-            padding: 0.5rem 1rem;
-            transition: all 0.2s ease;
-            font-size: 0.85rem;
+            border-radius: var(--radius);
+            padding: 0.48rem 0.9rem;
+            transition: background .12s;
+            font-size: 0.84rem;
+            font-weight: 500;
             color: var(--text-dark);
         }
 
-        .dropdown-item:hover {
-            background: var(--light);
-            transform: translateX(3px);
-        }
+        .dropdown-item:hover { background: var(--light); }
+        .dropdown-divider { margin: 0.35rem 0; border-color: var(--border); }
 
-        .dropdown-item-dashboard:hover {
-            background: var(--light);
-        }
-
-        .dropdown-item-assessors:hover {
-            background: var(--light);
-        }
-
-        .dropdown-divider {
-            margin: 0.5rem 0;
-            border-color: var(--border);
-        }
-
-        .logout-btn {
-            color: var(--danger);
-        }
-
-        .logout-btn:hover {
-            background: #FEE2E2;
-            color: #B91C1C;
-        }
+        .logout-btn { color: var(--danger); font-weight: 600; }
+        .logout-btn:hover { background: #FEE2E2; color: #991B1B; }
 
         .dashboard-icon {
             color: var(--bold);
@@ -565,18 +533,73 @@
             transform: translateY(-1px);
         }
 
-        /* Card styles for dashboard */
         .card {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            transition: all 0.3s ease;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius);
+            transition: box-shadow .15s, border-color .15s;
         }
-        
         .card:hover {
-            box-shadow: 0 4px 12px rgba(10,43,94,0.1);
-            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: rgba(10,43,94,.25);
         }
-        
+
+        /* Badge */
+        .badge {
+            border-radius: 3px;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.3em 0.6em;
+            letter-spacing: .2px;
+            text-transform: uppercase;
+        }
+
+        /* Tables */
+        .table { color: var(--text-dark); font-size: 0.85rem; }
+        .table thead th {
+            background: var(--bold);
+            color: var(--white);
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            padding: 0.65rem 0.9rem;
+        }
+        .table tbody tr:hover td { background: rgba(10,43,94,.04); }
+        .table td { padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--light); vertical-align: middle; }
+
+        /* Lang toggle */
+        .lang-toggle {
+            display: flex; align-items: center; gap: 3px;
+            background: rgba(255,255,255,.1);
+            border-radius: var(--radius);
+            padding: 3px 8px;
+            border: 1px solid rgba(255,255,255,.15);
+        }
+        .lang-btn { color: rgba(255,255,255,.6); font-size: .75rem; font-weight: 700; text-decoration: none; letter-spacing: .4px; transition: color .15s; }
+        .lang-btn:hover, .lang-btn.active { color: var(--white); }
+        .lang-btn.active { color: var(--medium); }
+        .lang-sep { color: rgba(255,255,255,.3); font-size: .75rem; }
+
+        .btn-outline-light {
+            border: 1.5px solid rgba(255,255,255,.4);
+            color: var(--white); transition: all .15s; border-radius: var(--radius);
+            font-weight: 600; font-size: 0.82rem;
+        }
+        .btn-outline-light:hover { background: var(--white); color: var(--bold); }
+        .btn-light {
+            background: var(--white); color: var(--bold); border: none;
+            transition: background .15s; border-radius: var(--radius); font-weight: 600; font-size: 0.82rem;
+        }
+        .btn-light:hover { background: #E8EDF5; }
+
+        .footer {
+            background: var(--bold-deep);
+            border-top: 4px solid var(--medium);
+            text-align: center; padding: 0.65rem;
+            margin-top: auto; color: rgba(255,255,255,.55); font-size: 0.72rem;
+        }
+
         /* Table styles */
         .table {
             color: var(--text-dark);
