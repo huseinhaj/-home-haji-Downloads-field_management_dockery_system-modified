@@ -1,346 +1,609 @@
+{% extends "field_app/board_base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="sw">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maendeleo — {{ student.full_name }}</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+{% block title %}{{ student.full_name }} — {% if LANG == 'sw' %}Maendeleo{% else %}Progress{% endif %}{% endblock %}
+
+{% block mobile_nav_extra %}
+{% if school %}
+<a href="{% url 'board_district_list' school.district.region.id %}"><i class="fas fa-map"></i> {{ school.district.region.name }}</a>
+<a href="{% url 'board_school_list' school.district.id %}"><i class="fas fa-building"></i> {{ school.district.name }}</a>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
 <style>
-:root{--bold:#0A2B5E;--medium:#C8900A;--light:#EEF1F6;--white:#fff;--border:#CBD5E0;--text:#1A1A2E;--gray:#4A5568;--success:#10B981;--warning:#F59E0B;--danger:#EF4444;}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;display:flex;flex-direction:column;}
-.top-nav{background:var(--bold);border-bottom:3px solid var(--medium);padding:0 32px;display:flex;align-items:center;justify-content:space-between;min-height:56px;}
-.top-nav .brand{color:var(--white);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
-.top-nav .brand i{color:var(--medium);}
-.top-nav .right{display:flex;align-items:center;gap:12px;}
-.top-nav .right span{color:rgba(255,255,255,.8);font-size:13px;}
-.top-nav a{color:rgba(255,255,255,.8);font-size:13px;text-decoration:none;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:5px;border:1px solid rgba(255,255,255,.2);transition:.15s;}
-.top-nav a:hover{background:rgba(255,255,255,.1);color:var(--white);}
-.breadcrumb{background:var(--white);padding:10px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;}
-.breadcrumb a{color:var(--bold);text-decoration:none;font-weight:600;}
-.breadcrumb a:hover{color:var(--medium);}
-.breadcrumb span{color:var(--gray);}
-.main{flex:1;padding:24px 32px;max-width:1300px;margin:0 auto;width:100%;}
-.layout{display:grid;grid-template-columns:1fr 340px;gap:20px;}
-.card{background:var(--white);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin-bottom:18px;}
-.card-hd{padding:13px 20px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:9px;background:var(--light);}
-.card-hd i{color:var(--medium);}
-.card-hd h3{font-size:14px;color:var(--bold);font-weight:700;margin:0;}
-.card-body{padding:16px 20px;}
-/* Student profile card */
-.profile-banner{background:var(--bold);padding:20px 24px;border-bottom:3px solid var(--medium);display:flex;align-items:center;gap:16px;}
-.profile-ava{width:52px;height:52px;background:rgba(200,144,10,.2);border-radius:50%;border:2px solid var(--medium);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.profile-ava i{font-size:22px;color:var(--medium);}
-.profile-info h2{font-size:17px;color:var(--white);font-weight:700;margin:0;}
-.profile-info p{font-size:12px;color:rgba(255,255,255,.7);margin:3px 0 0;}
-.stats-row{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
-.stat-box{background:var(--white);border:1px solid var(--border);border-radius:7px;padding:12px 16px;flex:1;min-width:100px;text-align:center;}
-.stat-box .num{font-size:22px;font-weight:800;color:var(--bold);}
-.stat-box .lbl{font-size:11px;color:var(--gray);margin-top:2px;}
-/* Tables */
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th{background:var(--light);color:var(--bold);font-size:12px;font-weight:700;padding:9px 12px;text-align:left;border-bottom:2px solid var(--border);}
-td{padding:9px 12px;color:var(--text);border-bottom:1px solid #F0F4F8;}
-tr:last-child td{border-bottom:none;}
-tr:hover td{background:#F7FAFF;}
-/* Comment form */
-.comment-form{background:var(--white);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin-bottom:18px;}
-.cf-hd{background:var(--bold);padding:14px 20px;border-bottom:3px solid var(--medium);}
-.cf-hd h3{font-size:14px;color:var(--white);font-weight:700;margin:0;}
-.cf-hd p{font-size:11.5px;color:rgba(255,255,255,.7);margin:3px 0 0;}
-.cf-body{padding:18px 20px;}
-.field-lbl{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;}
-.field-wrap{margin-bottom:14px;}
-select,textarea{width:100%;border:1.5px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;color:var(--text);background:#FAFBFD;outline:none;font-family:inherit;transition:.15s;}
-select:focus,textarea:focus{border-color:var(--bold);background:var(--white);box-shadow:0 0 0 3px rgba(10,43,94,.09);}
-textarea{resize:vertical;min-height:90px;}
-.btn-submit{width:100%;padding:11px;background:var(--medium);color:var(--white);border:none;border-radius:6px;font-size:13.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:.2s;}
-.btn-submit:hover{background:#b07a08;}
-/* Comments display */
-.comment-item{padding:14px 0;border-bottom:1px solid #F0F4F8;}
-.comment-item:last-child{border-bottom:none;}
-.ci-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;}
-.ci-author{font-size:13px;font-weight:700;color:var(--bold);}
-.ci-date{font-size:11.5px;color:var(--gray);}
-.ci-text{font-size:13px;color:var(--text);line-height:1.6;}
-.status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11.5px;font-weight:600;}
-.s-excellent{background:rgba(16,185,129,.1);color:var(--success);border:1px solid rgba(16,185,129,.3);}
-.s-good{background:rgba(10,43,94,.08);color:var(--bold);border:1px solid rgba(10,43,94,.15);}
-.s-average{background:rgba(245,158,11,.1);color:var(--warning);border:1px solid rgba(245,158,11,.3);}
-.s-behind{background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.3);}
-.s-critical{background:rgba(127,0,0,.1);color:#7F0000;border:1px solid rgba(127,0,0,.3);}
-.no-data{text-align:center;padding:20px;color:var(--gray);font-size:13px;}
-.topic-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #F0F4F8;font-size:13px;}
-.topic-row:last-child{border-bottom:none;}
-.topic-subject{background:rgba(10,43,94,.08);color:var(--bold);border-radius:4px;padding:2px 8px;font-size:11.5px;font-weight:600;white-space:nowrap;}
-.msg-success{padding:10px 14px;background:#D1FAE5;color:#065F46;border-left:3px solid #059669;border-radius:6px;font-size:13px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
-.gov-footer{background:var(--bold);padding:11px 40px;display:flex;align-items:center;justify-content:space-between;border-top:3px solid var(--medium);flex-wrap:wrap;gap:8px;margin-top:20px;}
-.gov-footer p{font-size:11px;color:rgba(255,255,255,.65);margin:0;}
-.gov-footer .ver{font-size:11px;color:var(--medium);font-weight:700;}
-@media(max-width:1024px){.layout{grid-template-columns:1fr;}}
-@media(max-width:768px){.main{padding:14px;}.top-nav{padding:0 16px;}.breadcrumb{padding:8px 16px;}}
+.profile-stats { display: grid; grid-template-columns: repeat(auto-fit,minmax(110px,1fr)); gap: 10px; padding: 16px 20px; }
+.ps-box { background: var(--light); border-radius: 8px; padding: 12px 14px; text-align: center; border: 1px solid var(--border); }
+.ps-num { font-size: 22px; font-weight: 800; color: var(--bold); }
+.ps-lbl { font-size: 11px; color: var(--gray); margin-top: 2px; }
+.subj-tag { display: inline-flex; align-items: center; gap: 5px; background: rgba(10,43,94,.07); color: var(--bold); border: 1px solid rgba(10,43,94,.15); border-radius: 6px; padding: 4px 12px; font-size: 12.5px; font-weight: 600; margin: 3px; }
+.subj-tag i { color: var(--medium); }
+/* Scheme table */
+.scheme-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.scheme-table th { background: var(--bold); color: var(--white); padding: 9px 12px; text-align: left; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.scheme-table td { padding: 9px 12px; border-bottom: 1px solid #EFF2F7; color: var(--text); vertical-align: top; }
+.scheme-table tr:last-child td { border-bottom: none; }
+.scheme-table tr:hover td { background: #F7FAFF; }
+.scheme-table .week-cell { background: rgba(10,43,94,.05); font-weight: 700; color: var(--bold); width: 50px; }
+/* Lesson plan stage */
+.lp-stage { border-left: 3px solid var(--medium); padding: 10px 14px; margin-bottom: 10px; background: var(--light); border-radius: 0 6px 6px 0; }
+.lp-stage-title { font-size: 12px; font-weight: 700; color: var(--medium); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+.lp-stage-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.lp-stage-col h5 { font-size: 11px; color: var(--gray); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; }
+.lp-stage-col p { font-size: 12.5px; color: var(--text); }
+.lp-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.lp-meta-item { font-size: 12px; color: var(--gray); display: flex; align-items: center; gap: 5px; }
+.lp-meta-item strong { color: var(--bold); }
+.lp-list { list-style: none; padding: 0; margin: 0; }
+.lp-list li { font-size: 12.5px; color: var(--text); padding: 4px 0; border-bottom: 1px solid #EFF2F7; display: flex; align-items: flex-start; gap: 6px; }
+.lp-list li:last-child { border-bottom: none; }
+.lp-list li::before { content: '•'; color: var(--medium); font-size: 14px; line-height: 1.4; flex-shrink: 0; }
+/* Comment item */
+.comment-item { padding: 14px 0; border-bottom: 1px solid #F0F4F8; }
+.comment-item:last-child { border-bottom: none; }
+.ci-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+.ci-author { font-size: 13px; font-weight: 700; color: var(--bold); display: flex; align-items: center; gap: 6px; }
+.ci-author i { color: var(--medium); }
+.ci-date { font-size: 11.5px; color: var(--gray); }
+.ci-text { font-size: 13px; color: var(--text); line-height: 1.6; }
+.s-excellent { background: rgba(16,185,129,.1); color: #059669; border: 1px solid rgba(16,185,129,.3); }
+.s-good { background: rgba(10,43,94,.08); color: var(--bold); border: 1px solid rgba(10,43,94,.15); }
+.s-average { background: rgba(245,158,11,.1); color: #92400E; border: 1px solid rgba(245,158,11,.3); }
+.s-behind { background: rgba(239,68,68,.1); color: #B91C1C; border: 1px solid rgba(239,68,68,.3); }
+.s-critical { background: rgba(127,0,0,.1); color: #7F0000; border: 1px solid rgba(127,0,0,.3); }
+/* Timeline */
+.timeline { position: relative; padding-left: 24px; }
+.timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+.tl-item { position: relative; margin-bottom: 14px; }
+.tl-dot { position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--medium); border: 2px solid var(--white); box-shadow: 0 0 0 2px var(--medium); }
+.tl-date { font-size: 11px; color: var(--gray); margin-bottom: 2px; }
+.tl-content { font-size: 13px; color: var(--text); }
+/* Inactive warning banner */
+.inactive-banner { background: #FEF3C7; border: 1px solid #D97706; border-radius: 8px; padding: 12px 18px; display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.inactive-banner i { color: #D97706; font-size: 18px; flex-shrink: 0; }
+.inactive-banner p { font-size: 13px; color: #92400E; margin: 0; }
+@media (max-width: 640px) { .lp-stage-cols { grid-template-columns: 1fr; } }
 </style>
-</head>
-<body>
+{% endblock %}
 
-<nav class="top-nav">
-  <div class="brand"><i class="fas fa-users"></i> Bodi ya Walimu — IMS</div>
-  <div class="right">
-    <span><i class="fas fa-user-tie" style="color:var(--medium);margin-right:5px;"></i>{{ bm.full_name }}</span>
-    <a href="{% url 'board_logout' %}"><i class="fas fa-sign-out-alt"></i> Toka</a>
-  </div>
-</nav>
-
+{% block breadcrumb %}
 <div class="breadcrumb">
-  <a href="{% url 'board_home' %}"><i class="fas fa-home" style="margin-right:4px;"></i>Mikoa</a>
-  <span><i class="fas fa-chevron-right"></i></span>
+  <a href="{% url 'board_home' %}"><i class="fas fa-home"></i> {% if LANG == 'sw' %}Mikoa{% else %}Regions{% endif %}</a>
   {% if school %}
+  <span class="bc-sep"><i class="fas fa-chevron-right"></i></span>
   <a href="{% url 'board_district_list' school.district.region.id %}">{{ school.district.region.name }}</a>
-  <span><i class="fas fa-chevron-right"></i></span>
+  <span class="bc-sep"><i class="fas fa-chevron-right"></i></span>
   <a href="{% url 'board_school_list' school.district.id %}">{{ school.district.name }}</a>
-  <span><i class="fas fa-chevron-right"></i></span>
   {% endif %}
-  <span style="color:var(--bold);font-weight:600;">{{ student.full_name }}</span>
+  <span class="bc-sep"><i class="fas fa-chevron-right"></i></span>
+  <span class="bc-cur">{{ student.full_name }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if inactive_alert %}
+<div class="inactive-banner">
+  <i class="fas fa-exclamation-triangle"></i>
+  <p>{% if LANG == 'sw' %}<strong>Onyo:</strong> Mwanafunzi huyu hajaandika logbook kwa siku <strong>{{ days_inactive }}</strong>.{% else %}<strong>Warning:</strong> This student has not written a logbook entry for <strong>{{ days_inactive }}</strong> days.{% endif %}</p>
+</div>
+{% endif %}
+
+<!-- Profile Card -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="profile-banner">
+    <div class="profile-ava"><i class="fas fa-user-graduate"></i></div>
+    <div class="profile-info">
+      <h2>{{ student.full_name }}</h2>
+      <p>{{ student.user.email }}{% if school %} &bull; {{ school.name }} ({{ school.get_level_display }}){% endif %}</p>
+    </div>
+  </div>
+  <div class="profile-stats">
+    <div class="ps-box">
+      <div class="ps-num">{{ total_entries }}</div>
+      <div class="ps-lbl">{% if LANG == 'sw' %}Logbook Zote{% else %}Total Logbook{% endif %}</div>
+    </div>
+    <div class="ps-box">
+      <div class="ps-num">{{ month_entry_count }}</div>
+      <div class="ps-lbl">{% if LANG == 'sw' %}Mwezi Huu{% else %}This Month{% endif %}</div>
+    </div>
+    <div class="ps-box">
+      <div class="ps-num">{{ lesson_plans_all|length }}</div>
+      <div class="ps-lbl">{% if LANG == 'sw' %}Mipango ya Masomo{% else %}Lesson Plans{% endif %}</div>
+    </div>
+    <div class="ps-box">
+      <div class="ps-num">{{ schemes_all|length }}</div>
+      <div class="ps-lbl">{% if LANG == 'sw' %}Scheme of Work{% else %}Schemes of Work{% endif %}</div>
+    </div>
+    <div class="ps-box">
+      <div class="ps-num">{{ applications|length }}</div>
+      <div class="ps-lbl">{% if LANG == 'sw' %}Masomo Yaliyoidhinishwa{% else %}Approved Subjects{% endif %}</div>
+    </div>
+    <div class="ps-box">
+      <div class="ps-num">{{ board_comments|length }}</div>
+      <div class="ps-lbl">{% if LANG == 'sw' %}Maoni ya Bodi{% else %}Board Comments{% endif %}</div>
+    </div>
+  </div>
+  {% if applications %}
+  <div style="padding:0 18px 16px;display:flex;flex-wrap:wrap;">
+    {% for app in applications %}
+    <span class="subj-tag"><i class="fas fa-book"></i>{{ app.subject.name }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
 </div>
 
-<div class="main">
-  {% if messages %}
-  {% for msg in messages %}
-  <div class="msg-success"><i class="fas fa-check-circle"></i> {{ msg }}</div>
-  {% endfor %}
-  {% endif %}
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="tab-overview" data-group="main"><i class="fas fa-tachometer-alt"></i> {% if LANG == 'sw' %}Muhtasari{% else %}Overview{% endif %}</button>
+  <button class="tab-btn" data-tab="tab-logbook" data-group="main"><i class="fas fa-book-open"></i> {% if LANG == 'sw' %}Logbook{% else %}Logbook{% endif %} <span class="badge b-info" style="margin-left:2px;">{{ total_entries }}</span></button>
+  <button class="tab-btn" data-tab="tab-schemes" data-group="main"><i class="fas fa-calendar-alt"></i> {% if LANG == 'sw' %}Scheme of Work{% else %}Scheme of Work{% endif %} <span class="badge b-info" style="margin-left:2px;">{{ schemes_all|length }}</span></button>
+  <button class="tab-btn" data-tab="tab-lessons" data-group="main"><i class="fas fa-chalkboard-teacher"></i> {% if LANG == 'sw' %}Mipango ya Masomo{% else %}Lesson Plans{% endif %} <span class="badge b-info" style="margin-left:2px;">{{ lesson_plans_all|length }}</span></button>
+  <button class="tab-btn" data-tab="tab-comments" data-group="main"><i class="fas fa-comments"></i> {% if LANG == 'sw' %}Maoni{% else %}Comments{% endif %} <span class="badge b-gold" style="margin-left:2px;">{{ board_comments|length }}</span></button>
+</div>
 
-  <!-- Profile Banner -->
-  <div class="card" style="margin-bottom:18px;">
-    <div class="profile-banner">
-      <div class="profile-ava"><i class="fas fa-user-graduate"></i></div>
-      <div class="profile-info">
-        <h2>{{ student.full_name }}</h2>
-        <p>{{ student.user.email }} {% if school %}&bull; {{ school.name }} ({{ school.get_level_display }}){% endif %}</p>
-      </div>
-    </div>
-    <div class="card-body" style="padding:14px 20px;">
-      <div class="stats-row">
-        <div class="stat-box">
-          <div class="num">{{ total_entries }}</div>
-          <div class="lbl">Logbook Zote</div>
-        </div>
-        <div class="stat-box">
-          <div class="num">{{ month_entry_count }}</div>
-          <div class="lbl">Mwezi Huu</div>
-        </div>
-        <div class="stat-box">
-          <div class="num">{{ lesson_plans|length }}</div>
-          <div class="lbl">Mipango ya Masomo</div>
-        </div>
-        <div class="stat-box">
-          <div class="num">{{ applications|length }}</div>
-          <div class="lbl">Masomo Yaliyoidhinishwa</div>
-        </div>
-        <div class="stat-box">
-          <div class="num">{{ board_comments|length }}</div>
-          <div class="lbl">Maoni ya Bodi</div>
-        </div>
-      </div>
-      <!-- Subjects -->
-      {% if applications %}
-      <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        {% for app in applications %}
-        <span style="background:rgba(10,43,94,.08);color:var(--bold);border:1px solid rgba(10,43,94,.2);border-radius:5px;padding:4px 12px;font-size:12.5px;font-weight:600;">
-          <i class="fas fa-book" style="margin-right:4px;color:var(--medium);"></i>{{ app.subject.name }}
-        </span>
-        {% endfor %}
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <div class="layout">
-    <!-- LEFT: Progress data -->
+<!-- ═══ TAB: OVERVIEW ═══ -->
+<div class="tab-panel active" id="tab-overview" data-group="main">
+  <div class="two-col">
     <div>
       <!-- Topics Covered -->
       <div class="card">
-        <div class="card-hd"><i class="fas fa-list-alt"></i><h3>Mada Zilizofundishwa (Hivi Karibuni)</h3></div>
+        <div class="card-hd"><i class="fas fa-list-alt"></i><h3>{% if LANG == 'sw' %}Mada Zilizofundishwa (Hivi Karibuni){% else %}Recently Taught Topics{% endif %}</h3></div>
         <div class="card-body" style="padding:12px 20px;">
           {% if topics_covered %}
+          <div class="timeline">
             {% for tc in topics_covered %}
-            <div class="topic-row">
-              {% if tc.subject %}
-              <span class="topic-subject">{{ tc.subject }}</span>
-              {% endif %}
-              <span style="flex:1;">{{ tc.topic|default:"—" }}</span>
-              <span style="font-size:11.5px;color:var(--gray);white-space:nowrap;">{{ tc.date|date:"d/m/Y" }}</span>
+            <div class="tl-item">
+              <div class="tl-dot"></div>
+              <div class="tl-date">{{ tc.date|date:"d M Y" }}</div>
+              <div class="tl-content">
+                {% if tc.subject %}<span class="badge b-info" style="margin-right:5px;font-size:11px;">{{ tc.subject }}</span>{% endif %}
+                {{ tc.topic|default:"—" }}
+              </div>
             </div>
             {% endfor %}
+          </div>
           {% else %}
-            <p class="no-data"><i class="fas fa-inbox" style="display:block;font-size:28px;color:#D1D9E8;margin-bottom:8px;"></i>Mwanafunzi hajaandika mada kwenye logbook bado.</p>
+          <div class="empty-state" style="padding:20px;">
+            <i class="fas fa-inbox" style="font-size:28px;"></i>
+            <p>{% if LANG == 'sw' %}Mwanafunzi hajaandika mada kwenye logbook bado.{% else %}No topics recorded in logbook yet.{% endif %}</p>
+          </div>
           {% endif %}
         </div>
       </div>
 
-      <!-- Logbook Entries -->
+      <!-- Latest Logbook Entries (preview) -->
+      {% if logbook_display %}
       <div class="card">
-        <div class="card-hd"><i class="fas fa-book-open"></i><h3>Logbook ya Hivi Karibuni ({{ logbook_display|length }} siku)</h3></div>
-        <div class="card-body" style="padding:0;">
-          {% if logbook_display %}
+        <div class="card-hd"><i class="fas fa-book-open"></i><h3>{% if LANG == 'sw' %}Logbook ya Hivi Karibuni{% else %}Recent Logbook Entries{% endif %}</h3></div>
+        <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Tarehe</th>
-                <th>Somo</th>
-                <th>Mada Kuu</th>
-                <th>Darasa</th>
-                <th>Wanafunzi</th>
-                <th>Vipindi</th>
-                <th>Aina</th>
+                <th>{% if LANG == 'sw' %}Tarehe{% else %}Date{% endif %}</th>
+                <th>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+                <th>{% if LANG == 'sw' %}Mada{% else %}Topic{% endif %}</th>
+                <th>{% if LANG == 'sw' %}Darasa{% else %}Class{% endif %}</th>
+                <th>{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</th>
+                <th>{% if LANG == 'sw' %}Vipindi{% else %}Periods{% endif %}</th>
               </tr>
             </thead>
             <tbody>
-              {% for item in logbook_display %}
+              {% for item in logbook_display|slice:":5" %}
               <tr>
-                <td>{{ item.entry.date|date:"d/m/Y" }}<br><span style="font-size:11px;color:var(--gray);">{{ item.entry.get_day_of_week_display }}</span></td>
+                <td><strong>{{ item.entry.date|date:"d/m/Y" }}</strong><br><span style="font-size:11px;color:var(--gray);">{{ item.entry.get_day_of_week_display }}</span></td>
                 <td style="font-weight:600;color:var(--bold);">{{ item.subject }}</td>
-                <td>{{ item.topic|truncatechars:30 }}</td>
+                <td style="color:var(--gray);">{{ item.topic|truncatechars:30 }}</td>
                 <td>{{ item.class }}</td>
                 <td style="text-align:center;">{{ item.present }}</td>
-                <td style="text-align:center;">
-                  {% if item.num_periods %}
-                  <span style="background:rgba(10,43,94,.08);color:var(--bold);padding:2px 8px;border-radius:4px;font-size:11.5px;font-weight:700;">{{ item.num_periods }}</span>
-                  {% else %}—{% endif %}
-                </td>
-                <td>
-                  {% if item.activity %}
-                  <span style="font-size:11.5px;background:rgba(200,144,10,.1);color:#92400E;padding:2px 7px;border-radius:4px;">{{ item.activity }}</span>
-                  {% else %}—{% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          {% else %}
-          <p class="no-data"><i class="fas fa-book" style="display:block;font-size:28px;color:#D1D9E8;margin-bottom:8px;"></i>Hakuna logbook iliyoandikwa.</p>
-          {% endif %}
-        </div>
-      </div>
-
-      <!-- Lesson Plans -->
-      {% if lesson_plans %}
-      <div class="card">
-        <div class="card-hd"><i class="fas fa-chalkboard-teacher"></i><h3>Mipango ya Masomo</h3></div>
-        <div class="card-body" style="padding:0;">
-          <table>
-            <thead>
-              <tr><th>Tarehe</th><th>Somo</th><th>Mada</th><th>Darasa</th><th>Muda</th></tr>
-            </thead>
-            <tbody>
-              {% for lp in lesson_plans %}
-              <tr>
-                <td>{{ lp.date|date:"d/m/Y" }}</td>
-                <td>{{ lp.subject.name }}</td>
-                <td>{{ lp.topic|truncatechars:40 }}</td>
-                <td>{{ lp.class_name }}</td>
-                <td>{{ lp.duration }} dk</td>
+                <td style="text-align:center;">{% if item.num_periods %}<span class="badge b-info">{{ item.num_periods }}</span>{% else %}—{% endif %}</td>
               </tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
-      </div>
-      {% endif %}
-
-      <!-- Scheme of Work summary -->
-      {% if schemes %}
-      <div class="card">
-        <div class="card-hd"><i class="fas fa-calendar-alt"></i><h3>Mpango wa Kazi (Scheme of Work)</h3></div>
-        <div class="card-body" style="padding:0;">
-          <table>
-            <thead>
-              <tr><th>Somo</th><th>Darasa</th><th>Term</th><th>Mwaka</th><th>Wiki</th></tr>
-            </thead>
-            <tbody>
-              {% for s in schemes %}
-              <tr>
-                <td>{{ s.subject.name }}</td>
-                <td>{{ s.class_name }}</td>
-                <td>{{ s.term }}</td>
-                <td>{{ s.year }}</td>
-                <td>{{ s.total_weeks }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        {% if logbook_display|length > 5 %}
+        <div style="padding:10px 18px;text-align:right;">
+          <button class="btn btn-outline btn-sm" onclick="switchTab('tab-logbook')"><i class="fas fa-list"></i> {% if LANG == 'sw' %}Ona Zote ({{ total_entries }}){% else %}View All ({{ total_entries }}){% endif %}</button>
         </div>
+        {% endif %}
       </div>
       {% endif %}
     </div>
 
-    <!-- RIGHT: Comments -->
+    <!-- RIGHT: Quick comment form -->
     <div>
-      <!-- Add Comment Form -->
-      <div class="comment-form">
-        <div class="cf-hd">
-          <h3><i class="fas fa-comment-dots" style="margin-right:6px;"></i>Toa Maoni</h3>
-          <p>Andika maoni kuhusu maendeleo ya mwanafunzi huyu</p>
+      <div class="card">
+        <div class="card-hd" style="background:var(--bold);border-bottom:3px solid var(--medium);">
+          <i class="fas fa-comment-dots" style="color:var(--medium);"></i>
+          <h3 style="color:var(--white);">{% if LANG == 'sw' %}Toa Maoni{% else %}Add Comment{% endif %}</h3>
         </div>
-        <div class="cf-body">
+        <div class="card-body">
           <form method="post" action="{% url 'board_add_comment' %}">
             {% csrf_token %}
             <input type="hidden" name="student_id" value="{{ student.id }}">
             <div class="field-wrap">
-              <label class="field-lbl">Hali ya Maendeleo</label>
+              <label class="field-lbl">{% if LANG == 'sw' %}Hali ya Maendeleo{% else %}Progress Status{% endif %}</label>
               <select name="status">
-                <option value="excellent">✅ Vizuri Sana — Endelea Hivyo</option>
-                <option value="good" selected>👍 Vizuri — Kazi Nzuri</option>
-                <option value="average">⚠️ Wastani — Boresha</option>
-                <option value="behind">🔴 Nyuma — Akazane</option>
-                <option value="critical">🚨 Muhimu — Hatua ya Haraka</option>
+                <option value="excellent">✅ {% if LANG == 'sw' %}Vizuri Sana{% else %}Excellent{% endif %}</option>
+                <option value="good" selected>👍 {% if LANG == 'sw' %}Vizuri{% else %}Good{% endif %}</option>
+                <option value="average">⚠️ {% if LANG == 'sw' %}Wastani{% else %}Average{% endif %}</option>
+                <option value="behind">🔴 {% if LANG == 'sw' %}Nyuma{% else %}Behind{% endif %}</option>
+                <option value="critical">🚨 {% if LANG == 'sw' %}Muhimu{% else %}Critical{% endif %}</option>
               </select>
             </div>
             <div class="field-wrap">
-              <label class="field-lbl">Maoni Yako</label>
-              <textarea name="comment" placeholder="Andika maoni yako kuhusu maendeleo ya mwanafunzi huyu..." required></textarea>
+              <label class="field-lbl">{% if LANG == 'sw' %}Maoni Yako{% else %}Your Comment{% endif %}</label>
+              <textarea name="comment" placeholder="{% if LANG == 'sw' %}Andika maoni yako...{% else %}Write your comment...{% endif %}" required></textarea>
             </div>
-            <button type="submit" class="btn-submit">
-              <i class="fas fa-paper-plane"></i> Tuma Maoni
+            <button type="submit" class="btn btn-accent" style="width:100%;justify-content:center;">
+              <i class="fas fa-paper-plane"></i> {% if LANG == 'sw' %}Tuma Maoni{% else %}Submit Comment{% endif %}
             </button>
           </form>
         </div>
       </div>
 
-      <!-- Previous Comments -->
+      <!-- Last comments preview -->
+      {% if board_comments %}
       <div class="card">
-        <div class="card-hd"><i class="fas fa-comments"></i><h3>Maoni ya Awali ({{ board_comments|length }})</h3></div>
+        <div class="card-hd"><i class="fas fa-comments"></i><h3>{% if LANG == 'sw' %}Maoni ya Awali{% else %}Previous Comments{% endif %}</h3></div>
         <div class="card-body" style="padding:12px 20px;">
-          {% if board_comments %}
-            {% for c in board_comments %}
-            <div class="comment-item">
-              <div class="ci-top">
-                <span class="ci-author"><i class="fas fa-user-tie" style="margin-right:5px;color:var(--medium);"></i>{{ c.board_member.full_name }}</span>
-                <span class="ci-date">{{ c.created_at|date:"d/m/Y H:i" }}</span>
-              </div>
-              <div style="margin-bottom:8px;">
-                {% if c.status == 'excellent' %}<span class="status-badge s-excellent"><i class="fas fa-star"></i> Vizuri Sana</span>
-                {% elif c.status == 'good' %}<span class="status-badge s-good"><i class="fas fa-thumbs-up"></i> Vizuri</span>
-                {% elif c.status == 'average' %}<span class="status-badge s-average"><i class="fas fa-exclamation-circle"></i> Wastani</span>
-                {% elif c.status == 'behind' %}<span class="status-badge s-behind"><i class="fas fa-exclamation-triangle"></i> Nyuma</span>
-                {% else %}<span class="status-badge s-critical"><i class="fas fa-bell"></i> Muhimu</span>{% endif %}
-              </div>
-              <p class="ci-text">{{ c.comment }}</p>
+          {% for c in board_comments|slice:":3" %}
+          <div class="comment-item">
+            <div class="ci-top">
+              <span class="ci-author"><i class="fas fa-user-tie"></i>{{ c.board_member.full_name }}</span>
+              <span class="ci-date">{{ c.created_at|date:"d/m/Y" }}</span>
             </div>
-            {% endfor %}
-          {% else %}
-          <p class="no-data"><i class="fas fa-comment-slash" style="display:block;font-size:28px;color:#D1D9E8;margin-bottom:8px;"></i>Hakuna maoni ya awali.</p>
+            <div style="margin-bottom:6px;">
+              {% if c.status == 'excellent' %}<span class="badge s-excellent"><i class="fas fa-star"></i> {% if LANG == 'sw' %}Vizuri Sana{% else %}Excellent{% endif %}</span>
+              {% elif c.status == 'good' %}<span class="badge s-good"><i class="fas fa-thumbs-up"></i> {% if LANG == 'sw' %}Vizuri{% else %}Good{% endif %}</span>
+              {% elif c.status == 'average' %}<span class="badge s-average"><i class="fas fa-minus-circle"></i> {% if LANG == 'sw' %}Wastani{% else %}Average{% endif %}</span>
+              {% elif c.status == 'behind' %}<span class="badge s-behind"><i class="fas fa-exclamation-triangle"></i> {% if LANG == 'sw' %}Nyuma{% else %}Behind{% endif %}</span>
+              {% else %}<span class="badge s-critical"><i class="fas fa-bell"></i> {% if LANG == 'sw' %}Muhimu{% else %}Critical{% endif %}</span>{% endif %}
+            </div>
+            <p class="ci-text">{{ c.comment|truncatechars:120 }}</p>
+          </div>
+          {% endfor %}
+          {% if board_comments|length > 3 %}
+          <div style="text-align:center;padding-top:8px;">
+            <button class="btn btn-outline btn-sm" onclick="switchTab('tab-comments')">{% if LANG == 'sw' %}Ona Maoni Yote{% else %}View All Comments{% endif %}</button>
+          </div>
           {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB: LOGBOOK ═══ -->
+<div class="tab-panel" id="tab-logbook" data-group="main">
+  {% if logbook_display %}
+  <div class="card">
+    <div class="card-hd"><i class="fas fa-book-open"></i><h3>{% if LANG == 'sw' %}Logbook Yote ({{ total_entries }} Siku){% else %}All Logbook Entries ({{ total_entries }} Days){% endif %}</h3></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{% if LANG == 'sw' %}Tarehe{% else %}Date{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Mada Kuu{% else %}Main Topic{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Darasa{% else %}Class{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Wanafunzi Waliopo{% else %}Present{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Vipindi{% else %}Periods{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Aina{% else %}Activity{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in logbook_display %}
+          <tr>
+            <td>
+              <strong>{{ item.entry.date|date:"d/m/Y" }}</strong>
+              <div style="font-size:11px;color:var(--gray);">{{ item.entry.get_day_of_week_display }}</div>
+            </td>
+            <td style="font-weight:600;color:var(--bold);">{{ item.subject }}</td>
+            <td>{{ item.topic|truncatechars:35 }}</td>
+            <td>{{ item.class }}</td>
+            <td style="text-align:center;font-weight:600;">{{ item.present }}</td>
+            <td style="text-align:center;">
+              {% if item.num_periods %}<span class="badge b-info">{{ item.num_periods }}</span>{% else %}—{% endif %}
+            </td>
+            <td>
+              {% if item.activity %}<span class="badge b-gold" style="font-size:11px;">{{ item.activity }}</span>{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card"><div class="empty-state">
+    <i class="fas fa-book"></i>
+    <p>{% if LANG == 'sw' %}Hakuna logbook iliyoandikwa.{% else %}No logbook entries written yet.{% endif %}</p>
+  </div></div>
+  {% endif %}
+</div>
+
+<!-- ═══ TAB: SCHEME OF WORK ═══ -->
+<div class="tab-panel" id="tab-schemes" data-group="main">
+  {% if schemes_all %}
+    {% for scheme in schemes_all %}
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-hd" style="background:var(--bold);border-bottom:3px solid var(--medium);">
+        <i class="fas fa-calendar-alt" style="color:var(--medium);"></i>
+        <h3 style="color:var(--white);">{{ scheme.subject.name }} — {{ scheme.class_name }} — Term {{ scheme.term }} {{ scheme.year }}</h3>
+        <span class="badge" style="background:rgba(200,144,10,.2);color:var(--medium);border-color:rgba(200,144,10,.3);margin-left:auto;">{{ scheme.get_education_level_display }}</span>
+      </div>
+      <!-- Scheme Metadata -->
+      <div class="card-body" style="padding:14px 20px 6px;">
+        <div class="lp-meta">
+          <span class="lp-meta-item"><i class="fas fa-user"></i> <strong>{{ scheme.teacher_name }}</strong></span>
+          <span class="lp-meta-item"><i class="fas fa-calendar"></i> {% if LANG == 'sw' %}Wiki{% else %}Weeks{% endif %}: <strong>{{ scheme.total_weeks }}</strong></span>
+          <span class="lp-meta-item"><i class="fas fa-clock"></i> {% if LANG == 'sw' %}Vipindi/Wiki{% else %}Periods/Week{% endif %}: <strong>{{ scheme.periods_per_week }}</strong></span>
+          {% if scheme.start_date %}<span class="lp-meta-item"><i class="fas fa-play"></i> {% if LANG == 'sw' %}Kuanza{% else %}Start{% endif %}: <strong>{{ scheme.start_date|date:"d/m/Y" }}</strong></span>{% endif %}
+          {% if scheme.end_date %}<span class="lp-meta-item"><i class="fas fa-flag-checkered"></i> {% if LANG == 'sw' %}Mwisho{% else %}End{% endif %}: <strong>{{ scheme.end_date|date:"d/m/Y" }}</strong></span>{% endif %}
+          {% if scheme.syllabus %}<span class="lp-meta-item"><i class="fas fa-book"></i> {{ scheme.syllabus }}</span>{% endif %}
+          {% if scheme.reference_source %}<span class="lp-meta-item"><i class="fas fa-link"></i> {{ scheme.reference_source|truncatechars:40 }}</span>{% endif %}
+        </div>
+      </div>
+      <!-- Scheme Data Table -->
+      {% if scheme.scheme_data %}
+      <div class="table-wrap">
+        <table class="scheme-table">
+          <thead>
+            <tr>
+              <th>{% if LANG == 'sw' %}Wiki{% else %}Week{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Mada{% else %}Topic{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Mada Ndogo{% else %}Sub-Topic{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Shughuli{% else %}Activities{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Vifaa{% else %}Resources{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Tathmini{% else %}Assessment{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Vipindi{% else %}Periods{% endif %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in scheme.scheme_data %}
+            <tr>
+              <td class="week-cell">{{ row.week|default:forloop.counter }}</td>
+              <td style="font-weight:600;">{{ row.topic|default:row.main_topic|default:"—" }}</td>
+              <td style="color:var(--gray);">{{ row.subtopic|default:row.sub_topic|default:"—"|truncatechars:40 }}</td>
+              <td style="font-size:12px;">{{ row.activities|default:row.learning_activities|default:"—"|truncatechars:60 }}</td>
+              <td style="font-size:12px;color:var(--gray);">{{ row.resources|default:row.teaching_resources|default:"—"|truncatechars:40 }}</td>
+              <td style="font-size:12px;">{{ row.assessment|default:row.assessment_criteria|default:"—"|truncatechars:40 }}</td>
+              <td style="text-align:center;"><span class="badge b-info">{{ row.periods|default:"—" }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="empty-state" style="padding:20px;">{% if LANG == 'sw' %}Hakuna data ya scheme.{% else %}No scheme data found.{% endif %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state" style="padding:20px;"><i class="fas fa-table"></i><p>{% if LANG == 'sw' %}Scheme haijazalishwa data bado.{% else %}Scheme data not generated yet.{% endif %}</p></div>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="card"><div class="empty-state">
+    <i class="fas fa-calendar-alt"></i>
+    <p>{% if LANG == 'sw' %}Mwanafunzi hajazalisha Scheme of Work bado.{% else %}Student has not generated a Scheme of Work yet.{% endif %}</p>
+  </div></div>
+  {% endif %}
+</div>
+
+<!-- ═══ TAB: LESSON PLANS ═══ -->
+<div class="tab-panel" id="tab-lessons" data-group="main">
+  {% if lesson_plans_all %}
+    {% for lp in lesson_plans_all %}
+    <div class="accordion-item" style="margin-bottom:10px;">
+      <button class="accordion-btn" type="button">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
+          <span class="badge b-gold"><i class="fas fa-book"></i> {{ lp.subject.name }}</span>
+          <strong>{{ lp.topic }}</strong>
+          {% if lp.subtopic %}<span style="color:var(--gray);font-size:12.5px;font-weight:400;">— {{ lp.subtopic }}</span>{% endif %}
+          <span class="badge b-gray" style="margin-left:auto;">{{ lp.class_name }}</span>
+          <span class="badge b-info">{{ lp.date|date:"d/m/Y" }}</span>
+          {% if lp.duration %}<span class="badge b-gray">{{ lp.duration }} {% if LANG == 'sw' %}dak{% else %}min{% endif %}</span>{% endif %}
+        </div>
+        <i class="fas fa-chevron-down acc-arrow"></i>
+      </button>
+      <div class="accordion-body">
+        <!-- Lesson Plan Metadata -->
+        <div class="lp-meta" style="margin-bottom:14px;">
+          {% if lp.term %}<span class="lp-meta-item"><i class="fas fa-calendar"></i> Term {{ lp.term }} {{ lp.year }}</span>{% endif %}
+          {% if lp.total_students %}<span class="lp-meta-item"><i class="fas fa-users"></i> {% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}: <strong>{{ lp.total_students }}</strong> / {% if LANG == 'sw' %}Waliopo{% else %}Present{% endif %}: <strong>{{ lp.present_students }}</strong></span>{% endif %}
+          {% if lp.teacher_name %}<span class="lp-meta-item"><i class="fas fa-user"></i> {{ lp.teacher_name }}</span>{% endif %}
+          {% if lp.reference_source %}<span class="lp-meta-item"><i class="fas fa-book-open"></i> {{ lp.reference_source|truncatechars:40 }}</span>{% endif %}
+        </div>
+
+        {% if lp.main_competence or lp.specific_competence or lp.previous_knowledge %}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;">
+          {% if lp.main_competence %}
+          <div>
+            <p class="lp-stage-title">{% if LANG == 'sw' %}Uwezo Mkuu{% else %}Main Competence{% endif %}</p>
+            <p style="font-size:12.5px;">{{ lp.main_competence }}</p>
+          </div>
+          {% endif %}
+          {% if lp.specific_competence %}
+          <div>
+            <p class="lp-stage-title">{% if LANG == 'sw' %}Uwezo Mahususi{% else %}Specific Competence{% endif %}</p>
+            <p style="font-size:12.5px;">{{ lp.specific_competence }}</p>
+          </div>
+          {% endif %}
+          {% if lp.previous_knowledge %}
+          <div>
+            <p class="lp-stage-title">{% if LANG == 'sw' %}Maarifa ya Awali{% else %}Previous Knowledge{% endif %}</p>
+            <p style="font-size:12.5px;">{{ lp.previous_knowledge }}</p>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Objectives, Methods, Resources in 3-col -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px;">
+          {% if lp.learning_objectives %}
+          <div>
+            <p class="lp-stage-title">{% if LANG == 'sw' %}Malengo ya Kujifunza{% else %}Learning Objectives{% endif %}</p>
+            <ul class="lp-list">
+              {% for obj in lp.learning_objectives %}
+              <li>{{ obj }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          {% if lp.teaching_methods %}
+          <div>
+            <p class="lp-stage-title">{% if LANG == 'sw' %}Mbinu za Kufundisha{% else %}Teaching Methods{% endif %}</p>
+            <ul class="lp-list">
+              {% for m in lp.teaching_methods %}
+              <li>{{ m }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          {% if lp.teaching_resources %}
+          <div>
+            <p class="lp-stage-title">{% if LANG == 'sw' %}Vifaa vya Kufundishia{% else %}Teaching Resources{% endif %}</p>
+            <ul class="lp-list">
+              {% for r in lp.teaching_resources %}
+              <li>{{ r }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Lesson Development Stages -->
+        {% if lp.lesson_development %}
+        <p class="lp-stage-title" style="margin-bottom:10px;">{% if LANG == 'sw' %}Hatua za Somo{% else %}Lesson Development Stages{% endif %}</p>
+        {% for stage in lp.lesson_development %}
+        <div class="lp-stage">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+            <span class="lp-stage-title" style="margin:0;">{{ stage.stage|default:stage.phase|default:forloop.counter }}</span>
+            {% if stage.time %}<span class="badge b-gray">{{ stage.time }}</span>{% endif %}
+          </div>
+          <div class="lp-stage-cols">
+            {% if stage.teacher_activities %}
+            <div>
+              <h5>{% if LANG == 'sw' %}Shughuli za Mwalimu{% else %}Teacher Activities{% endif %}</h5>
+              <p>{{ stage.teacher_activities }}</p>
+            </div>
+            {% endif %}
+            {% if stage.student_activities %}
+            <div>
+              <h5>{% if LANG == 'sw' %}Shughuli za Wanafunzi{% else %}Student Activities{% endif %}</h5>
+              <p>{{ stage.student_activities }}</p>
+            </div>
+            {% endif %}
+            {% if stage.assessment_criteria %}
+            <div>
+              <h5>{% if LANG == 'sw' %}Tathmini{% else %}Assessment{% endif %}</h5>
+              <p>{{ stage.assessment_criteria }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if lp.remarks %}
+        <div style="margin-top:10px;padding:10px 14px;background:var(--light);border-radius:6px;border-left:3px solid var(--medium);">
+          <p class="lp-stage-title" style="margin-bottom:4px;">{% if LANG == 'sw' %}Maelezo{% else %}Remarks{% endif %}</p>
+          <p style="font-size:12.5px;">{{ lp.remarks }}</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="card"><div class="empty-state">
+    <i class="fas fa-chalkboard-teacher"></i>
+    <p>{% if LANG == 'sw' %}Mwanafunzi hajafanya Mpango wa Somo bado.{% else %}Student has not created any Lesson Plans yet.{% endif %}</p>
+  </div></div>
+  {% endif %}
+</div>
+
+<!-- ═══ TAB: COMMENTS ═══ -->
+<div class="tab-panel" id="tab-comments" data-group="main">
+  <div class="two-col">
+    <div>
+      {% if board_comments %}
+      <div class="card">
+        <div class="card-hd"><i class="fas fa-comments"></i><h3>{% if LANG == 'sw' %}Maoni Yote ({{ board_comments|length }}){% else %}All Comments ({{ board_comments|length }}){% endif %}</h3></div>
+        <div class="card-body" style="padding:12px 20px;">
+          {% for c in board_comments %}
+          <div class="comment-item">
+            <div class="ci-top">
+              <span class="ci-author"><i class="fas fa-user-tie"></i>{{ c.board_member.full_name }}</span>
+              <span class="ci-date">{{ c.created_at|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div style="margin-bottom:8px;">
+              {% if c.status == 'excellent' %}<span class="badge s-excellent"><i class="fas fa-star"></i> {% if LANG == 'sw' %}Vizuri Sana{% else %}Excellent{% endif %}</span>
+              {% elif c.status == 'good' %}<span class="badge s-good"><i class="fas fa-thumbs-up"></i> {% if LANG == 'sw' %}Vizuri{% else %}Good{% endif %}</span>
+              {% elif c.status == 'average' %}<span class="badge s-average"><i class="fas fa-minus-circle"></i> {% if LANG == 'sw' %}Wastani{% else %}Average{% endif %}</span>
+              {% elif c.status == 'behind' %}<span class="badge s-behind"><i class="fas fa-exclamation-triangle"></i> {% if LANG == 'sw' %}Nyuma{% else %}Behind{% endif %}</span>
+              {% else %}<span class="badge s-critical"><i class="fas fa-bell"></i> {% if LANG == 'sw' %}Muhimu{% else %}Critical{% endif %}</span>{% endif %}
+            </div>
+            <p class="ci-text">{{ c.comment }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div class="card"><div class="empty-state">
+        <i class="fas fa-comment-slash"></i>
+        <p>{% if LANG == 'sw' %}Hakuna maoni ya awali.{% else %}No previous comments.{% endif %}</p>
+      </div></div>
+      {% endif %}
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-hd" style="background:var(--bold);border-bottom:3px solid var(--medium);">
+          <i class="fas fa-comment-dots" style="color:var(--medium);"></i>
+          <h3 style="color:var(--white);">{% if LANG == 'sw' %}Ongeza Maoni{% else %}Add Comment{% endif %}</h3>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{% url 'board_add_comment' %}">
+            {% csrf_token %}
+            <input type="hidden" name="student_id" value="{{ student.id }}">
+            <div class="field-wrap">
+              <label class="field-lbl">{% if LANG == 'sw' %}Hali ya Maendeleo{% else %}Progress Status{% endif %}</label>
+              <select name="status">
+                <option value="excellent">✅ {% if LANG == 'sw' %}Vizuri Sana{% else %}Excellent{% endif %}</option>
+                <option value="good" selected>👍 {% if LANG == 'sw' %}Vizuri{% else %}Good{% endif %}</option>
+                <option value="average">⚠️ {% if LANG == 'sw' %}Wastani{% else %}Average{% endif %}</option>
+                <option value="behind">🔴 {% if LANG == 'sw' %}Nyuma{% else %}Behind{% endif %}</option>
+                <option value="critical">🚨 {% if LANG == 'sw' %}Muhimu{% else %}Critical{% endif %}</option>
+              </select>
+            </div>
+            <div class="field-wrap">
+              <label class="field-lbl">{% if LANG == 'sw' %}Maoni Yako{% else %}Your Comment{% endif %}</label>
+              <textarea name="comment" placeholder="{% if LANG == 'sw' %}Andika maoni yako...{% else %}Write your comment...{% endif %}" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-accent" style="width:100%;justify-content:center;">
+              <i class="fas fa-paper-plane"></i> {% if LANG == 'sw' %}Tuma Maoni{% else %}Submit Comment{% endif %}
+            </button>
+          </form>
         </div>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
 
-<div class="gov-footer">
-  <p>&copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Jamhuri ya Muungano wa Tanzania.</p>
-  <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0 | Bodi ya Walimu</span>
-</div>
-</body>
-</html>
+{% block extra_js %}
+<script>
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn[data-group="main"]').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.tab-panel[data-group="main"]').forEach(p => {
+    p.classList.toggle('active', p.id === tabId);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+{% endblock %}

@@ -1,220 +1,168 @@
+{% extends "field_app/board_base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="sw">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ripoti ya Mwezi — {{ district.name }}</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+{% block title %}{% if LANG == 'sw' %}Ripoti ya AI — {{ district.name }}{% else %}AI Report — {{ district.name }}{% endif %}{% endblock %}
+
+{% block mobile_nav_extra %}
+<a href="{% url 'board_district_list' district.region.id %}"><i class="fas fa-map"></i> {{ district.region.name }}</a>
+<a href="{% url 'board_school_list' district.id %}"><i class="fas fa-school"></i> {{ district.name }}</a>
+{% endblock %}
+
+{% block extra_css %}
 <style>
-:root{--bold:#0A2B5E;--medium:#C8900A;--light:#EEF1F6;--white:#fff;--border:#CBD5E0;--text:#1A1A2E;--gray:#4A5568;--green:#15803D;--red:#B91C1C;--yellow:#92400E;}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;display:flex;flex-direction:column;}
-.top-nav{background:var(--bold);border-bottom:3px solid var(--medium);padding:0 32px;display:flex;align-items:center;justify-content:space-between;min-height:56px;}
-.top-nav .brand{color:var(--white);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
-.top-nav .brand i{color:var(--medium);}
-.top-nav .user-info{display:flex;align-items:center;gap:16px;}
-.top-nav .user-info span{color:rgba(255,255,255,.8);font-size:13px;}
-.top-nav a{color:rgba(255,255,255,.8);font-size:13px;text-decoration:none;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:5px;border:1px solid rgba(255,255,255,.2);transition:.15s;}
-.top-nav a:hover{background:rgba(255,255,255,.1);color:var(--white);}
-.breadcrumb{background:var(--white);padding:10px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;}
-.breadcrumb a{color:var(--bold);text-decoration:none;font-weight:600;}
-.breadcrumb a:hover{color:var(--medium);}
-.breadcrumb span{color:var(--gray);}
-.main{flex:1;padding:28px 32px;max-width:1200px;margin:0 auto;width:100%;}
-.page-hd{background:var(--white);border-radius:8px;padding:20px 24px;margin-bottom:20px;border:1px solid var(--border);border-left:4px solid var(--medium);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
-.page-hd h1{font-size:20px;color:var(--bold);font-weight:700;margin:0;}
-.page-hd p{font-size:13px;color:var(--gray);margin:4px 0 0;}
-.card{background:var(--white);border-radius:8px;border:1px solid var(--border);padding:20px 24px;margin-bottom:20px;}
-.card-title{font-size:14px;font-weight:700;color:var(--bold);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
-.filter-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;}
-.filter-row label{font-size:12.5px;color:var(--gray);font-weight:600;display:block;margin-bottom:4px;}
-.filter-row select{border:1px solid var(--border);border-radius:5px;padding:7px 10px;font-size:13px;color:var(--text);background:var(--white);}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:5px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;border:none;transition:.15s;}
-.btn-primary{background:var(--bold);color:var(--white);}
-.btn-primary:hover{background:#0C3570;}
-.btn-gold{background:var(--medium);color:var(--white);}
-.btn-gold:hover{background:#A8780A;}
-.btn-sm{padding:5px 12px;font-size:12px;}
-.alert{border-radius:6px;padding:12px 16px;font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
-.alert-warning{background:#FEF3C7;border:1px solid #D97706;color:#92400E;}
-.alert-success{background:#D1FAE5;border:1px solid #059669;color:#065F46;}
-.alert-error{background:#FEE2E2;border:1px solid #DC2626;color:#7F1D1D;}
-.ai-section{margin-bottom:24px;}
-.ai-section h2{font-size:16px;font-weight:700;color:var(--bold);border-bottom:2px solid var(--medium);padding-bottom:8px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
-.muhtasari-box{background:#EEF1F6;border-radius:6px;padding:14px 18px;font-size:13.5px;color:var(--text);line-height:1.7;border-left:4px solid var(--medium);}
-.rank-table{width:100%;border-collapse:collapse;font-size:13px;}
-.rank-table th{background:var(--bold);color:var(--white);padding:9px 12px;text-align:left;font-weight:600;font-size:12.5px;}
-.rank-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top;}
-.rank-table tr:hover td{background:#F8FAFC;}
-.rank-table tr:nth-child(even) td{background:#FAFBFF;}
-.rank-no{background:var(--bold);color:var(--white);border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
-.rank-no.gold{background:var(--medium);}
-.rank-no.silver{background:#6B7280;}
-.status-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;}
-.status-vizuri{background:#D1FAE5;color:var(--green);}
-.status-wastani{background:#FEF3C7;color:var(--yellow);}
-.status-nyuma{background:#FEE2E2;color:var(--red);}
-.recmd{font-size:12px;color:var(--gray);font-style:italic;margin-top:3px;}
-.hitimisho-box{background:linear-gradient(135deg,var(--bold) 0%,#0C3570 100%);color:var(--white);border-radius:8px;padding:18px 22px;font-size:13.5px;line-height:1.8;}
-.level-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;}
-.badge-sec{background:#DBEAFE;color:#1E40AF;}
-.badge-pri{background:#D1FAE5;color:#065F46;}
-.past-list a{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-radius:5px;background:var(--light);text-decoration:none;color:var(--text);font-size:13px;margin-bottom:6px;transition:.15s;border:1px solid var(--border);}
-.past-list a:hover{border-color:var(--bold);background:var(--white);}
-.past-list a span{color:var(--gray);font-size:12px;}
-.empty-state{text-align:center;padding:40px 20px;color:var(--gray);font-size:13.5px;}
-.empty-state i{font-size:48px;color:#D1D9E8;display:block;margin-bottom:12px;}
-.holiday-box{background:#FEF3C7;border:1px solid #D97706;border-radius:8px;padding:20px 24px;text-align:center;}
-.holiday-box i{font-size:36px;color:#D97706;display:block;margin-bottom:8px;}
-.holiday-box h3{color:var(--yellow);font-size:16px;margin-bottom:6px;}
-.holiday-box p{color:var(--gray);font-size:13px;}
-.gen-meta{font-size:11.5px;color:var(--gray);margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
-.gen-meta span{display:flex;align-items:center;gap:4px;}
-.gov-footer{background:var(--bold);padding:11px 40px;display:flex;align-items:center;justify-content:space-between;border-top:3px solid var(--medium);flex-wrap:wrap;gap:8px;margin-top:auto;}
-.gov-footer p{font-size:11px;color:rgba(255,255,255,.65);margin:0;}
-.gov-footer .ver{font-size:11px;color:var(--medium);font-weight:700;}
-@media(max-width:768px){.main{padding:16px 12px;}.rank-table td,.rank-table th{padding:7px 8px;font-size:12px;}.filter-row{flex-direction:column;align-items:flex-start;}}
+.filter-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.filter-form label { font-size: 12px; color: var(--gray); font-weight: 600; display: block; margin-bottom: 4px; }
+.filter-form select { border: 1.5px solid var(--border); border-radius: 7px; padding: 8px 12px; font-size: 13px; color: var(--text); background: var(--white); outline: none; font-family: inherit; }
+.filter-form select:focus { border-color: var(--bold); }
+.muhtasari-box { background: var(--light); border-radius: 8px; padding: 16px 20px; font-size: 13.5px; color: var(--text); line-height: 1.75; border-left: 4px solid var(--medium); }
+.rank-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rank-table th { background: var(--bold); color: var(--white); padding: 9px 12px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; }
+.rank-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+.rank-table tr:hover td { background: #F7FAFF; }
+.rank-table tr:last-child td { border-bottom: none; }
+.rank-no { background: var(--bold); color: var(--white); border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
+.rank-no.gold { background: var(--medium); }
+.rank-no.silver { background: #9CA3AF; }
+.status-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600; }
+.s-vizuri { background: #D1FAE5; color: #065F46; border: 1px solid rgba(16,185,129,.3); }
+.s-wastani { background: #FEF3C7; color: #92400E; border: 1px solid rgba(245,158,11,.3); }
+.s-nyuma { background: #FEE2E2; color: #B91C1C; border: 1px solid rgba(239,68,68,.3); }
+.recmd { font-size: 12px; color: var(--gray); font-style: italic; margin-top: 3px; }
+.hitimisho-box { background: linear-gradient(135deg, var(--bold) 0%, #0C3570 100%); color: var(--white); border-radius: 10px; padding: 20px 24px; font-size: 13.5px; line-height: 1.8; }
+.section-title { font-size: 16px; font-weight: 700; color: var(--bold); border-bottom: 2px solid var(--medium); padding-bottom: 8px; margin: 22px 0 14px; display: flex; align-items: center; gap: 8px; }
+.section-title i { color: var(--medium); }
+.gen-meta { font-size: 12px; color: var(--gray); margin-bottom: 14px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.gen-meta span { display: flex; align-items: center; gap: 4px; }
+.past-link { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; border-radius: 7px; background: var(--light); text-decoration: none; color: var(--text); font-size: 13px; margin-bottom: 6px; transition: .15s; border: 1px solid var(--border); }
+.past-link:hover { border-color: var(--bold); background: var(--white); }
+.holiday-box { background: #FEF3C7; border: 1px solid #D97706; border-radius: 10px; padding: 24px; text-align: center; }
+.holiday-box i { font-size: 40px; color: #D97706; display: block; margin-bottom: 10px; }
+.holiday-box h3 { color: #92400E; font-size: 16px; margin-bottom: 6px; }
+.level-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.lb-sec { background: #DBEAFE; color: #1E40AF; }
+.lb-pri { background: #D1FAE5; color: #065F46; }
 </style>
-</head>
-<body>
+{% endblock %}
 
-<nav class="top-nav">
-  <div class="brand"><i class="fas fa-chart-line"></i> Bodi ya Walimu — IMS</div>
-  <div class="user-info">
-    <span><i class="fas fa-user-tie" style="margin-right:5px;color:var(--medium);"></i>{{ bm.full_name }}</span>
-    <a href="{% url 'board_logout' %}"><i class="fas fa-sign-out-alt"></i> Toka</a>
-  </div>
-</nav>
-
+{% block breadcrumb %}
 <div class="breadcrumb">
-  <a href="{% url 'board_home' %}"><i class="fas fa-home" style="margin-right:4px;"></i>Mikoa</a>
-  <span><i class="fas fa-chevron-right"></i></span>
+  <a href="{% url 'board_home' %}"><i class="fas fa-home"></i> {% if LANG == 'sw' %}Mikoa{% else %}Regions{% endif %}</a>
+  <span class="bc-sep"><i class="fas fa-chevron-right"></i></span>
+  <a href="{% url 'board_district_list' district.region.id %}">{{ district.region.name }}</a>
+  <span class="bc-sep"><i class="fas fa-chevron-right"></i></span>
   <a href="{% url 'board_school_list' district.id %}">{{ district.name }}</a>
-  <span><i class="fas fa-chevron-right"></i></span>
-  <span style="color:var(--bold);font-weight:600;">Ripoti ya Mwezi</span>
+  <span class="bc-sep"><i class="fas fa-chevron-right"></i></span>
+  <span class="bc-cur">{% if LANG == 'sw' %}Ripoti ya Mwezi{% else %}Monthly Report{% endif %}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <div>
+    <h1><i class="fas fa-robot"></i> {% if LANG == 'sw' %}Ripoti ya AI — {{ district.name }}{% else %}AI Report — {{ district.name }}{% endif %}</h1>
+    <p>{% if LANG == 'sw' %}Ripoti inazalishwa kiotomatiki kutoka rekodi za logbook za walimu wanafunzi{% else %}Report auto-generated from student teachers' logbook records{% endif %}</p>
+  </div>
 </div>
 
-<div class="main">
-
-  {% if messages %}
-    {% for msg in messages %}
-    <div class="alert {% if msg.tags == 'success' %}alert-success{% elif msg.tags == 'error' %}alert-error{% else %}alert-warning{% endif %}">
-      <i class="fas {% if msg.tags == 'success' %}fa-check-circle{% elif msg.tags == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
-      {{ msg }}
-    </div>
-    {% endfor %}
-  {% endif %}
-
-  <div class="page-hd">
-    <div>
-      <h1><i class="fas fa-file-alt" style="color:var(--medium);margin-right:8px;"></i>Ripoti ya AI — {{ district.name }}</h1>
-      <p>Ripoti inazalishwa kiotomatiki kutoka rekodi za logbook za walimu wanafunzi</p>
-    </div>
-  </div>
-
-  <!-- Filter & Generate -->
-  <div class="card">
-    <div class="card-title"><i class="fas fa-sliders-h" style="color:var(--medium);"></i> Chagua Mwezi na Mwaka</div>
-    <form method="get" action="" style="display:inline;">
-      <div class="filter-row">
+<!-- Filter & Generate Card -->
+<div class="card">
+  <div class="card-hd"><i class="fas fa-sliders-h"></i><h3>{% if LANG == 'sw' %}Chagua Mwezi na Mwaka{% else %}Select Month and Year{% endif %}</h3></div>
+  <div class="card-body">
+    <form method="get" style="display:inline;">
+      <div class="filter-form">
         <div>
-          <label>Mwezi</label>
+          <label>{% if LANG == 'sw' %}Mwezi{% else %}Month{% endif %}</label>
           <select name="month">
             {% for m, name in available_months %}
             <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ name }}</option>
             {% endfor %}
             {% if is_holiday %}
-            <option value="{{ selected_month }}" selected>{{ month_name }} (Likizo)</option>
+            <option value="{{ selected_month }}" selected>{{ month_name }} ({% if LANG == 'sw' %}Likizo{% else %}Holiday{% endif %})</option>
             {% endif %}
           </select>
         </div>
         <div>
-          <label>Mwaka</label>
+          <label>{% if LANG == 'sw' %}Mwaka{% else %}Year{% endif %}</label>
           <select name="year">
             {% for yr in available_years %}
             <option value="{{ yr }}" {% if yr == selected_year %}selected{% endif %}>{{ yr }}</option>
             {% endfor %}
           </select>
         </div>
-        <div>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Angalia</button>
-        </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> {% if LANG == 'sw' %}Angalia{% else %}View{% endif %}</button>
       </div>
     </form>
 
     {% if not is_holiday %}
-    <form method="post" action="" style="display:inline-block;margin-top:8px;">
+    <form method="post" style="display:inline-block;margin-top:10px;">
       {% csrf_token %}
       <input type="hidden" name="month" value="{{ selected_month }}">
       <input type="hidden" name="year" value="{{ selected_year }}">
-      <button type="submit" name="generate" value="1" class="btn btn-gold">
+      <button type="submit" name="generate" value="1" class="btn btn-accent">
         <i class="fas fa-robot"></i>
-        {% if existing %}Zalia Upya Ripoti{% else %}Zalia Ripoti ya AI{% endif %}
+        {% if existing %}
+          {% if LANG == 'sw' %}Zalia Upya Ripoti{% else %}Regenerate Report{% endif %}
+        {% else %}
+          {% if LANG == 'sw' %}Zalia Ripoti ya AI{% else %}Generate AI Report{% endif %}
+        {% endif %}
       </button>
     </form>
     {% endif %}
   </div>
+</div>
 
-  <!-- Holiday warning -->
-  {% if is_holiday %}
-  <div class="holiday-box">
-    <i class="fas fa-umbrella-beach"></i>
-    <h3>Mwezi wa Likizo</h3>
-    <p>{{ month_name }} ni mwezi wa likizo za shule. Hakuna ripoti inayozalishwa kwa miezi ya Mei, Agosti, na Desemba.</p>
-  </div>
+<!-- Holiday warning -->
+{% if is_holiday %}
+<div class="holiday-box">
+  <i class="fas fa-umbrella-beach"></i>
+  <h3>{% if LANG == 'sw' %}Mwezi wa Likizo{% else %}Holiday Month{% endif %}</h3>
+  <p>{% if LANG == 'sw' %}{{ month_name }} ni mwezi wa likizo za shule. Hakuna ripoti inayozalishwa kwa miezi ya Mei, Agosti, na Desemba.{% else %}{{ month_name }} is a school holiday month. No reports are generated for May, August, and December.{% endif %}</p>
+</div>
 
-  <!-- Past reports in sidebar -->
-  {% elif existing %}
-  <!-- Report exists — show it -->
-  <div class="gen-meta">
-    <span><i class="fas fa-calendar"></i> {{ existing.get_month_display }} {{ existing.year }}</span>
-    <span><i class="fas fa-robot"></i> Imezalishwa na AI</span>
-    {% if existing.generated_by %}<span><i class="fas fa-user"></i> {{ existing.generated_by.full_name }}</span>{% endif %}
-    <span><i class="fas fa-clock"></i> {{ existing.generated_at|date:"d M Y H:i" }}</span>
-  </div>
+{% elif existing %}
+<!-- Report exists -->
+<div class="gen-meta">
+  <span><i class="fas fa-calendar"></i> {{ existing.get_month_display }} {{ existing.year }}</span>
+  <span><i class="fas fa-robot"></i> {% if LANG == 'sw' %}Imezalishwa na AI{% else %}Generated by AI{% endif %}</span>
+  {% if existing.generated_by %}<span><i class="fas fa-user"></i> {{ existing.generated_by.full_name }}</span>{% endif %}
+  <span><i class="fas fa-clock"></i> {{ existing.generated_at|date:"d M Y H:i" }}</span>
+</div>
 
-  {% with data=existing.ai_content %}
+{% with data=existing.ai_content %}
 
-  <!-- Muhtasari -->
-  {% if data.muhtasari %}
-  <div class="ai-section">
-    <h2><i class="fas fa-info-circle" style="color:var(--medium);"></i> Muhtasari wa Mwezi</h2>
-    <div class="muhtasari-box">{{ data.muhtasari }}</div>
-  </div>
-  {% endif %}
+{% if data.muhtasari %}
+<h2 class="section-title"><i class="fas fa-info-circle"></i> {% if LANG == 'sw' %}Muhtasari wa Mwezi{% else %}Monthly Summary{% endif %}</h2>
+<div class="muhtasari-box">{{ data.muhtasari }}</div>
+{% endif %}
 
-  <!-- Secondary teachers -->
-  {% if data.secondary %}
-  <div class="ai-section">
-    <h2><i class="fas fa-graduation-cap" style="color:var(--bold);"></i> Walimu Wanafunzi — Sekondari</h2>
-    <div style="overflow-x:auto;">
+{% if data.secondary %}
+<h2 class="section-title"><i class="fas fa-graduation-cap"></i> {% if LANG == 'sw' %}Walimu Wanafunzi — Sekondari{% else %}Student Teachers — Secondary{% endif %}</h2>
+<div class="card">
+  <div class="table-wrap">
     <table class="rank-table">
       <thead>
         <tr>
-          <th style="width:40px;">#</th>
-          <th>Jina</th>
-          <th>Shule</th>
-          <th>Somo</th>
-          <th>Mada</th>
-          <th>Siku</th>
-          <th>Hali</th>
-          <th>Mapendekezo</th>
+          <th>#</th>
+          <th>{% if LANG == 'sw' %}Jina{% else %}Name{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Shule{% else %}School{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Mada{% else %}Topics{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Siku{% else %}Days{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Mapendekezo{% else %}Recommendations{% endif %}</th>
         </tr>
       </thead>
       <tbody>
         {% for st in data.secondary %}
         <tr>
-          <td>
-            <span class="rank-no {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% endif %}">{{ st.nafasi }}</span>
-          </td>
+          <td><span class="rank-no {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% endif %}">{{ st.nafasi }}</span></td>
           <td style="font-weight:600;color:var(--bold);">{{ st.jina }}</td>
           <td>{{ st.shule }}</td>
-          <td><span class="level-badge badge-sec"><i class="fas fa-book" style="font-size:10px;"></i> {{ st.somo }}</span></td>
-          <td style="font-weight:700;color:var(--bold);">{{ st.mada_zote }}</td>
-          <td>{{ st.siku }}</td>
+          <td><span class="level-badge lb-sec"><i class="fas fa-book" style="font-size:10px;"></i> {{ st.somo }}</span></td>
+          <td style="font-weight:700;color:var(--bold);text-align:center;">{{ st.mada_zote }}</td>
+          <td style="text-align:center;">{{ st.siku }}</td>
           <td>
-            <span class="status-chip {% if st.hali == 'vizuri' %}status-vizuri{% elif st.hali == 'wastani' %}status-wastani{% else %}status-nyuma{% endif %}">
+            <span class="status-chip {% if st.hali == 'vizuri' %}s-vizuri{% elif st.hali == 'wastani' %}s-wastani{% else %}s-nyuma{% endif %}">
               <i class="fas {% if st.hali == 'vizuri' %}fa-check-circle{% elif st.hali == 'wastani' %}fa-minus-circle{% else %}fa-exclamation-circle{% endif %}" style="font-size:10px;"></i>
               {{ st.hali|capfirst }}
             </span>
@@ -222,45 +170,42 @@ body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;
           <td><div class="recmd">{{ st.mapendekezo }}</div></td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" style="text-align:center;color:var(--gray);padding:20px;">Hakuna data ya walimu wa sekondari</td></tr>
+        <tr><td colspan="8" class="empty-state" style="padding:20px;">{% if LANG == 'sw' %}Hakuna data ya walimu wa sekondari{% else %}No secondary teacher data{% endif %}</td></tr>
         {% endfor %}
       </tbody>
     </table>
-    </div>
   </div>
-  {% endif %}
+</div>
+{% endif %}
 
-  <!-- Primary teachers -->
-  {% if data.primary %}
-  <div class="ai-section">
-    <h2><i class="fas fa-school" style="color:var(--green);"></i> Walimu Wanafunzi — Msingi</h2>
-    <div style="overflow-x:auto;">
+{% if data.primary %}
+<h2 class="section-title"><i class="fas fa-school"></i> {% if LANG == 'sw' %}Walimu Wanafunzi — Msingi{% else %}Student Teachers — Primary{% endif %}</h2>
+<div class="card">
+  <div class="table-wrap">
     <table class="rank-table">
       <thead>
         <tr>
-          <th style="width:40px;">#</th>
-          <th>Jina</th>
-          <th>Shule</th>
-          <th>Somo</th>
-          <th>Mada</th>
-          <th>Siku</th>
-          <th>Hali</th>
-          <th>Mapendekezo</th>
+          <th>#</th>
+          <th>{% if LANG == 'sw' %}Jina{% else %}Name{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Shule{% else %}School{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Mada{% else %}Topics{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Siku{% else %}Days{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Mapendekezo{% else %}Recommendations{% endif %}</th>
         </tr>
       </thead>
       <tbody>
         {% for st in data.primary %}
         <tr>
-          <td>
-            <span class="rank-no {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% endif %}">{{ st.nafasi }}</span>
-          </td>
+          <td><span class="rank-no {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% endif %}">{{ st.nafasi }}</span></td>
           <td style="font-weight:600;color:var(--bold);">{{ st.jina }}</td>
           <td>{{ st.shule }}</td>
-          <td><span class="level-badge badge-pri"><i class="fas fa-book-open" style="font-size:10px;"></i> {{ st.somo }}</span></td>
-          <td style="font-weight:700;color:var(--bold);">{{ st.mada_zote }}</td>
-          <td>{{ st.siku }}</td>
+          <td><span class="level-badge lb-pri"><i class="fas fa-book-open" style="font-size:10px;"></i> {{ st.somo }}</span></td>
+          <td style="font-weight:700;color:var(--bold);text-align:center;">{{ st.mada_zote }}</td>
+          <td style="text-align:center;">{{ st.siku }}</td>
           <td>
-            <span class="status-chip {% if st.hali == 'vizuri' %}status-vizuri{% elif st.hali == 'wastani' %}status-wastani{% else %}status-nyuma{% endif %}">
+            <span class="status-chip {% if st.hali == 'vizuri' %}s-vizuri{% elif st.hali == 'wastani' %}s-wastani{% else %}s-nyuma{% endif %}">
               <i class="fas {% if st.hali == 'vizuri' %}fa-check-circle{% elif st.hali == 'wastani' %}fa-minus-circle{% else %}fa-exclamation-circle{% endif %}" style="font-size:10px;"></i>
               {{ st.hali|capfirst }}
             </span>
@@ -268,57 +213,46 @@ body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;
           <td><div class="recmd">{{ st.mapendekezo }}</div></td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" style="text-align:center;color:var(--gray);padding:20px;">Hakuna data ya walimu wa msingi</td></tr>
+        <tr><td colspan="8" class="empty-state" style="padding:20px;">{% if LANG == 'sw' %}Hakuna data ya walimu wa msingi{% else %}No primary teacher data{% endif %}</td></tr>
         {% endfor %}
       </tbody>
     </table>
-    </div>
   </div>
-  {% endif %}
-
-  <!-- Hitimisho -->
-  {% if data.hitimisho %}
-  <div class="ai-section">
-    <h2><i class="fas fa-flag-checkered" style="color:var(--medium);"></i> Hitimisho na Mapendekezo</h2>
-    <div class="hitimisho-box">
-      <i class="fas fa-robot" style="color:var(--medium);margin-right:8px;"></i>{{ data.hitimisho }}
-    </div>
-  </div>
-  {% endif %}
-
-  {% endwith %}
-
-  {% else %}
-  <!-- No report yet -->
-  <div class="card">
-    <div class="empty-state">
-      <i class="fas fa-file-medical-alt"></i>
-      <p>Hakuna ripoti kwa <strong>{{ month_name }} {{ selected_year }}</strong>.</p>
-      <p style="margin-top:6px;font-size:12.5px;">Bonyeza kitufe "Zalia Ripoti ya AI" hapo juu kuizalisha.</p>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Past reports -->
-  {% if past_reports %}
-  <div class="card" style="margin-top:24px;">
-    <div class="card-title"><i class="fas fa-history" style="color:var(--medium);"></i> Ripoti Zilizopita</div>
-    <div class="past-list">
-      {% for rpt in past_reports %}
-      <a href="?month={{ rpt.month }}&year={{ rpt.year }}">
-        <span><i class="fas fa-file-alt" style="color:var(--medium);margin-right:8px;"></i>{{ rpt.get_month_display }} {{ rpt.year }}</span>
-        <span>{{ rpt.generated_at|date:"d M Y" }} <i class="fas fa-chevron-right" style="margin-left:4px;"></i></span>
-      </a>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
 </div>
+{% endif %}
 
-<div class="gov-footer">
-  <p>&copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Jamhuri ya Muungano wa Tanzania.</p>
-  <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0 | DEO Report</span>
+{% if data.hitimisho %}
+<h2 class="section-title"><i class="fas fa-flag-checkered"></i> {% if LANG == 'sw' %}Hitimisho na Mapendekezo{% else %}Conclusion and Recommendations{% endif %}</h2>
+<div class="hitimisho-box">
+  <i class="fas fa-robot" style="color:var(--medium);margin-right:8px;"></i>{{ data.hitimisho }}
 </div>
-</body>
-</html>
+{% endif %}
+
+{% endwith %}
+
+{% else %}
+<!-- No report -->
+<div class="card">
+  <div class="empty-state">
+    <i class="fas fa-file-medical-alt"></i>
+    <p>{% if LANG == 'sw' %}Hakuna ripoti kwa <strong>{{ month_name }} {{ selected_year }}</strong>.{% else %}No report for <strong>{{ month_name }} {{ selected_year }}</strong>.{% endif %}</p>
+    <p style="margin-top:6px;font-size:12.5px;">{% if LANG == 'sw' %}Bonyeza kitufe "Zalia Ripoti ya AI" hapo juu kuizalisha.{% else %}Click "Generate AI Report" above to create one.{% endif %}</p>
+  </div>
+</div>
+{% endif %}
+
+<!-- Past reports -->
+{% if past_reports %}
+<div class="card" style="margin-top:24px;">
+  <div class="card-hd"><i class="fas fa-history"></i><h3>{% if LANG == 'sw' %}Ripoti Zilizopita{% else %}Past Reports{% endif %}</h3></div>
+  <div class="card-body">
+    {% for rpt in past_reports %}
+    <a href="?month={{ rpt.month }}&year={{ rpt.year }}" class="past-link">
+      <span><i class="fas fa-file-alt" style="color:var(--medium);margin-right:8px;"></i>{{ rpt.get_month_display }} {{ rpt.year }}</span>
+      <span style="color:var(--gray);font-size:12px;">{{ rpt.generated_at|date:"d M Y" }} <i class="fas fa-chevron-right" style="margin-left:4px;"></i></span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,173 +1,243 @@
+{% extends "field_app/board_base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="sw">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bodi — {{ district.name }}</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-:root{--bold:#0A2B5E;--medium:#C8900A;--light:#EEF1F6;--white:#fff;--border:#CBD5E0;--text:#1A1A2E;--gray:#4A5568;--success:#10B981;--warning:#F59E0B;}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;display:flex;flex-direction:column;}
-.top-nav{background:var(--bold);border-bottom:3px solid var(--medium);padding:0 32px;display:flex;align-items:center;justify-content:space-between;min-height:56px;}
-.top-nav .brand{color:var(--white);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
-.top-nav .brand i{color:var(--medium);}
-.top-nav a{color:rgba(255,255,255,.8);font-size:13px;text-decoration:none;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:5px;border:1px solid rgba(255,255,255,.2);transition:.15s;}
-.top-nav a:hover{background:rgba(255,255,255,.1);color:var(--white);}
-.top-nav .right{display:flex;align-items:center;gap:12px;}
-.top-nav .right span{color:rgba(255,255,255,.8);font-size:13px;}
-.breadcrumb{background:var(--white);padding:10px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;}
-.breadcrumb a{color:var(--bold);text-decoration:none;font-weight:600;}
-.breadcrumb a:hover{color:var(--medium);}
-.breadcrumb span{color:var(--gray);}
-.main{flex:1;padding:24px 32px;max-width:1300px;margin:0 auto;width:100%;}
-.page-hd{background:var(--white);border-radius:8px;padding:18px 24px;margin-bottom:20px;border:1px solid var(--border);border-left:4px solid var(--medium);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
-.page-hd h1{font-size:19px;color:var(--bold);font-weight:700;margin:0;}
-.page-hd p{font-size:13px;color:var(--gray);margin:3px 0 0;}
-.stats-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;}
-.stat-chip{background:var(--white);border:1px solid var(--border);border-radius:7px;padding:10px 18px;display:flex;align-items:center;gap:10px;}
-.stat-chip i{color:var(--medium);font-size:18px;}
-.stat-chip .num{font-size:20px;font-weight:800;color:var(--bold);}
-.stat-chip .lbl{font-size:11.5px;color:var(--gray);}
-.school-section{margin-bottom:28px;}
-.school-hd{background:var(--bold);color:var(--white);padding:10px 18px;border-radius:7px 7px 0 0;display:flex;align-items:center;justify-content:space-between;}
-.school-hd .s-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;}
-.school-hd .s-badge{background:rgba(200,144,10,.25);color:var(--medium);font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;}
-.students-table{background:var(--white);border:1px solid var(--border);border-radius:0 0 7px 7px;overflow:hidden;}
-table{width:100%;border-collapse:collapse;}
-th{background:var(--light);color:var(--bold);font-size:12px;font-weight:700;padding:10px 14px;text-align:left;border-bottom:2px solid var(--border);}
-td{padding:11px 14px;font-size:13px;color:var(--text);border-bottom:1px solid #F0F4F8;}
-tr:last-child td{border-bottom:none;}
-tr:hover td{background:#F7FAFF;}
-.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11.5px;font-weight:600;}
-.badge-ok{background:rgba(16,185,129,.1);color:var(--success);border:1px solid rgba(16,185,129,.3);}
-.badge-warn{background:rgba(245,158,11,.1);color:var(--warning);border:1px solid rgba(245,158,11,.3);}
-.badge-level{background:rgba(10,43,94,.08);color:var(--bold);border:1px solid rgba(10,43,94,.15);}
-.btn-detail{background:var(--bold);color:var(--white);border:none;border-radius:5px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
-.btn-detail:hover{background:#0C3570;}
-.empty-school{padding:20px;text-align:center;color:var(--gray);font-size:13px;}
-.gov-footer{background:var(--bold);padding:11px 40px;display:flex;align-items:center;justify-content:space-between;border-top:3px solid var(--medium);flex-wrap:wrap;gap:8px;margin-top:auto;}
-.gov-footer p{font-size:11px;color:rgba(255,255,255,.65);margin:0;}
-.gov-footer .ver{font-size:11px;color:var(--medium);font-weight:700;}
-@media(max-width:768px){.main{padding:14px;}.top-nav{padding:0 16px;}.breadcrumb{padding:8px 16px;}}
-</style>
-</head>
-<body>
 
-<nav class="top-nav">
-  <div class="brand"><i class="fas fa-users"></i> Bodi ya Walimu — IMS</div>
-  <div class="right">
-    <span><i class="fas fa-user-tie" style="color:var(--medium);margin-right:5px;"></i>{{ bm.full_name }}</span>
-    <a href="{% url 'board_logout' %}"><i class="fas fa-sign-out-alt"></i> Toka</a>
-  </div>
-</nav>
+{% block title %}{% if LANG == 'sw' %}{{ district.name }} — Shule{% else %}{{ district.name }} — Schools{% endif %}{% endblock %}
 
+{% block mobile_nav_extra %}
+<a href="{% url 'board_district_list' district.region.id %}"><i class="fas fa-building"></i> {{ district.region.name }}</a>
+<a href="{% url 'board_school_list' district.id %}"><i class="fas fa-school"></i> {{ district.name }}</a>
+{% endblock %}
+
+{% block breadcrumb %}
 <div class="breadcrumb">
-  <a href="{% url 'board_home' %}"><i class="fas fa-home" style="margin-right:4px;"></i>Mikoa</a>
-  <span><i class="fas fa-chevron-right"></i></span>
+  <a href="{% url 'board_home' %}"><i class="fas fa-home"></i> {% if LANG == 'sw' %}Mikoa{% else %}Regions{% endif %}</a>
+  <span class="bc-sep"><i class="fas fa-chevron-right"></i></span>
   <a href="{% url 'board_district_list' district.region.id %}">{{ district.region.name }}</a>
-  <span><i class="fas fa-chevron-right"></i></span>
-  <span style="color:var(--bold);font-weight:600;">{{ district.name }}</span>
+  <span class="bc-sep"><i class="fas fa-chevron-right"></i></span>
+  <span class="bc-cur">{{ district.name }}</span>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.school-block { margin-bottom: 28px; }
+.school-block-hd {
+  background: var(--bold);
+  color: var(--white);
+  padding: 11px 18px;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.school-block-hd .s-name { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.school-block-hd .s-badge { background: rgba(200,144,10,.25); color: var(--medium); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
+.school-block-body { background: var(--white); border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; overflow: hidden; }
+.school-block-body table th:first-child { width: 32px; }
+.student-name { font-weight: 600; color: var(--bold); font-size: 13px; }
+.student-email { font-size: 11px; color: var(--gray); margin-top: 1px; }
+.doc-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.days-chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.days-ok { background: rgba(16,185,129,.1); color: #059669; }
+.days-warn { background: rgba(245,158,11,.1); color: #92400E; }
+.days-danger { background: rgba(239,68,68,.1); color: #B91C1C; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <div>
+    <h1><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule — {{ district.name }}{% else %}Schools — {{ district.name }}{% endif %}</h1>
+    <p>{% if LANG == 'sw' %}Orodha ya walimu wanafunzi katika wilaya hii{% else %}List of student teachers in this district{% endif %}</p>
+  </div>
+  <div class="page-hd-right">
+    <a href="{% url 'board_deo_report' district.id %}" class="btn btn-accent btn-sm">
+      <i class="fas fa-robot"></i> {% if LANG == 'sw' %}Ripoti ya AI{% else %}AI Report{% endif %}
+    </a>
+  </div>
 </div>
 
-<div class="main">
-  <div class="page-hd">
+<!-- Summary Stats -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-icon si-blue"><i class="fas fa-school"></i></div>
     <div>
-      <h1><i class="fas fa-school" style="color:var(--medium);margin-right:8px;"></i>Shule — {{ district.name }}</h1>
-      <p>Orodha ya shule zenye walimu wanafunzi katika wilaya hii</p>
+      <div class="stat-num">{{ schools|length }}</div>
+      <div class="stat-lbl">{% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}</div>
     </div>
   </div>
+  <div class="stat-card">
+    <div class="stat-icon si-gold"><i class="fas fa-user-graduate"></i></div>
+    <div>
+      <div class="stat-num">{{ students_data|length }}</div>
+      <div class="stat-lbl">{% if LANG == 'sw' %}Walimu Wanafunzi{% else %}Student Teachers{% endif %}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon si-red"><i class="fas fa-exclamation-triangle"></i></div>
+    <div>
+      <div class="stat-num">{{ inactive_count }}</div>
+      <div class="stat-lbl">{% if LANG == 'sw' %}Hawajafanya Kazi (7+ Siku){% else %}Inactive (7+ Days){% endif %}</div>
+    </div>
+  </div>
+</div>
 
-  <div class="stats-row">
-    <div class="stat-chip">
+<!-- Filter Bar -->
+<div class="filter-bar">
+  <i class="fas fa-search"></i>
+  <input type="text" id="searchStudent" placeholder="{% if LANG == 'sw' %}Tafuta mwanafunzi...{% else %}Search student...{% endif %}" autocomplete="off">
+  <div class="filter-divider"></div>
+  <select id="filterLevel">
+    <option value="">{% if LANG == 'sw' %}Kiwango chote{% else %}All levels{% endif %}</option>
+    <option value="Primary">{% if LANG == 'sw' %}Msingi{% else %}Primary{% endif %}</option>
+    <option value="Secondary">{% if LANG == 'sw' %}Sekondari{% else %}Secondary{% endif %}</option>
+  </select>
+  <div class="filter-divider"></div>
+  <select id="filterStatus">
+    <option value="">{% if LANG == 'sw' %}Hali yote{% else %}All status{% endif %}</option>
+    <option value="active">{% if LANG == 'sw' %}Wanaofanya kazi{% else %}Active{% endif %}</option>
+    <option value="inactive">{% if LANG == 'sw' %}Hawajafanya kazi (7+ siku){% else %}Inactive (7+ days){% endif %}</option>
+  </select>
+</div>
+
+{% if not schools_with_students %}
+<div class="card"><div class="empty-state">
+  <i class="fas fa-school"></i>
+  <p>{% if LANG == 'sw' %}Hakuna shule zenye walimu wanafunzi katika wilaya hii.{% else %}No schools with student teachers in this district.{% endif %}</p>
+</div></div>
+{% endif %}
+{% for entry in schools_with_students %}
+{% with school=entry.school school_items=entry.students %}
+<div class="school-block" data-level="{{ school.level }}">
+  <div class="school-block-hd">
+    <div class="s-name">
       <i class="fas fa-school"></i>
-      <div><div class="num">{{ schools|length }}</div><div class="lbl">Shule zenye Wanafunzi</div></div>
+      {{ school.name }}
+      <span class="badge b-info" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.85);border:none;">{{ school.get_level_display }}</span>
     </div>
-    <div class="stat-chip">
-      <i class="fas fa-user-graduate"></i>
-      <div><div class="num">{{ students_data|length }}</div><div class="lbl">Walimu Wanafunzi</div></div>
-    </div>
+    <span class="s-badge">{{ school_items|length }} {% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</span>
   </div>
-
-  {% for school in schools %}
-  {% with school_students=students_data %}
-  <div class="school-section">
-    <div class="school-hd">
-      <div class="s-name">
-        <i class="fas fa-school"></i>
-        {{ school.name }}
-        <span class="badge-level" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.85);font-size:11px;padding:2px 9px;border-radius:10px;">{{ school.get_level_display }}</span>
-      </div>
-      <span class="s-badge">{{ school.student_count }} Wanafunzi</span>
-    </div>
-    <div class="students-table">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Jina la Mwanafunzi</th>
-            <th>Hali ya Maombi</th>
-            <th>Logbook</th>
-            <th>Somo</th>
-            <th>Mada Kuu</th>
-            <th>Darasa</th>
-            <th>Wanafunzi</th>
-            <th>Vitendo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in students_data %}
-          {% if item.school.id == school.id %}
-          <tr>
-            <td style="color:var(--gray);font-size:12px;">{{ forloop.counter }}</td>
-            <td>
-              <div style="font-weight:600;color:var(--text);">{{ item.student.full_name }}</div>
-              <div style="font-size:11.5px;color:var(--gray);">{{ item.student.user.email|truncatechars:28 }}</div>
-            </td>
-            <td>
-              {% if item.student.approval_status == 'rejected' %}
-              <span class="badge" style="background:rgba(239,68,68,.1);color:#DC2626;border:1px solid rgba(239,68,68,.3);"><i class="fas fa-times-circle"></i> Imekataliwa</span>
-              {% elif item.student.selected_school %}
-              <span class="badge badge-ok"><i class="fas fa-check-circle"></i> Amepangwa</span>
-              {% else %}
-              <span class="badge badge-warn"><i class="fas fa-clock"></i> Hajaanza</span>
+  <div class="school-block-body">
+    <div class="table-wrap">
+    <table id="tbl-{{ school.id }}">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>{% if LANG == 'sw' %}Jina{% else %}Name{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Hali ya Maombi{% else %}Application{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Siku za Logbook{% else %}Logbook Days{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Mwisho Kuandika{% else %}Last Entry{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Mada{% else %}Topic{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Hati{% else %}Documents{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Vitendo{% else %}Actions{% endif %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in school_items %}
+        <tr class="student-row"
+            data-name="{{ item.student.full_name|lower }}"
+            data-inactive="{% if item.inactive_alert %}1{% else %}0{% endif %}">
+          <td style="color:var(--gray);font-size:12px;font-weight:600;">{{ forloop.counter }}</td>
+          <td>
+            <div class="student-name">{{ item.student.full_name }}</div>
+            <div class="student-email">{{ item.student.user.email|truncatechars:28 }}</div>
+            {% if item.inactive_alert %}
+            <span class="inactive-tag" style="margin-top:3px;">
+              <i class="fas fa-exclamation-circle"></i>
+              {% if LANG == 'sw' %}Siku {{ item.days_inactive }}{% else %}{{ item.days_inactive }}d inactive{% endif %}
+            </span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.student.approval_status == 'rejected' %}
+            <span class="badge b-danger"><i class="fas fa-times-circle"></i> {% if LANG == 'sw' %}Imekataliwa{% else %}Rejected{% endif %}</span>
+            {% elif item.student.selected_school %}
+            <span class="badge b-ok"><i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}Amepangwa{% else %}Assigned{% endif %}</span>
+            {% else %}
+            <span class="badge b-warn"><i class="fas fa-clock"></i> {% if LANG == 'sw' %}Hajaanza{% else %}Pending{% endif %}</span>
+            {% endif %}
+          </td>
+          <td>
+            <strong style="color:var(--bold);font-size:14px;">{{ item.logbook_count }}</strong>
+            <span style="font-size:11.5px;color:var(--gray);"> {% if LANG == 'sw' %}siku{% else %}days{% endif %}</span>
+          </td>
+          <td>
+            {% if item.last_lb_date %}
+            <span class="days-chip {% if item.days_inactive == 0 %}days-ok{% elif item.days_inactive < 7 %}days-warn{% else %}days-danger{% endif %}">
+              {{ item.last_lb_date|date:"d/m/Y" }}
+            </span>
+            {% else %}<span style="color:var(--gray);font-size:12px;">—</span>{% endif %}
+          </td>
+          <td style="font-size:12.5px;">{{ item.display_subject|default:"—" }}</td>
+          <td style="font-size:12px;color:var(--gray);max-width:140px;">{{ item.display_topic|default:"—"|truncatechars:26 }}</td>
+          <td>
+            <div class="doc-badges">
+              {% if item.has_scheme %}
+              <span class="badge b-info" title="{% if LANG == 'sw' %}Ana Scheme of Work{% else %}Has Scheme of Work{% endif %}">
+                <i class="fas fa-calendar-alt"></i> {% if LANG == 'sw' %}Scheme{% else %}Scheme{% endif %}
+              </span>
               {% endif %}
-            </td>
-            <td>
-              <span style="font-weight:700;color:var(--bold);">{{ item.logbook_count }}</span>
-              <span style="font-size:11.5px;color:var(--gray);"> siku</span>
-            </td>
-            <td style="font-size:12.5px;color:var(--text);">{{ item.display_subject|default:"—" }}</td>
-            <td style="font-size:12.5px;color:var(--gray);">{{ item.display_topic|default:"—"|truncatechars:28 }}</td>
-            <td style="font-size:12.5px;color:var(--gray);">{{ item.display_class|default:"—" }}</td>
-            <td style="font-size:12.5px;color:var(--gray);">
-              {% if item.display_present %}{{ item.display_present }}{% else %}—{% endif %}
-            </td>
-            <td>
-              <a href="{% url 'board_student_progress' item.student.id %}" class="btn-detail">
-                <i class="fas fa-chart-line"></i> Maendeleo
-              </a>
-            </td>
-          </tr>
-          {% endif %}
-          {% endfor %}
-        </tbody>
-      </table>
+              {% if item.has_lesson_plan %}
+              <span class="badge b-gold" title="{% if LANG == 'sw' %}Ana Mpango wa Somo{% else %}Has Lesson Plan{% endif %}">
+                <i class="fas fa-chalkboard"></i> {% if LANG == 'sw' %}Mpango{% else %}Plan{% endif %}
+              </span>
+              {% endif %}
+              {% if not item.has_scheme and not item.has_lesson_plan %}
+              <span class="badge b-gray"><i class="fas fa-minus"></i> —</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <a href="{% url 'board_student_progress' item.student.id %}" class="btn btn-primary btn-sm">
+              <i class="fas fa-chart-line"></i> {% if LANG == 'sw' %}Maendeleo{% else %}Progress{% endif %}
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" class="empty-state" style="padding:18px;">{% if LANG == 'sw' %}Hakuna wanafunzi katika shule hii.{% else %}No students in this school.{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
     </div>
   </div>
-  {% endwith %}
-  {% empty %}
-  <div style="text-align:center;padding:40px;background:var(--white);border-radius:8px;border:1px solid var(--border);">
-    <i class="fas fa-school" style="font-size:40px;color:#D1D9E8;display:block;margin-bottom:12px;"></i>
-    <p style="color:var(--gray);font-size:13.5px;">Hakuna shule zenye walimu wanafunzi katika wilaya hii.</p>
-  </div>
-  {% endfor %}
 </div>
+{% endwith %}
+{% endfor %}
+{% endblock %}
 
-<div class="gov-footer">
-  <p>&copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Jamhuri ya Muungano wa Tanzania.</p>
-  <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0 | Bodi ya Walimu</span>
-</div>
-</body>
-</html>
+{% block extra_js %}
+<script>
+const searchInput  = document.getElementById('searchStudent');
+const filterLevel  = document.getElementById('filterLevel');
+const filterStatus = document.getElementById('filterStatus');
+
+function applyFilters() {
+  const q       = (searchInput.value || '').toLowerCase().trim();
+  const level   = filterLevel.value;
+  const status  = filterStatus.value;
+  document.querySelectorAll('.school-block').forEach(block => {
+    const blockLevel = block.dataset.level || '';
+    const levelMatch = !level || blockLevel === level;
+    let anyVisible = false;
+    block.querySelectorAll('.student-row').forEach(row => {
+      const nameMatch   = !q || row.dataset.name.includes(q);
+      const inactive    = row.dataset.inactive === '1';
+      const statusMatch = !status
+        || (status === 'inactive' && inactive)
+        || (status === 'active'   && !inactive);
+      const show = nameMatch && levelMatch && statusMatch;
+      row.style.display = show ? '' : 'none';
+      if (show) anyVisible = true;
+    });
+    block.style.display = anyVisible && levelMatch ? '' : 'none';
+  });
+}
+
+if (searchInput)  searchInput.addEventListener('input', applyFilters);
+if (filterLevel)  filterLevel.addEventListener('change', applyFilters);
+if (filterStatus) filterStatus.addEventListener('change', applyFilters);
+</script>
+{% endblock %}

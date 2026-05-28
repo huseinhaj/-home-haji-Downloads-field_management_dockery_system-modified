@@ -4801,15 +4801,35 @@ def board_home(request):
         messages.error(request, 'Huna ruhusa ya Bodi ya Walimu.')
         return redirect('board_login')
 
+    from datetime import date as _date
+    today = _date.today()
+    seven_days_ago = today - timedelta(days=7)
+
     regions = Region.objects.all().order_by('name').annotate(
         student_count=Count('district__school__studentteacher',
                             filter=Q(district__school__studentteacher__selected_school__isnull=False),
                             distinct=True),
         district_count=Count('district', distinct=True),
     )
+    total_students = StudentTeacher.objects.filter(selected_school__isnull=False).count()
+    total_schools = School.objects.filter(studentteacher__isnull=False).distinct().count()
+    active_this_week = LogbookEntry.objects.filter(
+        date__gte=seven_days_ago
+    ).values('student').distinct().count()
+    inactive_count = StudentTeacher.objects.filter(
+        selected_school__isnull=False
+    ).exclude(
+        logbookentry__date__gte=seven_days_ago
+    ).distinct().count()
+
     return render(request, 'field_app/board_home.html', {
         'bm': bm,
         'regions': regions,
+        'total_students': total_students,
+        'total_schools': total_schools,
+        'active_this_week': active_this_week,
+        'inactive_count': inactive_count,
+        'total_regions': regions.count(),
     })
 
 
@@ -4850,15 +4870,17 @@ def board_school_list(request, district_id):
             return entry.lessons_data[0]
         return {}
 
+    from datetime import date as _date
+    today = _date.today()
+
     students_data = []
     for school in schools:
         sts = StudentTeacher.objects.filter(selected_school=school).select_related('user')
         for st in sts:
             lb_count = LogbookEntry.objects.filter(student=st).count()
-            latest_lb = LogbookEntry.objects.filter(student=st).first()
+            latest_lb = LogbookEntry.objects.filter(student=st).order_by('-date').first()
             latest_lp = LessonPlan.objects.filter(student=st, school=school).first()
             first_lesson = _lb_first_lesson(latest_lb)
-            # Extract display fields — check lessons_data first, fallback to old fields
             display_subject = (
                 first_lesson.get('subject') or
                 (latest_lb.subject_taught.name if latest_lb and latest_lb.subject_taught else '') or
@@ -4872,6 +4894,11 @@ def board_school_list(request, district_id):
             display_class = first_lesson.get('class') or (latest_lb.class_taught if latest_lb else '')
             display_present = first_lesson.get('present') or (latest_lb.num_students_present if latest_lb else '')
             display_activity = first_lesson.get('activity_type') or (latest_lb.activity_type if latest_lb else '')
+            last_lb_date = latest_lb.date if latest_lb else None
+            days_inactive = (today - last_lb_date).days if last_lb_date else None
+            inactive_alert = days_inactive is not None and days_inactive >= 7
+            has_scheme = SchemeOfWork.objects.filter(student=st).exists()
+            has_lesson_plan = LessonPlan.objects.filter(student=st).exists()
             students_data.append({
                 'student': st,
                 'school': school,
@@ -4883,12 +4910,28 @@ def board_school_list(request, district_id):
                 'display_class': display_class,
                 'display_present': display_present,
                 'display_activity': display_activity,
+                'days_inactive': days_inactive,
+                'inactive_alert': inactive_alert,
+                'has_scheme': has_scheme,
+                'has_lesson_plan': has_lesson_plan,
+                'last_lb_date': last_lb_date,
             })
+    inactive_count = sum(1 for item in students_data if item.get('inactive_alert'))
+
+    # Group students by school for template iteration (avoids O(n*m) nested filtering)
+    schools_with_students = []
+    for school in schools:
+        school_students = [item for item in students_data if item['school'].id == school.id]
+        schools_with_students.append({'school': school, 'students': school_students})
+
     return render(request, 'field_app/board_school_list.html', {
         'bm': bm,
         'district': district,
         'schools': schools,
+        'schools_with_students': schools_with_students,
         'students_data': students_data,
+        'today': today,
+        'inactive_count': inactive_count,
     })
 
 
@@ -5110,6 +5153,13 @@ def board_student_progress(request, student_id):
         if len(topics_covered) >= 20:
             break
 
+    last_entry_for_inactive = LogbookEntry.objects.filter(student=student).order_by('-date').first()
+    days_inactive = (today - last_entry_for_inactive.date).days if last_entry_for_inactive else None
+    inactive_alert = days_inactive is not None and days_inactive >= 7
+
+    lesson_plans_all = LessonPlan.objects.filter(student=student).order_by('-date')
+    schemes_all = SchemeOfWork.objects.filter(student=student).order_by('-year', '-term')
+
     return render(request, 'field_app/board_student_progress.html', {
         'bm': bm,
         'student': student,
@@ -5117,13 +5167,17 @@ def board_student_progress(request, student_id):
         'logbook_entries': logbook_entries,
         'logbook_display': logbook_display,
         'lesson_plans': lesson_plans,
+        'lesson_plans_all': lesson_plans_all,
         'schemes': schemes,
+        'schemes_all': schemes_all,
         'applications': applications,
         'board_comments': board_comments,
         'month_entry_count': month_entries.count(),
         'total_entries': total_entries,
         'topics_covered': topics_covered,
         'today': today,
+        'days_inactive': days_inactive,
+        'inactive_alert': inactive_alert,
     })
 
 
