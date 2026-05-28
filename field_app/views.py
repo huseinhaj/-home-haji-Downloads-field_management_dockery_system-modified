@@ -5518,7 +5518,36 @@ def board_student_progress(request, student_id):
     inactive_alert = days_inactive is not None and days_inactive >= 7
 
     lesson_plans_all = LessonPlan.objects.filter(student=student).order_by('-date')
-    schemes_all = SchemeOfWork.objects.filter(student=student).order_by('-year', '-term')
+    raw_schemes = SchemeOfWork.objects.filter(student=student).order_by('-year', '-term')
+
+    # Normalize scheme_data rows — KitabuSmart uses spaced keys ('Main Competence',
+    # 'Week', 'Periods' …). The template expects snake_case keys. Build a mapping
+    # so any saved format is displayed correctly without raising VariableDoesNotExist.
+    def _normalize_row(row):
+        if not isinstance(row, dict):
+            return {}
+        get = lambda *keys: next((str(row[k]) for k in keys if k in row and row[k] not in (None, '')), '')
+        return {
+            'week':       get('week', 'Week'),
+            'month':      get('month', 'Month'),
+            'topic':      get('topic', 'main_topic', 'Main Competence', 'Learning Activities'),
+            'subtopic':   get('subtopic', 'sub_topic', 'Specific Competence', 'Specific Learning Activities'),
+            'activities': get('activities', 'learning_activities', 'Learning Activities', 'Specific Learning Activities'),
+            'resources':  get('resources', 'teaching_resources', 'Teaching & Learning Resources'),
+            'assessment': get('assessment', 'assessment_criteria', 'Assessment Tools'),
+            'periods':    get('periods', 'Periods'),
+            'remarks':    get('remarks', 'Remarks'),
+            'reference':  get('reference', 'Reference'),
+            'methods':    get('methods', 'Teaching & Learning Methods'),
+        }
+
+    schemes_all = []
+    for scheme in raw_schemes:
+        normalized_data = [_normalize_row(r) for r in (scheme.scheme_data or [])]
+        schemes_all.append({
+            'obj': scheme,
+            'data': normalized_data,
+        })
 
     return render(request, 'field_app/board_student_progress.html', {
         'bm': bm,

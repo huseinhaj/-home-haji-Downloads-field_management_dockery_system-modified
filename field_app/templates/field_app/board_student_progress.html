@@ -328,7 +328,8 @@
 <!-- ═══ TAB: SCHEME OF WORK ═══ -->
 <div class="tab-panel" id="tab-schemes" data-group="main">
   {% if schemes_all %}
-    {% for scheme in schemes_all %}
+    {% for entry in schemes_all %}
+    {% with scheme=entry.obj rows=entry.data %}
     <div class="card" style="margin-bottom:20px;">
       <div class="card-hd" style="background:var(--bold);border-bottom:3px solid var(--medium);">
         <i class="fas fa-calendar-alt" style="color:var(--medium);"></i>
@@ -348,7 +349,7 @@
         </div>
       </div>
       <!-- Scheme Data Table -->
-      {% if scheme.scheme_data %}
+      {% if rows %}
       <div class="table-wrap">
         <table class="scheme-table">
           <thead>
@@ -363,14 +364,14 @@
             </tr>
           </thead>
           <tbody>
-            {% for row in scheme.scheme_data %}
+            {% for row in rows %}
             <tr>
               <td class="week-cell">{{ row.week|default:forloop.counter }}</td>
-              <td style="font-weight:600;">{{ row.topic|default:row.main_topic|default:"—" }}</td>
-              <td style="color:var(--gray);">{{ row.subtopic|default:row.sub_topic|default:"—"|truncatechars:40 }}</td>
-              <td style="font-size:12px;">{{ row.activities|default:row.learning_activities|default:"—"|truncatechars:60 }}</td>
-              <td style="font-size:12px;color:var(--gray);">{{ row.resources|default:row.teaching_resources|default:"—"|truncatechars:40 }}</td>
-              <td style="font-size:12px;">{{ row.assessment|default:row.assessment_criteria|default:"—"|truncatechars:40 }}</td>
+              <td style="font-weight:600;">{{ row.topic|default:"—" }}</td>
+              <td style="color:var(--gray);">{{ row.subtopic|default:"—"|truncatechars:40 }}</td>
+              <td style="font-size:12px;">{{ row.activities|default:"—"|truncatechars:60 }}</td>
+              <td style="font-size:12px;color:var(--gray);">{{ row.resources|default:"—"|truncatechars:40 }}</td>
+              <td style="font-size:12px;">{{ row.assessment|default:"—"|truncatechars:40 }}</td>
               <td style="text-align:center;"><span class="badge b-info">{{ row.periods|default:"—" }}</span></td>
             </tr>
             {% empty %}
@@ -385,6 +386,7 @@
       </div>
       {% endif %}
     </div>
+    {% endwith %}
     {% endfor %}
   {% else %}
   <div class="card"><div class="empty-state">
