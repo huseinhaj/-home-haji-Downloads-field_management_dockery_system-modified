@@ -4163,12 +4163,61 @@ Example row:
             except Exception as e:
                 print("JSON parse error:", e)
                 scheme_data = []
-            
-            # Also save to database if needed (optional)
-            # Save form data and scheme_data to SchemeOfWork model
-            # ... (unaweza kuongeza hapa)
-            
-            return JsonResponse({'success': True, 'data': scheme_data})
+
+            # Save to database
+            saved_id = None
+            try:
+                student = StudentTeacher.objects.get(user=request.user)
+                school = student.selected_school
+                if school and scheme_data:
+                    level_map = {
+                        'primary school': 'primary',
+                        'ordinary level': 'ordinary',
+                        'advanced level': 'advanced',
+                    }
+                    edu_level = level_map.get(education_level.lower(), 'ordinary')
+                    subj_obj = Subject.objects.filter(name__iexact=subject).first()
+                    if subj_obj:
+                        start_dt = None
+                        end_dt = None
+                        if start_date:
+                            try:
+                                from datetime import date as _dt
+                                start_dt = _dt.fromisoformat(start_date)
+                            except Exception:
+                                pass
+                        if end_date:
+                            try:
+                                from datetime import date as _dt
+                                end_dt = _dt.fromisoformat(end_date)
+                            except Exception:
+                                pass
+                        scheme_obj, _ = SchemeOfWork.objects.update_or_create(
+                            student=student,
+                            subject=subj_obj,
+                            term=term,
+                            year=int(year),
+                            defaults={
+                                'school': school,
+                                'education_level': edu_level,
+                                'class_name': class_name,
+                                'syllabus': syllabus,
+                                'total_weeks': int(total_weeks),
+                                'periods_per_week': int(periods_per_week),
+                                'start_date': start_dt,
+                                'end_date': end_dt,
+                                'teacher_name': teacher_name,
+                                'reference_source': reference_source,
+                                'breaks': breaks,
+                                'scheme_data': scheme_data,
+                                'generated_by_ai': True,
+                            }
+                        )
+                        saved_id = scheme_obj.id
+            except Exception as save_err:
+                print(f"Scheme save error (non-fatal): {save_err}")
+
+            return JsonResponse({'success': True, 'data': scheme_data, 'saved_id': saved_id})
 
         except Exception as e:
             import traceback
@@ -4247,8 +4296,266 @@ def download_scheme_pdf(request):
         response = HttpResponse(buffer, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="Scheme_of_Work_{subject}_{class_name}.pdf"'
         return response
-    
-    return HttpResponse("Invalid request", status=400)    
+
+    return HttpResponse("Invalid request", status=400)
+
+
+@login_required
+def download_scheme_word(request):
+    """Export Scheme of Work as Word (.docx)"""
+    if request.method != 'POST':
+        return HttpResponse("Invalid request", status=400)
+    from docx import Document
+    from docx.shared import Pt, RGBColor, Inches
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    import json as _json
+
+    data = _json.loads(request.body)
+    scheme_data = data.get('scheme_data', [])
+    subject = data.get('subject', '')
+    class_name = data.get('class_name', '')
+    term = data.get('term', '')
+    year = data.get('year', '')
+    teacher_name = data.get('teacher_name', '')
+    school_name = data.get('school_name', '')
+
+    doc = Document()
+    doc.core_properties.title = f"Scheme of Work — {subject}"
+
+    # Title
+    title = doc.add_heading(f"{subject} — {class_name} — Term {term} {year}", level=1)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    info = doc.add_paragraph(f"Teacher: {teacher_name}    School: {school_name}")
+    info.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    doc.add_paragraph()
+
+    if scheme_data:
+        headers = list(scheme_data[0].keys())
+        table = doc.add_table(rows=1, cols=len(headers))
+        table.style = 'Table Grid'
+
+        # Header row
+        hdr_cells = table.rows[0].cells
+        for i, h in enumerate(headers):
+            hdr_cells[i].text = h
+            run = hdr_cells[i].paragraphs[0].runs[0]
+            run.bold = True
+            run.font.size = Pt(8)
+            hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Data rows
+        for row in scheme_data:
+            row_cells = table.add_row().cells
+            for i, h in enumerate(headers):
+                row_cells[i].text = str(row.get(h, '') or '')
+                row_cells[i].paragraphs[0].runs[0].font.size = Pt(8)
+
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    safe_name = f"Scheme_{subject}_{class_name}".replace(' ', '_')
+    response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    response['Content-Disposition'] = f'attachment; filename="{safe_name}.docx"'
+    return response
+
+
+@login_required
+def download_lesson_plan_pdf(request):
+    """Export Lesson Plan as PDF"""
+    if request.method != 'POST':
+        return HttpResponse("Invalid request", status=400)
+    import json as _json
+
+    data = _json.loads(request.body)
+    lesson = data.get('lesson_data', {})
+    form = data.get('form_data', {})
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+    elements = []
+    styles = getSampleStyleSheet()
+    bold_style = ParagraphStyle('Bold', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=10)
+    normal_style = ParagraphStyle('Normal9', parent=styles['Normal'], fontSize=9, leading=14)
+    heading_style = ParagraphStyle('Heading', parent=styles['Normal'], fontName='Helvetica-Bold',
+                                   fontSize=11, textColor=colors.HexColor('#0A2B5E'),
+                                   spaceAfter=4, spaceBefore=10)
+
+    elements.append(Paragraph("LESSON PLAN", ParagraphStyle('Title', parent=styles['Heading1'],
+                                                              fontSize=16, alignment=1,
+                                                              textColor=colors.HexColor('#0A2B5E'))))
+    elements.append(Spacer(1, 10))
+
+    # Meta info table
+    meta = [
+        ['Teacher:', form.get('teacher_name', ''), 'Subject:', form.get('subject', '')],
+        ['Class:', form.get('class_name', ''), 'Term/Year:', f"Term {form.get('term','')} {form.get('year','')}"],
+        ['Topic:', form.get('topic', ''), 'Subtopic:', form.get('subtopic', '')],
+        ['Duration:', f"{form.get('duration','')} min", 'Date:', str(timezone.now().date())],
+        ['Students:', f"{form.get('total_students','')} total / {form.get('present_students','')} present", '', ''],
+    ]
+    meta_table = Table(meta, colWidths=[80, 180, 80, 175])
+    meta_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.grey),
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#EEF1F6')),
+        ('BACKGROUND', (2, 0), (2, -1), colors.HexColor('#EEF1F6')),
+    ]))
+    elements.append(meta_table)
+    elements.append(Spacer(1, 10))
+
+    # Competences
+    for label, key in [('Main Competence', 'main_competence'),
+                       ('Specific Competence', 'specific_competence'),
+                       ('Previous Knowledge', 'previous_knowledge')]:
+        val = lesson.get(key, '')
+        if val:
+            elements.append(Paragraph(f"<b>{label}:</b> {val}", normal_style))
+
+    # Lists
+    for label, key in [('Learning Objectives', 'learning_objectives'),
+                       ('Teaching Methods', 'teaching_methods'),
+                       ('Teaching Resources', 'teaching_resources')]:
+        items = lesson.get(key, [])
+        if items:
+            elements.append(Paragraph(label, heading_style))
+            for item in items:
+                elements.append(Paragraph(f"• {item}", normal_style))
+
+    # Lesson Development table
+    ld = lesson.get('lesson_development', [])
+    if ld:
+        elements.append(Paragraph("Lesson Development", heading_style))
+        ld_headers = ['Time', 'Stage', 'Teacher Activities', 'Student Activities', 'Assessment']
+        ld_data = [ld_headers]
+        for stage in ld:
+            ld_data.append([
+                stage.get('time', ''),
+                stage.get('stage', stage.get('phase', '')),
+                stage.get('teacher_activities', ''),
+                stage.get('student_activities', ''),
+                stage.get('assessment_criteria', ''),
+            ])
+        ld_table = Table(ld_data, colWidths=[45, 70, 120, 120, 100], repeatRows=1)
+        ld_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0A2B5E')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('WORDWRAP', (0, 0), (-1, -1), True),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F7FAFF')]),
+        ]))
+        elements.append(ld_table)
+
+    remarks = lesson.get('remarks', '')
+    if remarks:
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph(f"<b>Remarks:</b> {remarks}", normal_style))
+
+    doc.build(elements)
+    buffer.seek(0)
+    safe_name = f"LessonPlan_{form.get('subject','')}_{form.get('topic','')}".replace(' ', '_')
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{safe_name}.pdf"'
+    return response
+
+
+@login_required
+def download_lesson_plan_word(request):
+    """Export Lesson Plan as Word (.docx)"""
+    if request.method != 'POST':
+        return HttpResponse("Invalid request", status=400)
+    from docx import Document
+    from docx.shared import Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    import json as _json
+
+    data = _json.loads(request.body)
+    lesson = data.get('lesson_data', {})
+    form = data.get('form_data', {})
+
+    doc = Document()
+    doc.add_heading('LESSON PLAN', 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # Meta
+    meta_table = doc.add_table(rows=5, cols=4)
+    meta_table.style = 'Table Grid'
+    rows = meta_table.rows
+    def _set(r, c, text, bold=False):
+        cell = rows[r].cells[c]
+        cell.text = text
+        if bold and cell.paragraphs[0].runs:
+            cell.paragraphs[0].runs[0].bold = True
+
+    _set(0,0,'Teacher:', True); _set(0,1, form.get('teacher_name',''))
+    _set(0,2,'Subject:', True); _set(0,3, form.get('subject',''))
+    _set(1,0,'Class:', True);   _set(1,1, form.get('class_name',''))
+    _set(1,2,'Term/Year:', True);_set(1,3, f"Term {form.get('term','')} {form.get('year','')}")
+    _set(2,0,'Topic:', True);   _set(2,1, form.get('topic',''))
+    _set(2,2,'Subtopic:', True);_set(2,3, form.get('subtopic',''))
+    _set(3,0,'Duration:', True);_set(3,1, f"{form.get('duration','')} min")
+    _set(3,2,'Date:', True);    _set(3,3, str(timezone.now().date()))
+    _set(4,0,'Students:', True);_set(4,1, f"{form.get('total_students','')} / {form.get('present_students','')}")
+
+    doc.add_paragraph()
+
+    for label, key in [('Main Competence', 'main_competence'),
+                       ('Specific Competence', 'specific_competence'),
+                       ('Previous Knowledge', 'previous_knowledge')]:
+        val = lesson.get(key, '')
+        if val:
+            p = doc.add_paragraph()
+            p.add_run(f"{label}: ").bold = True
+            p.add_run(val)
+
+    for label, key in [('Learning Objectives', 'learning_objectives'),
+                       ('Teaching Methods', 'teaching_methods'),
+                       ('Teaching Resources', 'teaching_resources')]:
+        items = lesson.get(key, [])
+        if items:
+            doc.add_heading(label, level=2)
+            for item in items:
+                doc.add_paragraph(item, style='List Bullet')
+
+    ld = lesson.get('lesson_development', [])
+    if ld:
+        doc.add_heading('Lesson Development', level=2)
+        ld_table = doc.add_table(rows=1, cols=5)
+        ld_table.style = 'Table Grid'
+        hdr = ld_table.rows[0].cells
+        for i, h in enumerate(['Time', 'Stage', 'Teacher Activities', 'Student Activities', 'Assessment']):
+            hdr[i].text = h
+            hdr[i].paragraphs[0].runs[0].bold = True
+        for stage in ld:
+            row = ld_table.add_row().cells
+            row[0].text = stage.get('time', '')
+            row[1].text = stage.get('stage', stage.get('phase', ''))
+            row[2].text = stage.get('teacher_activities', '')
+            row[3].text = stage.get('student_activities', '')
+            row[4].text = stage.get('assessment_criteria', '')
+
+    remarks = lesson.get('remarks', '')
+    if remarks:
+        p = doc.add_paragraph()
+        p.add_run('Remarks: ').bold = True
+        p.add_run(remarks)
+
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    safe_name = f"LessonPlan_{form.get('subject','')}_{form.get('topic','')}".replace(' ', '_')
+    response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    response['Content-Disposition'] = f'attachment; filename="{safe_name}.docx"'
+    return response
+
+
 # views.py - Ongeza hizi
 
 from django.http import JsonResponse
@@ -4403,7 +4710,6 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
             if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
                 json_data = cleaned_text[start_idx:end_idx + 1]
                 lesson_data = json_module.loads(json_data)
-                return JsonResponse({'success': True, 'data': lesson_data})
             else:
                 # Fallback response
                 lesson_data = {
@@ -4423,7 +4729,60 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
                     ],
                     "remarks": "Students participated well"
                 }
-                return JsonResponse({'success': True, 'data': lesson_data})
+
+            # Save to database
+            saved_id = None
+            try:
+                student = StudentTeacher.objects.get(user=request.user)
+                school = student.selected_school
+                if school:
+                    level_map = {
+                        'primary school': 'primary',
+                        'ordinary level': 'ordinary',
+                        'advanced level': 'advanced',
+                    }
+                    edu_level = level_map.get(education_level.lower(), 'ordinary')
+                    subj_obj = Subject.objects.filter(name__iexact=subject).first()
+                    if subj_obj:
+                        lp_date = timezone.now().date()
+                        # Parse learning_objectives and teaching_methods from string to list if needed
+                        lo_list = lesson_data.get('learning_objectives', [])
+                        if isinstance(lo_list, str):
+                            lo_list = [x.strip() for x in lo_list.split('\n') if x.strip()]
+                        tm_list = lesson_data.get('teaching_methods', [])
+                        if isinstance(tm_list, str):
+                            tm_list = [x.strip() for x in tm_list.split('\n') if x.strip()]
+                        lp_obj = LessonPlan.objects.create(
+                            student=student,
+                            school=school,
+                            subject=subj_obj,
+                            education_level=edu_level,
+                            class_name=class_name,
+                            term=term,
+                            year=int(year),
+                            topic=topic,
+                            subtopic=subtopic or '',
+                            date=lp_date,
+                            duration=int(duration) if duration else 40,
+                            total_students=int(total_students) if total_students else 0,
+                            present_students=int(present_students) if present_students else 0,
+                            teacher_name=teacher_name or student.full_name,
+                            reference_source=reference_source or '',
+                            main_competence=lesson_data.get('main_competence', ''),
+                            specific_competence=lesson_data.get('specific_competence', ''),
+                            previous_knowledge=lesson_data.get('previous_knowledge', ''),
+                            learning_objectives=lo_list,
+                            teaching_methods=tm_list,
+                            teaching_resources=lesson_data.get('teaching_resources', []),
+                            lesson_development=lesson_data.get('lesson_development', []),
+                            remarks=lesson_data.get('remarks', ''),
+                            generated_by_ai=True,
+                        )
+                        saved_id = lp_obj.id
+            except Exception as save_err:
+                print(f"Lesson Plan save error (non-fatal): {save_err}")
+
+            return JsonResponse({'success': True, 'data': lesson_data, 'saved_id': saved_id})
             
         except Exception as e:
             print(f"Lesson Plan generation error: {e}")

@@ -582,6 +582,8 @@
         });
         
         function displayResults(data, formData) {
+            _schemeData = data;
+            _schemeForm = formData;
             const headers = Object.keys(data[0]);
             
             let tableHtml = `
@@ -630,13 +632,48 @@
             resultDiv.style.display = 'block';
             window.scrollTo({ top: resultDiv.offsetTop - 20, behavior: 'smooth' });
         }
-        
+
+        // Global storage for export
+        let _schemeData = null;
+        let _schemeForm = null;
+
+        async function _downloadExport(url, mimeType, ext) {
+            if (!_schemeData) return;
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const payload = {
+                scheme_data: _schemeData,
+                subject: _schemeForm.subject,
+                class_name: _schemeForm.class_name,
+                term: _schemeForm.term,
+                year: _schemeForm.year,
+                teacher_name: _schemeForm.teacher_name,
+                school_name: _schemeForm.school_name || '',
+                syllabus: _schemeForm.syllabus || '',
+                total_weeks: _schemeForm.total_weeks || '',
+            };
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) { alert('{% if LANG == "sw" %}Imeshindwa kupakua.{% else %}Download failed.{% endif %}'); return; }
+                const blob = await res.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `Scheme_${(_schemeForm.subject||'').replace(/ /g,'_')}.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch(e) { alert('{% if LANG == "sw" %}Hitilafu ya mtandao.{% else %}Network error.{% endif %}'); }
+        }
+
         window.downloadPDF = function() {
-            alert('{% if LANG == "sw" %}Utendaji wa kupakua PDF utatekelezwa hivi karibuni.{% else %}PDF download functionality will be implemented soon.{% endif %}');
+            _downloadExport('/download-scheme-pdf/', 'application/pdf', 'pdf');
         };
 
         window.exportToWord = function() {
-            alert('{% if LANG == "sw" %}Utendaji wa kuhamisha Word utatekelezwa hivi karibuni.{% else %}Word export functionality will be implemented soon.{% endif %}');
+            _downloadExport('/download-scheme-word/', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'docx');
         };
     });
 </script>

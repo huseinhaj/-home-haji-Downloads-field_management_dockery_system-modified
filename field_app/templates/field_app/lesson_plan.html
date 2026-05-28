@@ -521,6 +521,8 @@
         });
         
         function displayLessonPlan(lesson, formData) {
+            _lessonData = lesson;
+            _lessonForm = formData;
             const date = new Date().toLocaleDateString('en-GB');
             
             let html = `
@@ -636,12 +638,36 @@
             window.scrollTo({ top: resultDiv.offsetTop - 20, behavior: 'smooth' });
         }
         
+        // Global storage for export
+        let _lessonData = null;
+        let _lessonForm = null;
+
+        async function _downloadLesson(url, ext) {
+            if (!_lessonData) return;
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+                    body: JSON.stringify({lesson_data: _lessonData, form_data: _lessonForm})
+                });
+                if (!res.ok) { alert('{% if LANG == "sw" %}Imeshindwa kupakua.{% else %}Download failed.{% endif %}'); return; }
+                const blob = await res.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `LessonPlan_${(_lessonForm.subject||'').replace(/ /g,'_')}_${(_lessonForm.topic||'').replace(/ /g,'_')}.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch(e) { alert('{% if LANG == "sw" %}Hitilafu ya mtandao.{% else %}Network error.{% endif %}'); }
+        }
+
         window.downloadLessonPDF = function() {
-            alert('{% if LANG == "sw" %}Utendaji wa kupakua PDF utatekelezwa hivi karibuni.{% else %}PDF download functionality will be implemented soon.{% endif %}');
+            _downloadLesson('/download-lesson-plan-pdf/', 'pdf');
         };
 
         window.exportLessonToWord = function() {
-            alert('{% if LANG == "sw" %}Utendaji wa kuhamisha Word utatekelezwa hivi karibuni.{% else %}Word export functionality will be implemented soon.{% endif %}');
+            _downloadLesson('/download-lesson-plan-word/', 'docx');
         };
     });
 </script>
