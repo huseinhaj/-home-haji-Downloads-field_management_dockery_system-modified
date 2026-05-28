@@ -4636,11 +4636,12 @@ def ajax_generate_lessonplan(request):
             import re
             
             data = json_module.loads(request.body)
-            
+
             # Extract form data
             education_level = data.get('education_level', '')
             class_name = data.get('class_name', '')
             subject = data.get('subject', '')
+            subject_id = data.get('subject_id', '')
             topic = data.get('topic', '')
             subtopic = data.get('subtopic', '')
             term = data.get('term', 'I')
@@ -4651,6 +4652,7 @@ def ajax_generate_lessonplan(request):
             learning_objectives = data.get('learning_objectives', '')
             teaching_methods = data.get('teaching_methods', '')
             reference_source = data.get('reference_source', '')
+            teacher_name = data.get('teacher_name', '')
             
             # Build AI prompt
             prompt = f"""
@@ -4733,20 +4735,34 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
 
             # Save to database
             saved_id = None
+            save_error_msg = None
             try:
                 student = StudentTeacher.objects.get(user=request.user)
                 school = student.selected_school
-                if school:
+                if not school:
+                    save_error_msg = 'Student has no selected school'
+                else:
                     level_map = {
                         'primary school': 'primary',
                         'ordinary level': 'ordinary',
                         'advanced level': 'advanced',
                     }
-                    edu_level = level_map.get(education_level.lower(), 'ordinary')
-                    subj_obj = Subject.objects.filter(name__iexact=subject).first()
-                    if subj_obj:
+                    edu_level = level_map.get((education_level or '').lower(), 'ordinary')
+
+                    # Try subject lookup by ID first (reliable), then by name
+                    subj_obj = None
+                    if subject_id:
+                        try:
+                            subj_obj = Subject.objects.get(id=int(subject_id))
+                        except (Subject.DoesNotExist, ValueError):
+                            pass
+                    if not subj_obj and subject:
+                        subj_obj = Subject.objects.filter(name__iexact=subject).first()
+
+                    if not subj_obj:
+                        save_error_msg = f'Subject not found: id={subject_id} name={subject}'
+                    else:
                         lp_date = timezone.now().date()
-                        # Parse learning_objectives and teaching_methods from string to list if needed
                         lo_list = lesson_data.get('learning_objectives', [])
                         if isinstance(lo_list, str):
                             lo_list = [x.strip() for x in lo_list.split('\n') if x.strip()]
@@ -4780,8 +4796,16 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
                             generated_by_ai=True,
                         )
                         saved_id = lp_obj.id
+            except StudentTeacher.DoesNotExist:
+                save_error_msg = f'No StudentTeacher for user {request.user}'
             except Exception as save_err:
-                print(f"Lesson Plan save error (non-fatal): {save_err}")
+                import traceback as _tb
+                save_error_msg = str(save_err)
+                print(f"Lesson Plan save error: {save_error_msg}")
+                print(_tb.format_exc())
+
+            if save_error_msg:
+                print(f"[LessonPlan] NOT saved — {save_error_msg}")
 
             return JsonResponse({'success': True, 'data': lesson_data, 'saved_id': saved_id})
             
