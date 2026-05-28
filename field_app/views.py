@@ -1032,6 +1032,27 @@ def dashboard(request):
         ).select_related('board_member').order_by('-created_at')[:5]
         BoardComment.objects.filter(student=student, is_read=False).update(is_read=True)
 
+    # Monthly reports visible to the student — find their entry in each report
+    my_monthly_reports = []
+    if student and student.selected_school:
+        district = student.selected_school.district
+        reports = MonthlyReport.objects.filter(district=district).order_by('-year', '-month')[:6]
+        for report in reports:
+            content = report.ai_content or {}
+            student_entry = None
+            # Search primary and secondary lists for this student by name
+            for level_key in ('primary', 'secondary'):
+                for entry in content.get(level_key, []):
+                    if entry.get('jina', '').strip().lower() == student.full_name.strip().lower():
+                        student_entry = entry
+                        break
+                if student_entry:
+                    break
+            my_monthly_reports.append({
+                'report': report,
+                'entry': student_entry,   # None if student had no logbook that month
+            })
+
     return render(request, 'field_app/dashboard.html', {
         'regions': pinned_regions,
         'current_year': current_year,
@@ -1047,7 +1068,38 @@ def dashboard(request):
         'logbook_entries': logbook_entries,
         'assessors': assessors,
         'board_comments': board_comments,
+        'my_monthly_reports': my_monthly_reports,
     })
+
+@login_required
+def student_monthly_report(request, report_id):
+    """Show a monthly report to the student who is in that district."""
+    student = get_or_create_student_profile(request.user)
+    report = get_object_or_404(MonthlyReport, id=report_id)
+
+    # Ensure the student belongs to this district
+    if not student.selected_school or student.selected_school.district_id != report.district_id:
+        messages.error(request, 'Huna ruhusa ya kuona ripoti hii.')
+        return redirect('dashboard')
+
+    content = report.ai_content or {}
+    student_entry = None
+    for level_key in ('primary', 'secondary'):
+        for entry in content.get(level_key, []):
+            if entry.get('jina', '').strip().lower() == student.full_name.strip().lower():
+                student_entry = entry
+                break
+        if student_entry:
+            break
+
+    return render(request, 'field_app/student_monthly_report.html', {
+        'report': report,
+        'student': student,
+        'student_entry': student_entry,
+        'muhtasari': content.get('muhtasari', ''),
+        'hitimisho': content.get('hitimisho', ''),
+    })
+
 
 # views.py - SAHIHISHA SEHEMU YA ASSESSOR DASHBOARD
 

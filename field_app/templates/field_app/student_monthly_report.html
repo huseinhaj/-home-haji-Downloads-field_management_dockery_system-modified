@@ -1,0 +1,136 @@
+{% extends "field_app/base.html" %}
+{% load static %}
+
+{% block title %}Ripoti ya {{ report.get_month_display }} {{ report.year }}{% endblock %}
+
+{% block content %}
+<div style="max-width:760px;margin:28px auto;padding:0 16px;">
+
+  <!-- Back -->
+  <a href="{% url 'dashboard' %}" style="display:inline-flex;align-items:center;gap:6px;color:#0A2B5E;font-weight:600;font-size:13px;text-decoration:none;margin-bottom:18px;">
+    <i class="fas fa-arrow-left"></i> Rudi Dashboard
+  </a>
+
+  <!-- Header card -->
+  <div style="background:linear-gradient(135deg,#0A2B5E 0%,#0E3875 100%);border-radius:12px;padding:24px 28px;margin-bottom:20px;border-bottom:4px solid #C8900A;">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="width:52px;height:52px;background:rgba(200,144,10,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid #C8900A;">
+        <i class="fas fa-chart-bar" style="color:#C8900A;font-size:22px;"></i>
+      </div>
+      <div>
+        <h1 style="color:#fff;font-size:20px;font-weight:700;margin:0;">
+          Ripoti ya Mwezi — {{ report.get_month_display }} {{ report.year }}
+        </h1>
+        <p style="color:rgba(255,255,255,.7);font-size:13px;margin:4px 0 0;">
+          <i class="fas fa-map-marker-alt" style="margin-right:5px;"></i>Wilaya ya {{ report.district.name }}
+          &nbsp;&bull;&nbsp;
+          <i class="fas fa-robot" style="margin-right:5px;"></i>Imezalishwa na AI
+          {% if report.generated_at %}
+          &nbsp;&bull;&nbsp;{{ report.generated_at|date:"d M Y" }}
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {% if student_entry %}
+  <!-- Student personal result card -->
+  {% with entry=student_entry %}
+  <div style="background:#fff;border-radius:10px;border:1px solid #CBD5E0;box-shadow:0 2px 8px rgba(10,43,94,.08);overflow:hidden;margin-bottom:20px;">
+    <div style="background:#0A2B5E;padding:13px 20px;border-bottom:3px solid #C8900A;display:flex;align-items:center;gap:8px;">
+      <i class="fas fa-user-graduate" style="color:#C8900A;"></i>
+      <h3 style="color:#fff;font-size:14px;font-weight:700;margin:0;">Matokeo Yako — {{ entry.jina }}</h3>
+    </div>
+    <div style="padding:18px 20px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px;">
+
+        <!-- Status -->
+        <div style="background:#F7FAFF;border-radius:8px;padding:14px;text-align:center;border:1px solid #EFF2F7;">
+          {% if entry.hali == 'vizuri' %}
+          <div style="font-size:24px;color:#10B981;font-weight:800;">✅</div>
+          <div style="font-size:12px;color:#059669;font-weight:700;margin-top:4px;">Vizuri Sana</div>
+          {% elif entry.hali == 'wastani' %}
+          <div style="font-size:24px;color:#F59E0B;font-weight:800;">⚠️</div>
+          <div style="font-size:12px;color:#92400E;font-weight:700;margin-top:4px;">Wastani</div>
+          {% else %}
+          <div style="font-size:24px;color:#EF4444;font-weight:800;">🔴</div>
+          <div style="font-size:12px;color:#B91C1C;font-weight:700;margin-top:4px;">Nyuma</div>
+          {% endif %}
+          <div style="font-size:10px;color:#718096;margin-top:2px;">Hali</div>
+        </div>
+
+        <!-- Rank -->
+        <div style="background:#F7FAFF;border-radius:8px;padding:14px;text-align:center;border:1px solid #EFF2F7;">
+          <div style="font-size:26px;font-weight:800;color:#0A2B5E;line-height:1;">{{ entry.nafasi }}</div>
+          <div style="font-size:11px;color:#718096;margin-top:4px;">Nafasi Wilayani</div>
+        </div>
+
+        <!-- Days recorded -->
+        <div style="background:#F7FAFF;border-radius:8px;padding:14px;text-align:center;border:1px solid #EFF2F7;">
+          <div style="font-size:26px;font-weight:800;color:#0A2B5E;line-height:1;">{{ entry.siku }}</div>
+          <div style="font-size:11px;color:#718096;margin-top:4px;">Siku za Logbook</div>
+        </div>
+
+        <!-- Total topics -->
+        {% if entry.mada_zote %}
+        <div style="background:#F7FAFF;border-radius:8px;padding:14px;text-align:center;border:1px solid #EFF2F7;">
+          <div style="font-size:26px;font-weight:800;color:#0A2B5E;line-height:1;">{{ entry.mada_zote }}</div>
+          <div style="font-size:11px;color:#718096;margin-top:4px;">Mada Zote</div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- School & Subject -->
+      <div style="font-size:13px;color:#4A5568;margin-bottom:12px;">
+        <span style="font-weight:600;color:#0A2B5E;"><i class="fas fa-school" style="margin-right:5px;color:#C8900A;"></i>Shule:</span> {{ entry.shule }}
+        &nbsp;&nbsp;
+        <span style="font-weight:600;color:#0A2B5E;"><i class="fas fa-book" style="margin-right:5px;color:#C8900A;"></i>Somo:</span> {{ entry.somo }}
+      </div>
+
+      <!-- Recommendation -->
+      {% if entry.mapendekezo %}
+      <div style="background:#FEF3C7;border:1px solid #D97706;border-radius:8px;padding:14px 16px;border-left:4px solid #C8900A;">
+        <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+          <i class="fas fa-lightbulb"></i> Mapendekezo ya Bodi
+        </div>
+        <p style="font-size:13px;color:#78350F;margin:0;line-height:1.6;">{{ entry.mapendekezo }}</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endwith %}
+  {% else %}
+  <!-- No entry for this month -->
+  <div style="background:#FEF3C7;border:1px solid #D97706;border-radius:10px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+    <i class="fas fa-exclamation-triangle" style="color:#D97706;font-size:20px;flex-shrink:0;"></i>
+    <p style="margin:0;font-size:13.5px;color:#92400E;">
+      Jina lako halikuonekana kwenye ripoti hii. Hii inaweza kumaanisha hukuandika logbook mwezi huu
+      au data yako haikuwepo wakati ripoti ilipozalishwa.
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- Muhtasari wa wilaya -->
+  {% if muhtasari %}
+  <div style="background:#fff;border-radius:10px;border:1px solid #CBD5E0;box-shadow:0 1px 4px rgba(10,43,94,.08);overflow:hidden;margin-bottom:16px;">
+    <div style="padding:12px 20px;border-bottom:1px solid #CBD5E0;background:#EEF1F6;display:flex;align-items:center;gap:8px;">
+      <i class="fas fa-info-circle" style="color:#C8900A;"></i>
+      <h3 style="font-size:14px;color:#0A2B5E;font-weight:700;margin:0;">Muhtasari wa Wilaya</h3>
+    </div>
+    <div style="padding:16px 20px;font-size:13.5px;color:#1A1A2E;line-height:1.75;">{{ muhtasari }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Hitimisho -->
+  {% if hitimisho %}
+  <div style="background:linear-gradient(135deg,#0A2B5E 0%,#0C3570 100%);border-radius:10px;padding:20px 24px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <i class="fas fa-flag-checkered" style="color:#C8900A;font-size:16px;"></i>
+      <h3 style="font-size:14px;color:#fff;font-weight:700;margin:0;">Hitimisho</h3>
+    </div>
+    <p style="font-size:13.5px;color:rgba(255,255,255,.85);line-height:1.75;margin:0;">{{ hitimisho }}</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

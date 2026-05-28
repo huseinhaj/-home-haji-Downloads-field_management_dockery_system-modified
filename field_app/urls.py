@@ -11,7 +11,8 @@ urlpatterns = [
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
     # =========================
     # CORE PAGES
-    path('dashboard/', views.dashboard, name='dashboard'), 
+    path('dashboard/', views.dashboard, name='dashboard'),
+    path('monthly-report/<int:report_id>/', views.student_monthly_report, name='student_monthly_report'),
     path('register/', views.register, name='register'),
     # urls.py
     path('login/', views.login_view, name='login'),  #  # Name ni 'login' sasa

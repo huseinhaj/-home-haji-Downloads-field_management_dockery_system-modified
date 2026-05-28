@@ -875,6 +875,53 @@
                     {% endif %}
                 </div>
 
+                <!-- Monthly Reports -->
+                {% if my_monthly_reports %}
+                <div class="premium-card p-3 mb-3">
+                    <h3 class="section-title mb-3" style="color: var(--bold);">
+                        <i class="fas fa-chart-bar me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Ripoti za Kila Mwezi{% else %}Monthly Reports{% endif %}
+                    </h3>
+                    {% for item in my_monthly_reports %}
+                    {% with report=item.report entry=item.entry %}
+                    <a href="{% url 'student_monthly_report' report.id %}" class="d-block text-decoration-none mb-2">
+                    <div class="premium-card p-3" style="border-left:4px solid
+                        {% if entry %}
+                            {% if entry.hali == 'vizuri' %}var(--success)
+                            {% elif entry.hali == 'wastani' %}var(--warning)
+                            {% else %}var(--danger){% endif %}
+                        {% else %}var(--border){% endif %}; transition:.15s;"
+                        onmouseover="this.style.borderColor='var(--bold)'"
+                        onmouseout="this.style.borderColor='{% if entry %}{% if entry.hali == "vizuri" %}var(--success){% elif entry.hali == "wastani" %}var(--warning){% else %}var(--danger){% endif %}{% else %}var(--border){% endif %}'">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                            <div>
+                                <span class="fw-bold small-text" style="color:var(--text-dark);">
+                                    <i class="fas fa-calendar-alt me-1" style="color:var(--medium);"></i>
+                                    {{ report.get_month_display }} {{ report.year }}
+                                </span>
+                                <div class="small-text" style="color:var(--text-gray);font-size:11px;">
+                                    Wilaya ya {{ report.district.name }}
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                {% if entry %}
+                                <span class="badge {% if entry.hali == 'vizuri' %}bg-success{% elif entry.hali == 'wastani' %}bg-warning text-dark{% else %}bg-danger{% endif %} small-text">
+                                    {% if entry.hali == 'vizuri' %}Vizuri{% elif entry.hali == 'wastani' %}Wastani{% else %}Nyuma{% endif %}
+                                </span>
+                                <div class="small-text" style="color:var(--text-gray);font-size:11px;margin-top:2px;">
+                                    Siku: {{ entry.siku }} &bull; Nafasi: {{ entry.nafasi }}
+                                </div>
+                                {% else %}
+                                <span class="badge bg-secondary small-text">Hakuna data</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    </a>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
                 <!-- Board Comments -->
                 {% if board_comments %}
                 <div class="premium-card p-3 mb-3">
