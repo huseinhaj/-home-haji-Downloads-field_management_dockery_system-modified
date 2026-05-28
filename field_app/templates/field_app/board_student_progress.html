@@ -484,7 +484,7 @@
         {% for stage in lp.lesson_development %}
         <div class="lp-stage">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
-            <span class="lp-stage-title" style="margin:0;">{{ stage.stage|default:stage.phase|default:forloop.counter }}</span>
+            <span class="lp-stage-title" style="margin:0;">{{ stage.stage|default:forloop.counter }}</span>
             {% if stage.time %}<span class="badge b-gray">{{ stage.time }}</span>{% endif %}
           </div>
           <div class="lp-stage-cols">
