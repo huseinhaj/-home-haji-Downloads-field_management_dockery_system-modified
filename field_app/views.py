@@ -3866,12 +3866,15 @@ def assessor_password_reset(request):
                 f'Angalia inbox na spam folder yako.'
             )
         except Exception as email_error:
-            # Email failed — but the new password is already saved so the user
-            # can still log in if an admin tells them the password manually.
+            # Email failed — password is saved, show it on screen so admin can relay it.
+            import logging
+            logging.getLogger('django').error(
+                f'Assessor password reset email failed for {assessor.email}: {email_error}'
+            )
             messages.warning(request,
                 f'Nywila mpya imewekwa lakini email imeshindwa kutumwa kwa {assessor.email}. '
-                f'Hitilafu: {str(email_error)[:120]}. '
-                f'Wasiliana na msimamizi akupe nywila yako mpya.'
+                f'Nywila mpya ya muda ni: {temp_password} — toa kwa mkono kwa {assessor.full_name}. '
+                f'(Hitilafu: {str(email_error)[:100]})'
             )
 
         return redirect('assessor_login')
