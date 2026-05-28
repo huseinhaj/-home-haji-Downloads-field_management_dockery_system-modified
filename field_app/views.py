@@ -3753,128 +3753,129 @@ def manage_regions(request):
 
 def assessor_password_reset(request):
     """Reset password for assessor - sends new temporary password via email"""
-    
+
     if request.method == 'POST':
         email = request.POST.get('email', '').strip().lower()
-        
+
         if not email:
             messages.error(request, 'Please enter your email address.')
             return redirect('assessor_login')
-        
-        # Find assessor with this email
+
         try:
             assessor = Assessor.objects.get(email__iexact=email)
-            
-            if not assessor.user:
-                messages.error(request, 
-                    'Your account is not fully set up. Please contact the administrator.'
-                )
-                return redirect('assessor_login')
-            
-            # Generate new random password
-            temp_password = generate_random_password()
-            
-            # Update user password
-            assessor.user.set_password(temp_password)
-            assessor.user.save()
-            
-            # Send email with new password
-            login_url = request.build_absolute_uri(reverse('assessor_login'))
-            
-            # HTML Email content
-            html_content = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Password Reset - Field Placement System</title>
-                <style>
-                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                    .container {{ max-width: 500px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: #2c3e50; color: white; padding: 20px; text-align: center; }}
-                    .content {{ padding: 20px; }}
-                    .password {{ background: #fef9e6; padding: 15px; border-left: 4px solid #f59e0b; margin: 20px 0; }}
-                    .footer {{ text-align: center; padding: 20px; font-size: 12px; color: #666; }}
-                    code {{ background: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-size: 16px; }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h2>🔐 Password Reset</h2>
-                        <p>Mfumo wa Ufuatiliaji wa Walimu Wanafunzi (IMS)</p>
-                    </div>
-                    <div class="content">
-                        <p>Dear <strong>{assessor.full_name}</strong>,</p>
-                        <p>You requested to reset your password. Here are your new login credentials:</p>
-                        <div class="password">
-                            <p><strong>📧 Email:</strong> {assessor.email}</p>
-                            <p><strong>🔑 New Password:</strong> <code>{temp_password}</code></p>
-                        </div>
-                        <p><strong>⚠️ Important:</strong> Please change this password immediately after logging in.</p>
-                        <p style="margin-top: 20px;">
-                            <a href="{login_url}" style="background: #2c3e50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                                Login to Dashboard
-                            </a>
-                        </p>
-                    </div>
-                    <div class="footer">
-                        <p>This is an automated message. Please do not reply.</p>
-                        <p>© {timezone.now().year} Wizara ya Elimu, Sayansi na Teknolojia — IMS v2.1.0</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
-            
-            text_content = f"""
-            PASSWORD RESET - Field Placement System
-            {'='*50}
-            
-            Dear {assessor.full_name},
-            
-            You requested to reset your password.
-            
-            YOUR NEW LOGIN CREDENTIALS:
-            Email: {assessor.email}
-            Password: {temp_password}
-            
-            Login URL: {login_url}
-            
-            IMPORTANT: Change this password immediately after logging in.
-            
-            Best regards,
-            Mfumo wa Ufuatiliaji wa Walimu Wanafunzi (IMS)
-            Wizara ya Elimu, Sayansi na Teknolojia
-            """
-            
-            try:
-                send_mail(
-                    subject='🔐 Badilisha Nywila - Field Placement System',
-                    message=text_content,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[assessor.email],
-                    html_message=html_content,
-                    fail_silently=False,
-                )
-                messages.success(request,
-                    f'✅ Nywila mpya ya muda imetumwa kwa {assessor.email}. '
-                    f'Angalia inbox na spam folder yako.'
-                )
-            except Exception as email_error:
-                # Email ilishindwa — rudisha password ya zamani ili assessor asikwame
-                assessor.user.set_password(None)
-                assessor.user.save()
-                messages.error(request,
-                    f'❌ Imeshindwa kutuma email kwa {assessor.email}. '
-                    f'Wasiliana na msimamizi. ({str(email_error)[:80]})'
-                )
-            return redirect('assessor_login')
-
         except Assessor.DoesNotExist:
             messages.error(request, f'Hakuna assessor aliyepatikana na email: {email}')
             return redirect('assessor_login')
-    
+
+        # If assessor has no user account, create one automatically
+        if not assessor.user:
+            try:
+                User = get_user_model()
+                existing_user = User.objects.filter(email__iexact=email).first()
+                if existing_user:
+                    assessor.user = existing_user
+                else:
+                    new_user = User.objects.create_user(
+                        email=email,
+                        password=None,
+                        is_staff=False,
+                        is_active=True,
+                    )
+                    assessor.user = new_user
+                assessor.save()
+            except Exception as create_err:
+                messages.error(request,
+                    f'Imeshindwa kuunda akaunti: {str(create_err)[:100]}. '
+                    f'Wasiliana na msimamizi.'
+                )
+                return redirect('assessor_login')
+
+        # Generate new temp password and save it
+        temp_password = generate_random_password()
+        assessor.user.set_password(temp_password)
+        assessor.user.save()
+
+        # Send email
+        login_url = request.build_absolute_uri(reverse('assessor_login'))
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Password Reset - Field Placement System</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 500px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: #2c3e50; color: white; padding: 20px; text-align: center; }}
+                .content {{ padding: 20px; }}
+                .password {{ background: #fef9e6; padding: 15px; border-left: 4px solid #f59e0b; margin: 20px 0; }}
+                .footer {{ text-align: center; padding: 20px; font-size: 12px; color: #666; }}
+                code {{ background: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-size: 16px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>🔐 Password Reset</h2>
+                    <p>Mfumo wa Ufuatiliaji wa Walimu Wanafunzi (IMS)</p>
+                </div>
+                <div class="content">
+                    <p>Dear <strong>{assessor.full_name}</strong>,</p>
+                    <p>You requested to reset your password. Here are your new login credentials:</p>
+                    <div class="password">
+                        <p><strong>📧 Email:</strong> {assessor.email}</p>
+                        <p><strong>🔑 New Password:</strong> <code>{temp_password}</code></p>
+                    </div>
+                    <p><strong>⚠️ Important:</strong> Please change this password immediately after logging in.</p>
+                    <p style="margin-top: 20px;">
+                        <a href="{login_url}" style="background: #2c3e50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                            Login to Dashboard
+                        </a>
+                    </p>
+                </div>
+                <div class="footer">
+                    <p>This is an automated message. Please do not reply.</p>
+                    <p>© {timezone.now().year} Wizara ya Elimu, Sayansi na Teknolojia — IMS v2.1.0</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        text_content = (
+            f"PASSWORD RESET - Field Placement System\n"
+            f"{'='*50}\n\n"
+            f"Dear {assessor.full_name},\n\n"
+            f"Your new login credentials:\n"
+            f"Email: {assessor.email}\n"
+            f"Password: {temp_password}\n\n"
+            f"Login URL: {login_url}\n\n"
+            f"IMPORTANT: Change this password immediately after logging in.\n"
+        )
+
+        try:
+            send_mail(
+                subject='🔐 Badilisha Nywila - Field Placement System',
+                message=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[assessor.email],
+                html_message=html_content,
+                fail_silently=False,
+            )
+            messages.success(request,
+                f'✅ Nywila mpya ya muda imetumwa kwa {assessor.email}. '
+                f'Angalia inbox na spam folder yako.'
+            )
+        except Exception as email_error:
+            # Email failed — but the new password is already saved so the user
+            # can still log in if an admin tells them the password manually.
+            messages.warning(request,
+                f'Nywila mpya imewekwa lakini email imeshindwa kutumwa kwa {assessor.email}. '
+                f'Hitilafu: {str(email_error)[:120]}. '
+                f'Wasiliana na msimamizi akupe nywila yako mpya.'
+            )
+
+        return redirect('assessor_login')
+
     # GET request - redirect to login page
     return redirect('assessor_login')
 
