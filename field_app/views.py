@@ -5329,7 +5329,8 @@ def board_deo_report(request, district_id):
         return redirect('board_login')
     district = get_object_or_404(District, id=district_id)
 
-    HOLIDAY_MONTHS = {5, 8, 12}
+    # HOLIDAY_MONTHS = {5, 8, 12}  # TODO: restore after testing
+    HOLIDAY_MONTHS = set()  # Temporarily disabled for testing
     now = timezone.now()
     selected_month = int(request.GET.get('month', now.month))
     selected_year = int(request.GET.get('year', now.year))
@@ -5339,9 +5340,10 @@ def board_deo_report(request, district_id):
     ).first()
 
     if request.method == 'POST' and 'generate' in request.POST:
-        if selected_month in HOLIDAY_MONTHS:
-            messages.error(request, 'Ripoti haizalishwi kwa miezi ya likizo (Mei, Agosti, Desemba).')
-            return redirect(request.path + f'?month={selected_month}&year={selected_year}')
+        # Holiday check disabled for testing — restore when ready:
+        # if selected_month in HOLIDAY_MONTHS:
+        #     messages.error(request, 'Ripoti haizalishwi kwa miezi ya likizo (Mei, Agosti, Desemba).')
+        #     return redirect(request.path + f'?month={selected_month}&year={selected_year}')
 
         entries = LogbookEntry.objects.filter(
             date__month=selected_month,
@@ -5449,9 +5451,7 @@ Panga walimu kwa secondary na primary tofauti. Mpanga kutoka mwenye mada nyingi 
         existing = report
         messages.success(request, 'Ripoti imezalishwa kwa mafanikio.')
 
-    available_months = [
-        (m, n) for m, n in MonthlyReport.MONTH_CHOICES if m not in HOLIDAY_MONTHS
-    ]
+    available_months = list(MonthlyReport.MONTH_CHOICES)  # All months (holiday filter disabled)
     past_reports = MonthlyReport.objects.filter(district=district).order_by('-year', '-month')
 
     available_years = list(range(2024, 2046))
