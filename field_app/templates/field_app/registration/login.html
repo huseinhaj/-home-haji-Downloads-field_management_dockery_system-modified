@@ -1,480 +1,411 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{% if LANG == 'sw' %}sw{% else %}en{% endif %}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="google-site-verification" content="vgtcw2d_toovh2Wsrh0nXvzIhNqPAaG_cmKHAvW48ZM" />
-    <title>IMS | Internship Management System - Teacher Colleges in Tanzania</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --bold: #0A2B5E;
-            --medium: #C8900A;
-            --light: #EEF1F6;
-            --white: #FFFFFF;
-            --text-dark: #1A1A2E;
-            --text-gray: #4A5568;
-            --border: #CBD5E0;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google-site-verification" content="vgtcw2d_toovh2Wsrh0nXvzIhNqPAaG_cmKHAvW48ZM" />
+<title>{% if LANG == 'sw' %}Ingia — IMS | Mfumo wa Usimamizi wa Mafunzo{% else %}Sign In — IMS | Internship Management System{% endif %}</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+:root {
+  --navy:    #0A2B5E;
+  --navy-dk: #071E42;
+  --gold:    #C8900A;
+  --gold-lt: #E8A81A;
+  --light:   #EEF1F6;
+  --white:   #FFFFFF;
+  --text:    #0F1923;
+  --muted:   #4A5568;
+  --border:  #C4CEDB;
+  --danger:  #DC2626;
+  --success: #0EA271;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+  font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  background:var(--light);
+  color:var(--text);
+}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+/* ── LAYOUT ── */
+.page{display:flex;min-height:100vh;flex-direction:column;}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--light);
-            min-height: 100vh;
-        }
+/* ── TOP STRIP ── */
+.top-strip{
+  background:var(--navy-dk);
+  border-bottom:2px solid var(--gold);
+  padding:5px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.top-strip-text{font-size:10.5px;color:rgba(255,255,255,.7);letter-spacing:1.8px;text-transform:uppercase;font-weight:600;}
+.lang-pills{display:flex;gap:4px;}
+.lang-pill{
+  font-size:10.5px;font-weight:700;text-decoration:none;padding:2px 9px;
+  border-radius:2px;transition:all .13s;letter-spacing:.3px;
+}
+.lang-pill.on{background:var(--gold);color:var(--white);}
+.lang-pill.off{color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);}
+.lang-pill.off:hover{color:var(--white);}
 
-        .pg-wrap {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+/* ── MAIN SPLIT ── */
+.split{flex:1;display:flex;}
 
-        /* ── TOP NOTICE BAR ── */
-        .top-bar {
-            background: var(--bold);
-            padding: 5px 0;
-            text-align: center;
-            font-size: 11px;
-            color: rgba(255,255,255,0.85);
-            letter-spacing: 1.5px;
-            font-weight: 600;
-            text-transform: uppercase;
-            border-bottom: 2px solid var(--medium);
-        }
+/* ── LEFT PANEL ── */
+.left-panel{
+  width:42%;
+  background:linear-gradient(160deg,var(--navy) 0%,var(--navy-dk) 100%);
+  border-right:4px solid var(--gold);
+  display:flex;flex-direction:column;
+  padding:40px 44px;
+  position:relative;
+  overflow:hidden;
+}
+/* subtle grid pattern */
+.left-panel::before{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle,rgba(200,144,10,.12) 1px,transparent 1px);
+  background-size:28px 28px;
+  pointer-events:none;
+}
+.lp-top{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:36px;position:relative;}
+.coat-wrap{
+  width:86px;height:86px;
+  background:rgba(200,144,10,.12);
+  border:2px solid rgba(200,144,10,.35);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:20px;
+}
+.coat-wrap img{width:62px;height:62px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));}
+.ministry-tag{font-size:9.5px;color:rgba(255,255,255,.5);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.ministry-name{font-size:17px;color:var(--white);font-weight:800;letter-spacing:-.2px;line-height:1.3;}
+.ministry-sub{font-size:12px;color:var(--gold);font-weight:500;margin-top:4px;}
 
-        /* ── GOVERNMENT HEADER (logo LEFT, text CENTER) ── */
-        .gov-header {
-            background: var(--bold);
-            padding: 14px 40px;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 3px solid var(--medium);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-            position: relative;
-        }
+.lp-divider{width:48px;height:3px;background:var(--gold);border-radius:1px;margin:0 auto 28px;}
 
-        .coat-of-arms {
-            width: 72px;
-            height: 72px;
-            flex-shrink: 0;
-        }
+.system-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(200,144,10,.15);
+  border:1px solid rgba(200,144,10,.3);
+  border-radius:3px;padding:5px 14px;
+  font-size:11px;font-weight:700;color:var(--gold);
+  letter-spacing:.4px;text-transform:uppercase;
+  margin-bottom:28px;
+}
 
-        .coat-of-arms img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
-        }
+.features{list-style:none;text-align:left;width:100%;}
+.features li{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:11px 0;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  color:rgba(255,255,255,.8);
+  font-size:13px;
+}
+.features li:last-child{border-bottom:none;}
+.feat-ico{
+  width:34px;height:34px;flex-shrink:0;
+  background:rgba(200,144,10,.14);
+  border:1px solid rgba(200,144,10,.25);
+  border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--gold);font-size:14px;margin-top:1px;
+}
+.feat-text strong{display:block;color:var(--white);font-size:13px;font-weight:700;margin-bottom:1px;}
+.feat-text span{font-size:11.5px;color:rgba(255,255,255,.55);}
 
-        .gov-titles {
-            line-height: 1.4;
-            text-align: center;
-            flex: 1;
-        }
+.lp-footer{margin-top:auto;padding-top:24px;position:relative;}
+.lp-footer-text{font-size:10.5px;color:rgba(255,255,255,.35);text-align:center;letter-spacing:.3px;}
+.lp-ver{font-size:10px;color:rgba(200,144,10,.6);font-weight:700;text-align:center;margin-top:4px;}
 
-        .gov-titles .t1 {
-            font-size: 11px;
-            color: rgba(255,255,255,0.75);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            font-weight: 500;
-        }
+/* ── RIGHT PANEL ── */
+.right-panel{
+  flex:1;
+  display:flex;align-items:center;justify-content:center;
+  padding:40px 48px;
+  background:var(--light);
+}
+.form-card{
+  width:100%;max-width:420px;
+  background:var(--white);
+  border:1px solid rgba(10,43,94,.14);
+  border-radius:6px;
+  box-shadow:0 2px 6px rgba(0,0,0,.07),0 8px 28px rgba(10,43,94,.1);
+  overflow:hidden;
+}
+.card-head{
+  background:var(--navy);
+  border-bottom:3px solid var(--gold);
+  padding:18px 24px;
+  display:flex;align-items:center;gap:12px;
+}
+.head-ico{
+  width:44px;height:44px;flex-shrink:0;
+  background:rgba(200,144,10,.2);
+  border:1px solid rgba(200,144,10,.35);
+  border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--gold);font-size:18px;
+}
+.head-info h2{font-size:16px;color:var(--white);font-weight:800;margin:0;}
+.head-info p{font-size:11.5px;color:rgba(255,255,255,.65);margin:2px 0 0;}
 
-        .gov-titles .t2 {
-            font-size: 19px;
-            color: var(--white);
-            font-weight: 700;
-            letter-spacing: 0.3px;
-            margin: 3px 0 2px;
-        }
+.card-body{padding:26px 24px 20px;}
 
-        .gov-titles .t3 {
-            font-size: 12.5px;
-            color: var(--medium);
-            font-weight: 500;
-            letter-spacing: 0.2px;
-        }
+.field-grp{margin-bottom:16px;}
+.field-lbl{display:block;font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:.2px;text-transform:uppercase;}
+.inp-wrap{position:relative;}
+.inp-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#90A0B7;font-size:13px;pointer-events:none;}
+.field-inp{
+  width:100%;padding:10px 11px 10px 34px;
+  font-size:13.5px;color:var(--text);
+  border:1.5px solid var(--border);
+  border-radius:4px;background:#FAFBFD;
+  font-family:inherit;outline:none;
+  transition:border-color .13s,box-shadow .13s;
+}
+.field-inp:focus{border-color:var(--navy);background:var(--white);box-shadow:0 0 0 3px rgba(10,43,94,.09);}
+.field-inp::placeholder{color:#B0BCCF;font-size:12.5px;}
+.eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#90A0B7;font-size:14px;padding:2px;}
+.eye-btn:hover{color:var(--navy);}
 
-        /* Empty div for spacing to balance the header (logo left, text center) */
-        .gov-spacer {
-            width: 72px;
-            visibility: hidden;
-        }
+.row2{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.chk-row{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer;}
+.chk-row input{accent-color:var(--navy);width:14px;height:14px;}
+.forgot-link{font-size:12.5px;font-weight:700;color:var(--navy);text-decoration:none;}
+.forgot-link:hover{color:var(--gold);}
 
-        /* ── NAV STRIPE ── */
-        .nav-stripe {
-            background: var(--white);
-            padding: 0 40px;
-            display: flex;
-            align-items: center;
-            border-bottom: 2px solid var(--border);
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-        }
+.btn-signin{
+  width:100%;padding:12px;
+  background:var(--navy);color:var(--white);
+  border:none;border-radius:4px;
+  font-size:13.5px;font-weight:800;cursor:pointer;
+  letter-spacing:.8px;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  font-family:inherit;
+  transition:background .13s,box-shadow .13s;
+}
+.btn-signin:hover{background:var(--navy-dk);box-shadow:0 4px 14px rgba(10,43,94,.28);}
+.btn-signin:active{opacity:.92;}
 
-        .nav-item {
-            font-size: 13px;
-            color: var(--text-gray);
-            padding: 11px 18px;
-            border-right: 1px solid #E2E8F0;
-            cursor: pointer;
-            transition: all 0.15s;
-            font-weight: 500;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-        }
+.divider{display:flex;align-items:center;gap:10px;margin:16px 0;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#E2E8F0;}
+.divider span{font-size:10.5px;color:#A0AEC0;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
 
-        .nav-item:first-child { border-left: 1px solid #E2E8F0; }
+.reg-note{text-align:center;font-size:12.5px;color:var(--muted);margin-top:14px;}
+.reg-note a{color:var(--navy);font-weight:700;text-decoration:none;}
+.reg-note a:hover{color:var(--gold);}
 
-        .nav-item.active {
-            background: var(--bold);
-            color: var(--white);
-            font-weight: 600;
-        }
+.card-foot{
+  background:#F7F9FC;border-top:1px solid #E2E8F0;
+  padding:10px 20px;display:flex;align-items:center;gap:7px;
+}
+.card-foot i{font-size:12px;color:var(--success);}
+.card-foot span{font-size:10.5px;color:#3A7A55;}
 
-        .nav-item:hover:not(.active) {
-            background: #EBF0FA;
-            color: var(--bold);
-        }
+/* ── ALERTS ── */
+.alert{padding:10px 13px;border-radius:4px;font-size:12.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-weight:500;}
+.alert-err{background:#FEE2E2;color:#7F1D1D;border-left:4px solid var(--danger);}
+.alert-ok {background:#D1FAE5;color:#064E3B;border-left:4px solid var(--success);}
+.alert-warn{background:#FEF3C7;color:#78350F;border-left:4px solid #D97706;}
 
-        /* ── MAIN CONTENT (CENTERED LOGIN ONLY) ── */
-        .main-area {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 30px;
-            max-width: 500px;
-            margin: 0 auto;
-            width: 100%;
-        }
+/* ── FOOTER ── */
+.page-foot{
+  background:var(--navy-dk);
+  border-top:3px solid var(--gold);
+  padding:10px 24px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;
+  flex-shrink:0;
+}
+.page-foot p{font-size:10.5px;color:rgba(255,255,255,.5);}
+.page-foot .ver{font-size:10.5px;color:var(--gold);font-weight:700;}
 
-        /* ── LOGIN CARD ── */
-        .login-panel {
-            background: var(--white);
-            border-radius: 8px;
-            width: 100%;
-            border: 1px solid var(--border);
-            overflow: hidden;
-            box-shadow: 0 4px 16px rgba(10,43,94,0.10);
-        }
-
-        .panel-head {
-            background: var(--bold);
-            padding: 16px 22px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 3px solid var(--medium);
-        }
-
-        .panel-head-icon {
-            width: 42px; height: 42px;
-            background: var(--medium);
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        .panel-head-icon i { font-size: 18px; color: var(--white); }
-        .panel-head h2 { font-size: 17px; color: var(--white); font-weight: 700; }
-        .panel-head p { font-size: 11.5px; color: rgba(255,255,255,0.75); margin-top: 2px; }
-
-        .panel-body { padding: 26px 26px 22px; }
-
-        /* form fields */
-        .field-label {
-            font-size: 12.5px;
-            font-weight: 600;
-            color: var(--text-dark);
-            margin-bottom: 6px;
-            display: block;
-        }
-
-        .field-wrap { margin-bottom: 18px; }
-
-        .input-row { position: relative; display: flex; align-items: center; }
-
-        .inp-icon {
-            position: absolute; left: 11px;
-            display: flex; align-items: center; pointer-events: none;
-        }
-
-        .inp-icon i { font-size: 13px; color: #90A0B7; }
-
-        .field-input {
-            width: 100%;
-            padding: 11px 11px 11px 35px;
-            font-size: 13.5px;
-            color: var(--text-dark);
-            border: 1.5px solid var(--border);
-            border-radius: 6px;
-            background: #FAFBFD;
-            font-family: inherit;
-            outline: none;
-            transition: all 0.15s;
-        }
-
-        .field-input:focus {
-            border-color: var(--bold);
-            background: var(--white);
-            box-shadow: 0 0 0 3px rgba(10,43,94,0.09);
-        }
-
-        .field-input::placeholder { color: #B0BCCF; font-size: 12.5px; }
-
-        .toggle-btn {
-            position: absolute; right: 11px;
-            background: none; border: none; cursor: pointer;
-            color: #90A0B7; font-size: 14px;
-        }
-
-        .toggle-btn:hover { color: var(--bold); }
-
-        .remember-row {
-            display: flex; align-items: center;
-            justify-content: space-between; margin-bottom: 20px;
-        }
-
-        .chk-label {
-            display: flex; align-items: center; gap: 7px;
-            font-size: 12.5px; color: var(--text-gray); cursor: pointer;
-        }
-
-        .chk-label input { accent-color: var(--bold); width: 14px; height: 14px; }
-
-        .forgot-a {
-            font-size: 12.5px; color: var(--bold);
-            text-decoration: none; font-weight: 600;
-        }
-
-        .forgot-a:hover { text-decoration: underline; }
-
-        .btn-signin {
-            width: 100%; padding: 12px;
-            background: var(--bold); color: var(--white);
-            border: none; border-radius: 6px;
-            font-size: 14px; font-weight: 700; cursor: pointer;
-            letter-spacing: 0.8px;
-            display: flex; align-items: center; justify-content: center; gap: 9px;
-            font-family: inherit; transition: all 0.2s;
-        }
-
-        .btn-signin:hover { background: #0C3570; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,43,94,0.25); }
-
-        .divider-line {
-            display: flex; align-items: center; gap: 10px; margin: 18px 0;
-        }
-
-        .divider-line span { font-size: 11px; color: #A0AEC0; font-weight: 600; }
-        .divider-line::before, .divider-line::after { content: ''; flex: 1; height: 1px; background: #E2E8F0; }
-
-        .btn-admin {
-            width: 100%; padding: 10px;
-            background: transparent; color: var(--bold);
-            border: 1.5px solid var(--border); border-radius: 6px;
-            font-size: 13px; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 9px;
-            font-family: inherit; transition: all 0.2s; text-decoration: none;
-        }
-
-        .btn-admin:hover { background: #EBF0FA; border-color: var(--bold); }
-
-        .register-note {
-            text-align: center; margin-top: 16px;
-            font-size: 12.5px; color: var(--text-gray);
-        }
-
-        .register-note a { color: var(--bold); font-weight: 700; text-decoration: none; }
-        .register-note a:hover { text-decoration: underline; }
-
-        .panel-foot {
-            background: #F7F9FC; border-top: 1px solid #E2E8F0;
-            padding: 11px 22px; display: flex; align-items: center; gap: 8px;
-        }
-
-        .panel-foot i { font-size: 12px; color: #2E7D32; }
-        .panel-foot span { font-size: 11px; color: #2E7D32; }
-
-        /* messages */
-        .error-message, .success-message {
-            padding: 10px 13px; border-radius: 6px;
-            font-size: 12.5px; margin-bottom: 16px;
-            display: flex; align-items: center; gap: 8px;
-        }
-
-        .error-message { background: #FEE2E2; color: #B91C1C; border-left: 3px solid #DC2626; }
-        .success-message { background: #D1FAE5; color: #065F46; border-left: 3px solid #059669; }
-
-        /* ── FOOTER ── */
-        .gov-footer {
-            background: var(--bold);
-            padding: 11px 40px;
-            display: flex; align-items: center; justify-content: space-between;
-            border-top: 3px solid var(--medium);
-            flex-wrap: wrap; gap: 8px;
-        }
-
-        .gov-footer p { font-size: 11px; color: rgba(255,255,255,0.65); }
-        .gov-footer .ver { font-size: 11px; color: var(--medium); font-weight: 700; }
-
-        /* ── RESPONSIVE ── */
-        @media (max-width: 768px) {
-            .gov-header { padding: 12px 20px; gap: 14px; }
-            .coat-of-arms { width: 54px; height: 54px; }
-            .gov-spacer { width: 54px; }
-            .gov-titles .t2 { font-size: 15px; }
-            .gov-titles .t3 { font-size: 11px; }
-            .nav-stripe { padding: 0 15px; overflow-x: auto; }
-            .nav-item { font-size: 12px; padding: 9px 13px; white-space: nowrap; }
-            .main-area { padding: 25px 16px; }
-        }
-
-        @media (max-width: 480px) {
-            .panel-body { padding: 18px; }
-            .gov-header {
-                flex-direction: column;
-                text-align: center;
-            }
-            .gov-titles {
-                margin-top: 10px;
-            }
-            .gov-spacer {
-                display: none;
-            }
-        }
-    </style>
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .left-panel{width:36%;}
+  .right-panel{padding:28px 28px;}
+}
+@media(max-width:700px){
+  .split{flex-direction:column;}
+  .left-panel{width:100%;padding:28px 24px;border-right:none;border-bottom:4px solid var(--gold);}
+  .lp-top{flex-direction:row;text-align:left;gap:16px;}
+  .coat-wrap{width:56px;height:56px;flex-shrink:0;margin-bottom:0;}
+  .coat-wrap img{width:40px;height:40px;}
+  .ministry-name{font-size:14px;}
+  .features{display:none;}
+  .right-panel{padding:24px 20px;}
+  .form-card{max-width:100%;}
+}
+</style>
 </head>
 <body>
-<div class="pg-wrap">
+<div class="page">
 
-    <div class="top-bar">
-        <i class="fas fa-globe" style="margin-right:6px;"></i>
-        United Republic of Tanzania &nbsp;|&nbsp; Jamhuri ya Muungano wa Tanzania
-    </div>
-
-    <!-- GOVERNMENT HEADER — logo LEFT, text CENTER -->
-    <div class="gov-header">
-        <div class="coat-of-arms">
-            {% load static %}
-            <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Tanzania Coat of Arms">
-        </div>
-        <div class="gov-titles">
-            <div class="t1">United Republic of Tanzania — Serikali ya Jamhuri ya Muungano</div>
-            <div class="t2">{% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia{% else %}Ministry of Education, Science and Technology{% endif %}</div>
-            <div class="t3">Internship Management System (IMS) &mdash; {% if LANG == 'sw' %}Lango la Mwanafunzi{% else %}Student Placement Portal{% endif %}</div>
-        </div>
-        <!-- Language toggle -->
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:60px;">
-            <a href="/set-language/?lang=en&amp;next={{ request.path }}"
-               style="color:{% if LANG == 'en' %}#C8900A{% else %}rgba(255,255,255,0.5){% endif %};font-size:12px;font-weight:700;text-decoration:none;">EN</a>
-            <a href="/set-language/?lang=sw&amp;next={{ request.path }}"
-               style="color:{% if LANG == 'sw' %}#C8900A{% else %}rgba(255,255,255,0.5){% endif %};font-size:12px;font-weight:700;text-decoration:none;">SW</a>
-        </div>
-    </div>
-
-    <!-- NAV -->
-    <div class="nav-stripe">
-        <a class="nav-item active" href="#"><i class="fas fa-graduation-cap"></i> Student Portal</a>
-        <a class="nav-item" href="#"><i class="fas fa-info-circle"></i> About IMS</a>
-        <a class="nav-item" href="#"><i class="fas fa-question-circle"></i> Help Center</a>
-        <a class="nav-item" href="#"><i class="fas fa-envelope"></i> Contact</a>
-    </div>
-
-    <!-- MAIN CONTENT - CENTERED LOGIN ONLY -->
-    <div class="main-area">
-        <!-- LOGIN PANEL -->
-        <div class="login-panel">
-            <div class="panel-head">
-                <div class="panel-head-icon"><i class="fas fa-user-lock"></i></div>
-                <div>
-                    <h2>{% if LANG == 'sw' %}Ingia - Mwanafunzi{% else %}Student Login{% endif %}</h2>
-                    <p>{% if LANG == 'sw' %}Fikia lango lako la mafunzo ya vitendo{% else %}Access your field placement portal{% endif %}</p>
-                </div>
-            </div>
-
-            <div class="panel-body">
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}">
-                            <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                {% endif %}
-
-                <form method="post" action="{% url 'login' %}">
-                    {% csrf_token %}
-
-                    <div class="field-wrap">
-                        <label class="field-label">{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %}</label>
-                        <div class="input-row">
-                            <div class="inp-icon"><i class="fas fa-id-card"></i></div>
-                            <input type="text" name="username" id="username" class="field-input"
-                                   placeholder="{% if LANG == 'sw' %}mfano: jina@chuo.ac.tz{% else %}e.g. email@college.ac.tz{% endif %}" required>
-                        </div>
-                    </div>
-
-                    <div class="field-wrap">
-                        <label class="field-label">{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %}</label>
-                        <div class="input-row">
-                            <div class="inp-icon"><i class="fas fa-lock"></i></div>
-                            <input type="password" name="password" id="password" class="field-input"
-                                   placeholder="{% if LANG == 'sw' %}Weka nywila yako{% else %}Enter your password{% endif %}" style="padding-right:38px;" required>
-                            <button type="button" class="toggle-btn" onclick="togglePwd()">
-                                <i class="fas fa-eye" id="eyeIco"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="remember-row">
-                        <label class="chk-label">
-                            <input type="checkbox" name="remember"> {% if LANG == 'sw' %}Nikumbuke{% else %}Remember Me{% endif %}
-                        </label>
-                        <a href="{% url 'password_reset' %}" class="forgot-a">{% if LANG == 'sw' %}Umesahau Nywila?{% else %}Forgot Password?{% endif %}</a>
-                    </div>
-
-                    <button type="submit" class="btn-signin">
-                        <i class="fas fa-sign-in-alt"></i> {% if LANG == 'sw' %}INGIA{% else %}SIGN IN{% endif %}
-                    </button>
-                </form>
-
-                <div class="register-note">
-                    {% if LANG == 'sw' %}Mwanafunzi mpya? <a href="{% url 'register' %}">Fungua akaunti &rarr;</a>
-                    {% else %}New student? <a href="{% url 'register' %}">Create account &rarr;</a>{% endif %}
-                </div>
-            </div>
-
-            <div class="panel-foot">
-                <i class="fas fa-shield-alt"></i>
-                <span>{% if LANG == 'sw' %}Imelindwa na Viwango vya IT vya Serikali ya Tanzania{% else %}Secured by Tanzania Government IT Standards &mdash; TCRA Compliant{% endif %}</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="gov-footer">
-    <p>&copy; {% now "Y" %} Ministry of Education, Science and Technology &mdash; United Republic of Tanzania. All rights reserved.</p>
-    <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0</span>
+<!-- TOP STRIP -->
+<div class="top-strip">
+  <span class="top-strip-text"><i class="fas fa-globe" style="margin-right:5px;"></i>United Republic of Tanzania &mdash; Jamhuri ya Muungano wa Tanzania</span>
+  <div class="lang-pills">
+    <a href="/set-language/?lang=en&next={{ request.path }}" class="lang-pill {% if LANG == 'en' %}on{% else %}off{% endif %}">EN</a>
+    <a href="/set-language/?lang=sw&next={{ request.path }}" class="lang-pill {% if LANG == 'sw' %}on{% else %}off{% endif %}">SW</a>
+  </div>
 </div>
+
+<div class="split">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="lp-top">
+      <div class="coat-wrap">
+        {% load static %}
+        <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Coat of Arms">
+      </div>
+      <div>
+        <div class="ministry-tag">United Republic of Tanzania</div>
+        <div class="ministry-name">{% if LANG == 'sw' %}Wizara ya Elimu,<br>Sayansi na Teknolojia{% else %}Ministry of Education,<br>Science & Technology{% endif %}</div>
+        <div class="ministry-sub">Internship Management System</div>
+      </div>
+    </div>
+
+    <div class="lp-divider"></div>
+
+    <div class="system-badge">
+      <i class="fas fa-graduation-cap"></i>
+      {% if LANG == 'sw' %}Mfumo Rasmi wa Mafunzo ya Vitendo{% else %}Official Teaching Practice Platform{% endif %}
+    </div>
+
+    <ul class="features">
+      <li>
+        <div class="feat-ico"><i class="fas fa-map-marker-alt"></i></div>
+        <div class="feat-text">
+          <strong>{% if LANG == 'sw' %}Kupanga Shule{% else %}School Placement{% endif %}</strong>
+          <span>{% if LANG == 'sw' %}Chagua shule yako kwa urahisi{% else %}Select your placement school easily{% endif %}</span>
+        </div>
+      </li>
+      <li>
+        <div class="feat-ico"><i class="fas fa-book-open"></i></div>
+        <div class="feat-text">
+          <strong>{% if LANG == 'sw' %}Logbook ya Kidijitali{% else %}Digital Logbook{% endif %}</strong>
+          <span>{% if LANG == 'sw' %}Rekodi kazi yako kila siku{% else %}Record your daily teaching activities{% endif %}</span>
+        </div>
+      </li>
+      <li>
+        <div class="feat-ico"><i class="fas fa-calendar-alt"></i></div>
+        <div class="feat-text">
+          <strong>{% if LANG == 'sw' %}Mipango ya AI{% else %}AI-Powered Plans{% endif %}</strong>
+          <span>{% if LANG == 'sw' %}Zalisha Scheme na Lesson Plan kwa AI{% else %}Generate Schemes & Lesson Plans with AI{% endif %}</span>
+        </div>
+      </li>
+      <li>
+        <div class="feat-ico"><i class="fas fa-chart-bar"></i></div>
+        <div class="feat-text">
+          <strong>{% if LANG == 'sw' %}Ripoti za Maendeleo{% else %}Progress Reports{% endif %}</strong>
+          <span>{% if LANG == 'sw' %}Fuatilia maendeleo yako kila wakati{% else %}Track your progress anytime{% endif %}</span>
+        </div>
+      </li>
+      <li>
+        <div class="feat-ico"><i class="fas fa-user-check"></i></div>
+        <div class="feat-text">
+          <strong>{% if LANG == 'sw' %}Tathmini ya Wakaguzi{% else %}Assessor Reviews{% endif %}</strong>
+          <span>{% if LANG == 'sw' %}Pokea maoni ya wakaguzi wako{% else %}Receive feedback from your assessors{% endif %}</span>
+        </div>
+      </li>
+    </ul>
+
+    <div class="lp-footer">
+      <div class="lp-footer-text">&copy; {% now "Y" %} Ministry of Education, Science and Technology — Tanzania</div>
+      <div class="lp-ver"><i class="fas fa-code-branch" style="margin-right:3px;"></i>IMS v2.1.0</div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="form-card">
+      <div class="card-head">
+        <div class="head-ico"><i class="fas fa-user-lock"></i></div>
+        <div class="head-info">
+          <h2>{% if LANG == 'sw' %}Ingia — Mwanafunzi{% else %}Student Sign In{% endif %}</h2>
+          <p>{% if LANG == 'sw' %}Fikia lango lako la mafunzo ya vitendo{% else %}Access your field placement portal{% endif %}</p>
+        </div>
+      </div>
+
+      <div class="card-body">
+        {% if messages %}
+          {% for message in messages %}
+          <div class="alert {% if message.tags == 'error' %}alert-err{% elif message.tags == 'warning' %}alert-warn{% else %}alert-ok{% endif %}">
+            <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %}"></i>
+            {{ message }}
+          </div>
+          {% endfor %}
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}">
+          {% csrf_token %}
+
+          <div class="field-grp">
+            <label class="field-lbl">{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %}</label>
+            <div class="inp-wrap">
+              <i class="fas fa-envelope inp-ico"></i>
+              <input type="text" name="username" id="username" class="field-inp"
+                     placeholder="{% if LANG == 'sw' %}mfano@chuo.ac.tz{% else %}email@college.ac.tz{% endif %}" required autocomplete="email">
+            </div>
+          </div>
+
+          <div class="field-grp">
+            <label class="field-lbl">{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %}</label>
+            <div class="inp-wrap">
+              <i class="fas fa-lock inp-ico"></i>
+              <input type="password" name="password" id="password" class="field-inp"
+                     placeholder="{% if LANG == 'sw' %}Weka nywila yako{% else %}Enter your password{% endif %}" style="padding-right:38px;" required autocomplete="current-password">
+              <button type="button" class="eye-btn" onclick="togglePwd()"><i class="fas fa-eye" id="eyeIco"></i></button>
+            </div>
+          </div>
+
+          <div class="row2">
+            <label class="chk-row"><input type="checkbox" name="remember"> {% if LANG == 'sw' %}Nikumbuke{% else %}Remember Me{% endif %}</label>
+            <a href="{% url 'password_reset' %}" class="forgot-link">{% if LANG == 'sw' %}Umesahau nywila?{% else %}Forgot password?{% endif %}</a>
+          </div>
+
+          <button type="submit" class="btn-signin">
+            <i class="fas fa-sign-in-alt"></i>
+            {% if LANG == 'sw' %}INGIA{% else %}SIGN IN{% endif %}
+          </button>
+        </form>
+
+        <div class="divider"><span>{% if LANG == 'sw' %}AU{% else %}OR{% endif %}</span></div>
+
+        <div class="reg-note">
+          {% if LANG == 'sw' %}Mwanafunzi mpya? <a href="{% url 'register' %}">Fungua akaunti &rarr;</a>
+          {% else %}New student? <a href="{% url 'register' %}">Create account &rarr;</a>{% endif %}
+        </div>
+      </div>
+
+      <div class="card-foot">
+        <i class="fas fa-shield-alt"></i>
+        <span>{% if LANG == 'sw' %}Imelindwa — TCRA Compliant — Tanzania Gov IT Standards{% else %}Secured — TCRA Compliant — Tanzania Gov IT Standards{% endif %}</span>
+      </div>
+    </div>
+  </div>
+
 </div>
+
+<div class="page-foot">
+  <p>{% if LANG == 'sw' %}&copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Jamhuri ya Muungano wa Tanzania{% else %}&copy; {% now "Y" %} Ministry of Education, Science and Technology — United Republic of Tanzania{% endif %}</p>
+  <span class="ver"><i class="fas fa-code-branch" style="margin-right:3px;"></i>IMS v2.1.0</span>
+</div>
+
+</div><!-- .page -->
 
 <script>
-    function togglePwd() {
-        const inp = document.getElementById('password');
-        const ico = document.getElementById('eyeIco');
-        if (inp.type === 'password') {
-            inp.type = 'text';
-            ico.classList.replace('fa-eye', 'fa-eye-slash');
-        } else {
-            inp.type = 'password';
-            ico.classList.replace('fa-eye-slash', 'fa-eye');
-        }
-    }
+function togglePwd(){
+  const inp=document.getElementById('password');
+  const ico=document.getElementById('eyeIco');
+  if(inp.type==='password'){inp.type='text';ico.classList.replace('fa-eye','fa-eye-slash');}
+  else{inp.type='password';ico.classList.replace('fa-eye-slash','fa-eye');}
+}
 </script>
 </body>
 </html>

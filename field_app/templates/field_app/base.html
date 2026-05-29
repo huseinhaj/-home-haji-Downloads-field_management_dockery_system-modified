@@ -627,35 +627,46 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="{% if hide_navbar %}registration-page{% endif %}">
-    <!-- Navbar - IONYESHE TU KAMA SI REGISTER PAGE - consistent with login page header -->
     {% if not hide_navbar %}
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'dashboard' %}">
-                <i class="fas fa-chalkboard-teacher me-2"></i>IMS | {% if LANG == 'sw' %}Mafunzo ya Vitendo{% else %}Internship Portal{% endif %}
+        <div class="container-fluid px-3">
+
+            <!-- Brand with system badge -->
+            <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'dashboard' %}">
+                <div style="width:30px;height:30px;background:rgba(200,144,10,.2);border:1px solid rgba(200,144,10,.35);border-radius:var(--radius,4px);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-chalkboard-teacher" style="font-size:13px;color:var(--medium,#C8900A);"></i>
+                </div>
+                <div class="d-none d-sm-block">
+                    <div style="font-size:13.5px;font-weight:800;color:#fff;line-height:1;letter-spacing:-.2px;">IMS</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,.5);letter-spacing:1px;text-transform:uppercase;line-height:1;margin-top:1px;">{% if LANG == 'sw' %}Mafunzo ya Vitendo{% else %}Internship Portal{% endif %}</div>
+                </div>
             </a>
 
-            <div class="d-flex align-items-center gap-2">
+            <!-- Ministry label (center, desktop only) -->
+            <div class="d-none d-lg-flex align-items-center gap-2 mx-auto">
+                <span style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;font-weight:600;">{% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia{% else %}Ministry of Education, Science &amp; Technology{% endif %}</span>
+            </div>
 
+            <div class="d-flex align-items-center gap-2">
                 <!-- Language Toggle -->
                 <div class="lang-toggle">
-                    <a href="{% url 'set_language' %}?lang=en&amp;next={{ request.path }}"
-                       class="lang-btn {% if LANG == 'en' %}active{% endif %}"
-                       title="Switch to English">EN</a>
+                    <a href="{% url 'set_language' %}?lang=en&amp;next={{ request.path }}" class="lang-btn {% if LANG == 'en' %}active{% endif %}" title="English">EN</a>
                     <span class="lang-sep">|</span>
-                    <a href="{% url 'set_language' %}?lang=sw&amp;next={{ request.path }}"
-                       class="lang-btn {% if LANG == 'sw' %}active{% endif %}"
-                       title="Badilisha hadi Kiswahili">SW</a>
+                    <a href="{% url 'set_language' %}?lang=sw&amp;next={{ request.path }}" class="lang-btn {% if LANG == 'sw' %}active{% endif %}" title="Kiswahili">SW</a>
                 </div>
 
                 {% if user.is_authenticated %}
-                <span class="welcome-text d-none d-md-block">
-                    <i class="fas fa-user me-1"></i>{{ user.email|truncatechars:28 }}
-                </span>
+                <!-- User badge -->
+                <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius,4px);padding:5px 10px;" class="d-none d-md-flex">
+                    <div style="width:24px;height:24px;background:var(--medium,#C8900A);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0;">
+                        {{ user.email|first|upper }}
+                    </div>
+                    <span style="font-size:12px;color:rgba(255,255,255,.82);font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ user.email|truncatechars:22 }}</span>
+                </div>
 
                 <div class="dropdown">
-                    <button class="btn btn-outline-light dropdown-toggle" type="button" id="userMenu" data-bs-toggle="dropdown" style="border-color: rgba(255,255,255,0.3);">
-                        <i class="fas fa-user-circle me-1"></i>
+                    <button class="btn btn-outline-light dropdown-toggle" type="button" id="userMenu" data-bs-toggle="dropdown" style="border-color:rgba(255,255,255,.25);font-size:12.5px;padding:5px 12px;">
+                        <i class="fas fa-bars me-1"></i>
                         <span class="d-none d-sm-inline">{% if LANG == 'sw' %}Menyu{% else %}Menu{% endif %}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">

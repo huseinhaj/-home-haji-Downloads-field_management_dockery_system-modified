@@ -1,664 +1,399 @@
-{% extends "field_app/base.html" %}
 {% load static %}
-
-{% block title %}{% if LANG == 'sw' %}Jiandikishe — Mfumo wa Usimamizi wa Mafunzo ya Vitendo{% else %}Register — Internship Management System{% endif %}{% endblock %}
-
-{% block content %}
+<!DOCTYPE html>
+<html lang="{% if LANG == 'sw' %}sw{% else %}en{% endif %}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if LANG == 'sw' %}Jiandikishe — IMS | Mfumo wa Usimamizi wa Mafunzo{% else %}Register — IMS | Internship Management System{% endif %}</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
-    /* ── RESET & ROOT ── */
-    html, body,
-    .pg-wrap, .container, .container-fluid,
-    .main-content, .wrapper, .page-wrapper,
-    .content-wrapper, .register-container, .register-card {
-        background: #EEF1F6 !important;
-    }
+:root{
+  --navy:#0A2B5E;--navy-dk:#071E42;--gold:#C8900A;--gold-lt:#E8A81A;
+  --light:#EEF1F6;--white:#FFFFFF;--text:#0F1923;--muted:#4A5568;
+  --border:#C4CEDB;--border-s:rgba(10,43,94,.14);
+  --danger:#DC2626;--success:#0EA271;--warning:#D97706;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;color:var(--text);background:var(--light);-webkit-font-smoothing:antialiased;}
 
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        min-height: 100vh !important;
-        background: #EEF1F6 !important;
-    }
+/* ── TOP STRIP ── */
+.top-strip{background:var(--navy-dk);border-bottom:2px solid var(--gold);padding:5px 24px;display:flex;align-items:center;justify-content:space-between;}
+.top-strip-text{font-size:10.5px;color:rgba(255,255,255,.7);letter-spacing:1.8px;text-transform:uppercase;font-weight:600;}
+.lang-pills{display:flex;gap:4px;}
+.lang-pill{font-size:10.5px;font-weight:700;text-decoration:none;padding:2px 9px;border-radius:2px;transition:all .13s;letter-spacing:.3px;}
+.lang-pill.on{background:var(--gold);color:var(--white);}
+.lang-pill.off{color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);}
+.lang-pill.off:hover{color:var(--white);}
 
-    :root {
-        --bold:       #0A2B5E;
-        --medium:     #C8900A;
-        --light:      #EEF1F6;
-        --white:      #FFFFFF;
-        --text-dark:  #1A1A2E;
-        --text-gray:  #4A5568;
-        --border:     #CBD5E0;
-        --error:      #DC2626;
-        --success:    #059669;
-    }
+/* ── GOV HEADER ── */
+.gov-hd{
+  background:var(--navy);border-bottom:4px solid var(--gold);
+  padding:14px 32px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
+.gov-hd-left{display:flex;align-items:center;gap:16px;}
+.coat{width:62px;height:62px;display:flex;align-items:center;justify-content:center;background:rgba(200,144,10,.1);border:1.5px solid rgba(200,144,10,.3);border-radius:50%;flex-shrink:0;}
+.coat img{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));}
+.gov-text .t1{font-size:9.5px;color:rgba(255,255,255,.55);letter-spacing:2px;text-transform:uppercase;}
+.gov-text .t2{font-size:16px;color:var(--white);font-weight:800;letter-spacing:-.2px;margin:2px 0;}
+.gov-text .t3{font-size:11.5px;color:var(--gold);font-weight:500;}
+.gov-hd-badge{
+  display:flex;align-items:center;gap:7px;
+  background:rgba(200,144,10,.12);border:1px solid rgba(200,144,10,.25);
+  border-radius:3px;padding:6px 14px;
+  font-size:11px;font-weight:700;color:var(--gold);
+  letter-spacing:.3px;white-space:nowrap;
+}
 
-    /* ── PAGE WRAPPER ── */
-    .reg-page {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        background: var(--light);
-    }
+/* ── MAIN ── */
+.pg-body{
+  flex:1;padding:32px 24px 40px;
+  display:flex;flex-direction:column;align-items:center;
+  min-height:calc(100vh - 120px);
+  background:var(--light);
+}
 
-    /* ── TOP BAR ── */
-    .reg-top-bar {
-        background: var(--bold);
-        padding: 5px 0;
-        text-align: center;
-        font-size: 11px;
-        color: rgba(255,255,255,0.82);
-        letter-spacing: 1.5px;
-        font-weight: 600;
-        text-transform: uppercase;
-        border-bottom: 2px solid var(--medium);
-    }
+/* ── FORM CARD ── */
+.reg-card{
+  width:100%;max-width:680px;
+  background:var(--white);
+  border:1px solid var(--border-s);
+  border-radius:6px;
+  box-shadow:0 2px 8px rgba(0,0,0,.08),0 8px 28px rgba(10,43,94,.1);
+  overflow:hidden;
+}
+.card-hd{
+  background:var(--navy);border-bottom:3px solid var(--gold);
+  padding:18px 26px;display:flex;align-items:center;gap:14px;
+}
+.card-hd-ico{
+  width:46px;height:46px;flex-shrink:0;
+  background:rgba(200,144,10,.18);border:1px solid rgba(200,144,10,.3);
+  border-radius:4px;display:flex;align-items:center;justify-content:center;
+  color:var(--gold);font-size:20px;
+}
+.card-hd h1{font-size:16px;color:var(--white);font-weight:800;margin:0;}
+.card-hd p{font-size:11.5px;color:rgba(255,255,255,.65);margin:2px 0 0;}
 
-    /* ── GOVERNMENT HEADER — logo LEFT ── */
-    .reg-gov-header {
-        background: var(--bold);
-        padding: 14px 40px;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 18px;
-        border-bottom: 3px solid var(--medium);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-    }
+.card-body{padding:26px 28px 20px;}
 
-    .reg-coat {
-        width: 72px; height: 72px; flex-shrink: 0;
-    }
+/* steps bar */
+.steps{display:flex;align-items:center;gap:0;margin-bottom:24px;border:1px solid var(--border-s);border-radius:4px;overflow:hidden;}
+.step{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;font-size:11.5px;font-weight:700;letter-spacing:.2px;background:var(--light);color:var(--muted);}
+.step.done{background:var(--navy);color:var(--white);}
+.step.active{background:var(--gold);color:var(--white);}
+.step i{font-size:12px;}
 
-    .reg-coat img {
-        width: 100%; height: 100%;
-        object-fit: contain;
-        filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
-    }
+/* alerts */
+.alert{padding:10px 13px;border-radius:4px;font-size:12.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-weight:500;}
+.a-err {background:#FEE2E2;color:#7F1D1D;border-left:4px solid var(--danger);}
+.a-ok  {background:#D1FAE5;color:#064E3B;border-left:4px solid var(--success);}
+.a-warn{background:#FEF3C7;color:#78350F;border-left:4px solid var(--warning);}
 
-    .reg-gov-titles { line-height: 1.4; }
+/* form grid */
+.f-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.f-full{grid-column:1/-1;}
+.f-grp{display:flex;flex-direction:column;gap:5px;}
+.f-lbl{font-size:11.5px;font-weight:700;color:var(--text);letter-spacing:.2px;text-transform:uppercase;}
+.f-lbl .req{color:var(--danger);margin-left:2px;}
+.f-inp-wrap{position:relative;}
+.f-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#90A0B7;font-size:13px;pointer-events:none;}
+.f-inp{
+  width:100%;padding:10px 11px 10px 34px;
+  font-size:13px;color:var(--text);
+  border:1.5px solid var(--border);border-radius:4px;
+  background:#FAFBFD;font-family:inherit;outline:none;
+  transition:border-color .13s,box-shadow .13s;
+}
+.f-inp:focus{border-color:var(--navy);background:var(--white);box-shadow:0 0 0 3px rgba(10,43,94,.09);}
+.f-inp::placeholder{color:#B0BCCF;font-size:12px;}
+.f-inp.err{border-color:var(--danger);}
+.f-err{font-size:11.5px;color:var(--danger);display:flex;align-items:center;gap:4px;}
+.pwd-wrap{position:relative;}
+.pwd-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#90A0B7;font-size:14px;padding:2px;}
+.pwd-toggle:hover{color:var(--navy);}
 
-    .reg-gov-titles .t1 {
-        font-size: 11px; color: rgba(255,255,255,0.75);
-        letter-spacing: 2px; text-transform: uppercase; font-weight: 500;
-    }
+/* strength bar */
+.strength-bar{height:3px;background:#E2E8F0;border-radius:2px;margin-top:5px;overflow:hidden;}
+.strength-fill{height:100%;border-radius:2px;transition:width .3s,background .3s;width:0;}
+.s0{width:0;}.s1{width:20%;background:var(--danger);}
+.s2{width:40%;background:#F97316;}.s3{width:65%;background:var(--warning);}
+.s4{width:100%;background:var(--success);}
 
-    .reg-gov-titles .t2 {
-        font-size: 19px; color: var(--white);
-        font-weight: 700; letter-spacing: 0.3px; margin: 3px 0 2px;
-    }
+/* requirements */
+.req-box{background:var(--light);border:1px solid var(--border-s);border-left:4px solid var(--navy);border-radius:4px;padding:12px 14px;}
+.req-box-title{font-size:11.5px;font-weight:700;color:var(--navy);margin-bottom:8px;display:flex;align-items:center;gap:5px;text-transform:uppercase;letter-spacing:.3px;}
+.req-list{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;list-style:none;}
+.req-list li{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.req-list li::before{content:'·';color:var(--gold);font-size:16px;line-height:1;}
 
-    .reg-gov-titles .t3 {
-        font-size: 12.5px; color: var(--medium);
-        font-weight: 500; letter-spacing: 0.2px;
-    }
+/* submit */
+.btn-reg{
+  width:100%;padding:12px;
+  background:var(--navy);color:var(--white);
+  border:none;border-radius:4px;
+  font-size:13.5px;font-weight:800;cursor:pointer;
+  letter-spacing:.8px;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  font-family:inherit;margin-top:6px;
+  transition:background .13s,box-shadow .13s;
+}
+.btn-reg:hover{background:var(--navy-dk);box-shadow:0 4px 14px rgba(10,43,94,.28);}
+.btn-reg:active{opacity:.92;}
 
-    /* ── NAV ── */
-    .reg-nav {
-        background: var(--white);
-        padding: 0 40px;
-        display: flex; align-items: center;
-        border-bottom: 2px solid var(--border);
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    }
+.login-note{text-align:center;font-size:12.5px;color:var(--muted);margin-top:14px;padding-top:14px;border-top:1px solid #EEF1F6;}
+.login-note a{color:var(--navy);font-weight:700;text-decoration:none;}
+.login-note a:hover{color:var(--gold);}
 
-    .reg-nav-item {
-        font-size: 13px; color: var(--text-gray);
-        padding: 11px 18px;
-        border-right: 1px solid #E2E8F0;
-        cursor: pointer; transition: all 0.15s;
-        font-weight: 500; text-decoration: none;
-        display: flex; align-items: center; gap: 7px;
-    }
+.card-ft{background:#F7F9FC;border-top:1px solid #E2E8F0;padding:10px 24px;display:flex;align-items:center;gap:7px;}
+.card-ft i{font-size:12px;color:var(--success);}
+.card-ft span{font-size:10.5px;color:#3A7A55;}
 
-    .reg-nav-item:first-child { border-left: 1px solid #E2E8F0; }
+/* footer */
+.pg-foot{background:var(--navy-dk);border-top:3px solid var(--gold);padding:10px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;}
+.pg-foot p{font-size:10.5px;color:rgba(255,255,255,.5);}
+.pg-foot .ver{font-size:10.5px;color:var(--gold);font-weight:700;}
 
-    .reg-nav-item.active { background: var(--bold); color: var(--white); font-weight: 600; }
-    .reg-nav-item:hover:not(.active) { background: #EBF0FA; color: var(--bold); }
-
-    /* ── CONTENT AREA ── */
-    .reg-content-area {
-        flex: 1;
-        padding: 36px 30px;
-        display: flex;
-        justify-content: center;
-    }
-
-    /* ── REGISTER CARD ── */
-    .register-container {
-        width: 100%;
-        max-width: 860px;
-    }
-
-    .register-card {
-        background: var(--white) !important;
-        border-radius: 8px !important;
-        border: 1px solid var(--border) !important;
-        overflow: hidden !important;
-        box-shadow: 0 4px 16px rgba(10,43,94,0.10) !important;
-    }
-
-    /* Card Header */
-    .register-header {
-        background: var(--bold) !important;
-        padding: 16px 22px !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 14px !important;
-        border-bottom: 3px solid var(--medium) !important;
-    }
-
-    .register-icon {
-        width: 42px !important; height: 42px !important;
-        background: var(--medium) !important;
-        border-radius: 8px !important;
-        display: flex !important; align-items: center !important; justify-content: center !important;
-    }
-
-    .register-icon i { font-size: 18px !important; color: var(--white) !important; }
-
-    .register-header h1 {
-        font-size: 17px !important; color: var(--white) !important;
-        font-weight: 700 !important; margin: 0 !important;
-    }
-
-    .register-header p {
-        font-size: 11.5px !important; color: rgba(255,255,255,0.75) !important;
-        margin: 3px 0 0 0 !important;
-    }
-
-    /* Form */
-    .register-form {
-        padding: 28px !important;
-        background: var(--white) !important;
-    }
-
-    .form-grid {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 20px !important;
-    }
-
-    .form-group { margin-bottom: 0 !important; }
-
-    .form-label {
-        display: block !important;
-        font-size: 12.5px !important;
-        font-weight: 600 !important;
-        color: var(--text-dark) !important;
-        margin-bottom: 7px !important;
-    }
-
-    .form-label i { color: var(--medium) !important; margin-right: 6px !important; }
-
-    .required-star { color: var(--error) !important; margin-left: 2px !important; }
-
-    .form-input {
-        width: 100% !important;
-        padding: 11px 14px !important;
-        font-size: 13.5px !important;
-        color: var(--text-dark) !important;
-        border: 1.5px solid var(--border) !important;
-        border-radius: 6px !important;
-        background: #FAFBFD !important;
-        font-family: inherit !important;
-        outline: none !important;
-        transition: all 0.15s !important;
-        box-sizing: border-box !important;
-    }
-
-    .form-input:focus {
-        border-color: var(--bold) !important;
-        background: var(--white) !important;
-        box-shadow: 0 0 0 3px rgba(10,43,94,0.09) !important;
-    }
-
-    .form-input::placeholder { color: #B0BCCF !important; font-size: 12.5px !important; }
-
-    .password-container { position: relative !important; }
-
-    .password-toggle {
-        position: absolute !important; right: 11px !important;
-        top: 50% !important; transform: translateY(-50%) !important;
-        background: none !important; border: none !important;
-        cursor: pointer !important; color: #90A0B7 !important; font-size: 14px !important;
-    }
-
-    .password-toggle:hover { color: var(--bold) !important; }
-
-    .form-error {
-        display: block !important;
-        color: var(--error) !important;
-        font-size: 11px !important;
-        margin-top: 5px !important;
-        padding: 5px 10px !important;
-        background: rgba(220,38,38,0.07) !important;
-        border-radius: 5px !important;
-        border-left: 3px solid var(--error) !important;
-    }
-
-    /* Password Requirements */
-    .password-requirements {
-        background: #F7F9FC !important;
-        border-radius: 8px !important;
-        border: 1px solid var(--border) !important;
-        border-left: 4px solid var(--medium) !important;
-        padding: 14px 16px !important;
-        grid-column: span 2 !important;
-    }
-
-    .requirements-title {
-        color: var(--text-dark) !important; font-weight: 700 !important;
-        font-size: 12px !important; margin-bottom: 10px !important;
-        display: flex !important; align-items: center !important; gap: 7px !important;
-        text-transform: uppercase !important; letter-spacing: 0.5px !important;
-    }
-
-    .requirements-title i { color: var(--medium) !important; }
-
-    .requirements-list {
-        list-style: none !important; padding: 0 !important; margin: 0 !important;
-        display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px !important;
-    }
-
-    .requirements-list li {
-        color: var(--text-gray) !important; font-size: 12px !important;
-        padding: 4px 0 4px 20px !important; position: relative !important;
-    }
-
-    .requirements-list li:before {
-        content: "✓" !important; position: absolute !important; left: 0 !important;
-        color: var(--medium) !important; font-weight: bold !important;
-    }
-
-    /* Strength Meter */
-    .strength-meter {
-        height: 4px !important; background: #E2E8F0 !important;
-        border-radius: 3px !important; margin-top: 8px !important; overflow: hidden !important;
-    }
-
-    .strength-fill { height: 100% !important; width: 0 !important; border-radius: 3px !important; transition: width 0.3s !important; }
-    .strength-0 { background: #DC2626 !important; width: 20% !important; }
-    .strength-1 { background: #F59E0B !important; width: 40% !important; }
-    .strength-2 { background: #FBBF24 !important; width: 60% !important; }
-    .strength-3 { background: #10B981 !important; width: 80% !important; }
-    .strength-4 { background: #059669 !important; width: 100% !important; }
-
-    /* Submit */
-    .submit-container {
-        grid-column: span 2 !important; text-align: center !important; margin-top: 8px !important;
-    }
-
-    .submit-btn {
-        background: var(--bold) !important; color: var(--white) !important;
-        border: none !important; border-radius: 6px !important;
-        padding: 12px 35px !important; font-size: 14px !important;
-        font-weight: 700 !important; cursor: pointer !important;
-        transition: all 0.2s !important; width: 100% !important; max-width: 340px !important;
-        display: inline-flex !important; align-items: center !important;
-        justify-content: center !important; gap: 9px !important; font-family: inherit !important;
-        letter-spacing: 0.5px !important;
-    }
-
-    .submit-btn:hover {
-        background: #0C3570 !important; transform: translateY(-1px) !important;
-        box-shadow: 0 4px 12px rgba(10,43,94,0.25) !important;
-    }
-
-    /* Login Link */
-    .login-link {
-        text-align: center !important; margin-top: 20px !important;
-        padding-top: 16px !important; border-top: 1px solid #E2E8F0 !important;
-        grid-column: span 2 !important;
-    }
-
-    .login-link p { color: var(--text-gray) !important; font-size: 13px !important; margin: 0 !important; }
-    .login-link a { color: var(--bold) !important; font-weight: 700 !important; text-decoration: none !important; }
-    .login-link a:hover { text-decoration: underline !important; }
-
-    /* Alerts */
-    .messages-container { grid-column: span 2 !important; margin-bottom: 18px !important; }
-
-    .alert {
-        padding: 11px 14px !important; border-radius: 7px !important;
-        margin-bottom: 10px !important; font-size: 13px !important;
-        display: flex !important; align-items: center !important; gap: 9px !important;
-    }
-
-    .alert-success { background: rgba(5,150,105,0.09) !important; border: 1px solid var(--success) !important; color: #065F46 !important; }
-    .alert-error   { background: rgba(220,38,38,0.09) !important; border: 1px solid var(--error) !important; color: #991B1B !important; }
-
-    /* Card Footer */
-    .form-footer {
-        background: #F7F9FC !important; border-top: 1px solid #E2E8F0 !important;
-        padding: 11px 22px !important; display: flex !important; align-items: center !important; gap: 8px !important;
-    }
-
-    .form-footer i { color: #2E7D32 !important; font-size: 12px !important; }
-    .form-footer span { font-size: 11px !important; color: #2E7D32 !important; }
-
-    /* Page Footer */
-    .reg-footer {
-        background: var(--bold);
-        padding: 11px 40px;
-        display: flex; align-items: center; justify-content: space-between;
-        border-top: 3px solid var(--medium);
-        flex-wrap: wrap; gap: 8px;
-    }
-
-    .reg-footer p { font-size: 11px; color: rgba(255,255,255,0.65); }
-    .reg-footer .ver { font-size: 11px; color: var(--medium); font-weight: 700; }
-
-    /* Animation */
-    @keyframes fadeUp {
-        from { opacity: 0; transform: translateY(14px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .form-group {
-        animation: fadeUp 0.35s ease both;
-    }
-
-    .form-group:nth-child(1) { animation-delay: 0.04s; }
-    .form-group:nth-child(2) { animation-delay: 0.08s; }
-    .form-group:nth-child(3) { animation-delay: 0.12s; }
-    .form-group:nth-child(4) { animation-delay: 0.16s; }
-    .form-group:nth-child(5) { animation-delay: 0.20s; }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .reg-gov-header { padding: 12px 20px; gap: 13px; }
-        .reg-coat { width: 54px; height: 54px; }
-        .reg-gov-titles .t2 { font-size: 15px; }
-        .reg-nav { padding: 0 15px; overflow-x: auto; }
-        .reg-nav-item { font-size: 12px; padding: 9px 12px; white-space: nowrap; }
-        .reg-content-area { padding: 22px 14px; }
-        .register-form { padding: 18px !important; }
-        .form-grid { grid-template-columns: 1fr !important; }
-        .password-requirements,
-        .submit-container,
-        .login-link,
-        .messages-container { grid-column: span 1 !important; }
-        .requirements-list { grid-template-columns: 1fr !important; }
-        .submit-btn { max-width: 100% !important; }
-    }
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  .f-grid{grid-template-columns:1fr;}
+  .f-full{grid-column:1;}
+  .req-list{grid-template-columns:1fr;}
+  .card-body{padding:20px 18px 16px;}
+  .gov-hd{padding:12px 18px;}
+  .gov-hd-badge{display:none;}
+  .coat{width:50px;height:50px;}
+  .coat img{width:36px;height:36px;}
+  .gov-text .t2{font-size:13px;}
+}
 </style>
+</head>
+<body style="display:flex;flex-direction:column;min-height:100vh;">
 
-<div class="reg-page">
-
-    <div class="reg-top-bar">
-        <i class="fas fa-globe" style="margin-right:6px;"></i>
-        United Republic of Tanzania &nbsp;|&nbsp; Jamhuri ya Muungano wa Tanzania
-    </div>
-
-    <!-- GOVERNMENT HEADER — logo LEFT -->
-    <div class="reg-gov-header">
-        <div class="reg-coat">
-            <img src="https://i.imgur.com/GUou4GD.png" alt="Tanzania Coat of Arms">
-        </div>
-        <div class="reg-gov-titles">
-            <div class="t1">United Republic of Tanzania — Serikali ya Jamhuri ya Muungano</div>
-            <div class="t2">Ministry of Education, Science and Technology</div>
-            <div class="t3">Internship Management System (IMS) &mdash; Student Placement Portal</div>
-        </div>
-    </div>
-
-    <!-- NAV -->
-    <div class="reg-nav">
-        <a class="reg-nav-item" href="{% url 'login' %}"><i class="fas fa-graduation-cap"></i> {% if LANG == 'sw' %}Tovuti ya Mwanafunzi{% else %}Student Portal{% endif %}</a>
-        <a class="reg-nav-item" href="#"><i class="fas fa-info-circle"></i> {% if LANG == 'sw' %}Kuhusu IMS{% else %}About IMS{% endif %}</a>
-        <a class="reg-nav-item" href="#"><i class="fas fa-question-circle"></i> {% if LANG == 'sw' %}Kituo cha Msaada{% else %}Help Center{% endif %}</a>
-        <a class="reg-nav-item active" href="#"><i class="fas fa-user-plus"></i> {% if LANG == 'sw' %}Jiandikishe{% else %}Register{% endif %}</a>
-    </div>
-
-    <!-- CONTENT -->
-    <div class="reg-content-area">
-        <div class="register-container">
-            <div class="register-card">
-
-                <!-- Card Header -->
-                <div class="register-header">
-                    <div class="register-icon">
-                        <i class="fas fa-user-plus"></i>
-                    </div>
-                    <div>
-                        <h1>{% if LANG == 'sw' %}Fungua Akaunti ya Mwanafunzi{% else %}Create Student Account{% endif %}</h1>
-                        <p>{% if LANG == 'sw' %}Jiunge na Mfumo wa Usimamizi wa Mafunzo ya Vitendo{% else %}Join the Internship Management System{% endif %}</p>
-                    </div>
-                </div>
-
-                <!-- Form -->
-                <div class="register-form">
-                    <form method="post" action="{% url 'register' %}" novalidate>
-                        {% csrf_token %}
-
-                        <div class="form-grid">
-
-                            <!-- Alerts -->
-                            {% if messages %}
-                            <div class="messages-container">
-                                {% for message in messages %}
-                                <div class="alert alert-{% if message.tags == 'error' %}error{% else %}success{% endif %}">
-                                    <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
-                                    {{ message }}
-                                </div>
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-
-                            {% if form.non_field_errors %}
-                            <div class="messages-container">
-                                {% for error in form.non_field_errors %}
-                                <div class="alert alert-error">
-                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
-                                </div>
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-
-                            <!-- Full Name -->
-                            <div class="form-group">
-                                <label for="{{ form.full_name.id_for_label }}" class="form-label">
-                                    <i class="fas fa-user"></i>{% if LANG == 'sw' %}Jina Kamili{% else %}Full Name{% endif %} <span class="required-star">*</span>
-                                </label>
-                                <input type="text"
-                                       name="{{ form.full_name.name }}"
-                                       id="{{ form.full_name.id_for_label }}"
-                                       class="form-input"
-                                       value="{{ form.full_name.value|default:'' }}"
-                                       placeholder="{% if LANG == 'sw' %}Ingiza jina lako kamili{% else %}Enter your full name{% endif %}" required>
-                                {% if form.full_name.errors %}
-                                <span class="form-error">{{ form.full_name.errors.0 }}</span>
-                                {% endif %}
-                            </div>
-
-                            <!-- Email -->
-                            <div class="form-group">
-                                <label for="{{ form.email.id_for_label }}" class="form-label">
-                                    <i class="fas fa-envelope"></i>{% if LANG == 'sw' %}Anwani ya Barua pepe{% else %}Email Address{% endif %} <span class="required-star">*</span>
-                                </label>
-                                <input type="email"
-                                       name="{{ form.email.name }}"
-                                       id="{{ form.email.id_for_label }}"
-                                       class="form-input"
-                                       value="{{ form.email.value|default:'' }}"
-                                       placeholder="email@college.ac.tz" required>
-                                {% if form.email.errors %}
-                                <span class="form-error">{{ form.email.errors.0 }}</span>
-                                {% endif %}
-                            </div>
-
-                            <!-- Phone -->
-                            <div class="form-group">
-                                <label for="{{ form.phone_number.id_for_label }}" class="form-label">
-                                    <i class="fas fa-phone"></i>{% if LANG == 'sw' %}Nambari ya Simu{% else %}Phone Number{% endif %} <span class="required-star">*</span>
-                                </label>
-                                <input type="tel"
-                                       name="{{ form.phone_number.name }}"
-                                       id="{{ form.phone_number.id_for_label }}"
-                                       class="form-input"
-                                       value="{{ form.phone_number.value|default:'' }}"
-                                       placeholder="+255 712 345 678" required>
-                                {% if form.phone_number.errors %}
-                                <span class="form-error">{{ form.phone_number.errors.0 }}</span>
-                                {% endif %}
-                            </div>
-
-                            <!-- Spacer for grid alignment -->
-                            <div></div>
-
-                            <!-- Password -->
-                            <div class="form-group">
-                                <label for="{{ form.password1.id_for_label }}" class="form-label">
-                                    <i class="fas fa-lock"></i>{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %} <span class="required-star">*</span>
-                                </label>
-                                <div class="password-container">
-                                    <input type="password"
-                                           name="{{ form.password1.name }}"
-                                           id="{{ form.password1.id_for_label }}"
-                                           class="form-input"
-                                           placeholder="{% if LANG == 'sw' %}Tengeneza nywila imara{% else %}Create a strong password{% endif %}" required>
-                                    <button type="button" class="password-toggle"
-                                            onclick="togglePwd('{{ form.password1.id_for_label }}')">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                                <div class="strength-meter">
-                                    <div class="strength-fill" id="passwordStrength"></div>
-                                </div>
-                                {% if form.password1.errors %}
-                                <span class="form-error">{{ form.password1.errors.0 }}</span>
-                                {% endif %}
-                            </div>
-
-                            <!-- Confirm Password -->
-                            <div class="form-group">
-                                <label for="{{ form.password2.id_for_label }}" class="form-label">
-                                    <i class="fas fa-lock"></i>{% if LANG == 'sw' %}Thibitisha Nywila{% else %}Confirm Password{% endif %} <span class="required-star">*</span>
-                                </label>
-                                <div class="password-container">
-                                    <input type="password"
-                                           name="{{ form.password2.name }}"
-                                           id="{{ form.password2.id_for_label }}"
-                                           class="form-input"
-                                           placeholder="{% if LANG == 'sw' %}Ingiza tena nywila yako{% else %}Re-enter your password{% endif %}" required>
-                                    <button type="button" class="password-toggle"
-                                            onclick="togglePwd('{{ form.password2.id_for_label }}')">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                                {% if form.password2.errors %}
-                                <span class="form-error">{{ form.password2.errors.0 }}</span>
-                                {% endif %}
-                            </div>
-
-                            <!-- Password Requirements -->
-                            <div class="password-requirements">
-                                <div class="requirements-title">
-                                    <i class="fas fa-shield-alt"></i> {% if LANG == 'sw' %}Mahitaji ya Nywila{% else %}Password Requirements{% endif %}
-                                </div>
-                                <ul class="requirements-list">
-                                    <li>{% if LANG == 'sw' %}Angalau herufi 8{% else %}At least 8 characters{% endif %}</li>
-                                    <li>{% if LANG == 'sw' %}Angalau herufi moja kubwa (A–Z){% else %}At least one uppercase letter (A–Z){% endif %}</li>
-                                    <li>{% if LANG == 'sw' %}Angalau herufi moja ndogo (a–z){% else %}At least one lowercase letter (a–z){% endif %}</li>
-                                    <li>{% if LANG == 'sw' %}Angalau nambari moja (0–9){% else %}At least one number (0–9){% endif %}</li>
-                                    <li>{% if LANG == 'sw' %}Angalau alama moja maalum (!@#$%&amp;*){% else %}At least one special character (!@#$%&amp;*){% endif %}</li>
-                                </ul>
-                            </div>
-
-                            <!-- Submit -->
-                            <div class="submit-container">
-                                <button type="submit" class="submit-btn">
-                                    <i class="fas fa-user-plus"></i> {% if LANG == 'sw' %}Fungua Akaunti{% else %}Create Account{% endif %}
-                                </button>
-                            </div>
-
-                            <!-- Login Link -->
-                            <div class="login-link">
-                                <p>{% if LANG == 'sw' %}Je, tayari una akaunti? <a href="{% url 'login' %}">Ingia hapa &rarr;</a>{% else %}Already have an account? <a href="{% url 'login' %}">Login here &rarr;</a>{% endif %}</p>
-                            </div>
-
-                        </div><!-- /form-grid -->
-                    </form>
-                </div>
-
-                <!-- Card Footer -->
-                <div class="form-footer">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>{% if LANG == 'sw' %}Taarifa zako zinalindwa na Viwango vya TEHAMA vya Serikali ya Tanzania &mdash; Inakidhi TCRA{% else %}Your information is protected by Tanzania Government IT Standards &mdash; TCRA Compliant{% endif %}</span>
-                </div>
-            </div><!-- /register-card -->
-        </div><!-- /register-container -->
-    </div><!-- /reg-content-area -->
-
-    <!-- PAGE FOOTER -->
-    <div class="reg-footer">
-    <p>&copy; {% now "Y" %} Ministry of Education, Science and Technology &mdash; United Republic of Tanzania. All rights reserved.</p>
-    <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0</span>
+<!-- TOP STRIP -->
+<div class="top-strip">
+  <span class="top-strip-text"><i class="fas fa-globe" style="margin-right:5px;"></i>United Republic of Tanzania &mdash; Jamhuri ya Muungano wa Tanzania</span>
+  <div class="lang-pills">
+    <a href="/set-language/?lang=en&next={{ request.path }}" class="lang-pill {% if LANG == 'en' %}on{% else %}off{% endif %}">EN</a>
+    <a href="/set-language/?lang=sw&next={{ request.path }}" class="lang-pill {% if LANG == 'sw' %}on{% else %}off{% endif %}">SW</a>
+  </div>
 </div>
 
-</div><!-- /reg-page -->
+<!-- GOV HEADER -->
+<div class="gov-hd">
+  <div class="gov-hd-left">
+    <div class="coat">
+      {% load static %}
+      <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Coat of Arms">
+    </div>
+    <div class="gov-text">
+      <div class="t1">United Republic of Tanzania — Serikali ya Jamhuri ya Muungano</div>
+      <div class="t2">{% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia{% else %}Ministry of Education, Science and Technology{% endif %}</div>
+      <div class="t3">Internship Management System (IMS) &mdash; {% if LANG == 'sw' %}Lango la Mwanafunzi{% else %}Student Placement Portal{% endif %}</div>
+    </div>
+  </div>
+  <div class="gov-hd-badge"><i class="fas fa-user-plus"></i> {% if LANG == 'sw' %}Jiandikishe{% else %}Register{% endif %}</div>
+</div>
+
+<!-- BODY -->
+<div class="pg-body">
+  <div class="reg-card">
+
+    <div class="card-hd">
+      <div class="card-hd-ico"><i class="fas fa-user-plus"></i></div>
+      <div>
+        <h1>{% if LANG == 'sw' %}Fungua Akaunti ya Mwanafunzi{% else %}Create Student Account{% endif %}</h1>
+        <p>{% if LANG == 'sw' %}Jiunge na Mfumo wa Usimamizi wa Mafunzo ya Vitendo{% else %}Join the Internship Management System{% endif %}</p>
+      </div>
+    </div>
+
+    <div class="card-body">
+
+      <!-- Steps -->
+      <div class="steps">
+        <div class="step done"><i class="fas fa-check"></i> {% if LANG == 'sw' %}Taarifa{% else %}Details{% endif %}</div>
+        <div class="step active"><i class="fas fa-lock"></i> {% if LANG == 'sw' %}Usalama{% else %}Security{% endif %}</div>
+        <div class="step"><i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}Thibitisha{% else %}Confirm{% endif %}</div>
+      </div>
+
+      <!-- Alerts -->
+      {% if messages %}
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'error' %}a-err{% elif message.tags == 'warning' %}a-warn{% else %}a-ok{% endif %}">
+          <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %}"></i>
+          {{ message }}
+        </div>
+        {% endfor %}
+      {% endif %}
+      {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}
+        <div class="alert a-err"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+        {% endfor %}
+      {% endif %}
+
+      <form method="post" action="{% url 'register' %}" novalidate>
+        {% csrf_token %}
+        <div class="f-grid">
+
+          <!-- Full Name -->
+          <div class="f-grp">
+            <label class="f-lbl">{% if LANG == 'sw' %}Jina Kamili{% else %}Full Name{% endif %} <span class="req">*</span></label>
+            <div class="f-inp-wrap">
+              <i class="fas fa-user f-ico"></i>
+              <input type="text" name="{{ form.full_name.name }}" id="{{ form.full_name.id_for_label }}"
+                     class="f-inp {% if form.full_name.errors %}err{% endif %}"
+                     value="{{ form.full_name.value|default:'' }}"
+                     placeholder="{% if LANG == 'sw' %}Jina lako kamili{% else %}Your full name{% endif %}" required>
+            </div>
+            {% if form.full_name.errors %}<span class="f-err"><i class="fas fa-exclamation-circle"></i>{{ form.full_name.errors.0 }}</span>{% endif %}
+          </div>
+
+          <!-- Email -->
+          <div class="f-grp">
+            <label class="f-lbl">{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %} <span class="req">*</span></label>
+            <div class="f-inp-wrap">
+              <i class="fas fa-envelope f-ico"></i>
+              <input type="email" name="{{ form.email.name }}" id="{{ form.email.id_for_label }}"
+                     class="f-inp {% if form.email.errors %}err{% endif %}"
+                     value="{{ form.email.value|default:'' }}"
+                     placeholder="email@college.ac.tz" required>
+            </div>
+            {% if form.email.errors %}<span class="f-err"><i class="fas fa-exclamation-circle"></i>{{ form.email.errors.0 }}</span>{% endif %}
+          </div>
+
+          <!-- Phone -->
+          <div class="f-grp">
+            <label class="f-lbl">{% if LANG == 'sw' %}Nambari ya Simu{% else %}Phone Number{% endif %} <span class="req">*</span></label>
+            <div class="f-inp-wrap">
+              <i class="fas fa-phone f-ico"></i>
+              <input type="tel" name="{{ form.phone_number.name }}" id="{{ form.phone_number.id_for_label }}"
+                     class="f-inp {% if form.phone_number.errors %}err{% endif %}"
+                     value="{{ form.phone_number.value|default:'' }}"
+                     placeholder="+255 712 345 678" required>
+            </div>
+            {% if form.phone_number.errors %}<span class="f-err"><i class="fas fa-exclamation-circle"></i>{{ form.phone_number.errors.0 }}</span>{% endif %}
+          </div>
+
+          <!-- Spacer -->
+          <div></div>
+
+          <!-- Password -->
+          <div class="f-grp">
+            <label class="f-lbl">{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %} <span class="req">*</span></label>
+            <div class="f-inp-wrap pwd-wrap">
+              <i class="fas fa-lock f-ico"></i>
+              <input type="password" name="{{ form.password1.name }}" id="{{ form.password1.id_for_label }}"
+                     class="f-inp {% if form.password1.errors %}err{% endif %}" style="padding-right:38px;"
+                     placeholder="{% if LANG == 'sw' %}Nywila imara{% else %}Strong password{% endif %}" required>
+              <button type="button" class="pwd-toggle" onclick="togglePwd('{{ form.password1.id_for_label }}')"><i class="fas fa-eye"></i></button>
+            </div>
+            <div class="strength-bar"><div class="strength-fill s0" id="pwdStrength"></div></div>
+            {% if form.password1.errors %}<span class="f-err"><i class="fas fa-exclamation-circle"></i>{{ form.password1.errors.0 }}</span>{% endif %}
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="f-grp">
+            <label class="f-lbl">{% if LANG == 'sw' %}Thibitisha Nywila{% else %}Confirm Password{% endif %} <span class="req">*</span></label>
+            <div class="f-inp-wrap pwd-wrap">
+              <i class="fas fa-lock f-ico"></i>
+              <input type="password" name="{{ form.password2.name }}" id="{{ form.password2.id_for_label }}"
+                     class="f-inp {% if form.password2.errors %}err{% endif %}" style="padding-right:38px;"
+                     placeholder="{% if LANG == 'sw' %}Ingiza tena{% else %}Re-enter password{% endif %}" required>
+              <button type="button" class="pwd-toggle" onclick="togglePwd('{{ form.password2.id_for_label }}')"><i class="fas fa-eye"></i></button>
+            </div>
+            {% if form.password2.errors %}<span class="f-err"><i class="fas fa-exclamation-circle"></i>{{ form.password2.errors.0 }}</span>{% endif %}
+          </div>
+
+          <!-- Requirements -->
+          <div class="f-grp f-full">
+            <div class="req-box">
+              <div class="req-box-title"><i class="fas fa-shield-alt"></i> {% if LANG == 'sw' %}Mahitaji ya Nywila{% else %}Password Requirements{% endif %}</div>
+              <ul class="req-list">
+                <li>{% if LANG == 'sw' %}Angalau herufi 8{% else %}At least 8 characters{% endif %}</li>
+                <li>{% if LANG == 'sw' %}Herufi moja kubwa (A–Z){% else %}One uppercase letter (A–Z){% endif %}</li>
+                <li>{% if LANG == 'sw' %}Herufi moja ndogo (a–z){% else %}One lowercase letter (a–z){% endif %}</li>
+                <li>{% if LANG == 'sw' %}Nambari moja (0–9){% else %}One number (0–9){% endif %}</li>
+                <li>{% if LANG == 'sw' %}Alama moja maalum (!@#$){% else %}One special character (!@#$){% endif %}</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="f-grp f-full">
+            <button type="submit" class="btn-reg">
+              <i class="fas fa-user-plus"></i>
+              {% if LANG == 'sw' %}FUNGUA AKAUNTI{% else %}CREATE ACCOUNT{% endif %}
+            </button>
+            <div class="login-note">
+              {% if LANG == 'sw' %}Una akaunti? <a href="{% url 'login' %}">Ingia hapa &rarr;</a>
+              {% else %}Already have an account? <a href="{% url 'login' %}">Sign in here &rarr;</a>{% endif %}
+            </div>
+          </div>
+
+        </div>
+      </form>
+    </div>
+
+    <div class="card-ft">
+      <i class="fas fa-shield-alt"></i>
+      <span>{% if LANG == 'sw' %}Taarifa zako zinalindwa — TCRA Compliant — Tanzania Gov IT Standards{% else %}Your information is protected — TCRA Compliant — Tanzania Gov IT Standards{% endif %}</span>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="pg-foot">
+  <p>&copy; {% now "Y" %} {% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia — Jamhuri ya Muungano wa Tanzania{% else %}Ministry of Education, Science and Technology — United Republic of Tanzania{% endif %}</p>
+  <span class="ver"><i class="fas fa-code-branch" style="margin-right:3px;"></i>IMS v2.1.0</span>
+</div>
 
 <script>
-    function togglePwd(inputId) {
-        const inp = document.getElementById(inputId);
-        const ico = inp.nextElementSibling.querySelector('i');
-        if (inp.type === 'password') {
-            inp.type = 'text';
-            ico.classList.replace('fa-eye', 'fa-eye-slash');
-        } else {
-            inp.type = 'password';
-            ico.classList.replace('fa-eye-slash', 'fa-eye');
-        }
-    }
+function togglePwd(id){
+  const inp=document.getElementById(id);
+  const ico=inp.parentElement.querySelector('.pwd-toggle i');
+  if(!inp||!ico)return;
+  if(inp.type==='password'){inp.type='text';ico.classList.replace('fa-eye','fa-eye-slash');}
+  else{inp.type='password';ico.classList.replace('fa-eye-slash','fa-eye');}
+}
 
-    // Strength meter
-    const pwd1 = document.getElementById('{{ form.password1.id_for_label }}');
-    if (pwd1) {
-        pwd1.addEventListener('input', function () {
-            const p = this.value;
-            let s = 0;
-            if (p.length >= 8)  s++;
-            if (p.length >= 12) s++;
-            if (/[A-Z]/.test(p)) s++;
-            if (/[a-z]/.test(p)) s++;
-            if (/[0-9]/.test(p)) s++;
-            if (/[^A-Za-z0-9]/.test(p)) s++;
-            document.getElementById('passwordStrength').className =
-                'strength-fill strength-' + Math.min(Math.floor(s / 2), 4);
-        });
-    }
+const p1=document.getElementById('{{ form.password1.id_for_label }}');
+const p2=document.getElementById('{{ form.password2.id_for_label }}');
+const bar=document.getElementById('pwdStrength');
+if(p1&&bar){
+  p1.addEventListener('input',function(){
+    const v=this.value;let s=0;
+    if(v.length>=8)s++;if(v.length>=12)s++;
+    if(/[A-Z]/.test(v))s++;if(/[a-z]/.test(v))s++;
+    if(/[0-9]/.test(v))s++;if(/[^A-Za-z0-9]/.test(v))s++;
+    const cls=['s0','s1','s2','s3','s4'];
+    bar.className='strength-fill '+cls[Math.min(Math.floor(s/1.5),4)];
+  });
+}
+if(p1&&p2){
+  p2.addEventListener('input',function(){
+    this.style.borderColor=this.value===''?'var(--border)':this.value===p1.value?'var(--navy)':'var(--danger)';
+  });
+}
 
-    // Password match highlight
-    const pwd2 = document.getElementById('{{ form.password2.id_for_label }}');
-    if (pwd1 && pwd2) {
-        pwd2.addEventListener('input', function () {
-            this.style.borderColor =
-                this.value === '' ? '#CBD5E0' :
-                this.value === pwd1.value ? '#0A2B5E' : '#DC2626';
-        });
+const form=document.querySelector('form');
+if(form){
+  form.addEventListener('submit',function(e){
+    let ok=true;
+    form.querySelectorAll('.f-inp[required]').forEach(function(inp){
+      if(!inp.value.trim()){inp.classList.add('err');ok=false;}
+      else inp.classList.remove('err');
+    });
+    if(p1&&p2&&p1.value!==p2.value){p2.classList.add('err');ok=false;}
+    if(!ok){e.preventDefault();}
+    else{
+      const btn=form.querySelector('.btn-reg');
+      btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> {% if LANG == "sw" %}Inaunda Akaunti...{% else %}Creating Account...{% endif %}';
+      btn.disabled=true;
     }
-
-    // Form submit guard
-    const regForm = document.querySelector('form');
-    if (regForm) {
-        regForm.addEventListener('submit', function (e) {
-            let ok = true;
-            regForm.querySelectorAll('.form-input[required]').forEach(inp => {
-                if (!inp.value.trim()) { inp.style.borderColor = '#DC2626'; ok = false; }
-            });
-            if (pwd1 && pwd2 && pwd1.value !== pwd2.value) {
-                pwd2.style.borderColor = '#DC2626'; ok = false;
-            }
-            if (!ok) {
-                e.preventDefault();
-                alert('Tafadhali jaza sehemu zote zinazohitajika vizuri.');
-            } else {
-                const btn = regForm.querySelector('.submit-btn');
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
-                btn.disabled = true;
-            }
-        });
-    }
+  });
+}
 </script>
-{% endblock %}
+</body>
+</html>
