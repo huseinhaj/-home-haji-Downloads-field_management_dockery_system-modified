@@ -1,51 +1,40 @@
 {% extends "field_app/base.html" %}
 {% load static %}
-{% block title %}{% if LANG == 'sw' %}Mwongozo wa Mtumiaji — IMS{% else %}User Guide — IMS{% endif %}{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Mwongozo — IMS{% else %}Help & Guide — IMS{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
-.help-wrap { max-width: 860px; margin: 0 auto; padding: 28px 16px 48px; }
+.help-wrap { max-width: 820px; margin: 0 auto; padding: 28px 16px 48px; }
+
 .help-hero {
-    background: var(--bold, #0A2B5E);
+    background: var(--bold,#0A2B5E);
     border-radius: 6px;
-    border-left: 5px solid var(--medium, #C8900A);
-    padding: 22px 26px;
+    border-left: 5px solid var(--medium,#C8900A);
+    padding: 20px 24px;
     margin-bottom: 28px;
-    display: flex; align-items: center; gap: 16px;
+    display: flex; align-items: center; gap: 14px;
 }
 .help-hero-ico {
-    width: 52px; height: 52px; flex-shrink: 0;
+    width: 48px; height: 48px; flex-shrink: 0;
     background: rgba(200,144,10,.18);
     border: 1.5px solid rgba(200,144,10,.35);
     border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    color: #C8900A; font-size: 22px;
+    color: #C8900A; font-size: 20px;
 }
-.help-hero h1 { font-size: 1.35rem; font-weight: 800; color: #fff; margin: 0 0 4px; }
-.help-hero p  { font-size: 12.5px; color: rgba(255,255,255,.6); margin: 0; }
-
-/* Role tabs */
-.role-tabs { display: flex; gap: 4px; margin-bottom: 24px; flex-wrap: wrap; }
-.rtab {
-    padding: 7px 18px; border-radius: 4px;
-    font-size: 12.5px; font-weight: 700;
-    cursor: pointer; border: 1.5px solid var(--border, #C4CEDB);
-    background: #fff; color: #4A5568;
-    transition: all .13s; text-decoration: none; display: inline-block;
-}
-.rtab:hover { border-color: var(--bold, #0A2B5E); color: var(--bold, #0A2B5E); }
-.rtab.active { background: var(--bold, #0A2B5E); color: #fff; border-color: var(--bold, #0A2B5E); }
+.help-hero h1 { font-size: 1.25rem; font-weight: 800; color: #fff; margin: 0 0 3px; }
+.help-hero p  { font-size: 12px; color: rgba(255,255,255,.55); margin: 0; }
 
 /* Section */
-.help-section { margin-bottom: 32px; }
+.help-section { margin-bottom: 30px; }
 .help-section h2 {
-    font-size: 13px; font-weight: 800; color: var(--bold, #0A2B5E);
+    font-size: 12.5px; font-weight: 800; color: var(--bold,#0A2B5E);
     text-transform: uppercase; letter-spacing: .5px;
-    border-bottom: 2px solid var(--medium, #C8900A);
+    border-bottom: 2px solid var(--medium,#C8900A);
     padding-bottom: 6px; margin-bottom: 14px;
     display: flex; align-items: center; gap: 7px;
 }
-.help-section h2 i { color: var(--medium, #C8900A); }
+.help-section h2 i { color: var(--medium,#C8900A); }
 
 /* Steps */
 .steps { list-style: none; padding: 0; margin: 0; }
@@ -56,307 +45,315 @@
 .steps li:last-child { border-bottom: none; }
 .step-num {
     width: 28px; height: 28px; flex-shrink: 0;
-    background: var(--bold, #0A2B5E); color: #fff;
+    background: var(--bold,#0A2B5E); color: #fff;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: 800; margin-top: 1px;
 }
 .step-body strong { display: block; font-size: 13.5px; color: #0F1923; margin-bottom: 3px; }
-.step-body span { font-size: 12.5px; color: #5A6B7E; line-height: 1.5; }
-.step-body .tip {
-    display: inline-flex; align-items: center; gap: 4px;
-    margin-top: 5px; font-size: 11.5px; color: #78350F;
-    background: #FEF3C7; border-radius: 3px; padding: 2px 8px;
+.step-body p { font-size: 12.5px; color: #5A6B7E; line-height: 1.55; margin: 0; }
+.tip {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-top: 6px; font-size: 11.5px; color: #78350F;
+    background: #FEF3C7; border-radius: 3px; padding: 3px 9px;
 }
+.tip-green { background: #D1FAE5; color: #065F46; }
 
 /* FAQ */
 .faq-item { border: 1px solid #E2E8F0; border-radius: 4px; margin-bottom: 6px; overflow: hidden; }
 .faq-q {
     width: 100%; background: #F7F9FC; border: none; cursor: pointer;
     padding: 11px 16px; display: flex; align-items: center; justify-content: space-between;
-    font-size: 13px; font-weight: 700; color: var(--bold, #0A2B5E);
+    font-size: 13px; font-weight: 700; color: var(--bold,#0A2B5E);
     font-family: inherit; text-align: left; transition: background .12s;
 }
 .faq-q:hover { background: #EDF0F7; }
-.faq-q i { font-size: 11px; color: #9AAFC0; transition: transform .2s; }
+.faq-q i { font-size: 11px; color: #9AAFC0; transition: transform .2s; flex-shrink:0; }
 .faq-q.open i { transform: rotate(180deg); }
 .faq-a { display: none; padding: 12px 16px; font-size: 12.5px; color: #5A6B7E; line-height: 1.65; background: #fff; border-top: 1px solid #EEF1F6; }
-.faq-a.open { display: block; }
 
-/* Contacts */
+/* Contact */
 .contact-card {
     background: #fff; border: 1px solid #E2E8F0; border-radius: 4px;
-    padding: 14px 18px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+    padding: 12px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
 }
-.contact-ico { width: 38px; height: 38px; background: var(--bold, #0A2B5E); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; flex-shrink: 0; }
-.contact-lbl { font-size: 11px; font-weight: 700; color: #9AAFC0; text-transform: uppercase; letter-spacing: .3px; }
+.contact-ico { width: 36px; height: 36px; background: var(--bold,#0A2B5E); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; flex-shrink: 0; }
+.contact-lbl { font-size: 10.5px; font-weight: 700; color: #9AAFC0; text-transform: uppercase; letter-spacing: .3px; }
 .contact-val { font-size: 13px; font-weight: 600; color: #0F1923; margin-top: 1px; }
 
-/* panel display */
-.help-panel { display: none; }
-.help-panel.active { display: block; }
+code { background: #EEF1F6; padding: 1px 7px; border-radius: 3px; font-size: 12px; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="help-wrap">
 
-  <!-- Hero -->
+  <!-- ── HERO ── -->
   <div class="help-hero">
     <div class="help-hero-ico"><i class="fas fa-life-ring"></i></div>
     <div>
-      <h1>{% if LANG == 'sw' %}Mwongozo wa Mtumiaji — IMS{% else %}IMS User Guide & Help Center{% endif %}</h1>
-      <p>{% if LANG == 'sw' %}Mfumo wa Usimamizi wa Mafunzo ya Vitendo — Wizara ya Elimu, Sayansi na Teknolojia{% else %}Internship Management System — Ministry of Education, Science &amp; Technology, Tanzania{% endif %}</p>
+      {% if role == 'student' %}
+        <h1>{% if LANG == 'sw' %}Mwongozo wa Mwanafunzi Mwalimu{% else %}Student Teacher — User Guide{% endif %}</h1>
+        <p>{% if LANG == 'sw' %}Jinsi ya kutumia Mfumo wa Usimamizi wa Mafunzo ya Vitendo (IMS){% else %}How to use the Internship Management System (IMS){% endif %}</p>
+      {% elif role == 'assessor' %}
+        <h1>{% if LANG == 'sw' %}Mwongozo wa Mkaguzi{% else %}Assessor — User Guide{% endif %}</h1>
+        <p>{% if LANG == 'sw' %}Jinsi ya kutumia mfumo kufuatilia na kutathmini wanafunzi walimu{% else %}How to use the system to monitor and assess student teachers{% endif %}</p>
+      {% elif role == 'board' %}
+        <h1>{% if LANG == 'sw' %}Mwongozo wa Bodi ya Walimu{% else %}Teacher Board — User Guide{% endif %}</h1>
+        <p>{% if LANG == 'sw' %}Jinsi ya kufuatilia maendeleo na kuzalisha ripoti za AI za wilaya{% else %}How to monitor progress and generate AI district reports{% endif %}</p>
+      {% else %}
+        <h1>{% if LANG == 'sw' %}Mwongozo wa Msimamizi{% else %}Administrator — User Guide{% endif %}</h1>
+        <p>{% if LANG == 'sw' %}Jinsi ya kusimamia mfumo, wanafunzi, na wakaguzi{% else %}How to manage the system, students, and assessors{% endif %}</p>
+      {% endif %}
     </div>
   </div>
 
-  <!-- Role Tabs -->
-  <div class="role-tabs">
-    <a class="rtab {% if role == 'student' %}active{% endif %}" data-panel="student" href="#">
-      <i class="fas fa-user-graduate me-1"></i>{% if LANG == 'sw' %}Mwanafunzi Mwalimu{% else %}Student Teacher{% endif %}
-    </a>
-    <a class="rtab {% if role == 'assessor' %}active{% endif %}" data-panel="assessor" href="#">
-      <i class="fas fa-user-check me-1"></i>{% if LANG == 'sw' %}Mkaguzi{% else %}Assessor{% endif %}
-    </a>
-    <a class="rtab {% if role == 'board' %}active{% endif %}" data-panel="board" href="#">
-      <i class="fas fa-users me-1"></i>{% if LANG == 'sw' %}Bodi ya Walimu{% else %}Teacher Board{% endif %}
-    </a>
-    {% if role == 'admin' %}
-    <a class="rtab active" data-panel="admin" href="#">
-      <i class="fas fa-shield-alt me-1"></i>{% if LANG == 'sw' %}Msimamizi{% else %}Admin{% endif %}
-    </a>
-    {% endif %}
+  <!-- ══════════════════════════════════
+       STUDENT SECTION
+  ══════════════════════════════════ -->
+  {% if role == 'student' %}
+
+  <div class="help-section">
+    <h2><i class="fas fa-play-circle"></i> {% if LANG == 'sw' %}Hatua za Kuanza{% else %}Getting Started{% endif %}</h2>
+    <ul class="steps">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Ingia kwenye Mfumo{% else %}Login to the System{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Nenda /login. Weka barua pepe ya chuo na nywila yako. Kama bado huna akaunti, nenda /register kwanza.{% else %}Go to /login. Enter your college email and password. If you don't have an account yet, go to /register first.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Chagua Shule Yako{% else %}Select Your School{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Bonyeza "Wasilisha Maombi" kwenye sidebar. Chagua Mkoa → Wilaya → Shule unayotaka kufanya mazoezi ya ufundishaji.{% else %}Click "Submit Application" on the sidebar. Select Region → District → School where you want to do your teaching practice.{% endif %}</p>
+          <div class="tip"><i class="fas fa-info-circle"></i> {% if LANG == 'sw' %}Shule zilizojaa au zilizo "pinned" haziwezi kuchaguliwa.{% else %}Schools that are full or "pinned" cannot be selected.{% endif %}</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Chagua Masomo Unayofundisha{% else %}Select Your Teaching Subjects{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Baada ya kuchagua shule, omba masomo unayoyafundisha. Maombi yataidhinishwa na msimamizi — subiri idhini kabla ya kuendelea.{% else %}After selecting a school, apply for the subjects you will teach. Applications will be approved by the administrator — wait for approval before proceeding.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Andika Logbook Kila Siku{% else %}Write Your Daily Logbook{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Kila siku ya kazi nenda "Logbook → Andika". Itabidi uthibitishe eneo lako kwa GPS kabla ya kuwasilisha. Huwezi kuandika wikendi.{% else %}Every working day go to "Logbook → Write". You must verify your GPS location before submitting. You cannot write on weekends.{% endif %}</p>
+          <div class="tip"><i class="fas fa-exclamation-triangle"></i> {% if LANG == 'sw' %}Logbook ya leo tu inaweza kuandikwa — haiwezi nyuma wala mbele.{% else %}Only today's logbook can be written — not past or future dates.{% endif %}</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Zalisha Scheme of Work kwa AI{% else %}Generate Scheme of Work with AI{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Nenda "Mipango → Scheme ya Kazi". Jaza fomu (somo, darasa, muhula, wiki). Bonyeza "Tengeneza" — AI itaunda scheme kamili. Pakua PDF au Word. Scheme itaonekana kwa Bodi ya Walimu.{% else %}Go to "Plans → Scheme of Work". Fill in the form (subject, class, term, weeks). Click "Generate" — AI will create a complete scheme. Download PDF or Word. The scheme will be visible to the Teacher Board.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Zalisha Mpango wa Somo kwa AI{% else %}Generate Lesson Plan with AI{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Nenda "Mipango → Mpango wa Somo". Jaza somo, darasa, mada, na muda wa somo. AI itaunda mpango kamili wa somo. Pakua PDF au Word.{% else %}Go to "Plans → Lesson Plan". Fill in subject, class, topic, and lesson duration. AI will create a complete lesson plan. Download PDF or Word.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">7</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Pakua Barua za Uthibitisho{% else %}Download Confirmation Letters{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Ukiwa na maombi yaliyoidhinishwa, pakua Barua ya Binafsi kutoka dashibodi. Barua ya Kikundi inapatikana shule yako ikiwa na wanafunzi 5+ walioidhinishwa.{% else %}Once you have approved applications, download your Individual Letter from the dashboard. Group Letter is available when your school has 5+ approved students.{% endif %}</p>
+          <div class="tip tip-green"><i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}Angalia "Ripoti za Kila Mwezi" kwenye dashibodi kuona jinsi Bodi inavyokiona maendeleo yako.{% else %}Check "Monthly Reports" on your dashboard to see how the Board views your progress.{% endif %}</div>
+        </div>
+      </li>
+    </ul>
   </div>
 
-  <!-- ═══════════ STUDENT PANEL ═══════════ -->
-  <div class="help-panel {% if role == 'student' %}active{% endif %}" id="panel-student">
+  <div class="help-section">
+    <h2><i class="fas fa-question-circle"></i> {% if LANG == 'sw' %}Maswali ya Kawaida{% else %}Common Questions{% endif %}</h2>
 
-    <div class="help-section">
-      <h2><i class="fas fa-play-circle"></i> {% if LANG == 'sw' %}Hatua za Kuanza{% else %}Getting Started{% endif %}</h2>
-      <ul class="steps">
-        <li>
-          <div class="step-num">1</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Jiandikishe{% else %}Register Your Account{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Nenda /register, weka jina kamili, barua pepe ya chuo, nambari ya simu, na nywila imara.{% else %}Go to /register, enter your full name, college email, phone number, and a strong password.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">2</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Chagua Mkoa → Wilaya → Shule{% else %}Select Region → District → School{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Baada ya kuingia, bonyeza "Wasilisha Maombi". Chagua mkoa wako, kisha wilaya, kisha shule unayotaka kufanya mazoezi.{% else %}After login, click "Submit Application". Select your region, then district, then desired school for your teaching practice.{% endif %}</span>
-            <div class="tip"><i class="fas fa-info-circle"></i> {% if LANG == 'sw' %}Shule zilizojaa haziwezi kuchaguliwa.{% else %}Full schools cannot be selected.{% endif %}</div>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">3</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Chagua Masomo{% else %}Select Your Subjects{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Baada ya kuchagua shule, omba masomo unayofundisha. Maombi yataidhinishwa na msimamizi.{% else %}After selecting your school, apply for the subjects you will teach. Applications will be approved by the administrator.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">4</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Andika Logbook Kila Siku{% else %}Write Your Logbook Daily{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Nenda "Andika Logbook" kila siku ya kazi. Lazima uthibitishe eneo lako (GPS) kabla ya kuwasilisha.{% else %}Go to "Write Logbook" every working day. You must verify your location (GPS) before submitting.{% endif %}</span>
-            <div class="tip"><i class="fas fa-exclamation-triangle"></i> {% if LANG == 'sw' %}Wikendi hauwezi kuandika logbook.{% else %}You cannot write logbook on weekends.{% endif %}</div>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">5</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Zalisha Scheme of Work na Lesson Plans{% else %}Generate Scheme of Work &amp; Lesson Plans{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Tumia AI kuzalisha Scheme of Work na Mpango wa Somo. Baada ya kuzalisha, pakua PDF au Word. Data itahifadhiwa na itaonekana kwa Bodi ya Walimu.{% else %}Use AI to generate Scheme of Work and Lesson Plans. After generating, download PDF or Word. Data is saved and visible to the Teacher Board.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">6</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Pakua Barua za Uthibitisho{% else %}Download Confirmation Letters{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Ukiwa na maombi yaliyoidhinishwa, pakua Barua ya Binafsi. Barua ya Kikundi inapatikana shule yako ikiwa na wanafunzi 5+ walioidhinishwa.{% else %}Once you have approved applications, download your Individual Letter. Group Letter is available when your school has 5+ approved students.{% endif %}</span>
-          </div>
-        </li>
-      </ul>
+    <div class="faq-item">
+      <button class="faq-q"><span>{% if LANG == 'sw' %}Nimesahau nywila yangu — nifanye nini?{% else %}I forgot my password — what do I do?{% endif %}</span><i class="fas fa-chevron-down"></i></button>
+      <div class="faq-a">{% if LANG == 'sw' %}Kwenye ukurasa wa kuingia, bonyeza "Umesahau nywila?". Weka barua pepe yako na utapata nywila mpya ya muda kwenye inbox yako. Angalia pia spam/junk folder.{% else %}On the login page, click "Forgot password?". Enter your email and you will receive a temporary password in your inbox. Also check your spam/junk folder.{% endif %}</div>
     </div>
 
-    <div class="help-section">
-      <h2><i class="fas fa-question-circle"></i> {% if LANG == 'sw' %}Maswali Yanayoulizwa Mara Kwa Mara{% else %}Frequently Asked Questions{% endif %}</h2>
-
-      <div class="faq-item">
-        <button class="faq-q"><span>{% if LANG == 'sw' %}Sijui nywila yangu — nifanye nini?{% else %}I forgot my password — what do I do?{% endif %}</span><i class="fas fa-chevron-down"></i></button>
-        <div class="faq-a">{% if LANG == 'sw' %}Nenda kwenye ukurasa wa kuingia na bonyeza "Umesahau nywila?". Weka barua pepe yako na utapata nywila mpya ya muda kwenye email yako.{% else %}Go to the login page and click "Forgot password?". Enter your email address and you will receive a temporary password via email.{% endif %}</div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-q"><span>{% if LANG == 'sw' %}GPS yangu haifanyi kazi — siwezi kuwasilisha logbook{% else %}My GPS isn't working — I can't submit logbook{% endif %}</span><i class="fas fa-chevron-down"></i></button>
-        <div class="faq-a">{% if LANG == 'sw' %}Hakikisha: 1) Umewasha location/GPS kwenye simu yako. 2) Unatumia browser inayoruhusu location (Chrome, Firefox). 3) Uko ndani au karibu na shule. Kama bado haifanyi kazi, wasiliana na msimamizi na maelezo ya tatizo.{% else %}Make sure: 1) Location/GPS is enabled on your device. 2) You are using a browser that supports location (Chrome, Firefox). 3) You are at or near your school. If it still doesn't work, contact the administrator with a description of the issue.{% endif %}</div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-q"><span>{% if LANG == 'sw' %}Maombi yangu yanasubiri muda mrefu{% else %}My application has been pending for a long time{% endif %}</span><i class="fas fa-chevron-down"></i></button>
-        <div class="faq-a">{% if LANG == 'sw' %}Maombi yanaidhinishwa na msimamizi wa mfumo. Kama yamechukua zaidi ya siku 3 za kazi, wasiliana na msimamizi wako wa chuo au ofisi ya mafunzo.{% else %}Applications are approved by the system administrator. If it has taken more than 3 working days, contact your college supervisor or the internship office.{% endif %}</div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-q"><span>{% if LANG == 'sw' %}Scheme of Work yangu haikuonekana kwa Bodi{% else %}My Scheme of Work is not visible to the Board{% endif %}</span><i class="fas fa-chevron-down"></i></button>
-        <div class="faq-a">{% if LANG == 'sw' %}Scheme na Lesson Plans zinahifadhiwa database baada ya kuzalishwa kwa AI. Hakikisha umesubiri AI ikamilishe vizuri na ukurasa unaonyesha "Imezalishwa!". Kisha utaliona kwenye dashibodi ya Bodi.{% else %}Schemes and Lesson Plans are saved to the database after AI generation. Make sure you waited for the AI to complete successfully and the page shows "Generated!". It will then appear on the Board dashboard.{% endif %}</div>
-      </div>
+    <div class="faq-item">
+      <button class="faq-q"><span>{% if LANG == 'sw' %}GPS yangu haifanyi kazi, siwezi kuthibitisha eneo{% else %}GPS not working, I can't verify my location{% endif %}</span><i class="fas fa-chevron-down"></i></button>
+      <div class="faq-a">{% if LANG == 'sw' %}Angalia: 1) GPS imewashwa kwenye simu. 2) Unatumia Chrome au Firefox (si browser ya ndani ya app). 3) Uko karibu na shule yako. 4) Umempa browser ruhusa ya eneo. Kama bado haifanyi kazi, wasiliana na msimamizi.{% else %}Check: 1) GPS is enabled on your device. 2) You're using Chrome or Firefox (not an in-app browser). 3) You are near your school. 4) You have granted location permission to the browser. If still not working, contact the administrator.{% endif %}</div>
     </div>
 
+    <div class="faq-item">
+      <button class="faq-q"><span>{% if LANG == 'sw' %}Maombi yangu yanasubiri muda mrefu{% else %}My application has been pending too long{% endif %}</span><i class="fas fa-chevron-down"></i></button>
+      <div class="faq-a">{% if LANG == 'sw' %}Maombi yanaidhinishwa na msimamizi. Kama yamechukua zaidi ya siku 3 za kazi, wasiliana na msimamizi wa mfumo au msimamizi wa chuo chako.{% else %}Applications are approved by the system administrator. If it has taken more than 3 working days, contact the system administrator or your college supervisor.{% endif %}</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q"><span>{% if LANG == 'sw' %}Scheme yangu haikuonekana kwa Bodi baada ya kuzalisha{% else %}My Scheme isn't showing to the Board after generation{% endif %}</span><i class="fas fa-chevron-down"></i></button>
+      <div class="faq-a">{% if LANG == 'sw' %}Scheme inahifadhiwa mara moja AI ikimaliza. Hakikisha ukurasa unaonyesha ujumbe wa "Imezalishwa!" kabla ya kufunga. Kama bado haionekani, jaribu kuzalisha upya.{% else %}The scheme is saved once the AI completes successfully. Make sure the page shows the "Generated!" message before closing. If it still doesn't appear, try regenerating.{% endif %}</div>
+    </div>
   </div>
 
-  <!-- ═══════════ ASSESSOR PANEL ═══════════ -->
-  <div class="help-panel {% if role == 'assessor' %}active{% endif %}" id="panel-assessor">
+  <!-- ══════════════════════════════════
+       ASSESSOR SECTION
+  ══════════════════════════════════ -->
+  {% elif role == 'assessor' %}
 
-    <div class="help-section">
-      <h2><i class="fas fa-play-circle"></i> {% if LANG == 'sw' %}Jinsi ya Kutumia Mfumo — Mkaguzi{% else %}How to Use the System — Assessor{% endif %}</h2>
-      <ul class="steps">
-        <li>
-          <div class="step-num">1</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Pokea Akaunti Yako{% else %}Receive Your Account{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Akaunti ya mkaguzi inatengenezwa na msimamizi. Utapata nywila ya muda kwenye barua pepe yako. Ingia kwenye /assessor/login.{% else %}Your assessor account is created by the administrator. You will receive a temporary password via email. Login at /assessor/login.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">2</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Angalia Wanafunzi Waliowekwa Shuleni Kwako{% else %}View Students Assigned to Your School{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Dashibodi yako inaonyesha shule ulizopewa na wanafunzi wao. Bonyeza jina la mwanafunzi kuona maendeleo yake.{% else %}Your dashboard shows schools assigned to you and their students. Click a student's name to view their progress.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">3</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Tathmini Mwanafunzi{% else %}Assess a Student{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Bonyeza "Tathmini" kwenye rekodi ya mwanafunzi. Jaza fomu ya tathmini (maswali, alama, maoni). Tathmini itahifadhiwa na kuonekana kwa mwanafunzi na msimamizi.{% else %}Click "Assess" on a student's record. Fill in the assessment form (questions, scores, comments). The assessment will be saved and visible to the student and administrator.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">4</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Nywila Ulisahau?{% else %}Forgot Your Password?{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Kwenye /assessor/login bonyeza "Reset Password". Weka barua pepe yako — utapata nywila mpya ya muda.{% else %}At /assessor/login click "Reset Password". Enter your email — you will receive a new temporary password.{% endif %}</span>
-          </div>
-        </li>
-      </ul>
-    </div>
-
+  <div class="help-section">
+    <h2><i class="fas fa-play-circle"></i> {% if LANG == 'sw' %}Mwongozo wa Mkaguzi{% else %}Assessor Guide{% endif %}</h2>
+    <ul class="steps">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Ingia kwenye Mfumo wa Mkaguzi{% else %}Login to the Assessor System{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Nenda /assessor/login. Tumia barua pepe na nywila uliyopewa na msimamizi. Kama bado hujapata, wasiliana na msimamizi.{% else %}Go to /assessor/login. Use the email and password provided by the administrator. If you haven't received them yet, contact the administrator.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Angalia Shule na Wanafunzi Wako{% else %}View Your Schools and Students{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Dashibodi yako inaonyesha shule ulizopewa katika mwaka huu wa masomo na idadi ya wanafunzi kwa kila shule.{% else %}Your dashboard shows the schools assigned to you for this academic year and the number of students per school.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Angalia Maendeleo ya Mwanafunzi{% else %}View a Student's Progress{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Bonyeza jina la mwanafunzi kwenye orodha. Utaona historia ya logbook, masomo aliyofundisha, na taarifa za tathmini za awali.{% else %}Click a student's name in the list. You will see their logbook history, subjects taught, and previous assessment records.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Tathmini Mwanafunzi{% else %}Assess a Student{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Kwenye ukurasa wa mwanafunzi, bonyeza "Tathmini". Jaza fomu ya tathmini — alama, maoni, na mapendekezo. Tathmini itaonekana kwa mwanafunzi na msimamizi.{% else %}On the student's page, click "Assess". Fill in the assessment form — scores, comments, and recommendations. The assessment will be visible to the student and administrator.{% endif %}</p>
+          <div class="tip tip-green"><i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}Tathmini zinazokamilika zinabadilisha alama ya mwanafunzi kwenye dashibodi ya msimamizi.{% else %}Completed assessments update the student's status on the administrator dashboard.{% endif %}</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Nywila Ulisahau?{% else %}Forgot Your Password?{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Kwenye /assessor/login bonyeza "Reset Password". Weka barua pepe yako — utapata nywila mpya ya muda. Ingia na ubadilishe nywila haraka.{% else %}At /assessor/login click "Reset Password". Enter your email — you will receive a new temporary password. Login and change it promptly.{% endif %}</p>
+        </div>
+      </li>
+    </ul>
   </div>
 
-  <!-- ═══════════ BOARD PANEL ═══════════ -->
-  <div class="help-panel {% if role == 'board' %}active{% endif %}" id="panel-board">
+  <!-- ══════════════════════════════════
+       BOARD SECTION
+  ══════════════════════════════════ -->
+  {% elif role == 'board' %}
 
-    <div class="help-section">
-      <h2><i class="fas fa-play-circle"></i> {% if LANG == 'sw' %}Jinsi ya Kutumia — Bodi ya Walimu{% else %}How to Use — Teacher Board{% endif %}</h2>
-      <ul class="steps">
-        <li>
-          <div class="step-num">1</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Ingia kwenye Mfumo wa Bodi{% else %}Login to the Board System{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Nenda /board/login. Tumia barua pepe na nywila uliyopewa na msimamizi.{% else %}Go to /board/login. Use the email and password provided by the administrator.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">2</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Fuatilia Maendeleo ya Wanafunzi{% else %}Monitor Student Progress{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Kutoka dashibodi: Mkoa → Wilaya → Shule → Mwanafunzi. Kila mwanafunzi una ukurasa wa maendeleo unaonyesha logbook, scheme, lesson plans, na alama za inactivity.{% else %}From dashboard: Region → District → School → Student. Each student has a progress page showing logbook, schemes, lesson plans, and inactivity alerts.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">3</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Toa Maoni kwa Mwanafunzi{% else %}Add Comments to a Student{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Kwenye ukurasa wa maendeleo ya mwanafunzi, kuna fomu ya maoni. Chagua hali (Vizuri Sana / Vizuri / Wastani / Nyuma) na andika maoni. Mwanafunzi ataona maoni hayo kwenye dashibodi yake.{% else %}On the student's progress page, there is a comment form. Select the status (Excellent/Good/Average/Behind) and write your comment. The student will see those comments on their dashboard.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">4</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Zalisha Ripoti ya AI kwa Wilaya{% else %}Generate AI Report for a District{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Nenda kwa wilaya yoyote → bonyeza "Ripoti ya AI". Chagua mwezi na mwaka, bonyeza "Zalia Ripoti". AI itachanganua data ya logbook na kuzalisha ripoti kamili. Miezi ya Mei, Agosti, Desemba imekatazwa (likizo).{% else %}Go to any district → click "AI Report". Select month and year, click "Generate Report". AI will analyze logbook data and generate a complete report. May, August, December are blocked (school holidays).{% endif %}</span>
-            <div class="tip"><i class="fas fa-lightbulb"></i> {% if LANG == 'sw' %}Ripoti inayozalishwa itaonekana pia kwa wanafunzi kwenye dashibodi zao.{% else %}Generated reports are also visible to students on their dashboards.{% endif %}</div>
-          </div>
-        </li>
-      </ul>
-    </div>
-
+  <div class="help-section">
+    <h2><i class="fas fa-play-circle"></i> {% if LANG == 'sw' %}Mwongozo wa Bodi ya Walimu{% else %}Teacher Board Guide{% endif %}</h2>
+    <ul class="steps">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Ingia kwenye Mfumo wa Bodi{% else %}Login to the Board System{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Nenda /board/login. Tumia barua pepe na nywila uliyopewa na msimamizi.{% else %}Go to /board/login. Use the email and password provided by the administrator.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Fuatilia Wanafunzi kwa Mkoa → Wilaya → Shule{% else %}Monitor Students by Region → District → School{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Dashibodi inaonyesha mikoa yote. Bonyeza mkoa → wilaya → shule → mwanafunzi. Kila mwanafunzi ana ukurasa wa maendeleo unaoonyesha: logbook, scheme of work, lesson plans, na alama ya kutofanya kazi (inactive alert).{% else %}The dashboard shows all regions. Click region → district → school → student. Each student has a progress page showing: logbook, scheme of work, lesson plans, and inactivity alerts.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Toa Maoni kwa Mwanafunzi{% else %}Add a Comment to a Student{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Kwenye ukurasa wa maendeleo ya mwanafunzi kuna fomu ya maoni upande wa kulia. Chagua hali (Vizuri Sana / Vizuri / Wastani / Nyuma / Muhimu) na andika maoni yako. Mwanafunzi ataona maoni hayo kwenye dashibodi yake mara moja.{% else %}On the student's progress page there is a comment form on the right side. Select the status (Excellent/Good/Average/Behind/Critical) and write your comment. The student will see those comments on their dashboard immediately.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Zalisha Ripoti ya AI ya Wilaya{% else %}Generate AI District Report{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Nenda kwenye wilaya yoyote, bonyeza "Ripoti ya AI". Chagua mwezi na mwaka, bonyeza "Zalia Ripoti". AI itachanganua data ya logbook ya wilaya yote na kuzalisha ripoti kamili ikiwemo nafasi za wanafunzi, mapendekezo, na muhtasari. Miezi ya Mei, Agosti, Desemba imekatazwa (likizo za shule).{% else %}Go to any district, click "AI Report". Select month and year, click "Generate Report". AI will analyze the logbook data for the entire district and generate a complete report including student rankings, recommendations, and summary. May, August, and December are blocked (school holidays).{% endif %}</p>
+          <div class="tip tip-green"><i class="fas fa-lightbulb"></i> {% if LANG == 'sw' %}Ripoti inayozalishwa itaonekana pia kwa kila mwanafunzi kwenye dashibodi yao — wanaona sehemu yao tu.{% else %}Generated reports are also visible to each student on their dashboard — they see only their own section.{% endif %}</div>
+        </div>
+      </li>
+    </ul>
   </div>
 
-  <!-- ═══════════ ADMIN PANEL ═══════════ -->
-  {% if role == 'admin' %}
-  <div class="help-panel active" id="panel-admin">
+  <!-- ══════════════════════════════════
+       ADMIN SECTION
+  ══════════════════════════════════ -->
+  {% else %}
 
-    <div class="help-section">
-      <h2><i class="fas fa-tools"></i> {% if LANG == 'sw' %}Kazi za Msimamizi{% else %}Administrator Tasks{% endif %}</h2>
-      <ul class="steps">
-        <li>
-          <div class="step-num">1</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Idhinisha Maombi ya Wanafunzi{% else %}Approve Student Applications{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Admin Dashboard → "Wanafunzi" → Bonyeza "Idhinisha" au "Kataa" kwenye maombi yanayosubiri.{% else %}Admin Dashboard → "Students" → Click "Approve" or "Reject" on pending applications.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">2</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Ongeza au Simamia Wakaguzi{% else %}Add or Manage Assessors{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Admin Dashboard → "Wakaguzi" → "Ongeza Mkaguzi". Weka jina, barua pepe, na nambari ya simu. Mfumo utatengeneza akaunti na kutuma nywila ya muda kwa barua pepe.{% else %}Admin Dashboard → "Assessors" → "Add Assessor". Enter name, email, and phone. The system will create an account and send a temporary password via email.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">3</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Panga Wakaguzi Shuleni{% else %}Assign Assessors to Schools{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Admin Dashboard → "Panga Wakaguzi". Chagua mkaguzi, shule, na mwaka wa masomo.{% else %}Admin Dashboard → "Assign Assessors". Select the assessor, school, and academic year.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">4</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Pakua Nakala Rudufu (Backup){% else %}Download Database Backup{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Admin Dashboard → kitufe cha "Pakua Backup". Faili la JSON litapakuliwa na data yote ya mfumo. Hifadhi mahali salama.{% else %}Admin Dashboard → "Download Backup" button. A JSON file with all system data will be downloaded. Store it in a safe place.{% endif %}</span>
-            <div class="tip"><i class="fas fa-shield-alt"></i> {% if LANG == 'sw' %}Fanya backup angalau mara moja kwa wiki.{% else %}Perform backup at least once per week.{% endif %}</div>
-          </div>
-        </li>
-        <li>
-          <div class="step-num">5</div>
-          <div class="step-body">
-            <strong>{% if LANG == 'sw' %}Simamia Mwaka wa Masomo{% else %}Manage Academic Year{% endif %}</strong>
-            <span>{% if LANG == 'sw' %}Mwaka wa masomo mpya unaanza kupitia Django Admin (/admin/). Hakikisha mwaka mpya umewashwa kabla wanafunzi hawajawa.{% else %}A new academic year is started via Django Admin (/admin/). Ensure the new year is activated before students begin.{% endif %}</span>
-          </div>
-        </li>
-      </ul>
-    </div>
-
-    <div class="help-section">
-      <h2><i class="fas fa-terminal"></i> {% if LANG == 'sw' %}Amri za Server{% else %}Server Commands{% endif %}</h2>
-      <ul class="steps">
-        <li>
-          <div class="step-num"><i class="fas fa-database"></i></div>
-          <div class="step-body">
-            <strong>Backup ya data</strong>
-            <span><code style="background:#EEF1F6;padding:2px 7px;border-radius:3px;font-size:12px;">python manage.py backup_db</code><br>
-            {% if LANG == 'sw' %}Hifadhi data kwenye faili la JSON kwenye folda ya <em>backups/</em>.{% else %}Saves data to a JSON file in the <em>backups/</em> folder.{% endif %}</span>
-          </div>
-        </li>
-        <li>
-          <div class="step-num"><i class="fas fa-undo"></i></div>
-          <div class="step-body">
-            <strong>Rudisha data (Restore)</strong>
-            <span><code style="background:#EEF1F6;padding:2px 7px;border-radius:3px;font-size:12px;">python manage.py loaddata backups/ims_backup_XXXXXX.json</code></span>
-          </div>
-        </li>
-      </ul>
-    </div>
-
+  <div class="help-section">
+    <h2><i class="fas fa-tools"></i> {% if LANG == 'sw' %}Kazi za Msimamizi{% else %}Administrator Tasks{% endif %}</h2>
+    <ul class="steps">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Idhinisha Maombi ya Wanafunzi{% else %}Approve Student Applications{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Admin Dashboard → sehemu ya "Maombi Yanayosubiri". Bonyeza "Idhinisha" au "Kataa" kwa kila ombi.{% else %}Admin Dashboard → "Pending Applications" section. Click "Approve" or "Reject" for each application.{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Ongeza na Simamia Wakaguzi{% else %}Add and Manage Assessors{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Admin Dashboard → "Ongeza Mkaguzi". Weka jina, barua pepe, na simu. Mfumo utatengeneza akaunti na kutuma nywila ya muda kwa barua pepe. Kisha panga mkaguzi shuleni kupitia "Panga Wakaguzi".{% else %}Admin Dashboard → "Add Assessor". Enter name, email, and phone. The system creates an account and sends a temporary password by email. Then assign the assessor to a school via "Assign Assessors".{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Simamia Mwaka wa Masomo{% else %}Manage Academic Year{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Mwaka mpya wa masomo unawashwa kupitia /admin/ (Django Admin). Hakikisha mwaka mpya umewashwa kabla wanafunzi hawajawa. Mwaka wa zamani unaweza kuachwa kama kumbukumbu.{% else %}A new academic year is activated via /admin/ (Django Admin). Make sure the new year is activated before students begin. The old year can be left as a record.{% endif %}</p>
+          <div class="tip"><i class="fas fa-exclamation-triangle"></i> {% if LANG == 'sw' %}Kama hakuna mwaka wa masomo uliowashwa, wanafunzi hawataweza kuchagua shule.{% else %}If no academic year is active, students will not be able to select schools.{% endif %}</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Pakua Nakala Rudufu (Backup){% else %}Download Database Backup{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Admin Dashboard → kitufe "Pakua Backup". Faili la JSON litapakuliwa na data yote. Hifadhi kwenye kompyuta yako. Fanya hili angalau mara moja kwa wiki.{% else %}Admin Dashboard → "Download Backup" button. A JSON file with all system data will be downloaded. Save it on your computer. Do this at least once per week.{% endif %}</p>
+          <div class="tip tip-green"><i class="fas fa-shield-alt"></i> {% if LANG == 'sw' %}Rejesha data kwa: <code>python manage.py loaddata backup_file.json</code>{% else %}Restore data with: <code>python manage.py loaddata backup_file.json</code>{% endif %}</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Weka Mikoa ya PIN (Pinned Regions){% else %}Set Pinned Regions{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Kupitia Admin Dashboard → "Simamia Mikoa", weka mikoa ambayo wanafunzi wanaweza kuchagua shule zake. Mikoa isiyokuwa na PIN haionyeshwi kwa wanafunzi.{% else %}Via Admin Dashboard → "Manage Regions", set which regions students can select schools from. Regions without a pin are not shown to students.{% endif %}</p>
+        </div>
+      </li>
+    </ul>
   </div>
+
+  <div class="help-section">
+    <h2><i class="fas fa-terminal"></i> {% if LANG == 'sw' %}Amri za Server{% else %}Server Commands{% endif %}</h2>
+    <ul class="steps">
+      <li>
+        <div class="step-num"><i class="fas fa-database" style="font-size:12px;"></i></div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Hifadhi data{% else %}Save backup{% endif %}</strong>
+          <p><code>python manage.py backup_db</code><br>
+          {% if LANG == 'sw' %}Hifadhi data kwenye <em>backups/ims_backup_YYYYMMDD.json</em>{% else %}Saves data to <em>backups/ims_backup_YYYYMMDD.json</em>{% endif %}</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num"><i class="fas fa-undo" style="font-size:12px;"></i></div>
+        <div class="step-body">
+          <strong>{% if LANG == 'sw' %}Rejesha data{% else %}Restore data{% endif %}</strong>
+          <p><code>python manage.py loaddata backups/ims_backup_XXXXXX.json</code></p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
   {% endif %}
 
-  <!-- Contact -->
+  <!-- ── CONTACT (all roles) ── -->
   <div class="help-section">
     <h2><i class="fas fa-envelope"></i> {% if LANG == 'sw' %}Mawasiliano{% else %}Contact & Support{% endif %}</h2>
     <div class="contact-card">
@@ -370,14 +367,14 @@
       <div class="contact-ico"><i class="fas fa-building"></i></div>
       <div>
         <div class="contact-lbl">{% if LANG == 'sw' %}Ofisi{% else %}Office{% endif %}</div>
-        <div class="contact-val">{% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia — Dodoma, Tanzania{% else %}Ministry of Education, Science and Technology — Dodoma, Tanzania{% endif %}</div>
+        <div class="contact-val">{% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia — Tanzania{% else %}Ministry of Education, Science and Technology — Tanzania{% endif %}</div>
       </div>
     </div>
     <div class="contact-card">
-      <div class="contact-ico"><i class="fas fa-code"></i></div>
+      <div class="contact-ico"><i class="fas fa-code-branch"></i></div>
       <div>
-        <div class="contact-lbl">{% if LANG == 'sw' %}Toleo la Mfumo{% else %}System Version{% endif %}</div>
-        <div class="contact-val">IMS v2.1.0 — {% now "Y" %}</div>
+        <div class="contact-lbl">{% if LANG == 'sw' %}Toleo{% else %}Version{% endif %}</div>
+        <div class="contact-val">IMS v2.1.0</div>
       </div>
     </div>
   </div>
@@ -385,31 +382,17 @@
 </div>
 
 <script>
-// Role tab switching
-document.querySelectorAll('.rtab').forEach(function(tab) {
-  tab.addEventListener('click', function(e) {
-    e.preventDefault();
-    const target = this.dataset.panel;
-    document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.help-panel').forEach(p => p.classList.remove('active'));
-    this.classList.add('active');
-    const panel = document.getElementById('panel-' + target);
-    if (panel) panel.classList.add('active');
-  });
-});
-
-// FAQ accordion
 document.querySelectorAll('.faq-q').forEach(function(btn) {
   btn.addEventListener('click', function() {
     const ans = this.nextElementSibling;
     const open = this.classList.contains('open');
     document.querySelectorAll('.faq-q.open').forEach(function(b) {
       b.classList.remove('open');
-      b.nextElementSibling.classList.remove('open');
+      b.nextElementSibling.style.display = 'none';
     });
     if (!open) {
       this.classList.add('open');
-      ans.classList.add('open');
+      ans.style.display = 'block';
     }
   });
 });
