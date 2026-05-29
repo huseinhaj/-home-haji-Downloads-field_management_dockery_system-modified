@@ -954,6 +954,28 @@ def assessor_login(request):
 # DASHBOARD VIEWS
 # =========================
 
+
+@login_required
+def help_page(request):
+    """Help and user guide page — shows relevant section based on user role."""
+    user = request.user
+    role = 'student'
+    if user.is_staff:
+        role = 'admin'
+    else:
+        try:
+            user.board_member
+            role = 'board'
+        except Exception:
+            pass
+        try:
+            user.assessor
+            role = 'assessor'
+        except Exception:
+            pass
+    return render(request, 'field_app/help.html', {'role': role})
+
+
 @login_required
 def dashboard(request):
     """Student dashboard"""
@@ -2046,6 +2068,39 @@ def admin_dashboard(request):
     }
 
     return render(request, 'field_app/admin_dashboard.html', context)
+
+
+@staff_member_required
+def download_backup(request):
+    """Admin: export all IMS data as JSON and send as file download."""
+    import json as _json
+    from django.core import serializers as _ser
+    from django.apps import apps as _apps
+    from datetime import datetime as _dt
+
+    BACKUP_MODELS = [
+        'StudentTeacher', 'School', 'District', 'Region', 'Subject',
+        'StudentApplication', 'LogbookEntry', 'SchemeOfWork', 'LessonPlan',
+        'Assessor', 'SchoolAssessment', 'AcademicYear',
+        'BoardMember', 'BoardComment', 'MonthlyReport',
+    ]
+
+    all_objects = []
+    for name in BACKUP_MODELS:
+        try:
+            model = _apps.get_model('field_app', name)
+            qs = model.objects.all()
+            if qs.exists():
+                all_objects.extend(_json.loads(_ser.serialize('json', qs)))
+        except Exception:
+            pass
+
+    filename = f"ims_backup_{_dt.now().strftime('%Y%m%d_%H%M%S')}.json"
+    payload = _json.dumps(all_objects, ensure_ascii=False, indent=2, default=str)
+    response = HttpResponse(payload, content_type='application/json; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
 
 @staff_member_required
 def approve_application(request, application_id):

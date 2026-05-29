@@ -384,6 +384,20 @@
                     <span class="qa-sub">{% if LANG == 'sw' %}Usanidi wa hali ya juu{% else %}Advanced configuration{% endif %}</span>
                 </a>
             </div>
+            <div class="col-xl-2 col-md-4 col-6">
+                <a href="{% url 'download_backup' %}" class="qa-btn">
+                    <div class="qa-icon" style="color:#0EA271;"><i class="fas fa-database"></i></div>
+                    <span class="qa-label">{% if LANG == 'sw' %}Pakua Backup{% else %}Download Backup{% endif %}</span>
+                    <span class="qa-sub">{% if LANG == 'sw' %}Hifadhi data yote JSON{% else %}Export all data as JSON{% endif %}</span>
+                </a>
+            </div>
+            <div class="col-xl-2 col-md-4 col-6">
+                <a href="{% url 'help_page' %}" class="qa-btn">
+                    <div class="qa-icon" style="color:#C8900A;"><i class="fas fa-life-ring"></i></div>
+                    <span class="qa-label">{% if LANG == 'sw' %}Msaada{% else %}Help & Guide{% endif %}</span>
+                    <span class="qa-sub">{% if LANG == 'sw' %}Mwongozo wa mfumo{% else %}System user guide{% endif %}</span>
+                </a>
+            </div>
         </div>
 
         <!-- ════ PENDING APPLICATIONS ════ -->

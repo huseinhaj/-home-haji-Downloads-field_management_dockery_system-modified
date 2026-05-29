@@ -689,6 +689,13 @@
                         <li><hr class="dropdown-divider"></li>
 
                         <li>
+                            <a class="dropdown-item" href="{% url 'help_page' %}">
+                                <i class="fas fa-life-ring me-2" style="color:var(--medium,#C8900A);"></i>
+                                {% if LANG == 'sw' %}Msaada{% else %}Help & Guide{% endif %}
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
                             <a class="dropdown-item logout-btn" href="{% url 'logout' %}">
                                 <i class="fas fa-sign-out-alt me-2"></i>{% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}
                             </a>

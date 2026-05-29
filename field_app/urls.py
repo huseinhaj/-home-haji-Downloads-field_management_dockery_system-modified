@@ -12,6 +12,7 @@ urlpatterns = [
     # =========================
     # CORE PAGES
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('help/', views.help_page, name='help_page'),
     path('monthly-report/<int:report_id>/', views.student_monthly_report, name='student_monthly_report'),
     path('register/', views.register, name='register'),
     # urls.py
@@ -50,6 +51,7 @@ urlpatterns = [
     # ADMIN MANAGEMENT PAGES - USE DIFFERENT PREFIX
     # =========================
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin-dashboard/backup/', views.download_backup, name='download_backup'),
     path('management/approve-application/<int:application_id>/', views.approve_application, name='approve_application'),
     path('management/assign-assessor/', views.assign_assessor, name='assign_assessor'),  # 🔥 SAHIHI SASA
     path('management/bulk-assign-assessors/', views.bulk_assign_assessors, name='bulk_assign_assessors'),
