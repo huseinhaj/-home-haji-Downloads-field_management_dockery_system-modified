@@ -226,23 +226,152 @@ body {
 }
 .progress-tz .progress-bar { background: var(--medium); border-radius: 2px; }
 
-/* ── WELCOME HEADER ────────────────────────────────────────────────────────── */
-.welcome-header {
+/* ── WELCOME CARD ──────────────────────────────────────────────────────────── */
+.welcome-card {
     background: var(--bold-deep);
-    border-bottom: 4px solid var(--medium);
+    border-radius: var(--radius);
+    border-left: 5px solid var(--medium);
+    box-shadow: var(--sh-md);
+    padding: 20px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    flex-wrap: wrap;
 }
+.welcome-card .wc-left {}
+.welcome-card .wc-label {
+    font-size: 9.5px; color: rgba(255,255,255,.45);
+    text-transform: uppercase; letter-spacing: 1.8px; font-weight: 600;
+    margin-bottom: 4px;
+}
+.welcome-card .wc-name {
+    font-size: clamp(1.1rem,2.5vw,1.5rem); font-weight: 800;
+    color: var(--white); letter-spacing: -.2px; margin-bottom: 6px;
+}
+.welcome-card .wc-sub { font-size: 12px; color: rgba(255,255,255,.55); margin-bottom: 12px; }
+.wc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 11px; border-radius: 3px;
+    font-size: 11.5px; font-weight: 700;
+}
+.chip-gold { background: rgba(200,144,10,.18); color: var(--medium); border: 1px solid rgba(200,144,10,.3); }
+.chip-green { background: rgba(14,162,113,.18); color: #6EE7B7; border: 1px solid rgba(14,162,113,.3); }
+.chip-red { background: rgba(220,38,38,.18); color: #FCA5A5; border: 1px solid rgba(220,38,38,.3); }
+.chip-cta {
+    background: var(--medium); color: var(--white);
+    text-decoration: none; text-transform: uppercase; letter-spacing: .3px;
+    transition: background .12s;
+}
+.chip-cta:hover { background: var(--medium-dk); color: var(--white); }
+.wc-icon { font-size: 64px; color: rgba(255,255,255,.08); flex-shrink: 0; }
+
+/* ── SECTION HEADER ────────────────────────────────────────────────────────── */
+.sec-hd {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+}
+.sec-hd h3 {
+    font-size: 12.5px; font-weight: 800; color: var(--bold);
+    text-transform: uppercase; letter-spacing: .5px; margin: 0;
+    display: flex; align-items: center; gap: 7px;
+}
+.sec-hd h3 i { color: var(--medium); font-size: 13px; }
+.sec-hd .sec-badge {
+    font-size: 11px; font-weight: 800; background: var(--bold);
+    color: var(--white); padding: 2px 9px; border-radius: 3px; letter-spacing: .2px;
+}
+.sec-link {
+    font-size: 11.5px; font-weight: 700; color: var(--bold);
+    text-decoration: none; display: flex; align-items: center; gap: 4px;
+}
+.sec-link:hover { color: var(--medium); }
+
+/* ── STAT CARDS ────────────────────────────────────────────────────────────── */
 .welcome-title  { font-size: clamp(1.3rem,3.5vw,1.9rem); font-weight: 800; letter-spacing: -.3px; }
 .section-title  { font-size: clamp(0.9rem,2.5vw,1.1rem); font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
 .card-title     { font-size: clamp(0.85rem,2vw,1rem); font-weight: 700; }
 .normal-text    { font-size: clamp(0.82rem,1.8vw,0.88rem); }
 .small-text     { font-size: clamp(0.72rem,1.6vw,0.8rem); }
-
 .tz-gradient-text { color: var(--bold); font-weight: 800; }
 .tz-badge { background: var(--bold); color: var(--white); font-weight: 700; font-size: 0.72rem; border-radius: 3px; letter-spacing: .2px; }
 
 /* ── GROUP LETTER ──────────────────────────────────────────────────────────── */
 .group-letter-ready  { background: rgba(200,144,10,.06); border: 2px solid var(--medium); border-radius: var(--radius); }
 .group-letter-waiting { background: var(--white); border: 1px solid var(--border-s); border-radius: var(--radius); }
+
+/* ── QUICK ACTIONS ─────────────────────────────────────────────────────────── */
+.qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qa-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: var(--radius);
+    background: var(--light); border: 1px solid var(--border-s);
+    text-decoration: none; color: var(--bold);
+    transition: border-color .13s, background .13s;
+    font-weight: 600; font-size: 12.5px;
+}
+.qa-btn:hover { background: #E5EBF5; border-color: rgba(10,43,94,.25); color: var(--bold); }
+.qa-btn i { width: 30px; height: 30px; background: var(--bold); color: var(--white);
+    border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0; }
+
+/* ── ASSESSOR ITEM ─────────────────────────────────────────────────────────── */
+.assessor-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--light-2,#E5EAF2);
+}
+.assessor-item:last-child { border-bottom: none; }
+.assessor-ava {
+    width: 36px; height: 36px; flex-shrink: 0; background: var(--bold);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: var(--white); font-size: 14px; font-weight: 800;
+}
+.assessor-name { font-size: 13px; font-weight: 700; color: var(--bold); }
+.assessor-info { font-size: 11px; color: var(--text-gray); margin-top: 1px; }
+
+/* ── COMMENT ITEM ──────────────────────────────────────────────────────────── */
+.comment-item {
+    padding: 10px 0; border-bottom: 1px solid var(--light-2,#E5EAF2);
+}
+.comment-item:last-child { border-bottom: none; }
+.ci-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; flex-wrap: wrap; gap: 4px; }
+.ci-name { font-size: 12.5px; font-weight: 700; color: var(--bold); display: flex; align-items: center; gap: 5px; }
+.ci-date { font-size: 11px; color: var(--text-gray); }
+.ci-text { font-size: 12.5px; color: var(--text-gray); line-height: 1.5; }
+
+/* ── LOGBOOK ITEM ──────────────────────────────────────────────────────────── */
+.lb-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--light-2,#E5EAF2);
+}
+.lb-item:last-child { border-bottom: none; }
+.lb-date { width: 40px; text-align: center; flex-shrink: 0; background: var(--bold); border-radius: var(--radius); padding: 6px 4px; }
+.lb-date .lb-d { font-size: 16px; font-weight: 800; color: var(--white); line-height: 1; }
+.lb-date .lb-m { font-size: 9px; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .3px; }
+.lb-body .lb-day { font-size: 12px; font-weight: 700; color: var(--bold); }
+.lb-body .lb-act { font-size: 11.5px; color: var(--text-gray); margin-top: 2px; }
+
+/* ── REPORT ITEM ───────────────────────────────────────────────────────────── */
+.report-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-radius: var(--radius);
+    border: 1px solid var(--border-s); margin-bottom: 6px;
+    text-decoration: none; color: var(--text);
+    transition: border-color .13s, box-shadow .13s;
+}
+.report-item:last-child { margin-bottom: 0; }
+.report-item:hover { border-color: var(--bold); box-shadow: var(--sh-sm); }
+.ri-label { font-size: 13px; font-weight: 700; color: var(--bold); }
+.ri-sub { font-size: 11px; color: var(--text-gray); margin-top: 1px; }
+.ri-badge { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 3px; white-space: nowrap; }
+.ri-ok  { background: rgba(5,150,105,.1);  color: #065F46; }
+.ri-mid { background: rgba(217,119,6,.1);  color: #78350F; }
+.ri-bad { background: rgba(220,38,38,.1);  color: #7F1D1D; }
+.ri-none{ background: var(--light); color: var(--text-gray); }
+
+/* ── SCHOOL BOX ────────────────────────────────────────────────────────────── */
+.school-box { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--light); border-radius: var(--radius); margin-bottom: 12px; }
+.school-ico { width: 42px; height: 42px; background: var(--bold); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--white); font-size: 18px; flex-shrink: 0; }
+.school-name { font-size: 13.5px; font-weight: 700; color: var(--bold); }
+.school-loc { font-size: 11.5px; color: var(--text-gray); margin-top: 1px; }
 
 /* ── MOBILE BTN ────────────────────────────────────────────────────────────── */
 .mobile-menu-btn {
@@ -382,129 +511,64 @@ body {
 <!-- Main Content -->
 <div class="main-content" id="mainContent">
     <div class="container-fluid py-3">
-        <!-- ── WELCOME BANNER ── -->
-        <div class="row mb-4">
+        <!-- WELCOME -->
+        <div class="row mb-3">
           <div class="col-12">
-            <div style="background:linear-gradient(135deg,var(--bold-deep) 0%,#0D3572 100%);border-radius:var(--radius);border-bottom:4px solid var(--medium);box-shadow:var(--sh-md);overflow:hidden;position:relative;">
-              <!-- subtle grid -->
-              <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(200,144,10,.1) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;"></div>
-              <div style="padding:22px 26px;position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-                <div style="flex:1;min-width:0;">
-                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                    <div style="width:36px;height:36px;background:rgba(200,144,10,.18);border:1px solid rgba(200,144,10,.35);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                      <i class="fas fa-graduation-cap" style="color:var(--medium);font-size:15px;"></i>
-                    </div>
-                    <div style="font-size:9.5px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:2px;font-weight:700;">
-                      {% if LANG == 'sw' %}Mfumo wa Usimamizi wa Mafunzo ya Vitendo{% else %}Internship Management System{% endif %}
-                    </div>
-                  </div>
-                  <h1 style="font-size:clamp(1.2rem,3vw,1.7rem);font-weight:800;color:var(--white);margin:0 0 6px;letter-spacing:-.2px;">
-                    {% if LANG == 'sw' %}Karibu{% else %}Welcome back{% endif %}, {{ student.full_name|default:user.email|truncatechars:30 }}
-                  </h1>
-                  <p style="font-size:13px;color:rgba(255,255,255,.65);margin:0 0 14px;">
-                    {% if LANG == 'sw' %}Mfumo Rasmi wa Mazoezi ya Ufundishaji — Wizara ya Elimu, Sayansi na Teknolojia{% else %}Official Teaching Practice Portal — Ministry of Education, Science &amp; Technology{% endif %}
-                  </p>
-                  <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                    {% if student.approval_status == 'rejected' %}
-                    <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(220,38,38,.2);color:#FCA5A5;border:1px solid rgba(220,38,38,.4);border-radius:3px;padding:4px 12px;font-size:11.5px;font-weight:700;">
-                      <i class="fas fa-times-circle"></i>
-                      {% if LANG == 'sw' %}Maombi Yamekataliwa — Wasiliana na Msimamizi{% else %}Application Rejected — Contact Admin{% endif %}
-                    </span>
-                    {% elif student.selected_school %}
-                    <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(200,144,10,.15);color:var(--medium);border:1px solid rgba(200,144,10,.3);border-radius:3px;padding:4px 12px;font-size:11.5px;font-weight:700;">
-                      <i class="fas fa-school"></i> {{ student.selected_school.name }}
-                    </span>
-                    <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(14,162,113,.15);color:#6EE7B7;border:1px solid rgba(14,162,113,.3);border-radius:3px;padding:4px 12px;font-size:11.5px;font-weight:700;">
-                      <i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}Umepangwa{% else %}Placed{% endif %}
-                    </span>
-                    {% else %}
-                    <a href="{% url 'select_region' %}" style="display:inline-flex;align-items:center;gap:5px;background:var(--medium);color:var(--white);border:none;border-radius:3px;padding:5px 14px;font-size:12px;font-weight:700;text-decoration:none;letter-spacing:.3px;text-transform:uppercase;">
-                      <i class="fas fa-map-marker-alt"></i> {% if LANG == 'sw' %}Chagua Shule Sasa{% else %}Select School Now{% endif %}
-                    </a>
-                    {% endif %}
-                  </div>
-                </div>
-                <div style="flex-shrink:0;opacity:.15;display:none;display:block;" class="d-none d-lg-block">
-                  <i class="fas fa-chalkboard-teacher" style="font-size:80px;color:var(--white);"></i>
+            <div class="welcome-card">
+              <div class="wc-left">
+                <div class="wc-label">{% if LANG == 'sw' %}Mfumo wa Usimamizi wa Mafunzo ya Vitendo{% else %}Internship Management System — Tanzania{% endif %}</div>
+                <div class="wc-name">{% if LANG == 'sw' %}Karibu{% else %}Welcome{% endif %}, {{ student.full_name|default:user.email|truncatechars:32 }}</div>
+                <div class="wc-sub">{% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia — Jamhuri ya Muungano wa Tanzania{% else %}Ministry of Education, Science &amp; Technology — United Republic of Tanzania{% endif %}</div>
+                <div class="wc-chips">
+                  {% if student.approval_status == 'rejected' %}
+                    <span class="chip chip-red"><i class="fas fa-times-circle"></i> {% if LANG == 'sw' %}Maombi Yamekataliwa{% else %}Application Rejected{% endif %}</span>
+                  {% elif student.selected_school %}
+                    <span class="chip chip-gold"><i class="fas fa-school"></i> {{ student.selected_school.name }}</span>
+                    <span class="chip chip-green"><i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}Umepangwa{% else %}Placed{% endif %}</span>
+                  {% else %}
+                    <a href="{% url 'select_region' %}" class="chip chip-cta"><i class="fas fa-map-marker-alt"></i> {% if LANG == 'sw' %}Chagua Shule Sasa{% else %}Select School Now{% endif %}</a>
+                  {% endif %}
                 </div>
               </div>
-              <!-- bottom stats strip -->
-              <div style="background:rgba(0,0,0,.2);border-top:1px solid rgba(255,255,255,.08);padding:10px 26px;display:flex;gap:24px;flex-wrap:wrap;">
-                <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:rgba(255,255,255,.65);">
-                  <i class="fas fa-file-alt" style="color:var(--medium);"></i>
-                  <strong style="color:var(--white);font-size:15px;font-weight:800;">{{ applications|length }}</strong>
-                  <span>{% if LANG == 'sw' %}Maombi{% else %}Applications{% endif %}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:rgba(255,255,255,.65);">
-                  <i class="fas fa-check-circle" style="color:var(--medium);"></i>
-                  <strong style="color:var(--white);font-size:15px;font-weight:800;">{{ approved_applications_count }}</strong>
-                  <span>{% if LANG == 'sw' %}Zilizoidhinishwa{% else %}Approved{% endif %}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:rgba(255,255,255,.65);">
-                  <i class="fas fa-book" style="color:var(--medium);"></i>
-                  <strong style="color:var(--white);font-size:15px;font-weight:800;">{{ logbook_entries|length }}</strong>
-                  <span>{% if LANG == 'sw' %}Logbook (Hivi Karibuni){% else %}Recent Logbook{% endif %}</span>
-                </div>
-                {% if board_comments %}
-                <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:rgba(255,255,255,.65);">
-                  <i class="fas fa-comment-dots" style="color:var(--medium);"></i>
-                  <strong style="color:var(--white);font-size:15px;font-weight:800;">{{ board_comments|length }}</strong>
-                  <span>{% if LANG == 'sw' %}Maoni ya Bodi{% else %}Board Comments{% endif %}</span>
-                </div>
-                {% endif %}
-              </div>
+              <i class="fas fa-chalkboard-teacher wc-icon d-none d-lg-block"></i>
             </div>
           </div>
         </div>
 
-        <!-- Stats Grid -->
-        <div class="row g-3 mb-4">
-            {% with stats=applications|length %}
-            <div class="col-6 col-xl-3">
-                <div class="stat-tz p-3" style="border-left-color:var(--medium);">
-                    <div style="font-size:28px;font-weight:800;color:var(--bold);line-height:1;">{{ applications|length }}</div>
-                    <div style="font-size:10.5px;color:var(--text-gray);margin-top:3px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;">
-                        <i class="fas fa-file-alt me-1" style="color:var(--medium);"></i>{% if LANG == 'sw' %}Maombi Yote{% else %}Total Applications{% endif %}
-                    </div>
-                    <div style="margin-top:8px;height:3px;background:var(--light);border-radius:2px;overflow:hidden;">
-                        <div style="height:100%;width:{% if applications|length > 0 %}100{% else %}0{% endif %}%;background:var(--medium);border-radius:2px;"></div>
-                    </div>
-                </div>
+        <!-- STATS -->
+        <div class="row g-3 mb-3">
+          <div class="col-6 col-md-3">
+            <div class="stat-tz p-3">
+              <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">{{ applications|length }}</div>
+              <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
+                <i class="fas fa-file-alt me-1" style="color:var(--medium);"></i>{% if LANG == 'sw' %}Maombi{% else %}Applications{% endif %}
+              </div>
             </div>
-            {% endwith %}
-            <div class="col-6 col-xl-3">
-                <div class="stat-tz p-3" style="border-left-color:var(--success);">
-                    <div style="font-size:28px;font-weight:800;color:var(--bold);line-height:1;">{{ approved_applications_count }}</div>
-                    <div style="font-size:10.5px;color:var(--text-gray);margin-top:3px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;">
-                        <i class="fas fa-check-circle me-1" style="color:var(--success);"></i>{% if LANG == 'sw' %}Zilizoidhinishwa{% else %}Approved{% endif %}
-                    </div>
-                    <div style="margin-top:8px;height:3px;background:var(--light);border-radius:2px;overflow:hidden;">
-                        <div style="height:100%;width:{% if applications|length > 0 %}{{ approved_applications_count }}0{% else %}0{% endif %}%;background:var(--success);border-radius:2px;max-width:100%;"></div>
-                    </div>
-                </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-tz p-3" style="border-left-color:var(--success);">
+              <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">{{ approved_applications_count }}</div>
+              <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
+                <i class="fas fa-check-circle me-1" style="color:var(--success);"></i>{% if LANG == 'sw' %}Zilizoidhinishwa{% else %}Approved{% endif %}
+              </div>
             </div>
-            <div class="col-6 col-xl-3">
-                <div class="stat-tz p-3" style="border-left-color:var(--warning);">
-                    <div style="font-size:28px;font-weight:800;color:var(--bold);line-height:1;">{{ pending_applications_count }}</div>
-                    <div style="font-size:10.5px;color:var(--text-gray);margin-top:3px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;">
-                        <i class="fas fa-clock me-1" style="color:var(--warning);"></i>{% if LANG == 'sw' %}Zinasubiri{% else %}Pending{% endif %}
-                    </div>
-                    <div style="margin-top:8px;height:3px;background:var(--light);border-radius:2px;overflow:hidden;">
-                        <div style="height:100%;width:{% if pending_applications_count > 0 %}60{% else %}0{% endif %}%;background:var(--warning);border-radius:2px;"></div>
-                    </div>
-                </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-tz p-3" style="border-left-color:var(--warning);">
+              <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">{{ pending_applications_count }}</div>
+              <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
+                <i class="fas fa-clock me-1" style="color:var(--warning);"></i>{% if LANG == 'sw' %}Zinasubiri{% else %}Pending{% endif %}
+              </div>
             </div>
-            <div class="col-6 col-xl-3">
-                <div class="stat-tz p-3" style="border-left-color:var(--info,#2563EB);">
-                    <div style="font-size:28px;font-weight:800;color:var(--bold);line-height:1;">{{ logbook_entries|length }}</div>
-                    <div style="font-size:10.5px;color:var(--text-gray);margin-top:3px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;">
-                        <i class="fas fa-book me-1" style="color:#2563EB;"></i>{% if LANG == 'sw' %}Logbook (Karibuni){% else %}Recent Logbook{% endif %}
-                    </div>
-                    <div style="margin-top:8px;height:3px;background:var(--light);border-radius:2px;overflow:hidden;">
-                        <div style="height:100%;width:{% if logbook_entries|length > 0 %}80{% else %}0{% endif %}%;background:#2563EB;border-radius:2px;"></div>
-                    </div>
-                </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-tz p-3" style="border-left-color:#2563EB;">
+              <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">{{ logbook_entries|length }}</div>
+              <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
+                <i class="fas fa-book me-1" style="color:#2563EB;"></i>{% if LANG == 'sw' %}Logbook{% else %}Logbook{% endif %}
+              </div>
             </div>
+          </div>
         </div>
 
         <!-- Main Content -->
@@ -513,11 +577,9 @@ body {
             <div class="col-lg-8">
                 <!-- Applications Section -->
                 <div class="premium-card p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h3 class="section-title m-0" style="color: var(--bold);">
-                            <i class="fas fa-tasks me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Maombi Yangu ya Masomo{% else %}My Subject Applications{% endif %}
-                        </h3>
-                        <span class="tz-badge px-2 py-1">{{ applications|length }}</span>
+                    <div class="sec-hd">
+                        <h3><i class="fas fa-tasks"></i>{% if LANG == 'sw' %}Maombi Yangu ya Masomo{% else %}My Subject Applications{% endif %}</h3>
+                        <span class="sec-badge">{{ applications|length }}</span>
                     </div>
 
                     {% if applications %}
@@ -585,9 +647,7 @@ body {
 
                 <!-- Download Section -->
                 <div class="premium-card p-3">
-                    <h3 class="section-title mb-3" style="color: var(--bold);">
-                        <i class="fas fa-download me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Pakua Barua za Uthibitisho{% else %}Download Confirmation Letters{% endif %}
-                    </h3>
+                    <div class="sec-hd mb-3"><h3><i class="fas fa-download"></i>{% if LANG == 'sw' %}Pakua Barua za Uthibitisho{% else %}Download Confirmation Letters{% endif %}</h3></div>
                     <div class="row g-3">
                         <!-- Individual Letter -->
                         <div class="col-md-6">
@@ -663,17 +723,17 @@ body {
             <div class="col-lg-4">
                 <!-- School Information -->
                 <div class="premium-card p-3 mb-3">
-                    <h3 class="section-title mb-3" style="color: var(--bold);">
-                        <i class="fas fa-school me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Taarifa za Shule{% else %}School Information{% endif %}
-                    </h3>
+                    <div class="sec-hd mb-3"><h3><i class="fas fa-school"></i>{% if LANG == 'sw' %}Taarifa za Shule{% else %}School Information{% endif %}</h3></div>
 
                     {% if student.selected_school %}
-                    <div class="text-center mb-3">
-                        <div class="tz-icon p-3 mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                            <i class="fas fa-school"></i>
+                    <div class="school-box mb-3">
+                        <div class="school-ico"><i class="fas fa-school"></i></div>
+                        <div>
+                            <div class="school-name">{{ student.selected_school.name }}</div>
+                            <div class="school-loc">{{ student.selected_school.district.name }}, {{ student.selected_school.district.region.name }}</div>
                         </div>
-                        <h5 class="card-title mb-1" style="color: var(--text-dark);">{{ student.selected_school.name }}</h5>
-                        <p class="small-text" style="color: var(--text-gray);">{{ student.selected_school.district.name }}, {{ student.selected_school.district.region.name }}</p>
+                    </div>
+                    <div class="mb-3"><!-- reopen existing group progress block -->
                         
                         <!-- Group Letter Progress -->
                         <div class="mt-2 p-2 rounded" style="background: rgba(10, 43, 94, 0.05);">
@@ -743,13 +803,9 @@ body {
 
                 <!-- My Assessors -->
                 <div class="premium-card p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h3 class="section-title m-0" style="color: var(--bold);">
-                            <i class="fas fa-chalkboard-teacher me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Wakaguzi Wangu{% else %}My Assessors{% endif %}
-                        </h3>
-                        <a href="{% url 'my_assessors' %}" class="tz-btn btn-sm px-3 py-1 small-text">
-                            {% if LANG == 'sw' %}Zaidi{% else %}View All{% endif %}
-                        </a>
+                    <div class="sec-hd">
+                        <h3><i class="fas fa-user-check"></i>{% if LANG == 'sw' %}Wakaguzi Wangu{% else %}My Assessors{% endif %}</h3>
+                        <a href="{% url 'my_assessors' %}" class="sec-link"><i class="fas fa-arrow-right"></i> {% if LANG == 'sw' %}Zaidi{% else %}View All{% endif %}</a>
                     </div>
 
                     {% if assessors %}
@@ -795,9 +851,7 @@ body {
                 <!-- Monthly Reports -->
                 {% if my_monthly_reports %}
                 <div class="premium-card p-3 mb-3">
-                    <h3 class="section-title mb-3" style="color: var(--bold);">
-                        <i class="fas fa-chart-bar me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Ripoti za Kila Mwezi{% else %}Monthly Reports{% endif %}
-                    </h3>
+                    <div class="sec-hd mb-3"><h3><i class="fas fa-chart-bar"></i>{% if LANG == 'sw' %}Ripoti za Kila Mwezi{% else %}Monthly Reports{% endif %}</h3></div>
                     {% for item in my_monthly_reports %}
                     {% with report=item.report entry=item.entry %}
                     <a href="{% url 'student_monthly_report' report.id %}" class="d-block text-decoration-none mb-2">
@@ -842,9 +896,7 @@ body {
                 <!-- Board Comments -->
                 {% if board_comments %}
                 <div class="premium-card p-3 mb-3">
-                    <h3 class="section-title mb-3" style="color: var(--bold);">
-                        <i class="fas fa-comment-dots me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Maoni ya Bodi ya Walimu{% else %}Teacher Board Comments{% endif %}
-                    </h3>
+                    <div class="sec-hd mb-2"><h3><i class="fas fa-comment-dots"></i>{% if LANG == 'sw' %}Maoni ya Bodi{% else %}Board Comments{% endif %}</h3></div>
                     {% for comment in board_comments %}
                     <div class="premium-card p-3 mb-2" style="border-left: 4px solid
                         {% if comment.status == 'excellent' %}var(--success)
@@ -873,46 +925,32 @@ body {
 
                 <!-- Quick Actions -->
                 <div class="premium-card p-3 mb-3">
-                    <h3 class="section-title mb-3" style="color: var(--bold);">
-                        <i class="fas fa-bolt me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Vitendo vya Haraka{% else %}Quick Actions{% endif %}
-                    </h3>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <a href="{% url 'select_region' %}" class="premium-card p-2 text-center text-decoration-none d-block" style="border-color: var(--border);">
-                                <i class="fas fa-plus-circle fa-lg mb-1" style="color: var(--bold);"></i>
-                                <div class="fw-bold small-text" style="color: var(--text-dark);">{% if LANG == 'sw' %}Wasilisha Maombi{% else %}Submit Application{% endif %}</div>
-                            </a>
-                        </div>
-                        <div class="col-6">
-                            <a href="{% url 'submit_logbook' %}" class="premium-card p-2 text-center text-decoration-none d-block" style="border-color: var(--border);">
-                                <i class="fas fa-book-medical fa-lg mb-1" style="color: var(--bold);"></i>
-                                <div class="fw-bold small-text" style="color: var(--text-dark);">{% if LANG == 'sw' %}Andika Logbook{% else %}Write Logbook{% endif %}</div>
-                            </a>
-                        </div>
-                        <div class="col-6">
-                            <a href="{% url 'logbook_history' %}" class="premium-card p-2 text-center text-decoration-none d-block" style="border-color: var(--border);">
-                                <i class="fas fa-history fa-lg mb-1" style="color: var(--bold);"></i>
-                                <div class="fw-bold small-text" style="color: var(--text-dark);">{% if LANG == 'sw' %}Historia{% else %}History{% endif %}</div>
-                            </a>
-                        </div>
-                        <div class="col-6">
-                            <a href="{% url 'logbook_download_options' %}" class="premium-card p-2 text-center text-decoration-none d-block" style="border-color: var(--border);">
-                                <i class="fas fa-download fa-lg mb-1" style="color: var(--bold);"></i>
-                                <div class="fw-bold small-text" style="color: var(--text-dark);">{% if LANG == 'sw' %}Pakua{% else %}Download{% endif %}</div>
-                            </a>
-                        </div>
+                    <div class="sec-hd mb-3"><h3><i class="fas fa-bolt"></i>{% if LANG == 'sw' %}Vitendo vya Haraka{% else %}Quick Actions{% endif %}</h3></div>
+                    <div class="qa-grid">
+                        <a href="{% url 'select_region' %}" class="qa-btn">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>{% if LANG == 'sw' %}Wasilisha Maombi{% else %}Submit Application{% endif %}</span>
+                        </a>
+                        <a href="{% url 'submit_logbook' %}" class="qa-btn">
+                            <i class="fas fa-book-medical"></i>
+                            <span>{% if LANG == 'sw' %}Andika Logbook{% else %}Write Logbook{% endif %}</span>
+                        </a>
+                        <a href="{% url 'logbook_history' %}" class="qa-btn">
+                            <i class="fas fa-history"></i>
+                            <span>{% if LANG == 'sw' %}Historia{% else %}History{% endif %}</span>
+                        </a>
+                        <a href="{% url 'logbook_download_options' %}" class="qa-btn">
+                            <i class="fas fa-download"></i>
+                            <span>{% if LANG == 'sw' %}Pakua{% else %}Download{% endif %}</span>
+                        </a>
                     </div>
                 </div>
 
                 <!-- Recent Logbook -->
                 <div class="premium-card p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h3 class="section-title m-0" style="color: var(--bold);">
-                            <i class="fas fa-book-open me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Logbook ya Hivi Karibuni{% else %}Recent Logbook{% endif %}
-                        </h3>
-                        <a href="{% url 'submit_logbook' %}" class="tz-btn btn-sm px-3 py-1 small-text">
-                            <i class="fas fa-plus me-1"></i>{% if LANG == 'sw' %}Mpya{% else %}New{% endif %}
-                        </a>
+                    <div class="sec-hd">
+                        <h3><i class="fas fa-book-open"></i>{% if LANG == 'sw' %}Logbook ya Hivi Karibuni{% else %}Recent Logbook{% endif %}</h3>
+                        <a href="{% url 'submit_logbook' %}" class="sec-link"><i class="fas fa-plus"></i> {% if LANG == 'sw' %}Mpya{% else %}New{% endif %}</a>
                     </div>
 
                     {% if logbook_entries %}
