@@ -36,13 +36,19 @@ body {
 }
 
 /* ── SIDEBAR ─────────────────────────────────────────────────────────────── */
+/* navbar height ≈ 56px — sidebar starts below it */
+:root { --navbar-h: 56px; }
+
 .sidebar-tz {
     width: 64px;
     background: var(--bold-deep);
     border-right: 2px solid rgba(200,144,10,.25);
     padding: 0.75rem 0;
-    position: fixed; height: 100vh; left: 0; top: 0;
-    z-index: 1000;
+    position: fixed;
+    height: calc(100vh - var(--navbar-h));
+    left: 0;
+    top: var(--navbar-h);
+    z-index: 400;
     transition: width .28s cubic-bezier(.4,0,.2,1);
     box-shadow: 3px 0 16px rgba(10,43,94,.22);
     display: flex; flex-direction: column; align-items: center;
@@ -105,7 +111,9 @@ body {
 .main-content {
     margin-left: 64px; width: calc(100% - 64px);
     transition: margin-left .28s cubic-bezier(.4,0,.2,1), width .28s cubic-bezier(.4,0,.2,1);
-    padding: 1.25rem; min-height: 100vh; background: var(--light);
+    padding: 1.25rem;
+    min-height: calc(100vh - var(--navbar-h));
+    background: var(--light);
 }
 .main-content.expanded {
     margin-left: 242px; width: calc(100% - 242px);
@@ -208,9 +216,16 @@ body {
 
 @media (max-width: 768px) {
     .mobile-menu-btn { display: flex; }
-    .sidebar-tz { left: -280px; width: 242px !important; transition: left .28s cubic-bezier(.4,0,.2,1); }
+    /* sidebar slides from left, below the sticky navbar */
+    .sidebar-tz {
+        left: -280px; width: 242px !important;
+        top: var(--navbar-h);
+        height: calc(100vh - var(--navbar-h));
+        transition: left .28s cubic-bezier(.4,0,.2,1);
+    }
     .sidebar-tz.mobile-open { left: 0; }
-    .main-content { margin-left: 0 !important; width: 100% !important; padding: 0.65rem 0.5rem; padding-top: 3.25rem; }
+    /* no extra padding-top needed — navbar is sticky so content starts below it */
+    .main-content { margin-left: 0 !important; width: 100% !important; padding: 0.65rem 0.5rem; }
     .container-fluid { padding-left: 6px; padding-right: 6px; }
     .premium-card { margin-bottom: 0.65rem; }
     .btn { padding: 0.38rem 0.75rem; font-size: 0.82rem; }
