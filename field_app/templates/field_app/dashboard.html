@@ -107,6 +107,55 @@ body {
 }
 .sidebar-tz.expanded .sidebar-text { opacity: 1; width: auto; margin-left: 0.25rem; }
 
+/* ── SIDEBAR SUBMENU ──────────────────────────────────────────────────────── */
+.sidebar-parent {
+    display: flex; align-items: center;
+    padding: 0.7rem 0.9rem;
+    color: rgba(255,255,255,.78);
+    cursor: pointer; white-space: nowrap;
+    border-left: 3px solid transparent;
+    font-weight: 500; font-size: 0.85rem;
+    transition: background .13s, color .13s;
+    user-select: none;
+    position: relative;
+}
+.sidebar-parent:hover { background: rgba(255,255,255,.08); color: var(--white); }
+.sidebar-parent.open  { background: rgba(255,255,255,.06); color: var(--white); }
+.sidebar-parent i.s-icon { width: 38px; font-size: 1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sidebar-parent .sidebar-text { font-size: 0.85rem; flex: 1; }
+.sidebar-arrow {
+    font-size: 0.65rem; color: rgba(255,255,255,.4);
+    transition: transform .22s;
+    margin-left: auto; flex-shrink: 0;
+    opacity: 0; width: 0; overflow: hidden;
+}
+.sidebar-tz.expanded .sidebar-arrow { opacity: 1; width: auto; }
+.sidebar-parent.open .sidebar-arrow { transform: rotate(180deg); color: var(--medium); }
+
+.sidebar-sub {
+    list-style: none; padding: 0; margin: 0;
+    max-height: 0; overflow: hidden;
+    transition: max-height .28s cubic-bezier(.4,0,.2,1);
+    background: rgba(0,0,0,.18);
+    border-left: 3px solid rgba(200,144,10,.4);
+}
+.sidebar-sub.open { max-height: 240px; }
+
+.sidebar-sublink {
+    display: flex; align-items: center;
+    padding: 0.55rem 0.9rem 0.55rem 1.2rem;
+    color: rgba(255,255,255,.62);
+    text-decoration: none; font-size: 0.81rem;
+    font-weight: 500; white-space: nowrap;
+    transition: background .12s, color .12s;
+    border-left: 2px solid transparent;
+}
+.sidebar-sublink:hover  { background: rgba(255,255,255,.07); color: var(--white); }
+.sidebar-sublink.active { color: var(--medium); font-weight: 700; border-left-color: var(--medium); }
+.sidebar-sublink i { width: 28px; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; }
+.sidebar-sublink .sub-text { opacity: 0; width: 0; overflow: hidden; transition: opacity .22s, width .22s; }
+.sidebar-tz.expanded .sidebar-sublink .sub-text { opacity: 1; width: auto; }
+
 /* ── MAIN CONTENT ─────────────────────────────────────────────────────────── */
 .main-content {
     margin-left: 64px; width: calc(100% - 64px);
@@ -250,54 +299,83 @@ body {
     </div>
 
     <ul class="sidebar-menu">
+
+        <!-- Maombi -->
         <li class="sidebar-item">
-            <a href="{% url 'select_region' %}" class="sidebar-link">
+            <a href="{% url 'select_region' %}" class="sidebar-link {% if request.resolver_match.url_name == 'select_region' %}active{% endif %}">
                 <i class="fas fa-paper-plane"></i>
                 <span class="sidebar-text">{% if LANG == 'sw' %}Wasilisha Maombi{% else %}Submit Application{% endif %}</span>
             </a>
         </li>
-        <li class="sidebar-item">
-            <a href="{% url 'submit_logbook' %}" class="sidebar-link">
-                <i class="fas fa-book-medical"></i>
-                <span class="sidebar-text">{% if LANG == 'sw' %}Andika Logbook{% else %}Write Logbook{% endif %}</span>
-            </a>
+
+        <!-- Logbook module -->
+        <li class="sidebar-item" id="mod-logbook">
+            <div class="sidebar-parent {% if request.resolver_match.url_name in 'submit_logbook,logbook_history,logbook_download_options' %}open{% endif %}" data-target="sub-logbook">
+                <i class="fas fa-book-open s-icon"></i>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Logbook{% else %}Logbook{% endif %}</span>
+                <i class="fas fa-chevron-down sidebar-arrow"></i>
+            </div>
+            <ul class="sidebar-sub {% if request.resolver_match.url_name in 'submit_logbook,logbook_history,logbook_download_options' %}open{% endif %}" id="sub-logbook">
+                <li>
+                    <a href="{% url 'submit_logbook' %}" class="sidebar-sublink {% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">
+                        <i class="fas fa-pen"></i>
+                        <span class="sub-text">{% if LANG == 'sw' %}Andika{% else %}Write{% endif %}</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'logbook_history' %}" class="sidebar-sublink {% if request.resolver_match.url_name == 'logbook_history' %}active{% endif %}">
+                        <i class="fas fa-history"></i>
+                        <span class="sub-text">{% if LANG == 'sw' %}Historia{% else %}History{% endif %}</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'logbook_download_options' %}" class="sidebar-sublink {% if request.resolver_match.url_name == 'logbook_download_options' %}active{% endif %}">
+                        <i class="fas fa-download"></i>
+                        <span class="sub-text">{% if LANG == 'sw' %}Pakua{% else %}Download{% endif %}</span>
+                    </a>
+                </li>
+            </ul>
         </li>
-        <li class="sidebar-item">
-            <a href="{% url 'generate_scheme' %}" class="sidebar-link">
-                <i class="fas fa-calendar-alt"></i>
-                <span class="sidebar-text">{% if LANG == 'sw' %}Mpango wa Kazi{% else %}Scheme of Work{% endif %}</span>
-            </a>
+
+        <!-- Mipango module -->
+        <li class="sidebar-item" id="mod-mipango">
+            <div class="sidebar-parent {% if request.resolver_match.url_name in 'generate_scheme,lesson_plan' %}open{% endif %}" data-target="sub-mipango">
+                <i class="fas fa-clipboard-list s-icon"></i>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Mipango{% else %}Plans{% endif %}</span>
+                <i class="fas fa-chevron-down sidebar-arrow"></i>
+            </div>
+            <ul class="sidebar-sub {% if request.resolver_match.url_name in 'generate_scheme,lesson_plan' %}open{% endif %}" id="sub-mipango">
+                <li>
+                    <a href="{% url 'generate_scheme' %}" class="sidebar-sublink {% if request.resolver_match.url_name == 'generate_scheme' %}active{% endif %}">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span class="sub-text">{% if LANG == 'sw' %}Scheme ya Kazi{% else %}Scheme of Work{% endif %}</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'lesson_plan' %}" class="sidebar-sublink {% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
+                        <i class="fas fa-chalkboard"></i>
+                        <span class="sub-text">{% if LANG == 'sw' %}Mpango wa Somo{% else %}Lesson Plan{% endif %}</span>
+                    </a>
+                </li>
+            </ul>
         </li>
+
+        <!-- Wakaguzi -->
         <li class="sidebar-item">
-            <a href="{% url 'lesson_plan' %}" class="sidebar-link">
-                <i class="fas fa-chalkboard-teacher"></i>
-                <span class="sidebar-text">{% if LANG == 'sw' %}Mpango wa Somo{% else %}Lesson Plan{% endif %}</span>
-            </a>
-        </li>
-        <li class="sidebar-item">
-            <a href="{% url 'logbook_history' %}" class="sidebar-link">
-                <i class="fas fa-history"></i>
-                <span class="sidebar-text">{% if LANG == 'sw' %}Historia ya Logbook{% else %}Logbook History{% endif %}</span>
-            </a>
-        </li>
-        <li class="sidebar-item">
-            <a href="{% url 'logbook_download_options' %}" class="sidebar-link">
-                <i class="fas fa-download"></i>
-                <span class="sidebar-text">{% if LANG == 'sw' %}Pakua Logbook{% else %}Download Logbook{% endif %}</span>
-            </a>
-        </li>
-        <li class="sidebar-item">
-            <a href="{% url 'my_assessors' %}" class="sidebar-link">
-                <i class="fas fa-chalkboard-teacher"></i>
+            <a href="{% url 'my_assessors' %}" class="sidebar-link {% if request.resolver_match.url_name == 'my_assessors' %}active{% endif %}">
+                <i class="fas fa-user-check"></i>
                 <span class="sidebar-text">{% if LANG == 'sw' %}Wakaguzi Wangu{% else %}My Assessors{% endif %}</span>
             </a>
         </li>
-        <li class="sidebar-item">
-            <a href="{% url 'logout' %}" class="sidebar-link" style="margin-top: auto;">
+
+        <!-- Logout (pushed to bottom) -->
+        <li class="sidebar-item" style="margin-top: auto;">
+            <a href="{% url 'logout' %}" class="sidebar-link">
                 <i class="fas fa-sign-out-alt"></i>
                 <span class="sidebar-text">{% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}</span>
             </a>
         </li>
+
     </ul>
 </nav>
 
@@ -911,6 +989,39 @@ body {
         sidebar.querySelectorAll('.sidebar-link').forEach(link => {
             link.addEventListener('click', function() {
                 if (isMobile()) closeMobileSidebar();
+            });
+        });
+        sidebar.querySelectorAll('.sidebar-sublink').forEach(link => {
+            link.addEventListener('click', function() {
+                if (isMobile()) closeMobileSidebar();
+            });
+        });
+
+        // ── SUBMENU: toggle chini ya parent ──
+        sidebar.querySelectorAll('.sidebar-parent').forEach(function(parent) {
+            parent.addEventListener('click', function() {
+                const targetId = this.dataset.target;
+                const sub = document.getElementById(targetId);
+                if (!sub) return;
+
+                // Ensure sidebar is expanded first
+                if (!sidebar.classList.contains('expanded') && !isMobile()) {
+                    expandDesktop();
+                    localStorage.setItem('sidebarExpanded', 'true');
+                }
+
+                const isOpen = sub.classList.contains('open');
+                // Close all other submenus
+                sidebar.querySelectorAll('.sidebar-sub.open').forEach(function(s) {
+                    s.classList.remove('open');
+                    const p = sidebar.querySelector(`[data-target="${s.id}"]`);
+                    if (p) p.classList.remove('open');
+                });
+                // Toggle this one
+                if (!isOpen) {
+                    sub.classList.add('open');
+                    this.classList.add('open');
+                }
             });
         });
 
