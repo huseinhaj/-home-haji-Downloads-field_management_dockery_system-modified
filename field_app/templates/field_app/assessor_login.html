@@ -1,691 +1,208 @@
-<!-- field_app/templates/field_app/assessor_login.html -->
+{% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{% if LANG == 'sw' %}sw{% else %}en{% endif %}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assessor Login | IMS - Internship Management System - Teacher Colleges in Tanzania</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --bold: #0A2B5E;
-            --medium: #C8900A;
-            --light: #EEF1F6;
-            --white: #FFFFFF;
-            --text-dark: #1A1A2E;
-            --text-gray: #4A5568;
-            --border: #CBD5E0;
-            --success: #10B981;
-            --danger: #EF4444;
-            --warning: #F59E0B;
-            --info: #3B82F6;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if LANG == 'sw' %}Ingia — Mkaguzi | IMS{% else %}Sign In — Assessor | IMS{% endif %}</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --navy:#0A2B5E;--gold:#C8900A;--light:#EEF1F6;
+  --white:#fff;--text:#0F1923;--muted:#5A6B7E;
+  --border:#C8D0DB;--danger:#DC2626;--success:#059669;
+}
+html,body{height:100%;-webkit-font-smoothing:antialiased;}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;background:var(--light);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+.top-bar{background:var(--navy);border-bottom:3px solid var(--gold);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.brand{display:flex;align-items:center;gap:10px;}
+.logo-box{width:28px;height:28px;background:rgba(200,144,10,.2);border:1px solid rgba(200,144,10,.4);border-radius:4px;display:flex;align-items:center;justify-content:center;}
+.logo-box i{color:var(--gold);font-size:13px;}
+.brand span{color:#fff;font-weight:700;font-size:14px;}
+.brand small{color:rgba(255,255,255,.5);font-size:10px;margin-left:4px;}
+.lang-row{display:flex;gap:2px;}
+.la{font-size:11px;font-weight:700;text-decoration:none;padding:3px 9px;border-radius:3px;transition:all .12s;}
+.la.on{background:var(--gold);color:#fff;}
+.la.off{color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);}
+.la.off:hover{color:#fff;}
 
-        body {
-            background: var(--light);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
-        }
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 16px;}
 
-        .pg-wrap {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+.card{width:100%;max-width:420px;background:var(--white);border-radius:8px;border:1px solid rgba(10,43,94,.12);box-shadow:0 4px 6px rgba(0,0,0,.05),0 10px 30px rgba(10,43,94,.1);overflow:hidden;}
 
-        /* TOP NOTICE BAR */
-        .top-bar {
-            background: var(--bold);
-            padding: 5px 0;
-            text-align: center;
-            font-size: 11px;
-            color: rgba(255,255,255,0.85);
-            letter-spacing: 1.5px;
-            font-weight: 600;
-            text-transform: uppercase;
-            border-bottom: 2px solid var(--medium);
-        }
+.card-top{background:var(--navy);border-bottom:3px solid var(--gold);padding:20px 24px;display:flex;align-items:center;gap:14px;}
+.coat{width:52px;height:52px;flex-shrink:0;background:rgba(200,144,10,.15);border:1.5px solid rgba(200,144,10,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.coat img{width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));}
+.ct .t1{font-size:9px;color:rgba(255,255,255,.5);letter-spacing:1.8px;text-transform:uppercase;}
+.ct .t2{font-size:14.5px;color:#fff;font-weight:800;margin:2px 0;line-height:1.2;}
+.ct .t3{font-size:11px;color:var(--gold);font-weight:500;}
 
-        /* GOVERNMENT HEADER — logo LEFT, text CENTER */
-        .gov-header {
-            background: var(--bold);
-            padding: 14px 40px;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 3px solid var(--medium);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-            position: relative;
-        }
+.card-body{padding:24px;}
 
-        .coat-of-arms {
-            width: 72px;
-            height: 72px;
-            flex-shrink: 0;
-        }
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px;}
+.inp-wrap{position:relative;}
+.inp-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9AAFC0;font-size:13px;pointer-events:none;}
+input[type=email],input[type=password]{width:100%;padding:10px 11px 10px 34px;font-size:13.5px;color:var(--text);border:1.5px solid var(--border);border-radius:5px;background:#FAFBFD;font-family:inherit;outline:none;transition:border-color .13s,box-shadow .13s;}
+input:focus{border-color:var(--navy);background:#fff;box-shadow:0 0 0 3px rgba(10,43,94,.09);}
+input::placeholder{color:#B8C4CE;font-size:12.5px;}
+.eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9AAFC0;font-size:14px;padding:2px;}
+.eye:hover{color:var(--navy);}
 
-        .coat-of-arms img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
-        }
+.row2{display:flex;align-items:center;justify-content:flex-end;margin-bottom:18px;}
+.forgot{font-size:12.5px;font-weight:700;color:var(--navy);text-decoration:none;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
+.forgot:hover{color:var(--gold);}
 
-        .gov-titles {
-            line-height: 1.4;
-            text-align: center;
-            flex: 1;
-        }
+.btn-in{width:100%;padding:11.5px;background:var(--navy);color:#fff;border:none;border-radius:5px;font-size:13.5px;font-weight:800;cursor:pointer;letter-spacing:.6px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:background .13s,box-shadow .13s;}
+.btn-in:hover{background:#071E42;box-shadow:0 4px 14px rgba(10,43,94,.28);}
+.btn-in:active{opacity:.92;}
 
-        .gov-titles .t1 {
-            font-size: 11px;
-            color: rgba(255,255,255,0.75);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            font-weight: 500;
-        }
+/* Inline reset form */
+.reset-box{display:none;margin-top:18px;padding:16px;background:var(--light);border-radius:5px;border:1px solid rgba(10,43,94,.1);}
+.reset-box.show{display:block;}
+.reset-box h4{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+.reset-box p{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
+.btn-reset{width:100%;padding:10px;background:var(--gold);color:#fff;border:none;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;font-family:inherit;transition:background .13s;}
+.btn-reset:hover{background:#A97308;}
+.btn-cancel{font-size:12px;color:var(--muted);text-align:center;display:block;margin-top:8px;cursor:pointer;background:none;border:none;font-family:inherit;width:100%;}
+.btn-cancel:hover{color:var(--navy);}
 
-        .gov-titles .t2 {
-            font-size: 19px;
-            color: var(--white);
-            font-weight: 700;
-            letter-spacing: 0.3px;
-            margin: 3px 0 2px;
-        }
+.msg{padding:10px 12px;border-radius:4px;font-size:12.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-weight:500;}
+.msg-err {background:#FEE2E2;color:#7F1D1D;border-left:4px solid var(--danger);}
+.msg-ok  {background:#D1FAE5;color:#064E3B;border-left:4px solid var(--success);}
+.msg-warn{background:#FEF3C7;color:#78350F;border-left:4px solid #D97706;}
 
-        .gov-titles .t3 {
-            font-size: 12.5px;
-            color: var(--medium);
-            font-weight: 500;
-            letter-spacing: 0.2px;
-        }
+footer{background:var(--navy);border-top:3px solid var(--gold);padding:10px 20px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;}
+footer p{font-size:10px;color:rgba(255,255,255,.45);}
+footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
 
-        /* Empty div for spacing to balance the header (logo left, text center) */
-        .gov-spacer {
-            width: 72px;
-            visibility: hidden;
-        }
-
-        /* MAIN CONTENT - CENTERED LOGIN ONLY */
-        .main-area {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 30px;
-            max-width: 500px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        /* LOGIN CARD */
-        .login-panel {
-            background: var(--white);
-            border-radius: 8px;
-            width: 100%;
-            border: 1px solid var(--border);
-            overflow: hidden;
-            box-shadow: 0 4px 16px rgba(10,43,94,0.10);
-        }
-
-        .panel-head {
-            background: var(--bold);
-            padding: 16px 22px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 3px solid var(--medium);
-        }
-
-        .panel-head-icon {
-            width: 42px;
-            height: 42px;
-            background: var(--medium);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .panel-head-icon i {
-            font-size: 18px;
-            color: var(--white);
-        }
-
-        .panel-head h2 {
-            font-size: 17px;
-            color: var(--white);
-            font-weight: 700;
-        }
-
-        .panel-head p {
-            font-size: 11.5px;
-            color: rgba(255,255,255,0.75);
-            margin-top: 2px;
-        }
-
-        .panel-body {
-            padding: 26px 26px 22px;
-        }
-
-        /* Form Fields */
-        .field-label {
-            font-size: 12.5px;
-            font-weight: 600;
-            color: var(--text-dark);
-            margin-bottom: 6px;
-            display: block;
-        }
-
-        .field-wrap {
-            margin-bottom: 18px;
-        }
-
-        .input-row {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .inp-icon {
-            position: absolute;
-            left: 11px;
-            display: flex;
-            align-items: center;
-            pointer-events: none;
-        }
-
-        .inp-icon i {
-            font-size: 13px;
-            color: #90A0B7;
-        }
-
-        .field-input {
-            width: 100%;
-            padding: 11px 11px 11px 35px;
-            font-size: 13.5px;
-            color: var(--text-dark);
-            border: 1.5px solid var(--border);
-            border-radius: 6px;
-            background: #FAFBFD;
-            font-family: inherit;
-            outline: none;
-            transition: all 0.15s;
-        }
-
-        .field-input:focus {
-            border-color: var(--bold);
-            background: var(--white);
-            box-shadow: 0 0 0 3px rgba(10,43,94,0.09);
-        }
-
-        .field-input::placeholder {
-            color: #B0BCCF;
-            font-size: 12.5px;
-        }
-
-        .toggle-btn {
-            position: absolute;
-            right: 11px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #90A0B7;
-            font-size: 14px;
-        }
-
-        .toggle-btn:hover {
-            color: var(--bold);
-        }
-
-        /* Buttons */
-        .btn-signin {
-            width: 100%;
-            padding: 12px;
-            background: var(--bold);
-            color: var(--white);
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            letter-spacing: 0.8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 9px;
-            font-family: inherit;
-            transition: all 0.2s;
-        }
-
-        .btn-signin:hover {
-            background: #0C3570;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(10,43,94,0.25);
-        }
-
-        .btn-reset-pwd {
-            width: 100%;
-            padding: 10px;
-            background: transparent;
-            color: var(--bold);
-            border: 1.5px solid var(--border);
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 9px;
-            font-family: inherit;
-            transition: all 0.2s;
-            text-decoration: none;
-        }
-
-        .btn-reset-pwd:hover {
-            background: #EBF0FA;
-            border-color: var(--bold);
-        }
-
-        .divider-line {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 18px 0;
-        }
-
-        .divider-line span {
-            font-size: 11px;
-            color: #A0AEC0;
-            font-weight: 600;
-        }
-
-        .divider-line::before,
-        .divider-line::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #E2E8F0;
-        }
-
-        .login-note {
-            text-align: center;
-            margin-top: 16px;
-            font-size: 12.5px;
-            color: var(--text-gray);
-        }
-
-        .login-note a {
-            color: var(--bold);
-            font-weight: 700;
-            text-decoration: none;
-        }
-
-        .login-note a:hover {
-            text-decoration: underline;
-        }
-
-        .panel-foot {
-            background: #F7F9FC;
-            border-top: 1px solid #E2E8F0;
-            padding: 11px 22px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .panel-foot i {
-            font-size: 12px;
-            color: var(--success);
-        }
-
-        .panel-foot span {
-            font-size: 11px;
-            color: var(--success);
-        }
-
-        /* Alert Messages */
-        .error-message,
-        .success-message,
-        .warning-message,
-        .info-message {
-            padding: 10px 13px;
-            border-radius: 6px;
-            font-size: 12.5px;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .error-message {
-            background: #FEE2E2;
-            color: #B91C1C;
-            border-left: 3px solid var(--danger);
-        }
-
-        .success-message {
-            background: #D1FAE5;
-            color: #065F46;
-            border-left: 3px solid var(--success);
-        }
-
-        .warning-message {
-            background: #FEF3C7;
-            color: #92400E;
-            border-left: 3px solid var(--warning);
-        }
-
-        .info-message {
-            background: #DBEAFE;
-            color: #1E40AF;
-            border-left: 3px solid var(--info);
-        }
-
-        /* Footer */
-        .gov-footer {
-            background: var(--bold);
-            padding: 11px 40px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-top: 3px solid var(--medium);
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .gov-footer p {
-            font-size: 11px;
-            color: rgba(255,255,255,0.65);
-        }
-
-        .gov-footer .ver {
-            font-size: 11px;
-            color: var(--medium);
-            font-weight: 700;
-        }
-
-        /* Modal Styles */
-        .modal-content {
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-
-        .modal-header {
-            background: var(--bold);
-            color: var(--white);
-            border-bottom: 2px solid var(--medium);
-            border-radius: 8px 8px 0 0;
-        }
-
-        .modal-header .btn-close {
-            filter: brightness(0) invert(1);
-        }
-
-        .modal-footer {
-            border-top: 1px solid var(--border);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .gov-header {
-                padding: 12px 20px;
-            }
-            .coat-of-arms {
-                width: 54px;
-                height: 54px;
-            }
-            .gov-spacer {
-                width: 54px;
-            }
-            .gov-titles .t2 {
-                font-size: 15px;
-            }
-            .gov-titles .t3 {
-                font-size: 11px;
-            }
-            .main-area {
-                padding: 25px 16px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .panel-body {
-                padding: 18px;
-            }
-            .gov-header {
-                flex-direction: column;
-                text-align: center;
-            }
-            .gov-titles {
-                margin-top: 10px;
-            }
-            .gov-spacer {
-                display: none;
-            }
-        }
-    </style>
+@media(max-width:480px){.brand small{display:none;}.card-body{padding:18px;}.card-top{padding:16px 18px;}.coat{width:44px;height:44px;}.coat img{width:32px;height:32px;}.ct .t2{font-size:13px;}}
+</style>
 </head>
 <body>
-    <div class="pg-wrap">
-        <!-- TOP NOTICE BAR -->
-        <div class="top-bar">
-            <i class="fas fa-globe" style="margin-right:6px;"></i>
-            United Republic of Tanzania &nbsp;|&nbsp; Jamhuri ya Muungano wa Tanzania
-        </div>
 
-        <!-- GOVERNMENT HEADER — logo LEFT, text CENTER -->
-        <div class="gov-header">
-            <div class="coat-of-arms">
-                {% load static %}
-                <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Tanzania Coat of Arms">
-            </div>
-            <div class="gov-titles">
-                <div class="t1">United Republic of Tanzania — Serikali ya Jamhuri ya Muungano</div>
-                <div class="t2">{% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia{% else %}Ministry of Education, Science and Technology{% endif %}</div>
-                <div class="t3">Internship Management System (IMS) &mdash; {% if LANG == 'sw' %}Lango la Mkaguzi{% else %}Assessor Portal{% endif %}</div>
-            </div>
-            <!-- Language toggle -->
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:60px;">
-                <a href="/set-language/?lang=en&amp;next={{ request.path }}"
-                   style="color:{% if LANG == 'en' %}#C8900A{% else %}rgba(255,255,255,0.5){% endif %};font-size:12px;font-weight:700;text-decoration:none;">EN</a>
-                <a href="/set-language/?lang=sw&amp;next={{ request.path }}"
-                   style="color:{% if LANG == 'sw' %}#C8900A{% else %}rgba(255,255,255,0.5){% endif %};font-size:12px;font-weight:700;text-decoration:none;">SW</a>
-            </div>
-        </div>
+<div class="top-bar">
+  <div class="brand">
+    <div class="logo-box"><i class="fas fa-user-check"></i></div>
+    <span>IMS<small>Assessor Portal</small></span>
+  </div>
+  <div class="lang-row">
+    <a href="/set-language/?lang=en&next={{ request.path }}" class="la {% if LANG == 'en' %}on{% else %}off{% endif %}">EN</a>
+    <a href="/set-language/?lang=sw&next={{ request.path }}" class="la {% if LANG == 'sw' %}on{% else %}off{% endif %}">SW</a>
+  </div>
+</div>
 
-        <!-- MAIN CONTENT - CENTERED LOGIN ONLY -->
-        <div class="main-area">
-            <!-- LOGIN PANEL -->
-            <div class="login-panel">
-                <div class="panel-head">
-                    <div class="panel-head-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                    <div>
-                        <h2>{% if LANG == 'sw' %}Ingia - Mkaguzi{% else %}Assessor Login{% endif %}</h2>
-                        <p>{% if LANG == 'sw' %}Fikia lango lako la tathmini shuleni{% else %}Access your field assessment portal{% endif %}</p>
-                    </div>
-                </div>
+<div class="main">
+  <div class="card">
 
-                <div class="panel-body">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="{% if message.tags == 'error' %}error-message{% elif message.tags == 'success' %}success-message{% elif message.tags == 'warning' %}warning-message{% else %}info-message{% endif %}">
-                                <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'success' %}fa-check-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-
-                    {% if student_warning %}
-                    <div class="warning-message">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <div>
-                            <strong>Student Account Detected!</strong><br>
-                            You are logged in as a student: <strong>{{ student_name }}</strong><br>
-                            Please logout and use the assessor login page with your assessor credentials.
-                            <div class="mt-2">
-                                <a href="{{ logout_url }}" class="btn btn-sm" style="background: var(--warning); color: white; border: none; border-radius: 4px; padding: 5px 12px; text-decoration: none;">
-                                    <i class="fas fa-sign-out-alt me-1"></i>Logout
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <form method="POST" action="{% url 'assessor_login' %}">
-                        {% csrf_token %}
-
-                        <div class="field-wrap">
-                            <label class="field-label">{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %}</label>
-                            <div class="input-row">
-                                <div class="inp-icon"><i class="fas fa-envelope"></i></div>
-                                <input type="email" name="email" id="email" class="field-input"
-                                       placeholder="{% if LANG == 'sw' %}mfano: mkaguzi@chuo.ac.tz{% else %}e.g. assessor@college.ac.tz{% endif %}" required
-                                       value="{% if request.POST.email %}{{ request.POST.email }}{% endif %}">
-                            </div>
-                        </div>
-
-                        <div class="field-wrap">
-                            <label class="field-label">{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %}</label>
-                            <div class="input-row">
-                                <div class="inp-icon"><i class="fas fa-lock"></i></div>
-                                <input type="password" name="password" id="password" class="field-input"
-                                       placeholder="{% if LANG == 'sw' %}Weka nywila yako{% else %}Enter your password{% endif %}" style="padding-right:38px;" required>
-                                <button type="button" class="toggle-btn" onclick="togglePwd()">
-                                    <i class="fas fa-eye" id="eyeIco"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn-signin">
-                            <i class="fas fa-sign-in-alt"></i> {% if LANG == 'sw' %}INGIA KAMA MKAGUZI{% else %}LOGIN AS ASSESSOR{% endif %}
-                        </button>
-                    </form>
-
-                    <div class="divider-line"><span>{% if LANG == 'sw' %}AU{% else %}OR{% endif %}</span></div>
-
-                    <button type="button" class="btn-reset-pwd" data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
-                        <i class="fas fa-sync-alt"></i> {% if LANG == 'sw' %}Badilisha Nywila{% else %}Reset Password{% endif %}
-                    </button>
-                </div>
-
-                <div class="panel-foot">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>Secured by Tanzania Government IT Standards — Authorized Assessor Access Only</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- FOOTER -->
-        <div class="gov-footer">
-            <p>&copy; {% now "Y" %} Ministry of Education, Science and Technology — United Republic of Tanzania. All rights reserved.</p>
-            <span class="ver"><i class="fas fa-code-branch" style="margin-right:4px;"></i>IMS v2.1.0 | Assessor Portal</span>
-        </div>
+    <div class="card-top">
+      <div class="coat">
+        {% load static %}
+        <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Coat of Arms">
+      </div>
+      <div class="ct">
+        <div class="t1">United Republic of Tanzania</div>
+        <div class="t2">{% if LANG == 'sw' %}Lango la Mkaguzi{% else %}Assessor Portal{% endif %}</div>
+        <div class="t3">{% if LANG == 'sw' %}Mfumo wa Usimamizi wa Mafunzo ya Vitendo{% else %}Internship Management System{% endif %}</div>
+      </div>
     </div>
 
-    <!-- RESET PASSWORD MODAL -->
-    <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="resetPasswordModalLabel">
-                        <i class="fas fa-sync-alt me-2"></i>Reset Password
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form method="POST" action="{% url 'assessor_password_reset' %}">
-                    {% csrf_token %}
-                    <div class="modal-body">
-                        <p style="color: var(--text-gray); font-size: 0.85rem;">Enter your registered email address. We will send you a <strong style="color: var(--bold);">new temporary password</strong> to your email.</p>
-                        
-                        <div class="field-wrap">
-                            <label class="field-label">Email Address</label>
-                            <div class="input-row">
-                                <div class="inp-icon"><i class="fas fa-envelope"></i></div>
-                                <input type="email" class="field-input" id="reset_email" name="email" 
-                                       placeholder="Enter your registered email" required>
-                            </div>
-                        </div>
-                        
-                        <div class="info-message mt-3">
-                            <i class="fas fa-info-circle"></i>
-                            <div>
-                                <strong>How it works:</strong>
-                                <ol class="mt-1 mb-0" style="padding-left: 1.25rem;">
-                                    <li>Enter your email address</li>
-                                    <li>A new temporary password will be sent to your email</li>
-                                    <li>Login with the new password</li>
-                                    <li>Change your password immediately after login</li>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn" data-bs-dismiss="modal" style="background: var(--light); color: var(--text-dark); border: 1px solid var(--border); border-radius: 6px;">Cancel</button>
-                        <button type="submit" class="btn" style="background: var(--medium); color: white; border: none; border-radius: 6px;">
-                            <i class="fas fa-paper-plane me-1"></i>Send New Password
-                        </button>
-                    </div>
-                </form>
-            </div>
+    <div class="card-body">
+      {% if messages %}
+        {% for message in messages %}
+        <div class="msg {% if message.tags == 'error' %}msg-err{% elif message.tags == 'warning' %}msg-warn{% else %}msg-ok{% endif %}">
+          <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %}"></i>
+          {{ message }}
         </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- Login form -->
+      <div id="loginForm">
+        <form method="POST" action="{% url 'assessor_login' %}">
+          {% csrf_token %}
+
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %}</label>
+            <div class="inp-wrap">
+              <i class="fas fa-envelope inp-ico"></i>
+              <input type="email" name="email" id="email" required autofocus autocomplete="email"
+                     placeholder="{% if LANG == 'sw' %}barua@pepe.yako{% else %}your@email.com{% endif %}">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %}</label>
+            <div class="inp-wrap">
+              <i class="fas fa-lock inp-ico"></i>
+              <input type="password" name="password" id="pwd" style="padding-right:38px;" required autocomplete="current-password"
+                     placeholder="{% if LANG == 'sw' %}Nywila yako{% else %}Your password{% endif %}">
+              <button type="button" class="eye" onclick="togglePwd()"><i class="fas fa-eye" id="eyeIco"></i></button>
+            </div>
+          </div>
+
+          <div class="row2">
+            <button type="button" class="forgot" onclick="showReset()">
+              {% if LANG == 'sw' %}Umesahau nywila?{% else %}Forgot password?{% endif %}
+            </button>
+          </div>
+
+          <button type="submit" class="btn-in">
+            <i class="fas fa-sign-in-alt"></i>
+            {% if LANG == 'sw' %}INGIA{% else %}SIGN IN{% endif %}
+          </button>
+        </form>
+      </div>
+
+      <!-- Inline password reset -->
+      <div class="reset-box" id="resetBox">
+        <h4>{% if LANG == 'sw' %}Weka Upya Nywila{% else %}Reset Password{% endif %}</h4>
+        <p>{% if LANG == 'sw' %}Weka barua pepe yako. Utapata nywila mpya ya muda kwenye inbox yako.{% else %}Enter your email address. You will receive a new temporary password in your inbox.{% endif %}</p>
+        <form method="POST" action="{% url 'assessor_password_reset' %}">
+          {% csrf_token %}
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %}</label>
+            <div class="inp-wrap">
+              <i class="fas fa-envelope inp-ico"></i>
+              <input type="email" name="email" required
+                     placeholder="{% if LANG == 'sw' %}barua@pepe.yako{% else %}your@email.com{% endif %}">
+            </div>
+          </div>
+          <button type="submit" class="btn-reset">
+            <i class="fas fa-paper-plane" style="margin-right:6px;"></i>
+            {% if LANG == 'sw' %}Tuma Nywila Mpya{% else %}Send New Password{% endif %}
+          </button>
+          <button type="button" class="btn-cancel" onclick="hideReset()">
+            {% if LANG == 'sw' %}Rudi Kuingia{% else %}Back to Sign In{% endif %}
+          </button>
+        </form>
+      </div>
+
     </div>
+  </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function togglePwd() {
-            const inp = document.getElementById('password');
-            const ico = document.getElementById('eyeIco');
-            if (inp.type === 'password') {
-                inp.type = 'text';
-                ico.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                inp.type = 'password';
-                ico.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        }
+<footer>
+  <p>&copy; {% now "Y" %} {% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia — Tanzania{% else %}Ministry of Education, Science and Technology — Tanzania{% endif %}</p>
+  <span class="ver">IMS v2.1.0</span>
+</footer>
 
-        // Auto focus on email field
-        document.addEventListener('DOMContentLoaded', function() {
-            const emailField = document.getElementById('email');
-            if (emailField) {
-                emailField.focus();
-            }
-        });
-
-        // Form validation
-        const loginForm = document.querySelector('form[action*="assessor_login"]');
-        if (loginForm) {
-            loginForm.addEventListener('submit', function(e) {
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                
-                if (!email || !password) {
-                    e.preventDefault();
-                    alert('Please enter both email and password.');
-                }
-            });
-        }
-
-        // Clear reset form when modal is hidden
-        const resetModal = document.getElementById('resetPasswordModal');
-        if (resetModal) {
-            resetModal.addEventListener('hidden.bs.modal', function() {
-                const resetEmail = document.getElementById('reset_email');
-                if (resetEmail) {
-                    resetEmail.value = '';
-                }
-            });
-        }
-    </script>
+<script>
+function togglePwd(){
+  const i=document.getElementById('pwd'),c=document.getElementById('eyeIco');
+  if(i.type==='password'){i.type='text';c.classList.replace('fa-eye','fa-eye-slash');}
+  else{i.type='password';c.classList.replace('fa-eye-slash','fa-eye');}
+}
+function showReset(){
+  document.getElementById('loginForm').style.display='none';
+  document.getElementById('resetBox').classList.add('show');
+}
+function hideReset(){
+  document.getElementById('resetBox').classList.remove('show');
+  document.getElementById('loginForm').style.display='block';
+}
+</script>
 </body>
 </html>
