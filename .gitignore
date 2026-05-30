@@ -12,6 +12,7 @@ staticfiles/
 *.env
 
 # Backup files
+backups/
 *.backup
 *.backup2
 *.backup3
