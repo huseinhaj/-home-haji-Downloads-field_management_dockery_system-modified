@@ -130,4 +130,7 @@ urlpatterns = [
     path('board/student/<int:student_id>/', views.board_student_progress, name='board_student_progress'),
     path('board/comment/add/', views.board_add_comment, name='board_add_comment'),
     path('create-board-member/', views.create_board_member, name='create_board_member'),
+
+    # DEO Allocation
+    path('board/allocation/', views.deo_allocation, name='deo_allocation'),
 ]

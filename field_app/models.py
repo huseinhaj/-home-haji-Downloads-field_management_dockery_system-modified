@@ -1083,3 +1083,95 @@ class MonthlyReport(models.Model):
 
     def __str__(self):
         return f"Ripoti {self.get_month_display()} {self.year} — {self.district.name}"
+
+
+# =========================
+# District Student Teacher Allocation (DEO)
+# =========================
+
+class DistrictAllocation(models.Model):
+    """DEO anaweka idadi ya walimu wanafunzi wanaohitajika katika wilaya yake"""
+    district = models.ForeignKey(District, on_delete=models.CASCADE, related_name='allocations')
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.CASCADE,
+        null=True, blank=True, related_name='district_allocations'
+    )
+    primary_needed = models.PositiveIntegerField(default=0, help_text="Walimu wanafunzi wa shule za msingi")
+    secondary_needed = models.PositiveIntegerField(default=0, help_text="Walimu wanafunzi wa shule za sekondari")
+    notes = models.TextField(blank=True, help_text="Maelezo ya ziada kutoka DEO")
+    document = models.FileField(upload_to='allocations/', blank=True, null=True, help_text="Hati ya mahitaji (PDF/Word)")
+    uploaded_by = models.ForeignKey(
+        'BoardMember', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='allocations'
+    )
+    ai_parsed = models.BooleanField(default=False, help_text="AI ilitumika kuchambua document")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('district', 'academic_year')
+        ordering = ['-created_at']
+
+    @property
+    def primary_filled(self):
+        return StudentApplication.objects.filter(
+            school__district=self.district,
+            school__level='Primary',
+            status='approved',
+        ).values('student').distinct().count()
+
+    @property
+    def secondary_filled(self):
+        return StudentApplication.objects.filter(
+            school__district=self.district,
+            school__level='Secondary',
+            status='approved',
+        ).values('student').distinct().count()
+
+    @property
+    def primary_remaining(self):
+        return max(0, self.primary_needed - self.primary_filled)
+
+    @property
+    def secondary_remaining(self):
+        return max(0, self.secondary_needed - self.secondary_filled)
+
+    @property
+    def total_needed(self):
+        return self.primary_needed + self.secondary_needed
+
+    @property
+    def total_filled(self):
+        return self.primary_filled + self.secondary_filled
+
+    def __str__(self):
+        return f"{self.district.name} — {self.academic_year or 'No Year'}"
+
+
+class SchoolAllocation(models.Model):
+    """Mgawanyo wa idadi kwa kila shule ndani ya wilaya"""
+    district_allocation = models.ForeignKey(
+        DistrictAllocation, on_delete=models.CASCADE, related_name='school_allocations'
+    )
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='allocations')
+    quota = models.PositiveIntegerField(default=0, help_text="Idadi ya walimu wanafunzi wanaohitajika")
+
+    class Meta:
+        unique_together = ('district_allocation', 'school')
+
+    @property
+    def filled(self):
+        return StudentApplication.objects.filter(
+            school=self.school, status='approved'
+        ).values('student').distinct().count()
+
+    @property
+    def remaining(self):
+        return max(0, self.quota - self.filled)
+
+    @property
+    def is_full(self):
+        return self.filled >= self.quota
+
+    def __str__(self):
+        return f"{self.school.name}: {self.quota}"

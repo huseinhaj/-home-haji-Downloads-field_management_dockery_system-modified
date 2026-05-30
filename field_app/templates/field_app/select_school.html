@@ -110,6 +110,16 @@
                         </div>
                     </div>
                     <p class="text-end small mb-0">{{ school.occupancy_percentage }}% {% if LANG == 'sw' %}ujazo{% else %}full{% endif %}</p>
+                    {% if school.deo_quota %}
+                    <hr style="margin:.6rem 0;border-color:#e5e7eb;">
+                    <div style="font-size:.75rem;">
+                        <span style="color:#C8900A;font-weight:700;"><i class="fas fa-clipboard-list me-1"></i>{% if LANG == 'sw' %}DEO Quota{% else %}DEO Quota{% endif %}:</span>
+                        <strong style="color:#0A2B5E;">{{ school.deo_filled }}/{{ school.deo_quota }}</strong>
+                        <span style="color:{% if school.deo_remaining == 0 %}#059669{% else %}#C8900A{% endif %};">
+                          ({% if school.deo_remaining == 0 %}{% if LANG == 'sw' %}Imejazwa{% else %}Full{% endif %}{% else %}{{ school.deo_remaining }} {% if LANG == 'sw' %}nafasi{% else %}spots{% endif %}{% endif %})
+                        </span>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="card-footer bg-transparent border-0 py-3" style="background:var(--light);">
                     {% if school.is_pinned or not school.is_selectable %}

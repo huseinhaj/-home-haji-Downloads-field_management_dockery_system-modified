@@ -27,7 +27,13 @@
     <h1><i class="fas fa-map-marked-alt"></i> {% if LANG == 'sw' %}Chagua Mkoa{% else %}Select Region{% endif %}</h1>
     <p>{% if LANG == 'sw' %}Angalia maendeleo ya walimu wanafunzi kwa mkoa, wilaya na shule{% else %}View student teacher progress by region, district and school{% endif %}</p>
   </div>
+  {% if bm.role == 'deo' or bm.role == 'chair' %}
+  <a href="{% url 'deo_allocation' %}" style="background:#C8900A;color:#fff;border-radius:6px;padding:8px 16px;text-decoration:none;font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:6px;">
+    <i class="fas fa-users-cog"></i>{% if LANG == 'sw' %}Mahitaji ya Wilaya{% else %}District Allocation{% endif %}
+  </a>
+  {% endif %}
 </div>
+
 
 <!-- National Stats -->
 <div class="stats-row">

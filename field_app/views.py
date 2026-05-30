@@ -47,6 +47,7 @@ from .models import (
     District, Subject, SchoolSubjectCapacity,
     LogbookEntry, ApprovalLetter, AcademicYear, SchemeOfWork,
     BoardMember, BoardComment, LessonPlan, MonthlyReport,
+    DistrictAllocation, SchoolAllocation,
 )
 
 User = get_user_model()
@@ -1347,18 +1348,24 @@ def select_region(request):
 def select_district(request, region_id):
     region = get_object_or_404(Region, id=region_id)
     districts = District.objects.filter(region=region)
-    
-    # ========== ADD REAL SCHOOL COUNTS FOR EACH DISTRICT ==========
+    current_year = _cached_active_year()
+
+    # Fetch allocations for all districts in this region at once
+    alloc_map = {
+        a.district_id: a
+        for a in DistrictAllocation.objects.filter(
+            district__region=region,
+            academic_year=current_year,
+        )
+    }
+
     for district in districts:
-        # Count schools in this district
         district.school_count = School.objects.filter(district=district).count()
-        
-        # Count students (optional - unaweza kuondoka "0" kama ni ngumu)
-        # Kama hutaki kuonyesha wanafunzi, weka tu "0"
-        district.student_count = 0  # Au uondoe kabisa kwenye template
-    
+        alloc = alloc_map.get(district.id)
+        district.allocation = alloc  # may be None if DEO hasn't set it yet
+
     request.session['selected_region_id'] = region.id
-    
+
     return render(request, 'field_app/select_district.html', {
         'districts': districts,
         'region': region,
@@ -1385,13 +1392,28 @@ def select_school(request, district_id):
     if search_query:
         schools_qs = schools_qs.filter(name__icontains=search_query)
     
+    # Fetch district allocation and per-school quotas for display
+    district_alloc = DistrictAllocation.objects.filter(
+        district=district, academic_year=current_year
+    ).first()
+    school_alloc_map = {}
+    if district_alloc:
+        school_alloc_map = {
+            sa.school_id: sa
+            for sa in SchoolAllocation.objects.filter(district_allocation=district_alloc)
+        }
+
     schools = []
     for school in schools_qs:
         school.is_pinned = school.id in pinned_school_ids
         school.is_selectable = (not school.is_pinned) and (school.current_students < school.capacity)
         school.occupancy_percentage = round((school.current_students / school.capacity) * 100) if school.capacity > 0 else 0
+        sa = school_alloc_map.get(school.id)
+        school.deo_quota = sa.quota if sa else None
+        school.deo_filled = sa.filled if sa else None
+        school.deo_remaining = sa.remaining if sa else None
         schools.append(school)
-    
+
     total_schools = len(schools)
     pinned_schools_count = sum(1 for s in schools if s.is_pinned)
     available_schools_count = sum(1 for s in schools if s.is_selectable)
@@ -1473,6 +1495,7 @@ def select_school(request, district_id):
         'available_schools_count': available_schools_count,
         'full_schools_count': full_schools_count,
         'current_year': current_year,
+        'district_alloc': district_alloc,
     })
 @login_required
 def select_subjects(request, school_id):
@@ -5859,3 +5882,173 @@ def create_board_member(request):
         'districts': districts,
         'role_choices': BoardMember.ROLE_CHOICES,
     })
+
+
+# =============================================================
+# DEO ALLOCATION VIEWS
+# =============================================================
+
+@login_required
+def deo_allocation(request):
+    """DEO anaweka idadi ya walimu wanafunzi wanaohitajika katika wilaya yake."""
+    bm = _get_board_member(request)
+    if not bm:
+        messages.error(request, 'Huna ruhusa ya Bodi ya Walimu.')
+        return redirect('board_login')
+    if bm.role not in ('deo', 'chair'):
+        messages.error(request, 'Ukurasa huu ni kwa DEO tu.')
+        return redirect('board_home')
+    if not bm.district:
+        messages.error(request, 'Akaunti yako haina wilaya. Wasiliana na msimamizi.')
+        return redirect('board_home')
+
+    current_year = _cached_active_year()
+    district = bm.district
+
+    allocation, _ = DistrictAllocation.objects.get_or_create(
+        district=district,
+        academic_year=current_year,
+        defaults={'uploaded_by': bm}
+    )
+
+    schools = School.objects.filter(district=district).order_by('level', 'name')
+    school_alloc_map = {
+        sa.school_id: sa
+        for sa in SchoolAllocation.objects.filter(district_allocation=allocation).select_related('school')
+    }
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'set_totals':
+            allocation.primary_needed = int(request.POST.get('primary_needed', 0) or 0)
+            allocation.secondary_needed = int(request.POST.get('secondary_needed', 0) or 0)
+            allocation.notes = request.POST.get('notes', '').strip()
+            if 'document' in request.FILES:
+                allocation.document = request.FILES['document']
+            allocation.uploaded_by = bm
+            allocation.save()
+            messages.success(request, 'Mahitaji ya wilaya yamehifadhiwa.')
+            return redirect('deo_allocation')
+
+        elif action == 'set_school_quotas':
+            for school in schools:
+                key = f'quota_{school.id}'
+                quota_val = int(request.POST.get(key, 0) or 0)
+                SchoolAllocation.objects.update_or_create(
+                    district_allocation=allocation,
+                    school=school,
+                    defaults={'quota': quota_val}
+                )
+            messages.success(request, 'Mgawanyo wa shule umehifadhiwa.')
+            return redirect('deo_allocation')
+
+        elif action == 'ai_parse':
+            if not allocation.document:
+                messages.error(request, 'Pakia hati kwanza kabla ya kutumia AI.')
+                return redirect('deo_allocation')
+            result = _ai_parse_allocation_document(allocation)
+            if result.get('success'):
+                allocation.primary_needed = result.get('primary_needed', allocation.primary_needed)
+                allocation.secondary_needed = result.get('secondary_needed', allocation.secondary_needed)
+                allocation.ai_parsed = True
+                allocation.save()
+                # Set per-school quotas if AI returned them
+                for school_data in result.get('schools', []):
+                    school_name = school_data.get('name', '').strip().lower()
+                    quota = int(school_data.get('quota', 0) or 0)
+                    matched = next((s for s in schools if school_name in s.name.lower() or s.name.lower() in school_name), None)
+                    if matched and quota > 0:
+                        SchoolAllocation.objects.update_or_create(
+                            district_allocation=allocation,
+                            school=matched,
+                            defaults={'quota': quota}
+                        )
+                messages.success(request, f'AI imechambua hati. Msingi: {result.get("primary_needed", 0)}, Sekondari: {result.get("secondary_needed", 0)}')
+            else:
+                messages.warning(request, f'AI haikuweza kuchambua hati vizuri: {result.get("error", "")}. Weka idadi wewe mwenyewe.')
+            return redirect('deo_allocation')
+
+    # Rebuild school_alloc_map after possible changes
+    school_alloc_map = {
+        sa.school_id: sa
+        for sa in SchoolAllocation.objects.filter(district_allocation=allocation).select_related('school')
+    }
+
+    schools_with_alloc = []
+    for school in schools:
+        sa = school_alloc_map.get(school.id)
+        schools_with_alloc.append({
+            'school': school,
+            'quota': sa.quota if sa else 0,
+            'filled': sa.filled if sa else StudentApplication.objects.filter(school=school, status='approved').values('student').distinct().count(),
+            'remaining': sa.remaining if sa else 0,
+        })
+
+    return render(request, 'field_app/deo_allocation.html', {
+        'allocation': allocation,
+        'district': district,
+        'schools_with_alloc': schools_with_alloc,
+        'current_year': current_year,
+        'primary_schools': [s for s in schools_with_alloc if s['school'].level == 'Primary'],
+        'secondary_schools': [s for s in schools_with_alloc if s['school'].level == 'Secondary'],
+    })
+
+
+def _ai_parse_allocation_document(allocation):
+    """Tumia AI (Gemini) kuchambua hati ya mahitaji ya walimu wanafunzi."""
+    import os
+    try:
+        doc_path = allocation.document.path
+        text = ''
+
+        if doc_path.lower().endswith('.pdf'):
+            import pdfplumber
+            with pdfplumber.open(doc_path) as pdf:
+                for page in pdf.pages:
+                    text += (page.extract_text() or '') + '\n'
+        elif doc_path.lower().endswith(('.docx', '.doc')):
+            from docx import Document as DocxDocument
+            doc = DocxDocument(doc_path)
+            text = '\n'.join(p.text for p in doc.paragraphs)
+        else:
+            return {'success': False, 'error': 'Aina ya faili haijulikani. Tumia PDF au Word.'}
+
+        if not text.strip():
+            return {'success': False, 'error': 'Hati haina maandishi yanayoweza kusomwa.'}
+
+        from ai_utils import client, model_name
+        prompt = f"""
+Soma hati hii ya mahitaji ya walimu wanafunzi na utoe majibu kwa JSON tu.
+
+HATI:
+{text[:4000]}
+
+Toa JSON katika muundo huu (numbers tu, bila maelezo):
+{{
+  "primary_needed": <jumla ya walimu wanafunzi wa shule za msingi>,
+  "secondary_needed": <jumla ya walimu wanafunzi wa shule za sekondari>,
+  "schools": [
+    {{"name": "<jina la shule>", "level": "Primary|Secondary", "quota": <idadi>}},
+    ...
+  ]
+}}
+
+Kama hauwezi kupata idadi, weka 0. Jibu kwa JSON tu, bila maelezo mengine.
+"""
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+        )
+        raw = response.text.strip()
+        # Extract JSON from response
+        import re, json as _json
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if match:
+            data = _json.loads(match.group())
+            data['success'] = True
+            return data
+        return {'success': False, 'error': 'AI haikutoa JSON sahihi.'}
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
