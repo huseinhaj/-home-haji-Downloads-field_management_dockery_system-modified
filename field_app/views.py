@@ -1029,15 +1029,30 @@ def dashboard(request):
         approved_applications_count = applications.filter(status='approved').count()
         pending_applications_count = applications.filter(status='pending').count()
         has_approved_applications = approved_applications_count > 0
-        
+
+        # Auto-sync selected_school to match the actual application's school
+        # Priority: approved application first, then pending
+        canonical_app = (
+            applications.filter(status='approved').first() or
+            applications.filter(status='pending').first()
+        )
+        if canonical_app and student.selected_school_id != canonical_app.school_id:
+            old_school = student.selected_school
+            student.selected_school = canonical_app.school
+            student.save(update_fields=['selected_school'])
+            if old_school:
+                School.objects.filter(id=old_school.id).update(current_students=F('current_students') - 1)
+            School.objects.filter(id=canonical_app.school_id).update(current_students=F('current_students') + 1)
+            invalidate_student_cache(student)
+
         if student.selected_school:
             school = student.selected_school
-            
+
             approved_students_count = StudentApplication.objects.filter(
                 school=school,
                 status='approved'
             ).count()
-            
+
             school_has_completed_quota = approved_students_count >= group_letter_quota
             can_download_group_letter = school_has_completed_quota and has_approved_applications
 
