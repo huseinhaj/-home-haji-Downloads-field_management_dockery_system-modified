@@ -3428,16 +3428,32 @@ def change_school(request):
     days_passed = (timezone.now() - student.initial_school_selection_date).days
     CAN_CHANGE_DAYS = 7
     MAX_CHANGES = 3
-    
-    can_change = days_passed <= CAN_CHANGE_DAYS and student.school_change_count < MAX_CHANGES
-    
+
+    # Block if student has an approved application — placement is confirmed
+    has_approved_application = StudentApplication.objects.filter(
+        student=student, status='approved'
+    ).exists()
+
+    can_change = (
+        not has_approved_application and
+        days_passed <= CAN_CHANGE_DAYS and
+        student.school_change_count < MAX_CHANGES
+    )
+    cant_change_reason = None
+    if has_approved_application:
+        cant_change_reason = 'approved'
+    elif days_passed > CAN_CHANGE_DAYS:
+        cant_change_reason = 'expired'
+    elif student.school_change_count >= MAX_CHANGES:
+        cant_change_reason = 'limit'
+
     # Get districts in current school's region (only same region for faster loading)
     current_district = student.selected_school.district
     current_region = current_district.region
-    
+
     # Get all districts in the same region
     districts_in_region = District.objects.filter(region=current_region).select_related('region')
-    
+
     remaining_days = max(0, CAN_CHANGE_DAYS - days_passed)
     remaining_changes = max(0, MAX_CHANGES - student.school_change_count)
     
@@ -3551,6 +3567,7 @@ def change_school(request):
         'max_changes': MAX_CHANGES,
         'initial_selection_date': student.initial_school_selection_date,
         'can_change': can_change,
+        'cant_change_reason': cant_change_reason,
     })
 
 
@@ -3574,16 +3591,22 @@ def api_confirm_change_school(request):
     # Check if student can change school
     if not student.selected_school:
         return JsonResponse({'error': 'No school selected'}, status=400)
-    
+
+    # Block if student has an approved application — placement is confirmed
+    if StudentApplication.objects.filter(student=student, status='approved').exists():
+        return JsonResponse({
+            'error': 'Huwezi kubadili shule. Ombi lako limeshaidhinishwa. Wasiliana na msimamizi.'
+        }, status=403)
+
     if not student.initial_school_selection_date:
         student.initial_school_selection_date = timezone.now()
         student.save()
         invalidate_student_cache(student)
-    
+
     days_passed = (timezone.now() - student.initial_school_selection_date).days
     if days_passed > 7:
         return JsonResponse({'error': 'Change window expired (only 7 days)'}, status=400)
-    
+
     if student.school_change_count >= 3:
         return JsonResponse({'error': 'Maximum 3 changes allowed'}, status=400)
     

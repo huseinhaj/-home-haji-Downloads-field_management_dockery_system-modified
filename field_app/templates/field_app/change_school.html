@@ -209,7 +209,13 @@
                     {% else %}
                     <div class="alert-danger-custom mt-3 p-3">
                         <strong>❌ {% if LANG == 'sw' %}HUWEZI KUBADILI SHULE!{% else %}YOU CANNOT CHANGE SCHOOL!{% endif %}</strong><br>
-                        {% if LANG == 'sw' %}Muda wako wa wiki moja umeisha{% else %}Your one-week change period has expired{% endif %}
+                        {% if cant_change_reason == 'approved' %}
+                            {% if LANG == 'sw' %}Ombi lako limeshaidhinishwa. Huwezi kubadili shule baada ya kupata idhini.{% else %}Your application has been approved. You cannot change school after approval.{% endif %}
+                        {% elif cant_change_reason == 'expired' %}
+                            {% if LANG == 'sw' %}Muda wako wa wiki moja umeisha.{% else %}Your one-week change period has expired.{% endif %}
+                        {% elif cant_change_reason == 'limit' %}
+                            {% if LANG == 'sw' %}Umefika kikomo cha mabadiliko 3.{% else %}You have reached the maximum of 3 changes.{% endif %}
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
