@@ -1407,19 +1407,37 @@ def select_school(request, district_id):
                 try:
                     school = School.objects.get(id=temp_selected_id)
                     student = get_or_create_student_profile(request.user)
-                    
-                    if student.selected_school:
+
+                    is_changing_school = student.selected_school and student.selected_school.id != school.id
+
+                    if is_changing_school:
+                        # Block if student has any approved application — cannot change school after approval
+                        approved_apps = StudentApplication.objects.filter(student=student, status='approved')
+                        if approved_apps.exists():
+                            messages.error(request,
+                                'Huwezi kubadili shule. Ombi lako limeshaidhinishwa tayari.'
+                                if request.session.get('lang') == 'sw' else
+                                'You cannot change school. You already have an approved application.'
+                            )
+                            request.session.pop('temp_selected_school_id', None)
+                            return redirect('dashboard')
+
+                        # Delete pending applications at old school before switching
+                        StudentApplication.objects.filter(student=student, status='pending').delete()
                         School.objects.filter(id=student.selected_school.id).update(current_students=F('current_students') - 1)
-                    
+
+                    elif student.selected_school:
+                        School.objects.filter(id=student.selected_school.id).update(current_students=F('current_students') - 1)
+
                     student.selected_school = school
                     student.save()
                     invalidate_student_cache(student)
                     School.objects.filter(id=school.id).update(current_students=F('current_students') + 1)
-                    
+
                     request.session.pop('temp_selected_school_id', None)
                     messages.success(request, f'Shule imethibitishwa: {school.name}')
                     return redirect('select_subjects', school_id=school.id)
-                except:
+                except School.DoesNotExist:
                     messages.error(request, 'Shule haipo')
                 messages.error(request, 'Hakuna shule iliyochaguliwa')
             return redirect(f"{request.path}?level={selected_level}&q={search_query}")
@@ -1482,8 +1500,19 @@ def select_subjects(request, school_id):
                 school=school
             ).first()
 
+            # Enforce one school, one subject rule
+            any_other_application = StudentApplication.objects.filter(
+                student=student
+            ).exclude(subject=subject, school=school).exists()
+
             if existing_application:
-                messages.info(request, f"You have already applied for {subject.name}.")
+                messages.info(request, f"Tayari uliomba {subject.name}." if request.session.get('lang') == 'sw' else f"You have already applied for {subject.name}.")
+            elif any_other_application:
+                messages.error(request,
+                    "Una ombi tayari katika shule/somo lingine. Unaweza kuomba shule moja na somo moja tu. Ghairi ombi lako la kwanza kwanza."
+                    if request.session.get('lang') == 'sw' else
+                    "You already have an application elsewhere. Only one school and one subject is allowed. Cancel your existing application first."
+                )
             elif capacity.current_students >= capacity.max_students:
                 messages.error(request, f"{subject.name} is already full.")
             else:
@@ -1494,8 +1523,9 @@ def select_subjects(request, school_id):
                     status='pending'
                 )
                 messages.success(request,
-                    f"✅ Application for {subject.name} submitted successfully! "
-                    f"Waiting for Admin approval."
+                    f"✅ Ombi la {subject.name} limetumwa! Linasubiri idhini ya Admin."
+                    if request.session.get('lang') == 'sw' else
+                    f"✅ Application for {subject.name} submitted successfully! Waiting for Admin approval."
                 )
 
         elif action == 'cancel_application':
@@ -1532,11 +1562,23 @@ def apply_for_subject(request, subject_id, school_id):
         subject=subject,
         school=school
     ).first()
-    
+
     if existing_application:
         messages.info(request, f"You have already applied for {subject.name}")
         return redirect('select_subjects', school_id=school.id)
-    
+
+    # Enforce one school, one subject rule
+    any_other_application = StudentApplication.objects.filter(
+        student=student
+    ).exclude(subject=subject, school=school).exists()
+    if any_other_application:
+        messages.error(request,
+            "Una ombi tayari katika shule/somo lingine. Unaweza kuomba shule moja na somo moja tu."
+            if request.session.get('lang') == 'sw' else
+            "You already have an application elsewhere. Only one school and one subject is allowed."
+        )
+        return redirect('select_subjects', school_id=school.id)
+
     try:
         capacity = SchoolSubjectCapacity.objects.get(school=school, subject=subject)
         if capacity.current_students >= capacity.max_students:
@@ -1545,14 +1587,14 @@ def apply_for_subject(request, subject_id, school_id):
     except SchoolSubjectCapacity.DoesNotExist:
         messages.error(request, f"{subject.name} is not available at {school.name}")
         return redirect('select_subjects', school_id=school.id)
-    
+
     StudentApplication.objects.create(
         student=student,
         subject=subject,
         school=school,
         status='pending'
     )
-    
+
     messages.success(request, f"Application for {subject.name} submitted successfully! Waiting for approval.")
     return redirect('dashboard')
 
