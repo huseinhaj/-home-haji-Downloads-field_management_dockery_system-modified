@@ -86,6 +86,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'field_app.middleware.NoCacheAuthMiddleware',
 ]
 
 ROOT_URLCONF = 'field_management.urls'
