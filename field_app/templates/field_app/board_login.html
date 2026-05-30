@@ -131,11 +131,7 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
           </div>
         </div>
 
-        <div class="row2">
-          <a href="{% url 'password_reset' %}" class="forgot">{% if LANG == 'sw' %}Umesahau nywila?{% else %}Forgot password?{% endif %}</a>
-        </div>
-
-        <button type="submit" class="btn-in">
+        <button type="submit" class="btn-in" style="margin-top:8px;">
           <i class="fas fa-sign-in-alt"></i>
           {% if LANG == 'sw' %}INGIA{% else %}SIGN IN{% endif %}
         </button>
