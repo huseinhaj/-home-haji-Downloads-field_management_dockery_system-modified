@@ -52,8 +52,17 @@ input::placeholder{color:#B8C4CE;font-size:12.5px;}
 .eye:hover{color:var(--navy);}
 
 .row2{display:flex;align-items:center;justify-content:flex-end;margin-bottom:18px;}
-.forgot{font-size:12.5px;font-weight:700;color:var(--navy);text-decoration:none;}
+.forgot{font-size:12.5px;font-weight:700;color:var(--navy);text-decoration:none;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
 .forgot:hover{color:var(--gold);}
+
+.reset-box{display:none;margin-top:18px;padding:16px;background:var(--light);border-radius:5px;border:1px solid rgba(10,43,94,.1);}
+.reset-box.show{display:block;}
+.reset-box h4{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+.reset-box p{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
+.btn-reset{width:100%;padding:10px;background:var(--gold);color:#fff;border:none;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;font-family:inherit;transition:background .13s;}
+.btn-reset:hover{background:#A97308;}
+.btn-cancel{font-size:12px;color:var(--muted);text-align:center;display:block;margin-top:8px;cursor:pointer;background:none;border:none;font-family:inherit;width:100%;}
+.btn-cancel:hover{color:var(--navy);}
 
 .btn-in{width:100%;padding:11.5px;background:var(--navy);color:#fff;border:none;border-radius:5px;font-size:13.5px;font-weight:800;cursor:pointer;letter-spacing:.6px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:background .13s,box-shadow .13s;}
 .btn-in:hover{background:#071E42;box-shadow:0 4px 14px rgba(10,43,94,.28);}
@@ -109,6 +118,7 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
         {% endfor %}
       {% endif %}
 
+      <div id="loginForm">
       <form method="post" action="{% url 'board_login' %}">
         {% csrf_token %}
 
@@ -131,12 +141,42 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
           </div>
         </div>
 
-        <button type="submit" class="btn-in" style="margin-top:8px;">
-          <i class="fas fa-sign-in-alt"></i>
-          {% if LANG == 'sw' %}INGIA{% else %}SIGN IN{% endif %}
-        </button>
-      </form>
-    </div>
+          <div class="row2">
+            <button type="button" class="forgot" onclick="showReset()">
+              {% if LANG == 'sw' %}Umesahau nywila?{% else %}Forgot password?{% endif %}
+            </button>
+          </div>
+
+          <button type="submit" class="btn-in">
+            <i class="fas fa-sign-in-alt"></i>
+            {% if LANG == 'sw' %}INGIA{% else %}SIGN IN{% endif %}
+          </button>
+        </form>
+      </div><!-- /loginForm -->
+
+      <!-- Inline password reset -->
+      <div class="reset-box" id="resetBox">
+        <h4>{% if LANG == 'sw' %}Weka Upya Nywila{% else %}Reset Password{% endif %}</h4>
+        <p>{% if LANG == 'sw' %}Weka barua pepe yako. Utapokea maelekezo ya kuweka upya nywila.{% else %}Enter your email address to receive a password reset link.{% endif %}</p>
+        <form method="POST" action="{% url 'password_reset' %}">
+          {% csrf_token %}
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %}</label>
+            <div class="inp-wrap">
+              <i class="fas fa-envelope inp-ico"></i>
+              <input type="email" name="email" required
+                     placeholder="{% if LANG == 'sw' %}barua@pepe.yako{% else %}your@email.com{% endif %}">
+            </div>
+          </div>
+          <button type="submit" class="btn-reset">
+            <i class="fas fa-paper-plane" style="margin-right:6px;"></i>
+            {% if LANG == 'sw' %}Tuma Link{% else %}Send Reset Link{% endif %}
+          </button>
+          <button type="button" class="btn-cancel" onclick="hideReset()">
+            {% if LANG == 'sw' %}Rudi Kuingia{% else %}Back to Sign In{% endif %}
+          </button>
+        </form>
+      </div>
 
   </div>
 </div>
@@ -151,6 +191,14 @@ function togglePwd(){
   const i=document.getElementById('pwd'),c=document.getElementById('eyeIco');
   if(i.type==='password'){i.type='text';c.classList.replace('fa-eye','fa-eye-slash');}
   else{i.type='password';c.classList.replace('fa-eye-slash','fa-eye');}
+}
+function showReset(){
+  document.getElementById('loginForm').style.display='none';
+  document.getElementById('resetBox').classList.add('show');
+}
+function hideReset(){
+  document.getElementById('resetBox').classList.remove('show');
+  document.getElementById('loginForm').style.display='block';
 }
 </script>
 </body>

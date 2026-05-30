@@ -100,7 +100,48 @@
 .sum-table tbody td:first-child { color:#0A2B5E; font-weight:600; }
 
 .asd-body { padding:0 2rem 2rem; }
-@media(max-width:768px){ .asd-banner{padding:1.2rem 1rem;} .asd-body{padding:0 1rem 1.5rem;} }
+
+@media(max-width:768px){
+  .asd-banner { padding:1rem; }
+  .asd-banner h1 { font-size:1.05rem; }
+  .asd-body { padding:0 0.6rem 1.5rem; }
+
+  /* Stat cards — 3 across on small screens */
+  .stat-card { padding:0.85rem 0.5rem; }
+  .stat-card .sc-num { font-size:1.6rem; }
+  .stat-card .sc-lbl { font-size:0.68rem; }
+
+  /* Info card — stack avatar and details */
+  .info-card .d-flex { flex-direction:column; gap:0.6rem !important; }
+  .info-card .ic-value { font-size:0.9rem; }
+
+  /* Schools table — hide location column on mobile */
+  .sum-table thead th:nth-child(3),
+  .sum-table tbody td:nth-child(3) { display:none; }
+  .sum-table thead th, .sum-table tbody td { padding:0.5rem 0.6rem; font-size:0.75rem; }
+
+  /* School block header — stack name and badge */
+  .school-block .sb-head { flex-direction:column; align-items:flex-start; gap:6px; }
+  .school-block .sb-head .sb-badge { align-self:flex-start; }
+
+  /* Student rows */
+  .stu-row { padding:0.75rem 0.8rem; }
+  .stu-row .d-flex { flex-wrap:wrap; }
+  .stu-row .ms-1.text-end { width:100%; text-align:left !important; margin-top:0.5rem; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .stu-row .ms-1.text-end .mt-2 { margin-top:0 !important; }
+  .stu-avatar { width:32px; height:32px; font-size:0.78rem; }
+  .stu-name { font-size:0.82rem; }
+
+  /* Logbook mini stats — wrap */
+  .lb-mini { gap:8px; }
+  .lb-mini span { font-size:0.68rem; }
+
+  /* Section header */
+  .sec-hd { margin:1rem 0 0.6rem; }
+
+  /* View all btn */
+  .view-all-btn { font-size:0.78rem; padding:8px; }
+}
 </style>
 
 <div class="asd-wrap">
