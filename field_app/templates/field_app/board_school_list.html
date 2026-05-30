@@ -52,12 +52,44 @@
     <h1><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule — {{ district.name }}{% else %}Schools — {{ district.name }}{% endif %}</h1>
     <p>{% if LANG == 'sw' %}Orodha ya walimu wanafunzi katika wilaya hii{% else %}List of student teachers in this district{% endif %}</p>
   </div>
-  <div class="page-hd-right">
+  <div class="page-hd-right" style="display:flex;gap:8px;flex-wrap:wrap;">
+    {% if bm.role == 'deo' and bm.district.id == district.id or bm.role == 'chair' %}
+    <a href="{% url 'deo_district_allocation' district.id %}" class="btn btn-sm" style="background:#C8900A;color:#fff;border:none;font-weight:700;">
+      <i class="fas fa-users-cog me-1"></i>{% if LANG == 'sw' %}Mahitaji ya Walimu{% else %}Teacher Quota{% endif %}
+    </a>
+    {% endif %}
     <a href="{% url 'board_deo_report' district.id %}" class="btn btn-accent btn-sm">
       <i class="fas fa-robot"></i> {% if LANG == 'sw' %}Ripoti ya AI{% else %}AI Report{% endif %}
     </a>
   </div>
 </div>
+
+{% if district_alloc and district_alloc.total_needed %}
+<!-- Allocation Summary Banner -->
+<div style="background:#fff;border:1px solid #C8D0DB;border-left:5px solid #C8900A;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <div>
+    <div style="font-size:.75rem;font-weight:700;color:#5A6B7E;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">
+      <i class="fas fa-clipboard-list me-1" style="color:#C8900A;"></i>{% if LANG == 'sw' %}Mahitaji ya Walimu Wanafunzi — {{ district.name }}{% else %}Student Teacher Quota — {{ district.name }}{% endif %}
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <span style="font-size:.82rem;"><span style="color:#1e40af;font-weight:700;">{{ district_alloc.primary_needed }}</span> <span style="color:#6b7280;">{% if LANG == 'sw' %}Msingi Inahitajika{% else %}Primary Needed{% endif %}</span></span>
+      <span style="font-size:.82rem;"><span style="color:#5b21b6;font-weight:700;">{{ district_alloc.secondary_needed }}</span> <span style="color:#6b7280;">{% if LANG == 'sw' %}Sekondari Inahitajika{% else %}Secondary Needed{% endif %}</span></span>
+      <span style="font-size:.82rem;"><span style="color:#059669;font-weight:700;">{{ district_alloc.total_filled }}</span> <span style="color:#6b7280;">{% if LANG == 'sw' %}Waliopo{% else %}Filled{% endif %}</span></span>
+      <span style="font-size:.82rem;"><span style="color:#C8900A;font-weight:700;">{{ district_alloc.primary_remaining|add:district_alloc.secondary_remaining }}</span> <span style="color:#6b7280;">{% if LANG == 'sw' %}Wanaohitajika Bado{% else %}Still Needed{% endif %}</span></span>
+    </div>
+  </div>
+  <div style="min-width:160px;">
+    <div style="display:flex;justify-content:space-between;font-size:.7rem;color:#6b7280;margin-bottom:3px;">
+      <span>{% if LANG == 'sw' %}Maendeleo{% else %}Progress{% endif %}</span>
+      <span>{{ district_alloc.total_filled }}/{{ district_alloc.total_needed }}</span>
+    </div>
+    <div style="background:#e5e7eb;border-radius:4px;height:8px;overflow:hidden;">
+      {% widthratio district_alloc.total_filled district_alloc.total_needed 100 as bpct %}
+      <div style="background:{% if bpct >= 100 %}#059669{% elif bpct >= 70 %}#C8900A{% else %}#0A2B5E{% endif %};width:{{ bpct }}%;height:100%;border-radius:4px;transition:width .8s;"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Summary Stats -->
 <div class="stats-row">

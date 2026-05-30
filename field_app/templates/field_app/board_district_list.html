@@ -40,14 +40,39 @@
         <span><i class="fas fa-user-graduate" style="margin-right:5px;color:var(--medium);"></i>{% if LANG == 'sw' %}Walimu Wanafunzi{% else %}Student Teachers{% endif %}</span>
         <strong>{{ district.student_count }}</strong>
       </div>
+      {% if district.allocation and district.allocation.total_needed %}
+      <div style="margin-top:8px;padding:0 4px;">
+        <div style="display:flex;justify-content:space-between;font-size:.72rem;color:#6b7280;margin-bottom:3px;">
+          <span><i class="fas fa-clipboard-list me-1" style="color:var(--medium);"></i>{% if LANG == 'sw' %}Mahitaji{% else %}Quota{% endif %}</span>
+          <span style="font-weight:700;color:#0A2B5E;">{{ district.allocation.total_filled }}/{{ district.allocation.total_needed }}</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden;">
+          {% widthratio district.allocation.total_filled district.allocation.total_needed 100 as dpct %}
+          <div style="background:{% if dpct >= 100 %}#059669{% elif dpct >= 70 %}#C8900A{% else %}#0A2B5E{% endif %};width:{{ dpct }}%;height:100%;border-radius:4px;transition:width .6s;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px;font-size:.68rem;">
+          <span style="color:#1e40af;">Msingi: {{ district.allocation.primary_needed }}</span>
+          <span style="color:#5b21b6;">Sekondari: {{ district.allocation.secondary_needed }}</span>
+        </div>
+      </div>
+      {% else %}
+      <div style="margin-top:6px;padding:4px 6px;background:#fef3c7;border-radius:4px;font-size:.72rem;color:#92400e;text-align:center;">
+        <i class="fas fa-exclamation-triangle me-1"></i>{% if LANG == 'sw' %}Mahitaji hayajawekwa{% else %}Quota not set{% endif %}
+      </div>
+      {% endif %}
     </div>
-    <div class="rc-footer" style="gap:8px;">
+    <div class="rc-footer" style="gap:8px;flex-wrap:wrap;">
       <a href="{% url 'board_school_list' district.id %}" class="btn btn-primary btn-sm">
-        <i class="fas fa-arrow-right"></i> {% if LANG == 'sw' %}Angalia Shule{% else %}View Schools{% endif %}
+        <i class="fas fa-arrow-right"></i> {% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}
       </a>
       <a href="{% url 'board_deo_report' district.id %}" class="btn btn-accent btn-sm">
         <i class="fas fa-chart-bar"></i> {% if LANG == 'sw' %}Ripoti{% else %}Report{% endif %}
       </a>
+      {% if bm.role == 'deo' and bm.district.id == district.id or bm.role == 'chair' %}
+      <a href="{% url 'deo_district_allocation' district.id %}" class="btn btn-sm" style="background:#C8900A;color:#fff;border:none;">
+        <i class="fas fa-users-cog"></i> {% if LANG == 'sw' %}Mahitaji{% else %}Quota{% endif %}
+      </a>
+      {% endif %}
     </div>
   </div>
   {% endfor %}

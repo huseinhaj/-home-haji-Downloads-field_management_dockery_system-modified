@@ -133,4 +133,5 @@ urlpatterns = [
 
     # DEO Allocation
     path('board/allocation/', views.deo_allocation, name='deo_allocation'),
+    path('board/district/<int:district_id>/allocation/', views.deo_district_allocation, name='deo_district_allocation'),
 ]

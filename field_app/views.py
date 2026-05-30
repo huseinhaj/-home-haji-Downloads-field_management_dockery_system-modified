@@ -5436,12 +5436,21 @@ def board_district_list(request, region_id):
     if not bm:
         return redirect('board_login')
     region = get_object_or_404(Region, id=region_id)
+    current_year = _cached_active_year()
     districts = District.objects.filter(region=region).order_by('name').annotate(
         school_count=Count('school', distinct=True),
         student_count=Count('school__studentteacher',
                             filter=Q(school__studentteacher__selected_school__isnull=False),
                             distinct=True),
     )
+    alloc_map = {
+        a.district_id: a
+        for a in DistrictAllocation.objects.filter(
+            district__region=region, academic_year=current_year
+        )
+    }
+    for d in districts:
+        d.allocation = alloc_map.get(d.id)
     return render(request, 'field_app/board_district_list.html', {
         'bm': bm,
         'region': region,
@@ -5521,6 +5530,17 @@ def board_school_list(request, district_id):
         school_students = [item for item in students_data if item['school'].id == school.id]
         schools_with_students.append({'school': school, 'students': school_students})
 
+    current_year = _cached_active_year()
+    district_alloc = DistrictAllocation.objects.filter(
+        district=district, academic_year=current_year
+    ).first()
+    school_alloc_map = {}
+    if district_alloc:
+        school_alloc_map = {
+            sa.school_id: sa
+            for sa in SchoolAllocation.objects.filter(district_allocation=district_alloc)
+        }
+
     return render(request, 'field_app/board_school_list.html', {
         'bm': bm,
         'district': district,
@@ -5529,6 +5549,8 @@ def board_school_list(request, district_id):
         'students_data': students_data,
         'today': today,
         'inactive_count': inactive_count,
+        'district_alloc': district_alloc,
+        'school_alloc_map': school_alloc_map,
     })
 
 
@@ -5890,20 +5912,36 @@ def create_board_member(request):
 
 @login_required
 def deo_allocation(request):
-    """DEO anaweka idadi ya walimu wanafunzi wanaohitajika katika wilaya yake."""
+    """Redirect DEO to their district's allocation page."""
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+    if bm.district:
+        return redirect('deo_district_allocation', district_id=bm.district.id)
+    messages.error(request, 'Akaunti yako haina wilaya. Wasiliana na msimamizi.')
+    return redirect('board_home')
+
+
+@login_required
+def deo_district_allocation(request, district_id):
+    """DEO/Chair anaweka idadi ya walimu wanafunzi kwa wilaya maalumu."""
     bm = _get_board_member(request)
     if not bm:
         messages.error(request, 'Huna ruhusa ya Bodi ya Walimu.')
         return redirect('board_login')
-    if bm.role not in ('deo', 'chair'):
-        messages.error(request, 'Ukurasa huu ni kwa DEO tu.')
-        return redirect('board_home')
-    if not bm.district:
-        messages.error(request, 'Akaunti yako haina wilaya. Wasiliana na msimamizi.')
+
+    district = get_object_or_404(District, id=district_id)
+
+    # DEO can only manage their own district; Chair/REO/inspector can view all
+    can_edit = (
+        bm.role in ('chair',) or
+        (bm.role == 'deo' and bm.district_id == district.id)
+    )
+    if bm.role == 'deo' and bm.district_id != district.id:
+        messages.error(request, 'Unaweza kusimamia wilaya yako tu.')
         return redirect('board_home')
 
     current_year = _cached_active_year()
-    district = bm.district
 
     allocation, _ = DistrictAllocation.objects.get_or_create(
         district=district,
@@ -5929,7 +5967,7 @@ def deo_allocation(request):
             allocation.uploaded_by = bm
             allocation.save()
             messages.success(request, 'Mahitaji ya wilaya yamehifadhiwa.')
-            return redirect('deo_allocation')
+            return redirect('deo_district_allocation', district_id=district.id)
 
         elif action == 'set_school_quotas':
             for school in schools:
@@ -5940,36 +5978,45 @@ def deo_allocation(request):
                     school=school,
                     defaults={'quota': quota_val}
                 )
-            messages.success(request, 'Mgawanyo wa shule umehifadhiwa.')
-            return redirect('deo_allocation')
+            messages.success(request, 'Mgawanyo wa shule zote umehifadhiwa.')
+            return redirect('deo_district_allocation', district_id=district.id)
 
         elif action == 'ai_parse':
             if not allocation.document:
                 messages.error(request, 'Pakia hati kwanza kabla ya kutumia AI.')
-                return redirect('deo_allocation')
+                return redirect('deo_district_allocation', district_id=district.id)
             result = _ai_parse_allocation_document(allocation)
             if result.get('success'):
                 allocation.primary_needed = result.get('primary_needed', allocation.primary_needed)
                 allocation.secondary_needed = result.get('secondary_needed', allocation.secondary_needed)
                 allocation.ai_parsed = True
                 allocation.save()
-                # Set per-school quotas if AI returned them
                 for school_data in result.get('schools', []):
                     school_name = school_data.get('name', '').strip().lower()
                     quota = int(school_data.get('quota', 0) or 0)
-                    matched = next((s for s in schools if school_name in s.name.lower() or s.name.lower() in school_name), None)
+                    matched = next(
+                        (s for s in schools if school_name in s.name.lower() or s.name.lower() in school_name),
+                        None
+                    )
                     if matched and quota > 0:
                         SchoolAllocation.objects.update_or_create(
                             district_allocation=allocation,
                             school=matched,
                             defaults={'quota': quota}
                         )
-                messages.success(request, f'AI imechambua hati. Msingi: {result.get("primary_needed", 0)}, Sekondari: {result.get("secondary_needed", 0)}')
+                messages.success(
+                    request,
+                    f'AI imechambua hati. Msingi: {result.get("primary_needed", 0)}, '
+                    f'Sekondari: {result.get("secondary_needed", 0)}'
+                )
             else:
-                messages.warning(request, f'AI haikuweza kuchambua hati vizuri: {result.get("error", "")}. Weka idadi wewe mwenyewe.')
-            return redirect('deo_allocation')
+                messages.warning(
+                    request,
+                    f'AI haikuweza kuchambua hati: {result.get("error", "")}. Weka idadi wewe mwenyewe.'
+                )
+            return redirect('deo_district_allocation', district_id=district.id)
 
-    # Rebuild school_alloc_map after possible changes
+    # Rebuild after possible POST changes
     school_alloc_map = {
         sa.school_id: sa
         for sa in SchoolAllocation.objects.filter(district_allocation=allocation).select_related('school')
@@ -5978,11 +6025,16 @@ def deo_allocation(request):
     schools_with_alloc = []
     for school in schools:
         sa = school_alloc_map.get(school.id)
+        filled = sa.filled if sa else StudentApplication.objects.filter(
+            school=school, status='approved'
+        ).values('student').distinct().count()
+        quota = sa.quota if sa else 0
         schools_with_alloc.append({
             'school': school,
-            'quota': sa.quota if sa else 0,
-            'filled': sa.filled if sa else StudentApplication.objects.filter(school=school, status='approved').values('student').distinct().count(),
-            'remaining': sa.remaining if sa else 0,
+            'quota': quota,
+            'filled': filled,
+            'remaining': max(0, quota - filled),
+            'pct': min(100, round(filled / quota * 100)) if quota > 0 else 0,
         })
 
     return render(request, 'field_app/deo_allocation.html', {
@@ -5990,6 +6042,8 @@ def deo_allocation(request):
         'district': district,
         'schools_with_alloc': schools_with_alloc,
         'current_year': current_year,
+        'can_edit': can_edit,
+        'bm': bm,
         'primary_schools': [s for s in schools_with_alloc if s['school'].level == 'Primary'],
         'secondary_schools': [s for s in schools_with_alloc if s['school'].level == 'Secondary'],
     })
