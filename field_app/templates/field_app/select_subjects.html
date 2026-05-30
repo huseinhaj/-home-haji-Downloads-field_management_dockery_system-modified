@@ -7,7 +7,7 @@
     <!-- Header section -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <a href="{% url 'select_school' school.id %}" class="btn btn-sm" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 20px;">
+            <a href="{% url 'select_school' school.district.id %}" class="btn btn-sm" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 20px;">
                 <i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Rudi Shule{% else %}Back to School{% endif %}
             </a>
         </div>
