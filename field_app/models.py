@@ -1175,3 +1175,49 @@ class SchoolAllocation(models.Model):
 
     def __str__(self):
         return f"{self.school.name}: {self.quota}"
+
+
+# =========================
+# School Head Requirement Requests
+# =========================
+
+class SchoolHeadRequest(models.Model):
+    """Mkuu wa shule anatuma idadi ya walimu wanafunzi wanaohitajika."""
+    STATUS_CHOICES = [
+        ('pending', 'Inasubiri'),
+        ('reviewed', 'Imepitiwa na DEO'),
+        ('applied', 'Imewekwa kwenye Allocation'),
+        ('rejected', 'Imekataliwa'),
+    ]
+    LEVEL_CHOICES = [
+        ('Primary', 'Shule ya Msingi'),
+        ('Secondary', 'Shule ya Sekondari'),
+    ]
+
+    district = models.ForeignKey(District, on_delete=models.CASCADE, related_name='head_requests')
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.CASCADE, null=True, blank=True
+    )
+    # School matching — submitted text + matched FK
+    school_name_submitted = models.CharField(max_length=255, help_text="Jina la shule kama ilivyoandikwa na mkuu")
+    school = models.ForeignKey(
+        School, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='head_requests', help_text="Shule iliyolinganishwa na AI"
+    )
+    head_name = models.CharField(max_length=255)
+    head_phone = models.CharField(max_length=20, blank=True)
+    level = models.CharField(max_length=20, choices=LEVEL_CHOICES)
+    students_needed = models.PositiveIntegerField()
+    notes = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.ForeignKey(
+        'BoardMember', on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_requests'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+
+    def __str__(self):
+        return f"{self.head_name} — {self.school_name_submitted} ({self.students_needed})"

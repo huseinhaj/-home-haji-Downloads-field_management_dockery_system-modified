@@ -41,9 +41,14 @@
       <h1><i class="fas fa-users-cog me-2" style="color:#C8900A;"></i>Mgawanyo wa Walimu Wanafunzi</h1>
       <div class="sub"><i class="fas fa-map-marker-alt me-1"></i>{{ district.name }}{% if current_year %} &nbsp;|&nbsp; <i class="fas fa-calendar me-1"></i>{{ current_year.year }}{% endif %}</div>
     </div>
-    <a href="{% url 'board_school_list' district.id %}" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">
-      <i class="fas fa-arrow-left me-1"></i>{% if LANG == 'sw' %}Rudi Wilaya{% else %}Back to District{% endif %}
-    </a>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a href="{% url 'deo_review_requests' district.id %}" class="btn btn-sm" style="background:#C8900A;color:#fff;border:none;font-weight:700;">
+        <i class="fas fa-inbox me-1"></i>{% if LANG == 'sw' %}Maombi ya Wakuu{% else %}Head Requests{% endif %}
+      </a>
+      <a href="{% url 'board_school_list' district.id %}" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">
+        <i class="fas fa-arrow-left me-1"></i>{% if LANG == 'sw' %}Rudi Wilaya{% else %}Back{% endif %}
+      </a>
+    </div>
   </div>
 </div>
 

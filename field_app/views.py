@@ -47,7 +47,7 @@ from .models import (
     District, Subject, SchoolSubjectCapacity,
     LogbookEntry, ApprovalLetter, AcademicYear, SchemeOfWork,
     BoardMember, BoardComment, LessonPlan, MonthlyReport,
-    DistrictAllocation, SchoolAllocation,
+    DistrictAllocation, SchoolAllocation, SchoolHeadRequest,
 )
 
 User = get_user_model()
@@ -6106,3 +6106,292 @@ Kama hauwezi kupata idadi, weka 0. Jibu kwa JSON tu, bila maelezo mengine.
 
     except Exception as e:
         return {'success': False, 'error': str(e)}
+
+
+# =============================================================
+# SCHOOL HEAD REQUESTS
+# =============================================================
+
+def school_head_submit(request, district_id):
+    """Public form — mkuu wa shule anatuma idadi ya walimu wanafunzi wanaohitajika."""
+    district = get_object_or_404(District, id=district_id)
+    current_year = _cached_active_year()
+    schools = School.objects.filter(district=district).order_by('level', 'name')
+
+    if request.method == 'POST':
+        school_name = request.POST.get('school_name', '').strip()
+        head_name = request.POST.get('head_name', '').strip()
+        head_phone = request.POST.get('head_phone', '').strip()
+        level = request.POST.get('level', '').strip()
+        try:
+            students_needed = int(request.POST.get('students_needed', 0) or 0)
+        except ValueError:
+            students_needed = 0
+        notes = request.POST.get('notes', '').strip()
+
+        if not school_name or not head_name or not level or students_needed < 1:
+            messages.error(request, 'Tafadhali jaza sehemu zote zinazohitajika.')
+        else:
+            # Try to auto-match school from DB
+            matched_school = None
+            name_lower = school_name.lower()
+            for s in schools:
+                if name_lower in s.name.lower() or s.name.lower() in name_lower:
+                    matched_school = s
+                    break
+
+            SchoolHeadRequest.objects.create(
+                district=district,
+                academic_year=current_year,
+                school_name_submitted=school_name,
+                school=matched_school,
+                head_name=head_name,
+                head_phone=head_phone,
+                level=level,
+                students_needed=students_needed,
+                notes=notes,
+            )
+            messages.success(request, f'Asante {head_name}! Ombi lako limetumwa kwa DEO wa {district.name}.')
+            return redirect('school_head_submit', district_id=district.id)
+
+    return render(request, 'field_app/school_head_submit.html', {
+        'district': district,
+        'schools': schools,
+        'current_year': current_year,
+    })
+
+
+@login_required
+def deo_review_requests(request, district_id):
+    """DEO anaona na kusimamia maombi ya wakuu wa shule."""
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+
+    district = get_object_or_404(District, id=district_id)
+    if bm.role == 'deo' and bm.district_id != district.id:
+        messages.error(request, 'Unaweza kusimamia wilaya yako tu.')
+        return redirect('board_home')
+
+    current_year = _cached_active_year()
+    requests_qs = SchoolHeadRequest.objects.filter(
+        district=district, academic_year=current_year
+    ).select_related('school', 'reviewed_by')
+
+    can_edit = bm.role in ('deo', 'chair')
+
+    if request.method == 'POST' and can_edit:
+        action = request.POST.get('action')
+
+        if action == 'reject':
+            req_id = request.POST.get('request_id')
+            SchoolHeadRequest.objects.filter(id=req_id, district=district).update(
+                status='rejected', reviewed_by=bm, reviewed_at=timezone.now()
+            )
+            messages.success(request, 'Ombi limekataliwa.')
+
+        elif action == 'apply_selected':
+            selected_ids = request.POST.getlist('selected_requests')
+            if not selected_ids:
+                messages.error(request, 'Chagua maombi kwanza.')
+            else:
+                allocation, _ = DistrictAllocation.objects.get_or_create(
+                    district=district, academic_year=current_year,
+                    defaults={'uploaded_by': bm}
+                )
+                primary_total = 0
+                secondary_total = 0
+                applied = 0
+                for req in SchoolHeadRequest.objects.filter(id__in=selected_ids, district=district):
+                    if req.level == 'Primary':
+                        primary_total += req.students_needed
+                    else:
+                        secondary_total += req.students_needed
+                    if req.school:
+                        SchoolAllocation.objects.update_or_create(
+                            district_allocation=allocation,
+                            school=req.school,
+                            defaults={'quota': req.students_needed}
+                        )
+                    req.status = 'applied'
+                    req.reviewed_by = bm
+                    req.reviewed_at = timezone.now()
+                    req.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
+                    applied += 1
+                # Update district totals
+                allocation.primary_needed = (allocation.primary_needed or 0) + primary_total
+                allocation.secondary_needed = (allocation.secondary_needed or 0) + secondary_total
+                allocation.uploaded_by = bm
+                allocation.save(update_fields=['primary_needed', 'secondary_needed', 'uploaded_by', 'updated_at'])
+                messages.success(request, f'Maombi {applied} yamewekwa kwenye allocation ya wilaya.')
+
+        elif action == 'ai_format_pdf':
+            return _generate_requests_pdf(requests_qs, district, current_year)
+
+        return redirect('deo_review_requests', district_id=district.id)
+
+    pending = requests_qs.filter(status='pending')
+    reviewed = requests_qs.exclude(status='pending')
+
+    return render(request, 'field_app/deo_review_requests.html', {
+        'bm': bm,
+        'district': district,
+        'pending': pending,
+        'reviewed': reviewed,
+        'can_edit': can_edit,
+        'current_year': current_year,
+        'total_pending': pending.count(),
+    })
+
+
+def _generate_requests_pdf(requests_qs, district, current_year):
+    """Generate a formatted PDF of school head requests using AI summary + ReportLab."""
+    import io
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+    # AI summary
+    ai_summary = _ai_summarise_requests(requests_qs)
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
+    styles = getSampleStyleSheet()
+    navy = colors.HexColor('#0A2B5E')
+    gold = colors.HexColor('#C8900A')
+    light = colors.HexColor('#EEF1F6')
+
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'],
+                                 fontSize=16, textColor=navy, spaceAfter=4,
+                                 alignment=TA_CENTER, fontName='Helvetica-Bold')
+    sub_style = ParagraphStyle('Sub', parent=styles['Normal'],
+                               fontSize=10, textColor=gold, spaceAfter=2, alignment=TA_CENTER)
+    body_style = ParagraphStyle('Body', parent=styles['Normal'], fontSize=9, spaceAfter=4)
+    section_style = ParagraphStyle('Section', parent=styles['Heading2'],
+                                   fontSize=11, textColor=navy, spaceBefore=12, spaceAfter=4,
+                                   fontName='Helvetica-Bold')
+
+    story = []
+    story.append(Paragraph('JAMHURI YA MUUNGANO WA TANZANIA', sub_style))
+    story.append(Paragraph('Wizara ya Elimu, Sayansi na Teknolojia', sub_style))
+    story.append(Spacer(1, 0.3*cm))
+    story.append(HRFlowable(width='100%', thickness=3, color=gold))
+    story.append(Spacer(1, 0.2*cm))
+    story.append(Paragraph(f'MAHITAJI YA WALIMU WANAFUNZI', title_style))
+    story.append(Paragraph(f'Wilaya ya {district.name} — Mwaka {current_year.year if current_year else "—"}', sub_style))
+    story.append(Spacer(1, 0.2*cm))
+    story.append(HRFlowable(width='100%', thickness=1, color=navy))
+    story.append(Spacer(1, 0.4*cm))
+
+    # AI Summary section
+    if ai_summary:
+        story.append(Paragraph('Muhtasari wa AI', section_style))
+        story.append(Paragraph(ai_summary, body_style))
+        story.append(Spacer(1, 0.4*cm))
+
+    # Primary schools table
+    primary_reqs = [r for r in requests_qs if r.level == 'Primary' and r.status != 'rejected']
+    secondary_reqs = [r for r in requests_qs if r.level == 'Secondary' and r.status != 'rejected']
+
+    def make_table(reqs, level_label):
+        if not reqs:
+            return
+        story.append(Paragraph(f'Shule za {level_label}', section_style))
+        headers = ['#', 'Jina la Shule', 'Mkuu wa Shule', 'Simu', 'Idadi', 'Hali']
+        data = [headers]
+        total = 0
+        for i, r in enumerate(reqs, 1):
+            school_name = r.school.name if r.school else r.school_name_submitted
+            status_map = {'pending': 'Inasubiri', 'reviewed': 'Imepitiwa',
+                          'applied': 'Imewekwa', 'rejected': 'Imekataliwa'}
+            data.append([
+                str(i), school_name, r.head_name,
+                r.head_phone or '—', str(r.students_needed), status_map.get(r.status, r.status)
+            ])
+            total += r.students_needed
+        data.append(['', 'JUMLA', '', '', str(total), ''])
+
+        col_widths = [1*cm, 5*cm, 4*cm, 3*cm, 1.5*cm, 2.5*cm]
+        t = Table(data, colWidths=col_widths, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), navy),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (4, 0), (4, -1), 'CENTER'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, light]),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FEF3C7')),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E0')),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.5*cm))
+
+    make_table(primary_reqs, 'Msingi')
+    make_table(secondary_reqs, 'Sekondari')
+
+    # Grand total
+    all_reqs = primary_reqs + secondary_reqs
+    grand_total = sum(r.students_needed for r in all_reqs)
+    story.append(HRFlowable(width='100%', thickness=1, color=navy))
+    story.append(Spacer(1, 0.2*cm))
+    total_data = [
+        ['Jumla — Msingi', str(sum(r.students_needed for r in primary_reqs))],
+        ['Jumla — Sekondari', str(sum(r.students_needed for r in secondary_reqs))],
+        ['JUMLA KUU', str(grand_total)],
+    ]
+    t2 = Table(total_data, colWidths=[12*cm, 5*cm])
+    t2.setStyle(TableStyle([
+        ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BACKGROUND', (0, -1), (-1, -1), navy),
+        ('TEXTCOLOR', (0, -1), (-1, -1), colors.white),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(t2)
+    story.append(Spacer(1, 1*cm))
+    from django.utils import timezone as tz
+    story.append(Paragraph(f'Imetengenezwa: {tz.now().strftime("%d/%m/%Y %H:%M")} | Mfumo wa IMS — AI Generated', body_style))
+
+    doc.build(story)
+    buffer.seek(0)
+
+    from django.http import HttpResponse
+    filename = f'mahitaji_{district.name.replace(" ", "_")}_{(current_year.year if current_year else "")}.pdf'
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _ai_summarise_requests(requests_qs):
+    """Tumia AI kutoa muhtasari wa maombi."""
+    try:
+        from ai_utils import client, model_name
+        lines = []
+        for r in requests_qs:
+            if r.status != 'rejected':
+                sn = r.school.name if r.school else r.school_name_submitted
+                lines.append(f"- {sn} ({r.level}): {r.students_needed} walimu wanafunzi — Mkuu: {r.head_name}")
+        if not lines:
+            return ''
+        data_text = '\n'.join(lines)
+        prompt = f"""Toa muhtasari mfupi (mistari 3-4) wa maombi haya ya walimu wanafunzi kwa ajili ya ripoti rasmi:
+
+{data_text}
+
+Andika kwa Kiswahili, muhtasari wa kitaalamu unaofaa ripoti rasmi ya serikali. Taja jumla na usambazaji kwa shule za msingi na sekondari."""
+        resp = client.models.generate_content(model=model_name, contents=prompt)
+        return resp.text.strip()
+    except Exception:
+        return ''

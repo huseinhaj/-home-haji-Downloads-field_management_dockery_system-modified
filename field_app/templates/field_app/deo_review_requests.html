@@ -1,0 +1,209 @@
+{% extends 'field_app/board_base.html' %}
+{% block title %}Maombi ya Wakuu wa Shule — {{ district.name }}{% endblock %}
+
+{% block content %}
+<style>
+.req-banner{background:linear-gradient(135deg,#0A2B5E,#0d3575);border-bottom:4px solid #C8900A;padding:1.2rem 2rem;}
+.req-banner h1{color:#fff;font-size:1.2rem;font-weight:800;margin:0;}
+.req-banner .sub{color:rgba(255,255,255,.65);font-size:.8rem;margin-top:3px;}
+.req-body{padding:1.5rem 2rem;}
+.sec-card{background:#fff;border-radius:8px;border:1px solid #C8D0DB;box-shadow:0 2px 8px rgba(10,43,94,.06);margin-bottom:1.5rem;overflow:hidden;}
+.sec-head{background:#0A2B5E;padding:.75rem 1.2rem;border-bottom:3px solid #C8900A;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.sec-head h5{color:#fff;font-size:.9rem;font-weight:700;margin:0;}
+.req-row{padding:.85rem 1.2rem;border-bottom:1px solid #f0f4fa;display:flex;align-items:flex-start;gap:12px;}
+.req-row:last-child{border-bottom:none;}
+.req-row:hover{background:#f7f9fd;}
+.req-checkbox{flex-shrink:0;margin-top:2px;width:16px;height:16px;accent-color:#0A2B5E;}
+.req-info{flex:1;}
+.req-school{font-size:.9rem;font-weight:700;color:#0A2B5E;}
+.req-meta{font-size:.75rem;color:#6b7280;margin-top:2px;display:flex;gap:12px;flex-wrap:wrap;}
+.req-meta i{color:#C8900A;}
+.req-actions{display:flex;gap:6px;flex-shrink:0;align-items:center;}
+.badge-pending{background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 8px;font-size:.7rem;font-weight:700;}
+.badge-applied{background:#d1fae5;color:#065f46;border-radius:4px;padding:2px 8px;font-size:.7rem;font-weight:700;}
+.badge-rejected{background:#fee2e2;color:#7f1d1d;border-radius:4px;padding:2px 8px;font-size:.7rem;font-weight:700;}
+.badge-reviewed{background:#dbeafe;color:#1e40af;border-radius:4px;padding:2px 8px;font-size:.7rem;font-weight:700;}
+.share-box{background:rgba(200,144,10,.08);border:1px solid rgba(200,144,10,.3);border-radius:6px;padding:12px 16px;margin-bottom:1.5rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.share-url{font-family:monospace;font-size:.78rem;color:#0A2B5E;background:#fff;border:1px solid #C8D0DB;border-radius:4px;padding:6px 10px;flex:1;word-break:break-all;}
+.copy-btn{background:#C8900A;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+.copy-btn:hover{background:#A97308;}
+.stat-mini{display:flex;gap:12px;flex-wrap:wrap;padding:.75rem 1.2rem;background:#EEF1F6;border-bottom:1px solid #C8D0DB;}
+.stat-mini .sm{text-align:center;min-width:60px;}
+.stat-mini .sm .num{font-size:1.3rem;font-weight:800;color:#0A2B5E;line-height:1;}
+.stat-mini .sm .lbl{font-size:.68rem;color:#6b7280;font-weight:600;text-transform:uppercase;}
+.msg-ok{background:#d1fae5;color:#064e3b;border-left:4px solid #059669;border-radius:4px;padding:10px 14px;font-size:.82rem;margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
+.msg-err{background:#fee2e2;color:#7f1d1d;border-left:4px solid #dc2626;border-radius:4px;padding:10px 14px;font-size:.82rem;margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
+@media(max-width:768px){.req-body{padding:.75rem;}.req-meta{flex-direction:column;gap:4px;}.req-actions{flex-wrap:wrap;}}
+</style>
+
+<div class="req-banner">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h1><i class="fas fa-inbox me-2" style="color:#C8900A;"></i>Maombi ya Wakuu wa Shule</h1>
+      <div class="sub"><i class="fas fa-map-marker-alt me-1"></i>Wilaya ya {{ district.name }}{% if current_year %} &nbsp;|&nbsp; {{ current_year.year }}{% endif %}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a href="{% url 'deo_district_allocation' district.id %}" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">
+        <i class="fas fa-arrow-left me-1"></i>Allocation
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="req-body">
+
+  {% for message in messages %}
+  <div class="msg-{% if message.tags == 'error' %}err{% else %}ok{% endif %}">
+    <i class="fas fa-{% if message.tags == 'error' %}exclamation-circle{% else %}check-circle{% endif %} me-1"></i>{{ message }}
+  </div>
+  {% endfor %}
+
+  <!-- Shareable link for school heads -->
+  <div class="share-box">
+    <div>
+      <div style="font-size:.78rem;font-weight:700;color:#0A2B5E;margin-bottom:4px;">
+        <i class="fas fa-share-alt me-1" style="color:#C8900A;"></i>Link ya Wakuu wa Shule — Tuma kwa wakuu wa shule katika wilaya hii
+      </div>
+      <div class="share-url" id="shareUrl">{{ request.scheme }}://{{ request.get_host }}{% url 'school_head_submit' district.id %}</div>
+    </div>
+    <button class="copy-btn" onclick="copyLink()"><i class="fas fa-copy me-1"></i>Nakili Link</button>
+  </div>
+
+  <!-- Pending requests -->
+  <div class="sec-card">
+    <div class="sec-head">
+      <h5><i class="fas fa-clock me-2" style="color:#C8900A;"></i>Maombi Mapya — Inasubiri Upitiaji</h5>
+      <span style="background:#C8900A;color:#fff;border-radius:12px;padding:2px 10px;font-size:.75rem;font-weight:700;">{{ total_pending }}</span>
+    </div>
+
+    {% if pending %}
+    <!-- Stats summary -->
+    <div class="stat-mini">
+      <div class="sm"><div class="num">{{ pending|length }}</div><div class="lbl">Jumla</div></div>
+      <div class="sm"><div class="num" style="color:#1e40af;">{{ pending|length }}</div><div class="lbl">Inasubiri</div></div>
+    </div>
+
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="apply_selected">
+      {% for req in pending %}
+      <div class="req-row">
+        {% if can_edit %}<input type="checkbox" name="selected_requests" value="{{ req.id }}" class="req-checkbox" checked>{% endif %}
+        <div class="req-info">
+          <div class="req-school">
+            <i class="fas fa-school me-1" style="color:#C8900A;"></i>
+            {% if req.school %}{{ req.school.name }}{% else %}{{ req.school_name_submitted }} <span style="color:#f59e0b;font-size:.72rem;">(haijathibitishwa)</span>{% endif %}
+          </div>
+          <div class="req-meta">
+            <span><i class="fas fa-user"></i> {{ req.head_name }}</span>
+            {% if req.head_phone %}<span><i class="fas fa-phone"></i> {{ req.head_phone }}</span>{% endif %}
+            <span><i class="fas fa-layer-group"></i> {{ req.level }}</span>
+            <span><i class="fas fa-users"></i> <strong style="color:#0A2B5E;">{{ req.students_needed }} wanaohitajika</strong></span>
+            <span><i class="fas fa-calendar"></i> {{ req.submitted_at|date:"d/m/Y H:i" }}</span>
+          </div>
+          {% if req.notes %}<div style="font-size:.75rem;color:#6b7280;margin-top:4px;font-style:italic;">{{ req.notes }}</div>{% endif %}
+          {% if not req.school %}
+          <div style="background:#fef3c7;border-radius:4px;padding:4px 8px;font-size:.72rem;color:#92400e;margin-top:6px;">
+            <i class="fas fa-exclamation-triangle me-1"></i>Shule "{{ req.school_name_submitted }}" haikupatikana kwenye database — itawekwa kama maelezo tu
+          </div>
+          {% endif %}
+        </div>
+        <div class="req-actions">
+          <span class="badge-pending">Inasubiri</span>
+          {% if can_edit %}
+          <form method="POST" style="margin:0;" onsubmit="return confirm('Kataa ombi hili?')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reject">
+            <input type="hidden" name="request_id" value="{{ req.id }}">
+            <button type="submit" style="background:#fee2e2;color:#991b1b;border:none;border-radius:4px;padding:4px 10px;font-size:.72rem;font-weight:700;cursor:pointer;">
+              <i class="fas fa-times me-1"></i>Kataa
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      {% if can_edit %}
+      <div style="padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #f0f4fa;">
+        <button type="submit" class="btn" style="background:#059669;color:#fff;font-weight:700;font-size:.82rem;">
+          <i class="fas fa-check-double me-1"></i>Weka Maombi Yaliyochaguliwa kwenye Allocation
+        </button>
+        <button type="button" onclick="toggleAll(this)" class="btn" style="background:#EEF1F6;color:#0A2B5E;font-weight:700;font-size:.82rem;">
+          <i class="fas fa-check-square me-1"></i>Chagua/Achilia Yote
+        </button>
+      </div>
+      {% endif %}
+    </form>
+
+    <!-- AI PDF Download -->
+    {% if can_edit %}
+    <div style="padding:10px 16px;background:#EEF1F6;border-top:1px solid #C8D0DB;">
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="ai_format_pdf">
+        <button type="submit" style="background:linear-gradient(135deg,#C8900A,#e0a020);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <i class="fas fa-robot"></i>Pakua PDF ya AI — Maombi Yote
+        </button>
+      </form>
+      <small style="color:#6b7280;font-size:.7rem;margin-top:4px;display:block;">AI itapanga maombi yote kwa format nzuri ya PDF rasmi</small>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="text-align:center;padding:3rem;color:#9ca3af;">
+      <i class="fas fa-inbox fa-3x mb-3" style="color:#d1d9e8;"></i>
+      <p>Hakuna maombi mapya. Tuma link kwa wakuu wa shule.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Reviewed requests -->
+  {% if reviewed %}
+  <div class="sec-card">
+    <div class="sec-head">
+      <h5><i class="fas fa-history me-2" style="color:#C8900A;"></i>Maombi Yaliyopitiwa</h5>
+    </div>
+    {% for req in reviewed %}
+    <div class="req-row" style="opacity:.85;">
+      <div class="req-info">
+        <div class="req-school">
+          {% if req.school %}{{ req.school.name }}{% else %}{{ req.school_name_submitted }}{% endif %}
+        </div>
+        <div class="req-meta">
+          <span><i class="fas fa-user"></i> {{ req.head_name }}</span>
+          <span><i class="fas fa-layer-group"></i> {{ req.level }}</span>
+          <span><i class="fas fa-users"></i> {{ req.students_needed }}</span>
+          {% if req.reviewed_by %}<span><i class="fas fa-user-check"></i> {{ req.reviewed_by.full_name }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="req-actions">
+        {% if req.status == 'applied' %}<span class="badge-applied"><i class="fas fa-check me-1"></i>Imewekwa</span>
+        {% elif req.status == 'rejected' %}<span class="badge-rejected"><i class="fas fa-times me-1"></i>Imekataliwa</span>
+        {% else %}<span class="badge-reviewed">Imepitiwa</span>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function copyLink(){
+  const url = document.getElementById('shareUrl').textContent.trim();
+  navigator.clipboard.writeText(url).then(()=>{
+    const btn = document.querySelector('.copy-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check me-1"></i>Imenakiliwa!';
+    btn.style.background='#059669';
+    setTimeout(()=>{btn.innerHTML=orig;btn.style.background='';},2000);
+  });
+}
+function toggleAll(btn){
+  const checks = document.querySelectorAll('input[name="selected_requests"]');
+  const allChecked = Array.from(checks).every(c=>c.checked);
+  checks.forEach(c=>c.checked=!allChecked);
+}
+</script>
+{% endblock %}

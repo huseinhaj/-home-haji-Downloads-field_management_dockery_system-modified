@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tuma Mahitaji ya Walimu Wanafunzi — {{ district.name }}</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{--navy:#0A2B5E;--gold:#C8900A;--light:#EEF1F6;--white:#fff;--text:#0F1923;--muted:#5A6B7E;--border:#C8D0DB;--success:#059669;--danger:#DC2626;}
+html,body{min-height:100%;background:var(--light);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--text);}
+.top-bar{background:var(--navy);border-bottom:3px solid var(--gold);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.brand{display:flex;align-items:center;gap:10px;}
+.logo-box{width:30px;height:30px;background:rgba(200,144,10,.2);border:1px solid rgba(200,144,10,.4);border-radius:4px;display:flex;align-items:center;justify-content:center;}
+.logo-box i{color:var(--gold);font-size:14px;}
+.brand-text{color:#fff;font-weight:800;font-size:15px;}
+.brand-sub{color:rgba(255,255,255,.5);font-size:10px;margin-left:4px;}
+.hero{background:var(--navy);padding:2rem 1rem;text-align:center;border-bottom:4px solid var(--gold);}
+.hero h1{color:#fff;font-size:1.3rem;font-weight:800;margin-bottom:4px;}
+.hero p{color:rgba(255,255,255,.7);font-size:.85rem;}
+.hero .dist-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(200,144,10,.2);border:1px solid rgba(200,144,10,.4);border-radius:20px;padding:4px 14px;color:var(--gold);font-weight:700;font-size:.82rem;margin-top:8px;}
+.main{max-width:600px;margin:2rem auto;padding:0 1rem;}
+.card{background:var(--white);border-radius:8px;border:1px solid rgba(10,43,94,.12);box-shadow:0 4px 24px rgba(10,43,94,.1);overflow:hidden;}
+.card-head{background:var(--navy);padding:16px 20px;border-bottom:3px solid var(--gold);}
+.card-head h2{color:#fff;font-size:1rem;font-weight:800;margin:0;}
+.card-head p{color:rgba(255,255,255,.6);font-size:.78rem;margin-top:3px;}
+.card-body{padding:24px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--text);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;}
+.field label .req{color:var(--danger);}
+.inp{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:5px;font-size:13.5px;color:var(--text);font-family:inherit;background:#FAFBFD;outline:none;transition:border-color .12s,box-shadow .12s;}
+.inp:focus{border-color:var(--navy);background:#fff;box-shadow:0 0 0 3px rgba(10,43,94,.09);}
+select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235A6B7E' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.btn-submit{width:100%;padding:13px;background:var(--navy);color:#fff;border:none;border-radius:5px;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.5px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .13s;}
+.btn-submit:hover{background:#071E42;}
+.msg-ok{background:#D1FAE5;color:#064E3B;border-left:4px solid var(--success);border-radius:4px;padding:12px 14px;margin-bottom:16px;font-size:.85rem;display:flex;align-items:center;gap:8px;}
+.msg-err{background:#FEE2E2;color:#7F1D1D;border-left:4px solid var(--danger);border-radius:4px;padding:12px 14px;margin-bottom:16px;font-size:.85rem;display:flex;align-items:center;gap:8px;}
+.info-box{background:rgba(200,144,10,.08);border:1px solid rgba(200,144,10,.3);border-radius:6px;padding:12px 14px;margin-bottom:20px;font-size:.82rem;color:#78350F;}
+.footer-note{text-align:center;padding:1.5rem;color:var(--muted);font-size:.75rem;}
+@media(max-width:480px){.field-row{grid-template-columns:1fr;}.card-body{padding:16px;}}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="brand">
+    <div class="logo-box"><i class="fas fa-school"></i></div>
+    <span class="brand-text">IMS<span class="brand-sub">School Portal</span></span>
+  </div>
+  <span style="color:rgba(255,255,255,.5);font-size:.75rem;">Internship Management System</span>
+</div>
+
+<div class="hero">
+  <h1><i class="fas fa-paper-plane" style="color:var(--gold);margin-right:8px;"></i>Tuma Mahitaji ya Walimu Wanafunzi</h1>
+  <p>Jaza fomu hii ili DEO apokee mahitaji ya shule yako</p>
+  <div class="dist-badge"><i class="fas fa-map-marker-alt"></i>Wilaya ya {{ district.name }}</div>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="card-head">
+      <h2><i class="fas fa-clipboard-list" style="color:var(--gold);margin-right:8px;"></i>Fomu ya Mahitaji</h2>
+      <p>Taarifa zako zitatumwa moja kwa moja kwa DEO wa wilaya hii</p>
+    </div>
+    <div class="card-body">
+
+      {% for message in messages %}
+      <div class="msg-{% if message.tags == 'error' %}err{% else %}ok{% endif %}">
+        <i class="fas fa-{% if message.tags == 'error' %}exclamation-circle{% else %}check-circle{% endif %}"></i>
+        {{ message }}
+      </div>
+      {% endfor %}
+
+      <div class="info-box">
+        <i class="fas fa-info-circle" style="color:var(--gold);margin-right:6px;"></i>
+        Hakikisha jina la shule yako linafanana na jinsi lilivyosajiliwa. Hii itasaidia mfumo kupanga vizuri.
+      </div>
+
+      <form method="POST">
+        {% csrf_token %}
+
+        <div class="field">
+          <label>Jina la Shule <span class="req">*</span></label>
+          <input list="schools-list" name="school_name" class="inp" required
+                 placeholder="Andika jina la shule..." autocomplete="off">
+          <datalist id="schools-list">
+            {% for school in schools %}
+            <option value="{{ school.name }}">
+            {% endfor %}
+          </datalist>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Kiwango cha Shule <span class="req">*</span></label>
+            <select name="level" class="inp" required>
+              <option value="">-- Chagua --</option>
+              <option value="Primary">Shule ya Msingi</option>
+              <option value="Secondary">Shule ya Sekondari</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Idadi Inayohitajika <span class="req">*</span></label>
+            <input type="number" name="students_needed" class="inp" min="1" max="50" required
+                   placeholder="Mfano: 3">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Jina la Mkuu wa Shule <span class="req">*</span></label>
+          <input type="text" name="head_name" class="inp" required
+                 placeholder="Jina kamili la mkuu wa shule">
+        </div>
+
+        <div class="field">
+          <label>Nambari ya Simu (si lazima)</label>
+          <input type="tel" name="head_phone" class="inp"
+                 placeholder="Mfano: 0712345678">
+        </div>
+
+        <div class="field">
+          <label>Maelezo ya Ziada (si lazima)</label>
+          <textarea name="notes" class="inp" rows="3"
+                    placeholder="Kama kuna masomo maalumu au mahitaji mengine..."></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit">
+          <i class="fas fa-paper-plane"></i>TUMA KWA DEO
+        </button>
+      </form>
+    </div>
+  </div>
+  <div class="footer-note">
+    &copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Tanzania &nbsp;|&nbsp; IMS v2.1.0
+  </div>
+</div>
+
+</body>
+</html>

@@ -55,7 +55,10 @@
   <div class="page-hd-right" style="display:flex;gap:8px;flex-wrap:wrap;">
     {% if bm.role == 'deo' and bm.district.id == district.id or bm.role == 'chair' %}
     <a href="{% url 'deo_district_allocation' district.id %}" class="btn btn-sm" style="background:#C8900A;color:#fff;border:none;font-weight:700;">
-      <i class="fas fa-users-cog me-1"></i>{% if LANG == 'sw' %}Mahitaji ya Walimu{% else %}Teacher Quota{% endif %}
+      <i class="fas fa-users-cog me-1"></i>{% if LANG == 'sw' %}Mahitaji{% else %}Quota{% endif %}
+    </a>
+    <a href="{% url 'deo_review_requests' district.id %}" class="btn btn-sm" style="background:#0A2B5E;color:#fff;border:none;font-weight:700;">
+      <i class="fas fa-inbox me-1"></i>{% if LANG == 'sw' %}Maombi{% else %}Requests{% endif %}
     </a>
     {% endif %}
     <a href="{% url 'board_deo_report' district.id %}" class="btn btn-accent btn-sm">
