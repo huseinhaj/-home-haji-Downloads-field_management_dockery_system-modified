@@ -53,7 +53,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 # CSRF cookie security
 CSRF_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Click-jacking protection — zuia ukurasa kuwekwa kwenye iframe ya tovuti nyingine
