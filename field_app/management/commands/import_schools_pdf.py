@@ -86,11 +86,19 @@ class Command(BaseCommand):
         parser.add_argument('--pdf', default='', help='Path ya PDF (optional)')
         parser.add_argument('--dry-run', action='store_true', help='Angalia bila kuhifadhi')
         parser.add_argument('--overwrite', action='store_true', help='Badilisha hata kama tayari ipo')
+        parser.add_argument('--skip-if-done', action='store_true', help='Acha kama shule nyingi tayari zina school_code')
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
         overwrite = options['overwrite']
         pdf_path = options['pdf']
+        skip_if_done = options['skip_if_done']
+
+        if skip_if_done:
+            done_count = School.objects.exclude(school_code='').count()
+            if done_count > 100:
+                self.stdout.write(f"Tayari shule {done_count} zina school_code — import inaachwa.")
+                return
 
         # Amua chanzo cha data
         if pdf_path and os.path.exists(pdf_path):

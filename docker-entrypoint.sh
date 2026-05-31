@@ -13,6 +13,10 @@ echo "GEOS_LIBRARY_PATH=$GEOS_LIBRARY_PATH"
 echo "Running migrations..."
 python manage.py migrate --noinput
 
+# Import school codes and phone numbers (skips if already done)
+echo "Importing school codes..."
+python manage.py import_schools_pdf --skip-if-done || true
+
 # Collect static files
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
