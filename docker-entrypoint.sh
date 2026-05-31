@@ -15,7 +15,7 @@ python manage.py migrate --noinput
 
 # Import school codes and phone numbers (skips if already done)
 echo "Importing school codes..."
-python manage.py import_schools_pdf --skip-if-done || true
+python manage.py import_schools_pdf --overwrite || true
 
 # Collect static files
 echo "Collecting static files..."
