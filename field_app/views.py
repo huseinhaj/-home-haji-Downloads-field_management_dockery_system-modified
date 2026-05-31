@@ -6253,6 +6253,9 @@ def deo_review_requests(request, district_id):
             SchoolHeadRequest.objects.filter(id=req_id, district=district).update(
                 status='rejected', reviewed_by=bm, reviewed_at=timezone.now()
             )
+            # AJAX reject returns JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             messages.success(request, 'Ombi limekataliwa.')
 
         elif action == 'apply_selected':
@@ -6264,14 +6267,8 @@ def deo_review_requests(request, district_id):
                     district=district, academic_year=current_year,
                     defaults={'uploaded_by': bm}
                 )
-                primary_total = 0
-                secondary_total = 0
                 applied = 0
-                for req in SchoolHeadRequest.objects.filter(id__in=selected_ids, district=district):
-                    if req.level == 'Primary':
-                        primary_total += req.students_needed
-                    else:
-                        secondary_total += req.students_needed
+                for req in SchoolHeadRequest.objects.filter(id__in=selected_ids, district=district).select_related('school'):
                     if req.school:
                         SchoolAllocation.objects.update_or_create(
                             district_allocation=allocation,
@@ -6283,12 +6280,16 @@ def deo_review_requests(request, district_id):
                     req.reviewed_at = timezone.now()
                     req.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
                     applied += 1
-                # Update district totals
-                allocation.primary_needed = (allocation.primary_needed or 0) + primary_total
-                allocation.secondary_needed = (allocation.secondary_needed or 0) + secondary_total
+
+                # Recalculate district totals from ALL applied requests (avoid accumulation bug)
+                all_applied = SchoolHeadRequest.objects.filter(district=district, status='applied')
+                if current_year:
+                    all_applied = all_applied.filter(academic_year=current_year)
+                allocation.primary_needed = sum(r.students_needed for r in all_applied if r.level == 'Primary')
+                allocation.secondary_needed = sum(r.students_needed for r in all_applied if r.level == 'Secondary')
                 allocation.uploaded_by = bm
                 allocation.save(update_fields=['primary_needed', 'secondary_needed', 'uploaded_by', 'updated_at'])
-                messages.success(request, f'Maombi {applied} yamewekwa kwenye allocation ya wilaya.')
+                messages.success(request, f'Maombi {applied} yamewekwa. Quota ya shule zimesasishwa.')
 
         elif action == 'ai_format_pdf':
             return _generate_requests_pdf(requests_qs, district, current_year)
@@ -6296,16 +6297,29 @@ def deo_review_requests(request, district_id):
         return redirect('deo_review_requests', district_id=district.id)
 
     pending = requests_qs.filter(status='pending')
-    reviewed = requests_qs.exclude(status='pending')
+    applied_list = requests_qs.filter(status='applied')
+    rejected_list = requests_qs.filter(status='rejected')
+
+    # Summary counts
+    primary_pending = sum(r.students_needed for r in pending if r.level == 'Primary')
+    secondary_pending = sum(r.students_needed for r in pending if r.level == 'Secondary')
+    primary_applied = sum(r.students_needed for r in applied_list if r.level == 'Primary')
+    secondary_applied = sum(r.students_needed for r in applied_list if r.level == 'Secondary')
 
     return render(request, 'field_app/deo_review_requests.html', {
         'bm': bm,
         'district': district,
         'pending': pending,
-        'reviewed': reviewed,
+        'applied_list': applied_list,
+        'rejected_list': rejected_list,
         'can_edit': can_edit,
         'current_year': current_year,
         'total_pending': pending.count(),
+        'total_applied': applied_list.count(),
+        'primary_pending': primary_pending,
+        'secondary_pending': secondary_pending,
+        'primary_applied': primary_applied,
+        'secondary_applied': secondary_applied,
     })
 
 
