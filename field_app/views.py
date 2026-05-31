@@ -6236,7 +6236,7 @@ def public_school_head_form(request):
     # Stage 1b: user selected school from name-search list
     if request.method == 'POST' and request.POST.get('stage') == 'select':
         school_id = request.POST.get('school_id', '').strip()
-        school = School.objects.filter(id=school_id, level='Secondary').first()
+        school = School.objects.filter(id=school_id).first()
         if not school:
             return render(request, 'field_app/public_school_head_form.html', {
                 'stage': 'verify',
@@ -6261,14 +6261,14 @@ def public_school_head_form(request):
         query = request.POST.get('school_code', '').strip()
         code = re.sub(r'^([SP])[\s\.\-]?(\d+)$', r'\1.\2', query.upper())
 
-        # Jaribu kutafuta kwa code kwanza
-        school = School.objects.filter(school_code__iexact=code, level='Secondary').first()
+        # Jaribu kutafuta kwa code kwanza (secondary au primary)
+        school = School.objects.filter(school_code__iexact=code).first()
 
         if not school:
-            # Fallback: tafuta kwa jina
+            # Fallback: tafuta kwa jina (secondary na primary)
             matches = School.objects.filter(
-                name__icontains=query, level='Secondary'
-            ).select_related('district').order_by('name')[:10]
+                name__icontains=query
+            ).select_related('district').order_by('level', 'name')[:10]
 
             if not matches:
                 return render(request, 'field_app/public_school_head_form.html', {
