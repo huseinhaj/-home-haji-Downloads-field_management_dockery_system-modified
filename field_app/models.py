@@ -165,7 +165,7 @@ class Region(models.Model):
 
 class District(models.Model):
     name = models.CharField(max_length=100)
-    region = models.ForeignKey(Region, on_delete=models.CASCADE)
+    region = models.ForeignKey(Region, on_delete=models.CASCADE, db_index=True)
 
     def __str__(self):
         return f"{self.name} ({self.region.name})"
@@ -181,7 +181,7 @@ class School(models.Model):
     ]
 
     name = models.CharField(max_length=200)
-    district = models.ForeignKey(District, on_delete=models.CASCADE)
+    district = models.ForeignKey(District, on_delete=models.CASCADE, db_index=True)
     level = models.CharField(max_length=10, choices=SCHOOL_LEVEL_CHOICES)
     capacity = models.PositiveIntegerField(default=10)
     current_students = models.PositiveIntegerField(default=0)
@@ -606,24 +606,24 @@ class StudentAssessment(models.Model):
     ]
     
     assessor = models.ForeignKey(Assessor, on_delete=models.CASCADE)
-    student = models.ForeignKey('StudentTeacher', on_delete=models.CASCADE)
-    school = models.ForeignKey('School', on_delete=models.CASCADE)
-    
+    student = models.ForeignKey('StudentTeacher', on_delete=models.CASCADE, db_index=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, db_index=True)
+
     academic_year = models.ForeignKey(
-        AcademicYear, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        AcademicYear,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
         related_name='student_assessments'
     )
-    
+
     assessment_date = models.DateField(default=timezone.now)
     status = models.CharField(max_length=20, choices=ASSESSMENT_STATUS, default='pending')
     score = models.CharField(max_length=10, blank=True, default='')
     comments = models.TextField(blank=True, default='')
-    
+
     class Meta:
-        unique_together = ['assessor', 'student', 'academic_year']
+        unique_together = ['assessor', 'student', 'school', 'academic_year']
     
     def __str__(self):
         year = self.academic_year.year if self.academic_year else "No Year"
@@ -645,8 +645,8 @@ class StudentAssessment(models.Model):
 # =========================
 
 class SchoolAssignment(models.Model):
-    assessor = models.ForeignKey(Assessor, on_delete=models.CASCADE)
-    school = models.ForeignKey('School', on_delete=models.CASCADE)
+    assessor = models.ForeignKey(Assessor, on_delete=models.CASCADE, db_index=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, db_index=True)
     assigned_date = models.DateField(auto_now_add=True)
     assessment_date = models.DateField()
     is_completed = models.BooleanField(default=False)
@@ -1194,7 +1194,7 @@ class SchoolHeadRequest(models.Model):
         ('Secondary', 'Shule ya Sekondari'),
     ]
 
-    district = models.ForeignKey(District, on_delete=models.CASCADE, related_name='head_requests')
+    district = models.ForeignKey(District, on_delete=models.CASCADE, related_name='head_requests', db_index=True)
     academic_year = models.ForeignKey(
         AcademicYear, on_delete=models.CASCADE, null=True, blank=True
     )

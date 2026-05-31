@@ -2105,13 +2105,19 @@ def admin_dashboard(request):
 
     # 3. Logbook submissions – last 14 days (line chart)
     today = timezone.now().date()
+    start_day = today - timedelta(days=13)
+    from django.db.models.functions import TruncDate
+    counts_by_date = {
+        row['date']: row['count']
+        for row in LogbookEntry.objects.filter(date__range=(start_day, today))
+        .values('date').annotate(count=Count('id'))
+    }
     logbook_dates = []
     logbook_counts = []
     for i in range(13, -1, -1):
         day = today - timedelta(days=i)
-        count = LogbookEntry.objects.filter(date=day).count()
         logbook_dates.append(day.strftime('%b %d'))
-        logbook_counts.append(count)
+        logbook_counts.append(counts_by_date.get(day, 0))
     chart_logbook = {
         'labels': logbook_dates,
         'data': logbook_counts,
@@ -4290,7 +4296,6 @@ def generate_scheme_view(request):
         'form': form,
         'education_levels': education_levels,
     })
-@csrf_exempt
 @login_required
 def ajax_generate_scheme(request):
     """API ya AI kuzalisha Scheme of Work kwa format ya KitabuSmart"""
@@ -4774,6 +4779,7 @@ def download_lesson_plan_word(request):
 from django.http import JsonResponse
 from .models import EducationLevel, ClassLevel, Subject, Textbook
 
+@login_required
 def get_classes_by_level(request):
     """AJAX endpoint to get classes based on education level"""
     level_id = request.GET.get('level_id')
@@ -4782,6 +4788,7 @@ def get_classes_by_level(request):
         return JsonResponse(list(classes), safe=False)
     return JsonResponse([], safe=False)
 
+@login_required
 def get_subjects_by_level(request):
     """AJAX endpoint to get subjects based on education level"""
     level_id = request.GET.get('level_id')
@@ -4802,6 +4809,7 @@ def get_subjects_by_level(request):
             return JsonResponse([], safe=False)
     return JsonResponse([], safe=False)
 
+@login_required
 def get_textbooks_by_level(request):
     """AJAX endpoint to get textbooks based on education level"""
     level_id = request.GET.get('level_id')
@@ -4838,7 +4846,6 @@ def lesson_plan_view(request):
         'subjects': subjects,
     })
 
-@csrf_exempt
 @login_required
 def ajax_generate_lessonplan(request):
     """Generate lesson plan using AI"""
@@ -5092,7 +5099,6 @@ def api_get_schools(request):
         'pinned_schools': pinned_count,
         'full_schools': full_count,
     })
-@csrf_exempt
 @login_required
 def api_select_school_temp(request):
     """Temporarily store selected school in session"""
@@ -5102,8 +5108,7 @@ def api_select_school_temp(request):
         if school_id:
             request.session['temp_selected_school_id'] = school_id
             return JsonResponse({'success': True})
-    return JsonResponse({'success': False})        
-@csrf_exempt
+    return JsonResponse({'success': False})
 @login_required
 def api_clear_selected_school(request):
     """Clear selected school from session"""
@@ -6179,8 +6184,9 @@ Kama hauwezi kupata idadi, weka 0. Jibu kwa JSON tu, bila maelezo mengine.
 # SCHOOL HEAD REQUESTS
 # =============================================================
 
+@login_required
 def school_head_submit(request, district_id):
-    """Public form — mkuu wa shule anatuma idadi ya walimu wanafunzi wanaohitajika."""
+    """School head submits required student/teacher numbers."""
     district = get_object_or_404(District, id=district_id)
     current_year = _cached_active_year()
     schools = School.objects.filter(district=district).order_by('level', 'name')

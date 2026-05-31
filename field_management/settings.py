@@ -42,6 +42,9 @@ CSRF_TRUSTED_ORIGINS = [
 # Railway handles SSL termination — tell Django to trust X-Forwarded-Proto header
 SECURE_SSL_REDIRECT = False
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
 
 # Sessions — use db backend (simpler, avoids per-worker cache sync issues on Railway)
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'

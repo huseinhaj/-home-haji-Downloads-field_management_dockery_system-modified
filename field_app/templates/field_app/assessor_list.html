@@ -509,11 +509,44 @@ function updateBulkActions() {
     }
 }
 
+function _t(text) {
+    const el = document.createElement('span');
+    el.textContent = text;
+    return el.innerHTML;
+}
+
 function viewAssessorDetails(assessorId) {
     fetch(`/field-app/api/assessor/${assessorId}/details/`)
         .then(response => response.json())
         .then(data => {
             const modalContent = document.getElementById('assessorDetailsContent');
+
+            const emailCell = data.email
+                ? `<a href="mailto:${_t(data.email)}" style="color: var(--bold);">${_t(data.email)}</a>`
+                : '<span class="text-danger">{% if LANG == "sw" %}Hakuna barua pepe{% else %}No email{% endif %}</span>';
+
+            const activeCell = data.is_active
+                ? '<span class="badge" style="background: var(--success); color: white;">{% if LANG == "sw" %}Hai{% else %}Active{% endif %}</span>'
+                : '<span class="badge" style="background: var(--danger); color: white;">{% if LANG == "sw" %}Haifanyi Kazi{% else %}Inactive{% endif %}</span>';
+
+            const accountCell = data.has_account
+                ? '<span class="badge" style="background: var(--success); color: white;">{% if LANG == "sw" %}Ana Akaunti{% else %}Has User Account{% endif %}</span>'
+                : '<span class="badge" style="background: var(--warning); color: white;">{% if LANG == "sw" %}Hana Akaunti{% else %}No User Account{% endif %}</span>';
+
+            const schoolsHtml = data.schools_count > 0
+                ? `<div class="list-group">${data.schools.map(school =>
+                    `<div class="list-group-item" style="border-color: var(--border);">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong style="color: var(--text-dark);">${_t(school.name)}</strong>
+                                <br><small class="text-muted">${_t(school.district)}</small>
+                            </div>
+                            <div><span class="badge" style="background: var(--info); color: white;">${_t(school.assessment_date)}</span></div>
+                        </div>
+                    </div>`).join('')}</div>
+                  <p class="mt-2"><small>{% if LANG == "sw" %}Jumla:{% else %}Total:{% endif %} ${data.schools_count} {% if LANG == "sw" %}shule{% else %}schools{% endif %}</small></p>`
+                : '<p class="text-muted">{% if LANG == "sw" %}Hakuna shule zilizopewa{% else %}No schools assigned{% endif %}</p>';
+
             modalContent.innerHTML = `
                 <div class="row">
                     <div class="col-md-4">
@@ -522,20 +555,20 @@ function viewAssessorDetails(assessorId) {
                                  style="width: 80px; height: 80px; background: var(--bold);">
                                 <i class="fas fa-user-tie fa-2x text-white"></i>
                             </div>
-                            <h5 class="mt-3" style="color: var(--text-dark);">${data.full_name}</h5>
+                            <h5 class="mt-3" style="color: var(--text-dark);">${_t(data.full_name)}</h5>
                             <p class="text-muted">{% if LANG == "sw" %}Mkaguzi{% else %}Assessor{% endif %}</p>
                         </div>
                     </div>
                     <div class="col-md-8">
                         <h6 style="color: var(--text-dark);">{% if LANG == "sw" %}Mawasiliano{% else %}Contact Information{% endif %}</h6>
                         <table class="table table-sm">
-                            <tr><th style="width: 30%;">{% if LANG == "sw" %}Barua Pepe:{% else %}Email:{% endif %}</th><td>${data.email ? `<a href="mailto:${data.email}" style="color: var(--bold);">${data.email}</a>` : '<span class="text-danger">{% if LANG == "sw" %}Hakuna barua pepe{% else %}No email{% endif %}</span>'}</td></tr>
-                            <tr><th>{% if LANG == "sw" %}Simu:{% else %}Phone:{% endif %}</th><td>${data.phone_number || '-'}</td></tr>
-                            <tr><th>{% if LANG == "sw" %}Hali:{% else %}Status:{% endif %}</th><td>${data.is_active ? '<span class="badge" style="background: var(--success); color: white;">{% if LANG == "sw" %}Hai{% else %}Active{% endif %}</span>' : '<span class="badge" style="background: var(--danger); color: white;">{% if LANG == "sw" %}Haifanyi Kazi{% else %}Inactive{% endif %}</span>'}</td></tr>
-                            <tr><th>{% if LANG == "sw" %}Akaunti:{% else %}Account:{% endif %}</th><td>${data.has_account ? '<span class="badge" style="background: var(--success); color: white;">{% if LANG == "sw" %}Ana Akaunti{% else %}Has User Account{% endif %}</span>' : '<span class="badge" style="background: var(--warning); color: white;">{% if LANG == "sw" %}Hana Akaunti{% else %}No User Account{% endif %}</span>'}</td></tr>
+                            <tr><th style="width: 30%;">{% if LANG == "sw" %}Barua Pepe:{% else %}Email:{% endif %}</th><td>${emailCell}</td></tr>
+                            <tr><th>{% if LANG == "sw" %}Simu:{% else %}Phone:{% endif %}</th><td>${_t(data.phone_number || '-')}</td></tr>
+                            <tr><th>{% if LANG == "sw" %}Hali:{% else %}Status:{% endif %}</th><td>${activeCell}</td></tr>
+                            <tr><th>{% if LANG == "sw" %}Akaunti:{% else %}Account:{% endif %}</th><td>${accountCell}</td></tr>
                         </table>
                         <h6 class="mt-4" style="color: var(--text-dark);">{% if LANG == "sw" %}Shule Zilizopewa{% else %}Assigned Schools{% endif %}</h6>
-                        ${data.schools_count > 0 ? `<div class="list-group">${data.schools.map(school => `<div class="list-group-item" style="border-color: var(--border);"><div class="d-flex justify-content-between"><div><strong style="color: var(--text-dark);">${school.name}</strong><br><small class="text-muted">${school.district}</small></div><div><span class="badge" style="background: var(--info); color: white;">${school.assessment_date}</span></div></div></div>`).join('')}</div><p class="mt-2"><small>{% if LANG == "sw" %}Jumla:{% else %}Total:{% endif %} ${data.schools_count} {% if LANG == "sw" %}shule{% else %}schools{% endif %}</small></p>` : '<p class="text-muted">{% if LANG == "sw" %}Hakuna shule zilizopewa{% else %}No schools assigned{% endif %}</p>'}
+                        ${schoolsHtml}
                     </div>
                 </div>
             `;

@@ -27,7 +27,21 @@ class AssessorLoginForm(AuthenticationForm):
         })
     )
 class DocumentUploadForm(forms.Form):
+    ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt', 'csv', 'xlsx', 'xls'}
+    MAX_SIZE_MB = 10
+
     file = forms.FileField()
+
+    def clean_file(self):
+        f = self.cleaned_data['file']
+        ext = f.name.rsplit('.', 1)[-1].lower() if '.' in f.name else ''
+        if ext not in self.ALLOWED_EXTENSIONS:
+            raise forms.ValidationError(
+                f"Aina ya faili hairuhusiwi. Ruhusiwa: {', '.join(sorted(self.ALLOWED_EXTENSIONS))}"
+            )
+        if f.size > self.MAX_SIZE_MB * 1024 * 1024:
+            raise forms.ValidationError(f"Faili ni kubwa mno. Ukubwa wa juu: {self.MAX_SIZE_MB}MB")
+        return f
 
 # Custom login form using email instead of username
 class CustomLoginForm(AuthenticationForm):
@@ -104,7 +118,7 @@ class LogbookForm(forms.ModelForm):
 class StudentTeacherForm(forms.ModelForm):
     class Meta:
         model = StudentTeacher
-        fields = '__all__'
+        fields = ['full_name', 'phone_number']
 # forms.py
 
 
@@ -245,10 +259,10 @@ class SchemeOfWorkForm(forms.Form):
         choices=[('I', 'Term I'), ('II', 'Term II'), ('III', 'Term III')],
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    year = forms.IntegerField(initial=2026, widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    year = forms.IntegerField(initial=2026, min_value=2000, max_value=2100, widget=forms.NumberInput(attrs={'class': 'form-control'}))
     syllabus = forms.CharField(initial='New Syllabus', widget=forms.TextInput(attrs={'class': 'form-control'}))
-    total_weeks = forms.IntegerField(widget=forms.NumberInput(attrs={'class': 'form-control'}))
-    periods_per_week = forms.IntegerField(widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    total_weeks = forms.IntegerField(min_value=1, max_value=52, widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    periods_per_week = forms.IntegerField(min_value=1, max_value=50, widget=forms.NumberInput(attrs={'class': 'form-control'}))
     start_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}))
     end_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}))
     reference_source = forms.ChoiceField(
