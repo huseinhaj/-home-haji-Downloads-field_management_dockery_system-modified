@@ -42,7 +42,10 @@ def _match(csv_name_norm: str, csv_district_norm: str, db_schools, threshold=0.8
     if not pool:
         pool = db_schools
 
-    names_map = {s['name_norm']: s['obj'] for s in pool}
+    # S. codes ni za sekondari — toa kipaumbele kwa secondary schools
+    sec_pool = [s for s in pool if s['obj'].level == 'Secondary'] or pool
+
+    names_map = {s['name_norm']: s['obj'] for s in sec_pool}
 
     if csv_name_norm in names_map:
         return names_map[csv_name_norm]
