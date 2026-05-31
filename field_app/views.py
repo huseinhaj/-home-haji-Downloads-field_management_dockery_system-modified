@@ -6236,9 +6236,8 @@ def public_school_head_form(request):
     # Stage 1: verify school code
     if request.method == 'POST' and request.POST.get('stage') == 'verify':
         code = request.POST.get('school_code', '').strip().upper()
-        # Kubali S2895 na S.2895 — ongeza nukta kama haipo
-        import re as _re
-        code = _re.sub(r'^([SP])\.?(\d+)$', r'\1.\2', code)
+        # Kubali S2895, S.2895, S-2895, S 2895 — normalise to S.2895
+        code = re.sub(r'^([SP])[\s\.\-]?(\d+)$', r'\1.\2', code)
         school = School.objects.filter(school_code__iexact=code).first()
         if not school:
             return render(request, 'field_app/public_school_head_form.html', {
