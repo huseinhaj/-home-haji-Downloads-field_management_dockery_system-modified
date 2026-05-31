@@ -65,6 +65,7 @@ input::placeholder,textarea::placeholder{color:#B8C4CE;font-size:12.5px;}
 footer{background:var(--navy);border-top:3px solid var(--gold);padding:10px 20px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;}
 footer p{font-size:10px;color:rgba(255,255,255,.45);}
 footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
+label:has(input[type=radio]:checked){border-color:var(--navy)!important;background:#f0f4ff!important;}
 @media(max-width:480px){.hero{padding:1.4rem 1rem;}.card-body{padding:18px;}}
 </style>
 </head>
@@ -162,11 +163,41 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
       </form>
     </div>
 
+    {% elif stage == 'select' %}
+    <!-- ===== HATUA 1b: CHAGUA SHULE ===== -->
+    <div class="card-head">
+      <h2><i class="fas fa-list"></i>Chagua Shule Yako</h2>
+      <p>Shule zifuatazo zinapatikana kwa "{{ query }}" — chagua yako</p>
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="stage" value="select">
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
+          {% for s in matches %}
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:5px;cursor:pointer;background:#FAFBFD;transition:border-color .13s;">
+            <input type="radio" name="school_id" value="{{ s.id }}" required style="width:auto;padding:0;">
+            <div>
+              <div style="font-weight:700;color:var(--navy);font-size:.9rem;">{{ s.name }}</div>
+              <div style="font-size:.75rem;color:var(--muted);">{{ s.district.name }}{% if s.school_code %} &mdash; {{ s.school_code }}{% endif %}</div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-check"></i>THIBITISHA SHULE HILI
+        </button>
+      </form>
+      <div style="margin-top:12px;text-align:center;">
+        <a href="." style="font-size:.8rem;color:var(--muted);">&#8592; Rudi na jaribu tena</a>
+      </div>
+    </div>
+
     {% else %}
-    <!-- ===== HATUA 1: WEKA NAMBA YA USAJILI ===== -->
+    <!-- ===== HATUA 1: TAFUTA SHULE ===== -->
     <div class="card-head">
       <h2><i class="fas fa-shield-alt"></i>Thibitisha Shule Yako</h2>
-      <p>Weka namba ya usajili ya shule yako ili uendelee</p>
+      <p>Weka namba ya usajili au sehemu ya jina la shule yako</p>
     </div>
     <div class="card-body">
       {% if error %}
@@ -174,26 +205,26 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
       {% endif %}
 
       <div class="hint">
-        <strong><i class="fas fa-info-circle me-1"></i>Namba ya Usajili ni nini?</strong><br>
-        Ni namba rasmi ya shule yako — hupatikana kwenye matokeo ya NECTA au waraka rasmi wa shule.<br>
-        <strong>Mfano:</strong> S.2895 au S2895 (mfumo wote unakubaliwa)
+        <strong><i class="fas fa-info-circle me-1"></i>Unaweza kutumia:</strong><br>
+        &bull; <strong>Namba ya usajili</strong> — S.2895 au S2895 (mfumo wote unakubaliwa)<br>
+        &bull; <strong>Jina la shule</strong> — andika sehemu ya jina, mfano: "Nghonghonha"
       </div>
 
       <form method="POST">
         {% csrf_token %}
         <input type="hidden" name="stage" value="verify">
         <div class="field">
-          <label><i class="fas fa-id-card me-1"></i>Namba ya Usajili wa Shule</label>
+          <label><i class="fas fa-search me-1"></i>Namba ya Usajili au Jina la Shule</label>
           <div class="inp-wrap">
-            <i class="fas fa-hashtag inp-ico"></i>
+            <i class="fas fa-search inp-ico"></i>
             <input type="text" name="school_code" required
-                   placeholder="Mfano: S.2895 au S2895"
-                   autocomplete="off" style="text-transform:uppercase;"
+                   placeholder="Mfano: S2895 au Nghonghonha"
+                   autocomplete="off"
                    value="{{ request.POST.school_code|default:'' }}">
           </div>
         </div>
         <button type="submit" class="btn btn-verify">
-          <i class="fas fa-search"></i>THIBITISHA NA ENDELEA
+          <i class="fas fa-search"></i>TAFUTA NA ENDELEA
         </button>
       </form>
     </div>

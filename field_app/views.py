@@ -6233,22 +6233,18 @@ def public_school_head_form(request):
             'current_year': current_year,
         })
 
-    # Stage 1: verify school code
-    if request.method == 'POST' and request.POST.get('stage') == 'verify':
-        code = request.POST.get('school_code', '').strip().upper()
-        # Kubali S2895, S.2895, S-2895, S 2895 — normalise to S.2895
-        code = re.sub(r'^([SP])[\s\.\-]?(\d+)$', r'\1.\2', code)
-        school = School.objects.filter(school_code__iexact=code).first()
+    # Stage 1b: user selected school from name-search list
+    if request.method == 'POST' and request.POST.get('stage') == 'select':
+        school_id = request.POST.get('school_id', '').strip()
+        school = School.objects.filter(id=school_id, level='Secondary').first()
         if not school:
             return render(request, 'field_app/public_school_head_form.html', {
                 'stage': 'verify',
-                'error': 'Namba ya usajili haikupatikana. Hakikisha umeandika sahihi (mfano: S.0123).',
+                'error': 'Shule haikutambuliwa. Jaribu tena.',
                 'current_year': current_year,
             })
-        # Check if already submitted this year
         already = SchoolHeadRequest.objects.filter(
-            school=school,
-            academic_year=current_year,
+            school=school, academic_year=current_year,
         ).exclude(status='rejected').exists()
         if already:
             return render(request, 'field_app/public_school_head_form.html', {
@@ -6257,9 +6253,50 @@ def public_school_head_form(request):
                 'current_year': current_year,
             })
         return render(request, 'field_app/public_school_head_form.html', {
-            'stage': 'form',
-            'school': school,
-            'current_year': current_year,
+            'stage': 'form', 'school': school, 'current_year': current_year,
+        })
+
+    # Stage 1: verify by code or name
+    if request.method == 'POST' and request.POST.get('stage') == 'verify':
+        query = request.POST.get('school_code', '').strip()
+        code = re.sub(r'^([SP])[\s\.\-]?(\d+)$', r'\1.\2', query.upper())
+
+        # Jaribu kutafuta kwa code kwanza
+        school = School.objects.filter(school_code__iexact=code, level='Secondary').first()
+
+        if not school:
+            # Fallback: tafuta kwa jina
+            matches = School.objects.filter(
+                name__icontains=query, level='Secondary'
+            ).select_related('district').order_by('name')[:10]
+
+            if not matches:
+                return render(request, 'field_app/public_school_head_form.html', {
+                    'stage': 'verify',
+                    'error': f'"{query}" haikupatikana. Jaribu namba ya usajili (S.2895) au sehemu ya jina la shule.',
+                    'current_year': current_year,
+                })
+            if len(matches) == 1:
+                school = matches[0]
+            else:
+                return render(request, 'field_app/public_school_head_form.html', {
+                    'stage': 'select',
+                    'matches': matches,
+                    'query': query,
+                    'current_year': current_year,
+                })
+
+        already = SchoolHeadRequest.objects.filter(
+            school=school, academic_year=current_year,
+        ).exclude(status='rejected').exists()
+        if already:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'verify',
+                'error': f'Shule ya {school.name} tayari imetuma ombi kwa mwaka huu.',
+                'current_year': current_year,
+            })
+        return render(request, 'field_app/public_school_head_form.html', {
+            'stage': 'form', 'school': school, 'current_year': current_year,
         })
 
     # Stage 0: initial code entry
