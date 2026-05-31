@@ -5362,6 +5362,32 @@ def _get_board_member(request):
         return None
 
 
+def _can_access_region(bm, region):
+    """Check if board member can view/access a region."""
+    if bm.role in ('chair', 'inspector', 'member'):
+        return True
+    if bm.role == 'reo':
+        return bm.region_id == region.id
+    if bm.role == 'deo':
+        return bm.district and bm.district.region_id == region.id
+    if bm.role == 'head_teacher':
+        return bm.district and bm.district.region_id == region.id
+    return False
+
+
+def _can_access_district(bm, district):
+    """Check if board member can view/access a district."""
+    if bm.role in ('chair', 'inspector', 'member'):
+        return True
+    if bm.role == 'reo':
+        return bm.region_id == district.region_id
+    if bm.role == 'deo':
+        return bm.district_id == district.id
+    if bm.role == 'head_teacher':
+        return bm.district_id == district.id
+    return False
+
+
 def board_login(request):
     if request.user.is_authenticated and _get_board_member(request):
         return redirect('board_home')
@@ -5397,11 +5423,29 @@ def board_home(request):
         messages.error(request, 'Huna ruhusa ya Bodi ya Walimu.')
         return redirect('board_login')
 
+    # DEO → redirect directly to their district (skip region selection)
+    if bm.role == 'deo':
+        if bm.district:
+            return redirect('board_school_list', district_id=bm.district.id)
+        messages.warning(request, 'Akaunti yako ya DEO haina wilaya iliyowekwa. Wasiliana na msimamizi.')
+
+    # REO → redirect directly to their region
+    if bm.role == 'reo':
+        if bm.region:
+            return redirect('board_district_list', region_id=bm.region.id)
+        messages.warning(request, 'Akaunti yako ya REO haina mkoa iliyowekwa. Wasiliana na msimamizi.')
+
     from datetime import date as _date
     today = _date.today()
     seven_days_ago = today - timedelta(days=7)
 
-    regions = Region.objects.all().order_by('name').annotate(
+    # Chair/Inspector see all regions; others see only accessible ones
+    if bm.role in ('chair', 'inspector', 'member'):
+        regions_qs = Region.objects.all()
+    else:
+        regions_qs = Region.objects.none()
+
+    regions = regions_qs.order_by('name').annotate(
         student_count=Count('district__school__studentteacher',
                             filter=Q(district__school__studentteacher__selected_school__isnull=False),
                             distinct=True),
@@ -5435,19 +5479,33 @@ def board_district_list(request, region_id):
     if not bm:
         return redirect('board_login')
     region = get_object_or_404(Region, id=region_id)
+
+    # DEO should not be browsing region pages — send to their district directly
+    if bm.role == 'deo' and bm.district:
+        return redirect('board_school_list', district_id=bm.district.id)
+
+    # Access check — REO can only view their own region
+    if not _can_access_region(bm, region):
+        messages.error(request, f'Huna ruhusa ya kuona mkoa wa {region.name}.')
+        return redirect('board_home')
+
     current_year = _cached_active_year()
+
+    # REO sees only their region's districts; others see all districts in region
     districts = District.objects.filter(region=region).order_by('name').annotate(
         school_count=Count('school', distinct=True),
         student_count=Count('school__studentteacher',
                             filter=Q(school__studentteacher__selected_school__isnull=False),
                             distinct=True),
     )
+
     alloc_qs = DistrictAllocation.objects.filter(district__region=region)
     if current_year:
         alloc_qs = alloc_qs.filter(academic_year=current_year)
     alloc_map = {a.district_id: a for a in alloc_qs}
     for d in districts:
         d.allocation = alloc_map.get(d.id)
+
     return render(request, 'field_app/board_district_list.html', {
         'bm': bm,
         'region': region,
@@ -5461,6 +5519,11 @@ def board_school_list(request, district_id):
     if not bm:
         return redirect('board_login')
     district = get_object_or_404(District, id=district_id)
+
+    if not _can_access_district(bm, district):
+        messages.error(request, f'Huna ruhusa ya kuona wilaya ya {district.name}.')
+        return redirect('board_home')
+
     schools = School.objects.filter(
         district=district,
         studentteacher__isnull=False
@@ -5558,6 +5621,10 @@ def board_deo_report(request, district_id):
     if not bm:
         return redirect('board_login')
     district = get_object_or_404(District, id=district_id)
+
+    if not _can_access_district(bm, district):
+        messages.error(request, f'Huna ruhusa ya kuona wilaya ya {district.name}.')
+        return redirect('board_home')
 
     HOLIDAY_MONTHS = {5, 8, 12}  # Mei, Agosti, Desemba
     now = timezone.now()
@@ -5708,6 +5775,11 @@ def board_student_progress(request, student_id):
         return redirect('board_login')
     student = get_object_or_404(StudentTeacher, id=student_id)
     school = student.selected_school
+
+    # Access check — must be in accessible district
+    if school and not _can_access_district(bm, school.district):
+        messages.error(request, 'Huna ruhusa ya kuona mwanafunzi huyu.')
+        return redirect('board_home')
 
     logbook_entries = LogbookEntry.objects.filter(student=student).select_related('subject_taught').order_by('-date')[:30]
     lesson_plans = LessonPlan.objects.filter(student=student).order_by('-date')[:10]
