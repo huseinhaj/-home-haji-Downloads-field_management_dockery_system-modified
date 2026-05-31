@@ -182,9 +182,17 @@ label:has(input[type=radio]:checked){border-color:var(--navy)!important;backgrou
           {% for s in matches %}
           <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:5px;cursor:pointer;background:#FAFBFD;transition:border-color .13s;">
             <input type="radio" name="school_id" value="{{ s.id }}" required style="width:auto;padding:0;">
-            <div>
-              <div style="font-weight:700;color:var(--navy);font-size:.9rem;">{{ s.name }}</div>
-              <div style="font-size:.75rem;color:var(--muted);">{{ s.district.name }}{% if s.school_code %} &mdash; {{ s.school_code }}{% endif %}</div>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-weight:700;color:var(--navy);font-size:.9rem;">{{ s.name }}</span>
+                <span style="font-size:.68rem;font-weight:700;padding:1px 6px;border-radius:3px;
+                  {% if s.level == 'Primary' %}background:#dcfce7;color:#166534;{% else %}background:#dbeafe;color:#1e40af;{% endif %}">
+                  {{ s.get_level_display }}
+                </span>
+              </div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:2px;">
+                {{ s.district.name }}{% if s.school_code %} &mdash; {{ s.school_code }}{% endif %}
+              </div>
             </div>
           </label>
           {% endfor %}

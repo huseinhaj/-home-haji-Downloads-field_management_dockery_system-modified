@@ -6271,10 +6271,15 @@ def public_school_head_form(request):
         school = School.objects.filter(school_code__iexact=code).first()
 
         if not school:
-            # Fallback: tafuta kwa jina (secondary na primary)
-            matches = School.objects.filter(
-                name__icontains=query
-            ).select_related('district').order_by('level', 'name')[:10]
+            # Gundua kama user anataka primary au secondary
+            q_lower = query.lower()
+            name_query = re.sub(r'\b(primary|secondary|msingi|sekondari)\b', '', q_lower, flags=re.IGNORECASE).strip()
+            qs = School.objects.select_related('district')
+            if any(w in q_lower for w in ['primary', 'msingi']):
+                qs = qs.filter(level='Primary')
+            elif any(w in q_lower for w in ['secondary', 'sekondari']):
+                qs = qs.filter(level='Secondary')
+            matches = qs.filter(name__icontains=name_query or query).order_by('level', 'name')[:10]
 
             if not matches:
                 return render(request, 'field_app/public_school_head_form.html', {
