@@ -378,6 +378,13 @@
                 </a>
             </div>
             <div class="col-xl-2 col-md-4 col-6">
+                <a href="{% url 'create_board_member' %}" class="qa-btn">
+                    <div class="qa-icon" style="color:#C8900A;"><i class="fas fa-users-cog"></i></div>
+                    <span class="qa-label">{% if LANG == 'sw' %}Ongeza Mjumbe Bodi{% else %}Create Board Member{% endif %}</span>
+                    <span class="qa-sub">{% if LANG == 'sw' %}DEO, REO, Mkaguzi...{% else %}DEO, REO, Inspector...{% endif %}</span>
+                </a>
+            </div>
+            <div class="col-xl-2 col-md-4 col-6">
                 <a href="/admin/" class="qa-btn">
                     <div class="qa-icon" style="color:#374151;"><i class="fas fa-cog"></i></div>
                     <span class="qa-label">{% if LANG == 'sw' %}Mipangilio{% else %}System Settings{% endif %}</span>
