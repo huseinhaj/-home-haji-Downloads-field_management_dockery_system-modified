@@ -9,6 +9,8 @@ services:
       - .env.docker
     environment:
       - PORT=8000
+    volumes:
+      - /home/haji/Downloads:/mnt/downloads:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
