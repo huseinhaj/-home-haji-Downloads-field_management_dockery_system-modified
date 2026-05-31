@@ -175,9 +175,8 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
 
       <div class="hint">
         <strong><i class="fas fa-info-circle me-1"></i>Namba ya Usajili ni nini?</strong><br>
-        Ni namba rasmi ya shule yako iliyotolewa na Serikali — hupatikana kwenye:
-        waraka wowote rasmi wa shule, cheti cha usajili, au kwa DEO wa Wilaya yako.<br>
-        <strong>Mfano:</strong> S.0123 (Sekondari) au P.4567 (Msingi)
+        Ni namba rasmi ya shule yako — hupatikana kwenye matokeo ya NECTA au waraka rasmi wa shule.<br>
+        <strong>Mfano:</strong> S.2895 au S2895 (mfumo wote unakubaliwa)
       </div>
 
       <form method="POST">
@@ -188,7 +187,7 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
           <div class="inp-wrap">
             <i class="fas fa-hashtag inp-ico"></i>
             <input type="text" name="school_code" required
-                   placeholder="Mfano: S.0123 au P.4567"
+                   placeholder="Mfano: S.2895 au S2895"
                    autocomplete="off" style="text-transform:uppercase;"
                    value="{{ request.POST.school_code|default:'' }}">
           </div>
