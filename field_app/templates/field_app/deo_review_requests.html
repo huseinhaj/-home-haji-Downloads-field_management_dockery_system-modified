@@ -154,9 +154,12 @@ input[type=checkbox].req-chk{width:16px;height:16px;accent-color:var(--navy);mar
 <div class="share-box">
   <div style="flex:1;min-width:200px;">
     <div style="font-size:.72rem;font-weight:700;color:var(--navy);margin-bottom:4px;">
-      <i class="fas fa-share-alt me-1" style="color:var(--gold);"></i>Link kwa Wakuu wa Shule
+      <i class="fas fa-share-alt me-1" style="color:var(--gold);"></i>Link ya Fomu — Tuma kwa Wakuu Wote wa Shule
     </div>
-    <div class="share-url" id="shareUrl">{{ request.scheme }}://{{ request.get_host }}{% url 'school_head_submit' district.id %}</div>
+    <div class="share-url" id="shareUrl">{{ request.scheme }}://{{ request.get_host }}{% url 'public_school_head_form' %}</div>
+    <div style="font-size:.68rem;color:var(--muted);margin-top:4px;">
+      <i class="fas fa-info-circle me-1"></i>Link moja kwa shule zote — kila mkuu atathibitishwa kwa namba ya usajili wa shule yake
+    </div>
   </div>
   <button class="copy-btn" onclick="copyLink()"><i class="fas fa-copy me-1"></i>Nakili</button>
 </div>

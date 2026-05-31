@@ -1,0 +1,212 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fomu ya Mahitaji ya Walimu Wanafunzi — IMS Tanzania</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{--navy:#0A2B5E;--gold:#C8900A;--light:#EEF1F6;--white:#fff;--text:#0F1923;--muted:#5A6B7E;--border:#C8D0DB;--success:#059669;--danger:#DC2626;}
+html,body{min-height:100vh;background:var(--light);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--text);display:flex;flex-direction:column;}
+.top-bar{background:var(--navy);border-bottom:3px solid var(--gold);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.logo-box{width:30px;height:30px;background:rgba(200,144,10,.2);border:1px solid rgba(200,144,10,.4);border-radius:4px;display:flex;align-items:center;justify-content:center;}
+.logo-box i{color:var(--gold);font-size:14px;}
+.brand-text{color:#fff;font-weight:800;font-size:15px;}
+.brand-sub{color:rgba(255,255,255,.45);font-size:10px;margin-left:3px;}
+
+.hero{background:linear-gradient(135deg,var(--navy) 0%,#0d3575 100%);padding:2rem 1rem 1.8rem;text-align:center;border-bottom:4px solid var(--gold);}
+.hero .coat{width:56px;height:56px;background:rgba(200,144,10,.15);border:1.5px solid rgba(200,144,10,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;}
+.hero .coat img{width:40px;height:40px;object-fit:contain;}
+.hero h1{color:#fff;font-size:1.2rem;font-weight:800;margin-bottom:4px;}
+.hero p{color:rgba(255,255,255,.65);font-size:.82rem;line-height:1.5;}
+
+.main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;}
+.card{width:100%;max-width:520px;background:var(--white);border-radius:8px;border:1px solid rgba(10,43,94,.12);box-shadow:0 4px 24px rgba(10,43,94,.1);overflow:hidden;}
+.card-head{background:var(--navy);padding:16px 20px;border-bottom:3px solid var(--gold);}
+.card-head h2{color:#fff;font-size:1rem;font-weight:800;margin:0;display:flex;align-items:center;gap:8px;}
+.card-head p{color:rgba(255,255,255,.6);font-size:.78rem;margin-top:4px;}
+.card-body{padding:24px;}
+
+.field{margin-bottom:18px;}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;}
+.inp-wrap{position:relative;}
+.inp-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9AAFC0;font-size:13px;pointer-events:none;}
+input[type=text],input[type=tel],input[type=number],textarea{width:100%;padding:10px 12px 10px 34px;font-size:13.5px;color:var(--text);border:1.5px solid var(--border);border-radius:5px;background:#FAFBFD;font-family:inherit;outline:none;transition:border-color .13s,box-shadow .13s;}
+textarea{padding:10px 12px;resize:vertical;min-height:70px;}
+input:focus,textarea:focus{border-color:var(--navy);background:#fff;box-shadow:0 0 0 3px rgba(10,43,94,.09);}
+input[readonly]{background:#f0f4f8;color:var(--muted);cursor:default;}
+input::placeholder,textarea::placeholder{color:#B8C4CE;font-size:12.5px;}
+
+.school-confirmed{background:#f0fdf4;border:1.5px solid #86efac;border-radius:6px;padding:12px 14px;margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+.school-confirmed i{color:var(--success);font-size:18px;flex-shrink:0;}
+.school-confirmed .sname{font-weight:800;color:var(--navy);font-size:.95rem;}
+.school-confirmed .sdist{font-size:.78rem;color:var(--muted);margin-top:2px;}
+
+.btn{width:100%;padding:12px;border:none;border-radius:5px;font-size:13.5px;font-weight:800;cursor:pointer;letter-spacing:.5px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:all .13s;}
+.btn-primary{background:var(--navy);color:#fff;}
+.btn-primary:hover{background:#071E42;box-shadow:0 4px 14px rgba(10,43,94,.28);}
+.btn-verify{background:var(--gold);color:#fff;}
+.btn-verify:hover{background:#A97308;}
+
+.msg-err{background:#FEE2E2;color:#7F1D1D;border-left:4px solid var(--danger);padding:10px 12px;border-radius:4px;font-size:12.5px;margin-bottom:16px;display:flex;align-items:flex-start;gap:8px;}
+.hint{background:rgba(200,144,10,.08);border:1px solid rgba(200,144,10,.25);border-radius:6px;padding:10px 13px;font-size:.78rem;color:#7a5000;margin-bottom:18px;line-height:1.6;}
+.hint strong{color:var(--navy);}
+
+/* Success screen */
+.success-wrap{text-align:center;padding:2rem 1rem;}
+.success-icon{width:72px;height:72px;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.success-icon i{color:var(--success);font-size:32px;}
+.success-wrap h2{color:var(--navy);font-size:1.15rem;font-weight:800;margin-bottom:8px;}
+.success-wrap p{color:var(--muted);font-size:.85rem;line-height:1.6;}
+.success-ref{background:var(--light);border-radius:6px;padding:10px 14px;margin-top:16px;font-size:.82rem;color:var(--navy);}
+
+footer{background:var(--navy);border-top:3px solid var(--gold);padding:10px 20px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;}
+footer p{font-size:10px;color:rgba(255,255,255,.45);}
+footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
+@media(max-width:480px){.hero{padding:1.4rem 1rem;}.card-body{padding:18px;}}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="logo-box"><i class="fas fa-school"></i></div>
+  <span class="brand-text">IMS<span class="brand-sub">Internship Management System</span></span>
+</div>
+
+<div class="hero">
+  <div class="coat">
+    <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Nembo">
+  </div>
+  <h1>Fomu ya Mahitaji ya Walimu Wanafunzi</h1>
+  <p>Jamhuri ya Muungano wa Tanzania — Wizara ya Elimu, Sayansi na Teknolojia<br>
+  Tuma mahitaji ya walimu wanafunzi kwa mwaka wa masomo {{ current_year.year|default:"wa sasa" }}</p>
+</div>
+
+<div class="main">
+  <div class="card">
+
+    {% if stage == 'success' %}
+    <!-- ===== SUCCESS ===== -->
+    <div class="success-wrap">
+      <div class="success-icon"><i class="fas fa-check"></i></div>
+      <h2>Ombi Limetumwa!</h2>
+      <p>Asante <strong>{{ head_name }}</strong>, ombi la shule ya<br>
+      <strong>{{ school.name }}</strong> limepokelewa na DEO wa Wilaya ya {{ school.district.name }}.</p>
+      <div class="success-ref">
+        <i class="fas fa-info-circle me-1"></i>
+        Utafahamishwa baada ya ombi lako kupitiwa.
+      </div>
+    </div>
+
+    {% elif stage == 'form' %}
+    <!-- ===== HATUA 2: JAZA FORM ===== -->
+    <div class="card-head">
+      <h2><i class="fas fa-file-alt"></i>Jaza Fomu</h2>
+      <p>Shule yako imethibitishwa — jaza maelezo yafuatayo</p>
+    </div>
+    <div class="card-body">
+      {% if error %}
+      <div class="msg-err"><i class="fas fa-exclamation-circle"></i>{{ error }}</div>
+      {% endif %}
+
+      <div class="school-confirmed">
+        <i class="fas fa-check-circle"></i>
+        <div>
+          <div class="sname">{{ school.name }}</div>
+          <div class="sdist"><i class="fas fa-map-marker-alt me-1"></i>{{ school.district.name }} — {{ school.get_level_display }}</div>
+        </div>
+      </div>
+
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="stage" value="submit">
+        <input type="hidden" name="school_id" value="{{ school.id }}">
+
+        <div class="field">
+          <label><i class="fas fa-user me-1"></i>Jina Lako Kamili (Mkuu wa Shule)</label>
+          <div class="inp-wrap">
+            <i class="fas fa-user inp-ico"></i>
+            <input type="text" name="head_name" required placeholder="Mfano: Juma Hassan Mwamba"
+                   value="{{ request.POST.head_name|default:'' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label><i class="fas fa-phone me-1"></i>Namba ya Simu Yako</label>
+          <div class="inp-wrap">
+            <i class="fas fa-phone inp-ico"></i>
+            <input type="tel" name="head_phone" placeholder="0712345678"
+                   value="{{ request.POST.head_phone|default:'' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label><i class="fas fa-users me-1"></i>Idadi ya Walimu Wanafunzi Wanaohitajika</label>
+          <div class="inp-wrap">
+            <i class="fas fa-sort-numeric-up inp-ico"></i>
+            <input type="number" name="students_needed" required min="1" max="500"
+                   placeholder="Mfano: 5" value="{{ request.POST.students_needed|default:'' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label><i class="fas fa-comment me-1"></i>Maelezo ya Ziada (Hiari)</label>
+          <textarea name="notes" placeholder="Maalumu yoyote kuhusu mahitaji ya shule yako...">{{ request.POST.notes|default:'' }}</textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-paper-plane"></i>TUMA OMBI
+        </button>
+      </form>
+    </div>
+
+    {% else %}
+    <!-- ===== HATUA 1: WEKA NAMBA YA USAJILI ===== -->
+    <div class="card-head">
+      <h2><i class="fas fa-shield-alt"></i>Thibitisha Shule Yako</h2>
+      <p>Weka namba ya usajili ya shule yako ili uendelee</p>
+    </div>
+    <div class="card-body">
+      {% if error %}
+      <div class="msg-err"><i class="fas fa-exclamation-circle"></i>{{ error }}</div>
+      {% endif %}
+
+      <div class="hint">
+        <strong><i class="fas fa-info-circle me-1"></i>Namba ya Usajili ni nini?</strong><br>
+        Ni namba rasmi ya shule yako iliyotolewa na Serikali — hupatikana kwenye:
+        waraka wowote rasmi wa shule, cheti cha usajili, au kwa DEO wa Wilaya yako.<br>
+        <strong>Mfano:</strong> S.0123 (Sekondari) au P.4567 (Msingi)
+      </div>
+
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="stage" value="verify">
+        <div class="field">
+          <label><i class="fas fa-id-card me-1"></i>Namba ya Usajili wa Shule</label>
+          <div class="inp-wrap">
+            <i class="fas fa-hashtag inp-ico"></i>
+            <input type="text" name="school_code" required
+                   placeholder="Mfano: S.0123 au P.4567"
+                   autocomplete="off" style="text-transform:uppercase;"
+                   value="{{ request.POST.school_code|default:'' }}">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-verify">
+          <i class="fas fa-search"></i>THIBITISHA NA ENDELEA
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<footer>
+  <p>&copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Tanzania</p>
+  <span class="ver">IMS v2.1.0</span>
+</footer>
+
+</body>
+</html>

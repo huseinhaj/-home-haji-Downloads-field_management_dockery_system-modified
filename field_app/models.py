@@ -181,6 +181,7 @@ class School(models.Model):
     ]
 
     name = models.CharField(max_length=200)
+    school_code = models.CharField(max_length=20, blank=True, default='', db_index=True, help_text="Namba ya usajili e.g. S.0123 au P.4567")
     district = models.ForeignKey(District, on_delete=models.CASCADE, db_index=True)
     level = models.CharField(max_length=10, choices=SCHOOL_LEVEL_CHOICES)
     capacity = models.PositiveIntegerField(default=10)

@@ -6184,6 +6184,89 @@ Kama hauwezi kupata idadi, weka 0. Jibu kwa JSON tu, bila maelezo mengine.
 # SCHOOL HEAD REQUESTS
 # =============================================================
 
+def public_school_head_form(request):
+    """Universal public form — school head verifies via school code then submits."""
+    current_year = _cached_active_year()
+
+    # Stage 2: full form submission
+    if request.method == 'POST' and request.POST.get('stage') == 'submit':
+        school_id = request.POST.get('school_id', '').strip()
+        school = School.objects.filter(id=school_id).first()
+        if not school:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'error': 'Shule haikutambuliwa. Jaribu tena.',
+                'current_year': current_year,
+            })
+
+        head_name   = request.POST.get('head_name', '').strip()
+        head_phone  = request.POST.get('head_phone', '').strip()
+        level       = school.level
+        notes       = request.POST.get('notes', '').strip()
+        try:
+            students_needed = int(request.POST.get('students_needed', 0) or 0)
+        except ValueError:
+            students_needed = 0
+
+        if not head_name or students_needed < 1:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'form',
+                'school': school,
+                'current_year': current_year,
+                'error': 'Tafadhali jaza sehemu zote zinazohitajika.',
+            })
+
+        SchoolHeadRequest.objects.create(
+            district=school.district,
+            academic_year=current_year,
+            school_name_submitted=school.name,
+            school=school,
+            head_name=head_name,
+            head_phone=head_phone,
+            level=level,
+            students_needed=students_needed,
+            notes=notes,
+        )
+        return render(request, 'field_app/public_school_head_form.html', {
+            'stage': 'success',
+            'school': school,
+            'head_name': head_name,
+            'current_year': current_year,
+        })
+
+    # Stage 1: verify school code
+    if request.method == 'POST' and request.POST.get('stage') == 'verify':
+        code = request.POST.get('school_code', '').strip().upper()
+        school = School.objects.filter(school_code__iexact=code).first()
+        if not school:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'verify',
+                'error': 'Namba ya usajili haikupatikana. Hakikisha umeandika sahihi (mfano: S.0123).',
+                'current_year': current_year,
+            })
+        # Check if already submitted this year
+        already = SchoolHeadRequest.objects.filter(
+            school=school,
+            academic_year=current_year,
+        ).exclude(status='rejected').exists()
+        if already:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'verify',
+                'error': f'Shule ya {school.name} tayari imetuma ombi kwa mwaka huu.',
+                'current_year': current_year,
+            })
+        return render(request, 'field_app/public_school_head_form.html', {
+            'stage': 'form',
+            'school': school,
+            'current_year': current_year,
+        })
+
+    # Stage 0: initial code entry
+    return render(request, 'field_app/public_school_head_form.html', {
+        'stage': 'verify',
+        'current_year': current_year,
+    })
+
+
 def school_head_submit(request, district_id):
     """Public form — school head submits required student/teacher numbers."""
     district = get_object_or_404(District, id=district_id)
