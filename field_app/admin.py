@@ -410,9 +410,10 @@ class DistrictAdmin(admin.ModelAdmin):
 # SCHOOL ADMIN
 # =========================
 class SchoolAdmin(admin.ModelAdmin):
-    list_display = ['name', 'district', 'level', 'capacity', 'current_students']
+    list_display = ['name', 'district', 'level', 'head_name', 'head_phone', 'capacity', 'current_students']
     list_filter = ['level', 'district__region']
-    search_fields = ['name']
+    search_fields = ['name', 'head_name', 'head_phone']
+    list_editable = ['head_name', 'head_phone']
 
 # =========================
 # SUBJECT ADMIN

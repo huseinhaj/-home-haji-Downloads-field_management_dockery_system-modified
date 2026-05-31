@@ -185,7 +185,10 @@ class School(models.Model):
     level = models.CharField(max_length=10, choices=SCHOOL_LEVEL_CHOICES)
     capacity = models.PositiveIntegerField(default=10)
     current_students = models.PositiveIntegerField(default=0)
-    
+
+    head_name = models.CharField(max_length=255, blank=True, default='')
+    head_phone = models.CharField(max_length=20, blank=True, default='')
+
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     address = models.TextField(blank=True, null=True)

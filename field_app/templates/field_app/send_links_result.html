@@ -1,0 +1,106 @@
+{% extends 'field_app/board_base.html' %}
+{% block title %}Matokeo ya Kutuma Links — {{ district.name }}{% endblock %}
+
+{% block content %}
+<style>
+:root{--navy:#0A2B5E;--gold:#C8900A;--light:#EEF1F6;--white:#fff;--muted:#5A6B7E;--border:#C8D0DB;--success:#059669;--danger:#DC2626;}
+.wrap{max-width:800px;margin:0 auto;padding:1.5rem 1rem;}
+.banner{background:linear-gradient(135deg,var(--navy),#0d3575);border-bottom:4px solid var(--gold);padding:1.2rem 1.5rem;margin:-1.5rem -1rem 1.5rem;}
+.banner h1{color:#fff;font-size:1.1rem;font-weight:800;margin:0;}
+.banner .sub{color:rgba(255,255,255,.6);font-size:.78rem;margin-top:3px;}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem;}
+.stat{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;}
+.stat .n{font-size:2rem;font-weight:800;line-height:1;}
+.stat .l{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:4px;}
+.stat.ok .n{color:var(--success);}
+.stat.err .n{color:var(--danger);}
+.stat.skip .n{color:var(--gold);}
+.card{background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem;}
+.card-head{background:var(--navy);border-bottom:3px solid var(--gold);padding:.7rem 1rem;}
+.card-head h5{color:#fff;font-size:.88rem;font-weight:700;margin:0;}
+.card-body{padding:1rem;}
+.sent-list li{font-size:.82rem;padding:4px 0;border-bottom:1px solid #f0f4fa;color:#1a2f4a;}
+.sent-list li:last-child{border-bottom:none;}
+.sent-list li::before{content:"✓ ";color:var(--success);font-weight:700;}
+.fail-item{background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:10px 12px;margin-bottom:8px;font-size:.8rem;}
+.fail-item .school{font-weight:700;color:#7f1d1d;}
+.fail-item .err{color:#dc2626;font-size:.75rem;margin-top:2px;}
+.link-box{background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:12px 14px;margin-bottom:1.5rem;font-size:.82rem;word-break:break-all;}
+.link-box strong{color:var(--navy);display:block;margin-bottom:4px;}
+.btn-back{display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:#fff;border:none;border-radius:6px;padding:9px 18px;font-size:.82rem;font-weight:700;text-decoration:none;cursor:pointer;}
+.btn-back:hover{opacity:.9;color:#fff;}
+</style>
+
+<div class="wrap">
+  <div class="banner">
+    <h1><i class="fas fa-paper-plane me-2"></i>Matokeo ya Kutuma Links</h1>
+    <div class="sub">Wilaya ya {{ district.name }}</div>
+  </div>
+
+  <!-- Link iliyotumwa -->
+  <div class="link-box">
+    <strong><i class="fas fa-link me-1"></i>Link iliyotumwa kwa wakuu:</strong>
+    {{ link }}
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat ok">
+      <div class="n">{{ sent|length }}</div>
+      <div class="l">SMS Zilizotumwa</div>
+    </div>
+    <div class="stat err">
+      <div class="n">{{ failed|length }}</div>
+      <div class="l">Zilizoshindwa</div>
+    </div>
+    <div class="stat skip">
+      <div class="n">{{ no_phone_count }}</div>
+      <div class="l">Bila Namba</div>
+    </div>
+  </div>
+
+  <!-- Zilizotumwa -->
+  {% if sent %}
+  <div class="card">
+    <div class="card-head"><h5><i class="fas fa-check-circle me-2"></i>SMS Zilizotumwa ({{ sent|length }})</h5></div>
+    <div class="card-body">
+      <ul class="sent-list" style="list-style:none;margin:0;padding:0;">
+        {% for school in sent %}
+        <li>{{ school }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Zilizoshindwa -->
+  {% if failed %}
+  <div class="card">
+    <div class="card-head" style="background:#7f1d1d;border-color:#dc2626;">
+      <h5><i class="fas fa-exclamation-triangle me-2"></i>Zilizoshindwa ({{ failed|length }})</h5>
+    </div>
+    <div class="card-body">
+      {% for item in failed %}
+      <div class="fail-item">
+        <div class="school">{{ item.school }}</div>
+        <div class="err">Simu: {{ item.phone }} — Hitilafu: {{ item.error }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Bila namba -->
+  {% if no_phone_count %}
+  <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:12px 14px;margin-bottom:1.5rem;font-size:.82rem;color:#92400e;">
+    <i class="fas fa-exclamation-circle me-2"></i>
+    Shule <strong>{{ no_phone_count }}</strong> hazikupata SMS kwa sababu hazina namba ya mkuu.
+    Weka namba kwenye <a href="/admin/field_app/school/" style="color:#92400e;font-weight:700;">Admin → Schools</a>.
+  </div>
+  {% endif %}
+
+  <a href="{% url 'deo_review_requests' district.id %}" class="btn-back">
+    <i class="fas fa-arrow-left"></i>Rudi kwa Maombi
+  </a>
+</div>
+{% endblock %}

@@ -6184,9 +6184,8 @@ Kama hauwezi kupata idadi, weka 0. Jibu kwa JSON tu, bila maelezo mengine.
 # SCHOOL HEAD REQUESTS
 # =============================================================
 
-@login_required
 def school_head_submit(request, district_id):
-    """School head submits required student/teacher numbers."""
+    """Public form — school head submits required student/teacher numbers."""
     district = get_object_or_404(District, id=district_id)
     current_year = _cached_active_year()
     schools = School.objects.filter(district=district).order_by('level', 'name')
@@ -6457,6 +6456,116 @@ def _generate_requests_pdf(requests_qs, district, current_year):
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+def _send_sms_africastalking(phone, message):
+    """Tuma SMS moja kupitia Africa's Talking API. Rudisha (True, '') au (False, error)."""
+    import urllib.request
+    import urllib.parse
+    username = os.environ.get('AT_USERNAME', '')
+    api_key = os.environ.get('AT_API_KEY', '')
+    if not username or not api_key:
+        return False, 'AT_USERNAME au AT_API_KEY hazijawekwa kwenye .env'
+
+    # Normalize phone to +255XXXXXXXXX
+    phone = phone.strip().replace(' ', '').replace('-', '')
+    if phone.startswith('0') and len(phone) == 10:
+        phone = '+255' + phone[1:]
+    elif phone.startswith('255') and len(phone) == 12:
+        phone = '+' + phone
+    elif not phone.startswith('+'):
+        phone = '+255' + phone
+
+    data = urllib.parse.urlencode({
+        'username': username,
+        'to': phone,
+        'message': message,
+    }).encode()
+    req = urllib.request.Request(
+        'https://api.africastalking.com/version1/messaging',
+        data=data,
+        headers={
+            'apiKey': api_key,
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            body = resp.read().decode()
+            if '"status":"Success"' in body or '"Status":"Success"' in body:
+                return True, ''
+            return False, body
+    except Exception as e:
+        return False, str(e)
+
+
+@board_login_required
+def send_links_to_heads(request, district_id):
+    """Tuma SMS ya link ya kujaza form kwa wakuu wa shule zote kwenye wilaya."""
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+
+    district = get_object_or_404(District, id=district_id)
+    can_edit = bm.role == 'chair' or (bm.role == 'deo' and bm.district_id == district.id)
+    if not can_edit:
+        messages.error(request, 'Huna ruhusa ya kutuma ujumbe.')
+        return redirect('deo_review_requests', district_id=district.id)
+
+    if request.method != 'POST':
+        return redirect('deo_review_requests', district_id=district.id)
+
+    # Build the submission link
+    scheme = request.scheme
+    host = request.get_host()
+    submit_path = reverse('school_head_submit', args=[district.id])
+    link = f'{scheme}://{host}{submit_path}'
+
+    current_year = _cached_active_year()
+    year_str = current_year.year if current_year else ''
+
+    schools_with_phone = School.objects.filter(
+        district=district
+    ).exclude(head_phone='').order_by('level', 'name')
+
+    schools_without_phone = School.objects.filter(
+        district=district, head_phone=''
+    ).count()
+
+    sent, failed, skipped = [], [], []
+
+    for school in schools_with_phone:
+        # Filter by level if requested
+        level_filter = request.POST.get('level', 'both')
+        if level_filter != 'both' and school.level != level_filter:
+            skipped.append(school.name)
+            continue
+
+        message = (
+            f"Habari{' ' + school.head_name if school.head_name else ''},\n"
+            f"Tafadhali jaza fomu ya mahitaji ya walimu wanafunzi "
+            f"kwa mwaka {year_str} kwa Wilaya ya {district.name}:\n"
+            f"{link}\n"
+            f"- Mfumo wa IMS"
+        )
+        ok, err = _send_sms_africastalking(school.head_phone, message)
+        if ok:
+            sent.append(school.name)
+        else:
+            failed.append({'school': school.name, 'phone': school.head_phone, 'error': err})
+
+    return render(request, 'field_app/send_links_result.html', {
+        'district': district,
+        'link': link,
+        'sent': sent,
+        'failed': failed,
+        'skipped_count': skipped,
+        'no_phone_count': schools_without_phone,
+        'total': schools_with_phone.count(),
+        'bm': bm,
+    })
 
 
 def _ai_summarise_requests(requests_qs):
