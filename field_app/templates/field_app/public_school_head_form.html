@@ -211,8 +211,9 @@ label:has(input[type=radio]:checked){border-color:var(--navy)!important;backgrou
 
       <div class="hint">
         <strong><i class="fas fa-info-circle me-1"></i>Unaweza kutumia:</strong><br>
-        &bull; <strong>Namba ya usajili</strong> — S.2895 au S2895 (mfumo wote unakubaliwa)<br>
-        &bull; <strong>Jina la shule</strong> — andika sehemu ya jina, mfano: "Nghonghonha"
+        &bull; <strong>Sekondari</strong> — S.2895 au S2895<br>
+        &bull; <strong>Msingi</strong> — PS0101114 (namba kutoka NECTA)<br>
+        &bull; <strong>Jina la shule</strong> — andika sehemu ya jina, mfano: "Bangata"
       </div>
 
       <form method="POST">
@@ -223,7 +224,7 @@ label:has(input[type=radio]:checked){border-color:var(--navy)!important;backgrou
           <div class="inp-wrap">
             <i class="fas fa-search inp-ico"></i>
             <input type="text" name="school_code" required
-                   placeholder="Mfano: S2895 au Nghonghonha"
+                   placeholder="Mfano: S2895, PS0101114, au jina la shule"
                    autocomplete="off"
                    value="{{ request.POST.school_code|default:'' }}">
           </div>

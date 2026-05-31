@@ -19,9 +19,10 @@ from field_app.models import School
 def _norm(name: str) -> str:
     name = name.upper().strip()
     for w in ['SECONDARY SCHOOL', 'SECONDARY', 'SEC SCHOOL', 'SEC.',
+              'PRIMARY SCHOOL', 'PRIMARY', ' PS ',
               ' SS', ' S/S', ' DAY', ' MIXED', ' GIRLS', ' BOYS',
-              ' COMMUNITY', " CENTRE", " CENTER"]:
-        name = name.replace(w, '')
+              ' COMMUNITY', ' CENTRE', ' CENTER']:
+        name = name.replace(w, ' ')
     name = re.sub(r"'", '', name)
     name = re.sub(r'[^A-Z0-9 ]', ' ', name)
     return re.sub(r'\s+', ' ', name).strip()

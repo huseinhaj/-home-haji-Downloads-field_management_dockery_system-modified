@@ -6259,7 +6259,13 @@ def public_school_head_form(request):
     # Stage 1: verify by code or name
     if request.method == 'POST' and request.POST.get('stage') == 'verify':
         query = request.POST.get('school_code', '').strip()
-        code = re.sub(r'^([SP])[\s\.\-]?(\d+)$', r'\1.\2', query.upper())
+        raw = query.upper().replace(' ', '').replace('-', '').replace('.', '')
+        # PS0101114 / ps0101114 → PS0101114 (primary)
+        # S2895 / S.2895 → S.2895 (secondary)
+        if re.match(r'^PS\d+$', raw):
+            code = raw  # PS0101114 — tumia kama ilivyo
+        else:
+            code = re.sub(r'^([SP])(\d+)$', r'\1.\2', raw)
 
         # Jaribu kutafuta kwa code kwanza (secondary au primary)
         school = School.objects.filter(school_code__iexact=code).first()
