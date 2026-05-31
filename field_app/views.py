@@ -35,6 +35,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from geopy.distance import geodesic
 
 from .ai_utils import client, model_name
+from .decorators import board_login_required, assessor_login_required
 from .forms import (
     CustomLoginForm, StudentRegistrationForm, StudentTeacherForm,
     LogbookForm, AssessorLoginForm, BulkAssignForm, RegionFieldInputForm
@@ -1141,7 +1142,7 @@ def student_monthly_report(request, report_id):
 
 # views.py - SAHIHISHA SEHEMU YA ASSESSOR DASHBOARD
 
-@login_required
+@assessor_login_required
 def assessor_dashboard(request):
     """Dashboard ya Assessor - FIXED FIELD ERROR"""
     try:
@@ -1351,13 +1352,10 @@ def select_district(request, region_id):
     current_year = _cached_active_year()
 
     # Fetch allocations for all districts in this region at once
-    alloc_map = {
-        a.district_id: a
-        for a in DistrictAllocation.objects.filter(
-            district__region=region,
-            academic_year=current_year,
-        )
-    }
+    alloc_qs = DistrictAllocation.objects.filter(district__region=region)
+    if current_year:
+        alloc_qs = alloc_qs.filter(academic_year=current_year)
+    alloc_map = {a.district_id: a for a in alloc_qs}
 
     for district in districts:
         district.school_count = School.objects.filter(district=district).count()
@@ -1393,9 +1391,10 @@ def select_school(request, district_id):
         schools_qs = schools_qs.filter(name__icontains=search_query)
     
     # Fetch district allocation and per-school quotas for display
-    district_alloc = DistrictAllocation.objects.filter(
-        district=district, academic_year=current_year
-    ).first()
+    da_qs = DistrictAllocation.objects.filter(district=district)
+    if current_year:
+        da_qs = da_qs.filter(academic_year=current_year)
+    district_alloc = da_qs.first()
     school_alloc_map = {}
     if district_alloc:
         school_alloc_map = {
@@ -2609,7 +2608,7 @@ def bulk_assignment_results(request):
 # ASSESSOR ASSESSMENT VIEWS
 # =========================
 
-@login_required
+@assessor_login_required
 def assessor_student_detail(request, school_id):
     """Assessor aone details za wanafunzi wa shule maalum"""
     try:
@@ -2685,7 +2684,7 @@ def assessor_student_detail(request, school_id):
         'school_assignment': school_assignment,
         'other_assessors': other_assessors,
     })
-@login_required
+@assessor_login_required
 def assessor_student_assessment(request, student_id):
     """Assessor assess specific student"""
     try:
@@ -2745,7 +2744,7 @@ def assessor_student_assessment(request, student_id):
     })
 
 
-@login_required
+@assessor_login_required
 def assessor_add_logbook_remark(request, entry_id):
     """Assessor anaandika maoni kwenye logbook maalum ya mwanafunzi."""
     if request.method != 'POST':
@@ -5430,7 +5429,7 @@ def board_home(request):
     })
 
 
-@login_required
+@board_login_required
 def board_district_list(request, region_id):
     bm = _get_board_member(request)
     if not bm:
@@ -5443,12 +5442,10 @@ def board_district_list(request, region_id):
                             filter=Q(school__studentteacher__selected_school__isnull=False),
                             distinct=True),
     )
-    alloc_map = {
-        a.district_id: a
-        for a in DistrictAllocation.objects.filter(
-            district__region=region, academic_year=current_year
-        )
-    }
+    alloc_qs = DistrictAllocation.objects.filter(district__region=region)
+    if current_year:
+        alloc_qs = alloc_qs.filter(academic_year=current_year)
+    alloc_map = {a.district_id: a for a in alloc_qs}
     for d in districts:
         d.allocation = alloc_map.get(d.id)
     return render(request, 'field_app/board_district_list.html', {
@@ -5458,7 +5455,7 @@ def board_district_list(request, region_id):
     })
 
 
-@login_required
+@board_login_required
 def board_school_list(request, district_id):
     bm = _get_board_member(request)
     if not bm:
@@ -5531,9 +5528,10 @@ def board_school_list(request, district_id):
         schools_with_students.append({'school': school, 'students': school_students})
 
     current_year = _cached_active_year()
-    district_alloc = DistrictAllocation.objects.filter(
-        district=district, academic_year=current_year
-    ).first()
+    _da_qs = DistrictAllocation.objects.filter(district=district)
+    if current_year:
+        _da_qs = _da_qs.filter(academic_year=current_year)
+    district_alloc = _da_qs.first()
     school_alloc_map = {}
     if district_alloc:
         school_alloc_map = {
@@ -5554,7 +5552,7 @@ def board_school_list(request, district_id):
     })
 
 
-@login_required
+@board_login_required
 def board_deo_report(request, district_id):
     bm = _get_board_member(request)
     if not bm:
@@ -5703,7 +5701,7 @@ Panga walimu kwa secondary na primary tofauti. Mpanga kutoka mwenye mada nyingi 
     })
 
 
-@login_required
+@board_login_required
 def board_student_progress(request, student_id):
     bm = _get_board_member(request)
     if not bm:
@@ -5829,7 +5827,7 @@ def board_student_progress(request, student_id):
     })
 
 
-@login_required
+@board_login_required
 def board_add_comment(request):
     if request.method != 'POST':
         return redirect('board_home')
@@ -5910,7 +5908,7 @@ def create_board_member(request):
 # DEO ALLOCATION VIEWS
 # =============================================================
 
-@login_required
+@board_login_required
 def deo_allocation(request):
     """Redirect DEO to their district's allocation page."""
     bm = _get_board_member(request)
@@ -5922,7 +5920,7 @@ def deo_allocation(request):
     return redirect('board_home')
 
 
-@login_required
+@board_login_required
 def deo_district_allocation(request, district_id):
     """DEO/Chair anaweka idadi ya walimu wanafunzi kwa wilaya maalumu."""
     bm = _get_board_member(request)
@@ -6161,7 +6159,7 @@ def school_head_submit(request, district_id):
     })
 
 
-@login_required
+@board_login_required
 def deo_review_requests(request, district_id):
     """DEO anaona na kusimamia maombi ya wakuu wa shule."""
     bm = _get_board_member(request)
