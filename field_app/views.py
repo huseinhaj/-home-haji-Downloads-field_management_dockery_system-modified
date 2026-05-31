@@ -5930,14 +5930,11 @@ def deo_district_allocation(request, district_id):
 
     district = get_object_or_404(District, id=district_id)
 
-    # DEO can only manage their own district; Chair/REO/inspector can view all
+    # Chair can edit any district; DEO can edit only their own district; others view-only
     can_edit = (
-        bm.role in ('chair',) or
+        bm.role == 'chair' or
         (bm.role == 'deo' and bm.district_id == district.id)
     )
-    if bm.role == 'deo' and bm.district_id != district.id:
-        messages.error(request, 'Unaweza kusimamia wilaya yako tu.')
-        return redirect('board_home')
 
     current_year = _cached_active_year()
 
@@ -6167,16 +6164,14 @@ def deo_review_requests(request, district_id):
         return redirect('board_login')
 
     district = get_object_or_404(District, id=district_id)
-    if bm.role == 'deo' and bm.district_id != district.id:
-        messages.error(request, 'Unaweza kusimamia wilaya yako tu.')
-        return redirect('board_home')
-
     current_year = _cached_active_year()
-    requests_qs = SchoolHeadRequest.objects.filter(
-        district=district, academic_year=current_year
-    ).select_related('school', 'reviewed_by')
+    _rqs = SchoolHeadRequest.objects.filter(district=district)
+    if current_year:
+        _rqs = _rqs.filter(academic_year=current_year)
+    requests_qs = _rqs.select_related('school', 'reviewed_by')
 
-    can_edit = bm.role in ('deo', 'chair')
+    # Chair or DEO of this district can edit; others view-only
+    can_edit = bm.role == 'chair' or (bm.role == 'deo' and bm.district_id == district.id)
 
     if request.method == 'POST' and can_edit:
         action = request.POST.get('action')
