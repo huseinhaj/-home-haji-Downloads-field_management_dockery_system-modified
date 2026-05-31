@@ -112,12 +112,17 @@ label:has(input[type=radio]:checked){border-color:var(--navy)!important;backgrou
       <div class="msg-err"><i class="fas fa-exclamation-circle"></i>{{ error }}</div>
       {% endif %}
 
-      <div class="school-confirmed">
-        <i class="fas fa-check-circle"></i>
-        <div>
-          <div class="sname">{{ school.name }}</div>
-          <div class="sdist"><i class="fas fa-map-marker-alt me-1"></i>{{ school.district.name }} — {{ school.get_level_display }}</div>
+      <div class="school-confirmed" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <i class="fas fa-check-circle" style="color:var(--success);font-size:18px;flex-shrink:0;"></i>
+          <div>
+            <div class="sname">{{ school.name }}</div>
+            <div class="sdist"><i class="fas fa-map-marker-alt me-1"></i>{{ school.district.name }} — {{ school.get_level_display }}</div>
+          </div>
         </div>
+        <a href="." style="font-size:.75rem;color:var(--danger);font-weight:700;white-space:nowrap;align-self:center;">
+          <i class="fas fa-times me-1"></i>Siyo shule yangu
+        </a>
       </div>
 
       <form method="POST">
