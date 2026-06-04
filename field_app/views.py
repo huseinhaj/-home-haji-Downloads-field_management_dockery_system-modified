@@ -5627,10 +5627,20 @@ def board_district_list(request, region_id):
     for d in districts:
         d.allocation = alloc_map.get(d.id)
 
+    # Maombi ya wakuu wa shule kwa mkoa huu (REO anaona, hawezi kubadilisha)
+    region_requests = SchoolHeadRequest.objects.filter(
+        district__region=region
+    ).select_related('school', 'district', 'reviewed_by').order_by('-submitted_at')
+    if current_year:
+        region_requests = region_requests.filter(academic_year=current_year)
+
     return render(request, 'field_app/board_district_list.html', {
         'bm': bm,
         'region': region,
         'districts': districts,
+        'region_requests': region_requests,
+        'pending_count': region_requests.filter(status='pending').count(),
+        'applied_count': region_requests.filter(status='applied').count(),
     })
 
 
@@ -6409,7 +6419,7 @@ def public_school_head_form(request):
                 'error': 'Tafadhali jaza sehemu zote zinazohitajika.',
             })
 
-        SchoolHeadRequest.objects.create(
+        req = SchoolHeadRequest.objects.create(
             district=school.district,
             academic_year=current_year,
             school_name_submitted=school.name,
@@ -6420,12 +6430,118 @@ def public_school_head_form(request):
             students_needed=students_needed,
             notes=notes,
         )
+        # Hifadhi request_id kwenye session ili tuitumie baadaye
+        request.session['ombi_request_id'] = req.id
+        request.session['ombi_school_id'] = school.id
         return render(request, 'field_app/public_school_head_form.html', {
             'stage': 'success',
             'school': school,
             'head_name': head_name,
             'current_year': current_year,
         })
+
+    # Stage: tuma OTP baada ya mkuu kuweka email
+    if request.method == 'POST' and request.POST.get('stage') == 'send_otp':
+        email = request.POST.get('email', '').strip().lower()
+        school_id = request.session.get('ombi_school_id')
+        school = School.objects.filter(id=school_id).first()
+
+        if not school:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'success_email',
+                'error': 'Taarifa za shule zimepotea. Jaribu tena.',
+                'current_year': current_year,
+            })
+
+        bm = BoardMember.objects.filter(
+            user__email__iexact=email, school=school,
+            role='head_teacher', is_active=True
+        ).first()
+
+        if not bm:
+            # Pia angalia kama ana BoardMember kwa shule hiyo bila kujali email
+            any_bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'success_email',
+                'school': school,
+                'error': 'Email hii haina akaunti ya Mkuu wa Shule kwa shule hii. Wasiliana na admin.' if not any_bm
+                         else f'Email si sahihi. Tumia email iliyosajiliwa na admin.',
+                'current_year': current_year,
+            })
+
+        # Sasisha request na email
+        req_id = request.session.get('ombi_request_id')
+        if req_id:
+            SchoolHeadRequest.objects.filter(id=req_id).update(submitter_email=email)
+
+        import random
+        otp = str(random.randint(100000, 999999))
+        cache.set(f'ombi_otp_{school.id}', otp, timeout=600)
+
+        try:
+            from django.core.mail import send_mail
+            send_mail(
+                subject='Msimbo wa Kuingia — IMS',
+                message=(
+                    f'Habari {bm.full_name},\n\n'
+                    f'Ombi lako la shule ya {school.name} limepokelewa.\n\n'
+                    f'Msimbo wako wa kuingia ni:\n\n  {otp}\n\n'
+                    f'Msimbo huu utaisha baada ya dakika 10.\n\n— IMS'
+                ),
+                from_email=None,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'success_email',
+                'school': school,
+                'error': f'Imeshindwa kutuma email: {e}',
+                'current_year': current_year,
+            })
+
+        masked = email[:2] + '***' + email[email.index('@'):]
+        return render(request, 'field_app/public_school_head_form.html', {
+            'stage': 'verify_otp',
+            'school': school,
+            'masked_email': masked,
+            'current_year': current_year,
+        })
+
+    # Stage: verify OTP na login
+    if request.method == 'POST' and request.POST.get('stage') == 'verify_otp':
+        entered = request.POST.get('otp', '').strip()
+        school_id = request.session.get('ombi_school_id')
+        school = School.objects.filter(id=school_id).first()
+
+        if not school:
+            return render(request, 'field_app/public_school_head_form.html', {'current_year': current_year})
+
+        stored = cache.get(f'ombi_otp_{school.id}')
+        if not stored:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'success_email',
+                'school': school,
+                'error': 'Msimbo umeisha muda wake. Weka email tena.',
+                'current_year': current_year,
+            })
+
+        if entered != stored:
+            masked_email = request.POST.get('masked_email', '')
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'verify_otp',
+                'school': school,
+                'masked_email': masked_email,
+                'error': 'Msimbo si sahihi. Jaribu tena.',
+                'current_year': current_year,
+            })
+
+        bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
+        cache.delete(f'ombi_otp_{school.id}')
+        request.session.pop('ombi_request_id', None)
+        request.session.pop('ombi_school_id', None)
+        login(request, bm.user, backend='field_app.backends.EmailBackend')
+        return redirect('board_head_teacher', school_id=school.id)
 
     # Stage 1b: user selected school from name-search list
     if request.method == 'POST' and request.POST.get('stage') == 'select':

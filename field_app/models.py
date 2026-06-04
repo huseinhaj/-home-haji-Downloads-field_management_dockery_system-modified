@@ -1215,6 +1215,7 @@ class SchoolHeadRequest(models.Model):
     )
     head_name = models.CharField(max_length=255)
     head_phone = models.CharField(max_length=20, blank=True)
+    submitter_email = models.EmailField(blank=True, help_text="Email ya mkuu aliyetuma ombi")
     level = models.CharField(max_length=20, choices=LEVEL_CHOICES)
     students_needed = models.PositiveIntegerField()
     notes = models.TextField(blank=True)
