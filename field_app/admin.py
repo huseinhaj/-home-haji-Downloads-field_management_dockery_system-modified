@@ -541,6 +541,7 @@ class BoardMemberForm(forms.ModelForm):
 
 class BoardMemberAdmin(admin.ModelAdmin):
     form = BoardMemberForm
+    change_form_template = 'admin/field_app/boardmember/change_form.html'
     list_display = ('full_name', 'get_email', 'role', 'region', 'district', 'is_active')
     list_filter = ('role', 'is_active', 'region')
     search_fields = ('full_name', 'user__email')

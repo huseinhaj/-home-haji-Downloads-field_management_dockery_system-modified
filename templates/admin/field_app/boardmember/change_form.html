@@ -1,0 +1,38 @@
+{% extends "admin/change_form.html" %}
+
+{% block admin_change_form_document_ready %}
+{{ block.super }}
+<script>
+(function() {
+    var regionSelect = document.getElementById('id_region');
+    var districtSelect = document.getElementById('id_district');
+    if (!regionSelect || !districtSelect) return;
+
+    var savedDistrict = districtSelect.value;
+
+    function loadDistricts(regionId, selectValue) {
+        districtSelect.innerHTML = '<option value="">---------</option>';
+        if (!regionId) return;
+        fetch('/api/districts-by-region/?region_id=' + regionId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                data.forEach(function(d) {
+                    var opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.textContent = d.name;
+                    if (String(d.id) === String(selectValue)) opt.selected = true;
+                    districtSelect.appendChild(opt);
+                });
+            });
+    }
+
+    regionSelect.addEventListener('change', function() {
+        loadDistricts(this.value, '');
+    });
+
+    if (regionSelect.value) {
+        loadDistricts(regionSelect.value, savedDistrict);
+    }
+})();
+</script>
+{% endblock %}
