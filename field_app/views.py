@@ -20,6 +20,7 @@ from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Count, Case, When, Value, BooleanField, F, Q, Prefetch
+from django.db.models.functions import Greatest
 from django.http import HttpResponse, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
@@ -1043,7 +1044,7 @@ def dashboard(request):
             student.selected_school = canonical_app.school
             student.save(update_fields=['selected_school'])
             if old_school:
-                School.objects.filter(id=old_school.id).update(current_students=F('current_students') - 1)
+                School.objects.filter(id=old_school.id).update(current_students=Greatest(F('current_students') - 1, 0))
             School.objects.filter(id=canonical_app.school_id).update(current_students=F('current_students') + 1)
             invalidate_student_cache(student)
 
@@ -1460,10 +1461,10 @@ def select_school(request, district_id):
 
                         # Delete pending applications at old school before switching
                         StudentApplication.objects.filter(student=student, status='pending').delete()
-                        School.objects.filter(id=student.selected_school.id).update(current_students=F('current_students') - 1)
+                        School.objects.filter(id=student.selected_school.id).update(current_students=Greatest(F('current_students') - 1, 0))
 
                     elif student.selected_school:
-                        School.objects.filter(id=student.selected_school.id).update(current_students=F('current_students') - 1)
+                        School.objects.filter(id=student.selected_school.id).update(current_students=Greatest(F('current_students') - 1, 0))
 
                     student.selected_school = school
                     student.save()
@@ -3285,7 +3286,7 @@ def confirm_school_selection(request, district_id):
     if old_school_id and old_school_id != school.id:
         old_school = School.objects.filter(id=old_school_id).first()
         if old_school:
-            old_school.current_students = F('current_students') - 1
+            old_school.current_students = Greatest(F('current_students') - 1, 0)
             old_school.save()
 
     request.session['selected_school_id'] = school.id
@@ -3526,7 +3527,7 @@ def change_school(request):
             print(f"   NEW: {new_school.name} (ID: {new_school.id})")
             
             # 1. Decrease old school counter
-            School.objects.filter(id=old_school.id).update(current_students=F('current_students') - 1)
+            School.objects.filter(id=old_school.id).update(current_students=Greatest(F('current_students') - 1, 0))
             print(f"   ✅ Decreased old school: {old_school.name}")
             
             # 2. Increase new school counter
