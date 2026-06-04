@@ -5110,6 +5110,15 @@ def api_select_school_temp(request):
             return JsonResponse({'success': True})
     return JsonResponse({'success': False})
 @login_required
+def api_districts_by_region(request):
+    """Return districts for a given region - used in admin BoardMember form"""
+    region_id = request.GET.get('region_id')
+    if not region_id:
+        return JsonResponse([], safe=False)
+    districts = District.objects.filter(region_id=region_id).order_by('name').values('id', 'name')
+    return JsonResponse(list(districts), safe=False)
+
+
 def api_clear_selected_school(request):
     """Clear selected school from session"""
     if request.method == 'POST':

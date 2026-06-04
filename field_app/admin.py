@@ -27,7 +27,7 @@ from .models import (
     CustomUser, StudentTeacher, Region, District, School, Subject,
     SchoolSubjectCapacity, LogbookEntry, ApprovalLetter,
     SchoolUpdateFile, SchoolRequirement, StudentApplication,
-    AcademicYear, RegionPin, SchoolPin
+    AcademicYear, RegionPin, SchoolPin, BoardMember
 )
 
 # OpenAI configuration
@@ -512,6 +512,57 @@ class StudentAssessmentAdmin(admin.ModelAdmin):
     list_filter = ['status', 'assessment_date']
     search_fields = ['assessor__full_name', 'student__full_name', 'school__name']
 
+class BoardMemberForm(forms.ModelForm):
+    password = forms.CharField(
+        widget=forms.PasswordInput(render_value=True),
+        required=False,
+        help_text='Acha tupu kama hutabadilisha nywila.'
+    )
+
+    class Meta:
+        model = BoardMember
+        fields = '__all__'
+
+    class Media:
+        js = ('admin/js/board_member_filter.js',)
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        password = self.cleaned_data.get('password')
+        if password:
+            user = instance.user
+            user.set_password(password)
+            user.save()
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
+
+class BoardMemberAdmin(admin.ModelAdmin):
+    form = BoardMemberForm
+    list_display = ('full_name', 'get_email', 'role', 'region', 'district', 'is_active')
+    list_filter = ('role', 'is_active', 'region')
+    search_fields = ('full_name', 'user__email')
+    fields = ('user', 'password', 'full_name', 'phone_number', 'role', 'region', 'district', 'is_active')
+
+    def get_email(self, obj):
+        return obj.user.email
+    get_email.short_description = 'Email'
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj:
+            form.base_fields['district'].queryset = District.objects.filter(region=obj.region)
+        else:
+            form.base_fields['district'].queryset = District.objects.none()
+        return form
+
+    def response_add(self, request, obj, post_url_continue=None):
+        messages.success(request, f'BoardMember "{obj.full_name}" ameundwa. Waambie watumie email: {obj.user.email}')
+        return super().response_add(request, obj, post_url_continue)
+
+
 # =========================
 # REGISTER ALL MODELS WITH CUSTOM ADMIN SITE
 # =========================
@@ -532,6 +583,7 @@ custom_admin_site.register(SchoolRequirement, SchoolRequirementAdmin)
 custom_admin_site.register(SchoolUpdateFile, SchoolUpdateFileAdmin)
 
 # 🔥 SAJILI ASSESSOR MODELS KWA CUSTOM ADMIN SITE
+custom_admin_site.register(BoardMember, BoardMemberAdmin)
 custom_admin_site.register(Assessor, AssessorAdmin)
 custom_admin_site.register(SchoolAssessment, SchoolAssessmentAdmin)
 custom_admin_site.register(StudentAssessment, StudentAssessmentAdmin)

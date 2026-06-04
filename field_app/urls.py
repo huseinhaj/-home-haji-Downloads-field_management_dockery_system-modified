@@ -112,6 +112,7 @@ urlpatterns = [
     path('ajax-generate-lessonplan/', views.ajax_generate_lessonplan, name='ajax_generate_lessonplan'),
     path('download-lesson-plan-pdf/', views.download_lesson_plan_pdf, name='download_lesson_plan_pdf'),
     path('download-lesson-plan-word/', views.download_lesson_plan_word, name='download_lesson_plan_word'),
+    path('api/districts-by-region/', views.api_districts_by_region, name='api_districts_by_region'),
     path('api/get-schools/', views.api_get_schools, name='api_get_schools'),
     path('api/select-school-temp/', views.api_select_school_temp, name='api_select_school_temp'),
     path('api/clear-selected-school/', views.api_clear_selected_school, name='api_clear_selected_school'),
