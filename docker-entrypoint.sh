@@ -41,7 +41,10 @@ python manage.py collectstatic --noinput
 
 # Load schools in background after startup (slow - 21k records)
 echo "Loading schools in background..."
-(python manage.py loaddata schools.json && python manage.py import_schools_pdf --overwrite && echo "Schools loaded OK") &
+(python manage.py loaddata schools.json && \
+ python manage.py shell -c "from field_app.models import School; School.objects.update(current_students=0); print('Reset current_students to 0')" && \
+ python manage.py import_schools_pdf --overwrite && \
+ echo "Schools loaded OK") &
 
 # Start gunicorn
 echo "Starting gunicorn on port ${PORT:-8000}..."
