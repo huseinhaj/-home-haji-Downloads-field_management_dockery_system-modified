@@ -33,7 +33,7 @@ fi
 echo "Loading base data..."
 python manage.py loaddata regions.json || true
 python manage.py loaddata districts.json || true
-python manage.py loaddata subjects.json || true
+python manage.py import_subjects data/subjects.csv || true
 python manage.py loaddata schools.json || true
 
 # Import school codes and phone numbers (updates codes on existing schools)
