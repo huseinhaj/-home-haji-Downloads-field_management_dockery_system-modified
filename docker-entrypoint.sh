@@ -13,6 +13,22 @@ echo "GEOS_LIBRARY_PATH=$GEOS_LIBRARY_PATH"
 echo "Running migrations..."
 python manage.py migrate --noinput
 
+# Create superuser if DJANGO_SUPERUSER_EMAIL is set
+if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
+    echo "Creating superuser..."
+    python manage.py shell -c "
+from django.contrib.auth import get_user_model
+User = get_user_model()
+email = '$DJANGO_SUPERUSER_EMAIL'
+password = '$DJANGO_SUPERUSER_PASSWORD'
+if not User.objects.filter(email=email).exists():
+    User.objects.create_superuser(username=email, email=email, password=password)
+    print('Superuser created.')
+else:
+    print('Superuser already exists.')
+" || true
+fi
+
 # Import school codes and phone numbers (skips if already done)
 echo "Importing school codes..."
 python manage.py import_schools_pdf --overwrite || true
