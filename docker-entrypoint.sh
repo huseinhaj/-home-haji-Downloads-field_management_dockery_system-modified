@@ -35,17 +35,19 @@ python manage.py loaddata regions.json || true
 python manage.py loaddata districts.json || true
 python manage.py import_subjects data/subjects.csv || true
 
+# Link schools with subjects (runs foreground - schools already in DB)
+echo "Setting up school-subject links..."
+python manage.py setup_school_subjects || true
+
 # Collect static files
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
-# Load schools in background after startup (slow - 21k records)
+# Load schools in background (skips if already loaded)
 echo "Loading schools in background..."
 (python manage.py loaddata schools.json || true; \
  python manage.py shell -c "from field_app.models import School; School.objects.update(current_students=0); print('Reset current_students to 0')" || true; \
- python manage.py import_schools_pdf --overwrite || true; \
- python manage.py setup_school_subjects && \
- echo "Schools + subjects setup OK") &
+ python manage.py import_schools_pdf --overwrite || true) &
 
 # Start gunicorn
 echo "Starting gunicorn on port ${PORT:-8000}..."
