@@ -556,6 +556,26 @@ class BoardMemberAdmin(admin.ModelAdmin):
             kwargs['queryset'] = District.objects.select_related('region').order_by('region__name', 'name')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
+    def add_view(self, request, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['districts_json'] = self._get_districts_json()
+        return super().add_view(request, form_url, extra_context)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['districts_json'] = self._get_districts_json()
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def _get_districts_json(self):
+        import json as _json
+        data = {}
+        for d in District.objects.select_related('region').order_by('name'):
+            rid = str(d.region_id)
+            if rid not in data:
+                data[rid] = []
+            data[rid].append({'id': d.id, 'name': d.name})
+        return _json.dumps(data)
+
     def response_add(self, request, obj, post_url_continue=None):
         messages.success(request, f'BoardMember "{obj.full_name}" ameundwa. Waambie watumie email: {obj.user.email}')
         return super().response_add(request, obj, post_url_continue)
