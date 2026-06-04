@@ -178,12 +178,20 @@ LOGOUT_REDIRECT_URL = 'login'
 # Email configuration - Tumia environment variables
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'huseinhaj09@gmail.com')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = f'Field Management System <{EMAIL_HOST_USER}>'
+EMAIL_PORT = 465
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+EMAIL_HOST_USER = (
+    os.environ.get('EMAIL_HOST_USER') or
+    os.environ.get('DJANGO_HOST_USER') or
+    'huseinhaj09@gmail.com'
+)
+EMAIL_HOST_PASSWORD = (
+    os.environ.get('EMAIL_HOST_PASSWORD') or
+    os.environ.get('DJANGO_HOST_PASSWORD') or
+    ''
+)
+DEFAULT_FROM_EMAIL = f'IMS System <{EMAIL_HOST_USER}>'
 SERVER_EMAIL = EMAIL_HOST_USER
 EMAIL_TIMEOUT = 30
 
