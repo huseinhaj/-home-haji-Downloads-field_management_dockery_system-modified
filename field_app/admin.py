@@ -523,9 +523,6 @@ class BoardMemberForm(forms.ModelForm):
         model = BoardMember
         fields = '__all__'
 
-    class Media:
-        js = ('admin/js/board_member_filter.js',)
-
     def save(self, commit=True):
         instance = super().save(commit=False)
         password = self.cleaned_data.get('password')
@@ -541,40 +538,20 @@ class BoardMemberForm(forms.ModelForm):
 
 class BoardMemberAdmin(admin.ModelAdmin):
     form = BoardMemberForm
-    change_form_template = 'admin/field_app/boardmember/change_form.html'
     list_display = ('full_name', 'get_email', 'role', 'region', 'district', 'is_active')
     list_filter = ('role', 'is_active', 'region')
     search_fields = ('full_name', 'user__email')
     fields = ('user', 'password', 'full_name', 'phone_number', 'role', 'region', 'district', 'is_active')
+    autocomplete_fields = ['district']
 
     def get_email(self, obj):
         return obj.user.email
     get_email.short_description = 'Email'
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == 'district':
-            kwargs['queryset'] = District.objects.select_related('region').order_by('region__name', 'name')
+        if db_field.name == 'region':
+            kwargs['queryset'] = Region.objects.order_by('name')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-    def add_view(self, request, form_url='', extra_context=None):
-        extra_context = extra_context or {}
-        extra_context['districts_json'] = self._get_districts_json()
-        return super().add_view(request, form_url, extra_context)
-
-    def change_view(self, request, object_id, form_url='', extra_context=None):
-        extra_context = extra_context or {}
-        extra_context['districts_json'] = self._get_districts_json()
-        return super().change_view(request, object_id, form_url, extra_context)
-
-    def _get_districts_json(self):
-        import json as _json
-        data = {}
-        for d in District.objects.select_related('region').order_by('name'):
-            rid = str(d.region_id)
-            if rid not in data:
-                data[rid] = []
-            data[rid].append({'id': d.id, 'name': d.name})
-        return _json.dumps(data)
 
     def response_add(self, request, obj, post_url_continue=None):
         messages.success(request, f'BoardMember "{obj.full_name}" ameundwa. Waambie watumie email: {obj.user.email}')
