@@ -13,19 +13,26 @@ echo "GEOS_LIBRARY_PATH=$GEOS_LIBRARY_PATH"
 echo "Running migrations..."
 python manage.py migrate --noinput
 
-# Create superuser if DJANGO_SUPERUSER_EMAIL is set
+# Create superuser and board member if DJANGO_SUPERUSER_EMAIL is set
 if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
     echo "Creating superuser..."
     python manage.py shell -c "
 from django.contrib.auth import get_user_model
+from field_app.models import BoardMember
 User = get_user_model()
 email = '$DJANGO_SUPERUSER_EMAIL'
 password = '$DJANGO_SUPERUSER_PASSWORD'
 if not User.objects.filter(email=email).exists():
-    User.objects.create_superuser(email=email, password=password)
+    user = User.objects.create_superuser(email=email, password=password)
     print('Superuser created.')
 else:
+    user = User.objects.get(email=email)
     print('Superuser already exists.')
+if not BoardMember.objects.filter(user=user).exists():
+    BoardMember.objects.create(user=user, full_name='Admin', role='chair', is_active=True)
+    print('BoardMember created.')
+else:
+    print('BoardMember already exists.')
 " || true
 fi
 
