@@ -29,6 +29,12 @@ else:
 " || true
 fi
 
+# Load base data (regions, districts, subjects) - skips if already exists
+echo "Loading base data..."
+python manage.py loaddata regions.json || true
+python manage.py loaddata districts.json || true
+python manage.py loaddata subjects.json || true
+
 # Import school codes and phone numbers (skips if already done)
 echo "Importing school codes..."
 python manage.py import_schools_pdf --overwrite || true

@@ -1,0 +1,1506 @@
+[
+{
+  "model": "field_app.district",
+  "pk": 1,
+  "fields": {
+    "name": "Arusha Cc",
+    "region": 1
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 2,
+  "fields": {
+    "name": "Arusha Dc",
+    "region": 1
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 3,
+  "fields": {
+    "name": "Karatu Dc",
+    "region": 1
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 4,
+  "fields": {
+    "name": "Longido Dc",
+    "region": 1
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 5,
+  "fields": {
+    "name": "Meru Dc",
+    "region": 1
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 6,
+  "fields": {
+    "name": "Monduli Dc",
+    "region": 1
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 7,
+  "fields": {
+    "name": "Ngorongoro Dc",
+    "region": 1
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 8,
+  "fields": {
+    "name": "Bagamoyo Dc",
+    "region": 2
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 9,
+  "fields": {
+    "name": "Chalinze Dc",
+    "region": 2
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 10,
+  "fields": {
+    "name": "Kibaha Dc",
+    "region": 2
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 11,
+  "fields": {
+    "name": "Kibaha Tc",
+    "region": 2
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 12,
+  "fields": {
+    "name": "Kibiti Dc",
+    "region": 2
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 13,
+  "fields": {
+    "name": "Kisarawe Dc",
+    "region": 2
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 14,
+  "fields": {
+    "name": "Mafia Dc",
+    "region": 2
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 15,
+  "fields": {
+    "name": "Mkuranga Dc",
+    "region": 2
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 16,
+  "fields": {
+    "name": "Rufiji Dc",
+    "region": 2
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 17,
+  "fields": {
+    "name": "Ilala Mc",
+    "region": 3
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 18,
+  "fields": {
+    "name": "Kigamboni Mc",
+    "region": 3
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 19,
+  "fields": {
+    "name": "Kinondoni Mc",
+    "region": 3
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 20,
+  "fields": {
+    "name": "Temeke Mc",
+    "region": 3
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 21,
+  "fields": {
+    "name": "Ubungo Mc",
+    "region": 3
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 22,
+  "fields": {
+    "name": "Bahi Dc",
+    "region": 4
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 23,
+  "fields": {
+    "name": "Chamwino Dc",
+    "region": 4
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 24,
+  "fields": {
+    "name": "Chemba Dc",
+    "region": 4
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 25,
+  "fields": {
+    "name": "Dodoma Cc",
+    "region": 4
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 26,
+  "fields": {
+    "name": "Kondoa Dc",
+    "region": 4
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 27,
+  "fields": {
+    "name": "Kondoa Tc",
+    "region": 4
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 28,
+  "fields": {
+    "name": "Kongwa Dc",
+    "region": 4
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 29,
+  "fields": {
+    "name": "Mpwapwa Dc",
+    "region": 4
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 30,
+  "fields": {
+    "name": "Bukombe Dc",
+    "region": 5
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 31,
+  "fields": {
+    "name": "Chato Dc",
+    "region": 5
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 32,
+  "fields": {
+    "name": "Geita Dc",
+    "region": 5
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 33,
+  "fields": {
+    "name": "Geita Tc",
+    "region": 5
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 34,
+  "fields": {
+    "name": "Mbogwe Dc",
+    "region": 5
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 35,
+  "fields": {
+    "name": "Nyanghwale Dc",
+    "region": 5
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 36,
+  "fields": {
+    "name": "Iringa Dc",
+    "region": 6
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 37,
+  "fields": {
+    "name": "Iringa Mc",
+    "region": 6
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 38,
+  "fields": {
+    "name": "Kilolo Dc",
+    "region": 6
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 39,
+  "fields": {
+    "name": "Mafinga Tc",
+    "region": 6
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 40,
+  "fields": {
+    "name": "Mufindi Dc",
+    "region": 6
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 41,
+  "fields": {
+    "name": "Biharamulo Dc",
+    "region": 7
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 42,
+  "fields": {
+    "name": "Bukoba Dc",
+    "region": 7
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 43,
+  "fields": {
+    "name": "Bukoba Mc",
+    "region": 7
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 44,
+  "fields": {
+    "name": "Karagwe Dc",
+    "region": 7
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 45,
+  "fields": {
+    "name": "Kyerwa Dc",
+    "region": 7
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 46,
+  "fields": {
+    "name": "Missenyi Dc",
+    "region": 7
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 47,
+  "fields": {
+    "name": "Muleba Dc",
+    "region": 7
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 48,
+  "fields": {
+    "name": "Ngara Dc",
+    "region": 7
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 49,
+  "fields": {
+    "name": "Mlele Dc",
+    "region": 8
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 50,
+  "fields": {
+    "name": "Mpanda Dc",
+    "region": 8
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 51,
+  "fields": {
+    "name": "Mpanda Mc",
+    "region": 8
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 52,
+  "fields": {
+    "name": "Mpimbwe Dc",
+    "region": 8
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 53,
+  "fields": {
+    "name": "Nsimbo Dc",
+    "region": 8
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 54,
+  "fields": {
+    "name": "Buhigwe Dc",
+    "region": 9
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 55,
+  "fields": {
+    "name": "Kakonko Dc",
+    "region": 9
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 56,
+  "fields": {
+    "name": "Kasulu Dc",
+    "region": 9
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 57,
+  "fields": {
+    "name": "Kasulu Tc",
+    "region": 9
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 58,
+  "fields": {
+    "name": "Kibondo Dc",
+    "region": 9
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 59,
+  "fields": {
+    "name": "Kigoma Dc",
+    "region": 9
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 60,
+  "fields": {
+    "name": "Kigoma Mc",
+    "region": 9
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 61,
+  "fields": {
+    "name": "Uvinza Dc",
+    "region": 9
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 62,
+  "fields": {
+    "name": "Hai Dc",
+    "region": 10
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 63,
+  "fields": {
+    "name": "Moshi Dc",
+    "region": 10
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 64,
+  "fields": {
+    "name": "Moshi Mc",
+    "region": 10
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 65,
+  "fields": {
+    "name": "Mwanga Dc",
+    "region": 10
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 66,
+  "fields": {
+    "name": "Rombo Dc",
+    "region": 10
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 67,
+  "fields": {
+    "name": "Same Dc",
+    "region": 10
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 68,
+  "fields": {
+    "name": "Siha Dc",
+    "region": 10
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 69,
+  "fields": {
+    "name": "Kilwa Dc",
+    "region": 11
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 70,
+  "fields": {
+    "name": "Lindi Dc",
+    "region": 11
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 71,
+  "fields": {
+    "name": "Lindi Mc",
+    "region": 11
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 72,
+  "fields": {
+    "name": "Liwale Dc",
+    "region": 11
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 73,
+  "fields": {
+    "name": "Nachingwea Dc",
+    "region": 11
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 74,
+  "fields": {
+    "name": "Ruangwa Dc",
+    "region": 11
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 75,
+  "fields": {
+    "name": "Babati Dc",
+    "region": 12
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 76,
+  "fields": {
+    "name": "Babati Tc",
+    "region": 12
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 77,
+  "fields": {
+    "name": "Hanang Dc",
+    "region": 12
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 78,
+  "fields": {
+    "name": "Kiteto Dc",
+    "region": 12
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 79,
+  "fields": {
+    "name": "Mbulu Dc",
+    "region": 12
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 80,
+  "fields": {
+    "name": "Mbulu Tc",
+    "region": 12
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 81,
+  "fields": {
+    "name": "Simanjiro Dc",
+    "region": 12
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 82,
+  "fields": {
+    "name": "Bunda Dc",
+    "region": 13
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 83,
+  "fields": {
+    "name": "Bunda Tc",
+    "region": 13
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 84,
+  "fields": {
+    "name": "Butiama Dc",
+    "region": 13
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 85,
+  "fields": {
+    "name": "Musoma Dc",
+    "region": 13
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 86,
+  "fields": {
+    "name": "Musoma Mc",
+    "region": 13
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 87,
+  "fields": {
+    "name": "Rorya Dc",
+    "region": 13
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 88,
+  "fields": {
+    "name": "Serengeti",
+    "region": 13
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 89,
+  "fields": {
+    "name": "Tarime Dc",
+    "region": 13
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 90,
+  "fields": {
+    "name": "Tarime Tc",
+    "region": 13
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 91,
+  "fields": {
+    "name": "Busokelo",
+    "region": 14
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 92,
+  "fields": {
+    "name": "Chunya Dc",
+    "region": 14
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 93,
+  "fields": {
+    "name": "Kyela Dc",
+    "region": 14
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 94,
+  "fields": {
+    "name": "Mbarali Dc",
+    "region": 14
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 95,
+  "fields": {
+    "name": "Mbeya Cc",
+    "region": 14
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 96,
+  "fields": {
+    "name": "Mbeya Dc",
+    "region": 14
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 97,
+  "fields": {
+    "name": "Rungwe Dc",
+    "region": 14
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 98,
+  "fields": {
+    "name": "Gairo Dc",
+    "region": 15
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 99,
+  "fields": {
+    "name": "Ifakara Tc",
+    "region": 15
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 100,
+  "fields": {
+    "name": "Kilombero Dc",
+    "region": 15
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 101,
+  "fields": {
+    "name": "Kilosa Dc",
+    "region": 15
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 102,
+  "fields": {
+    "name": "Malinyi Dc",
+    "region": 15
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 103,
+  "fields": {
+    "name": "Morogoro Dc",
+    "region": 15
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 104,
+  "fields": {
+    "name": "Morogoro Mc",
+    "region": 15
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 105,
+  "fields": {
+    "name": "Mvomero Dc",
+    "region": 15
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 106,
+  "fields": {
+    "name": "Ulanga Dc",
+    "region": 15
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 107,
+  "fields": {
+    "name": "Masasi Dc",
+    "region": 16
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 108,
+  "fields": {
+    "name": "Masasi Tc",
+    "region": 16
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 109,
+  "fields": {
+    "name": "Mtwara Dc",
+    "region": 16
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 110,
+  "fields": {
+    "name": "Mtwara Mc",
+    "region": 16
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 111,
+  "fields": {
+    "name": "Nanyamba Tc",
+    "region": 16
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 112,
+  "fields": {
+    "name": "Nanyumbu Dc",
+    "region": 16
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 113,
+  "fields": {
+    "name": "Newala Dc",
+    "region": 16
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 114,
+  "fields": {
+    "name": "Newala Tc",
+    "region": 16
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 115,
+  "fields": {
+    "name": "Tandahimba Dc",
+    "region": 16
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 116,
+  "fields": {
+    "name": "Buchosa Dc",
+    "region": 17
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 117,
+  "fields": {
+    "name": "Ilemela Mc",
+    "region": 17
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 118,
+  "fields": {
+    "name": "Kwimba Dc",
+    "region": 17
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 119,
+  "fields": {
+    "name": "Magu Dc",
+    "region": 17
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 120,
+  "fields": {
+    "name": "Misungwi Dc",
+    "region": 17
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 121,
+  "fields": {
+    "name": "Mwanza Cc",
+    "region": 17
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 122,
+  "fields": {
+    "name": "Sengerema Dc",
+    "region": 17
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 123,
+  "fields": {
+    "name": "Ukerewe Dc",
+    "region": 17
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 124,
+  "fields": {
+    "name": "Ludewa Dc",
+    "region": 18
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 125,
+  "fields": {
+    "name": "Makambako Tc",
+    "region": 18
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 126,
+  "fields": {
+    "name": "Makete Dc",
+    "region": 18
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 127,
+  "fields": {
+    "name": "Njombe Dc",
+    "region": 18
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 128,
+  "fields": {
+    "name": "Njombe Tc",
+    "region": 18
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 129,
+  "fields": {
+    "name": "Wangingombe Dc",
+    "region": 18
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 130,
+  "fields": {
+    "name": "Kalambo Dc",
+    "region": 19
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 131,
+  "fields": {
+    "name": "Nkasi Dc",
+    "region": 19
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 132,
+  "fields": {
+    "name": "Sumbawanga Dc",
+    "region": 19
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 133,
+  "fields": {
+    "name": "Sumbawanga Mc",
+    "region": 19
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 134,
+  "fields": {
+    "name": "Madaba Dc",
+    "region": 20
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 135,
+  "fields": {
+    "name": "Mbinga Dc",
+    "region": 20
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 136,
+  "fields": {
+    "name": "Mbinga Tc",
+    "region": 20
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 137,
+  "fields": {
+    "name": "Namtumbo Dc",
+    "region": 20
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 138,
+  "fields": {
+    "name": "Nyasa Dc",
+    "region": 20
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 139,
+  "fields": {
+    "name": "Songea Dc",
+    "region": 20
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 140,
+  "fields": {
+    "name": "Songea Mc",
+    "region": 20
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 141,
+  "fields": {
+    "name": "Tunduru Dc",
+    "region": 20
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 142,
+  "fields": {
+    "name": "Kahama Tc",
+    "region": 21
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 143,
+  "fields": {
+    "name": "Kishapu Dc",
+    "region": 21
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 144,
+  "fields": {
+    "name": "Msalala Dc",
+    "region": 21
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 145,
+  "fields": {
+    "name": "Shinyanga Dc",
+    "region": 21
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 146,
+  "fields": {
+    "name": "Shinyanga Mc",
+    "region": 21
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 147,
+  "fields": {
+    "name": "Ushetu Dc",
+    "region": 21
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 148,
+  "fields": {
+    "name": "Bariadi Dc",
+    "region": 22
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 149,
+  "fields": {
+    "name": "Bariadi Tc",
+    "region": 22
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 150,
+  "fields": {
+    "name": "Busega Dc",
+    "region": 22
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 151,
+  "fields": {
+    "name": "Itilima Dc",
+    "region": 22
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 152,
+  "fields": {
+    "name": "Maswa Dc",
+    "region": 22
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 153,
+  "fields": {
+    "name": "Meatu Dc",
+    "region": 22
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 154,
+  "fields": {
+    "name": "Ikungi Dc",
+    "region": 23
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 155,
+  "fields": {
+    "name": "Iramba Dc",
+    "region": 23
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 156,
+  "fields": {
+    "name": "Itigi Dc",
+    "region": 23
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 157,
+  "fields": {
+    "name": "Manyoni Dc",
+    "region": 23
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 158,
+  "fields": {
+    "name": "Mkalama Dc",
+    "region": 23
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 159,
+  "fields": {
+    "name": "Singida Dc",
+    "region": 23
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 160,
+  "fields": {
+    "name": "Singida Mc",
+    "region": 23
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 161,
+  "fields": {
+    "name": "Ileje Dc",
+    "region": 24
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 162,
+  "fields": {
+    "name": "Mbozi Dc",
+    "region": 24
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 163,
+  "fields": {
+    "name": "Momba Dc",
+    "region": 24
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 164,
+  "fields": {
+    "name": "Songwe Dc",
+    "region": 24
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 165,
+  "fields": {
+    "name": "Tunduma Tc",
+    "region": 24
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 166,
+  "fields": {
+    "name": "Igunga Dc",
+    "region": 25
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 167,
+  "fields": {
+    "name": "Kaliua Dc",
+    "region": 25
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 168,
+  "fields": {
+    "name": "Nzega Dc",
+    "region": 25
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 169,
+  "fields": {
+    "name": "Nzega Tc",
+    "region": 25
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 170,
+  "fields": {
+    "name": "Sikonge Dc",
+    "region": 25
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 171,
+  "fields": {
+    "name": "Tabora Dc",
+    "region": 25
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 172,
+  "fields": {
+    "name": "Tabora Mc",
+    "region": 25
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 173,
+  "fields": {
+    "name": "Urambo Dc",
+    "region": 25
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 174,
+  "fields": {
+    "name": "Bumbuli Dc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 175,
+  "fields": {
+    "name": "Handeni Dc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 176,
+  "fields": {
+    "name": "Handeni Tc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 177,
+  "fields": {
+    "name": "Kilindi Dc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 178,
+  "fields": {
+    "name": "Korogwe Dc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 179,
+  "fields": {
+    "name": "Korogwe Tc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 180,
+  "fields": {
+    "name": "Lushoto Dc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 181,
+  "fields": {
+    "name": "Mkinga Dc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 182,
+  "fields": {
+    "name": "Muheza Dc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 183,
+  "fields": {
+    "name": "Pangani Dc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 184,
+  "fields": {
+    "name": "Tanga Cc",
+    "region": 26
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 185,
+  "fields": {
+    "name": "Arusha",
+    "region": 1
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 186,
+  "fields": {
+    "name": "Serengeti Dc",
+    "region": 13
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 187,
+  "fields": {
+    "name": "Busokelo Dc",
+    "region": 14
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 188,
+  "fields": {
+    "name": "Maswa",
+    "region": 22
+  }
+}
+]
