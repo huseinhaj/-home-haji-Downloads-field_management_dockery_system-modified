@@ -6453,39 +6453,40 @@ def public_school_head_form(request):
                 'current_year': current_year,
             })
 
-        bm = BoardMember.objects.filter(
-            user__email__iexact=email, school=school,
-            role='head_teacher', is_active=True
-        ).first()
-
-        if not bm:
-            # Pia angalia kama ana BoardMember kwa shule hiyo bila kujali email
-            any_bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
+        if not email:
             return render(request, 'field_app/public_school_head_form.html', {
                 'stage': 'success_email',
                 'school': school,
-                'error': 'Email hii haina akaunti ya Mkuu wa Shule kwa shule hii. Wasiliana na admin.' if not any_bm
-                         else f'Email si sahihi. Tumia email iliyosajiliwa na admin.',
+                'error': 'Tafadhali weka barua pepe.',
                 'current_year': current_year,
             })
 
-        # Sasisha request na email
+        # Sasisha request na email (kwa DEO aione)
         req_id = request.session.get('ombi_request_id')
         if req_id:
             SchoolHeadRequest.objects.filter(id=req_id).update(submitter_email=email)
+
+        # Hifadhi email kwenye session ili itumike baadaye
+        request.session['ombi_email'] = email
 
         import random
         otp = str(random.randint(100000, 999999))
         cache.set(f'ombi_otp_{school.id}', otp, timeout=600)
 
+        # Jina la mtumiaji - tumia BoardMember kama apo, vinginevyo tumia "Mkuu wa Shule"
+        bm = BoardMember.objects.filter(
+            user__email__iexact=email, school=school, role='head_teacher', is_active=True
+        ).first()
+        display_name = bm.full_name if bm else 'Mkuu wa Shule'
+
         try:
             from django.core.mail import send_mail
             send_mail(
-                subject='Msimbo wa Kuingia — IMS',
+                subject='Msimbo wa Kuthibitisha — IMS',
                 message=(
-                    f'Habari {bm.full_name},\n\n'
+                    f'Habari {display_name},\n\n'
                     f'Ombi lako la shule ya {school.name} limepokelewa.\n\n'
-                    f'Msimbo wako wa kuingia ni:\n\n  {otp}\n\n'
+                    f'Msimbo wako wa kuthibitisha ni:\n\n  {otp}\n\n'
                     f'Msimbo huu utaisha baada ya dakika 10.\n\n— IMS'
                 ),
                 from_email=None,
@@ -6536,12 +6537,28 @@ def public_school_head_form(request):
                 'current_year': current_year,
             })
 
-        bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
         cache.delete(f'ombi_otp_{school.id}')
-        request.session.pop('ombi_request_id', None)
+        email = request.session.pop('ombi_email', '')
+        req_id = request.session.pop('ombi_request_id', None)
         request.session.pop('ombi_school_id', None)
-        login(request, bm.user, backend='field_app.backends.EmailBackend')
-        return redirect('board_head_teacher', school_id=school.id)
+
+        # Kama ana BoardMember → ingia kwenye full dashboard
+        bm = BoardMember.objects.filter(
+            user__email__iexact=email, school=school, role='head_teacher', is_active=True
+        ).first()
+        if bm:
+            login(request, bm.user, backend='field_app.backends.EmailBackend')
+            return redirect('board_head_teacher', school_id=school.id)
+
+        # Kama hana BoardMember → onyesha status ya ombi lake tu
+        req = SchoolHeadRequest.objects.filter(id=req_id).first() if req_id else \
+              SchoolHeadRequest.objects.filter(school=school, submitter_email=email).order_by('-submitted_at').first()
+        return render(request, 'field_app/public_school_head_form.html', {
+            'stage': 'ombi_status',
+            'school': school,
+            'req': req,
+            'current_year': current_year,
+        })
 
     # Stage 1b: user selected school from name-search list
     if request.method == 'POST' and request.POST.get('stage') == 'select':

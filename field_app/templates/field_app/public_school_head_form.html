@@ -148,6 +148,29 @@ label:has(input[type=radio]:checked){border-color:var(--navy)!important;backgrou
     }, {% if stage == 'success_email' %}100{% else %}2500{% endif %});
     </script>
 
+    {% elif stage == 'ombi_status' %}
+    <!-- ===== STATUS YA OMBI ===== -->
+    <div class="success-wrap">
+      <div class="success-icon" style="background:{% if req.status == 'applied' %}#059669{% elif req.status == 'rejected' %}#DC2626{% else %}#D97706{% endif %};">
+        <i class="fas fa-{% if req.status == 'applied' %}check{% elif req.status == 'rejected' %}times{% else %}clock{% endif %}"></i>
+      </div>
+      <h2>{{ school.name }}</h2>
+      {% if req %}
+      <p>Ombi lako la walimu wanafunzi <strong>{{ req.students_needed }}</strong><br>limetumwa tarehe {{ req.submitted_at|date:"d/m/Y" }}</p>
+      <div class="success-ref" style="{% if req.status == 'applied' %}background:#D1FAE5;color:#065F46;{% elif req.status == 'rejected' %}background:#FEE2E2;color:#991B1B;{% endif %}">
+        <i class="fas fa-{% if req.status == 'applied' %}check-circle{% elif req.status == 'rejected' %}times-circle{% else %}clock{% endif %} me-1"></i>
+        <strong>Hali:</strong>
+        {% if req.status == 'applied' %}Imeidhinishwa na DEO
+        {% elif req.status == 'rejected' %}Imekataliwa
+        {% elif req.status == 'reviewed' %}Imepitiwa, inasubiri hatua inayofuata
+        {% else %}Inasubiri DEO kuipitiwa{% endif %}
+      </div>
+      {% else %}
+      <p style="color:var(--muted);">Hakuna ombi lililopatikana kwa akaunti hii.</p>
+      {% endif %}
+      <a href="{% url 'public_school_head_form' %}" style="display:inline-block;margin-top:14px;font-size:13px;color:var(--navy);font-weight:600;">← Tuma ombi jipya</a>
+    </div>
+
     {% elif stage == 'verify_otp' %}
     <!-- ===== WEKA OTP ===== -->
     <div class="card-head">
