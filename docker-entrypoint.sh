@@ -33,21 +33,18 @@ if not BoardMember.objects.filter(user=user).exists():
     print('BoardMember created.')
 else:
     print('BoardMember already exists.')
-# Create separate board user
-board_email = '$BOARD_USER_EMAIL'
-board_password = '$BOARD_USER_PASSWORD'
-if board_email and board_password:
-    if not User.objects.filter(email=board_email).exists():
-        board_user = User.objects.create_user(email=board_email, password=board_password)
-        board_user.is_staff = False
-        board_user.save()
-        print('Board user created.')
-    else:
-        board_user = User.objects.get(email=board_email)
-        print('Board user already exists.')
-    if not BoardMember.objects.filter(user=board_user).exists():
-        BoardMember.objects.create(user=board_user, full_name='Bodi ya Walimu', role='chair', is_active=True)
-        print('Board member created for board user.')
+# Create board user (fixed credentials)
+board_email = 'bodi@ims.tz'
+board_password = 'bodi1234'
+if not User.objects.filter(email=board_email).exists():
+    board_user = User.objects.create_user(email=board_email, password=board_password)
+    print('Board user created.')
+else:
+    board_user = User.objects.get(email=board_email)
+    print('Board user already exists.')
+if not BoardMember.objects.filter(user=board_user).exists():
+    BoardMember.objects.create(user=board_user, full_name='Bodi ya Walimu', role='chair', is_active=True)
+    print('Board member created.')
 " || true
 fi
 
