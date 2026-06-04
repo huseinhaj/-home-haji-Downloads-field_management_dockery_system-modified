@@ -5407,20 +5407,55 @@ def board_login(request):
         return redirect('board_home')
 
     if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
+        mode = request.POST.get('mode', 'email')
         password = request.POST.get('password', '').strip()
-        user = authenticate(request, username=email, password=password,
-                            backend='field_app.backends.EmailBackend')
-        if user:
-            bm = None
-            try:
-                bm = user.board_member
-            except Exception:
-                pass
-            if bm and bm.is_active:
+
+        if mode == 'school_code':
+            # Mkuu wa Shule: login kwa namba ya usajili
+            raw = request.POST.get('school_code', '').strip().upper()
+            raw = raw.replace(' ', '').replace('-', '').replace('.', '')
+            if re.match(r'^PS\d+$', raw):
+                code = raw
+            else:
+                code = re.sub(r'^([SP])(\d+)$', r'\1.\2', raw)
+
+            school = School.objects.filter(school_code__iexact=code).first()
+            if not school:
+                messages.error(request, f'Shule yenye namba "{request.POST.get("school_code")}" haikupatikana.')
+                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
+
+            bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
+            if not bm:
+                messages.error(request, f'Hakuna akaunti ya Mkuu wa Shule kwa {school.name}. Wasiliana na admin.')
+                return render(request, 'field_app/board_login.html', {'mode': 'school_code', 'school': school})
+
+            user = authenticate(request, username=bm.user.email, password=password,
+                                backend='field_app.backends.EmailBackend')
+            if user and user == bm.user:
                 login(request, user, backend='field_app.backends.EmailBackend')
-                return redirect('board_home')
-        messages.error(request, 'Barua pepe au nywila si sahihi, au huna ruhusa ya Bodi ya Walimu.')
+                return redirect('board_head_teacher', school_id=school.id)
+            messages.error(request, 'Nywila si sahihi.')
+            return render(request, 'field_app/board_login.html', {
+                'mode': 'school_code',
+                'school': school,
+                'prefill_code': request.POST.get('school_code', ''),
+            })
+
+        else:
+            # DEO/REO/Chair: login kwa email
+            email = request.POST.get('email', '').strip()
+            user = authenticate(request, username=email, password=password,
+                                backend='field_app.backends.EmailBackend')
+            if user:
+                bm = None
+                try:
+                    bm = user.board_member
+                except Exception:
+                    pass
+                if bm and bm.is_active:
+                    login(request, user, backend='field_app.backends.EmailBackend')
+                    return redirect('board_home')
+            messages.error(request, 'Barua pepe au nywila si sahihi, au huna ruhusa ya Bodi ya Walimu.')
 
     return render(request, 'field_app/board_login.html')
 
