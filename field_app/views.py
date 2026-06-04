@@ -3659,10 +3659,9 @@ def api_confirm_change_school(request):
             return JsonResponse({'error': f'Shule {new_school.name} haipatikani'}, status=400)
         
         # ========== SIMPLE DATABASE UPDATE ==========
-        # Use direct save instead of F() for better control
-        old_school.current_students -= 1
+        old_school.current_students = max(0, old_school.current_students - 1)
         old_school.save()
-        
+
         new_school.current_students += 1
         new_school.save()
         
