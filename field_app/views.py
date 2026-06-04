@@ -6500,6 +6500,8 @@ def deo_review_requests(request, district_id):
                             school=req.school,
                             defaults={'quota': req.students_needed}
                         )
+                        # Sasisha School.capacity ili wanafunzi waione kwenye dashboard
+                        School.objects.filter(id=req.school.id).update(capacity=req.students_needed)
                     req.status = 'applied'
                     req.reviewed_by = bm
                     req.reviewed_at = timezone.now()
