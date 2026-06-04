@@ -550,13 +550,10 @@ class BoardMemberAdmin(admin.ModelAdmin):
         return obj.user.email
     get_email.short_description = 'Email'
 
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        if obj:
-            form.base_fields['district'].queryset = District.objects.filter(region=obj.region)
-        else:
-            form.base_fields['district'].queryset = District.objects.none()
-        return form
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'district':
+            kwargs['queryset'] = District.objects.select_related('region').order_by('region__name', 'name')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def response_add(self, request, obj, post_url_continue=None):
         messages.success(request, f'BoardMember "{obj.full_name}" ameundwa. Waambie watumie email: {obj.user.email}')
