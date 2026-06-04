@@ -1161,7 +1161,9 @@ class SchoolAllocation(models.Model):
         DistrictAllocation, on_delete=models.CASCADE, related_name='school_allocations'
     )
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='allocations')
-    quota = models.PositiveIntegerField(default=0, help_text="Idadi ya walimu wanafunzi wanaohitajika")
+    quota = models.PositiveIntegerField(default=0, help_text="Idadi iliyoidhinishwa na DEO")
+    head_teacher_requested = models.PositiveIntegerField(default=0, help_text="Idadi iliyoombwa na Mkuu wa Shule")
+    head_teacher_notes = models.TextField(blank=True, help_text="Maelezo ya Mkuu wa Shule")
 
     class Meta:
         unique_together = ('district_allocation', 'school')

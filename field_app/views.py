@@ -5952,7 +5952,7 @@ def board_add_comment(request):
 
 @board_login_required
 def board_head_teacher(request, school_id):
-    """Dashboard ya Mkuu wa Shule - anaona wanafunzi wa shule yake tu."""
+    """Dashboard ya Mkuu wa Shule - anaona wanafunzi na anaweza jaza mahitaji."""
     bm = _get_board_member(request)
     if not bm:
         return redirect('board_login')
@@ -5964,11 +5964,38 @@ def board_head_teacher(request, school_id):
         messages.error(request, 'Huna ruhusa ya kuona shule hii.')
         return redirect('board_home')
 
+    current_year = _cached_active_year()
+
+    # Pata au unda SchoolAllocation kwa shule hii
+    alloc = None
+    dist_alloc = None
+    if current_year:
+        dist_alloc, _ = DistrictAllocation.objects.get_or_create(
+            district=school.district,
+            academic_year=current_year,
+            defaults={'uploaded_by': bm}
+        )
+        alloc, _ = SchoolAllocation.objects.get_or_create(
+            district_allocation=dist_alloc,
+            school=school,
+            defaults={'quota': 0, 'head_teacher_requested': 0}
+        )
+
+    # Head Teacher anaweza jaza mahitaji yake
+    if request.method == 'POST' and bm.role in ('head_teacher', 'deo', 'chair'):
+        requested = int(request.POST.get('head_teacher_requested', 0) or 0)
+        notes = request.POST.get('head_teacher_notes', '').strip()
+        if alloc:
+            alloc.head_teacher_requested = requested
+            alloc.head_teacher_notes = notes
+            alloc.save()
+            messages.success(request, 'Mahitaji yako yamehifadhiwa. DEO ataona na kuidhinisha.')
+        return redirect('board_head_teacher', school_id=school.id)
+
     students = StudentTeacher.objects.filter(
         selected_school=school
     ).select_related('user').prefetch_related('subjects').order_by('full_name')
 
-    # Takwimu
     total = students.count()
     approved = students.filter(approval_status='approved').count()
     pending = students.filter(approval_status='pending').count()
@@ -5980,7 +6007,8 @@ def board_head_teacher(request, school_id):
         'total': total,
         'approved': approved,
         'pending': pending,
-        'read_only': bm.role in ('reo', 'head_teacher'),
+        'alloc': alloc,
+        'can_edit_requirements': bm.role in ('head_teacher',),
     })
 
 
@@ -6104,7 +6132,10 @@ def deo_district_allocation(request, district_id):
                     school=school,
                     defaults={'quota': quota_val}
                 )
-            messages.success(request, 'Mgawanyo wa shule zote umehifadhiwa.')
+                # Sasisha School.capacity ili iwe sawa na quota
+                if quota_val > 0:
+                    School.objects.filter(id=school.id).update(capacity=quota_val)
+            messages.success(request, 'Mgawanyo wa shule zote umehifadhiwa na capacity zimesasishwa.')
             return redirect('deo_district_allocation', district_id=district.id)
 
         elif action == 'ai_parse':
@@ -6161,6 +6192,8 @@ def deo_district_allocation(request, district_id):
             'filled': filled,
             'remaining': max(0, quota - filled),
             'pct': min(100, round(filled / quota * 100)) if quota > 0 else 0,
+            'ht_requested': sa.head_teacher_requested if sa else 0,
+            'ht_notes': sa.head_teacher_notes if sa else '',
         })
 
     return render(request, 'field_app/deo_allocation.html', {

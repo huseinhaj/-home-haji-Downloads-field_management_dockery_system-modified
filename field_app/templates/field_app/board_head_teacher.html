@@ -52,6 +52,36 @@
     </div>
   </div>
 
+  {% if can_edit_requirements %}
+  <div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:20px;margin-bottom:20px;">
+    <h5 style="color:#0A2B5E;font-weight:700;margin-bottom:14px;"><i class="fas fa-clipboard-list me-2" style="color:#C8900A;"></i>Jaza Mahitaji ya Walimu Wanafunzi</h5>
+    <form method="post">
+      {% csrf_token %}
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;align-items:end;">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#4A5568;display:block;margin-bottom:5px;">Idadi Inayohitajika</label>
+          <input type="number" name="head_teacher_requested" min="0"
+            value="{{ alloc.head_teacher_requested|default:0 }}"
+            style="width:100%;padding:9px 12px;border:1.5px solid #CBD5E0;border-radius:6px;font-size:14px;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#4A5568;display:block;margin-bottom:5px;">Maelezo (hiari)</label>
+          <input type="text" name="head_teacher_notes"
+            value="{{ alloc.head_teacher_notes|default:'' }}"
+            placeholder="Mfano: tunahitaji walimu wa hisabati na sayansi..."
+            style="width:100%;padding:9px 12px;border:1.5px solid #CBD5E0;border-radius:6px;font-size:14px;">
+        </div>
+      </div>
+      <button type="submit" style="margin-top:12px;background:#0A2B5E;color:#fff;border:none;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+        <i class="fas fa-save me-1"></i>Hifadhi Mahitaji
+      </button>
+      {% if alloc and alloc.quota > 0 %}
+      <span style="margin-left:14px;font-size:12px;color:#065F46;"><i class="fas fa-check-circle me-1"></i>DEO ameidhinisha: <strong>{{ alloc.quota }}</strong> wanafunzi</span>
+      {% endif %}
+    </form>
+  </div>
+  {% endif %}
+
   <div class="student-table">
     <table>
       <thead>
