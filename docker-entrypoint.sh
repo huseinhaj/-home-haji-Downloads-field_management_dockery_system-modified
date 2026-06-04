@@ -29,20 +29,19 @@ else:
 " || true
 fi
 
-# Load base data (regions, districts, subjects, schools) - skips if already exists
+# Load base data (regions, districts, subjects) - fast, skips if already exists
 echo "Loading base data..."
 python manage.py loaddata regions.json || true
 python manage.py loaddata districts.json || true
 python manage.py import_subjects data/subjects.csv || true
-python manage.py loaddata schools.json || true
-
-# Import school codes and phone numbers (updates codes on existing schools)
-echo "Importing school codes..."
-python manage.py import_schools_pdf --overwrite || true
 
 # Collect static files
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
+
+# Load schools in background after startup (slow - 21k records)
+echo "Loading schools in background..."
+(python manage.py loaddata schools.json && python manage.py import_schools_pdf --overwrite && echo "Schools loaded OK") &
 
 # Start gunicorn
 echo "Starting gunicorn on port ${PORT:-8000}..."
