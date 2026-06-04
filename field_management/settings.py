@@ -176,11 +176,6 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
 # Email configuration - Tumia environment variables
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 465
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = True
 EMAIL_HOST_USER = (
     os.environ.get('EMAIL_HOST_USER') or
     os.environ.get('DJANGO_HOST_USER') or
@@ -191,6 +186,18 @@ EMAIL_HOST_PASSWORD = (
     os.environ.get('DJANGO_HOST_PASSWORD') or
     ''
 )
+
+# Tumia Gmail SMTP - force IPv4 ili kuepuka tatizo la Railway
+if EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = '74.125.133.108'  # smtp.gmail.com IPv4 (force IPv4)
+    EMAIL_PORT = 465
+    EMAIL_USE_TLS = False
+    EMAIL_USE_SSL = True
+else:
+    # Kama password haijawekwa - andika kwenye logs badala ya kutuma
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 DEFAULT_FROM_EMAIL = f'IMS System <{EMAIL_HOST_USER}>'
 SERVER_EMAIL = EMAIL_HOST_USER
 EMAIL_TIMEOUT = 30
