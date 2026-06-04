@@ -74,7 +74,7 @@ select.inp{cursor:pointer;}
         <div class="row2">
           <div class="field-wrap">
             <label class="field-lbl">Mkoa (hiari)</label>
-            <select name="region" class="inp">
+            <select name="region" id="id_region" class="inp">
               <option value="">— Mkoa wowote —</option>
               {% for r in regions %}
               <option value="{{ r.id }}">{{ r.name }}</option>
@@ -83,10 +83,10 @@ select.inp{cursor:pointer;}
           </div>
           <div class="field-wrap">
             <label class="field-lbl">Wilaya (hiari)</label>
-            <select name="district" class="inp">
-              <option value="">— Wilaya yoyote —</option>
+            <select name="district" id="id_district" class="inp">
+              <option value="">— Chagua mkoa kwanza —</option>
               {% for d in districts %}
-              <option value="{{ d.id }}">{{ d.name }}</option>
+              <option value="{{ d.id }}" data-region="{{ d.region_id }}">{{ d.name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -96,4 +96,30 @@ select.inp{cursor:pointer;}
     </div>
   </div>
 </div>
+
+<script>
+(function(){
+  var regionSel = document.getElementById('id_region');
+  var districtSel = document.getElementById('id_district');
+  var allOptions = Array.from(districtSel.querySelectorAll('option[data-region]'));
+
+  function filter(){
+    var rid = regionSel.value;
+    districtSel.innerHTML = '';
+    var blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = rid ? '— Chagua wilaya —' : '— Chagua mkoa kwanza —';
+    districtSel.appendChild(blank);
+    if(!rid) return;
+    allOptions.forEach(function(opt){
+      if(opt.dataset.region === rid){
+        districtSel.appendChild(opt.cloneNode(true));
+      }
+    });
+  }
+
+  regionSel.addEventListener('change', filter);
+  filter();
+})();
+</script>
 {% endblock %}

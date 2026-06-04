@@ -5949,7 +5949,7 @@ def create_board_member(request):
     """Admin: create a board member account."""
     User = get_user_model()
     regions = Region.objects.all().order_by('name')
-    districts = District.objects.all().order_by('name')
+    districts = District.objects.select_related('region').order_by('name')
 
     if request.method == 'POST':
         full_name = request.POST.get('full_name', '').strip()
