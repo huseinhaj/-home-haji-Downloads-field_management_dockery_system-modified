@@ -1,0 +1,21 @@
+[
+  {"model": "field_app.educationlevel", "pk": 1, "fields": {"name": "Primary", "code": "primary", "order": 1}},
+  {"model": "field_app.educationlevel", "pk": 2, "fields": {"name": "Ordinary Level", "code": "ordinary", "order": 2}},
+  {"model": "field_app.educationlevel", "pk": 3, "fields": {"name": "Advanced Level", "code": "advanced", "order": 3}},
+
+  {"model": "field_app.classlevel", "pk": 1,  "fields": {"education_level": 1, "name": "Standard 1", "code": "std1", "order": 1}},
+  {"model": "field_app.classlevel", "pk": 2,  "fields": {"education_level": 1, "name": "Standard 2", "code": "std2", "order": 2}},
+  {"model": "field_app.classlevel", "pk": 3,  "fields": {"education_level": 1, "name": "Standard 3", "code": "std3", "order": 3}},
+  {"model": "field_app.classlevel", "pk": 4,  "fields": {"education_level": 1, "name": "Standard 4", "code": "std4", "order": 4}},
+  {"model": "field_app.classlevel", "pk": 5,  "fields": {"education_level": 1, "name": "Standard 5", "code": "std5", "order": 5}},
+  {"model": "field_app.classlevel", "pk": 6,  "fields": {"education_level": 1, "name": "Standard 6", "code": "std6", "order": 6}},
+  {"model": "field_app.classlevel", "pk": 7,  "fields": {"education_level": 1, "name": "Standard 7", "code": "std7", "order": 7}},
+
+  {"model": "field_app.classlevel", "pk": 8,  "fields": {"education_level": 2, "name": "Form 1", "code": "f1", "order": 1}},
+  {"model": "field_app.classlevel", "pk": 9,  "fields": {"education_level": 2, "name": "Form 2", "code": "f2", "order": 2}},
+  {"model": "field_app.classlevel", "pk": 10, "fields": {"education_level": 2, "name": "Form 3", "code": "f3", "order": 3}},
+  {"model": "field_app.classlevel", "pk": 11, "fields": {"education_level": 2, "name": "Form 4", "code": "f4", "order": 4}},
+
+  {"model": "field_app.classlevel", "pk": 12, "fields": {"education_level": 3, "name": "Form 5", "code": "f5", "order": 1}},
+  {"model": "field_app.classlevel", "pk": 13, "fields": {"education_level": 3, "name": "Form 6", "code": "f6", "order": 2}}
+]

@@ -34,6 +34,7 @@ echo "Loading base data..."
 python manage.py loaddata regions.json || true
 python manage.py loaddata districts.json || true
 python manage.py import_subjects data/subjects.csv || true
+python manage.py loaddata education_levels.json || true
 
 # Link schools with subjects (runs foreground - schools already in DB)
 echo "Setting up school-subject links..."
