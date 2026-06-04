@@ -5394,31 +5394,12 @@ def _can_access_district(bm, district):
 
 
 def board_login(request):
-    if request.user.is_authenticated and _get_board_member(request):
-        return redirect('board_home')
-
-    if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
-        password = request.POST.get('password', '').strip()
-        user = authenticate(request, username=email, password=password,
-                            backend='field_app.backends.EmailBackend')
-        if user:
-            bm = None
-            try:
-                bm = user.board_member
-            except Exception:
-                pass
-            if bm and bm.is_active:
-                login(request, user, backend='field_app.backends.EmailBackend')
-                return redirect('board_home')
-        messages.error(request, 'Barua pepe au nywila si sahihi, au huna ruhusa ya Bodi ya Walimu.')
-
-    return render(request, 'field_app/board_login.html')
+    return redirect('login')
 
 
 def board_logout(request):
     logout(request)
-    return redirect('board_login')
+    return redirect('login')
 
 
 @login_required
