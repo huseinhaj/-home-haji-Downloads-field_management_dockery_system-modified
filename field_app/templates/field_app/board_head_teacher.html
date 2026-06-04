@@ -82,6 +82,59 @@
   </div>
   {% endif %}
 
+  <!-- Maombi ya Quota -->
+  <div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:20px;margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h5 style="color:#0A2B5E;font-weight:700;margin:0;"><i class="fas fa-clipboard-list me-2" style="color:#C8900A;"></i>Maombi ya Walimu Wanafunzi</h5>
+      <a href="{% url 'public_school_head_form' %}" target="_blank"
+         style="background:#C8900A;color:#fff;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:600;text-decoration:none;">
+        <i class="fas fa-plus me-1"></i>Tuma Ombi Jipya
+      </a>
+    </div>
+
+    {% if alloc and alloc.quota > 0 %}
+    <div style="background:#D1FAE5;border-left:4px solid #059669;padding:10px 14px;border-radius:5px;margin-bottom:12px;font-size:13px;">
+      <i class="fas fa-check-circle me-1" style="color:#059669;"></i>
+      <strong>DEO ameidhinisha:</strong> Shule hii inahitaji wanafunzi <strong>{{ alloc.quota }}</strong> | Capacity ya sasa: <strong>{{ school.capacity }}</strong>
+    </div>
+    {% endif %}
+
+    {% if head_requests %}
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="background:#F7FAFC;">
+          <th style="padding:8px 12px;text-align:left;color:#4A5568;font-size:11px;border-bottom:1px solid #E2E8F0;">Jina la Mkuu</th>
+          <th style="padding:8px 12px;text-align:left;color:#4A5568;font-size:11px;border-bottom:1px solid #E2E8F0;">Wanaohitajika</th>
+          <th style="padding:8px 12px;text-align:left;color:#4A5568;font-size:11px;border-bottom:1px solid #E2E8F0;">Tarehe</th>
+          <th style="padding:8px 12px;text-align:left;color:#4A5568;font-size:11px;border-bottom:1px solid #E2E8F0;">Hali</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in head_requests %}
+        <tr style="border-bottom:1px solid #F0F4F8;">
+          <td style="padding:8px 12px;">{{ req.head_name }}</td>
+          <td style="padding:8px 12px;font-weight:700;color:#0A2B5E;">{{ req.students_needed }}</td>
+          <td style="padding:8px 12px;color:#718096;">{{ req.submitted_at|date:"d/m/Y" }}</td>
+          <td style="padding:8px 12px;">
+            {% if req.status == 'applied' %}
+              <span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:10px;font-size:11px;">Imeidhinishwa</span>
+            {% elif req.status == 'pending' %}
+              <span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:10px;font-size:11px;">Inasubiri DEO</span>
+            {% elif req.status == 'rejected' %}
+              <span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:10px;font-size:11px;">Imekataliwa</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#718096;font-size:13px;text-align:center;padding:16px 0;">
+      Hakuna maombi bado. <a href="{% url 'public_school_head_form' %}" target="_blank" style="color:#C8900A;">Tuma ombi la kwanza →</a>
+    </p>
+    {% endif %}
+  </div>
+
   <div class="student-table">
     <table>
       <thead>

@@ -5998,7 +5998,12 @@ def board_head_teacher(request, school_id):
 
     total = students.count()
     approved = students.filter(approval_status='approved').count()
-    pending = students.filter(approval_status='pending').count()
+    pending_students = students.filter(approval_status='pending').count()
+
+    # Maombi ya `/ombi/` yaliyotumwa kwa shule hii
+    head_requests = SchoolHeadRequest.objects.filter(
+        school=school
+    ).order_by('-submitted_at')[:5]
 
     return render(request, 'field_app/board_head_teacher.html', {
         'bm': bm,
@@ -6006,8 +6011,9 @@ def board_head_teacher(request, school_id):
         'students': students,
         'total': total,
         'approved': approved,
-        'pending': pending,
+        'pending': pending_students,
         'alloc': alloc,
+        'head_requests': head_requests,
         'can_edit_requirements': bm.role in ('head_teacher',),
     })
 
