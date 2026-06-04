@@ -41,9 +41,9 @@ python manage.py collectstatic --noinput
 
 # Load schools in background after startup (slow - 21k records)
 echo "Loading schools in background..."
-(python manage.py loaddata schools.json && \
- python manage.py shell -c "from field_app.models import School; School.objects.update(current_students=0); print('Reset current_students to 0')" && \
- python manage.py import_schools_pdf --overwrite && \
+(python manage.py loaddata schools.json || true; \
+ python manage.py shell -c "from field_app.models import School; School.objects.update(current_students=0); print('Reset current_students to 0')" || true; \
+ python manage.py import_schools_pdf --overwrite || true; \
  python manage.py setup_school_subjects && \
  echo "Schools + subjects setup OK") &
 
