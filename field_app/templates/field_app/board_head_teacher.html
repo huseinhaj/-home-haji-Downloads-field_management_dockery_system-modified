@@ -1,0 +1,100 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Dashibodi - {{ school.name }}{% endblock %}
+{% block content %}
+<style>
+.ht-header{background:#0A2B5E;border-radius:10px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:16px;}
+.ht-icon{width:48px;height:48px;background:#C8900A;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.ht-icon i{color:#fff;font-size:20px;}
+.ht-title{color:#fff;font-size:18px;font-weight:700;margin:0;}
+.ht-sub{color:rgba(255,255,255,.7);font-size:12px;margin:2px 0 0;}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+.stat-card{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:16px;text-align:center;}
+.stat-num{font-size:28px;font-weight:800;color:#0A2B5E;}
+.stat-lbl{font-size:12px;color:#718096;margin-top:2px;}
+.student-table{background:#fff;border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;}
+.student-table table{width:100%;border-collapse:collapse;}
+.student-table th{background:#F7FAFC;padding:10px 14px;font-size:12px;font-weight:700;color:#4A5568;text-align:left;border-bottom:1px solid #E2E8F0;}
+.student-table td{padding:10px 14px;font-size:13px;color:#2D3748;border-bottom:1px solid #F0F4F8;}
+.student-table tr:last-child td{border-bottom:none;}
+.student-table tr:hover td{background:#F7FAFC;}
+.badge-approved{background:#D1FAE5;color:#065F46;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-pending{background:#FEF3C7;color:#92400E;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-rejected{background:#FEE2E2;color:#991B1B;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.btn-view{background:#0A2B5E;color:#fff;padding:5px 12px;border-radius:5px;font-size:12px;text-decoration:none;font-weight:600;}
+.btn-view:hover{background:#0C3570;color:#fff;}
+.empty{text-align:center;padding:40px;color:#718096;}
+</style>
+
+<div class="container py-4">
+  <div class="ht-header">
+    <div class="ht-icon"><i class="fas fa-school"></i></div>
+    <div>
+      <div class="ht-title">{{ school.name }}</div>
+      <div class="ht-sub">{{ school.district.name }}, {{ school.district.region.name }} &bull; Mkuu wa Shule: {{ bm.full_name }}</div>
+    </div>
+    <a href="{% url 'board_logout' %}" class="ms-auto" style="color:rgba(255,255,255,.7);font-size:12px;text-decoration:none;">
+      <i class="fas fa-sign-out-alt me-1"></i>Toka
+    </a>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-num">{{ total }}</div>
+      <div class="stat-lbl">Wanafunzi Wote</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:#065F46;">{{ approved }}</div>
+      <div class="stat-lbl">Walioidhinishwa</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:#92400E;">{{ pending }}</div>
+      <div class="stat-lbl">Wanaosubiri</div>
+    </div>
+  </div>
+
+  <div class="student-table">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Jina Kamili</th>
+          <th>Barua Pepe</th>
+          <th>Masomo</th>
+          <th>Hali</th>
+          <th>Tazama</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for st in students %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td><strong>{{ st.full_name }}</strong></td>
+          <td>{{ st.user.email }}</td>
+          <td>
+            {% for subj in st.subjects.all %}
+              <span style="background:#EBF4FF;color:#1E40AF;padding:2px 7px;border-radius:4px;font-size:11px;margin:1px;">{{ subj.name }}</span>
+            {% empty %}—{% endfor %}
+          </td>
+          <td>
+            {% if st.approval_status == 'approved' %}
+              <span class="badge-approved">Aidhinishwa</span>
+            {% elif st.approval_status == 'pending' %}
+              <span class="badge-pending">Inasubiri</span>
+            {% else %}
+              <span class="badge-rejected">Imekataliwa</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'board_student_progress' st.id %}" class="btn-view">
+              <i class="fas fa-eye me-1"></i>Tazama
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="empty"><i class="fas fa-user-slash fa-2x mb-2 d-block"></i>Hakuna wanafunzi waliochagua shule hii bado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

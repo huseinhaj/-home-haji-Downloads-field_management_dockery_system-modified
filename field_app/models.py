@@ -1015,6 +1015,9 @@ class BoardMember(models.Model):
     district = models.ForeignKey(
         'District', on_delete=models.SET_NULL, null=True, blank=True, related_name='board_members'
     )
+    school = models.ForeignKey(
+        'School', on_delete=models.SET_NULL, null=True, blank=True, related_name='board_members'
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

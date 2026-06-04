@@ -5449,6 +5449,12 @@ def board_home(request):
             return redirect('board_district_list', region_id=bm.region.id)
         messages.warning(request, 'Akaunti yako ya REO haina mkoa iliyowekwa. Wasiliana na msimamizi.')
 
+    # Head Teacher → redirect to their school dashboard
+    if bm.role == 'head_teacher':
+        if bm.school:
+            return redirect('board_head_teacher', school_id=bm.school.id)
+        messages.warning(request, 'Akaunti yako haina shule iliyowekwa. Wasiliana na msimamizi.')
+
     from datetime import date as _date
     today = _date.today()
     seven_days_ago = today - timedelta(days=7)
@@ -5944,12 +5950,47 @@ def board_add_comment(request):
     return redirect('board_student_progress', student_id=student.id)
 
 
+@board_login_required
+def board_head_teacher(request, school_id):
+    """Dashboard ya Mkuu wa Shule - anaona wanafunzi wa shule yake tu."""
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+
+    school = get_object_or_404(School, id=school_id)
+
+    # Mkuu wa Shule anaruhusiwa shule yake tu
+    if bm.role == 'head_teacher' and (not bm.school or bm.school_id != school.id):
+        messages.error(request, 'Huna ruhusa ya kuona shule hii.')
+        return redirect('board_home')
+
+    students = StudentTeacher.objects.filter(
+        selected_school=school
+    ).select_related('user').prefetch_related('subjects').order_by('full_name')
+
+    # Takwimu
+    total = students.count()
+    approved = students.filter(approval_status='approved').count()
+    pending = students.filter(approval_status='pending').count()
+
+    return render(request, 'field_app/board_head_teacher.html', {
+        'bm': bm,
+        'school': school,
+        'students': students,
+        'total': total,
+        'approved': approved,
+        'pending': pending,
+        'read_only': bm.role in ('reo', 'head_teacher'),
+    })
+
+
 @staff_member_required
 def create_board_member(request):
     """Admin: create a board member account."""
     User = get_user_model()
     regions = Region.objects.all().order_by('name')
     districts = District.objects.select_related('region').order_by('name')
+    schools = School.objects.select_related('district__region').order_by('name')
 
     if request.method == 'POST':
         full_name = request.POST.get('full_name', '').strip()
@@ -5959,6 +6000,7 @@ def create_board_member(request):
         role = request.POST.get('role', 'member')
         region_id = request.POST.get('region') or None
         district_id = request.POST.get('district') or None
+        school_id = request.POST.get('school') or None
 
         if not full_name or not email or not password:
             messages.error(request, 'Jaza jina, barua pepe, na nywila.')
@@ -5972,6 +6014,7 @@ def create_board_member(request):
             user.save()
             region = Region.objects.filter(id=region_id).first() if region_id else None
             district = District.objects.filter(id=district_id).first() if district_id else None
+            school = School.objects.filter(id=school_id).first() if school_id else None
             BoardMember.objects.create(
                 user=user,
                 full_name=full_name,
@@ -5979,6 +6022,7 @@ def create_board_member(request):
                 role=role,
                 region=region,
                 district=district,
+                school=school,
             )
             messages.success(request, f'Mjumbe wa Bodi "{full_name}" ametengenezwa.')
             return redirect('admin_dashboard')
@@ -5986,6 +6030,7 @@ def create_board_member(request):
     return render(request, 'field_app/create_board_member.html', {
         'regions': regions,
         'districts': districts,
+        'schools': schools,
         'role_choices': BoardMember.ROLE_CHOICES,
     })
 
