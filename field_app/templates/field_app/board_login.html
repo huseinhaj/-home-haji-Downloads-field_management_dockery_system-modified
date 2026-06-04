@@ -132,39 +132,57 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
 
       <!-- FORM: Mkuu wa Shule -->
       <div id="panelSchool">
+        {% if mode == 'otp' %}
+        <!-- Hatua 2: Weka OTP -->
+        <div style="text-align:center;margin-bottom:18px;">
+          <div style="width:56px;height:56px;background:#EFF6FF;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+            <i class="fas fa-envelope-open-text" style="font-size:22px;color:#3B82F6;"></i>
+          </div>
+          <div style="font-size:13px;color:#4A5568;">Msimbo wa nambari 6 umetumwa kwa</div>
+          <div style="font-size:14px;font-weight:700;color:#0A2B5E;">{{ masked_email }}</div>
+          <div style="font-size:11px;color:#9CA3AF;margin-top:3px;">Angalia inbox na spam. Utaisha baada ya dakika 10.</div>
+        </div>
+        <form method="post" action="{% url 'board_login' %}">
+          {% csrf_token %}
+          <input type="hidden" name="mode" value="otp">
+          <input type="hidden" name="school_id" value="{{ school_id }}">
+          <div class="field">
+            <label>Weka Msimbo (OTP)</label>
+            <div class="inp-wrap">
+              <i class="fas fa-key inp-ico"></i>
+              <input type="text" name="otp" required autofocus autocomplete="one-time-code"
+                     maxlength="6" inputmode="numeric" pattern="[0-9]{6}"
+                     placeholder="000000"
+                     style="font-size:22px;letter-spacing:8px;text-align:center;padding-left:34px;">
+            </div>
+          </div>
+          <button type="submit" class="btn-in">
+            <i class="fas fa-check-circle"></i>THIBITISHA NA INGIA
+          </button>
+        </form>
+        <div style="text-align:center;margin-top:12px;">
+          <a href="{% url 'board_login' %}" style="font-size:12px;color:var(--muted);">← Rudi na jaribu tena</a>
+        </div>
+
+        {% else %}
+        <!-- Hatua 1: Weka namba ya usajili -->
         <form method="post" action="{% url 'board_login' %}">
           {% csrf_token %}
           <input type="hidden" name="mode" value="school_code">
-
           <div class="field">
             <label>Namba ya Usajili wa Shule</label>
             <div class="inp-wrap">
               <i class="fas fa-hashtag inp-ico"></i>
               <input type="text" name="school_code" required autofocus autocomplete="off"
-                     value="{{ prefill_code|default:'' }}"
                      placeholder="Mfano: S.2895, S2895, PS0101114">
             </div>
-            {% if school %}
-            <div style="margin-top:6px;padding:8px 12px;background:#EFF6FF;border-left:3px solid #3B82F6;border-radius:4px;font-size:12px;color:#1E40AF;">
-              <i class="fas fa-check-circle me-1"></i><strong>{{ school.name }}</strong> — {{ school.district.name }}
-            </div>
-            {% endif %}
+            <div style="font-size:11px;color:#9CA3AF;margin-top:4px;">Msimbo wa kuthibitisha utatumwa kwenye barua pepe ya akaunti yako.</div>
           </div>
-
-          <div class="field">
-            <label>Nywila</label>
-            <div class="inp-wrap">
-              <i class="fas fa-lock inp-ico"></i>
-              <input type="password" name="password" id="pwd1" style="padding-right:38px;" required
-                     placeholder="Nywila uliyopewa na admin">
-              <button type="button" class="eye" onclick="togglePwd('pwd1','eye1')"><i class="fas fa-eye" id="eye1"></i></button>
-            </div>
-          </div>
-
           <button type="submit" class="btn-in">
-            <i class="fas fa-sign-in-alt"></i>INGIA KAMA MKUU WA SHULE
+            <i class="fas fa-paper-plane"></i>TUMA MSIMBO KWENYE EMAIL
           </button>
         </form>
+        {% endif %}
       </div>
 
       <!-- FORM: DEO/REO/Chair -->
@@ -262,7 +280,7 @@ function hideReset(){
   switchTab('email');
 }
 // Set default active tab
-switchTab('{% if mode == "school_code" %}school{% else %}email{% endif %}');
+switchTab('{% if mode == "school_code" or mode == "otp" %}school{% else %}email{% endif %}');
 </script>
 </body>
 </html>

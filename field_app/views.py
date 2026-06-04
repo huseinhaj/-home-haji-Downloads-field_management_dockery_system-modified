@@ -5402,48 +5402,114 @@ def _can_access_district(bm, district):
     return False
 
 
+def _normalize_school_code(raw):
+    raw = raw.strip().upper().replace(' ', '').replace('-', '').replace('.', '')
+    if re.match(r'^PS\d+$', raw):
+        return raw
+    return re.sub(r'^([SP])(\d+)$', r'\1.\2', raw)
+
+
 def board_login(request):
     if request.user.is_authenticated and _get_board_member(request):
         return redirect('board_home')
 
     if request.method == 'POST':
         mode = request.POST.get('mode', 'email')
-        password = request.POST.get('password', '').strip()
 
+        # ── HATUA 1: Mkuu wa Shule aweke namba ya usajili → tuma OTP ──
         if mode == 'school_code':
-            # Mkuu wa Shule: login kwa namba ya usajili
-            raw = request.POST.get('school_code', '').strip().upper()
-            raw = raw.replace(' ', '').replace('-', '').replace('.', '')
-            if re.match(r'^PS\d+$', raw):
-                code = raw
-            else:
-                code = re.sub(r'^([SP])(\d+)$', r'\1.\2', raw)
-
+            school_code_raw = request.POST.get('school_code', '').strip()
+            code = _normalize_school_code(school_code_raw)
             school = School.objects.filter(school_code__iexact=code).first()
+
             if not school:
-                messages.error(request, f'Shule yenye namba "{request.POST.get("school_code")}" haikupatikana.')
+                messages.error(request, f'Shule yenye namba "{school_code_raw}" haikupatikana.')
                 return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
 
             bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
             if not bm:
                 messages.error(request, f'Hakuna akaunti ya Mkuu wa Shule kwa {school.name}. Wasiliana na admin.')
-                return render(request, 'field_app/board_login.html', {'mode': 'school_code', 'school': school})
+                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
 
-            user = authenticate(request, username=bm.user.email, password=password,
-                                backend='field_app.backends.EmailBackend')
-            if user and user == bm.user:
-                login(request, user, backend='field_app.backends.EmailBackend')
-                return redirect('board_head_teacher', school_id=school.id)
-            messages.error(request, 'Nywila si sahihi.')
-            return render(request, 'field_app/board_login.html', {
-                'mode': 'school_code',
-                'school': school,
-                'prefill_code': request.POST.get('school_code', ''),
-            })
+            import random
+            otp = str(random.randint(100000, 999999))
+            cache_key = f'board_otp_{school.id}'
+            cache.set(cache_key, otp, timeout=600)  # dakika 10
 
+            try:
+                from django.core.mail import send_mail
+                send_mail(
+                    subject='Msimbo wa Kuingia — IMS Board System',
+                    message=(
+                        f'Habari {bm.full_name},\n\n'
+                        f'Msimbo wako wa kuingia ni:\n\n'
+                        f'  {otp}\n\n'
+                        f'Msimbo huu utaisha baada ya dakika 10.\n'
+                        f'Kama hukuomba msimbo huu, puuza barua hii.\n\n'
+                        f'— Mfumo wa IMS'
+                    ),
+                    from_email=None,
+                    recipient_list=[bm.user.email],
+                    fail_silently=False,
+                )
+                masked = bm.user.email
+                at = masked.index('@')
+                masked = masked[:2] + '***' + masked[at:]
+                return render(request, 'field_app/board_login.html', {
+                    'mode': 'otp',
+                    'school': school,
+                    'school_id': school.id,
+                    'masked_email': masked,
+                })
+            except Exception as e:
+                messages.error(request, f'Imeshindwa kutuma barua pepe. Wasiliana na admin. ({e})')
+                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
+
+        # ── HATUA 2: Mkuu aweke OTP aliyoipata ──
+        elif mode == 'otp':
+            school_id = request.POST.get('school_id', '').strip()
+            entered_otp = request.POST.get('otp', '').strip()
+            school = School.objects.filter(id=school_id).first()
+
+            if not school:
+                messages.error(request, 'Taarifa za shule hazikupatikana. Jaribu tena.')
+                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
+
+            cache_key = f'board_otp_{school.id}'
+            stored_otp = cache.get(cache_key)
+
+            if not stored_otp:
+                messages.error(request, 'Msimbo umeisha muda wake. Omba mpya.')
+                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
+
+            if entered_otp != stored_otp:
+                messages.error(request, 'Msimbo si sahihi. Jaribu tena.')
+                bm = BoardMember.objects.filter(school=school, role='head_teacher').first()
+                masked = ''
+                if bm:
+                    e = bm.user.email
+                    at = e.index('@')
+                    masked = e[:2] + '***' + e[at:]
+                return render(request, 'field_app/board_login.html', {
+                    'mode': 'otp',
+                    'school': school,
+                    'school_id': school.id,
+                    'masked_email': masked,
+                })
+
+            bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
+            if not bm:
+                messages.error(request, 'Akaunti haikupatikana.')
+                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
+
+            cache.delete(cache_key)
+            login(request, bm.user, backend='field_app.backends.EmailBackend')
+            return redirect('board_head_teacher', school_id=school.id)
+
+        # ── DEO/REO/Chair: login kwa email + nywila ──
         else:
-            # DEO/REO/Chair: login kwa email
             email = request.POST.get('email', '').strip()
+            password = request.POST.get('password', '').strip()
             user = authenticate(request, username=email, password=password,
                                 backend='field_app.backends.EmailBackend')
             if user:
