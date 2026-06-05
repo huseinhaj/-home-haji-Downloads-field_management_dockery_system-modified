@@ -6198,18 +6198,24 @@ def import_head_teachers(request):
             email = parts[1].lower()
             full_name = parts[2] if len(parts) > 2 else email.split('@')[0].replace('.', ' ').title()
 
-            # Jaribu kupata shule: 1) kwa school_code, 2) kwa jina
+            # Jaribu kupata shule kwa njia 4:
+            # 1) school_code (S.0306, S0306)
             raw = school_identifier.upper().replace(' ', '').replace('-', '').replace('.', '')
             code = raw if re.match(r'^PS\d+$', raw) else re.sub(r'^([SP])(\d+)$', r'\1.\2', raw)
             school = School.objects.filter(school_code__iexact=code).first()
+            # 2) jina kamili kama ilivyo
             if not school:
-                # Jaribu kwa jina kamili au sehemu ya jina
                 school = School.objects.filter(name__iexact=school_identifier).first()
+            # 3) jina bila suffix ya level (Secondary/Primary/Sekondari/Msingi)
             if not school:
-                # Jaribu fuzzy: jina linaanza na maneno yale yale
-                school = School.objects.filter(name__istartswith=school_identifier.split()[0]).filter(
-                    name__icontains=school_identifier.split()[-1]
-                ).first() if school_identifier.strip() else None
+                clean = re.sub(r'\s+(secondary|primary|sekondari|msingi|shule ya sekondari|shule ya msingi)$',
+                               '', school_identifier, flags=re.IGNORECASE).strip()
+                if clean != school_identifier:
+                    school = School.objects.filter(name__iexact=clean).first()
+            # 4) icontains — angalau sehemu ya jina
+            if not school:
+                school = School.objects.filter(name__icontains=school_identifier.split()[0]).first() \
+                    if school_identifier.strip() else None
             if not school:
                 results.append({'row': i, 'status': 'error', 'msg': f'Shule haikupatikana: "{school_identifier}"'})
                 continue
