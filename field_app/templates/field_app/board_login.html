@@ -121,12 +121,12 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
       <!-- TABS -->
       <div style="display:flex;border:1.5px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:20px;">
         <button type="button" id="tabSchool" onclick="switchTab('school')"
-          style="flex:1;padding:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;transition:.15s;letter-spacing:.3px;">
-          <i class="fas fa-school me-1"></i>MKUU WA SHULE
+          style="flex:1;padding:10px;font-size:11.5px;font-weight:700;border:none;cursor:pointer;transition:.15s;letter-spacing:.3px;">
+          <i class="fas fa-school" style="margin-right:5px;"></i>MKUU WA SHULE
         </button>
         <button type="button" id="tabEmail" onclick="switchTab('email')"
-          style="flex:1;padding:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;transition:.15s;letter-spacing:.3px;border-left:1.5px solid var(--border);">
-          <i class="fas fa-user-tie me-1"></i>DEO / REO
+          style="flex:1;padding:10px;font-size:11.5px;font-weight:700;border:none;cursor:pointer;transition:.15s;letter-spacing:.3px;border-left:1.5px solid var(--border);">
+          <i class="fas fa-user-tie" style="margin-right:5px;"></i>DEO / REO / MWENYEKITI
         </button>
       </div>
 
@@ -134,49 +134,56 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
       <div id="panelSchool">
         {% if mode == 'otp' %}
         <!-- Hatua 2: Weka OTP -->
-        <div style="text-align:center;margin-bottom:18px;">
-          <div style="width:56px;height:56px;background:#EFF6FF;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-            <i class="fas fa-envelope-open-text" style="font-size:22px;color:#3B82F6;"></i>
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:16px;text-align:center;margin-bottom:18px;">
+          <div style="width:52px;height:52px;background:#DBEAFE;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+            <i class="fas fa-envelope-open-text" style="font-size:20px;color:#1D4ED8;"></i>
           </div>
-          <div style="font-size:13px;color:#4A5568;">Msimbo wa nambari 6 umetumwa kwa</div>
-          <div style="font-size:14px;font-weight:700;color:#0A2B5E;">{{ masked_email }}</div>
-          <div style="font-size:11px;color:#9CA3AF;margin-top:3px;">Angalia inbox na spam. Utaisha baada ya dakika 10.</div>
+          <div style="font-size:13px;color:#1E40AF;font-weight:600;">Msimbo umetumwa kwa:</div>
+          <div style="font-size:15px;font-weight:800;color:#0A2B5E;margin:4px 0;">{{ masked_email }}</div>
+          {% if school %}<div style="font-size:11.5px;color:#3B82F6;">Shule: {{ school.name }}</div>{% endif %}
+          <div style="font-size:11px;color:#9CA3AF;margin-top:4px;">Angalia inbox na folder ya spam. Utaisha dakika 10.</div>
         </div>
         <form method="post" action="{% url 'board_login' %}">
           {% csrf_token %}
           <input type="hidden" name="mode" value="otp">
+          <input type="hidden" name="bm_id" value="{{ bm_id }}">
           <input type="hidden" name="school_id" value="{{ school_id }}">
           <div class="field">
-            <label>Weka Msimbo (OTP)</label>
+            <label>Weka Msimbo wa Nambari 6</label>
             <div class="inp-wrap">
               <i class="fas fa-key inp-ico"></i>
               <input type="text" name="otp" required autofocus autocomplete="one-time-code"
                      maxlength="6" inputmode="numeric" pattern="[0-9]{6}"
-                     placeholder="000000"
-                     style="font-size:22px;letter-spacing:8px;text-align:center;padding-left:34px;">
+                     placeholder="0  0  0  0  0  0"
+                     style="font-size:20px;letter-spacing:10px;text-align:center;padding-left:34px;">
             </div>
           </div>
           <button type="submit" class="btn-in">
             <i class="fas fa-check-circle"></i>THIBITISHA NA INGIA
           </button>
         </form>
-        <div style="text-align:center;margin-top:12px;">
-          <a href="{% url 'board_login' %}" style="font-size:12px;color:var(--muted);">← Rudi na jaribu tena</a>
+        <div style="text-align:center;margin-top:14px;">
+          <a href="{% url 'board_login' %}" style="font-size:12px;color:var(--muted);text-decoration:none;">
+            <i class="fas fa-arrow-left" style="margin-right:4px;"></i>Rudi na jaribu tena
+          </a>
         </div>
 
         {% else %}
-        <!-- Hatua 1: Weka namba ya usajili -->
+        <!-- Hatua 1: Weka email ya mkuu -->
+        <div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#065F46;display:flex;align-items:flex-start;gap:8px;">
+          <i class="fas fa-info-circle" style="margin-top:1px;flex-shrink:0;"></i>
+          <span>Weka barua pepe uliyosajiliwa kama Mkuu wa Shule. Msimbo wa kuthibitisha utatumwa kwenye email hiyo.</span>
+        </div>
         <form method="post" action="{% url 'board_login' %}">
           {% csrf_token %}
           <input type="hidden" name="mode" value="school_code">
           <div class="field">
-            <label>Namba ya Usajili wa Shule</label>
+            <label>Barua Pepe ya Mkuu wa Shule</label>
             <div class="inp-wrap">
-              <i class="fas fa-hashtag inp-ico"></i>
-              <input type="text" name="school_code" required autofocus autocomplete="off"
-                     placeholder="Mfano: S.2895, S2895, PS0101114">
+              <i class="fas fa-envelope inp-ico"></i>
+              <input type="email" name="head_email" required autofocus autocomplete="email"
+                     placeholder="barua.pepe@yako.com">
             </div>
-            <div style="font-size:11px;color:#9CA3AF;margin-top:4px;">Msimbo wa kuthibitisha utatumwa kwenye barua pepe ya akaunti yako.</div>
           </div>
           <button type="submit" class="btn-in">
             <i class="fas fa-paper-plane"></i>TUMA MSIMBO KWENYE EMAIL
@@ -187,40 +194,55 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
 
       <!-- FORM: DEO/REO/Chair -->
       <div id="panelEmail" style="display:none;">
+        <!-- Role chips -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+          <span style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px;">
+            <i class="fas fa-user-tie"></i>DEO — Afisa Elimu wa Wilaya
+          </span>
+          <span style="background:#F0FDF4;color:#065F46;border:1px solid #A7F3D0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px;">
+            <i class="fas fa-map-marked-alt"></i>REO — Afisa Elimu wa Mkoa
+          </span>
+          <span style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px;">
+            <i class="fas fa-crown"></i>Mwenyekiti
+          </span>
+        </div>
+
         <form method="post" action="{% url 'board_login' %}">
           {% csrf_token %}
           <input type="hidden" name="mode" value="email">
 
           <div class="field">
-            <label>{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %}</label>
+            <label>Barua Pepe</label>
             <div class="inp-wrap">
               <i class="fas fa-envelope inp-ico"></i>
               <input type="email" name="email" required autocomplete="email"
-                     placeholder="{% if LANG == 'sw' %}barua@pepe.yako{% else %}your@email.com{% endif %}">
+                     placeholder="barua.pepe@yako.com">
             </div>
           </div>
 
           <div class="field">
-            <label>{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %}</label>
+            <label>Nywila</label>
             <div class="inp-wrap">
               <i class="fas fa-lock inp-ico"></i>
               <input type="password" name="password" id="pwd2" style="padding-right:38px;" required autocomplete="current-password"
-                     placeholder="{% if LANG == 'sw' %}Nywila yako{% else %}Your password{% endif %}">
+                     placeholder="Nywila yako">
               <button type="button" class="eye" onclick="togglePwd('pwd2','eye2')"><i class="fas fa-eye" id="eye2"></i></button>
             </div>
           </div>
 
           <div class="row2">
-            <button type="button" class="forgot" onclick="showReset()">
-              {% if LANG == 'sw' %}Umesahau nywila?{% else %}Forgot password?{% endif %}
-            </button>
+            <button type="button" class="forgot" onclick="showReset()">Umesahau nywila?</button>
           </div>
 
           <button type="submit" class="btn-in">
-            <i class="fas fa-sign-in-alt"></i>
-            {% if LANG == 'sw' %}INGIA{% else %}SIGN IN{% endif %}
+            <i class="fas fa-sign-in-alt"></i>INGIA
           </button>
         </form>
+
+        <div style="background:#F7FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:10px 14px;margin-top:16px;font-size:11.5px;color:#4A5568;">
+          <i class="fas fa-info-circle" style="color:#0A2B5E;margin-right:5px;"></i>
+          <strong>Routing baada ya kuingia:</strong> DEO → dashibodi ya wilaya yako | REO → dashibodi ya mkoa wako
+        </div>
       </div>
 
       <!-- Inline password reset -->

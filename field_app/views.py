@@ -5451,25 +5451,31 @@ def board_login(request):
     if request.method == 'POST':
         mode = request.POST.get('mode', 'email')
 
-        # ── HATUA 1: Mkuu wa Shule aweke namba ya usajili → tuma OTP ──
+        # ── HATUA 1: Mkuu wa Shule aweke email → tuma OTP ──
         if mode == 'school_code':
-            school_code_raw = request.POST.get('school_code', '').strip()
-            code = _normalize_school_code(school_code_raw)
-            school = School.objects.filter(school_code__iexact=code).first()
-
-            if not school:
-                messages.error(request, f'Shule yenye namba "{school_code_raw}" haikupatikana.')
+            head_email = request.POST.get('head_email', '').strip().lower()
+            if not head_email:
+                messages.error(request, 'Tafadhali weka barua pepe yako.')
                 return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
 
-            bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
+            bm = BoardMember.objects.filter(
+                user__email__iexact=head_email,
+                role='head_teacher',
+                is_active=True
+            ).select_related('school', 'user').first()
+
             if not bm:
-                messages.error(request, f'Hakuna akaunti ya Mkuu wa Shule kwa {school.name}. Wasiliana na admin.')
+                messages.error(request, f'Barua pepe "{head_email}" haikupatikana kama Mkuu wa Shule. Wasiliana na DEO wako.')
+                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
+
+            if not bm.school:
+                messages.error(request, 'Akaunti yako haina shule iliyowekwa. Wasiliana na admin.')
                 return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
 
             import random
             otp = str(random.randint(100000, 999999))
-            cache_key = f'board_otp_{school.id}'
-            cache.set(cache_key, otp, timeout=600)  # dakika 10
+            cache_key = f'board_otp_ht_{bm.id}'
+            cache.set(cache_key, otp, timeout=600)
 
             try:
                 from django.core.mail import send_mail
@@ -5492,25 +5498,29 @@ def board_login(request):
                 masked = masked[:2] + '***' + masked[at:]
                 return render(request, 'field_app/board_login.html', {
                     'mode': 'otp',
-                    'school': school,
-                    'school_id': school.id,
+                    'bm_id': bm.id,
+                    'school': bm.school,
+                    'school_id': bm.school.id,
                     'masked_email': masked,
                 })
             except Exception as e:
-                messages.error(request, f'Imeshindwa kutuma barua pepe. Wasiliana na admin. ({e})')
+                messages.error(request, f'Imeshindwa kutuma barua pepe: {e}')
                 return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
 
-        # ── HATUA 2: Mkuu aweke OTP aliyoipata ──
+        # ── HATUA 2: Mkuu aweke OTP ──
         elif mode == 'otp':
-            school_id = request.POST.get('school_id', '').strip()
+            bm_id = request.POST.get('bm_id', '').strip()
             entered_otp = request.POST.get('otp', '').strip()
-            school = School.objects.filter(id=school_id).first()
 
-            if not school:
-                messages.error(request, 'Taarifa za shule hazikupatikana. Jaribu tena.')
+            bm = BoardMember.objects.filter(
+                id=bm_id, role='head_teacher', is_active=True
+            ).select_related('school', 'user').first()
+
+            if not bm:
+                messages.error(request, 'Taarifa hazikupatikana. Jaribu tena.')
                 return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
 
-            cache_key = f'board_otp_{school.id}'
+            cache_key = f'board_otp_ht_{bm.id}'
             stored_otp = cache.get(cache_key)
 
             if not stored_otp:
@@ -5519,27 +5529,20 @@ def board_login(request):
 
             if entered_otp != stored_otp:
                 messages.error(request, 'Msimbo si sahihi. Jaribu tena.')
-                bm = BoardMember.objects.filter(school=school, role='head_teacher').first()
-                masked = ''
-                if bm:
-                    e = bm.user.email
-                    at = e.index('@')
-                    masked = e[:2] + '***' + e[at:]
+                masked = bm.user.email
+                at = masked.index('@')
+                masked = masked[:2] + '***' + masked[at:]
                 return render(request, 'field_app/board_login.html', {
                     'mode': 'otp',
-                    'school': school,
-                    'school_id': school.id,
+                    'bm_id': bm.id,
+                    'school': bm.school,
+                    'school_id': bm.school.id,
                     'masked_email': masked,
                 })
 
-            bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
-            if not bm:
-                messages.error(request, 'Akaunti haikupatikana.')
-                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
-
             cache.delete(cache_key)
             login(request, bm.user, backend='field_app.backends.EmailBackend')
-            return redirect('board_head_teacher', school_id=school.id)
+            return redirect('board_head_teacher', school_id=bm.school.id)
 
         # ── DEO/REO/Chair: login kwa email + nywila ──
         else:
