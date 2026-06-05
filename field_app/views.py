@@ -6438,6 +6438,7 @@ def public_school_head_form(request):
             })
 
         head_name   = request.POST.get('head_name', '').strip()
+        head_email  = request.POST.get('head_email', '').strip().lower()
         head_phone  = request.POST.get('head_phone', '').strip()
         level       = school.level
         notes       = request.POST.get('notes', '').strip()
@@ -6446,12 +6447,10 @@ def public_school_head_form(request):
         except ValueError:
             students_needed = 0
 
-        if not head_name or students_needed < 1:
+        if not head_name or not head_email or students_needed < 1:
             return render(request, 'field_app/public_school_head_form.html', {
-                'stage': 'form',
-                'school': school,
-                'current_year': current_year,
-                'error': 'Tafadhali jaza sehemu zote zinazohitajika.',
+                'stage': 'form', 'school': school, 'current_year': current_year,
+                'error': 'Tafadhali jaza sehemu zote zinazohitajika (jina, email, idadi).',
             })
 
         req = SchoolHeadRequest.objects.create(
@@ -6461,6 +6460,7 @@ def public_school_head_form(request):
             school=school,
             head_name=head_name,
             head_phone=head_phone,
+            submitter_email=head_email,
             level=level,
             students_needed=students_needed,
             notes=notes,
@@ -6468,14 +6468,37 @@ def public_school_head_form(request):
         request.session['ombi_request_id'] = req.id
         request.session['ombi_school_id'] = school.id
 
-        # Angalia kama shule ina akaunti ya mkuu
+        User = get_user_model()
+        # Unda au pata BoardMember kwa mkuu huyu
         bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
+        needs_password = False
+
+        if not bm:
+            # Unda account mpya automatically
+            if User.objects.filter(email=head_email).exists():
+                user = User.objects.get(email=head_email)
+            else:
+                user = User.objects.create_user(email=head_email, password=None)
+                user.set_unusable_password()
+                user.save()
+            bm = BoardMember.objects.create(
+                user=user, full_name=head_name, phone_number=head_phone,
+                role='head_teacher', school=school,
+                district=school.district,
+                region=school.district.region if school.district else None,
+            )
+            needs_password = True
+        else:
+            # Angalia kama nywila imeshawekwa
+            needs_password = not bm.user.has_usable_password()
+
         return render(request, 'field_app/public_school_head_form.html', {
             'stage': 'success',
             'school': school,
             'head_name': head_name,
-            'has_account': bm is not None,
-            'needs_password': bm is not None and not bm.user.has_usable_password(),
+            'head_email': head_email,
+            'has_account': True,
+            'needs_password': needs_password,
             'current_year': current_year,
         })
 
@@ -6492,10 +6515,20 @@ def public_school_head_form(request):
         ).first() if school else None
 
         if not bm:
+            # Jaribu kupata kwa school tu (email inaweza kutofautiana kidogo)
+            bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
+            if bm and bm.user.email.lower() != email:
+                return render(request, 'field_app/public_school_head_form.html', {
+                    'stage': 'set_password',
+                    'school': school,
+                    'error': 'Email hii hailingani na iliyosajiliwa. Tumia email uliyoiweka kwenye form.',
+                    'current_year': current_year,
+                })
+        if not bm:
             return render(request, 'field_app/public_school_head_form.html', {
                 'stage': 'set_password',
                 'school': school,
-                'error': 'Email hii haina akaunti kwa shule hii. Wasiliana na admin.',
+                'error': 'Akaunti haikupatikana. Rudi na jaza form upya.',
                 'current_year': current_year,
             })
         if len(password1) < 6:

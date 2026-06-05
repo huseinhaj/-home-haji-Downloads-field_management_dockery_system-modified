@@ -117,9 +117,10 @@ label:has(input[type=radio]:checked){border-color:var(--navy)!important;backgrou
         {% csrf_token %}
         <input type="hidden" name="stage" value="set_password">
         <div class="field">
-          <label>Barua Pepe (iliyopewa na admin)</label>
+          <label>Barua Pepe Yako</label>
           <div class="inp-wrap"><i class="fas fa-envelope inp-ico"></i>
-            <input type="email" name="email" required placeholder="barua@pepe.yako" style="padding-left:34px;">
+            <input type="email" name="email" required placeholder="barua@pepe.yako"
+                   value="{{ head_email|default:'' }}" style="padding-left:34px;">
           </div>
         </div>
         <div class="field">
@@ -182,9 +183,10 @@ label:has(input[type=radio]:checked){border-color:var(--navy)!important;backgrou
         <input type="hidden" name="stage" value="set_password">
         {% if error %}<div class="msg-err"><i class="fas fa-exclamation-circle me-1"></i>{{ error }}</div>{% endif %}
         <div class="field">
-          <label>Barua Pepe (iliyopewa na admin)</label>
+          <label>Barua Pepe Yako</label>
           <div class="inp-wrap"><i class="fas fa-envelope inp-ico"></i>
-            <input type="email" name="email" required placeholder="barua@pepe.yako" style="padding-left:34px;">
+            <input type="email" name="email" required placeholder="barua@pepe.yako"
+                   value="{{ head_email|default:'' }}" style="padding-left:34px;">
           </div>
         </div>
         <div class="field">
@@ -310,6 +312,16 @@ label:has(input[type=radio]:checked){border-color:var(--navy)!important;backgrou
             <input type="text" name="head_name" required placeholder="Mfano: Juma Hassan Mwamba"
                    value="{{ request.POST.head_name|default:'' }}">
           </div>
+        </div>
+
+        <div class="field">
+          <label><i class="fas fa-envelope me-1"></i>Barua Pepe Yako *</label>
+          <div class="inp-wrap">
+            <i class="fas fa-envelope inp-ico"></i>
+            <input type="email" name="head_email" required placeholder="mfano@email.com"
+                   value="{{ request.POST.head_email|default:'' }}">
+          </div>
+          <div style="font-size:11px;color:#9CA3AF;margin-top:3px;">Utatumia email hii kuingia mfumo baadaye</div>
         </div>
 
         <div class="field">
