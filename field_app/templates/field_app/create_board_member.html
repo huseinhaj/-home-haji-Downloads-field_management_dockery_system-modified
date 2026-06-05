@@ -41,8 +41,23 @@ select.inp{cursor:pointer;}
         {% endfor %}
       {% endif %}
 
+      <!-- TABS -->
+      <div style="display:flex;border:1.5px solid #CBD5E0;border-radius:6px;overflow:hidden;margin-bottom:20px;">
+        <button type="button" onclick="showTab('single')" id="tab-single"
+          style="flex:1;padding:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#0A2B5E;color:#fff;">
+          <i class="fas fa-user me-1"></i>MMOJA
+        </button>
+        <button type="button" onclick="showTab('bulk')" id="tab-bulk"
+          style="flex:1;padding:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#fff;color:#4A5568;border-left:1.5px solid #CBD5E0;">
+          <i class="fas fa-users me-1"></i>WENGI (BULK)
+        </button>
+      </div>
+
+      <!-- Single form -->
+      <div id="panel-single">
       <form method="post">
         {% csrf_token %}
+        <input type="hidden" name="mode" value="single">
         <div class="field-wrap">
           <label class="field-lbl">Jina Kamili *</label>
           <input type="text" name="full_name" class="inp" placeholder="Jina la mjumbe" required>
@@ -100,13 +115,40 @@ select.inp{cursor:pointer;}
             {% endfor %}
           </select>
         </div>
-        <button type="submit" class="btn-save"><i class="fas fa-save"></i> Hifadhi Mjumbe</button>
+        <button type="submit" class="btn-save"><i class="fas fa-save"></i> Hifadhi</button>
       </form>
+      </div>
+
+      <!-- Bulk form -->
+      <div id="panel-bulk" style="display:none;">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="mode" value="bulk">
+          <div class="field-wrap">
+            <label class="field-lbl">Wakuu wa Shule (mstari kwa mstari)</label>
+            <textarea name="bulk_data" class="inp" rows="10" required
+              style="font-family:monospace;font-size:12px;"
+              placeholder="school_code,email,jina_kamili&#10;S.2895,mkuu@shule.go.tz,Juma Hassan&#10;PS0101114,mkuu2@shule.go.tz,Amina Said&#10;S.1234,mkuu3@email.com,John Doe"></textarea>
+            <div style="font-size:11px;color:#718096;margin-top:4px;">
+              Muundo: <strong>namba_usajili,email,jina</strong> — kila mkuu mstari mmoja. Nywila ataunda mkuu mwenyewe.
+            </div>
+          </div>
+          <button type="submit" class="btn-save"><i class="fas fa-users"></i> Unda Akaunti Zote</button>
+        </form>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
+function showTab(t){
+  document.getElementById('panel-single').style.display = t==='single'?'block':'none';
+  document.getElementById('panel-bulk').style.display = t==='bulk'?'block':'none';
+  document.getElementById('tab-single').style.background = t==='single'?'#0A2B5E':'#fff';
+  document.getElementById('tab-single').style.color = t==='single'?'#fff':'#4A5568';
+  document.getElementById('tab-bulk').style.background = t==='bulk'?'#0A2B5E':'#fff';
+  document.getElementById('tab-bulk').style.color = t==='bulk'?'#fff':'#4A5568';
+}
 (function(){
   var roleSel = document.querySelector('[name="role"]');
   var regionSel = document.getElementById('id_region');

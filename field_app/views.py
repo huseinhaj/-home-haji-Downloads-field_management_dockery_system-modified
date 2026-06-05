@@ -6131,46 +6131,81 @@ def board_head_teacher(request, school_id):
 
 @staff_member_required
 def create_board_member(request):
-    """Admin: create a board member account."""
+    """Admin: create board member - moja au bulk kwa wakuu wa shule."""
     User = get_user_model()
     regions = Region.objects.all().order_by('name')
     districts = District.objects.select_related('region').order_by('name')
     schools = School.objects.select_related('district__region').order_by('name')
 
     if request.method == 'POST':
-        full_name = request.POST.get('full_name', '').strip()
-        email = request.POST.get('email', '').strip()
-        password = request.POST.get('password', '').strip()
-        phone = request.POST.get('phone_number', '').strip()
-        role = request.POST.get('role', 'member')
-        region_id = request.POST.get('region') or None
-        district_id = request.POST.get('district') or None
-        school_id = request.POST.get('school') or None
+        mode = request.POST.get('mode', 'single')
 
-        if not full_name or not email or not password:
-            messages.error(request, 'Jaza jina, barua pepe, na nywila.')
-        elif User.objects.filter(email=email).exists():
-            messages.error(request, f"Mtumiaji mwenye email '{email}' tayari yupo.")
-        elif len(password) < 6:
-            messages.error(request, 'Nywila iwe na herufi 6 au zaidi.')
-        else:
-            user = User.objects.create_user(email=email, password=password)
-            user.is_staff = False
-            user.save()
-            region = Region.objects.filter(id=region_id).first() if region_id else None
-            district = District.objects.filter(id=district_id).first() if district_id else None
-            school = School.objects.filter(id=school_id).first() if school_id else None
-            BoardMember.objects.create(
-                user=user,
-                full_name=full_name,
-                phone_number=phone,
-                role=role,
-                region=region,
-                district=district,
-                school=school,
-            )
-            messages.success(request, f'Mjumbe wa Bodi "{full_name}" ametengenezwa.')
+        if mode == 'bulk':
+            # Bulk create: kila mstari = school_code,email,jina
+            lines = request.POST.get('bulk_data', '').strip().splitlines()
+            created, skipped = 0, []
+            for line in lines:
+                parts = [p.strip() for p in line.split(',')]
+                if len(parts) < 2:
+                    skipped.append(f"Mstari mbaya: {line}")
+                    continue
+                school_code_raw = parts[0]
+                email = parts[1].lower()
+                full_name = parts[2] if len(parts) > 2 else email.split('@')[0]
+
+                raw = school_code_raw.upper().replace(' ', '').replace('-', '').replace('.', '')
+                code = raw if re.match(r'^PS\d+$', raw) else re.sub(r'^([SP])(\d+)$', r'\1.\2', raw)
+                school = School.objects.filter(school_code__iexact=code).first()
+                if not school:
+                    skipped.append(f"Shule haikupatikana: {school_code_raw}")
+                    continue
+                if User.objects.filter(email=email).exists():
+                    skipped.append(f"Email tayari ipo: {email}")
+                    continue
+
+                user = User.objects.create_user(email=email, password=None)
+                user.set_unusable_password()
+                user.save()
+                BoardMember.objects.create(
+                    user=user, full_name=full_name, role='head_teacher',
+                    school=school, district=school.district,
+                    region=school.district.region if school.district else None,
+                )
+                created += 1
+
+            msg = f'Akaunti {created} zimeundwa.'
+            if skipped:
+                msg += f' Zilizoshindwa ({len(skipped)}): ' + '; '.join(skipped[:5])
+            messages.success(request, msg)
             return redirect('admin_dashboard')
+
+        else:
+            # Single create
+            full_name = request.POST.get('full_name', '').strip()
+            email = request.POST.get('email', '').strip()
+            phone = request.POST.get('phone_number', '').strip()
+            role = request.POST.get('role', 'member')
+            region_id = request.POST.get('region') or None
+            district_id = request.POST.get('district') or None
+            school_id = request.POST.get('school') or None
+
+            if not full_name or not email:
+                messages.error(request, 'Jaza jina na barua pepe.')
+            elif User.objects.filter(email=email).exists():
+                messages.error(request, f"Email '{email}' tayari ipo.")
+            else:
+                user = User.objects.create_user(email=email, password=None)
+                user.set_unusable_password()
+                user.save()
+                region = Region.objects.filter(id=region_id).first() if region_id else None
+                district = District.objects.filter(id=district_id).first() if district_id else None
+                school = School.objects.filter(id=school_id).first() if school_id else None
+                BoardMember.objects.create(
+                    user=user, full_name=full_name, phone_number=phone,
+                    role=role, region=region, district=district, school=school,
+                )
+                messages.success(request, f'Akaunti ya "{full_name}" imeundwa. Mkuu ataunda nywila yake mwenyewe.')
+                return redirect('admin_dashboard')
 
     return render(request, 'field_app/create_board_member.html', {
         'regions': regions,
@@ -6430,15 +6465,60 @@ def public_school_head_form(request):
             students_needed=students_needed,
             notes=notes,
         )
-        # Hifadhi request_id kwenye session ili tuitumie baadaye
         request.session['ombi_request_id'] = req.id
         request.session['ombi_school_id'] = school.id
+
+        # Angalia kama shule ina akaunti ya mkuu
+        bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
         return render(request, 'field_app/public_school_head_form.html', {
             'stage': 'success',
             'school': school,
             'head_name': head_name,
+            'has_account': bm is not None,
+            'needs_password': bm is not None and not bm.user.has_usable_password(),
             'current_year': current_year,
         })
+
+    # Stage: mkuu anaweka nywila yake mwenyewe (mara ya kwanza)
+    if request.method == 'POST' and request.POST.get('stage') == 'set_password':
+        school_id = request.session.get('ombi_school_id')
+        school = School.objects.filter(id=school_id).first()
+        email = request.POST.get('email', '').strip().lower()
+        password1 = request.POST.get('password1', '')
+        password2 = request.POST.get('password2', '')
+
+        bm = BoardMember.objects.filter(
+            user__email__iexact=email, school=school, role='head_teacher', is_active=True
+        ).first() if school else None
+
+        if not bm:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'set_password',
+                'school': school,
+                'error': 'Email hii haina akaunti kwa shule hii. Wasiliana na admin.',
+                'current_year': current_year,
+            })
+        if len(password1) < 6:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'set_password', 'school': school,
+                'error': 'Nywila iwe na herufi 6 au zaidi.', 'current_year': current_year,
+            })
+        if password1 != password2:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'stage': 'set_password', 'school': school,
+                'error': 'Nywila hazifanani. Jaribu tena.', 'current_year': current_year,
+            })
+
+        bm.user.set_password(password1)
+        bm.user.save()
+        # Sasisha email ya request
+        req_id = request.session.get('ombi_request_id')
+        if req_id:
+            SchoolHeadRequest.objects.filter(id=req_id).update(submitter_email=email)
+        login(request, bm.user, backend='field_app.backends.EmailBackend')
+        request.session.pop('ombi_request_id', None)
+        request.session.pop('ombi_school_id', None)
+        return redirect('board_head_teacher', school_id=school.id)
 
     # Stage: tuma OTP baada ya mkuu kuweka email
     if request.method == 'POST' and request.POST.get('stage') == 'send_otp':
@@ -6628,9 +6708,14 @@ def public_school_head_form(request):
             school=school, academic_year=current_year,
         ).exclude(status='rejected').exists()
         if already:
+            # Ombi lipo → peleka login moja kwa moja
+            bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
+            request.session['ombi_school_id'] = school.id
             return render(request, 'field_app/public_school_head_form.html', {
-                'stage': 'verify',
-                'error': f'Shule ya {school.name} tayari imetuma ombi kwa mwaka huu.',
+                'stage': 'goto_login',
+                'school': school,
+                'has_account': bm is not None,
+                'needs_password': bm is not None and not bm.user.has_usable_password(),
                 'current_year': current_year,
             })
         return render(request, 'field_app/public_school_head_form.html', {
