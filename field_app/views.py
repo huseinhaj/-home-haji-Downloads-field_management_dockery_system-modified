@@ -19,7 +19,8 @@ from django.core.exceptions import PermissionDenied
 from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Count, Case, When, Value, BooleanField, F, Q, Prefetch
+from django.db.models import Count, Case, When, Value, BooleanField, F, Q, Prefetch, Max
+from django.db import models
 from django.db.models.functions import Greatest
 from django.http import HttpResponse, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -6097,69 +6098,146 @@ def board_add_comment(request):
 
 @board_login_required
 def board_head_teacher(request, school_id):
-    """Dashboard ya Mkuu wa Shule - anaona wanafunzi na anaweza jaza mahitaji."""
+    """Dashboard ya Mkuu wa Shule - management kamili ya walimu wanafunzi."""
     bm = _get_board_member(request)
     if not bm:
         return redirect('board_login')
 
     school = get_object_or_404(School, id=school_id)
 
-    # Mkuu wa Shule anaruhusiwa shule yake tu
     if bm.role == 'head_teacher' and (not bm.school or bm.school_id != school.id):
         messages.error(request, 'Huna ruhusa ya kuona shule hii.')
         return redirect('board_home')
 
     current_year = _cached_active_year()
+    today = timezone.now().date()
 
-    # Pata au unda SchoolAllocation kwa shule hii
-    alloc = None
-    dist_alloc = None
-    if current_year:
-        dist_alloc, _ = DistrictAllocation.objects.get_or_create(
-            district=school.district,
-            academic_year=current_year,
-            defaults={'uploaded_by': bm}
-        )
-        alloc, _ = SchoolAllocation.objects.get_or_create(
-            district_allocation=dist_alloc,
-            school=school,
-            defaults={'quota': 0, 'head_teacher_requested': 0}
-        )
-
-    # Head Teacher anaweza jaza mahitaji yake
-    if request.method == 'POST' and bm.role in ('head_teacher', 'deo', 'chair'):
+    # POST: hifadhi mahitaji
+    if request.method == 'POST' and request.POST.get('action') == 'save_quota':
         requested = int(request.POST.get('head_teacher_requested', 0) or 0)
         notes = request.POST.get('head_teacher_notes', '').strip()
-        if alloc:
+        if current_year:
+            dist_alloc, _ = DistrictAllocation.objects.get_or_create(
+                district=school.district, academic_year=current_year,
+                defaults={'uploaded_by': bm}
+            )
+            alloc, _ = SchoolAllocation.objects.get_or_create(
+                district_allocation=dist_alloc, school=school,
+                defaults={'quota': 0, 'head_teacher_requested': 0}
+            )
             alloc.head_teacher_requested = requested
             alloc.head_teacher_notes = notes
             alloc.save()
-            messages.success(request, 'Mahitaji yako yamehifadhiwa. DEO ataona na kuidhinisha.')
+            messages.success(request, 'Mahitaji yamehifadhiwa. DEO ataona na kuidhinisha.')
         return redirect('board_head_teacher', school_id=school.id)
 
+    # POST: ongeza maoni ya mwanafunzi
+    if request.method == 'POST' and request.POST.get('action') == 'add_comment':
+        student_id = request.POST.get('student_id')
+        comment_text = request.POST.get('comment', '').strip()
+        status_val = request.POST.get('status', 'good')
+        if student_id and comment_text:
+            student_obj = StudentTeacher.objects.filter(id=student_id, selected_school=school).first()
+            if student_obj:
+                BoardComment.objects.create(
+                    board_member=bm, student=student_obj, school=school,
+                    comment=comment_text, status=status_val, academic_year=current_year
+                )
+                messages.success(request, f'Maoni kwa {student_obj.full_name} yamehifadhiwa.')
+        return redirect('board_head_teacher', school_id=school.id)
+
+    # Wanafunzi wa shule hii
     students = StudentTeacher.objects.filter(
         selected_school=school
     ).select_related('user').prefetch_related('subjects').order_by('full_name')
 
     total = students.count()
-    approved = students.filter(approval_status='approved').count()
-    pending_students = students.filter(approval_status='pending').count()
+    approved_count = students.filter(approval_status='approved').count()
+    pending_count = students.filter(approval_status='pending').count()
+    rejected_count = students.filter(approval_status='rejected').count()
 
-    # Maombi ya `/ombi/` yaliyotumwa kwa shule hii
-    head_requests = SchoolHeadRequest.objects.filter(
+    # Waliofika leo (check-in kwenye logbook)
+    today_checkins = set(
+        LogbookEntry.objects.filter(school=school, date=today, morning_check_in__isnull=False)
+        .values_list('student_id', flat=True)
+    )
+    present_today = len(today_checkins)
+
+    # Logbook ya siku 7 zilizopita — compliance rate
+    week_ago = today - timedelta(days=7)
+    recent_entries = LogbookEntry.objects.filter(
+        school=school, date__gte=week_ago
+    ).values('student_id', 'date').distinct().count()
+    # Siku za kazi (Jumatatu-Ijumaa) katika wiki
+    working_days = sum(1 for i in range(7) if (today - timedelta(days=i)).weekday() < 5)
+    expected = total * working_days if total > 0 and working_days > 0 else 1
+    compliance_pct = min(100, int(recent_entries / expected * 100)) if expected > 0 else 0
+
+    # Student data na status ya leo
+    students_data = []
+    latest_logs = {
+        e['student_id']: e['date']
+        for e in LogbookEntry.objects.filter(
+            school=school
+        ).values('student_id').annotate(date=models.Max('date')).values('student_id', 'date')
+    }
+    last_comments = {
+        c.student_id: c
+        for c in BoardComment.objects.filter(school=school)
+        .select_related('board_member').order_by('student_id', '-created_at')
+        .distinct('student_id')
+    } if BoardComment.objects.filter(school=school).exists() else {}
+
+    for st in students:
+        last_log = latest_logs.get(st.id)
+        days_since = (today - last_log).days if last_log else None
+        students_data.append({
+            'obj': st,
+            'present_today': st.id in today_checkins,
+            'last_log': last_log,
+            'days_since': days_since,
+            'log_status': 'ok' if days_since is not None and days_since <= 1
+                         else ('warn' if days_since is not None and days_since <= 3 else 'late'),
+            'last_comment': last_comments.get(st.id),
+        })
+
+    # SchoolAllocation
+    alloc = None
+    if current_year:
+        try:
+            dist_alloc = DistrictAllocation.objects.filter(
+                district=school.district, academic_year=current_year
+            ).first()
+            if dist_alloc:
+                alloc = SchoolAllocation.objects.filter(
+                    district_allocation=dist_alloc, school=school
+                ).first()
+        except Exception:
+            pass
+
+    # Maombi ya ombi
+    head_requests = SchoolHeadRequest.objects.filter(school=school).order_by('-submitted_at')[:5]
+
+    # Maoni ya hivi karibuni
+    recent_comments = BoardComment.objects.filter(
         school=school
-    ).order_by('-submitted_at')[:5]
+    ).select_related('student', 'board_member').order_by('-created_at')[:8]
 
     return render(request, 'field_app/board_head_teacher.html', {
         'bm': bm,
         'school': school,
-        'students': students,
+        'students_data': students_data,
         'total': total,
-        'approved': approved,
-        'pending': pending_students,
+        'approved_count': approved_count,
+        'pending_count': pending_count,
+        'rejected_count': rejected_count,
+        'present_today': present_today,
+        'compliance_pct': compliance_pct,
         'alloc': alloc,
         'head_requests': head_requests,
-        'can_edit_requirements': bm.role in ('head_teacher',),
+        'recent_comments': recent_comments,
+        'today': today,
+        'can_edit': bm.role in ('head_teacher', 'deo', 'chair'),
     })
 
 
