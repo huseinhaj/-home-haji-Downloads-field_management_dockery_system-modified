@@ -267,76 +267,38 @@ select.cmt-sel{padding:7px 10px;border:1.5px solid #CBD5E0;border-radius:5px;fon
     </div>
   </div>
 
-  <!-- Row: Mahitaji + Maombi -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;">
-
-    {% if can_edit %}
-    <!-- Mahitaji ya Wanafunzi -->
-    <div class="sec" style="margin-bottom:0;">
-      <div class="sec-hd">
-        <h5><i class="fas fa-clipboard-list"></i>Mahitaji ya Wanafunzi</h5>
-        {% if alloc and alloc.quota > 0 %}
-        <span class="b b-app"><i class="fas fa-check"></i>Quota: {{ alloc.quota }}</span>
-        {% endif %}
-      </div>
-      <div class="sec-body">
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="save_quota">
-          <div style="margin-bottom:12px;">
-            <label style="font-size:12px;font-weight:600;color:#4A5568;display:block;margin-bottom:5px;">Idadi Inayohitajika</label>
-            <input type="number" name="head_teacher_requested" min="0"
-              value="{{ alloc.head_teacher_requested|default:0 }}"
-              style="width:100%;padding:9px 12px;border:1.5px solid #CBD5E0;border-radius:6px;font-size:14px;font-weight:700;">
-          </div>
-          <div style="margin-bottom:12px;">
-            <label style="font-size:12px;font-weight:600;color:#4A5568;display:block;margin-bottom:5px;">Maelezo (hiari)</label>
-            <input type="text" name="head_teacher_notes"
-              value="{{ alloc.head_teacher_notes|default:'' }}"
-              placeholder="Mfano: tunahitaji hisabati na sayansi..."
-              style="width:100%;padding:9px 12px;border:1.5px solid #CBD5E0;border-radius:6px;font-size:13px;">
-          </div>
-          <button type="submit" class="btn-sm" style="background:#0A2B5E;color:#fff;width:100%;">
-            <i class="fas fa-save me-1"></i>Hifadhi na Tuma kwa DEO
-          </button>
-        </form>
-      </div>
+  <!-- Historia ya Maombi -->
+  <div class="sec" style="margin-bottom:18px;">
+    <div class="sec-hd">
+      <h5><i class="fas fa-file-alt"></i>Historia ya Maombi ya Wanafunzi</h5>
+      <a href="{% url 'public_school_head_form' %}" target="_blank" class="btn-xs btn-gold">
+        <i class="fas fa-plus"></i>Ombi Jipya
+      </a>
     </div>
-    {% endif %}
-
-    <!-- Maombi -->
-    <div class="sec" style="margin-bottom:0;">
-      <div class="sec-hd">
-        <h5><i class="fas fa-file-alt"></i>Historia ya Maombi</h5>
-        <a href="{% url 'public_school_head_form' %}" target="_blank" class="btn-xs btn-gold">
-          <i class="fas fa-plus"></i>Ombi Jipya
-        </a>
+    <div style="padding:0;">
+      {% if head_requests %}
+      <table class="ht-tbl">
+        <thead><tr><th>Wanaohitajika</th><th>Maelezo</th><th>Tarehe</th><th>Hali</th></tr></thead>
+        <tbody>
+          {% for req in head_requests %}
+          <tr>
+            <td style="font-weight:700;color:#0A2B5E;">{{ req.students_needed }}</td>
+            <td style="color:#4A5568;font-size:12px;">{{ req.notes|default:"—"|truncatechars:50 }}</td>
+            <td style="color:#718096;">{{ req.submitted_at|date:"d/m/Y" }}</td>
+            <td>
+              {% if req.status == 'applied' %}<span class="b b-app"><i class="fas fa-check"></i>Aidhinishwa</span>
+              {% elif req.status == 'pending' %}<span class="b b-pend"><i class="fas fa-clock"></i>Inasubiri DEO</span>
+              {% else %}<span class="b b-rej"><i class="fas fa-times"></i>Imekataliwa</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="text-align:center;padding:24px;color:#9CA3AF;font-size:13px;">
+        Hakuna maombi bado. <a href="{% url 'public_school_head_form' %}" target="_blank" style="color:#C8900A;font-weight:600;">Tuma ombi la kwanza →</a>
       </div>
-      <div class="sec-body" style="padding:0;">
-        {% if head_requests %}
-        <table class="ht-tbl">
-          <thead><tr><th>Wanaohitajika</th><th>Tarehe</th><th>Hali</th></tr></thead>
-          <tbody>
-            {% for req in head_requests %}
-            <tr>
-              <td style="font-weight:700;color:#0A2B5E;">{{ req.students_needed }}</td>
-              <td style="color:#718096;">{{ req.submitted_at|date:"d/m/Y" }}</td>
-              <td>
-                {% if req.status == 'applied' %}<span class="b b-app">Aidhinishwa</span>
-                {% elif req.status == 'pending' %}<span class="b b-pend">Inasubiri</span>
-                {% else %}<span class="b b-rej">Imekataliwa</span>{% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% else %}
-        <div style="text-align:center;padding:24px;color:#9CA3AF;font-size:13px;">
-          Hakuna maombi bado.<br>
-          <a href="{% url 'public_school_head_form' %}" target="_blank" style="color:#C8900A;font-weight:600;">Tuma ombi la kwanza →</a>
-        </div>
-        {% endif %}
-      </div>
+      {% endif %}
     </div>
   </div>
 

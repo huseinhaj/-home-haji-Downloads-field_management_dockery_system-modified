@@ -5768,6 +5768,22 @@ def board_school_list(request, district_id):
             for sa in SchoolAllocation.objects.filter(district_allocation=district_alloc)
         }
 
+    # Tengeneza orodha ya shule zote na allocation zao — rahisi kwa template
+    all_schools_district = School.objects.filter(district=district).order_by('level', 'name')
+    schools_alloc_list = []
+    for sch in all_schools_district:
+        sa = school_alloc_map.get(sch.id)
+        schools_alloc_list.append({
+            'school': sch,
+            'alloc': sa,
+            'requested': sa.head_teacher_requested if sa else 0,
+            'quota': sa.quota if sa else 0,
+            'notes': sa.head_teacher_notes if sa else '',
+            'has_request': bool(sa and sa.head_teacher_requested > 0),
+        })
+    # Panga: wenye maombi kwanza
+    schools_alloc_list.sort(key=lambda x: (-x['requested']))
+
     return render(request, 'field_app/board_school_list.html', {
         'bm': bm,
         'district': district,
@@ -5778,6 +5794,7 @@ def board_school_list(request, district_id):
         'inactive_count': inactive_count,
         'district_alloc': district_alloc,
         'school_alloc_map': school_alloc_map,
+        'schools_alloc_list': schools_alloc_list,
     })
 
 
@@ -6111,25 +6128,6 @@ def board_head_teacher(request, school_id):
 
     current_year = _cached_active_year()
     today = timezone.now().date()
-
-    # POST: hifadhi mahitaji
-    if request.method == 'POST' and request.POST.get('action') == 'save_quota':
-        requested = int(request.POST.get('head_teacher_requested', 0) or 0)
-        notes = request.POST.get('head_teacher_notes', '').strip()
-        if current_year:
-            dist_alloc, _ = DistrictAllocation.objects.get_or_create(
-                district=school.district, academic_year=current_year,
-                defaults={'uploaded_by': bm}
-            )
-            alloc, _ = SchoolAllocation.objects.get_or_create(
-                district_allocation=dist_alloc, school=school,
-                defaults={'quota': 0, 'head_teacher_requested': 0}
-            )
-            alloc.head_teacher_requested = requested
-            alloc.head_teacher_notes = notes
-            alloc.save()
-            messages.success(request, 'Mahitaji yamehifadhiwa. DEO ataona na kuidhinisha.')
-        return redirect('board_head_teacher', school_id=school.id)
 
     # POST: ongeza maoni ya mwanafunzi
     if request.method == 'POST' and request.POST.get('action') == 'add_comment':
