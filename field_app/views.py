@@ -6130,6 +6130,70 @@ def board_head_teacher(request, school_id):
 
 
 @staff_member_required
+@login_required
+def import_head_teachers(request):
+    """Admin: import wakuu wa shule kwa CSV - school_code,email,jina"""
+    if not request.user.is_staff:
+        return redirect('dashboard')
+
+    User = get_user_model()
+    results = []
+
+    if request.method == 'POST':
+        import csv, io
+        mode = request.POST.get('mode', 'csv_text')
+
+        if mode == 'csv_file' and request.FILES.get('csv_file'):
+            f = request.FILES['csv_file']
+            content = f.read().decode('utf-8', errors='ignore')
+        else:
+            content = request.POST.get('csv_text', '')
+
+        reader = csv.reader(io.StringIO(content.strip()))
+        for i, row in enumerate(reader, 1):
+            if not row or row[0].strip().startswith('#'):
+                continue
+            parts = [p.strip() for p in row]
+            if len(parts) < 2:
+                results.append({'row': i, 'status': 'error', 'msg': f'Muundo mbaya: {",".join(parts)}'})
+                continue
+
+            school_code_raw = parts[0]
+            email = parts[1].lower()
+            full_name = parts[2] if len(parts) > 2 else email.split('@')[0].replace('.', ' ').title()
+
+            # Pata shule
+            raw = school_code_raw.upper().replace(' ', '').replace('-', '').replace('.', '')
+            code = raw if re.match(r'^PS\d+$', raw) else re.sub(r'^([SP])(\d+)$', r'\1.\2', raw)
+            school = School.objects.filter(school_code__iexact=code).first()
+            if not school:
+                results.append({'row': i, 'status': 'error', 'msg': f'Shule haikupatikana: {school_code_raw}'})
+                continue
+
+            # Angalia kama tayari ipo
+            if BoardMember.objects.filter(user__email__iexact=email, school=school, role='head_teacher').exists():
+                results.append({'row': i, 'status': 'skip', 'msg': f'{school.name} — {email} tayari ipo'})
+                continue
+
+            # Unda user na BoardMember
+            if User.objects.filter(email=email).exists():
+                user = User.objects.get(email=email)
+            else:
+                user = User.objects.create_user(email=email, password=None)
+                user.set_unusable_password()
+                user.save()
+
+            BoardMember.objects.create(
+                user=user, full_name=full_name, role='head_teacher',
+                school=school, district=school.district,
+                region=school.district.region if school.district else None,
+                is_active=True,
+            )
+            results.append({'row': i, 'status': 'ok', 'msg': f'{school.name} — {full_name} ({email})'})
+
+    return render(request, 'field_app/import_head_teachers.html', {'results': results})
+
+
 def create_board_member(request):
     """Admin: create board member - moja au bulk kwa wakuu wa shule."""
     User = get_user_model()
@@ -6474,22 +6538,20 @@ def public_school_head_form(request):
         needs_password = False
 
         if not bm:
-            # Unda account mpya automatically
-            if User.objects.filter(email=head_email).exists():
-                user = User.objects.get(email=head_email)
-            else:
-                user = User.objects.create_user(email=head_email, password=None)
-                user.set_unusable_password()
-                user.save()
-            bm = BoardMember.objects.create(
-                user=user, full_name=head_name, phone_number=head_phone,
-                role='head_teacher', school=school,
-                district=school.district,
-                region=school.district.region if school.district else None,
-            )
-            needs_password = True
+            # Angalia kama email ipo kwenye pre-registered list ya shule hii
+            pre_registered = BoardMember.objects.filter(
+                user__email__iexact=head_email,
+                school=school,
+                role='head_teacher',
+            ).first()
+            if not pre_registered:
+                return render(request, 'field_app/public_school_head_form.html', {
+                    'stage': 'form', 'school': school, 'current_year': current_year,
+                    'error': f'Email "{head_email}" haipo kwenye orodha ya wakuu wa shule ya {school.name}. Wasiliana na DEO wa {school.district.name} ili aongeze email yako.',
+                })
+            bm = pre_registered
+            needs_password = not bm.user.has_usable_password()
         else:
-            # Angalia kama nywila imeshawekwa
             needs_password = not bm.user.has_usable_password()
 
         return render(request, 'field_app/public_school_head_form.html', {
@@ -6499,6 +6561,7 @@ def public_school_head_form(request):
             'head_email': head_email,
             'has_account': True,
             'needs_password': needs_password,
+            'is_active': bm.is_active,
             'current_year': current_year,
         })
 
@@ -6544,7 +6607,6 @@ def public_school_head_form(request):
 
         bm.user.set_password(password1)
         bm.user.save()
-        # Sasisha email ya request
         req_id = request.session.get('ombi_request_id')
         if req_id:
             SchoolHeadRequest.objects.filter(id=req_id).update(submitter_email=email)

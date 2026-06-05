@@ -131,6 +131,7 @@ urlpatterns = [
     path('board/student/<int:student_id>/', views.board_student_progress, name='board_student_progress'),
     path('board/comment/add/', views.board_add_comment, name='board_add_comment'),
     path('create-board-member/', views.create_board_member, name='create_board_member'),
+    path('import-head-teachers/', views.import_head_teachers, name='import_head_teachers'),
     path('board/school/<int:school_id>/', views.board_head_teacher, name='board_head_teacher'),
 
     # DEO Allocation

@@ -1,0 +1,93 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Import Wakuu wa Shule{% endblock %}
+{% block content %}
+<style>
+.imp-card{background:#fff;border:1px solid #CBD5E0;border-radius:8px;max-width:700px;margin:0 auto;overflow:hidden;}
+.imp-head{background:#0A2B5E;border-bottom:3px solid #C8900A;padding:16px 22px;display:flex;align-items:center;gap:12px;}
+.imp-head i{color:#C8900A;font-size:20px;}
+.imp-head h2{color:#fff;font-size:16px;font-weight:700;margin:0;}
+.imp-head p{color:rgba(255,255,255,.6);font-size:11px;margin:2px 0 0;}
+.imp-body{padding:24px;}
+.lbl{font-size:12px;font-weight:700;color:#1A1A2E;margin-bottom:6px;display:block;}
+.inp{width:100%;padding:9px 12px;border:1.5px solid #CBD5E0;border-radius:6px;font-size:13px;font-family:monospace;outline:none;}
+.inp:focus{border-color:#0A2B5E;}
+.hint{background:#EFF6FF;border-left:3px solid #3B82F6;padding:10px 14px;border-radius:4px;font-size:12px;color:#1E40AF;margin-bottom:16px;line-height:1.7;}
+.btn-imp{background:#0A2B5E;color:#fff;border:none;padding:11px 24px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:4px;}
+.result-ok{color:#065F46;background:#D1FAE5;padding:4px 10px;border-radius:4px;font-size:12px;margin:2px 0;display:block;}
+.result-skip{color:#92400E;background:#FEF3C7;padding:4px 10px;border-radius:4px;font-size:12px;margin:2px 0;display:block;}
+.result-err{color:#991B1B;background:#FEE2E2;padding:4px 10px;border-radius:4px;font-size:12px;margin:2px 0;display:block;}
+</style>
+
+<div class="container py-4">
+  <a href="{% url 'admin_dashboard' %}" style="display:inline-flex;align-items:center;gap:7px;margin-bottom:18px;color:#0A2B5E;font-size:13px;font-weight:600;text-decoration:none;background:rgba(10,43,94,.06);padding:7px 14px;border-radius:6px;border:1px solid rgba(10,43,94,.15);">
+    <i class="fas fa-arrow-left"></i> Rudi Dashibodi
+  </a>
+
+  <div class="imp-card">
+    <div class="imp-head">
+      <i class="fas fa-file-csv"></i>
+      <div>
+        <h2>Import Wakuu wa Shule</h2>
+        <p>Ongeza emails za wakuu wa shule kwa wingi kwa kutumia CSV</p>
+      </div>
+    </div>
+    <div class="imp-body">
+
+      <div class="hint">
+        <strong>Muundo wa CSV:</strong><br>
+        <code>namba_usajili, email, jina_kamili</code><br><br>
+        <strong>Mfano:</strong><br>
+        <code>S.2895, juma.hassan@gmail.com, Juma Hassan Mwamba</code><br>
+        <code>PS0101114, amina.said@yahoo.com, Amina Said Juma</code><br>
+        <code>S.1234, john.doe@email.com, John Doe</code><br><br>
+        ⚠️ Safu ya kwanza inaweza kuwa kichwa (header) — itapuuzwa kama haina namba ya usajili.
+      </div>
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- Upload file -->
+        <div style="margin-bottom:16px;">
+          <label class="lbl"><i class="fas fa-upload me-1"></i>Pakia Faili la CSV (hiari)</label>
+          <input type="file" name="csv_file" accept=".csv,.txt" class="inp" style="font-family:inherit;padding:7px 12px;">
+          <input type="hidden" name="mode" id="mode_field" value="csv_text">
+          <script>
+          document.querySelector('[name=csv_file]').addEventListener('change', function(){
+            document.getElementById('mode_field').value = this.files.length ? 'csv_file' : 'csv_text';
+          });
+          </script>
+        </div>
+
+        <div style="text-align:center;color:#9CA3AF;font-size:12px;margin:8px 0;">— au —</div>
+
+        <!-- Paste text -->
+        <div style="margin-bottom:16px;">
+          <label class="lbl"><i class="fas fa-paste me-1"></i>Bandika Data (CSV text)</label>
+          <textarea name="csv_text" class="inp" rows="8"
+            placeholder="S.2895, juma.hassan@gmail.com, Juma Hassan&#10;PS0101114, amina.said@yahoo.com, Amina Said&#10;S.1234, john@email.com, John Doe"></textarea>
+        </div>
+
+        <button type="submit" class="btn-imp">
+          <i class="fas fa-users me-1"></i>IMPORT WAKUU WA SHULE
+        </button>
+      </form>
+
+      {% if results %}
+      <div style="margin-top:20px;border-top:1px solid #E2E8F0;padding-top:16px;">
+        <div style="font-size:13px;font-weight:700;color:#1A1A2E;margin-bottom:10px;">
+          Matokeo:
+          <span style="color:#065F46;">✓ {{ results|length }} zilizochakatwa</span>
+        </div>
+        {% for r in results %}
+          <span class="result-{{ r.status }}">
+            {% if r.status == 'ok' %}✅{% elif r.status == 'skip' %}⏭️{% else %}❌{% endif %}
+            #{{ r.row }}: {{ r.msg }}
+          </span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

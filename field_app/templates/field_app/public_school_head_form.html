@@ -95,11 +95,10 @@ label:has(input[type=radio]:checked){border-color:var(--navy)!important;backgrou
       <h2>Ombi Limetumwa!</h2>
       <p>Asante <strong>{{ head_name|default:'' }}</strong>, ombi la shule ya<br>
       <strong>{{ school.name }}</strong> limepokelewa na DEO wa Wilaya ya {{ school.district.name }}.</p>
-      <div class="success-ref">
-        <i class="fas fa-info-circle me-1"></i>
-        {% if needs_password %}Unda nywila yako ili uweze kuingia na kufuatilia ombi lako.
-        {% elif has_account %}Ingia kwa akaunti yako kuona hali ya ombi lako.
-        {% else %}Ombi lako limepokelewa. Utaarifiwa na DEO.{% endif %}
+      <div class="success-ref" style="{% if needs_password %}background:#D1FAE5;color:#065F46;border-color:#059669;{% else %}background:#FEF3C7;color:#92400E;border-color:#D97706;{% endif %}">
+        <i class="fas fa-{% if needs_password %}check-circle{% else %}clock{% endif %} me-1"></i>
+        {% if needs_password %}Akaunti yako imeidhinishwa na DEO. Unda nywila yako ili uingie.
+        {% else %}Ombi lako limepokelewa. DEO wa wilaya ya {{ school.district.name }} atalifanyia kazi na kukuarifu.{% endif %}
       </div>
     </div>
 
