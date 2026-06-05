@@ -207,9 +207,12 @@ class CustomUserAdmin(BaseUserAdmin):
 # =========================
 class StudentTeacherAdmin(admin.ModelAdmin):
     list_display = ['full_name', 'user', 'phone_number', 'selected_school', 'approval_status', 'approval_date']
-    list_filter = ['approval_status', 'selected_school', 'approval_date']
+    list_filter = ['approval_status', 'approval_date']   # removed 'selected_school' — ilikuwa inaload shule 6000+
     search_fields = ['full_name', 'phone_number', 'user__email']
     readonly_fields = ['approval_date', 'approved_by']
+    list_select_related = ['user', 'selected_school']
+    list_per_page = 30
+    show_full_result_count = False
 
     actions = ['approve_selected', 'reject_selected']
 
@@ -237,17 +240,20 @@ class StudentTeacherAdmin(admin.ModelAdmin):
 # =========================
 class StudentApplicationAdmin(admin.ModelAdmin):
     list_display = [
-        'student', 
-        'subject', 
-        'school', 
-        'application_date', 
-        'status', 
-        'approved_by', 
+        'student',
+        'subject',
+        'school',
+        'application_date',
+        'status',
+        'approved_by',
         'approval_date'
     ]
-    list_filter = ['status', 'application_date', 'school', 'subject']
+    list_filter = ['status', 'application_date', 'subject']  # removed 'school' — ilikuwa inaload shule 6000+
     search_fields = ['student__full_name', 'subject__name', 'school__name']
     readonly_fields = ['application_date', 'approval_date']
+    list_select_related = ['student', 'subject', 'school', 'approved_by']
+    list_per_page = 30
+    show_full_result_count = False
     actions = ['approve_applications', 'reject_applications']
     
     def approve_applications(self, request, queryset):
@@ -414,6 +420,9 @@ class SchoolAdmin(admin.ModelAdmin):
     list_filter = ['level', 'district__region']
     search_fields = ['name', 'school_code', 'head_name', 'head_phone']
     list_editable = ['school_code', 'head_name', 'head_phone']
+    list_select_related = ['district__region']
+    list_per_page = 50
+    show_full_result_count = False
 
 # =========================
 # SUBJECT ADMIN
@@ -428,29 +437,31 @@ class SubjectAdmin(admin.ModelAdmin):
 # =========================
 class SchoolSubjectCapacityAdmin(admin.ModelAdmin):
     list_display = ['school', 'subject', 'max_students', 'current_students']
-    list_filter = ['school', 'subject']
+    list_filter = ['subject']  # removed 'school' — ilikuwa inaload shule 6000+
     search_fields = ['school__name', 'subject__name']
+    list_select_related = ['school', 'subject']
+    list_per_page = 50
+    show_full_result_count = False
 
 # =========================
 # LOGBOOK ENTRY ADMIN
 # =========================
 class LogbookEntryAdmin(admin.ModelAdmin):
     list_display = [
-        'student', 
-        'date', 
-        'day_of_week', 
+        'student',
+        'date',
+        'day_of_week',
         'is_location_verified',
         'is_at_school',
         'morning_check_in'
     ]
-    list_filter = [
-        'date',
-        'day_of_week',
-        'is_location_verified',
-        'is_at_school'
-    ]
+    list_filter = ['day_of_week', 'is_location_verified', 'is_at_school']  # removed 'date' — slow range filter
     search_fields = ['student__full_name']
     readonly_fields = ['created_at', 'updated_at']
+    list_select_related = ['student']
+    list_per_page = 50
+    show_full_result_count = False
+    date_hierarchy = 'date'
 
 # =========================
 # APPROVAL LETTER ADMIN
@@ -499,18 +510,29 @@ class SchoolPinAdmin(admin.ModelAdmin):
 # =========================
 class SchoolRequirementAdmin(admin.ModelAdmin):
     list_display = ['school', 'subject', 'year', 'required_students']
-    list_filter = ['year', 'school']
+    list_filter = ['year']  # removed 'school' — ilikuwa inaload shule 6000+
     search_fields = ['school__name', 'subject']
+    list_select_related = ['school']
+    list_per_page = 50
+    show_full_result_count = False
 
 class SchoolAssessmentAdmin(admin.ModelAdmin):
     list_display = ['assessor', 'school', 'assigned_date', 'assessment_date', 'is_completed']
-    list_filter = ['is_completed', 'assessment_date']
+    list_filter = ['is_completed']
     search_fields = ['assessor__full_name', 'school__name']
+    list_select_related = ['assessor', 'school']
+    list_per_page = 30
+    show_full_result_count = False
+    date_hierarchy = 'assessment_date'
 
 class StudentAssessmentAdmin(admin.ModelAdmin):
     list_display = ['assessor', 'student', 'school', 'assessment_date', 'status', 'score']
-    list_filter = ['status', 'assessment_date']
+    list_filter = ['status']
     search_fields = ['assessor__full_name', 'student__full_name', 'school__name']
+    list_select_related = ['assessor', 'student', 'school']
+    list_per_page = 30
+    show_full_result_count = False
+    date_hierarchy = 'assessment_date'
 
 class BoardMemberForm(forms.ModelForm):
     password = forms.CharField(
@@ -543,6 +565,9 @@ class BoardMemberAdmin(admin.ModelAdmin):
     search_fields = ('full_name', 'user__email')
     fields = ('user', 'password', 'full_name', 'phone_number', 'role', 'region', 'district', 'is_active')
     autocomplete_fields = ['district']
+    list_select_related = ['user', 'region', 'district']
+    list_per_page = 30
+    show_full_result_count = False
 
     def get_email(self, obj):
         return obj.user.email
