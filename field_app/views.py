@@ -5768,21 +5768,53 @@ def board_school_list(request, district_id):
             for sa in SchoolAllocation.objects.filter(district_allocation=district_alloc)
         }
 
-    # Tengeneza orodha ya shule zote na allocation zao — rahisi kwa template
-    all_schools_district = School.objects.filter(district=district).order_by('level', 'name')
+    # Maombi ya wakuu wa shule (SchoolHeadRequest) — hizi ndizo zinaundwa na /ombi/ form
+    head_req_qs = SchoolHeadRequest.objects.filter(
+        district=district
+    ).select_related('school').order_by('-submitted_at')
+    if current_year:
+        head_req_qs = head_req_qs.filter(academic_year=current_year)
+
+    # Kwa kila shule, pata ombi la hivi karibuni
+    latest_req_map = {}  # school_id → latest SchoolHeadRequest
+    for req in head_req_qs:
+        sid = req.school_id if req.school_id else req.school_name_submitted
+        if sid not in latest_req_map:
+            latest_req_map[sid] = req
+
+    # Tengeneza orodha — shule zenye maombi tu + allocation zao
     schools_alloc_list = []
-    for sch in all_schools_district:
-        sa = school_alloc_map.get(sch.id)
-        schools_alloc_list.append({
-            'school': sch,
-            'alloc': sa,
-            'requested': sa.head_teacher_requested if sa else 0,
-            'quota': sa.quota if sa else 0,
-            'notes': sa.head_teacher_notes if sa else '',
-            'has_request': bool(sa and sa.head_teacher_requested > 0),
-        })
-    # Panga: wenye maombi kwanza
-    schools_alloc_list.sort(key=lambda x: (-x['requested']))
+    seen_schools = set()
+    for req in head_req_qs:
+        if req.school_id and req.school_id not in seen_schools:
+            seen_schools.add(req.school_id)
+            sa = school_alloc_map.get(req.school_id)
+            schools_alloc_list.append({
+                'school': req.school,
+                'alloc': sa,
+                'requested': req.students_needed,
+                'quota': sa.quota if sa else 0,
+                'notes': req.notes,
+                'status': req.status,
+                'submitted_at': req.submitted_at,
+                'head_name': req.head_name,
+                'has_request': True,
+            })
+        elif not req.school_id and req.school_name_submitted not in seen_schools:
+            # Ombi bila shule iliyolinganishwa
+            seen_schools.add(req.school_name_submitted)
+            schools_alloc_list.append({
+                'school': None,
+                'school_name': req.school_name_submitted,
+                'alloc': None,
+                'requested': req.students_needed,
+                'quota': 0,
+                'notes': req.notes,
+                'status': req.status,
+                'submitted_at': req.submitted_at,
+                'head_name': req.head_name,
+                'has_request': True,
+            })
 
     return render(request, 'field_app/board_school_list.html', {
         'bm': bm,
