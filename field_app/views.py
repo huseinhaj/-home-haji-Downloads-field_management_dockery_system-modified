@@ -5515,7 +5515,7 @@ def board_login(request):
             login(request, user, backend='field_app.backends.EmailBackend')
             return redirect('board_head_teacher', school_id=bm.school.id)
 
-        # ── DEO / REO / Chair / Wengine: Email + Nywila ──
+        # ── DEO / REO / Chair / Wengine: Email + Nywila (si mkuu wa shule) ──
         else:
             email = request.POST.get('email', '').strip()
             password = request.POST.get('password', '')
@@ -5525,11 +5525,18 @@ def board_login(request):
                 try:
                     bm = user.board_member
                     if bm and bm.is_active:
-                        login(request, user, backend='field_app.backends.EmailBackend')
-                        return redirect('board_home')
+                        if bm.role == 'head_teacher':
+                            # Mkuu wa shule lazima atumie tab yake mwenyewe
+                            messages.error(request, 'Wewe ni Mkuu wa Shule. Tumia tab ya "MKUU WA SHULE" upande wa kushoto.')
+                        else:
+                            login(request, user, backend='field_app.backends.EmailBackend')
+                            return redirect('board_home')
+                    else:
+                        messages.error(request, 'Akaunti yako imezimwa. Wasiliana na msimamizi.')
                 except Exception:
-                    pass
-            messages.error(request, 'Barua pepe au nywila si sahihi, au huna ruhusa ya Bodi ya Walimu.')
+                    messages.error(request, 'Barua pepe au nywila si sahihi, au huna ruhusa ya Bodi ya Walimu.')
+            else:
+                messages.error(request, 'Barua pepe au nywila si sahihi.')
 
     # GET — onyesha form na pre-fill kutoka /ombi/ redirect
     school = School.objects.filter(id=prefill_school_id).first() if prefill_school_id else None
