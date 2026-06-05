@@ -5448,120 +5448,98 @@ def board_login(request):
     if request.user.is_authenticated and _get_board_member(request):
         return redirect('board_home')
 
+    # Pata GET params (kutoka /ombi/ form redirect)
+    prefill_email = request.GET.get('email', '')
+    prefill_school_id = request.GET.get('school_id', '')
+    first_time = request.GET.get('first_time', '0') == '1'
+    active_tab = request.GET.get('tab', 'staff')  # 'head' au 'staff'
+
     if request.method == 'POST':
-        mode = request.POST.get('mode', 'email')
+        mode = request.POST.get('mode', 'staff')
 
-        # ── HATUA 1: Mkuu wa Shule aweke email → tuma OTP ──
-        if mode == 'school_code':
-            head_email = request.POST.get('head_email', '').strip().lower()
-            if not head_email:
-                messages.error(request, 'Tafadhali weka barua pepe yako.')
-                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
-
-            bm = BoardMember.objects.filter(
-                user__email__iexact=head_email,
-                role='head_teacher',
-                is_active=True
-            ).select_related('school', 'user').first()
-
-            if not bm:
-                messages.error(request, f'Barua pepe "{head_email}" haikupatikana kama Mkuu wa Shule. Wasiliana na DEO wako.')
-                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
-
-            if not bm.school:
-                messages.error(request, 'Akaunti yako haina shule iliyowekwa. Wasiliana na admin.')
-                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
-
-            import random
-            otp = str(random.randint(100000, 999999))
-            cache_key = f'board_otp_ht_{bm.id}'
-            cache.set(cache_key, otp, timeout=600)
-
-            try:
-                from django.core.mail import send_mail
-                send_mail(
-                    subject='Msimbo wa Kuingia — IMS Board System',
-                    message=(
-                        f'Habari {bm.full_name},\n\n'
-                        f'Msimbo wako wa kuingia ni:\n\n'
-                        f'  {otp}\n\n'
-                        f'Msimbo huu utaisha baada ya dakika 10.\n'
-                        f'Kama hukuomba msimbo huu, puuza barua hii.\n\n'
-                        f'— Mfumo wa IMS'
-                    ),
-                    from_email=None,
-                    recipient_list=[bm.user.email],
-                    fail_silently=False,
-                )
-                masked = bm.user.email
-                at = masked.index('@')
-                masked = masked[:2] + '***' + masked[at:]
-                return render(request, 'field_app/board_login.html', {
-                    'mode': 'otp',
-                    'bm_id': bm.id,
-                    'school': bm.school,
-                    'school_id': bm.school.id,
-                    'masked_email': masked,
-                })
-            except Exception as e:
-                messages.error(request, f'Imeshindwa kutuma barua pepe: {e}')
-                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
-
-        # ── HATUA 2: Mkuu aweke OTP ──
-        elif mode == 'otp':
-            bm_id = request.POST.get('bm_id', '').strip()
-            entered_otp = request.POST.get('otp', '').strip()
+        # ── Mkuu wa Shule: Weka Nywila Mara ya Kwanza ──
+        if mode == 'head_set_password':
+            email = request.POST.get('email', '').strip().lower()
+            school_id = request.POST.get('school_id', '').strip()
+            password1 = request.POST.get('password1', '')
+            password2 = request.POST.get('password2', '')
+            school = School.objects.filter(id=school_id).first()
 
             bm = BoardMember.objects.filter(
-                id=bm_id, role='head_teacher', is_active=True
+                user__email__iexact=email, role='head_teacher', is_active=True
             ).select_related('school', 'user').first()
 
+            ctx = {'mode': 'head_set_password', 'prefill_email': email,
+                   'prefill_school_id': school_id, 'school': school, 'active_tab': 'head'}
+
             if not bm:
-                messages.error(request, 'Taarifa hazikupatikana. Jaribu tena.')
-                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
+                ctx['error'] = f'Email "{email}" haipo kwenye orodha ya wakuu wa shule. Wasiliana na DEO wako.'
+                return render(request, 'field_app/board_login.html', ctx)
+            if len(password1) < 6:
+                ctx['error'] = 'Nywila iwe na herufi 6 au zaidi.'
+                return render(request, 'field_app/board_login.html', ctx)
+            if password1 != password2:
+                ctx['error'] = 'Nywila mbili hazifanani. Jaribu tena.'
+                return render(request, 'field_app/board_login.html', ctx)
 
-            cache_key = f'board_otp_ht_{bm.id}'
-            stored_otp = cache.get(cache_key)
-
-            if not stored_otp:
-                messages.error(request, 'Msimbo umeisha muda wake. Omba mpya.')
-                return render(request, 'field_app/board_login.html', {'mode': 'school_code'})
-
-            if entered_otp != stored_otp:
-                messages.error(request, 'Msimbo si sahihi. Jaribu tena.')
-                masked = bm.user.email
-                at = masked.index('@')
-                masked = masked[:2] + '***' + masked[at:]
-                return render(request, 'field_app/board_login.html', {
-                    'mode': 'otp',
-                    'bm_id': bm.id,
-                    'school': bm.school,
-                    'school_id': bm.school.id,
-                    'masked_email': masked,
-                })
-
-            cache.delete(cache_key)
+            bm.user.set_password(password1)
+            bm.user.save()
             login(request, bm.user, backend='field_app.backends.EmailBackend')
+            messages.success(request, f'Karibu {bm.full_name}! Nywila yako imewekwa.')
             return redirect('board_head_teacher', school_id=bm.school.id)
 
-        # ── DEO/REO/Chair: login kwa email + nywila ──
+        # ── Mkuu wa Shule: Ingia kwa Email + Nywila ──
+        elif mode == 'head_login':
+            email = request.POST.get('email', '').strip().lower()
+            password = request.POST.get('password', '')
+            school_id = request.POST.get('school_id', '').strip()
+            school = School.objects.filter(id=school_id).first() if school_id else None
+
+            bm = BoardMember.objects.filter(
+                user__email__iexact=email, role='head_teacher', is_active=True
+            ).select_related('school', 'user').first()
+
+            ctx = {'mode': 'head_login', 'prefill_email': email,
+                   'prefill_school_id': school_id, 'school': school, 'active_tab': 'head'}
+
+            if not bm:
+                ctx['error'] = f'Email "{email}" haipo kwenye orodha ya wakuu wa shule.'
+                return render(request, 'field_app/board_login.html', ctx)
+
+            user = authenticate(request, username=email, password=password,
+                                backend='field_app.backends.EmailBackend')
+            if not user:
+                ctx['error'] = 'Nywila si sahihi. Jaribu tena.'
+                return render(request, 'field_app/board_login.html', ctx)
+
+            login(request, user, backend='field_app.backends.EmailBackend')
+            return redirect('board_head_teacher', school_id=bm.school.id)
+
+        # ── DEO / REO / Chair / Wengine: Email + Nywila ──
         else:
             email = request.POST.get('email', '').strip()
-            password = request.POST.get('password', '').strip()
+            password = request.POST.get('password', '')
             user = authenticate(request, username=email, password=password,
                                 backend='field_app.backends.EmailBackend')
             if user:
-                bm = None
                 try:
                     bm = user.board_member
+                    if bm and bm.is_active:
+                        login(request, user, backend='field_app.backends.EmailBackend')
+                        return redirect('board_home')
                 except Exception:
                     pass
-                if bm and bm.is_active:
-                    login(request, user, backend='field_app.backends.EmailBackend')
-                    return redirect('board_home')
             messages.error(request, 'Barua pepe au nywila si sahihi, au huna ruhusa ya Bodi ya Walimu.')
 
-    return render(request, 'field_app/board_login.html')
+    # GET — onyesha form na pre-fill kutoka /ombi/ redirect
+    school = School.objects.filter(id=prefill_school_id).first() if prefill_school_id else None
+    return render(request, 'field_app/board_login.html', {
+        'prefill_email': prefill_email,
+        'prefill_school_id': prefill_school_id,
+        'first_time': first_time,
+        'active_tab': active_tab,
+        'school': school,
+    })
 
 
 def board_logout(request):
@@ -6405,30 +6383,42 @@ def create_board_member(request):
         else:
             # Single create
             full_name = request.POST.get('full_name', '').strip()
-            email = request.POST.get('email', '').strip()
+            email = request.POST.get('email', '').strip().lower()
             phone = request.POST.get('phone_number', '').strip()
             role = request.POST.get('role', 'member')
+            password = request.POST.get('password', '').strip()
             region_id = request.POST.get('region') or None
             district_id = request.POST.get('district') or None
             school_id = request.POST.get('school') or None
 
             if not full_name or not email:
                 messages.error(request, 'Jaza jina na barua pepe.')
+            elif not password or len(password) < 6:
+                messages.error(request, 'Weka nywila ya angalau herufi 6.')
             elif User.objects.filter(email=email).exists():
                 messages.error(request, f"Email '{email}' tayari ipo.")
             else:
-                user = User.objects.create_user(email=email, password=None)
-                user.set_unusable_password()
-                user.save()
+                user = User.objects.create_user(email=email, password=password)
                 region = Region.objects.filter(id=region_id).first() if region_id else None
                 district = District.objects.filter(id=district_id).first() if district_id else None
                 school = School.objects.filter(id=school_id).first() if school_id else None
-                BoardMember.objects.create(
+                bm_new = BoardMember.objects.create(
                     user=user, full_name=full_name, phone_number=phone,
                     role=role, region=region, district=district, school=school,
                 )
-                messages.success(request, f'Akaunti ya "{full_name}" imeundwa. Mkuu ataunda nywila yake mwenyewe.')
-                return redirect('admin_dashboard')
+                # Onyesha credentials kwa admin azitume
+                return render(request, 'field_app/create_board_member.html', {
+                    'regions': regions, 'districts': districts, 'schools': schools,
+                    'role_choices': BoardMember.ROLE_CHOICES,
+                    'created_credentials': {
+                        'full_name': full_name,
+                        'email': email,
+                        'password': password,
+                        'role': bm_new.get_role_display(),
+                        'region': region.name if region else '—',
+                        'district': district.name if district else '—',
+                    },
+                })
 
     return render(request, 'field_app/create_board_member.html', {
         'regions': regions,
@@ -6713,16 +6703,12 @@ def public_school_head_form(request):
         else:
             needs_password = not bm.user.has_usable_password()
 
-        return render(request, 'field_app/public_school_head_form.html', {
-            'stage': 'success',
-            'school': school,
-            'head_name': head_name,
-            'head_email': head_email,
-            'has_account': True,
-            'needs_password': needs_password,
-            'is_active': bm.is_active,
-            'current_year': current_year,
-        })
+        # Peleka moja kwa moja kwenye board login page na email tayari imejazwa
+        from urllib.parse import urlencode
+        params = {'email': head_email, 'school_id': school.id, 'tab': 'head'}
+        if needs_password:
+            params['first_time'] = '1'
+        return redirect(reverse('board_login') + '?' + urlencode(params))
 
     # Stage: mkuu anaweka nywila yake mwenyewe (mara ya kwanza)
     if request.method == 'POST' and request.POST.get('stage') == 'set_password':
