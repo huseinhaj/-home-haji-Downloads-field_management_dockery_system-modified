@@ -7072,22 +7072,39 @@ def deo_review_requests(request, district_id):
                     defaults={'uploaded_by': bm}
                 )
                 applied = 0
-                for req in SchoolHeadRequest.objects.filter(id__in=selected_ids, district=district).select_related('school'):
+                school_capacity_map = {}  # {school_id: capacity} — bulk update baadaye
+
+                reqs = list(SchoolHeadRequest.objects.filter(
+                    id__in=selected_ids, district=district
+                ).select_related('school'))
+
+                for req in reqs:
                     if req.school:
                         SchoolAllocation.objects.update_or_create(
                             district_allocation=allocation,
                             school=req.school,
                             defaults={'quota': req.students_needed}
                         )
-                        # Sasisha School.capacity ili wanafunzi waione kwenye dashboard
-                        School.objects.filter(id=req.school.id).update(capacity=req.students_needed)
+                        school_capacity_map[req.school_id] = req.students_needed
                     req.status = 'applied'
                     req.reviewed_by = bm
                     req.reviewed_at = timezone.now()
-                    req.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
                     applied += 1
 
-                # Recalculate district totals from ALL applied requests (avoid accumulation bug)
+                # Bulk save requests (moja kwa moja — si save() ndani ya loop)
+                SchoolHeadRequest.objects.bulk_update(reqs, ['status', 'reviewed_by', 'reviewed_at'])
+
+                # Sasisha School.capacity kwa mara moja nje ya loop
+                if school_capacity_map:
+                    from django.db.models import Case, When, IntegerField
+                    School.objects.filter(id__in=school_capacity_map.keys()).update(
+                        capacity=Case(
+                            *[When(id=sid, then=cap) for sid, cap in school_capacity_map.items()],
+                            output_field=IntegerField(),
+                        )
+                    )
+
+                # Recalculate district totals
                 all_applied = SchoolHeadRequest.objects.filter(district=district, status='applied')
                 if current_year:
                     all_applied = all_applied.filter(academic_year=current_year)

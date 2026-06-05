@@ -127,11 +127,6 @@ DATABASES = {
         conn_health_checks=True, # Kagua connection kabla kutumia
     )
 }
-# PostgreSQL optimization kwa wanafunzi wengi
-if not os.environ.get('DATABASE_URL', '').startswith('sqlite'):
-    DATABASES['default']['OPTIONS'] = {
-        'options': '-c statement_timeout=30000',  # Kill queries >30s
-    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
