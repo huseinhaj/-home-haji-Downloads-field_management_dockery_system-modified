@@ -6226,11 +6226,8 @@ def import_head_teachers(request):
                 continue
 
             # Unda user na BoardMember kwa bulk-efficient way
-            user, _ = User.objects.get_or_create(
-                email=email,
-                defaults={'username': email, 'is_active': True},
-            )
-            if not user.has_usable_password():
+            user, created = User.objects.get_or_create(email=email)
+            if created:
                 user.set_unusable_password()
                 user.save(update_fields=['password'])
 
