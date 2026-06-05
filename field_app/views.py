@@ -93,6 +93,40 @@ def _cached_today_logbook(student, school, today):
 def _invalidate_today_logbook(student, today):
     cache.delete(f'logbook_today_{student.id}_{today}')
 
+
+def _cached_schools_by_district(district_id):
+    """Cache schools za district fulani kwa dakika 10 - inatumiwa mara nyingi kwenye ombi/DEO views."""
+    key = f'schools_district_{district_id}'
+    schools = cache.get(key)
+    if schools is None:
+        schools = list(
+            School.objects.filter(district_id=district_id)
+            .select_related('district__region')
+            .order_by('name')
+        )
+        cache.set(key, schools, 600)
+    return schools
+
+
+def _cached_all_districts():
+    """Cache districts zote kwa dakika 15 - data haitabadilika mara kwa mara."""
+    key = 'all_districts_list'
+    districts = cache.get(key)
+    if districts is None:
+        districts = list(District.objects.select_related('region').order_by('name'))
+        cache.set(key, districts, 900)
+    return districts
+
+
+def _cached_all_regions():
+    """Cache regions zote kwa dakika 30."""
+    key = 'all_regions_list'
+    regions = cache.get(key)
+    if regions is None:
+        regions = list(Region.objects.order_by('name'))
+        cache.set(key, regions, 1800)
+    return regions
+
 # =========================
 # HELPER FUNCTIONS
 # =========================
@@ -6132,7 +6166,9 @@ def board_head_teacher(request, school_id):
 @staff_member_required
 @login_required
 def import_head_teachers(request):
-    """Admin: import wakuu wa shule kwa CSV - school_code,email,jina"""
+    """Admin: import wakuu wa shule kwa CSV - school_identifier,email,jina
+    school_identifier inaweza kuwa: school_code (S.0306) AU jina kamili la shule.
+    """
     if not request.user.is_staff:
         return redirect('dashboard')
 
@@ -6158,16 +6194,24 @@ def import_head_teachers(request):
                 results.append({'row': i, 'status': 'error', 'msg': f'Muundo mbaya: {",".join(parts)}'})
                 continue
 
-            school_code_raw = parts[0]
+            school_identifier = parts[0]
             email = parts[1].lower()
             full_name = parts[2] if len(parts) > 2 else email.split('@')[0].replace('.', ' ').title()
 
-            # Pata shule
-            raw = school_code_raw.upper().replace(' ', '').replace('-', '').replace('.', '')
+            # Jaribu kupata shule: 1) kwa school_code, 2) kwa jina
+            raw = school_identifier.upper().replace(' ', '').replace('-', '').replace('.', '')
             code = raw if re.match(r'^PS\d+$', raw) else re.sub(r'^([SP])(\d+)$', r'\1.\2', raw)
             school = School.objects.filter(school_code__iexact=code).first()
             if not school:
-                results.append({'row': i, 'status': 'error', 'msg': f'Shule haikupatikana: {school_code_raw}'})
+                # Jaribu kwa jina kamili au sehemu ya jina
+                school = School.objects.filter(name__iexact=school_identifier).first()
+            if not school:
+                # Jaribu fuzzy: jina linaanza na maneno yale yale
+                school = School.objects.filter(name__istartswith=school_identifier.split()[0]).filter(
+                    name__icontains=school_identifier.split()[-1]
+                ).first() if school_identifier.strip() else None
+            if not school:
+                results.append({'row': i, 'status': 'error', 'msg': f'Shule haikupatikana: "{school_identifier}"'})
                 continue
 
             # Angalia kama tayari ipo
@@ -6175,13 +6219,14 @@ def import_head_teachers(request):
                 results.append({'row': i, 'status': 'skip', 'msg': f'{school.name} — {email} tayari ipo'})
                 continue
 
-            # Unda user na BoardMember
-            if User.objects.filter(email=email).exists():
-                user = User.objects.get(email=email)
-            else:
-                user = User.objects.create_user(email=email, password=None)
+            # Unda user na BoardMember kwa bulk-efficient way
+            user, _ = User.objects.get_or_create(
+                email=email,
+                defaults={'username': email, 'is_active': True},
+            )
+            if not user.has_usable_password():
                 user.set_unusable_password()
-                user.save()
+                user.save(update_fields=['password'])
 
             BoardMember.objects.create(
                 user=user, full_name=full_name, role='head_teacher',

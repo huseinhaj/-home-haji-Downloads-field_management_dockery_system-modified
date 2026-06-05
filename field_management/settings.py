@@ -82,7 +82,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Ongeza hii kwa static files!
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.middleware.gzip.GZipMiddleware',          # Compress responses - punguza bandwidth 70%
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -116,15 +117,21 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'field_management.wsgi.application'
 
-# Database - Tumia DATABASE_URL kutoka Railway (muhimu!)
+# Database - Tumia DATABASE_URL kutoka Railway
 import dj_database_url
 
 DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3'),
-        conn_max_age=600,
+        conn_max_age=600,        # Weka connections wazi 10 min - punguza overhead
+        conn_health_checks=True, # Kagua connection kabla kutumia
     )
 }
+# PostgreSQL optimization kwa wanafunzi wengi
+if not os.environ.get('DATABASE_URL', '').startswith('sqlite'):
+    DATABASES['default']['OPTIONS'] = {
+        'options': '-c statement_timeout=30000',  # Kill queries >30s
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -206,17 +213,35 @@ EMAIL_TIMEOUT = 30
 GDAL_LIBRARY_PATH = os.environ.get('GDAL_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/libgdal.so')
 GEOS_LIBRARY_PATH = os.environ.get('GEOS_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/libgeos_c.so')
 
-# Cache configuration
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
-        'TIMEOUT': 300,
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000,
+# Cache configuration - Redis (Railway/production) au LocMem (development)
+_REDIS_URL = os.environ.get('REDIS_URL') or os.environ.get('REDISCLOUD_URL')
+if _REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': _REDIS_URL,
+            'TIMEOUT': 300,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'CONNECTION_POOL_KWARGS': {'max_connections': 20},
+                'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+                'IGNORE_EXCEPTIONS': True,  # Mfumo uendelee hata Redis ikishindwa
+            },
+            'KEY_PREFIX': 'ims',
         }
     }
-}
+    # Session kwenye Redis - haraka zaidi kuliko database
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'default'
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'ims-cache',
+            'TIMEOUT': 300,
+            'OPTIONS': {'MAX_ENTRIES': 2000},
+        }
+    }
 
 # Internal IPs for debugging
 INTERNAL_IPS = ['127.0.0.1']

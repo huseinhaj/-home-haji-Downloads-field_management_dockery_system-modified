@@ -40,5 +40,7 @@ tqdm==4.67.1
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 google-genai>=2.6.0
-dj-database-url==0.5.0
+dj-database-url==2.3.0
 whitenoise==6.8.2
+django-redis==5.4.0
+redis==5.2.1

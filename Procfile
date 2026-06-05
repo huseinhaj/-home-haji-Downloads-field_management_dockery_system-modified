@@ -1,1 +1,1 @@
-web: gunicorn field_management.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+web: gunicorn field_management.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --threads 2 --worker-class gthread --timeout 120 --keep-alive 5 --max-requests 1000 --max-requests-jitter 100

@@ -35,12 +35,15 @@
 
       <div class="hint">
         <strong>Muundo wa CSV:</strong><br>
-        <code>namba_usajili, email, jina_kamili</code><br><br>
-        <strong>Mfano:</strong><br>
-        <code>S.2895, juma.hassan@gmail.com, Juma Hassan Mwamba</code><br>
-        <code>PS0101114, amina.said@yahoo.com, Amina Said Juma</code><br>
-        <code>S.1234, john.doe@email.com, John Doe</code><br><br>
-        ⚠️ Safu ya kwanza inaweza kuwa kichwa (header) — itapuuzwa kama haina namba ya usajili.
+        <code>kitambulisho_shule, email, jina_kamili</code><br><br>
+        <strong>Kitambulisho cha shule kinaweza kuwa:</strong><br>
+        ① <strong>Jina kamili la shule</strong> (rahisi zaidi) — <code>Ihumwa Secondary</code><br>
+        ② <strong>Namba ya usajili</strong> (NECTA code) — <code>S.0306</code> au <code>S0306</code><br><br>
+        <strong>Mifano:</strong><br>
+        <code>Ihumwa Secondary, juma.hassan@gmail.com, Juma Hassan Mwamba</code><br>
+        <code>Dodoma Secondary, amina.said@gmail.com, Amina Said Juma</code><br>
+        <code>S.0306, john.doe@gmail.com, John Doe</code><br><br>
+        💡 Mstari unaoanza na <code>#</code> unachukuliwa kama maoni (comment) — itapuuzwa.
       </div>
 
       <form method="post" enctype="multipart/form-data">
@@ -64,7 +67,7 @@
         <div style="margin-bottom:16px;">
           <label class="lbl"><i class="fas fa-paste me-1"></i>Bandika Data (CSV text)</label>
           <textarea name="csv_text" class="inp" rows="8"
-            placeholder="S.2895, juma.hassan@gmail.com, Juma Hassan&#10;PS0101114, amina.said@yahoo.com, Amina Said&#10;S.1234, john@email.com, John Doe"></textarea>
+            placeholder="Ihumwa Secondary, juma.hassan@gmail.com, Juma Hassan&#10;Dodoma Secondary, amina.said@gmail.com, Amina Said&#10;S.0306, john@email.com, John Doe"></textarea>
         </div>
 
         <button type="submit" class="btn-imp">
