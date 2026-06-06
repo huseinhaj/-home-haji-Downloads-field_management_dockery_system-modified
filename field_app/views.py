@@ -917,7 +917,7 @@ def logout_view(request):
     redirect_to = 'login'
     if request.user.is_authenticated:
         if request.user.is_staff:
-            redirect_to = 'login_page'
+            redirect_to = 'board_login'
         else:
             try:
                 Assessor.objects.get(user=request.user)
