@@ -67,9 +67,11 @@ body{
 .card-top{
   background:var(--navy);
   border-bottom:3px solid var(--gold);
-  padding:20px 24px;
-  display:flex;align-items:center;gap:14px;
+  padding:16px 24px 18px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
 }
+.arc-wrap{width:100%;max-width:340px;margin:0 auto;}
+.card-top-inner{display:flex;align-items:center;gap:14px;width:100%;justify-content:center;}
 .card-top .coat{
   width:52px;height:52px;flex-shrink:0;
   background:rgba(200,144,10,.15);
@@ -78,9 +80,8 @@ body{
   display:flex;align-items:center;justify-content:center;
 }
 .card-top .coat img{width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));}
-.card-top-text .t1{font-size:9px;color:rgba(255,255,255,.5);letter-spacing:1.8px;text-transform:uppercase;}
-.card-top-text .t2{font-size:14.5px;color:#fff;font-weight:800;margin:2px 0;letter-spacing:-.1px;line-height:1.2;}
-.card-top-text .t3{font-size:11px;color:var(--gold);font-weight:500;}
+.card-top-text .t2{font-size:14px;color:#fff;font-weight:800;margin:2px 0;letter-spacing:-.1px;line-height:1.2;text-align:center;}
+.card-top-text .t3{font-size:11px;color:var(--gold);font-weight:500;text-align:center;}
 
 /* Card body */
 .card-body{padding:24px;}
@@ -164,10 +165,11 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
   .top-bar-brand small{display:none;}
   .card{border-radius:6px;}
   .card-body{padding:18px;}
-  .card-top{padding:16px 18px;}
+  .card-top{padding:12px 14px 16px;}
   .card-top .coat{width:44px;height:44px;}
   .card-top .coat img{width:32px;height:32px;}
   .card-top-text .t2{font-size:13px;}
+  .arc-wrap{max-width:260px;}
 }
 </style>
 </head>
@@ -188,15 +190,33 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
   <div class="card">
 
     <div class="card-top">
-      <div class="coat">
-        {% load static %}
-        <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Coat of Arms">
+
+      <!-- Arc text: UNITED REPUBLIC OF TANZANIA -->
+      <div class="arc-wrap">
+        <svg viewBox="0 0 320 42" width="100%" height="42" style="overflow:visible;display:block;">
+          <defs>
+            <path id="uarc" d="M 12,38 Q 160,4 308,38" fill="none"/>
+          </defs>
+          <text font-family="'Segoe UI',system-ui,sans-serif" font-size="10.5"
+                font-weight="700" fill="rgba(255,255,255,0.65)"
+                letter-spacing="2.2" text-anchor="middle">
+            <textPath href="#uarc" startOffset="50%">UNITED REPUBLIC OF TANZANIA</textPath>
+          </text>
+        </svg>
       </div>
-      <div class="card-top-text">
-        <div class="t1">United Republic of Tanzania</div>
-        <div class="t2">{% if LANG == 'sw' %}Wizara ya Elimu,<br>Sayansi na Teknolojia{% else %}Ministry of Education,<br>Science &amp; Technology{% endif %}</div>
-        <div class="t3">{% if LANG == 'sw' %}Lango la Mwanafunzi{% else %}Student Placement Portal{% endif %}</div>
+
+      <!-- Coat of arms + ministry name -->
+      <div class="card-top-inner">
+        <div class="coat">
+          {% load static %}
+          <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Coat of Arms">
+        </div>
+        <div class="card-top-text">
+          <div class="t2">{% if LANG == 'sw' %}Wizara ya Elimu,<br>Sayansi na Teknolojia{% else %}Ministry of Education,<br>Science &amp; Technology{% endif %}</div>
+          <div class="t3">{% if LANG == 'sw' %}Lango la Mwanafunzi{% else %}Student Placement Portal{% endif %}</div>
+        </div>
       </div>
+
     </div>
 
     <div class="card-body">
