@@ -220,16 +220,16 @@ code { background: #EEF1F6; padding: 1px 7px; border-radius: 3px; font-size: 12p
       <li>
         <div class="step-num">3</div>
         <div class="step-body">
-          <strong>{% if LANG == 'sw' %}Angalia Maendeleo ya Mwanafunzi{% else %}View a Student's Progress{% endif %}</strong>
-          <p>{% if LANG == 'sw' %}Bonyeza jina la mwanafunzi kwenye orodha. Utaona historia ya logbook, masomo aliyofundisha, na taarifa za tathmini za awali.{% else %}Click a student's name in the list. You will see their logbook history, subjects taught, and previous assessment records.{% endif %}</p>
+          <strong>{% if LANG == 'sw' %}Angalia Maendeleo ya Mwalimu Mwanafunzi{% else %}View a Student Teacher's Progress{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Bonyeza jina la mwalimu mwanafunzi kwenye orodha. Utaona historia ya logbook, masomo aliyofundisha, na taarifa za tathmini za awali.{% else %}Click a student teacher's name in the list. You will see their logbook history, subjects taught, and previous assessment records.{% endif %}</p>
         </div>
       </li>
       <li>
         <div class="step-num">4</div>
         <div class="step-body">
-          <strong>{% if LANG == 'sw' %}Tathmini Mwanafunzi{% else %}Assess a Student{% endif %}</strong>
-          <p>{% if LANG == 'sw' %}Kwenye ukurasa wa mwanafunzi, bonyeza "Tathmini". Jaza fomu ya tathmini — alama, maoni, na mapendekezo. Tathmini itaonekana kwa mwanafunzi na msimamizi.{% else %}On the student's page, click "Assess". Fill in the assessment form — scores, comments, and recommendations. The assessment will be visible to the student and administrator.{% endif %}</p>
-          <div class="tip tip-green"><i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}Tathmini zinazokamilika zinabadilisha alama ya mwanafunzi kwenye dashibodi ya msimamizi.{% else %}Completed assessments update the student's status on the administrator dashboard.{% endif %}</div>
+          <strong>{% if LANG == 'sw' %}Tathmini Mwalimu Mwanafunzi{% else %}Assess a Student Teacher{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Kwenye ukurasa wa mwalimu mwanafunzi, bonyeza "Tathmini". Jaza fomu ya tathmini — alama, maoni, na mapendekezo. Tathmini itaonekana kwa mwalimu mwanafunzi na msimamizi.{% else %}On the student teacher's page, click "Assess". Fill in the assessment form — scores, comments, and recommendations. The assessment will be visible to the student teacher and administrator.{% endif %}</p>
+          <div class="tip tip-green"><i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}Tathmini zinazokamilika zinabadilisha alama ya mwalimu mwanafunzi kwenye dashibodi ya msimamizi.{% else %}Completed assessments update the student teacher's status on the administrator dashboard.{% endif %}</div>
         </div>
       </li>
       <li>
@@ -260,23 +260,23 @@ code { background: #EEF1F6; padding: 1px 7px; border-radius: 3px; font-size: 12p
       <li>
         <div class="step-num">2</div>
         <div class="step-body">
-          <strong>{% if LANG == 'sw' %}Fuatilia Wanafunzi kwa Mkoa → Wilaya → Shule{% else %}Monitor Students by Region → District → School{% endif %}</strong>
-          <p>{% if LANG == 'sw' %}Dashibodi inaonyesha mikoa yote. Bonyeza mkoa → wilaya → shule → mwanafunzi. Kila mwanafunzi ana ukurasa wa maendeleo unaoonyesha: logbook, scheme of work, lesson plans, na alama ya kutofanya kazi (inactive alert).{% else %}The dashboard shows all regions. Click region → district → school → student. Each student has a progress page showing: logbook, scheme of work, lesson plans, and inactivity alerts.{% endif %}</p>
+          <strong>{% if LANG == 'sw' %}Fuatilia Walimu Wanafunzi kwa Mkoa → Wilaya → Shule{% else %}Monitor Student Teachers by Region → District → School{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Dashibodi inaonyesha mikoa yote. Bonyeza mkoa → wilaya → shule → mwalimu mwanafunzi. Kila mwalimu mwanafunzi ana ukurasa wa maendeleo unaoonyesha: logbook, scheme of work, lesson plans, na alama ya kutofanya kazi (inactive alert).{% else %}The dashboard shows all regions. Click region → district → school → student teacher. Each student teacher has a progress page showing: logbook, scheme of work, lesson plans, and inactivity alerts.{% endif %}</p>
         </div>
       </li>
       <li>
         <div class="step-num">3</div>
         <div class="step-body">
-          <strong>{% if LANG == 'sw' %}Toa Maoni kwa Mwanafunzi{% else %}Add a Comment to a Student{% endif %}</strong>
-          <p>{% if LANG == 'sw' %}Kwenye ukurasa wa maendeleo ya mwanafunzi kuna fomu ya maoni upande wa kulia. Chagua hali (Vizuri Sana / Vizuri / Wastani / Nyuma / Muhimu) na andika maoni yako. Mwanafunzi ataona maoni hayo kwenye dashibodi yake mara moja.{% else %}On the student's progress page there is a comment form on the right side. Select the status (Excellent/Good/Average/Behind/Critical) and write your comment. The student will see those comments on their dashboard immediately.{% endif %}</p>
+          <strong>{% if LANG == 'sw' %}Toa Maoni kwa Mwalimu Mwanafunzi{% else %}Add a Comment to a Student Teacher{% endif %}</strong>
+          <p>{% if LANG == 'sw' %}Kwenye ukurasa wa maendeleo ya mwalimu mwanafunzi kuna fomu ya maoni upande wa kulia. Chagua hali (Vizuri Sana / Vizuri / Wastani / Nyuma / Muhimu) na andika maoni yako. Mwalimu mwanafunzi ataona maoni hayo kwenye dashibodi yake mara moja.{% else %}On the student teacher's progress page there is a comment form on the right side. Select the status (Excellent/Good/Average/Behind/Critical) and write your comment. The student teacher will see those comments on their dashboard immediately.{% endif %}</p>
         </div>
       </li>
       <li>
         <div class="step-num">4</div>
         <div class="step-body">
           <strong>{% if LANG == 'sw' %}Zalisha Ripoti ya AI ya Wilaya{% else %}Generate AI District Report{% endif %}</strong>
-          <p>{% if LANG == 'sw' %}Nenda kwenye wilaya yoyote, bonyeza "Ripoti ya AI". Chagua mwezi na mwaka, bonyeza "Zalia Ripoti". AI itachanganua data ya logbook ya wilaya yote na kuzalisha ripoti kamili ikiwemo nafasi za wanafunzi, mapendekezo, na muhtasari. Miezi ya Mei, Agosti, Desemba imekatazwa (likizo za shule).{% else %}Go to any district, click "AI Report". Select month and year, click "Generate Report". AI will analyze the logbook data for the entire district and generate a complete report including student rankings, recommendations, and summary. May, August, and December are blocked (school holidays).{% endif %}</p>
-          <div class="tip tip-green"><i class="fas fa-lightbulb"></i> {% if LANG == 'sw' %}Ripoti inayozalishwa itaonekana pia kwa kila mwanafunzi kwenye dashibodi yao — wanaona sehemu yao tu.{% else %}Generated reports are also visible to each student on their dashboard — they see only their own section.{% endif %}</div>
+          <p>{% if LANG == 'sw' %}Nenda kwenye wilaya yoyote, bonyeza "Ripoti ya AI". Chagua mwezi na mwaka, bonyeza "Zalia Ripoti". AI itachanganua data ya logbook ya wilaya yote na kuzalisha ripoti kamili ikiwemo nafasi za walimu wanafunzi, mapendekezo, na muhtasari. Miezi ya Mei, Agosti, Desemba imekatazwa (likizo za shule).{% else %}Go to any district, click "AI Report". Select month and year, click "Generate Report". AI will analyze the logbook data for the entire district and generate a complete report including student teacher rankings, recommendations, and summary. May, August, and December are blocked (school holidays).{% endif %}</p>
+          <div class="tip tip-green"><i class="fas fa-lightbulb"></i> {% if LANG == 'sw' %}Ripoti inayozalishwa itaonekana pia kwa kila mwalimu mwanafunzi kwenye dashibodi yao — wanaona sehemu yao tu.{% else %}Generated reports are also visible to each student teacher on their dashboard — they see only their own section.{% endif %}</div>
         </div>
       </li>
     </ul>
@@ -293,7 +293,7 @@ code { background: #EEF1F6; padding: 1px 7px; border-radius: 3px; font-size: 12p
       <li>
         <div class="step-num">1</div>
         <div class="step-body">
-          <strong>{% if LANG == 'sw' %}Idhinisha Maombi ya Wanafunzi{% else %}Approve Student Applications{% endif %}</strong>
+          <strong>{% if LANG == 'sw' %}Idhinisha Maombi ya Walimu Wanafunzi{% else %}Approve Student Teacher Applications{% endif %}</strong>
           <p>{% if LANG == 'sw' %}Admin Dashboard → sehemu ya "Maombi Yanayosubiri". Bonyeza "Idhinisha" au "Kataa" kwa kila ombi.{% else %}Admin Dashboard → "Pending Applications" section. Click "Approve" or "Reject" for each application.{% endif %}</p>
         </div>
       </li>

@@ -213,7 +213,7 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
         </div>
         <div class="card-top-text">
           <div class="t2">{% if LANG == 'sw' %}Wizara ya Elimu,<br>Sayansi na Teknolojia{% else %}Ministry of Education,<br>Science &amp; Technology{% endif %}</div>
-          <div class="t3">{% if LANG == 'sw' %}Lango la Mwanafunzi{% else %}Student Placement Portal{% endif %}</div>
+          <div class="t3">{% if LANG == 'sw' %}Lango la Mwalimu Mwanafunzi{% else %}Student Teacher Placement Portal{% endif %}</div>
         </div>
       </div>
 
@@ -265,8 +265,8 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
       <div class="divider">{% if LANG == 'sw' %}AU{% else %}OR{% endif %}</div>
 
       <p class="reg-note">
-        {% if LANG == 'sw' %}Mwanafunzi mpya? <a href="{% url 'register' %}">Fungua akaunti &rarr;</a>
-        {% else %}New student? <a href="{% url 'register' %}">Create account &rarr;</a>{% endif %}
+        {% if LANG == 'sw' %}Mwalimu Mwanafunzi mpya? <a href="{% url 'register' %}">Fungua akaunti &rarr;</a>
+        {% else %}New student teacher? <a href="{% url 'register' %}">Create account &rarr;</a>{% endif %}
       </p>
     </div>
 
