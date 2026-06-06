@@ -26,19 +26,6 @@
 
     <div class="border-top border-2 mb-4" style="border-color: var(--medium) !important; opacity: 0.5;"></div>
 
-    <!-- Messages -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-dismissible fade show rounded-3 mb-3" 
-                 style="{% if message.tags == 'error' %}background: #FEE2E2; border-left: 4px solid var(--danger); color: #991B1B;
-                        {% elif message.tags == 'success' %}background: #D1FAE5; border-left: 4px solid var(--success); color: #065F46;
-                        {% else %}background: #DBEAFE; border-left: 4px solid var(--info); color: #1E40AF;{% endif %}">
-                <i class="fas fa-{% if message.tags == 'error' %}exclamation-triangle{% elif message.tags == 'success' %}check-circle{% else %}info-circle{% endif %} me-2"></i>
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
 
     <!-- Statistics Cards -->
     <div class="row mb-4 g-3">

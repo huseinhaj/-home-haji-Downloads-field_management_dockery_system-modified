@@ -860,19 +860,46 @@ def login_view(request):
         form = CustomLoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
-            login(request, user, backend='field_app.backends.EmailBackend')
 
-            try:
-                assessor = Assessor.objects.get(user=user)
-                messages.warning(request,
-                    "You are registered as an assessor. Please use the assessor login page."
+            # Staff/Admin — must use admin login, not student form
+            if user.is_staff:
+                messages.error(request,
+                    "Akaunti hii ni ya msimamizi. Tafadhali tumia ukurasa wa msimamizi."
+                    if request.session.get('lang') == 'sw' else
+                    "This is an admin account. Please use the admin login page."
                 )
-                logout(request)
+                return redirect('login')
+
+            # Assessor — must use assessor login
+            try:
+                Assessor.objects.get(user=user)
+                messages.warning(request,
+                    "Akaunti hii ni ya mkaguzi. Tumia ukurasa wa mkaguzi kuingia."
+                    if request.session.get('lang') == 'sw' else
+                    "This is an assessor account. Please use the assessor login page."
+                )
                 return redirect('assessor_login')
             except Assessor.DoesNotExist:
-                get_or_create_student_profile(user)
-                messages.success(request, "Login successful!")
-                return redirect('dashboard')
+                pass
+
+            # Board member (DEO / HT / REO) — must use board login
+            try:
+                BoardMember.objects.get(user=user)
+                messages.warning(request,
+                    "Akaunti hii ni ya bodi. Tafadhali tumia ukurasa wa bodi kuingia."
+                    if request.session.get('lang') == 'sw' else
+                    "This is a board account. Please use the board login page."
+                )
+                return redirect('board_login')
+            except BoardMember.DoesNotExist:
+                pass
+
+            login(request, user, backend='field_app.backends.EmailBackend')
+            get_or_create_student_profile(user)
+            messages.success(request,
+                "Umeingia mfumo." if request.session.get('lang') == 'sw' else "Login successful."
+            )
+            return redirect('dashboard')
         else:
             messages.error(request, 'Invalid credentials')
     else:
@@ -886,16 +913,23 @@ def login_view(request):
 # views.py - Badilisha logout_view kwa hii
 
 def logout_view(request):
-    """Logout na upeleke kwenye appropriate login page based on user type"""
-    was_staff = request.user.is_authenticated and request.user.is_staff
-    was_assessor = request.user.is_authenticated and hasattr(request.user, 'assessor')
+    """Logout na upeleke kwenye login page sahihi kulingana na aina ya mtumiaji"""
+    redirect_to = 'login'
+    if request.user.is_authenticated:
+        if request.user.is_staff:
+            redirect_to = 'login_page'
+        else:
+            try:
+                Assessor.objects.get(user=request.user)
+                redirect_to = 'assessor_login'
+            except Assessor.DoesNotExist:
+                try:
+                    BoardMember.objects.get(user=request.user)
+                    redirect_to = 'board_login'
+                except BoardMember.DoesNotExist:
+                    redirect_to = 'login'
     logout(request)
-    messages.success(request, "You have been logged out successfully.")
-    if was_staff:
-        return redirect('/admin/login/')
-    if was_assessor:
-        return redirect('assessor_login')
-    return redirect('login')
+    return redirect(redirect_to)
 # =========================
 # ASSESSOR LOGIN VIEW
 # =========================
@@ -1018,16 +1052,19 @@ def help_page(request):
 def dashboard(request):
     """Student dashboard"""
 
-    # Staff users belong in admin dashboard
     if request.user.is_staff:
         return redirect('admin_dashboard')
 
-    # Check if user is assessor
     try:
-        assessor = Assessor.objects.get(user=request.user)
-        messages.info(request, "Redirecting to assessor dashboard")
+        Assessor.objects.get(user=request.user)
         return redirect('assessor_dashboard')
     except Assessor.DoesNotExist:
+        pass
+
+    try:
+        BoardMember.objects.get(user=request.user)
+        return redirect('board_home')
+    except BoardMember.DoesNotExist:
         pass
     
     student = get_or_create_student_profile(request.user)
@@ -4474,10 +4511,21 @@ Example row:
 
         except Exception as e:
             import traceback
-            error_msg = str(e)
-            traceback.print_exc()  # Log full traceback to server console
-            return JsonResponse({'success': False, 'error': error_msg}, status=500)
-    
+            traceback.print_exc()
+            raw = str(e)
+            if 'PERMISSION_DENIED' in raw or 'suspended' in raw.lower() or '403' in raw:
+                user_msg = (
+                    "Huduma ya AI imesimamishwa kwa sababu ya ufunguo wa API uliosimamishwa. "
+                    "Tafadhali wasiliana na msimamizi ili upate ufunguo mpya wa Google AI."
+                )
+            elif 'quota' in raw.lower() or '429' in raw:
+                user_msg = "Kikomo cha matumizi ya AI kimefikiwa. Jaribu tena baadaye."
+            elif 'API_KEY' in raw or 'api_key' in raw.lower():
+                user_msg = "Ufunguo wa API ya AI haujawekwa. Wasiliana na msimamizi."
+            else:
+                user_msg = "Hitilafu ya ndani imetokea. Tafadhali jaribu tena."
+            return JsonResponse({'success': False, 'error': user_msg}, status=500)
+
     return JsonResponse({'success': False}, status=400)
 
 @login_required
@@ -5064,11 +5112,22 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
             return JsonResponse({'success': True, 'data': lesson_data, 'saved_id': saved_id})
             
         except Exception as e:
-            print(f"Lesson Plan generation error: {e}")
             import traceback
             traceback.print_exc()
-            return JsonResponse({'success': False, 'error': str(e)}, status=500)
-    
+            raw = str(e)
+            if 'PERMISSION_DENIED' in raw or 'suspended' in raw.lower() or '403' in raw:
+                user_msg = (
+                    "Huduma ya AI imesimamishwa kwa sababu ya ufunguo wa API uliosimamishwa. "
+                    "Tafadhali wasiliana na msimamizi ili upate ufunguo mpya wa Google AI."
+                )
+            elif 'quota' in raw.lower() or '429' in raw:
+                user_msg = "Kikomo cha matumizi ya AI kimefikiwa. Jaribu tena baadaye."
+            elif 'API_KEY' in raw or 'api_key' in raw.lower():
+                user_msg = "Ufunguo wa API ya AI haujawekwa. Wasiliana na msimamizi."
+            else:
+                user_msg = "Hitilafu ya ndani imetokea. Tafadhali jaribu tena."
+            return JsonResponse({'success': False, 'error': user_msg}, status=500)
+
     return JsonResponse({'success': False}, status=400)
 @login_required
 def api_get_schools(request):

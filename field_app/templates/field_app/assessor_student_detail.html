@@ -86,13 +86,15 @@
                                             <i class="fas fa-users" style="color: var(--success);"></i>
                                         </div>
                                         <div class="flex-grow-1">
-                                            <small class="text-muted d-block">{% if LANG == 'sw' %}Uwezo{% else %}Capacity{% endif %}</small>
-                                            <div>
-                                                <div class="fw-medium" style="color: var(--text-dark);">{{ school.current_students }} / {{ school.capacity }}</div>
-                                                <div class="progress mt-2" style="height: 6px; background: var(--border); border-radius: 4px;">
-                                                    <div class="progress-bar" style="width: {% widthratio school.current_students school.capacity 100 %}%; background: var(--bold); border-radius: 4px;"></div>
-                                                </div>
+                                            <small class="text-muted d-block" style="text-transform:uppercase;letter-spacing:.3px;font-size:.7rem;">{% if LANG == 'sw' %}Mgawo wa DEO{% else %}DEO Quota{% endif %}</small>
+                                            {% if school.deo_quota %}
+                                            <div class="fw-medium" style="color: var(--text-dark);">{{ school.deo_filled }} / {{ school.deo_quota }}</div>
+                                            <div class="progress mt-2" style="height: 6px; background: var(--border); border-radius: 4px;">
+                                                <div class="progress-bar" style="width: {% widthratio school.deo_filled school.deo_quota 100 %}%; background: {% if school.deo_remaining == 0 %}var(--success){% else %}var(--bold){% endif %}; border-radius: 4px;"></div>
                                             </div>
+                                            {% else %}
+                                            <div class="fw-medium" style="color: var(--text-gray); font-size:.85rem;">—</div>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
