@@ -557,10 +557,16 @@
                 if (data.success && data.data && data.data.length > 0) {
                     displayResults(data.data, formData);
                 } else {
+                    const errMsg = data.error || '{% if LANG == "sw" %}Imeshindwa kuunda. Tafadhali jaribu tena.{% else %}Generation failed. Please try again.{% endif %}';
+                    const isApiErr = errMsg.includes('imesimamishwa') || errMsg.includes('API') || errMsg.includes('suspended') || errMsg.includes('kikomo') || errMsg.includes('quota');
                     resultDiv.innerHTML = `
-                        <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            {% if LANG == "sw" %}Imeshindwa kuunda. Tafadhali jaribu tena.{% else %}Generation failed. Please try again.{% endif %}
+                        <div style="background:#FEF3C7;border-left:4px solid #D97706;border-radius:4px;padding:14px 16px;font-size:13px;color:#92400E;display:flex;gap:10px;align-items:flex-start;">
+                            <i class="fas fa-exclamation-triangle" style="margin-top:2px;flex-shrink:0;"></i>
+                            <div>
+                                <div style="font-weight:700;margin-bottom:4px;">{% if LANG == "sw" %}Hitilafu ya Kizazi{% else %}Generation Error{% endif %}</div>
+                                <div>${errMsg}</div>
+                                ${isApiErr ? '<div style="margin-top:8px;font-size:12px;opacity:.8;">{% if LANG == "sw" %}Nenda aistudio.google.com upate ufunguo mpya wa API, kisha badilisha GOOGLE_API_KEY kwenye Railway.{% else %}Go to aistudio.google.com to get a new API key, then update GOOGLE_API_KEY on Railway.{% endif %}</div>' : ''}
+                            </div>
                         </div>
                     `;
                     resultDiv.style.display = 'block';
@@ -569,9 +575,9 @@
                 console.error('Error:', error);
                 loadingDiv.style.display = 'none';
                 resultDiv.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        {% if LANG == "sw" %}Hitilafu ya mtandao:{% else %}Network error:{% endif %} ${error.message}
+                    <div style="background:#FEE2E2;border-left:4px solid #DC2626;border-radius:4px;padding:14px 16px;font-size:13px;color:#7F1D1D;display:flex;gap:10px;">
+                        <i class="fas fa-exclamation-circle" style="margin-top:2px;flex-shrink:0;"></i>
+                        <div>{% if LANG == "sw" %}Hitilafu ya mtandao:{% else %}Network error:{% endif %} ${error.message}</div>
                     </div>
                 `;
                 resultDiv.style.display = 'block';
