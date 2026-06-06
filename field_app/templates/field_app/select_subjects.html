@@ -145,9 +145,7 @@
                         <option value="" disabled selected>{% if LANG == 'sw' %}--- Chagua Somo ---{% else %}--- Select a Subject ---{% endif %}</option>
                         {% for sc in subject_capacities %}
                             {% if sc.subject.id not in applied_subject_ids %}
-                                <option value="{{ sc.subject.id }}">
-                                    {{ sc.subject.name }} ({% if LANG == 'sw' %}Nafasi{% else %}Slots{% endif %}: {{ sc.current_students }}/{{ sc.max_students }})
-                                </option>
+                                <option value="{{ sc.subject.id }}">{{ sc.subject.name }}</option>
                             {% endif %}
                         {% endfor %}
                     </select>

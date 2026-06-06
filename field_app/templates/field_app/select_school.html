@@ -62,7 +62,6 @@
             <div>
                 <strong><i class="fas fa-check-circle me-2" style="color: var(--success);"></i>{% if LANG == 'sw' %}Shule Uliyochagua:{% else %}Selected School:{% endif %}</strong>
                 <span class="fw-bold ms-2">{{ selected_school.name }}</span>
-                <span class="text-muted ms-2">({% if LANG == 'sw' %}Ujazo{% else %}Capacity{% endif %}: {{ selected_school.current_students }}/{{ selected_school.capacity }})</span>
             </div>
             <div>
                 <form method="post" style="display: inline-block;">
@@ -101,23 +100,25 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <p class="mb-2">{% if LANG == 'sw' %}Ujazo{% else %}Capacity{% endif %}: <strong>{{ school.current_students }}</strong> / {{ school.capacity }}</p>
-                    <div class="progress mb-2" style="height:8px;">
-                        <div class="progress-bar" style="width:{{ school.occupancy_percentage }}%;
-                            background:{% if school.occupancy_percentage >= 90 %}var(--danger)
-                                    {% elif school.occupancy_percentage >= 70 %}var(--warning)
-                                    {% else %}var(--bold){% endif %};">
-                        </div>
-                    </div>
-                    <p class="text-end small mb-0">{{ school.occupancy_percentage }}% {% if LANG == 'sw' %}ujazo{% else %}full{% endif %}</p>
                     {% if school.deo_quota %}
-                    <hr style="margin:.6rem 0;border-color:#e5e7eb;">
-                    <div style="font-size:.75rem;">
-                        <span style="color:#C8900A;font-weight:700;"><i class="fas fa-clipboard-list me-1"></i>{% if LANG == 'sw' %}DEO Quota{% else %}DEO Quota{% endif %}:</span>
+                    <div style="font-size:.82rem;">
+                        <span style="color:#C8900A;font-weight:700;text-transform:uppercase;letter-spacing:.3px;">
+                            <i class="fas fa-clipboard-list me-1"></i>{% if LANG == 'sw' %}Mgawo wa DEO{% else %}DEO Quota{% endif %}:
+                        </span>
                         <strong style="color:#0A2B5E;">{{ school.deo_filled }}/{{ school.deo_quota }}</strong>
                         <span style="color:{% if school.deo_remaining == 0 %}#059669{% else %}#C8900A{% endif %};">
                           ({% if school.deo_remaining == 0 %}{% if LANG == 'sw' %}Imejazwa{% else %}Full{% endif %}{% else %}{{ school.deo_remaining }} {% if LANG == 'sw' %}nafasi{% else %}spots{% endif %}{% endif %})
                         </span>
+                    </div>
+                    <div class="progress mt-2" style="height:6px;">
+                        <div class="progress-bar" style="width:{% widthratio school.deo_filled school.deo_quota 100 %}%;
+                            background:{% if school.deo_remaining == 0 %}var(--success){% else %}var(--bold){% endif %};">
+                        </div>
+                    </div>
+                    {% else %}
+                    <div style="font-size:.8rem;color:var(--text-gray);">
+                        <i class="fas fa-info-circle me-1"></i>
+                        {% if LANG == 'sw' %}Hakuna mgawo wa DEO bado{% else %}No DEO quota assigned yet{% endif %}
                     </div>
                     {% endif %}
                 </div>

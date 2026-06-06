@@ -499,21 +499,6 @@ body {
             </a>
         </li>
 
-        <!-- Help -->
-        <li class="sidebar-item">
-            <a href="{% url 'help_page' %}" class="sidebar-link {% if request.resolver_match.url_name == 'help_page' %}active{% endif %}">
-                <i class="fas fa-life-ring"></i>
-                <span class="sidebar-text">{% if LANG == 'sw' %}Msaada{% else %}Help{% endif %}</span>
-            </a>
-        </li>
-
-        <!-- Logout (pushed to bottom) -->
-        <li class="sidebar-item" style="margin-top: auto;">
-            <a href="{% url 'logout' %}" class="sidebar-link">
-                <i class="fas fa-sign-out-alt"></i>
-                <span class="sidebar-text">{% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}</span>
-            </a>
-        </li>
 
     </ul>
 </nav>
