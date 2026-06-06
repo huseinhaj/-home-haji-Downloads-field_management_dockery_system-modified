@@ -1,0 +1,214 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Ripoti ya Mwezi — {{ school.name }}{% endblock %}
+{% block content %}
+<style>
+:root {
+  --navy:#0A2B5E; --gold:#C8900A; --light:#EEF1F6;
+  --border:#E2E8F0; --gray:#718096; --text:#1A1A2E;
+  --radius:4px; --success:#059669; --warn:#D97706; --danger:#DC2626;
+}
+.rpt-wrap { max-width:900px; margin:0 auto; padding:22px 16px 60px; }
+
+.btn-navy { background:var(--navy); color:#fff; border:none; border-radius:var(--radius);
+  padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer; text-decoration:none;
+  display:inline-flex; align-items:center; gap:5px; }
+.btn-navy:hover { background:#0C3570; color:#fff; }
+.btn-outline { background:transparent; color:var(--navy); border:1.5px solid var(--navy);
+  border-radius:var(--radius); padding:6px 14px; font-size:12px; font-weight:700;
+  cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
+
+#rpt-paper { background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:40px 48px; }
+
+.rpt-gov-hdr { text-align:center; margin-bottom:28px; }
+.rpt-gov-hdr .ministry { font-size:11.5px; font-weight:700; color:var(--gray);
+  text-transform:uppercase; letter-spacing:.6px; margin-bottom:4px; }
+.rpt-gov-hdr .title { font-size:18px; font-weight:900; color:var(--navy);
+  text-transform:uppercase; letter-spacing:.3px; margin:6px 0; }
+.rpt-gov-hdr .subtitle { font-size:13px; font-weight:700; color:var(--gold); margin:0; }
+.rpt-divider { border:none; border-top:2px solid var(--navy); margin:14px 0; }
+.rpt-divider-gold { border:none; border-top:2px solid var(--gold); margin:4px 0 20px; }
+
+.rpt-meta { display:grid; grid-template-columns:1fr 1fr; gap:10px 30px; margin-bottom:24px; font-size:12.5px; }
+.rpt-meta-item .lbl { font-size:10px; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:.4px; margin-bottom:2px; display:block; }
+.rpt-meta-item .val { font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:3px; display:block; }
+
+.sec-title { font-size:12px; font-weight:800; color:var(--navy); text-transform:uppercase;
+  letter-spacing:.5px; border-left:4px solid var(--gold); padding-left:10px; margin:20px 0 10px; }
+
+.rpt-tbl { width:100%; border-collapse:collapse; font-size:12px; }
+.rpt-tbl th { background:var(--navy); color:#fff; padding:8px 10px; font-size:10.5px;
+  font-weight:700; text-align:left; text-transform:uppercase; letter-spacing:.3px; }
+.rpt-tbl td { padding:9px 10px; border-bottom:1px solid #E8ECF2; vertical-align:top; }
+.rpt-tbl tr:nth-child(even) td { background:#F9FAFB; }
+
+.pct-ok  { color:var(--success); font-weight:800; }
+.pct-mid { color:var(--warn);    font-weight:800; }
+.pct-low { color:var(--danger);  font-weight:800; }
+
+.summary-box { background:#F7FAFC; border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-top:20px; font-size:12.5px; }
+.summary-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #EDF2F7; }
+.summary-row:last-child { border-bottom:none; }
+
+.sig-section { margin-top:36px; display:grid; grid-template-columns:1fr 1fr; gap:30px; }
+.sig-box { border-top:1px solid var(--text); padding-top:10px; }
+.sig-lbl { font-size:10.5px; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:.4px; }
+.sig-name { font-size:12px; font-weight:700; color:var(--text); margin-top:4px; }
+
+@media print {
+  .no-print, nav, footer { display:none !important; }
+  body { margin:0; background:#fff; }
+  .rpt-wrap { max-width:100%; padding:0; }
+  #rpt-paper { border:none; padding:20px; }
+  .rpt-tbl th { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+}
+</style>
+
+<div class="rpt-wrap">
+
+  <!-- Toolbar -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;" class="no-print">
+    <a href="{% url 'board_head_teacher' school.id %}" class="btn-outline">← Rudi</a>
+    <button onclick="window.print()" class="btn-navy">Chapisha / PDF</button>
+    <span style="flex:1;"></span>
+    <span style="font-size:11px;color:var(--gray);">{{ month_name }}</span>
+  </div>
+
+  <!-- Paper -->
+  <div id="rpt-paper">
+
+    <!-- Government Header -->
+    <div class="rpt-gov-hdr">
+      <div class="ministry">Jamhuri ya Muungano wa Tanzania</div>
+      <div class="ministry">Wizara ya Elimu, Sayansi na Teknolojia</div>
+      <hr class="rpt-divider">
+      <div class="title">Ripoti ya Mwezi — Internship ya Walimu Wanafunzi</div>
+      <div class="subtitle">{{ month_name }}</div>
+      <hr class="rpt-divider-gold">
+    </div>
+
+    <!-- Meta -->
+    <div class="rpt-meta">
+      <div class="rpt-meta-item">
+        <span class="lbl">Jina la Shule</span>
+        <span class="val">{{ school.name }}</span>
+      </div>
+      <div class="rpt-meta-item">
+        <span class="lbl">Wilaya / Mkoa</span>
+        <span class="val">{{ school.district.name }}, {{ school.district.region.name }}</span>
+      </div>
+      <div class="rpt-meta-item">
+        <span class="lbl">Mkuu wa Shule</span>
+        <span class="val">{{ bm.full_name }}</span>
+      </div>
+      <div class="rpt-meta-item">
+        <span class="lbl">Tarehe ya Ripoti</span>
+        <span class="val">{{ today|date:"d F Y" }}</span>
+      </div>
+      <div class="rpt-meta-item">
+        <span class="lbl">Jumla ya Wanafunzi</span>
+        <span class="val">{{ total_students }}</span>
+      </div>
+      <div class="rpt-meta-item">
+        <span class="lbl">Wastani wa Maendeleo</span>
+        <span class="val {% if avg_pct >= 70 %}pct-ok{% elif avg_pct >= 40 %}pct-mid{% else %}pct-low{% endif %}">{{ avg_pct }}%</span>
+      </div>
+    </div>
+
+    <!-- Students table -->
+    <div class="sec-title">Orodha ya Wanafunzi Wanaointernia</div>
+    <table class="rpt-tbl">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Jina Kamili</th>
+          <th>Masomo Yanayofundishwa</th>
+          <th>Siku za Logbook</th>
+          <th>Scheme / LP</th>
+          <th>Maendeleo</th>
+          <th>Tathmini</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rd in report_data %}
+        <tr>
+          <td style="color:var(--gray);font-weight:700;">{{ forloop.counter }}</td>
+          <td>
+            <strong>{{ rd.name }}</strong>
+            <div style="font-size:10.5px;color:var(--gray);">{{ rd.email }}</div>
+          </td>
+          <td>{{ rd.subjects }}</td>
+          <td style="text-align:center;font-weight:800;color:var(--navy);">{{ rd.logbook_days }}</td>
+          <td style="text-align:center;">
+            <span style="font-size:11px;">{{ rd.scheme_count }}S / {{ rd.lp_count }}LP</span>
+          </td>
+          <td>
+            <span class="{% if rd.progress_pct >= 70 %}pct-ok{% elif rd.progress_pct >= 40 %}pct-mid{% else %}pct-low{% endif %}">
+              {{ rd.progress_pct }}%
+            </span>
+            <div style="background:#E2E8F0;height:4px;border-radius:2px;margin-top:4px;width:80px;">
+              <div style="height:4px;border-radius:2px;width:{{ rd.progress_pct }}%;background:{% if rd.progress_pct >= 70 %}var(--success){% elif rd.progress_pct >= 40 %}var(--warn){% else %}var(--danger){% endif %};"></div>
+            </div>
+          </td>
+          <td>
+            {% if rd.status and rd.status != '—' %}
+              <span style="display:inline-block;padding:2px 8px;border-radius:3px;font-size:10.5px;font-weight:700;background:#EBF4FF;color:#1E40AF;">{{ rd.status }}</span>
+              {% if rd.comment %}
+              <div style="font-size:10.5px;color:var(--gray);margin-top:2px;">{{ rd.comment|truncatechars:50 }}</div>
+              {% endif %}
+            {% else %}
+              <em style="color:var(--gray);font-size:10.5px;">—</em>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--gray);">Hakuna wanafunzi walioidhinishwa.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Summary -->
+    <div class="sec-title" style="margin-top:28px;">Muhtasari</div>
+    <div class="summary-box">
+      <div class="summary-row">
+        <span style="font-weight:700;">Jumla ya Wanafunzi Walioidhinishwa</span>
+        <span style="font-weight:800;color:var(--navy);">{{ total_students }}</span>
+      </div>
+      <div class="summary-row">
+        <span style="font-weight:700;">Wastani wa Maendeleo ya Logbook</span>
+        <span style="font-weight:800;color:{% if avg_pct >= 70 %}var(--success){% elif avg_pct >= 40 %}var(--warn){% else %}var(--danger){% endif %};">{{ avg_pct }}%</span>
+      </div>
+    </div>
+
+    <!-- Remarks -->
+    <div class="sec-title" style="margin-top:28px;">Maelezo ya Ziada / Mapendekezo</div>
+    <div style="border:1px solid var(--border);border-radius:var(--radius);min-height:60px;padding:12px 14px;font-size:12px;color:var(--gray);">&nbsp;</div>
+
+    <!-- Signatures -->
+    <div class="sig-section">
+      <div>
+        <div style="font-size:11px;color:var(--gray);margin-bottom:40px;">Sahihi ya Mkuu wa Shule:</div>
+        <div class="sig-box">
+          <div class="sig-lbl">Mkuu wa Shule</div>
+          <div class="sig-name">{{ bm.full_name }}</div>
+          <div style="font-size:10.5px;color:var(--gray);margin-top:2px;">{{ school.name }}</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--gray);margin-bottom:40px;">Sahihi ya DEO / Mkaguzi:</div>
+        <div class="sig-box">
+          <div class="sig-lbl">Afisa Elimu wa Wilaya (DEO)</div>
+          <div class="sig-name">{{ school.district.name }}</div>
+          <div style="font-size:10.5px;color:var(--gray);margin-top:2px;">Tarehe: _______________</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align:center;margin-top:32px;padding-top:14px;border-top:1px solid var(--border);">
+      <div style="font-size:10px;color:var(--gray);">Ripoti hii imetolewa na Mfumo wa Usimamizi wa Intern — Wizara ya Elimu, Tanzania</div>
+      <div style="font-size:10px;color:var(--gray);">Tarehe ya Kuchapishwa: {{ today|date:"d/m/Y" }}</div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

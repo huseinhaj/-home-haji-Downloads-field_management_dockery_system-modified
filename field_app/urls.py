@@ -5,10 +5,20 @@ from . import views
 urlpatterns = [
     # =========================
     path('', views.homepage, name='homepage'),
-    path('password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
-    path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
-    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
-    path('reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+    path('password_reset/', auth_views.PasswordResetView.as_view(
+        template_name='field_app/registration/password_reset.html',
+        email_template_name='field_app/registration/password_reset_email.html',
+    ), name='password_reset'),
+    path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(
+        template_name='field_app/registration/password_reset_done.html',
+    ), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
+        template_name='field_app/password_reset_confirm.html',
+        success_url='/reset/done/',
+    ), name='password_reset_confirm'),
+    path('reset/done/', auth_views.PasswordResetCompleteView.as_view(
+        template_name='field_app/registration/password_reset_complete.html',
+    ), name='password_reset_complete'),
     # =========================
     # CORE PAGES
     path('dashboard/', views.dashboard, name='dashboard'),
@@ -133,6 +143,7 @@ urlpatterns = [
     path('create-board-member/', views.create_board_member, name='create_board_member'),
     path('import-head-teachers/', views.import_head_teachers, name='import_head_teachers'),
     path('board/school/<int:school_id>/', views.board_head_teacher, name='board_head_teacher'),
+    path('board/school/<int:school_id>/monthly-report/', views.head_teacher_monthly_report, name='head_teacher_monthly_report'),
 
     # DEO Allocation
     path('board/allocation/', views.deo_allocation, name='deo_allocation'),

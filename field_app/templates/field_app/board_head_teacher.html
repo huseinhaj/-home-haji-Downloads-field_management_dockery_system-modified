@@ -1,339 +1,443 @@
 {% extends 'field_app/base.html' %}
-{% block title %}Dashibodi — {{ school.name }}{% endblock %}
+{% block title %}{{ school.name }} — Dashibodi ya Mkuu{% endblock %}
 {% block content %}
 <style>
-/* ── Layout ── */
-.ht-wrap{max-width:1100px;margin:0 auto;padding:24px 16px;}
-/* ── Header ── */
-.ht-hdr{background:#0A2B5E;border-radius:10px;padding:18px 24px;display:flex;align-items:center;gap:16px;margin-bottom:22px;border-bottom:3px solid #C8900A;}
-.ht-hdr-ico{width:48px;height:48px;background:#C8900A;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.ht-hdr-ico i{color:#fff;font-size:20px;}
-.ht-hdr-title{font-size:17px;font-weight:800;color:#fff;margin:0;letter-spacing:.3px;}
-.ht-hdr-sub{font-size:11.5px;color:rgba(255,255,255,.65);margin:3px 0 0;}
-/* ── KPI cards ── */
-.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px;}
-@media(max-width:768px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
-.kpi{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:14px 12px;text-align:center;position:relative;overflow:hidden;}
-.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
-.kpi.blue::before{background:#0A2B5E;}
-.kpi.green::before{background:#059669;}
-.kpi.amber::before{background:#D97706;}
-.kpi.red::before{background:#DC2626;}
-.kpi.teal::before{background:#0891B2;}
-.kpi-num{font-size:26px;font-weight:800;color:#1A1A2E;line-height:1;}
-.kpi-lbl{font-size:11px;color:#718096;margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
-.kpi-ico{font-size:20px;margin-bottom:6px;}
-/* ── Sections ── */
-.sec{background:#fff;border:1px solid #E2E8F0;border-radius:8px;margin-bottom:18px;overflow:hidden;}
-.sec-hd{background:#F7FAFC;border-bottom:1px solid #E2E8F0;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;}
-.sec-hd h5{margin:0;font-size:13.5px;font-weight:700;color:#0A2B5E;}
-.sec-hd h5 i{color:#C8900A;margin-right:7px;}
-.sec-body{padding:18px;}
-/* ── Table ── */
-.ht-tbl{width:100%;border-collapse:collapse;font-size:13px;}
-.ht-tbl th{background:#F7FAFC;padding:9px 12px;font-size:11px;font-weight:700;color:#4A5568;text-align:left;border-bottom:1px solid #E2E8F0;text-transform:uppercase;letter-spacing:.4px;}
-.ht-tbl td{padding:10px 12px;border-bottom:1px solid #F0F4F8;vertical-align:middle;}
-.ht-tbl tr:last-child td{border-bottom:none;}
-.ht-tbl tr:hover td{background:#FAFBFD;}
-/* ── Badges ── */
-.b{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
-.b-ok{background:#D1FAE5;color:#065F46;}
-.b-warn{background:#FEF3C7;color:#92400E;}
-.b-late{background:#FEE2E2;color:#991B1B;}
-.b-pend{background:#FEF3C7;color:#92400E;}
-.b-app{background:#D1FAE5;color:#065F46;}
-.b-rej{background:#FEE2E2;color:#991B1B;}
-.b-present{background:#DBEAFE;color:#1D4ED8;}
-.b-absent{background:#F3F4F6;color:#6B7280;}
-/* ── Attendance dots ── */
-.dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
-.dot-in{background:#059669;}
-.dot-out{background:#E2E8F0;}
-/* ── Comment form ── */
-.cmt-form{display:none;margin-top:8px;background:#F7FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:12px;}
-.cmt-inp{width:100%;padding:8px 10px;border:1.5px solid #CBD5E0;border-radius:5px;font-size:12.5px;font-family:inherit;resize:vertical;}
-.cmt-inp:focus{outline:none;border-color:#0A2B5E;}
-select.cmt-sel{padding:7px 10px;border:1.5px solid #CBD5E0;border-radius:5px;font-size:12.5px;background:#fff;}
-/* ── Buttons ── */
-.btn-xs{padding:4px 10px;border-radius:5px;font-size:11.5px;font-weight:600;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;text-decoration:none;}
-.btn-navy{background:#0A2B5E;color:#fff;}
-.btn-navy:hover{background:#0C3570;color:#fff;}
-.btn-gold{background:#C8900A;color:#fff;}
-.btn-gold:hover{background:#A87208;color:#fff;}
-.btn-ghost{background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;}
-.btn-ghost:hover{background:#DBEAFE;}
-.btn-sm{padding:7px 16px;border-radius:6px;font-size:13px;font-weight:700;border:none;cursor:pointer;}
-/* ── Progress bar ── */
-.prog-wrap{background:#E2E8F0;border-radius:10px;height:8px;overflow:hidden;}
-.prog-bar{height:100%;border-radius:10px;transition:.4s;}
-/* ── Status row ── */
-.today-row{display:flex;flex-wrap:wrap;gap:8px;padding:14px 18px;}
-.today-chip{display:flex;align-items:center;gap:7px;background:#F7FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:6px 12px;font-size:12px;}
-.today-chip.in{border-color:#A7F3D0;background:#ECFDF5;}
-.today-chip.out{border-color:#E2E8F0;}
+:root {
+  --navy:#0A2B5E; --gold:#C8900A; --light:#EEF1F6;
+  --success:#059669; --warn:#D97706; --danger:#DC2626;
+  --border:#E2E8F0; --gray:#718096; --text:#1A1A2E;
+  --radius:4px;
+}
+.ht-wrap { max-width:1100px; margin:0 auto; padding:22px 16px 48px; }
+
+/* Header */
+.ht-hdr { background:var(--navy); border-left:5px solid var(--gold); border-radius:var(--radius);
+  padding:16px 22px; display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+.ht-hdr-title { font-size:16px; font-weight:800; color:#fff; margin:0 0 3px; letter-spacing:.2px; }
+.ht-hdr-sub { font-size:11px; color:rgba(255,255,255,.6); margin:0; }
+.ht-hdr-actions { margin-left:auto; display:flex; gap:8px; align-items:center; flex-shrink:0; }
+
+/* KPI */
+.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+@media(max-width:700px){ .kpi-row{grid-template-columns:repeat(2,1fr);} }
+.kpi { background:#fff; border:1px solid var(--border); border-top:3px solid var(--navy);
+  border-radius:var(--radius); padding:14px 16px; }
+.kpi.g { border-top-color:var(--success); }
+.kpi.a { border-top-color:var(--warn); }
+.kpi.t { border-top-color:#0891B2; }
+.kpi-num { font-size:28px; font-weight:800; color:var(--navy); line-height:1; }
+.kpi-lbl { font-size:10.5px; color:var(--gray); font-weight:700; text-transform:uppercase;
+  letter-spacing:.4px; margin-top:5px; }
+
+/* Sections */
+.sec { background:#fff; border:1px solid var(--border); border-radius:var(--radius); margin-bottom:16px; overflow:hidden; }
+.sec-hd { background:#F7FAFC; border-bottom:1px solid var(--border); padding:11px 18px;
+  display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.sec-hd-title { font-size:12.5px; font-weight:800; color:var(--navy); text-transform:uppercase;
+  letter-spacing:.5px; margin:0; }
+.sec-body { padding:16px 18px; }
+
+/* Table */
+.ht-tbl { width:100%; border-collapse:collapse; font-size:12.5px; }
+.ht-tbl th { background:#F7FAFC; padding:8px 12px; font-size:10.5px; font-weight:700;
+  color:var(--gray); text-align:left; border-bottom:1px solid var(--border);
+  text-transform:uppercase; letter-spacing:.4px; }
+.ht-tbl td { padding:10px 12px; border-bottom:1px solid #F0F4F8; vertical-align:middle; }
+.ht-tbl tr:last-child td { border-bottom:none; }
+.ht-tbl tr:hover td { background:#FAFBFD; }
+
+/* Badges */
+.b { display:inline-flex; align-items:center; padding:2px 8px; border-radius:3px;
+  font-size:10.5px; font-weight:700; }
+.b-ok  { background:#D1FAE5; color:#065F46; }
+.b-warn{ background:#FEF3C7; color:#92400E; }
+.b-late{ background:#FEE2E2; color:#991B1B; }
+.b-app { background:#D1FAE5; color:#065F46; }
+.b-pend{ background:#FEF3C7; color:#92400E; }
+.b-rej { background:#FEE2E2; color:#991B1B; }
+.b-in  { background:#DBEAFE; color:#1D4ED8; }
+.b-out { background:#F3F4F6; color:var(--gray); }
+
+/* Progress mini */
+.prog { background:#E2E8F0; border-radius:2px; height:5px; overflow:hidden; margin-top:4px; }
+.prog-bar { height:100%; border-radius:2px; }
+
+/* Buttons */
+.btn-navy { background:var(--navy); color:#fff; border:none; border-radius:var(--radius);
+  padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; text-decoration:none;
+  display:inline-flex; align-items:center; gap:5px; }
+.btn-navy:hover { background:#0C3570; color:#fff; }
+.btn-gold { background:var(--gold); color:#fff; border:none; border-radius:var(--radius);
+  padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; text-decoration:none;
+  display:inline-flex; align-items:center; gap:5px; }
+.btn-gold:hover { background:#A87208; color:#fff; }
+.btn-outline { background:transparent; color:var(--navy); border:1.5px solid var(--navy);
+  border-radius:var(--radius); padding:5px 12px; font-size:12px; font-weight:700;
+  cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
+.btn-outline:hover { background:var(--light); color:var(--navy); }
+.btn-sm { padding:4px 10px; font-size:11px; }
+
+/* Comment form */
+.cmt-form { display:none; margin-top:8px; background:#F7FAFC; border:1px solid var(--border);
+  border-radius:var(--radius); padding:12px; }
+.cmt-inp { width:100%; padding:8px 10px; border:1.5px solid #CBD5E0; border-radius:var(--radius);
+  font-size:12px; font-family:inherit; resize:vertical; }
+.cmt-inp:focus { outline:none; border-color:var(--navy); }
+.cmt-sel { padding:6px 10px; border:1.5px solid #CBD5E0; border-radius:var(--radius);
+  font-size:12px; background:#fff; width:100%; margin-bottom:7px; }
+
+/* Tabs */
+.tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:20px; overflow-x:auto; }
+.tab-btn { background:none; border:none; padding:10px 20px; font-size:12.5px; font-weight:700;
+  color:var(--gray); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px;
+  white-space:nowrap; transition:color .15s, border-color .15s; }
+.tab-btn.active { color:var(--navy); border-bottom-color:var(--gold); }
+.tab-btn:hover { color:var(--navy); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* Logbook preview */
+.log-row { padding:9px 0; border-bottom:1px solid #F0F4F8; font-size:12px; }
+.log-row:last-child { border-bottom:none; }
+
+/* Dot */
+.dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:4px; }
+.dot-in  { background:var(--success); }
+.dot-out { background:#CBD5E0; }
 </style>
 
 <div class="ht-wrap">
 
-  <!-- Header -->
-  <div class="ht-hdr">
-    <div class="ht-hdr-ico"><i class="fas fa-school"></i></div>
-    <div style="flex:1;">
-      <div class="ht-hdr-title">{{ school.name }} — Dashibodi ya Mkuu</div>
-      <div class="ht-hdr-sub">{{ school.district.name }}, {{ school.district.region.name }} &bull; Mkuu: <strong style="color:#C8900A;">{{ bm.full_name }}</strong> &bull; Leo: {{ today|date:"l, d F Y" }}</div>
-    </div>
-    <a href="{% url 'board_logout' %}" style="color:rgba(255,255,255,.6);font-size:12px;text-decoration:none;display:flex;align-items:center;gap:6px;">
-      <i class="fas fa-sign-out-alt"></i>Toka
-    </a>
-  </div>
-
   {% if messages %}
     {% for msg in messages %}
-    <div style="background:#D1FAE5;border-left:4px solid #059669;padding:10px 16px;border-radius:6px;font-size:13px;color:#065F46;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-      <i class="fas fa-check-circle"></i> {{ msg }}
+    <div style="background:#D1FAE5;border-left:4px solid var(--success);padding:10px 16px;
+      border-radius:var(--radius);font-size:12.5px;color:#065F46;margin-bottom:14px;">
+      {{ msg }}
     </div>
     {% endfor %}
   {% endif %}
 
-  <!-- KPI Stats -->
+  <!-- Header -->
+  <div class="ht-hdr">
+    <div style="flex:1;">
+      <div class="ht-hdr-title">{{ school.name }}</div>
+      <div class="ht-hdr-sub">{{ school.district.name }}, {{ school.district.region.name }} &bull; Mkuu: {{ bm.full_name }} &bull; {{ today|date:"d F Y" }}</div>
+    </div>
+    <div class="ht-hdr-actions">
+      <a href="{% url 'head_teacher_monthly_report' school.id %}" class="btn-gold">Ripoti ya Mwezi</a>
+      <a href="{% url 'public_school_head_form' %}" target="_blank" class="btn-navy">Tuma Ombi</a>
+      <a href="{% url 'board_logout' %}" style="color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;margin-left:8px;">Toka</a>
+    </div>
+  </div>
+
+  <!-- KPIs -->
   <div class="kpi-row">
-    <div class="kpi blue">
-      <div class="kpi-ico" style="color:#0A2B5E;"><i class="fas fa-users"></i></div>
+    <div class="kpi">
       <div class="kpi-num">{{ total }}</div>
       <div class="kpi-lbl">Wanafunzi Wote</div>
     </div>
-    <div class="kpi green">
-      <div class="kpi-ico" style="color:#059669;"><i class="fas fa-check-circle"></i></div>
-      <div class="kpi-num" style="color:#059669;">{{ approved_count }}</div>
+    <div class="kpi g">
+      <div class="kpi-num" style="color:var(--success);">{{ approved_count }}</div>
       <div class="kpi-lbl">Walioidhinishwa</div>
     </div>
-    <div class="kpi teal">
-      <div class="kpi-ico" style="color:#0891B2;"><i class="fas fa-sign-in-alt"></i></div>
+    <div class="kpi t">
       <div class="kpi-num" style="color:#0891B2;">{{ present_today }}</div>
       <div class="kpi-lbl">Waliofika Leo</div>
     </div>
-    <div class="kpi amber">
-      <div class="kpi-ico" style="color:#D97706;"><i class="fas fa-clock"></i></div>
-      <div class="kpi-num" style="color:#D97706;">{{ pending_count }}</div>
-      <div class="kpi-lbl">Wanaosubiri</div>
-    </div>
-    <div class="kpi {% if compliance_pct >= 80 %}green{% elif compliance_pct >= 50 %}amber{% else %}red{% endif %}">
-      <div class="kpi-ico" style="color:{% if compliance_pct >= 80 %}#059669{% elif compliance_pct >= 50 %}#D97706{% else %}#DC2626{% endif %};"><i class="fas fa-book-open"></i></div>
-      <div class="kpi-num" style="color:{% if compliance_pct >= 80 %}#059669{% elif compliance_pct >= 50 %}#D97706{% else %}#DC2626{% endif %};">{{ compliance_pct }}%</div>
-      <div class="kpi-lbl">Logbook (wiki hii)</div>
+    <div class="kpi {% if compliance_pct >= 80 %}g{% elif compliance_pct >= 50 %}a{% else %}{% endif %}">
+      <div class="kpi-num" style="color:{% if compliance_pct >= 80 %}var(--success){% elif compliance_pct >= 50 %}var(--warn){% else %}var(--danger){% endif %};">{{ compliance_pct }}%</div>
+      <div class="kpi-lbl">Logbook Wiki Hii</div>
     </div>
   </div>
 
-  <!-- Hali ya Logbook ya Wiki -->
-  <div class="sec" style="margin-bottom:18px;">
-    <div class="sec-hd">
-      <h5><i class="fas fa-chart-bar"></i>Logbook — Wiki Hii</h5>
-      <span style="font-size:11.5px;color:#718096;">{{ compliance_pct }}% compliance</span>
-    </div>
-    <div style="padding:14px 18px;">
-      <div class="prog-wrap">
-        <div class="prog-bar" style="width:{{ compliance_pct }}%;background:{% if compliance_pct >= 80 %}#059669{% elif compliance_pct >= 50 %}#D97706{% else %}#DC2626{% endif %};"></div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('tab-students', this)">Wanafunzi</button>
+    <button class="tab-btn" onclick="showTab('tab-logbooks', this)">Logbook</button>
+    <button class="tab-btn" onclick="showTab('tab-plans', this)">Mipango</button>
+    <button class="tab-btn" onclick="showTab('tab-requests', this)">Maombi</button>
+  </div>
+
+  <!-- ═══ TAB 1: WANAFUNZI ═══ -->
+  <div id="tab-students" class="tab-panel active">
+
+    <div class="sec">
+      <div class="sec-hd">
+        <span class="sec-hd-title">Wanafunzi Walioidhinishwa — {{ approved_count }}</span>
+        <span style="font-size:11px;color:var(--gray);">Wanaosubiri: {{ pending_count }}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:#718096;">
-        <span>0%</span>
-        <span>{% if compliance_pct >= 80 %}Vizuri Sana ✓{% elif compliance_pct >= 50 %}Wastani — Boresha{% else %}Chini — Waambie wajaze logbook{% endif %}</span>
-        <span>100%</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Mahudhurio Leo -->
-  <div class="sec">
-    <div class="sec-hd">
-      <h5><i class="fas fa-calendar-check"></i>Mahudhurio Leo — {{ today|date:"d/m/Y" }}</h5>
-      <span style="font-size:11.5px;font-weight:700;color:#059669;">{{ present_today }}/{{ total }} wamefika</span>
-    </div>
-    <div class="today-row">
-      {% for sd in students_data %}
-      <div class="today-chip {% if sd.present_today %}in{% else %}out{% endif %}">
-        <span class="dot {% if sd.present_today %}dot-in{% else %}dot-out{% endif %}"></span>
-        <span>{{ sd.obj.full_name|truncatechars:22 }}</span>
-        {% if sd.present_today %}<i class="fas fa-check" style="color:#059669;font-size:10px;"></i>{% endif %}
-      </div>
-      {% empty %}
-      <p style="color:#718096;font-size:13px;">Hakuna wanafunzi waliochaguliwa shule hii bado.</p>
-      {% endfor %}
-    </div>
-  </div>
-
-  <!-- Orodha ya Wanafunzi + Management -->
-  <div class="sec">
-    <div class="sec-hd">
-      <h5><i class="fas fa-user-graduate"></i>Wanafunzi — Usimamizi</h5>
-      <span style="font-size:11.5px;color:#718096;">{{ total }} jumla</span>
-    </div>
-    <div style="overflow-x:auto;">
-    <table class="ht-tbl">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Jina Kamili</th>
-          <th>Masomo</th>
-          <th>Hali</th>
-          <th>Leo</th>
-          <th>Logbook ya Mwisho</th>
-          <th>Maoni ya Mwisho</th>
-          <th>Vitendo</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for sd in students_data %}
-        <tr>
-          <td style="color:#9CA3AF;">{{ forloop.counter }}</td>
-          <td>
-            <div style="font-weight:700;color:#1A1A2E;">{{ sd.obj.full_name }}</div>
-            <div style="font-size:11px;color:#9CA3AF;">{{ sd.obj.user.email }}</div>
-          </td>
-          <td>
-            {% for subj in sd.obj.subjects.all %}
-              <span style="background:#EBF4FF;color:#1E40AF;padding:2px 6px;border-radius:4px;font-size:10.5px;margin:1px;display:inline-block;">{{ subj.name }}</span>
-            {% empty %}<span style="color:#9CA3AF;font-size:11px;">—</span>{% endfor %}
-          </td>
-          <td>
-            {% if sd.obj.approval_status == 'approved' %}<span class="b b-app"><i class="fas fa-check"></i>Aidhinishwa</span>
-            {% elif sd.obj.approval_status == 'pending' %}<span class="b b-pend"><i class="fas fa-clock"></i>Inasubiri</span>
-            {% else %}<span class="b b-rej"><i class="fas fa-times"></i>Imekataliwa</span>{% endif %}
-          </td>
-          <td>
-            {% if sd.present_today %}
-              <span class="b b-present"><i class="fas fa-circle" style="font-size:7px;"></i>Amefika</span>
-            {% else %}
-              <span class="b b-absent"><i class="fas fa-circle" style="font-size:7px;"></i>Hayupo</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if sd.last_log %}
-              <span class="b b-{{ sd.log_status }}">
-                {% if sd.log_status == 'ok' %}<i class="fas fa-check"></i>{% elif sd.log_status == 'warn' %}<i class="fas fa-exclamation"></i>{% else %}<i class="fas fa-times"></i>{% endif %}
-                {{ sd.last_log|date:"d/m" }}
-                {% if sd.days_since == 0 %}(leo){% elif sd.days_since == 1 %}(jana){% else %}(siku {{ sd.days_since }}){% endif %}
-              </span>
-            {% else %}
-              <span style="color:#9CA3AF;font-size:11px;">Haijawahi</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if sd.last_comment %}
-              <span class="b {% if sd.last_comment.status == 'excellent' %}b-app{% elif sd.last_comment.status == 'critical' or sd.last_comment.status == 'behind' %}b-rej{% else %}b-warn{% endif %}" title="{{ sd.last_comment.comment|truncatechars:60 }}">
-                {{ sd.last_comment.get_status_display|truncatechars:18 }}
-              </span>
-            {% else %}
-              <span style="color:#9CA3AF;font-size:11px;">—</span>
-            {% endif %}
-          </td>
-          <td>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <a href="{% url 'board_student_progress' sd.obj.id %}" class="btn-xs btn-navy">
-                <i class="fas fa-eye"></i>Tazama
-              </a>
-              <button type="button" class="btn-xs btn-ghost" onclick="toggleCmt({{ sd.obj.id }})">
-                <i class="fas fa-comment-alt"></i>Maoni
-              </button>
-            </div>
-            <!-- Comment inline form -->
-            <div id="cmt-{{ sd.obj.id }}" class="cmt-form">
-              <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="add_comment">
-                <input type="hidden" name="student_id" value="{{ sd.obj.id }}">
-                <div style="margin-bottom:7px;">
-                  <select name="status" class="cmt-sel" style="width:100%;margin-bottom:6px;">
-                    <option value="excellent">Vizuri Sana — Endelea Hivyo</option>
-                    <option value="good" selected>Vizuri — Kazi Nzuri</option>
-                    <option value="average">Wastani — Boresha</option>
-                    <option value="behind">Nyuma — Akazane</option>
-                    <option value="critical">Muhimu — Hatua ya Haraka</option>
-                  </select>
-                  <textarea name="comment" class="cmt-inp" rows="2" placeholder="Andika maoni hapa..."></textarea>
-                </div>
-                <div style="display:flex;gap:6px;">
-                  <button type="submit" class="btn-xs btn-gold"><i class="fas fa-save"></i>Hifadhi</button>
-                  <button type="button" class="btn-xs" style="background:#E2E8F0;color:#4A5568;" onclick="toggleCmt({{ sd.obj.id }})">Funga</button>
-                </div>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="8" style="text-align:center;padding:40px;color:#718096;"><i class="fas fa-user-slash fa-2x d-block mb-2"></i>Hakuna wanafunzi waliochagua shule hii bado.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    </div>
-  </div>
-
-  <!-- Historia ya Maombi -->
-  <div class="sec" style="margin-bottom:18px;">
-    <div class="sec-hd">
-      <h5><i class="fas fa-file-alt"></i>Historia ya Maombi ya Wanafunzi</h5>
-      <a href="{% url 'public_school_head_form' %}" target="_blank" class="btn-xs btn-gold">
-        <i class="fas fa-plus"></i>Ombi Jipya
-      </a>
-    </div>
-    <div style="padding:0;">
-      {% if head_requests %}
+      <div style="overflow-x:auto;">
       <table class="ht-tbl">
-        <thead><tr><th>Wanaohitajika</th><th>Maelezo</th><th>Tarehe</th><th>Hali</th></tr></thead>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Jina</th>
+            <th>Masomo</th>
+            <th>Maendeleo</th>
+            <th>Leo</th>
+            <th>Logbook</th>
+            <th>Hali ya Maombi</th>
+            <th>Vitendo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sd in students_data %}
+          <tr>
+            <td style="color:var(--gray);">{{ forloop.counter }}</td>
+            <td>
+              <div style="font-weight:700;color:var(--text);">{{ sd.obj.full_name }}</div>
+              <div style="font-size:10.5px;color:var(--gray);">{{ sd.obj.user.email }}</div>
+            </td>
+            <td>
+              {% for s in sd.subjects %}
+                <span style="background:#EBF4FF;color:#1E40AF;padding:2px 7px;border-radius:3px;font-size:10.5px;margin:1px;display:inline-block;">{{ s }}</span>
+              {% empty %}<span style="color:var(--gray);font-size:10.5px;">—</span>{% endfor %}
+            </td>
+            <td style="min-width:100px;">
+              <div style="font-size:12px;font-weight:700;color:{% if sd.progress_pct >= 70 %}var(--success){% elif sd.progress_pct >= 40 %}var(--warn){% else %}var(--danger){% endif %};">
+                {{ sd.progress_pct }}%
+              </div>
+              <div class="prog">
+                <div class="prog-bar" style="width:{{ sd.progress_pct }}%;background:{% if sd.progress_pct >= 70 %}var(--success){% elif sd.progress_pct >= 40 %}var(--warn){% else %}var(--danger){% endif %};"></div>
+              </div>
+            </td>
+            <td>
+              <span class="b {% if sd.present_today %}b-in{% else %}b-out{% endif %}">
+                <span class="dot {% if sd.present_today %}dot-in{% else %}dot-out{% endif %}"></span>
+                {% if sd.present_today %}Amefika{% else %}Hayupo{% endif %}
+              </span>
+            </td>
+            <td>
+              {% if sd.last_log %}
+                <span class="b b-{{ sd.log_status }}">
+                  {{ sd.last_log|date:"d/m" }}
+                  {% if sd.days_since == 0 %}(leo){% elif sd.days_since == 1 %}(jana){% else %}({{ sd.days_since }}d){% endif %}
+                </span>
+                <div style="font-size:10px;color:var(--gray);margin-top:2px;">{{ sd.logbook_count }} siku jumla</div>
+              {% else %}
+                <span style="color:var(--gray);font-size:11px;">Haijawahi</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if sd.obj.approval_status == 'approved' %}
+                <span class="b b-app">Aidhinishwa</span>
+              {% elif sd.obj.approval_status == 'pending' %}
+                <span class="b b-pend">Inasubiri</span>
+              {% else %}
+                <span class="b b-rej">Imekataliwa</span>
+              {% endif %}
+              {% if sd.last_comment %}
+              <div style="font-size:10px;color:var(--gray);margin-top:3px;" title="{{ sd.last_comment.comment|truncatechars:80 }}">
+                {{ sd.last_comment.get_status_display|truncatechars:20 }}
+              </div>
+              {% endif %}
+            </td>
+            <td>
+              {% if can_edit %}
+              <button type="button" class="btn-outline btn-sm" onclick="toggleCmt({{ sd.obj.id }})">Maoni</button>
+              {% endif %}
+              <a href="{% url 'board_student_progress' sd.obj.id %}" class="btn-navy btn-sm" style="margin-top:4px;">Tazama</a>
+              <!-- Comment form -->
+              {% if can_edit %}
+              <div id="cmt-{{ sd.obj.id }}" class="cmt-form">
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="add_comment">
+                  <input type="hidden" name="student_id" value="{{ sd.obj.id }}">
+                  <select name="status" class="cmt-sel">
+                    <option value="excellent">Vizuri Sana</option>
+                    <option value="good" selected>Vizuri</option>
+                    <option value="average">Wastani</option>
+                    <option value="behind">Nyuma</option>
+                    <option value="critical">Hali Mbaya</option>
+                  </select>
+                  <textarea name="comment" class="cmt-inp" rows="2" placeholder="Andika maoni..."></textarea>
+                  <div style="display:flex;gap:6px;margin-top:7px;">
+                    <button type="submit" class="btn-gold btn-sm">Hifadhi</button>
+                    <button type="button" class="btn-outline btn-sm" onclick="toggleCmt({{ sd.obj.id }})">Funga</button>
+                  </div>
+                </form>
+              </div>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" style="text-align:center;padding:36px;color:var(--gray);">Hakuna wanafunzi waliochagua shule hii bado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 2: LOGBOOK ═══ -->
+  <div id="tab-logbooks" class="tab-panel">
+    <div class="sec">
+      <div class="sec-hd">
+        <span class="sec-hd-title">Muhtasari wa Logbook</span>
+        <span style="font-size:11px;color:var(--gray);">Compliance wiki hii: {{ compliance_pct }}%</span>
+      </div>
+      <div style="overflow-x:auto;">
+      <table class="ht-tbl">
+        <thead>
+          <tr>
+            <th>Mwanafunzi</th>
+            <th>Masomo</th>
+            <th>Siku za Logbook</th>
+            <th>Logbook ya Mwisho</th>
+            <th>Asilimia ya Maendeleo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sd in students_data %}
+          <tr>
+            <td>
+              <div style="font-weight:700;color:var(--text);">{{ sd.obj.full_name }}</div>
+            </td>
+            <td>
+              {% for s in sd.subjects %}
+                <span style="background:#EBF4FF;color:#1E40AF;padding:2px 7px;border-radius:3px;font-size:10.5px;margin:1px;display:inline-block;">{{ s }}</span>
+              {% empty %}—{% endfor %}
+            </td>
+            <td>
+              <span style="font-size:15px;font-weight:800;color:var(--navy);">{{ sd.logbook_count }}</span>
+              <span style="font-size:10.5px;color:var(--gray);"> siku</span>
+            </td>
+            <td>
+              {% if sd.last_log %}
+                {{ sd.last_log|date:"d/m/Y" }}
+                <span class="b b-{{ sd.log_status }}" style="margin-left:4px;">
+                  {% if sd.days_since == 0 %}Leo{% elif sd.days_since == 1 %}Jana{% else %}{{ sd.days_since }}d iliyopita{% endif %}
+                </span>
+              {% else %}
+                <span style="color:var(--gray);">Haijajazwa</span>
+              {% endif %}
+            </td>
+            <td style="min-width:120px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="flex:1;">
+                  <div class="prog">
+                    <div class="prog-bar" style="width:{{ sd.progress_pct }}%;background:{% if sd.progress_pct >= 70 %}var(--success){% elif sd.progress_pct >= 40 %}var(--warn){% else %}var(--danger){% endif %};"></div>
+                  </div>
+                </div>
+                <span style="font-size:12px;font-weight:800;color:{% if sd.progress_pct >= 70 %}var(--success){% elif sd.progress_pct >= 40 %}var(--warn){% else %}var(--danger){% endif %};">{{ sd.progress_pct }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" style="text-align:center;padding:36px;color:var(--gray);">Hakuna wanafunzi.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 3: MIPANGO ═══ -->
+  <div id="tab-plans" class="tab-panel">
+    <div class="sec">
+      <div class="sec-hd">
+        <span class="sec-hd-title">Scheme za Kazi na Mipango ya Masomo</span>
+      </div>
+      <div style="overflow-x:auto;">
+      <table class="ht-tbl">
+        <thead>
+          <tr>
+            <th>Mwanafunzi</th>
+            <th>Masomo</th>
+            <th>Scheme za Kazi</th>
+            <th>Mipango ya Masomo</th>
+            <th>Hali</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sd in students_data %}
+          <tr>
+            <td>
+              <div style="font-weight:700;color:var(--text);">{{ sd.obj.full_name }}</div>
+            </td>
+            <td>
+              {% for s in sd.subjects %}
+                <span style="background:#EBF4FF;color:#1E40AF;padding:2px 7px;border-radius:3px;font-size:10.5px;margin:1px;display:inline-block;">{{ s }}</span>
+              {% empty %}—{% endfor %}
+            </td>
+            <td>
+              <span style="font-size:15px;font-weight:800;color:var(--navy);">{{ sd.scheme_count }}</span>
+              {% if sd.scheme_count == 0 %}<span style="font-size:10.5px;color:var(--danger);margin-left:4px;">Hazijaandaliwa</span>{% endif %}
+            </td>
+            <td>
+              <span style="font-size:15px;font-weight:800;color:var(--navy);">{{ sd.lp_count }}</span>
+              {% if sd.lp_count == 0 %}<span style="font-size:10.5px;color:var(--danger);margin-left:4px;">Hazijaandaliwa</span>{% endif %}
+            </td>
+            <td>
+              {% if sd.scheme_count > 0 and sd.lp_count > 0 %}
+                <span class="b b-app">Vizuri</span>
+              {% elif sd.scheme_count > 0 or sd.lp_count > 0 %}
+                <span class="b b-warn">Inakamilishwa</span>
+              {% else %}
+                <span class="b b-rej">Hazijaanza</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" style="text-align:center;padding:36px;color:var(--gray);">Hakuna wanafunzi.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 4: MAOMBI ═══ -->
+  <div id="tab-requests" class="tab-panel">
+    <div class="sec">
+      <div class="sec-hd">
+        <span class="sec-hd-title">Maombi ya Wanafunzi kwa DEO</span>
+        <a href="{% url 'public_school_head_form' %}" target="_blank" class="btn-gold btn-sm">Ombi Jipya</a>
+      </div>
+      {% if head_requests %}
+      <div style="overflow-x:auto;">
+      <table class="ht-tbl">
+        <thead>
+          <tr><th>Wanaohitajika</th><th>Maelezo</th><th>Tarehe</th><th>Hali</th></tr>
+        </thead>
         <tbody>
           {% for req in head_requests %}
           <tr>
-            <td style="font-weight:700;color:#0A2B5E;">{{ req.students_needed }}</td>
-            <td style="color:#4A5568;font-size:12px;">{{ req.notes|default:"—"|truncatechars:50 }}</td>
-            <td style="color:#718096;">{{ req.submitted_at|date:"d/m/Y" }}</td>
+            <td style="font-weight:800;color:var(--navy);font-size:16px;">{{ req.students_needed }}</td>
+            <td style="color:var(--gray);font-size:12px;">{{ req.notes|default:"—"|truncatechars:60 }}</td>
+            <td style="color:var(--gray);">{{ req.submitted_at|date:"d/m/Y" }}</td>
             <td>
-              {% if req.status == 'applied' %}<span class="b b-app"><i class="fas fa-check"></i>Aidhinishwa</span>
-              {% elif req.status == 'pending' %}<span class="b b-pend"><i class="fas fa-clock"></i>Inasubiri DEO</span>
-              {% else %}<span class="b b-rej"><i class="fas fa-times"></i>Imekataliwa</span>{% endif %}
+              {% if req.status == 'applied' %}<span class="b b-app">Aidhinishwa</span>
+              {% elif req.status == 'pending' %}<span class="b b-pend">Inasubiri DEO</span>
+              {% else %}<span class="b b-rej">Imekataliwa</span>{% endif %}
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+      </div>
       {% else %}
-      <div style="text-align:center;padding:24px;color:#9CA3AF;font-size:13px;">
-        Hakuna maombi bado. <a href="{% url 'public_school_head_form' %}" target="_blank" style="color:#C8900A;font-weight:600;">Tuma ombi la kwanza →</a>
+      <div style="text-align:center;padding:32px;color:var(--gray);font-size:13px;">
+        Hakuna maombi. <a href="{% url 'public_school_head_form' %}" target="_blank" style="color:var(--gold);font-weight:700;">Tuma ombi la kwanza</a>
       </div>
       {% endif %}
     </div>
   </div>
 
-  <!-- Maoni ya Hivi Karibuni -->
-  {% if recent_comments %}
-  <div class="sec">
-    <div class="sec-hd"><h5><i class="fas fa-comments"></i>Maoni ya Hivi Karibuni</h5></div>
-    <div style="padding:0;">
-      {% for cmt in recent_comments %}
-      <div style="padding:12px 18px;border-bottom:1px solid #F0F4F8;display:flex;align-items:flex-start;gap:12px;">
-        <div style="width:34px;height:34px;background:#EBF4FF;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <i class="fas fa-user-graduate" style="color:#1D4ED8;font-size:14px;"></i>
-        </div>
-        <div style="flex:1;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
-            <strong style="font-size:13px;">{{ cmt.student.full_name }}</strong>
-            <span class="b {% if cmt.status == 'excellent' %}b-app{% elif cmt.status == 'critical' or cmt.status == 'behind' %}b-rej{% else %}b-warn{% endif %}" style="font-size:10.5px;">{{ cmt.get_status_display }}</span>
-            <span style="font-size:11px;color:#9CA3AF;margin-left:auto;">{{ cmt.created_at|date:"d/m/Y H:i" }}</span>
-          </div>
-          <div style="font-size:12.5px;color:#4A5568;">{{ cmt.comment }}</div>
-          <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">na {{ cmt.board_member.full_name }}</div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
 </div>
 
 <script>
-function toggleCmt(id){
-  var el = document.getElementById('cmt-'+id);
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+function toggleCmt(id) {
+  var el = document.getElementById('cmt-' + id);
   el.style.display = el.style.display === 'block' ? 'none' : 'block';
-  if(el.style.display === 'block') el.querySelector('textarea').focus();
+  if (el.style.display === 'block') el.querySelector('textarea').focus();
 }
 </script>
 {% endblock %}

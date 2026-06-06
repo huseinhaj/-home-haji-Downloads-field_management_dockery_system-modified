@@ -1031,20 +1031,14 @@ def assessor_login(request):
 def help_page(request):
     """Help and user guide page — shows relevant section based on user role."""
     user = request.user
-    role = 'student'
     if user.is_staff:
         role = 'admin'
+    elif Assessor.objects.filter(user=user).exists():
+        role = 'assessor'
+    elif BoardMember.objects.filter(user=user).exists():
+        role = 'board'
     else:
-        try:
-            user.board_member
-            role = 'board'
-        except Exception:
-            pass
-        try:
-            user.assessor
-            role = 'assessor'
-        except Exception:
-            pass
+        role = 'student'
     return render(request, 'field_app/help.html', {'role': role})
 
 
@@ -6223,51 +6217,82 @@ def board_head_teacher(request, school_id):
                 messages.success(request, f'Maoni kwa {student_obj.full_name} yamehifadhiwa.')
         return redirect('board_head_teacher', school_id=school.id)
 
-    # Wanafunzi wa shule hii
+    # Wanafunzi wote wa shule hii
     students = StudentTeacher.objects.filter(
         selected_school=school
-    ).select_related('user').prefetch_related('subjects').order_by('full_name')
+    ).select_related('user').order_by('full_name')
 
     total = students.count()
     approved_count = students.filter(approval_status='approved').count()
-    pending_count = students.filter(approval_status='pending').count()
-    rejected_count = students.filter(approval_status='rejected').count()
+    pending_count  = students.filter(approval_status='pending').count()
 
-    # Waliofika leo (check-in kwenye logbook)
+    # Waliofika leo (GPS check-in)
     today_checkins = set(
         LogbookEntry.objects.filter(school=school, date=today, morning_check_in__isnull=False)
         .values_list('student_id', flat=True)
     )
     present_today = len(today_checkins)
 
-    # Logbook ya siku 7 zilizopita — compliance rate
+    # Logbook compliance ya wiki hii
     week_ago = today - timedelta(days=7)
     recent_entries = LogbookEntry.objects.filter(
         school=school, date__gte=week_ago
     ).values('student_id', 'date').distinct().count()
-    # Siku za kazi (Jumatatu-Ijumaa) katika wiki
     working_days = sum(1 for i in range(7) if (today - timedelta(days=i)).weekday() < 5)
-    expected = total * working_days if total > 0 and working_days > 0 else 1
-    compliance_pct = min(100, int(recent_entries / expected * 100)) if expected > 0 else 0
+    expected = max(1, total * working_days)
+    compliance_pct = min(100, int(recent_entries / expected * 100))
 
-    # Student data na status ya leo
-    students_data = []
+    # Data ya kina kwa kila mwanafunzi
     latest_logs = {
         e['student_id']: e['date']
-        for e in LogbookEntry.objects.filter(
-            school=school
-        ).values('student_id').annotate(date=models.Max('date')).values('student_id', 'date')
+        for e in LogbookEntry.objects.filter(school=school)
+        .values('student_id').annotate(date=models.Max('date')).values('student_id', 'date')
     }
-    last_comments = {
-        c.student_id: c
-        for c in BoardComment.objects.filter(school=school)
-        .select_related('board_member').order_by('student_id', '-created_at')
-        .distinct('student_id')
-    } if BoardComment.objects.filter(school=school).exists() else {}
+    logbook_counts = {
+        e['student_id']: e['cnt']
+        for e in LogbookEntry.objects.filter(school=school)
+        .values('student_id').annotate(cnt=models.Count('id'))
+    }
+    scheme_counts = {
+        e['student_id']: e['cnt']
+        for e in SchemeOfWork.objects.filter(school=school)
+        .values('student_id').annotate(cnt=models.Count('id'))
+    }
+    lp_counts = {
+        e['student_id']: e['cnt']
+        for e in LessonPlan.objects.filter(school=school)
+        .values('student_id').annotate(cnt=models.Count('id'))
+    }
+    last_comments = {}
+    if BoardComment.objects.filter(school=school).exists():
+        last_comments = {
+            c.student_id: c
+            for c in BoardComment.objects.filter(school=school)
+            .select_related('board_member').order_by('student_id', '-created_at')
+            .distinct('student_id')
+        }
+    # Approved applications per student
+    approved_apps = {}
+    for app in StudentApplication.objects.filter(school=school, status='approved').select_related('subject'):
+        approved_apps.setdefault(app.student_id, []).append(app.subject.name)
 
+    # Internship length: start of current academic year to today
+    year_start = current_year.start_date if current_year and hasattr(current_year, 'start_date') else None
+    total_working_days = 0
+    if year_start:
+        d = year_start
+        while d <= today:
+            if d.weekday() < 5:
+                total_working_days += 1
+            d += timedelta(days=1)
+    total_working_days = max(1, total_working_days)
+
+    students_data = []
     for st in students:
-        last_log = latest_logs.get(st.id)
+        last_log  = latest_logs.get(st.id)
         days_since = (today - last_log).days if last_log else None
+        lb_count   = logbook_counts.get(st.id, 0)
+        pct = min(100, int(lb_count / total_working_days * 100)) if total_working_days > 0 else 0
         students_data.append({
             'obj': st,
             'present_today': st.id in today_checkins,
@@ -6276,9 +6301,14 @@ def board_head_teacher(request, school_id):
             'log_status': 'ok' if days_since is not None and days_since <= 1
                          else ('warn' if days_since is not None and days_since <= 3 else 'late'),
             'last_comment': last_comments.get(st.id),
+            'logbook_count': lb_count,
+            'scheme_count': scheme_counts.get(st.id, 0),
+            'lp_count': lp_counts.get(st.id, 0),
+            'progress_pct': pct,
+            'subjects': approved_apps.get(st.id, []),
         })
 
-    # SchoolAllocation
+    # DEO Allocation
     alloc = None
     if current_year:
         try:
@@ -6292,13 +6322,8 @@ def board_head_teacher(request, school_id):
         except Exception:
             pass
 
-    # Maombi ya ombi
     head_requests = SchoolHeadRequest.objects.filter(school=school).order_by('-submitted_at')[:5]
-
-    # Maoni ya hivi karibuni
-    recent_comments = BoardComment.objects.filter(
-        school=school
-    ).select_related('student', 'board_member').order_by('-created_at')[:8]
+    current_month = today.strftime('%B %Y')
 
     return render(request, 'field_app/board_head_teacher.html', {
         'bm': bm,
@@ -6307,14 +6332,98 @@ def board_head_teacher(request, school_id):
         'total': total,
         'approved_count': approved_count,
         'pending_count': pending_count,
-        'rejected_count': rejected_count,
         'present_today': present_today,
         'compliance_pct': compliance_pct,
         'alloc': alloc,
         'head_requests': head_requests,
-        'recent_comments': recent_comments,
         'today': today,
+        'current_month': current_month,
         'can_edit': bm.role in ('head_teacher', 'deo', 'chair'),
+    })
+
+
+def head_teacher_monthly_report(request, school_id):
+    """Ripoti ya mwezi — mkuu wa shule anaweza kuona na kuchapisha."""
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+
+    school = get_object_or_404(School, id=school_id)
+    if bm.role == 'head_teacher' and (not bm.school or bm.school_id != school.id):
+        messages.error(request, 'Huna ruhusa ya kuona shule hii.')
+        return redirect('board_home')
+
+    today = timezone.now().date()
+    current_year = _cached_active_year()
+    month_name = request.GET.get('month', today.strftime('%B %Y'))
+
+    students = StudentTeacher.objects.filter(
+        selected_school=school, approval_status='approved'
+    ).select_related('user').order_by('full_name')
+
+    year_start = current_year.start_date if current_year and hasattr(current_year, 'start_date') else None
+    total_working_days = 0
+    if year_start:
+        d = year_start
+        while d <= today:
+            if d.weekday() < 5:
+                total_working_days += 1
+            d += timedelta(days=1)
+    total_working_days = max(1, total_working_days)
+
+    approved_apps = {}
+    for app in StudentApplication.objects.filter(school=school, status='approved').select_related('subject'):
+        approved_apps.setdefault(app.student_id, []).append(app.subject.name)
+
+    logbook_counts = {
+        e['student_id']: e['cnt']
+        for e in LogbookEntry.objects.filter(school=school)
+        .values('student_id').annotate(cnt=models.Count('id'))
+    }
+    scheme_counts = {
+        e['student_id']: e['cnt']
+        for e in SchemeOfWork.objects.filter(school=school)
+        .values('student_id').annotate(cnt=models.Count('id'))
+    }
+    lp_counts = {
+        e['student_id']: e['cnt']
+        for e in LessonPlan.objects.filter(school=school)
+        .values('student_id').annotate(cnt=models.Count('id'))
+    }
+    last_comments = {}
+    if BoardComment.objects.filter(school=school).exists():
+        last_comments = {
+            c.student_id: c
+            for c in BoardComment.objects.filter(school=school)
+            .select_related('board_member').order_by('student_id', '-created_at')
+            .distinct('student_id')
+        }
+
+    report_data = []
+    for st in students:
+        lb = logbook_counts.get(st.id, 0)
+        pct = min(100, int(lb / total_working_days * 100))
+        comment = last_comments.get(st.id)
+        report_data.append({
+            'name': st.full_name,
+            'email': st.user.email if st.user else '—',
+            'subjects': ', '.join(approved_apps.get(st.id, [])) or '—',
+            'logbook_days': lb,
+            'scheme_count': scheme_counts.get(st.id, 0),
+            'lp_count': lp_counts.get(st.id, 0),
+            'progress_pct': pct,
+            'status': comment.get_status_display() if comment else '—',
+            'comment': comment.comment if comment else '',
+        })
+
+    return render(request, 'field_app/head_teacher_monthly_report.html', {
+        'bm': bm,
+        'school': school,
+        'report_data': report_data,
+        'month_name': month_name,
+        'today': today,
+        'total_students': len(report_data),
+        'avg_pct': int(sum(r['progress_pct'] for r in report_data) / max(1, len(report_data))),
     })
 
 
