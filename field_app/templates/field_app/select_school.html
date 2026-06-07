@@ -55,6 +55,35 @@
         </div>
     </div>
 
+    <!-- District quota full banners -->
+    {% if selected_level == 'Primary' and district_primary_full %}
+    <div class="alert mb-4" style="background:#FEE2E2;border-left:5px solid #DC2626;border-radius:8px;padding:14px 18px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <i class="fas fa-times-circle" style="color:#DC2626;font-size:1.3rem;flex-shrink:0;"></i>
+            <div>
+                <div style="font-weight:800;color:#991B1B;font-size:.95rem;">{% if LANG == 'sw' %}Wilaya Imejaa — Shule za Msingi{% else %}District Full — Primary Schools{% endif %}</div>
+                <div style="font-size:.82rem;color:#B91C1C;margin-top:2px;">
+                    {% if LANG == 'sw' %}Wilaya ya {{ district.name }} imefika idadi yake ya walimu wanafunzi wa shule za msingi ({{ district_alloc.primary_needed }}). Maombi mapya hayawezekani.{% else %}District {{ district.name }} has reached its primary school quota ({{ district_alloc.primary_needed }}). No new applications allowed.{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if selected_level == 'Secondary' and district_secondary_full %}
+    <div class="alert mb-4" style="background:#FEE2E2;border-left:5px solid #DC2626;border-radius:8px;padding:14px 18px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <i class="fas fa-times-circle" style="color:#DC2626;font-size:1.3rem;flex-shrink:0;"></i>
+            <div>
+                <div style="font-weight:800;color:#991B1B;font-size:.95rem;">{% if LANG == 'sw' %}Wilaya Imejaa — Shule za Sekondari{% else %}District Full — Secondary Schools{% endif %}</div>
+                <div style="font-size:.82rem;color:#B91C1C;margin-top:2px;">
+                    {% if LANG == 'sw' %}Wilaya ya {{ district.name }} imefika idadi yake ya walimu wanafunzi wa shule za sekondari ({{ district_alloc.secondary_needed }}). Maombi mapya hayawezekani.{% else %}District {{ district.name }} has reached its secondary school quota ({{ district_alloc.secondary_needed }}). No new applications allowed.{% endif %}
+                </div>
+        </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Selected School Alert -->
     {% if selected_school %}
     <div class="alert alert-info mb-4" style="background: rgba(10,43,94,0.1); border-left: 4px solid var(--medium);">
@@ -125,7 +154,15 @@
                 <div class="card-footer bg-transparent border-0 py-3" style="background:var(--light);">
                     {% if school.is_pinned or not school.is_selectable %}
                         <button class="btn rounded-pill w-100" style="background: var(--text-gray); color: var(--white);" disabled>
-                            {% if school.is_pinned %}{% if LANG == 'sw' %}Haipatikani{% else %}Unavailable{% endif %}{% else %}{% if LANG == 'sw' %}Imejaa{% else %}Full{% endif %}{% endif %}
+                            {% if school.is_pinned %}
+                                <i class="fas fa-lock me-1"></i>{% if LANG == 'sw' %}Haipatikani{% else %}Unavailable{% endif %}
+                            {% elif school.is_district_full %}
+                                <i class="fas fa-city me-1"></i>{% if LANG == 'sw' %}Wilaya Imejaa{% else %}District Full{% endif %}
+                            {% elif school.is_deo_full %}
+                                <i class="fas fa-user-slash me-1"></i>{% if LANG == 'sw' %}Quota Imejaa{% else %}Quota Full{% endif %}
+                            {% else %}
+                                <i class="fas fa-times-circle me-1"></i>{% if LANG == 'sw' %}Imejaa{% else %}Full{% endif %}
+                            {% endif %}
                         </button>
                     {% else %}
                         {% if selected_school and selected_school.id == school.id %}

@@ -1469,15 +1469,34 @@ def select_school(request, district_id):
             for sa in SchoolAllocation.objects.filter(district_allocation=district_alloc)
         }
 
+    # Pre-calculate district-level fullness for the selected level
+    district_primary_full = False
+    district_secondary_full = False
+    if district_alloc:
+        if district_alloc.primary_needed > 0 and district_alloc.primary_remaining == 0:
+            district_primary_full = True
+        if district_alloc.secondary_needed > 0 and district_alloc.secondary_remaining == 0:
+            district_secondary_full = True
+
     schools = []
     for school in schools_qs:
         school.is_pinned = school.id in pinned_school_ids
-        school.is_selectable = (not school.is_pinned) and (school.current_students < school.capacity)
-        school.occupancy_percentage = round((school.current_students / school.capacity) * 100) if school.capacity > 0 else 0
         sa = school_alloc_map.get(school.id)
         school.deo_quota = sa.quota if sa else None
         school.deo_filled = sa.filled if sa else None
         school.deo_remaining = sa.remaining if sa else None
+
+        # School general capacity full?
+        school_cap_full = school.current_students >= school.capacity
+        # DEO quota full? (only enforced when quota > 0)
+        deo_quota_full = bool(sa and sa.quota > 0 and sa.filled >= sa.quota)
+        # District level full?
+        dist_full = district_primary_full if school.level == 'Primary' else district_secondary_full
+
+        school.is_deo_full = deo_quota_full
+        school.is_district_full = dist_full
+        school.is_selectable = (not school.is_pinned) and (not school_cap_full) and (not deo_quota_full) and (not dist_full)
+        school.occupancy_percentage = round((school.current_students / school.capacity) * 100) if school.capacity > 0 else 0
         schools.append(school)
 
     total_schools = len(schools)
@@ -1510,6 +1529,58 @@ def select_school(request, district_id):
                 try:
                     school = School.objects.get(id=temp_selected_id)
                     student = get_or_create_student_profile(request.user)
+                    sw = request.session.get('lang') == 'sw'
+
+                    # ── Server-side quota enforcement ──────────────────────────
+                    # 1. DEO school quota
+                    confirm_da = DistrictAllocation.objects.filter(district=district)
+                    if current_year:
+                        confirm_da = confirm_da.filter(academic_year=current_year)
+                    confirm_da = confirm_da.first()
+                    confirm_sa = None
+                    if confirm_da:
+                        confirm_sa = SchoolAllocation.objects.filter(
+                            district_allocation=confirm_da, school=school
+                        ).first()
+
+                    if confirm_sa and confirm_sa.quota > 0 and confirm_sa.filled >= confirm_sa.quota:
+                        messages.error(request,
+                            'Shule hii imejaa kwa mujibu wa quota ya DEO. Tafadhali chagua shule nyingine.'
+                            if sw else
+                            'This school has reached its DEO quota. Please choose another school.'
+                        )
+                        request.session.pop('temp_selected_school_id', None)
+                        return redirect(f"{request.path}?level={selected_level}&q={search_query}")
+
+                    # 2. District-level quota
+                    if confirm_da:
+                        if school.level == 'Primary' and confirm_da.primary_needed > 0 and confirm_da.primary_remaining == 0:
+                            messages.error(request,
+                                'Wilaya hii imejaa kwa walimu wa shule za msingi. Hakuna nafasi zaidi.'
+                                if sw else
+                                'This district has reached its primary school quota. No more spots available.'
+                            )
+                            request.session.pop('temp_selected_school_id', None)
+                            return redirect(f"{request.path}?level={selected_level}&q={search_query}")
+                        if school.level == 'Secondary' and confirm_da.secondary_needed > 0 and confirm_da.secondary_remaining == 0:
+                            messages.error(request,
+                                'Wilaya hii imejaa kwa walimu wa shule za sekondari. Hakuna nafasi zaidi.'
+                                if sw else
+                                'This district has reached its secondary school quota. No more spots available.'
+                            )
+                            request.session.pop('temp_selected_school_id', None)
+                            return redirect(f"{request.path}?level={selected_level}&q={search_query}")
+
+                    # 3. General school capacity
+                    if school.current_students >= school.capacity:
+                        messages.error(request,
+                            f'Shule {school.name} imejaa kabisa ({school.capacity} wanafunzi).'
+                            if sw else
+                            f'School {school.name} is at full capacity ({school.capacity} students).'
+                        )
+                        request.session.pop('temp_selected_school_id', None)
+                        return redirect(f"{request.path}?level={selected_level}&q={search_query}")
+                    # ──────────────────────────────────────────────────────────
 
                     is_changing_school = student.selected_school and student.selected_school.id != school.id
 
@@ -1519,7 +1590,7 @@ def select_school(request, district_id):
                         if approved_apps.exists():
                             messages.error(request,
                                 'Huwezi kubadili shule. Ombi lako limeshaidhinishwa tayari.'
-                                if request.session.get('lang') == 'sw' else
+                                if sw else
                                 'You cannot change school. You already have an approved application.'
                             )
                             request.session.pop('temp_selected_school_id', None)
@@ -1562,6 +1633,8 @@ def select_school(request, district_id):
         'full_schools_count': full_schools_count,
         'current_year': current_year,
         'district_alloc': district_alloc,
+        'district_primary_full': district_primary_full,
+        'district_secondary_full': district_secondary_full,
     })
 @login_required
 def select_subjects(request, school_id):
