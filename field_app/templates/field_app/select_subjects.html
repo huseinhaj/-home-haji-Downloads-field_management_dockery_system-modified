@@ -1,221 +1,169 @@
 {% extends 'field_app/base.html' %}
-
-{% block title %}{% if LANG == 'sw' %}Chagua Somo{% else %}Select Subject{% endif %} - Internship Management System{% endblock %}
-
+{% block title %}Chagua Somo — {{ school.name }}{% endblock %}
 {% block content %}
-<div class="container my-5">
-    <!-- Header section -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <a href="{% url 'select_school' school.district.id %}" class="btn btn-sm" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold); border-radius: 20px;">
-                <i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Rudi Shule{% else %}Back to School{% endif %}
-            </a>
-        </div>
-        <div class="text-center">
-            <h1 class="h3 fw-bold mb-0" style="color: var(--bold);">
-                <i class="fas fa-book me-2" style="color: var(--medium);"></i>📚 {% if LANG == 'sw' %}Chagua Somo la Kufundisha{% else %}Select a Subject to Teach{% endif %}
-            </h1>
-            <p class="mb-0" style="color: var(--text-gray);">{% if LANG == 'sw' %}Katika Shule ya{% else %}At School:{% endif %} <span class="fw-bold" style="color: var(--bold);">{{ school.name }}</span></p>
-        </div>
-        <div class="text-end">
-            <span class="badge rounded-pill px-3 py-2" style="background: var(--bold); color: var(--white);">
-                {{ subject_capacities|length }} {% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}
-            </span>
-        </div>
-    </div>
-
-    <div class="border-top border-2 mb-4" style="border-color: var(--medium) !important; opacity: 0.5;"></div>
-
-
-    <!-- Statistics Cards -->
-    <div class="row mb-4 g-3">
-        <div class="col-md-4">
-            <div class="card text-center p-3 rounded-3" style="border: none; background: var(--bold); color: var(--white);">
-                <h4 class="mb-0">{{ subject_capacities|length }}</h4>
-                <small>{% if LANG == 'sw' %}Jumla ya Masomo{% else %}Total Subjects{% endif %}</small>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-center p-3 rounded-3" style="border: none; background: var(--success); color: var(--white);">
-                <h4 class="mb-0">{{ available_subjects_count }}</h4>
-                <small>{% if LANG == 'sw' %}Yanayopatikana{% else %}Available{% endif %}</small>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-center p-3 rounded-3" style="border: none; background: var(--warning); color: var(--white);">
-                <h4 class="mb-0">{{ pending_applications_count }}</h4>
-                <small>{% if LANG == 'sw' %}Maombi Yanayosubiri{% else %}Pending Applications{% endif %}</small>
-            </div>
-        </div>
-    </div>
-
-    <!-- Existing Applications Table -->
-    {% if all_applications %}
-    <div class="card shadow-sm rounded-3 mb-4" style="border: 1px solid var(--border);">
-        <div class="card-header rounded-top-3" style="background: var(--light); border-bottom: 1px solid var(--border);">
-            <h5 class="mb-0 fw-bold" style="color: var(--bold);">
-                <i class="fas fa-list me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Maombi Yako Yaliyopo{% else %}Your Existing Applications{% endif %}
-            </h5>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead style="background: var(--light);">
-                        <tr>
-                            <th style="color: var(--text-dark);">{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
-                            <th style="color: var(--text-dark);">{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
-                            <th style="color: var(--text-dark);">{% if LANG == 'sw' %}Tarehe ya Ombi{% else %}Application Date{% endif %}</th>
-                            <th style="color: var(--text-dark);">{% if LANG == 'sw' %}Kitendo{% else %}Action{% endif %}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for application in all_applications %}
-                        <tr style="border-bottom: 1px solid var(--border);">
-                            <td class="fw-bold" style="color: var(--text-dark);">{{ application.subject.name }}</td>
-                            <td>
-                                {% if application.status == 'approved' %}
-                                    <span class="badge rounded-pill" style="background: var(--success); color: white;">
-                                        <i class="fas fa-check-circle me-1"></i>{% if LANG == 'sw' %}Imethibitishwa{% else %}Approved{% endif %}
-                                    </span>
-                                {% elif application.status == 'pending' %}
-                                    <span class="badge rounded-pill" style="background: var(--warning); color: white;">
-                                        <i class="fas fa-clock me-1"></i>{% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}
-                                    </span>
-                                {% else %}
-                                    <span class="badge rounded-pill" style="background: var(--danger); color: white;">
-                                        <i class="fas fa-times-circle me-1"></i>{% if LANG == 'sw' %}Imekataliwa{% else %}Rejected{% endif %}
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td style="color: var(--text-gray);">{{ application.application_date|date:"d/m/Y H:i" }}</td>
-                            <td>
-                                {% if application.status == 'pending' %}
-                                <form method="post" class="d-inline">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="subject_id" value="{{ application.subject.id }}">
-                                    <button type="submit" name="action" value="cancel_application" 
-                                            class="btn btn-sm rounded-pill" 
-                                            style="background: transparent; color: var(--danger); border: 1px solid var(--danger);"
-                                            onclick="return confirm('Unahakika unataka kufuta ombi la {{ application.subject.name }}?')">
-                                        <i class="fas fa-trash me-1"></i>{% if LANG == 'sw' %}Futa{% else %}Delete{% endif %}
-                                    </button>
-                                </form>
-                                {% else %}
-                                    <span class="small" style="color: var(--text-gray);">{% if LANG == 'sw' %}Haiwezi kubadilishwa{% else %}Cannot be changed{% endif %}</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- New Application Form -->
-    <div class="card shadow-sm rounded-3" style="border: 1px solid var(--border);">
-        <div class="card-header rounded-top-3" style="background: var(--bold); border-bottom: 2px solid var(--medium);">
-            <h5 class="mb-0 text-white">
-                <i class="fas fa-plus-circle me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Omba Somo Jipya{% else %}Apply for New Subject{% endif %}
-            </h5>
-        </div>
-        <div class="card-body p-4">
-            <form method="post">
-                {% csrf_token %}
-                
-                <div class="mb-4">
-                    <label for="subject_id" class="form-label fw-bold" style="color: var(--text-dark);">{% if LANG == 'sw' %}Chagua Somo{% else %}Select Subject{% endif %}</label>
-                    <select id="subject_id" name="subject_id" required
-                        class="form-select form-select-lg shadow-sm rounded-pill" 
-                        style="border: 1.5px solid var(--border);">
-                        <option value="" disabled selected>{% if LANG == 'sw' %}--- Chagua Somo ---{% else %}--- Select a Subject ---{% endif %}</option>
-                        {% for sc in subject_capacities %}
-                            {% if sc.subject.id not in applied_subject_ids %}
-                                <option value="{{ sc.subject.id }}">{{ sc.subject.name }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                    <div class="form-text mt-2" style="color: var(--text-gray);">
-                        <i class="fas fa-info-circle me-1" style="color: var(--medium);"></i>
-                        {% if LANG == 'sw' %}Chagua somo ambalo hujaomba tayari. Nafasi iliyobaki inaonyeshwa kwenye mabano.{% else %}Select a subject you have not yet applied for. Available slots are shown in parentheses.{% endif %}
-                    </div>
-                </div>
-
-                <input type="hidden" name="action" value="apply" />
-
-                <button type="submit" class="btn btn-lg rounded-pill w-100" style="background: var(--bold); color: var(--white);">
-                    <i class="fas fa-paper-plane me-2"></i>{% if LANG == 'sw' %}Wasilisha Ombi{% else %}Submit Application{% endif %}
-                </button>
-            </form>
-        </div>
-    </div>
-</div>
-
 <style>
-    .hover-lift:hover {
-        transform: translateY(-4px);
-        transition: transform 0.3s ease;
-    }
-    
-    .card {
-        transition: all 0.3s ease;
-    }
-    
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(10, 43, 94, 0.1);
-    }
-    
-    .table-hover tbody tr:hover {
-        background-color: rgba(10, 43, 94, 0.03);
-    }
-    
-    .form-select:focus, .btn:focus {
-        border-color: var(--bold) !important;
-        box-shadow: 0 0 0 3px rgba(10, 43, 94, 0.1) !important;
-        outline: none;
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .container {
-            padding: 0 1rem;
-        }
-        
-        .h3 {
-            font-size: 1.2rem;
-        }
-        
-        .btn-sm {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.75rem;
-        }
-        
-        .stat-cards .card {
-            margin-bottom: 0.5rem;
-        }
-        
-        .table-responsive {
-            font-size: 0.85rem;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        .d-flex.justify-content-between {
-            flex-direction: column;
-            gap: 15px;
-            text-align: center;
-        }
-        
-        .text-end {
-            text-align: center !important;
-        }
-        
-        .btn-lg {
-            font-size: 1rem;
-            padding: 0.5rem 1rem;
-        }
-    }
+:root{--navy:#0A2B5E;--gold:#C8900A;--light:#EEF1F6;--border:#CBD5E0;--gray:#718096;--text:#1A1A2E;--radius:3px;--success:#059669;--danger:#DC2626;--warn:#D97706;}
+
+.subj-wrap{max-width:780px;margin:0 auto;padding:22px 16px 60px;}
+
+.page-hdr{background:var(--navy);border-left:5px solid var(--gold);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;}
+.page-hdr-title{font-size:15px;font-weight:800;color:#fff;margin:0 0 2px;}
+.page-hdr-sub{font-size:11px;color:rgba(255,255,255,.55);margin:0;}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+.stat-box{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;text-align:center;}
+.stat-num{font-size:22px;font-weight:900;color:var(--navy);}
+.stat-lbl{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;}
+
+/* Approved banner */
+.approved-banner{background:#D1FAE5;border:1.5px solid #059669;border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px;}
+.approved-banner i{font-size:22px;color:#059669;}
+.approved-banner-title{font-size:13px;font-weight:800;color:#065F46;margin:0 0 2px;}
+.approved-banner-sub{font-size:11.5px;color:#047857;margin:0;}
+
+/* Subject cards */
+.subj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+.subj-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .15s;}
+.subj-card:hover:not(.is-full):not(.is-mine){border-color:var(--navy);}
+.subj-card.is-full{opacity:.7;}
+.subj-card.is-mine{border-color:#059669;border-width:2px;}
+
+.subj-card-hd{background:var(--navy);padding:11px 14px;position:relative;}
+.subj-card.is-full .subj-card-hd{background:#6B7280;}
+.subj-card.is-mine .subj-card-hd{background:#065F46;}
+.subj-name{font-size:13px;font-weight:800;color:#fff;margin:0;}
+
+.subj-card-body{padding:12px 14px 14px;}
+
+.cap-label{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px;}
+.cap-bar{height:6px;background:#E2E8F0;border-radius:3px;overflow:hidden;margin-bottom:10px;}
+.cap-fill{height:100%;border-radius:3px;transition:width .3s;}
+.cap-fill.ok{background:#059669;}
+.cap-fill.warn{background:var(--warn);}
+.cap-fill.full{background:var(--danger);}
+
+.badge-full{display:inline-flex;align-items:center;gap:4px;background:#FEE2E2;color:var(--danger);border:1px solid #FECACA;border-radius:var(--radius);padding:3px 9px;font-size:10.5px;font-weight:700;margin-bottom:8px;}
+.badge-mine{display:inline-flex;align-items:center;gap:4px;background:#D1FAE5;color:#065F46;border:1px solid #A7F3D0;border-radius:var(--radius);padding:3px 9px;font-size:10.5px;font-weight:700;margin-bottom:8px;}
+
+.btn-apply{width:100%;padding:9px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:800;cursor:pointer;text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.btn-apply:hover{background:#0C3570;}
+.btn-disabled{width:100%;padding:9px;background:#E2E8F0;color:#9CA3AF;border:none;border-radius:var(--radius);font-size:12px;font-weight:700;cursor:not-allowed;text-transform:uppercase;letter-spacing:.4px;}
+
+.empty-box{background:#fff;border:1px dashed var(--border);border-radius:var(--radius);padding:40px 20px;text-align:center;color:var(--gray);}
+.empty-box i{font-size:28px;display:block;margin-bottom:10px;color:var(--border);}
+
+.sec-hd{font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--navy);}
+
+@media(max-width:480px){.stats-row{grid-template-columns:1fr 1fr 1fr;}.subj-grid{grid-template-columns:1fr 1fr;}}
 </style>
+
+<div class="subj-wrap">
+
+  <!-- Back -->
+  <div style="margin-bottom:14px;">
+    <a href="{% url 'select_school' school.district.id %}" style="color:var(--navy);font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
+      <i class="fas fa-arrow-left"></i> {% if LANG == 'sw' %}Rudi Kuchagua Shule{% else %}Back to School Selection{% endif %}
+    </a>
+  </div>
+
+  <!-- Messages -->
+  {% for msg in messages %}
+  <div style="background:{% if msg.tags == 'error' %}#FEE2E2;color:#991B1B;border-color:#FECACA{% else %}#D1FAE5;color:#065F46;border-color:#A7F3D0{% endif %};border-left:4px solid;padding:10px 14px;border-radius:var(--radius);font-size:12.5px;margin-bottom:14px;">{{ msg }}</div>
+  {% endfor %}
+
+  <!-- Header -->
+  <div class="page-hdr">
+    <div style="flex:1;">
+      <div class="page-hdr-title"><i class="fas fa-book" style="color:var(--gold);margin-right:6px;"></i>{% if LANG == 'sw' %}Chagua Somo la Kufundisha{% else %}Select Subject to Teach{% endif %}</div>
+      <div class="page-hdr-sub">{{ school.name }} &bull; {{ school.district.name }} &bull; {{ school.get_level_display }}</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-num">{{ subject_list|length }}</div>
+      <div class="stat-lbl">{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" style="color:#059669;">{{ available_count }}</div>
+      <div class="stat-lbl">{% if LANG == 'sw' %}Yanapatikana{% else %}Available{% endif %}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" style="color:var(--danger);">{{ full_count }}</div>
+      <div class="stat-lbl">{% if LANG == 'sw' %}Yamejaa{% else %}Full{% endif %}</div>
+    </div>
+  </div>
+
+  <!-- Already approved banner -->
+  {% if approved_app %}
+  <div class="approved-banner">
+    <i class="fas fa-check-circle"></i>
+    <div>
+      <div class="approved-banner-title">{% if LANG == 'sw' %}Umeidhinishwa: {{ approved_app.subject.name }}{% else %}Approved: {{ approved_app.subject.name }}{% endif %}</div>
+      <div class="approved-banner-sub">{% if LANG == 'sw' %}Somo lako limeidhinishwa tayari. Unaweza kupakua barua yako kwenye dashibodi.{% else %}Your subject has been approved. Download your letter from the dashboard.{% endif %}</div>
+    </div>
+    <a href="{% url 'dashboard' %}" style="margin-left:auto;background:#059669;color:#fff;border:none;border-radius:var(--radius);padding:7px 14px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;">
+      <i class="fas fa-tachometer-alt"></i> {% if LANG == 'sw' %}Dashibodi{% else %}Dashboard{% endif %}
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Subject cards -->
+  {% if subject_list %}
+  <div class="sec-hd">{% if LANG == 'sw' %}Masomo Yanayopatikana{% else %}Available Subjects{% endif %}</div>
+  <div class="subj-grid">
+    {% for item in subject_list %}
+    <div class="subj-card {% if item.is_full %}is-full{% endif %}{% if item.is_mine %} is-mine{% endif %}">
+      <div class="subj-card-hd">
+        <div class="subj-name">{{ item.subject.name }}</div>
+      </div>
+      <div class="subj-card-body">
+        <div class="cap-label">
+          <span>{% if LANG == 'sw' %}Nafasi{% else %}Capacity{% endif %}</span>
+          <span>{{ item.filled }}/{{ item.max }}</span>
+        </div>
+        <div class="cap-bar">
+          <div class="cap-fill {% if item.pct >= 100 %}full{% elif item.pct >= 70 %}warn{% else %}ok{% endif %}" style="width:{{ item.pct }}%;"></div>
+        </div>
+
+        {% if item.is_mine %}
+        <div class="badge-mine"><i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}Somo Lako{% else %}Your Subject{% endif %}</div>
+        {% elif item.is_full %}
+        <div class="badge-full"><i class="fas fa-lock"></i> {% if LANG == 'sw' %}IMEJAA{% else %}FULL{% endif %}</div>
+        {% endif %}
+
+        {% if item.is_mine %}
+        <a href="{% url 'dashboard' %}" class="btn-apply" style="background:#059669;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <i class="fas fa-home"></i> {% if LANG == 'sw' %}Nenda Dashibodi{% else %}Go to Dashboard{% endif %}
+        </a>
+        {% elif item.is_full or approved_app %}
+        <button class="btn-disabled" disabled>
+          {% if item.is_full %}<i class="fas fa-ban"></i> {% if LANG == 'sw' %}IMEJAA{% else %}FULL{% endif %}
+          {% else %}<i class="fas fa-lock"></i> {% if LANG == 'sw' %}Umeshaidhinishwa{% else %}Already Approved{% endif %}{% endif %}
+        </button>
+        {% else %}
+        <form method="post" onsubmit="return confirm('{% if LANG == \"sw\" %}Thibitisha: uchague somo la {{ item.subject.name }}?{% else %}Confirm: apply for {{ item.subject.name }}?{% endif %}')">
+          {% csrf_token %}
+          <input type="hidden" name="subject_id" value="{{ item.subject.id }}">
+          <input type="hidden" name="action" value="apply">
+          <button type="submit" class="btn-apply">
+            <i class="fas fa-check"></i> {% if LANG == 'sw' %}Chagua Somo Hili{% else %}Select This Subject{% endif %}
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-box">
+    <i class="fas fa-exclamation-triangle"></i>
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">{% if LANG == 'sw' %}Hakuna masomo bado{% else %}No subjects available yet{% endif %}</div>
+    <div style="font-size:12px;">{% if LANG == 'sw' %}Mkuu wa shule hajatuma mahitaji au DEO hajaidhinisha bado.{% else %}The school head has not submitted requirements, or the DEO has not approved them yet.{% endif %}</div>
+  </div>
+  {% endif %}
+
+</div>
 {% endblock %}

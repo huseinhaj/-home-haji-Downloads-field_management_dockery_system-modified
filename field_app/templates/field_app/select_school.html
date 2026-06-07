@@ -96,25 +96,37 @@
 
     <!-- Selected School Alert -->
     {% if selected_school %}
-    <div class="alert alert-info mb-4" style="background: rgba(10,43,94,0.1); border-left: 4px solid var(--medium);">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <strong><i class="fas fa-check-circle me-2" style="color: var(--success);"></i>{% if LANG == 'sw' %}Shule Uliyochagua:{% else %}Selected School:{% endif %}</strong>
-                <span class="fw-bold ms-2">{{ selected_school.name }}</span>
-            </div>
-            <div>
-                <form method="post" style="display: inline-block;">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="confirm">
-                    <button type="submit" class="btn btn-success btn-sm me-2">{% if LANG == 'sw' %}Thibitisha{% else %}Confirm{% endif %}</button>
-                </form>
-                <form method="post" style="display: inline-block;">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="cancel">
-                    <button type="submit" class="btn btn-danger btn-sm">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
-                </form>
-            </div>
+    <div style="background:#fff;border:2px solid #0A2B5E;border-radius:4px;margin-bottom:20px;overflow:hidden;">
+      <div style="background:#0A2B5E;border-bottom:3px solid #C8900A;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-size:13px;font-weight:800;color:#fff;"><i class="fas fa-school" style="color:#C8900A;margin-right:6px;"></i>{{ selected_school.name }}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:1px;">{{ selected_school.get_level_display }} &bull; {{ selected_school.district.name }}</div>
         </div>
+        <div style="display:flex;gap:8px;">
+          <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="confirm"><button type="submit" style="background:#059669;color:#fff;border:none;border-radius:3px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;"><i class="fas fa-check me-1"></i>{% if LANG == 'sw' %}Thibitisha{% else %}Confirm{% endif %}</button></form>
+          <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="cancel"><button type="submit" style="background:#DC2626;color:#fff;border:none;border-radius:3px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;"><i class="fas fa-times me-1"></i>{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button></form>
+        </div>
+      </div>
+      {% if selected_school_subjects %}
+      <div style="padding:12px 18px;">
+        <div style="font-size:10.5px;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px;">{% if LANG == 'sw' %}Masomo na Nafasi Zilizopo{% else %}Subjects & Available Slots{% endif %}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          {% for s in selected_school_subjects %}
+          <div style="background:#F7FAFC;border:1.5px solid {% if s.is_full %}#FECACA{% else %}#CBD5E0{% endif %};border-radius:3px;padding:7px 11px;min-width:140px;">
+            <div style="font-size:12px;font-weight:700;color:#1A1A2E;margin-bottom:4px;">{{ s.name }}</div>
+            <div style="height:5px;background:#E2E8F0;border-radius:2px;overflow:hidden;margin-bottom:5px;">
+              <div style="height:100%;width:{{ s.pct }}%;background:{% if s.is_full %}#DC2626{% elif s.pct >= 70 %}#D97706{% else %}#059669{% endif %};border-radius:2px;"></div>
+            </div>
+            <div style="font-size:10px;font-weight:700;color:{% if s.is_full %}#DC2626{% else %}#059669{% endif %};">
+              {% if s.is_full %}{% if LANG == 'sw' %}IMEJAA{% else %}FULL{% endif %}{% else %}{{ s.remaining }} {% if LANG == 'sw' %}nafasi{% else %}slots{% endif %} ({{ s.filled }}/{{ s.max }}){% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div style="padding:10px 18px;font-size:11.5px;color:#718096;"><i class="fas fa-info-circle me-1"></i>{% if LANG == 'sw' %}Masomo hayajasanidiwa bado na DEO.{% else %}Subjects not yet configured by DEO.{% endif %}</div>
+      {% endif %}
     </div>
     {% endif %}
 

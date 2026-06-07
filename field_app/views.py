@@ -1634,10 +1634,26 @@ def select_school(request, district_id):
             messages.success(request, 'Umeghairi uchaguzi wa shule')
             return redirect(f"{request.path}?level={selected_level}&q={search_query}")
     
+    # Subject capacity preview for the selected school confirm panel
+    selected_school_subjects = []
+    if selected_school:
+        for cap in SchoolSubjectCapacity.objects.filter(
+            school=selected_school
+        ).select_related('subject').order_by('subject__name'):
+            selected_school_subjects.append({
+                'name': cap.subject.name,
+                'filled': cap.current_students,
+                'max': cap.max_students,
+                'remaining': max(0, cap.max_students - cap.current_students),
+                'is_full': cap.current_students >= cap.max_students,
+                'pct': min(100, round(cap.current_students / cap.max_students * 100)) if cap.max_students > 0 else 0,
+            })
+
     return render(request, 'field_app/select_school.html', {
         'district': district,
         'schools': schools,
         'selected_school': selected_school,
+        'selected_school_subjects': selected_school_subjects,
         'query': search_query,
         'selected_level': selected_level,
         'selected_ownership': selected_ownership,
@@ -1719,92 +1735,111 @@ def search_schools_ajax(request, district_id):
 @login_required
 def select_subjects(request, school_id):
     school = get_object_or_404(School, id=school_id)
-    subject_capacities = SchoolSubjectCapacity.objects.filter(school=school).select_related('subject')
-    
     student = get_or_create_student_profile(request.user)
-    
-    existing_applications = StudentApplication.objects.filter(
-        student=student, 
-        school=school
-    ).select_related('subject')
-    
-    applied_subject_ids = {app.subject.id for app in existing_applications}
+    sw = request.session.get('lang') == 'sw'
+
+    # Only subjects with capacity set by DEO
+    caps = list(SchoolSubjectCapacity.objects.filter(school=school).select_related('subject'))
+
+    # Student's approved application at this school (only one allowed)
+    approved_app = StudentApplication.objects.filter(
+        student=student, school=school, status='approved'
+    ).select_related('subject').first()
 
     if request.method == 'POST':
         subject_id = request.POST.get('subject_id')
         action = request.POST.get('action')
 
-        if not subject_id:
-            messages.error(request, "No subject selected.")
-            return redirect('select_subjects', school_id=school.id)
+        if action == 'apply' and subject_id:
+            try:
+                subject = Subject.objects.get(id=subject_id)
+                cap = SchoolSubjectCapacity.objects.get(school=school, subject=subject)
+            except (Subject.DoesNotExist, SchoolSubjectCapacity.DoesNotExist):
+                messages.error(request, 'Somo hili halipatikani katika shule hii.')
+                return redirect('select_subjects', school_id=school.id)
 
-        try:
-            subject = Subject.objects.get(id=subject_id)
-        except Subject.DoesNotExist:
-            messages.error(request, "Subject does not exist.")
-            return redirect('select_subjects', school_id=school.id)
+            # Block if already has any approved application anywhere
+            any_approved = StudentApplication.objects.filter(student=student, status='approved').exists()
+            if any_approved:
+                messages.error(request, 'Umeshaidhinishwa tayari. Huwezi kuomba tena.')
+                return redirect('dashboard')
 
-        try:
-            capacity = SchoolSubjectCapacity.objects.get(school=school, subject=subject)
-        except SchoolSubjectCapacity.DoesNotExist:
-            messages.error(request, f"{subject.name} is not available at this school.")
-            return redirect('select_subjects', school_id=school.id)
+            # Block if capacity full (re-check with select_for_update)
+            from django.db import transaction
+            with transaction.atomic():
+                cap = SchoolSubjectCapacity.objects.select_for_update().get(id=cap.id)
+                if cap.current_students >= cap.max_students:
+                    messages.error(request, f'Somo la {subject.name} limejaa. Chagua somo lingine.')
+                    return redirect('select_subjects', school_id=school.id)
 
-        if action == 'apply':
-            existing_application = StudentApplication.objects.filter(
-                student=student,
-                subject=subject,
-                school=school
-            ).first()
-
-            # Enforce one school, one subject rule
-            any_other_application = StudentApplication.objects.filter(
-                student=student
-            ).exclude(subject=subject, school=school).exists()
-
-            if existing_application:
-                messages.info(request, f"Tayari uliomba {subject.name}." if request.session.get('lang') == 'sw' else f"You have already applied for {subject.name}.")
-            elif any_other_application:
-                messages.error(request,
-                    "Una ombi tayari katika shule/somo lingine. Unaweza kuomba shule moja na somo moja tu. Ghairi ombi lako la kwanza kwanza."
-                    if request.session.get('lang') == 'sw' else
-                    "You already have an application elsewhere. Only one school and one subject is allowed. Cancel your existing application first."
+                # Auto-approve immediately
+                app, created = StudentApplication.objects.get_or_create(
+                    student=student, subject=subject, school=school,
+                    defaults={'status': 'approved', 'approval_date': timezone.now()}
                 )
-            elif capacity.current_students >= capacity.max_students:
-                messages.error(request, f"{subject.name} is already full.")
-            else:
-                StudentApplication.objects.create(
-                    student=student,
-                    subject=subject,
-                    school=school,
-                    status='pending'
-                )
-                messages.success(request,
-                    f"✅ Ombi la {subject.name} limetumwa! Linasubiri idhini ya Admin."
-                    if request.session.get('lang') == 'sw' else
-                    f"✅ Application for {subject.name} submitted successfully! Waiting for Admin approval."
-                )
+                if not created:
+                    if app.status == 'approved':
+                        messages.info(request, f'Umeshaidhinishwa kwa {subject.name}.')
+                        return redirect('dashboard')
+                    app.status = 'approved'
+                    app.approval_date = timezone.now()
+                    app.save()
 
-        elif action == 'cancel_application':
-            application = StudentApplication.objects.filter(
-                student=student,
-                subject=subject,
-                school=school
-            ).first()
+                student.subjects.add(subject)
+                cap.current_students = F('current_students') + 1
+                cap.save()
 
-            if application:
-                application.delete()
-                messages.success(request, f"Application for {subject.name} cancelled.")
-            else:
-                messages.error(request, f"Cannot cancel application for {subject.name}.")
+            # Send approval letter email
+            email_addr = student.user.email if student.user else None
+            if email_addr:
+                try:
+                    from django.core.mail import EmailMessage as DjangoEmailMessage
+                    pdf_bytes = _build_individual_letter_pdf(student)
+                    fname_safe = student.full_name.replace(' ', '_')
+                    msg = DjangoEmailMessage(
+                        subject='Barua ya Idhini ya Mazoezi ya Kufundisha — IMS',
+                        body=(
+                            f'Ndugu {student.full_name},\n\n'
+                            f'Hongera! Umeidhinishwa kufanya mazoezi ya kufundisha somo la '
+                            f'{subject.name} katika {school.name}.\n\n'
+                            f'Tafadhali angalia barua iliyoambatanishwa na uiwasilishe '
+                            f'Halmashauri ya {school.district.name} na Mkuu wa Shule unapofika.\n\n'
+                            f'Mfumo wa IMS'
+                        ),
+                        to=[email_addr],
+                    )
+                    msg.attach(f'Barua_{fname_safe}.pdf', pdf_bytes, 'application/pdf')
+                    msg.send(fail_silently=True)
+                except Exception:
+                    pass
 
-        return redirect('select_subjects', school_id=school.id)
+            messages.success(request,
+                f'✅ Umeidhinishwa kwa {subject.name} katika {school.name}! Barua imetumwa kwa barua pepe yako.'
+                if sw else
+                f'✅ Approved for {subject.name} at {school.name}! Letter sent to your email.'
+            )
+            return redirect('dashboard')
+
+    # Build subject list with live fill counts
+    subject_list = []
+    for cap in caps:
+        subject_list.append({
+            'cap': cap,
+            'subject': cap.subject,
+            'max': cap.max_students,
+            'filled': cap.current_students,
+            'remaining': max(0, cap.max_students - cap.current_students),
+            'is_full': cap.current_students >= cap.max_students,
+            'is_mine': approved_app and approved_app.subject_id == cap.subject_id,
+            'pct': min(100, round(cap.current_students / cap.max_students * 100)) if cap.max_students > 0 else 0,
+        })
 
     return render(request, 'field_app/select_subjects.html', {
         'school': school,
-        'subject_capacities': subject_capacities,
-        'existing_applications': existing_applications,
-        'applied_subject_ids': applied_subject_ids,
+        'subject_list': subject_list,
+        'approved_app': approved_app,
+        'available_count': sum(1 for s in subject_list if not s['is_full']),
+        'full_count': sum(1 for s in subject_list if s['is_full']),
     })
 
 @login_required
