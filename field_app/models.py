@@ -1245,3 +1245,60 @@ class SchoolHeadRequest(models.Model):
 
     def __str__(self):
         return f"{self.head_name} — {self.school_name_submitted} ({self.students_needed})"
+
+
+# =========================
+# Tathmini ya Mwisho — Final Assessment
+# =========================
+
+class FinalAssessment(models.Model):
+    GRADE_CHOICES = [
+        ('A', 'A — Bora Sana (80–100)'),
+        ('B', 'B — Vizuri (65–79)'),
+        ('C', 'C — Wastani (50–64)'),
+        ('F', 'F — Haijafaulu (0–49)'),
+    ]
+
+    student      = models.OneToOneField(
+        StudentTeacher, on_delete=models.CASCADE, related_name='final_assessment'
+    )
+    school       = models.ForeignKey(School, on_delete=models.CASCADE)
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.SET_NULL, null=True, blank=True)
+    assessed_by  = models.ForeignKey(
+        'BoardMember', on_delete=models.SET_NULL, null=True, blank=True, related_name='final_assessments'
+    )
+
+    # Vigezo vya tathmini (kila kimoja max 20, jumla max 100)
+    kuhudhuria        = models.PositiveSmallIntegerField(default=0, help_text="Kuhudhuria (0–20)")
+    daftari_la_kazi   = models.PositiveSmallIntegerField(default=0, help_text="Daftari la Kazi (0–20)")
+    mpango_wa_kazi    = models.PositiveSmallIntegerField(default=0, help_text="Mpango wa Kazi (0–20)")
+    mpango_wa_somo    = models.PositiveSmallIntegerField(default=0, help_text="Mpango wa Somo (0–20)")
+    utendaji_darasani = models.PositiveSmallIntegerField(default=0, help_text="Utendaji Darasani (0–20)")
+
+    maoni    = models.TextField(blank=True)
+    is_final = models.BooleanField(default=False, help_text="Imekamilishwa — haiwezi kubadilishwa")
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+
+    @property
+    def jumla(self):
+        return (self.kuhudhuria + self.daftari_la_kazi +
+                self.mpango_wa_kazi + self.mpango_wa_somo + self.utendaji_darasani)
+
+    @property
+    def daraja(self):
+        j = self.jumla
+        if j >= 80: return 'A'
+        if j >= 65: return 'B'
+        if j >= 50: return 'C'
+        return 'F'
+
+    @property
+    def daraja_maana(self):
+        return {'A': 'Bora Sana', 'B': 'Vizuri', 'C': 'Wastani', 'F': 'Haijafaulu'}.get(self.daraja, '')
+
+    def __str__(self):
+        return f"{self.student.full_name} — {self.daraja} ({self.jumla}/100)"

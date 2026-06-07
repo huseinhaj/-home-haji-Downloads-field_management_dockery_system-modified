@@ -145,6 +145,8 @@ urlpatterns = [
     path('import-head-teachers/', views.import_head_teachers, name='import_head_teachers'),
     path('board/school/<int:school_id>/', views.board_head_teacher, name='board_head_teacher'),
     path('board/school/<int:school_id>/monthly-report/', views.head_teacher_monthly_report, name='head_teacher_monthly_report'),
+    path('board/student/<int:student_id>/tathmini/', views.board_final_assessment, name='board_final_assessment'),
+    path('board/student/<int:student_id>/cheti-pdf/', views.final_assessment_pdf, name='final_assessment_pdf'),
 
     # DEO Allocation
     path('board/allocation/', views.deo_allocation, name='deo_allocation'),

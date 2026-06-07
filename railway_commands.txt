@@ -1,0 +1,27 @@
+# Railway CLI Setup & Database Commands
+# =======================================
+# Run these one by one in your terminal
+
+# 1. Install Railway CLI
+npm install -g @railway/cli
+
+# 2. Login to Railway
+railway login
+
+# 3. Link to your project (run inside project folder)
+railway link
+
+# 4. Run migrations
+railway run python manage.py migrate
+
+# 5. Load regions (Zanzibar regions included)
+railway run python manage.py loaddata field_app/fixtures/regions.json
+
+# 6. Load districts (Zanzibar + Magharibi B included)
+railway run python manage.py loaddata field_app/fixtures/districts.json
+
+# 7. Load Zanzibar schools (324 schools)
+railway run python manage.py loaddata field_app/fixtures/zanzibar_schools.json
+
+# 8. Load mainland private schools (36 schools)
+railway run python manage.py loaddata field_app/fixtures/mainland_private_schools.json

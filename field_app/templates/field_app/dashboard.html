@@ -918,6 +918,43 @@ body {
                 </div>
                 {% endif %}
 
+                <!-- Tathmini ya Mwisho -->
+                {% if final_assessment %}
+                <div class="premium-card p-3 mb-3" style="border-left:4px solid
+                  {% if final_assessment.daraja == 'A' %}#059669
+                  {% elif final_assessment.daraja == 'B' %}#0891B2
+                  {% elif final_assessment.daraja == 'C' %}#D97706
+                  {% else %}#DC2626{% endif %};">
+                  <div class="sec-hd mb-2">
+                    <h3><i class="fas fa-star-half-alt"></i> Tathmini ya Mwisho</h3>
+                    {% if final_assessment.is_final %}
+                    <a href="{% url 'final_assessment_pdf' student.id %}" target="_blank"
+                       style="font-size:11px;font-weight:700;color:var(--bold);text-decoration:none;">
+                      <i class="fas fa-file-pdf"></i> Cheti PDF
+                    </a>
+                    {% endif %}
+                  </div>
+                  <div style="display:flex;align-items:center;gap:16px;">
+                    <div style="font-size:40px;font-weight:900;line-height:1;
+                      color:{% if final_assessment.daraja == 'A' %}#059669{% elif final_assessment.daraja == 'B' %}#0891B2{% elif final_assessment.daraja == 'C' %}#D97706{% else %}#DC2626{% endif %};">
+                      {{ final_assessment.daraja }}
+                    </div>
+                    <div>
+                      <div style="font-size:14px;font-weight:700;color:var(--text-dark);">{{ final_assessment.daraja_maana }}</div>
+                      <div style="font-size:12px;color:var(--text-gray);">Alama: {{ final_assessment.jumla }}/100</div>
+                      {% if not final_assessment.is_final %}
+                      <div style="font-size:11px;color:var(--warning);margin-top:3px;">Bado haijafungwa rasmi</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% if final_assessment.maoni %}
+                  <p style="font-size:12px;color:var(--text-gray);margin-top:8px;margin-bottom:0;">
+                    <i class="fas fa-quote-left" style="font-size:9px;"></i> {{ final_assessment.maoni|truncatechars:120 }}
+                  </p>
+                  {% endif %}
+                </div>
+                {% endif %}
+
                 <!-- Quick Actions -->
                 <div class="premium-card p-3 mb-3">
                     <div class="sec-hd mb-3"><h3><i class="fas fa-bolt"></i>{% if LANG == 'sw' %}Vitendo vya Haraka{% else %}Quick Actions{% endif %}</h3></div>

@@ -1,0 +1,232 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Tathmini ya Mwisho — {{ student.full_name }}{% endblock %}
+{% block content %}
+<style>
+:root {
+  --navy:#0A2B5E; --gold:#C8900A; --light:#EEF1F6;
+  --border:#CBD5E0; --gray:#718096; --text:#1A1A2E;
+  --radius:3px; --success:#059669; --warn:#D97706; --danger:#DC2626;
+}
+.fa-wrap { max-width:760px; margin:0 auto; padding:22px 16px 60px; }
+
+.fa-hdr { background:var(--navy); border-left:5px solid var(--gold); border-radius:var(--radius);
+  padding:15px 20px; display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.fa-hdr-title { font-size:15px; font-weight:800; color:#fff; margin:0 0 2px; }
+.fa-hdr-sub { font-size:11px; color:rgba(255,255,255,.6); margin:0; }
+
+.sec { background:#fff; border:1px solid var(--border); border-radius:var(--radius); margin-bottom:16px; overflow:hidden; }
+.sec-hd { background:#F7FAFC; border-bottom:1px solid var(--border); padding:10px 18px;
+  font-size:11px; font-weight:800; color:var(--navy); text-transform:uppercase; letter-spacing:.5px; }
+.sec-body { padding:18px; }
+
+.score-row { display:grid; grid-template-columns:1fr auto; align-items:center;
+  gap:12px; padding:10px 0; border-bottom:1px solid #F0F4F8; }
+.score-row:last-child { border-bottom:none; }
+.score-label { font-size:13px; font-weight:700; color:var(--text); }
+.score-desc  { font-size:11px; color:var(--gray); margin-top:2px; }
+.score-inp { width:70px; padding:7px 10px; border:1.5px solid var(--border);
+  border-radius:var(--radius); font-size:14px; font-weight:700; text-align:center;
+  color:var(--navy); font-family:inherit; }
+.score-inp:focus { outline:none; border-color:var(--navy); }
+.score-max { font-size:11px; color:var(--gray); text-align:center; margin-top:3px; }
+
+.grade-box { border-radius:var(--radius); padding:16px 20px; display:flex;
+  align-items:center; gap:20px; margin-top:16px; }
+.grade-box.A { background:#D1FAE5; border-left:5px solid var(--success); }
+.grade-box.B { background:#DBEAFE; border-left:5px solid #0891B2; }
+.grade-box.C { background:#FEF3C7; border-left:5px solid var(--warn); }
+.grade-box.F { background:#FEE2E2; border-left:5px solid var(--danger); }
+.grade-letter { font-size:36px; font-weight:900; line-height:1; }
+.grade-box.A .grade-letter { color:var(--success); }
+.grade-box.B .grade-letter { color:#0891B2; }
+.grade-box.C .grade-letter { color:var(--warn); }
+.grade-box.F .grade-letter { color:var(--danger); }
+.grade-info { font-size:13px; font-weight:700; color:var(--text); }
+.grade-sub  { font-size:11px; color:var(--gray); margin-top:3px; }
+
+.total-row { display:flex; justify-content:space-between; align-items:center;
+  padding:12px 0; border-top:2px solid var(--navy); margin-top:8px; }
+.total-lbl { font-size:12px; font-weight:800; color:var(--navy); text-transform:uppercase; letter-spacing:.4px; }
+.total-val { font-size:22px; font-weight:900; color:var(--navy); }
+
+.btn-navy { background:var(--navy); color:#fff; border:none; border-radius:var(--radius);
+  padding:9px 20px; font-size:12px; font-weight:700; cursor:pointer; text-decoration:none;
+  display:inline-flex; align-items:center; gap:6px; }
+.btn-navy:hover { background:#0C3570; color:#fff; }
+.btn-gold { background:var(--gold); color:#fff; border:none; border-radius:var(--radius);
+  padding:9px 20px; font-size:12px; font-weight:700; cursor:pointer; text-decoration:none;
+  display:inline-flex; align-items:center; gap:6px; }
+.btn-gold:hover { background:#A87208; color:#fff; }
+.btn-outline { background:transparent; color:var(--navy); border:1.5px solid var(--navy);
+  border-radius:var(--radius); padding:8px 18px; font-size:12px; font-weight:700;
+  cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
+
+.final-badge { background:#D1FAE5; color:#065F46; border:1.5px solid #059669;
+  border-radius:var(--radius); padding:5px 12px; font-size:11px; font-weight:700;
+  display:inline-flex; align-items:center; gap:5px; }
+.textarea-inp { width:100%; padding:9px 12px; border:1.5px solid var(--border);
+  border-radius:var(--radius); font-size:12.5px; font-family:inherit; resize:vertical;
+  min-height:80px; }
+.textarea-inp:focus { outline:none; border-color:var(--navy); }
+.err { background:#FEE2E2; border-left:4px solid var(--danger); padding:10px 14px;
+  font-size:12.5px; color:#991B1B; border-radius:var(--radius); margin-bottom:14px; }
+</style>
+
+<div class="fa-wrap">
+  <div style="margin-bottom:12px;">
+    <a href="{{ back_url }}" class="btn-outline">← Rudi</a>
+  </div>
+
+  {% if messages %}{% for msg in messages %}
+  <div style="background:#D1FAE5;border-left:4px solid var(--success);padding:10px 14px;
+    border-radius:var(--radius);font-size:12.5px;color:#065F46;margin-bottom:14px;">{{ msg }}</div>
+  {% endfor %}{% endif %}
+
+  {% if error %}
+  <div class="err">{{ error }}</div>
+  {% endif %}
+
+  <!-- Header -->
+  <div class="fa-hdr">
+    <div style="flex:1;">
+      <div class="fa-hdr-title">Tathmini ya Mwisho — {{ student.full_name }}</div>
+      <div class="fa-hdr-sub">{{ school.name }} &bull; {{ school.district.name }}</div>
+    </div>
+    {% if fa.is_final %}
+    <span class="final-badge">✓ Imekamilishwa</span>
+    {% endif %}
+    {% if fa.is_final %}
+    <a href="{% url 'final_assessment_pdf' student.id %}" class="btn-gold" target="_blank">
+      <i class="fas fa-file-pdf"></i> Cheti PDF
+    </a>
+    {% endif %}
+  </div>
+
+  {% if fa.is_final %}
+  <!-- View-only mode -->
+  <div class="sec">
+    <div class="sec-hd">Matokeo ya Tathmini</div>
+    <div class="sec-body">
+      {% for fname, label, desc in score_fields %}
+      <div class="score-row">
+        <div>
+          <div class="score-label">{{ label }}</div>
+          <div class="score-desc">{{ desc }}</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="score-inp" style="cursor:default;background:var(--light);">
+            {% if fname == 'kuhudhuria' %}{{ fa.kuhudhuria }}
+            {% elif fname == 'daftari_la_kazi' %}{{ fa.daftari_la_kazi }}
+            {% elif fname == 'mpango_wa_kazi' %}{{ fa.mpango_wa_kazi }}
+            {% elif fname == 'mpango_wa_somo' %}{{ fa.mpango_wa_somo }}
+            {% elif fname == 'utendaji_darasani' %}{{ fa.utendaji_darasani }}
+            {% endif %}
+          </div>
+          <div class="score-max">/ 20</div>
+        </div>
+      </div>
+      {% endfor %}
+      <div class="total-row">
+        <div class="total-lbl">Jumla ya Alama</div>
+        <div class="total-val">{{ fa.jumla }} / 100</div>
+      </div>
+      <div class="grade-box {{ fa.daraja }}">
+        <div class="grade-letter">{{ fa.daraja }}</div>
+        <div>
+          <div class="grade-info">{{ fa.daraja_maana }}</div>
+          <div class="grade-sub">Alama: {{ fa.jumla }}/100</div>
+        </div>
+      </div>
+      {% if fa.maoni %}
+      <div style="margin-top:14px;padding:12px;background:var(--light);border-radius:var(--radius);font-size:12.5px;">
+        <strong>Maoni:</strong> {{ fa.maoni }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Edit mode form -->
+  <form method="post">
+    {% csrf_token %}
+    <div class="sec">
+      <div class="sec-hd">Weka Alama (kila kipengele max 20)</div>
+      <div class="sec-body">
+        {% for fname, label, desc in score_fields %}
+        <div class="score-row">
+          <div>
+            <div class="score-label">{{ label }}</div>
+            <div class="score-desc">{{ desc }}</div>
+          </div>
+          <div>
+            <input type="number" name="{{ fname }}" min="0" max="20"
+              class="score-inp"
+              id="f_{{ fname }}" oninput="calcTotal()"
+              value="{% if fname == 'kuhudhuria' %}{{ fa.kuhudhuria }}{% elif fname == 'daftari_la_kazi' %}{{ fa.daftari_la_kazi }}{% elif fname == 'mpango_wa_kazi' %}{{ fa.mpango_wa_kazi }}{% elif fname == 'mpango_wa_somo' %}{{ fa.mpango_wa_somo }}{% elif fname == 'utendaji_darasani' %}{{ fa.utendaji_darasani }}{% endif %}">
+            <div class="score-max">/ 20</div>
+          </div>
+        </div>
+        {% endfor %}
+
+        <div class="total-row">
+          <div class="total-lbl">Jumla ya Alama</div>
+          <div class="total-val" id="totalDisplay">{{ fa.jumla }} / 100</div>
+        </div>
+
+        <div class="grade-box" id="gradeBox">
+          <div class="grade-letter" id="gradeLetter">{{ fa.daraja }}</div>
+          <div>
+            <div class="grade-info" id="gradeInfo">{{ fa.daraja_maana }}</div>
+            <div class="grade-sub" id="gradeSub">Alama: {{ fa.jumla }}/100</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-hd">Maoni ya Jumla</div>
+      <div class="sec-body">
+        <textarea name="maoni" class="textarea-inp"
+          placeholder="Andika maoni ya jumla kuhusu mwanafunzi huyu...">{{ fa.maoni }}</textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+      <button type="submit" name="action" value="save" class="btn-navy">
+        <i class="fas fa-save"></i> Hifadhi Rasimu
+      </button>
+      <button type="submit" name="action" value="finalize" class="btn-gold"
+        onclick="return confirm('Ukikamilisha, tathmini haiwezi kubadilishwa tena. Endelea?')">
+        <i class="fas fa-check-circle"></i> Kamilisha na Funga
+      </button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+
+<script>
+const FIELDS = ['kuhudhuria','daftari_la_kazi','mpango_wa_kazi','mpango_wa_somo','utendaji_darasani'];
+function calcTotal() {
+  let total = 0;
+  FIELDS.forEach(f => {
+    const v = parseInt(document.getElementById('f_' + f)?.value || 0, 10);
+    total += isNaN(v) ? 0 : Math.min(20, Math.max(0, v));
+  });
+  document.getElementById('totalDisplay').textContent = total + ' / 100';
+  const box = document.getElementById('gradeBox');
+  const letter = document.getElementById('gradeLetter');
+  const info = document.getElementById('gradeInfo');
+  const sub = document.getElementById('gradeSub');
+  let g, gn;
+  if (total >= 80)      { g='A'; gn='Bora Sana'; }
+  else if (total >= 65) { g='B'; gn='Vizuri'; }
+  else if (total >= 50) { g='C'; gn='Wastani'; }
+  else                  { g='F'; gn='Haijafaulu'; }
+  box.className = 'grade-box ' + g;
+  letter.textContent = g;
+  info.textContent = gn;
+  sub.textContent = 'Alama: ' + total + '/100';
+}
+calcTotal();
+</script>
+{% endblock %}

@@ -51,6 +51,7 @@ from .models import (
     LogbookEntry, ApprovalLetter, AcademicYear, SchemeOfWork,
     BoardMember, BoardComment, LessonPlan, MonthlyReport,
     DistrictAllocation, SchoolAllocation, SchoolHeadRequest,
+    FinalAssessment,
 )
 
 User = get_user_model()
@@ -1161,6 +1162,12 @@ def dashboard(request):
                 'entry': student_entry,   # None if student had no logbook that month
             })
 
+    final_assessment = None
+    try:
+        final_assessment = student.final_assessment
+    except Exception:
+        pass
+
     return render(request, 'field_app/dashboard.html', {
         'regions': pinned_regions,
         'current_year': current_year,
@@ -1177,6 +1184,7 @@ def dashboard(request):
         'assessors': assessors,
         'board_comments': board_comments,
         'my_monthly_reports': my_monthly_reports,
+        'final_assessment': final_assessment,
     })
 
 @login_required
@@ -6737,6 +6745,254 @@ def head_teacher_monthly_report(request, school_id):
         'avg_pct': int(sum(r['progress_pct'] for r in report_data) / max(1, len(report_data))),
         'back_url': back_url,
     })
+
+
+@board_login_required
+def board_final_assessment(request, student_id):
+    """Mkuu wa Shule/DEO anaingiza tathmini ya mwisho ya mwanafunzi."""
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+
+    student = get_object_or_404(StudentTeacher, id=student_id)
+    school = student.selected_school
+    if not school:
+        messages.error(request, 'Mwanafunzi huyu hana shule iliyochaguliwa.')
+        return redirect('board_home')
+
+    # Ruhusa: HT wa shule hiyo, DEO wa wilaya hiyo, au Chair/Inspector
+    if bm.role == 'head_teacher' and (not bm.school or bm.school_id != school.id):
+        messages.error(request, 'Huna ruhusa ya kutathmini mwanafunzi huyu.')
+        return redirect('board_home')
+    if bm.role == 'deo' and (not bm.district or bm.district_id != school.district_id):
+        messages.error(request, 'Huna ruhusa ya kutathmini mwanafunzi huyu.')
+        return redirect('board_home')
+
+    current_year = _cached_active_year()
+    fa, _ = FinalAssessment.objects.get_or_create(
+        student=student,
+        defaults={'school': school, 'academic_year': current_year, 'assessed_by': bm}
+    )
+
+    SCORE_FIELDS = [
+        ('kuhudhuria',        'Kuhudhuria',        'Mwanafunzi alihudhuria vizuri darasani na shuleni'),
+        ('daftari_la_kazi',   'Daftari la Kazi',   'Ubora wa daftari la kazi (logbook)'),
+        ('mpango_wa_kazi',    'Mpango wa Kazi',     'Ubora wa Scheme of Work'),
+        ('mpango_wa_somo',    'Mpango wa Somo',     'Ubora wa Lesson Plans'),
+        ('utendaji_darasani', 'Utendaji Darasani',  'Ujuzi wa kufundisha darasani'),
+    ]
+
+    error = None
+    if request.method == 'POST' and not fa.is_final:
+        action = request.POST.get('action', 'save')
+        scores = {}
+        for fname, _, _ in SCORE_FIELDS:
+            try:
+                v = int(request.POST.get(fname, 0))
+                if not (0 <= v <= 20):
+                    raise ValueError
+                scores[fname] = v
+            except ValueError:
+                error = f'Alama za "{fname}" lazima ziwe kati ya 0 na 20.'
+                break
+
+        if not error:
+            for fname, v in scores.items():
+                setattr(fa, fname, v)
+            fa.maoni = request.POST.get('maoni', '').strip()
+            fa.assessed_by = bm
+            if action == 'finalize':
+                fa.is_final = True
+            fa.save()
+            msg = 'Tathmini imekamilishwa na kufungwa.' if fa.is_final else 'Tathmini imehifadhiwa.'
+            messages.success(request, msg)
+            return redirect('board_final_assessment', student_id=student.id)
+
+    # Back URL
+    back_url = reverse('board_head_teacher', args=[school.id])
+
+    return render(request, 'field_app/final_assessment_form.html', {
+        'bm': bm,
+        'student': student,
+        'school': school,
+        'fa': fa,
+        'score_fields': SCORE_FIELDS,
+        'back_url': back_url,
+        'error': error,
+    })
+
+
+@board_login_required
+def final_assessment_pdf(request, student_id):
+    """Chapisha cheti cha tathmini ya mwisho kwa PDF."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable)
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    import io
+
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+
+    student = get_object_or_404(StudentTeacher, id=student_id)
+    fa = get_object_or_404(FinalAssessment, student=student)
+
+    # Access check
+    school = student.selected_school
+    if bm.role == 'head_teacher' and (not bm.school or bm.school_id != school.id):
+        return redirect('board_home')
+    if bm.role == 'deo' and (not bm.district or bm.district_id != school.district_id):
+        return redirect('board_home')
+
+    NAVY  = colors.HexColor('#0A2B5E')
+    GOLD  = colors.HexColor('#C8900A')
+    LIGHT = colors.HexColor('#EEF1F6')
+    WHITE = colors.white
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=2.2*cm, rightMargin=2.2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
+
+    hdr_bold = ParagraphStyle('hb', fontSize=9, fontName='Helvetica-Bold',
+                              alignment=TA_CENTER, leading=13)
+    hdr_norm = ParagraphStyle('hn', fontSize=8.5, fontName='Helvetica',
+                              alignment=TA_CENTER, leading=12)
+    title_s  = ParagraphStyle('tt', fontSize=14, fontName='Helvetica-Bold',
+                              textColor=NAVY, alignment=TA_CENTER, spaceAfter=4)
+    sub_s    = ParagraphStyle('ss', fontSize=9, fontName='Helvetica',
+                              textColor=GOLD, alignment=TA_CENTER)
+    cell_s   = ParagraphStyle('cs', fontSize=9, fontName='Helvetica', leading=12)
+    cell_b   = ParagraphStyle('cb', fontSize=9, fontName='Helvetica-Bold', leading=12)
+
+    SCORE_LABELS = [
+        ('kuhudhuria',        'Kuhudhuria'),
+        ('daftari_la_kazi',   'Daftari la Kazi'),
+        ('mpango_wa_kazi',    'Mpango wa Kazi'),
+        ('mpango_wa_somo',    'Mpango wa Somo'),
+        ('utendaji_darasani', 'Utendaji Darasani'),
+    ]
+    GRADE_COLOR = {'A': colors.HexColor('#059669'), 'B': colors.HexColor('#0891B2'),
+                   'C': colors.HexColor('#D97706'), 'F': colors.HexColor('#DC2626')}
+
+    story = []
+
+    # Gov header
+    story.append(Paragraph('JAMHURI YA MUUNGANO WA TANZANIA', hdr_bold))
+    story.append(Paragraph('WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA', hdr_norm))
+    story.append(Paragraph('MFUMO WA USIMAMIZI WA MAZOEZI YA KUFUNDISHA', hdr_norm))
+    story.append(Spacer(1, 6))
+    story.append(HRFlowable(width='100%', thickness=2, color=NAVY))
+    story.append(HRFlowable(width='100%', thickness=1, color=GOLD, spaceAfter=10))
+
+    story.append(Paragraph('CHETI CHA TATHMINI YA MWISHO', title_s))
+    story.append(Paragraph('TEACHING PRACTICE FINAL ASSESSMENT CERTIFICATE', sub_s))
+    story.append(Spacer(1, 14))
+
+    # Student info table
+    yr = fa.academic_year.year if fa.academic_year else '—'
+    info_data = [
+        [Paragraph('Jina la Mwanafunzi:', cell_b), Paragraph(student.full_name.upper(), cell_s),
+         Paragraph('Mwaka wa Masomo:', cell_b), Paragraph(yr, cell_s)],
+        [Paragraph('Shule ya Mazoezi:', cell_b), Paragraph(fa.school.name, cell_s),
+         Paragraph('Wilaya:', cell_b), Paragraph(fa.school.district.name, cell_s)],
+        [Paragraph('Mkoa:', cell_b), Paragraph(fa.school.district.region.name, cell_s),
+         Paragraph('Tarehe ya Tathmini:', cell_b), Paragraph(fa.updated_at.strftime('%d %B %Y'), cell_s)],
+    ]
+    info_tbl = Table(info_data, colWidths=[3.5*cm, 5.5*cm, 3.5*cm, 4.5*cm])
+    info_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), LIGHT),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(info_tbl)
+    story.append(Spacer(1, 14))
+
+    # Scores table
+    scores_data = [[
+        Paragraph('KIPENGELE', ParagraphStyle('th', fontSize=8.5, fontName='Helvetica-Bold',
+                                              textColor=WHITE, alignment=TA_CENTER)),
+        Paragraph('ALAMA ZA JUU', ParagraphStyle('th2', fontSize=8.5, fontName='Helvetica-Bold',
+                                                  textColor=WHITE, alignment=TA_CENTER)),
+        Paragraph('ALAMA ZILIZOPEWA', ParagraphStyle('th3', fontSize=8.5, fontName='Helvetica-Bold',
+                                                      textColor=WHITE, alignment=TA_CENTER)),
+    ]]
+    for fname, label in SCORE_LABELS:
+        scores_data.append([
+            Paragraph(label, cell_s),
+            Paragraph('20', ParagraphStyle('c', fontSize=9, fontName='Helvetica', alignment=TA_CENTER)),
+            Paragraph(str(getattr(fa, fname)), ParagraphStyle('c', fontSize=9, fontName='Helvetica-Bold', alignment=TA_CENTER)),
+        ])
+    scores_data.append([
+        Paragraph('JUMLA', cell_b),
+        Paragraph('100', ParagraphStyle('c', fontSize=9, fontName='Helvetica-Bold', alignment=TA_CENTER)),
+        Paragraph(str(fa.jumla), ParagraphStyle('c', fontSize=11, fontName='Helvetica-Bold',
+                                                 alignment=TA_CENTER, textColor=NAVY)),
+    ])
+
+    s_tbl = Table(scores_data, colWidths=[10*cm, 3.5*cm, 3.5*cm])
+    s_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), NAVY),
+        ('BACKGROUND', (0,-1), (-1,-1), LIGHT),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
+        ('ROWBACKGROUNDS', (0,1), (-1,-2), [WHITE, colors.HexColor('#F9FAFB')]),
+        ('PADDING', (0,0), (-1,-1), 6),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('LINEABOVE', (0,-1), (-1,-1), 1.5, GOLD),
+    ]))
+    story.append(s_tbl)
+    story.append(Spacer(1, 14))
+
+    # Grade box
+    gc = GRADE_COLOR.get(fa.daraja, NAVY)
+    grade_data = [[
+        Paragraph(f'DARAJA: {fa.daraja}', ParagraphStyle('grd', fontSize=22, fontName='Helvetica-Bold',
+                                                          textColor=WHITE, alignment=TA_CENTER)),
+        Paragraph(f'{fa.daraja_maana}\n{fa.jumla}/100', ParagraphStyle('grd2', fontSize=11, fontName='Helvetica-Bold',
+                                                                         textColor=WHITE, alignment=TA_CENTER, leading=16)),
+    ]]
+    g_tbl = Table(grade_data, colWidths=[9*cm, 8*cm])
+    g_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), gc),
+        ('PADDING', (0,0), (-1,-1), 12),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(g_tbl)
+
+    if fa.maoni:
+        story.append(Spacer(1, 10))
+        story.append(Paragraph(f'<b>Maoni:</b> {fa.maoni}',
+                                ParagraphStyle('mn', fontSize=9, fontName='Helvetica',
+                                               borderColor=colors.HexColor('#CBD5E0'),
+                                               borderWidth=0.5, borderPadding=6,
+                                               backColor=LIGHT, leading=13)))
+
+    story.append(Spacer(1, 20))
+
+    # Signature block
+    sig_data = [[
+        Paragraph('___________________________<br/><b>Sahihi ya Mkuu wa Shule</b><br/>'
+                  f'{fa.school.name}', ParagraphStyle('sg', fontSize=8.5, fontName='Helvetica',
+                                                       alignment=TA_CENTER, leading=13)),
+        Paragraph('___________________________<br/><b>Tarehe</b><br/>'
+                  f'{fa.updated_at.strftime("%d / %m / %Y")}', ParagraphStyle('sg2', fontSize=8.5,
+                                                                                fontName='Helvetica',
+                                                                                alignment=TA_CENTER, leading=13)),
+    ]]
+    sig_tbl = Table(sig_data, colWidths=[8.5*cm, 8.5*cm])
+    sig_tbl.setStyle(TableStyle([('PADDING', (0,0), (-1,-1), 8), ('VALIGN', (0,0), (-1,-1), 'BOTTOM')]))
+    story.append(sig_tbl)
+
+    doc.build(story)
+    buf.seek(0)
+    fname_safe = student.full_name.replace(' ', '_')
+    resp = HttpResponse(buf.read(), content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="Tathmini_{fname_safe}.pdf"'
+    return resp
 
 
 @staff_member_required
