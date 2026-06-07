@@ -94,27 +94,6 @@ input[type=checkbox].req-chk{width:16px;height:16px;accent-color:var(--navy);mar
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      {% if can_edit %}
-      <form method="POST" style="margin:0;">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="ai_format_pdf">
-        <button type="submit" class="btn-pdf">
-          <i class="fas fa-file-pdf"></i>Pakua PDF (AI)
-        </button>
-      </form>
-      <!-- Tuma SMS kwa Wakuu wa Shule -->
-      <form method="POST" action="{% url 'send_links_to_heads' district.id %}" style="margin:0;" id="sendLinksForm">
-        {% csrf_token %}
-        <select name="level" style="border:1.5px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(255,255,255,.1);color:#fff;padding:8px 10px;font-size:.78rem;font-weight:700;cursor:pointer;outline:none;">
-          <option value="both">Msingi + Sekondari</option>
-          <option value="Primary">Msingi Tu</option>
-          <option value="Secondary">Sekondari Tu</option>
-        </select>
-        <button type="submit" class="btn-pdf" style="background:linear-gradient(135deg,#059669,#047857);" onclick="return confirm('Tuma SMS kwa wakuu wa shule wote wenye namba?')">
-          <i class="fas fa-sms"></i>Tuma Link kwa Wakuu
-        </button>
-      </form>
-      {% endif %}
       <a href="{% url 'deo_district_allocation' district.id %}"
          style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:8px 14px;text-decoration:none;font-size:.78rem;font-weight:700;">
         <i class="fas fa-arrow-left me-1"></i>Allocation

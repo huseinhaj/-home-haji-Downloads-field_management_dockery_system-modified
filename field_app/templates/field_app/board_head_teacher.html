@@ -236,7 +236,6 @@
               {% if can_edit %}
               <button type="button" class="btn-outline btn-sm" onclick="toggleCmt({{ sd.obj.id }})">Maoni</button>
               {% endif %}
-              <a href="{% url 'board_student_progress' sd.obj.id %}" class="btn-navy btn-sm" style="margin-top:4px;">Tazama</a>
               <!-- Comment form -->
               {% if can_edit %}
               <div id="cmt-{{ sd.obj.id }}" class="cmt-form">

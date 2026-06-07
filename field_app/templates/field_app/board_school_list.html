@@ -61,9 +61,6 @@
       <i class="fas fa-inbox me-1"></i>{% if LANG == 'sw' %}Maombi{% else %}Requests{% endif %}
     </a>
     {% endif %}
-    <a href="{% url 'board_deo_report' district.id %}" class="btn btn-accent btn-sm">
-      <i class="fas fa-robot"></i> {% if LANG == 'sw' %}Ripoti ya AI{% else %}AI Report{% endif %}
-    </a>
   </div>
 </div>
 
@@ -229,7 +226,12 @@
       {{ school.name }}
       <span class="badge b-info" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.85);border:none;">{{ school.get_level_display }}</span>
     </div>
-    <span class="s-badge">{{ school_items|length }} {% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="s-badge">{{ school_items|length }} {% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</span>
+      <a href="{% url 'head_teacher_monthly_report' school.id %}" class="btn btn-sm" style="background:rgba(200,144,10,.85);color:#fff;border:none;font-size:11px;font-weight:700;">
+        <i class="fas fa-file-alt"></i> {% if LANG == 'sw' %}Ripoti ya Mkuu{% else %}HT Report{% endif %}
+      </a>
+    </div>
   </div>
   <div class="school-block-body">
     <div class="table-wrap">
@@ -244,7 +246,6 @@
           <th>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
           <th>{% if LANG == 'sw' %}Mada{% else %}Topic{% endif %}</th>
           <th>{% if LANG == 'sw' %}Hati{% else %}Documents{% endif %}</th>
-          <th>{% if LANG == 'sw' %}Vitendo{% else %}Actions{% endif %}</th>
         </tr>
       </thead>
       <tbody>
@@ -302,14 +303,10 @@
               {% endif %}
             </div>
           </td>
-          <td>
-            <a href="{% url 'board_student_progress' item.student.id %}" class="btn btn-primary btn-sm">
-              <i class="fas fa-chart-line"></i> {% if LANG == 'sw' %}Maendeleo{% else %}Progress{% endif %}
-            </a>
-          </td>
+          <td></td>
         </tr>
         {% empty %}
-        <tr><td colspan="9" class="empty-state" style="padding:18px;">{% if LANG == 'sw' %}Hakuna wanafunzi katika shule hii.{% else %}No students in this school.{% endif %}</td></tr>
+        <tr><td colspan="8" class="empty-state" style="padding:18px;">{% if LANG == 'sw' %}Hakuna wanafunzi katika shule hii.{% else %}No students in this school.{% endif %}</td></tr>
         {% endfor %}
       </tbody>
     </table>
