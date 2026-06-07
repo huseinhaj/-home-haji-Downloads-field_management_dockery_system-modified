@@ -667,49 +667,6 @@ body {
                             </div>
                         </div>
 
-                        <!-- Group Letter -->
-                        <div class="col-md-6">
-                            <div class="premium-card p-3 h-100 text-center {% if can_download_group_letter %}group-letter-ready{% else %}group-letter-waiting{% endif %}">
-                                <div class="tz-icon p-3 mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                                    <i class="fas fa-users"></i>
-                                </div>
-                                <h6 class="card-title mb-2" style="color: var(--text-dark);">Group Letter</h6>
-                                <p class="small-text mb-3" style="color: var(--text-gray);">
-                                    Group confirmation letter when school reaches <strong style="color: var(--medium);">{{ group_letter_quota }} approved students</strong>
-                                </p>
-                                
-                                {% if can_download_group_letter %}
-                                    <a href="{% url 'download_group_letter' %}" class="tz-btn-gold w-100 py-2 small-text" style="background: var(--medium); color: var(--white); border: none; border-radius: 6px;">
-                                        <i class="fas fa-download me-2"></i>Download Group Letter
-                                    </a>
-                                    <small class="mt-1 d-block small-text" style="color: var(--success);">
-                                        <i class="fas fa-check-circle me-1"></i>
-                                        Ready! {{ approved_students_count }}/{{ group_letter_quota }} students approved
-                                    </small>
-                                {% else %}
-                                    <button class="btn w-100 py-2 small-text" disabled style="background: var(--light); color: var(--text-gray); border: 1px solid var(--border);">
-                                        <i class="fas fa-clock me-2"></i>Not Available
-                                    </button>
-                                    {% if student.selected_school %}
-                                        <small class="mt-1 d-block small-text" style="color: var(--text-gray);">
-                                            <i class="fas fa-info-circle me-1"></i>
-                                            Progress: {{ approved_students_count }}/{{ group_letter_quota }} students
-                                        </small>
-                                        {% if approved_students_count < group_letter_quota %}
-                                        <small class="mt-1 d-block small-text" style="color: var(--medium);">
-                                            <i class="fas fa-users me-1"></i>
-                                            Need {{ group_letter_quota|add:"-approved_students_count" }} more students
-                                        </small>
-                                        {% endif %}
-                                    {% else %}
-                                        <small class="mt-1 d-block small-text" style="color: var(--text-gray);">
-                                            <i class="fas fa-school me-1"></i>
-                                            No school selected
-                                        </small>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -728,58 +685,44 @@ body {
                             <div class="school-loc">{{ student.selected_school.district.name }}, {{ student.selected_school.district.region.name }}</div>
                         </div>
                     </div>
-                    <div class="mb-3"><!-- reopen existing group progress block -->
-                        
-                        <!-- Group Letter Progress -->
-                        <div class="mt-2 p-2 rounded" style="background: rgba(10, 43, 94, 0.05);">
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    <div class="fw-bold normal-text" style="color: var(--bold);">{{ approved_students_count }}</div>
-                                    <div class="small-text" style="color: var(--text-gray);">{% if LANG == 'sw' %}Walioidhinishwa{% else %}Approved{% endif %}</div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="fw-bold normal-text" style="color: var(--bold);">{{ group_letter_quota }}</div>
-                                    <div class="small-text" style="color: var(--text-gray);">{% if LANG == 'sw' %}Wanaohitajika{% else %}Required{% endif %}</div>
-                                </div>
-                            </div>
-                            {% if school_has_completed_quota %}
-                            <div class="mt-1">
-                                <span class="badge small-text" style="background: var(--success); color: var(--white);">
-                                    <i class="fas fa-check me-1"></i>Group Ready
-                                </span>
-                            </div>
-                            {% else %}
-                            <div class="mt-1">
-                                <span class="badge small-text" style="background: var(--medium); color: var(--white);">
-                                    <i class="fas fa-clock me-1"></i>Waiting for Group
-                                </span>
-                            </div>
-                            {% endif %}
+                    <!-- Change school window -->
+                    {% if has_approved_applications %}
+                    <div class="mb-3 p-2 rounded" style="background:rgba(10,43,94,.05);border:1px solid var(--border);">
+                        {% if can_change_school_now %}
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <i class="fas fa-clock" style="color:var(--medium);font-size:.85rem;"></i>
+                            <span class="small-text fw-bold" style="color:var(--text-dark);">{% if LANG == 'sw' %}Muda wa Kubadili{% else %}Change Window{% endif %}</span>
+                            <span class="badge small-text ms-auto" style="background:var(--medium);color:#fff;">{{ change_days_remaining }} {% if LANG == 'sw' %}siku{% else %}days{% endif %}</span>
                         </div>
+                        <div class="small-text" style="color:var(--text-gray);">
+                            {% if LANG == 'sw' %}Unaweza kubadili shule hadi{% else %}You can change school until{% endif %}
+                            <strong>{{ change_deadline|date:"d M Y" }}</strong>
+                        </div>
+                        {% else %}
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-lock" style="color:#6B7280;font-size:.85rem;"></i>
+                            <span class="small-text" style="color:#6B7280;">{% if LANG == 'sw' %}Muda wa kubadili shule umekwisha{% else %}Change window expired{% endif %}</span>
+                        </div>
+                        {% endif %}
                     </div>
-
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="small-text" style="color: var(--text-gray);">Group Progress</span>
-                            <span class="small-text fw-bold" style="color: var(--bold);">{% widthratio approved_students_count group_letter_quota 100 %}%</span>
-                        </div>
-                        <div class="progress-tz">
-                            <div class="progress-bar" role="progressbar" 
-                                 style="width: {% widthratio approved_students_count group_letter_quota 100 %}%">
-                            </div>
-                        </div>
-                    </div>
+                    {% endif %}
 
                     <div class="row g-2">
                         <div class="col-6">
                             <a href="{% url 'select_subjects' student.selected_school.id %}" class="btn w-100 py-2 small-text" style="background: var(--bold); color: var(--white); border: none;">
-                                <i class="fas fa-edit me-1"></i>Manage Subjects
+                                <i class="fas fa-edit me-1"></i>{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}
                             </a>
                         </div>
                         <div class="col-6">
+                            {% if can_change_school_now %}
                             <a href="{% url 'change_school' %}" class="btn w-100 py-2 small-text" style="background: transparent; color: var(--medium); border: 1px solid var(--medium);">
-                                <i class="fas fa-exchange-alt me-1"></i>Change School
+                                <i class="fas fa-exchange-alt me-1"></i>{% if LANG == 'sw' %}Badili Shule{% else %}Change School{% endif %}
                             </a>
+                            {% else %}
+                            <button class="btn w-100 py-2 small-text" disabled style="background:var(--light);color:#9CA3AF;border:1px solid var(--border);cursor:not-allowed;">
+                                <i class="fas fa-lock me-1"></i>{% if LANG == 'sw' %}Imefungwa{% else %}Locked{% endif %}
+                            </button>
+                            {% endif %}
                         </div>
                     </div>
                     {% else %}
@@ -1156,16 +1099,6 @@ body {
             }
         });
 
-        // ── Group letter notification ──
-        {% if can_download_group_letter %}
-        setTimeout(() => {
-            if (!localStorage.getItem('groupLetterNotified')) {
-                const msg = '{% if LANG == "sw" %}🎉 HONGERA! Shule yako sasa ina wanafunzi 5 walioidhinishwa. Unaweza kupakua Barua ya Kikundi!{% else %}🎉 CONGRATULATIONS! Your school now has 5 approved students. You can download the Group Letter!{% endif %}';
-                alert(msg);
-                localStorage.setItem('groupLetterNotified', 'true');
-            }
-        }, 1000);
-        {% endif %}
     });
 </script>
 {% endblock %}

@@ -1091,19 +1091,25 @@ def dashboard(request):
     approved_applications_count = 0
     pending_applications_count = 0
     has_approved_applications = False
-    school_has_completed_quota = False
-    can_download_group_letter = False
-    approved_students_count = 0
-    group_letter_quota = 5
-    
+    can_change_school_now = False
+    change_days_remaining = 0
+    change_deadline = None
+
     if student:
         applications = StudentApplication.objects.filter(student=student).select_related('subject', 'school')
         approved_applications_count = applications.filter(status='approved').count()
         pending_applications_count = applications.filter(status='pending').count()
         has_approved_applications = approved_applications_count > 0
 
+        # Change school window: 7 days from approval_date of approved application
+        approved_app = applications.filter(status='approved').first()
+        if approved_app and approved_app.approval_date:
+            days_since = (timezone.now() - approved_app.approval_date).days
+            can_change_school_now = days_since <= 7
+            change_days_remaining = max(0, 7 - days_since)
+            change_deadline = approved_app.approval_date + timezone.timedelta(days=7)
+
         # Auto-sync selected_school to match the actual application's school
-        # Priority: approved application first, then pending
         canonical_app = (
             applications.filter(status='approved').first() or
             applications.filter(status='pending').first()
@@ -1116,17 +1122,6 @@ def dashboard(request):
                 School.objects.filter(id=old_school.id).update(current_students=Greatest(F('current_students') - 1, 0))
             School.objects.filter(id=canonical_app.school_id).update(current_students=F('current_students') + 1)
             invalidate_student_cache(student)
-
-        if student.selected_school:
-            school = student.selected_school
-
-            approved_students_count = StudentApplication.objects.filter(
-                school=school,
-                status='approved'
-            ).count()
-
-            school_has_completed_quota = approved_students_count >= group_letter_quota
-            can_download_group_letter = school_has_completed_quota and has_approved_applications
 
     logbook_entries = []
     if student:
@@ -1176,10 +1171,9 @@ def dashboard(request):
         'approved_applications_count': approved_applications_count,
         'pending_applications_count': pending_applications_count,
         'has_approved_applications': has_approved_applications,
-        'school_has_completed_quota': school_has_completed_quota,
-        'can_download_group_letter': can_download_group_letter,
-        'approved_students_count': approved_students_count,
-        'group_letter_quota': group_letter_quota,
+        'can_change_school_now': can_change_school_now,
+        'change_days_remaining': change_days_remaining,
+        'change_deadline': change_deadline,
         'logbook_entries': logbook_entries,
         'assessors': assessors,
         'board_comments': board_comments,
@@ -3921,164 +3915,114 @@ def new_year_credentials(request):
 
 @login_required
 def change_school(request):
-    """Mwanafunzi anaweza kubadili shule ndani ya wiki moja - WITH COMPLETE DB UPDATE"""
+    """Mwanafunzi anaweza kubadili shule na somo ndani ya wiki 1 baada ya kuidhinishwa."""
     student = get_or_create_student_profile(request.user)
-    
-    # Check if student has selected a school
+
     if not student.selected_school:
         messages.error(request, "Hujachagua shule yoyote bado.")
         return redirect('select_region')
-    
-    # Set initial selection date if not set
-    if not student.initial_school_selection_date:
-        student.initial_school_selection_date = timezone.now()
-        student.save()
-        invalidate_student_cache(student)
-    
-    # Calculate days passed
-    days_passed = (timezone.now() - student.initial_school_selection_date).days
+
     CAN_CHANGE_DAYS = 7
-    MAX_CHANGES = 3
 
-    # Block if student has an approved application — placement is confirmed
-    has_approved_application = StudentApplication.objects.filter(
+    # Window is based on approval_date of the approved application
+    approved_app = StudentApplication.objects.filter(
         student=student, status='approved'
-    ).exists()
+    ).select_related('subject', 'school').first()
 
-    can_change = (
-        not has_approved_application and
-        days_passed <= CAN_CHANGE_DAYS and
-        student.school_change_count < MAX_CHANGES
-    )
-    cant_change_reason = None
-    if has_approved_application:
-        cant_change_reason = 'approved'
-    elif days_passed > CAN_CHANGE_DAYS:
-        cant_change_reason = 'expired'
-    elif student.school_change_count >= MAX_CHANGES:
-        cant_change_reason = 'limit'
+    approval_date = approved_app.approval_date if approved_app and approved_app.approval_date else None
+    if approval_date:
+        days_since_approval = (timezone.now() - approval_date).days
+        remaining_days = max(0, CAN_CHANGE_DAYS - days_since_approval)
+        can_change = days_since_approval <= CAN_CHANGE_DAYS
+        cant_change_reason = None if can_change else 'expired'
+        deadline = approval_date + timezone.timedelta(days=CAN_CHANGE_DAYS)
+    else:
+        # No approval yet — use selection date window
+        if not student.initial_school_selection_date:
+            student.initial_school_selection_date = timezone.now()
+            student.save()
+            invalidate_student_cache(student)
+        days_since_approval = (timezone.now() - student.initial_school_selection_date).days
+        remaining_days = max(0, CAN_CHANGE_DAYS - days_since_approval)
+        can_change = days_since_approval <= CAN_CHANGE_DAYS
+        cant_change_reason = None if can_change else 'expired'
+        deadline = student.initial_school_selection_date + timezone.timedelta(days=CAN_CHANGE_DAYS)
 
-    # Get districts in current school's region (only same region for faster loading)
     current_district = student.selected_school.district
     current_region = current_district.region
-
-    # Get all districts in the same region
     districts_in_region = District.objects.filter(region=current_region).select_related('region')
 
-    remaining_days = max(0, CAN_CHANGE_DAYS - days_passed)
-    remaining_changes = max(0, MAX_CHANGES - student.school_change_count)
-    
-    # ========== HANDLE POST REQUEST DIRECTLY (if not using AJAX) ==========
     if request.method == 'POST' and not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         new_school_id = request.POST.get('new_school_id')
-        
+
         if not new_school_id:
             messages.error(request, "Tafadhali chagua shule mpya.")
             return redirect('change_school')
-        
-        # Process the change
+
+        if not can_change:
+            messages.error(request, "Muda wa kubadili shule umekwisha. Wiki moja baada ya kuidhinishwa tu.")
+            return redirect('dashboard')
+
         try:
+            from django.db import transaction
             new_school = School.objects.select_related('district', 'district__region').get(id=new_school_id)
             old_school = student.selected_school
-            
-            # Validate
-            if not can_change:
-                messages.error(request, f"Huwezi kubadili shule tena. Umebadili tayari {student.school_change_count} mara.")
-                return redirect('change_school')
-            
-            # Check capacity
-            if new_school.current_students >= new_school.capacity:
-                messages.error(request, f"Shule {new_school.name} imejaa. Hakuna nafasi.")
-                return redirect('change_school')
-            
-            # Check if pinned
+
             current_year = get_current_academic_year()
             is_pinned = SchoolPin.objects.filter(
-                school=new_school,
-                academic_year=current_year,
-                is_pinned=True
+                school=new_school, academic_year=current_year, is_pinned=True
             ).exists()
-            
             if is_pinned:
                 messages.error(request, f"Shule {new_school.name} haipatikani kwa sasa.")
                 return redirect('change_school')
-            
-            # ========== UPDATE DATABASE ==========
-            print(f"\n🔄 CHANGING SCHOOL FOR: {student.full_name}")
-            print(f"   OLD: {old_school.name} (ID: {old_school.id})")
-            print(f"   NEW: {new_school.name} (ID: {new_school.id})")
-            
-            # 1. Decrease old school counter
-            School.objects.filter(id=old_school.id).update(current_students=Greatest(F('current_students') - 1, 0))
-            print(f"   ✅ Decreased old school: {old_school.name}")
-            
-            # 2. Increase new school counter
-            School.objects.filter(id=new_school.id).update(current_students=F('current_students') + 1)
-            print(f"   ✅ Increased new school: {new_school.name}")
-            
-            # 3. Update student record
-            student.selected_school = new_school
-            student.school_change_count = F('school_change_count') + 1
-            student.last_school_change_date = timezone.now()
-            student.save()
-            invalidate_student_cache(student)
-            
-            # Refresh student to get updated count
-            student.refresh_from_db()
-            
-            # 4. Delete pending applications for old school
-            deleted_count, _ = StudentApplication.objects.filter(
-                student=student,
-                school=old_school,
-                status='pending'
-            ).delete()
-            print(f"   ✅ Deleted {deleted_count} pending applications for old school")
-            
-            # 5. Clear any session cache
+
+            with transaction.atomic():
+                # Remove approved application and release subject capacity
+                if approved_app:
+                    if approved_app.subject:
+                        SchoolSubjectCapacity.objects.filter(
+                            school=old_school, subject=approved_app.subject
+                        ).update(current_students=Greatest(F('current_students') - 1, 0))
+                    approved_app.delete()
+
+                # Clear student subjects
+                student.subjects.clear()
+
+                # Decrement old school, update student
+                School.objects.filter(id=old_school.id).update(
+                    current_students=Greatest(F('current_students') - 1, 0)
+                )
+                student.selected_school = new_school
+                student.school_change_count = F('school_change_count') + 1
+                student.last_school_change_date = timezone.now()
+                student.save()
+                invalidate_student_cache(student)
+
             if 'selected_school_id' in request.session:
                 del request.session['selected_school_id']
-            
-            # 6. Clear cache for API
-            cache_key = f'schools_district_{old_school.district_id}'
-            cache.delete(cache_key)
-            cache_key = f'schools_district_{new_school.district_id}'
-            cache.delete(cache_key)
-            
-            print(f"   ✅ School change COMPLETE!")
-            
-            messages.success(
-                request,
-                f"✅ Umefanikiwa kubadili shule!\n"
-                f"Shule mpya: {new_school.name}\n"
-                f"Umesalia na {MAX_CHANGES - student.school_change_count} nafasi za kubadilisha."
-            )
-            
-            return redirect('dashboard')
-            
+            cache.delete(f'schools_district_{old_school.district_id}')
+            cache.delete(f'schools_district_{new_school.district_id}')
+
+            messages.success(request, f"Umebadili shule hadi {new_school.name}. Chagua somo lako jipya.")
+            return redirect('select_subjects', school_id=new_school.id)
+
         except School.DoesNotExist:
             messages.error(request, "Shule haipatikani.")
             return redirect('change_school')
         except Exception as e:
-            print(f"❌ ERROR: {e}")
-            import traceback
-            traceback.print_exc()
             messages.error(request, f"Hitilafu: {str(e)}")
             return redirect('change_school')
-    
-    # Render the template for GET request
+
     return render(request, 'field_app/change_school.html', {
         'student': student,
         'current_school': student.selected_school,
         'current_region': current_region,
         'districts': districts_in_region,
-        'days_passed': days_passed,
         'remaining_days': remaining_days,
-        'remaining_changes': remaining_changes,
-        'max_change_days': CAN_CHANGE_DAYS,
-        'max_changes': MAX_CHANGES,
-        'initial_selection_date': student.initial_school_selection_date,
+        'deadline': deadline,
         'can_change': can_change,
         'cant_change_reason': cant_change_reason,
+        'approved_app': approved_app,
     })
 
 
