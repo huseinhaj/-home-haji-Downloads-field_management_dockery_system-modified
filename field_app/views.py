@@ -7574,18 +7574,51 @@ def deo_district_allocation(request, district_id):
             return redirect('deo_district_allocation', district_id=district.id)
 
         elif action == 'set_school_quotas':
+            all_subjects_map = {s.name.lower(): s for s in Subject.objects.all()}
             for school in schools:
-                key = f'quota_{school.id}'
-                quota_val = int(request.POST.get(key, 0) or 0)
+                sid = school.id
+                quota_val = int(request.POST.get(f'quota_{sid}', 0) or 0)
+
+                # Parse subject rows for this school: subj_name_{sid}_{N}, subj_count_{sid}_{N}
+                subj_breakdown = {}
+                n = 1
+                while True:
+                    sname = request.POST.get(f'subj_name_{sid}_{n}', '').strip()
+                    if not sname:
+                        break
+                    try:
+                        scount = max(1, int(request.POST.get(f'subj_count_{sid}_{n}', 1) or 1))
+                    except ValueError:
+                        scount = 1
+                    subj_breakdown[sname] = scount
+                    n += 1
+
+                # Auto-set quota from sum of subjects if subjects provided and quota not set manually
+                if subj_breakdown and quota_val == 0:
+                    quota_val = sum(subj_breakdown.values())
+
                 SchoolAllocation.objects.update_or_create(
                     district_allocation=allocation,
                     school=school,
-                    defaults={'quota': quota_val}
+                    defaults={
+                        'quota': quota_val,
+                        'subjects_breakdown': subj_breakdown or {},
+                    }
                 )
-                # Sasisha School.capacity ili iwe sawa na quota
                 if quota_val > 0:
-                    School.objects.filter(id=school.id).update(capacity=quota_val)
-            messages.success(request, 'Mgawanyo wa shule zote umehifadhiwa na capacity zimesasishwa.')
+                    School.objects.filter(id=sid).update(capacity=quota_val)
+
+                # Unda/sasisha SchoolSubjectCapacity records
+                for sname, scount in subj_breakdown.items():
+                    subj_obj = all_subjects_map.get(sname.lower())
+                    if subj_obj:
+                        SchoolSubjectCapacity.objects.update_or_create(
+                            school=school,
+                            subject=subj_obj,
+                            defaults={'max_students': scount},
+                        )
+
+            messages.success(request, 'Mgawanyo na masomo ya shule zote zimehifadhiwa.')
             return redirect('deo_district_allocation', district_id=district.id)
 
         elif action == 'ai_parse':
@@ -7629,6 +7662,16 @@ def deo_district_allocation(request, district_id):
         for sa in SchoolAllocation.objects.filter(district_allocation=allocation).select_related('school')
     }
 
+    # Load existing subject capacities per school
+    school_caps_map = {}  # {school_id: [{name, max_students}, ...]}
+    for cap in SchoolSubjectCapacity.objects.filter(
+        school__district=district
+    ).select_related('subject').order_by('subject__name'):
+        school_caps_map.setdefault(cap.school_id, []).append({
+            'name': cap.subject.name,
+            'max': cap.max_students,
+        })
+
     schools_with_alloc = []
     for school in schools:
         sa = school_alloc_map.get(school.id)
@@ -7644,6 +7687,7 @@ def deo_district_allocation(request, district_id):
             'pct': min(100, round(filled / quota * 100)) if quota > 0 else 0,
             'ht_requested': sa.head_teacher_requested if sa else 0,
             'ht_notes': sa.head_teacher_notes if sa else '',
+            'subject_caps': school_caps_map.get(school.id, []),
         })
 
     return render(request, 'field_app/deo_allocation.html', {

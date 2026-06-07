@@ -191,19 +191,7 @@
         <span class="badge-primary"><i class="fas fa-school me-1"></i>Shule za Msingi — {{ primary_schools|length }}</span>
       </div>
       {% for item in primary_schools %}
-      <div class="school-row">
-        <div class="flex-grow-1">
-          <div style="font-size:.88rem;font-weight:700;color:#0A2B5E;">{{ item.school.name }}</div>
-          <div style="font-size:.75rem;color:var(--muted);">
-            Waliopo: <strong style="color:#059669;">{{ item.filled }}</strong>
-            {% if item.quota %} &nbsp;|&nbsp; Inahitajika: <strong style="color:#C8900A;">{{ item.quota }}</strong>{% endif %}
-          </div>
-        </div>
-        <div style="text-align:right;">
-          <label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:2px;">QUOTA</label>
-          <input type="number" name="quota_{{ item.school.id }}" value="{{ item.quota }}" min="0" class="quota-input">
-        </div>
-      </div>
+      {% include "field_app/_school_alloc_row.html" with item=item %}
       {% endfor %}
       {% endif %}
 
@@ -212,19 +200,7 @@
         <span class="badge-secondary"><i class="fas fa-school me-1"></i>Shule za Sekondari — {{ secondary_schools|length }}</span>
       </div>
       {% for item in secondary_schools %}
-      <div class="school-row">
-        <div class="flex-grow-1">
-          <div style="font-size:.88rem;font-weight:700;color:#0A2B5E;">{{ item.school.name }}</div>
-          <div style="font-size:.75rem;color:var(--muted);">
-            Waliopo: <strong style="color:#059669;">{{ item.filled }}</strong>
-            {% if item.quota %} &nbsp;|&nbsp; Inahitajika: <strong style="color:#C8900A;">{{ item.quota }}</strong>{% endif %}
-          </div>
-        </div>
-        <div style="text-align:right;">
-          <label style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:2px;">QUOTA</label>
-          <input type="number" name="quota_{{ item.school.id }}" value="{{ item.quota }}" min="0" class="quota-input">
-        </div>
-      </div>
+      {% include "field_app/_school_alloc_row.html" with item=item %}
       {% endfor %}
       {% endif %}
 
@@ -239,4 +215,30 @@
   </div>
 
 </div>
+<script>
+// Track row counters per school (start after pre-existing rows)
+const rowCounters = {};
+function toggleSubjects(sid) {
+  const panel = document.getElementById('subj-panel-' + sid);
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+function addSubjRow(sid) {
+  if (!rowCounters[sid]) {
+    // Count existing rows first
+    rowCounters[sid] = document.querySelectorAll('#subj-rows-' + sid + ' > div').length;
+  }
+  rowCounters[sid]++;
+  const n = rowCounters[sid];
+  const row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 80px 28px;gap:6px;margin-bottom:6px;';
+  row.innerHTML =
+    '<input type="text" name="subj_name_' + sid + '_' + n + '" placeholder="Mfano: Mathematics" style="padding:6px 9px;border:1.5px solid #CBD5E0;border-radius:3px;font-size:12.5px;font-family:inherit;width:100%;">' +
+    '<input type="number" name="subj_count_' + sid + '_' + n + '" value="1" min="1" max="20" style="padding:6px 8px;border:1.5px solid #CBD5E0;border-radius:3px;font-size:12.5px;font-family:inherit;text-align:center;width:100%;">' +
+    '<button type="button" onclick="this.closest(\'div\').remove()" style="background:#FEE2E2;border:1px solid #FECACA;border-radius:3px;color:#DC2626;cursor:pointer;font-size:13px;width:28px;height:32px;display:flex;align-items:center;justify-content:center;">×</button>';
+  document.getElementById('subj-rows-' + sid).appendChild(row);
+  // Auto-open panel if not already open
+  const panel = document.getElementById('subj-panel-' + sid);
+  if (panel) panel.style.display = 'block';
+}
+</script>
 {% endblock %}
