@@ -5716,6 +5716,7 @@ def api_get_schools(request):
         schools_data.append({
             'id': school.id,
             'name': school.name,
+            'level': school.level,
             'level_display': school.get_level_display(),
             'current_students': school.current_students,
             'capacity': school.capacity,
@@ -5794,6 +5795,7 @@ def api_filter_schools(request):
         schools_data.append({
             'id': school.id,
             'name': school.name,
+            'level': school.level,
             'level_display': school.get_level_display(),
             'current_students': school.current_students,
             'capacity': school.capacity,
@@ -7742,7 +7744,86 @@ Kama hauwezi kupata idadi, weka 0. Jibu kwa JSON tu, bila maelezo mengine.
 # =============================================================
 
 def public_school_head_form(request):
-    """Universal public form — school head verifies via school code then submits."""
+    """General public form for any school head in Tanzania."""
+    current_year = _cached_active_year()
+    regions = Region.objects.all().order_by('name')
+    primary_subjects   = list(Subject.objects.filter(level='primary').order_by('name').values_list('name', flat=True))
+    secondary_subjects = list(Subject.objects.filter(level='secondary').order_by('name').values_list('name', flat=True))
+
+    if request.method == 'POST':
+        school_id  = request.POST.get('school_id', '').strip()
+        head_name  = request.POST.get('head_name', '').strip()
+        head_phone = request.POST.get('head_phone', '').strip()
+        notes      = request.POST.get('notes', '').strip()
+
+        school = School.objects.filter(id=school_id).select_related('district__region').first()
+
+        # Parse subject rows
+        subjects_needed_json = {}
+        i = 1
+        while True:
+            sname = request.POST.get(f'subject_name_{i}', '').strip()
+            if not sname:
+                break
+            try:
+                scount = max(1, int(request.POST.get(f'subject_count_{i}', 1) or 1))
+            except ValueError:
+                scount = 1
+            subjects_needed_json[sname] = scount
+            i += 1
+
+        students_needed = sum(subjects_needed_json.values()) if subjects_needed_json else 0
+
+        error = None
+        if not school:
+            error = 'Tafadhali chagua shule.'
+        elif not head_name:
+            error = 'Tafadhali weka jina la mkuu wa shule.'
+        elif not subjects_needed_json:
+            error = 'Tafadhali ongeza angalau somo moja na idadi inayohitajika.'
+
+        if error:
+            return render(request, 'field_app/public_school_head_form.html', {
+                'regions': regions,
+                'primary_subjects': primary_subjects,
+                'secondary_subjects': secondary_subjects,
+                'current_year': current_year,
+                'error': error,
+                'post': request.POST,
+            })
+
+        SchoolHeadRequest.objects.create(
+            district=school.district,
+            academic_year=current_year,
+            school_name_submitted=school.name,
+            school=school,
+            head_name=head_name,
+            head_phone=head_phone,
+            level=school.level,
+            students_needed=students_needed,
+            subjects_needed=subjects_needed_json,
+            notes=notes,
+        )
+        return render(request, 'field_app/public_school_head_form.html', {
+            'regions': regions,
+            'primary_subjects': primary_subjects,
+            'secondary_subjects': secondary_subjects,
+            'current_year': current_year,
+            'success': True,
+            'school_name': school.name,
+            'district_name': school.district.name,
+        })
+
+    return render(request, 'field_app/public_school_head_form.html', {
+        'regions': regions,
+        'primary_subjects': primary_subjects,
+        'secondary_subjects': secondary_subjects,
+        'current_year': current_year,
+    })
+
+
+def _old_public_school_head_form_stage2_unused(request):
+    """Kept for reference only — replaced by public_school_head_form above."""
     current_year = _cached_active_year()
 
     # Stage 2: full form submission
