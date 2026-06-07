@@ -5668,7 +5668,7 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
             return JsonResponse({'success': False, 'error': user_msg}, status=500)
 
     return JsonResponse({'success': False}, status=400)
-@login_required
+
 def api_get_schools(request):
     """API endpoint for AJAX school search"""
     district_id = request.GET.get('district_id')
@@ -5743,7 +5743,6 @@ def api_select_school_temp(request):
             request.session['temp_selected_school_id'] = school_id
             return JsonResponse({'success': True})
     return JsonResponse({'success': False})
-@login_required
 def api_districts_by_region(request):
     """Return districts for a given region - used in admin BoardMember form"""
     region_id = request.GET.get('region_id')
