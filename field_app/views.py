@@ -818,7 +818,10 @@ def register(request):
 
             full_name = form.cleaned_data['full_name']
             phone_number = form.cleaned_data['phone_number']
-            StudentTeacher.objects.create(user=user, full_name=full_name, phone_number=phone_number)
+            StudentTeacher.objects.create(
+                user=user, full_name=full_name, phone_number=phone_number,
+                academic_year=_cached_active_year(),
+            )
 
             messages.success(request, 'Account created successfully. Please login.')
             return redirect('login')
@@ -4077,15 +4080,19 @@ def change_academic_year(request):
             
             # Deactivate all years
             AcademicYear.objects.all().update(is_active=False)
-            
+
             # Activate selected year
             new_year.is_active = True
             new_year.save()
-            
+
+            # Reset school occupancy counters for new intake
+            School.objects.all().update(current_students=0)
+            SchoolSubjectCapacity.objects.all().update(current_students=0)
+
             messages.success(
                 request,
-                f"✅ Academic year changed to {new_year.year}\n"
-                f"⚠️ Remember to set region pins for this new year!"
+                f"✅ Mwaka wa masomo umebadilishwa hadi {new_year.year}. "
+                f"Nafasi za shule zimewekwa upya kwa intake mpya."
             )
             
         except AcademicYear.DoesNotExist:
@@ -5723,6 +5730,14 @@ def admin_report_pdf(request):
 # BODI YA WALIMU — Teacher Board System
 # ============================================================
 
+def _active_year_students():
+    """Return StudentTeacher queryset filtered to the current active academic year."""
+    year = _cached_active_year()
+    if year:
+        return StudentTeacher.objects.filter(academic_year=year)
+    return StudentTeacher.objects.all()
+
+
 def _get_board_member(request):
     """Return BoardMember for current user or None."""
     try:
@@ -5915,12 +5930,15 @@ def board_home(request):
                             distinct=True),
         district_count=Count('district', distinct=True),
     )
-    total_students = StudentTeacher.objects.filter(selected_school__isnull=False).count()
-    total_schools = School.objects.filter(studentteacher__isnull=False).distinct().count()
+    yr_qs = _active_year_students()
+    total_students = yr_qs.filter(selected_school__isnull=False).count()
+    total_schools = School.objects.filter(
+        studentteacher__in=yr_qs, studentteacher__isnull=False
+    ).distinct().count()
     active_this_week = LogbookEntry.objects.filter(
-        date__gte=seven_days_ago
+        date__gte=seven_days_ago, student__in=yr_qs
     ).values('student').distinct().count()
-    inactive_count = StudentTeacher.objects.filter(
+    inactive_count = yr_qs.filter(
         selected_school__isnull=False
     ).exclude(
         logbookentry__date__gte=seven_days_ago
@@ -6015,7 +6033,7 @@ def board_school_list(request, district_id):
 
     students_data = []
     for school in schools:
-        sts = StudentTeacher.objects.filter(selected_school=school).select_related('user')
+        sts = _active_year_students().filter(selected_school=school).select_related('user')
         for st in sts:
             lb_count = LogbookEntry.objects.filter(student=st).count()
             latest_lb = LogbookEntry.objects.filter(student=st).order_by('-date').first()
@@ -6489,8 +6507,8 @@ def board_head_teacher(request, school_id):
                 messages.success(request, f'Maoni kwa {student_obj.full_name} yamehifadhiwa.')
         return redirect('board_head_teacher', school_id=school.id)
 
-    # Wanafunzi wote wa shule hii
-    students = StudentTeacher.objects.filter(
+    # Wanafunzi wote wa shule hii (mwaka wa sasa tu)
+    students = _active_year_students().filter(
         selected_school=school
     ).select_related('user').order_by('full_name')
 
@@ -6643,7 +6661,7 @@ def head_teacher_monthly_report(request, school_id):
     current_year = _cached_active_year()
     month_name = request.GET.get('month', today.strftime('%B %Y'))
 
-    students = StudentTeacher.objects.filter(
+    students = _active_year_students().filter(
         selected_school=school, approval_status='approved'
     ).select_related('user').order_by('full_name')
 

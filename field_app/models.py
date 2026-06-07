@@ -68,9 +68,14 @@ class StudentTeacher(models.Model):
     )
     approval_date = models.DateTimeField(null=True, blank=True)
     subjects = models.ManyToManyField('Subject', blank=True)
-    
+
+    academic_year = models.ForeignKey(
+        'AcademicYear', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='students'
+    )
+
     # ========== NEW FIELDS FOR SCHOOL CHANGE TRACKING ==========
-    initial_school_selection_date = models.DateTimeField(null=True, blank=True, 
+    initial_school_selection_date = models.DateTimeField(null=True, blank=True,
         help_text="Tarehe ya kwanza mwanafunzi alipochagua shule")
     school_change_count = models.IntegerField(default=0, 
         help_text="Idadi ya mara mwanafunzi amebadili shule")
@@ -1126,19 +1131,21 @@ class DistrictAllocation(models.Model):
 
     @property
     def primary_filled(self):
-        return StudentApplication.objects.filter(
-            school__district=self.district,
-            school__level='Primary',
-            status='approved',
-        ).values('student').distinct().count()
+        qs = StudentApplication.objects.filter(
+            school__district=self.district, school__level='Primary', status='approved',
+        )
+        if self.academic_year_id:
+            qs = qs.filter(student__academic_year_id=self.academic_year_id)
+        return qs.values('student').distinct().count()
 
     @property
     def secondary_filled(self):
-        return StudentApplication.objects.filter(
-            school__district=self.district,
-            school__level='Secondary',
-            status='approved',
-        ).values('student').distinct().count()
+        qs = StudentApplication.objects.filter(
+            school__district=self.district, school__level='Secondary', status='approved',
+        )
+        if self.academic_year_id:
+            qs = qs.filter(student__academic_year_id=self.academic_year_id)
+        return qs.values('student').distinct().count()
 
     @property
     def primary_remaining(self):
@@ -1175,9 +1182,11 @@ class SchoolAllocation(models.Model):
 
     @property
     def filled(self):
-        return StudentApplication.objects.filter(
-            school=self.school, status='approved'
-        ).values('student').distinct().count()
+        year_id = self.district_allocation.academic_year_id
+        qs = StudentApplication.objects.filter(school=self.school, status='approved')
+        if year_id:
+            qs = qs.filter(student__academic_year_id=year_id)
+        return qs.values('student').distinct().count()
 
     @property
     def remaining(self):
