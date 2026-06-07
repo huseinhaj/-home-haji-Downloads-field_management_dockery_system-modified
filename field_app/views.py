@@ -8099,23 +8099,22 @@ def public_school_head_form(request):
 
 
 def school_head_submit(request, district_id):
-    """Public form — school head submits required student/teacher numbers."""
+    """Public form — school head submits subjects + capacity needed."""
     district = get_object_or_404(District, id=district_id)
     current_year = _cached_active_year()
     schools = School.objects.filter(district=district).order_by('level', 'name')
 
+    primary_subjects = list(Subject.objects.filter(level='primary').order_by('name').values_list('name', flat=True))
+    secondary_subjects = list(Subject.objects.filter(level='secondary').order_by('name').values_list('name', flat=True))
+
     if request.method == 'POST':
         school_name = request.POST.get('school_name', '').strip()
-        head_name = request.POST.get('head_name', '').strip()
-        head_phone = request.POST.get('head_phone', '').strip()
-        level = request.POST.get('level', '').strip()
-        try:
-            students_needed = int(request.POST.get('students_needed', 0) or 0)
-        except ValueError:
-            students_needed = 0
-        notes = request.POST.get('notes', '').strip()
+        head_name   = request.POST.get('head_name', '').strip()
+        head_phone  = request.POST.get('head_phone', '').strip()
+        level       = request.POST.get('level', '').strip()
+        notes       = request.POST.get('notes', '').strip()
 
-        # Parse subject breakdown rows
+        # Parse subject rows — subject_name_N + subject_count_N
         subjects_needed_json = {}
         i = 1
         while True:
@@ -8128,19 +8127,18 @@ def school_head_submit(request, district_id):
                 scount = 1
             subjects_needed_json[sname] = scount
             i += 1
-        # If no subject rows provided, use the manual total
-        if not subjects_needed_json:
-            try:
-                students_needed = int(request.POST.get('students_needed', 0) or 0)
-            except ValueError:
-                students_needed = 0
-        else:
-            students_needed = sum(subjects_needed_json.values())
 
-        if not school_name or not head_name or not level or students_needed < 1:
-            messages.error(request, 'Tafadhali jaza sehemu zote zinazohitajika.')
+        students_needed = sum(subjects_needed_json.values()) if subjects_needed_json else 0
+
+        error = None
+        if not school_name or not head_name or not level:
+            error = 'Tafadhali jaza sehemu zote zinazohitajika (Shule, Kiwango, Jina la Mkuu).'
+        elif not subjects_needed_json:
+            error = 'Tafadhali ongeza angalau somo moja na idadi inayohitajika.'
+
+        if error:
+            messages.error(request, error)
         else:
-            # Try to auto-match school from DB
             matched_school = None
             name_lower = school_name.lower()
             for s in schools:
@@ -8167,6 +8165,8 @@ def school_head_submit(request, district_id):
         'district': district,
         'schools': schools,
         'current_year': current_year,
+        'primary_subjects': primary_subjects,
+        'secondary_subjects': secondary_subjects,
     })
 
 
@@ -8231,15 +8231,19 @@ def deo_review_requests(request, district_id):
                         )
                         school_capacity_map[req.school_id] = req.students_needed
 
-                        # Sasisha SchoolSubjectCapacity kwa kila somo kutoka request
+                        # Weka SchoolSubjectCapacity mpya kutoka request (futa za zamani kwanza)
                         if req.subjects_needed:
+                            # Futa caps za zamani za shule hii
+                            SchoolSubjectCapacity.objects.filter(school=req.school).delete()
+                            # Unda mpya kutoka subjects_needed
                             for sname, scount in req.subjects_needed.items():
                                 subj_obj = all_subjects.get(sname.lower())
                                 if subj_obj:
-                                    SchoolSubjectCapacity.objects.update_or_create(
+                                    SchoolSubjectCapacity.objects.create(
                                         school=req.school,
                                         subject=subj_obj,
-                                        defaults={'max_students': scount},
+                                        max_students=scount,
+                                        current_students=0,
                                     )
 
                     req.status = 'applied'
