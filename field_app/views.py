@@ -1451,11 +1451,14 @@ def select_school(request, district_id):
     # Get parameters
     search_query = request.GET.get('q', '')
     selected_level = request.GET.get('level', 'Secondary')
-    
+    selected_ownership = request.GET.get('ownership', '')
+
     # Get schools
     schools_qs = School.objects.filter(district=district, level=selected_level)
     if search_query:
         schools_qs = schools_qs.filter(name__icontains=search_query)
+    if selected_ownership:
+        schools_qs = schools_qs.filter(ownership=selected_ownership)
     
     # Fetch district allocation and per-school quotas for display
     da_qs = DistrictAllocation.objects.filter(district=district)
@@ -1627,6 +1630,7 @@ def select_school(request, district_id):
         'selected_school': selected_school,
         'query': search_query,
         'selected_level': selected_level,
+        'selected_ownership': selected_ownership,
         'total_schools': total_schools,
         'pinned_schools_count': pinned_schools_count,
         'available_schools_count': available_schools_count,

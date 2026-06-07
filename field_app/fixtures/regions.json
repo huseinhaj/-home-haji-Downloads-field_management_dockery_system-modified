@@ -180,5 +180,40 @@
   "fields": {
     "name": "Tanga"
   }
+},
+{
+  "model": "field_app.region",
+  "pk": 27,
+  "fields": {
+    "name": "Kaskazini Unguja"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 28,
+  "fields": {
+    "name": "Kusini Unguja"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 29,
+  "fields": {
+    "name": "Mjini Magharibi"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 30,
+  "fields": {
+    "name": "Kaskazini Pemba"
+  }
+},
+{
+  "model": "field_app.region",
+  "pk": 31,
+  "fields": {
+    "name": "Kusini Pemba"
+  }
 }
 ]

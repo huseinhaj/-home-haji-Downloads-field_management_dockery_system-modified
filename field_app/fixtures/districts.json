@@ -1502,5 +1502,85 @@
     "name": "Maswa",
     "region": 22
   }
+},
+{
+  "model": "field_app.district",
+  "pk": 189,
+  "fields": {
+    "name": "Kaskazini A",
+    "region": 27
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 190,
+  "fields": {
+    "name": "Kaskazini B",
+    "region": 27
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 191,
+  "fields": {
+    "name": "Kati",
+    "region": 28
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 192,
+  "fields": {
+    "name": "Kusini",
+    "region": 28
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 193,
+  "fields": {
+    "name": "Mjini",
+    "region": 29
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 194,
+  "fields": {
+    "name": "Magharibi",
+    "region": 29
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 195,
+  "fields": {
+    "name": "Micheweni",
+    "region": 30
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 196,
+  "fields": {
+    "name": "Wete",
+    "region": 30
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 197,
+  "fields": {
+    "name": "Chake Chake",
+    "region": 31
+  }
+},
+{
+  "model": "field_app.district",
+  "pk": 198,
+  "fields": {
+    "name": "Mkoani",
+    "region": 31
+  }
 }
 ]

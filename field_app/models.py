@@ -179,11 +179,16 @@ class School(models.Model):
         ('Primary', 'Primary School'),
         ('Secondary', 'Secondary School'),
     ]
+    OWNERSHIP_CHOICES = [
+        ('government', 'Serikali'),
+        ('private', 'Binafsi'),
+    ]
 
     name = models.CharField(max_length=200)
     school_code = models.CharField(max_length=20, blank=True, default='', db_index=True, help_text="Namba ya usajili e.g. S.0123 au P.4567")
     district = models.ForeignKey(District, on_delete=models.CASCADE, db_index=True)
     level = models.CharField(max_length=10, choices=SCHOOL_LEVEL_CHOICES)
+    ownership = models.CharField(max_length=10, choices=OWNERSHIP_CHOICES, default='government', help_text="Aina ya umiliki wa shule")
     capacity = models.PositiveIntegerField(default=10)
     current_students = models.PositiveIntegerField(default=0)
 

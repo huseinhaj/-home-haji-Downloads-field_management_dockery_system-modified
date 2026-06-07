@@ -24,13 +24,20 @@
 
     <!-- Search Form - Regular GET form, no AJAX -->
     <form method="get" class="row g-2 align-items-center mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <select name="level" class="form-select">
                 <option value="Primary" {% if selected_level == 'Primary' %}selected{% endif %}>{% if LANG == 'sw' %}Shule ya Msingi{% else %}Primary School{% endif %}</option>
                 <option value="Secondary" {% if selected_level == 'Secondary' %}selected{% endif %}>{% if LANG == 'sw' %}Shule ya Sekondari{% else %}Secondary School{% endif %}</option>
             </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-2">
+            <select name="ownership" class="form-select">
+                <option value="" {% if not selected_ownership %}selected{% endif %}>{% if LANG == 'sw' %}Aina Zote{% else %}All Types{% endif %}</option>
+                <option value="government" {% if selected_ownership == 'government' %}selected{% endif %}>{% if LANG == 'sw' %}Serikali{% else %}Government{% endif %}</option>
+                <option value="private" {% if selected_ownership == 'private' %}selected{% endif %}>{% if LANG == 'sw' %}Binafsi{% else %}Private{% endif %}</option>
+            </select>
+        </div>
+        <div class="col-md-5">
             <input type="text" name="q" value="{{ query }}" placeholder="{% if LANG == 'sw' %}Tafuta jina la shule...{% else %}Search school name...{% endif %}" class="form-control">
         </div>
         <div class="col-md-2">
@@ -120,11 +127,14 @@
                         {% else %}var(--bold){% endif %};">
                     <h5 class="mb-0">{{ school.name }}</h5>
                     <small>{{ school.get_level_display }}</small>
-                    <div class="mt-1">
+                    <div class="mt-1" style="display:flex;justify-content:center;gap:5px;flex-wrap:wrap;">
                         <span class="badge" style="background:rgba(0,0,0,0.3);">
                             {% if school.is_pinned %}{% if LANG == 'sw' %}Haipatikani{% else %}Unavailable{% endif %}
                             {% elif not school.is_selectable %}{% if LANG == 'sw' %}Imejaa{% else %}Full{% endif %}
                             {% else %}{% if LANG == 'sw' %}Inapatikana{% else %}Available{% endif %}{% endif %}
+                        </span>
+                        <span class="badge" style="background:{% if school.ownership == 'private' %}rgba(200,144,10,0.8){% else %}rgba(5,150,105,0.7){% endif %};">
+                            {% if school.ownership == 'private' %}{% if LANG == 'sw' %}Binafsi{% else %}Private{% endif %}{% else %}{% if LANG == 'sw' %}Serikali{% else %}Govt{% endif %}{% endif %}
                         </span>
                     </div>
                 </div>
