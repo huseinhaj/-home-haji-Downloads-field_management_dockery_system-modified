@@ -143,10 +143,11 @@
           {% else %}<i class="fas fa-lock"></i> {% if LANG == 'sw' %}Umeshaidhinishwa{% else %}Already Approved{% endif %}{% endif %}
         </button>
         {% else %}
-        <form method="post" onsubmit="return confirm('{% if LANG == \"sw\" %}Thibitisha: uchague somo la {{ item.subject.name }}?{% else %}Confirm: apply for {{ item.subject.name }}?{% endif %}')">
+        <form method="post" onsubmit="return confirmApply(this)">
           {% csrf_token %}
           <input type="hidden" name="subject_id" value="{{ item.subject.id }}">
           <input type="hidden" name="action" value="apply">
+          <input type="hidden" name="subject_name" value="{{ item.subject.name }}">
           <button type="submit" class="btn-apply">
             <i class="fas fa-check"></i> {% if LANG == 'sw' %}Chagua Somo Hili{% else %}Select This Subject{% endif %}
           </button>
@@ -166,4 +167,14 @@
   {% endif %}
 
 </div>
+<script>
+const LANG_SW = '{{ LANG }}' === 'sw';
+function confirmApply(form) {
+  const name = form.querySelector('[name=subject_name]').value;
+  const msg = LANG_SW
+    ? 'Thibitisha: uchague somo la ' + name + '?'
+    : 'Confirm: apply for ' + name + '?';
+  return window.confirm(msg);
+}
+</script>
 {% endblock %}
