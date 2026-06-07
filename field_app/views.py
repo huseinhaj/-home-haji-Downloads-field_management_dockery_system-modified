@@ -4601,75 +4601,106 @@ Example row:
 
 @login_required
 def download_scheme_pdf(request):
-    """Generate PDF ya Scheme of Work kwa mtindo wa KitabuSmart"""
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        scheme_data = data.get('scheme_data')
-        subject = data.get('subject')
-        class_name = data.get('class_name')
-        term = data.get('term')
-        year = data.get('year')
-        syllabus = data.get('syllabus')
-        teacher_name = data.get('teacher_name')
-        school_name = data.get('school_name')
-        total_weeks = data.get('total_weeks')
-        
-        buffer = BytesIO()
-        # Use landscape orientation for wide table
-        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), 
-                                rightMargin=20, leftMargin=20, topMargin=30, bottomMargin=30)
-        elements = []
-        styles = getSampleStyleSheet()
-        
-        # Title
-        title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=14, spaceAfter=10, alignment=1)
-        elements.append(Paragraph(f"{subject} - {class_name} - {term} {year} - {syllabus}", title_style))
-        elements.append(Spacer(1, 6))
-        
-        # Teacher and School info
-        info_style = ParagraphStyle('InfoStyle', parent=styles['Normal'], fontSize=9)
-        elements.append(Paragraph(f"Teacher: {teacher_name} | School: {school_name} | Total Weeks: {total_weeks}", info_style))
-        elements.append(Spacer(1, 12))
-        
-        if scheme_data:
-            headers = list(scheme_data[0].keys())
-            # Wrap long header text
-            wrapped_headers = [h.replace(' & ', '&\n') for h in headers]
-            table_data = [wrapped_headers]
-            
-            for row in scheme_data:
-                row_data = []
-                for h in headers:
-                    val = row.get(h, '')
-                    # Convert to string and handle long text
-                    row_data.append(str(val) if val else '')
-                table_data.append(row_data)
-            
-            # Calculate column widths based on content
-            col_widths = [70, 80, 70, 80, 50, 40, 40, 60, 70, 70, 60, 60]  # approximate
-            table = Table(table_data, colWidths=col_widths, repeatRows=1)
-            table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 7),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#ecf0f1')),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('FONTSIZE', (0, 1), (-1, -1), 6),
-                ('WORDWRAP', (0, 0), (-1, -1), True),
-            ]))
-            elements.append(table)
-        
-        doc.build(elements)
-        buffer.seek(0)
-        response = HttpResponse(buffer, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="Scheme_of_Work_{subject}_{class_name}.pdf"'
-        return response
+    """Generate PDF ya Scheme of Work — landscape A4, proper cell wrapping"""
+    if request.method != 'POST':
+        return HttpResponse("Invalid request", status=400)
 
-    return HttpResponse("Invalid request", status=400)
+    data = json.loads(request.body)
+    scheme_data = data.get('scheme_data') or []
+    subject      = data.get('subject', '')
+    class_name   = data.get('class_name', '')
+    term         = data.get('term', '')
+    year         = data.get('year', '')
+    syllabus     = data.get('syllabus', '')
+    teacher_name = data.get('teacher_name', '')
+    school_name  = data.get('school_name', '')
+    total_weeks  = data.get('total_weeks', '')
+
+    NAVY   = colors.HexColor('#0A2B5E')
+    GOLD   = colors.HexColor('#C8900A')
+    STRIPE = colors.HexColor('#EBF0FB')
+    BORDER = colors.HexColor('#9BAAC4')
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
+                            rightMargin=18, leftMargin=18, topMargin=22, bottomMargin=22)
+    elements = []
+
+    cell_style = ParagraphStyle('SchCell', fontName='Helvetica', fontSize=7,
+                                leading=10, wordWrap='LTR', spaceAfter=0, spaceBefore=0)
+    hdr_style  = ParagraphStyle('SchHdr', fontName='Helvetica-Bold', fontSize=7,
+                                leading=10, textColor=colors.white, wordWrap='LTR',
+                                alignment=1, spaceAfter=0, spaceBefore=0)
+
+    # ── header block ──
+    elements.append(Paragraph("SCHEME OF WORK",
+        ParagraphStyle('ST', fontName='Helvetica-Bold', fontSize=14, alignment=1,
+                       textColor=NAVY, spaceAfter=3)))
+    elements.append(Paragraph(
+        f"{subject}  |  {class_name}  |  Term {term} {year}  |  {syllabus}",
+        ParagraphStyle('SS', fontSize=9, alignment=1, spaceAfter=2)))
+    elements.append(Paragraph(
+        f"Teacher: {teacher_name}    |    School: {school_name}    |    Total Weeks: {total_weeks}",
+        ParagraphStyle('SI', fontSize=8, alignment=1, textColor=colors.grey, spaceAfter=10)))
+
+    if scheme_data:
+        headers = list(scheme_data[0].keys())
+
+        # Width hints per known column name (landscape A4 usable ≈ 806pt)
+        WIDTH_MAP = {
+            'Main Competence': 76, 'Specific Competence': 76,
+            'Learning Activities': 72, 'Specific Learning Activities': 76,
+            'Month': 40, 'Week': 36, 'Periods': 34,
+            'Reference': 64,
+            'Teaching & Learning Methods': 64,
+            'Teaching & Learning Resources': 64,
+            'Assessment Tools': 58, 'Remarks': 72,
+        }
+        TOTAL = 806
+        col_widths = []
+        for h in headers:
+            w = WIDTH_MAP.get(h)
+            if w is None:
+                for k, v in WIDTH_MAP.items():
+                    if k.lower() in h.lower() or h.lower() in k.lower():
+                        w = v; break
+            col_widths.append(w if w else TOTAL // len(headers))
+
+        # Scale to fill the exact page width
+        scale = TOTAL / sum(col_widths)
+        col_widths = [w * scale for w in col_widths]
+
+        # Build rows with Paragraph cells
+        table_data = [[Paragraph(h, hdr_style) for h in headers]]
+        for row in scheme_data:
+            table_data.append([
+                Paragraph(str(row.get(h, '') or ''), cell_style) for h in headers
+            ])
+
+        tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
+        ts = [
+            ('BACKGROUND',  (0, 0), (-1, 0),  NAVY),
+            ('ALIGN',       (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN',      (0, 0), (-1, -1), 'TOP'),
+            ('GRID',        (0, 0), (-1, -1), 0.35, BORDER),
+            ('TOPPADDING',  (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING',(0,0), (-1, -1), 4),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING',(0, 0), (-1, -1), 4),
+            ('LINEBELOW',   (0, 0), (-1, 0),  1.2, GOLD),
+        ]
+        for i in range(1, len(table_data)):
+            bg = STRIPE if i % 2 == 0 else colors.white
+            ts.append(('BACKGROUND', (0, i), (-1, i), bg))
+        tbl.setStyle(TableStyle(ts))
+        elements.append(tbl)
+
+    doc.build(elements)
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = (
+        f'attachment; filename="Scheme_of_Work_{subject}_{class_name}.pdf"')
+    return response
 
 
 @login_required
@@ -4704,25 +4735,83 @@ def download_scheme_word(request):
     doc.add_paragraph()
 
     if scheme_data:
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+
         headers = list(scheme_data[0].keys())
         table = doc.add_table(rows=1, cols=len(headers))
         table.style = 'Table Grid'
 
-        # Header row
+        # Column width hints (landscape A4 ≈ 24cm usable)
+        WIDTH_CM = {
+            'Main Competence': 2.8, 'Specific Competence': 2.8,
+            'Learning Activities': 2.6, 'Specific Learning Activities': 2.8,
+            'Month': 1.4, 'Week': 1.3, 'Periods': 1.2,
+            'Reference': 2.2,
+            'Teaching & Learning Methods': 2.2,
+            'Teaching & Learning Resources': 2.2,
+            'Assessment Tools': 2.0, 'Remarks': 2.5,
+        }
+        TOTAL_CM = 24.0
+        col_cms = []
+        for h in headers:
+            w = WIDTH_CM.get(h)
+            if w is None:
+                for k, v in WIDTH_CM.items():
+                    if k.lower() in h.lower() or h.lower() in k.lower():
+                        w = v; break
+            col_cms.append(w if w else TOTAL_CM / len(headers))
+        scale = TOTAL_CM / sum(col_cms)
+        col_cms = [w * scale for w in col_cms]
+
+        # Set landscape page & column widths
+        from docx.shared import Cm
+        section = doc.sections[0]
+        section.page_width  = Cm(29.7)
+        section.page_height = Cm(21.0)
+        section.left_margin = section.right_margin = Cm(1.2)
+        section.top_margin  = section.bottom_margin = Cm(1.2)
+
+        for i, cell in enumerate(table.rows[0].cells):
+            cell.width = Cm(col_cms[i])
+
+        # Header row styling
         hdr_cells = table.rows[0].cells
         for i, h in enumerate(headers):
             hdr_cells[i].text = h
-            run = hdr_cells[i].paragraphs[0].runs[0]
-            run.bold = True
-            run.font.size = Pt(8)
-            hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p = hdr_cells[i].paragraphs[0]
+            if p.runs:
+                p.runs[0].bold = True
+                p.runs[0].font.size = Pt(8)
+                p.runs[0].font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            # Navy background
+            tc = hdr_cells[i]._tc
+            tcPr = tc.get_or_add_tcPr()
+            shd = OxmlElement('w:shd')
+            shd.set(qn('w:val'), 'clear')
+            shd.set(qn('w:color'), 'auto')
+            shd.set(qn('w:fill'), '0A2B5E')
+            tcPr.append(shd)
 
         # Data rows
-        for row in scheme_data:
+        for ri, row in enumerate(scheme_data):
             row_cells = table.add_row().cells
+            fill_hex = 'EBF0FB' if ri % 2 == 0 else 'FFFFFF'
             for i, h in enumerate(headers):
+                row_cells[i].width = Cm(col_cms[i])
                 row_cells[i].text = str(row.get(h, '') or '')
-                row_cells[i].paragraphs[0].runs[0].font.size = Pt(8)
+                p = row_cells[i].paragraphs[0]
+                if p.runs:
+                    p.runs[0].font.size = Pt(8)
+                # Alternating row shading
+                tc = row_cells[i]._tc
+                tcPr = tc.get_or_add_tcPr()
+                shd = OxmlElement('w:shd')
+                shd.set(qn('w:val'), 'clear')
+                shd.set(qn('w:color'), 'auto')
+                shd.set(qn('w:fill'), fill_hex)
+                tcPr.append(shd)
 
     buffer = BytesIO()
     doc.save(buffer)
@@ -4735,105 +4824,141 @@ def download_scheme_word(request):
 
 @login_required
 def download_lesson_plan_pdf(request):
-    """Export Lesson Plan as PDF"""
+    """Export Lesson Plan as PDF — proper cell wrapping, navy/gold theme"""
     if request.method != 'POST':
         return HttpResponse("Invalid request", status=400)
     import json as _json
 
-    data = _json.loads(request.body)
+    data   = _json.loads(request.body)
     lesson = data.get('lesson_data', {})
-    form = data.get('form_data', {})
+    form   = data.get('form_data', {})
+
+    NAVY   = colors.HexColor('#0A2B5E')
+    GOLD   = colors.HexColor('#C8900A')
+    LIGHT  = colors.HexColor('#EEF1F6')
+    STRIPE = colors.HexColor('#F4F7FF')
+    BORDER = colors.HexColor('#9BAAC4')
 
     buffer = BytesIO()
+    # A4 portrait, usable width = 595 - 72 = 523pt
     doc = SimpleDocTemplate(buffer, pagesize=A4,
-                            rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+                            rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     elements = []
-    styles = getSampleStyleSheet()
-    bold_style = ParagraphStyle('Bold', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=10)
-    normal_style = ParagraphStyle('Normal9', parent=styles['Normal'], fontSize=9, leading=14)
-    heading_style = ParagraphStyle('Heading', parent=styles['Normal'], fontName='Helvetica-Bold',
-                                   fontSize=11, textColor=colors.HexColor('#0A2B5E'),
-                                   spaceAfter=4, spaceBefore=10)
 
-    elements.append(Paragraph("LESSON PLAN", ParagraphStyle('Title', parent=styles['Heading1'],
-                                                              fontSize=16, alignment=1,
-                                                              textColor=colors.HexColor('#0A2B5E'))))
-    elements.append(Spacer(1, 10))
+    normal = ParagraphStyle('LP_N', fontName='Helvetica', fontSize=9, leading=13,
+                             wordWrap='LTR', spaceAfter=3)
+    section_hdr = ParagraphStyle('LP_H', fontName='Helvetica-Bold', fontSize=10,
+                                  textColor=NAVY, spaceBefore=10, spaceAfter=4,
+                                  borderPad=4, borderColor=GOLD, borderWidth=0,
+                                  leftIndent=0)
+    cell_s  = ParagraphStyle('LP_C',  fontName='Helvetica',      fontSize=8,  leading=11, wordWrap='LTR')
+    hdr_s   = ParagraphStyle('LP_CH', fontName='Helvetica-Bold', fontSize=8,  leading=11,
+                              textColor=colors.white, wordWrap='LTR', alignment=1)
+    label_s = ParagraphStyle('LP_L',  fontName='Helvetica-Bold', fontSize=8,  leading=11,
+                              textColor=NAVY)
 
-    # Meta info table
-    meta = [
-        ['Teacher:', form.get('teacher_name', ''), 'Subject:', form.get('subject', '')],
-        ['Class:', form.get('class_name', ''), 'Term/Year:', f"Term {form.get('term','')} {form.get('year','')}"],
-        ['Topic:', form.get('topic', ''), 'Subtopic:', form.get('subtopic', '')],
-        ['Duration:', f"{form.get('duration','')} min", 'Date:', str(timezone.now().date())],
-        ['Students:', f"{form.get('total_students','')} total / {form.get('present_students','')} present", '', ''],
+    # ── Title ──
+    elements.append(Paragraph("LESSON PLAN",
+        ParagraphStyle('LP_T', fontName='Helvetica-Bold', fontSize=16, alignment=1,
+                       textColor=NAVY, spaceAfter=2)))
+    elements.append(Paragraph(
+        f"{form.get('subject','')}  |  {form.get('class_name','')}  |  "
+        f"Term {form.get('term','')} {form.get('year','')}",
+        ParagraphStyle('LP_S', fontSize=9, alignment=1, textColor=colors.grey, spaceAfter=10)))
+
+    # ── Meta table ──  usable=523, col pattern: 70|180|70|203
+    def P(txt, st=normal): return Paragraph(str(txt or ''), st)
+    meta_rows = [
+        [P('Teacher',   label_s), P(form.get('teacher_name','')),
+         P('Subject',   label_s), P(form.get('subject',''))],
+        [P('Class',     label_s), P(form.get('class_name','')),
+         P('Term / Year',label_s),P(f"Term {form.get('term','')} {form.get('year','')}")],
+        [P('Topic',     label_s), P(form.get('topic','')),
+         P('Subtopic',  label_s), P(form.get('subtopic',''))],
+        [P('Duration',  label_s), P(f"{form.get('duration','')} minutes"),
+         P('Date',      label_s), P(str(timezone.now().date()))],
+        [P('Students',  label_s),
+         P(f"{form.get('total_students','')} total / {form.get('present_students','')} present"),
+         P(''), P('')],
     ]
-    meta_table = Table(meta, colWidths=[80, 180, 80, 175])
-    meta_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('GRID', (0, 0), (-1, -1), 0.3, colors.grey),
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#EEF1F6')),
-        ('BACKGROUND', (2, 0), (2, -1), colors.HexColor('#EEF1F6')),
+    meta_tbl = Table(meta_rows, colWidths=[72, 188, 72, 191])
+    meta_tbl.setStyle(TableStyle([
+        ('BACKGROUND',   (0, 0), (0, -1), LIGHT),
+        ('BACKGROUND',   (2, 0), (2, -1), LIGHT),
+        ('GRID',         (0, 0), (-1, -1), 0.4, BORDER),
+        ('VALIGN',       (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING',   (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING',(0, 0), (-1, -1), 4),
+        ('LEFTPADDING',  (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('LINEBELOW',    (0, -1), (-1, -1), 1.2, GOLD),
     ]))
-    elements.append(meta_table)
+    elements.append(meta_tbl)
     elements.append(Spacer(1, 10))
 
-    # Competences
+    # ── Competences ──
     for label, key in [('Main Competence', 'main_competence'),
                        ('Specific Competence', 'specific_competence'),
                        ('Previous Knowledge', 'previous_knowledge')]:
         val = lesson.get(key, '')
         if val:
-            elements.append(Paragraph(f"<b>{label}:</b> {val}", normal_style))
+            elements.append(Paragraph(f"<b>{label}:</b>  {val}", normal))
 
-    # Lists
+    # ── Bulleted lists ──
     for label, key in [('Learning Objectives', 'learning_objectives'),
-                       ('Teaching Methods', 'teaching_methods'),
-                       ('Teaching Resources', 'teaching_resources')]:
+                       ('Teaching Methods',    'teaching_methods'),
+                       ('Teaching Resources',  'teaching_resources')]:
         items = lesson.get(key, [])
         if items:
-            elements.append(Paragraph(label, heading_style))
+            elements.append(Paragraph(label, section_hdr))
             for item in items:
-                elements.append(Paragraph(f"• {item}", normal_style))
+                elements.append(Paragraph(
+                    f"<bullet>•</bullet> {item}",
+                    ParagraphStyle('LP_B', fontName='Helvetica', fontSize=9,
+                                   leading=13, leftIndent=14, wordWrap='LTR')))
 
-    # Lesson Development table
+    # ── Lesson Development table ──
     ld = lesson.get('lesson_development', [])
     if ld:
-        elements.append(Paragraph("Lesson Development", heading_style))
+        elements.append(Paragraph("Lesson Development", section_hdr))
+        # usable=523 → 44+68+138+138+135 = 523
         ld_headers = ['Time', 'Stage', 'Teacher Activities', 'Student Activities', 'Assessment']
-        ld_data = [ld_headers]
-        for stage in ld:
+        ld_data = [[Paragraph(h, hdr_s) for h in ld_headers]]
+        for i, stage in enumerate(ld):
+            bg = colors.white if i % 2 == 0 else STRIPE
             ld_data.append([
-                stage.get('time', ''),
-                stage.get('stage', stage.get('phase', '')),
-                stage.get('teacher_activities', ''),
-                stage.get('student_activities', ''),
-                stage.get('assessment_criteria', ''),
+                Paragraph(str(stage.get('time', '') or ''), cell_s),
+                Paragraph(str(stage.get('stage', stage.get('phase', '')) or ''), cell_s),
+                Paragraph(str(stage.get('teacher_activities', '') or ''), cell_s),
+                Paragraph(str(stage.get('student_activities', '') or ''), cell_s),
+                Paragraph(str(stage.get('assessment_criteria', '') or ''), cell_s),
             ])
-        ld_table = Table(ld_data, colWidths=[45, 70, 120, 120, 100], repeatRows=1)
-        ld_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0A2B5E')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('WORDWRAP', (0, 0), (-1, -1), True),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F7FAFF')]),
-        ]))
-        elements.append(ld_table)
+        ld_tbl = Table(ld_data, colWidths=[44, 68, 138, 138, 135], repeatRows=1)
+        ld_ts = [
+            ('BACKGROUND',   (0, 0), (-1, 0),  NAVY),
+            ('LINEBELOW',    (0, 0), (-1, 0),  1.2, GOLD),
+            ('GRID',         (0, 0), (-1, -1), 0.4, BORDER),
+            ('VALIGN',       (0, 0), (-1, -1), 'TOP'),
+            ('TOPPADDING',   (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING',(0, 0), (-1, -1), 4),
+            ('LEFTPADDING',  (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ]
+        for i in range(1, len(ld_data)):
+            bg = STRIPE if i % 2 == 0 else colors.white
+            ld_ts.append(('BACKGROUND', (0, i), (-1, i), bg))
+        ld_tbl.setStyle(TableStyle(ld_ts))
+        elements.append(ld_tbl)
 
     remarks = lesson.get('remarks', '')
     if remarks:
         elements.append(Spacer(1, 8))
-        elements.append(Paragraph(f"<b>Remarks:</b> {remarks}", normal_style))
+        elements.append(Paragraph(f"<b>Remarks:</b>  {remarks}", normal))
 
     doc.build(elements)
     buffer.seek(0)
-    safe_name = f"LessonPlan_{form.get('subject','')}_{form.get('topic','')}".replace(' ', '_')
+    safe_name = (f"LessonPlan_{form.get('subject','')}_{form.get('topic','')}"
+                 .replace(' ', '_'))
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{safe_name}.pdf"'
     return response
