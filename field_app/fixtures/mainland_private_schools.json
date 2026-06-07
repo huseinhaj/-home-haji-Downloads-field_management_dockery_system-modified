@@ -1,0 +1,650 @@
+[
+  {
+    "model": "field_app.school",
+    "pk": 21790,
+    "fields": {
+      "name": "Aga Khan Mzizima Secondary",
+      "school_code": "S.4120",
+      "district": 19,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21791,
+    "fields": {
+      "name": "Jangwani Sea Breeze Academy",
+      "school_code": "S.4201",
+      "district": 19,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21792,
+    "fields": {
+      "name": "Feza Boys School",
+      "school_code": "S.0707",
+      "district": 19,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21793,
+    "fields": {
+      "name": "Feza Girls School",
+      "school_code": "S.0708",
+      "district": 19,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21794,
+    "fields": {
+      "name": "St. Francis Girls Secondary Dar",
+      "school_code": "S.0301",
+      "district": 19,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21795,
+    "fields": {
+      "name": "Loyola High School Dar es Salaam",
+      "school_code": "S.0312",
+      "district": 19,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21796,
+    "fields": {
+      "name": "St. Mary's Seminary School",
+      "school_code": "S.0189",
+      "district": 19,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21797,
+    "fields": {
+      "name": "Al-Muntazir Secondary School",
+      "school_code": "S.1043",
+      "district": 17,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21798,
+    "fields": {
+      "name": "St. Joseph's Cathedral Secondary",
+      "school_code": "S.0251",
+      "district": 17,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21799,
+    "fields": {
+      "name": "Aga Khan Primary School Dar",
+      "school_code": "P.1200",
+      "district": 17,
+      "level": "Primary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21800,
+    "fields": {
+      "name": "Aziz Ally Memorial Secondary",
+      "school_code": "S.0853",
+      "district": 17,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21801,
+    "fields": {
+      "name": "Azania Secondary School",
+      "school_code": "S.3502",
+      "district": 20,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21802,
+    "fields": {
+      "name": "Juhudi Secondary School",
+      "school_code": "S.2847",
+      "district": 20,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21803,
+    "fields": {
+      "name": "Swahili Street Academy",
+      "school_code": "S.4012",
+      "district": 20,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21804,
+    "fields": {
+      "name": "Rainbow International School Dar",
+      "school_code": "S.3871",
+      "district": 21,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21805,
+    "fields": {
+      "name": "Tumaini School of Excellence",
+      "school_code": "S.4022",
+      "district": 21,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21806,
+    "fields": {
+      "name": "Bunge La Elimu Secondary",
+      "school_code": "S.3988",
+      "district": 21,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21807,
+    "fields": {
+      "name": "International School Arusha",
+      "school_code": "S.0592",
+      "district": 1,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21808,
+    "fields": {
+      "name": "St. Constantine International School Arusha",
+      "school_code": "S.0710",
+      "district": 1,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21809,
+    "fields": {
+      "name": "AICC International School",
+      "school_code": "S.3844",
+      "district": 1,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21810,
+    "fields": {
+      "name": "Patandi Model School Arusha",
+      "school_code": "S.1002",
+      "district": 1,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21811,
+    "fields": {
+      "name": "Westwood International School Arusha",
+      "school_code": "S.4188",
+      "district": 1,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21812,
+    "fields": {
+      "name": "International School Moshi",
+      "school_code": "S.0127",
+      "district": 64,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21813,
+    "fields": {
+      "name": "KCMC Medical Secondary",
+      "school_code": "S.0128",
+      "district": 64,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21814,
+    "fields": {
+      "name": "The Moshi Girls High School",
+      "school_code": "S.0450",
+      "district": 64,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21815,
+    "fields": {
+      "name": "Forest Hill Academy Moshi",
+      "school_code": "S.4100",
+      "district": 64,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21816,
+    "fields": {
+      "name": "Dodoma International School",
+      "school_code": "S.3742",
+      "district": 25,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21817,
+    "fields": {
+      "name": "St. Augustine University Secondary Mwanza",
+      "school_code": "S.0885",
+      "district": 121,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21818,
+    "fields": {
+      "name": "Mwanza International School",
+      "school_code": "S.4002",
+      "district": 121,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21819,
+    "fields": {
+      "name": "Kagera Sugar Academy",
+      "school_code": "S.3978",
+      "district": 121,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21820,
+    "fields": {
+      "name": "Mbeya International School",
+      "school_code": "S.3955",
+      "district": 95,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21821,
+    "fields": {
+      "name": "Moravian Secondary School Mbeya",
+      "school_code": "S.0445",
+      "district": 95,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21822,
+    "fields": {
+      "name": "SOS Secondary School Mbeya",
+      "school_code": "S.3341",
+      "district": 95,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21823,
+    "fields": {
+      "name": "Morogoro International School",
+      "school_code": "S.4010",
+      "district": 104,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21824,
+    "fields": {
+      "name": "Benedictine Secondary Morogoro",
+      "school_code": "S.0210",
+      "district": 104,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21825,
+    "fields": {
+      "name": "IMTU Secondary School",
+      "school_code": "S.3700",
+      "district": 104,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  }
+]

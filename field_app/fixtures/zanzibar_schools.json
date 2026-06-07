@@ -1,0 +1,5834 @@
+[
+  {
+    "model": "field_app.school",
+    "pk": 21466,
+    "fields": {
+      "name": "Nungwi",
+      "school_code": "ZS0049",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21467,
+    "fields": {
+      "name": "Pwani Mchangani",
+      "school_code": "ZS0056",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21468,
+    "fields": {
+      "name": "Matemwe",
+      "school_code": "ZS0055",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21469,
+    "fields": {
+      "name": "Pale",
+      "school_code": "ZS0050",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21470,
+    "fields": {
+      "name": "Potoa",
+      "school_code": "ZS0051",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21471,
+    "fields": {
+      "name": "Tumbatu",
+      "school_code": "ZS0052",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21472,
+    "fields": {
+      "name": "Kidoti",
+      "school_code": "ZS0053",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21473,
+    "fields": {
+      "name": "Chaani",
+      "school_code": "ZS0054",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21474,
+    "fields": {
+      "name": "Kijini",
+      "school_code": "ZS0058",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21475,
+    "fields": {
+      "name": "Kibuyuni",
+      "school_code": "ZS0059",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21476,
+    "fields": {
+      "name": "Fukuchani",
+      "school_code": "ZS0060",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21477,
+    "fields": {
+      "name": "Kiwengwa",
+      "school_code": "ZS0077",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21478,
+    "fields": {
+      "name": "Mlimani Matemwe",
+      "school_code": "ZS0070",
+      "district": 189,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21479,
+    "fields": {
+      "name": "Nungwi Msingi",
+      "school_code": "ZP0049",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21480,
+    "fields": {
+      "name": "Kidoti Msingi",
+      "school_code": "ZP0053",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21481,
+    "fields": {
+      "name": "Matemwe Msingi",
+      "school_code": "ZP0055",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21482,
+    "fields": {
+      "name": "Pwani Mchangani Msingi",
+      "school_code": "ZP0056",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21483,
+    "fields": {
+      "name": "Kijini Msingi",
+      "school_code": "ZP0058",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21484,
+    "fields": {
+      "name": "Kibuyuni Msingi",
+      "school_code": "ZP0059",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21485,
+    "fields": {
+      "name": "Pale Msingi",
+      "school_code": "ZP0087",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21486,
+    "fields": {
+      "name": "Potoa Msingi",
+      "school_code": "ZP0088",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21487,
+    "fields": {
+      "name": "Tumbatu Msingi",
+      "school_code": "ZP0089",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21488,
+    "fields": {
+      "name": "Chaani Msingi",
+      "school_code": "ZP0091",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21489,
+    "fields": {
+      "name": "Fukuchani Msingi",
+      "school_code": "ZP0098",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21490,
+    "fields": {
+      "name": "Kiwengwa Msingi",
+      "school_code": "ZP0077",
+      "district": 189,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21491,
+    "fields": {
+      "name": "Bumbwini",
+      "school_code": "ZS0072",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21492,
+    "fields": {
+      "name": "Gamba",
+      "school_code": "ZS0061",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21493,
+    "fields": {
+      "name": "Kilindi Unguja",
+      "school_code": "ZS0062",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21494,
+    "fields": {
+      "name": "Kibeni",
+      "school_code": "ZS0063",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21495,
+    "fields": {
+      "name": "Kigunda",
+      "school_code": "ZS0064",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21496,
+    "fields": {
+      "name": "Kandwi",
+      "school_code": "ZS0065",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21497,
+    "fields": {
+      "name": "Bandamaji",
+      "school_code": "ZS0067",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21498,
+    "fields": {
+      "name": "Mapinduzi Chaani",
+      "school_code": "ZS0069",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21499,
+    "fields": {
+      "name": "Mbuyutende",
+      "school_code": "ZS0071",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21500,
+    "fields": {
+      "name": "Donge",
+      "school_code": "ZS0073",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21501,
+    "fields": {
+      "name": "Fujoni",
+      "school_code": "ZS0074",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21502,
+    "fields": {
+      "name": "Mahonda",
+      "school_code": "ZS0075",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21503,
+    "fields": {
+      "name": "Makoba",
+      "school_code": "ZS0076",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21504,
+    "fields": {
+      "name": "Kitope",
+      "school_code": "ZS0078",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21505,
+    "fields": {
+      "name": "Kiyongwe",
+      "school_code": "ZS0079",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21506,
+    "fields": {
+      "name": "Kilombero",
+      "school_code": "ZS0080",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21507,
+    "fields": {
+      "name": "Upenja",
+      "school_code": "ZS0081",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21508,
+    "fields": {
+      "name": "Mgambo",
+      "school_code": "ZS0082",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21509,
+    "fields": {
+      "name": "Mwanda",
+      "school_code": "ZS0083",
+      "district": 190,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21510,
+    "fields": {
+      "name": "Bumbwini Msingi",
+      "school_code": "ZP0117",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21511,
+    "fields": {
+      "name": "Donge Msingi",
+      "school_code": "ZP0131",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21512,
+    "fields": {
+      "name": "Fujoni Msingi",
+      "school_code": "ZP0119",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21513,
+    "fields": {
+      "name": "Mahonda Msingi",
+      "school_code": "ZP0120",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21514,
+    "fields": {
+      "name": "Makoba Msingi",
+      "school_code": "ZP0121",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21515,
+    "fields": {
+      "name": "Kiyongwe Msingi",
+      "school_code": "ZP0079",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21516,
+    "fields": {
+      "name": "Kilombero Msingi",
+      "school_code": "ZP0080",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21517,
+    "fields": {
+      "name": "Mkwajuni Msingi",
+      "school_code": "ZP0086",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21518,
+    "fields": {
+      "name": "Kinyasini Unguja Msingi",
+      "school_code": "ZP0085",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21519,
+    "fields": {
+      "name": "Mangapwani Msingi",
+      "school_code": "ZP0133",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21520,
+    "fields": {
+      "name": "Mkokotoni Msingi",
+      "school_code": "ZP0106",
+      "district": 190,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21521,
+    "fields": {
+      "name": "Chwaka Unguja",
+      "school_code": "ZS0084",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21522,
+    "fields": {
+      "name": "Kiboje",
+      "school_code": "ZS0085",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21523,
+    "fields": {
+      "name": "Mwera",
+      "school_code": "ZS0086",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21524,
+    "fields": {
+      "name": "Ndijani",
+      "school_code": "ZS0087",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21525,
+    "fields": {
+      "name": "Unguja Ukuu",
+      "school_code": "ZS0088",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21526,
+    "fields": {
+      "name": "Dkt Idrissa Muslim",
+      "school_code": "ZS0089",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21527,
+    "fields": {
+      "name": "Uzi",
+      "school_code": "ZS0090",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21528,
+    "fields": {
+      "name": "Bambi",
+      "school_code": "ZS0091",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21529,
+    "fields": {
+      "name": "Dunga",
+      "school_code": "ZS0092",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21530,
+    "fields": {
+      "name": "Umbuji",
+      "school_code": "ZS0093",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21531,
+    "fields": {
+      "name": "Charawe",
+      "school_code": "ZS0094",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21532,
+    "fields": {
+      "name": "Kibele",
+      "school_code": "ZS0096",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21533,
+    "fields": {
+      "name": "Michamvi",
+      "school_code": "ZS0097",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21534,
+    "fields": {
+      "name": "Jendele",
+      "school_code": "ZS0098",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21535,
+    "fields": {
+      "name": "Mpapa",
+      "school_code": "ZS0100",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21536,
+    "fields": {
+      "name": "Ghana",
+      "school_code": "ZS0101",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21537,
+    "fields": {
+      "name": "Machui",
+      "school_code": "ZS0102",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21538,
+    "fields": {
+      "name": "Ubago",
+      "school_code": "ZS0103",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21539,
+    "fields": {
+      "name": "Kikungwi",
+      "school_code": "ZS0104",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21540,
+    "fields": {
+      "name": "Marumbi",
+      "school_code": "ZS0105",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21541,
+    "fields": {
+      "name": "Jumbi",
+      "school_code": "ZS0106",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21542,
+    "fields": {
+      "name": "Miwani",
+      "school_code": "ZS0107",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21543,
+    "fields": {
+      "name": "Cheju",
+      "school_code": "ZS0108",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21544,
+    "fields": {
+      "name": "Pongwe Pwani",
+      "school_code": "ZS0109",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21545,
+    "fields": {
+      "name": "Kidimni",
+      "school_code": "ZS0110",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21546,
+    "fields": {
+      "name": "Tunguu",
+      "school_code": "ZS0111",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21547,
+    "fields": {
+      "name": "Pongwe Mwera",
+      "school_code": "ZS0112",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21548,
+    "fields": {
+      "name": "Umoja Uzini",
+      "school_code": "ZS0113",
+      "district": 191,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21549,
+    "fields": {
+      "name": "Chwaka Unguja Msingi",
+      "school_code": "ZP0094",
+      "district": 191,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21550,
+    "fields": {
+      "name": "Charawe Msingi",
+      "school_code": "ZP0094",
+      "district": 191,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21551,
+    "fields": {
+      "name": "Uzi Msingi",
+      "school_code": "ZP0090",
+      "district": 191,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21552,
+    "fields": {
+      "name": "Bambi Msingi",
+      "school_code": "ZP0142",
+      "district": 191,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21553,
+    "fields": {
+      "name": "Unguja Ukuu Msingi",
+      "school_code": "ZP0138",
+      "district": 191,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21554,
+    "fields": {
+      "name": "Jendele Msingi",
+      "school_code": "ZP0148",
+      "district": 191,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21555,
+    "fields": {
+      "name": "Tunguu Msingi",
+      "school_code": "ZP0111",
+      "district": 191,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21556,
+    "fields": {
+      "name": "Michamvi Msingi",
+      "school_code": "ZP0097",
+      "district": 191,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21557,
+    "fields": {
+      "name": "Jambiani",
+      "school_code": "ZS0114",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21558,
+    "fields": {
+      "name": "Kizimkazi",
+      "school_code": "ZS0116",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21559,
+    "fields": {
+      "name": "Mtule",
+      "school_code": "ZS0117",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21560,
+    "fields": {
+      "name": "Kusini",
+      "school_code": "ZS0118",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21561,
+    "fields": {
+      "name": "Makunduchi",
+      "school_code": "ZS0119",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21562,
+    "fields": {
+      "name": "Mtende",
+      "school_code": "ZS0120",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21563,
+    "fields": {
+      "name": "Muyuni",
+      "school_code": "ZS0121",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21564,
+    "fields": {
+      "name": "Paje",
+      "school_code": "ZS0122",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21565,
+    "fields": {
+      "name": "Bwejuu",
+      "school_code": "ZS0123",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21566,
+    "fields": {
+      "name": "Kizimkazi Dimbani",
+      "school_code": "ZS0126",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21567,
+    "fields": {
+      "name": "Muungoni",
+      "school_code": "ZS0128",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21568,
+    "fields": {
+      "name": "Pete",
+      "school_code": "ZS0129",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21569,
+    "fields": {
+      "name": "Pandani",
+      "school_code": "ZS0130",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21570,
+    "fields": {
+      "name": "Gando",
+      "school_code": "ZS0131",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21571,
+    "fields": {
+      "name": "Uondwe",
+      "school_code": "ZS0134",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21572,
+    "fields": {
+      "name": "Piki",
+      "school_code": "ZS0135",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21573,
+    "fields": {
+      "name": "Mahad Istiqama",
+      "school_code": "ZS0247",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21574,
+    "fields": {
+      "name": "Turkish Maarif Haci Ayse Var",
+      "school_code": "ZS0314",
+      "district": 192,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21575,
+    "fields": {
+      "name": "Jambiani Msingi",
+      "school_code": "ZP0159",
+      "district": 192,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21576,
+    "fields": {
+      "name": "Kizimkazi Dimbani Msingi",
+      "school_code": "ZP0126",
+      "district": 192,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21577,
+    "fields": {
+      "name": "Makunduchi Msingi",
+      "school_code": "ZP0161",
+      "district": 192,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21578,
+    "fields": {
+      "name": "Muyuni Msingi",
+      "school_code": "ZP0164",
+      "district": 192,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21579,
+    "fields": {
+      "name": "Paje Msingi",
+      "school_code": "ZP0166",
+      "district": 192,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21580,
+    "fields": {
+      "name": "Bwejuu Msingi",
+      "school_code": "ZP0123",
+      "district": 192,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21581,
+    "fields": {
+      "name": "Pandani Msingi",
+      "school_code": "ZP0170",
+      "district": 192,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21582,
+    "fields": {
+      "name": "Gando Msingi",
+      "school_code": "ZP0171",
+      "district": 192,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21583,
+    "fields": {
+      "name": "Tumekuja",
+      "school_code": "ZS0001",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21584,
+    "fields": {
+      "name": "Ben-Bella",
+      "school_code": "ZS0002",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21585,
+    "fields": {
+      "name": "Kiponda",
+      "school_code": "ZS0004",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21586,
+    "fields": {
+      "name": "Forodhani",
+      "school_code": "ZS0006",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21587,
+    "fields": {
+      "name": "Haileselassie",
+      "school_code": "ZS0007",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21588,
+    "fields": {
+      "name": "Jang'ombe",
+      "school_code": "ZS0009",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21589,
+    "fields": {
+      "name": "Kidongo Chekundu",
+      "school_code": "ZS0010",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21590,
+    "fields": {
+      "name": "Hurumzi",
+      "school_code": "ZS0011",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21591,
+    "fields": {
+      "name": "Kwamtipura",
+      "school_code": "ZS0012",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21592,
+    "fields": {
+      "name": "Chumbuni",
+      "school_code": "ZS0014",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21593,
+    "fields": {
+      "name": "Nyerere Zanzibar",
+      "school_code": "ZS0015",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21594,
+    "fields": {
+      "name": "Mpendae",
+      "school_code": "ZS0016",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21595,
+    "fields": {
+      "name": "Faraja",
+      "school_code": "ZS0017",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21596,
+    "fields": {
+      "name": "Mikunguni",
+      "school_code": "ZS0018",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21597,
+    "fields": {
+      "name": "Lumumba",
+      "school_code": "ZS0019",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21598,
+    "fields": {
+      "name": "Langoni",
+      "school_code": "ZS0020",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21599,
+    "fields": {
+      "name": "Kama",
+      "school_code": "ZS0042",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21600,
+    "fields": {
+      "name": "Mbuzini Unguja",
+      "school_code": "ZS0043",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21601,
+    "fields": {
+      "name": "Kiembesamaki B",
+      "school_code": "ZS0025",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21602,
+    "fields": {
+      "name": "High-View School of Zanzibar",
+      "school_code": "ZS0244",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21603,
+    "fields": {
+      "name": "Feza Zanzibar",
+      "school_code": "ZS0232",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21604,
+    "fields": {
+      "name": "Turkish Maarif Schools Zanzibar",
+      "school_code": "ZS0239",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21605,
+    "fields": {
+      "name": "Brilliant Academy",
+      "school_code": "ZS0286",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21606,
+    "fields": {
+      "name": "Shamusleiy Academy",
+      "school_code": "ZS0284",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21607,
+    "fields": {
+      "name": "Kiembesamaki A Islamic",
+      "school_code": "ZS0283",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21608,
+    "fields": {
+      "name": "Zanzibar Progressive",
+      "school_code": "ZS0231",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21609,
+    "fields": {
+      "name": "Sunni Madressa",
+      "school_code": "ZS0213",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21610,
+    "fields": {
+      "name": "English Speaking",
+      "school_code": "ZS0215",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21611,
+    "fields": {
+      "name": "Raudha Academy",
+      "school_code": "ZS0225",
+      "district": 193,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21612,
+    "fields": {
+      "name": "Rahaleo Msingi",
+      "school_code": "ZP0001",
+      "district": 193,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21613,
+    "fields": {
+      "name": "Mwembeshauri Msingi",
+      "school_code": "ZP0002",
+      "district": 193,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21614,
+    "fields": {
+      "name": "Kajificheni Msingi",
+      "school_code": "ZP0006",
+      "district": 193,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21615,
+    "fields": {
+      "name": "Migombani Msingi",
+      "school_code": "ZP0007",
+      "district": 193,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21616,
+    "fields": {
+      "name": "Shaurimoyo Msingi",
+      "school_code": "ZP0008",
+      "district": 193,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21617,
+    "fields": {
+      "name": "Chumbuni Msingi",
+      "school_code": "ZP0009",
+      "district": 193,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21618,
+    "fields": {
+      "name": "Muungano Msingi",
+      "school_code": "ZP0012",
+      "district": 193,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21619,
+    "fields": {
+      "name": "Nyerere Msingi",
+      "school_code": "ZP0018",
+      "district": 193,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21620,
+    "fields": {
+      "name": "Makadara Msingi",
+      "school_code": "ZP0020",
+      "district": 193,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21621,
+    "fields": {
+      "name": "Langoni Msingi",
+      "school_code": "ZP0022",
+      "district": 193,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21622,
+    "fields": {
+      "name": "Mfenesini",
+      "school_code": "ZS0021",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21623,
+    "fields": {
+      "name": "Bububu",
+      "school_code": "ZS0022",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21624,
+    "fields": {
+      "name": "Bwefum",
+      "school_code": "ZS0023",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21625,
+    "fields": {
+      "name": "Fuoni",
+      "school_code": "ZS0024",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21626,
+    "fields": {
+      "name": "Kombeni",
+      "school_code": "ZS0026",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21627,
+    "fields": {
+      "name": "Mwanakwerekwe A",
+      "school_code": "ZS0027",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21628,
+    "fields": {
+      "name": "Kisauni",
+      "school_code": "ZS0028",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21629,
+    "fields": {
+      "name": "Mtopepo",
+      "school_code": "ZS0029",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21630,
+    "fields": {
+      "name": "Mwanakwerekwe B",
+      "school_code": "ZS0030",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21631,
+    "fields": {
+      "name": "Mwanakwerekwe C",
+      "school_code": "ZS0031",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21632,
+    "fields": {
+      "name": "Regezamwendo",
+      "school_code": "ZS0032",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21633,
+    "fields": {
+      "name": "Kinyasini Unguja Sek",
+      "school_code": "ZS0047",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21634,
+    "fields": {
+      "name": "Mkwajuni Sekondari",
+      "school_code": "ZS0048",
+      "district": 194,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21635,
+    "fields": {
+      "name": "Mfenesini Msingi",
+      "school_code": "ZP0024",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21636,
+    "fields": {
+      "name": "Bububu A Msingi",
+      "school_code": "ZP0025",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21637,
+    "fields": {
+      "name": "Bububu B Msingi",
+      "school_code": "ZP0026",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21638,
+    "fields": {
+      "name": "Fuoni A Msingi",
+      "school_code": "ZP0027",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21639,
+    "fields": {
+      "name": "Fuoni B Msingi",
+      "school_code": "ZP0028",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21640,
+    "fields": {
+      "name": "Kombeni Msingi",
+      "school_code": "ZP0029",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21641,
+    "fields": {
+      "name": "Kisauni Msingi",
+      "school_code": "ZP0033",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21642,
+    "fields": {
+      "name": "Mtopepo A Msingi",
+      "school_code": "ZP0034",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21643,
+    "fields": {
+      "name": "Regezamwendo Msingi",
+      "school_code": "ZP0046",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21644,
+    "fields": {
+      "name": "Welezo Msingi",
+      "school_code": "ZP0070",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21645,
+    "fields": {
+      "name": "Kidichi Msingi",
+      "school_code": "ZP0072",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21646,
+    "fields": {
+      "name": "Kizimbani Unguja Msingi",
+      "school_code": "ZP0073",
+      "district": 194,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21647,
+    "fields": {
+      "name": "Chukwani",
+      "school_code": "ZS0033",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21648,
+    "fields": {
+      "name": "Chuini",
+      "school_code": "ZS0034",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21649,
+    "fields": {
+      "name": "Mwenge",
+      "school_code": "ZS0035",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21650,
+    "fields": {
+      "name": "Kibondeni",
+      "school_code": "ZS0036",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21651,
+    "fields": {
+      "name": "Maungani",
+      "school_code": "ZS0037",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21652,
+    "fields": {
+      "name": "Kianga",
+      "school_code": "ZS0039",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21653,
+    "fields": {
+      "name": "Kinuni",
+      "school_code": "ZS0040",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21654,
+    "fields": {
+      "name": "Mtoni Kigomeni",
+      "school_code": "ZS0041",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21655,
+    "fields": {
+      "name": "Mtoni Kidatu",
+      "school_code": "ZS0044",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21656,
+    "fields": {
+      "name": "Mikindani Dole",
+      "school_code": "ZS0045",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21657,
+    "fields": {
+      "name": "Zanzibar Commercial",
+      "school_code": "ZS0046",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21658,
+    "fields": {
+      "name": "Tanwir Islamic Seminary",
+      "school_code": "ZS0393",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21659,
+    "fields": {
+      "name": "Sufa",
+      "school_code": "ZS0218",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21660,
+    "fields": {
+      "name": "JKU",
+      "school_code": "ZS0221",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21661,
+    "fields": {
+      "name": "Beit-El-Ras",
+      "school_code": "ZS0228",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21662,
+    "fields": {
+      "name": "Al-Ihsan Girls",
+      "school_code": "ZS0242",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21663,
+    "fields": {
+      "name": "Francis Maria",
+      "school_code": "ZS0230",
+      "district": 199,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21664,
+    "fields": {
+      "name": "Chukwani Msingi",
+      "school_code": "ZP0047",
+      "district": 199,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21665,
+    "fields": {
+      "name": "Chuini Msingi",
+      "school_code": "ZP0048",
+      "district": 199,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21666,
+    "fields": {
+      "name": "Mwenge Msingi",
+      "school_code": "ZP0050",
+      "district": 199,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21667,
+    "fields": {
+      "name": "Kibondeni Msingi",
+      "school_code": "ZP0036",
+      "district": 199,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21668,
+    "fields": {
+      "name": "Maungani Msingi",
+      "school_code": "ZP0037",
+      "district": 199,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21669,
+    "fields": {
+      "name": "Kianga Msingi",
+      "school_code": "ZP0039",
+      "district": 199,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21670,
+    "fields": {
+      "name": "Kinuni Msingi",
+      "school_code": "ZP0054",
+      "district": 199,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21671,
+    "fields": {
+      "name": "Mtoni Kidatu Msingi",
+      "school_code": "ZP0044",
+      "district": 199,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21672,
+    "fields": {
+      "name": "Kiembe Samaki A Msingi",
+      "school_code": "ZP0031",
+      "district": 199,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21673,
+    "fields": {
+      "name": "Kiembe Samaki B Msingi",
+      "school_code": "ZP0032",
+      "district": 199,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21674,
+    "fields": {
+      "name": "Tumbe",
+      "school_code": "ZS0156",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21675,
+    "fields": {
+      "name": "Kiuyu",
+      "school_code": "ZS0157",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21676,
+    "fields": {
+      "name": "Micheweni",
+      "school_code": "ZS0158",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21677,
+    "fields": {
+      "name": "Wingwi",
+      "school_code": "ZS0159",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21678,
+    "fields": {
+      "name": "Shumba",
+      "school_code": "ZS0160",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21679,
+    "fields": {
+      "name": "Kinyasini Pemba",
+      "school_code": "ZS0161",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21680,
+    "fields": {
+      "name": "Msuka",
+      "school_code": "ZS0162",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21681,
+    "fields": {
+      "name": "Makangale",
+      "school_code": "ZS0163",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21682,
+    "fields": {
+      "name": "Kinowe",
+      "school_code": "ZS0164",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21683,
+    "fields": {
+      "name": "Mgogoni",
+      "school_code": "ZS0165",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21684,
+    "fields": {
+      "name": "Chwaka Tumbe",
+      "school_code": "ZS0166",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21685,
+    "fields": {
+      "name": "CCK Kiuyu",
+      "school_code": "ZS0168",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21686,
+    "fields": {
+      "name": "Ziwani Pemba",
+      "school_code": "ZS0169",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21687,
+    "fields": {
+      "name": "Ng'ambwa",
+      "school_code": "ZS0170",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21688,
+    "fields": {
+      "name": "Ambasha Islamic High School",
+      "school_code": "ZS0292",
+      "district": 195,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21689,
+    "fields": {
+      "name": "Kiuyu Msingi",
+      "school_code": "ZP0157",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21690,
+    "fields": {
+      "name": "Makangale Msingi",
+      "school_code": "ZP0163",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21691,
+    "fields": {
+      "name": "Mgogoni Msingi",
+      "school_code": "ZP0165",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21692,
+    "fields": {
+      "name": "Tumbe Msingi",
+      "school_code": "ZP0195",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21693,
+    "fields": {
+      "name": "Wingwi Msingi",
+      "school_code": "ZP0197",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21694,
+    "fields": {
+      "name": "Shumba Msingi",
+      "school_code": "ZP0200",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21695,
+    "fields": {
+      "name": "Kinyasini Pemba Msingi",
+      "school_code": "ZP0201",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21696,
+    "fields": {
+      "name": "Msuka Msingi",
+      "school_code": "ZP0202",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21697,
+    "fields": {
+      "name": "Kinowe Msingi",
+      "school_code": "ZP0203",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21698,
+    "fields": {
+      "name": "Ziwani Pemba Msingi",
+      "school_code": "ZP0214",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21699,
+    "fields": {
+      "name": "Ng'ambwa Msingi",
+      "school_code": "ZP0215",
+      "district": 195,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21700,
+    "fields": {
+      "name": "Wete Sekondari A",
+      "school_code": "ZS0153",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21701,
+    "fields": {
+      "name": "Chasasa A",
+      "school_code": "ZS0154",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21702,
+    "fields": {
+      "name": "Konde",
+      "school_code": "ZS0155",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21703,
+    "fields": {
+      "name": "Wete Islamic",
+      "school_code": "ZS0248",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21704,
+    "fields": {
+      "name": "Amini Islamic",
+      "school_code": "ZS0249",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "private",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21705,
+    "fields": {
+      "name": "Vitongoji",
+      "school_code": "ZS0172",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21706,
+    "fields": {
+      "name": "Shamiani",
+      "school_code": "ZS0173",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21707,
+    "fields": {
+      "name": "Kilindi Pemba",
+      "school_code": "ZS0174",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21708,
+    "fields": {
+      "name": "Wesha",
+      "school_code": "ZS0175",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21709,
+    "fields": {
+      "name": "Kizimbani Pemba",
+      "school_code": "ZS0142",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21710,
+    "fields": {
+      "name": "Makongeni",
+      "school_code": "ZS0143",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21711,
+    "fields": {
+      "name": "Minungwini",
+      "school_code": "ZS0144",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21712,
+    "fields": {
+      "name": "Ukunjwi",
+      "school_code": "ZS0145",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21713,
+    "fields": {
+      "name": "Kojani",
+      "school_code": "ZS0146",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21714,
+    "fields": {
+      "name": "Bwagamoyo Pemba",
+      "school_code": "ZS0147",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21715,
+    "fields": {
+      "name": "Chwale",
+      "school_code": "ZS0148",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21716,
+    "fields": {
+      "name": "Limbani",
+      "school_code": "ZS0149",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21717,
+    "fields": {
+      "name": "Mza Takao",
+      "school_code": "ZS0150",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21718,
+    "fields": {
+      "name": "Mabatini",
+      "school_code": "ZS0151",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21719,
+    "fields": {
+      "name": "Kijumbani",
+      "school_code": "ZS0152",
+      "district": 196,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21720,
+    "fields": {
+      "name": "Konde A Msingi",
+      "school_code": "ZP0193",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21721,
+    "fields": {
+      "name": "Konde B Msingi",
+      "school_code": "ZP0194",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21722,
+    "fields": {
+      "name": "Vitongoji Msingi",
+      "school_code": "ZP0219",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21723,
+    "fields": {
+      "name": "Kilindi Pemba Msingi",
+      "school_code": "ZP0220",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21724,
+    "fields": {
+      "name": "Wesha Msingi",
+      "school_code": "ZP0221",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21725,
+    "fields": {
+      "name": "Kojani Msingi",
+      "school_code": "ZP0146",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21726,
+    "fields": {
+      "name": "Bwagamoyo Msingi",
+      "school_code": "ZP0147",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21727,
+    "fields": {
+      "name": "Chwale Msingi",
+      "school_code": "ZP0186",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21728,
+    "fields": {
+      "name": "Limbani Msingi",
+      "school_code": "ZP0188",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21729,
+    "fields": {
+      "name": "Mabatini Msingi",
+      "school_code": "ZP0151",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21730,
+    "fields": {
+      "name": "Kijumbani Msingi",
+      "school_code": "ZP0152",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21731,
+    "fields": {
+      "name": "Minungwini Msingi",
+      "school_code": "ZP0183",
+      "district": 196,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21732,
+    "fields": {
+      "name": "Chanjamjawiri",
+      "school_code": "ZS0176",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21733,
+    "fields": {
+      "name": "Pujini",
+      "school_code": "ZS0177",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21734,
+    "fields": {
+      "name": "Kwale Pemba",
+      "school_code": "ZS0178",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21735,
+    "fields": {
+      "name": "Uwandani",
+      "school_code": "ZS0179",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21736,
+    "fields": {
+      "name": "Furaha Pemba",
+      "school_code": "ZS0180",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21737,
+    "fields": {
+      "name": "Pondeani",
+      "school_code": "ZS0181",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21738,
+    "fields": {
+      "name": "Mbuzini Pemba",
+      "school_code": "ZS0182",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21739,
+    "fields": {
+      "name": "Vikunguni",
+      "school_code": "ZS0183",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21740,
+    "fields": {
+      "name": "Ndagoni",
+      "school_code": "ZS0185",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21741,
+    "fields": {
+      "name": "Dr. Omar Ali Juma",
+      "school_code": "ZS0188",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21742,
+    "fields": {
+      "name": "Fidel Castro",
+      "school_code": "ZS0189",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21743,
+    "fields": {
+      "name": "Mtambile",
+      "school_code": "ZS0191",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21744,
+    "fields": {
+      "name": "Kiwani",
+      "school_code": "ZS0192",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21745,
+    "fields": {
+      "name": "Uweleni",
+      "school_code": "ZS0196",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21746,
+    "fields": {
+      "name": "Kisiwapanza",
+      "school_code": "ZS0197",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21747,
+    "fields": {
+      "name": "Wambaa",
+      "school_code": "ZS0198",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21748,
+    "fields": {
+      "name": "Mwambe",
+      "school_code": "ZS0200",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21749,
+    "fields": {
+      "name": "Michenzani",
+      "school_code": "ZS0201",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21750,
+    "fields": {
+      "name": "Mtangani",
+      "school_code": "ZS0202",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21751,
+    "fields": {
+      "name": "Mizingani",
+      "school_code": "ZS0203",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21752,
+    "fields": {
+      "name": "Chokocho",
+      "school_code": "ZS0204",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21753,
+    "fields": {
+      "name": "Makombeni",
+      "school_code": "ZS0205",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21754,
+    "fields": {
+      "name": "Ukutini",
+      "school_code": "ZS0206",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21755,
+    "fields": {
+      "name": "Chwaka Pemba",
+      "school_code": "ZS0207",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21756,
+    "fields": {
+      "name": "Maendeleo Pemba",
+      "school_code": "ZS0208",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21757,
+    "fields": {
+      "name": "Mauwani",
+      "school_code": "ZS0209",
+      "district": 197,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21758,
+    "fields": {
+      "name": "Pujini Msingi",
+      "school_code": "ZP0223",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21759,
+    "fields": {
+      "name": "Furaha Msingi",
+      "school_code": "ZP0226",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21760,
+    "fields": {
+      "name": "Pondeani Msingi",
+      "school_code": "ZP0227",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21761,
+    "fields": {
+      "name": "Mbuzini Pemba Msingi",
+      "school_code": "ZP0229",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21762,
+    "fields": {
+      "name": "Vikunguni Msingi",
+      "school_code": "ZP0230",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21763,
+    "fields": {
+      "name": "Ndagoni Msingi",
+      "school_code": "ZP0185",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21764,
+    "fields": {
+      "name": "Kiwani Msingi",
+      "school_code": "ZP0236",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21765,
+    "fields": {
+      "name": "Wambaa Msingi",
+      "school_code": "ZP0243",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21766,
+    "fields": {
+      "name": "Chokocho Msingi",
+      "school_code": "ZP0249",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21767,
+    "fields": {
+      "name": "Makombeni Msingi",
+      "school_code": "ZP0250",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21768,
+    "fields": {
+      "name": "Mtambile Msingi",
+      "school_code": "ZP0213",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21769,
+    "fields": {
+      "name": "Chanjamjawiri Msingi",
+      "school_code": "ZP0222",
+      "district": 197,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21770,
+    "fields": {
+      "name": "Chambani",
+      "school_code": "ZS0190",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21771,
+    "fields": {
+      "name": "Kengeja",
+      "school_code": "ZS0193",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21772,
+    "fields": {
+      "name": "Kangani",
+      "school_code": "ZS0194",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21773,
+    "fields": {
+      "name": "Mkanyageni",
+      "school_code": "ZS0195",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21774,
+    "fields": {
+      "name": "M/Mdogo",
+      "school_code": "ZS0136",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21775,
+    "fields": {
+      "name": "Ole",
+      "school_code": "ZS0137",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21776,
+    "fields": {
+      "name": "Kangagani",
+      "school_code": "ZS0138",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21777,
+    "fields": {
+      "name": "Shengejuu",
+      "school_code": "ZS0139",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21778,
+    "fields": {
+      "name": "Fundo",
+      "school_code": "ZS0140",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21779,
+    "fields": {
+      "name": "Mitiulaya",
+      "school_code": "ZS0141",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21780,
+    "fields": {
+      "name": "Kengeja Ufundi",
+      "school_code": "ZS0210",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21781,
+    "fields": {
+      "name": "Moh'd Juma Pindua",
+      "school_code": "ZS0293",
+      "district": 198,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21782,
+    "fields": {
+      "name": "Chambani Msingi",
+      "school_code": "ZP0212",
+      "district": 198,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21783,
+    "fields": {
+      "name": "Kengeja Msingi",
+      "school_code": "ZP0237",
+      "district": 198,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21784,
+    "fields": {
+      "name": "Kangani Msingi",
+      "school_code": "ZP0238",
+      "district": 198,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21785,
+    "fields": {
+      "name": "Mkanyageni Msingi",
+      "school_code": "ZP0239",
+      "district": 198,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21786,
+    "fields": {
+      "name": "Ole Msingi",
+      "school_code": "ZP0175",
+      "district": 198,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21787,
+    "fields": {
+      "name": "Kangagani Msingi",
+      "school_code": "ZP0176",
+      "district": 198,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21788,
+    "fields": {
+      "name": "Shengejuu Msingi",
+      "school_code": "ZP0177",
+      "district": 198,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 21789,
+    "fields": {
+      "name": "Fundo Msingi",
+      "school_code": "ZP0140",
+      "district": 198,
+      "level": "Primary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": null
+    }
+  }
+]

@@ -1582,5 +1582,13 @@
     "name": "Mkoani",
     "region": 31
   }
+},
+{
+  "model": "field_app.district",
+  "pk": 199,
+  "fields": {
+    "name": "Magharibi B",
+    "region": 29
+  }
 }
 ]
