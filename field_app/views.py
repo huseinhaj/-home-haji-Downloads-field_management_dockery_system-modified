@@ -3032,136 +3032,373 @@ def approve_student(request, student_id):
 
 @login_required
 def download_individual_letter(request):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
+                                    TableStyle, HRFlowable, KeepTogether)
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+
     student = get_or_create_student_profile(request.user)
-    
     approved_applications = StudentApplication.objects.filter(
-        student=student, 
-        status='approved'
-    )
-    
+        student=student, status='approved'
+    ).select_related('subject', 'school')
+
     if not approved_applications.exists():
-        messages.error(request, "You don't have any approved applications to download a letter.")
+        messages.error(request, "Huna maombi yaliyoidhinishwa.")
         return redirect('dashboard')
 
-    buffer = BytesIO()
-    p = canvas.Canvas(buffer)
-    
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(100, 800, "INDIVIDUAL FIELD PLACEMENT APPROVAL LETTER")
-    
-    p.setFont("Helvetica", 12)
-    p.drawString(100, 770, f"Student Name: {student.full_name}")
-    p.drawString(100, 750, f"Student ID: {student.id}")
-    p.drawString(100, 730, f"Phone: {student.phone_number}")
-    p.drawString(100, 710, f"Email: {student.user.email}")
-    
-    if student.selected_school:
-        p.drawString(100, 680, f"Assigned School: {student.selected_school.name}")
-        p.drawString(100, 660, f"School District: {student.selected_school.district.name}")
-        p.drawString(100, 640, f"School Region: {student.selected_school.district.region.name}")
-    
-    p.drawString(100, 610, "Approved Teaching Subjects:")
-    y_position = 590
-    for application in approved_applications:
-        p.drawString(120, y_position, f"✓ {application.subject.name} at {application.school.name}")
-        y_position -= 20
-        if application.approval_date:
-            p.drawString(140, y_position, f"Approved on: {application.approval_date.strftime('%Y-%m-%d')}")
-            y_position -= 20
-    
-    p.drawString(100, 530, "This letter confirms that the above student has been approved")
-    p.drawString(100, 510, "for field placement teaching practice.")
-    p.drawString(100, 490, f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
-    
-    p.showPage()
-    p.save()
-    
-    buffer.seek(0)
-    response = HttpResponse(buffer, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="individual_approval_{student.full_name}.pdf"'
-    return response
+    school = student.selected_school
+    current_year = _cached_active_year()
+    today = timezone.now().date()
+    ref_no = f"IMS/{today.year}/{student.id:04d}"
+
+    NAVY  = colors.HexColor('#0A2B5E')
+    GOLD  = colors.HexColor('#C8900A')
+    LIGHT = colors.HexColor('#EEF1F6')
+    BLACK = colors.black
+    WHITE = colors.white
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=3*cm, rightMargin=2.5*cm,
+                            topMargin=2*cm, bottomMargin=2.5*cm)
+
+    def S(name, **kw):
+        defaults = dict(fontName='Helvetica', fontSize=10, leading=14,
+                        textColor=BLACK, alignment=TA_LEFT)
+        defaults.update(kw)
+        return ParagraphStyle(name, **defaults)
+
+    center_bold  = S('cb', fontName='Helvetica-Bold', alignment=TA_CENTER)
+    center_norm  = S('cn', alignment=TA_CENTER)
+    center_sm    = S('csm', fontSize=8.5, alignment=TA_CENTER, textColor=colors.HexColor('#555'))
+    left_bold    = S('lb', fontName='Helvetica-Bold')
+    left_norm    = S('ln')
+    left_sm      = S('lsm', fontSize=9, leading=13)
+    justify_norm = S('jn', alignment=TA_JUSTIFY, leading=15)
+    right_norm   = S('rn', alignment=TA_RIGHT)
+    subject_s    = S('subj', fontName='Helvetica-Bold', fontSize=10.5,
+                     alignment=TA_CENTER, textColor=NAVY,
+                     borderColor=NAVY, borderWidth=0.5, borderPadding=6)
+
+    story = []
+
+    # ── Government Header ──
+    story.append(Paragraph('JAMHURI YA MUUNGANO WA TANZANIA', center_bold))
+    story.append(Paragraph('WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA', center_norm))
+    story.append(Paragraph('MFUMO WA USIMAMIZI WA MAZOEZI YA KUFUNDISHA (IMS)', center_sm))
+    story.append(Spacer(1, 4))
+    story.append(HRFlowable(width='100%', thickness=2.5, color=NAVY))
+    story.append(HRFlowable(width='100%', thickness=1,   color=GOLD, spaceAfter=10))
+
+    # ── Ref & Date (right-aligned) ──
+    ref_date_data = [[
+        Paragraph(f'Kumb. Na.: <b>{ref_no}</b>', left_norm),
+        Paragraph(f'Tarehe: <b>{today.strftime("%d %B %Y")}</b>', right_norm),
+    ]]
+    ref_tbl = Table(ref_date_data, colWidths=[8*cm, 8*cm])
+    ref_tbl.setStyle(TableStyle([('PADDING', (0,0), (-1,-1), 0)]))
+    story.append(ref_tbl)
+    story.append(Spacer(1, 12))
+
+    # ── Recipient address ──
+    if school:
+        story.append(Paragraph('<b>Mkuu wa Shule,</b>', left_norm))
+        story.append(Paragraph(f'<b>{school.name},</b>', left_norm))
+        story.append(Paragraph(f'Wilaya ya {school.district.name},', left_norm))
+        story.append(Paragraph(f'Mkoa wa {school.district.region.name}.', left_norm))
+    story.append(Spacer(1, 14))
+
+    # ── Subject line ──
+    story.append(Paragraph(
+        'BARUA YA UTHIBITISHO WA MWANAFUNZI MWALIMU — MAZOEZI YA KUFUNDISHA',
+        subject_s))
+    story.append(Spacer(1, 14))
+
+    # ── Greeting ──
+    story.append(Paragraph('Ndugu Mkuu wa Shule,', left_norm))
+    story.append(Spacer(1, 8))
+
+    # ── Body ──
+    yr_str = current_year.year if current_year else str(today.year)
+    story.append(Paragraph(
+        f'Barua hii inathibitisha kuwa <b>{student.full_name.upper()}</b> '
+        f'(Simu: {student.phone_number} | Barua pepe: {student.user.email}) '
+        f'ameidhinishwa kufanya mazoezi ya kufundisha katika shule yako kwa mwaka '
+        f'wa masomo wa <b>{yr_str}</b>.', justify_norm))
+    story.append(Spacer(1, 8))
+    story.append(Paragraph(
+        'Mwanafunzi huyu ameidhinishwa kufundisha masomo yafuatayo:', left_norm))
+    story.append(Spacer(1, 8))
+
+    # ── Subjects table ──
+    subj_data = [[
+        Paragraph('Na.', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE, alignment=TA_CENTER)),
+        Paragraph('Somo', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE)),
+        Paragraph('Shule', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE)),
+        Paragraph('Tarehe ya Idhini', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE, alignment=TA_CENTER)),
+    ]]
+    for i, app in enumerate(approved_applications, 1):
+        approved_date = app.approval_date.strftime('%d/%m/%Y') if app.approval_date else '—'
+        subj_data.append([
+            Paragraph(str(i), S('c', fontSize=9, alignment=TA_CENTER)),
+            Paragraph(app.subject.name, left_sm),
+            Paragraph(app.school.name, left_sm),
+            Paragraph(approved_date, S('c', fontSize=9, alignment=TA_CENTER)),
+        ])
+    s_tbl = Table(subj_data, colWidths=[1*cm, 5.5*cm, 6*cm, 3.5*cm])
+    s_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), NAVY),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [WHITE, LIGHT]),
+        ('GRID', (0,0), (-1,-1), 0.4, colors.HexColor('#CBD5E0')),
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('LINEABOVE', (0,0), (-1,0), 0, WHITE),
+    ]))
+    story.append(s_tbl)
+    story.append(Spacer(1, 12))
+
+    story.append(Paragraph(
+        'Omba ushirikiano wako katika kuhakikisha mwanafunzi huyu anapata '
+        'mazingira mazuri ya kufanya mazoezi ya kufundisha.',
+        justify_norm))
+    story.append(Spacer(1, 8))
+    story.append(Paragraph('Asante kwa ushirikiano wako.', left_norm))
+    story.append(Spacer(1, 30))
+
+    # ── Signature ──
+    sig_data = [[
+        Paragraph('___________________________', left_norm),
+        Paragraph('___________________________', right_norm),
+    ],[
+        Paragraph('<b>Msimamizi wa Mfumo (IMS)</b>', left_sm),
+        Paragraph('<b>Tarehe ya Kupokea</b>', S('rsm', fontSize=9, alignment=TA_RIGHT)),
+    ]]
+    sig_tbl = Table(sig_data, colWidths=[8*cm, 8*cm])
+    sig_tbl.setStyle(TableStyle([('PADDING', (0,0), (-1,-1), 2)]))
+    story.append(sig_tbl)
+
+    story.append(Spacer(1, 20))
+    story.append(HRFlowable(width='100%', thickness=0.5, color=colors.HexColor('#CBD5E0')))
+    story.append(Paragraph(
+        f'Hati hii imetolewa kwa njia ya mfumo wa IMS tarehe {today.strftime("%d/%m/%Y")}. '
+        f'Kumb. Na.: {ref_no}',
+        S('ft', fontSize=7.5, alignment=TA_CENTER, textColor=colors.HexColor('#999'), spaceAfter=0)))
+
+    doc.build(story)
+    buf.seek(0)
+    fname_safe = student.full_name.replace(' ', '_')
+    resp = HttpResponse(buf.read(), content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="Barua_{fname_safe}.pdf"'
+    return resp
+
 
 @login_required
 def download_group_letter(request):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
+                                    TableStyle, HRFlowable)
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+
     student = get_or_create_student_profile(request.user)
-    
+
     if not student.selected_school:
         messages.error(request, "Huna shule uliyochagua.")
         return redirect('dashboard')
-    
+
     school = student.selected_school
-    
     group_letter_quota = 5
-    
-    approved_students_count = StudentApplication.objects.filter(
-        school=school,
-        status='approved'
-    ).count()
-    
-    student_has_approved_application = StudentApplication.objects.filter(
-        student=student,
-        school=school,
-        status='approved'
-    ).exists()
-    
-    if approved_students_count < group_letter_quota:
-        messages.error(request, 
-            f"Bado hatujafikia idadi ya wanafunzi {group_letter_quota} walioidhinishwa. " 
-            f"Kwa sasa kuna {approved_students_count}/{group_letter_quota}."
-        )
-        return redirect('dashboard')
-    
-    if not student_has_approved_application:
-        messages.error(request, 
-            "Huwezi kupata barua ya kikundi kwa sababu huna maombi yaliyoidhinishwa kwenye shule hii."
-        )
-        return redirect('dashboard')
-    
-    buffer = BytesIO()
-    p = canvas.Canvas(buffer)
-    
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(100, 800, "BARUA YA UTHIBITISHO WA KIKUNDI")
-    p.drawString(100, 780, "Taasisi ya Ualimu Tanzania")
-    
-    p.setFont("Helvetica", 12)
-    p.drawString(100, 750, f"Jina la Shule: {school.name}")
-    p.drawString(100, 730, f"Wilaya: {school.district.name}")
-    p.drawString(100, 710, f"Mkoa: {school.district.region.name}")
-    p.drawString(100, 690, f"Idadi ya Wanafunzi Inayohitajika: {group_letter_quota}")
-    p.drawString(100, 670, f"Wanafunzi Walioidhinishwa: {approved_students_count}")
-    
-    p.drawString(100, 640, "Orodha ya Wanafunzi Walioidhinishwa:")
-    y_position = 620
-    
+    current_year = _cached_active_year()
+    today = timezone.now().date()
+
     approved_applications = StudentApplication.objects.filter(
-        school=school,
-        status='approved'
-    ).select_related('student').distinct()
-    
-    for idx, application in enumerate(approved_applications, 1):
-        student_name = application.student.full_name
-        subject_name = application.subject.name
-        p.drawString(120, y_position, f"{idx}. {student_name} - {subject_name}")
-        y_position -= 20
-        if y_position < 100:
-            p.showPage()
-            p.setFont("Helvetica", 12)
-            y_position = 780
-    
-    p.drawString(100, y_position - 40, "Barua hii inathibitisha kuwa shule imefikia idadi ya wanafunzi 5")
-    p.drawString(100, y_position - 60, "wa kufanya mafunzo ya ualimu kwenye uwanja kama kikundi.")
-    p.drawString(100, y_position - 80, f"Imetolewa tarehe: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
-    
-    p.showPage()
-    p.save()
-    
-    buffer.seek(0)
-    response = HttpResponse(buffer, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="barua_kikundi_{school.name}.pdf"'
-    
-    messages.success(request, "Barua ya kikundi imepakuliwa kikamilifu!")
-    return response
+        school=school, status='approved'
+    ).select_related('student', 'subject').order_by('student__full_name')
+
+    approved_students_count = approved_applications.values('student').distinct().count()
+
+    if not StudentApplication.objects.filter(student=student, school=school, status='approved').exists():
+        messages.error(request, "Huna maombi yaliyoidhinishwa kwenye shule hii.")
+        return redirect('dashboard')
+
+    if approved_students_count < group_letter_quota:
+        messages.error(request,
+            f"Bado hatujafikia idadi ya wanafunzi {group_letter_quota}. "
+            f"Kwa sasa kuna {approved_students_count}/{group_letter_quota}.")
+        return redirect('dashboard')
+
+    ref_no = f"IMS/GRP/{today.year}/{school.id:04d}"
+
+    NAVY  = colors.HexColor('#0A2B5E')
+    GOLD  = colors.HexColor('#C8900A')
+    LIGHT = colors.HexColor('#EEF1F6')
+    WHITE = colors.white
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=3*cm, rightMargin=2.5*cm,
+                            topMargin=2*cm, bottomMargin=2.5*cm)
+
+    def S(name, **kw):
+        defaults = dict(fontName='Helvetica', fontSize=10, leading=14,
+                        textColor=colors.black, alignment=TA_LEFT)
+        defaults.update(kw)
+        return ParagraphStyle(name, **defaults)
+
+    center_bold  = S('cb', fontName='Helvetica-Bold', alignment=TA_CENTER)
+    center_norm  = S('cn', alignment=TA_CENTER)
+    center_sm    = S('csm', fontSize=8.5, alignment=TA_CENTER,
+                     textColor=colors.HexColor('#555'))
+    left_norm    = S('ln')
+    left_sm      = S('lsm', fontSize=9, leading=13)
+    justify_norm = S('jn', alignment=TA_JUSTIFY, leading=15)
+    right_norm   = S('rn', alignment=TA_RIGHT)
+    subject_s    = S('subj', fontName='Helvetica-Bold', fontSize=10.5,
+                     alignment=TA_CENTER, textColor=NAVY,
+                     borderColor=NAVY, borderWidth=0.5, borderPadding=6)
+
+    story = []
+
+    # ── Government Header ──
+    story.append(Paragraph('JAMHURI YA MUUNGANO WA TANZANIA', center_bold))
+    story.append(Paragraph('WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA', center_norm))
+    story.append(Paragraph('MFUMO WA USIMAMIZI WA MAZOEZI YA KUFUNDISHA (IMS)', center_sm))
+    story.append(Spacer(1, 4))
+    story.append(HRFlowable(width='100%', thickness=2.5, color=NAVY))
+    story.append(HRFlowable(width='100%', thickness=1,   color=GOLD, spaceAfter=10))
+
+    # ── Ref & Date ──
+    ref_date_data = [[
+        Paragraph(f'Kumb. Na.: <b>{ref_no}</b>', left_norm),
+        Paragraph(f'Tarehe: <b>{today.strftime("%d %B %Y")}</b>', right_norm),
+    ]]
+    ref_tbl = Table(ref_date_data, colWidths=[8*cm, 8*cm])
+    ref_tbl.setStyle(TableStyle([('PADDING', (0,0), (-1,-1), 0)]))
+    story.append(ref_tbl)
+    story.append(Spacer(1, 12))
+
+    # ── Recipient ──
+    story.append(Paragraph('<b>Mkuu wa Shule,</b>', left_norm))
+    story.append(Paragraph(f'<b>{school.name},</b>', left_norm))
+    story.append(Paragraph(f'Wilaya ya {school.district.name},', left_norm))
+    story.append(Paragraph(f'Mkoa wa {school.district.region.name}.', left_norm))
+    story.append(Spacer(1, 14))
+
+    # ── Subject line ──
+    story.append(Paragraph(
+        'BARUA YA UTHIBITISHO WA KIKUNDI — MAZOEZI YA KUFUNDISHA',
+        subject_s))
+    story.append(Spacer(1, 14))
+
+    story.append(Paragraph('Ndugu Mkuu wa Shule,', left_norm))
+    story.append(Spacer(1, 8))
+
+    yr_str = current_year.year if current_year else str(today.year)
+    story.append(Paragraph(
+        f'Barua hii inathibitisha kuwa shule yako <b>{school.name}</b> imefikia '
+        f'idadi inayohitajika ya wanafunzi walimu (<b>{approved_students_count}</b>) '
+        f'kwa mwaka wa masomo wa <b>{yr_str}</b>. '
+        f'Wanafunzi wote walioorodheshwa hapa chini wameidhinishwa rasmi kufanya '
+        f'mazoezi ya kufundisha katika shule yako kama kikundi.',
+        justify_norm))
+    story.append(Spacer(1, 10))
+
+    # ── School info box ──
+    info_data = [
+        [Paragraph('<b>Shule:</b>', left_sm), Paragraph(school.name, left_sm),
+         Paragraph('<b>Kiwango:</b>', left_sm), Paragraph(school.get_level_display(), left_sm)],
+        [Paragraph('<b>Wilaya:</b>', left_sm), Paragraph(school.district.name, left_sm),
+         Paragraph('<b>Mkoa:</b>', left_sm), Paragraph(school.district.region.name, left_sm)],
+    ]
+    info_tbl = Table(info_data, colWidths=[2.5*cm, 6.5*cm, 2.5*cm, 4.5*cm])
+    info_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), LIGHT),
+        ('GRID', (0,0), (-1,-1), 0.4, colors.HexColor('#CBD5E0')),
+        ('PADDING', (0,0), (-1,-1), 5),
+    ]))
+    story.append(info_tbl)
+    story.append(Spacer(1, 12))
+
+    story.append(Paragraph('<b>Orodha ya Wanafunzi Walioidhinishwa:</b>', left_norm))
+    story.append(Spacer(1, 6))
+
+    # ── Students table ──
+    # Group by student
+    from collections import defaultdict
+    student_subjects = defaultdict(list)
+    student_objs = {}
+    for app in approved_applications:
+        student_subjects[app.student_id].append(app.subject.name)
+        student_objs[app.student_id] = app.student
+
+    tbl_data = [[
+        Paragraph('Na.', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE, alignment=TA_CENTER)),
+        Paragraph('Jina la Mwanafunzi', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE)),
+        Paragraph('Simu', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE)),
+        Paragraph('Masomo Aliyoidhinishwa', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE)),
+    ]]
+    for i, (sid, st_obj) in enumerate(student_objs.items(), 1):
+        subjects_str = ', '.join(student_subjects[sid])
+        row_bg = WHITE if i % 2 == 0 else LIGHT
+        tbl_data.append([
+            Paragraph(str(i), S('c', fontSize=9, alignment=TA_CENTER)),
+            Paragraph(st_obj.full_name, left_sm),
+            Paragraph(st_obj.phone_number or '—', S('c', fontSize=9)),
+            Paragraph(subjects_str, left_sm),
+        ])
+
+    g_tbl = Table(tbl_data, colWidths=[1*cm, 5.5*cm, 3*cm, 6.5*cm])
+    row_bgs = []
+    for i in range(1, len(tbl_data)):
+        bg = LIGHT if i % 2 == 1 else WHITE
+        row_bgs.append(('BACKGROUND', (0,i), (-1,i), bg))
+    g_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), NAVY),
+        ('GRID', (0,0), (-1,-1), 0.4, colors.HexColor('#CBD5E0')),
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ] + row_bgs))
+    story.append(g_tbl)
+    story.append(Spacer(1, 14))
+
+    story.append(Paragraph(
+        'Tunaomba ushirikiano wako katika kuhakikisha wanafunzi hawa wanapata '
+        'mazingira mazuri ya kufanya mazoezi ya kufundisha. '
+        'Kwa maswali yoyote, wasiliana na ofisi ya IMS.',
+        justify_norm))
+    story.append(Spacer(1, 30))
+
+    # ── Signature ──
+    sig_data = [[
+        Paragraph('___________________________', left_norm),
+        Paragraph('___________________________', right_norm),
+    ],[
+        Paragraph('<b>Msimamizi wa Mfumo (IMS)</b>', S('rsm', fontSize=9)),
+        Paragraph('<b>Tarehe ya Kupokea / Muhuri</b>', S('rsm2', fontSize=9, alignment=TA_RIGHT)),
+    ]]
+    sig_tbl = Table(sig_data, colWidths=[8*cm, 8*cm])
+    sig_tbl.setStyle(TableStyle([('PADDING', (0,0), (-1,-1), 2)]))
+    story.append(sig_tbl)
+
+    story.append(Spacer(1, 20))
+    story.append(HRFlowable(width='100%', thickness=0.5, color=colors.HexColor('#CBD5E0')))
+    story.append(Paragraph(
+        f'Hati hii imetolewa kwa njia ya mfumo wa IMS tarehe {today.strftime("%d/%m/%Y")}. '
+        f'Kumb. Na.: {ref_no}',
+        S('ft', fontSize=7.5, alignment=TA_CENTER,
+          textColor=colors.HexColor('#999'))))
+
+    doc.build(story)
+    buf.seek(0)
+    fname_safe = school.name.replace(' ', '_')
+    resp = HttpResponse(buf.read(), content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="Barua_Kikundi_{fname_safe}.pdf"'
+    return resp
 
 # =========================
 # AJAX AND API VIEWS
