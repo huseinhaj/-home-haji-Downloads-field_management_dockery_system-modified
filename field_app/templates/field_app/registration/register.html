@@ -47,8 +47,10 @@ body{
 }
 .card-top{
   background:var(--navy);border-bottom:3px solid var(--gold);
-  padding:18px 24px;display:flex;align-items:center;gap:14px;
+  padding:10px 24px 16px;display:flex;flex-direction:column;align-items:center;gap:0;
 }
+.arc-wrap{width:100%;max-width:340px;margin:0 auto;}
+.card-top-inner{display:flex;align-items:center;gap:14px;width:100%;}
 .coat{width:48px;height:48px;flex-shrink:0;background:rgba(200,144,10,.15);border:1.5px solid rgba(200,144,10,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .coat img{width:34px;height:34px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));}
 .ct-text .t1{font-size:9px;color:rgba(255,255,255,.5);letter-spacing:1.8px;text-transform:uppercase;}
@@ -133,14 +135,26 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
   <div class="card">
 
     <div class="card-top">
-      <div class="coat">
-        {% load static %}
-        <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Coat of Arms">
+      <div class="arc-wrap">
+        <svg viewBox="0 0 320 42" width="100%" height="42" style="overflow:visible;display:block;">
+          <defs><path id="rarc" d="M 12,38 Q 160,4 308,38" fill="none"/></defs>
+          <text font-family="'Segoe UI',system-ui,sans-serif" font-size="10.5"
+                font-weight="700" fill="rgba(255,255,255,0.65)"
+                letter-spacing="2.2" text-anchor="middle">
+            <textPath href="#rarc" startOffset="50%">UNITED REPUBLIC OF TANZANIA</textPath>
+          </text>
+        </svg>
       </div>
-      <div class="ct-text">
-        <div class="t1">United Republic of Tanzania</div>
-        <div class="t2">{% if LANG == 'sw' %}Fungua Akaunti ya Mwanafunzi{% else %}Create Student Account{% endif %}</div>
-        <div class="t3">{% if LANG == 'sw' %}Jiunge na Mfumo wa Mafunzo ya Vitendo{% else %}Join the Internship Management System{% endif %}</div>
+      <div class="card-top-inner">
+        <div class="coat">
+          {% load static %}
+          <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Coat of Arms">
+        </div>
+        <div class="ct-text">
+          <div class="t1">{% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia{% else %}Ministry of Education, Science & Technology{% endif %}</div>
+          <div class="t2">{% if LANG == 'sw' %}Fungua Akaunti ya Mwanafunzi{% else %}Create Student Account{% endif %}</div>
+          <div class="t3">{% if LANG == 'sw' %}Jiunge na Mfumo wa Mafunzo ya Vitendo{% else %}Join the Internship Management System{% endif %}</div>
+        </div>
       </div>
     </div>
 

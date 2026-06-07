@@ -77,17 +77,18 @@
 
 /* ── Quick action buttons ── */
 .qa-btn {
-    background: #fff; border: 2px solid #d1d9e8; border-radius: 10px;
-    padding: 1.2rem 0.8rem; text-align: center; text-decoration: none;
-    display: block; transition: all 0.25s ease;
+    background: #fff; border: 1.5px solid #d1d9e8; border-radius: 6px;
+    padding: 8px 12px; text-align: left; text-decoration: none;
+    display: flex; align-items: center; gap: 9px;
+    transition: all 0.2s ease;
 }
 .qa-btn:hover {
-    border-color: #C8900A; transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgba(10,43,94,0.12);
+    border-color: #C8900A; background: #FFFBF0;
+    box-shadow: 0 2px 8px rgba(10,43,94,0.1);
 }
-.qa-btn .qa-icon { font-size: 1.8rem; margin-bottom: 8px; }
-.qa-btn .qa-label { color: #0A2B5E; font-weight: 700; font-size: 0.85rem; display: block; }
-.qa-btn .qa-sub { color: #6b7280; font-size: 0.72rem; display: block; margin-top: 3px; }
+.qa-btn .qa-icon { font-size: 1.05rem; flex-shrink: 0; width: 22px; text-align: center; }
+.qa-btn .qa-label { color: #0A2B5E; font-weight: 700; font-size: 0.8rem; }
+.qa-btn .qa-sub { display: none; }
 
 /* ── Tables ── */
 .adm-table thead th {
