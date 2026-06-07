@@ -913,11 +913,10 @@ def login_view(request):
 # views.py - Badilisha logout_view kwa hii
 
 def logout_view(request):
-    """Logout na upeleke kwenye login page sahihi kulingana na aina ya mtumiaji"""
     redirect_to = 'login'
     if request.user.is_authenticated:
-        if request.user.is_staff:
-            redirect_to = 'board_login'
+        if request.user.is_superuser:
+            redirect_to = 'login'
         else:
             try:
                 Assessor.objects.get(user=request.user)
