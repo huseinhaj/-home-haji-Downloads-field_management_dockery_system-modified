@@ -22,28 +22,31 @@
 
     <div class="border-top border-2 mb-4" style="border-color: var(--medium) !important; opacity: 0.5;"></div>
 
-    <!-- Search Form - Regular GET form, no AJAX -->
-    <form method="get" class="row g-2 align-items-center mb-4">
+    <!-- Live Search Controls -->
+    <div class="row g-2 align-items-center mb-4">
         <div class="col-md-3">
-            <select name="level" class="form-select">
+            <select id="filterLevel" class="form-select">
                 <option value="Primary" {% if selected_level == 'Primary' %}selected{% endif %}>{% if LANG == 'sw' %}Shule ya Msingi{% else %}Primary School{% endif %}</option>
                 <option value="Secondary" {% if selected_level == 'Secondary' %}selected{% endif %}>{% if LANG == 'sw' %}Shule ya Sekondari{% else %}Secondary School{% endif %}</option>
             </select>
         </div>
         <div class="col-md-2">
-            <select name="ownership" class="form-select">
-                <option value="" {% if not selected_ownership %}selected{% endif %}>{% if LANG == 'sw' %}Aina Zote{% else %}All Types{% endif %}</option>
+            <select id="filterOwnership" class="form-select">
+                <option value="">{% if LANG == 'sw' %}Aina Zote{% else %}All Types{% endif %}</option>
                 <option value="government" {% if selected_ownership == 'government' %}selected{% endif %}>{% if LANG == 'sw' %}Serikali{% else %}Government{% endif %}</option>
                 <option value="private" {% if selected_ownership == 'private' %}selected{% endif %}>{% if LANG == 'sw' %}Binafsi{% else %}Private{% endif %}</option>
             </select>
         </div>
-        <div class="col-md-5">
-            <input type="text" name="q" value="{{ query }}" placeholder="{% if LANG == 'sw' %}Tafuta jina la shule...{% else %}Search school name...{% endif %}" class="form-control">
+        <div class="col-md-7" style="position:relative;">
+            <input type="text" id="liveSearch" value="{{ query }}"
+                   placeholder="{% if LANG == 'sw' %}Andika jina la shule...{% else %}Type school name...{% endif %}"
+                   class="form-control"
+                   style="padding-right:40px;">
+            <span id="searchSpinner" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--bold);">
+                <i class="fas fa-circle-notch fa-spin"></i>
+            </span>
         </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn w-100 rounded-pill" style="background: var(--bold); color: var(--white);">{% if LANG == 'sw' %}Tafuta{% else %}Search{% endif %}</button>
-        </div>
-    </form>
+    </div>
 
     <!-- Statistics Cards -->
     <div class="row mb-4 g-3">
@@ -246,8 +249,154 @@
 </style>
 
 <script>
-// Very simple JavaScript - just logs to console for debugging
-console.log('Page loaded successfully');
-console.log('Selected school: {{ selected_school.id|default:"None" }}');
+const AJAX_URL   = "{% url 'search_schools_ajax' district.id %}";
+const LANG       = "{{ LANG|default:'sw' }}";
+const SELECTED_ID = {{ selected_school.id|default:'null' }};
+
+const container  = document.getElementById('schoolsContainer');
+const input      = document.getElementById('liveSearch');
+const lvlSel     = document.getElementById('filterLevel');
+const ownSel     = document.getElementById('filterOwnership');
+const spinner    = document.getElementById('searchSpinner');
+
+let debounceTimer = null;
+
+function triggerSearch() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(doSearch, 280);
+}
+
+function doSearch() {
+    const q         = input.value.trim();
+    const level     = lvlSel.value;
+    const ownership = ownSel.value;
+
+    spinner.style.display = 'inline';
+
+    const url = `${AJAX_URL}?q=${encodeURIComponent(q)}&level=${encodeURIComponent(level)}&ownership=${encodeURIComponent(ownership)}`;
+
+    fetch(url, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+        .then(r => r.json())
+        .then(data => {
+            spinner.style.display = 'none';
+            renderSchools(data.schools);
+        })
+        .catch(() => { spinner.style.display = 'none'; });
+}
+
+function renderSchools(schools) {
+    if (!schools.length) {
+        container.innerHTML = `
+          <div class="col-12">
+            <div class="alert alert-warning text-center p-5">
+              <i class="fas fa-school fa-3x mb-3"></i>
+              <h4>${LANG === 'sw' ? 'Hakuna shule zilizopatikana' : 'No schools found'}</h4>
+            </div>
+          </div>`;
+        return;
+    }
+
+    container.innerHTML = schools.map(s => {
+        const headerColor = s.status === 'pinned'
+            ? 'var(--warning)'
+            : s.selectable ? 'var(--bold)' : 'var(--text-gray)';
+
+        const statusLabel = s.status === 'pinned'
+            ? (LANG === 'sw' ? 'Haipatikani' : 'Unavailable')
+            : s.selectable
+                ? (LANG === 'sw' ? 'Inapatikana' : 'Available')
+                : (LANG === 'sw' ? 'Imejaa' : 'Full');
+
+        const ownBadge = s.ownership === 'private'
+            ? `<span class="badge" style="background:rgba(200,144,10,0.8);">${LANG==='sw'?'Binafsi':'Private'}</span>`
+            : `<span class="badge" style="background:rgba(5,150,105,0.7);">${LANG==='sw'?'Serikali':'Govt'}</span>`;
+
+        let quotaHtml = '';
+        if (s.deo_quota) {
+            const pct = Math.round((s.deo_filled / s.deo_quota) * 100);
+            quotaHtml = `
+              <div style="font-size:.82rem;">
+                <span style="color:#C8900A;font-weight:700;text-transform:uppercase;letter-spacing:.3px;">
+                  <i class="fas fa-clipboard-list me-1"></i>${LANG==='sw'?'Mgawo wa DEO':'DEO Quota'}:
+                </span>
+                <strong style="color:#0A2B5E;">${s.deo_filled}/${s.deo_quota}</strong>
+                <span style="color:${s.deo_remaining===0?'#059669':'#C8900A'};">
+                  (${s.deo_remaining===0?(LANG==='sw'?'Imejazwa':'Full'):s.deo_remaining+' '+(LANG==='sw'?'nafasi':'spots')})
+                </span>
+              </div>
+              <div class="progress mt-2" style="height:6px;">
+                <div class="progress-bar" style="width:${pct}%;background:${s.deo_remaining===0?'var(--success)':'var(--bold)'};"></div>
+              </div>`;
+        } else {
+            quotaHtml = `<div style="font-size:.8rem;color:var(--text-gray);"><i class="fas fa-info-circle me-1"></i>${LANG==='sw'?'Hakuna mgawo wa DEO bado':'No DEO quota assigned yet'}</div>`;
+        }
+
+        let footerHtml = '';
+        if (!s.selectable) {
+            const disabledLabel = s.status === 'pinned'
+                ? `<i class="fas fa-lock me-1"></i>${LANG==='sw'?'Haipatikani':'Unavailable'}`
+                : s.status === 'district_full'
+                    ? `<i class="fas fa-city me-1"></i>${LANG==='sw'?'Wilaya Imejaa':'District Full'}`
+                    : s.status === 'deo_full'
+                        ? `<i class="fas fa-user-slash me-1"></i>${LANG==='sw'?'Quota Imejaa':'Quota Full'}`
+                        : `<i class="fas fa-times-circle me-1"></i>${LANG==='sw'?'Imejaa':'Full'}`;
+            footerHtml = `<button class="btn rounded-pill w-100" style="background:var(--text-gray);color:var(--white);" disabled>${disabledLabel}</button>`;
+        } else if (SELECTED_ID === s.id) {
+            footerHtml = `
+              <div class="d-flex gap-2">
+                <form method="post" style="width:50%;margin:0">
+                  <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
+                  <input type="hidden" name="action" value="confirm">
+                  <button type="submit" class="btn rounded-pill w-100" style="background:var(--success);color:var(--white);">${LANG==='sw'?'Thibitisha':'Confirm'}</button>
+                </form>
+                <form method="post" style="width:50%;margin:0">
+                  <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
+                  <input type="hidden" name="action" value="cancel">
+                  <button type="submit" class="btn rounded-pill w-100" style="background:var(--text-gray);color:var(--white);">${LANG==='sw'?'Ghairi':'Cancel'}</button>
+                </form>
+              </div>`;
+        } else {
+            footerHtml = `
+              <form method="post" style="margin:0">
+                <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
+                <input type="hidden" name="action" value="select">
+                <input type="hidden" name="school_id" value="${s.id}">
+                <button type="submit" class="btn rounded-pill w-100"
+                  style="background:transparent;color:var(--bold);border:2px solid var(--bold);">
+                  <i class="fas fa-check-circle me-1"></i>${LANG==='sw'?'Chagua Shule':'Select School'}
+                </button>
+              </form>`;
+        }
+
+        return `
+          <div class="col-md-6 col-lg-4 school-card" data-school-id="${s.id}">
+            <div class="card h-100 shadow-sm rounded-3 overflow-hidden hover-lift" style="border:1px solid var(--border);">
+              <div class="card-header text-white text-center py-3" style="background:${headerColor};">
+                <h5 class="mb-0">${s.name}</h5>
+                <small>${s.level}</small>
+                <div class="mt-1" style="display:flex;justify-content:center;gap:5px;flex-wrap:wrap;">
+                  <span class="badge" style="background:rgba(0,0,0,0.3);">${statusLabel}</span>
+                  ${ownBadge}
+                </div>
+              </div>
+              <div class="card-body">${quotaHtml}</div>
+              <div class="card-footer bg-transparent border-0 py-3">${footerHtml}</div>
+            </div>
+          </div>`;
+    }).join('');
+}
+
+function getCookie(name) {
+    const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+    return v ? v[2] : '';
+}
+
+// Wire up events
+input.addEventListener('input', triggerSearch);
+lvlSel.addEventListener('change', doSearch);
+ownSel.addEventListener('change', doSearch);
+
+// Initial load
+doSearch();
 </script>
 {% endblock %}

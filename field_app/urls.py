@@ -35,6 +35,7 @@ urlpatterns = [
     path('select-region/', views.select_region, name='select_region'),
     path('select-district/<int:region_id>/', views.select_district, name='select_district'),
     path('select-school/<int:district_id>/', views.select_school, name='select_school'),
+    path('select-school/<int:district_id>/search/', views.search_schools_ajax, name='search_schools_ajax'),
     
     # =========================
     # SUBJECT SELECTION

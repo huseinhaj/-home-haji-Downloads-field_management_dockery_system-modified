@@ -1640,6 +1640,72 @@ def select_school(request, district_id):
         'district_secondary_full': district_secondary_full,
     })
 @login_required
+def search_schools_ajax(request, district_id):
+    """Live search endpoint — returns school cards as JSON for instant search."""
+    district = get_object_or_404(District, id=district_id)
+    current_year = _cached_active_year()
+
+    q         = request.GET.get('q', '').strip()
+    level     = request.GET.get('level', 'Secondary')
+    ownership = request.GET.get('ownership', '')
+
+    pinned_ids = []
+    if current_year:
+        pinned_ids = list(SchoolPin.objects.filter(
+            academic_year=current_year, is_pinned=True
+        ).values_list('school_id', flat=True))
+
+    qs = School.objects.filter(district=district, level=level)
+    if q:
+        qs = qs.filter(name__icontains=q)
+    if ownership:
+        qs = qs.filter(ownership=ownership)
+
+    da_qs = DistrictAllocation.objects.filter(district=district)
+    if current_year:
+        da_qs = da_qs.filter(academic_year=current_year)
+    district_alloc = da_qs.first()
+    alloc_map = {}
+    if district_alloc:
+        alloc_map = {sa.school_id: sa for sa in
+                     SchoolAllocation.objects.filter(district_allocation=district_alloc)}
+
+    dist_primary_full = (district_alloc and district_alloc.primary_needed > 0
+                         and district_alloc.primary_remaining == 0)
+    dist_secondary_full = (district_alloc and district_alloc.secondary_needed > 0
+                           and district_alloc.secondary_remaining == 0)
+
+    results = []
+    for school in qs[:60]:
+        sa = alloc_map.get(school.id)
+        is_pinned     = school.id in pinned_ids
+        cap_full      = school.current_students >= school.capacity
+        deo_full      = bool(sa and sa.quota > 0 and sa.filled >= sa.quota)
+        dist_full     = dist_primary_full if level == 'Primary' else dist_secondary_full
+        selectable    = not is_pinned and not cap_full and not deo_full and not dist_full
+
+        status = ('pinned' if is_pinned
+                  else 'district_full' if dist_full
+                  else 'deo_full'      if deo_full
+                  else 'cap_full'      if cap_full
+                  else 'available')
+
+        results.append({
+            'id':        school.id,
+            'name':      school.name,
+            'level':     school.get_level_display(),
+            'ownership': school.ownership,
+            'selectable': selectable,
+            'status':    status,
+            'deo_quota':    sa.quota    if sa else None,
+            'deo_filled':   sa.filled   if sa else None,
+            'deo_remaining':sa.remaining if sa else None,
+        })
+
+    return JsonResponse({'schools': results, 'total': len(results)})
+
+
+@login_required
 def select_subjects(request, school_id):
     school = get_object_or_404(School, id=school_id)
     subject_capacities = SchoolSubjectCapacity.objects.filter(school=school).select_related('subject')
