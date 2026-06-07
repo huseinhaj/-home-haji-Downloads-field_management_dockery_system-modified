@@ -2419,12 +2419,12 @@ def approve_application(request, application_id):
             application.approved_by = request.user
             application.approval_date = timezone.now()
             application.save()
-            
+
             application.student.subjects.add(application.subject)
-            
+
             try:
                 capacity = SchoolSubjectCapacity.objects.get(
-                    school=application.school, 
+                    school=application.school,
                     subject=application.subject
                 )
                 capacity.current_students = F('current_students') + 1
@@ -2436,8 +2436,35 @@ def approve_application(request, application_id):
                     current_students=1,
                     max_students=5
                 )
-            
-            messages.success(request, f"Application for {application.subject.name} approved successfully!")
+
+            # Auto-send individual letter PDF via email
+            student = application.student
+            email_addr = student.user.email if student.user else None
+            if email_addr:
+                try:
+                    from django.core.mail import EmailMessage as DjangoEmailMessage
+                    pdf_bytes = _build_individual_letter_pdf(student)
+                    fname_safe = student.full_name.replace(' ', '_')
+                    msg = DjangoEmailMessage(
+                        subject='Barua ya Idhini ya Mazoezi ya Kufundisha — IMS',
+                        body=(
+                            f'Ndugu {student.full_name},\n\n'
+                            f'Hongera! Ombi lako la kufanya mazoezi ya kufundisha '
+                            f'katika {application.school.name} limeidhinishwa.\n\n'
+                            f'Tafadhali angalia barua iliyoambatanishwa na uiwasilishe '
+                            f'Halmashauri ya {application.school.district.name} '
+                            f'na Mkuu wa Shule unapofika.\n\n'
+                            f'Unaweza pia kupakua barua wakati wowote kutoka kwenye akaunti yako.\n\n'
+                            f'Mfumo wa IMS'
+                        ),
+                        to=[email_addr],
+                    )
+                    msg.attach(f'Barua_{fname_safe}.pdf', pdf_bytes, 'application/pdf')
+                    msg.send(fail_silently=True)
+                except Exception:
+                    pass
+
+            messages.success(request, f"Maombi ya {application.subject.name} yameidhinishwa. Barua imetumwa kwa {email_addr or '—'}.")
             
         elif action == 'reject':
             application.status = 'rejected'
@@ -3030,24 +3057,19 @@ def approve_student(request, student_id):
 # LETTER DOWNLOAD VIEWS
 # =========================
 
-@login_required
-def download_individual_letter(request):
+def _build_individual_letter_pdf(student):
+    """Returns bytes of the individual approval letter PDF for a student."""
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import cm
     from reportlab.lib import colors
     from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
-                                    TableStyle, HRFlowable, KeepTogether)
+                                    TableStyle, HRFlowable)
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
 
-    student = get_or_create_student_profile(request.user)
     approved_applications = StudentApplication.objects.filter(
         student=student, status='approved'
     ).select_related('subject', 'school')
-
-    if not approved_applications.exists():
-        messages.error(request, "Huna maombi yaliyoidhinishwa.")
-        return redirect('dashboard')
 
     school = student.selected_school
     current_year = _cached_active_year()
@@ -3057,8 +3079,8 @@ def download_individual_letter(request):
     NAVY  = colors.HexColor('#0A2B5E')
     GOLD  = colors.HexColor('#C8900A')
     LIGHT = colors.HexColor('#EEF1F6')
-    BLACK = colors.black
     WHITE = colors.white
+    BLACK = colors.black
 
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
@@ -3066,74 +3088,63 @@ def download_individual_letter(request):
                             topMargin=2*cm, bottomMargin=2.5*cm)
 
     def S(name, **kw):
-        defaults = dict(fontName='Helvetica', fontSize=10, leading=14,
-                        textColor=BLACK, alignment=TA_LEFT)
-        defaults.update(kw)
-        return ParagraphStyle(name, **defaults)
-
-    center_bold  = S('cb', fontName='Helvetica-Bold', alignment=TA_CENTER)
-    center_norm  = S('cn', alignment=TA_CENTER)
-    center_sm    = S('csm', fontSize=8.5, alignment=TA_CENTER, textColor=colors.HexColor('#555'))
-    left_bold    = S('lb', fontName='Helvetica-Bold')
-    left_norm    = S('ln')
-    left_sm      = S('lsm', fontSize=9, leading=13)
-    justify_norm = S('jn', alignment=TA_JUSTIFY, leading=15)
-    right_norm   = S('rn', alignment=TA_RIGHT)
-    subject_s    = S('subj', fontName='Helvetica-Bold', fontSize=10.5,
-                     alignment=TA_CENTER, textColor=NAVY,
-                     borderColor=NAVY, borderWidth=0.5, borderPadding=6)
+        d = dict(fontName='Helvetica', fontSize=10, leading=14,
+                 textColor=BLACK, alignment=TA_LEFT)
+        d.update(kw)
+        return ParagraphStyle(name, **d)
 
     story = []
-
-    # ── Government Header ──
-    story.append(Paragraph('JAMHURI YA MUUNGANO WA TANZANIA', center_bold))
-    story.append(Paragraph('WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA', center_norm))
-    story.append(Paragraph('MFUMO WA USIMAMIZI WA MAZOEZI YA KUFUNDISHA (IMS)', center_sm))
+    story.append(Paragraph('JAMHURI YA MUUNGANO WA TANZANIA', S('cb', fontName='Helvetica-Bold', alignment=TA_CENTER)))
+    story.append(Paragraph('WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA', S('cn', alignment=TA_CENTER)))
+    story.append(Paragraph('MFUMO WA USIMAMIZI WA MAZOEZI YA KUFUNDISHA (IMS)', S('csm', fontSize=8.5, alignment=TA_CENTER, textColor=colors.HexColor('#555'))))
     story.append(Spacer(1, 4))
     story.append(HRFlowable(width='100%', thickness=2.5, color=NAVY))
-    story.append(HRFlowable(width='100%', thickness=1,   color=GOLD, spaceAfter=10))
+    story.append(HRFlowable(width='100%', thickness=1, color=GOLD, spaceAfter=10))
 
-    # ── Ref & Date (right-aligned) ──
-    ref_date_data = [[
-        Paragraph(f'Kumb. Na.: <b>{ref_no}</b>', left_norm),
-        Paragraph(f'Tarehe: <b>{today.strftime("%d %B %Y")}</b>', right_norm),
-    ]]
-    ref_tbl = Table(ref_date_data, colWidths=[8*cm, 8*cm])
+    ref_tbl = Table([[
+        Paragraph(f'Kumb. Na.: <b>{ref_no}</b>', S('ln')),
+        Paragraph(f'Tarehe: <b>{today.strftime("%d %B %Y")}</b>', S('rn', alignment=TA_RIGHT)),
+    ]], colWidths=[8*cm, 8*cm])
     ref_tbl.setStyle(TableStyle([('PADDING', (0,0), (-1,-1), 0)]))
     story.append(ref_tbl)
     story.append(Spacer(1, 12))
 
-    # ── Recipient address ──
     if school:
-        story.append(Paragraph('<b>Mkuu wa Shule,</b>', left_norm))
-        story.append(Paragraph(f'<b>{school.name},</b>', left_norm))
-        story.append(Paragraph(f'Wilaya ya {school.district.name},', left_norm))
-        story.append(Paragraph(f'Mkoa wa {school.district.region.name}.', left_norm))
+        district = school.district
+        story.append(Paragraph('<b>Mkurugenzi wa Halmashauri,</b>', S('ln')))
+        story.append(Paragraph(f'<b>Halmashauri ya {district.name},</b>', S('ln')))
+        story.append(Paragraph(f'Mkoa wa {district.region.name}.', S('ln')))
+        story.append(Spacer(1, 6))
+        story.append(Paragraph('<b>NA:</b>', S('ln')))
+        story.append(Paragraph('<b>Mkuu wa Shule,</b>', S('ln')))
+        story.append(Paragraph(f'<b>{school.name},</b>', S('ln')))
+        story.append(Paragraph(f'Wilaya ya {district.name}.', S('ln')))
     story.append(Spacer(1, 14))
 
-    # ── Subject line ──
     story.append(Paragraph(
         'BARUA YA UTHIBITISHO WA MWANAFUNZI MWALIMU — MAZOEZI YA KUFUNDISHA',
-        subject_s))
+        S('subj', fontName='Helvetica-Bold', fontSize=10.5, alignment=TA_CENTER,
+          textColor=NAVY, borderColor=NAVY, borderWidth=0.5, borderPadding=6)))
     story.append(Spacer(1, 14))
 
-    # ── Greeting ──
-    story.append(Paragraph('Ndugu Mkuu wa Shule,', left_norm))
+    story.append(Paragraph('Ndugu,', S('ln')))
     story.append(Spacer(1, 8))
 
-    # ── Body ──
     yr_str = current_year.year if current_year else str(today.year)
     story.append(Paragraph(
         f'Barua hii inathibitisha kuwa <b>{student.full_name.upper()}</b> '
         f'(Simu: {student.phone_number} | Barua pepe: {student.user.email}) '
-        f'ameidhinishwa kufanya mazoezi ya kufundisha katika shule yako kwa mwaka '
-        f'wa masomo wa <b>{yr_str}</b>.', justify_norm))
+        f'ameidhinishwa rasmi kufanya mazoezi ya kufundisha katika '
+        f'<b>{school.name if school else "—"}</b>, Wilaya ya '
+        f'<b>{school.district.name if school else "—"}</b>, '
+        f'kwa mwaka wa masomo wa <b>{yr_str}</b>.',
+        S('jn', alignment=TA_JUSTIFY, leading=15)))
     story.append(Spacer(1, 8))
     story.append(Paragraph(
-        'Mwanafunzi huyu ameidhinishwa kufundisha masomo yafuatayo:', left_norm))
+        'Mwanafunzi huyu ameidhinishwa kufundisha masomo yafuatayo:',
+        S('ln')))
     story.append(Spacer(1, 8))
 
-    # ── Subjects table ──
     subj_data = [[
         Paragraph('Na.', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE, alignment=TA_CENTER)),
         Paragraph('Somo', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE)),
@@ -3144,8 +3155,8 @@ def download_individual_letter(request):
         approved_date = app.approval_date.strftime('%d/%m/%Y') if app.approval_date else '—'
         subj_data.append([
             Paragraph(str(i), S('c', fontSize=9, alignment=TA_CENTER)),
-            Paragraph(app.subject.name, left_sm),
-            Paragraph(app.school.name, left_sm),
+            Paragraph(app.subject.name, S('lsm', fontSize=9, leading=13)),
+            Paragraph(app.school.name, S('lsm', fontSize=9, leading=13)),
             Paragraph(approved_date, S('c', fontSize=9, alignment=TA_CENTER)),
         ])
     s_tbl = Table(subj_data, colWidths=[1*cm, 5.5*cm, 6*cm, 3.5*cm])
@@ -3155,42 +3166,46 @@ def download_individual_letter(request):
         ('GRID', (0,0), (-1,-1), 0.4, colors.HexColor('#CBD5E0')),
         ('PADDING', (0,0), (-1,-1), 5),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('LINEABOVE', (0,0), (-1,0), 0, WHITE),
     ]))
     story.append(s_tbl)
     story.append(Spacer(1, 12))
 
     story.append(Paragraph(
-        'Omba ushirikiano wako katika kuhakikisha mwanafunzi huyu anapata '
-        'mazingira mazuri ya kufanya mazoezi ya kufundisha.',
-        justify_norm))
-    story.append(Spacer(1, 8))
-    story.append(Paragraph('Asante kwa ushirikiano wako.', left_norm))
+        'Tunaomba ushirikiano wa Halmashauri na Mkuu wa Shule kuhakikisha mwanafunzi '
+        'huyu anapokewa na kupewa mazingira mazuri ya kufanya mazoezi ya kufundisha '
+        'kwa mujibu wa kanuni za Wizara ya Elimu.',
+        S('jn', alignment=TA_JUSTIFY, leading=15)))
     story.append(Spacer(1, 30))
 
-    # ── Signature ──
-    sig_data = [[
-        Paragraph('___________________________', left_norm),
-        Paragraph('___________________________', right_norm),
+    sig_tbl = Table([[
+        Paragraph('___________________________', S('ln')),
+        Paragraph('___________________________', S('rn', alignment=TA_RIGHT)),
     ],[
-        Paragraph('<b>Msimamizi wa Mfumo (IMS)</b>', left_sm),
-        Paragraph('<b>Tarehe ya Kupokea</b>', S('rsm', fontSize=9, alignment=TA_RIGHT)),
-    ]]
-    sig_tbl = Table(sig_data, colWidths=[8*cm, 8*cm])
+        Paragraph('<b>Msimamizi wa Mfumo (IMS)</b>', S('sm', fontSize=9)),
+        Paragraph('<b>Tarehe ya Kupokea / Muhuri wa Halmashauri</b>', S('rsm', fontSize=9, alignment=TA_RIGHT)),
+    ]], colWidths=[8*cm, 8*cm])
     sig_tbl.setStyle(TableStyle([('PADDING', (0,0), (-1,-1), 2)]))
     story.append(sig_tbl)
 
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 16))
     story.append(HRFlowable(width='100%', thickness=0.5, color=colors.HexColor('#CBD5E0')))
     story.append(Paragraph(
-        f'Hati hii imetolewa kwa njia ya mfumo wa IMS tarehe {today.strftime("%d/%m/%Y")}. '
-        f'Kumb. Na.: {ref_no}',
-        S('ft', fontSize=7.5, alignment=TA_CENTER, textColor=colors.HexColor('#999'), spaceAfter=0)))
+        f'Hati hii imetolewa kwa njia ya mfumo wa IMS tarehe {today.strftime("%d/%m/%Y")}. Kumb.: {ref_no}',
+        S('ft', fontSize=7.5, alignment=TA_CENTER, textColor=colors.HexColor('#999'))))
 
     doc.build(story)
-    buf.seek(0)
+    return buf.getvalue()
+
+@login_required
+def download_individual_letter(request):
+    student = get_or_create_student_profile(request.user)
+    if not StudentApplication.objects.filter(student=student, status='approved').exists():
+        messages.error(request, "Huna maombi yaliyoidhinishwa.")
+        return redirect('dashboard')
+
+    pdf_bytes = _build_individual_letter_pdf(student)
     fname_safe = student.full_name.replace(' ', '_')
-    resp = HttpResponse(buf.read(), content_type='application/pdf')
+    resp = HttpResponse(pdf_bytes, content_type='application/pdf')
     resp['Content-Disposition'] = f'inline; filename="Barua_{fname_safe}.pdf"'
     return resp
 
@@ -6325,7 +6340,7 @@ def board_school_list(request, district_id):
     schools_with_students = []
     for school in schools:
         school_students = [item for item in students_data if item['school'].id == school.id]
-        schools_with_students.append({'school': school, 'students': school_students})
+        schools_with_students.append({'school': school, 'students': school_students, '_school_id': school.id})
 
     current_year = _cached_active_year()
     _da_qs = DistrictAllocation.objects.filter(district=district)
@@ -6338,6 +6353,38 @@ def board_school_list(request, district_id):
             sa.school_id: sa
             for sa in SchoolAllocation.objects.filter(district_allocation=district_alloc)
         }
+
+    # Subject fill: approved applications per school per subject name
+    subjects_fill_map = {}  # {school_id: {subject_name_lower: filled_count}}
+    if school_alloc_map:
+        from django.db.models import Count as _Count
+        approved_apps = (
+            StudentApplication.objects
+            .filter(school_id__in=school_alloc_map.keys(), status='approved')
+            .values('school_id', 'subject__name')
+            .annotate(cnt=_Count('id'))
+        )
+        for row in approved_apps:
+            sid = row['school_id']
+            sname = (row['subject__name'] or '').lower()
+            subjects_fill_map.setdefault(sid, {})[sname] = row['cnt']
+
+    # Attach subject breakdown list to each school entry
+    for entry in schools_with_students:
+        sid = entry['_school_id']
+        sa = school_alloc_map.get(sid)
+        subj_list = []
+        if sa and sa.subjects_breakdown:
+            fill_for_school = subjects_fill_map.get(sid, {})
+            for sname, needed in sa.subjects_breakdown.items():
+                filled = fill_for_school.get(sname.lower(), 0)
+                subj_list.append({
+                    'name': sname,
+                    'needed': needed,
+                    'filled': filled,
+                    'full': filled >= needed,
+                })
+        entry['subject_data'] = subj_list
 
     # Maombi ya wakuu wa shule (SchoolHeadRequest) — hizi ndizo zinaundwa na /ombi/ form
     head_req_qs = SchoolHeadRequest.objects.filter(
@@ -6370,6 +6417,7 @@ def board_school_list(request, district_id):
                 'submitted_at': req.submitted_at,
                 'head_name': req.head_name,
                 'has_request': True,
+                'subjects_needed': req.subjects_needed or {},
             })
         elif not req.school_id and req.school_name_submitted not in seen_schools:
             # Ombi bila shule iliyolinganishwa
@@ -7966,6 +8014,28 @@ def school_head_submit(request, district_id):
             students_needed = 0
         notes = request.POST.get('notes', '').strip()
 
+        # Parse subject breakdown rows
+        subjects_needed_json = {}
+        i = 1
+        while True:
+            sname = request.POST.get(f'subject_name_{i}', '').strip()
+            if not sname:
+                break
+            try:
+                scount = max(1, int(request.POST.get(f'subject_count_{i}', 1) or 1))
+            except ValueError:
+                scount = 1
+            subjects_needed_json[sname] = scount
+            i += 1
+        # If no subject rows provided, use the manual total
+        if not subjects_needed_json:
+            try:
+                students_needed = int(request.POST.get('students_needed', 0) or 0)
+            except ValueError:
+                students_needed = 0
+        else:
+            students_needed = sum(subjects_needed_json.values())
+
         if not school_name or not head_name or not level or students_needed < 1:
             messages.error(request, 'Tafadhali jaza sehemu zote zinazohitajika.')
         else:
@@ -7986,6 +8056,7 @@ def school_head_submit(request, district_id):
                 head_phone=head_phone,
                 level=level,
                 students_needed=students_needed,
+                subjects_needed=subjects_needed_json,
                 notes=notes,
             )
             messages.success(request, f'Asante {head_name}! Ombi lako limetumwa kwa DEO wa {district.name}.')
@@ -8049,7 +8120,10 @@ def deo_review_requests(request, district_id):
                         SchoolAllocation.objects.update_or_create(
                             district_allocation=allocation,
                             school=req.school,
-                            defaults={'quota': req.students_needed}
+                            defaults={
+                                'quota': req.students_needed,
+                                'subjects_breakdown': req.subjects_needed or {},
+                            }
                         )
                         school_capacity_map[req.school_id] = req.students_needed
                     req.status = 'applied'

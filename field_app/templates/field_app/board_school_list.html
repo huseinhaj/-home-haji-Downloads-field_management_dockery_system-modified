@@ -109,6 +109,7 @@
         <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:left;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}KIWANGO{% else %}LEVEL{% endif %}</th>
         <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:center;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}WANAOOMBWA{% else %}REQUESTED{% endif %}</th>
         <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:center;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}QUOTA YA DEO{% else %}DEO QUOTA{% endif %}</th>
+        <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:left;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}MASOMO{% else %}SUBJECTS{% endif %}</th>
         <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:left;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}MAELEZO{% else %}NOTES{% endif %}</th>
         <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:center;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}HALI{% else %}STATUS{% endif %}</th>
       </tr>
@@ -132,8 +133,17 @@
           {% if item.quota > 0 %}<strong style="font-size:18px;color:#059669;">{{ item.quota }}</strong>
           {% else %}<span style="color:#9CA3AF;font-size:12px;">—</span>{% endif %}
         </td>
-        <td style="padding:10px 14px;font-size:12px;color:#4A5568;max-width:200px;">
-          {% if item.notes %}{{ item.notes|truncatechars:60 }}{% else %}<span style="color:#9CA3AF;">—</span>{% endif %}
+        <td style="padding:10px 14px;">
+          {% if item.subjects_needed %}
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            {% for sname, cnt in item.subjects_needed.items %}
+            <span style="background:#EEF1F6;border:1px solid #CBD5E0;border-radius:3px;padding:2px 7px;font-size:10.5px;font-weight:600;color:#0A2B5E;white-space:nowrap;">{{ sname }} <strong>{{ cnt }}</strong></span>
+            {% endfor %}
+          </div>
+          {% else %}<span style="color:#9CA3AF;font-size:12px;">—</span>{% endif %}
+        </td>
+        <td style="padding:10px 14px;font-size:12px;color:#4A5568;max-width:180px;">
+          {% if item.notes %}{{ item.notes|truncatechars:50 }}{% else %}<span style="color:#9CA3AF;">—</span>{% endif %}
         </td>
         <td style="padding:10px 14px;text-align:center;">
           {% if item.status == 'applied' %}
@@ -149,7 +159,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="6" style="padding:24px;text-align:center;color:#92400E;background:#FEF3C7;">
+        <td colspan="7" style="padding:24px;text-align:center;color:#92400E;background:#FEF3C7;">
           <i class="fas fa-inbox" style="font-size:20px;display:block;margin-bottom:6px;"></i>
           {% if LANG == 'sw' %}Hakuna maombi bado. Wakuu wakijaza form ya <strong>/ombi/</strong> yataonekana hapa.{% else %}No requests yet. Requests will appear here when school heads submit the /ombi/ form.{% endif %}
         </td>
@@ -221,10 +231,26 @@
 {% with school=entry.school school_items=entry.students %}
 <div class="school-block" data-level="{{ school.level }}">
   <div class="school-block-hd">
-    <div class="s-name">
-      <i class="fas fa-school"></i>
-      {{ school.name }}
-      <span class="badge b-info" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.85);border:none;">{{ school.get_level_display }}</span>
+    <div style="flex:1;">
+      <div class="s-name">
+        <i class="fas fa-school"></i>
+        {{ school.name }}
+        <span class="badge b-info" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.85);border:none;">{{ school.get_level_display }}</span>
+      </div>
+      {% if entry.subject_data %}
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">
+        {% for sd in entry.subject_data %}
+        <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:3px;padding:3px 8px;font-size:10.5px;font-weight:700;color:#fff;">
+          {{ sd.name }}
+          {% if sd.full %}
+          <span style="background:#DC2626;border-radius:2px;padding:1px 5px;font-size:9.5px;letter-spacing:.4px;">FULL</span>
+          {% else %}
+          <span style="background:rgba(200,144,10,.85);border-radius:2px;padding:1px 5px;font-size:9.5px;">{{ sd.filled }}/{{ sd.needed }}</span>
+          {% endif %}
+        </span>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <span class="s-badge">{{ school_items|length }} {% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</span>

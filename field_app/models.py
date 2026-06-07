@@ -1174,6 +1174,8 @@ class SchoolAllocation(models.Model):
     )
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='allocations')
     quota = models.PositiveIntegerField(default=0, help_text="Idadi iliyoidhinishwa na DEO")
+    subjects_breakdown = models.JSONField(default=dict, blank=True,
+        help_text='Mgawanyo wa masomo: {"Kiswahili": 2, "Mathematics": 4}')
     head_teacher_requested = models.PositiveIntegerField(default=0, help_text="Idadi iliyoombwa na Mkuu wa Shule")
     head_teacher_notes = models.TextField(blank=True, help_text="Maelezo ya Mkuu wa Shule")
 
@@ -1232,6 +1234,8 @@ class SchoolHeadRequest(models.Model):
     submitter_email = models.EmailField(blank=True, help_text="Email ya mkuu aliyetuma ombi")
     level = models.CharField(max_length=20, choices=LEVEL_CHOICES)
     students_needed = models.PositiveIntegerField()
+    subjects_needed = models.JSONField(default=dict, blank=True,
+        help_text='Masomo yanayohitajika: {"Kiswahili": 2, "Mathematics": 4}')
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     submitted_at = models.DateTimeField(auto_now_add=True)

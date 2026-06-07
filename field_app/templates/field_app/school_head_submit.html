@@ -40,6 +40,13 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
 .info-box{background:rgba(200,144,10,.08);border:1px solid rgba(200,144,10,.3);border-radius:6px;padding:12px 14px;margin-bottom:20px;font-size:.82rem;color:#78350F;}
 .footer-note{text-align:center;padding:1.5rem;color:var(--muted);font-size:.75rem;}
 @media(max-width:480px){.field-row{grid-template-columns:1fr;}.card-body{padding:16px;}}
+.subj-row{display:grid;grid-template-columns:1fr 80px 32px;gap:8px;align-items:center;margin-bottom:8px;}
+.subj-row input{padding:9px 10px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;font-family:inherit;background:#FAFBFD;outline:none;width:100%;}
+.subj-row input:focus{border-color:var(--navy);}
+.btn-rm{background:#FEE2E2;color:var(--danger);border:1.5px solid #FECACA;border-radius:4px;width:32px;height:34px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;}
+.btn-rm:hover{background:#FCA5A5;}
+.btn-add-subj{background:transparent;color:var(--navy);border:1.5px dashed var(--navy);border-radius:4px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-top:4px;}
+.btn-add-subj:hover{background:rgba(10,43,94,.06);}
 </style>
 </head>
 <body>
@@ -120,10 +127,26 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
                  placeholder="Mfano: 0712345678">
         </div>
 
+        <!-- Subject Breakdown -->
+        <div class="field" style="margin-top:4px;">
+          <label>Masomo Yanayohitajika <span style="font-size:10px;color:var(--muted);text-transform:none;font-weight:500;">(jina la somo + idadi)</span></label>
+          <div style="background:#F7FAFC;border:1.5px solid var(--border);border-radius:5px;padding:14px 12px;">
+            <div style="display:grid;grid-template-columns:1fr 80px 32px;gap:8px;margin-bottom:6px;">
+              <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">Somo</span>
+              <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;text-align:center;">Idadi</span>
+              <span></span>
+            </div>
+            <div id="subjRows"></div>
+            <button type="button" class="btn-add-subj" onclick="addSubjectRow()">
+              <i class="fas fa-plus"></i> Ongeza Somo
+            </button>
+          </div>
+        </div>
+
         <div class="field">
           <label>Maelezo ya Ziada (si lazima)</label>
           <textarea name="notes" class="inp" rows="3"
-                    placeholder="Kama kuna masomo maalumu au mahitaji mengine..."></textarea>
+                    placeholder="Maelezo mengine kama yapo..."></textarea>
         </div>
 
         <button type="submit" class="btn-submit">
@@ -137,5 +160,22 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
   </div>
 </div>
 
+<script>
+let subjCount = 0;
+function addSubjectRow(name, count) {
+  subjCount++;
+  const n = subjCount;
+  const row = document.createElement('div');
+  row.className = 'subj-row';
+  row.id = 'subj-row-' + n;
+  row.innerHTML =
+    '<input type="text" name="subject_name_' + n + '" placeholder="Mfano: Kiswahili" value="' + (name||'') + '" required>' +
+    '<input type="number" name="subject_count_' + n + '" min="1" max="20" placeholder="1" value="' + (count||'') + '" required>' +
+    '<button type="button" class="btn-rm" onclick="document.getElementById(\'subj-row-' + n + '\').remove()"><i class="fas fa-times"></i></button>';
+  document.getElementById('subjRows').appendChild(row);
+}
+// Start with one empty row
+addSubjectRow();
+</script>
 </body>
 </html>
