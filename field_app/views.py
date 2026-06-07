@@ -1789,34 +1789,10 @@ def select_subjects(request, school_id):
                 cap.current_students = F('current_students') + 1
                 cap.save()
 
-            # Send approval letter email
-            email_addr = student.user.email if student.user else None
-            if email_addr:
-                try:
-                    from django.core.mail import EmailMessage as DjangoEmailMessage
-                    pdf_bytes = _build_individual_letter_pdf(student)
-                    fname_safe = student.full_name.replace(' ', '_')
-                    msg = DjangoEmailMessage(
-                        subject='Barua ya Idhini ya Mazoezi ya Kufundisha — IMS',
-                        body=(
-                            f'Ndugu {student.full_name},\n\n'
-                            f'Hongera! Umeidhinishwa kufanya mazoezi ya kufundisha somo la '
-                            f'{subject.name} katika {school.name}.\n\n'
-                            f'Tafadhali angalia barua iliyoambatanishwa na uiwasilishe '
-                            f'Halmashauri ya {school.district.name} na Mkuu wa Shule unapofika.\n\n'
-                            f'Mfumo wa IMS'
-                        ),
-                        to=[email_addr],
-                    )
-                    msg.attach(f'Barua_{fname_safe}.pdf', pdf_bytes, 'application/pdf')
-                    msg.send(fail_silently=True)
-                except Exception:
-                    pass
-
             messages.success(request,
-                f'✅ Umeidhinishwa kwa {subject.name} katika {school.name}! Barua imetumwa kwa barua pepe yako.'
+                f'✅ Umeidhinishwa kwa {subject.name} katika {school.name}! Pakua barua yako hapa chini.'
                 if sw else
-                f'✅ Approved for {subject.name} at {school.name}! Letter sent to your email.'
+                f'✅ Approved for {subject.name} at {school.name}! Download your letter below.'
             )
             return redirect('dashboard')
 
