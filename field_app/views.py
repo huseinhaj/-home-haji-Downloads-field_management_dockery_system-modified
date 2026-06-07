@@ -5874,7 +5874,7 @@ def board_logout(request):
     return redirect('board_login')
 
 
-@login_required
+@board_login_required
 def board_home(request):
     bm = _get_board_member(request)
     if not bm:
@@ -6462,7 +6462,12 @@ def board_head_teacher(request, school_id):
 
     school = get_object_or_404(School, id=school_id)
 
+    # Head teacher: only their own school
     if bm.role == 'head_teacher' and (not bm.school or bm.school_id != school.id):
+        messages.error(request, 'Huna ruhusa ya kuona shule hii.')
+        return redirect('board_home')
+    # DEO: only schools in their district
+    if bm.role == 'deo' and (not bm.district or bm.district_id != school.district_id):
         messages.error(request, 'Huna ruhusa ya kuona shule hii.')
         return redirect('board_home')
 
@@ -6592,6 +6597,13 @@ def board_head_teacher(request, school_id):
     head_requests = SchoolHeadRequest.objects.filter(school=school).order_by('-submitted_at')[:5]
     current_month = today.strftime('%B %Y')
 
+    if bm.role == 'deo' and bm.district:
+        back_url = reverse('board_school_list', args=[bm.district.id])
+    elif bm.role in ('reo', 'chair', 'inspector', 'member'):
+        back_url = reverse('board_school_list', args=[school.district_id])
+    else:
+        back_url = None  # head_teacher has no back — this is their home
+
     return render(request, 'field_app/board_head_teacher.html', {
         'bm': bm,
         'school': school,
@@ -6606,9 +6618,11 @@ def board_head_teacher(request, school_id):
         'today': today,
         'current_month': current_month,
         'can_edit': bm.role in ('head_teacher', 'deo', 'chair'),
+        'back_url': back_url,
     })
 
 
+@board_login_required
 def head_teacher_monthly_report(request, school_id):
     """Ripoti ya mwezi — mkuu wa shule anaweza kuona na kuchapisha."""
     bm = _get_board_member(request)
@@ -6616,7 +6630,12 @@ def head_teacher_monthly_report(request, school_id):
         return redirect('board_login')
 
     school = get_object_or_404(School, id=school_id)
+    # Head teacher: only their own school
     if bm.role == 'head_teacher' and (not bm.school or bm.school_id != school.id):
+        messages.error(request, 'Huna ruhusa ya kuona shule hii.')
+        return redirect('board_home')
+    # DEO: only schools in their district
+    if bm.role == 'deo' and (not bm.district or bm.district_id != school.district_id):
         messages.error(request, 'Huna ruhusa ya kuona shule hii.')
         return redirect('board_home')
 
@@ -6683,6 +6702,13 @@ def head_teacher_monthly_report(request, school_id):
             'comment': comment.comment if comment else '',
         })
 
+    if bm.role == 'head_teacher':
+        back_url = reverse('board_head_teacher', args=[school.id])
+    elif bm.role == 'deo' and bm.district:
+        back_url = reverse('board_school_list', args=[bm.district.id])
+    else:
+        back_url = reverse('board_school_list', args=[school.district_id])
+
     return render(request, 'field_app/head_teacher_monthly_report.html', {
         'bm': bm,
         'school': school,
@@ -6691,6 +6717,7 @@ def head_teacher_monthly_report(request, school_id):
         'today': today,
         'total_students': len(report_data),
         'avg_pct': int(sum(r['progress_pct'] for r in report_data) / max(1, len(report_data))),
+        'back_url': back_url,
     })
 
 

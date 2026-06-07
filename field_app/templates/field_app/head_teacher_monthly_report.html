@@ -67,7 +67,7 @@
 
   <!-- Toolbar -->
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;" class="no-print">
-    <a href="{% url 'board_head_teacher' school.id %}" class="btn-outline">← Rudi</a>
+    <a href="{{ back_url }}" class="btn-outline">← Rudi</a>
     <button onclick="window.print()" class="btn-navy">Chapisha / PDF</button>
     <span style="flex:1;"></span>
     <span style="font-size:11px;color:var(--gray);">{{ month_name }}</span>

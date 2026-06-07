@@ -117,15 +117,30 @@
     {% endfor %}
   {% endif %}
 
+  {% if back_url %}
+  <div style="margin-bottom:12px;">
+    <a href="{{ back_url }}" style="color:var(--navy);font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
+      ← Rudi
+    </a>
+  </div>
+  {% endif %}
+
   <!-- Header -->
   <div class="ht-hdr">
     <div style="flex:1;">
       <div class="ht-hdr-title">{{ school.name }}</div>
-      <div class="ht-hdr-sub">{{ school.district.name }}, {{ school.district.region.name }} &bull; Mkuu: {{ bm.full_name }} &bull; {{ today|date:"d F Y" }}</div>
+      <div class="ht-hdr-sub">
+        {{ school.district.name }}, {{ school.district.region.name }}
+        {% if bm.role == 'head_teacher' %} &bull; Mkuu: {{ bm.full_name }}
+        {% elif bm.role == 'deo' %} &bull; DEO: {{ bm.full_name }}
+        {% elif bm.role == 'reo' %} &bull; REO: {{ bm.full_name }}
+        {% else %} &bull; {{ bm.full_name }}{% endif %}
+        &bull; {{ today|date:"d F Y" }}
+      </div>
     </div>
     <div class="ht-hdr-actions">
       <a href="{% url 'head_teacher_monthly_report' school.id %}" class="btn-gold">Ripoti ya Mwezi</a>
-      <a href="{% url 'public_school_head_form' %}" target="_blank" class="btn-navy">Tuma Ombi</a>
+      {% if bm.role == 'head_teacher' %}<a href="{% url 'public_school_head_form' %}" target="_blank" class="btn-navy">Tuma Ombi</a>{% endif %}
       <a href="{% url 'board_logout' %}" style="color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;margin-left:8px;">Toka</a>
     </div>
   </div>
