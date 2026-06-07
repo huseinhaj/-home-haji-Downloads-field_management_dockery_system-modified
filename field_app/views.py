@@ -6354,37 +6354,58 @@ def board_school_list(request, district_id):
             for sa in SchoolAllocation.objects.filter(district_allocation=district_alloc)
         }
 
-    # Subject fill: approved applications per school per subject name
-    subjects_fill_map = {}  # {school_id: {subject_name_lower: filled_count}}
-    if school_alloc_map:
-        from django.db.models import Count as _Count
-        approved_apps = (
-            StudentApplication.objects
-            .filter(school_id__in=school_alloc_map.keys(), status='approved')
-            .values('school_id', 'subject__name')
-            .annotate(cnt=_Count('id'))
-        )
-        for row in approved_apps:
-            sid = row['school_id']
-            sname = (row['subject__name'] or '').lower()
-            subjects_fill_map.setdefault(sid, {})[sname] = row['cnt']
+    # Build subject data from SchoolSubjectCapacity (source of truth after DEO applies)
+    # Covers all schools in the district that have capacities set
+    all_school_ids_in_district = set(
+        School.objects.filter(district=district).values_list('id', flat=True)
+    )
+    school_subject_caps = {}  # {school_id: [SchoolSubjectCapacity, ...]}
+    for cap in SchoolSubjectCapacity.objects.filter(
+        school__district=district
+    ).select_related('subject'):
+        school_subject_caps.setdefault(cap.school_id, []).append(cap)
 
-    # Attach subject breakdown list to each school entry
+    # Approved applications per school per subject_id for fill count
+    from django.db.models import Count as _Count
+    approved_apps_qs = (
+        StudentApplication.objects
+        .filter(school__district=district, status='approved')
+        .values('school_id', 'subject_id')
+        .annotate(cnt=_Count('id'))
+    )
+    fill_map = {}  # {(school_id, subject_id): filled_count}
+    for row in approved_apps_qs:
+        fill_map[(row['school_id'], row['subject_id'])] = row['cnt']
+
+    # Attach subject_data to each school entry using SchoolSubjectCapacity
     for entry in schools_with_students:
         sid = entry['_school_id']
-        sa = school_alloc_map.get(sid)
+        caps = school_subject_caps.get(sid, [])
         subj_list = []
-        if sa and sa.subjects_breakdown:
-            fill_for_school = subjects_fill_map.get(sid, {})
-            for sname, needed in sa.subjects_breakdown.items():
-                filled = fill_for_school.get(sname.lower(), 0)
-                subj_list.append({
-                    'name': sname,
-                    'needed': needed,
-                    'filled': filled,
-                    'full': filled >= needed,
-                })
+        for cap in caps:
+            filled = fill_map.get((sid, cap.subject_id), 0)
+            subj_list.append({
+                'name': cap.subject.name,
+                'needed': cap.max_students,
+                'filled': filled,
+                'full': filled >= cap.max_students,
+            })
         entry['subject_data'] = subj_list
+
+    # Also build subject_data for schools that have capacities but no students yet
+    # (so they show up in schools_alloc_list with correct data)
+    alloc_school_subject_data = {}  # {school_id: subj_list}
+    for sid, caps in school_subject_caps.items():
+        subj_list = []
+        for cap in caps:
+            filled = fill_map.get((sid, cap.subject_id), 0)
+            subj_list.append({
+                'name': cap.subject.name,
+                'needed': cap.max_students,
+                'filled': filled,
+                'full': filled >= cap.max_students,
+            })
+        alloc_school_subject_data[sid] = subj_list
 
     # Maombi ya wakuu wa shule (SchoolHeadRequest) — hizi ndizo zinaundwa na /ombi/ form
     head_req_qs = SchoolHeadRequest.objects.filter(
@@ -6418,6 +6439,7 @@ def board_school_list(request, district_id):
                 'head_name': req.head_name,
                 'has_request': True,
                 'subjects_needed': req.subjects_needed or {},
+                'subject_data': alloc_school_subject_data.get(req.school_id, []),
             })
         elif not req.school_id and req.school_name_submitted not in seen_schools:
             # Ombi bila shule iliyolinganishwa
@@ -8115,6 +8137,9 @@ def deo_review_requests(request, district_id):
                     id__in=selected_ids, district=district
                 ).select_related('school'))
 
+                # Pre-load all Subject objects for name matching (case-insensitive)
+                all_subjects = {s.name.lower(): s for s in Subject.objects.all()}
+
                 for req in reqs:
                     if req.school:
                         SchoolAllocation.objects.update_or_create(
@@ -8126,6 +8151,18 @@ def deo_review_requests(request, district_id):
                             }
                         )
                         school_capacity_map[req.school_id] = req.students_needed
+
+                        # Sasisha SchoolSubjectCapacity kwa kila somo kutoka request
+                        if req.subjects_needed:
+                            for sname, scount in req.subjects_needed.items():
+                                subj_obj = all_subjects.get(sname.lower())
+                                if subj_obj:
+                                    SchoolSubjectCapacity.objects.update_or_create(
+                                        school=req.school,
+                                        subject=subj_obj,
+                                        defaults={'max_students': scount},
+                                    )
+
                     req.status = 'applied'
                     req.reviewed_by = bm
                     req.reviewed_at = timezone.now()

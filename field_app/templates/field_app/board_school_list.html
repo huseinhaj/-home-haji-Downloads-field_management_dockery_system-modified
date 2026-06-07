@@ -134,7 +134,20 @@
           {% else %}<span style="color:#9CA3AF;font-size:12px;">—</span>{% endif %}
         </td>
         <td style="padding:10px 14px;">
-          {% if item.subjects_needed %}
+          {% if item.subject_data %}
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            {% for sd in item.subject_data %}
+            <span style="display:inline-flex;align-items:center;gap:4px;background:#EEF1F6;border:1px solid #CBD5E0;border-radius:3px;padding:2px 8px;font-size:10.5px;font-weight:600;color:#0A2B5E;white-space:nowrap;">
+              {{ sd.name }}
+              {% if sd.full %}
+              <span style="background:#DC2626;color:#fff;border-radius:2px;padding:0px 4px;font-size:9px;letter-spacing:.3px;">FULL</span>
+              {% else %}
+              <span style="background:#C8900A;color:#fff;border-radius:2px;padding:0px 4px;font-size:9px;">{{ sd.filled }}/{{ sd.needed }}</span>
+              {% endif %}
+            </span>
+            {% endfor %}
+          </div>
+          {% elif item.subjects_needed %}
           <div style="display:flex;flex-wrap:wrap;gap:4px;">
             {% for sname, cnt in item.subjects_needed.items %}
             <span style="background:#EEF1F6;border:1px solid #CBD5E0;border-radius:3px;padding:2px 7px;font-size:10.5px;font-weight:600;color:#0A2B5E;white-space:nowrap;">{{ sname }} <strong>{{ cnt }}</strong></span>
