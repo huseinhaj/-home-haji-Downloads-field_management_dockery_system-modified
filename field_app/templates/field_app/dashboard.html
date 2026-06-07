@@ -294,9 +294,30 @@ body {
 .tz-gradient-text { color: var(--bold); font-weight: 800; }
 .tz-badge { background: var(--bold); color: var(--white); font-weight: 700; font-size: 0.72rem; border-radius: 3px; letter-spacing: .2px; }
 
-/* ── GROUP LETTER ──────────────────────────────────────────────────────────── */
-.group-letter-ready  { background: rgba(200,144,10,.06); border: 2px solid var(--medium); border-radius: var(--radius); }
-.group-letter-waiting { background: var(--white); border: 1px solid var(--border-s); border-radius: var(--radius); }
+/* ── PLACEMENT CARD ─────────────────────────────────────────────────────────── */
+.placement-card {
+    background: linear-gradient(135deg,var(--bold-deep),#0d3575);
+    border-radius: var(--radius); border-left: 5px solid var(--medium);
+    padding: 18px 20px; color: var(--white); position: relative; overflow: hidden;
+}
+.placement-card::after {
+    content: '\f19d'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    font-size: 56px; color: rgba(255,255,255,.07); pointer-events: none;
+}
+.pc-label { font-size: 9.5px; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: 1.8px; font-weight: 600; margin-bottom: 3px; }
+.pc-value { font-size: 16px; font-weight: 800; margin-bottom: 2px; }
+.pc-sub   { font-size: 11.5px; color: rgba(255,255,255,.6); }
+
+/* ── DOWNLOAD LETTER BUTTON ─────────────────────────────────────────────────── */
+.dl-btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 14px 24px; background: var(--medium); color: var(--white);
+    border: none; border-radius: var(--radius); font-size: 14px; font-weight: 800;
+    text-decoration: none; text-transform: uppercase; letter-spacing: .5px;
+    transition: background .13s, box-shadow .13s; width: 100%;
+}
+.dl-btn:hover { background: var(--medium-dk); color: var(--white); box-shadow: 0 4px 16px rgba(200,144,10,.35); }
 
 /* ── QUICK ACTIONS ─────────────────────────────────────────────────────────── */
 .qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -533,26 +554,22 @@ body {
         <!-- STATS -->
         <div class="row g-3 mb-3">
           <div class="col-6 col-md-3">
-            <div class="stat-tz p-3">
-              <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">{{ applications|length }}</div>
-              <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
-                <i class="fas fa-file-alt me-1" style="color:var(--medium);"></i>{% if LANG == 'sw' %}Maombi{% else %}Applications{% endif %}
-              </div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
             <div class="stat-tz p-3" style="border-left-color:var(--success);">
               <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">{{ approved_applications_count }}</div>
               <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
-                <i class="fas fa-check-circle me-1" style="color:var(--success);"></i>{% if LANG == 'sw' %}Zilizoidhinishwa{% else %}Approved{% endif %}
+                <i class="fas fa-check-circle me-1" style="color:var(--success);"></i>{% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}
               </div>
             </div>
           </div>
           <div class="col-6 col-md-3">
-            <div class="stat-tz p-3" style="border-left-color:var(--warning);">
-              <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">{{ pending_applications_count }}</div>
+            <div class="stat-tz p-3" style="border-left-color:var(--medium);">
+              {% if approved_app %}
+              <div style="font-size:14px;font-weight:800;color:var(--bold);line-height:1.2;">{{ approved_app.subject.name }}</div>
+              {% else %}
+              <div style="font-size:22px;font-weight:800;color:var(--bold);line-height:1;">—</div>
+              {% endif %}
               <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
-                <i class="fas fa-clock me-1" style="color:var(--warning);"></i>{% if LANG == 'sw' %}Zinasubiri{% else %}Pending{% endif %}
+                <i class="fas fa-book me-1" style="color:var(--medium);"></i>{% if LANG == 'sw' %}Somo Lako{% else %}Your Subject{% endif %}
               </div>
             </div>
           </div>
@@ -560,7 +577,17 @@ body {
             <div class="stat-tz p-3" style="border-left-color:#2563EB;">
               <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">{{ logbook_entries|length }}</div>
               <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
-                <i class="fas fa-book me-1" style="color:#2563EB;"></i>{% if LANG == 'sw' %}Logbook{% else %}Logbook{% endif %}
+                <i class="fas fa-book-open me-1" style="color:#2563EB;"></i>{% if LANG == 'sw' %}Logbook{% else %}Logbook{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-tz p-3" style="border-left-color:{% if change_days_remaining > 0 %}var(--warning){% else %}#9CA3AF{% endif %};">
+              <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">
+                {% if has_approved_applications %}{{ change_days_remaining }}{% else %}—{% endif %}
+              </div>
+              <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
+                <i class="fas fa-exchange-alt me-1" style="color:{% if change_days_remaining > 0 %}var(--warning){% else %}#9CA3AF{% endif %};"></i>{% if LANG == 'sw' %}Siku za Kubadili{% else %}Change Days{% endif %}
               </div>
             </div>
           </div>
@@ -570,105 +597,46 @@ body {
         <div class="row g-3">
             <!-- Left Column - Applications & Downloads -->
             <div class="col-lg-8">
-                <!-- Applications Section -->
+                <!-- Placement Card -->
+                {% if approved_app %}
+                <div class="placement-card mb-3">
+                    <div style="flex:1;min-width:0;">
+                        <div class="pc-label">{% if LANG == 'sw' %}Mpangilio Wako wa Mafunzo{% else %}Your Teaching Placement{% endif %}</div>
+                        <div class="pc-value">{{ approved_app.subject.name }}</div>
+                        <div class="pc-sub"><i class="fas fa-school" style="margin-right:5px;color:rgba(200,144,10,.8);"></i>{{ approved_app.school.name }}</div>
+                        <div class="pc-sub" style="margin-top:2px;"><i class="fas fa-map-marker-alt" style="margin-right:5px;color:rgba(200,144,10,.6);"></i>{{ approved_app.school.district.name }}, {{ approved_app.school.district.region.name }}</div>
+                        <div style="margin-top:10px;">
+                            <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(14,162,113,.22);color:#6EE7B7;border:1px solid rgba(14,162,113,.35);border-radius:3px;padding:3px 10px;font-size:11px;font-weight:700;">
+                                <i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}IMEIDHINISHWA{% else %}APPROVED{% endif %}
+                            </span>
+                            {% if approved_app.approval_date %}
+                            <span style="font-size:11px;color:rgba(255,255,255,.45);margin-left:8px;">{{ approved_app.approval_date|date:"d M Y" }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <!-- Download Letter -->
                 <div class="premium-card p-3 mb-3">
-                    <div class="sec-hd">
-                        <h3><i class="fas fa-tasks"></i>{% if LANG == 'sw' %}Maombi Yangu ya Masomo{% else %}My Subject Applications{% endif %}</h3>
-                        <span class="sec-badge">{{ applications|length }}</span>
-                    </div>
-
-                    {% if applications %}
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle">
-                            <thead style="background: var(--light);">
-                                <tr>
-                                    <th class="border-0 small-text" style="color: var(--text-gray);">Subject</th>
-                                    <th class="border-0 small-text" style="color: var(--text-gray);">School</th>
-                                    <th class="border-0 small-text" style="color: var(--text-gray);">Status</th>
-                                    <th class="border-0 small-text" style="color: var(--text-gray);">Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for application in applications %}
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="tz-icon p-1 me-2 d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">
-                                                <i class="fas fa-book small-text"></i>
-                                            </div>
-                                            <div>
-                                                <strong class="normal-text" style="color: var(--text-dark);">{{ application.subject.name }}</strong>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="small-text" style="color: var(--text-gray);">{{ application.school.name }}</td>
-                                    <td>
-                                        {% if application.status == 'approved' %}
-                                            <span class="badge px-2 py-1 small-text" style="background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success);">
-                                                <span class="status-dot-tz status-approved-tz"></span>
-                                                {% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}
-                                            </span>
-                                        {% elif application.status == 'rejected' %}
-                                            <span class="badge px-2 py-1 small-text" style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger);">
-                                                <span class="status-dot-tz status-rejected-tz"></span>
-                                                {% if LANG == 'sw' %}Imekataliwa{% else %}Rejected{% endif %}
-                                            </span>
-                                        {% else %}
-                                            <span class="badge px-2 py-1 small-text" style="background: rgba(200, 144, 10, 0.1); color: var(--medium); border: 1px solid var(--medium);">
-                                                <span class="status-dot-tz status-pending-tz"></span>
-                                                {% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}
-                                            </span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="small-text" style="color: var(--text-gray);">{{ application.application_date|date:"d/m/Y" }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-4">
-                        <div class="tz-icon p-3 mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                            <i class="fas fa-inbox"></i>
-                        </div>
-                        <h5 class="mb-2 normal-text" style="color: var(--text-dark);">No Applications Yet</h5>
-                        <p class="mb-3 small-text" style="color: var(--text-gray);">Start your teaching journey by submitting subject applications</p>
-                        <a href="{% url 'select_region' %}" class="tz-btn px-4 py-2 normal-text">
-                            <i class="fas fa-plus me-2"></i>Submit Application
-                        </a>
-                    </div>
-                    {% endif %}
+                    <div class="sec-hd mb-3"><h3><i class="fas fa-file-pdf"></i>{% if LANG == 'sw' %}Barua ya Uthibitisho{% else %}Confirmation Letter{% endif %}</h3></div>
+                    <p class="small-text mb-3" style="color:var(--text-gray);">{% if LANG == 'sw' %}Barua yako ya kibinafsi ya uthibitisho wa mafunzo ya vitendo. Pakua na uilete shuleni.{% else %}Your personal teaching practice confirmation letter. Download and present it to the school.{% endif %}</p>
+                    <a href="{% url 'download_individual_letter' %}" class="dl-btn">
+                        <i class="fas fa-download"></i>{% if LANG == 'sw' %}PAKUA BARUA YANGU{% else %}DOWNLOAD MY LETTER{% endif %}
+                    </a>
                 </div>
 
-                <!-- Download Section -->
-                <div class="premium-card p-3">
-                    <div class="sec-hd mb-3"><h3><i class="fas fa-download"></i>{% if LANG == 'sw' %}Pakua Barua za Uthibitisho{% else %}Download Confirmation Letters{% endif %}</h3></div>
-                    <div class="row g-3">
-                        <!-- Individual Letter -->
-                        <div class="col-md-6">
-                            <div class="premium-card p-3 h-100 text-center">
-                                <div class="tz-icon p-3 mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                                    <i class="fas fa-user-tie"></i>
-                                </div>
-                                <h6 class="card-title mb-2" style="color: var(--text-dark);">Individual Letter</h6>
-                                <p class="small-text mb-3" style="color: var(--text-gray);">
-                                    Your personal teaching practice confirmation letter
-                                </p>
-                                {% if has_approved_applications %}
-                                <a href="{% url 'download_individual_letter' %}" class="tz-btn w-100 py-2 small-text">
-                                    <i class="fas fa-download me-2"></i>Download Now
-                                </a>
-                                {% else %}
-                                <button class="btn w-100 py-2 small-text" disabled style="background: var(--light); color: var(--text-gray); border: 1px solid var(--border);">
-                                    <i class="fas fa-clock me-2"></i>Unavailable
-                                </button>
-                                <small class="mt-1 small-text" style="color: var(--text-gray);">Requires approved applications</small>
-                                {% endif %}
-                            </div>
-                        </div>
-
+                {% else %}
+                <!-- No placement yet -->
+                <div class="premium-card p-3 mb-3 text-center" style="border:2px dashed var(--border);box-shadow:none;">
+                    <div class="tz-icon p-3 mx-auto mb-3 d-flex align-items-center justify-content-center" style="width:64px;height:64px;">
+                        <i class="fas fa-school" style="font-size:24px;"></i>
                     </div>
+                    <h5 class="mb-2 normal-text" style="color:var(--text-dark);">{% if LANG == 'sw' %}Bado Hujapangwa{% else %}No Placement Yet{% endif %}</h5>
+                    <p class="mb-3 small-text" style="color:var(--text-gray);">{% if LANG == 'sw' %}Chagua mkoa, wilaya, na shule kisha chagua somo lako{% else %}Select a region, district and school then pick your subject{% endif %}</p>
+                    <a href="{% url 'select_region' %}" class="tz-btn px-4 py-2 normal-text" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
+                        <i class="fas fa-map-marker-alt"></i>{% if LANG == 'sw' %}Chagua Shule Sasa{% else %}Choose School Now{% endif %}
+                    </a>
                 </div>
+                {% endif %}
             </div>
 
             <!-- Right Column - School Info & Quick Actions -->

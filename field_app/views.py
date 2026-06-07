@@ -1102,7 +1102,7 @@ def dashboard(request):
         has_approved_applications = approved_applications_count > 0
 
         # Change school window: 7 days from approval_date of approved application
-        approved_app = applications.filter(status='approved').first()
+        approved_app = applications.filter(status='approved').select_related('subject').first()
         if approved_app and approved_app.approval_date:
             days_since = (timezone.now() - approved_app.approval_date).days
             can_change_school_now = days_since <= 7
@@ -1163,6 +1163,8 @@ def dashboard(request):
     except Exception:
         pass
 
+    approved_app_ctx = applications.filter(status='approved').select_related('subject', 'school__district__region').first() if student else None
+
     return render(request, 'field_app/dashboard.html', {
         'regions': pinned_regions,
         'current_year': current_year,
@@ -1171,6 +1173,7 @@ def dashboard(request):
         'approved_applications_count': approved_applications_count,
         'pending_applications_count': pending_applications_count,
         'has_approved_applications': has_approved_applications,
+        'approved_app': approved_app_ctx,
         'can_change_school_now': can_change_school_now,
         'change_days_remaining': change_days_remaining,
         'change_deadline': change_deadline,
