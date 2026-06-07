@@ -4050,23 +4050,26 @@ def api_confirm_change_school(request):
     if not student.selected_school:
         return JsonResponse({'error': 'No school selected'}, status=400)
 
-    # Block if student has an approved application — placement is confirmed
-    if StudentApplication.objects.filter(student=student, status='approved').exists():
-        return JsonResponse({
-            'error': 'Huwezi kubadili shule. Ombi lako limeshaidhinishwa. Wasiliana na msimamizi.'
-        }, status=403)
+    CAN_CHANGE_DAYS = 7
+    approved_app = StudentApplication.objects.filter(
+        student=student, status='approved'
+    ).select_related('subject', 'school').first()
 
-    if not student.initial_school_selection_date:
-        student.initial_school_selection_date = timezone.now()
-        student.save()
-        invalidate_student_cache(student)
-
-    days_passed = (timezone.now() - student.initial_school_selection_date).days
-    if days_passed > 7:
-        return JsonResponse({'error': 'Change window expired (only 7 days)'}, status=400)
-
-    if student.school_change_count >= 3:
-        return JsonResponse({'error': 'Maximum 3 changes allowed'}, status=400)
+    if approved_app and approved_app.approval_date:
+        days_passed = (timezone.now() - approved_app.approval_date).days
+        if days_passed > CAN_CHANGE_DAYS:
+            return JsonResponse({
+                'error': f'Muda wa kubadili shule umekwisha. Ungeweza kubadili ndani ya siku {CAN_CHANGE_DAYS} baada ya kuidhinishwa.'
+            }, status=403)
+    else:
+        # No approved app — use initial selection date window
+        if not student.initial_school_selection_date:
+            student.initial_school_selection_date = timezone.now()
+            student.save()
+            invalidate_student_cache(student)
+        days_passed = (timezone.now() - student.initial_school_selection_date).days
+        if days_passed > CAN_CHANGE_DAYS:
+            return JsonResponse({'error': f'Muda wa kubadili shule umekwisha (siku {CAN_CHANGE_DAYS} tu).'}, status=400)
     
     try:
         new_school = School.objects.get(id=new_school_id)
@@ -4087,42 +4090,44 @@ def api_confirm_change_school(request):
         if is_pinned:
             return JsonResponse({'error': f'Shule {new_school.name} haipatikani'}, status=400)
         
-        # ========== SIMPLE DATABASE UPDATE ==========
-        old_school.current_students = max(0, old_school.current_students - 1)
-        old_school.save()
+        from django.db import transaction
+        with transaction.atomic():
+            # If student had an approved application, remove it and release capacity
+            if approved_app:
+                if approved_app.subject:
+                    SchoolSubjectCapacity.objects.filter(
+                        school=old_school, subject=approved_app.subject
+                    ).update(current_students=Greatest(F('current_students') - 1, 0))
+                approved_app.delete()
+                student.subjects.clear()
 
-        new_school.current_students += 1
-        new_school.save()
-        
-        # Update student
-        student.selected_school = new_school
-        student.school_change_count += 1
-        student.last_school_change_date = timezone.now()
-        student.save()
-        invalidate_student_cache(student)
-        
-        # Delete pending applications for old school
-        StudentApplication.objects.filter(
-            student=student,
-            school=old_school,
-            status='pending'
-        ).delete()
-        
+            # Decrement old school, increment new school
+            School.objects.filter(id=old_school.id).update(
+                current_students=Greatest(F('current_students') - 1, 0)
+            )
+            School.objects.filter(id=new_school.id).update(
+                current_students=F('current_students') + 1
+            )
+
+            # Delete any remaining pending applications for old school
+            StudentApplication.objects.filter(
+                student=student, school=old_school, status='pending'
+            ).delete()
+
+            # Update student
+            student.selected_school = new_school
+            student.school_change_count = F('school_change_count') + 1
+            student.last_school_change_date = timezone.now()
+            student.save()
+            invalidate_student_cache(student)
+
         print(f"✅ SUCCESS: {student.full_name} changed from {old_school.name} to {new_school.name}")
-        
+
+        redirect_url = f'/select-subjects/{new_school.id}/' if approved_app else '/dashboard/'
         return JsonResponse({
             'success': True,
-            'message': f'Successfully changed to {new_school.name}',
-            'new_school': {
-                'id': new_school.id,
-                'name': new_school.name,
-                'district': new_school.district.name,
-                'region': new_school.district.region.name,
-                'current_students': new_school.current_students,
-                'capacity': new_school.capacity,
-            },
-            'remaining_changes': 3 - student.school_change_count,
-            'remaining_days': max(0, 7 - days_passed),
+            'message': f'Umebadilishwa hadi {new_school.name}. Chagua masomo mapya.',
+            'redirect_url': redirect_url,
         })
         
     except School.DoesNotExist:
@@ -6416,6 +6421,10 @@ def board_school_list(request, district_id):
                 'has_request': True,
             })
 
+    pending_req_count  = head_req_qs.filter(status='pending').count()
+    applied_req_count  = head_req_qs.filter(status='applied').count()
+    rejected_req_count = head_req_qs.filter(status='rejected').count()
+
     return render(request, 'field_app/board_school_list.html', {
         'bm': bm,
         'district': district,
@@ -6427,6 +6436,10 @@ def board_school_list(request, district_id):
         'district_alloc': district_alloc,
         'school_alloc_map': school_alloc_map,
         'schools_alloc_list': schools_alloc_list,
+        'pending_req_count': pending_req_count,
+        'applied_req_count': applied_req_count,
+        'rejected_req_count': rejected_req_count,
+        'current_year': current_year,
     })
 
 
@@ -8292,6 +8305,7 @@ def deo_review_requests(request, district_id):
     primary_applied = sum(r.students_needed for r in applied_list if r.level == 'Primary')
     secondary_applied = sum(r.students_needed for r in applied_list if r.level == 'Secondary')
 
+    total_rejected = rejected_list.count()
     return render(request, 'field_app/deo_review_requests.html', {
         'bm': bm,
         'district': district,
@@ -8302,6 +8316,7 @@ def deo_review_requests(request, district_id):
         'current_year': current_year,
         'total_pending': pending.count(),
         'total_applied': applied_list.count(),
+        'total_rejected': total_rejected,
         'primary_pending': primary_pending,
         'secondary_pending': secondary_pending,
         'primary_applied': primary_applied,

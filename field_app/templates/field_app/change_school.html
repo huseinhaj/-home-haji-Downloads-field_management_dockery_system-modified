@@ -204,18 +204,12 @@
                     {% if can_change %}
                     <div class="alert-success-custom mt-3 p-3">
                         <strong>✅ {% if LANG == 'sw' %}Unaweza Kubadili Shule!{% else %}You Can Change School!{% endif %}</strong><br>
-                        <span>{% if LANG == 'sw' %}Siku zilizosalia: {{ remaining_days }} | Nafasi zilizosalia: {{ remaining_changes }}{% else %}Days remaining: {{ remaining_days }} | Changes remaining: {{ remaining_changes }}{% endif %}</span>
+                        <span>{% if LANG == 'sw' %}Siku zilizosalia: {{ remaining_days }}{% else %}Days remaining: {{ remaining_days }}{% endif %}</span>
                     </div>
                     {% else %}
                     <div class="alert-danger-custom mt-3 p-3">
                         <strong>❌ {% if LANG == 'sw' %}HUWEZI KUBADILI SHULE!{% else %}YOU CANNOT CHANGE SCHOOL!{% endif %}</strong><br>
-                        {% if cant_change_reason == 'approved' %}
-                            {% if LANG == 'sw' %}Ombi lako limeshaidhinishwa. Huwezi kubadili shule baada ya kupata idhini.{% else %}Your application has been approved. You cannot change school after approval.{% endif %}
-                        {% elif cant_change_reason == 'expired' %}
-                            {% if LANG == 'sw' %}Muda wako wa wiki moja umeisha.{% else %}Your one-week change period has expired.{% endif %}
-                        {% elif cant_change_reason == 'limit' %}
-                            {% if LANG == 'sw' %}Umefika kikomo cha mabadiliko 3.{% else %}You have reached the maximum of 3 changes.{% endif %}
-                        {% endif %}
+                        {% if LANG == 'sw' %}Muda wa siku 7 baada ya kuidhinishwa umekwisha. Huwezi kubadili shule tena.{% else %}The 7-day window after approval has expired. You can no longer change school.{% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -550,7 +544,7 @@
             
             if (data.success) {
                 alert(data.message);
-                window.location.href = '/dashboard/';
+                window.location.href = data.redirect_url || '/dashboard/';
             } else {
                 alert(data.error || '{% if LANG == "sw" %}Hitilafu imetokea{% else %}An error occurred{% endif %}');
                 this.disabled = false;

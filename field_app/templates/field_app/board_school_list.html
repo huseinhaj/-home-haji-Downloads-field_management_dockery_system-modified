@@ -46,158 +46,247 @@
 </style>
 {% endblock %}
 
-{% block content %}
-<div class="page-hd">
+<!-- DEO HEADER BANNER -->
+<div style="background:linear-gradient(135deg,#0A2B5E 0%,#0d3575 100%);border-bottom:4px solid #C8900A;border-radius:10px;padding:18px 22px;margin-bottom:18px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;">
   <div>
-    <h1><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule — {{ district.name }}{% else %}Schools — {{ district.name }}{% endif %}</h1>
-    <p>{% if LANG == 'sw' %}Orodha ya walimu wanafunzi katika wilaya hii{% else %}List of student teachers in this district{% endif %}</p>
+    <div style="color:rgba(255,255,255,.6);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;">
+      <i class="fas fa-map-marker-alt me-1" style="color:#C8900A;"></i>
+      {% if LANG == 'sw' %}Dashibodi ya DEO{% else %}DEO Dashboard{% endif %} — {{ district.name }}
+      {% if current_year %}&nbsp;·&nbsp;<i class="fas fa-calendar me-1"></i>{{ current_year.year }}{% endif %}
+    </div>
+    <h1 style="color:#fff;font-size:1.3rem;font-weight:800;margin:0 0 10px;">
+      <i class="fas fa-users-cog me-2" style="color:#C8900A;"></i>{{ district.name }}
+    </h1>
+    <!-- Quick stats inline -->
+    <div style="display:flex;flex-wrap:wrap;gap:16px;">
+      <span style="color:rgba(255,255,255,.85);font-size:.82rem;"><i class="fas fa-school me-1" style="color:#C8900A;"></i><strong>{{ schools|length }}</strong> {% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}</span>
+      <span style="color:rgba(255,255,255,.85);font-size:.82rem;"><i class="fas fa-user-graduate me-1" style="color:#C8900A;"></i><strong>{{ students_data|length }}</strong> {% if LANG == 'sw' %}Walimu Wanafunzi{% else %}Student Teachers{% endif %}</span>
+      {% if inactive_count %}<span style="color:#FCA5A5;font-size:.82rem;"><i class="fas fa-exclamation-triangle me-1"></i><strong>{{ inactive_count }}</strong> {% if LANG == 'sw' %}Hawafanyi Kazi{% else %}Inactive{% endif %}</span>{% endif %}
+    </div>
   </div>
-  <div class="page-hd-right" style="display:flex;gap:8px;flex-wrap:wrap;">
-    {% if bm.role == 'deo' and bm.district.id == district.id or bm.role == 'chair' %}
-    <a href="{% url 'deo_district_allocation' district.id %}" class="btn btn-sm" style="background:#C8900A;color:#fff;border:none;font-weight:700;">
-      <i class="fas fa-users-cog me-1"></i>{% if LANG == 'sw' %}Mahitaji{% else %}Quota{% endif %}
+  <!-- Quick action buttons -->
+  <div style="display:flex;flex-direction:column;gap:7px;align-items:flex-end;">
+    <a href="{% url 'deo_review_requests' district.id %}" style="background:#C8900A;color:#fff;padding:9px 18px;border-radius:6px;font-size:.8rem;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;letter-spacing:.3px;position:relative;">
+      <i class="fas fa-inbox"></i>{% if LANG == 'sw' %}SIMAMIA MAOMBI{% else %}MANAGE REQUESTS{% endif %}
+      {% if pending_req_count %}<span style="background:#DC2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:.68rem;font-weight:800;margin-left:2px;">{{ pending_req_count }}</span>{% endif %}
     </a>
-    <a href="{% url 'deo_review_requests' district.id %}" class="btn btn-sm" style="background:#0A2B5E;color:#fff;border:none;font-weight:700;">
-      <i class="fas fa-inbox me-1"></i>{% if LANG == 'sw' %}Maombi{% else %}Requests{% endif %}
+    <a href="{% url 'deo_district_allocation' district.id %}" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:8px 16px;border-radius:6px;font-size:.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;">
+      <i class="fas fa-sliders-h"></i>{% if LANG == 'sw' %}Quota ya Wilaya{% else %}District Quota{% endif %}
     </a>
-    {% endif %}
+    <a href="{% url 'board_deo_report' district.id %}" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:8px 16px;border-radius:6px;font-size:.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;">
+      <i class="fas fa-file-chart-bar"></i>{% if LANG == 'sw' %}Ripoti ya Wilaya{% else %}District Report{% endif %}
+    </a>
   </div>
 </div>
 
-{% if district_alloc and district_alloc.total_needed %}
-<!-- Allocation Summary Banner -->
-<div style="background:#fff;border:1px solid #C8D0DB;border-left:5px solid #C8900A;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-  <div>
-    <div style="font-size:.75rem;font-weight:700;color:#5A6B7E;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">
-      <i class="fas fa-clipboard-list me-1" style="color:#C8900A;"></i>{% if LANG == 'sw' %}Mahitaji ya Walimu Wanafunzi — {{ district.name }}{% else %}Student Teacher Quota — {{ district.name }}{% endif %}
-    </div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;">
-      <span style="font-size:.82rem;"><span style="color:#1e40af;font-weight:700;">{{ district_alloc.primary_needed }}</span> <span style="color:#6b7280;">{% if LANG == 'sw' %}Msingi Inahitajika{% else %}Primary Needed{% endif %}</span></span>
-      <span style="font-size:.82rem;"><span style="color:#5b21b6;font-weight:700;">{{ district_alloc.secondary_needed }}</span> <span style="color:#6b7280;">{% if LANG == 'sw' %}Sekondari Inahitajika{% else %}Secondary Needed{% endif %}</span></span>
-      <span style="font-size:.82rem;"><span style="color:#059669;font-weight:700;">{{ district_alloc.total_filled }}</span> <span style="color:#6b7280;">{% if LANG == 'sw' %}Waliopo{% else %}Filled{% endif %}</span></span>
-      <span style="font-size:.82rem;"><span style="color:#C8900A;font-weight:700;">{{ district_alloc.primary_remaining|add:district_alloc.secondary_remaining }}</span> <span style="color:#6b7280;">{% if LANG == 'sw' %}Wanaohitajika Bado{% else %}Still Needed{% endif %}</span></span>
+<!-- URGENT ALERT if pending requests exist -->
+{% if pending_req_count %}
+<div style="background:#FEF3C7;border:1.5px solid #D97706;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+  <div style="background:#D97706;border-radius:8px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+    <i class="fas fa-exclamation-triangle" style="color:#fff;font-size:16px;"></i>
+  </div>
+  <div style="flex:1;">
+    <div style="font-size:.85rem;font-weight:800;color:#92400E;">{% if LANG == 'sw' %}Inahitajika Hatua Yako!{% else %}Action Required!{% endif %}</div>
+    <div style="font-size:.78rem;color:#78350F;margin-top:2px;">
+      {% if LANG == 'sw' %}Kuna maombi <strong>{{ pending_req_count }}</strong> yanayosubiri idhini yako. Yaidhinishe ili walimu wanafunzi waweze kupangwa.{% else %}There are <strong>{{ pending_req_count }}</strong> request(s) awaiting your approval. Approve them so student teachers can be assigned.{% endif %}
     </div>
   </div>
-  <div style="min-width:160px;">
-    <div style="display:flex;justify-content:space-between;font-size:.7rem;color:#6b7280;margin-bottom:3px;">
-      <span>{% if LANG == 'sw' %}Maendeleo{% else %}Progress{% endif %}</span>
-      <span>{{ district_alloc.total_filled }}/{{ district_alloc.total_needed }}</span>
+  <a href="{% url 'deo_review_requests' district.id %}" style="background:#D97706;color:#fff;padding:8px 16px;border-radius:6px;font-size:.78rem;font-weight:800;text-decoration:none;white-space:nowrap;flex-shrink:0;">
+    <i class="fas fa-arrow-right me-1"></i>{% if LANG == 'sw' %}Angalia{% else %}Review{% endif %}
+  </a>
+</div>
+{% endif %}
+
+<!-- QUOTA PROGRESS BAR -->
+{% if district_alloc and district_alloc.total_needed %}
+<div style="background:#fff;border:1px solid #C8D0DB;border-left:5px solid #C8900A;border-radius:8px;padding:13px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <div>
+    <div style="font-size:.72rem;font-weight:700;color:#5A6B7E;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+      <i class="fas fa-clipboard-list me-1" style="color:#C8900A;"></i>{% if LANG == 'sw' %}Quota ya Walimu Wanafunzi{% else %}Student Teacher Quota{% endif %}
     </div>
-    <div style="background:#e5e7eb;border-radius:4px;height:8px;overflow:hidden;">
+    <div style="display:flex;gap:18px;flex-wrap:wrap;">
+      <span style="font-size:.82rem;"><span style="color:#1e40af;font-weight:800;font-size:1.1rem;">{{ district_alloc.primary_needed }}</span> <span style="color:#6b7280;font-size:.75rem;">{% if LANG == 'sw' %}Msingi{% else %}Primary{% endif %}</span></span>
+      <span style="font-size:.82rem;"><span style="color:#5b21b6;font-weight:800;font-size:1.1rem;">{{ district_alloc.secondary_needed }}</span> <span style="color:#6b7280;font-size:.75rem;">{% if LANG == 'sw' %}Sekondari{% else %}Secondary{% endif %}</span></span>
+      <span style="font-size:.82rem;"><span style="color:#059669;font-weight:800;font-size:1.1rem;">{{ district_alloc.total_filled }}</span> <span style="color:#6b7280;font-size:.75rem;">{% if LANG == 'sw' %}Waliopo{% else %}Filled{% endif %}</span></span>
+      <span style="font-size:.82rem;"><span style="color:#C8900A;font-weight:800;font-size:1.1rem;">{{ district_alloc.primary_remaining|add:district_alloc.secondary_remaining }}</span> <span style="color:#6b7280;font-size:.75rem;">{% if LANG == 'sw' %}Wanaohitajika{% else %}Remaining{% endif %}</span></span>
+    </div>
+  </div>
+  <div style="min-width:180px;">
+    <div style="display:flex;justify-content:space-between;font-size:.7rem;color:#6b7280;margin-bottom:4px;">
+      <span>{% if LANG == 'sw' %}Maendeleo{% else %}Progress{% endif %}</span>
+      <span style="font-weight:700;color:#0A2B5E;">{{ district_alloc.total_filled }}/{{ district_alloc.total_needed }}</span>
+    </div>
+    <div style="background:#e5e7eb;border-radius:4px;height:10px;overflow:hidden;">
       {% widthratio district_alloc.total_filled district_alloc.total_needed 100 as bpct %}
       <div style="background:{% if bpct >= 100 %}#059669{% elif bpct >= 70 %}#C8900A{% else %}#0A2B5E{% endif %};width:{{ bpct }}%;height:100%;border-radius:4px;transition:width .8s;"></div>
     </div>
+    <div style="font-size:.68rem;color:#6b7280;margin-top:3px;text-align:right;">{{ bpct }}%</div>
   </div>
 </div>
 {% endif %}
 
-<!-- Maombi ya Wakuu wa Shule -->
-<!-- Maombi ya Wakuu wa Shule -->
+<!-- HEAD TEACHER REQUESTS — STATUS-ORGANIZED PANEL -->
 <div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;margin-bottom:16px;overflow:hidden;">
-  <div style="background:#0A2B5E;padding:11px 18px;border-bottom:3px solid #C8900A;display:flex;align-items:center;justify-content:space-between;">
-    <div style="color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;">
-      <i class="fas fa-inbox" style="color:#C8900A;"></i>
-      {% if LANG == 'sw' %}Maombi ya Wakuu wa Shule{% else %}Head Teacher Requests{% endif %}
+  <div style="background:#0A2B5E;padding:13px 18px;border-bottom:3px solid #C8900A;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div style="color:#fff;font-size:.9rem;font-weight:800;display:flex;align-items:center;gap:8px;">
+        <i class="fas fa-inbox" style="color:#C8900A;"></i>
+        {% if LANG == 'sw' %}Maombi ya Wakuu wa Shule{% else %}Head Teacher Requests{% endif %}
+      </div>
+      <!-- Status counts -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        {% if pending_req_count %}
+        <span style="background:#D97706;color:#fff;border-radius:20px;padding:3px 12px;font-size:.72rem;font-weight:800;display:flex;align-items:center;gap:5px;">
+          <i class="fas fa-clock"></i> {{ pending_req_count }} {% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}
+        </span>
+        {% endif %}
+        {% if applied_req_count %}
+        <span style="background:#059669;color:#fff;border-radius:20px;padding:3px 12px;font-size:.72rem;font-weight:800;display:flex;align-items:center;gap:5px;">
+          <i class="fas fa-check"></i> {{ applied_req_count }} {% if LANG == 'sw' %}Imewekwa{% else %}Applied{% endif %}
+        </span>
+        {% endif %}
+        {% if rejected_req_count %}
+        <span style="background:#DC2626;color:#fff;border-radius:20px;padding:3px 12px;font-size:.72rem;font-weight:800;display:flex;align-items:center;gap:5px;">
+          <i class="fas fa-times"></i> {{ rejected_req_count }} {% if LANG == 'sw' %}Imekataliwa{% else %}Rejected{% endif %}
+        </span>
+        {% endif %}
+        {% if not pending_req_count and not applied_req_count and not rejected_req_count %}
+        <span style="color:rgba(255,255,255,.5);font-size:.78rem;">{% if LANG == 'sw' %}Hakuna maombi{% else %}No requests{% endif %}</span>
+        {% endif %}
+      </div>
     </div>
-    <span style="font-size:11px;color:rgba(255,255,255,.6);">{% if LANG == 'sw' %}Shule zenye ombi zinaonekana kwanza{% else %}Schools with requests shown first{% endif %}</span>
   </div>
-  <div style="overflow-x:auto;">
-  <table style="width:100%;border-collapse:collapse;font-size:13px;">
-    <thead>
-      <tr style="background:#F7FAFC;">
-        <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:left;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}SHULE / MKUU{% else %}SCHOOL / HEAD{% endif %}</th>
-        <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:left;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}KIWANGO{% else %}LEVEL{% endif %}</th>
-        <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:center;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}WANAOOMBWA{% else %}REQUESTED{% endif %}</th>
-        <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:center;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}QUOTA YA DEO{% else %}DEO QUOTA{% endif %}</th>
-        <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:left;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}MASOMO{% else %}SUBJECTS{% endif %}</th>
-        <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:left;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}MAELEZO{% else %}NOTES{% endif %}</th>
-        <th style="padding:9px 14px;font-size:11px;font-weight:700;color:#4A5568;text-align:center;border-bottom:1px solid #E2E8F0;">{% if LANG == 'sw' %}HALI{% else %}STATUS{% endif %}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in schools_alloc_list %}
-      <tr style="border-bottom:1px solid #F0F4F8;">
-        <td style="padding:10px 14px;">
-          <div style="font-weight:600;color:#1A1A2E;">{% if item.school %}{{ item.school.name }}{% else %}{{ item.school_name }}{% endif %}</div>
-          <div style="font-size:11px;color:#9CA3AF;">{{ item.head_name }} &bull; {{ item.submitted_at|date:"d/m/Y H:i" }}</div>
-        </td>
-        <td style="padding:10px 14px;">
-          {% if item.school %}
-          <span style="background:{% if item.school.level == 'Secondary' %}#EDE9FE{% else %}#DBEAFE{% endif %};color:{% if item.school.level == 'Secondary' %}#5B21B6{% else %}#1D4ED8{% endif %};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">{{ item.school.get_level_display }}</span>
-          {% else %}<span style="color:#9CA3AF;font-size:11px;">—</span>{% endif %}
-        </td>
-        <td style="padding:10px 14px;text-align:center;">
-          <strong style="font-size:18px;color:#0A2B5E;">{{ item.requested }}</strong>
-        </td>
-        <td style="padding:10px 14px;text-align:center;">
-          {% if item.quota > 0 %}<strong style="font-size:18px;color:#059669;">{{ item.quota }}</strong>
-          {% else %}<span style="color:#9CA3AF;font-size:12px;">—</span>{% endif %}
-        </td>
-        <td style="padding:10px 14px;">
+
+  {% if schools_alloc_list %}
+  <!-- Request rows grouped by status -->
+  <!-- PENDING first (most urgent) -->
+  {% for item in schools_alloc_list %}{% if item.status == 'pending' %}
+  <div style="padding:11px 16px;border-bottom:1px solid #FEF3C7;background:#FFFBEB;display:flex;align-items:flex-start;gap:12px;">
+    <div style="background:#D97706;border-radius:5px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+      <i class="fas fa-clock" style="color:#fff;font-size:13px;"></i>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <div>
+          <span style="font-weight:700;color:#1A1A2E;font-size:.88rem;">{% if item.school %}{{ item.school.name }}{% else %}{{ item.school_name }}{% endif %}</span>
+          {% if item.school %}<span style="background:{% if item.school.level == 'Secondary' %}#EDE9FE{% else %}#DBEAFE{% endif %};color:{% if item.school.level == 'Secondary' %}#5B21B6{% else %}#1D4ED8{% endif %};padding:1px 7px;border-radius:3px;font-size:.68rem;font-weight:700;margin-left:6px;">{{ item.school.get_level_display }}</span>{% endif %}
+        </div>
+        <span style="background:#FEF3C7;color:#92400E;border:1px solid #D97706;padding:2px 10px;border-radius:20px;font-size:.68rem;font-weight:700;white-space:nowrap;"><i class="fas fa-clock me-1"></i>{% if LANG == 'sw' %}INASUBIRI{% else %}PENDING{% endif %}</span>
+      </div>
+      <div style="font-size:.72rem;color:#6b7280;margin-top:3px;display:flex;flex-wrap:wrap;gap:10px;">
+        <span><i class="fas fa-user me-1" style="color:#C8900A;"></i>{{ item.head_name }}</span>
+        <span><i class="fas fa-users me-1" style="color:#C8900A;"></i>{% if LANG == 'sw' %}Wanaoombwa:{% else %}Requested:{% endif %} <strong style="color:#0A2B5E;">{{ item.requested }}</strong></span>
+        <span><i class="fas fa-calendar me-1" style="color:#C8900A;"></i>{{ item.submitted_at|date:"d/m/Y H:i" }}</span>
+      </div>
+      {% if item.subjects_needed %}
+      <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">
+        {% for sname, cnt in item.subjects_needed.items %}
+        <span style="background:#EEF1F6;border:1px solid #CBD5E0;border-radius:3px;padding:2px 7px;font-size:.68rem;font-weight:600;color:#0A2B5E;">{{ sname }} <strong>{{ cnt }}</strong></span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if not item.school %}<div style="background:#FEE2E2;border-radius:4px;padding:3px 8px;font-size:.68rem;color:#7f1d1d;margin-top:5px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-exclamation-triangle"></i>Shule haikupatikana kwenye database</div>{% endif %}
+    </div>
+  </div>
+  {% endif %}{% endfor %}
+
+  <!-- APPLIED (collapsed by default) -->
+  {% if applied_req_count %}
+  <div>
+    <button type="button" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.acc-ic').classList.toggle('fa-chevron-down');this.querySelector('.acc-ic').classList.toggle('fa-chevron-up');"
+      style="width:100%;background:#F0FDF4;border:none;border-top:1px solid #D1FAE5;padding:10px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:inherit;font-size:.8rem;font-weight:700;color:#065f46;">
+      <i class="fas fa-check-circle" style="color:#059669;"></i>
+      {% if LANG == 'sw' %}Imewekwa ({{ applied_req_count }}){% else %}Applied ({{ applied_req_count }}){% endif %}
+      <i class="fas fa-chevron-down acc-ic" style="margin-left:auto;font-size:.7rem;color:#6b7280;"></i>
+    </button>
+    <div style="display:none;">
+      {% for item in schools_alloc_list %}{% if item.status == 'applied' %}
+      <div style="padding:10px 16px;border-bottom:1px solid #F0F4F8;background:#F0FDF4;display:flex;align-items:flex-start;gap:12px;">
+        <div style="background:#059669;border-radius:5px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+          <i class="fas fa-check" style="color:#fff;font-size:13px;"></i>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+            <span style="font-weight:700;color:#1A1A2E;font-size:.85rem;">{% if item.school %}{{ item.school.name }}{% else %}{{ item.school_name }}{% endif %}</span>
+            <span style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;padding:2px 10px;border-radius:20px;font-size:.68rem;font-weight:700;white-space:nowrap;"><i class="fas fa-check me-1"></i>{% if LANG == 'sw' %}IMEWEKWA{% else %}APPLIED{% endif %}</span>
+          </div>
+          <div style="font-size:.72rem;color:#6b7280;margin-top:3px;display:flex;flex-wrap:wrap;gap:10px;">
+            <span><i class="fas fa-user me-1" style="color:#059669;"></i>{{ item.head_name }}</span>
+            <span><i class="fas fa-users me-1" style="color:#059669;"></i>{% if LANG == 'sw' %}Ombi:{% else %}Requested:{% endif %} <strong>{{ item.requested }}</strong> {% if item.quota %}&nbsp;·&nbsp;{% if LANG == 'sw' %}Quota:{% else %}Quota:{% endif %} <strong style="color:#059669;">{{ item.quota }}</strong>{% endif %}</span>
+          </div>
           {% if item.subject_data %}
-          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;">
             {% for sd in item.subject_data %}
-            <span style="display:inline-flex;align-items:center;gap:4px;background:#EEF1F6;border:1px solid #CBD5E0;border-radius:3px;padding:2px 8px;font-size:10.5px;font-weight:600;color:#0A2B5E;white-space:nowrap;">
+            <span style="display:inline-flex;align-items:center;gap:4px;background:#EEF1F6;border:1px solid #CBD5E0;border-radius:3px;padding:1px 7px;font-size:.65rem;font-weight:600;color:#0A2B5E;">
               {{ sd.name }}
-              {% if sd.full %}
-              <span style="background:#DC2626;color:#fff;border-radius:2px;padding:0px 4px;font-size:9px;letter-spacing:.3px;">FULL</span>
-              {% else %}
-              <span style="background:#C8900A;color:#fff;border-radius:2px;padding:0px 4px;font-size:9px;">{{ sd.filled }}/{{ sd.needed }}</span>
-              {% endif %}
+              {% if sd.full %}<span style="background:#DC2626;color:#fff;border-radius:2px;padding:0 3px;font-size:.6rem;">FULL</span>{% else %}<span style="background:#C8900A;color:#fff;border-radius:2px;padding:0 3px;font-size:.6rem;">{{ sd.filled }}/{{ sd.needed }}</span>{% endif %}
             </span>
             {% endfor %}
           </div>
-          {% elif item.subjects_needed %}
-          <div style="display:flex;flex-wrap:wrap;gap:4px;">
-            {% for sname, cnt in item.subjects_needed.items %}
-            <span style="background:#EEF1F6;border:1px solid #CBD5E0;border-radius:3px;padding:2px 7px;font-size:10.5px;font-weight:600;color:#0A2B5E;white-space:nowrap;">{{ sname }} <strong>{{ cnt }}</strong></span>
-            {% endfor %}
-          </div>
-          {% else %}<span style="color:#9CA3AF;font-size:12px;">—</span>{% endif %}
-        </td>
-        <td style="padding:10px 14px;font-size:12px;color:#4A5568;max-width:180px;">
-          {% if item.notes %}{{ item.notes|truncatechars:50 }}{% else %}<span style="color:#9CA3AF;">—</span>{% endif %}
-        </td>
-        <td style="padding:10px 14px;text-align:center;">
-          {% if item.status == 'applied' %}
-            <span style="background:#D1FAE5;color:#065F46;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;"><i class="fas fa-check me-1"></i>{% if LANG == 'sw' %}Aidhinishwa{% else %}Applied{% endif %}</span>
-          {% elif item.status == 'rejected' %}
-            <span style="background:#FEE2E2;color:#991B1B;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;"><i class="fas fa-times me-1"></i>{% if LANG == 'sw' %}Imekataliwa{% else %}Rejected{% endif %}</span>
-          {% elif item.status == 'reviewed' %}
-            <span style="background:#EDE9FE;color:#5B21B6;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;"><i class="fas fa-eye me-1"></i>{% if LANG == 'sw' %}Imepitiwa{% else %}Reviewed{% endif %}</span>
-          {% else %}
-            <span style="background:#FEF3C7;color:#92400E;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;"><i class="fas fa-clock me-1"></i>{% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}</span>
           {% endif %}
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="7" style="padding:24px;text-align:center;color:#92400E;background:#FEF3C7;">
-          <i class="fas fa-inbox" style="font-size:20px;display:block;margin-bottom:6px;"></i>
-          {% if LANG == 'sw' %}Hakuna maombi bado. Wakuu wakijaza form ya <strong>/ombi/</strong> yataonekana hapa.{% else %}No requests yet. Requests will appear here when school heads submit the /ombi/ form.{% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        </div>
+      </div>
+      {% endif %}{% endfor %}
+    </div>
   </div>
-  <div style="padding:10px 18px;background:#F7FAFC;border-top:1px solid #E2E8F0;text-align:right;">
-    <a href="{% url 'deo_review_requests' district.id %}" style="background:#C8900A;color:#fff;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;margin-right:8px;">
-      <i class="fas fa-check-double"></i>{% if LANG == 'sw' %}Idhinisha Maombi{% else %}Review Requests{% endif %}
+  {% endif %}
+
+  <!-- REJECTED (collapsed) -->
+  {% if rejected_req_count %}
+  <div>
+    <button type="button" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.acc-ic').classList.toggle('fa-chevron-down');this.querySelector('.acc-ic').classList.toggle('fa-chevron-up');"
+      style="width:100%;background:#FEF2F2;border:none;border-top:1px solid #FEE2E2;padding:10px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:inherit;font-size:.8rem;font-weight:700;color:#991B1B;">
+      <i class="fas fa-times-circle" style="color:#DC2626;"></i>
+      {% if LANG == 'sw' %}Imekataliwa ({{ rejected_req_count }}){% else %}Rejected ({{ rejected_req_count }}){% endif %}
+      <i class="fas fa-chevron-down acc-ic" style="margin-left:auto;font-size:.7rem;color:#6b7280;"></i>
+    </button>
+    <div style="display:none;">
+      {% for item in schools_alloc_list %}{% if item.status == 'rejected' %}
+      <div style="padding:10px 16px;border-bottom:1px solid #F0F4F8;background:#FEF2F2;display:flex;align-items:flex-start;gap:12px;opacity:.75;">
+        <div style="background:#DC2626;border-radius:5px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+          <i class="fas fa-times" style="color:#fff;font-size:13px;"></i>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+            <span style="font-weight:700;color:#1A1A2E;font-size:.85rem;">{% if item.school %}{{ item.school.name }}{% else %}{{ item.school_name }}{% endif %}</span>
+            <span style="background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;padding:2px 10px;border-radius:20px;font-size:.68rem;font-weight:700;white-space:nowrap;"><i class="fas fa-times me-1"></i>{% if LANG == 'sw' %}IMEKATALIWA{% else %}REJECTED{% endif %}</span>
+          </div>
+          <div style="font-size:.72rem;color:#9b1c1c;margin-top:3px;display:flex;flex-wrap:wrap;gap:10px;">
+            <span><i class="fas fa-user me-1"></i>{{ item.head_name }}</span>
+            <span><i class="fas fa-users me-1"></i>{{ item.requested }}</span>
+          </div>
+        </div>
+      </div>
+      {% endif %}{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div style="padding:28px;text-align:center;color:#92400E;background:#FEF3C7;">
+    <i class="fas fa-inbox" style="font-size:22px;display:block;margin-bottom:8px;"></i>
+    {% if LANG == 'sw' %}Hakuna maombi bado. Wakuu wakijaza form ya <strong>/ombi/</strong> yataonekana hapa.{% else %}No requests yet. Requests will appear here once school heads submit the /ombi/ form.{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Footer actions -->
+  <div style="padding:10px 16px;background:#F7FAFC;border-top:1px solid #E2E8F0;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+    <a href="{% url 'deo_review_requests' district.id %}" style="background:#C8900A;color:#fff;padding:7px 16px;border-radius:6px;font-size:.78rem;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      <i class="fas fa-check-double"></i>{% if LANG == 'sw' %}Idhinisha Maombi{% else %}Review & Approve{% endif %}{% if pending_req_count %} ({{ pending_req_count }}){% endif %}
     </a>
-    <a href="{% url 'deo_district_allocation' district.id %}" style="background:#0A2B5E;color:#fff;padding:7px 16px;border-radius:6px;font-size:12.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+    <a href="{% url 'deo_district_allocation' district.id %}" style="background:#0A2B5E;color:#fff;padding:7px 16px;border-radius:6px;font-size:.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
       <i class="fas fa-sliders-h"></i>{% if LANG == 'sw' %}Simamia Quota{% else %}Manage Quota{% endif %}
     </a>
   </div>
 </div>
 
-<!-- Summary Stats -->
+<!-- Student Teacher Summary Stats -->
 <div class="stats-row">
   <div class="stat-card">
     <div class="stat-icon si-blue"><i class="fas fa-school"></i></div>
     <div>
       <div class="stat-num">{{ schools|length }}</div>
-      <div class="stat-lbl">{% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}</div>
+      <div class="stat-lbl">{% if LANG == 'sw' %}Shule zenye Wanafunzi{% else %}Schools w/ Students{% endif %}</div>
     </div>
   </div>
   <div class="stat-card">
@@ -205,6 +294,13 @@
     <div>
       <div class="stat-num">{{ students_data|length }}</div>
       <div class="stat-lbl">{% if LANG == 'sw' %}Walimu Wanafunzi{% else %}Student Teachers{% endif %}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(245,158,11,.12);color:#D97706;"><i class="fas fa-hourglass-half"></i></div>
+    <div>
+      <div class="stat-num" style="color:#D97706;">{{ pending_req_count }}</div>
+      <div class="stat-lbl">{% if LANG == 'sw' %}Maombi Yanayosubiri{% else %}Pending Requests{% endif %}</div>
     </div>
   </div>
   <div class="stat-card">

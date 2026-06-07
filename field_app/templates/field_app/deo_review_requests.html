@@ -110,22 +110,26 @@ input[type=checkbox].req-chk{width:16px;height:16px;accent-color:var(--navy);mar
 {% endfor %}
 
 <!-- Stats -->
-<div class="stats-strip">
-  <div class="stat-box">
+<div class="stats-strip" style="grid-template-columns:repeat(5,1fr);">
+  <div class="stat-box" style="border-left:3px solid var(--warn);">
     <div class="n" style="color:var(--warn);">{{ total_pending }}</div>
-    <div class="l">Inasubiri</div>
+    <div class="l"><i class="fas fa-clock" style="color:var(--warn);margin-right:3px;"></i>Inasubiri</div>
   </div>
-  <div class="stat-box">
+  <div class="stat-box" style="border-left:3px solid var(--success);">
     <div class="n" style="color:var(--success);">{{ total_applied }}</div>
-    <div class="l">Imewekwa</div>
+    <div class="l"><i class="fas fa-check-circle" style="color:var(--success);margin-right:3px;"></i>Imewekwa</div>
   </div>
-  <div class="stat-box">
+  <div class="stat-box" style="border-left:3px solid var(--danger);">
+    <div class="n" style="color:var(--danger);">{{ total_rejected }}</div>
+    <div class="l"><i class="fas fa-times-circle" style="color:var(--danger);margin-right:3px;"></i>Imekataliwa</div>
+  </div>
+  <div class="stat-box" style="border-left:3px solid #1e40af;">
     <div class="n" style="color:#1e40af;">{{ primary_pending|add:primary_applied }}</div>
-    <div class="l">Jumla Msingi</div>
+    <div class="l"><i class="fas fa-school" style="color:#1e40af;margin-right:3px;"></i>Jumla Msingi</div>
   </div>
-  <div class="stat-box">
+  <div class="stat-box" style="border-left:3px solid #5b21b6;">
     <div class="n" style="color:#5b21b6;">{{ secondary_pending|add:secondary_applied }}</div>
-    <div class="l">Jumla Sekondari</div>
+    <div class="l"><i class="fas fa-school" style="color:#5b21b6;margin-right:3px;"></i>Jumla Sekondari</div>
   </div>
 </div>
 
@@ -155,6 +159,7 @@ input[type=checkbox].req-chk{width:16px;height:16px;accent-color:var(--navy);mar
   </button>
   <button class="tab-btn" onclick="switchTab('rejected', this)">
     <i class="fas fa-times-circle me-1"></i>Imekataliwa
+    {% if total_rejected %}<span style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 7px;font-size:.65rem;margin-left:4px;">{{ total_rejected }}</span>{% endif %}
   </button>
 </div>
 
@@ -253,16 +258,26 @@ input[type=checkbox].req-chk{width:16px;height:16px;accent-color:var(--navy);mar
     <div class="req-row">
       <div></div>
       <div>
-        <span class="school-name">
-          {% if req.school %}{{ req.school.name }}{% else %}{{ req.school_name_submitted }}{% endif %}
-        </span>
-        <span class="{% if req.level == 'Primary' %}lv-primary{% else %}lv-secondary{% endif %}" style="margin-left:6px;">{{ req.level }}</span>
+        <label style="cursor:default;">
+          <span class="school-name">
+            <i class="fas fa-school me-1" style="color:var(--gold);font-size:.8rem;"></i>
+            {% if req.school %}{{ req.school.name }}{% else %}{{ req.school_name_submitted }}{% endif %}
+          </span>
+          <span class="{% if req.level == 'Primary' %}lv-primary{% else %}lv-secondary{% endif %}" style="margin-left:6px;">{{ req.level }}</span>
+        </label>
         <div class="req-meta">
           <span><i class="fas fa-user"></i>{{ req.head_name }}</span>
-          <span><i class="fas fa-users"></i><strong class="qty">{{ req.students_needed }}</strong></span>
+          <span><i class="fas fa-users"></i><strong class="qty">{{ req.students_needed }} wanaoombwa</strong></span>
           {% if req.reviewed_by %}<span><i class="fas fa-user-check" style="color:var(--success);"></i>{{ req.reviewed_by.full_name }}</span>{% endif %}
-          <span><i class="fas fa-calendar-check"></i>{{ req.reviewed_at|date:"d/m/Y" }}</span>
+          {% if req.reviewed_at %}<span><i class="fas fa-calendar-check"></i>{{ req.reviewed_at|date:"d/m/Y H:i" }}</span>{% endif %}
         </div>
+        {% if req.subjects_needed %}
+        <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;">
+          {% for sname, cnt in req.subjects_needed.items %}
+          <span style="background:#D1FAE5;border:1px solid #6EE7B7;border-radius:3px;padding:2px 7px;font-size:.68rem;font-weight:600;color:#065f46;">{{ sname }} <strong>{{ cnt }}</strong></span>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
       <div class="act-col">
         <span class="badge b-applied"><i class="fas fa-check me-1"></i>Imewekwa</span>
@@ -284,17 +299,38 @@ input[type=checkbox].req-chk{width:16px;height:16px;accent-color:var(--navy);mar
   <div class="sec-card">
     <div class="sec-head">
       <h5><i class="fas fa-times-circle me-2" style="color:var(--gold);"></i>Maombi Yaliyokataliwa</h5>
+      <span class="cnt" style="background:var(--danger);">{{ total_rejected }}</span>
     </div>
     {% for req in rejected_list %}
     <div class="req-row is-rejected">
       <div></div>
       <div>
-        <span class="school-name">{% if req.school %}{{ req.school.name }}{% else %}{{ req.school_name_submitted }}{% endif %}</span>
-        <span class="{% if req.level == 'Primary' %}lv-primary{% else %}lv-secondary{% endif %}" style="margin-left:6px;">{{ req.level }}</span>
+        <label style="cursor:default;">
+          <span class="school-name">
+            <i class="fas fa-school me-1" style="color:var(--gold);font-size:.8rem;"></i>
+            {% if req.school %}{{ req.school.name }}{% else %}{{ req.school_name_submitted }}{% endif %}
+          </span>
+          <span class="{% if req.level == 'Primary' %}lv-primary{% else %}lv-secondary{% endif %}" style="margin-left:6px;">{{ req.level }}</span>
+        </label>
         <div class="req-meta">
           <span><i class="fas fa-user"></i>{{ req.head_name }}</span>
-          <span><i class="fas fa-users"></i>{{ req.students_needed }}</span>
+          {% if req.head_phone %}<span><i class="fas fa-phone"></i>{{ req.head_phone }}</span>{% endif %}
+          <span><i class="fas fa-users"></i><strong class="qty">{{ req.students_needed }} wanaoombwa</strong></span>
+          <span><i class="fas fa-clock"></i>{{ req.submitted_at|date:"d/m/Y H:i" }}</span>
         </div>
+        {% if req.subjects_needed %}
+        <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;">
+          {% for sname, cnt in req.subjects_needed.items %}
+          <span style="background:#FEE2E2;border:1px solid #FECACA;border-radius:3px;padding:2px 7px;font-size:.68rem;font-weight:600;color:#7f1d1d;">{{ sname }} <strong>{{ cnt }}</strong></span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if req.reviewed_by or req.reviewed_at %}
+        <div style="margin-top:5px;font-size:.7rem;color:#9b1c1c;display:flex;flex-wrap:wrap;gap:8px;">
+          {% if req.reviewed_by %}<span><i class="fas fa-user-check me-1"></i>{% if LANG == 'sw' %}Alikataliwa na{% else %}Rejected by{% endif %}: <strong>{{ req.reviewed_by.full_name }}</strong></span>{% endif %}
+          {% if req.reviewed_at %}<span><i class="fas fa-calendar-times me-1"></i>{{ req.reviewed_at|date:"d/m/Y H:i" }}</span>{% endif %}
+        </div>
+        {% endif %}
       </div>
       <div class="act-col">
         <span class="badge b-rejected"><i class="fas fa-times me-1"></i>Imekataliwa</span>
