@@ -916,17 +916,17 @@ def logout_view(request):
     redirect_to = 'login'
     if request.user.is_authenticated:
         if request.user.is_superuser:
-            redirect_to = 'login'
-        else:
+            logout(request)
+            return redirect('/admin/login/')
+        try:
+            Assessor.objects.get(user=request.user)
+            redirect_to = 'assessor_login'
+        except Assessor.DoesNotExist:
             try:
-                Assessor.objects.get(user=request.user)
-                redirect_to = 'assessor_login'
-            except Assessor.DoesNotExist:
-                try:
-                    BoardMember.objects.get(user=request.user)
-                    redirect_to = 'board_login'
-                except BoardMember.DoesNotExist:
-                    redirect_to = 'login'
+                BoardMember.objects.get(user=request.user)
+                redirect_to = 'board_login'
+            except BoardMember.DoesNotExist:
+                redirect_to = 'login'
     logout(request)
     return redirect(redirect_to)
 # =========================
