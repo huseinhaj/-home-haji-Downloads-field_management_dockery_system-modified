@@ -2,26 +2,44 @@
 {% block title %}Dashboard - Internship Management System{% endblock %}
 {% block content %}
 <style>
-/* ── DASHBOARD DESIGN SYSTEM (sharp edition) ───────────────────────────── */
+/* ── DASHBOARD DESIGN SYSTEM ───────────────────────────────────────────── */
 :root {
+    /* Primary palette */
+    --navy:        #0A2B5E;
+    --navy-deep:   #071E42;
+    --gold:        #C8900A;
+    --gold-dk:     #A97308;
+    /* Legacy aliases */
     --bold:        #0A2B5E;
     --bold-deep:   #071E42;
     --medium:      #C8900A;
     --medium-dk:   #A97308;
-    --light:       #EEF1F6;
-    --light-2:     #E5EAF2;
+    /* Neutrals */
+    --light:       #F0F3F8;
+    --light-2:     #E4E9F2;
     --white:       #FFFFFF;
     --text-dark:   #0F1923;
-    --text-gray:   #4A5568;
-    --border:      #C4CEDB;
-    --border-s:    rgba(10,43,94,.16);
-    --success:     #0EA271;
+    --text-gray:   #556070;
+    --border:      #C8D2DF;
+    --border-s:    rgba(10,43,94,.14);
+    /* Status */
+    --green:       #059669;
+    --green-dk:    #047857;
+    --green-bg:    #D1FAE5;
+    --red:         #DC2626;
+    --red-bg:      #FEE2E2;
+    --amber:       #D97706;
+    --amber-bg:    #FEF3C7;
+    --blue:        #2563EB;
+    --blue-bg:     #DBEAFE;
+    /* Legacy */
+    --success:     #059669;
     --danger:      #DC2626;
     --warning:     #D97706;
+    /* Radius & shadows */
     --radius:      4px;
-    --radius-lg:   6px;
-    --sh-sm: 0 1px 3px rgba(0,0,0,.07), 0 2px 8px rgba(10,43,94,.08);
-    --sh-md: 0 2px 6px rgba(0,0,0,.09), 0 6px 20px rgba(10,43,94,.11);
+    --sh-sm: 0 1px 4px rgba(0,0,0,.06), 0 2px 10px rgba(10,43,94,.07);
+    --sh-md: 0 3px 8px rgba(0,0,0,.08), 0 8px 24px rgba(10,43,94,.10);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -296,28 +314,52 @@ body {
 
 /* ── PLACEMENT CARD ─────────────────────────────────────────────────────────── */
 .placement-card {
-    background: linear-gradient(135deg,var(--bold-deep),#0d3575);
-    border-radius: var(--radius); border-left: 5px solid var(--medium);
-    padding: 18px 20px; color: var(--white); position: relative; overflow: hidden;
+    background: var(--navy-deep);
+    border-radius: var(--radius);
+    border-left: 5px solid var(--gold);
+    padding: 20px 22px;
+    color: var(--white);
+    position: relative; overflow: hidden;
+    box-shadow: var(--sh-md);
+}
+.placement-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(200,144,10,.08) 0%, transparent 60%);
+    pointer-events: none;
 }
 .placement-card::after {
     content: '\f19d'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
-    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
-    font-size: 56px; color: rgba(255,255,255,.07); pointer-events: none;
+    position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+    font-size: 68px; color: rgba(255,255,255,.05); pointer-events: none;
 }
-.pc-label { font-size: 9.5px; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: 1.8px; font-weight: 600; margin-bottom: 3px; }
-.pc-value { font-size: 16px; font-weight: 800; margin-bottom: 2px; }
-.pc-sub   { font-size: 11.5px; color: rgba(255,255,255,.6); }
+.pc-label { font-size: 9px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: 2px; font-weight: 700; margin-bottom: 5px; }
+.pc-subject { font-size: 22px; font-weight: 900; letter-spacing: -.3px; margin-bottom: 8px; color: var(--white); }
+.pc-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.pc-row i { width: 14px; color: rgba(200,144,10,.85); font-size: 11px; }
+.pc-row span { font-size: 12px; color: rgba(255,255,255,.65); }
+.pc-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(5,150,105,.25); color: #6EE7B7;
+    border: 1px solid rgba(5,150,105,.4);
+    border-radius: 3px; padding: 4px 10px;
+    font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+    margin-top: 12px;
+}
 
 /* ── DOWNLOAD LETTER BUTTON ─────────────────────────────────────────────────── */
 .dl-btn {
     display: flex; align-items: center; justify-content: center; gap: 10px;
-    padding: 14px 24px; background: var(--medium); color: var(--white);
-    border: none; border-radius: var(--radius); font-size: 14px; font-weight: 800;
-    text-decoration: none; text-transform: uppercase; letter-spacing: .5px;
-    transition: background .13s, box-shadow .13s; width: 100%;
+    padding: 15px 24px; background: var(--green); color: var(--white);
+    border: none; border-radius: var(--radius); font-size: 15px; font-weight: 800;
+    text-decoration: none; text-transform: uppercase; letter-spacing: .6px;
+    transition: background .13s, box-shadow .13s, transform .1s; width: 100%;
+    box-shadow: 0 2px 8px rgba(5,150,105,.3);
 }
-.dl-btn:hover { background: var(--medium-dk); color: var(--white); box-shadow: 0 4px 16px rgba(200,144,10,.35); }
+.dl-btn:hover {
+    background: var(--green-dk); color: var(--white);
+    box-shadow: 0 4px 18px rgba(5,150,105,.45);
+    transform: translateY(-1px);
+}
 
 /* ── QUICK ACTIONS ─────────────────────────────────────────────────────────── */
 .qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -553,41 +595,63 @@ body {
 
         <!-- STATS -->
         <div class="row g-3 mb-3">
+          <!-- Hali ya Mpangilio -->
           <div class="col-6 col-md-3">
-            <div class="stat-tz p-3" style="border-left-color:var(--success);">
-              <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">{{ approved_applications_count }}</div>
-              <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
-                <i class="fas fa-check-circle me-1" style="color:var(--success);"></i>{% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}
+            <div class="stat-tz p-3" style="border-left-color:var(--green);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:40px;height:40px;background:var(--green-bg);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <i class="fas fa-check-circle" style="color:var(--green);font-size:18px;"></i>
+                </div>
+                <div>
+                  <div style="font-size:24px;font-weight:900;color:var(--navy);line-height:1;">{{ approved_applications_count }}</div>
+                  <div style="font-size:10px;font-weight:700;color:var(--text-gray);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">{% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}</div>
+                </div>
               </div>
             </div>
           </div>
+          <!-- Somo -->
           <div class="col-6 col-md-3">
-            <div class="stat-tz p-3" style="border-left-color:var(--medium);">
-              {% if approved_app %}
-              <div style="font-size:14px;font-weight:800;color:var(--bold);line-height:1.2;">{{ approved_app.subject.name }}</div>
-              {% else %}
-              <div style="font-size:22px;font-weight:800;color:var(--bold);line-height:1;">—</div>
-              {% endif %}
-              <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
-                <i class="fas fa-book me-1" style="color:var(--medium);"></i>{% if LANG == 'sw' %}Somo Lako{% else %}Your Subject{% endif %}
+            <div class="stat-tz p-3" style="border-left-color:var(--gold);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:40px;height:40px;background:#FEF3C7;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <i class="fas fa-book" style="color:var(--gold);font-size:18px;"></i>
+                </div>
+                <div style="min-width:0;">
+                  {% if approved_app %}
+                  <div style="font-size:13px;font-weight:800;color:var(--navy);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ approved_app.subject.name }}</div>
+                  {% else %}
+                  <div style="font-size:20px;font-weight:900;color:#CBD5E0;line-height:1;">—</div>
+                  {% endif %}
+                  <div style="font-size:10px;font-weight:700;color:var(--text-gray);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">{% if LANG == 'sw' %}Somo Lako{% else %}Your Subject{% endif %}</div>
+                </div>
               </div>
             </div>
           </div>
+          <!-- Logbook -->
           <div class="col-6 col-md-3">
-            <div class="stat-tz p-3" style="border-left-color:#2563EB;">
-              <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">{{ logbook_entries|length }}</div>
-              <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
-                <i class="fas fa-book-open me-1" style="color:#2563EB;"></i>{% if LANG == 'sw' %}Logbook{% else %}Logbook{% endif %}
+            <div class="stat-tz p-3" style="border-left-color:var(--blue);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:40px;height:40px;background:var(--blue-bg);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <i class="fas fa-book-open" style="color:var(--blue);font-size:18px;"></i>
+                </div>
+                <div>
+                  <div style="font-size:24px;font-weight:900;color:var(--navy);line-height:1;">{{ logbook_entries|length }}</div>
+                  <div style="font-size:10px;font-weight:700;color:var(--text-gray);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Logbook</div>
+                </div>
               </div>
             </div>
           </div>
+          <!-- Siku za Kubadili -->
           <div class="col-6 col-md-3">
-            <div class="stat-tz p-3" style="border-left-color:{% if change_days_remaining > 0 %}var(--warning){% else %}#9CA3AF{% endif %};">
-              <div style="font-size:26px;font-weight:800;color:var(--bold);line-height:1;">
-                {% if has_approved_applications %}{{ change_days_remaining }}{% else %}—{% endif %}
-              </div>
-              <div class="small-text mt-1" style="color:var(--text-gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">
-                <i class="fas fa-exchange-alt me-1" style="color:{% if change_days_remaining > 0 %}var(--warning){% else %}#9CA3AF{% endif %};"></i>{% if LANG == 'sw' %}Siku za Kubadili{% else %}Change Days{% endif %}
+            <div class="stat-tz p-3" style="border-left-color:{% if can_change_school_now %}var(--amber){% else %}#CBD5E0{% endif %};">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:40px;height:40px;background:{% if can_change_school_now %}var(--amber-bg){% else %}#F1F5F9{% endif %};border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <i class="fas fa-{% if can_change_school_now %}exchange-alt{% else %}lock{% endif %}" style="color:{% if can_change_school_now %}var(--amber){% else %}#94A3B8{% endif %};font-size:18px;"></i>
+                </div>
+                <div>
+                  <div style="font-size:24px;font-weight:900;color:{% if can_change_school_now %}var(--navy){% else %}#94A3B8{% endif %};line-height:1;">{% if has_approved_applications %}{{ change_days_remaining }}{% else %}—{% endif %}</div>
+                  <div style="font-size:10px;font-weight:700;color:var(--text-gray);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">{% if LANG == 'sw' %}Siku za Kubadili{% else %}Change Days{% endif %}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -597,42 +661,48 @@ body {
         <div class="row g-3">
             <!-- Left Column - Applications & Downloads -->
             <div class="col-lg-8">
-                <!-- Placement Card -->
                 {% if approved_app %}
+                <!-- ── Placement summary ── -->
                 <div class="placement-card mb-3">
-                    <div style="flex:1;min-width:0;">
-                        <div class="pc-label">{% if LANG == 'sw' %}Mpangilio Wako wa Mafunzo{% else %}Your Teaching Placement{% endif %}</div>
-                        <div class="pc-value">{{ approved_app.subject.name }}</div>
-                        <div class="pc-sub"><i class="fas fa-school" style="margin-right:5px;color:rgba(200,144,10,.8);"></i>{{ approved_app.school.name }}</div>
-                        <div class="pc-sub" style="margin-top:2px;"><i class="fas fa-map-marker-alt" style="margin-right:5px;color:rgba(200,144,10,.6);"></i>{{ approved_app.school.district.name }}, {{ approved_app.school.district.region.name }}</div>
-                        <div style="margin-top:10px;">
-                            <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(14,162,113,.22);color:#6EE7B7;border:1px solid rgba(14,162,113,.35);border-radius:3px;padding:3px 10px;font-size:11px;font-weight:700;">
-                                <i class="fas fa-check-circle"></i> {% if LANG == 'sw' %}IMEIDHINISHWA{% else %}APPROVED{% endif %}
-                            </span>
-                            {% if approved_app.approval_date %}
-                            <span style="font-size:11px;color:rgba(255,255,255,.45);margin-left:8px;">{{ approved_app.approval_date|date:"d M Y" }}</span>
-                            {% endif %}
-                        </div>
+                    <div class="pc-label">{% if LANG == 'sw' %}Mpangilio Wako wa Mafunzo ya Vitendo{% else %}Your Teaching Practice Placement{% endif %}</div>
+                    <div class="pc-subject">{{ approved_app.subject.name }}</div>
+                    <div class="pc-row"><i class="fas fa-school"></i><span>{{ approved_app.school.name }}</span></div>
+                    <div class="pc-row"><i class="fas fa-map-marker-alt"></i><span>{{ approved_app.school.district.name }}, {{ approved_app.school.district.region.name }}</span></div>
+                    <div class="pc-row"><i class="fas fa-building"></i><span>{{ approved_app.school.get_level_display }}</span></div>
+                    <div>
+                        <span class="pc-badge"><i class="fas fa-check-circle"></i>{% if LANG == 'sw' %}IMEIDHINISHWA{% else %}APPROVED{% endif %}</span>
+                        {% if approved_app.approval_date %}
+                        <span style="font-size:10.5px;color:rgba(255,255,255,.35);margin-left:10px;">{{ approved_app.approval_date|date:"d M Y" }}</span>
+                        {% endif %}
                     </div>
                 </div>
-                <!-- Download Letter -->
-                <div class="premium-card p-3 mb-3">
-                    <div class="sec-hd mb-3"><h3><i class="fas fa-file-pdf"></i>{% if LANG == 'sw' %}Barua ya Uthibitisho{% else %}Confirmation Letter{% endif %}</h3></div>
-                    <p class="small-text mb-3" style="color:var(--text-gray);">{% if LANG == 'sw' %}Barua yako ya kibinafsi ya uthibitisho wa mafunzo ya vitendo. Pakua na uilete shuleni.{% else %}Your personal teaching practice confirmation letter. Download and present it to the school.{% endif %}</p>
+
+                <!-- ── Download Letter ── -->
+                <div class="premium-card p-4 mb-3" style="border-top:4px solid var(--green);">
+                    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+                        <div style="width:48px;height:48px;background:var(--green-bg);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-file-alt" style="color:var(--green);font-size:20px;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:14px;font-weight:800;color:var(--navy);">{% if LANG == 'sw' %}Barua ya Uthibitisho{% else %}Confirmation Letter{% endif %}</div>
+                            <div style="font-size:11.5px;color:var(--text-gray);margin-top:1px;">{% if LANG == 'sw' %}Barua yako ya mafunzo ya vitendo. Pakua na ipeleke shuleni.{% else %}Your personal teaching practice letter. Download and bring it to school.{% endif %}</div>
+                        </div>
+                    </div>
                     <a href="{% url 'download_individual_letter' %}" class="dl-btn">
-                        <i class="fas fa-download"></i>{% if LANG == 'sw' %}PAKUA BARUA YANGU{% else %}DOWNLOAD MY LETTER{% endif %}
+                        <i class="fas fa-download"></i>
+                        {% if LANG == 'sw' %}PAKUA BARUA YANGU{% else %}DOWNLOAD MY LETTER{% endif %}
                     </a>
                 </div>
 
                 {% else %}
-                <!-- No placement yet -->
-                <div class="premium-card p-3 mb-3 text-center" style="border:2px dashed var(--border);box-shadow:none;">
-                    <div class="tz-icon p-3 mx-auto mb-3 d-flex align-items-center justify-content-center" style="width:64px;height:64px;">
-                        <i class="fas fa-school" style="font-size:24px;"></i>
+                <!-- ── No placement yet ── -->
+                <div class="premium-card p-4 mb-3 text-center" style="border:2px dashed var(--border);box-shadow:none;background:#FAFBFE;">
+                    <div style="width:64px;height:64px;background:var(--light-2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                        <i class="fas fa-school" style="font-size:26px;color:#94A3B8;"></i>
                     </div>
-                    <h5 class="mb-2 normal-text" style="color:var(--text-dark);">{% if LANG == 'sw' %}Bado Hujapangwa{% else %}No Placement Yet{% endif %}</h5>
-                    <p class="mb-3 small-text" style="color:var(--text-gray);">{% if LANG == 'sw' %}Chagua mkoa, wilaya, na shule kisha chagua somo lako{% else %}Select a region, district and school then pick your subject{% endif %}</p>
-                    <a href="{% url 'select_region' %}" class="tz-btn px-4 py-2 normal-text" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
+                    <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:6px;">{% if LANG == 'sw' %}Bado Hujapangwa{% else %}No Placement Yet{% endif %}</div>
+                    <p style="font-size:12.5px;color:var(--text-gray);margin-bottom:18px;">{% if LANG == 'sw' %}Chagua mkoa, wilaya, na shule kisha chagua somo lako kupata mpangilio wako{% else %}Select a region, district and school, then choose a subject to get placed{% endif %}</p>
+                    <a href="{% url 'select_region' %}" style="display:inline-flex;align-items:center;gap:8px;padding:11px 24px;background:var(--navy);color:#fff;border-radius:var(--radius);font-size:13px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:.4px;">
                         <i class="fas fa-map-marker-alt"></i>{% if LANG == 'sw' %}Chagua Shule Sasa{% else %}Choose School Now{% endif %}
                     </a>
                 </div>
@@ -641,70 +711,73 @@ body {
 
             <!-- Right Column - School Info & Quick Actions -->
             <div class="col-lg-4">
-                <!-- School Information -->
-                <div class="premium-card p-3 mb-3">
-                    <div class="sec-hd mb-3"><h3><i class="fas fa-school"></i>{% if LANG == 'sw' %}Taarifa za Shule{% else %}School Information{% endif %}</h3></div>
-
-                    {% if student.selected_school %}
-                    <div class="school-box mb-3">
-                        <div class="school-ico"><i class="fas fa-school"></i></div>
-                        <div>
-                            <div class="school-name">{{ student.selected_school.name }}</div>
-                            <div class="school-loc">{{ student.selected_school.district.name }}, {{ student.selected_school.district.region.name }}</div>
+                <!-- School Info + Change -->
+                <div class="premium-card mb-3" style="overflow:hidden;">
+                    <div style="background:var(--navy);padding:12px 16px;border-bottom:3px solid var(--gold);">
+                        <div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.9);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:7px;">
+                            <i class="fas fa-school" style="color:var(--gold);"></i>
+                            {% if LANG == 'sw' %}Shule Yako{% else %}Your School{% endif %}
                         </div>
                     </div>
-                    <!-- Change school window -->
+                    <div style="padding:16px;">
+                    {% if student.selected_school %}
+                    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+                        <div style="width:44px;height:44px;background:var(--navy);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-school" style="color:#fff;font-size:18px;"></i>
+                        </div>
+                        <div style="min-width:0;">
+                            <div style="font-size:14px;font-weight:800;color:var(--navy);line-height:1.3;">{{ student.selected_school.name }}</div>
+                            <div style="font-size:11.5px;color:var(--text-gray);margin-top:3px;"><i class="fas fa-map-marker-alt me-1" style="color:var(--gold);"></i>{{ student.selected_school.district.name }}, {{ student.selected_school.district.region.name }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Change window info -->
                     {% if has_approved_applications %}
-                    <div class="mb-3 p-2 rounded" style="background:rgba(10,43,94,.05);border:1px solid var(--border);">
+                    <div style="background:{% if can_change_school_now %}var(--amber-bg){% else %}#F8FAFC{% endif %};border:1px solid {% if can_change_school_now %}rgba(217,119,6,.3){% else %}var(--border){% endif %};border-radius:var(--radius);padding:10px 12px;margin-bottom:14px;">
                         {% if can_change_school_now %}
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <i class="fas fa-clock" style="color:var(--medium);font-size:.85rem;"></i>
-                            <span class="small-text fw-bold" style="color:var(--text-dark);">{% if LANG == 'sw' %}Muda wa Kubadili{% else %}Change Window{% endif %}</span>
-                            <span class="badge small-text ms-auto" style="background:var(--medium);color:#fff;">{{ change_days_remaining }} {% if LANG == 'sw' %}siku{% else %}days{% endif %}</span>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                            <span style="font-size:11.5px;font-weight:700;color:#78350F;"><i class="fas fa-clock me-1"></i>{% if LANG == 'sw' %}Muda wa Kubadili{% else %}Change Window Open{% endif %}</span>
+                            <span style="background:var(--amber);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px;">{{ change_days_remaining }} {% if LANG == 'sw' %}SIKU{% else %}DAYS{% endif %}</span>
                         </div>
-                        <div class="small-text" style="color:var(--text-gray);">
-                            {% if LANG == 'sw' %}Unaweza kubadili shule hadi{% else %}You can change school until{% endif %}
-                            <strong>{{ change_deadline|date:"d M Y" }}</strong>
-                        </div>
+                        <div style="font-size:11px;color:#92400E;">{% if LANG == 'sw' %}Hadi{% else %}Until{% endif %} <strong>{{ change_deadline|date:"d M Y" }}</strong></div>
                         {% else %}
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="fas fa-lock" style="color:#6B7280;font-size:.85rem;"></i>
-                            <span class="small-text" style="color:#6B7280;">{% if LANG == 'sw' %}Muda wa kubadili shule umekwisha{% else %}Change window expired{% endif %}</span>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <i class="fas fa-lock" style="color:#94A3B8;font-size:13px;"></i>
+                            <span style="font-size:11.5px;color:#64748B;font-weight:600;">{% if LANG == 'sw' %}Muda wa kubadili umekwisha{% else %}Change window closed{% endif %}</span>
                         </div>
                         {% endif %}
                     </div>
                     {% endif %}
 
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <a href="{% url 'select_subjects' student.selected_school.id %}" class="btn w-100 py-2 small-text" style="background: var(--bold); color: var(--white); border: none;">
-                                <i class="fas fa-edit me-1"></i>{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}
-                            </a>
-                        </div>
-                        <div class="col-6">
-                            {% if can_change_school_now %}
-                            <a href="{% url 'change_school' %}" class="btn w-100 py-2 small-text" style="background: transparent; color: var(--medium); border: 1px solid var(--medium);">
-                                <i class="fas fa-exchange-alt me-1"></i>{% if LANG == 'sw' %}Badili Shule{% else %}Change School{% endif %}
-                            </a>
-                            {% else %}
-                            <button class="btn w-100 py-2 small-text" disabled style="background:var(--light);color:#9CA3AF;border:1px solid var(--border);cursor:not-allowed;">
-                                <i class="fas fa-lock me-1"></i>{% if LANG == 'sw' %}Imefungwa{% else %}Locked{% endif %}
-                            </button>
-                            {% endif %}
-                        </div>
+                    <!-- Action buttons -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <a href="{% url 'select_subjects' student.selected_school.id %}" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 8px;background:var(--navy);color:#fff;border-radius:var(--radius);font-size:12px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:.3px;">
+                            <i class="fas fa-book"></i>{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}
+                        </a>
+                        {% if can_change_school_now %}
+                        <a href="{% url 'change_school' %}" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 8px;background:transparent;color:var(--amber);border:1.5px solid var(--amber);border-radius:var(--radius);font-size:12px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:.3px;">
+                            <i class="fas fa-exchange-alt"></i>{% if LANG == 'sw' %}Badili{% else %}Change{% endif %}
+                        </a>
+                        {% else %}
+                        <button disabled style="display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 8px;background:#F1F5F9;color:#94A3B8;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;font-weight:700;cursor:not-allowed;text-transform:uppercase;letter-spacing:.3px;">
+                            <i class="fas fa-lock"></i>{% if LANG == 'sw' %}Imefungwa{% else %}Locked{% endif %}
+                        </button>
+                        {% endif %}
                     </div>
+
                     {% else %}
-                    <div class="text-center py-3">
-                        <div class="tz-icon p-3 mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                            <i class="fas fa-school"></i>
+                    <div style="text-align:center;padding:12px 0;">
+                        <div style="width:52px;height:52px;background:var(--light-2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                            <i class="fas fa-school" style="font-size:20px;color:#94A3B8;"></i>
                         </div>
-                        <h5 class="mb-2 normal-text" style="color: var(--text-dark);">No School Selected</h5>
-                        <p class="mb-3 small-text" style="color: var(--text-gray);">Choose a school to start your teaching journey</p>
-                        <a href="{% url 'select_region' %}" class="tz-btn px-3 py-2 small-text">
-                            <i class="fas fa-map-marker-alt me-2"></i>Choose School
+                        <div style="font-size:13.5px;font-weight:700;color:var(--navy);margin-bottom:4px;">{% if LANG == 'sw' %}Hakuna Shule Iliyochaguliwa{% else %}No School Selected{% endif %}</div>
+                        <p style="font-size:11.5px;color:var(--text-gray);margin-bottom:14px;">{% if LANG == 'sw' %}Chagua shule kuanza safari yako{% else %}Choose a school to begin your journey{% endif %}</p>
+                        <a href="{% url 'select_region' %}" style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:var(--navy);color:#fff;border-radius:var(--radius);font-size:12px;font-weight:700;text-decoration:none;text-transform:uppercase;">
+                            <i class="fas fa-map-marker-alt"></i>{% if LANG == 'sw' %}Chagua Shule{% else %}Choose School{% endif %}
                         </a>
                     </div>
                     {% endif %}
+                    </div>
                 </div>
 
                 <!-- My Assessors -->
