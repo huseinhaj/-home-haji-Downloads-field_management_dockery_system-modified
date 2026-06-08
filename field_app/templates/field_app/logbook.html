@@ -351,6 +351,7 @@
   </div>
 </template>
 
+{% if logbook_entry and logbook_entry.lessons_data %}{{ logbook_entry.lessons_data|json_script:"existing-lessons-data" }}{% endif %}
 <script>
 (function(){
   // ===== LOCATION =====
@@ -501,7 +502,6 @@
 
   // Pre-populate existing lessons_data if editing
   {% if logbook_entry and logbook_entry.lessons_data %}
-  {{ logbook_entry.lessons_data|json_script:"existing-lessons-data" }}
   (function() {
     const existing = JSON.parse(document.getElementById('existing-lessons-data').textContent);
     if (Array.isArray(existing) && existing.length > 0) {
