@@ -6012,6 +6012,7 @@ def board_login(request):
     prefill_school_id = request.GET.get('school_id', '')
     first_time = request.GET.get('first_time', '0') == '1'
     active_tab = request.GET.get('tab', 'staff')  # 'head' au 'staff'
+    submitted_request = request.GET.get('submitted', '0') == '1'
 
     if request.method == 'POST':
         mode = request.POST.get('mode', 'staff')
@@ -6105,6 +6106,7 @@ def board_login(request):
         'first_time': first_time,
         'active_tab': active_tab,
         'school': school,
+        'submitted_request': submitted_request,
     })
 
 
@@ -8126,6 +8128,7 @@ def school_head_submit(request, district_id):
     if request.method == 'POST':
         school_name = request.POST.get('school_name', '').strip()
         head_name   = request.POST.get('head_name', '').strip()
+        head_email  = request.POST.get('head_email', '').strip().lower()
         head_phone  = request.POST.get('head_phone', '').strip()
         level       = request.POST.get('level', '').strip()
         notes       = request.POST.get('notes', '').strip()
@@ -8147,8 +8150,8 @@ def school_head_submit(request, district_id):
         students_needed = sum(subjects_needed_json.values()) if subjects_needed_json else 0
 
         error = None
-        if not school_name or not head_name or not level:
-            error = 'Tafadhali jaza sehemu zote zinazohitajika (Shule, Kiwango, Jina la Mkuu).'
+        if not school_name or not head_name or not level or not head_email:
+            error = 'Tafadhali jaza sehemu zote zinazohitajika (Shule, Kiwango, Jina la Mkuu, Barua Pepe).'
         elif not subjects_needed_json:
             error = 'Tafadhali ongeza angalau somo moja na idadi inayohitajika.'
 
@@ -8169,13 +8172,16 @@ def school_head_submit(request, district_id):
                 school=matched_school,
                 head_name=head_name,
                 head_phone=head_phone,
+                submitter_email=head_email,
                 level=level,
                 students_needed=students_needed,
                 subjects_needed=subjects_needed_json,
                 notes=notes,
             )
-            messages.success(request, f'Asante {head_name}! Ombi lako limetumwa kwa DEO wa {district.name}.')
-            return redirect('school_head_submit', district_id=district.id)
+            from django.utils.http import urlencode
+            params = urlencode({'tab': 'head', 'email': head_email, 'submitted': '1'})
+            messages.success(request, f'Asante {head_name}! Ombi lako limetumwa kwa DEO wa {district.name}. Ingia sasa kuona hali ya ombi lako.')
+            return redirect(f"{reverse('board_login')}?{params}")
 
     return render(request, 'field_app/school_head_submit.html', {
         'district': district,
@@ -8452,6 +8458,176 @@ def _generate_requests_pdf(requests_qs, district, current_year):
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+@board_login_required
+def deo_student_pdf(request, district_id):
+    """DEO downloads PDF ya walimu wanafunzi waliochaguliwa kwenye wilaya yake."""
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+    district = get_object_or_404(District, id=district_id)
+    if not _can_access_district(bm, district):
+        messages.error(request, f'Huna ruhusa ya kuona wilaya ya {district.name}.')
+        return redirect('board_home')
+
+    current_year = _cached_active_year()
+
+    # DEO quota
+    _da_qs = DistrictAllocation.objects.filter(district=district)
+    if current_year:
+        _da_qs = _da_qs.filter(academic_year=current_year)
+    district_alloc = _da_qs.first()
+
+    # Walimu wanafunzi waliochaguliwa kwenye wilaya hii (approved applications)
+    approved_apps = (
+        StudentApplication.objects
+        .filter(school__district=district, status='approved')
+        .select_related('student', 'school', 'subject')
+        .order_by('school__level', 'school__name', 'student__full_name')
+    )
+
+    primary_apps = [a for a in approved_apps if a.school.level == 'Primary']
+    secondary_apps = [a for a in approved_apps if a.school.level == 'Secondary']
+
+    # Pia angalia walimu wenye selected_school kwenye wilaya hii (waliopata idhini)
+    if not approved_apps.exists():
+        yr_students = _active_year_students().filter(
+            selected_school__district=district,
+            approval_status='approved'
+        ).select_related('selected_school').order_by('selected_school__level', 'selected_school__name', 'full_name')
+        primary_apps = [
+            type('App', (), {
+                'student': st, 'school': st.selected_school, 'subject': None
+            })() for st in yr_students if st.selected_school and st.selected_school.level == 'Primary'
+        ]
+        secondary_apps = [
+            type('App', (), {
+                'student': st, 'school': st.selected_school, 'subject': None
+            })() for st in yr_students if st.selected_school and st.selected_school.level == 'Secondary'
+        ]
+
+    # Build PDF
+    import io as _io
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors as rl_colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+    buffer = _io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
+    styles = getSampleStyleSheet()
+    navy = rl_colors.HexColor('#0A2B5E')
+    gold = rl_colors.HexColor('#C8900A')
+    light = rl_colors.HexColor('#EEF1F6')
+    green = rl_colors.HexColor('#059669')
+    purple = rl_colors.HexColor('#5b21b6')
+
+    title_s = ParagraphStyle('T', parent=styles['Heading1'], fontSize=15, textColor=navy,
+                              spaceAfter=4, alignment=TA_CENTER, fontName='Helvetica-Bold')
+    sub_s = ParagraphStyle('S', parent=styles['Normal'], fontSize=9, textColor=gold,
+                            spaceAfter=2, alignment=TA_CENTER)
+    sec_s = ParagraphStyle('Sec', parent=styles['Heading2'], fontSize=11, textColor=navy,
+                            spaceBefore=12, spaceAfter=4, fontName='Helvetica-Bold')
+    body_s = ParagraphStyle('B', parent=styles['Normal'], fontSize=8.5, spaceAfter=3)
+
+    yr_label = current_year.year if current_year else '—'
+    story = []
+    story.append(Paragraph('JAMHURI YA MUUNGANO WA TANZANIA', sub_s))
+    story.append(Paragraph('Wizara ya Elimu, Sayansi na Teknolojia', sub_s))
+    story.append(Spacer(1, 0.3*cm))
+    story.append(HRFlowable(width='100%', thickness=3, color=gold))
+    story.append(Spacer(1, 0.2*cm))
+    story.append(Paragraph('ORODHA YA WALIMU WANAFUNZI WALIOCHAGULIWA', title_s))
+    story.append(Paragraph(f'Wilaya ya {district.name} — Mwaka {yr_label}', sub_s))
+    story.append(Spacer(1, 0.2*cm))
+    story.append(HRFlowable(width='100%', thickness=1, color=navy))
+    story.append(Spacer(1, 0.4*cm))
+
+    # Quota summary table
+    pq = district_alloc.primary_needed if district_alloc else 0
+    sq = district_alloc.secondary_needed if district_alloc else 0
+    pf = len(primary_apps)
+    sf = len(secondary_apps)
+    quota_data = [
+        ['Kiwango', 'Quota (DEO)', 'Wamejaa', 'Wanobaki'],
+        ['Msingi (Primary)', str(pq), str(pf), str(max(0, pq - pf))],
+        ['Sekondari (Secondary)', str(sq), str(sf), str(max(0, sq - sf))],
+        ['JUMLA', str(pq + sq), str(pf + sf), str(max(0, (pq + sq) - (pf + sf)))],
+    ]
+    qt = Table(quota_data, colWidths=[6*cm, 3*cm, 3*cm, 3*cm])
+    qt.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), navy),
+        ('TEXTCOLOR', (0, 0), (-1, 0), rl_colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [rl_colors.white, light]),
+        ('BACKGROUND', (0, -1), (-1, -1), navy),
+        ('TEXTCOLOR', (0, -1), (-1, -1), rl_colors.white),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 0.5, rl_colors.HexColor('#CBD5E0')),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(Paragraph('Muhtasari wa Quota', sec_s))
+    story.append(qt)
+    story.append(Spacer(1, 0.5*cm))
+
+    def make_student_table(apps, level_label, level_color):
+        if not apps:
+            story.append(Paragraph(f'Shule za {level_label}', sec_s))
+            story.append(Paragraph('Hakuna walimu wanafunzi waliochaguliwa bado.', body_s))
+            story.append(Spacer(1, 0.3*cm))
+            return
+        story.append(Paragraph(f'Shule za {level_label}', sec_s))
+        headers = ['#', 'Jina la Mwalimu Mwanafunzi', 'Shule', 'Somo']
+        data = [headers]
+        for i, app in enumerate(apps, 1):
+            subj = app.subject.name if app.subject else '—'
+            data.append([str(i), app.student.full_name, app.school.name, subj])
+        data.append(['', f'JUMLA: {len(apps)}', '', ''])
+        col_widths = [1*cm, 6*cm, 6.5*cm, 3.5*cm]
+        t = Table(data, colWidths=col_widths, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), level_color),
+            ('TEXTCOLOR', (0, 0), (-1, 0), rl_colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -2), [rl_colors.white, light]),
+            ('BACKGROUND', (0, -1), (-1, -1), rl_colors.HexColor('#FEF3C7')),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 0.5, rl_colors.HexColor('#CBD5E0')),
+            ('FONTSIZE', (0, 1), (-1, -1), 8.5),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.5*cm))
+
+    make_student_table(primary_apps, 'Msingi', green)
+    make_student_table(secondary_apps, 'Sekondari', purple)
+
+    story.append(HRFlowable(width='100%', thickness=1, color=navy))
+    story.append(Spacer(1, 0.2*cm))
+    from django.utils import timezone as _tz
+    story.append(Paragraph(
+        f'Imetengenezwa: {_tz.now().strftime("%d/%m/%Y %H:%M")} | DEO: {bm.full_name} | Mfumo wa IMS',
+        body_s
+    ))
+
+    doc.build(story)
+    buffer.seek(0)
+    from django.http import HttpResponse as _HR
+    fname = f'walimu_wanafunzi_{district.name.replace(" ", "_")}_{yr_label}.pdf'
+    resp = _HR(buffer, content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="{fname}"'
+    return resp
 
 
 def _send_sms_africastalking(phone, message):

@@ -157,4 +157,5 @@ urlpatterns = [
     path('submit/<int:district_id>/', views.school_head_submit, name='school_head_submit'),
     path('board/district/<int:district_id>/requests/', views.deo_review_requests, name='deo_review_requests'),
     path('board/district/<int:district_id>/send-links/', views.send_links_to_heads, name='send_links_to_heads'),
+    path('board/district/<int:district_id>/student-pdf/', views.deo_student_pdf, name='deo_student_pdf'),
 ]

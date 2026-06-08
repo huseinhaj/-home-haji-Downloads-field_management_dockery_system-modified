@@ -61,14 +61,6 @@
 
 <div class="tie-wrap">
 
-  {% if messages %}
-  {% for message in messages %}
-  <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-3" style="border-left:4px solid {% if message.tags == 'success' %}var(--success){% elif message.tags == 'error' %}var(--danger){% else %}var(--medium){% endif %};font-size:13px;">
-    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  </div>
-  {% endfor %}
-  {% endif %}
-
   <!-- School info bar -->
   <div class="school-info-bar">
     <strong><i class="fas fa-school" style="color:var(--medium);margin-right:6px;"></i>{{ school.name }}</strong>
@@ -224,6 +216,17 @@
 
     <!-- Submit -->
     <div class="submit-area">
+      {% if messages %}
+      {% for message in messages %}
+      <div id="inlineMsg" style="padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:12px;display:flex;align-items:center;gap:8px;
+        {% if message.tags == 'error' or message.tags == 'danger' %}background:#FEE2E2;border-left:4px solid var(--danger);color:#7F1D1D;
+        {% elif message.tags == 'success' %}background:#D1FAE5;border-left:4px solid var(--success);color:#064E3B;
+        {% else %}background:#FEF3C7;border-left:4px solid var(--warning);color:#78350F;{% endif %}">
+        <i class="fas {% if message.tags == 'error' or message.tags == 'danger' %}fa-exclamation-circle{% elif message.tags == 'success' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+        <span>{{ message }}</span>
+      </div>
+      {% endfor %}
+      {% endif %}
       <button type="submit" class="btn-submit" id="btnSubmit">
         <i class="fas fa-save"></i> Hifadhi Logbook
       </button>
@@ -544,7 +547,22 @@
     const btn = document.getElementById('btnSubmit');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inahifadhi...';
+    // Re-enable after 30s in case server is slow or connection drops
+    setTimeout(function(){
+      if(btn.disabled){
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Hifadhi Logbook';
+      }
+    }, 30000);
   });
+
+  // Scroll to inline message area on page load if there are server messages
+  {% if messages %}
+  document.addEventListener('DOMContentLoaded', function(){
+    const msg = document.getElementById('inlineMsg');
+    if(msg) msg.scrollIntoView({behavior:'smooth', block:'center'});
+  });
+  {% endif %}
 
   // Start hidden
   hideForm();

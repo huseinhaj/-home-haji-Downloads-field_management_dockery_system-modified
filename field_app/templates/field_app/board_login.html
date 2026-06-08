@@ -132,6 +132,15 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
 
       <!-- FORM: Mkuu wa Shule -->
       <div id="panelHead">
+        {% if submitted_request %}
+        <div style="background:#D1FAE5;border:1px solid #6EE7B7;border-radius:6px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
+          <i class="fas fa-check-circle" style="color:#059669;font-size:16px;margin-top:1px;"></i>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#064E3B;">Ombi limetumwa kwa DEO!</div>
+            <div style="font-size:11px;color:#065F46;margin-top:2px;">Ingia hapa chini kufuatilia hali ya ombi lako.</div>
+          </div>
+        </div>
+        {% endif %}
         {% if school %}
         <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
           <i class="fas fa-school" style="color:#1D4ED8;font-size:16px;"></i>
