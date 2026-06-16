@@ -31,7 +31,7 @@ RUN GDAL_PATH=$(find /usr/lib/x86_64-linux-gnu -maxdepth 1 -name 'libgdal.so.*' 
 
 # ── Python dependencies (cached layer) ────────────────────────────────────────
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --timeout=120 --retries=5 -r requirements.txt
 
 # ── Application code ───────────────────────────────────────────────────────────
 COPY . .

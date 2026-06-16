@@ -1,6 +1,16 @@
 version: '3.9'
 
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: field_db
+      POSTGRES_USER: field_user
+      POSTGRES_PASSWORD: field_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   web:
     build: .
     ports:
@@ -9,12 +19,18 @@ services:
       - .env.docker
     environment:
       - PORT=8000
+      - DATABASE_URL=postgresql://field_user:field_pass@db:5432/field_db
     volumes:
       - /home/haji/Downloads:/mnt/downloads:ro
+    depends_on:
+      - db
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
+
+volumes:
+  postgres_data:
