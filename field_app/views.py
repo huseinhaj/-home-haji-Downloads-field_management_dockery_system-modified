@@ -8928,11 +8928,11 @@ def student_certificate_pdf(request):
     # SECURITY WATERMARKS — drawn first (behind all content)
     # ══════════════════════════════════════════════════════════════════════════
 
-    # 1. Micro-text security pattern — faint background texture, siri ya anti-forgery
+    # 1. Micro-text security pattern — anti-forgery background texture
     micro = f"IMS CHETI CHA MAFUNZO YA UALIMU • {serial_no} • HALISI •  "
     micro_w = c.stringWidth(micro, 'Helvetica', 5.5)
     c.saveState()
-    c.setFont('Helvetica', 5.5); c.setFillColor(NAVY); c.setFillAlpha(0.06)
+    c.setFont('Helvetica', 5.5); c.setFillColor(NAVY); c.setFillAlpha(0.055)
     row_i, yp = 0, 4.0
     while yp < H + 9:
         xp = (-micro_w / 2) if row_i % 2 == 1 else 0.0
@@ -8941,15 +8941,15 @@ def student_certificate_pdf(request):
         yp += 9.0; row_i += 1
     c.restoreState()
 
-    # 2. Diagonal ghost watermark — very faint, behind all content
+    # 2. Diagonal ghost watermark
     c.saveState()
-    c.setFont('Helvetica-Bold', 70); c.setFillColor(NAVY); c.setFillAlpha(0.04)
+    c.setFont('Helvetica-Bold', 72); c.setFillColor(NAVY); c.setFillAlpha(0.045)
     c.translate(CX, H / 2); c.rotate(45)
-    c.drawCentredString(0,  50, "IMS")
+    c.drawCentredString(0,  52, "IMS")
     c.drawCentredString(0, -28, "HALISI")
     c.restoreState()
 
-    # 3. Guilloche wave lines — fine, barely visible
+    # 3. Guilloche wave lines
     c.saveState()
     c.setStrokeColor(NAVY); c.setLineWidth(0.3); c.setStrokeAlpha(0.07)
     for offset in range(0, int(W), 12):
@@ -9116,6 +9116,12 @@ def student_certificate_pdf(request):
     c.line(LM, y, RM, y);  y -= 20
 
     # ── SIGNATURES ────────────────────────────────────────────────────────────
+    # White background strip clears watermark rows so signatures are readable
+    c.saveState()
+    c.setFillColor(colors.white); c.setFillAlpha(1)
+    c.rect(LM - 4, y - 30, (RM - LM) + 8, 52, fill=1, stroke=0)
+    c.restoreState()
+
     SIG_COLS = [
         (LM,           LM+5.8*cm,   'School Supervisor',          supervisor_name, date_str),
         (LM+6.1*cm,   LM+11.8*cm,  'District Education Officer',  deo_name,        f'{school_dist} District'),
