@@ -8857,9 +8857,16 @@ def student_certificate_pdf(request):
     deo_name        = deo.full_name if deo else '—'
     grade           = fa.daraja
 
+    # ── Serial number (security ID unique per student) ───────────────────────
+    from datetime import date as dt_date
+    cert_date2 = fa.finalized_at or fa.updated_at
+    _year      = cert_date2.year if cert_date2 else dt_date.today().year
+    _dcode     = ''.join(ch for ch in school_dist.upper()[:5] if ch.isalpha())
+    serial_no  = f"IMS/{_year}/{_dcode}/{student.pk:05d}"
+
     # ── Canvas setup ──────────────────────────────────────────────────────────
     buf = io.BytesIO()
-    W, H = A4          # 595.27 x 841.89 points
+    W, H = A4
     CX   = W / 2
     LM   = 1.8*cm
     RM   = W - 1.8*cm
@@ -8872,7 +8879,40 @@ def student_certificate_pdf(request):
     c.setStrokeColor(GOLD); c.setLineWidth(1.5)
     c.rect(1.05*cm, 1.05*cm, W - 2.1*cm, H - 2.1*cm)
 
-    # ── WATERMARK: coat of arms (centred, faint) ──────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════════
+    # SECURITY WATERMARKS — drawn first (behind all content)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    # 1. Micro-text security pattern (fills entire page)
+    #    Tiny text readable under magnifier; degrades visibly when photocopied
+    micro = f"IMS CHETI CHA MAFUNZO YA UALIMU • {serial_no} • HALISI •  "
+    micro_w = c.stringWidth(micro, 'Helvetica', 5.5)
+    c.saveState()
+    c.setFont('Helvetica', 5.5); c.setFillColor(NAVY); c.setFillAlpha(0.055)
+    row_i, yp = 0, 4.0
+    while yp < H + 9:
+        xp = (-micro_w / 2) if row_i % 2 == 1 else 0.0
+        while xp < W + micro_w:
+            c.drawString(xp, yp, micro); xp += micro_w
+        yp += 9.0; row_i += 1
+    c.restoreState()
+
+    # 2. Diagonal ghost watermark
+    c.saveState()
+    c.setFont('Helvetica-Bold', 58); c.setFillColor(NAVY); c.setFillAlpha(0.032)
+    c.translate(CX, H / 2); c.rotate(45)
+    c.drawCentredString(0,  46, "IMS")
+    c.drawCentredString(0, -22, "HALISI")
+    c.restoreState()
+
+    # 3. Guilloche wave lines (fine curved lines, like banknotes)
+    c.saveState()
+    c.setStrokeColor(NAVY); c.setLineWidth(0.3); c.setStrokeAlpha(0.06)
+    for offset in range(0, int(W), 12):
+        c.bezier(offset, 0, offset+6, H*0.33, offset-6, H*0.66, offset, H)
+    c.restoreState()
+
+    # 4. CoA watermark (centred, faint background)
     if coat_img_path:
         try:
             c.saveState(); c.setFillAlpha(0.07)
@@ -8881,7 +8921,7 @@ def student_certificate_pdf(request):
         except Exception:
             pass
 
-    # ── TAMISEMI CIRCULAR SEAL (bottom-right corner) ──────────────────────────
+    # 5. TAMISEMI circular seal (bottom-right)
     sx, sy = W - 3.5*cm, 3.5*cm
     ro, ri = 82, 55
     c.saveState()
@@ -8907,20 +8947,19 @@ def student_certificate_pdf(request):
     c.restoreState()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # CONTENT — TOP-DOWN (y starts at top, decreases downward)
-    # In canvas: y=0 is bottom, y=H is top.
-    # We track 'y' as current baseline, decrement as we go down.
+    # VISIBLE CONTENT — top-down, precisely sized to fill full A4
+    # Available height = 841.89 - 2*1.5cm = 756pt; total below = ~754pt ✓
     # ══════════════════════════════════════════════════════════════════════════
-    y = H - 1.5*cm    # start just inside top border
+    y = H - 1.5*cm    # 799pt — start just inside top border
 
-    # ── COAT OF ARMS ──────────────────────────────────────────────────────────
-    coa_w, coa_h = 72, 86
+    # ── COAT OF ARMS (visible, top-centre) ────────────────────────────────────
+    coa_w, coa_h = 68, 64     # 64pt tall = 2.26cm  (saves vs 86pt)
     if coat_img_path:
         try:
             c.drawImage(coat_img_path, CX - coa_w/2, y - coa_h, width=coa_w, height=coa_h, mask='auto')
         except Exception:
             pass
-    y -= coa_h + 10       # 86pt image + 10pt gap
+    y -= coa_h + 8             # 64 + 8 gap = 72pt
 
     # ── HEADER ────────────────────────────────────────────────────────────────
     c.setFont('Helvetica-Bold', 12); c.setFillColor(NAVY)
@@ -8929,166 +8968,137 @@ def student_certificate_pdf(request):
     c.drawCentredString(CX, y, "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY");  y -= 15
     c.setFont('Helvetica', 8.5)
     c.drawCentredString(CX, y, "PRESIDENT'S OFFICE — REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT (PO-RALG / TAMISEMI)")
-    y -= 18
+    y -= 16
 
-    # Double rule
+    # Double rule under header
     c.setStrokeColor(NAVY); c.setLineWidth(3)
     c.line(LM, y, RM, y);  y -= 4
     c.setStrokeColor(GOLD); c.setLineWidth(1.2)
-    c.line(LM, y, RM, y);  y -= 24
+    c.line(LM, y, RM, y);  y -= 14   # tighter gap (was 24)
 
-    # ── CERTIFICATE TITLE ─────────────────────────────────────────────────────
+    # ── TITLE ─────────────────────────────────────────────────────────────────
     c.setFont('Helvetica-Bold', 17); c.setFillColor(NAVY)
-    c.drawCentredString(CX, y, "CERTIFICATE OF TEACHING PRACTICE COMPLETION");  y -= 22
+    c.drawCentredString(CX, y, "CERTIFICATE OF TEACHING PRACTICE COMPLETION");  y -= 20
 
     # Gold centre rule
     gl = W * 0.55 / 2
     c.setStrokeColor(GOLD); c.setLineWidth(1.2)
-    c.line(CX - gl, y, CX + gl, y);  y -= 30
+    c.line(CX - gl, y, CX + gl, y);  y -= 22   # tighter (was 30)
 
-    # ── "This is to certify that" ─────────────────────────────────────────────
+    # ── BODY ──────────────────────────────────────────────────────────────────
     c.setFont('Helvetica', 11); c.setFillColor(BLACK)
-    c.drawCentredString(CX, y, "This is to certify that");  y -= 36
+    c.drawCentredString(CX, y, "This is to certify that");  y -= 34
 
-    # ── STUDENT NAME (large) ──────────────────────────────────────────────────
     c.setFont('Helvetica-Bold', 26); c.setFillColor(NAVY)
-    c.drawCentredString(CX, y, student.full_name.upper());  y -= 38
+    c.drawCentredString(CX, y, student.full_name.upper());  y -= 36
 
-    # ── REGISTRATION NUMBER ───────────────────────────────────────────────────
     c.setFont('Helvetica', 10.5); c.setFillColor(colors.HexColor('#444'))
     c.drawCentredString(CX, y, f"Registration Number:   {reg_no}");  y -= 26
 
-    # ── "has successfully completed" ──────────────────────────────────────────
     c.setFont('Helvetica', 11); c.setFillColor(BLACK)
-    c.drawCentredString(CX, y, "has successfully completed a period of Teaching Practice at");  y -= 32
+    c.drawCentredString(CX, y, "has successfully completed a period of Teaching Practice at");  y -= 30
 
-    # ── SCHOOL NAME ───────────────────────────────────────────────────────────
     c.setFont('Helvetica-Bold', 15); c.setFillColor(NAVY)
-    c.drawCentredString(CX, y, school_name.upper());  y -= 24
+    c.drawCentredString(CX, y, school_name.upper());  y -= 22
 
-    # ── DISTRICT / ACADEMIC YEAR ──────────────────────────────────────────────
     detail = f"{school_dist} District"
     if acad_year: detail += f"   |   Academic Year: {acad_year}"
     c.setFont('Helvetica', 10.5); c.setFillColor(colors.HexColor('#444'))
-    c.drawCentredString(CX, y, detail);  y -= 28
+    c.drawCentredString(CX, y, detail);  y -= 24
 
-    # ── STATEMENT ─────────────────────────────────────────────────────────────
     stmt = ("The student demonstrated satisfactory performance in all required areas of the "
             "teaching practicum as stipulated by the Ministry of Education, Science and Technology "
             "guidelines for Initial Teacher Education (ITE) programmes in Tanzania.")
     c.setFont('Helvetica', 10.5); c.setFillColor(colors.HexColor('#333'))
     for line in simpleSplit(stmt, 'Helvetica', 10.5, W - 4*cm):
         c.drawCentredString(CX, y, line);  y -= 16
-    y -= 18      # gap below statement
+    y -= 14
 
-    # ── PERFORMANCE TABLE ─────────────────────────────────────────────────────
+    # ── SCORE TABLE ───────────────────────────────────────────────────────────
     tbl_data = [
         ('ASSESSMENT CRITERION',  'MARKS', 'MAX'),
-        ('Attendance',            str(fa.kuhudhuria),      '20'),
-        ('Work Diary (Logbook)',  str(fa.daftari_la_kazi), '20'),
-        ('Scheme of Work',        str(fa.mpango_wa_kazi),  '20'),
-        ('Lesson Planning',       str(fa.mpango_wa_somo),  '20'),
-        ('Classroom Performance', str(fa.utendaji_darasani),'20'),
-        ('TOTAL',                 str(fa.jumla),           '100'),
+        ('Attendance',            str(fa.kuhudhuria),        '20'),
+        ('Work Diary (Logbook)',  str(fa.daftari_la_kazi),   '20'),
+        ('Scheme of Work',        str(fa.mpango_wa_kazi),    '20'),
+        ('Lesson Planning',       str(fa.mpango_wa_somo),    '20'),
+        ('Classroom Performance', str(fa.utendaji_darasani), '20'),
+        ('TOTAL',                 str(fa.jumla),             '100'),
     ]
-    COL_W = [W - 2*LM - 6*cm, 3*cm, 3*cm]
-    ROW_H = 28    # points per row — taller = easier to read
-
-    tbl_top_y = y    # canvas y at top of table
+    COL_W   = [W - 2*LM - 6*cm, 3*cm, 3*cm]
+    ROW_H   = 25    # 25pt per row (was 28 — saves 21pt total)
+    tbl_top = y
 
     for idx, row in enumerate(tbl_data):
-        ry_top    = tbl_top_y - idx * ROW_H        # top of this row (canvas y)
-        ry_bottom = ry_top - ROW_H                 # bottom of this row
-
-        # Background
-        if idx == 0:
-            bg = NAVY
-        elif idx == len(tbl_data) - 1:
-            bg = LIGHT
-        elif idx % 2 == 0:
-            bg = colors.HexColor('#f4f6fb')
-        else:
-            bg = WHITE
+        rt = tbl_top - idx * ROW_H
+        rb = rt - ROW_H
+        if idx == 0:              bg = NAVY
+        elif idx == len(tbl_data)-1: bg = LIGHT
+        elif idx % 2 == 0:        bg = colors.HexColor('#f4f6fb')
+        else:                     bg = WHITE
         c.setFillColor(bg)
-        c.rect(LM, ry_bottom, sum(COL_W), ROW_H, fill=1, stroke=0)
-
-        # Text (baseline = ry_bottom + 9)
-        text_y = ry_bottom + 9
-        x_cur  = LM
+        c.rect(LM, rb, sum(COL_W), ROW_H, fill=1, stroke=0)
+        ty = rb + 8; xc = LM
         for j, (cell, cw) in enumerate(zip(row, COL_W)):
-            if idx == 0:
-                c.setFont('Helvetica-Bold', 9.5); c.setFillColor(WHITE)
-            elif j == 0:
-                c.setFont('Helvetica', 10); c.setFillColor(BLACK)
-            else:
-                c.setFont('Helvetica-Bold', 10)
-                c.setFillColor(NAVY if idx < len(tbl_data) - 1 else BLACK)
-            if j == 0:
-                c.drawString(x_cur + 12, text_y, cell)
-            else:
-                c.drawCentredString(x_cur + cw / 2, text_y, cell)
-            x_cur += cw
-
-        # Grid
+            if idx == 0:   c.setFont('Helvetica-Bold', 9.5); c.setFillColor(WHITE)
+            elif j == 0:   c.setFont('Helvetica', 10);       c.setFillColor(BLACK)
+            else:          c.setFont('Helvetica-Bold', 10);   c.setFillColor(NAVY if idx < len(tbl_data)-1 else BLACK)
+            if j == 0: c.drawString(xc+12, ty, cell)
+            else:      c.drawCentredString(xc+cw/2, ty, cell)
+            xc += cw
         c.setStrokeColor(colors.HexColor('#b0c0d8')); c.setLineWidth(0.4)
-        c.rect(LM, ry_bottom, sum(COL_W), ROW_H, fill=0, stroke=1)
+        c.rect(LM, rb, sum(COL_W), ROW_H, fill=0, stroke=1)
         xg = LM
         for cw in COL_W[:-1]:
-            xg += cw
-            c.line(xg, ry_bottom, xg, ry_top)
+            xg += cw; c.line(xg, rb, xg, rt)
 
-    y = tbl_top_y - len(tbl_data) * ROW_H - 22   # below table + gap
+    y = tbl_top - len(tbl_data)*ROW_H - 18
 
-    # ── OVERALL GRADE ─────────────────────────────────────────────────────────
-    # Thin separator
+    # ── GRADE ─────────────────────────────────────────────────────────────────
     c.setStrokeColor(colors.HexColor('#aabbcc')); c.setLineWidth(0.5)
-    c.line(LM, y + 8, RM, y + 8)
+    c.line(LM, y+6, RM, y+6);  y -= 10
 
-    y -= 12
-    # Grade label
     c.setFont('Helvetica-Bold', 12); c.setFillColor(GOLD)
-    gl_text = f"OVERALL GRADE: {GRADE_LABEL.get(grade, '')}  ({fa.jumla}/100)"
-    c.drawCentredString(CX, y, gl_text);  y -= 14
+    c.drawCentredString(CX, y, f"OVERALL GRADE: {GRADE_LABEL.get(grade,'')}  ({fa.jumla}/100)");  y -= 14
 
-    # Big grade letter
     c.setFont('Helvetica-Bold', 48); c.setFillColor(GRADE_COL.get(grade, NAVY))
-    c.drawCentredString(CX, y, grade);  y -= 52
+    c.drawCentredString(CX, y, grade);  y -= 46   # was 52 — saves 6pt
 
-    # Remarks (if any)
     if fa.maoni:
         c.setFont('Helvetica-Oblique', 9.5); c.setFillColor(colors.HexColor('#555'))
-        c.drawCentredString(CX, y, f"Remarks: {fa.maoni}");  y -= 16
-
-    y -= 16   # gap before separator
+        c.drawCentredString(CX, y, f"Remarks: {fa.maoni}");  y -= 14
+    y -= 8
 
     # ── BOTTOM RULES ──────────────────────────────────────────────────────────
     c.setStrokeColor(GOLD); c.setLineWidth(1.2)
     c.line(LM, y, RM, y);  y -= 5
     c.setStrokeColor(NAVY); c.setLineWidth(3)
-    c.line(LM, y, RM, y);  y -= 26
+    c.line(LM, y, RM, y);  y -= 20   # was 26 — saves 6pt
 
     # ── SIGNATURES ────────────────────────────────────────────────────────────
     SIG_COLS = [
-        (LM,           LM + 5.8*cm,  'School Supervisor',       supervisor_name, date_str),
-        (LM + 6.1*cm,  LM + 11.8*cm, 'District Education Officer', deo_name,   f'{school_dist} District'),
-        (LM + 12.1*cm, RM,           'Date of Issue',           date_str,       ''),
+        (LM,           LM+5.8*cm,   'School Supervisor',          supervisor_name, date_str),
+        (LM+6.1*cm,   LM+11.8*cm,  'District Education Officer',  deo_name,        f'{school_dist} District'),
+        (LM+12.1*cm,  RM,           'Date of Issue',              date_str,        ''),
     ]
-    sig_line_y = y
-    sig_name_y = y + 16     # italic name above line
-    sig_title_y = y - 14    # bold title below line
-    sig_sub_y   = y - 26    # sub-text
-
-    for x1, x2, title, name, sub in SIG_COLS:
-        xc = (x1 + x2) / 2
+    for x1, x2, ttl, nm, sub in SIG_COLS:
+        xc = (x1+x2)/2
         c.setFont('Helvetica-Oblique', 11); c.setFillColor(NAVY)
-        c.drawCentredString(xc, sig_name_y, name)
+        c.drawCentredString(xc, y+15, nm)
         c.setStrokeColor(colors.HexColor('#666')); c.setLineWidth(0.7)
-        c.line(x1, sig_line_y, x2, sig_line_y)
+        c.line(x1, y, x2, y)
         c.setFont('Helvetica-Bold', 8.5); c.setFillColor(NAVY)
-        c.drawCentredString(xc, sig_title_y, title)
+        c.drawCentredString(xc, y-13, ttl)
         if sub:
             c.setFont('Helvetica', 7.5); c.setFillColor(colors.HexColor('#444'))
-            c.drawCentredString(xc, sig_sub_y, sub)
+            c.drawCentredString(xc, y-24, sub)
+
+    # ── SECURITY FOOTER (serial number visible) ───────────────────────────────
+    fy = 1.4*cm
+    c.setStrokeColor(colors.HexColor('#888')); c.setLineWidth(0.4)
+    c.line(LM, fy+0.4*cm, RM, fy+0.4*cm)
+    c.setFont('Helvetica', 6.5); c.setFillColor(colors.HexColor('#555'))
+    c.drawString(LM, fy+0.1*cm, f"Namba ya Uthibitisho: {serial_no}")
+    c.drawRightString(RM, fy+0.1*cm, f"Tarehe: {date_str}  |  IMS • TAMISEMI")
 
     c.save()
     buf.seek(0)
