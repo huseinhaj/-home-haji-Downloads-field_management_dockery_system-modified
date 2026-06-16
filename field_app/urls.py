@@ -162,4 +162,5 @@ urlpatterns = [
     # Student Certificate
     path('cheti/', views.student_certificate, name='student_certificate'),
     path('cheti/pdf/', views.student_certificate_pdf, name='student_certificate_pdf'),
+    path('cheti/barua/', views.student_confirmation_letter_pdf, name='student_confirmation_letter_pdf'),
 ]

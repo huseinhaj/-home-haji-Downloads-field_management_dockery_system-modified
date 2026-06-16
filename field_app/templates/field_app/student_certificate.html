@@ -14,17 +14,24 @@
   .cert-status.locked  { background:#fef9c3; border:1.5px solid #ca8a04; color:#713f12; }
   .cert-status.ready   { background:#dcfce7; border:1.5px solid #16a34a; color:#14532d; }
   .cert-status .dl-btn {
-    margin-left: auto; white-space: nowrap;
+    white-space: nowrap;
     background: #14532d; color: #fff; border: none;
     border-radius: 3px; padding: 7px 18px; font-size: 12px;
     text-decoration: none; cursor: pointer;
   }
+  .cert-status .dl-btn-letter {
+    white-space: nowrap;
+    background: #0A2B5E; color: #fff; border: none;
+    border-radius: 3px; padding: 7px 18px; font-size: 12px;
+    text-decoration: none; cursor: pointer; margin-left: 6px;
+  }
   .cert-status .dl-btn-dis {
-    margin-left: auto; white-space: nowrap;
+    white-space: nowrap;
     background: #9ca3af; color: #fff; border: none;
     border-radius: 3px; padding: 7px 18px; font-size: 12px;
-    cursor: not-allowed;
+    cursor: not-allowed; margin-left: auto;
   }
+  .cert-status .btn-group { margin-left: auto; display: flex; gap: 6px; }
 
   /* Certificate card */
   .cert-card {
@@ -127,19 +134,24 @@
   {% if completed %}
   <div class="cert-status ready">
     <i class="fas fa-check-circle"></i>
-    <span>Congratulations! Your teaching practice is complete. You may download your official certificate.</span>
-    <a href="{% url 'student_certificate_pdf' %}" class="dl-btn">
-      <i class="fas fa-download"></i> Download PDF
-    </a>
+    <span>Hongera! Mafunzo yako ya ualimu yamekamilika. Unaweza kupakua hati zako rasmi.</span>
+    <div class="btn-group">
+      <a href="{% url 'student_certificate_pdf' %}" class="dl-btn" title="Cheti la Mafunzo (decorative)">
+        <i class="fas fa-certificate"></i> Cheti PDF
+      </a>
+      <a href="{% url 'student_confirmation_letter_pdf' %}" class="dl-btn-letter" title="Barua Rasmi ya Uthibitisho (GoT format)">
+        <i class="fas fa-file-alt"></i> Barua Rasmi
+      </a>
+    </div>
   </div>
   {% else %}
   <div class="cert-status locked">
     <i class="fas fa-lock"></i>
     <span>
-      This is a <strong>preview</strong> of your certificate.
-      The PDF will be available once your supervisor submits your final assessment.
+      Hii ni <strong>preview</strong> ya cheti chako.
+      Hati zitapatikana baada ya msimamizi kukamilisha tathmini yako ya mwisho.
     </span>
-    <button class="dl-btn-dis" disabled><i class="fas fa-lock"></i> Download PDF</button>
+    <button class="dl-btn-dis" disabled><i class="fas fa-lock"></i> Hati Hazipo Bado</button>
   </div>
   {% endif %}
 
