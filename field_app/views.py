@@ -8883,31 +8883,31 @@ def student_certificate_pdf(request):
     # SECURITY WATERMARKS — drawn first (behind all content)
     # ══════════════════════════════════════════════════════════════════════════
 
-    # 1. Micro-text security pattern (fills entire page)
-    #    Tiny text readable under magnifier; degrades visibly when photocopied
+    # 1. Micro-text security pattern — fills entire page in diagonal rows
+    #    Visible as faint blue texture; degrades distinctly when photocopied
     micro = f"IMS CHETI CHA MAFUNZO YA UALIMU • {serial_no} • HALISI •  "
-    micro_w = c.stringWidth(micro, 'Helvetica', 5.5)
+    micro_w = c.stringWidth(micro, 'Helvetica', 6)
     c.saveState()
-    c.setFont('Helvetica', 5.5); c.setFillColor(NAVY); c.setFillAlpha(0.055)
-    row_i, yp = 0, 4.0
-    while yp < H + 9:
+    c.setFont('Helvetica', 6); c.setFillColor(NAVY); c.setFillAlpha(0.12)
+    row_i, yp = 0, 3.0
+    while yp < H + 10:
         xp = (-micro_w / 2) if row_i % 2 == 1 else 0.0
         while xp < W + micro_w:
             c.drawString(xp, yp, micro); xp += micro_w
-        yp += 9.0; row_i += 1
+        yp += 10.0; row_i += 1
     c.restoreState()
 
-    # 2. Diagonal ghost watermark
+    # 2. Diagonal large ghost watermark — "HALISI / IMS" at 45°
     c.saveState()
-    c.setFont('Helvetica-Bold', 58); c.setFillColor(NAVY); c.setFillAlpha(0.032)
+    c.setFont('Helvetica-Bold', 80); c.setFillColor(NAVY); c.setFillAlpha(0.07)
     c.translate(CX, H / 2); c.rotate(45)
-    c.drawCentredString(0,  46, "IMS")
-    c.drawCentredString(0, -22, "HALISI")
+    c.drawCentredString(0,  58, "IMS")
+    c.drawCentredString(0, -32, "HALISI")
     c.restoreState()
 
-    # 3. Guilloche wave lines (fine curved lines, like banknotes)
+    # 3. Guilloche wave lines — vertical bezier curves across full page
     c.saveState()
-    c.setStrokeColor(NAVY); c.setLineWidth(0.3); c.setStrokeAlpha(0.06)
+    c.setStrokeColor(NAVY); c.setLineWidth(0.5); c.setStrokeAlpha(0.10)
     for offset in range(0, int(W), 12):
         c.bezier(offset, 0, offset+6, H*0.33, offset-6, H*0.66, offset, H)
     c.restoreState()
@@ -8974,7 +8974,7 @@ def student_certificate_pdf(request):
     c.setStrokeColor(NAVY); c.setLineWidth(3)
     c.line(LM, y, RM, y);  y -= 4
     c.setStrokeColor(GOLD); c.setLineWidth(1.2)
-    c.line(LM, y, RM, y);  y -= 14   # tighter gap (was 24)
+    c.line(LM, y, RM, y);  y -= 14
 
     # ── TITLE ─────────────────────────────────────────────────────────────────
     c.setFont('Helvetica-Bold', 17); c.setFillColor(NAVY)
@@ -8983,7 +8983,7 @@ def student_certificate_pdf(request):
     # Gold centre rule
     gl = W * 0.55 / 2
     c.setStrokeColor(GOLD); c.setLineWidth(1.2)
-    c.line(CX - gl, y, CX + gl, y);  y -= 22   # tighter (was 30)
+    c.line(CX - gl, y, CX + gl, y);  y -= 22
 
     # ── BODY ──────────────────────────────────────────────────────────────────
     c.setFont('Helvetica', 11); c.setFillColor(BLACK)
@@ -9025,7 +9025,7 @@ def student_certificate_pdf(request):
         ('TOTAL',                 str(fa.jumla),             '100'),
     ]
     COL_W   = [W - 2*LM - 6*cm, 3*cm, 3*cm]
-    ROW_H   = 25    # 25pt per row (was 28 — saves 21pt total)
+    ROW_H   = 25
     tbl_top = y
 
     for idx, row in enumerate(tbl_data):
@@ -9061,7 +9061,7 @@ def student_certificate_pdf(request):
     c.drawCentredString(CX, y, f"OVERALL GRADE: {GRADE_LABEL.get(grade,'')}  ({fa.jumla}/100)");  y -= 14
 
     c.setFont('Helvetica-Bold', 48); c.setFillColor(GRADE_COL.get(grade, NAVY))
-    c.drawCentredString(CX, y, grade);  y -= 46   # was 52 — saves 6pt
+    c.drawCentredString(CX, y, grade);  y -= 46
 
     if fa.maoni:
         c.setFont('Helvetica-Oblique', 9.5); c.setFillColor(colors.HexColor('#555'))
@@ -9072,7 +9072,7 @@ def student_certificate_pdf(request):
     c.setStrokeColor(GOLD); c.setLineWidth(1.2)
     c.line(LM, y, RM, y);  y -= 5
     c.setStrokeColor(NAVY); c.setLineWidth(3)
-    c.line(LM, y, RM, y);  y -= 20   # was 26 — saves 6pt
+    c.line(LM, y, RM, y);  y -= 20
 
     # ── SIGNATURES ────────────────────────────────────────────────────────────
     SIG_COLS = [
@@ -9092,13 +9092,13 @@ def student_certificate_pdf(request):
             c.setFont('Helvetica', 7.5); c.setFillColor(colors.HexColor('#444'))
             c.drawCentredString(xc, y-24, sub)
 
-    # ── SECURITY FOOTER (serial number visible) ───────────────────────────────
-    fy = 1.4*cm
+    # ── SECURITY FOOTER (serial number + verification code visible) ────────────
+    fy = 0.85*cm
     c.setStrokeColor(colors.HexColor('#888')); c.setLineWidth(0.4)
-    c.line(LM, fy+0.4*cm, RM, fy+0.4*cm)
+    c.line(LM, fy+0.35*cm, RM, fy+0.35*cm)
     c.setFont('Helvetica', 6.5); c.setFillColor(colors.HexColor('#555'))
-    c.drawString(LM, fy+0.1*cm, f"Namba ya Uthibitisho: {serial_no}")
-    c.drawRightString(RM, fy+0.1*cm, f"Tarehe: {date_str}  |  IMS • TAMISEMI")
+    c.drawString(LM, fy+0.05*cm, f"Namba ya Uthibitisho: {serial_no}")
+    c.drawRightString(RM, fy+0.05*cm, f"Tarehe: {date_str}  |  IMS • TAMISEMI")
 
     c.save()
     buf.seek(0)
