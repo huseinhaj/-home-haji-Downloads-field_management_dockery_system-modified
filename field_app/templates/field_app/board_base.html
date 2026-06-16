@@ -718,5 +718,12 @@ document.querySelectorAll('.accordion-btn').forEach(btn => {
   });
 });
 </script>
+
+<script>
+/* Back-button security: force reload from server on bfcache restore */
+window.addEventListener('pageshow', function(e) {
+    if (e.persisted) { window.location.reload(); }
+});
+</script>
 </body>
 </html>

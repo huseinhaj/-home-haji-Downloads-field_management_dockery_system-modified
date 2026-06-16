@@ -821,5 +821,13 @@
     </script>
     
     {% block extra_js %}{% endblock %}
+
+    <script>
+    /* Back-button security: if browser restores page from bfcache (back/forward),
+       reload from server so the session check runs and expired sessions redirect to login. */
+    window.addEventListener('pageshow', function(e) {
+        if (e.persisted) { window.location.reload(); }
+    });
+    </script>
 </body>
 </html>
