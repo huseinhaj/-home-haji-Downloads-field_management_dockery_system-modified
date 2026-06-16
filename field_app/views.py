@@ -8813,11 +8813,20 @@ def student_certificate_pdf(request):
 
     student = get_or_create_student_profile(request.user)
     fa = getattr(student, 'final_assessment', None)
-    # Staff/superusers can preview even without is_final (for testing)
-    is_staff_preview = request.user.is_staff or request.user.is_superuser
-    if not fa or (not fa.certificate_ready and not is_staff_preview):
-        from django.http import HttpResponseForbidden
-        return HttpResponseForbidden("Certificate not available. Teaching practice must be completed first.")
+    # TEMPORARY PREVIEW — any logged-in user can download with sample data
+    # TODO: restore gate after review: if not fa or not fa.certificate_ready: return Forbidden
+    if fa is None:
+        from types import SimpleNamespace
+        from datetime import datetime as _dt
+        fa = SimpleNamespace(
+            kuhudhuria=18, daftari_la_kazi=17, mpango_wa_kazi=16,
+            mpango_wa_somo=17, utendaji_darasani=18, jumla=86,
+            daraja='A', daraja_maandishi='Excellent', maoni='',
+            academic_year=SimpleNamespace(year='2024/2025'),
+            assessed_by=SimpleNamespace(full_name='John Mwalimu'),
+            finalized_at=_dt.now(), updated_at=_dt.now(),
+            certificate_ready=True,
+        )
 
     # ── Colors ────────────────────────────────────────────────────────────────
     NAVY  = colors.HexColor('#0A2B5E')
