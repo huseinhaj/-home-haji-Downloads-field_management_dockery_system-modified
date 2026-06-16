@@ -51,6 +51,8 @@ python manage.py collectstatic --noinput
 echo "Loading schools in background..."
 (python manage.py loaddata schools.json || true; \
  python manage.py loaddata missing_schools.json || true; \
+ python manage.py loaddata zanzibar_schools.json || true; \
+ python manage.py loaddata mainland_private_schools.json || true; \
  python manage.py setup_school_subjects || true; \
  python manage.py shell -c "from field_app.models import School; School.objects.update(current_students=0); print('Reset current_students to 0')" || true; \
  python manage.py import_schools_pdf --overwrite || true) &
