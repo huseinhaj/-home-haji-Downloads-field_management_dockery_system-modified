@@ -1280,15 +1280,23 @@ class FinalAssessment(models.Model):
     utendaji_darasani = models.PositiveSmallIntegerField(default=0, help_text="Utendaji Darasani (0–20)")
 
     maoni    = models.TextField(blank=True)
-    is_final = models.BooleanField(default=False, help_text="Imekamilishwa — cheti kinapatikana")
-    finalized_at = models.DateTimeField(null=True, blank=True, help_text="Tarehe tathmini ilipokamilika")
+    is_final = models.BooleanField(default=False, help_text="Mkuu wa Shule amekamilisha tathmini")
+    finalized_at = models.DateTimeField(null=True, blank=True, help_text="Tarehe mkuu alipokamilisha")
+
+    # DEO approval — cheti kinapatikana tu baada ya DEO kuidhibiti
+    deo_approved    = models.BooleanField(default=False, help_text="DEO ameidhibiti — cheti kinapatikana")
+    deo_approved_at = models.DateTimeField(null=True, blank=True, help_text="Tarehe DEO alipoidhibiti")
+    deo_approved_by = models.ForeignKey(
+        'BoardMember', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='deo_approved_assessments', help_text="DEO aliyeidhibiti"
+    )
 
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at   = models.DateTimeField(auto_now=True)
 
     @property
     def certificate_ready(self):
-        return self.is_final
+        return self.deo_approved
 
     class Meta:
         ordering = ['-submitted_at']

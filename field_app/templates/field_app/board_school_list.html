@@ -80,6 +80,14 @@
     <a href="{% url 'deo_student_pdf' district.id %}" style="background:#059669;color:#fff;padding:8px 16px;border-radius:6px;font-size:.78rem;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;">
       <i class="fas fa-file-pdf"></i>{% if LANG == 'sw' %}PDF — Walimu Wanafunzi{% else %}Student Teachers PDF{% endif %}
     </a>
+    {% if bm.role == 'deo' or bm.role == 'chair' or bm.role == 'inspector' %}
+    <form method="post" action="{% url 'deo_approve_certificates' district.id %}" style="margin:0;" onsubmit="return confirm('Una uhakika? Hii itafungua vyeti vya wanafunzi wote waliothibitishwa na Mkuu wa Shule katika wilaya hii.')">
+      {% csrf_token %}
+      <button type="submit" style="background:#C8900A;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:.78rem;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;">
+        <i class="fas fa-stamp"></i> Idhibiti Vyeti — Wilaya Nzima
+      </button>
+    </form>
+    {% endif %}
   </div>
 </div>
 

@@ -6446,6 +6446,39 @@ def board_school_list(request, district_id):
 
 
 @board_login_required
+def deo_approve_district_certificates(request, district_id):
+    """DEO anaidhibiti vyeti vya wanafunzi wote wa wilaya (POST tu)."""
+    bm = _get_board_member(request)
+    if not bm:
+        return redirect('board_login')
+    if bm.role not in ('deo', 'chair', 'inspector'):
+        messages.error(request, 'Ni DEO tu anayeweza kuidhibiti vyeti.')
+        return redirect('board_school_list', district_id=district_id)
+
+    district = get_object_or_404(District, id=district_id)
+    if not _can_access_district(bm, district):
+        messages.error(request, f'Huna ruhusa ya wilaya ya {district.name}.')
+        return redirect('board_home')
+
+    if request.method == 'POST':
+        from django.utils import timezone as tz
+        # Approve all finalized (is_final=True) but not yet deo_approved in this district
+        to_approve = FinalAssessment.objects.filter(
+            student__selected_school__district=district,
+            is_final=True,
+            deo_approved=False,
+        )
+        count = to_approve.count()
+        to_approve.update(
+            deo_approved=True,
+            deo_approved_at=tz.now(),
+            deo_approved_by=bm,
+        )
+        messages.success(request, f'Vyeti vya wanafunzi {count} vimeidhibitiwa. Wanaweza kupakua sasa.')
+    return redirect('board_school_list', district_id=district_id)
+
+
+@board_login_required
 def board_deo_report(request, district_id):
     bm = _get_board_member(request)
     if not bm:
@@ -7087,7 +7120,10 @@ def board_final_assessment(request, student_id):
                 fa.is_final = True
                 fa.finalized_at = timezone.now()
             fa.save()
-            msg = 'Tathmini imekamilishwa na kufungwa.' if fa.is_final else 'Tathmini imehifadhiwa.'
+            if fa.is_final:
+                msg = 'Tathmini imekamilishwa na kufungwa. Subiri DEO wa wilaya aidhibiti cheti.'
+            else:
+                msg = 'Tathmini imehifadhiwa.'
             messages.success(request, msg)
             return redirect('board_final_assessment', student_id=student.id)
 
