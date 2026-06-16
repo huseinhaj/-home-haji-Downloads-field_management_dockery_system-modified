@@ -1280,9 +1280,15 @@ class FinalAssessment(models.Model):
     utendaji_darasani = models.PositiveSmallIntegerField(default=0, help_text="Utendaji Darasani (0–20)")
 
     maoni    = models.TextField(blank=True)
-    is_final = models.BooleanField(default=False, help_text="Imekamilishwa — haiwezi kubadilishwa")
+    is_final = models.BooleanField(default=False, help_text="Imekamilishwa — cheti kinapatikana")
+    finalized_at = models.DateTimeField(null=True, blank=True, help_text="Tarehe tathmini ilipokamilika")
+
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at   = models.DateTimeField(auto_now=True)
+
+    @property
+    def certificate_ready(self):
+        return self.is_final
 
     class Meta:
         ordering = ['-submitted_at']

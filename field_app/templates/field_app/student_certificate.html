@@ -224,23 +224,32 @@
       {% endif %}
       {% endif %}
 
-      <!-- Signatures -->
+      <!-- Signatures — auto-generated when is_final=True -->
       <hr class="hr-gold-b" style="margin-top:20px;">
       <div class="cert-sigs">
         <div class="cert-sig">
+          {% if completed and fa.assessed_by %}
+          <p style="font-style:italic;font-size:13px;color:#0A2B5E;margin-bottom:2px;">{{ fa.assessed_by.full_name }}</p>
+          {% endif %}
           <div class="cert-sig-line"></div>
           <p class="bold">School Supervisor</p>
-          <p>{% if fa and fa.assessed_by %}{{ fa.assessed_by.get_full_name }}{% else %}—{% endif %}</p>
+          <p>{% if completed and fa.assessed_by %}{{ fa.assessed_by.full_name }}{% else %}—{% endif %}</p>
         </div>
         <div class="cert-sig">
+          {% if completed and deo %}
+          <p style="font-style:italic;font-size:13px;color:#0A2B5E;margin-bottom:2px;">{{ deo.full_name }}</p>
+          {% endif %}
           <div class="cert-sig-line"></div>
           <p class="bold">District Education Officer</p>
           <p>{{ student.selected_school.district.name|default:"—" }} District</p>
         </div>
         <div class="cert-sig">
+          {% if completed and fa.finalized_at %}
+          <p style="font-style:italic;font-size:12px;color:#0A2B5E;margin-bottom:2px;">{{ fa.finalized_at|date:"d F Y" }}</p>
+          {% endif %}
           <div class="cert-sig-line"></div>
           <p class="bold">Date Issued</p>
-          <p>{% if fa %}{{ fa.updated_at|date:"d F Y" }}{% else %}—{% endif %}</p>
+          <p>{% if completed %}{% if fa.finalized_at %}{{ fa.finalized_at|date:"d F Y" }}{% else %}{{ fa.updated_at|date:"d F Y" }}{% endif %}{% else %}—{% endif %}</p>
         </div>
       </div>
 
