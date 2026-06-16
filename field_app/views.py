@@ -8860,7 +8860,6 @@ def student_certificate_pdf(request):
     acad_year       = fa.academic_year.year if fa.academic_year else ''
     school_name     = student.selected_school.name if student.selected_school else '—'
     school_dist     = district.name if district else '—'
-    reg_no          = student.registration_number or '—'
     from datetime import date as dt_date
     cert_date       = fa.finalized_at or fa.updated_at
     date_str        = cert_date.strftime('%d %B %Y') if cert_date else dt_date.today().strftime('%d %B %Y')
@@ -9000,10 +8999,7 @@ def student_certificate_pdf(request):
     c.drawCentredString(CX, y, "This is to certify that");  y -= 34
 
     c.setFont('Helvetica-Bold', 26); c.setFillColor(NAVY)
-    c.drawCentredString(CX, y, student.full_name.upper());  y -= 36
-
-    c.setFont('Helvetica', 10.5); c.setFillColor(colors.HexColor('#444'))
-    c.drawCentredString(CX, y, f"Registration Number:   {reg_no}");  y -= 26
+    c.drawCentredString(CX, y, student.full_name.upper());  y -= 38
 
     c.setFont('Helvetica', 11); c.setFillColor(BLACK)
     c.drawCentredString(CX, y, "has successfully completed a period of Teaching Practice at");  y -= 30
@@ -9167,7 +9163,6 @@ def student_confirmation_letter_pdf(request):
     school_name     = student.selected_school.name if student.selected_school else '—'
     school_dist     = district.name if district else '—'
     region_name     = region.name if region else '—'
-    reg_no          = student.registration_number or '—'
     supervisor_name = fa.assessed_by.full_name if fa.assessed_by else '—'
     deo_name        = deo.full_name if deo else '—'
     deo_phone       = deo.phone_number if deo and deo.phone_number else '—'
@@ -9316,7 +9311,6 @@ def student_confirmation_letter_pdf(request):
     c.setFont('Helvetica-Bold', 10)
     c.drawString(LM, y, f"{student.full_name},"); y -= 0.48*cm
     c.setFont('Helvetica', 10)
-    c.drawString(LM, y, f"Namba ya Usajili: {reg_no},"); y -= 0.48*cm
     c.drawString(LM, y, f"{school_name},"); y -= 0.48*cm
     c.setFont('Helvetica-Bold', 10)
     c.drawString(LM, y, f"{school_dist.upper()}."); y -= 0.95*cm
