@@ -8813,7 +8813,9 @@ def student_certificate_pdf(request):
 
     student = get_or_create_student_profile(request.user)
     fa = getattr(student, 'final_assessment', None)
-    if not fa or not fa.certificate_ready:
+    # Staff/superusers can preview even without is_final (for testing)
+    is_staff_preview = request.user.is_staff or request.user.is_superuser
+    if not fa or (not fa.certificate_ready and not is_staff_preview):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("Certificate not available. Teaching practice must be completed first.")
 
@@ -8855,10 +8857,9 @@ def student_certificate_pdf(request):
     date_str        = cert_date.strftime('%d %B %Y') if cert_date else dt_date.today().strftime('%d %B %Y')
     supervisor_name = fa.assessed_by.full_name if fa.assessed_by else '—'
     deo_name        = deo.full_name if deo else '—'
-    grade           = fa.daraja
+    grade           = fa.daraja or 'B'
 
     # ── Serial number (security ID unique per student) ───────────────────────
-    from datetime import date as dt_date
     cert_date2 = fa.finalized_at or fa.updated_at
     _year      = cert_date2.year if cert_date2 else dt_date.today().year
     _dcode     = ''.join(ch for ch in school_dist.upper()[:5] if ch.isalpha())
