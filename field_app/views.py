@@ -8928,31 +8928,30 @@ def student_certificate_pdf(request):
     # SECURITY WATERMARKS — drawn first (behind all content)
     # ══════════════════════════════════════════════════════════════════════════
 
-    # 1. Micro-text security pattern — fills entire page in diagonal rows
-    #    Visible as faint blue texture; degrades distinctly when photocopied
+    # 1. Micro-text security pattern — faint background texture, siri ya anti-forgery
     micro = f"IMS CHETI CHA MAFUNZO YA UALIMU • {serial_no} • HALISI •  "
-    micro_w = c.stringWidth(micro, 'Helvetica', 6)
+    micro_w = c.stringWidth(micro, 'Helvetica', 5.5)
     c.saveState()
-    c.setFont('Helvetica', 6); c.setFillColor(NAVY); c.setFillAlpha(0.12)
-    row_i, yp = 0, 3.0
-    while yp < H + 10:
+    c.setFont('Helvetica', 5.5); c.setFillColor(NAVY); c.setFillAlpha(0.06)
+    row_i, yp = 0, 4.0
+    while yp < H + 9:
         xp = (-micro_w / 2) if row_i % 2 == 1 else 0.0
         while xp < W + micro_w:
             c.drawString(xp, yp, micro); xp += micro_w
-        yp += 10.0; row_i += 1
+        yp += 9.0; row_i += 1
     c.restoreState()
 
-    # 2. Diagonal large ghost watermark — "HALISI / IMS" at 45°
+    # 2. Diagonal ghost watermark — very faint, behind all content
     c.saveState()
-    c.setFont('Helvetica-Bold', 80); c.setFillColor(NAVY); c.setFillAlpha(0.07)
+    c.setFont('Helvetica-Bold', 70); c.setFillColor(NAVY); c.setFillAlpha(0.04)
     c.translate(CX, H / 2); c.rotate(45)
-    c.drawCentredString(0,  58, "IMS")
-    c.drawCentredString(0, -32, "HALISI")
+    c.drawCentredString(0,  50, "IMS")
+    c.drawCentredString(0, -28, "HALISI")
     c.restoreState()
 
-    # 3. Guilloche wave lines — vertical bezier curves across full page
+    # 3. Guilloche wave lines — fine, barely visible
     c.saveState()
-    c.setStrokeColor(NAVY); c.setLineWidth(0.5); c.setStrokeAlpha(0.10)
+    c.setStrokeColor(NAVY); c.setLineWidth(0.3); c.setStrokeAlpha(0.07)
     for offset in range(0, int(W), 12):
         c.bezier(offset, 0, offset+6, H*0.33, offset-6, H*0.66, offset, H)
     c.restoreState()
