@@ -151,7 +151,11 @@
       Hii ni <strong>preview</strong> ya cheti chako.
       Hati zitapatikana baada ya msimamizi kukamilisha tathmini yako ya mwisho.
     </span>
-    <button class="dl-btn-dis" disabled><i class="fas fa-lock"></i> Hati Hazipo Bado</button>
+    <div class="btn-group">
+      <a href="{% url 'student_certificate_pdf' %}" class="dl-btn">
+        <i class="fas fa-certificate"></i> Jaribu Cheti
+      </a>
+    </div>
   </div>
   {% endif %}
 
