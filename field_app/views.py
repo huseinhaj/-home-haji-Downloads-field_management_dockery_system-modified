@@ -8803,311 +8803,293 @@ def _get_deo_for_district(district):
 
 @login_required
 def student_certificate_pdf(request):
-    """Generate official Teaching Practice Completion Certificate PDF."""
+    """Generate official Teaching Practice Completion Certificate PDF — full A4 canvas."""
+    import io, os, math
+    from reportlab.pdfgen import canvas as rl_canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import cm
     from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
-    from reportlab.lib.styles import ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
-    from reportlab.lib.utils import ImageReader
-    import io, os
+    from reportlab.lib.utils import simpleSplit
 
     student = get_or_create_student_profile(request.user)
     fa = getattr(student, 'final_assessment', None)
-
     if not fa or not fa.certificate_ready:
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("Certificate not available. Teaching practice must be completed first.")
 
+    # ── Colors ────────────────────────────────────────────────────────────────
     NAVY  = colors.HexColor('#0A2B5E')
     GOLD  = colors.HexColor('#C8900A')
     LIGHT = colors.HexColor('#EEF1F6')
     WHITE = colors.white
     BLACK = colors.black
-    TEAL  = colors.HexColor('#0f4c75')
     GRADE_COL = {
-        'A': colors.HexColor('#14532d'),
-        'B': colors.HexColor('#1e40af'),
-        'C': colors.HexColor('#92400e'),
-        'F': colors.HexColor('#7f1d1d'),
+        'A': colors.HexColor('#14532d'), 'B': colors.HexColor('#1e40af'),
+        'C': colors.HexColor('#92400e'), 'F': colors.HexColor('#7f1d1d'),
     }
+    GRADE_LABEL = {'A': 'EXCELLENT', 'B': 'GOOD', 'C': 'AVERAGE', 'F': 'FAIL'}
 
-    buf = io.BytesIO()
-    page_w, page_h = A4
-
-    # Find coat of arms path — try multiple locations
+    # ── Coat of arms path ─────────────────────────────────────────────────────
     from django.conf import settings
     from django.contrib.staticfiles import finders as sf_finders
     _base = getattr(settings, 'BASE_DIR', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    _static_root = getattr(settings, 'STATIC_ROOT', '') or ''
-    _roots = [
-        sf_finders.find('images/tz_coat_of_arms.png'),                                      # staticfiles finders (dev + some prod)
-        os.path.join(_static_root, 'images', 'tz_coat_of_arms.png'),                        # collected static (production)
-        os.path.join(_base, 'field_app', 'static', 'images', 'tz_coat_of_arms.png'),        # source static dir
-        os.path.join(_base, 'staticfiles', 'images', 'tz_coat_of_arms.png'),                # common STATIC_ROOT alias
+    _sroot = getattr(settings, 'STATIC_ROOT', '') or ''
+    coat_img_path = next((p for p in [
+        sf_finders.find('images/tz_coat_of_arms.png'),
+        os.path.join(_sroot, 'images', 'tz_coat_of_arms.png'),
+        os.path.join(_base, 'field_app', 'static', 'images', 'tz_coat_of_arms.png'),
+        os.path.join(_base, 'staticfiles', 'images', 'tz_coat_of_arms.png'),
         os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'images', 'tz_coat_of_arms.png'),
-    ]
-    coat_img_path = next((p for p in _roots if p and os.path.exists(p)), None)
+    ] if p and os.path.exists(p)), None)
 
-    # Auto-lookup DEO
+    # ── Data ──────────────────────────────────────────────────────────────────
     district = student.selected_school.district if student.selected_school else None
     deo = _get_deo_for_district(district) if district else None
 
-    def draw_bg(c, doc):
-        c.saveState()
-
-        # ── Outer double border ───────────────────────────────────────────
-        c.setStrokeColor(NAVY)
-        c.setLineWidth(5)
-        c.rect(0.8*cm, 0.8*cm, page_w - 1.6*cm, page_h - 1.6*cm)
-        c.setStrokeColor(GOLD)
-        c.setLineWidth(1.5)
-        c.rect(1.2*cm, 1.2*cm, page_w - 2.4*cm, page_h - 2.4*cm)
-
-        # ── Coat of Arms watermark — centered, very faint ─────────────────
-        if coat_img_path:
-            try:
-                wm_w, wm_h = 240, 288
-                c.saveState()
-                c.setFillAlpha(0.08)
-                c.drawImage(coat_img_path,
-                            (page_w - wm_w) / 2, (page_h - wm_h) / 2,
-                            width=wm_w, height=wm_h, mask='auto')
-                c.restoreState()
-            except Exception:
-                pass
-
-        # ── TAMISEMI circular seal watermark — bottom-right corner ───────
-        import math
-        c.saveState()
-        cx = page_w - 3.8*cm
-        cy = 3.8*cm
-        r_outer, r_inner = 90, 62
-
-        # outer ring fill (very faint navy)
-        c.setFillColor(NAVY)
-        c.setFillAlpha(0.06)
-        c.circle(cx, cy, r_outer, fill=1, stroke=0)
-
-        # ring border
-        c.setStrokeColor(NAVY)
-        c.setLineWidth(1.2)
-        c.setFillAlpha(0)
-        c.circle(cx, cy, r_outer, fill=0, stroke=1)
-        c.setStrokeColor(GOLD)
-        c.setLineWidth(0.7)
-        c.circle(cx, cy, r_inner, fill=0, stroke=1)
-        c.setFillAlpha(1)
-
-        # circular text around ring
-        seal_text = "OFISI YA RAIS  •  TAWALA ZA MIKOA NA SERIKALI ZA MITAA  •  "
-        c.setFont('Helvetica-Bold', 6.5)
-        c.setFillColor(NAVY)
-        c.setFillAlpha(0.55)
-        n = len(seal_text)
-        for i, ch in enumerate(seal_text):
-            angle = math.radians(90 - (360 * i / n))
-            tx = cx + (r_outer - 9) * math.cos(angle)
-            ty = cy + (r_outer - 9) * math.sin(angle)
-            c.saveState()
-            c.translate(tx, ty)
-            c.rotate(math.degrees(angle) - 90)
-            c.drawCentredString(0, 0, ch)
-            c.restoreState()
-
-        # Centre text
-        c.setFont('Helvetica-Bold', 11)
-        c.setFillColor(NAVY)
-        c.setFillAlpha(0.60)
-        c.drawCentredString(cx, cy + 8, "PO-RALG")
-        c.setFont('Helvetica-Bold', 8)
-        c.drawCentredString(cx, cy - 4, "TAMISEMI")
-        c.setFont('Helvetica', 6)
-        c.setFillAlpha(0.45)
-        c.drawCentredString(cx, cy - 14, "TANZANIA")
-
-        c.restoreState()
-
-    def P(name, **kw):
-        return ParagraphStyle(name, **kw)
-
-    hdr1   = P('h1', fontSize=11, fontName='Helvetica-Bold', alignment=TA_CENTER, textColor=NAVY, leading=15, spaceAfter=2)
-    hdr2   = P('h2', fontSize=9,  fontName='Helvetica',      alignment=TA_CENTER, textColor=NAVY, leading=13, spaceAfter=2)
-    ttl    = P('tt', fontSize=16, fontName='Helvetica-Bold', alignment=TA_CENTER, textColor=NAVY, leading=21, spaceBefore=10, spaceAfter=4)
-    intro  = P('in', fontSize=11, fontName='Helvetica',      alignment=TA_CENTER, textColor=BLACK, leading=17, spaceAfter=4)
-    sname  = P('sn', fontSize=24, fontName='Helvetica-Bold', alignment=TA_CENTER, textColor=NAVY, leading=30, spaceBefore=4, spaceAfter=2)
-    regno  = P('rn', fontSize=10.5, fontName='Helvetica',    alignment=TA_CENTER, textColor=colors.HexColor('#444'), leading=15, spaceAfter=10)
-    schl   = P('sc', fontSize=13, fontName='Helvetica-Bold', alignment=TA_CENTER, textColor=NAVY, leading=18, spaceAfter=2)
-    det    = P('dt', fontSize=10.5, fontName='Helvetica',    alignment=TA_CENTER, textColor=colors.HexColor('#444'), leading=15, spaceAfter=10)
-    stmt   = P('st', fontSize=10,  fontName='Helvetica',     alignment=TA_CENTER, textColor=colors.HexColor('#333'), leading=16, spaceAfter=14)
-    th     = P('th', fontSize=9.5, fontName='Helvetica-Bold',textColor=WHITE,  leading=13)
-    tl     = P('tl', fontSize=9.5, fontName='Helvetica',     textColor=BLACK,  leading=13)
-    tv     = P('tv', fontSize=9.5, fontName='Helvetica-Bold',textColor=NAVY,   leading=13)
-    gbig   = P('gb', fontSize=38, fontName='Helvetica-Bold', alignment=TA_CENTER,
-               textColor=GRADE_COL.get(fa.daraja, NAVY), leading=44)
-    glbl   = P('gl', fontSize=12, fontName='Helvetica-Bold', alignment=TA_CENTER, textColor=GOLD, leading=16, spaceAfter=10)
-    rmk    = P('rm', fontSize=9.5, fontName='Helvetica-Oblique', alignment=TA_CENTER,
-               textColor=colors.HexColor('#555'), leading=13, spaceAfter=10)
-    sig    = P('sg', fontSize=9,  fontName='Helvetica',      alignment=TA_CENTER,
-               textColor=colors.HexColor('#111'), leading=13)
-    sig_nm = P('sn2', fontSize=9.5, fontName='Helvetica-Bold', alignment=TA_CENTER,
-               textColor=NAVY, leading=13)
-
-    # ── Data ─────────────────────────────────────────────────────────────────
-    acad_year    = fa.academic_year.year if fa.academic_year else ''
-    school_name  = student.selected_school.name if student.selected_school else '—'
-    school_dist  = district.name if district else '—'
-    reg_no       = student.registration_number or '—'
+    acad_year       = fa.academic_year.year if fa.academic_year else ''
+    school_name     = student.selected_school.name if student.selected_school else '—'
+    school_dist     = district.name if district else '—'
+    reg_no          = student.registration_number or '—'
     from datetime import date as dt_date
-    cert_date    = (fa.finalized_at or fa.updated_at)
-    date_str     = cert_date.strftime('%d %B %Y') if cert_date else dt_date.today().strftime('%d %B %Y')
+    cert_date       = fa.finalized_at or fa.updated_at
+    date_str        = cert_date.strftime('%d %B %Y') if cert_date else dt_date.today().strftime('%d %B %Y')
     supervisor_name = fa.assessed_by.full_name if fa.assessed_by else '—'
-    deo_name     = deo.full_name if deo else '—'
-    deo_title    = f"District Education Officer\n{school_dist} District"
+    deo_name        = deo.full_name if deo else '—'
+    grade           = fa.daraja
 
-    GRADE_LABEL = {'A': 'EXCELLENT', 'B': 'GOOD', 'C': 'AVERAGE', 'F': 'FAIL'}
+    # ── Canvas setup ──────────────────────────────────────────────────────────
+    buf = io.BytesIO()
+    W, H = A4          # 595.27 x 841.89 points
+    CX   = W / 2       # horizontal center
+    LM   = 1.9*cm      # left margin content
+    RM   = W - 1.9*cm  # right margin content
 
-    doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=2.0*cm, rightMargin=2.0*cm,
-        topMargin=1.8*cm, bottomMargin=1.8*cm,
-        onFirstPage=draw_bg, onLaterPages=draw_bg,
-    )
-    story = []
+    c = rl_canvas.Canvas(buf, pagesize=A4)
 
-    # ── HEADER ───────────────────────────────────────────────────────────────
+    # ── BORDERS ───────────────────────────────────────────────────────────────
+    c.setStrokeColor(NAVY); c.setLineWidth(5)
+    c.rect(0.7*cm, 0.7*cm, W - 1.4*cm, H - 1.4*cm)
+    c.setStrokeColor(GOLD); c.setLineWidth(1.5)
+    c.rect(1.1*cm, 1.1*cm, W - 2.2*cm, H - 2.2*cm)
+
+    # ── COAT OF ARMS WATERMARK (centered, faint) ──────────────────────────────
     if coat_img_path:
         try:
-            coa = Image(coat_img_path, width=2.4*cm, height=2.88*cm)
-            coa.hAlign = 'CENTER'
-            story.append(coa)
-            story.append(Spacer(1, 6))
+            c.saveState()
+            c.setFillAlpha(0.08)
+            c.drawImage(coat_img_path, (W-220)/2, (H-264)/2, width=220, height=264, mask='auto')
+            c.restoreState()
         except Exception:
             pass
 
-    story.append(Paragraph("THE UNITED REPUBLIC OF TANZANIA", hdr1))
-    story.append(Paragraph("MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY", hdr1))
-    story.append(Paragraph(
-        "PRESIDENT'S OFFICE — REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT (PO-RALG / TAMISEMI)", hdr2))
-    story.append(Spacer(1, 6))
-    story.append(HRFlowable(width="94%", thickness=3, color=NAVY, spaceAfter=2))
-    story.append(HRFlowable(width="94%", thickness=1.2, color=GOLD, spaceAfter=12))
+    # ── TAMISEMI CIRCULAR SEAL (bottom-right) ─────────────────────────────────
+    sx, sy = W - 3.6*cm, 3.6*cm
+    ro, ri = 85, 58
+    c.saveState()
+    c.setFillColor(NAVY); c.setFillAlpha(0.06)
+    c.circle(sx, sy, ro, fill=1, stroke=0)
+    c.setFillAlpha(0); c.setStrokeColor(NAVY); c.setLineWidth(1.2)
+    c.circle(sx, sy, ro, fill=0, stroke=1)
+    c.setStrokeColor(GOLD); c.setLineWidth(0.7)
+    c.circle(sx, sy, ri, fill=0, stroke=1)
+    c.setFillAlpha(1)
+    seal_txt = "OFISI YA RAIS  •  TAWALA ZA MIKOA NA SERIKALI ZA MITAA  •  "
+    c.setFont('Helvetica-Bold', 6); c.setFillColor(NAVY); c.setFillAlpha(0.50)
+    for i, ch in enumerate(seal_txt):
+        ang = math.radians(90 - 360*i/len(seal_txt))
+        tx, ty = sx + (ro-8)*math.cos(ang), sy + (ro-8)*math.sin(ang)
+        c.saveState(); c.translate(tx, ty); c.rotate(math.degrees(ang)-90)
+        c.drawCentredString(0, 0, ch); c.restoreState()
+    c.setFont('Helvetica-Bold', 10); c.setFillColor(NAVY); c.setFillAlpha(0.60)
+    c.drawCentredString(sx, sy + 6, "PO-RALG")
+    c.setFont('Helvetica-Bold', 7.5); c.drawCentredString(sx, sy - 5, "TAMISEMI")
+    c.setFont('Helvetica', 6); c.setFillAlpha(0.40)
+    c.drawCentredString(sx, sy - 14, "TANZANIA")
+    c.restoreState()
 
-    # ── TITLE ─────────────────────────────────────────────────────────────────
-    story.append(Paragraph("CERTIFICATE OF TEACHING PRACTICE COMPLETION", ttl))
-    story.append(HRFlowable(width="55%", thickness=1.2, color=GOLD, spaceAfter=16))
+    # ══════════════════════════════════════════════════════════════════════════
+    # CONTENT — built bottom-up (canvas y=0 is bottom of page)
+    # ══════════════════════════════════════════════════════════════════════════
 
-    # ── BODY ──────────────────────────────────────────────────────────────────
-    story.append(Paragraph("This is to certify that", intro))
-    story.append(Paragraph(student.full_name.upper(), sname))
-    story.append(Paragraph(f"Registration Number: <b>{reg_no}</b>", regno))
-    story.append(Paragraph("has successfully completed a period of Teaching Practice at", intro))
-    story.append(Spacer(1, 6))
-    story.append(Paragraph(school_name.upper(), schl))
-    story.append(Paragraph(
-        f"{school_dist} District"
-        + (f"&nbsp; | &nbsp; Academic Year: <b>{acad_year}</b>" if acad_year else ""),
-        det))
-    story.append(Paragraph(
-        "The student demonstrated satisfactory performance in all required areas of the "
-        "teaching practicum as stipulated by the Ministry of Education, Science and Technology "
-        "guidelines for Initial Teacher Education (ITE) programmes in Tanzania.",
-        stmt))
+    # ── SIGNATURES (fixed at bottom) ─────────────────────────────────────────
+    sig_bot  = 2.2*cm          # bottom of signature zone
+    line_y   = sig_bot + 2.0*cm   # the underline
+    name_y   = line_y + 0.45*cm  # italic name above line
+    title_y  = line_y - 0.55*cm  # bold title below line
+    sub_y    = line_y - 1.05*cm  # sub-text
 
-    # ── PERFORMANCE TABLE ──────────────────────────────────────────────────────
-    SCORE_ROWS = [
-        ('Attendance',            fa.kuhudhuria),
-        ('Work Diary (Logbook)',  fa.daftari_la_kazi),
-        ('Scheme of Work',        fa.mpango_wa_kazi),
-        ('Lesson Planning',       fa.mpango_wa_somo),
-        ('Classroom Performance', fa.utendaji_darasani),
+    SIG_COLS = [
+        (LM,              LM + 5.8*cm,  'School Supervisor',       supervisor_name, date_str),
+        (LM + 6.2*cm,     LM + 11.9*cm, 'District Education Officer', deo_name,   f'{school_dist} District'),
+        (LM + 12.3*cm,    RM,           'Date of Issue',           date_str,       ''),
     ]
-    tdata = [
-        [Paragraph('ASSESSMENT CRITERION', th), Paragraph('MARKS', th), Paragraph('MAX', th)],
-    ] + [
-        [Paragraph(lbl, tl), Paragraph(str(sc), tv), Paragraph('20', tl)]
-        for lbl, sc in SCORE_ROWS
-    ] + [
-        [Paragraph('<b>TOTAL</b>', tv), Paragraph(f'<b>{fa.jumla}</b>', tv), Paragraph('<b>100</b>', tv)],
-    ]
-    tbl = Table(tdata, colWidths=[10*cm, 3*cm, 3*cm])
-    tbl.setStyle(TableStyle([
-        ('BACKGROUND',     (0, 0), (-1, 0),  NAVY),
-        ('TEXTCOLOR',      (0, 0), (-1, 0),  WHITE),
-        ('BACKGROUND',     (0, -1),(-1, -1), LIGHT),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [WHITE, colors.HexColor('#f4f6fb')]),
-        ('GRID',           (0, 0), (-1, -1), 0.4, colors.HexColor('#b8c4d8')),
-        ('ALIGN',          (1, 0), (-1, -1), 'CENTER'),
-        ('VALIGN',         (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING',     (0, 0), (-1, -1), 7),
-        ('BOTTOMPADDING',  (0, 0), (-1, -1), 7),
-        ('LEFTPADDING',    (0, 0), (0, -1),  14),
-    ]))
-    story.append(tbl)
-    story.append(Spacer(1, 14))
-
-    # ── GRADE ─────────────────────────────────────────────────────────────────
-    story.append(Paragraph(fa.daraja, gbig))
-    story.append(Paragraph(
-        f"OVERALL GRADE: {GRADE_LABEL.get(fa.daraja, '')} &nbsp; ({fa.jumla}/100)",
-        glbl))
-    if fa.maoni:
-        story.append(Paragraph(f"Remarks: {fa.maoni}", rmk))
-
-    story.append(HRFlowable(width="94%", thickness=0.6, color=colors.HexColor('#aabbcc'),
-                            spaceAfter=16))
-
-    # ── AUTO SIGNATURES ────────────────────────────────────────────────────────
-    # Each signature box: auto-generated italic name (looks signed) + title + date
-    def sig_cell(title, name, dated=''):
-        lines = [
-            Paragraph(f"<i>{name}</i>", P('si', fontSize=11, fontName='Helvetica-Oblique',
-                                          alignment=TA_CENTER, textColor=NAVY, leading=14)),
-            Paragraph("_" * 28, P('sl', fontSize=8, alignment=TA_CENTER,
-                                  textColor=colors.HexColor('#555'), leading=10)),
-            Paragraph(f"<b>{title}</b>", sig_nm),
-        ]
-        if dated:
-            lines.append(Paragraph(dated, sig))
-        return lines
-
-    sig_data = [[
-        sig_cell("School Supervisor", supervisor_name, date_str),
-        sig_cell("District Education Officer", deo_name,
-                 f"{school_dist} District"),
-        sig_cell("Date of Issue", date_str),
-    ]]
-
-    def make_sig_table(data):
-        inner = []
-        for row in data:
-            cells = []
-            for cell_lines in row:
-                from reportlab.platypus import KeepInFrame
-                frame = KeepInFrame(5*cm, 4*cm, cell_lines, mode='shrink')
-                cells.append(frame)
-            inner.append(cells)
-        t = Table(inner, colWidths=[5.5*cm, 5.5*cm, 5*cm])
-        t.setStyle(TableStyle([
-            ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
-            ('TOPPADDING',    (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        return t
-
-    story.append(make_sig_table(sig_data))
-    story.append(Spacer(1, 12))
+    for x1, x2, title, name, sub in SIG_COLS:
+        xc = (x1 + x2) / 2
+        c.setFont('Helvetica-Oblique', 11); c.setFillColor(NAVY)
+        c.drawCentredString(xc, name_y, name)
+        c.setStrokeColor(colors.HexColor('#777')); c.setLineWidth(0.7)
+        c.line(x1, line_y, x2, line_y)
+        c.setFont('Helvetica-Bold', 8.5); c.setFillColor(NAVY)
+        c.drawCentredString(xc, title_y, title)
+        if sub:
+            c.setFont('Helvetica', 7.5); c.setFillColor(colors.HexColor('#444'))
+            c.drawCentredString(xc, sub_y, sub)
 
     # ── BOTTOM RULES ──────────────────────────────────────────────────────────
-    story.append(HRFlowable(width="94%", thickness=1.2, color=GOLD, spaceAfter=3))
-    story.append(HRFlowable(width="94%", thickness=3, color=NAVY, spaceAfter=0))
+    bot_rule_y = line_y + 1.0*cm
+    c.setStrokeColor(GOLD); c.setLineWidth(1.2)
+    c.line(LM, bot_rule_y, RM, bot_rule_y)
+    c.setStrokeColor(NAVY); c.setLineWidth(3)
+    c.line(LM, bot_rule_y + 4, RM, bot_rule_y + 4)
 
-    doc.build(story)
+    # ── GRADE ─────────────────────────────────────────────────────────────────
+    grade_zone_bot = bot_rule_y + 0.7*cm
+    # label line
+    c.setFont('Helvetica-Bold', 12); c.setFillColor(GOLD)
+    gl_text = f"OVERALL GRADE: {GRADE_LABEL.get(grade, '')}  ({fa.jumla}/100)"
+    c.drawCentredString(CX, grade_zone_bot + 0.35*cm, gl_text)
+    # big letter
+    c.setFont('Helvetica-Bold', 42); c.setFillColor(GRADE_COL.get(grade, NAVY))
+    c.drawCentredString(CX, grade_zone_bot + 1.25*cm, grade)
+    # remarks
+    grade_zone_top = grade_zone_bot + 2.7*cm
+    if fa.maoni:
+        c.setFont('Helvetica-Oblique', 9); c.setFillColor(colors.HexColor('#555'))
+        c.drawCentredString(CX, grade_zone_top - 0.4*cm, f"Remarks: {fa.maoni}")
+        grade_zone_top += 0.5*cm
+
+    # thin separator above grade
+    c.setStrokeColor(colors.HexColor('#aabbcc')); c.setLineWidth(0.5)
+    c.line(LM, grade_zone_top, RM, grade_zone_top)
+
+    # ── SCORE TABLE ───────────────────────────────────────────────────────────
+    SCORE_ROWS = [
+        ('Attendance',            str(fa.kuhudhuria)),
+        ('Work Diary (Logbook)',  str(fa.daftari_la_kazi)),
+        ('Scheme of Work',        str(fa.mpango_wa_kazi)),
+        ('Lesson Planning',       str(fa.mpango_wa_somo)),
+        ('Classroom Performance', str(fa.utendaji_darasani)),
+    ]
+    tbl_data = [('ASSESSMENT CRITERION', 'MARKS', 'MAX')] + \
+               [(lbl, sc, '20') for lbl, sc in SCORE_ROWS] + \
+               [('TOTAL', str(fa.jumla), '100')]
+
+    COL_W  = [W - 2*LM - 5.8*cm, 2.9*cm, 2.9*cm]
+    ROW_H  = 27       # points per row
+    tbl_h  = len(tbl_data) * ROW_H
+    tbl_bot = grade_zone_top + 0.45*cm   # bottom edge of table (canvas y)
+
+    for idx, row in enumerate(tbl_data):
+        ry = tbl_bot + idx * ROW_H        # bottom of this row
+        # background
+        if idx == 0:                bg_col = NAVY
+        elif idx == len(tbl_data)-1: bg_col = LIGHT
+        elif idx % 2 == 0:          bg_col = colors.HexColor('#f4f6fb')
+        else:                        bg_col = WHITE
+        c.setFillColor(bg_col)
+        c.rect(LM, ry, sum(COL_W), ROW_H, fill=1, stroke=0)
+        # text
+        x_cur = LM
+        for j, (cell, cw) in enumerate(zip(row, COL_W)):
+            text_y = ry + 9
+            if idx == 0:
+                c.setFont('Helvetica-Bold', 9); c.setFillColor(WHITE)
+            elif j == 0:
+                c.setFont('Helvetica', 9.5); c.setFillColor(BLACK)
+            else:
+                c.setFont('Helvetica-Bold', 9.5)
+                c.setFillColor(NAVY if idx < len(tbl_data)-1 else BLACK)
+            if j == 0:
+                c.drawString(x_cur + 10, text_y, cell)
+            else:
+                c.drawCentredString(x_cur + cw/2, text_y, cell)
+            x_cur += cw
+        # grid
+        c.setStrokeColor(colors.HexColor('#b8c4d8')); c.setLineWidth(0.4)
+        c.rect(LM, ry, sum(COL_W), ROW_H, fill=0, stroke=1)
+        x_cur = LM
+        for cw in COL_W[:-1]:
+            x_cur += cw
+            c.line(x_cur, ry, x_cur, ry + ROW_H)
+
+    tbl_top = tbl_bot + tbl_h    # top edge of table
+
+    # ── BODY TEXT (above table) ───────────────────────────────────────────────
+    y = tbl_top + 0.55*cm
+
+    # Statement paragraph
+    stmt = ("The student demonstrated satisfactory performance in all required areas of the "
+            "teaching practicum as stipulated by the Ministry of Education guidelines "
+            "for Initial Teacher Education (ITE) programmes in Tanzania.")
+    stmt_lines = simpleSplit(stmt, 'Helvetica', 10, W - 4.5*cm)
+    c.setFont('Helvetica', 10); c.setFillColor(colors.HexColor('#333'))
+    for line in reversed(stmt_lines):
+        c.drawCentredString(CX, y, line); y += 0.56*cm
+    y += 0.4*cm
+
+    # District / year
+    detail = f"{school_dist} District"
+    if acad_year: detail += f"   |   Academic Year: {acad_year}"
+    c.setFont('Helvetica', 10.5); c.setFillColor(colors.HexColor('#444'))
+    c.drawCentredString(CX, y, detail); y += 0.72*cm
+
+    # School name
+    c.setFont('Helvetica-Bold', 14); c.setFillColor(NAVY)
+    c.drawCentredString(CX, y, school_name.upper()); y += 0.8*cm
+
+    # "has successfully completed"
+    c.setFont('Helvetica', 11); c.setFillColor(BLACK)
+    c.drawCentredString(CX, y, "has successfully completed a period of Teaching Practice at")
+    y += 0.85*cm
+
+    # Reg number
+    c.setFont('Helvetica', 10.5); c.setFillColor(colors.HexColor('#444'))
+    c.drawCentredString(CX, y, f"Registration Number:   {reg_no}"); y += 1.0*cm
+
+    # Student name
+    c.setFont('Helvetica-Bold', 22); c.setFillColor(NAVY)
+    c.drawCentredString(CX, y, student.full_name.upper()); y += 1.15*cm
+
+    # "This is to certify that"
+    c.setFont('Helvetica', 11); c.setFillColor(BLACK)
+    c.drawCentredString(CX, y, "This is to certify that"); y += 0.9*cm
+
+    # Gold centre rule
+    c.setStrokeColor(GOLD); c.setLineWidth(0.9)
+    gl = W * 0.55 / 2
+    c.line(CX-gl, y, CX+gl, y); y += 0.75*cm
+
+    # ── TITLE ────────────────────────────────────────────────────────────────
+    c.setFont('Helvetica-Bold', 16); c.setFillColor(NAVY)
+    c.drawCentredString(CX, y, "CERTIFICATE OF TEACHING PRACTICE COMPLETION"); y += 0.9*cm
+
+    # Top HR rules
+    c.setStrokeColor(GOLD); c.setLineWidth(1.2)
+    c.line(LM, y, RM, y); y += 4
+    c.setStrokeColor(NAVY); c.setLineWidth(2.5)
+    c.line(LM, y, RM, y); y += 0.75*cm
+
+    # ── HEADER TEXT ───────────────────────────────────────────────────────────
+    c.setFont('Helvetica', 8.5); c.setFillColor(NAVY)
+    c.drawCentredString(CX, y,
+        "PRESIDENT'S OFFICE — REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT (PO-RALG / TAMISEMI)")
+    y += 0.58*cm
+    c.setFont('Helvetica-Bold', 11)
+    c.drawCentredString(CX, y, "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY"); y += 0.62*cm
+    c.drawCentredString(CX, y, "THE UNITED REPUBLIC OF TANZANIA"); y += 0.55*cm
+
+    # ── COAT OF ARMS (top, centred) ───────────────────────────────────────────
+    coa_w_pt, coa_h_pt = 65, 78
+    if coat_img_path:
+        try:
+            c.drawImage(coat_img_path, CX - coa_w_pt/2, y + 0.15*cm,
+                        width=coa_w_pt, height=coa_h_pt, mask='auto')
+        except Exception:
+            pass
+
+    c.save()
     buf.seek(0)
     safe_name = student.full_name.replace(' ', '_').replace('/', '_')
-    filename  = f"Teaching_Practice_Certificate_{safe_name}.pdf"
     response  = HttpResponse(buf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response['Content-Disposition'] = f'attachment; filename="Teaching_Practice_Certificate_{safe_name}.pdf"'
     return response
