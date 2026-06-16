@@ -1,272 +1,252 @@
 {% extends "field_app/base.html" %}
-{% block title %}Cheti Changu — IMS{% endblock %}
+{% block title %}My Certificate — IMS{% endblock %}
 {% block content %}
 <style>
-  .cert-wrapper {
-    max-width: 780px;
-    margin: 0 auto;
-    padding: 16px;
+  .cert-wrapper { max-width: 820px; margin: 0 auto; padding: 20px 16px; }
+
+  /* Status bar */
+  .cert-status {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px; border-radius: 4px;
+    margin-bottom: 18px; font-family: Arial, sans-serif; font-size: 13px;
   }
+  .cert-status.locked  { background:#fef9c3; border:1.5px solid #ca8a04; color:#713f12; }
+  .cert-status.ready   { background:#dcfce7; border:1.5px solid #16a34a; color:#14532d; }
+  .cert-status .dl-btn {
+    margin-left: auto; white-space: nowrap;
+    background: #14532d; color: #fff; border: none;
+    border-radius: 3px; padding: 7px 18px; font-size: 12px;
+    text-decoration: none; cursor: pointer;
+  }
+  .cert-status .dl-btn-dis {
+    margin-left: auto; white-space: nowrap;
+    background: #9ca3af; color: #fff; border: none;
+    border-radius: 3px; padding: 7px 18px; font-size: 12px;
+    cursor: not-allowed;
+  }
+
+  /* Certificate card */
   .cert-card {
     background: #fff;
-    border: 3px solid var(--navy, #0A2B5E);
-    border-radius: 4px;
+    border: 4px solid #0A2B5E;
     position: relative;
     overflow: hidden;
-    padding: 40px 50px;
-    font-family: 'Georgia', serif;
-    box-shadow: 0 4px 24px rgba(10,43,94,.12);
+    font-family: Arial, sans-serif;
+    box-shadow: 0 6px 32px rgba(10,43,94,.13);
   }
+  /* Coat of arms watermark */
   .cert-card::before {
-    content: "WIZARA YA ELIMU\A JAMHURI YA MUUNGANO";
-    white-space: pre;
+    content: '';
     position: absolute;
     top: 50%; left: 50%;
-    transform: translate(-50%, -50%) rotate(45deg);
-    font-size: 52px;
-    font-weight: 900;
-    color: #0A2B5E;
-    opacity: 0.045;
-    text-align: center;
-    line-height: 1.4;
+    width: 260px; height: 310px;
+    background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Coat_of_arms_of_Tanzania.svg/300px-Coat_of_arms_of_Tanzania.svg.png')
+                center/contain no-repeat;
+    transform: translate(-50%, -50%);
+    opacity: 0.07;
     pointer-events: none;
     z-index: 0;
-    letter-spacing: 4px;
   }
-  .cert-inner { position: relative; z-index: 1; }
-  .cert-border-inner {
-    border: 1.5px solid var(--gold, #C8900A);
-    border-radius: 2px;
-    padding: 28px 36px;
+  .cert-inner {
+    position: relative; z-index: 1;
+    border: 1.5px solid #C8900A;
+    margin: 10px;
+    padding: 30px 40px;
   }
-  .cert-header { text-align: center; margin-bottom: 20px; }
-  .cert-header .flag-bar {
-    display: flex; justify-content: center; gap: 4px;
-    margin-bottom: 10px;
-  }
-  .flag-bar span {
-    display: inline-block; height: 6px; width: 60px; border-radius: 2px;
-  }
-  .cert-header h1 { font-size: 13px; font-weight: 700; color: #0A2B5E; margin: 2px 0; letter-spacing: .5px; font-family: Arial, sans-serif; }
-  .cert-header h2 { font-size: 11px; font-weight: 400; color: #0A2B5E; margin: 2px 0; font-family: Arial, sans-serif; }
-  .cert-divider { border: none; border-top: 2px solid #C8900A; margin: 12px auto; width: 90%; }
+
+  /* Header */
+  .cert-header { text-align: center; margin-bottom: 16px; }
+  .cert-coa { width: 70px; margin: 0 auto 10px; display: block; }
+  .cert-header h1 { font-size: 13px; font-weight: 700; color: #0A2B5E; margin: 2px 0; letter-spacing: .4px; }
+  .cert-header h2 { font-size: 10.5px; font-weight: 400; color: #0A2B5E; margin: 2px 0; }
+  .hr-navy { border: none; border-top: 3px solid #0A2B5E; margin: 8px auto; width: 92%; }
+  .hr-gold { border: none; border-top: 1.5px solid #C8900A; margin: 4px auto 12px; width: 92%; }
+
+  /* Title */
   .cert-title {
-    text-align: center;
-    font-size: 20px;
-    font-weight: 700;
-    color: #0A2B5E;
-    letter-spacing: 1px;
-    margin: 14px 0 4px;
-    text-transform: uppercase;
+    text-align: center; font-size: 18px; font-weight: 700;
+    color: #0A2B5E; letter-spacing: .8px; text-transform: uppercase;
+    margin: 12px 0 8px;
   }
-  .cert-subtitle {
-    text-align: center;
-    font-size: 11.5px;
-    color: #C8900A;
-    font-weight: 600;
-    letter-spacing: .5px;
-    margin-bottom: 18px;
-    font-family: Arial, sans-serif;
-  }
-  .cert-body { text-align: center; margin-bottom: 16px; }
-  .cert-body p { font-size: 11.5px; color: #333; margin: 4px 0; font-family: Arial, sans-serif; }
-  .cert-name { font-size: 22px; font-weight: 700; color: #0A2B5E; margin: 8px 0 4px; letter-spacing: .5px; }
-  .cert-regno { font-size: 11px; color: #555; font-family: Arial, sans-serif; }
-  .cert-school { font-size: 13px; font-weight: 700; color: #0A2B5E; margin: 6px 0 2px; }
-  .cert-detail { font-size: 11px; color: #555; font-family: Arial, sans-serif; }
+  .hr-gold-center { border: none; border-top: 1.5px solid #C8900A; margin: 0 auto 16px; width: 55%; }
 
-  .score-table { width: 100%; border-collapse: collapse; margin: 16px auto; max-width: 480px; font-family: Arial, sans-serif; font-size: 11px; }
+  /* Body */
+  .cert-body { text-align: center; }
+  .cert-body p { font-size: 11px; color: #333; margin: 4px 0; }
+  .cert-student-name { font-size: 24px; font-weight: 700; color: #0A2B5E; margin: 10px 0 4px; letter-spacing: .5px; }
+  .cert-regno { font-size: 11px; color: #555; margin-bottom: 12px; }
+  .cert-school { font-size: 14px; font-weight: 700; color: #0A2B5E; margin: 8px 0 2px; text-transform: uppercase; }
+  .cert-detail { font-size: 11px; color: #444; margin-bottom: 14px; }
+  .cert-statement { font-size: 10.5px; color: #444; line-height: 1.6; max-width: 580px; margin: 0 auto 16px; }
+
+  /* Score table */
+  .score-table { width: 100%; border-collapse: collapse; margin: 0 auto 16px; max-width: 520px; font-size: 11px; }
   .score-table thead tr { background: #0A2B5E; color: #fff; }
-  .score-table thead th { padding: 7px 12px; text-align: left; font-weight: 600; }
-  .score-table thead th:last-child { text-align: center; }
-  .score-table tbody tr:nth-child(even) { background: #f0f4fa; }
+  .score-table thead th { padding: 8px 12px; font-weight: 600; }
+  .score-table thead th:first-child { text-align: left; }
+  .score-table thead th:not(:first-child) { text-align: center; }
+  .score-table tbody tr:nth-child(even) { background: #f5f7fb; }
   .score-table tbody td { padding: 6px 12px; color: #222; }
-  .score-table tbody td:last-child { text-align: center; font-weight: 600; color: #0A2B5E; }
+  .score-table tbody td:first-child { text-align: left; }
+  .score-table tbody td:not(:first-child) { text-align: center; font-weight: 600; color: #0A2B5E; }
   .score-table tfoot tr { background: #EEF1F6; }
-  .score-table tfoot td { padding: 7px 12px; font-weight: 700; color: #0A2B5E; }
-  .score-table tfoot td:last-child { text-align: center; }
+  .score-table tfoot td { padding: 8px 12px; font-weight: 700; color: #0A2B5E; }
+  .score-table tfoot td:first-child { text-align: left; }
+  .score-table tfoot td:not(:first-child) { text-align: center; }
 
-  .cert-grade-box { text-align: center; margin: 16px 0; }
-  .cert-grade {
-    display: inline-block;
-    width: 64px; height: 64px;
-    line-height: 64px;
-    border-radius: 50%;
-    font-size: 30px;
-    font-weight: 900;
-    color: #fff;
-    text-align: center;
+  /* Grade */
+  .cert-grade-wrap { text-align: center; margin: 8px 0 16px; }
+  .cert-grade-circle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 76px; height: 76px; border-radius: 50%;
+    font-size: 34px; font-weight: 900; color: #fff;
     margin-bottom: 4px;
   }
-  .grade-A { background: #166534; }
-  .grade-B { background: #0369a1; }
-  .grade-C { background: #b45309; }
-  .grade-F { background: #b91c1c; }
-  .cert-grade-label { font-size: 12px; font-weight: 700; color: #C8900A; font-family: Arial,sans-serif; letter-spacing: .5px; }
+  .grade-A { background: #14532d; }
+  .grade-B { background: #1e40af; }
+  .grade-C { background: #92400e; }
+  .grade-F { background: #7f1d1d; }
+  .cert-grade-text { font-size: 12px; font-weight: 700; color: #C8900A; letter-spacing: .5px; }
 
-  .cert-sigs { display: flex; justify-content: space-between; margin-top: 24px; gap: 12px; }
-  .cert-sig { flex: 1; text-align: center; font-family: Arial,sans-serif; }
-  .cert-sig-line { border-top: 1px solid #999; margin-bottom: 4px; }
-  .cert-sig p { font-size: 9.5px; color: #444; margin: 1px 0; }
-  .cert-sig p.bold { font-weight: 700; color: #0A2B5E; }
+  /* Signatures */
+  .cert-sigs { display: flex; justify-content: space-between; gap: 16px; margin-top: 20px; }
+  .cert-sig { flex: 1; text-align: center; }
+  .cert-sig-line { border-top: 1px solid #888; margin-bottom: 5px; }
+  .cert-sig p { font-size: 9.5px; color: #333; margin: 1px 0; }
+  .cert-sig p.bold { font-weight: 700; color: #0A2B5E; font-size: 10px; }
 
-  .cert-footer { text-align: center; font-size: 8.5px; color: #888; margin-top: 14px; font-family: Arial,sans-serif; }
-
-  /* Preview watermark stamp */
-  .cert-preview-stamp {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%) rotate(-30deg);
-    font-size: 64px;
-    font-weight: 900;
-    color: #b91c1c;
-    opacity: 0.10;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 2;
-    letter-spacing: 8px;
-    font-family: Arial, sans-serif;
-    border: 6px solid #b91c1c;
-    padding: 6px 18px;
-    border-radius: 4px;
-  }
-
-  /* Status banner */
-  .status-banner {
-    border-radius: 4px;
-    padding: 10px 18px;
-    margin-bottom: 16px;
-    font-family: Arial,sans-serif;
-    font-size: 13px;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .status-banner.success { background: #dcfce7; border: 1px solid #16a34a; color: #14532d; }
-  .status-banner.warning { background: #fef9c3; border: 1px solid #ca8a04; color: #713f12; }
+  /* Bottom rule */
+  .hr-gold-b { border: none; border-top: 1.5px solid #C8900A; margin: 16px auto 4px; width: 92%; }
+  .hr-navy-b { border: none; border-top: 3px solid #0A2B5E; margin: 0 auto; width: 92%; }
 </style>
 
 <div class="cert-wrapper">
 
+  <!-- Status bar -->
   {% if completed %}
-  <div class="status-banner success">
+  <div class="cert-status ready">
     <i class="fas fa-check-circle"></i>
-    <span>Hongera! Umekamilisha mafunzo. Unaweza kupakua cheti chako rasmi.</span>
-    <a href="{% url 'student_certificate_pdf' %}" class="btn btn-sm ms-auto"
-       style="background:#166534;color:#fff;border-radius:3px;padding:6px 16px;text-decoration:none;font-size:12px;white-space:nowrap;">
-      <i class="fas fa-download me-1"></i> Pakua PDF
+    <span>Congratulations! Your teaching practice is complete. You may download your official certificate.</span>
+    <a href="{% url 'student_certificate_pdf' %}" class="dl-btn">
+      <i class="fas fa-download"></i> Download PDF
     </a>
   </div>
   {% else %}
-  <div class="status-banner warning">
-    <i class="fas fa-lock me-1"></i>
+  <div class="cert-status locked">
+    <i class="fas fa-lock"></i>
     <span>
-      Hii ni <strong>preview</strong> ya cheti chako. Utaweza kupakua PDF rasmi baada ya mkaguzi kutoa
-      tathmini ya mwisho na kukamilisha mafunzo yako ya vitendo.
+      This is a <strong>preview</strong> of your certificate.
+      The PDF will be available once your supervisor submits your final assessment.
     </span>
-    <button class="btn btn-sm ms-auto" disabled
-      style="background:#999;color:#fff;border-radius:3px;padding:6px 16px;font-size:12px;white-space:nowrap;border:none;cursor:not-allowed;">
-      <i class="fas fa-lock me-1"></i> Pakua PDF
-    </button>
+    <button class="dl-btn-dis" disabled><i class="fas fa-lock"></i> Download PDF</button>
   </div>
   {% endif %}
 
-  <!-- Certificate Preview -->
-  <div class="cert-card" style="position:relative;">
-    {% if not completed %}
-    <div class="cert-preview-stamp">PREVIEW</div>
-    {% endif %}
-
+  <!-- Certificate -->
+  <div class="cert-card">
     <div class="cert-inner">
-      <div class="cert-border-inner">
 
-        <!-- Header -->
-        <div class="cert-header">
-          <div class="flag-bar">
-            <span style="background:#1a9b3e;"></span>
-            <span style="background:#000;"></span>
-            <span style="background:#1a9b3e;"></span>
-            <span style="background:#c8900a;"></span>
-            <span style="background:#1a9b3e;"></span>
-          </div>
-          <h1>JAMHURI YA MUUNGANO WA TANZANIA</h1>
-          <h1>WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA</h1>
-          <h2>Mfumo wa Usimamizi wa Mafunzo ya Vitendo (IMS) — TAMISEMI</h2>
+      <!-- Header -->
+      <div class="cert-header">
+        <img class="cert-coa"
+             src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Coat_of_arms_of_Tanzania.svg/200px-Coat_of_arms_of_Tanzania.svg.png"
+             alt="Coat of Arms of Tanzania">
+        <h1>THE UNITED REPUBLIC OF TANZANIA</h1>
+        <h1>MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY</h1>
+        <h2>PRESIDENT'S OFFICE — REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT (PO-RALG)</h2>
+      </div>
+      <hr class="hr-navy">
+      <hr class="hr-gold">
+
+      <!-- Title -->
+      <div class="cert-title">Certificate of Teaching Practice Completion</div>
+      <hr class="hr-gold-center">
+
+      <!-- Body -->
+      <div class="cert-body">
+        <p>This is to certify that</p>
+        <div class="cert-student-name">{{ student.full_name|upper }}</div>
+        <div class="cert-regno">Registration Number: &nbsp;<strong>{{ student.registration_number|default:"—" }}</strong></div>
+
+        <p>has successfully completed a period of Teaching Practice at</p>
+        <div class="cert-school">{{ student.selected_school.name|default:"—" }}</div>
+        <div class="cert-detail">
+          {{ student.selected_school.district.name|default:"—" }} District
+          {% if fa and fa.academic_year %}&nbsp;&mdash;&nbsp; Academic Year: <strong>{{ fa.academic_year.year }}</strong>{% endif %}
         </div>
 
-        <hr class="cert-divider">
-
-        <div class="cert-title">Cheti cha Kukamilisha Mafunzo ya Vitendo</div>
-        <div class="cert-subtitle">INTERNSHIP COMPLETION CERTIFICATE</div>
-
-        <div class="cert-body">
-          <p>Hii ni kuthibitisha kwamba:</p>
-          <div class="cert-name">{{ student.full_name|upper }}</div>
-          <div class="cert-regno">Nambari ya Usajili: {{ student.registration_number|default:"—" }}</div>
-
-          <p style="margin-top:12px;">Amekamilisha kwa mafanikio Mafunzo ya Vitendo katika:</p>
-          <div class="cert-school">{{ student.selected_school.name|default:"—" }}</div>
-          <div class="cert-detail">
-            Wilaya ya {{ student.selected_school.district.name|default:"—" }}
-            {% if fa and fa.academic_year %} &mdash; Mwaka {{ fa.academic_year.year }}{% endif %}
-          </div>
-        </div>
-
-        {% if fa %}
-        <!-- Scores -->
-        <table class="score-table">
-          <thead>
-            <tr><th>Kipengele</th><th>Alama (Max 20)</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Kuhudhuria</td><td>{{ fa.kuhudhuria }}</td></tr>
-            <tr><td>Daftari la Kazi</td><td>{{ fa.daftari_la_kazi }}</td></tr>
-            <tr><td>Mpango wa Kazi</td><td>{{ fa.mpango_wa_kazi }}</td></tr>
-            <tr><td>Mpango wa Somo</td><td>{{ fa.mpango_wa_somo }}</td></tr>
-            <tr><td>Utendaji Darasani</td><td>{{ fa.utendaji_darasani }}</td></tr>
-          </tbody>
-          <tfoot>
-            <tr><td>JUMLA</td><td>{{ fa.jumla }}/100</td></tr>
-          </tfoot>
-        </table>
-
-        <div class="cert-grade-box">
-          <div class="cert-grade grade-{{ fa.daraja }}">{{ fa.daraja }}</div><br>
-          <div class="cert-grade-label">{{ fa.daraja_maana|upper }}</div>
-        </div>
-
-        {% if fa.maoni %}
-        <p style="text-align:center;font-size:10px;color:#555;font-style:italic;font-family:Arial,sans-serif;">
-          Maoni: {{ fa.maoni }}
+        <p class="cert-statement">
+          The student demonstrated satisfactory performance in all required areas of the teaching
+          practicum as stipulated by the Ministry of Education, Science and Technology guidelines
+          for Initial Teacher Education programmes.
         </p>
-        {% endif %}
-        {% endif %}
+      </div>
 
-        <hr class="cert-divider">
+      <!-- Scores -->
+      {% if fa %}
+      <table class="score-table">
+        <thead>
+          <tr>
+            <th>Assessment Criterion</th>
+            <th>Marks Awarded</th>
+            <th>Maximum</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Attendance</td><td>{{ fa.kuhudhuria }}</td><td>20</td></tr>
+          <tr><td>Work Diary</td><td>{{ fa.daftari_la_kazi }}</td><td>20</td></tr>
+          <tr><td>Scheme of Work</td><td>{{ fa.mpango_wa_kazi }}</td><td>20</td></tr>
+          <tr><td>Lesson Planning</td><td>{{ fa.mpango_wa_somo }}</td><td>20</td></tr>
+          <tr><td>Classroom Performance</td><td>{{ fa.utendaji_darasani }}</td><td>20</td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td>TOTAL</td><td>{{ fa.jumla }}</td><td>100</td></tr>
+        </tfoot>
+      </table>
 
-        <!-- Signatures -->
-        <div class="cert-sigs">
-          <div class="cert-sig">
-            <div class="cert-sig-line"></div>
-            <p class="bold">Mkaguzi</p>
-            <p>{% if fa and fa.assessed_by %}{{ fa.assessed_by.get_full_name }}{% else %}—{% endif %}</p>
-          </div>
-          <div class="cert-sig">
-            <div class="cert-sig-line"></div>
-            <p class="bold">Msimamizi wa Wilaya</p>
-            <p>DEO</p>
-          </div>
-          <div class="cert-sig">
-            <div class="cert-sig-line"></div>
-            <p class="bold">Tarehe</p>
-            <p>{% if fa %}{{ fa.updated_at|date:"d F Y" }}{% else %}—{% endif %}</p>
-          </div>
+      <!-- Grade -->
+      <div class="cert-grade-wrap">
+        <div class="cert-grade-circle grade-{{ fa.daraja }}">{{ fa.daraja }}</div><br>
+        <div class="cert-grade-text">
+          OVERALL GRADE:
+          {% if fa.daraja == 'A' %}EXCELLENT
+          {% elif fa.daraja == 'B' %}GOOD
+          {% elif fa.daraja == 'C' %}AVERAGE
+          {% else %}FAIL{% endif %}
+          &nbsp;({{ fa.jumla }}/100)
         </div>
+      </div>
 
-        <div class="cert-footer">
-          Cheti hiki kimetolewa na Mfumo wa Usimamizi wa Mafunzo ya Vitendo (IMS) &mdash;
-          Wizara ya Elimu, Sayansi na Teknolojia, Jamhuri ya Muungano wa Tanzania.
+      {% if fa.maoni %}
+      <p style="text-align:center;font-size:10px;color:#555;font-style:italic;">
+        Remarks: {{ fa.maoni }}
+      </p>
+      {% endif %}
+      {% endif %}
+
+      <!-- Signatures -->
+      <hr class="hr-gold-b" style="margin-top:20px;">
+      <div class="cert-sigs">
+        <div class="cert-sig">
+          <div class="cert-sig-line"></div>
+          <p class="bold">School Supervisor</p>
+          <p>{% if fa and fa.assessed_by %}{{ fa.assessed_by.get_full_name }}{% else %}—{% endif %}</p>
         </div>
+        <div class="cert-sig">
+          <div class="cert-sig-line"></div>
+          <p class="bold">District Education Officer</p>
+          <p>{{ student.selected_school.district.name|default:"—" }} District</p>
+        </div>
+        <div class="cert-sig">
+          <div class="cert-sig-line"></div>
+          <p class="bold">Date Issued</p>
+          <p>{% if fa %}{{ fa.updated_at|date:"d F Y" }}{% else %}—{% endif %}</p>
+        </div>
+      </div>
 
-      </div><!-- cert-border-inner -->
+      <hr class="hr-gold-b">
+      <hr class="hr-navy-b">
+
     </div><!-- cert-inner -->
   </div><!-- cert-card -->
 

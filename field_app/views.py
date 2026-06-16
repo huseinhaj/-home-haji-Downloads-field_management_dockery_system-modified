@@ -8782,229 +8782,250 @@ def student_certificate(request):
 
 @login_required
 def student_certificate_pdf(request):
-    """Chapisha PDF ya cheti — ruhusiwa tu kama mwanafunzi amehitimu."""
+    """Generate official Teaching Practice Completion Certificate PDF."""
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import cm, mm
+    from reportlab.lib.units import cm
     from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
     from reportlab.lib.styles import ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-    from reportlab.pdfgen import canvas as rl_canvas
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
     from reportlab.lib.utils import ImageReader
-    import io, math
+    import io, os
 
     student = get_or_create_student_profile(request.user)
     fa = getattr(student, 'final_assessment', None)
 
     if not fa or not fa.is_final:
         from django.http import HttpResponseForbidden
-        return HttpResponseForbidden("Cheti hakipatikani. Unahitaji kukamilisha mafunzo kwanza.")
+        return HttpResponseForbidden("Certificate not available. Teaching practice must be completed first.")
 
-    # ── Rangi ───────────────────────────────────────────────────────────────
     NAVY  = colors.HexColor('#0A2B5E')
     GOLD  = colors.HexColor('#C8900A')
     LIGHT = colors.HexColor('#EEF1F6')
-    GREEN = colors.HexColor('#166534')
     WHITE = colors.white
+    BLACK = colors.black
+    GRADE_COL = {
+        'A': colors.HexColor('#14532d'),
+        'B': colors.HexColor('#1e40af'),
+        'C': colors.HexColor('#92400e'),
+        'F': colors.HexColor('#7f1d1d'),
+    }
 
     buf = io.BytesIO()
     page_w, page_h = A4
 
-    # ── Canvas kwa watermark na borders ─────────────────────────────────────
-    def draw_bg(canvas_obj, doc):
-        canvas_obj.saveState()
+    # Path to coat of arms image
+    coat_img_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        'static', 'images', 'tz_coat_of_arms.png'
+    )
 
-        # Mstari wa nje wa cheti (double border)
-        canvas_obj.setStrokeColor(NAVY)
-        canvas_obj.setLineWidth(3)
-        canvas_obj.rect(1.2*cm, 1.2*cm, page_w - 2.4*cm, page_h - 2.4*cm)
-        canvas_obj.setStrokeColor(GOLD)
-        canvas_obj.setLineWidth(1.2)
-        canvas_obj.rect(1.5*cm, 1.5*cm, page_w - 3*cm, page_h - 3*cm)
+    def draw_bg(c, doc):
+        c.saveState()
+        # Outer border — navy thick
+        c.setStrokeColor(NAVY)
+        c.setLineWidth(4)
+        c.rect(1.0*cm, 1.0*cm, page_w - 2.0*cm, page_h - 2.0*cm)
+        # Inner border — gold thin
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(1.5)
+        c.rect(1.35*cm, 1.35*cm, page_w - 2.7*cm, page_h - 2.7*cm)
 
-        # Watermark — maandishi ya WIZARA faded pembeni
-        canvas_obj.setFont('Helvetica-Bold', 48)
-        canvas_obj.setFillColor(colors.HexColor('#0A2B5E'))
-        canvas_obj.setFillAlpha(0.06)
-        canvas_obj.saveState()
-        canvas_obj.translate(page_w / 2, page_h / 2)
-        canvas_obj.rotate(45)
-        canvas_obj.drawCentredString(0, 30, "WIZARA YA ELIMU")
-        canvas_obj.drawCentredString(0, -30, "JAMHURI YA MUUNGANO")
-        canvas_obj.restoreState()
+        # Coat of arms watermark — centered, very faint
+        if os.path.exists(coat_img_path):
+            try:
+                img_w, img_h = 220, 264
+                x = (page_w - img_w) / 2
+                y = (page_h - img_h) / 2
+                c.setFillAlpha(0.07)
+                c.drawImage(coat_img_path, x, y, width=img_w, height=img_h, mask='auto')
+                c.setFillAlpha(1.0)
+            except Exception:
+                pass
+        c.restoreState()
 
-        # Watermark pembe — SEAL text circular
-        canvas_obj.setFont('Helvetica-Bold', 9)
-        canvas_obj.setFillColor(colors.HexColor('#C8900A'))
-        canvas_obj.setFillAlpha(0.12)
-        cx, cy, r = page_w / 2, page_h / 2, 100
-        text = "WIZARA YA ELIMU SAYANSI NA TEKNOLOJIA * JAMHURI YA MUUNGANO WA TANZANIA * "
-        num_chars = len(text)
-        for i, ch in enumerate(text):
-            angle = math.radians(90 - (360 * i / num_chars))
-            x = cx + r * math.cos(angle)
-            y = cy + r * math.sin(angle)
-            canvas_obj.saveState()
-            canvas_obj.translate(x, y)
-            canvas_obj.rotate(-(360 * i / num_chars))
-            canvas_obj.drawCentredString(0, 0, ch)
-            canvas_obj.restoreState()
-
-        canvas_obj.restoreState()
-
-    # ── Styles ───────────────────────────────────────────────────────────────
-    def s(name, **kw):
+    def st(name, **kw):
         return ParagraphStyle(name, **kw)
 
-    ministry1 = s('m1', fontSize=10, fontName='Helvetica-Bold', alignment=TA_CENTER,
-                  textColor=NAVY, leading=14, spaceAfter=1)
-    ministry2 = s('m2', fontSize=8.5, fontName='Helvetica', alignment=TA_CENTER,
-                  textColor=NAVY, leading=12, spaceAfter=1)
-    title_s   = s('tt', fontSize=16, fontName='Helvetica-Bold', alignment=TA_CENTER,
-                  textColor=NAVY, leading=20, spaceAfter=6, spaceBefore=6)
-    sub_s     = s('ss', fontSize=10, fontName='Helvetica-Bold', alignment=TA_CENTER,
-                  textColor=GOLD, leading=14, spaceAfter=8)
-    body_c    = s('bc', fontSize=10.5, fontName='Helvetica', alignment=TA_CENTER,
-                  textColor=colors.HexColor('#1a1a2e'), leading=16)
-    body_b    = s('bb', fontSize=10.5, fontName='Helvetica-Bold', alignment=TA_CENTER,
-                  textColor=NAVY, leading=16)
-    lbl_s     = s('lb', fontSize=9, fontName='Helvetica', textColor=colors.HexColor('#444'),
-                  leading=12)
-    val_s     = s('vl', fontSize=9.5, fontName='Helvetica-Bold', textColor=NAVY, leading=12)
-    sign_s    = s('sg', fontSize=8.5, fontName='Helvetica', alignment=TA_CENTER,
-                  textColor=colors.HexColor('#333'), leading=11)
-    grade_s   = s('gr', fontSize=28, fontName='Helvetica-Bold', alignment=TA_CENTER,
-                  textColor=GREEN, leading=32)
-    score_s   = s('sc', fontSize=12, fontName='Helvetica-Bold', alignment=TA_CENTER,
-                  textColor=GOLD, leading=16)
+    hdr1 = st('h1', fontSize=11, fontName='Helvetica-Bold', alignment=TA_CENTER,
+               textColor=NAVY, leading=15, spaceAfter=2)
+    hdr2 = st('h2', fontSize=9.5, fontName='Helvetica', alignment=TA_CENTER,
+               textColor=NAVY, leading=13, spaceAfter=2)
+    cert_title = st('ct', fontSize=17, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                    textColor=NAVY, leading=22, spaceBefore=8, spaceAfter=4)
+    cert_sub   = st('cs', fontSize=10, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                    textColor=GOLD, leading=14, spaceAfter=14)
+    body_reg   = st('br', fontSize=11, fontName='Helvetica', alignment=TA_CENTER,
+                    textColor=BLACK, leading=17)
+    body_name  = st('bn', fontSize=22, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                    textColor=NAVY, leading=28, spaceBefore=6, spaceAfter=4)
+    body_reg_n = st('rn', fontSize=11, fontName='Helvetica', alignment=TA_CENTER,
+                    textColor=colors.HexColor('#333'), leading=15, spaceAfter=10)
+    school_nm  = st('sn', fontSize=13, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                    textColor=NAVY, leading=18, spaceAfter=2)
+    detail_st  = st('ds', fontSize=10.5, fontName='Helvetica', alignment=TA_CENTER,
+                    textColor=colors.HexColor('#333'), leading=15, spaceAfter=12)
+    tbl_hdr    = st('th', fontSize=10, fontName='Helvetica-Bold', textColor=WHITE, leading=13)
+    tbl_lbl    = st('tl', fontSize=10, fontName='Helvetica', textColor=BLACK, leading=13)
+    tbl_val    = st('tv', fontSize=10, fontName='Helvetica-Bold', textColor=NAVY, leading=13)
+    grade_big  = st('gb', fontSize=36, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                    textColor=GRADE_COL.get(fa.daraja, NAVY), leading=42)
+    grade_lbl  = st('gl', fontSize=12, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                    textColor=GOLD, leading=16, spaceAfter=12)
+    remarks_st = st('rm', fontSize=9.5, fontName='Helvetica-Oblique', alignment=TA_CENTER,
+                    textColor=colors.HexColor('#555'), leading=13, spaceAfter=10)
+    sig_st     = st('sg', fontSize=9, fontName='Helvetica', alignment=TA_CENTER,
+                    textColor=colors.HexColor('#222'), leading=12)
 
-    # ── Academic year ─────────────────────────────────────────────────────────
-    acad_year = fa.academic_year.year if fa.academic_year else ''
+    # Data
+    acad_year  = fa.academic_year.year if fa.academic_year else ''
     school_name = student.selected_school.name if student.selected_school else '—'
-    school_dist = student.selected_school.district.name if student.selected_school and student.selected_school.district else '—'
+    school_dist = (student.selected_school.district.name
+                   if student.selected_school and student.selected_school.district else '—')
+    reg_no     = student.registration_number or '—'
+    from datetime import date as dt_date
+    date_str   = fa.updated_at.strftime('%d %B %Y') if fa.updated_at else dt_date.today().strftime('%d %B %Y')
+    assessor_name = fa.assessed_by.get_full_name() if fa.assessed_by else '—'
 
-    SCORE_ROWS = [
-        ('Kuhudhuria',        fa.kuhudhuria),
-        ('Daftari la Kazi',   fa.daftari_la_kazi),
-        ('Mpango wa Kazi',    fa.mpango_wa_kazi),
-        ('Mpango wa Somo',    fa.mpango_wa_somo),
-        ('Utendaji Darasani', fa.utendaji_darasani),
-    ]
+    GRADE_LABEL = {'A': 'EXCELLENT', 'B': 'GOOD', 'C': 'AVERAGE', 'F': 'FAIL'}
 
-    # ── Build story ──────────────────────────────────────────────────────────
-    doc = SimpleDocTemplate(buf, pagesize=A4,
-                            leftMargin=2.5*cm, rightMargin=2.5*cm,
-                            topMargin=2.2*cm, bottomMargin=2.2*cm,
-                            onFirstPage=draw_bg, onLaterPages=draw_bg)
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        leftMargin=2.2*cm, rightMargin=2.2*cm,
+        topMargin=2.0*cm, bottomMargin=2.0*cm,
+        onFirstPage=draw_bg, onLaterPages=draw_bg,
+    )
     story = []
 
-    # Header: Ministry
-    story.append(Paragraph("JAMHURI YA MUUNGANO WA TANZANIA", ministry1))
-    story.append(Paragraph("WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA", ministry1))
-    story.append(Paragraph("Mfumo wa Usimamizi wa Mafunzo ya Vitendo — TAMISEMI", ministry2))
-    story.append(HRFlowable(width="90%", thickness=2, color=GOLD, spaceAfter=8))
+    # ── Header ───────────────────────────────────────────────────────────────
+    # Coat of arms image (visible in header)
+    if os.path.exists(coat_img_path):
+        try:
+            coa = Image(coat_img_path, width=2.2*cm, height=2.6*cm)
+            coa.hAlign = 'CENTER'
+            story.append(coa)
+            story.append(Spacer(1, 4))
+        except Exception:
+            pass
 
-    # Title
-    story.append(Paragraph("CHETI CHA KUKAMILISHA MAFUNZO YA VITENDO", title_s))
-    story.append(Paragraph("INTERNSHIP COMPLETION CERTIFICATE", sub_s))
-    story.append(Spacer(1, 6))
-
-    # Body text
-    story.append(Paragraph("Hii ni kuthibitisha kwamba:", body_c))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph(student.full_name.upper(), body_b))
-    story.append(Spacer(1, 2))
-    story.append(Paragraph(f"Nambari ya Usajili: <b>{student.registration_number or '—'}</b>", body_c))
-    story.append(Spacer(1, 8))
+    story.append(Paragraph("THE UNITED REPUBLIC OF TANZANIA", hdr1))
+    story.append(Paragraph("MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY", hdr1))
     story.append(Paragraph(
-        f"Amekamilisha kwa mafanikio Mafunzo ya Vitendo (Internship) katika shule ya",
-        body_c))
-    story.append(Spacer(1, 2))
-    story.append(Paragraph(f"<b>{school_name}</b>", body_b))
-    story.append(Paragraph(f"Wilaya ya {school_dist}", body_c))
-    if acad_year:
-        story.append(Paragraph(f"Mwaka wa Masomo: <b>{acad_year}</b>", body_c))
-    story.append(Spacer(1, 10))
+        "PRESIDENT'S OFFICE — REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT (PO-RALG)", hdr2))
+    story.append(HRFlowable(width="92%", thickness=2.5, color=NAVY, spaceAfter=2))
+    story.append(HRFlowable(width="92%", thickness=1, color=GOLD, spaceAfter=10))
 
-    # Grades table
-    grade_color = {'A': GREEN, 'B': colors.HexColor('#0369a1'),
-                   'C': colors.HexColor('#b45309'), 'F': colors.HexColor('#b91c1c')}
-    g_col = grade_color.get(fa.daraja, NAVY)
+    # ── Title ─────────────────────────────────────────────────────────────────
+    story.append(Paragraph("CERTIFICATE OF TEACHING PRACTICE COMPLETION", cert_title))
+    story.append(HRFlowable(width="60%", thickness=1, color=GOLD, spaceAfter=14))
 
-    grade_label = {
-        'A': 'BORA SANA', 'B': 'VIZURI', 'C': 'WASTANI', 'F': 'HAIJAFAULU'
-    }.get(fa.daraja, '')
+    # ── Body ──────────────────────────────────────────────────────────────────
+    story.append(Paragraph("This is to certify that", body_reg))
+    story.append(Paragraph(student.full_name.upper(), body_name))
+    story.append(Paragraph(f"Registration Number: &nbsp; <b>{reg_no}</b>", body_reg_n))
+    story.append(Paragraph(
+        "has successfully completed a period of Teaching Practice at", body_reg))
+    story.append(Spacer(1, 8))
+    story.append(Paragraph(school_name.upper(), school_nm))
+    story.append(Paragraph(
+        f"{school_dist} District"
+        + (f" &nbsp;|&nbsp; Academic Year: <b>{acad_year}</b>" if acad_year else ""),
+        detail_st))
+    story.append(Paragraph(
+        "The student demonstrated satisfactory performance in all required areas of the "
+        "teaching practicum as stipulated by the Ministry of Education, Science and Technology "
+        "guidelines for Initial Teacher Education programmes.",
+        st('pb', fontSize=10, fontName='Helvetica', alignment=TA_CENTER,
+           textColor=colors.HexColor('#333'), leading=15, spaceAfter=14)))
 
-    score_data = [
-        [Paragraph('<b>KIPENGELE</b>', val_s), Paragraph('<b>ALAMA</b>', val_s)],
-    ] + [
-        [Paragraph(lbl, lbl_s), Paragraph(str(sc), val_s)] for lbl, sc in SCORE_ROWS
-    ] + [
-        [Paragraph('<b>JUMLA</b>', val_s), Paragraph(f'<b>{fa.jumla}/100</b>', val_s)],
+    # ── Performance table ─────────────────────────────────────────────────────
+    SCORE_ROWS = [
+        ('Attendance',          fa.kuhudhuria),
+        ('Work Diary',          fa.daftari_la_kazi),
+        ('Scheme of Work',      fa.mpango_wa_kazi),
+        ('Lesson Planning',     fa.mpango_wa_somo),
+        ('Classroom Performance', fa.utendaji_darasani),
     ]
 
-    score_table = Table(score_data, colWidths=[10*cm, 4*cm])
+    score_data = [
+        [Paragraph('ASSESSMENT CRITERION', tbl_hdr),
+         Paragraph('MARKS AWARDED', tbl_hdr),
+         Paragraph('MAXIMUM', tbl_hdr)],
+    ] + [
+        [Paragraph(lbl, tbl_lbl),
+         Paragraph(str(sc), tbl_val),
+         Paragraph('20', tbl_lbl)]
+        for lbl, sc in SCORE_ROWS
+    ] + [
+        [Paragraph('<b>TOTAL</b>', tbl_val),
+         Paragraph(f'<b>{fa.jumla}</b>', tbl_val),
+         Paragraph('<b>100</b>', tbl_val)],
+    ]
+
+    score_table = Table(score_data, colWidths=[9.5*cm, 3.5*cm, 3*cm])
     score_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-        ('TEXTCOLOR',  (0, 0), (-1, 0), WHITE),
-        ('BACKGROUND', (0, -1), (-1, -1), LIGHT),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [WHITE, LIGHT]),
-        ('GRID',       (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
-        ('ALIGN',      (1, 0), (1, -1), 'CENTER'),
-        ('VALIGN',     (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING', (0, 0), (0, -1), 10),
+        ('BACKGROUND',    (0, 0), (-1, 0), NAVY),
+        ('TEXTCOLOR',     (0, 0), (-1, 0), WHITE),
+        ('BACKGROUND',    (0, -1), (-1, -1), LIGHT),
+        ('ROWBACKGROUNDS',(0, 1), (-1, -2), [WHITE, colors.HexColor('#f5f7fb')]),
+        ('GRID',          (0, 0), (-1, -1), 0.4, colors.HexColor('#c0c8d8')),
+        ('ALIGN',         (1, 0), (-1, -1), 'CENTER'),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING',    (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING',   (0, 0), (0, -1), 12),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
+        ('FONTNAME',      (0, 0), (-1, 0), 'Helvetica-Bold'),
     ]))
     story.append(score_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 14))
 
-    # Daraja kubwa
-    daraja_para = Paragraph(f'{fa.daraja}', grade_s)
-    story.append(daraja_para)
-    story.append(Paragraph(grade_label, score_s))
-    story.append(Spacer(1, 10))
+    # ── Overall Grade ─────────────────────────────────────────────────────────
+    story.append(Paragraph(fa.daraja, grade_big))
+    story.append(Paragraph(
+        f"OVERALL GRADE: {GRADE_LABEL.get(fa.daraja, '')} &nbsp;({fa.jumla}/100)",
+        grade_lbl))
 
-    # Maoni
     if fa.maoni:
-        story.append(Paragraph(f"<i>Maoni: {fa.maoni}</i>",
-                               s('mn', fontSize=8.5, fontName='Helvetica-Oblique',
-                                 alignment=TA_CENTER, textColor=colors.HexColor('#555'),
-                                 leading=12)))
-        story.append(Spacer(1, 8))
+        story.append(Paragraph(f"Remarks: {fa.maoni}", remarks_st))
 
-    story.append(HRFlowable(width="90%", thickness=1, color=colors.HexColor('#cccccc'),
-                            spaceAfter=10))
+    story.append(HRFlowable(width="92%", thickness=0.8, color=colors.HexColor('#b0b8c8'),
+                            spaceAfter=14))
 
-    # Signatures
-    from datetime import date
-    date_str = fa.updated_at.strftime('%d %B %Y') if fa.updated_at else date.today().strftime('%d %B %Y')
-
+    # ── Signatures ────────────────────────────────────────────────────────────
     sig_data = [[
-        Paragraph(f"_________________________<br/><b>Mkaguzi</b><br/>{fa.assessed_by.get_full_name() if fa.assessed_by else '—'}", sign_s),
-        Paragraph(f"_________________________<br/><b>Msimamizi wa Wilaya</b><br/>DEO", sign_s),
-        Paragraph(f"_________________________<br/><b>Tarehe</b><br/>{date_str}", sign_s),
+        Paragraph(
+            ".................................<br/>"
+            f"<b>School Supervisor</b><br/>{assessor_name}",
+            sig_st),
+        Paragraph(
+            ".................................<br/>"
+            "<b>District Education Officer</b><br/>"
+            f"{school_dist} District",
+            sig_st),
+        Paragraph(
+            ".................................<br/>"
+            f"<b>Date Issued</b><br/>{date_str}",
+            sig_st),
     ]]
-    sig_table = Table(sig_data, colWidths=[5*cm, 5*cm, 5*cm])
+    sig_table = Table(sig_data, colWidths=[5.5*cm, 5.5*cm, 5*cm])
     sig_table.setStyle(TableStyle([
-        ('ALIGN',  (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING',    (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
     ]))
     story.append(sig_table)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 10))
 
-    # Footer
-    story.append(HRFlowable(width="90%", thickness=1.5, color=GOLD, spaceAfter=4))
-    story.append(Paragraph(
-        "Cheti hiki kimetolewa na Mfumo wa Usimamizi wa Mafunzo ya Vitendo (IMS) "
-        "— Wizara ya Elimu, Sayansi na Teknolojia, Jamhuri ya Muungano wa Tanzania.",
-        s('ft', fontSize=7.5, fontName='Helvetica', alignment=TA_CENTER,
-          textColor=colors.HexColor('#666'), leading=10)))
+    # ── Bottom rule ───────────────────────────────────────────────────────────
+    story.append(HRFlowable(width="92%", thickness=1, color=GOLD, spaceAfter=4))
+    story.append(HRFlowable(width="92%", thickness=2.5, color=NAVY, spaceAfter=0))
 
     doc.build(story)
     buf.seek(0)
-    filename = f"Cheti_{student.full_name.replace(' ', '_')}.pdf"
+    safe_name = student.full_name.replace(' ', '_').replace('/', '_')
+    filename = f"Teaching_Practice_Certificate_{safe_name}.pdf"
     response = HttpResponse(buf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
