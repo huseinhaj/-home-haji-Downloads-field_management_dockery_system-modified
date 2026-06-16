@@ -562,6 +562,18 @@ body {
             </a>
         </li>
 
+        <!-- Cheti -->
+        <li class="sidebar-item">
+            <a href="{% url 'student_certificate' %}" class="sidebar-link {% if request.resolver_match.url_name == 'student_certificate' %}active{% endif %}" style="position:relative;">
+                <i class="fas fa-certificate"></i>
+                <span class="sidebar-text">{% if LANG == 'sw' %}Cheti Changu{% else %}My Certificate{% endif %}</span>
+                {% if not final_assessment or not final_assessment.is_final %}
+                <i class="fas fa-lock" style="font-size:9px;position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#C8900A;"></i>
+                {% else %}
+                <i class="fas fa-check-circle" style="font-size:9px;position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#16a34a;"></i>
+                {% endif %}
+            </a>
+        </li>
 
     </ul>
 </nav>

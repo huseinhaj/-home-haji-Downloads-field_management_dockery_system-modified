@@ -43,18 +43,15 @@ python manage.py loaddata districts.json || true
 python manage.py import_subjects data/subjects.csv || true
 python manage.py loaddata education_levels.json || true
 
-# Link schools with subjects (runs foreground - schools already in DB)
-echo "Setting up school-subject links..."
-python manage.py setup_school_subjects || true
-
 # Collect static files
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
-# Load schools in background (skips if already loaded)
+# Load schools + link subjects in background
 echo "Loading schools in background..."
 (python manage.py loaddata schools.json || true; \
  python manage.py loaddata missing_schools.json || true; \
+ python manage.py setup_school_subjects || true; \
  python manage.py shell -c "from field_app.models import School; School.objects.update(current_students=0); print('Reset current_students to 0')" || true; \
  python manage.py import_schools_pdf --overwrite || true) &
 

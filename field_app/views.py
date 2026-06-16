@@ -8761,3 +8761,250 @@ Andika kwa Kiswahili, muhtasari wa kitaalamu unaofaa ripoti rasmi ya serikali. T
         return resp.text.strip()
     except Exception:
         return ''
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CHETI CHA MWANAFUNZI — Internship Completion Certificate
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_required
+def student_certificate(request):
+    """Onesha cheti cha mwanafunzi — akishamaliza anapata PDF, la sivyo preview tu."""
+    student = get_or_create_student_profile(request.user)
+    fa = getattr(student, 'final_assessment', None)
+    completed = fa is not None and fa.is_final
+    return render(request, 'field_app/student_certificate.html', {
+        'student': student,
+        'fa': fa,
+        'completed': completed,
+    })
+
+
+@login_required
+def student_certificate_pdf(request):
+    """Chapisha PDF ya cheti — ruhusiwa tu kama mwanafunzi amehitimu."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm, mm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.pdfgen import canvas as rl_canvas
+    from reportlab.lib.utils import ImageReader
+    import io, math
+
+    student = get_or_create_student_profile(request.user)
+    fa = getattr(student, 'final_assessment', None)
+
+    if not fa or not fa.is_final:
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Cheti hakipatikani. Unahitaji kukamilisha mafunzo kwanza.")
+
+    # ── Rangi ───────────────────────────────────────────────────────────────
+    NAVY  = colors.HexColor('#0A2B5E')
+    GOLD  = colors.HexColor('#C8900A')
+    LIGHT = colors.HexColor('#EEF1F6')
+    GREEN = colors.HexColor('#166534')
+    WHITE = colors.white
+
+    buf = io.BytesIO()
+    page_w, page_h = A4
+
+    # ── Canvas kwa watermark na borders ─────────────────────────────────────
+    def draw_bg(canvas_obj, doc):
+        canvas_obj.saveState()
+
+        # Mstari wa nje wa cheti (double border)
+        canvas_obj.setStrokeColor(NAVY)
+        canvas_obj.setLineWidth(3)
+        canvas_obj.rect(1.2*cm, 1.2*cm, page_w - 2.4*cm, page_h - 2.4*cm)
+        canvas_obj.setStrokeColor(GOLD)
+        canvas_obj.setLineWidth(1.2)
+        canvas_obj.rect(1.5*cm, 1.5*cm, page_w - 3*cm, page_h - 3*cm)
+
+        # Watermark — maandishi ya WIZARA faded pembeni
+        canvas_obj.setFont('Helvetica-Bold', 48)
+        canvas_obj.setFillColor(colors.HexColor('#0A2B5E'))
+        canvas_obj.setFillAlpha(0.06)
+        canvas_obj.saveState()
+        canvas_obj.translate(page_w / 2, page_h / 2)
+        canvas_obj.rotate(45)
+        canvas_obj.drawCentredString(0, 30, "WIZARA YA ELIMU")
+        canvas_obj.drawCentredString(0, -30, "JAMHURI YA MUUNGANO")
+        canvas_obj.restoreState()
+
+        # Watermark pembe — SEAL text circular
+        canvas_obj.setFont('Helvetica-Bold', 9)
+        canvas_obj.setFillColor(colors.HexColor('#C8900A'))
+        canvas_obj.setFillAlpha(0.12)
+        cx, cy, r = page_w / 2, page_h / 2, 100
+        text = "WIZARA YA ELIMU SAYANSI NA TEKNOLOJIA * JAMHURI YA MUUNGANO WA TANZANIA * "
+        num_chars = len(text)
+        for i, ch in enumerate(text):
+            angle = math.radians(90 - (360 * i / num_chars))
+            x = cx + r * math.cos(angle)
+            y = cy + r * math.sin(angle)
+            canvas_obj.saveState()
+            canvas_obj.translate(x, y)
+            canvas_obj.rotate(-(360 * i / num_chars))
+            canvas_obj.drawCentredString(0, 0, ch)
+            canvas_obj.restoreState()
+
+        canvas_obj.restoreState()
+
+    # ── Styles ───────────────────────────────────────────────────────────────
+    def s(name, **kw):
+        return ParagraphStyle(name, **kw)
+
+    ministry1 = s('m1', fontSize=10, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                  textColor=NAVY, leading=14, spaceAfter=1)
+    ministry2 = s('m2', fontSize=8.5, fontName='Helvetica', alignment=TA_CENTER,
+                  textColor=NAVY, leading=12, spaceAfter=1)
+    title_s   = s('tt', fontSize=16, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                  textColor=NAVY, leading=20, spaceAfter=6, spaceBefore=6)
+    sub_s     = s('ss', fontSize=10, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                  textColor=GOLD, leading=14, spaceAfter=8)
+    body_c    = s('bc', fontSize=10.5, fontName='Helvetica', alignment=TA_CENTER,
+                  textColor=colors.HexColor('#1a1a2e'), leading=16)
+    body_b    = s('bb', fontSize=10.5, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                  textColor=NAVY, leading=16)
+    lbl_s     = s('lb', fontSize=9, fontName='Helvetica', textColor=colors.HexColor('#444'),
+                  leading=12)
+    val_s     = s('vl', fontSize=9.5, fontName='Helvetica-Bold', textColor=NAVY, leading=12)
+    sign_s    = s('sg', fontSize=8.5, fontName='Helvetica', alignment=TA_CENTER,
+                  textColor=colors.HexColor('#333'), leading=11)
+    grade_s   = s('gr', fontSize=28, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                  textColor=GREEN, leading=32)
+    score_s   = s('sc', fontSize=12, fontName='Helvetica-Bold', alignment=TA_CENTER,
+                  textColor=GOLD, leading=16)
+
+    # ── Academic year ─────────────────────────────────────────────────────────
+    acad_year = fa.academic_year.year if fa.academic_year else ''
+    school_name = student.selected_school.name if student.selected_school else '—'
+    school_dist = student.selected_school.district.name if student.selected_school and student.selected_school.district else '—'
+
+    SCORE_ROWS = [
+        ('Kuhudhuria',        fa.kuhudhuria),
+        ('Daftari la Kazi',   fa.daftari_la_kazi),
+        ('Mpango wa Kazi',    fa.mpango_wa_kazi),
+        ('Mpango wa Somo',    fa.mpango_wa_somo),
+        ('Utendaji Darasani', fa.utendaji_darasani),
+    ]
+
+    # ── Build story ──────────────────────────────────────────────────────────
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=2.5*cm, rightMargin=2.5*cm,
+                            topMargin=2.2*cm, bottomMargin=2.2*cm,
+                            onFirstPage=draw_bg, onLaterPages=draw_bg)
+    story = []
+
+    # Header: Ministry
+    story.append(Paragraph("JAMHURI YA MUUNGANO WA TANZANIA", ministry1))
+    story.append(Paragraph("WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA", ministry1))
+    story.append(Paragraph("Mfumo wa Usimamizi wa Mafunzo ya Vitendo — TAMISEMI", ministry2))
+    story.append(HRFlowable(width="90%", thickness=2, color=GOLD, spaceAfter=8))
+
+    # Title
+    story.append(Paragraph("CHETI CHA KUKAMILISHA MAFUNZO YA VITENDO", title_s))
+    story.append(Paragraph("INTERNSHIP COMPLETION CERTIFICATE", sub_s))
+    story.append(Spacer(1, 6))
+
+    # Body text
+    story.append(Paragraph("Hii ni kuthibitisha kwamba:", body_c))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(student.full_name.upper(), body_b))
+    story.append(Spacer(1, 2))
+    story.append(Paragraph(f"Nambari ya Usajili: <b>{student.registration_number or '—'}</b>", body_c))
+    story.append(Spacer(1, 8))
+    story.append(Paragraph(
+        f"Amekamilisha kwa mafanikio Mafunzo ya Vitendo (Internship) katika shule ya",
+        body_c))
+    story.append(Spacer(1, 2))
+    story.append(Paragraph(f"<b>{school_name}</b>", body_b))
+    story.append(Paragraph(f"Wilaya ya {school_dist}", body_c))
+    if acad_year:
+        story.append(Paragraph(f"Mwaka wa Masomo: <b>{acad_year}</b>", body_c))
+    story.append(Spacer(1, 10))
+
+    # Grades table
+    grade_color = {'A': GREEN, 'B': colors.HexColor('#0369a1'),
+                   'C': colors.HexColor('#b45309'), 'F': colors.HexColor('#b91c1c')}
+    g_col = grade_color.get(fa.daraja, NAVY)
+
+    grade_label = {
+        'A': 'BORA SANA', 'B': 'VIZURI', 'C': 'WASTANI', 'F': 'HAIJAFAULU'
+    }.get(fa.daraja, '')
+
+    score_data = [
+        [Paragraph('<b>KIPENGELE</b>', val_s), Paragraph('<b>ALAMA</b>', val_s)],
+    ] + [
+        [Paragraph(lbl, lbl_s), Paragraph(str(sc), val_s)] for lbl, sc in SCORE_ROWS
+    ] + [
+        [Paragraph('<b>JUMLA</b>', val_s), Paragraph(f'<b>{fa.jumla}/100</b>', val_s)],
+    ]
+
+    score_table = Table(score_data, colWidths=[10*cm, 4*cm])
+    score_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('TEXTCOLOR',  (0, 0), (-1, 0), WHITE),
+        ('BACKGROUND', (0, -1), (-1, -1), LIGHT),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [WHITE, LIGHT]),
+        ('GRID',       (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
+        ('ALIGN',      (1, 0), (1, -1), 'CENTER'),
+        ('VALIGN',     (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (0, -1), 10),
+    ]))
+    story.append(score_table)
+    story.append(Spacer(1, 10))
+
+    # Daraja kubwa
+    daraja_para = Paragraph(f'{fa.daraja}', grade_s)
+    story.append(daraja_para)
+    story.append(Paragraph(grade_label, score_s))
+    story.append(Spacer(1, 10))
+
+    # Maoni
+    if fa.maoni:
+        story.append(Paragraph(f"<i>Maoni: {fa.maoni}</i>",
+                               s('mn', fontSize=8.5, fontName='Helvetica-Oblique',
+                                 alignment=TA_CENTER, textColor=colors.HexColor('#555'),
+                                 leading=12)))
+        story.append(Spacer(1, 8))
+
+    story.append(HRFlowable(width="90%", thickness=1, color=colors.HexColor('#cccccc'),
+                            spaceAfter=10))
+
+    # Signatures
+    from datetime import date
+    date_str = fa.updated_at.strftime('%d %B %Y') if fa.updated_at else date.today().strftime('%d %B %Y')
+
+    sig_data = [[
+        Paragraph(f"_________________________<br/><b>Mkaguzi</b><br/>{fa.assessed_by.get_full_name() if fa.assessed_by else '—'}", sign_s),
+        Paragraph(f"_________________________<br/><b>Msimamizi wa Wilaya</b><br/>DEO", sign_s),
+        Paragraph(f"_________________________<br/><b>Tarehe</b><br/>{date_str}", sign_s),
+    ]]
+    sig_table = Table(sig_data, colWidths=[5*cm, 5*cm, 5*cm])
+    sig_table.setStyle(TableStyle([
+        ('ALIGN',  (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(sig_table)
+    story.append(Spacer(1, 8))
+
+    # Footer
+    story.append(HRFlowable(width="90%", thickness=1.5, color=GOLD, spaceAfter=4))
+    story.append(Paragraph(
+        "Cheti hiki kimetolewa na Mfumo wa Usimamizi wa Mafunzo ya Vitendo (IMS) "
+        "— Wizara ya Elimu, Sayansi na Teknolojia, Jamhuri ya Muungano wa Tanzania.",
+        s('ft', fontSize=7.5, fontName='Helvetica', alignment=TA_CENTER,
+          textColor=colors.HexColor('#666'), leading=10)))
+
+    doc.build(story)
+    buf.seek(0)
+    filename = f"Cheti_{student.full_name.replace(' ', '_')}.pdf"
+    response = HttpResponse(buf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

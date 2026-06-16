@@ -158,4 +158,8 @@ urlpatterns = [
     path('board/district/<int:district_id>/requests/', views.deo_review_requests, name='deo_review_requests'),
     path('board/district/<int:district_id>/send-links/', views.send_links_to_heads, name='send_links_to_heads'),
     path('board/district/<int:district_id>/student-pdf/', views.deo_student_pdf, name='deo_student_pdf'),
+
+    # Student Certificate
+    path('cheti/', views.student_certificate, name='student_certificate'),
+    path('cheti/pdf/', views.student_certificate_pdf, name='student_certificate_pdf'),
 ]
