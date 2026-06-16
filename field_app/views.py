@@ -8836,12 +8836,17 @@ def student_certificate_pdf(request):
     buf = io.BytesIO()
     page_w, page_h = A4
 
-    # Find coat of arms path — check app static dir and STATIC_ROOT
+    # Find coat of arms path — try multiple locations
     from django.conf import settings
+    from django.contrib.staticfiles import finders as sf_finders
     _base = getattr(settings, 'BASE_DIR', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    _static_root = getattr(settings, 'STATIC_ROOT', '') or ''
     _roots = [
-        os.path.join(_base, 'field_app', 'static', 'images', 'tz_coat_of_arms.png'),
-        os.path.join(getattr(settings, 'STATIC_ROOT', ''), 'images', 'tz_coat_of_arms.png'),
+        sf_finders.find('images/tz_coat_of_arms.png'),                                      # staticfiles finders (dev + some prod)
+        os.path.join(_static_root, 'images', 'tz_coat_of_arms.png'),                        # collected static (production)
+        os.path.join(_base, 'field_app', 'static', 'images', 'tz_coat_of_arms.png'),        # source static dir
+        os.path.join(_base, 'staticfiles', 'images', 'tz_coat_of_arms.png'),                # common STATIC_ROOT alias
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'images', 'tz_coat_of_arms.png'),
     ]
     coat_img_path = next((p for p in _roots if p and os.path.exists(p)), None)
 
