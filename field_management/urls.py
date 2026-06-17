@@ -24,6 +24,9 @@ urlpatterns = [
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain')),
     
     
+    # REST API
+    path('api/v1/', include('field_app.api_urls')),
+
     # Your app's URLs
     path('', include('field_app.urls')),
 ]

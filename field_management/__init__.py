@@ -1,1 +1,2 @@
-default_app_config = 'field_app.apps.FieldAppConfig'  # 👈 Ongeza hii
+from .celery import app as celery_app
+__all__ = ('celery_app',)
