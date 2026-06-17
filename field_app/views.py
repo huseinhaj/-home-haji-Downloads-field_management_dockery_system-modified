@@ -808,6 +808,10 @@ def get_current_academic_year():
 # AUTHENTICATION VIEWS
 # =========================
 
+def health_check(request):
+    return JsonResponse({'status': 'ok'})
+
+
 def register(request):
     if request.method == 'POST':
         form = StudentRegistrationForm(request.POST)
