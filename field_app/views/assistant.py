@@ -3,9 +3,9 @@ AI Application Assistant — helps students prepare HESLB and TCU applications
 through guided Swahili conversation.
 """
 import json
+import time
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from google.genai import types as genai_types
@@ -71,7 +71,7 @@ MUHIMU SANA:
 
 
 def _call_gemini(history: list) -> str:
-    """Call Gemini with conversation history and return the AI response text."""
+    """Call Gemini with conversation history. Retries up to 3x on 429 quota errors."""
     if client is None:
         return "Samahani, huduma ya AI haitumiki kwa sasa. Wasiliana na msimamizi."
 
@@ -80,20 +80,29 @@ def _call_gemini(history: list) -> str:
         role = "model" if msg["role"] == "assistant" else "user"
         contents.append({"role": role, "parts": [{"text": msg["content"]}]})
 
-    try:
-        cfg = genai_types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.4,
-            max_output_tokens=1024,
-        )
-        response = client.models.generate_content(
-            model=model_name,
-            contents=contents,
-            config=cfg,
-        )
-        return response.text or "Samahani, jibu halijapatikana. Jaribu tena."
-    except Exception as e:
-        return f"Hitilafu ya AI: {str(e)[:120]}. Jaribu tena."
+    cfg = genai_types.GenerateContentConfig(
+        system_instruction=SYSTEM_PROMPT,
+        temperature=0.4,
+        max_output_tokens=1024,
+    )
+
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=cfg,
+            )
+            return response.text or "Samahani, jibu halijapatikana. Jaribu tena."
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
+                if attempt < 2:
+                    time.sleep(8 * (attempt + 1))  # 8s then 16s
+                    continue
+                return "Samahani, mfumo una msongamano kwa sasa. Subiri sekunde 30 kisha jaribu tena."
+            return f"Hitilafu ya AI: {err[:100]}. Jaribu tena."
+    return "Samahani, mfumo haujaweza kujibu. Jaribu tena baadaye."
 
 
 def _extract_data(text: str) -> dict | None:
