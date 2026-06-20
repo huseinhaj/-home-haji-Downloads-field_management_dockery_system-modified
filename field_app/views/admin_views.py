@@ -1453,3 +1453,136 @@ def new_year_credentials(request):
         'results': results,
         'total': len(results)
     })
+
+
+@login_required
+def download_individual_letter(request):
+    student = get_or_create_student_profile(request.user)
+
+    approved_applications = StudentApplication.objects.filter(
+        student=student,
+        status='approved'
+    )
+
+    if not approved_applications.exists():
+        messages.error(request, "You don't have any approved applications to download a letter.")
+        return redirect('dashboard')
+
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer)
+
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(100, 800, "INDIVIDUAL FIELD PLACEMENT APPROVAL LETTER")
+
+    p.setFont("Helvetica", 12)
+    p.drawString(100, 770, f"Student Name: {student.full_name}")
+    p.drawString(100, 750, f"Student ID: {student.id}")
+    p.drawString(100, 730, f"Phone: {student.phone_number}")
+    p.drawString(100, 710, f"Email: {student.user.email}")
+
+    if student.selected_school:
+        p.drawString(100, 680, f"Assigned School: {student.selected_school.name}")
+        p.drawString(100, 660, f"School District: {student.selected_school.district.name}")
+        p.drawString(100, 640, f"School Region: {student.selected_school.district.region.name}")
+
+    p.drawString(100, 610, "Approved Teaching Subjects:")
+    y_position = 590
+    for application in approved_applications:
+        p.drawString(120, y_position, f"- {application.subject.name} at {application.school.name}")
+        y_position -= 20
+        if application.approval_date:
+            p.drawString(140, y_position, f"Approved on: {application.approval_date.strftime('%Y-%m-%d')}")
+            y_position -= 20
+
+    p.drawString(100, 530, "This letter confirms that the above student has been approved")
+    p.drawString(100, 510, "for field placement teaching practice.")
+    p.drawString(100, 490, f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
+
+    p.showPage()
+    p.save()
+
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="individual_approval_{student.full_name}.pdf"'
+    return response
+
+
+@login_required
+def download_group_letter(request):
+    student = get_or_create_student_profile(request.user)
+
+    if not student.selected_school:
+        messages.error(request, "Huna shule uliyochagua.")
+        return redirect('dashboard')
+
+    school = student.selected_school
+    group_letter_quota = 5
+
+    approved_students_count = StudentApplication.objects.filter(
+        school=school,
+        status='approved'
+    ).count()
+
+    student_has_approved_application = StudentApplication.objects.filter(
+        student=student,
+        school=school,
+        status='approved'
+    ).exists()
+
+    if approved_students_count < group_letter_quota:
+        messages.error(request,
+            f"Bado hatujafikia idadi ya wanafunzi {group_letter_quota} walioidhinishwa. "
+            f"Kwa sasa kuna {approved_students_count}/{group_letter_quota}."
+        )
+        return redirect('dashboard')
+
+    if not student_has_approved_application:
+        messages.error(request,
+            "Huwezi kupata barua ya kikundi kwa sababu huna maombi yaliyoidhinishwa kwenye shule hii."
+        )
+        return redirect('dashboard')
+
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer)
+
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(100, 800, "BARUA YA UTHIBITISHO WA KIKUNDI")
+    p.drawString(100, 780, "Taasisi ya Ualimu Tanzania")
+
+    p.setFont("Helvetica", 12)
+    p.drawString(100, 750, f"Jina la Shule: {school.name}")
+    p.drawString(100, 730, f"Wilaya: {school.district.name}")
+    p.drawString(100, 710, f"Mkoa: {school.district.region.name}")
+    p.drawString(100, 690, f"Idadi ya Wanafunzi Inayohitajika: {group_letter_quota}")
+    p.drawString(100, 670, f"Wanafunzi Walioidhinishwa: {approved_students_count}")
+
+    p.drawString(100, 640, "Orodha ya Wanafunzi Walioidhinishwa:")
+    y_position = 620
+
+    approved_applications = StudentApplication.objects.filter(
+        school=school,
+        status='approved'
+    ).select_related('student').distinct()
+
+    for idx, application in enumerate(approved_applications, 1):
+        student_name = application.student.full_name
+        subject_name = application.subject.name
+        p.drawString(120, y_position, f"{idx}. {student_name} - {subject_name}")
+        y_position -= 20
+        if y_position < 100:
+            p.showPage()
+            p.setFont("Helvetica", 12)
+            y_position = 780
+
+    p.drawString(100, y_position - 40, "Barua hii inathibitisha kuwa shule imefikia idadi ya wanafunzi 5")
+    p.drawString(100, y_position - 60, "wa kufanya mafunzo ya ualimu kwenye uwanja kama kikundi.")
+    p.drawString(100, y_position - 80, f"Imetolewa tarehe: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
+
+    p.showPage()
+    p.save()
+
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="barua_kikundi_{school.name}.pdf"'
+    messages.success(request, "Barua ya kikundi imepakuliwa kikamilifu!")
+    return response
