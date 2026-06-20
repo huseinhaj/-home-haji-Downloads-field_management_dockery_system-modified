@@ -129,7 +129,7 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
       {% if first_time %}
       <div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400E;display:flex;gap:8px;">
         <i class="fas fa-key" style="margin-top:1px;flex-shrink:0;"></i>
-        <span>Karibu! Kwa kuwa ni mara yako ya kwanza, weka nywila ya siri ya akaunti yako.</span>
+        <span>Ombi lako limetumwa! Sasa weka barua pepe yako na nywila ya akaunti yako.</span>
       </div>
       <form method="post" action="{% url 'head_login' %}">
         {% csrf_token %}
@@ -139,15 +139,15 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
           <label>Barua Pepe</label>
           <div class="inp-wrap">
             <i class="fas fa-envelope inp-ico"></i>
-            <input type="email" name="email" value="{{ prefill_email }}" readonly
-                   style="background:#F7FAFC;color:#4A5568;cursor:not-allowed;">
+            <input type="email" name="email" value="{{ prefill_email }}" required autofocus
+                   autocomplete="email" placeholder="barua.pepe@yako.com">
           </div>
         </div>
         <div class="field">
           <label>Nywila Mpya</label>
           <div class="inp-wrap">
             <i class="fas fa-lock inp-ico"></i>
-            <input type="password" name="password1" id="pwd1" required autofocus minlength="6"
+            <input type="password" name="password1" id="pwd1" required minlength="6"
                    placeholder="Angalau herufi 6" style="padding-right:38px;">
             <button type="button" class="eye" onclick="togglePwd('pwd1','eye1')"><i class="fas fa-eye" id="eye1"></i></button>
           </div>

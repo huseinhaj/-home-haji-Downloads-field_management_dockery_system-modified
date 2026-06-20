@@ -77,8 +77,8 @@ def public_school_head_form(request):
             notes=notes,
         )
         from django.utils.http import urlencode
-        params = urlencode({'submitted': '1', 'school_id': school.id})
-        messages.success(request, f'Asante {head_name}! Ombi la {school.name} limetumwa. Ingia sasa kuona hali yake.')
+        params = urlencode({'submitted': '1', 'school_id': school.id, 'first_time': '1'})
+        messages.success(request, f'Asante {head_name}! Ombi la {school.name} limetumwa. Sasa weka nywila ya akaunti yako.')
         return redirect(f"{reverse('head_login')}?{params}")
 
     # Stage 0: initial code entry — handle POST stages
