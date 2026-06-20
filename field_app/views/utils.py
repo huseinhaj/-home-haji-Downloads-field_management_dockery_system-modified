@@ -42,7 +42,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from geopy.distance import geodesic
 
 from .ai_utils import client, model_name
-from .decorators import board_login_required, assessor_login_required
+from field_app.decorators import board_login_required, assessor_login_required
 from .forms import (
     CustomLoginForm, StudentRegistrationForm, StudentTeacherForm,
     LogbookForm, AssessorLoginForm, BulkAssignForm, RegionFieldInputForm

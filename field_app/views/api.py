@@ -9,7 +9,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from .decorators import assessor_login_required, board_login_required
+from field_app.decorators import assessor_login_required, board_login_required
 from .models import (
     Assessor, School, SchoolAssignment, StudentTeacher,
     StudentAssessment, SchoolAssessment,
