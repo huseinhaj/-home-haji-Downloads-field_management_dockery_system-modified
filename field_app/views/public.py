@@ -93,6 +93,7 @@ def public_school_head_form(request):
                     'stage': 'verify',
                     'error': 'Shule haikutambuliwa. Jaribu tena.',
                     'current_year': current_year,
+                    'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
                 })
             already = SchoolHeadRequest.objects.filter(
                 school=school, academic_year=current_year,
@@ -102,9 +103,11 @@ def public_school_head_form(request):
                     'stage': 'verify',
                     'error': f'Shule ya {school.name} tayari imetuma ombi kwa mwaka huu.',
                     'current_year': current_year,
+                    'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
                 })
             return render(request, 'field_app/public_school_head_form.html', {
                 'stage': 'form', 'school': school, 'current_year': current_year,
+                'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
             })
 
         if stage == 'verify':
@@ -132,6 +135,7 @@ def public_school_head_form(request):
                         'stage': 'verify',
                         'error': f'"{query}" haikupatikana. Jaribu namba ya usajili (S.2895) au sehemu ya jina la shule.',
                         'current_year': current_year,
+                        'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
                     })
                 if len(matches) == 1:
                     school = matches[0]
@@ -141,6 +145,7 @@ def public_school_head_form(request):
                         'matches': matches,
                         'query': query,
                         'current_year': current_year,
+                        'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
                     })
 
             already = SchoolHeadRequest.objects.filter(
@@ -155,14 +160,17 @@ def public_school_head_form(request):
                     'has_account': bm is not None,
                     'needs_password': bm is not None and not bm.user.has_usable_password(),
                     'current_year': current_year,
+                    'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
                 })
             return render(request, 'field_app/public_school_head_form.html', {
                 'stage': 'form', 'school': school, 'current_year': current_year,
+                'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
             })
 
     return render(request, 'field_app/public_school_head_form.html', {
         'stage': 'verify',
         'current_year': current_year,
+        'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
     })
 
 
