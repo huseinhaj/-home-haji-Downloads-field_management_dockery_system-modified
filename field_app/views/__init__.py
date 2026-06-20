@@ -30,6 +30,7 @@ from .utils import (
 
 from .auth import (
     health_check,
+    session_check,
     register,
     login_view,
     logout_view,

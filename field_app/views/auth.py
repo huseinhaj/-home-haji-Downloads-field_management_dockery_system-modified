@@ -168,6 +168,13 @@ def login_view(request):
 
 # views.py - Badilisha logout_view kwa hii
 
+def session_check(request):
+    """Lightweight endpoint used by JS heartbeat to detect expired sessions."""
+    if request.user.is_authenticated:
+        return JsonResponse({'ok': True})
+    return JsonResponse({'ok': False}, status=401)
+
+
 def logout_view(request):
     redirect_to = 'login'
     if request.user.is_authenticated:
@@ -196,13 +203,10 @@ def logout_view(request):
 def assessor_login(request):
     """Simple and fixed assessor login"""
 
-    print(f"\n🔐 ASSESSOR LOGIN STARTED - Method: {request.method}")
-
     # Already logged in as assessor? Go to dashboard
     if request.user.is_authenticated:
         try:
             assessor = Assessor.objects.get(user=request.user)
-            print(f"✅ Already logged in as: {assessor.full_name}")
             return redirect('assessor_dashboard')
         except Assessor.DoesNotExist:
             pass
@@ -211,8 +215,6 @@ def assessor_login(request):
     if request.method == 'POST':
         email = request.POST.get('email', '').strip().lower()
         password = request.POST.get('password', '')
-
-        print(f"📧 Login attempt: {email}")
 
         if not email or not password:
             messages.error(request, 'Please enter both email and password.')
@@ -226,7 +228,6 @@ def assessor_login(request):
             try:
                 user = User.objects.get(email__iexact=email)
                 if user.check_password(password):
-                    print(f"✅ Password check passed")
                     messages.error(request, 'Invalid email or password.')
                     return render(request, 'field_app/assessor_login.html')
             except User.DoesNotExist:
@@ -236,7 +237,6 @@ def assessor_login(request):
         # Check if user is an assessor
         try:
             assessor = Assessor.objects.get(user=user)
-            print(f"✅ User is assessor: {assessor.full_name}")
 
             # Verify email matches
             if assessor.email.lower() != email.lower():
@@ -247,8 +247,6 @@ def assessor_login(request):
 
             # LOGIN SUCCESSFUL
             login(request, user, backend='field_app.backends.EmailBackend')
-            print(f"✅ Login successful, redirecting to dashboard")
-
             messages.success(request, f'Welcome Assessor {assessor.full_name}!')
             return redirect('assessor_dashboard')
 
@@ -256,7 +254,6 @@ def assessor_login(request):
             # Check if assessor exists with this email but different user
             try:
                 assessor = Assessor.objects.get(email__iexact=email)
-                print(f"⚠️ Assessor found but not linked: {assessor.email}")
 
                 # Link assessor to this user
                 assessor.user = user

@@ -828,6 +828,22 @@
     window.addEventListener('pageshow', function(e) {
         if (e.persisted) { window.location.reload(); }
     });
+
+    {% if user.is_authenticated %}
+    /* Session heartbeat: ping every 5 minutes — redirect to login if session expired. */
+    (function() {
+        function ping() {
+            fetch('/session-check/', { credentials: 'same-origin' })
+                .then(function(r) {
+                    if (r.status === 401) {
+                        window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
+                    }
+                })
+                .catch(function() {});
+        }
+        setInterval(ping, 5 * 60 * 1000);
+    })();
+    {% endif %}
     </script>
 </body>
 </html>

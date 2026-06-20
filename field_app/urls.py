@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path('health/', views.health_check, name='health_check'),
+    path('session-check/', views.session_check, name='session_check'),
     # =========================
     path('', views.homepage, name='homepage'),
     path('password_reset/', auth_views.PasswordResetView.as_view(
