@@ -156,6 +156,7 @@ from .public import (
 
 from .assistant import (
     application_assistant,
+    application_chat_stream,
     application_chat_send,
     application_confirm,
     application_edit_field,

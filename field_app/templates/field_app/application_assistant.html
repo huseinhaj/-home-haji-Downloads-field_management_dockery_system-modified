@@ -2,407 +2,453 @@
 <html lang="sw">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Msaidizi wa Maombi — HESLB & TCU</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{
+  height:100%;
+  font-family:'Inter',system-ui,sans-serif;
+  font-size:14px;overflow:hidden;
+  /* kill iOS tap delay everywhere */
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
 
-/* ── TANZANIA FLAG BACKGROUND ─────────────────────────────── */
-html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;overflow:hidden;}
-
-.tz-flag-bg{
+/* ── TANZANIA FLAG ───────────────────────────────────────── */
+.tz-bg{
   position:fixed;inset:0;z-index:0;
-  background:
-    linear-gradient(
-      to bottom right,
-      #1EB53A 0%,
-      #1EB53A calc(50% - 70px),
-      #FCD116 calc(50% - 70px),
-      #FCD116 calc(50% - 50px),
-      #000000 calc(50% - 50px),
-      #000000 calc(50% + 50px),
-      #FCD116 calc(50% + 50px),
-      #FCD116 calc(50% + 70px),
-      #00A3DD calc(50% + 70px),
-      #00A3DD 100%
-    );
+  background:linear-gradient(
+    to bottom right,
+    #1EB53A 0%,
+    #1EB53A calc(50% - 68px),
+    #FCD116 calc(50% - 68px),
+    #FCD116 calc(50% - 50px),
+    #000    calc(50% - 50px),
+    #000    calc(50% + 50px),
+    #FCD116 calc(50% + 50px),
+    #FCD116 calc(50% + 68px),
+    #00A3DD calc(50% + 68px),
+    #00A3DD 100%
+  );
 }
-.tz-flag-bg::after{
+.tz-bg::after{
   content:'';position:absolute;inset:0;
-  background:rgba(0,0,0,.2);
-  backdrop-filter:blur(1px);
+  background:rgba(0,0,0,.22);
+}
+.watermark{
+  position:fixed;bottom:10px;left:50%;
+  transform:translateX(-50%);z-index:0;
+  font-size:200px;opacity:.03;
+  pointer-events:none;user-select:none;
+  line-height:1;
 }
 
-/* ── LAYOUT ──────────────────────────────────────────────── */
-.app-shell{
+/* ── SHELL ───────────────────────────────────────────────── */
+.shell{
   position:relative;z-index:1;
   height:100vh;display:flex;flex-direction:column;
-  padding:14px;gap:10px;
+  padding:12px;gap:10px;
 }
 
 /* ── TOP BAR ─────────────────────────────────────────────── */
-.top-bar{
-  background:rgba(0,0,0,.55);
-  backdrop-filter:blur(24px) saturate(180%);
-  -webkit-backdrop-filter:blur(24px) saturate(180%);
-  border:1px solid rgba(255,255,255,.18);
-  border-radius:16px;
-  padding:10px 20px;
-  display:flex;align-items:center;gap:14px;
+.topbar{
   flex-shrink:0;
-  box-shadow:0 8px 32px rgba(0,0,0,.3);
+  background:rgba(0,0,0,.58);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:16px;
+  padding:9px 18px;
+  display:flex;align-items:center;gap:12px;
+  box-shadow:0 8px 30px rgba(0,0,0,.35);
 }
-.flag-strip{
-  display:flex;flex-direction:column;gap:0;
+.flag-v{
+  display:flex;flex-direction:column;
   border-radius:5px;overflow:hidden;
-  box-shadow:0 2px 8px rgba(0,0,0,.5);
-  flex-shrink:0;width:28px;
+  box-shadow:0 1px 6px rgba(0,0,0,.5);
+  flex-shrink:0;width:26px;
 }
-.flag-strip .f-g{height:10px;background:#1EB53A;}
-.flag-strip .f-y{height:3px;background:#FCD116;}
-.flag-strip .f-k{height:10px;background:#000;}
-.flag-strip .f-y2{height:3px;background:#FCD116;}
-.flag-strip .f-b{height:10px;background:#00A3DD;}
+.flag-v div{height:10px;}
+.fv-g{background:#1EB53A;}
+.fv-y{height:3px!important;background:#FCD116;}
+.fv-k{background:#000;}
+.fv-y2{height:3px!important;background:#FCD116;}
+.fv-b{background:#00A3DD;}
 
-.ai-avatar{
-  width:40px;height:40px;border-radius:50%;
-  background:linear-gradient(135deg,#FCD116,#f0a500);
+.aibadge{
+  width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(135deg,#FCD116,#d48d00);
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 14px rgba(252,209,22,.45);flex-shrink:0;
+  box-shadow:0 3px 12px rgba(252,209,22,.5);flex-shrink:0;
 }
-.ai-avatar i{color:#000;font-size:17px;}
-.ai-info .name{
-  color:#fff;font-weight:800;font-size:15px;letter-spacing:.2px;
-  display:flex;align-items:center;gap:8px;
+.aibadge i{color:#000;font-size:16px;}
+.aiinfo .n{
+  color:#fff;font-weight:800;font-size:14px;
+  display:flex;align-items:center;gap:7px;
 }
-.status-pip{
-  width:8px;height:8px;border-radius:50%;
-  background:#22C55E;box-shadow:0 0 6px #22C55E;
-  animation:pulse-green 2s infinite;
+.dot{
+  width:7px;height:7px;border-radius:50%;
+  background:#22C55E;
+  box-shadow:0 0 0 0 rgba(34,197,94,.6);
+  animation:sonar 2s infinite;
 }
-@keyframes pulse-green{0%,100%{box-shadow:0 0 6px #22C55E;}50%{box-shadow:0 0 16px #22C55E;}}
-.ai-info .sub{color:rgba(255,255,255,.4);font-size:11px;margin-top:2px;letter-spacing:.3px;}
-.top-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
-.tz-badge{
-  color:rgba(255,255,255,.5);font-size:10px;font-weight:700;
-  letter-spacing:1px;text-transform:uppercase;
-  border-right:1px solid rgba(255,255,255,.12);
-  padding-right:10px;display:flex;align-items:center;gap:5px;
+@keyframes sonar{
+  0%{box-shadow:0 0 0 0 rgba(34,197,94,.6);}
+  70%{box-shadow:0 0 0 8px rgba(34,197,94,0);}
+  100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}
 }
-.btn-restart,.btn-demo{
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.15);
-  color:rgba(255,255,255,.6);
-  border-radius:8px;padding:7px 14px;
+.aiinfo .s{color:rgba(255,255,255,.38);font-size:10.5px;margin-top:2px;letter-spacing:.2px;}
+.tbright{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.tz-tag{
+  color:rgba(255,255,255,.4);font-size:10px;font-weight:700;
+  letter-spacing:.9px;text-transform:uppercase;
+  border-right:1px solid rgba(255,255,255,.1);
+  padding-right:10px;display:flex;align-items:center;gap:4px;
+}
+.tbtn{
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.13);
+  color:rgba(255,255,255,.55);
+  border-radius:8px;padding:7px 13px;
   font-size:11px;font-weight:700;cursor:pointer;
   font-family:inherit;letter-spacing:.4px;
-  display:flex;align-items:center;gap:6px;
-  transition:all .15s;
+  display:flex;align-items:center;gap:5px;
+  transition:background .12s,color .12s;
+  /* no tap highlight */
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  user-select:none;
 }
-.btn-restart:hover{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.3);}
-.btn-demo{border-color:rgba(252,209,22,.35);color:rgba(252,209,22,.8);}
-.btn-demo:hover{background:rgba(252,209,22,.15);color:#FCD116;border-color:rgba(252,209,22,.6);}
+.tbtn:hover,.tbtn:active{background:rgba(255,255,255,.16);color:#fff;}
+.tbtn.demo{border-color:rgba(252,209,22,.3);color:rgba(252,209,22,.75);}
+.tbtn.demo:hover,.tbtn.demo:active{background:rgba(252,209,22,.15);color:#FCD116;}
 
-/* ── MAIN ────────────────────────────────────────────────── */
-.main-panel{
-  flex:1;display:grid;
-  grid-template-columns:1fr 310px;
-  gap:10px;overflow:hidden;min-height:0;
+/* ── GRID ────────────────────────────────────────────────── */
+.grid{
+  flex:1;min-height:0;
+  display:grid;
+  grid-template-columns:1fr 308px;
+  gap:10px;
 }
-@media(max-width:800px){
-  .main-panel{grid-template-columns:1fr;}
-  .data-panel{display:none;}
+@media(max-width:780px){
+  .grid{grid-template-columns:1fr;}
+  .dpanel{display:none;}
 }
 
-/* glass card base */
-.glass-card{
-  background:rgba(255,255,255,.1);
-  backdrop-filter:blur(30px) saturate(160%);
-  -webkit-backdrop-filter:blur(30px) saturate(160%);
-  border:1px solid rgba(255,255,255,.2);
-  border-radius:20px;
-  box-shadow:0 20px 60px rgba(0,0,0,.35);
+/* glass base */
+.glass{
+  background:rgba(255,255,255,.09);
+  backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:18px;
+  box-shadow:0 18px 50px rgba(0,0,0,.32);
   overflow:hidden;
 }
 
 /* ── CHAT ────────────────────────────────────────────────── */
-.chat-card{display:flex;flex-direction:column;}
-.chat-messages{
+.chat{display:flex;flex-direction:column;}
+.msgs{
   flex:1;overflow-y:auto;
-  padding:20px 16px;
-  display:flex;flex-direction:column;gap:14px;
+  padding:18px 14px;
+  display:flex;flex-direction:column;gap:12px;
   scroll-behavior:smooth;
+  overscroll-behavior:contain;
 }
-.chat-messages::-webkit-scrollbar{width:4px;}
-.chat-messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
+.msgs::-webkit-scrollbar{width:3px;}
+.msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px;}
 
 /* bubbles */
-.msg-row{display:flex;gap:10px;animation:fadein .25s ease;}
-@keyframes fadein{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-.msg-row.ai{align-self:flex-start;max-width:84%;}
-.msg-row.user{align-self:flex-end;flex-direction:row-reverse;max-width:78%;}
+.row{
+  display:flex;gap:9px;
+  animation:pop .2s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes pop{
+  from{opacity:0;transform:translateY(6px) scale(.97);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+.row.ai{align-self:flex-start;max-width:86%;}
+.row.me{align-self:flex-end;flex-direction:row-reverse;max-width:80%;}
 
-.bub-av{
-  width:34px;height:34px;border-radius:50%;
+.av{
+  width:32px;height:32px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  font-size:14px;flex-shrink:0;margin-top:2px;
+  font-size:13px;flex-shrink:0;margin-top:3px;
 }
-.ai .bub-av{
-  background:linear-gradient(135deg,#FCD116,#e0900a);
-  box-shadow:0 3px 10px rgba(252,209,22,.4);color:#000;
+.ai .av{
+  background:linear-gradient(135deg,#FCD116,#d48d00);
+  box-shadow:0 2px 10px rgba(252,209,22,.4);color:#000;
 }
-.user .bub-av{
-  background:rgba(255,255,255,.12);
-  border:1px solid rgba(255,255,255,.2);
-  color:rgba(255,255,255,.7);
+.me .av{
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.18);
+  color:rgba(255,255,255,.65);
 }
-.bubble{padding:11px 16px;font-size:13.5px;line-height:1.6;word-break:break-word;}
-.ai .bubble{
-  background:rgba(255,255,255,.93);color:#0F1923;
-  border-radius:4px 18px 18px 18px;
-  box-shadow:0 4px 18px rgba(0,0,0,.18);
-}
-.user .bubble{
-  background:linear-gradient(135deg,rgba(0,55,140,.88),rgba(0,35,90,.92));
-  color:#fff;border-radius:18px 4px 18px 18px;
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow:0 4px 18px rgba(0,0,0,.25);
-}
-.bub-time{font-size:10px;color:rgba(255,255,255,.3);margin-top:4px;padding:0 3px;}
 
-/* typing */
-.typing-dots{
-  display:flex;gap:5px;padding:13px 18px;
-  background:rgba(255,255,255,.93);
-  border-radius:4px 18px 18px 18px;
-  box-shadow:0 4px 18px rgba(0,0,0,.18);
+.bub{
+  padding:10px 15px;font-size:13.5px;line-height:1.62;
+  word-break:break-word;position:relative;
+}
+.ai .bub{
+  background:rgba(255,255,255,.94);color:#0f1923;
+  border-radius:3px 16px 16px 16px;
+  box-shadow:0 3px 14px rgba(0,0,0,.16);
+}
+.me .bub{
+  background:linear-gradient(135deg,rgba(0,55,140,.9),rgba(0,38,100,.94));
+  color:#fff;border-radius:16px 3px 16px 16px;
+  border:1px solid rgba(255,255,255,.1);
+  box-shadow:0 3px 14px rgba(0,0,0,.22);
+}
+.ts{font-size:10px;color:rgba(255,255,255,.28);margin-top:3px;padding:0 2px;}
+
+/* streaming cursor */
+.cursor{
+  display:inline-block;
+  color:#FCD116;font-weight:300;
+  animation:cur .6s step-end infinite;
+}
+@keyframes cur{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* typing dots */
+.tdots{
+  display:flex;gap:5px;padding:12px 16px;
+  background:rgba(255,255,255,.94);
+  border-radius:3px 16px 16px 16px;
+  box-shadow:0 3px 14px rgba(0,0,0,.16);
   width:fit-content;
 }
-.typing-dots span{
-  width:7px;height:7px;background:#888;border-radius:50%;
-  animation:blink 1.3s infinite;
+.tdots span{
+  width:6px;height:6px;border-radius:50%;
+  background:rgba(0,0,0,.25);
+  animation:tdot 1.2s ease-in-out infinite;
 }
-.typing-dots span:nth-child(2){animation-delay:.22s;}
-.typing-dots span:nth-child(3){animation-delay:.44s;}
-@keyframes blink{0%,60%,100%{opacity:.25;transform:scale(.9);}30%{opacity:1;transform:scale(1.2);}}
+.tdots span:nth-child(2){animation-delay:.18s;}
+.tdots span:nth-child(3){animation-delay:.36s;}
+@keyframes tdot{0%,80%,100%{transform:scale(.7);opacity:.4;}40%{transform:scale(1.1);opacity:1;}}
 
-/* input */
-.chat-input-row{
-  padding:12px 14px;
-  border-top:1px solid rgba(255,255,255,.1);
-  background:rgba(0,0,0,.18);
-  display:flex;gap:10px;align-items:flex-end;
+/* input bar */
+.ibar{
+  padding:10px 12px;
+  border-top:1px solid rgba(255,255,255,.09);
+  background:rgba(0,0,0,.2);
+  display:flex;gap:9px;align-items:flex-end;
 }
-.chat-input{
-  flex:1;background:rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.18);
-  border-radius:14px;padding:10px 16px;
+.inp{
+  flex:1;
+  background:rgba(255,255,255,.09);
+  border:1.5px solid rgba(255,255,255,.16);
+  border-radius:13px;padding:9px 14px;
   font-size:13.5px;font-family:inherit;
   color:#fff;outline:none;resize:none;
-  max-height:110px;line-height:1.5;
-  transition:all .15s;
+  max-height:100px;line-height:1.5;
+  transition:border-color .12s,background .12s;
+  /* instant on mobile */
+  touch-action:manipulation;
 }
-.chat-input::placeholder{color:rgba(255,255,255,.3);}
-.chat-input:focus{border-color:rgba(252,209,22,.55);background:rgba(255,255,255,.16);}
-.btn-send{
-  width:42px;height:42px;
+.inp::placeholder{color:rgba(255,255,255,.28);}
+.inp:focus{
+  border-color:rgba(252,209,22,.5);
+  background:rgba(255,255,255,.14);
+}
+.sbtn{
+  width:40px;height:40px;
   background:linear-gradient(135deg,#FCD116,#d48d00);
   border:none;border-radius:50%;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 14px rgba(252,209,22,.45);
-  transition:all .15s;flex-shrink:0;
+  box-shadow:0 3px 12px rgba(252,209,22,.45);
+  transition:transform .12s,box-shadow .12s;
+  flex-shrink:0;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
 }
-.btn-send:hover{transform:scale(1.1);box-shadow:0 6px 20px rgba(252,209,22,.55);}
-.btn-send:disabled{background:rgba(255,255,255,.12);box-shadow:none;cursor:not-allowed;transform:none;}
-.btn-send i{color:#000;font-size:15px;}
+.sbtn:active{transform:scale(.92);box-shadow:0 1px 6px rgba(252,209,22,.3);}
+.sbtn:disabled{background:rgba(255,255,255,.1);box-shadow:none;}
+.sbtn i{color:#000;font-size:14px;}
 
 /* ── DATA PANEL ──────────────────────────────────────────── */
-.data-panel{display:flex;flex-direction:column;}
-.panel-head{
-  padding:15px 18px;
-  border-bottom:1px solid rgba(255,255,255,.1);
-  background:rgba(0,0,0,.22);flex-shrink:0;
+.dpanel{display:flex;flex-direction:column;}
+.dhead{
+  padding:13px 16px;
+  border-bottom:1px solid rgba(255,255,255,.09);
+  background:rgba(0,0,0,.24);flex-shrink:0;
 }
-.panel-head h3{
-  color:#fff;font-size:11.5px;font-weight:800;
-  text-transform:uppercase;letter-spacing:.8px;
-  display:flex;align-items:center;gap:7px;
+.dhead h3{
+  color:#fff;font-size:11px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.7px;
+  display:flex;align-items:center;gap:6px;
 }
-.panel-head h3 i{color:#FCD116;font-size:12px;}
-.panel-head p{color:rgba(255,255,255,.35);font-size:10px;margin-top:3px;letter-spacing:.3px;}
-.panel-body{flex:1;overflow-y:auto;padding:14px;}
-.panel-body::-webkit-scrollbar{width:3px;}
-.panel-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px;}
+.dhead h3 i{color:#FCD116;font-size:11px;}
+.dhead p{color:rgba(255,255,255,.32);font-size:10px;margin-top:2px;}
+.dbody{flex:1;overflow-y:auto;padding:12px;}
+.dbody::-webkit-scrollbar{width:3px;}
+.dbody::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
 
 /* progress */
-.prog-wrap{margin-bottom:14px;}
-.prog-label{
+.prg{margin-bottom:12px;}
+.prg-lbl{
   display:flex;justify-content:space-between;
-  font-size:10px;font-weight:700;
-  color:rgba(255,255,255,.45);letter-spacing:.4px;
-  text-transform:uppercase;margin-bottom:6px;
+  font-size:9.5px;font-weight:700;
+  color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.4px;
+  margin-bottom:5px;
 }
-.prog-track{height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
-.prog-fill{
-  height:100%;border-radius:3px;
-  background:linear-gradient(90deg,#1EB53A 0%,#FCD116 60%,#00A3DD 100%);
-  transition:width .5s ease;
-  box-shadow:0 0 8px rgba(252,209,22,.35);
+.prg-t{height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;}
+.prg-f{
+  height:100%;border-radius:2px;
+  background:linear-gradient(90deg,#1EB53A,#FCD116 60%,#00A3DD);
+  transition:width .45s ease;
+  box-shadow:0 0 6px rgba(252,209,22,.3);
 }
 
-/* sections */
-.sec-lbl{
-  font-size:9px;font-weight:800;color:#FCD116;
+/* section labels */
+.slbl{
+  font-size:8.5px;font-weight:800;color:#FCD116;
   text-transform:uppercase;letter-spacing:1px;
-  margin:12px 0 7px;padding-bottom:5px;
-  border-bottom:1px solid rgba(252,209,22,.2);
-  display:flex;align-items:center;gap:5px;
+  margin:10px 0 6px;padding-bottom:4px;
+  border-bottom:1px solid rgba(252,209,22,.18);
+  display:flex;align-items:center;gap:4px;
 }
-.sec-lbl i{font-size:9px;}
-.drow{margin-bottom:7px;}
-.dlbl{
-  font-size:9px;font-weight:700;color:rgba(255,255,255,.4);
-  text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;
+.frow{margin-bottom:5px;}
+.flbl{
+  font-size:8.5px;font-weight:700;
+  color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.3px;
+  margin-bottom:2px;
 }
-.dval{
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.13);
-  border-radius:8px;padding:7px 11px;
-  font-size:12px;color:#fff;
-  display:flex;align-items:center;gap:6px;min-height:32px;
+.fval{
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:7px;padding:6px 10px;
+  font-size:11.5px;color:#fff;
+  display:flex;align-items:center;gap:5px;min-height:28px;
+  transition:background .1s;
 }
-.dval.empty{color:rgba(255,255,255,.2);font-style:italic;font-size:11px;}
-.dval input{
+.fval:has(input:focus){
+  background:rgba(255,255,255,.13);
+  border-color:rgba(252,209,22,.4);
+}
+.fval.mt{color:rgba(255,255,255,.22);font-style:italic;font-size:11px;}
+.fval input{
   background:transparent;border:none;outline:none;
-  font-size:12px;font-family:inherit;color:#fff;flex:1;min-width:0;
+  font-size:11.5px;font-family:inherit;color:#fff;flex:1;min-width:0;
 }
-.btn-ef{
-  background:none;border:none;color:rgba(255,255,255,.25);
-  cursor:pointer;font-size:11px;padding:0;flex-shrink:0;
+.fval input::placeholder{color:rgba(255,255,255,.25);}
+.fedit{
+  background:none;border:none;color:rgba(255,255,255,.22);
+  cursor:pointer;font-size:10px;padding:0;flex-shrink:0;
   transition:color .1s;
+  touch-action:manipulation;
 }
-.btn-ef:hover{color:#FCD116;}
+.fedit:hover,.fedit:active{color:#FCD116;}
 
-/* confirm */
-.panel-foot{
-  padding:13px 15px;
-  border-top:1px solid rgba(255,255,255,.1);
-  background:rgba(0,0,0,.18);flex-shrink:0;
+/* confirm footer */
+.dfoot{
+  padding:11px 14px;
+  border-top:1px solid rgba(255,255,255,.09);
+  background:rgba(0,0,0,.2);flex-shrink:0;
 }
-.btn-confirm{
-  width:100%;padding:12px;
+.cfm{
+  width:100%;padding:11px;
   background:linear-gradient(135deg,#059669,#047857);
-  color:#fff;border:none;border-radius:10px;
-  font-size:12px;font-weight:800;cursor:pointer;
-  letter-spacing:.6px;text-transform:uppercase;
+  color:#fff;border:none;border-radius:9px;
+  font-size:11.5px;font-weight:800;cursor:pointer;
+  letter-spacing:.5px;text-transform:uppercase;
   font-family:inherit;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  box-shadow:0 4px 16px rgba(5,150,105,.4);
-  transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  box-shadow:0 3px 14px rgba(5,150,105,.4);
+  transition:transform .12s,box-shadow .12s;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
 }
-.btn-confirm:hover{background:linear-gradient(135deg,#047857,#065f46);transform:translateY(-1px);}
-.btn-confirm:disabled{background:rgba(255,255,255,.08);box-shadow:none;cursor:not-allowed;transform:none;}
-.confirm-note{font-size:10px;color:rgba(255,255,255,.25);text-align:center;margin-top:7px;line-height:1.4;}
+.cfm:active{transform:scale(.97);box-shadow:0 1px 6px rgba(5,150,105,.25);}
+.cfm:disabled{background:rgba(255,255,255,.07);box-shadow:none;}
+.cnote{font-size:10px;color:rgba(255,255,255,.22);text-align:center;margin-top:6px;line-height:1.4;}
 
-/* done */
-.done-card{
-  background:rgba(5,150,105,.18);border:1px solid rgba(5,150,105,.35);
-  border-radius:12px;padding:18px;text-align:center;margin-bottom:10px;
+/* done card */
+.dcard{
+  background:rgba(5,150,105,.17);border:1px solid rgba(5,150,105,.32);
+  border-radius:11px;padding:16px;text-align:center;
 }
-.done-card i{font-size:28px;color:#34D399;margin-bottom:8px;display:block;}
-.done-card h4{color:#fff;font-size:13px;font-weight:800;}
-.done-card p{color:rgba(255,255,255,.5);font-size:11px;margin-top:5px;line-height:1.5;}
+.dcard i{font-size:26px;color:#34D399;margin-bottom:7px;display:block;}
+.dcard h4{color:#fff;font-size:12.5px;font-weight:800;}
+.dcard p{color:rgba(255,255,255,.45);font-size:10.5px;margin-top:4px;line-height:1.5;}
 
 /* empty */
-.empty-state{text-align:center;padding:40px 14px;color:rgba(255,255,255,.2);}
-.empty-state i{font-size:34px;margin-bottom:12px;display:block;}
-.empty-state p{font-size:11px;line-height:1.7;}
-
-/* tz watermark */
-.watermark{
-  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-  z-index:0;font-size:180px;opacity:.035;
-  pointer-events:none;user-select:none;
-}
+.empty{text-align:center;padding:36px 14px;color:rgba(255,255,255,.2);}
+.empty i{font-size:32px;margin-bottom:10px;display:block;}
+.empty p{font-size:11px;line-height:1.7;}
 </style>
 </head>
 <body>
 
-<div class="tz-flag-bg"></div>
+<div class="tz-bg"></div>
 <div class="watermark">🇹🇿</div>
 
-<div class="app-shell">
+<div class="shell">
 
   <!-- TOP BAR -->
-  <div class="top-bar">
-    <div class="flag-strip">
-      <div class="f-g"></div>
-      <div class="f-y"></div>
-      <div class="f-k"></div>
-      <div class="f-y2"></div>
-      <div class="f-b"></div>
+  <div class="topbar">
+    <div class="flag-v">
+      <div class="fv-g"></div><div class="fv-y"></div>
+      <div class="fv-k"></div><div class="fv-y2"></div>
+      <div class="fv-b"></div>
     </div>
-    <div class="ai-avatar"><i class="fas fa-robot"></i></div>
-    <div class="ai-info">
-      <div class="name">
-        <span class="status-pip"></span>Msaidizi wa Maombi
-      </div>
-      <div class="sub">HESLB &amp; TCU Application Assistant · Tanzania</div>
+    <div class="aibadge"><i class="fas fa-robot"></i></div>
+    <div class="aiinfo">
+      <div class="n"><span class="dot"></span>Msaidizi wa Maombi</div>
+      <div class="s">HESLB &amp; TCU Application Assistant · Tanzania</div>
     </div>
-    <div class="top-right">
-      <span class="tz-badge"><i class="fas fa-flag"></i>Tanzania</span>
-      <button class="btn-demo" onclick="loadDemo()">
-        <i class="fas fa-flask"></i> Demo
-      </button>
-      <button class="btn-restart" onclick="restartChat()">
-        <i class="fas fa-rotate-left"></i> Anza Upya
-      </button>
+    <div class="tbright">
+      <span class="tz-tag"><i class="fas fa-flag"></i>Tanzania</span>
+      <button class="tbtn demo" onclick="loadDemo()"><i class="fas fa-flask"></i>Demo</button>
+      <button class="tbtn" onclick="doRestart()"><i class="fas fa-rotate-left"></i>Upya</button>
     </div>
   </div>
 
-  <!-- MAIN -->
-  <div class="main-panel">
+  <!-- MAIN GRID -->
+  <div class="grid">
 
-    <!-- CHAT CARD -->
-    <div class="glass-card chat-card">
-      <div class="chat-messages" id="chatMessages">
-        <div class="msg-row ai">
-          <div class="bub-av"><i class="fas fa-robot"></i></div>
+    <!-- CHAT -->
+    <div class="glass chat">
+      <div class="msgs" id="msgs">
+        <div class="row ai">
+          <div class="av"><i class="fas fa-robot"></i></div>
           <div>
-            <div class="bubble">{{ opening_message|linebreaksbr }}</div>
-            <div class="bub-time" id="openingTime"></div>
+            <div class="bub">{{ opening_message|linebreaksbr }}</div>
+            <div class="ts" id="ts0"></div>
           </div>
         </div>
       </div>
-      <div class="chat-input-row">
-        <textarea class="chat-input" id="chatInput"
-          placeholder="Andika jibu lako hapa..." rows="1"
-          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        <button class="btn-send" id="sendBtn" onclick="sendMessage()">
+      <div class="ibar">
+        <textarea class="inp" id="inp"
+          placeholder="Andika jibu lako hapa..."
+          rows="1"
+          onkeydown="onKey(event)"
+          oninput="grow(this)"></textarea>
+        <button class="sbtn" id="sbtn" onclick="send()">
           <i class="fas fa-paper-plane"></i>
         </button>
       </div>
     </div>
 
     <!-- DATA PANEL -->
-    <div class="glass-card data-panel">
-      <div class="panel-head">
+    <div class="glass dpanel">
+      <div class="dhead">
         <h3><i class="fas fa-clipboard-check"></i>Taarifa Zilizokusanywa</h3>
-        <p>Inaandaliwa kwa ajili ya HESLB na TCU</p>
+        <p>Inaandaliwa kwa HESLB na TCU</p>
       </div>
-      <div class="panel-body" id="panelBody">
-        <div class="empty-state">
+      <div class="dbody" id="dbody">
+        <div class="empty">
           <i class="fas fa-comments"></i>
           <p>Jibu maswali ya Msaidizi.<br>Taarifa zako zitaonekana hapa moja kwa moja.</p>
         </div>
       </div>
-      <div class="panel-foot" id="panelFoot" style="display:none;">
-        <button class="btn-confirm" id="confirmBtn" onclick="confirmData()">
+      <div class="dfoot" id="dfoot" style="display:none;">
+        <button class="cfm" id="cfmbtn" onclick="doConfirm()">
           <i class="fas fa-circle-check"></i>THIBITISHA NA ENDELEA
         </button>
-        <div class="confirm-note">Kagua taarifa zote kabla ya kuthibitisha</div>
+        <div class="cnote">Kagua taarifa zote kabla ya kuthibitisha</div>
       </div>
     </div>
 
@@ -410,8 +456,14 @@ html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;ov
 </div>
 
 <script>
-const SECTIONS = [
-  {label:'Taarifa za Kibinafsi', icon:'fa-user', fields:[
+/* ── CONFIG ─────────────────────────────────────────────── */
+const STREAM_URL  = '{% url "app_chat_stream" %}';
+const EDIT_URL    = '{% url "app_edit_field" %}';
+const CONFIRM_URL = '{% url "app_confirm" %}';
+const CSRF        = '{{ csrf_token }}';
+
+const SECS = [
+  {l:'Taarifa za Kibinafsi',       ic:'fa-user',        fs:[
     {k:'jina_kamili',l:'Jina Kamili'},
     {k:'tarehe_kuzaliwa',l:'Tarehe ya Kuzaliwa'},
     {k:'jinsia',l:'Jinsia'},
@@ -421,23 +473,23 @@ const SECTIONS = [
     {k:'mkoa_asili',l:'Mkoa wa Asili'},
     {k:'wilaya_asili',l:'Wilaya'},
   ]},
-  {label:'Kidato cha Nne (O-Level)', icon:'fa-graduation-cap', fields:[
+  {l:'Kidato cha Nne (O-Level)',   ic:'fa-graduation-cap', fs:[
     {k:'necta_olevel_index',l:'Namba ya Mtihani'},
     {k:'mwaka_olevel',l:'Mwaka'},
     {k:'daraja_olevel',l:'Daraja'},
   ]},
-  {label:'Kidato cha Sita (A-Level)', icon:'fa-award', fields:[
+  {l:'Kidato cha Sita (A-Level)',  ic:'fa-award',       fs:[
     {k:'necta_alevel_index',l:'Namba ya Mtihani'},
     {k:'mwaka_alevel',l:'Mwaka'},
     {k:'masomo_alama',l:'Masomo na Alama'},
     {k:'gpa_alevel',l:'GPA'},
   ]},
-  {label:'Chaguo za Programu (TCU)', icon:'fa-university', fields:[
+  {l:'Chaguo za Programu (TCU)',   ic:'fa-university',  fs:[
     {k:'chuo_1',l:'Chuo cha 1 & Programu'},
     {k:'chuo_2',l:'Chuo cha 2 & Programu'},
     {k:'chuo_3',l:'Chuo cha 3 & Programu'},
   ]},
-  {label:'Taarifa za Familia (HESLB)', icon:'fa-people-roof', fields:[
+  {l:'Taarifa za Familia (HESLB)', ic:'fa-people-roof', fs:[
     {k:'jina_baba',l:'Jina la Baba'},
     {k:'jina_mama',l:'Jina la Mama'},
     {k:'mlezi',l:'Mlezi / Guardian'},
@@ -445,173 +497,240 @@ const SECTIONS = [
     {k:'idadi_ndugu',l:'Idadi ya Ndugu'},
   ]},
 ];
-const TOTAL=23;
-let collectedData={}, appStatus='collecting';
+const TOTAL = 23;
 
-document.getElementById('openingTime').textContent=nowTime();
+let data   = {};
+let status = 'collecting';
+let busy   = false;
 
-function nowTime(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
-function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px';}
-function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
+/* ── TIME ───────────────────────────────────────────────── */
+document.getElementById('ts0').textContent = nt();
+function nt(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
 
-async function sendMessage(){
-  const inp=document.getElementById('chatInput');
+/* ── INPUT ──────────────────────────────────────────────── */
+function grow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
+function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+
+/* ── SEND (streaming) ────────────────────────────────────── */
+async function send(){
+  if(busy||status==='done') return;
+  const inp=document.getElementById('inp');
   const msg=inp.value.trim();
-  if(!msg||appStatus==='done') return;
-  addBubble('user',msg);
+  if(!msg) return;
+
+  // Instant optimistic UI — user bubble appears NOW
+  addBubble('me', msg);
   inp.value='';inp.style.height='auto';
-  document.getElementById('sendBtn').disabled=true;
-  showTyping();
+  busy=true;
+  document.getElementById('sbtn').disabled=true;
+
+  // Create streaming AI bubble immediately
+  const {bub} = mkStreamBub();
+
   try{
     const fd=new FormData();
     fd.append('message',msg);
-    fd.append('csrfmiddlewaretoken','{{ csrf_token }}');
-    const res=await fetch('{% url "app_chat_send" %}',{method:'POST',body:fd});
-    const data=await res.json();
-    hideTyping();
-    addBubble('ai',data.reply||data.error||'Hitilafu. Jaribu tena.');
-    if(data.status==='preview'&&data.data){collectedData=data.data;appStatus='preview';renderPanel();}
-    if(data.status==='done') appStatus='done';
-  }catch(e){
-    hideTyping();
-    addBubble('ai','Hitilafu ya mtandao. Tafadhali jaribu tena.');
+    fd.append('csrfmiddlewaretoken',CSRF);
+
+    const resp = await fetch(STREAM_URL,{method:'POST',body:fd});
+    if(!resp.ok||!resp.body){
+      bub.innerHTML='Hitilafu ya mtandao ('+(resp.status||'?')+').';
+      return;
+    }
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let   buf     = '';
+    let   txt     = '';
+
+    while(true){
+      const {done,value} = await reader.read();
+      if(done) break;
+      buf += decoder.decode(value,{stream:true});
+
+      // SSE lines are separated by \n\n
+      const parts = buf.split('\n\n');
+      buf = parts.pop();
+
+      for(const part of parts){
+        if(!part.startsWith('data: ')) continue;
+        let ev;
+        try{ ev = JSON.parse(part.slice(6)); }catch{ continue; }
+
+        if(ev.t){
+          txt += ev.t;
+          // Replace cursor with streamed text + cursor
+          bub.innerHTML = esc(txt).replace(/\n/g,'<br>') + '<span class="cursor">▋</span>';
+          scrollDown();
+        }
+        if(ev.error){
+          bub.innerHTML = esc(ev.error);
+        }
+        if(ev.done){
+          // Remove cursor, finalize text
+          bub.innerHTML = esc(txt).replace(/\n/g,'<br>');
+          if(ev.data){
+            data   = ev.data;
+            status = 'preview';
+            renderPanel();
+          } else {
+            status = ev.status || 'collecting';
+          }
+        }
+      }
+    }
+  } catch(e){
+    bub.innerHTML = 'Hitilafu ya mtandao. Tafadhali jaribu tena.';
+  } finally {
+    busy = false;
+    document.getElementById('sbtn').disabled = false;
+    inp.focus();
   }
-  document.getElementById('sendBtn').disabled=false;
-  document.getElementById('chatInput').focus();
 }
 
-function addBubble(role,text){
-  const wrap=document.getElementById('chatMessages');
-  const row=document.createElement('div');
-  row.className='msg-row '+role;
-  const icon=role==='ai'?'fa-robot':'fa-user';
-  row.innerHTML=`
-    <div class="bub-av"><i class="fas ${icon}"></i></div>
+/* ── BUBBLE HELPERS ─────────────────────────────────────── */
+function addBubble(role, text){
+  const wrap = document.getElementById('msgs');
+  const row  = document.createElement('div');
+  row.className = 'row '+role;
+  const icon = role==='ai'?'fa-robot':'fa-user';
+  row.innerHTML = `
+    <div class="av"><i class="fas ${icon}"></i></div>
     <div>
-      <div class="bubble">${text.replace(/\n/g,'<br>')}</div>
-      <div class="bub-time">${nowTime()}</div>
+      <div class="bub">${esc(text).replace(/\n/g,'<br>')}</div>
+      <div class="ts">${nt()}</div>
     </div>`;
   wrap.appendChild(row);
-  wrap.scrollTop=wrap.scrollHeight;
+  scrollDown();
 }
 
-let typingEl=null;
-function showTyping(){
-  const wrap=document.getElementById('chatMessages');
-  typingEl=document.createElement('div');
-  typingEl.className='msg-row ai';
-  typingEl.innerHTML=`<div class="bub-av"><i class="fas fa-robot"></i></div><div class="typing-dots"><span></span><span></span><span></span></div>`;
-  wrap.appendChild(typingEl);
-  wrap.scrollTop=wrap.scrollHeight;
+function mkStreamBub(){
+  const wrap = document.getElementById('msgs');
+  const row  = document.createElement('div');
+  row.className = 'row ai';
+  row.innerHTML = `
+    <div class="av"><i class="fas fa-robot"></i></div>
+    <div>
+      <div class="bub"><span class="cursor">▋</span></div>
+      <div class="ts">${nt()}</div>
+    </div>`;
+  wrap.appendChild(row);
+  scrollDown();
+  return { row, bub: row.querySelector('.bub') };
 }
-function hideTyping(){if(typingEl){typingEl.remove();typingEl=null;}}
 
+function scrollDown(){
+  const w=document.getElementById('msgs');
+  w.scrollTop=w.scrollHeight;
+}
+
+function esc(s){
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
+/* ── PANEL RENDER ────────────────────────────────────────── */
 function renderPanel(){
-  const filled=Object.values(collectedData).filter(v=>v&&v!=='').length;
-  const pct=Math.min(100,Math.round((filled/TOTAL)*100));
-  let html=`<div class="prog-wrap">
-    <div class="prog-label"><span>Maendeleo</span><span>${filled}/${TOTAL} sehemu</span></div>
-    <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
+  const filled = Object.values(data).filter(v=>v&&v!=='').length;
+  const pct    = Math.min(100, Math.round((filled/TOTAL)*100));
+
+  let h = `<div class="prg">
+    <div class="prg-lbl"><span>Maendeleo</span><span>${filled}/${TOTAL}</span></div>
+    <div class="prg-t"><div class="prg-f" style="width:${pct}%"></div></div>
   </div>`;
-  for(const sec of SECTIONS){
-    if(!sec.fields.some(f=>collectedData[f.k])) continue;
-    html+=`<div class="sec-lbl"><i class="fas ${sec.icon}"></i>${sec.label}</div>`;
-    for(const f of sec.fields){
-      const val=collectedData[f.k]||'';
-      html+=`<div class="drow">
-        <div class="dlbl">${f.l}</div>
-        <div class="dval ${val?'':'empty'}">${
-          val?`<input type="text" value="${esc(val)}" id="di_${f.k}" onblur="saveField('${f.k}',this.value)">
-               <button class="btn-ef" onclick="document.getElementById('di_${f.k}').focus()"><i class="fas fa-pen-to-square"></i></button>`
-             :'Bado...'
+
+  for(const sec of SECS){
+    if(!sec.fs.some(f=>data[f.k])) continue;
+    h += `<div class="slbl"><i class="fas ${sec.ic}"></i>${sec.l}</div>`;
+    for(const f of sec.fs){
+      const v = data[f.k]||'';
+      h += `<div class="frow">
+        <div class="flbl">${f.l}</div>
+        <div class="fval ${v?'':'mt'}">${
+          v ? `<input type="text" value="${esc(v)}" id="fi_${f.k}"
+                 onblur="saveF('${f.k}',this.value)"
+                 onkeydown="if(event.key==='Enter')this.blur()">
+               <button class="fedit" onclick="document.getElementById('fi_${f.k}').focus()" title="Hariri">
+                 <i class="fas fa-pen-to-square"></i>
+               </button>`
+             : 'Bado...'
         }</div>
       </div>`;
     }
   }
-  document.getElementById('panelBody').innerHTML=html;
-  document.getElementById('panelFoot').style.display=appStatus==='preview'?'block':'none';
+
+  document.getElementById('dbody').innerHTML = h;
+  document.getElementById('dfoot').style.display = status==='preview' ? 'block' : 'none';
 }
 
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-async function saveField(field,value){
-  collectedData[field]=value;
+async function saveF(field, value){
+  data[field] = value;
   const fd=new FormData();
   fd.append('field',field);fd.append('value',value);
-  fd.append('csrfmiddlewaretoken','{{ csrf_token }}');
-  await fetch('{% url "app_edit_field" %}',{method:'POST',body:fd});
+  fd.append('csrfmiddlewaretoken',CSRF);
+  await fetch(EDIT_URL,{method:'POST',body:fd});
 }
 
-async function confirmData(){
-  const btn=document.getElementById('confirmBtn');
-  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>&nbsp;Inathibitisha...';
+/* ── CONFIRM ─────────────────────────────────────────────── */
+async function doConfirm(){
+  const btn=document.getElementById('cfmbtn');
+  btn.disabled=true;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>&nbsp;Inathibitisha...';
   try{
-    const fd=new FormData();fd.append('csrfmiddlewaretoken','{{ csrf_token }}');
-    const res=await fetch('{% url "app_confirm" %}',{method:'POST',body:fd});
-    const data=await res.json();
-    if(data.status==='done'){
-      appStatus='done';
-      document.getElementById('panelBody').innerHTML=`
-        <div class="done-card">
+    const fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF);
+    const r=await fetch(CONFIRM_URL,{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.status==='done'){
+      status='done';
+      document.getElementById('dbody').innerHTML=`
+        <div class="dcard">
           <i class="fas fa-circle-check"></i>
           <h4>Taarifa Zimethibitishwa!</h4>
-          <p>${data.message}</p>
+          <p>${d.message}</p>
         </div>`;
-      document.getElementById('panelFoot').style.display='none';
-      addBubble('ai','✅ Asante sana! Taarifa zako zimethibitishwa kikamilifu. Hatua inayofuata ni AI kuingia mfumo wa HESLB na TCU kwa niaba yako. Utaarifiwa mara itakapokamilika.');
+      document.getElementById('dfoot').style.display='none';
+      addBubble('ai','✅ Asante! Taarifa zako zimethibitishwa. Hatua inayofuata ni AI kuingia mfumo wa HESLB na TCU kwa niaba yako.');
     }
-  }catch(e){
+  } catch(e){
     btn.disabled=false;
     btn.innerHTML='<i class="fas fa-circle-check"></i>THIBITISHA NA ENDELEA';
   }
 }
 
-function restartChat(){
-  if(confirm('Una uhakika? Taarifa zote zilizokusanywa zitafutwa na mazungumzo yataanzishwa upya.'))
-    window.location.reload();
-}
-
+/* ── DEMO ────────────────────────────────────────────────── */
 function loadDemo(){
-  collectedData={
-    jina_kamili:'Haji Hamisi Huseni',
-    tarehe_kuzaliwa:'05/06/2001',
-    jinsia:'Kiume',
-    namba_nida:'20010605411190000125',
-    namba_simu:'0625607088',
-    barua_pepe:'huseinhaj09@gmail.com',
-    mkoa_asili:'Dodoma',
-    wilaya_asili:'Chemba',
-    necta_olevel_index:'S2895.0030.2018',
-    mwaka_olevel:'2018',
-    daraja_olevel:'Division II',
-    necta_alevel_index:'S2895.0030.2020',
-    mwaka_alevel:'2020',
-    masomo_alama:'Physics B, Chemistry C, Mathematics B',
-    gpa_alevel:'3.2',
+  data = {
+    jina_kamili:'Haji Hamisi Huseni', tarehe_kuzaliwa:'05/06/2001',
+    jinsia:'Kiume', namba_nida:'20010605411190000125',
+    namba_simu:'0625607088', barua_pepe:'huseinhaj09@gmail.com',
+    mkoa_asili:'Dodoma', wilaya_asili:'Chemba',
+    necta_olevel_index:'S2895.0030.2018', mwaka_olevel:'2018', daraja_olevel:'Division II',
+    necta_alevel_index:'S2895.0030.2020', mwaka_alevel:'2020',
+    masomo_alama:'Physics B, Chemistry C, Mathematics B', gpa_alevel:'3.2',
     chuo_1:'University of Dar es Salaam — BSc Computer Science',
     chuo_2:'Ardhi University — BSc Information Technology',
     chuo_3:'University of Dodoma — BSc Computer Science',
-    jina_baba:'Hamisi Huseni (Amefariki)',
-    jina_mama:'Fatuma Juma',
+    jina_baba:'Hamisi Huseni (Amefariki)', jina_mama:'Fatuma Juma',
     mlezi:'Juma Hamisi — 0712345678',
-    mapato_familia:'150,000',
-    idadi_ndugu:'5',
+    mapato_familia:'150,000', idadi_ndugu:'5',
   };
-  appStatus='preview';
-
-  // Show demo messages in chat
-  addBubble('ai','✅ Demo imepakiwa! Taarifa za mfano zimejazwa upande wa kulia. Unaweza kuhariri kila sehemu kwa kubonyeza ikoni ya kalamu, kisha bonyeza THIBITISHA NA ENDELEA.');
+  status = 'preview';
   renderPanel();
-
-  // Save to session
-  const fd=new FormData();
-  Object.entries(collectedData).forEach(([k,v])=>{
-    const f=new FormData();
-    f.append('field',k);f.append('value',v);
-    f.append('csrfmiddlewaretoken','{{ csrf_token }}');
-    fetch('{% url "app_edit_field" %}',{method:'POST',body:f});
+  addBubble('ai','✅ Demo imepakiwa! Taarifa za mfano ziko upande wa kulia. Unaweza kuhariri kila sehemu, kisha bonyeza THIBITISHA NA ENDELEA.');
+  // Persist to session
+  Object.entries(data).forEach(([k,v])=>{
+    const fd=new FormData();
+    fd.append('field',k);fd.append('value',v);
+    fd.append('csrfmiddlewaretoken',CSRF);
+    fetch(EDIT_URL,{method:'POST',body:fd});
   });
-  // Set session status to preview via confirm-prep (hack: save one field to ensure session alive)
+}
+
+/* ── RESTART ─────────────────────────────────────────────── */
+function doRestart(){
+  if(confirm('Una uhakika? Taarifa zote zitafutwa.')) location.reload();
 }
 </script>
 </body>
