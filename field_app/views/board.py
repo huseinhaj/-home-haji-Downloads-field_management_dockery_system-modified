@@ -56,14 +56,31 @@ from .utils import (
 )
 
 
+def _head_only_bm(email):
+    """Return BoardMember iff email belongs to an active head_teacher and NO other active role."""
+    bms = BoardMember.objects.filter(
+        user__email__iexact=email, is_active=True
+    ).select_related('school', 'user')
+    head = None
+    for bm in bms:
+        if bm.role == 'head_teacher':
+            head = bm
+        else:
+            # Email belongs to another role — refuse entirely
+            return None
+    return head
+
+
 def head_teacher_login(request):
-    """Dedicated login page for school heads only."""
+    """Dedicated login page for school heads ONLY.
+    Forces logout of any non-head session. Never grants access to other roles."""
+
     if request.user.is_authenticated:
         bm = _get_board_member(request)
         if bm and bm.role == 'head_teacher' and bm.school:
             return redirect('board_head_teacher', school_id=bm.school.id)
-        elif bm:
-            return redirect('board_home')
+        # Logged in as wrong role (REO/DEO/etc.) — force logout, show login form
+        logout(request)
 
     prefill_email = request.GET.get('email', '')
     prefill_school_id = request.GET.get('school_id', '')
@@ -79,16 +96,12 @@ def head_teacher_login(request):
             password1 = request.POST.get('password1', '')
             password2 = request.POST.get('password2', '')
             school = School.objects.filter(id=school_id).first()
-
-            bm = BoardMember.objects.filter(
-                user__email__iexact=email, role='head_teacher', is_active=True
-            ).select_related('school', 'user').first()
-
-            ctx = {'mode': 'head_set_password', 'prefill_email': email,
+            ctx = {'first_time': True, 'prefill_email': email,
                    'prefill_school_id': school_id, 'school': school}
 
+            bm = _head_only_bm(email)
             if not bm:
-                ctx['error'] = f'Email "{email}" haipo kwenye orodha ya wakuu wa shule. Wasiliana na DEO wako.'
+                ctx['error'] = 'Barua pepe hii haipo kwenye orodha ya wakuu wa shule, au ina ruhusa nyingine. Wasiliana na DEO wako.'
                 return render(request, 'field_app/head_teacher_login.html', ctx)
             if len(password1) < 6:
                 ctx['error'] = 'Nywila iwe na herufi 6 au zaidi.'
@@ -96,33 +109,31 @@ def head_teacher_login(request):
             if password1 != password2:
                 ctx['error'] = 'Nywila mbili hazifanani. Jaribu tena.'
                 return render(request, 'field_app/head_teacher_login.html', ctx)
+            if not bm.school:
+                ctx['error'] = 'Akaunti yako bado haijaunganishwa na shule. Wasiliana na DEO wako.'
+                return render(request, 'field_app/head_teacher_login.html', ctx)
 
             bm.user.set_password(password1)
             bm.user.save()
             login(request, bm.user, backend='field_app.backends.EmailBackend')
-            messages.success(request, f'Karibu {bm.full_name}! Nywila yako imewekwa.')
+            messages.success(request, f'Karibu {bm.full_name or email}! Nywila yako imewekwa.')
             return redirect('board_head_teacher', school_id=bm.school.id)
 
         elif mode == 'head_reset_step1':
-            # Step 1: check email exists
             email = request.POST.get('email', '').strip().lower()
             ctx = {'show_reset': True, 'reset_step': 1, 'prefill_reset_email': email}
             if not email:
                 ctx['reset_error'] = 'Weka barua pepe yako.'
                 return render(request, 'field_app/head_teacher_login.html', ctx)
-            bm = BoardMember.objects.filter(
-                user__email__iexact=email, role='head_teacher', is_active=True
-            ).first()
+            bm = _head_only_bm(email)
             if not bm:
-                ctx['reset_error'] = 'Barua pepe hii haipo kwenye mfumo wa wakuu wa shule. Wasiliana na DEO wako.'
+                ctx['reset_error'] = 'Barua pepe hii haipo kwenye mfumo wa wakuu wa shule, au ina ruhusa nyingine. Wasiliana na DEO wako.'
                 return render(request, 'field_app/head_teacher_login.html', ctx)
-            # Email valid — go to step 2
             return render(request, 'field_app/head_teacher_login.html', {
                 'show_reset': True, 'reset_step': 2, 'prefill_reset_email': email,
             })
 
         elif mode == 'head_reset_step2':
-            # Step 2: set new password
             email = request.POST.get('email', '').strip().lower()
             password1 = request.POST.get('password1', '')
             password2 = request.POST.get('password2', '')
@@ -133,35 +144,30 @@ def head_teacher_login(request):
             if password1 != password2:
                 ctx['reset_error'] = 'Nywila mbili hazifanani. Jaribu tena.'
                 return render(request, 'field_app/head_teacher_login.html', ctx)
-            bm = BoardMember.objects.filter(
-                user__email__iexact=email, role='head_teacher', is_active=True
-            ).select_related('school', 'user').first()
+            bm = _head_only_bm(email)
             if not bm:
-                ctx['reset_error'] = 'Hitilafu: barua pepe haikutambuliwa. Anza upya.'
+                ctx['reset_error'] = 'Hitilafu ya usalama: barua pepe haikutambuliwa. Anza upya.'
                 ctx['reset_step'] = 1
+                return render(request, 'field_app/head_teacher_login.html', ctx)
+            if not bm.school:
+                ctx['reset_error'] = 'Akaunti yako bado haijaunganishwa na shule. Wasiliana na DEO wako.'
                 return render(request, 'field_app/head_teacher_login.html', ctx)
             bm.user.set_password(password1)
             bm.user.save()
             login(request, bm.user, backend='field_app.backends.EmailBackend')
             messages.success(request, 'Nywila imebadilishwa. Umeingia mfumoni.')
-            if bm.school:
-                return redirect('board_head_teacher', school_id=bm.school.id)
-            return redirect('board_home')
+            return redirect('board_head_teacher', school_id=bm.school.id)
 
-        else:
+        else:  # head_login
             email = request.POST.get('email', '').strip().lower()
             password = request.POST.get('password', '')
             school_id = request.POST.get('school_id', '').strip()
             school = School.objects.filter(id=school_id).first() if school_id else None
-
-            bm = BoardMember.objects.filter(
-                user__email__iexact=email, role='head_teacher', is_active=True
-            ).select_related('school', 'user').first()
-
             ctx = {'prefill_email': email, 'prefill_school_id': school_id, 'school': school}
 
+            bm = _head_only_bm(email)
             if not bm:
-                ctx['error'] = f'Email "{email}" haipo kwenye orodha ya wakuu wa shule. Wasiliana na DEO wako.'
+                ctx['error'] = 'Barua pepe hii haipo kwenye orodha ya wakuu wa shule, au ina ruhusa nyingine.'
                 return render(request, 'field_app/head_teacher_login.html', ctx)
 
             user = authenticate(request, username=email, password=password,
@@ -170,8 +176,14 @@ def head_teacher_login(request):
                 ctx['error'] = 'Nywila si sahihi. Jaribu tena.'
                 return render(request, 'field_app/head_teacher_login.html', ctx)
 
+            # Final role check after authenticate — belt-and-suspenders
+            confirmed_bm = _head_only_bm(user.email)
+            if not confirmed_bm or not confirmed_bm.school:
+                ctx['error'] = 'Hitilafu ya usalama. Wasiliana na msimamizi.'
+                return render(request, 'field_app/head_teacher_login.html', ctx)
+
             login(request, user, backend='field_app.backends.EmailBackend')
-            return redirect('board_head_teacher', school_id=bm.school.id)
+            return redirect('board_head_teacher', school_id=confirmed_bm.school.id)
 
     school = School.objects.filter(id=prefill_school_id).first() if prefill_school_id else None
     return render(request, 'field_app/head_teacher_login.html', {
@@ -184,11 +196,18 @@ def head_teacher_login(request):
 
 
 def board_login(request):
-    if request.user.is_authenticated and _get_board_member(request):
-        return redirect('board_home')
+    if request.user.is_authenticated:
+        bm = _get_board_member(request)
+        if bm and bm.role == 'head_teacher':
+            # Head teacher tried to use board login — force logout, send to correct page
+            logout(request)
+            messages.warning(request, 'Tafadhali ingia kupitia ukurasa wa Wakuu wa Shule.')
+            return redirect('head_login')
+        if bm and bm.role != 'head_teacher':
+            return redirect('board_home')
 
     if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
+        email = request.POST.get('email', '').strip().lower()
         password = request.POST.get('password', '')
         user = authenticate(request, username=email, password=password,
                             backend='field_app.backends.EmailBackend')
@@ -204,7 +223,7 @@ def board_login(request):
                 else:
                     messages.error(request, 'Akaunti yako imezimwa. Wasiliana na msimamizi.')
             except Exception:
-                messages.error(request, 'Barua pepe au nywila si sahihi, au huna ruhusa ya Bodi ya Walimu.')
+                messages.error(request, 'Barua pepe au nywila si sahihi.')
         else:
             messages.error(request, 'Barua pepe au nywila si sahihi.')
 
