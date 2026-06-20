@@ -77,9 +77,9 @@ def public_school_head_form(request):
             notes=notes,
         )
         from django.utils.http import urlencode
-        params = urlencode({'tab': 'head', 'submitted': '1', 'school_id': school.id})
+        params = urlencode({'submitted': '1', 'school_id': school.id})
         messages.success(request, f'Asante {head_name}! Ombi la {school.name} limetumwa. Ingia sasa kuona hali yake.')
-        return redirect(f"{reverse('board_login')}?{params}")
+        return redirect(f"{reverse('head_login')}?{params}")
 
     # Stage 0: initial code entry — handle POST stages
     if request.method == 'POST':
@@ -228,9 +228,9 @@ def school_head_submit(request, district_id):
                 notes=notes,
             )
             from django.utils.http import urlencode
-            params = urlencode({'tab': 'head', 'email': head_email, 'submitted': '1'})
+            params = urlencode({'email': head_email, 'submitted': '1'})
             messages.success(request, f'Asante {head_name}! Ombi lako limetumwa kwa DEO wa {district.name}. Ingia sasa kuona hali ya ombi lako.')
-            return redirect(f"{reverse('board_login')}?{params}")
+            return redirect(f"{reverse('head_login')}?{params}")
 
     return render(request, 'field_app/school_head_submit.html', {
         'district': district,

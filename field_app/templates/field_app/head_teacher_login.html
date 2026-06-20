@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% if LANG == 'sw' %}Ingia — Bodi ya Walimu | IMS{% else %}Sign In — Teacher Board | IMS{% endif %}</title>
+<title>Ingia — Mkuu wa Shule | IMS</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
@@ -15,7 +15,6 @@
 }
 html,body{height:100%;-webkit-font-smoothing:antialiased;}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;background:var(--light);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
-
 .top-bar{background:var(--navy);border-bottom:3px solid var(--gold);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .brand{display:flex;align-items:center;gap:10px;}
 .logo-box{width:28px;height:28px;background:rgba(200,144,10,.2);border:1px solid rgba(200,144,10,.4);border-radius:4px;display:flex;align-items:center;justify-content:center;}
@@ -27,20 +26,15 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .la.on{background:var(--gold);color:#fff;}
 .la.off{color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);}
 .la.off:hover{color:#fff;}
-
 .main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 16px;}
-
 .card{width:100%;max-width:420px;background:var(--white);border-radius:8px;border:1px solid rgba(10,43,94,.12);box-shadow:0 4px 6px rgba(0,0,0,.05),0 10px 30px rgba(10,43,94,.1);overflow:hidden;}
-
 .card-top{background:var(--navy);border-bottom:3px solid var(--gold);padding:20px 24px;display:flex;align-items:center;gap:14px;}
 .coat{width:52px;height:52px;flex-shrink:0;background:rgba(200,144,10,.15);border:1.5px solid rgba(200,144,10,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .coat img{width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));}
 .ct .t1{font-size:9px;color:rgba(255,255,255,.5);letter-spacing:1.8px;text-transform:uppercase;}
 .ct .t2{font-size:14.5px;color:#fff;font-weight:800;margin:2px 0;line-height:1.2;}
 .ct .t3{font-size:11px;color:var(--gold);font-weight:500;}
-
 .card-body{padding:24px;}
-
 .field{margin-bottom:16px;}
 .field label{display:block;font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px;}
 .inp-wrap{position:relative;}
@@ -50,33 +44,16 @@ input:focus{border-color:var(--navy);background:#fff;box-shadow:0 0 0 3px rgba(1
 input::placeholder{color:#B8C4CE;font-size:12.5px;}
 .eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9AAFC0;font-size:14px;padding:2px;}
 .eye:hover{color:var(--navy);}
-
-.row2{display:flex;align-items:center;justify-content:flex-end;margin-bottom:18px;}
-.forgot{font-size:12.5px;font-weight:700;color:var(--navy);text-decoration:none;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
-.forgot:hover{color:var(--gold);}
-
-.reset-box{display:none;margin-top:18px;padding:16px;background:var(--light);border-radius:5px;border:1px solid rgba(10,43,94,.1);}
-.reset-box.show{display:block;}
-.reset-box h4{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
-.reset-box p{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
-.btn-reset{width:100%;padding:10px;background:var(--gold);color:#fff;border:none;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;font-family:inherit;transition:background .13s;}
-.btn-reset:hover{background:#A97308;}
-.btn-cancel{font-size:12px;color:var(--muted);text-align:center;display:block;margin-top:8px;cursor:pointer;background:none;border:none;font-family:inherit;width:100%;}
-.btn-cancel:hover{color:var(--navy);}
-
 .btn-in{width:100%;padding:11.5px;background:var(--navy);color:#fff;border:none;border-radius:5px;font-size:13.5px;font-weight:800;cursor:pointer;letter-spacing:.6px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:background .13s,box-shadow .13s;}
 .btn-in:hover{background:#071E42;box-shadow:0 4px 14px rgba(10,43,94,.28);}
 .btn-in:active{opacity:.92;}
-
 .msg{padding:10px 12px;border-radius:4px;font-size:12.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-weight:500;}
 .msg-err{background:#FEE2E2;color:#7F1D1D;border-left:4px solid var(--danger);}
-.msg-ok {background:#D1FAE5;color:#064E3B;border-left:4px solid var(--success);}
+.msg-ok{background:#D1FAE5;color:#064E3B;border-left:4px solid var(--success);}
 .msg-warn{background:#FEF3C7;color:#78350F;border-left:4px solid #D97706;}
-
 footer{background:var(--navy);border-top:3px solid var(--gold);padding:10px 20px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;}
 footer p{font-size:10px;color:rgba(255,255,255,.45);}
 footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
-
 @media(max-width:480px){.brand small{display:none;}.card-body{padding:18px;}.card-top{padding:16px 18px;}.coat{width:44px;height:44px;}.coat img{width:32px;height:32px;}.ct .t2{font-size:13px;}}
 </style>
 </head>
@@ -84,8 +61,8 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
 
 <div class="top-bar">
   <div class="brand">
-    <div class="logo-box"><i class="fas fa-users"></i></div>
-    <span>IMS<small>Teachers Board System</small></span>
+    <div class="logo-box"><i class="fas fa-school"></i></div>
+    <span>IMS<small>Wakuu wa Shule</small></span>
   </div>
   <div class="lang-row">
     <a href="/set-language/?lang=en&next={{ request.path }}" class="la {% if LANG == 'en' %}on{% else %}off{% endif %}">EN</a>
@@ -95,16 +72,14 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
 
 <div class="main">
   <div class="card">
-
     <div class="card-top">
       <div class="coat">
-        {% load static %}
         <img src="{% static 'field_app/tanzania-coat-of-arms.png' %}" alt="Coat of Arms">
       </div>
       <div class="ct">
         <div class="t1">United Republic of Tanzania</div>
-        <div class="t2">{% if LANG == 'sw' %}Bodi ya Walimu{% else %}Teacher Board{% endif %}</div>
-        <div class="t3">{% if LANG == 'sw' %}Mfumo wa Usimamizi wa Mafunzo ya Vitendo{% else %}Internship Management System{% endif %}</div>
+        <div class="t2">Mkuu wa Shule</div>
+        <div class="t3">Mfumo wa Usimamizi wa Mafunzo ya Vitendo</div>
       </div>
     </div>
 
@@ -118,64 +93,103 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
         {% endfor %}
       {% endif %}
 
-      <!-- FORM: DEO/REO/Chair -->
-      <form method="post" action="{% url 'board_login' %}">
+      {% if submitted_request %}
+      <div style="background:#D1FAE5;border:1px solid #6EE7B7;border-radius:6px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
+        <i class="fas fa-check-circle" style="color:#059669;font-size:16px;margin-top:1px;"></i>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#064E3B;">Ombi limetumwa kwa DEO!</div>
+          <div style="font-size:11px;color:#065F46;margin-top:2px;">Ingia hapa chini kufuatilia hali ya ombi lako.</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if school %}
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+        <i class="fas fa-school" style="color:#1D4ED8;font-size:16px;"></i>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#1E40AF;">{{ school.name }}</div>
+          <div style="font-size:11px;color:#3B82F6;">{{ school.district.name }}</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if error %}<div class="msg msg-err"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>{% endif %}
+
+      {% if first_time %}
+      <div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400E;display:flex;gap:8px;">
+        <i class="fas fa-key" style="margin-top:1px;flex-shrink:0;"></i>
+        <span>Karibu! Kwa kuwa ni mara yako ya kwanza, weka nywila ya siri ya akaunti yako.</span>
+      </div>
+      <form method="post" action="{% url 'head_login' %}">
         {% csrf_token %}
+        <input type="hidden" name="mode" value="head_set_password">
+        <input type="hidden" name="school_id" value="{{ prefill_school_id }}">
         <div class="field">
           <label>Barua Pepe</label>
           <div class="inp-wrap">
             <i class="fas fa-envelope inp-ico"></i>
-            <input type="email" name="email" required autocomplete="email"
-                   placeholder="barua.pepe@yako.com" autofocus>
+            <input type="email" name="email" value="{{ prefill_email }}" readonly
+                   style="background:#F7FAFC;color:#4A5568;cursor:not-allowed;">
+          </div>
+        </div>
+        <div class="field">
+          <label>Nywila Mpya</label>
+          <div class="inp-wrap">
+            <i class="fas fa-lock inp-ico"></i>
+            <input type="password" name="password1" id="pwd1" required autofocus minlength="6"
+                   placeholder="Angalau herufi 6" style="padding-right:38px;">
+            <button type="button" class="eye" onclick="togglePwd('pwd1','eye1')"><i class="fas fa-eye" id="eye1"></i></button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Thibitisha Nywila</label>
+          <div class="inp-wrap">
+            <i class="fas fa-lock inp-ico"></i>
+            <input type="password" name="password2" id="pwd2" required minlength="6"
+                   placeholder="Rudia nywila hiyo hiyo" style="padding-right:38px;">
+            <button type="button" class="eye" onclick="togglePwd('pwd2','eye2')"><i class="fas fa-eye" id="eye2"></i></button>
+          </div>
+        </div>
+        <button type="submit" class="btn-in">
+          <i class="fas fa-check-circle"></i>WEKA NYWILA NA INGIA
+        </button>
+      </form>
+
+      {% else %}
+      <form method="post" action="{% url 'head_login' %}">
+        {% csrf_token %}
+        <input type="hidden" name="mode" value="head_login">
+        <input type="hidden" name="school_id" value="{{ prefill_school_id }}">
+        <div class="field">
+          <label>Barua Pepe</label>
+          <div class="inp-wrap">
+            <i class="fas fa-envelope inp-ico"></i>
+            <input type="email" name="email" value="{{ prefill_email }}"
+                   {% if prefill_email %}readonly style="background:#F7FAFC;color:#4A5568;"{% endif %}
+                   required autocomplete="email" placeholder="barua.pepe@yako.com">
           </div>
         </div>
         <div class="field">
           <label>Nywila</label>
           <div class="inp-wrap">
             <i class="fas fa-lock inp-ico"></i>
-            <input type="password" name="password" id="pwd" style="padding-right:38px;" required autocomplete="current-password"
-                   placeholder="Nywila yako">
-            <button type="button" class="eye" onclick="togglePwd('pwd','eyepwd')"><i class="fas fa-eye" id="eyepwd"></i></button>
+            <input type="password" name="password" id="pwd" required autofocus
+                   placeholder="Nywila yako" style="padding-right:38px;">
+            <button type="button" class="eye" onclick="togglePwd('pwd','eye')"><i class="fas fa-eye" id="eye"></i></button>
           </div>
-        </div>
-        <div class="row2">
-          <button type="button" class="forgot" onclick="showReset()">Umesahau nywila?</button>
         </div>
         <button type="submit" class="btn-in">
           <i class="fas fa-sign-in-alt"></i>INGIA
         </button>
       </form>
+      {% endif %}
 
-      <!-- Inline password reset -->
-      <div class="reset-box" id="resetBox">
-        <h4>{% if LANG == 'sw' %}Weka Upya Nywila{% else %}Reset Password{% endif %}</h4>
-        <p>{% if LANG == 'sw' %}Weka barua pepe yako. Utapokea maelekezo ya kuweka upya nywila.{% else %}Enter your email address to receive a password reset link.{% endif %}</p>
-        <form method="POST" action="{% url 'password_reset' %}">
-          {% csrf_token %}
-          <div class="field">
-            <label>{% if LANG == 'sw' %}Barua Pepe{% else %}Email Address{% endif %}</label>
-            <div class="inp-wrap">
-              <i class="fas fa-envelope inp-ico"></i>
-              <input type="email" name="email" required
-                     placeholder="{% if LANG == 'sw' %}barua@pepe.yako{% else %}your@email.com{% endif %}">
-            </div>
-          </div>
-          <button type="submit" class="btn-reset">
-            <i class="fas fa-paper-plane" style="margin-right:6px;"></i>
-            {% if LANG == 'sw' %}Tuma Link{% else %}Send Reset Link{% endif %}
-          </button>
-          <button type="button" class="btn-cancel" onclick="hideReset()">
-            {% if LANG == 'sw' %}Rudi Kuingia{% else %}Back to Sign In{% endif %}
-          </button>
-        </form>
-      </div>
-
-    </div><!-- /card-body -->
-  </div><!-- /card -->
-</div><!-- /main -->
+    </div>
+  </div>
+</div>
 
 <footer>
-  <p>&copy; {% now "Y" %} {% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia — Tanzania{% else %}Ministry of Education, Science and Technology — Tanzania{% endif %}</p>
+  <p>&copy; {% now "Y" %} Wizara ya Elimu, Sayansi na Teknolojia — Tanzania</p>
   <span class="ver">IMS v2.1.0</span>
 </footer>
 
@@ -184,14 +198,6 @@ function togglePwd(id,ico){
   const i=document.getElementById(id),c=document.getElementById(ico);
   if(i.type==='password'){i.type='text';c.classList.replace('fa-eye','fa-eye-slash');}
   else{i.type='password';c.classList.replace('fa-eye-slash','fa-eye');}
-}
-function showReset(){
-  document.querySelector('form').style.display='none';
-  document.getElementById('resetBox').classList.add('show');
-}
-function hideReset(){
-  document.getElementById('resetBox').classList.remove('show');
-  document.querySelector('form').style.display='block';
 }
 </script>
 </body>

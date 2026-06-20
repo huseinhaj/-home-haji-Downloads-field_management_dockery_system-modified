@@ -76,6 +76,7 @@ from .assessor import (
 )
 
 from .board import (
+    head_teacher_login,
     board_login,
     board_logout,
     board_home,

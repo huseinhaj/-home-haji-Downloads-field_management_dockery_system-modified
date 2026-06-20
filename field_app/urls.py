@@ -135,6 +135,7 @@ urlpatterns = [
     # =========================
     # BODI YA WALIMU — Teacher Board
     # =========================
+    path('head/login/', views.head_teacher_login, name='head_login'),
     path('board/login/', views.board_login, name='board_login'),
     path('board/logout/', views.board_logout, name='board_logout'),
     path('board/', views.board_home, name='board_home'),
