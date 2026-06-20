@@ -339,6 +339,19 @@ html,body{height:100%;font-family:var(--font);font-size:.8125rem;background:var(
     </div>
   </div>
 
+  <!-- HESLB Live Knowledge Banner -->
+  <div id="heslbBanner" style="display:none;background:#fff;border:1px solid #eff2f7;border-left:4px solid #556ee6;border-radius:4px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;">
+    <span class="material-icons" style="color:#556ee6;font-size:18px;margin-top:2px;">auto_awesome</span>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:11px;font-weight:700;color:#556ee6;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">
+        Taarifa Mpya za HESLB — Imesasishwa Kiotomatiki
+        <span id="heslbUpdatedAt" style="font-weight:400;color:#74788d;margin-left:8px;"></span>
+      </div>
+      <div id="heslbSummaryText" style="font-size:12px;color:#495057;line-height:1.5;white-space:pre-wrap;"></div>
+    </div>
+    <button onclick="document.getElementById('heslbBanner').style.display='none'" style="background:none;border:none;color:#adb5bd;cursor:pointer;font-size:18px;line-height:1;padding:0;margin-left:4px;">&times;</button>
+  </div>
+
   <!-- MAIN COLUMN -->
   <div class="main-col">
     <div class="card">
@@ -461,12 +474,13 @@ html,body{height:100%;font-family:var(--font);font-size:.8125rem;background:var(
 </div>
 
 <script>
-const STREAM_URL  = '{% url "app_chat_stream" %}';
-const EDIT_URL    = '{% url "app_edit_field" %}';
-const CONFIRM_URL = '{% url "app_confirm" %}';
-const AUTO_URL    = '{% url "app_start_auto" %}';
-const STATUS_URL  = '{% url "app_auto_status" %}';
-const CSRF        = '{{ csrf_token }}';
+const STREAM_URL     = '{% url "app_chat_stream" %}';
+const EDIT_URL       = '{% url "app_edit_field" %}';
+const CONFIRM_URL    = '{% url "app_confirm" %}';
+const AUTO_URL       = '{% url "app_start_auto" %}';
+const STATUS_URL     = '{% url "app_auto_status" %}';
+const KNOWLEDGE_URL  = '{% url "heslb_knowledge_status" %}';
+const CSRF           = '{{ csrf_token }}';
 const CIRC        = 2 * Math.PI * 24;
 
 const SECS = [
@@ -762,6 +776,24 @@ function loadDemo(){
 }
 
 function doRestart(){if(confirm('Una uhakika? Mazungumzo na taarifa zote zitafutwa.')) location.reload();}
+
+// ── HESLB Live Knowledge ──────────────────────────────────────
+function loadHeslbKnowledge(){
+  fetch(KNOWLEDGE_URL)
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.ok && d.summary){
+        const banner = document.getElementById('heslbBanner');
+        document.getElementById('heslbSummaryText').textContent = d.summary;
+        document.getElementById('heslbUpdatedAt').textContent   = d.updated_at ? '('+d.updated_at+')' : '';
+        banner.style.display='flex';
+      }
+    })
+    .catch(()=>{});
+}
+
+// Load knowledge banner on page ready
+document.addEventListener('DOMContentLoaded', loadHeslbKnowledge);
 </script>
 </body>
 </html>

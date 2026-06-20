@@ -1,1 +1,3 @@
-web: gunicorn field_management.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --threads 2 --worker-class gthread --timeout 120 --keep-alive 5 --max-requests 1000 --max-requests-jitter 100
+web: /app/docker-entrypoint.sh
+worker: celery -A field_management worker --loglevel=info --concurrency=2 --queues=default,emails
+beat: celery -A field_management beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler

@@ -57,6 +57,18 @@ echo "Loading schools in background..."
  python manage.py shell -c "from field_app.models import School; School.objects.update(current_students=0); print('Reset current_students to 0')" || true; \
  python manage.py import_schools_pdf --overwrite || true) &
 
+# Trigger initial HESLB knowledge fetch in background (first boot only)
+echo "Scheduling initial HESLB knowledge fetch..."
+(python manage.py shell -c "
+from field_app.heslb_knowledge import get_knowledge, scrape_and_update
+if not get_knowledge():
+    print('HESLB cache empty — fetching now...')
+    r = scrape_and_update()
+    print('HESLB fetch:', r.get('ok'), r.get('updated_at',''), r.get('error',''))
+else:
+    print('HESLB knowledge already cached.')
+" 2>&1 || true) &
+
 # Start gunicorn
 echo "Starting gunicorn on port ${PORT:-8000}..."
 exec gunicorn field_management.wsgi:application \
