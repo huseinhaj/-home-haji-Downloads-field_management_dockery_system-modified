@@ -35,7 +35,6 @@ from .auth import (
     login_view,
     logout_view,
     login_page,
-    Notice,
     login_page_simple,
     homepage,
     set_language,
