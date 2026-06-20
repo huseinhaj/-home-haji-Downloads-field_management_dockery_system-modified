@@ -153,3 +153,10 @@ from .public import (
     public_school_head_form,
     school_head_submit,
 )
+
+from .assistant import (
+    application_assistant,
+    application_chat_send,
+    application_confirm,
+    application_edit_field,
+)

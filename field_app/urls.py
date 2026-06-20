@@ -156,6 +156,12 @@ urlpatterns = [
     path('board/allocation/', views.deo_allocation, name='deo_allocation'),
     path('board/district/<int:district_id>/allocation/', views.deo_district_allocation, name='deo_district_allocation'),
 
+    # AI Application Assistant
+    path('msaada/', views.application_assistant, name='application_assistant'),
+    path('msaada/tuma/', views.application_chat_send, name='app_chat_send'),
+    path('msaada/thibitisha/', views.application_confirm, name='app_confirm'),
+    path('msaada/hariri/', views.application_edit_field, name='app_edit_field'),
+
     # School Head Requests
     path('ombi/', views.public_school_head_form, name='public_school_head_form'),
     path('submit/<int:district_id>/', views.school_head_submit, name='school_head_submit'),
