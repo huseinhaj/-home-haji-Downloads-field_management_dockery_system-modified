@@ -159,7 +159,7 @@ urlpatterns = [
     # AI Application Assistant
     path('msaada/', views.application_assistant, name='application_assistant'),
     path('msaada/stream/', views.application_chat_stream, name='app_chat_stream'),
-    path('msaada/tuma/', views.application_chat_send, name='app_chat_send'),
+
     path('msaada/thibitisha/', views.application_confirm, name='app_confirm'),
     path('msaada/hariri/', views.application_edit_field, name='app_edit_field'),
     path('msaada/anza/', views.application_start_automation, name='app_start_auto'),
