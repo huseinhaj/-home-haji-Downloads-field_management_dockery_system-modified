@@ -190,8 +190,17 @@ def application_edit_field(request):
     field = request.POST.get("field", "")
     value = request.POST.get("value", "").strip()
     data = request.session.get("app_data", {})
-    if field and field in data:
+    # Allow saving any valid field key (for demo mode pre-population)
+    VALID_FIELDS = {
+        "jina_kamili","tarehe_kuzaliwa","jinsia","namba_nida","namba_simu",
+        "barua_pepe","mkoa_asili","wilaya_asili","necta_olevel_index",
+        "mwaka_olevel","daraja_olevel","necta_alevel_index","mwaka_alevel",
+        "masomo_alama","gpa_alevel","chuo_1","chuo_2","chuo_3",
+        "jina_baba","jina_mama","mlezi","mapato_familia","idadi_ndugu",
+    }
+    if field in VALID_FIELDS:
         data[field] = value
         request.session["app_data"] = data
+        request.session["app_status"] = "preview"
         return JsonResponse({"status": "ok"})
     return JsonResponse({"error": "Sehemu haikupatikana."}, status=400)

@@ -91,7 +91,7 @@ html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;ov
   border-right:1px solid rgba(255,255,255,.12);
   padding-right:10px;display:flex;align-items:center;gap:5px;
 }
-.btn-restart{
+.btn-restart,.btn-demo{
   background:rgba(255,255,255,.08);
   border:1px solid rgba(255,255,255,.15);
   color:rgba(255,255,255,.6);
@@ -102,6 +102,8 @@ html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;ov
   transition:all .15s;
 }
 .btn-restart:hover{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.3);}
+.btn-demo{border-color:rgba(252,209,22,.35);color:rgba(252,209,22,.8);}
+.btn-demo:hover{background:rgba(252,209,22,.15);color:#FCD116;border-color:rgba(252,209,22,.6);}
 
 /* ── MAIN ────────────────────────────────────────────────── */
 .main-panel{
@@ -351,6 +353,9 @@ html,body{height:100%;font-family:'Inter',system-ui,sans-serif;font-size:14px;ov
     </div>
     <div class="top-right">
       <span class="tz-badge"><i class="fas fa-flag"></i>Tanzania</span>
+      <button class="btn-demo" onclick="loadDemo()">
+        <i class="fas fa-flask"></i> Demo
+      </button>
       <button class="btn-restart" onclick="restartChat()">
         <i class="fas fa-rotate-left"></i> Anza Upya
       </button>
@@ -564,6 +569,49 @@ async function confirmData(){
 function restartChat(){
   if(confirm('Una uhakika? Taarifa zote zilizokusanywa zitafutwa na mazungumzo yataanzishwa upya.'))
     window.location.reload();
+}
+
+function loadDemo(){
+  collectedData={
+    jina_kamili:'Haji Hamisi Huseni',
+    tarehe_kuzaliwa:'05/06/2001',
+    jinsia:'Kiume',
+    namba_nida:'20010605411190000125',
+    namba_simu:'0625607088',
+    barua_pepe:'huseinhaj09@gmail.com',
+    mkoa_asili:'Dodoma',
+    wilaya_asili:'Chemba',
+    necta_olevel_index:'S2895.0030.2018',
+    mwaka_olevel:'2018',
+    daraja_olevel:'Division II',
+    necta_alevel_index:'S2895.0030.2020',
+    mwaka_alevel:'2020',
+    masomo_alama:'Physics B, Chemistry C, Mathematics B',
+    gpa_alevel:'3.2',
+    chuo_1:'University of Dar es Salaam — BSc Computer Science',
+    chuo_2:'Ardhi University — BSc Information Technology',
+    chuo_3:'University of Dodoma — BSc Computer Science',
+    jina_baba:'Hamisi Huseni (Amefariki)',
+    jina_mama:'Fatuma Juma',
+    mlezi:'Juma Hamisi — 0712345678',
+    mapato_familia:'150,000',
+    idadi_ndugu:'5',
+  };
+  appStatus='preview';
+
+  // Show demo messages in chat
+  addBubble('ai','✅ Demo imepakiwa! Taarifa za mfano zimejazwa upande wa kulia. Unaweza kuhariri kila sehemu kwa kubonyeza ikoni ya kalamu, kisha bonyeza THIBITISHA NA ENDELEA.');
+  renderPanel();
+
+  // Save to session
+  const fd=new FormData();
+  Object.entries(collectedData).forEach(([k,v])=>{
+    const f=new FormData();
+    f.append('field',k);f.append('value',v);
+    f.append('csrfmiddlewaretoken','{{ csrf_token }}');
+    fetch('{% url "app_edit_field" %}',{method:'POST',body:f});
+  });
+  // Set session status to preview via confirm-prep (hack: save one field to ensure session alive)
 }
 </script>
 </body>
