@@ -135,9 +135,19 @@ def dashboard(request):
 
     logbook_entries = []
     if student:
-        logbook_entries = LogbookEntry.objects.filter(
-            student=student
-        ).select_related('subject_taught').order_by('-date')[:5]
+        _today = timezone.now().date()
+        _this_month_qs = LogbookEntry.objects.filter(
+            student=student,
+            date__year=_today.year,
+            date__month=_today.month,
+        ).select_related('subject_taught').order_by('-date')
+        logbook_entries = [
+            e for e in _this_month_qs
+            if e.lessons_data
+            or (e.other_activities and e.other_activities.strip())
+            or (e.challenges_faced and e.challenges_faced.strip())
+            or (e.morning_activity and e.morning_activity.strip())
+        ][:7]
 
     board_comments = []
     if student:
@@ -727,6 +737,13 @@ def submit_logbook(request):
     logbook_entry = _cached_today_logbook(student, school, today)
 
     if request.method == 'POST':
+        # Create entry on first submission (not on page visit) to avoid phantom empty entries
+        if logbook_entry is None:
+            logbook_entry, _ = LogbookEntry.objects.get_or_create(
+                student=student, date=today,
+                defaults={'school': school, 'morning_check_in': timezone.now()}
+            )
+            _invalidate_today_logbook(student, today)
         form = LogbookForm(request.POST, instance=logbook_entry)
 
         latitude = request.POST.get('latitude')

@@ -85,16 +85,14 @@ def _cached_subjects(student):
 
 
 def _cached_today_logbook(student, school, today):
-    """Cache today's logbook entry for 30s to avoid get_or_create hit on every page load."""
+    """Return today's logbook entry if it exists, else None. Does NOT auto-create."""
     key = f'logbook_today_{student.id}_{today}'
-    entry = cache.get(key)
-    if entry is None:
-        entry, _ = LogbookEntry.objects.get_or_create(
-            student=student, date=today,
-            defaults={'school': school, 'morning_check_in': timezone.now()}
-        )
+    cached = cache.get(key, '__miss__')
+    if cached == '__miss__':
+        entry = LogbookEntry.objects.filter(student=student, date=today).first()
         cache.set(key, entry, 30)
-    return entry
+        return entry
+    return cached
 
 
 def _invalidate_today_logbook(student, today):

@@ -999,10 +999,16 @@ body {
                                 {% endif %}
                             </div>
                             <p class="small-text mb-0" style="color: var(--text-gray);">
-                                {% if entry.morning_activity %}
-                                    {{ entry.morning_activity|truncatewords:6 }}
+                                {% if entry.lessons_data %}
+                                    Masomo {{ entry.lessons_data|length }} yamerekodiwa
+                                {% elif entry.other_activities %}
+                                    {{ entry.other_activities|truncatewords:8 }}
+                                {% elif entry.challenges_faced %}
+                                    {{ entry.challenges_faced|truncatewords:8 }}
+                                {% elif entry.morning_activity %}
+                                    {{ entry.morning_activity|truncatewords:8 }}
                                 {% else %}
-                                    No activities recorded...
+                                    Hakuna shughuli zilizoandikwa...
                                 {% endif %}
                             </p>
                         </div>
