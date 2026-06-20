@@ -823,19 +823,30 @@
     {% block extra_js %}{% endblock %}
 
     <script>
-    /* Back-button security: if browser restores page from bfcache (back/forward),
-       reload from server so the session check runs and expired sessions redirect to login. */
+    {% if user.is_authenticated %}
+    /* ── Back/Forward Security ──────────────────────────────────────────────
+       Layer 1: unload listener  → makes page bfcache-ineligible in Firefox/Edge.
+       Layer 2: pageshow handler → safety net for Chrome/Safari bfcache.
+                                   Hides body IMMEDIATELY then reloads so the user
+                                   never sees stale authenticated content.
+    ──────────────────────────────────────────────────────────────────────── */
+    window.addEventListener('unload', function() {});
+
     window.addEventListener('pageshow', function(e) {
-        if (e.persisted) { window.location.reload(); }
+        if (e.persisted) {
+            document.body.style.visibility = 'hidden';
+            window.location.reload();
+        }
     });
 
-    {% if user.is_authenticated %}
-    /* Session heartbeat: ping every 5 minutes — redirect to login if session expired. */
+    /* ── Session Heartbeat ──────────────────────────────────────────────────
+       Ping every 5 minutes. If session expired, redirect to login instantly. */
     (function() {
         function ping() {
             fetch('/session-check/', { credentials: 'same-origin' })
                 .then(function(r) {
                     if (r.status === 401) {
+                        document.body.style.visibility = 'hidden';
                         window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
                     }
                 })

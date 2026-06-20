@@ -720,17 +720,26 @@ document.querySelectorAll('.accordion-btn').forEach(btn => {
 </script>
 
 <script>
-/* Back-button security: force reload from server on bfcache restore */
+/* ── Back/Forward Security ────────────────────────────────────────────────
+   Layer 1: unload listener  → bfcache-ineligible in Firefox/Edge.
+   Layer 2: pageshow handler → hides body instantly then reloads (Chrome/Safari).
+──────────────────────────────────────────────────────────────────────── */
+window.addEventListener('unload', function() {});
+
 window.addEventListener('pageshow', function(e) {
-    if (e.persisted) { window.location.reload(); }
+    if (e.persisted) {
+        document.body.style.visibility = 'hidden';
+        window.location.reload();
+    }
 });
 
-/* Session heartbeat: ping every 5 minutes — redirect to board login if session expired. */
+/* Session heartbeat: ping every 5 minutes — redirect to board login if expired. */
 (function() {
     function ping() {
         fetch('/session-check/', { credentials: 'same-origin' })
             .then(function(r) {
                 if (r.status === 401) {
+                    document.body.style.visibility = 'hidden';
                     window.location.href = '/board/login/';
                 }
             })
