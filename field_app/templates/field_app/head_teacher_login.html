@@ -44,6 +44,17 @@ input:focus{border-color:var(--navy);background:#fff;box-shadow:0 0 0 3px rgba(1
 input::placeholder{color:#B8C4CE;font-size:12.5px;}
 .eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9AAFC0;font-size:14px;padding:2px;}
 .eye:hover{color:var(--navy);}
+.row2{display:flex;align-items:center;justify-content:flex-end;margin-bottom:18px;}
+.forgot{font-size:12.5px;font-weight:700;color:var(--navy);text-decoration:none;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;}
+.forgot:hover{color:var(--gold);}
+.reset-box{display:none;margin-top:18px;padding:16px;background:var(--light);border-radius:5px;border:1px solid rgba(10,43,94,.1);}
+.reset-box.show{display:block;}
+.reset-box h4{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+.reset-box p{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
+.btn-reset{width:100%;padding:10px;background:var(--gold);color:#fff;border:none;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;font-family:inherit;transition:background .13s;}
+.btn-reset:hover{background:#A97308;}
+.btn-cancel{font-size:12px;color:var(--muted);text-align:center;display:block;margin-top:8px;cursor:pointer;background:none;border:none;font-family:inherit;width:100%;}
+.btn-cancel:hover{color:var(--navy);}
 .btn-in{width:100%;padding:11.5px;background:var(--navy);color:#fff;border:none;border-radius:5px;font-size:13.5px;font-weight:800;cursor:pointer;letter-spacing:.6px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:background .13s,box-shadow .13s;}
 .btn-in:hover{background:#071E42;box-shadow:0 4px 14px rgba(10,43,94,.28);}
 .btn-in:active{opacity:.92;}
@@ -178,10 +189,35 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
             <button type="button" class="eye" onclick="togglePwd('pwd','eye')"><i class="fas fa-eye" id="eye"></i></button>
           </div>
         </div>
+        <div class="row2">
+          <button type="button" class="forgot" onclick="showReset()">Umesahau nywila?</button>
+        </div>
         <button type="submit" class="btn-in">
           <i class="fas fa-sign-in-alt"></i>INGIA
         </button>
       </form>
+
+      <div class="reset-box" id="resetBox">
+        <h4>Weka Upya Nywila</h4>
+        <p>Weka barua pepe yako. Utapokea maelekezo ya kuweka upya nywila kupitia barua pepe.</p>
+        <form method="POST" action="{% url 'password_reset' %}">
+          {% csrf_token %}
+          <div class="field">
+            <label>Barua Pepe</label>
+            <div class="inp-wrap">
+              <i class="fas fa-envelope inp-ico"></i>
+              <input type="email" name="email" required
+                     value="{{ prefill_email }}"
+                     placeholder="barua.pepe@yako.com">
+            </div>
+          </div>
+          <button type="submit" class="btn-reset">
+            <i class="fas fa-paper-plane" style="margin-right:6px;"></i>Tuma Link ya Kubadilisha
+          </button>
+          <button type="button" class="btn-cancel" onclick="hideReset()">Rudi Kuingia</button>
+        </form>
+      </div>
+
       {% endif %}
 
     </div>
@@ -198,6 +234,20 @@ function togglePwd(id,ico){
   const i=document.getElementById(id),c=document.getElementById(ico);
   if(i.type==='password'){i.type='text';c.classList.replace('fa-eye','fa-eye-slash');}
   else{i.type='password';c.classList.replace('fa-eye-slash','fa-eye');}
+}
+function showReset(){
+  const f=document.querySelector('form[action*="head_login"]');
+  const r=document.getElementById('resetBox');
+  if(f) f.style.display='none';
+  document.querySelector('.row2').style.display='none';
+  r.classList.add('show');
+}
+function hideReset(){
+  const f=document.querySelector('form[action*="head_login"]');
+  const r=document.getElementById('resetBox');
+  if(f) f.style.display='';
+  document.querySelector('.row2').style.display='';
+  r.classList.remove('show');
 }
 </script>
 </body>
