@@ -159,11 +159,11 @@ urlpatterns = [
     # AI Application Assistant
     path('msaada/', views.application_assistant, name='application_assistant'),
     path('msaada/stream/', views.application_chat_stream, name='app_chat_stream'),
-
     path('msaada/thibitisha/', views.application_confirm, name='app_confirm'),
     path('msaada/hariri/', views.application_edit_field, name='app_edit_field'),
     path('msaada/anza/', views.application_start_automation, name='app_start_auto'),
     path('msaada/hali/', views.application_auto_status, name='app_auto_status'),
+    path('msaada/heslb-maarifa/', views.heslb_knowledge_status, name='heslb_knowledge_status'),
 
     # School Head Requests
     path('ombi/', views.public_school_head_form, name='public_school_head_form'),

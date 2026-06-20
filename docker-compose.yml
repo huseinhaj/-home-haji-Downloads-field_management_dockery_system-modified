@@ -56,6 +56,19 @@ services:
       - redis
     restart: unless-stopped
 
+  celery-beat:
+    build: .
+    command: celery -A field_management beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - .env.docker
+    environment:
+      - DATABASE_URL=postgresql://field_user:field_pass@db:5432/field_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
   nginx:
     image: nginx:alpine
     ports:

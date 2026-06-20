@@ -161,4 +161,5 @@ from .assistant import (
     application_edit_field,
     application_start_automation,
     application_auto_status,
+    heslb_knowledge_status,
 )

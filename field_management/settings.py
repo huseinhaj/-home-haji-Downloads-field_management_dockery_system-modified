@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'field_app',
     'django_celery_results',
+    'django_celery_beat',
     'rest_framework',
     'django_filters',
     'import_export',
@@ -261,6 +262,15 @@ CELERY_TIMEZONE = 'Africa/Dar_es_Salaam'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 300  # 5 minutes max per task
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # fair scheduling for long tasks
+
+# Beat schedule: refresh HESLB knowledge every Monday at 06:00 EAT
+CELERY_BEAT_SCHEDULE = {
+    "refresh-heslb-knowledge-weekly": {
+        "task": "heslb_knowledge.refresh",
+        "schedule": 604800,  # 7 days in seconds
+        "options": {"expires": 3600},
+    },
+}
 
 # =========================
 # REST FRAMEWORK

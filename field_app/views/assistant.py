@@ -174,9 +174,26 @@ def _build_contents(history: list) -> list:
     ]
 
 
+def _dynamic_system_prompt() -> str:
+    """Return SYSTEM_PROMPT enriched with latest HESLB knowledge from cache."""
+    from field_app.heslb_knowledge import get_knowledge
+    knowledge = get_knowledge()
+    if not knowledge or not knowledge.get("ok"):
+        return SYSTEM_PROMPT
+    return (
+        SYSTEM_PROMPT
+        + "\n\n════════════════════════════════════\n"
+        + f"TAARIFA MPYA KUTOKA HESLB (Imesasishwa: {knowledge['updated_at']}):\n"
+        + knowledge["summary"]
+        + "\n════════════════════════════════════\n"
+        + "MUHIMU: Taarifa zilizo juu zimetoka moja kwa moja tovuti ya HESLB. "
+        + "Zitumie kushughulikia maswali ya hali ya sasa — dirisha, nyaraka mpya, mabadiliko."
+    )
+
+
 def _make_cfg():
     return genai_types.GenerateContentConfig(
-        system_instruction=SYSTEM_PROMPT,
+        system_instruction=_dynamic_system_prompt(),
         temperature=0.4,
         max_output_tokens=1024,
     )
@@ -414,3 +431,25 @@ def application_edit_field(request):
         request.session["app_status"] = "preview"
         return JsonResponse({"status": "ok"})
     return JsonResponse({"error": "Sehemu haikupatikana."}, status=400)
+
+
+def heslb_knowledge_status(request):
+    """Return current HESLB knowledge cache status (public read, POST triggers refresh)."""
+    from field_app.heslb_knowledge import get_knowledge, scrape_and_update
+
+    if request.method == "POST":
+        # Manual refresh — admin only via Django staff check
+        if not (request.user.is_authenticated and request.user.is_staff):
+            return JsonResponse({"error": "Ruhusa imekataliwa."}, status=403)
+        result = scrape_and_update()
+        return JsonResponse(result)
+
+    knowledge = get_knowledge()
+    if not knowledge:
+        return JsonResponse({
+            "ok": False,
+            "summary": "",
+            "updated_at": "",
+            "message": "Bado haijasasishwa. Mfumo utajisasisha kiotomatiki kila wiki."
+        })
+    return JsonResponse(knowledge)
