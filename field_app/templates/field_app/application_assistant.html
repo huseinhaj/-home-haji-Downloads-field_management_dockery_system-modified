@@ -3,632 +3,461 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Online Loan Application — HESLB</title>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<title>HESLB | OLAMS — AI Application Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-html,body{
-  height:100%;
-  font-family:Arial,Helvetica,sans-serif;
-  font-size:13.5px;
-  background:#e8edf2;
-  color:#222;
-  touch-action:manipulation;
-  -webkit-tap-highlight-color:transparent;
+:root{
+  --primary:#556ee6;
+  --primary-dark:#4458b8;
+  --success:#34c38f;
+  --warning:#f1b44c;
+  --danger:#f46a6a;
+  --info:#50a5f1;
+  --sidebar-bg:#2a3042;
+  --sidebar-w:240px;
+  --topbar-bg:#ffffff;
+  --body-bg:#f8f8fb;
+  --card-bg:#ffffff;
+  --border:#eff2f7;
+  --text:#495057;
+  --muted:#74788d;
+  --dark:#343a40;
+  --font:'Poppins',sans-serif;
 }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:var(--font);font-size:.8125rem;background:var(--body-bg);color:var(--text);-webkit-tap-highlight-color:transparent;}
 
-/* ── HEADER ──────────────────────────────────────────────── */
-.heslb-header{
-  background:linear-gradient(180deg,#1a3a72 0%,#0f2a58 100%);
-  border-bottom:4px solid #c8a800;
-  padding:0;
-  position:sticky;top:0;z-index:100;
+/* SIDEBAR */
+.sidebar{
+  position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);
+  background:var(--sidebar-bg);z-index:200;overflow-y:auto;
+  display:flex;flex-direction:column;
 }
-.header-inner{
-  display:flex;align-items:center;
-  max-width:1200px;margin:0 auto;
-  padding:10px 18px;gap:14px;
+.sidebar::-webkit-scrollbar{width:0;}
+.s-brand{
+  padding:18px 20px 16px;display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid rgba(255,255,255,.06);
 }
-.heslb-logo{
-  width:62px;height:62px;flex-shrink:0;
-  background:#fff;border-radius:50%;
+.s-logo{
+  width:32px;height:32px;border-radius:6px;background:var(--primary);
   display:flex;align-items:center;justify-content:center;
-  border:3px solid #c8a800;
-  box-shadow:0 2px 8px rgba(0,0,0,.3);
+  font-weight:700;font-size:16px;color:#fff;
 }
-.heslb-logo img{width:54px;height:54px;object-fit:contain;}
-.heslb-logo-txt{
-  font-size:32px;font-weight:900;
-  color:#1a3a72;letter-spacing:-1px;
-}
-.header-text h1{
-  color:#fff;font-size:16px;font-weight:700;
-  letter-spacing:.3px;line-height:1.2;
-  text-transform:uppercase;
-}
-.header-text p{
-  color:#c8a800;font-size:11.5px;font-weight:400;
-  margin-top:3px;letter-spacing:.2px;
-}
-.header-right{
-  margin-left:auto;
-  display:flex;align-items:center;gap:10px;
-}
-.hdr-badge{
-  background:rgba(255,255,255,.1);
-  border:1px solid rgba(200,168,0,.4);
-  border-radius:4px;padding:5px 12px;
-  color:#fff;font-size:11px;font-weight:700;
-  letter-spacing:.3px;
-}
-.ai-online{
-  display:flex;align-items:center;gap:6px;
-  color:#4ade80;font-size:11px;font-weight:700;
-}
-.ai-dot{
-  width:8px;height:8px;border-radius:50%;
-  background:#4ade80;
-  box-shadow:0 0 0 0 rgba(74,222,128,.5);
-  animation:sonar 2s infinite;
-}
-@keyframes sonar{0%{box-shadow:0 0 0 0 rgba(74,222,128,.5);}70%{box-shadow:0 0 0 8px rgba(74,222,128,0);}100%{box-shadow:0 0 0 0 rgba(74,222,128,0);}}
-
-/* ── NAV MENU ────────────────────────────────────────────── */
-.heslb-nav{
-  background:#162f5e;
-  border-bottom:2px solid #0a1e3d;
-}
-.nav-inner{
-  max-width:1200px;margin:0 auto;
-  display:flex;gap:0;overflow-x:auto;
-  scrollbar-width:none;
-}
-.nav-inner::-webkit-scrollbar{display:none;}
-.nav-item{
-  padding:10px 16px;
-  color:rgba(255,255,255,.75);
-  font-size:12px;font-weight:600;
-  white-space:nowrap;cursor:pointer;
-  border-right:1px solid rgba(255,255,255,.07);
-  transition:background .12s,color .12s;
-  display:flex;align-items:center;gap:6px;
-  text-decoration:none;
-  touch-action:manipulation;
-  user-select:none;
-}
-.nav-item:hover,.nav-item:active{
-  background:rgba(255,255,255,.1);color:#fff;
-}
-.nav-item.active{
-  background:#c8a800;color:#fff;
-  border-bottom:2px solid #fff;
-}
-.nav-item i{font-size:11px;opacity:.8;}
-
-/* ── PAGE BODY ───────────────────────────────────────────── */
-.page-body{
-  max-width:1200px;margin:0 auto;
-  padding:16px 12px;
-  display:grid;
-  grid-template-columns:1fr 310px;
-  gap:14px;
-  min-height:calc(100vh - 130px);
-}
-@media(max-width:820px){
-  .page-body{grid-template-columns:1fr;}
-  .side-col{display:none;}
-}
-
-/* ── MAIN COLUMN ─────────────────────────────────────────── */
-.main-col{display:flex;flex-direction:column;gap:12px;}
-
-/* breadcrumb */
-.breadcrumb{
-  font-size:12px;color:#555;
-  display:flex;align-items:center;gap:6px;
-}
-.breadcrumb a{color:#1a5fb4;text-decoration:none;}
-.breadcrumb a:hover{text-decoration:underline;}
-.breadcrumb .sep{color:#999;}
-
-/* info box (Before You Apply style) */
-.info-box{
-  background:#fff;
-  border:1px solid #c8d8f0;
-  border-left:4px solid #1a5fb4;
-  border-radius:4px;
-  padding:12px 16px;
-  display:flex;align-items:flex-start;gap:10px;
-}
-.info-box i{color:#1a5fb4;font-size:16px;margin-top:1px;flex-shrink:0;}
-.info-box p{font-size:12.5px;color:#444;line-height:1.6;}
-.info-box strong{color:#1a3a72;}
-
-/* section card */
-.section-card{
-  background:#fff;
-  border:1px solid #d0d9e8;
-  border-radius:4px;
-  overflow:hidden;
-}
-.card-head{
-  background:linear-gradient(90deg,#1a3a72,#1a5296);
-  padding:10px 16px;
-  display:flex;align-items:center;gap:10px;
-}
-.card-head h2{
-  color:#fff;font-size:13.5px;font-weight:700;
-  letter-spacing:.2px;
-}
-.card-head .step-badge{
-  background:#c8a800;color:#fff;
-  border-radius:50%;width:22px;height:22px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:900;flex-shrink:0;
-}
-
-/* ── CHAT AREA (HESLB style) ─────────────────────────────── */
-.chat-area{
-  padding:0;
-  max-height:420px;overflow-y:auto;
-  scroll-behavior:smooth;
-}
-.chat-area::-webkit-scrollbar{width:5px;}
-.chat-area::-webkit-scrollbar-thumb{background:#c8d4e8;border-radius:3px;}
-
-/* AI guidance message */
-.msg-ai{
-  padding:14px 18px;
-  border-bottom:1px solid #edf1f7;
-  display:flex;gap:12px;
-  align-items:flex-start;
-  background:#f5f8ff;
-  animation:fadein .2s ease;
-}
-@keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
-.msg-ai-icon{
-  width:34px;height:34px;border-radius:50%;
-  background:linear-gradient(135deg,#1a3a72,#1a5fb4);
-  display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;
-  box-shadow:0 2px 6px rgba(26,58,114,.3);
-}
-.msg-ai-icon i{color:#fff;font-size:14px;}
-.msg-ai-body{flex:1;}
-.msg-ai-label{
-  font-size:10.5px;font-weight:700;color:#1a3a72;
-  text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;
-  display:flex;align-items:center;gap:6px;
-}
-.msg-ai-label .ts{color:#aaa;font-weight:400;font-size:10px;text-transform:none;letter-spacing:0;}
-.msg-ai-text{font-size:13px;color:#333;line-height:1.65;}
-
-/* user reply bubble */
-.msg-user{
-  padding:10px 18px 10px 66px;
-  border-bottom:1px solid #edf1f7;
-  background:#fff;
-  animation:fadein .2s ease;
-}
-.msg-user-label{font-size:10px;color:#888;margin-bottom:3px;}
-.msg-user-val{
-  display:inline-block;
-  background:#e8f0fe;border:1px solid #c5d8fa;
-  border-radius:4px;padding:5px 12px;
-  font-size:13px;color:#1a3a72;font-weight:600;
-}
-
-/* typing indicator */
-.typing-row{
-  padding:12px 18px;
-  display:flex;gap:12px;align-items:center;
-  background:#f5f8ff;border-bottom:1px solid #edf1f7;
-}
-.tdots{display:flex;gap:4px;}
-.tdots span{
-  width:7px;height:7px;border-radius:50%;
-  background:#1a5fb4;opacity:.4;
-  animation:td 1.2s ease-in-out infinite;
-}
-.tdots span:nth-child(2){animation-delay:.18s;}
-.tdots span:nth-child(3){animation-delay:.36s;}
-@keyframes td{0%,80%,100%{opacity:.25;transform:scale(.8);}40%{opacity:1;transform:scale(1.15);}}
-.typing-label{font-size:11.5px;color:#1a5fb4;font-style:italic;}
-
-/* streaming cursor */
-.cur{
-  display:inline-block;width:2px;height:14px;
-  background:#1a3a72;margin-left:2px;vertical-align:middle;
-  animation:cur .6s step-end infinite;
-}
-@keyframes cur{0%,100%{opacity:1;}50%{opacity:0;}}
-
-/* ── INPUT SECTION ───────────────────────────────────────── */
-.input-section{
-  padding:14px 16px;
-  border-top:2px solid #e0e8f5;
-  background:#f9fbfe;
-}
-.input-label{
-  font-size:11.5px;font-weight:700;color:#1a3a72;
-  text-transform:uppercase;letter-spacing:.4px;
-  margin-bottom:7px;display:flex;align-items:center;gap:6px;
-}
-.input-label i{color:#c8a800;font-size:11px;}
-.input-row{display:flex;gap:8px;align-items:flex-end;}
-.heslb-input{
-  flex:1;
-  border:1.5px solid #b0c4de;
-  border-radius:3px;
-  padding:9px 12px;
-  font-size:13.5px;font-family:Arial,sans-serif;
-  color:#222;background:#fff;
-  outline:none;resize:none;
-  max-height:100px;line-height:1.5;
-  transition:border-color .12s,box-shadow .12s;
-}
-.heslb-input:focus{
-  border-color:#1a5fb4;
-  box-shadow:0 0 0 3px rgba(26,95,180,.12);
-}
-.heslb-input::placeholder{color:#aaa;}
-.btn-send{
-  background:#1a5fb4;
-  border:none;border-radius:3px;
-  padding:9px 18px;cursor:pointer;
-  font-size:13px;font-weight:700;color:#fff;
-  font-family:Arial,sans-serif;
-  display:flex;align-items:center;gap:7px;
-  transition:background .12s;
-  white-space:nowrap;
-  touch-action:manipulation;
-  user-select:none;
-}
-.btn-send:hover,.btn-send:active{background:#1248a0;}
-.btn-send:disabled{background:#8daed4;cursor:not-allowed;}
-
-/* helper links */
-.helper-links{
-  margin-top:8px;display:flex;gap:16px;
-  font-size:11.5px;
-}
-.helper-links button{
-  background:none;border:none;
-  color:#1a5fb4;cursor:pointer;
-  font-family:Arial,sans-serif;font-size:11.5px;
-  text-decoration:underline;padding:0;
-  touch-action:manipulation;
-}
-.helper-links button:hover{color:#c8a800;}
-
-/* ── SIDE COLUMN ─────────────────────────────────────────── */
-.side-col{display:flex;flex-direction:column;gap:12px;}
-
-/* side card */
-.side-card{
-  background:#fff;border:1px solid #d0d9e8;border-radius:4px;overflow:hidden;
-}
-.side-card-head{
-  background:#1a3a72;padding:9px 14px;
-  color:#fff;font-size:12px;font-weight:700;
-  letter-spacing:.3px;text-transform:uppercase;
-  display:flex;align-items:center;gap:8px;
-}
-.side-card-head i{color:#c8a800;font-size:12px;}
-.side-card-body{padding:12px 14px;}
-
-/* progress ring area */
-.prog-row{
-  display:flex;align-items:center;gap:10px;margin-bottom:12px;
-}
-.prog-ring{position:relative;width:54px;height:54px;flex-shrink:0;}
-.prog-ring svg{transform:rotate(-90deg);}
-.prog-ring circle{fill:none;stroke-width:5;}
-.prog-bg{stroke:#e0e8f5;}
-.prog-fg{stroke:#1a5fb4;stroke-linecap:round;transition:stroke-dashoffset .5s ease;}
-.prog-pct{
-  position:absolute;inset:0;display:flex;
-  align-items:center;justify-content:center;
-  font-size:12px;font-weight:900;color:#1a3a72;
-}
-.prog-info{flex:1;}
-.prog-info .pi-lbl{font-size:11px;font-weight:700;color:#1a3a72;text-transform:uppercase;letter-spacing:.3px;}
-.prog-info .pi-sub{font-size:11px;color:#666;margin-top:2px;}
-
-/* data fields */
-.sec-lbl{
-  font-size:10px;font-weight:700;color:#fff;
-  text-transform:uppercase;letter-spacing:.6px;
-  background:#1a5fb4;padding:5px 10px;margin:8px -14px 7px;
-  display:flex;align-items:center;gap:5px;
-}
-.sec-lbl i{font-size:9px;color:#c8a800;}
-.drow{margin-bottom:6px;}
-.dlbl{font-size:10px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px;}
-.dval{
-  background:#f5f8fe;border:1px solid #c8d8f0;border-radius:3px;
-  padding:5px 9px;font-size:12px;color:#1a3a72;
-  display:flex;align-items:center;gap:5px;min-height:28px;
-  transition:border-color .1s;
-}
-.dval:has(input:focus){border-color:#1a5fb4;}
-.dval.empty{color:#aaa;font-style:italic;font-size:11px;}
-.dval input{
-  background:transparent;border:none;outline:none;
-  font-size:12px;font-family:Arial,sans-serif;color:#1a3a72;flex:1;min-width:0;
-}
-.dval .fedit{
-  background:none;border:none;color:#aaa;cursor:pointer;font-size:10px;padding:0;
-  transition:color .1s;flex-shrink:0;
-}
-.dval .fedit:hover{color:#1a5fb4;}
-
-/* confirm section */
-.cred-warn{
-  background:#fff8e1;border:1px solid #f0c040;border-radius:3px;
-  padding:9px 12px;font-size:11.5px;color:#7a5c00;
-  display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;
-  line-height:1.5;
-}
-.cred-warn i{color:#c8a800;margin-top:1px;flex-shrink:0;}
-.cred-input{
-  width:100%;border:1.5px solid #b0c4de;border-radius:3px;
-  padding:8px 11px;font-size:13px;font-family:Arial,sans-serif;
-  color:#222;background:#fff;outline:none;margin-bottom:7px;
-  transition:border-color .12s,box-shadow .12s;
-}
-.cred-input:focus{border-color:#1a5fb4;box-shadow:0 0 0 3px rgba(26,95,180,.12);}
-.cred-input::placeholder{color:#aaa;}
-.btn-heslb{
-  width:100%;padding:10px;
-  border:none;border-radius:3px;cursor:pointer;
-  font-size:13px;font-weight:700;font-family:Arial,sans-serif;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  transition:background .12s;
+.s-brand-text strong{display:block;font-size:14px;font-weight:600;color:#fff;line-height:1.2;}
+.s-brand-text small{font-size:10px;color:rgba(255,255,255,.45);}
+.s-section{padding:12px 0 4px;}
+.s-lbl{padding:6px 20px;font-size:10px;font-weight:600;letter-spacing:.8px;color:rgba(255,255,255,.28);text-transform:uppercase;}
+.s-item{
+  display:flex;align-items:center;gap:10px;padding:9px 20px;
+  color:rgba(255,255,255,.55);font-size:12.5px;font-weight:400;
+  cursor:pointer;text-decoration:none;
+  transition:background .1s,color .1s;border-left:3px solid transparent;
   touch-action:manipulation;user-select:none;
 }
-.btn-confirm-data{background:#2e7d32;color:#fff;}
-.btn-confirm-data:hover{background:#1b5e20;}
-.btn-confirm-data:disabled{background:#90a4ae;cursor:not-allowed;}
-.btn-launch-ai{background:#1a5fb4;color:#fff;}
-.btn-launch-ai:hover{background:#1248a0;}
-.btn-launch-ai:disabled{background:#90a4ae;cursor:not-allowed;}
-.cnote{font-size:10.5px;color:#888;text-align:center;margin-top:6px;line-height:1.4;}
+.s-item .material-icons{font-size:18px;flex-shrink:0;}
+.s-item:hover{color:rgba(255,255,255,.8);background:rgba(255,255,255,.05);}
+.s-item.active{color:#fff;background:rgba(255,255,255,.07);border-left-color:var(--primary);font-weight:500;}
 
-/* automation progress */
-.auto-wrap{padding:0;}
-.pbar-outer{
-  height:8px;background:#e0e8f5;border-radius:0;overflow:hidden;
+/* TOPBAR */
+.topbar{
+  position:fixed;top:0;left:var(--sidebar-w);right:0;height:60px;
+  background:var(--topbar-bg);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:12px;z-index:100;
+  box-shadow:0 2px 4px rgba(0,0,0,.03);
 }
-.pbar-inner{
-  height:100%;background:linear-gradient(90deg,#1a5fb4,#c8a800);
-  transition:width .4s ease;
+.tb-title{font-size:13px;font-weight:600;color:var(--dark);flex:1;}
+.tb-badge{
+  display:flex;align-items:center;gap:6px;background:#e8f5e9;
+  border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#2e7d32;
 }
-.auto-steps{padding:10px 14px;}
-.auto-step{
-  display:flex;align-items:center;gap:9px;
-  padding:5px 0;font-size:12px;color:#555;
-  border-bottom:1px solid #f0f0f0;
+.tb-dot{width:7px;height:7px;border-radius:50%;background:var(--success);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.tb-user{
+  display:flex;align-items:center;gap:7px;padding:4px 12px;
+  border-radius:20px;background:var(--body-bg);border:1px solid var(--border);
+  font-size:11.5px;font-weight:500;color:var(--text);
 }
-.auto-step:last-child{border-bottom:none;}
-.auto-step .si{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;}
-.si.done{background:#2e7d32;color:#fff;}
-.si.active{background:#1a5fb4;color:#fff;animation:pulse 1s infinite;}
-.si.wait{background:#e0e8f5;color:#aaa;}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(26,95,180,.4);}50%{box-shadow:0 0 0 5px rgba(26,95,180,0);}}
-.auto-shot-wrap{margin:8px 14px;border:1px solid #c8d8f0;border-radius:3px;overflow:hidden;}
-.auto-shot{width:100%;display:block;}
-.shot-lbl{background:#1a3a72;color:#fff;font-size:10px;padding:4px 8px;text-align:center;}
-.auto-err{
-  margin:8px 14px;background:#ffebee;border:1px solid #ef9a9a;
-  border-radius:3px;padding:9px 12px;font-size:11.5px;color:#b71c1c;line-height:1.4;
+.tb-user .material-icons{font-size:16px;color:var(--primary);}
+
+/* PAGE */
+.page{
+  margin-left:var(--sidebar-w);margin-top:60px;padding:20px;
+  min-height:calc(100vh - 60px);
+  display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;
+}
+@media(max-width:900px){
+  .sidebar,.side-col{display:none;}
+  .topbar{left:0;}
+  .page{margin-left:0;grid-template-columns:1fr;}
 }
 
-/* ── FOOTER ──────────────────────────────────────────────── */
-.heslb-footer{
-  background:#0f2a58;border-top:3px solid #c8a800;
-  padding:12px 18px;text-align:center;
-  color:rgba(255,255,255,.5);font-size:11px;
-  margin-top:16px;
+/* PAGE HEADER */
+.ph{margin-bottom:16px;grid-column:1/-1;}
+.ph h4{font-size:14px;font-weight:600;color:var(--dark);margin-bottom:4px;}
+.bc{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);}
+.bc a{color:var(--primary);text-decoration:none;}
+.bc a:hover{text-decoration:underline;}
+.bc .sep{color:var(--border);}
+
+/* ALERT */
+.alert{
+  padding:10px 14px;border-radius:4px;display:flex;align-items:flex-start;gap:10px;
+  font-size:12.5px;line-height:1.6;margin-bottom:4px;grid-column:1/-1;
 }
-.heslb-footer strong{color:#c8a800;}
+.alert-info{background:#e8f4fd;border:1px solid #b8d9f5;color:#1565c0;}
+.alert .material-icons{font-size:18px;flex-shrink:0;margin-top:1px;}
+
+/* CARD */
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:4px;box-shadow:0 .75rem 1.5rem rgba(18,38,63,.03);}
+.card-hd{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.card-hd h5{font-size:13px;font-weight:600;color:var(--dark);flex:1;}
+.card-hd .material-icons{font-size:18px;color:var(--primary);}
+.c-badge{background:rgba(85,110,230,.1);color:var(--primary);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;}
+
+/* MESSAGES */
+.chat-body{max-height:430px;overflow-y:auto;padding:4px 0;}
+.chat-body::-webkit-scrollbar{width:4px;}
+.chat-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.msg{padding:12px 18px;display:flex;gap:12px;align-items:flex-start;animation:mi .18s ease;}
+@keyframes mi{from{opacity:0;transform:translateY(3px);}to{opacity:1;}}
+
+.ai-av{
+  width:30px;height:30px;border-radius:50%;background:var(--primary);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  box-shadow:0 2px 6px rgba(85,110,230,.3);
+}
+.ai-av .material-icons{font-size:16px;color:#fff;}
+.ai-b{flex:1;}
+.ai-n{font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.ai-n .ts{color:var(--muted);font-weight:400;}
+.ai-txt{
+  font-size:12.5px;color:var(--text);line-height:1.7;
+  background:var(--body-bg);border:1px solid var(--border);
+  border-radius:0 8px 8px 8px;padding:10px 14px;
+  max-width:600px;display:inline-block;
+}
+
+.msg-u{padding:8px 18px 8px 60px;animation:mi .18s ease;}
+.msg-u-in{display:flex;flex-direction:column;align-items:flex-end;}
+.msg-u-n{font-size:10.5px;color:var(--muted);margin-bottom:3px;}
+.msg-u-b{
+  background:var(--primary);color:#fff;border-radius:8px 8px 0 8px;
+  padding:9px 14px;font-size:12.5px;line-height:1.6;
+  max-width:440px;display:inline-block;box-shadow:0 2px 8px rgba(85,110,230,.3);
+}
+
+.typing-row{display:flex;gap:10px;align-items:center;padding:2px 0;}
+.tdots{display:flex;gap:4px;}
+.tdots span{width:7px;height:7px;border-radius:50%;background:var(--primary);opacity:.3;animation:td 1.2s ease-in-out infinite;}
+.tdots span:nth-child(2){animation-delay:.16s;}
+.tdots span:nth-child(3){animation-delay:.32s;}
+@keyframes td{0%,80%,100%{opacity:.2;transform:scale(.85);}40%{opacity:1;transform:scale(1.15);}}
+.typing-lbl{font-size:11.5px;color:var(--muted);font-style:italic;}
+
+.cur{display:inline-block;width:2px;height:13px;background:var(--primary);margin-left:2px;vertical-align:middle;animation:cr .6s step-end infinite;}
+@keyframes cr{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* INPUT */
+.chat-ft{padding:14px 18px;border-top:1px solid var(--border);}
+.inp-lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.inp-row{display:flex;gap:8px;align-items:flex-end;}
+.chat-inp{
+  flex:1;border:1px solid #ced4da;border-radius:4px;padding:8px 12px;
+  font-size:13px;font-family:var(--font);color:var(--text);background:#fff;
+  outline:none;resize:none;max-height:100px;line-height:1.5;
+  transition:border-color .12s,box-shadow .12s;
+}
+.chat-inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(85,110,230,.15);}
+.chat-inp::placeholder{color:#adb5bd;}
+.btn-send{
+  background:var(--primary);border:1px solid var(--primary);border-radius:4px;
+  padding:8px 18px;cursor:pointer;font-size:12.5px;font-weight:600;color:#fff;
+  font-family:var(--font);display:flex;align-items:center;gap:6px;
+  transition:background .12s;white-space:nowrap;touch-action:manipulation;user-select:none;
+}
+.btn-send:hover,.btn-send:active{background:var(--primary-dark);border-color:var(--primary-dark);}
+.btn-send:disabled{background:#adb5bd;border-color:#adb5bd;cursor:not-allowed;}
+.btn-send .material-icons{font-size:16px;}
+.ft-links{margin-top:8px;display:flex;gap:16px;}
+.ft-links button{
+  background:none;border:none;color:var(--muted);cursor:pointer;
+  font-family:var(--font);font-size:11.5px;padding:0;text-decoration:underline;
+  touch-action:manipulation;
+}
+.ft-links button:hover{color:var(--primary);}
+
+/* SIDE COLUMN */
+.side-col{display:flex;flex-direction:column;gap:16px;}
+
+/* Progress */
+.prog-row{display:flex;align-items:center;gap:14px;padding:16px 18px;}
+.p-ring{position:relative;width:58px;height:58px;flex-shrink:0;}
+.p-ring svg{transform:rotate(-90deg);}
+.p-ring circle{fill:none;stroke-width:5;}
+.p-bg{stroke:var(--border);}
+.p-fg{stroke:var(--primary);stroke-linecap:round;transition:stroke-dashoffset .5s ease;}
+.p-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--primary);}
+.pi-lbl{font-size:13px;font-weight:600;color:var(--dark);}
+.pi-sub{font-size:11.5px;color:var(--muted);margin-top:2px;}
+
+/* Data fields */
+.sec-hd{
+  padding:8px 18px;background:var(--body-bg);
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  font-size:10.5px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;
+  display:flex;align-items:center;gap:6px;
+}
+.sec-hd .material-icons{font-size:14px;color:var(--primary);}
+.f-row{padding:6px 18px;border-bottom:1px solid var(--border);}
+.f-lbl{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;}
+.f-val{
+  font-size:12px;color:var(--dark);background:var(--body-bg);
+  border:1px solid var(--border);border-radius:4px;
+  padding:5px 9px;min-height:28px;display:flex;align-items:center;gap:4px;
+}
+.f-val.empty{color:var(--muted);font-style:italic;font-size:11px;}
+.f-val input{background:transparent;border:none;outline:none;font-size:12px;font-family:var(--font);color:var(--dark);flex:1;min-width:0;}
+.f-val .e-btn{background:none;border:none;color:#ced4da;cursor:pointer;padding:0;flex-shrink:0;transition:color .1s;}
+.f-val .e-btn:hover{color:var(--primary);}
+.f-empty{padding:18px;text-align:center;color:var(--muted);font-size:12px;}
+
+/* Action card */
+.btn-bl{
+  width:100%;padding:9px;border-radius:4px;cursor:pointer;
+  font-size:12.5px;font-weight:600;font-family:var(--font);
+  border:1px solid transparent;display:flex;align-items:center;justify-content:center;gap:7px;
+  touch-action:manipulation;user-select:none;transition:background .12s;
+}
+.btn-bl .material-icons{font-size:16px;}
+.btn-suc{background:var(--success);border-color:var(--success);color:#fff;}
+.btn-suc:hover{background:#2da47a;border-color:#2da47a;}
+.btn-suc:disabled{background:#adb5bd;border-color:#adb5bd;cursor:not-allowed;}
+.btn-pri{background:var(--primary);border-color:var(--primary);color:#fff;}
+.btn-pri:hover{background:var(--primary-dark);border-color:var(--primary-dark);}
+.btn-pri:disabled{background:#adb5bd;border-color:#adb5bd;cursor:not-allowed;}
+
+.cred-warn{
+  background:#fff8e1;border:1px solid #ffe082;border-radius:4px;
+  padding:10px 12px;font-size:12px;color:#795548;
+  display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;line-height:1.5;
+}
+.cred-warn .material-icons{font-size:16px;color:var(--warning);flex-shrink:0;margin-top:1px;}
+.fc{
+  width:100%;border:1px solid #ced4da;border-radius:4px;padding:7px 11px;
+  font-size:13px;font-family:var(--font);color:var(--text);background:#fff;
+  outline:none;margin-bottom:8px;transition:border-color .12s,box-shadow .12s;
+}
+.fc:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(85,110,230,.15);}
+.fc::placeholder{color:#adb5bd;}
+.ft{font-size:11px;color:var(--muted);text-align:center;margin-top:6px;line-height:1.4;}
+
+/* Automation */
+.pbar-w{padding:12px 18px 8px;}
+.pbar-l{font-size:11.5px;color:var(--muted);margin-bottom:5px;}
+.pbar-o{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.pbar-i{height:100%;background:var(--primary);border-radius:3px;transition:width .4s ease;}
+.a-step{
+  padding:8px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text);
+}
+.a-step:last-child{border-bottom:none;}
+.s-ic{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.s-ic.done{background:var(--success);color:#fff;}
+.s-ic.active{background:var(--primary);color:#fff;animation:pulse 1.2s infinite;}
+.s-ic.wait{background:var(--border);color:var(--muted);}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(85,110,230,.4);}50%{box-shadow:0 0 0 6px rgba(85,110,230,0);}}
+.shot-w{margin:10px 18px;border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+.shot-l{background:var(--body-bg);padding:5px 10px;font-size:10.5px;color:var(--muted);border-bottom:1px solid var(--border);}
+.shot-img{width:100%;display:block;}
+.a-err{margin:8px 18px;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:10px 12px;font-size:12px;color:#b91c1c;line-height:1.4;}
+
+/* FOOTER */
+.page-ft{
+  margin-left:var(--sidebar-w);background:#f2f2f5;
+  border-top:1px solid var(--border);
+  padding:12px 20px;text-align:center;font-size:11.5px;color:var(--muted);
+}
+.page-ft strong{color:var(--dark);}
+@media(max-width:900px){.page-ft{margin-left:0;}}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="heslb-header">
-  <div class="header-inner">
-    <div class="heslb-logo">
-      <span class="heslb-logo-txt">H</span>
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="s-brand">
+    <div class="s-logo">H</div>
+    <div class="s-brand-text">
+      <strong>HESLB OLAMS</strong>
+      <small>Online Loan Application</small>
     </div>
-    <div class="header-text">
-      <h1>Higher Education Students' Loans Board</h1>
-      <p>Online Loan Application and Management System &nbsp;·&nbsp; Powered by AI Assistant</p>
-    </div>
-    <div class="header-right">
-      <div class="hdr-badge">Tanzania 🇹🇿</div>
-      <div class="ai-online">
-        <span class="ai-dot"></span>AI Online
-      </div>
-    </div>
+  </div>
+  <div class="s-section">
+    <div class="s-lbl">Navigation</div>
+    <a class="s-item" href="#"><span class="material-icons">home</span>Home Page</a>
+    <a class="s-item active" href="#"><span class="material-icons">description</span>Apply for Loan</a>
+    <a class="s-item" href="#"><span class="material-icons">emoji_events</span>Apply for Scholarship</a>
+    <a class="s-item" href="#"><span class="material-icons">gavel</span>Click to Appeal</a>
+    <a class="s-item" href="#"><span class="material-icons">payment</span>Loan Repayment</a>
+  </div>
+  <div class="s-section">
+    <div class="s-lbl">Account</div>
+    <a class="s-item" href="#"><span class="material-icons">login</span>Login as Registered User</a>
+    <a class="s-item" href="#"><span class="material-icons">business</span>Employer Login</a>
   </div>
 </div>
 
-<!-- NAV -->
-<div class="heslb-nav">
-  <div class="nav-inner">
-    <a class="nav-item" href="#"><i class="fas fa-home"></i>Home Page</a>
-    <a class="nav-item active" href="#"><i class="fas fa-file-alt"></i>Apply for Loan</a>
-    <a class="nav-item" href="#"><i class="fas fa-award"></i>Apply for Scholarship</a>
-    <a class="nav-item" href="#"><i class="fas fa-gavel"></i>Click to Appeal</a>
-    <a class="nav-item" href="#"><i class="fas fa-credit-card"></i>Loan Repayment</a>
-    <a class="nav-item" href="#"><i class="fas fa-sign-in-alt"></i>Login as Registered User</a>
-  </div>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-title">AI Application Assistant — Msaada wa Maombi ya Mkopo</div>
+  <div class="tb-badge"><span class="tb-dot"></span>AI Online</div>
+  <div class="tb-user"><span class="material-icons">account_circle</span>Mwanafunzi</div>
 </div>
 
-<!-- PAGE BODY -->
-<div class="page-body">
+<!-- PAGE -->
+<div class="page">
+
+  <div class="ph">
+    <h4>Apply for Loan — AI Application Assistant</h4>
+    <div class="bc">
+      <a href="#">HESLB</a><span class="sep">›</span>
+      <a href="#">Apply for Loan</a><span class="sep">›</span>
+      <span>AI Assistant</span>
+    </div>
+  </div>
+
+  <div class="alert alert-info">
+    <span class="material-icons">info</span>
+    <div>
+      <strong>Kabla ya Kuanza:</strong>
+      Msaidizi wa AI atakusaidia kukusanya taarifa zako zote muhimu hatua kwa hatua kwa lugha ya Kiswahili.
+      Baada ya mazungumzo kukamilika, taarifa zako zitajazwa kwenye mfumo wa HESLB kiotomatiki.
+      Kwa msaada piga simu <strong>0736 665 533</strong> (Jumatatu–Ijumaa, 8:00–17:00).
+    </div>
+  </div>
 
   <!-- MAIN COLUMN -->
   <div class="main-col">
-
-    <!-- Breadcrumb -->
-    <div class="breadcrumb">
-      <a href="#">Home</a><span class="sep">›</span>
-      <a href="#">Apply for Loan</a><span class="sep">›</span>
-      <span>AI Application Assistant</span>
-    </div>
-
-    <!-- Info box -->
-    <div class="info-box">
-      <i class="fas fa-info-circle"></i>
-      <p>
-        <strong>Before You Apply:</strong>
-        Msaidizi wa AI atakusaidia kukusanya taarifa zote muhimu hatua kwa hatua kwa lugha ya Kiswahili.
-        Baada ya mazungumzo kukamilika, taarifa zako zitajazwa kwenye mfumo wa HESLB kiotomatiki.
-        <br>Need help? Call <strong>0736 665 533</strong> — Mon–Fri 8:00 AM–5:00 PM
-      </p>
-    </div>
-
-    <!-- Chat section card -->
-    <div class="section-card">
-      <div class="card-head">
-        <div class="step-badge">AI</div>
-        <h2>AI Application Assistant — Mazungumzo ya Maombi</h2>
+    <div class="card">
+      <div class="card-hd">
+        <span class="material-icons">smart_toy</span>
+        <h5>Mazungumzo ya Maombi — HESLB AI Assistant</h5>
+        <span class="c-badge">LIVE</span>
       </div>
 
-      <!-- Messages -->
-      <div class="chat-area" id="msgs">
-        <div class="msg-ai">
-          <div class="msg-ai-icon"><i class="fas fa-robot"></i></div>
-          <div class="msg-ai-body">
-            <div class="msg-ai-label">
-              HESLB Msaidizi &nbsp;<span class="ts" id="ts0"></span>
-            </div>
-            <div class="msg-ai-text">{{ opening_message|linebreaksbr }}</div>
+      <div class="chat-body" id="msgs">
+        <div class="msg">
+          <div class="ai-av"><span class="material-icons">smart_toy</span></div>
+          <div class="ai-b">
+            <div class="ai-n">HESLB AI Assistant <span class="ts" id="ts0"></span></div>
+            <div class="ai-txt">{{ opening_message|linebreaksbr }}</div>
           </div>
         </div>
       </div>
 
-      <!-- Input -->
-      <div class="input-section">
-        <div class="input-label">
-          <i class="fas fa-keyboard"></i>Jibu Lako
-        </div>
-        <div class="input-row">
-          <textarea class="heslb-input" id="inp"
-            placeholder="Andika jibu lako hapa na ubonyeze Endelea..."
-            rows="1"
-            onkeydown="onKey(event)"
-            oninput="grow(this)"></textarea>
+      <div class="chat-ft">
+        <div class="inp-lbl">Jibu Lako</div>
+        <div class="inp-row">
+          <textarea class="chat-inp" id="inp" rows="1"
+            placeholder="Andika jibu lako hapa..."
+            onkeydown="onKey(event)" oninput="grow(this)"></textarea>
           <button class="btn-send" id="sbtn" onclick="send()">
-            <i class="fas fa-paper-plane"></i>Endelea
+            <span class="material-icons">send</span>Endelea
           </button>
         </div>
-        <div class="helper-links">
-          <button onclick="loadDemo()"><i class="fas fa-flask"></i> Jaza Demo</button>
-          <button onclick="doRestart()"><i class="fas fa-rotate-left"></i> Anza Upya</button>
+        <div class="ft-links">
+          <button onclick="loadDemo()"><span class="material-icons" style="font-size:13px;vertical-align:middle;">science</span> Jaza Demo</button>
+          <button onclick="doRestart()"><span class="material-icons" style="font-size:13px;vertical-align:middle;">restart_alt</span> Anza Upya</button>
         </div>
       </div>
     </div>
-
   </div>
 
   <!-- SIDE COLUMN -->
   <div class="side-col">
 
-    <!-- Collected data card -->
-    <div class="side-card">
-      <div class="side-card-head">
-        <i class="fas fa-clipboard-list"></i>
-        Taarifa Zilizokusanywa
+    <div class="card">
+      <div class="card-hd">
+        <span class="material-icons">assignment</span>
+        <h5>Taarifa Zilizokusanywa</h5>
       </div>
-      <div class="side-card-body" id="dbody">
-
-        <!-- Progress ring -->
-        <div class="prog-row">
-          <div class="prog-ring">
-            <svg width="54" height="54" viewBox="0 0 54 54">
-              <circle class="prog-bg" cx="27" cy="27" r="22" stroke-dasharray="138.2" stroke-dashoffset="0"/>
-              <circle class="prog-fg" id="progFg" cx="27" cy="27" r="22"
-                stroke-dasharray="138.2" stroke-dashoffset="138.2"/>
-            </svg>
-            <div class="prog-pct" id="progPct">0%</div>
-          </div>
-          <div class="prog-info">
-            <div class="pi-lbl">Maendeleo</div>
-            <div class="pi-sub" id="progSub">0 / 30 sehemu</div>
-          </div>
+      <div class="prog-row">
+        <div class="p-ring">
+          <svg width="58" height="58" viewBox="0 0 58 58">
+            <circle class="p-bg" cx="29" cy="29" r="24" stroke-dasharray="150.8" stroke-dashoffset="0"/>
+            <circle class="p-fg" id="progFg" cx="29" cy="29" r="24"
+              stroke-dasharray="150.8" stroke-dashoffset="150.8"/>
+          </svg>
+          <div class="p-pct" id="progPct">0%</div>
         </div>
-
-        <div id="dataFields">
-          <p style="font-size:12px;color:#aaa;text-align:center;padding:10px 0;">
-            Taarifa zako zitaonekana hapa unapoendelea na mazungumzo.
-          </p>
+        <div>
+          <div class="pi-lbl" id="progSub">0 / 30 Taarifa</div>
+          <div class="pi-sub">Ukusanyaji unaendelea...</div>
         </div>
-
+      </div>
+      <div id="dataFields">
+        <div class="f-empty">Taarifa zako zitaonekana hapa unapoendelea na mazungumzo.</div>
       </div>
     </div>
 
-    <!-- Confirm card (hidden until preview) -->
-    <div class="side-card" id="confirmCard" style="display:none;">
-      <div class="side-card-head"><i class="fas fa-check-circle"></i>Hatua ya Mwisho</div>
-      <div class="side-card-body">
+    <div class="card" id="actionCard" style="display:none;">
+      <div class="card-hd">
+        <span class="material-icons">rocket_launch</span>
+        <h5>Hatua ya Mwisho</h5>
+      </div>
 
-        <!-- Step A: Confirm data -->
-        <div id="stepA">
-          <button class="btn-heslb btn-confirm-data" id="cfmbtn" onclick="doConfirm()">
-            <i class="fas fa-check"></i>THIBITISHA TAARIFA ZOTE
-          </button>
-          <div class="cnote">Kagua taarifa zote upande wa juu kabla ya kuthibitisha</div>
+      <div id="stepA" style="padding:14px 18px;">
+        <button class="btn-bl btn-suc" id="cfmbtn" onclick="doConfirm()">
+          <span class="material-icons">check_circle</span>THIBITISHA TAARIFA ZOTE
+        </button>
+        <p class="ft">Kagua taarifa zote hapo juu kabla ya kuthibitisha.</p>
+      </div>
+
+      <div id="stepB" style="display:none;padding:14px 18px;">
+        <div class="cred-warn">
+          <span class="material-icons">security</span>
+          Nywila yako haitahifadhiwa kamwe. Inatumika mara moja tu kuingia HESLB kwa niaba yako.
         </div>
+        <input class="fc" type="email" id="hEmail" placeholder="Barua pepe ya akaunti yako ya HESLB">
+        <input class="fc" type="password" id="hPass" placeholder="Nywila ya HESLB">
+        <button class="btn-bl btn-pri" id="gobtn" onclick="startAuto()">
+          <span class="material-icons">smart_toy</span>ANZISHA AI KUJAZA HESLB
+        </button>
+        <p class="ft">AI itaingia HESLB na kukujazia ombi lako kiotomatiki</p>
+      </div>
 
-        <!-- Step B: HESLB credentials -->
-        <div id="stepB" style="display:none;">
-          <div class="cred-warn">
-            <i class="fas fa-shield-halved"></i>
-            Nywila yako haitahifadhiwa. Inatumika mara moja tu kuingia HESLB kwa niaba yako.
-          </div>
-          <input class="cred-input" type="email" id="hEmail" placeholder="Barua pepe ya akaunti yako ya HESLB">
-          <input class="cred-input" type="password" id="hPass" placeholder="Nywila ya HESLB">
-          <button class="btn-heslb btn-launch-ai" id="gobtn" onclick="startAuto()">
-            <i class="fas fa-robot"></i>ANZISHA AI KUJAZA HESLB
-          </button>
-          <div class="cnote">AI itaingia HESLB na kukujazia ombi lako kiotomatiki</div>
+      <div id="stepC" style="display:none;">
+        <div class="pbar-w">
+          <div class="pbar-l" id="autoMsg">Inaanzisha...</div>
+          <div class="pbar-o"><div class="pbar-i" id="autoBar" style="width:0%"></div></div>
         </div>
-
-        <!-- Step C: Live automation -->
-        <div id="stepC" style="display:none;">
-          <div class="pbar-outer"><div class="pbar-inner" id="autoBar" style="width:0%"></div></div>
-          <div class="auto-steps" id="autoSteps">
-            <div class="auto-step" id="as1"><div class="si wait">1</div>Inafungua HESLB</div>
-            <div class="auto-step" id="as2"><div class="si wait">2</div>Inaingia akaunti</div>
-            <div class="auto-step" id="as3"><div class="si wait">3</div>Inaelekea maombi</div>
-            <div class="auto-step" id="as4"><div class="si wait">4</div>Inachagua NECTA</div>
-            <div class="auto-step" id="as5"><div class="si wait">5</div>Inajaza index ya O-Level</div>
-            <div class="auto-step" id="as6"><div class="si wait">6</div>Inajaza taarifa za ziada</div>
-            <div class="auto-step" id="as7"><div class="si wait">7</div>Muhtasari wa fomu</div>
-          </div>
-          <div class="auto-shot-wrap" id="autoShotWrap" style="display:none;">
-            <img id="autoShot" src="" alt="Screenshot" class="auto-shot">
-            <div class="shot-lbl" id="shotLbl"></div>
-          </div>
-          <div class="auto-err" id="autoErr" style="display:none;"></div>
+        <div id="autoSteps">
+          <div class="a-step" id="as1"><div class="s-ic wait">1</div>Inafungua HESLB</div>
+          <div class="a-step" id="as2"><div class="s-ic wait">2</div>Inaingia akaunti</div>
+          <div class="a-step" id="as3"><div class="s-ic wait">3</div>Inaelekea maombi</div>
+          <div class="a-step" id="as4"><div class="s-ic wait">4</div>Inachagua NECTA</div>
+          <div class="a-step" id="as5"><div class="s-ic wait">5</div>Inajaza index ya O-Level</div>
+          <div class="a-step" id="as6"><div class="s-ic wait">6</div>Inajaza taarifa za ziada</div>
+          <div class="a-step" id="as7"><div class="s-ic wait">7</div>Muhtasari wa fomu</div>
         </div>
-
+        <div class="shot-w" id="shotWrap" style="display:none;">
+          <div class="shot-l" id="shotLbl"></div>
+          <img id="shotImg" src="" class="shot-img">
+        </div>
+        <div class="a-err" id="autoErr" style="display:none;"></div>
       </div>
     </div>
 
   </div>
 </div>
 
-<!-- FOOTER -->
-<div class="heslb-footer">
-  <strong>Higher Education Students' Loans Board (HESLB)</strong> &nbsp;·&nbsp;
-  P.O. Box 76068, Dar es Salaam, Tanzania &nbsp;·&nbsp;
-  Tel: 0736 665 533 &nbsp;·&nbsp;
-  AI-Powered Application Assistant
+<div class="page-ft">
+  <strong>Higher Education Students' Loans Board (HESLB)</strong> &nbsp;|&nbsp;
+  P.O. Box 76068, Dar es Salaam &nbsp;|&nbsp; Tel: 0736 665 533 &nbsp;|&nbsp;
+  AI Application Assistant v2.0
 </div>
 
 <script>
@@ -638,195 +467,153 @@ const CONFIRM_URL = '{% url "app_confirm" %}';
 const AUTO_URL    = '{% url "app_start_auto" %}';
 const STATUS_URL  = '{% url "app_auto_status" %}';
 const CSRF        = '{{ csrf_token }}';
-const CIRC        = 2 * Math.PI * 22; // svg circumference
+const CIRC        = 2 * Math.PI * 24;
 
 const SECS = [
-  {l:'Taarifa za Kibinafsi',       ic:'fa-user', fs:[
-    {k:'jina_kamili',l:'Jina Kamili'},
-    {k:'tarehe_kuzaliwa',l:'Tarehe ya Kuzaliwa'},
-    {k:'jinsia',l:'Jinsia'},
-    {k:'namba_nida',l:'Namba ya NIDA'},
-    {k:'namba_simu',l:'Namba ya Simu'},
-    {k:'barua_pepe',l:'Barua Pepe'},
-    {k:'mkoa_asili',l:'Mkoa wa Asili'},
-    {k:'wilaya_asili',l:'Wilaya'},
+  {l:'Taarifa za Kibinafsi',ic:'person',fs:[
+    {k:'jina_kamili',l:'Jina Kamili'},{k:'tarehe_kuzaliwa',l:'Tarehe ya Kuzaliwa'},
+    {k:'jinsia',l:'Jinsia'},{k:'namba_nida',l:'Namba ya NIDA'},
+    {k:'namba_simu',l:'Namba ya Simu'},{k:'barua_pepe',l:'Barua Pepe'},
+    {k:'mkoa_asili',l:'Mkoa wa Asili'},{k:'wilaya_asili',l:'Wilaya'},
   ]},
-  {l:'Taarifa za HESLB',           ic:'fa-file-contract', fs:[
+  {l:'Taarifa za HESLB',ic:'article',fs:[
     {k:'mahali_kuzaliwa',l:'Mahali pa Kuzaliwa'},
-    {k:'aina_ya_elimu',l:'Aina ya Elimu'},
-    {k:'rita_namba',l:'Namba ya RITA'},
+    {k:'aina_ya_elimu',l:'Aina ya Elimu'},{k:'rita_namba',l:'Namba ya RITA'},
   ]},
-  {l:'O-Level (Kidato cha Nne)',   ic:'fa-graduation-cap', fs:[
-    {k:'necta_olevel_aina',l:'Aina (S/P)'},
-    {k:'necta_olevel_shule',l:'Namba ya Shule'},
+  {l:'O-Level (Form Four)',ic:'school',fs:[
+    {k:'necta_olevel_aina',l:'Aina (S/P)'},{k:'necta_olevel_shule',l:'Namba ya Shule'},
     {k:'necta_olevel_mtahiniwa',l:'Namba ya Mtahiniwa'},
-    {k:'mwaka_olevel',l:'Mwaka'},
-    {k:'daraja_olevel',l:'Daraja'},
+    {k:'mwaka_olevel',l:'Mwaka'},{k:'daraja_olevel',l:'Daraja'},
   ]},
-  {l:'A-Level (Kidato cha Sita)',  ic:'fa-award', fs:[
-    {k:'necta_alevel_aina',l:'Aina (S/P)'},
-    {k:'necta_alevel_shule',l:'Namba ya Shule'},
+  {l:'A-Level (Form Six)',ic:'military_tech',fs:[
+    {k:'necta_alevel_aina',l:'Aina (S/P)'},{k:'necta_alevel_shule',l:'Namba ya Shule'},
     {k:'necta_alevel_mtahiniwa',l:'Namba ya Mtahiniwa'},
-    {k:'mwaka_alevel',l:'Mwaka'},
-    {k:'masomo_alama',l:'Masomo na Alama'},
+    {k:'mwaka_alevel',l:'Mwaka'},{k:'masomo_alama',l:'Masomo na Alama'},
     {k:'gpa_alevel',l:'GPA'},
   ]},
-  {l:'Chaguo za Programu (TCU)',   ic:'fa-university', fs:[
-    {k:'chuo_1',l:'Chuo cha 1'},
-    {k:'chuo_2',l:'Chuo cha 2'},
-    {k:'chuo_3',l:'Chuo cha 3'},
+  {l:'Chaguo za Programu (TCU)',ic:'account_balance',fs:[
+    {k:'chuo_1',l:'Chuo cha 1'},{k:'chuo_2',l:'Chuo cha 2'},{k:'chuo_3',l:'Chuo cha 3'},
   ]},
-  {l:'Taarifa za Familia',         ic:'fa-people-roof', fs:[
-    {k:'jina_baba',l:'Jina la Baba'},
-    {k:'jina_mama',l:'Jina la Mama'},
-    {k:'mlezi',l:'Mlezi / Guardian'},
-    {k:'mapato_familia',l:'Mapato (Tsh/mwezi)'},
+  {l:'Taarifa za Familia',ic:'people',fs:[
+    {k:'jina_baba',l:'Jina la Baba'},{k:'jina_mama',l:'Jina la Mama'},
+    {k:'mlezi',l:'Mlezi / Guardian'},{k:'mapato_familia',l:'Mapato (Tsh/mwezi)'},
     {k:'idadi_ndugu',l:'Idadi ya Ndugu'},
   ]},
 ];
-const TOTAL = 30;
-
-let appData={}, appStatus='collecting', busy=false, pollTimer=null;
+const TOTAL=30;
+let appData={},appStatus='collecting',busy=false,pollTimer=null;
 document.getElementById('ts0').textContent=nt();
 
 function nt(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
 function grow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
 function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function scrollDown(){const w=document.getElementById('msgs');w.scrollTop=w.scrollHeight;}
 
-/* ── SEND ────────────────────────────────────────────────── */
 async function send(){
   if(busy||appStatus==='done') return;
   const inp=document.getElementById('inp');
-  const msg=inp.value.trim();
-  if(!msg) return;
-
-  // Show user reply instantly
-  addUserMsg(msg);
-  inp.value='';inp.style.height='auto';
-  busy=true;
-  document.getElementById('sbtn').disabled=true;
-
-  // Create streaming AI bubble
-  const aiDiv=mkAiBubble();
-
+  const msg=inp.value.trim();if(!msg) return;
+  addUserMsg(msg);inp.value='';inp.style.height='auto';
+  busy=true;document.getElementById('sbtn').disabled=true;
+  const bub=mkAiBubble();
   try{
-    const fd=new FormData();
-    fd.append('message',msg);fd.append('csrfmiddlewaretoken',CSRF);
+    const fd=new FormData();fd.append('message',msg);fd.append('csrfmiddlewaretoken',CSRF);
     const resp=await fetch(STREAM_URL,{method:'POST',body:fd});
-    if(!resp.ok||!resp.body){aiDiv.innerHTML='Hitilafu ya mtandao.';return;}
-
-    const reader=resp.body.getReader();
-    const dec=new TextDecoder();
+    if(!resp.ok||!resp.body){bub.innerHTML='Hitilafu ya mtandao.';return;}
+    const reader=resp.body.getReader();const dec=new TextDecoder();
     let buf='',txt='';
-
     while(true){
-      const {done,value}=await reader.read();
-      if(done) break;
+      const {done,value}=await reader.read();if(done) break;
       buf+=dec.decode(value,{stream:true});
       const parts=buf.split('\n\n');buf=parts.pop();
-      for(const part of parts){
-        if(!part.startsWith('data: ')) continue;
-        let ev;try{ev=JSON.parse(part.slice(6));}catch{continue;}
-        if(ev.t){
-          txt+=ev.t;
-          aiDiv.innerHTML=esc(txt).replace(/\n/g,'<br>')+'<span class="cur"></span>';
-          scrollDown();
-        }
-        if(ev.error) aiDiv.innerHTML='<span style="color:#c62828;">'+esc(ev.error)+'</span>';
+      for(const p of parts){
+        if(!p.startsWith('data: ')) continue;
+        let ev;try{ev=JSON.parse(p.slice(6));}catch{continue;}
+        if(ev.t){txt+=ev.t;bub.innerHTML=esc(txt).replace(/\n/g,'<br>')+'<span class="cur"></span>';scrollDown();}
+        if(ev.error) bub.innerHTML='<span style="color:var(--danger)">'+esc(ev.error)+'</span>';
         if(ev.done){
-          aiDiv.innerHTML=esc(txt).replace(/\n/g,'<br>');
+          bub.innerHTML=esc(txt).replace(/\n/g,'<br>');
           if(ev.data){appData=ev.data;appStatus='preview';renderPanel();}
           else appStatus=ev.status||'collecting';
         }
       }
     }
-  }catch(e){aiDiv.innerHTML='Hitilafu ya mtandao. Tafadhali jaribu tena.';}
-  finally{busy=false;document.getElementById('sbtn').disabled=false;inp.focus();}
+  }catch(e){bub.innerHTML='Hitilafu ya mtandao. Tafadhali jaribu tena.';}
+  finally{busy=false;document.getElementById('sbtn').disabled=false;document.getElementById('inp').focus();}
 }
 
-/* ── MSG HELPERS ─────────────────────────────────────────── */
 function addUserMsg(text){
-  const wrap=document.getElementById('msgs');
-  const el=document.createElement('div');
-  el.className='msg-user';
-  el.innerHTML=`<div class="msg-user-label">Wewe · ${nt()}</div>
-    <div class="msg-user-val">${esc(text)}</div>`;
-  wrap.appendChild(el);
-  scrollDown();
+  const el=document.createElement('div');el.className='msg-u';
+  el.innerHTML=`<div class="msg-u-in">
+    <div class="msg-u-n">Wewe · ${nt()}</div>
+    <div class="msg-u-b">${esc(text)}</div>
+  </div>`;
+  document.getElementById('msgs').appendChild(el);scrollDown();
 }
 
 function mkAiBubble(){
-  const wrap=document.getElementById('msgs');
-  const el=document.createElement('div');
-  el.className='msg-ai';
-  el.innerHTML=`
-    <div class="msg-ai-icon"><i class="fas fa-robot"></i></div>
-    <div class="msg-ai-body">
-      <div class="msg-ai-label">HESLB Msaidizi <span class="ts">${nt()}</span></div>
-      <div class="msg-ai-text" id="streamBub">
-        <div class="typing-row" style="padding:0;border:none;background:transparent;">
-          <div class="tdots"><span></span><span></span><span></span></div>
-          <span class="typing-label">Msaidizi anaandika...</span>
-        </div>
+  const el=document.createElement('div');el.className='msg';
+  el.innerHTML=`<div class="ai-av"><span class="material-icons">smart_toy</span></div>
+  <div class="ai-b">
+    <div class="ai-n">HESLB AI Assistant <span class="ts">${nt()}</span></div>
+    <div class="ai-txt" id="streamBub">
+      <div class="typing-row">
+        <div class="tdots"><span></span><span></span><span></span></div>
+        <span class="typing-lbl">Msaidizi anaandika...</span>
       </div>
-    </div>`;
-  wrap.appendChild(el);
-  scrollDown();
+    </div>
+  </div>`;
+  document.getElementById('msgs').appendChild(el);scrollDown();
   return el.querySelector('#streamBub');
 }
 
-function scrollDown(){const w=document.getElementById('msgs');w.scrollTop=w.scrollHeight;}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function addAiMsg(text){
+  const el=document.createElement('div');el.className='msg';
+  el.innerHTML=`<div class="ai-av"><span class="material-icons">smart_toy</span></div>
+  <div class="ai-b">
+    <div class="ai-n">HESLB AI Assistant <span class="ts">${nt()}</span></div>
+    <div class="ai-txt">${esc(text).replace(/\n/g,'<br>')}</div>
+  </div>`;
+  document.getElementById('msgs').appendChild(el);scrollDown();
+}
 
-/* ── PANEL ───────────────────────────────────────────────── */
 function renderPanel(){
   const filled=Object.values(appData).filter(v=>v&&v!=='').length;
   const pct=Math.min(100,Math.round((filled/TOTAL)*100));
-
-  // Ring
-  const offset=CIRC-(pct/100)*CIRC;
-  document.getElementById('progFg').style.strokeDashoffset=offset;
+  document.getElementById('progFg').style.strokeDashoffset=CIRC-(pct/100)*CIRC;
   document.getElementById('progPct').textContent=pct+'%';
-  document.getElementById('progSub').textContent=filled+' / '+TOTAL+' sehemu';
-
-  // Fields
+  document.getElementById('progSub').textContent=filled+' / '+TOTAL+' Taarifa';
   let h='';
   for(const sec of SECS){
     if(!sec.fs.some(f=>appData[f.k])) continue;
-    h+=`<div class="sec-lbl"><i class="fas ${sec.ic}"></i>${sec.l}</div>`;
+    h+=`<div class="sec-hd"><span class="material-icons">${sec.ic}</span>${sec.l}</div>`;
     for(const f of sec.fs){
       const v=appData[f.k]||'';
-      h+=`<div class="drow">
-        <div class="dlbl">${f.l}</div>
-        <div class="dval ${v?'':'empty'}">${
-          v?`<input type="text" value="${esc(v)}" id="fi_${f.k}"
+      h+=`<div class="f-row"><div class="f-lbl">${f.l}</div>
+        <div class="f-val ${v?'':'empty'}">${v
+          ?`<input type="text" value="${esc(v)}" id="fi_${f.k}"
                onblur="saveF('${f.k}',this.value)"
                onkeydown="if(event.key==='Enter')this.blur()">
-             <button class="fedit" onclick="document.getElementById('fi_${f.k}').focus()"><i class="fas fa-pen"></i></button>`
-            :'Haijajazwa...'
-        }</div>
-      </div>`;
+             <button class="e-btn" onclick="document.getElementById('fi_${f.k}').focus()">
+               <span class="material-icons" style="font-size:13px;">edit</span>
+             </button>`:'—'
+        }</div></div>`;
     }
   }
-  document.getElementById('dataFields').innerHTML=h;
-
-  // Show confirm card
-  if(appStatus==='preview'){
-    document.getElementById('confirmCard').style.display='block';
-  }
+  document.getElementById('dataFields').innerHTML=h||'<div class="f-empty">Taarifa zako zitaonekana hapa.</div>';
+  if(appStatus==='preview') document.getElementById('actionCard').style.display='block';
 }
 
 async function saveF(field,value){
   appData[field]=value;
-  const fd=new FormData();
-  fd.append('field',field);fd.append('value',value);fd.append('csrfmiddlewaretoken',CSRF);
+  const fd=new FormData();fd.append('field',field);fd.append('value',value);fd.append('csrfmiddlewaretoken',CSRF);
   await fetch(EDIT_URL,{method:'POST',body:fd});
 }
 
-/* ── CONFIRM ─────────────────────────────────────────────── */
 async function doConfirm(){
   const btn=document.getElementById('cfmbtn');
-  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>&nbsp;Inathibitisha...';
+  btn.disabled=true;btn.innerHTML='<span class="material-icons" style="animation:spin .8s linear infinite">autorenew</span>&nbsp;Inathibitisha...';
   try{
     const fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF);
     const r=await fetch(CONFIRM_URL,{method:'POST',body:fd});
@@ -834,18 +621,17 @@ async function doConfirm(){
     if(d.status==='confirmed'){
       document.getElementById('stepA').style.display='none';
       document.getElementById('stepB').style.display='block';
-      addAiMsg('✅ Taarifa zimethibitishwa. Sasa weka nywila yako ya HESLB (haitahifadhiwa) ili AI iingie mfumo na kukujazia ombi lako moja kwa moja.');
+      addAiMsg('✅ Taarifa zimethibitishwa. Sasa weka barua pepe na nywila yako ya HESLB. Haitahifadhiwa — itatumika mara moja tu kwa niaba yako.');
     }
-  }catch(e){btn.disabled=false;btn.innerHTML='<i class="fas fa-check"></i>THIBITISHA TAARIFA ZOTE';}
+  }catch(e){btn.disabled=false;btn.innerHTML='<span class="material-icons">check_circle</span> THIBITISHA TAARIFA ZOTE';}
 }
 
-/* ── AUTOMATION ──────────────────────────────────────────── */
 async function startAuto(){
   const email=document.getElementById('hEmail').value.trim();
   const pass=document.getElementById('hPass').value.trim();
   if(!email||!pass){addAiMsg('Tafadhali weka barua pepe na nywila yako ya HESLB.');return;}
   const btn=document.getElementById('gobtn');
-  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>&nbsp;Inaanzisha...';
+  btn.disabled=true;btn.innerHTML='<span class="material-icons" style="animation:spin .8s linear infinite">autorenew</span>&nbsp;Inaanzisha...';
   try{
     const fd=new FormData();
     fd.append('heslb_email',email);fd.append('heslb_password',pass);fd.append('csrfmiddlewaretoken',CSRF);
@@ -855,34 +641,30 @@ async function startAuto(){
       document.getElementById('stepB').style.display='none';
       document.getElementById('stepC').style.display='block';
       addAiMsg('🤖 AI imeanza kujaza fomu ya HESLB kwa niaba yako. Fuatilia maendeleo upande wa kulia...');
-      startPolling();
-    } else {
+      pollTimer=setInterval(pollStatus,3000);
+    }else{
       addAiMsg('Hitilafu: '+(d.error||'Jaribu tena.'));
-      btn.disabled=false;btn.innerHTML='<i class="fas fa-robot"></i>ANZISHA AI KUJAZA HESLB';
+      btn.disabled=false;btn.innerHTML='<span class="material-icons">smart_toy</span> ANZISHA AI KUJAZA HESLB';
     }
-  }catch(e){addAiMsg('Hitilafu ya mtandao. Jaribu tena.');btn.disabled=false;btn.innerHTML='<i class="fas fa-robot"></i>ANZISHA AI KUJAZA HESLB';}
+  }catch(e){addAiMsg('Hitilafu ya mtandao. Jaribu tena.');btn.disabled=false;btn.innerHTML='<span class="material-icons">smart_toy</span> ANZISHA AI KUJAZA HESLB';}
 }
-
-function startPolling(){pollTimer=setInterval(pollStatus,3000);}
 
 async function pollStatus(){
   try{
-    const r=await fetch(STATUS_URL);
-    const d=await r.json();
+    const r=await fetch(STATUS_URL);const d=await r.json();
     const pct=Math.min(100,Math.round((d.step/7)*100));
     document.getElementById('autoBar').style.width=pct+'%';
-    // Update steps
+    document.getElementById('autoMsg').textContent=d.msg||'Inaendelea...';
     for(let i=1;i<=7;i++){
-      const el=document.getElementById('as'+i);
-      if(!el) continue;
-      const si=el.querySelector('.si');
-      if(i<d.step){si.className='si done';si.innerHTML='<i class="fas fa-check"></i>';}
-      else if(i===d.step){si.className='si active';si.innerHTML=i;}
-      else{si.className='si wait';si.innerHTML=i;}
+      const el=document.getElementById('as'+i);if(!el) continue;
+      const si=el.querySelector('.s-ic');
+      if(i<d.step){si.className='s-ic done';si.innerHTML='<span class="material-icons" style="font-size:14px;">check</span>';}
+      else if(i===d.step){si.className='s-ic active';si.textContent=i;}
+      else{si.className='s-ic wait';si.textContent=i;}
     }
     if(d.screenshot){
-      document.getElementById('autoShotWrap').style.display='block';
-      document.getElementById('autoShot').src='data:image/png;base64,'+d.screenshot.img;
+      document.getElementById('shotWrap').style.display='block';
+      document.getElementById('shotImg').src='data:image/png;base64,'+d.screenshot.img;
       document.getElementById('shotLbl').textContent=d.screenshot.label;
     }
     if(d.error){
@@ -891,40 +673,24 @@ async function pollStatus(){
       clearInterval(pollTimer);addAiMsg('❌ Hitilafu imetokea: '+d.error);
     }
     if(d.done){
-      clearInterval(pollTimer);
-      document.getElementById('autoBar').style.width='100%';
-      addAiMsg('✅ AI imekamilisha kujaza fomu ya HESLB! Angalia picha ya hali ya fomu upande wa kulia. Fomu bado haijatumwa — kagua kila kitu kwanza.');
+      clearInterval(pollTimer);document.getElementById('autoBar').style.width='100%';
+      addAiMsg('✅ AI imekamilisha kujaza fomu ya HESLB! Angalia picha upande wa kulia. Fomu bado haijatumwa — kagua kila kitu kwanza.');
     }
   }catch(e){}
 }
 
-function addAiMsg(text){
-  const wrap=document.getElementById('msgs');
-  const el=document.createElement('div');
-  el.className='msg-ai';
-  el.innerHTML=`
-    <div class="msg-ai-icon"><i class="fas fa-robot"></i></div>
-    <div class="msg-ai-body">
-      <div class="msg-ai-label">HESLB Msaidizi <span class="ts">${nt()}</span></div>
-      <div class="msg-ai-text">${esc(text).replace(/\n/g,'<br>')}</div>
-    </div>`;
-  wrap.appendChild(el);scrollDown();
-}
-
-/* ── DEMO ────────────────────────────────────────────────── */
 function loadDemo(){
   appData={
     jina_kamili:'Haji Hamisi Huseni',tarehe_kuzaliwa:'05/06/2001',
     jinsia:'Kiume',namba_nida:'20010605411190000125',
     namba_simu:'0625607088',barua_pepe:'huseinhaj09@gmail.com',
     mkoa_asili:'Dodoma',wilaya_asili:'Chemba',
-    mahali_kuzaliwa:'Mainland (Tanzania Bara)',
-    aina_ya_elimu:'Bachelor Degree',rita_namba:'2342',
-    necta_olevel_aina:'S',necta_olevel_shule:'2895',
-    necta_olevel_mtahiniwa:'0030',mwaka_olevel:'2018',daraja_olevel:'Division II',
-    necta_alevel_aina:'S',necta_alevel_shule:'2895',
-    necta_alevel_mtahiniwa:'0030',mwaka_alevel:'2020',
-    masomo_alama:'Physics B, Chemistry C, Mathematics B',gpa_alevel:'3.2',
+    mahali_kuzaliwa:'Mainland (Tanzania Bara)',aina_ya_elimu:'Bachelor Degree',
+    rita_namba:'2342',
+    necta_olevel_aina:'S',necta_olevel_shule:'2895',necta_olevel_mtahiniwa:'0030',
+    mwaka_olevel:'2018',daraja_olevel:'Division II',
+    necta_alevel_aina:'S',necta_alevel_shule:'2895',necta_alevel_mtahiniwa:'0030',
+    mwaka_alevel:'2020',masomo_alama:'Physics B, Chemistry C, Mathematics B',gpa_alevel:'3.2',
     chuo_1:'University of Dar es Salaam — BSc Computer Science',
     chuo_2:'Ardhi University — BSc Information Technology',
     chuo_3:'University of Dodoma — BSc Computer Science',
@@ -932,16 +698,14 @@ function loadDemo(){
     mlezi:'Sina',mapato_familia:'150,000',idadi_ndugu:'5',
   };
   appStatus='preview';renderPanel();
-  addAiMsg('✅ Demo imepakiwa! Taarifa za mfano zimejazwa. Unaweza kuhariri kila sehemu, kisha bonyeza THIBITISHA TAARIFA ZOTE.');
+  addAiMsg('✅ Demo imepakiwa! Taarifa za mfano zimejazwa. Unaweza kuhariri kila sehemu kwa kubonyeza ikoni ya kalamu, kisha bonyeza THIBITISHA TAARIFA ZOTE.');
   Object.entries(appData).forEach(([k,v])=>{
     const fd=new FormData();fd.append('field',k);fd.append('value',v);fd.append('csrfmiddlewaretoken',CSRF);
     fetch(EDIT_URL,{method:'POST',body:fd});
   });
 }
 
-function doRestart(){
-  if(confirm('Una uhakika? Taarifa zote zitafutwa.')) location.reload();
-}
+function doRestart(){if(confirm('Una uhakika? Mazungumzo na taarifa zote zitafutwa.')) location.reload();}
 </script>
 </body>
 </html>
