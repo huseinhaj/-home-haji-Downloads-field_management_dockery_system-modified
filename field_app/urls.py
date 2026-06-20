@@ -162,6 +162,8 @@ urlpatterns = [
     path('msaada/tuma/', views.application_chat_send, name='app_chat_send'),
     path('msaada/thibitisha/', views.application_confirm, name='app_confirm'),
     path('msaada/hariri/', views.application_edit_field, name='app_edit_field'),
+    path('msaada/anza/', views.application_start_automation, name='app_start_auto'),
+    path('msaada/hali/', views.application_auto_status, name='app_auto_status'),
 
     # School Head Requests
     path('ombi/', views.public_school_head_form, name='public_school_head_form'),

@@ -365,6 +365,38 @@ html,body{
 .cfm:disabled{background:rgba(255,255,255,.07);box-shadow:none;}
 .cnote{font-size:10px;color:rgba(255,255,255,.22);text-align:center;margin-top:6px;line-height:1.4;}
 
+/* credentials step */
+.cred-note{
+  font-size:10px;color:rgba(252,209,22,.7);
+  display:flex;align-items:center;gap:5px;
+  margin-bottom:8px;line-height:1.4;
+}
+.cinput{
+  width:100%;background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:8px;padding:9px 12px;
+  font-size:12.5px;font-family:inherit;color:#fff;
+  outline:none;margin-bottom:7px;
+  transition:border-color .12s;
+}
+.cinput:focus{border-color:rgba(252,209,22,.45);}
+.cinput::placeholder{color:rgba(255,255,255,.25);}
+.cfm.go{background:linear-gradient(135deg,#1a6fe8,#0d4fc4);box-shadow:0 3px 14px rgba(26,111,232,.4);}
+.cfm.go:active{box-shadow:0 1px 6px rgba(26,111,232,.25);}
+
+/* automation progress */
+.pbar-wrap{height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;margin-bottom:10px;}
+.pbar-fill{height:100%;background:linear-gradient(90deg,#1EB53A,#FCD116);border-radius:2px;transition:width .4s ease;}
+.auto-msg{font-size:11.5px;color:rgba(255,255,255,.7);text-align:center;margin-bottom:10px;line-height:1.4;}
+.auto-shot-wrap{border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.1);margin-bottom:8px;}
+.auto-shot{width:100%;display:block;}
+.shot-lbl{font-size:9.5px;color:rgba(255,255,255,.35);text-align:center;padding:5px;background:rgba(0,0,0,.2);}
+.auto-err{
+  background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.3);
+  border-radius:8px;padding:10px;font-size:11px;color:#FCA5A5;
+  line-height:1.4;
+}
+
 /* done card */
 .dcard{
   background:rgba(5,150,105,.17);border:1px solid rgba(5,150,105,.32);
@@ -445,10 +477,34 @@ html,body{
         </div>
       </div>
       <div class="dfoot" id="dfoot" style="display:none;">
-        <button class="cfm" id="cfmbtn" onclick="doConfirm()">
-          <i class="fas fa-circle-check"></i>THIBITISHA NA ENDELEA
-        </button>
-        <div class="cnote">Kagua taarifa zote kabla ya kuthibitisha</div>
+        <!-- Step A: confirm data -->
+        <div id="stepA">
+          <button class="cfm" id="cfmbtn" onclick="doConfirm()">
+            <i class="fas fa-circle-check"></i>THIBITISHA TAARIFA
+          </button>
+          <div class="cnote">Kagua taarifa zote kabla ya kuthibitisha</div>
+        </div>
+        <!-- Step B: enter HESLB credentials -->
+        <div id="stepB" style="display:none;">
+          <div class="cred-note"><i class="fas fa-lock"></i> Nywila yako haitahifadhiwa — inatumika mara moja tu</div>
+          <input class="cinput" type="email" id="hEmail" placeholder="Barua pepe ya HESLB">
+          <input class="cinput" type="password" id="hPass" placeholder="Nywila ya HESLB">
+          <button class="cfm go" id="gobtn" onclick="startAuto()">
+            <i class="fas fa-robot"></i>ANZISHA AI KUJAZA HESLB
+          </button>
+        </div>
+        <!-- Step C: live progress -->
+        <div id="stepC" style="display:none;">
+          <div class="pbar-wrap">
+            <div class="pbar-fill" id="autoBar" style="width:0%"></div>
+          </div>
+          <div class="auto-msg" id="autoMsg">Inaanzisha...</div>
+          <div class="auto-shot-wrap" id="autoShotWrap" style="display:none;">
+            <img id="autoShot" src="" alt="screenshot" class="auto-shot">
+            <div class="shot-lbl" id="shotLbl"></div>
+          </div>
+          <div class="auto-err" id="autoErr" style="display:none;"></div>
+        </div>
       </div>
     </div>
 
@@ -463,7 +519,7 @@ const CONFIRM_URL = '{% url "app_confirm" %}';
 const CSRF        = '{{ csrf_token }}';
 
 const SECS = [
-  {l:'Taarifa za Kibinafsi',       ic:'fa-user',        fs:[
+  {l:'Taarifa za Kibinafsi',        ic:'fa-user', fs:[
     {k:'jina_kamili',l:'Jina Kamili'},
     {k:'tarehe_kuzaliwa',l:'Tarehe ya Kuzaliwa'},
     {k:'jinsia',l:'Jinsia'},
@@ -473,23 +529,32 @@ const SECS = [
     {k:'mkoa_asili',l:'Mkoa wa Asili'},
     {k:'wilaya_asili',l:'Wilaya'},
   ]},
-  {l:'Kidato cha Nne (O-Level)',   ic:'fa-graduation-cap', fs:[
-    {k:'necta_olevel_index',l:'Namba ya Mtihani'},
+  {l:'Taarifa za HESLB',            ic:'fa-file-contract', fs:[
+    {k:'mahali_kuzaliwa',l:'Mahali pa Kuzaliwa'},
+    {k:'aina_ya_elimu',l:'Aina ya Elimu (Mkopo)'},
+    {k:'rita_namba',l:'Namba ya RITA'},
+  ]},
+  {l:'Kidato cha Nne (O-Level)',    ic:'fa-graduation-cap', fs:[
+    {k:'necta_olevel_aina',l:'Aina (S / P)'},
+    {k:'necta_olevel_shule',l:'Namba ya Shule'},
+    {k:'necta_olevel_mtahiniwa',l:'Namba ya Mtahiniwa'},
     {k:'mwaka_olevel',l:'Mwaka'},
     {k:'daraja_olevel',l:'Daraja'},
   ]},
-  {l:'Kidato cha Sita (A-Level)',  ic:'fa-award',       fs:[
-    {k:'necta_alevel_index',l:'Namba ya Mtihani'},
+  {l:'Kidato cha Sita (A-Level)',   ic:'fa-award', fs:[
+    {k:'necta_alevel_aina',l:'Aina (S / P)'},
+    {k:'necta_alevel_shule',l:'Namba ya Shule'},
+    {k:'necta_alevel_mtahiniwa',l:'Namba ya Mtahiniwa'},
     {k:'mwaka_alevel',l:'Mwaka'},
     {k:'masomo_alama',l:'Masomo na Alama'},
     {k:'gpa_alevel',l:'GPA'},
   ]},
-  {l:'Chaguo za Programu (TCU)',   ic:'fa-university',  fs:[
+  {l:'Chaguo za Programu (TCU)',    ic:'fa-university', fs:[
     {k:'chuo_1',l:'Chuo cha 1 & Programu'},
     {k:'chuo_2',l:'Chuo cha 2 & Programu'},
     {k:'chuo_3',l:'Chuo cha 3 & Programu'},
   ]},
-  {l:'Taarifa za Familia (HESLB)', ic:'fa-people-roof', fs:[
+  {l:'Taarifa za Familia (HESLB)',  ic:'fa-people-roof', fs:[
     {k:'jina_baba',l:'Jina la Baba'},
     {k:'jina_mama',l:'Jina la Mama'},
     {k:'mlezi',l:'Mlezi / Guardian'},
@@ -497,7 +562,7 @@ const SECS = [
     {k:'idadi_ndugu',l:'Idadi ya Ndugu'},
   ]},
 ];
-const TOTAL = 23;
+const TOTAL = 30;
 
 let data   = {};
 let status = 'collecting';
@@ -673,7 +738,7 @@ async function saveF(field, value){
   await fetch(EDIT_URL,{method:'POST',body:fd});
 }
 
-/* ── CONFIRM ─────────────────────────────────────────────── */
+/* ── CONFIRM (Step A → Step B) ───────────────────────────── */
 async function doConfirm(){
   const btn=document.getElementById('cfmbtn');
   btn.disabled=true;
@@ -682,21 +747,93 @@ async function doConfirm(){
     const fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF);
     const r=await fetch(CONFIRM_URL,{method:'POST',body:fd});
     const d=await r.json();
-    if(d.status==='done'){
-      status='done';
-      document.getElementById('dbody').innerHTML=`
-        <div class="dcard">
-          <i class="fas fa-circle-check"></i>
-          <h4>Taarifa Zimethibitishwa!</h4>
-          <p>${d.message}</p>
-        </div>`;
-      document.getElementById('dfoot').style.display='none';
-      addBubble('ai','✅ Asante! Taarifa zako zimethibitishwa. Hatua inayofuata ni AI kuingia mfumo wa HESLB na TCU kwa niaba yako.');
+    if(d.status==='confirmed'){
+      document.getElementById('stepA').style.display='none';
+      document.getElementById('stepB').style.display='block';
+      addBubble('ai','✅ Taarifa zimethibitishwa! Sasa weka nywila yako ya HESLB (haitahifadhiwa) ili AI iingie mfumo na kukujazia ombi lako.');
     }
   } catch(e){
     btn.disabled=false;
-    btn.innerHTML='<i class="fas fa-circle-check"></i>THIBITISHA NA ENDELEA';
+    btn.innerHTML='<i class="fas fa-circle-check"></i>THIBITISHA TAARIFA';
   }
+}
+
+/* ── START AUTOMATION (Step B → Step C) ─────────────────── */
+let pollTimer = null;
+
+async function startAuto(){
+  const email=document.getElementById('hEmail').value.trim();
+  const pass =document.getElementById('hPass').value.trim();
+  if(!email||!pass){
+    addBubble('ai','Tafadhali weka barua pepe na nywila yako ya HESLB.');
+    return;
+  }
+  const btn=document.getElementById('gobtn');
+  btn.disabled=true;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>&nbsp;Inaanzisha...';
+
+  try{
+    const fd=new FormData();
+    fd.append('heslb_email',email);
+    fd.append('heslb_password',pass);
+    fd.append('csrfmiddlewaretoken',CSRF);
+    const r=await fetch('{% url "app_start_auto" %}',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.status==='started'){
+      document.getElementById('stepB').style.display='none';
+      document.getElementById('stepC').style.display='block';
+      addBubble('ai','🤖 AI imeanza kujaza fomu ya HESLB kwa niaba yako. Fuatilia maendeleo hapa chini...');
+      startPolling();
+    } else {
+      addBubble('ai','Hitilafu: '+(d.error||'Jaribu tena.'));
+      btn.disabled=false;
+      btn.innerHTML='<i class="fas fa-robot"></i>ANZISHA AI KUJAZA HESLB';
+    }
+  } catch(e){
+    addBubble('ai','Hitilafu ya mtandao. Jaribu tena.');
+    btn.disabled=false;
+    btn.innerHTML='<i class="fas fa-robot"></i>ANZISHA AI KUJAZA HESLB';
+  }
+}
+
+/* ── POLL automation status ──────────────────────────────── */
+function startPolling(){
+  pollTimer = setInterval(pollStatus, 3000);
+}
+
+async function pollStatus(){
+  try{
+    const r = await fetch('{% url "app_auto_status" %}');
+    const d = await r.json();
+
+    // Progress bar (7 steps)
+    const pct = Math.min(100, Math.round((d.step/7)*100));
+    document.getElementById('autoBar').style.width = pct+'%';
+    document.getElementById('autoMsg').textContent = d.msg || 'Inaendelea...';
+
+    // Screenshot
+    if(d.screenshot){
+      const sw=document.getElementById('autoShotWrap');
+      sw.style.display='block';
+      document.getElementById('autoShot').src='data:image/png;base64,'+d.screenshot.img;
+      document.getElementById('shotLbl').textContent=d.screenshot.label;
+    }
+
+    // Error
+    if(d.error){
+      document.getElementById('autoErr').style.display='block';
+      document.getElementById('autoErr').textContent='❌ '+d.error;
+      clearInterval(pollTimer);
+      addBubble('ai','❌ Hitilafu: '+d.error);
+    }
+
+    // Done
+    if(d.done){
+      clearInterval(pollTimer);
+      document.getElementById('autoBar').style.width='100%';
+      addBubble('ai','✅ AI imekamilisha kujaza fomu ya HESLB! Angalia picha ya hali ya fomu upande wa kulia. Fomu bado haijatumwa — kagua kila kitu, kisha thibisha kutuma.');
+    }
+  } catch(e){ /* network glitch, retry next poll */ }
 }
 
 /* ── DEMO ────────────────────────────────────────────────── */
@@ -706,15 +843,24 @@ function loadDemo(){
     jinsia:'Kiume', namba_nida:'20010605411190000125',
     namba_simu:'0625607088', barua_pepe:'huseinhaj09@gmail.com',
     mkoa_asili:'Dodoma', wilaya_asili:'Chemba',
-    necta_olevel_index:'S2895.0030.2018', mwaka_olevel:'2018', daraja_olevel:'Division II',
-    necta_alevel_index:'S2895.0030.2020', mwaka_alevel:'2020',
+    // HESLB extra
+    mahali_kuzaliwa:'Mainland (Tanzania Bara)',
+    aina_ya_elimu:'Bachelor Degree',
+    rita_namba:'2342',
+    // O-Level (split as HESLB requires)
+    necta_olevel_aina:'S', necta_olevel_shule:'2895',
+    necta_olevel_mtahiniwa:'0030', mwaka_olevel:'2018', daraja_olevel:'Division II',
+    // A-Level
+    necta_alevel_aina:'S', necta_alevel_shule:'2895',
+    necta_alevel_mtahiniwa:'0030', mwaka_alevel:'2020',
     masomo_alama:'Physics B, Chemistry C, Mathematics B', gpa_alevel:'3.2',
+    // Programme choices
     chuo_1:'University of Dar es Salaam — BSc Computer Science',
     chuo_2:'Ardhi University — BSc Information Technology',
     chuo_3:'University of Dodoma — BSc Computer Science',
+    // Family
     jina_baba:'Hamisi Huseni (Amefariki)', jina_mama:'Fatuma Juma',
-    mlezi:'Juma Hamisi — 0712345678',
-    mapato_familia:'150,000', idadi_ndugu:'5',
+    mlezi:'Sina', mapato_familia:'150,000', idadi_ndugu:'5',
   };
   status = 'preview';
   renderPanel();

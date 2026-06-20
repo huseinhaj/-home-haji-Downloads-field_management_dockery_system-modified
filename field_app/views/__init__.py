@@ -160,4 +160,6 @@ from .assistant import (
     application_chat_send,
     application_confirm,
     application_edit_field,
+    application_start_automation,
+    application_auto_status,
 )
