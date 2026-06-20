@@ -293,6 +293,10 @@
                                     <label class="form-label">{% if LANG == 'sw' %}Jina la Mwalimu{% else %}Teacher Name{% endif %}</label>
                                     <input type="text" id="teacher_name" class="form-control" value="{{ student.full_name|default:request.user.email }}">
                                 </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">{% if LANG == 'sw' %}Jina la Shule{% else %}School Name{% endif %}</label>
+                                    <input type="text" id="school_name" class="form-control" value="{{ school.name|default:'' }}" placeholder="{% if LANG == 'sw' %}Jina la Shule{% else %}School Name{% endif %}">
+                                </div>
                             </div>
                         </div>
 
@@ -472,7 +476,8 @@
                 learning_objectives: document.getElementById('learning_objectives').value,
                 teaching_methods: document.getElementById('teaching_methods').value,
                 reference_source: document.getElementById('reference_source').value,
-                teacher_name: document.getElementById('teacher_name').value
+                teacher_name: document.getElementById('teacher_name').value,
+                school_name: document.getElementById('school_name').value
             };
             
             // UI updates

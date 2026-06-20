@@ -23,7 +23,7 @@ from .models import (
 
 
 def generate_scheme_view(request):
-    from .models import EducationLevel
+    from .models import EducationLevel, StudentApplication
 
     form = SchemeOfWorkForm()
     education_levels = EducationLevel.objects.all().order_by('order')
@@ -32,8 +32,14 @@ def generate_scheme_view(request):
     school = None
     if request.user.is_authenticated:
         try:
-            student = StudentTeacher.objects.get(user=request.user)
+            student = StudentTeacher.objects.select_related('selected_school').get(user=request.user)
             school = student.selected_school
+            if not school:
+                app = StudentApplication.objects.filter(
+                    student=student, status='approved'
+                ).select_related('school').first()
+                if app:
+                    school = app.school
         except StudentTeacher.DoesNotExist:
             pass
 
@@ -642,9 +648,18 @@ def lesson_plan_view(request):
     subjects = Subject.objects.all().order_by('name')
 
     student = None
+    school = None
     if request.user.is_authenticated:
         try:
-            student = StudentTeacher.objects.get(user=request.user)
+            from .models import StudentApplication
+            student = StudentTeacher.objects.select_related('selected_school').get(user=request.user)
+            school = student.selected_school
+            if not school:
+                app = StudentApplication.objects.filter(
+                    student=student, status='approved'
+                ).select_related('school').first()
+                if app:
+                    school = app.school
         except StudentTeacher.DoesNotExist:
             pass
 
@@ -652,6 +667,7 @@ def lesson_plan_view(request):
         'education_levels': education_levels,
         'subjects': subjects,
         'student': student,
+        'school': school,
     })
 
 
