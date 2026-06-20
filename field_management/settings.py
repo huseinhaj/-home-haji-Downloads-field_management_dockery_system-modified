@@ -77,7 +77,6 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'field_app',
     'django_celery_results',
-    'django_celery_beat',
     'rest_framework',
     'django_filters',
     'import_export',

@@ -46,7 +46,6 @@ django-redis==5.4.0
 redis==5.2.1
 celery==5.4.0
 django-celery-results==2.5.1
-django-celery-beat==2.7.0
 djangorestframework==3.15.2
 django-filter==24.3
 playwright==1.49.0

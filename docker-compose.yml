@@ -58,7 +58,7 @@ services:
 
   celery-beat:
     build: .
-    command: celery -A field_management beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: celery -A field_management beat --loglevel=info
     env_file:
       - .env.docker
     environment:
