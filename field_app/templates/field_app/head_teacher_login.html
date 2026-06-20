@@ -199,29 +199,28 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
 
       <div class="reset-box {% if show_reset %}show{% endif %}" id="resetBox">
         <h4><i class="fas fa-key" style="margin-right:6px;color:var(--gold);"></i>Weka Upya Nywila</h4>
-        <p>Weka barua pepe iliyosajiliwa na nywila mpya. Mfumo utathibitisha kama barua pepe ipo kwenye orodha ya wakuu.</p>
+
         {% if reset_error %}
         <div class="msg msg-err" style="margin-bottom:12px;">
           <i class="fas fa-exclamation-circle"></i> {{ reset_error }}
         </div>
         {% endif %}
+
+        {% if reset_step == 2 %}
+        <!-- Hatua ya 2: Nywila mpya -->
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:5px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#1E40AF;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-check-circle" style="color:#059669;"></i>
+          <span>Barua pepe <strong>{{ prefill_reset_email }}</strong> imethibitishwa. Weka nywila mpya.</span>
+        </div>
         <form method="POST" action="{% url 'head_login' %}">
           {% csrf_token %}
-          <input type="hidden" name="mode" value="head_reset">
-          <div class="field">
-            <label>Barua Pepe</label>
-            <div class="inp-wrap">
-              <i class="fas fa-envelope inp-ico"></i>
-              <input type="email" name="email" required
-                     value="{{ prefill_reset_email|default:'' }}"
-                     placeholder="barua.pepe@yako.com" autofocus>
-            </div>
-          </div>
+          <input type="hidden" name="mode" value="head_reset_step2">
+          <input type="hidden" name="email" value="{{ prefill_reset_email }}">
           <div class="field">
             <label>Nywila Mpya</label>
             <div class="inp-wrap">
               <i class="fas fa-lock inp-ico"></i>
-              <input type="password" name="password1" id="rpwd1" required minlength="6"
+              <input type="password" name="password1" id="rpwd1" required minlength="6" autofocus
                      placeholder="Angalau herufi 6" style="padding-right:38px;">
               <button type="button" class="eye" onclick="togglePwd('rpwd1','reye1')"><i class="fas fa-eye" id="reye1"></i></button>
             </div>
@@ -236,10 +235,32 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
             </div>
           </div>
           <button type="submit" class="btn-reset">
-            <i class="fas fa-check-circle" style="margin-right:6px;"></i>Badilisha Nywila
+            <i class="fas fa-check-circle" style="margin-right:6px;"></i>Weka Nywila na Ingia
           </button>
-          <button type="button" class="btn-cancel" onclick="hideReset()">Rudi Kuingia</button>
         </form>
+
+        {% else %}
+        <!-- Hatua ya 1: Barua pepe -->
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;">Weka barua pepe yako iliyosajiliwa. Mfumo utathibitisha kama ipo kwenye orodha ya wakuu wa shule.</p>
+        <form method="POST" action="{% url 'head_login' %}">
+          {% csrf_token %}
+          <input type="hidden" name="mode" value="head_reset_step1">
+          <div class="field">
+            <label>Barua Pepe</label>
+            <div class="inp-wrap">
+              <i class="fas fa-envelope inp-ico"></i>
+              <input type="email" name="email" required autofocus
+                     value="{{ prefill_reset_email|default:'' }}"
+                     placeholder="barua.pepe@yako.com">
+            </div>
+          </div>
+          <button type="submit" class="btn-reset">
+            <i class="fas fa-arrow-right" style="margin-right:6px;"></i>Endelea
+          </button>
+        </form>
+        {% endif %}
+
+        <button type="button" class="btn-cancel" onclick="hideReset()">Rudi Kuingia</button>
       </div>
 
       {% endif %}
