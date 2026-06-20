@@ -76,15 +76,10 @@ def public_school_head_form(request):
             subjects_needed=subjects_needed_json,
             notes=notes,
         )
-        return render(request, 'field_app/public_school_head_form.html', {
-            'regions': regions,
-            'primary_subjects': primary_subjects,
-            'secondary_subjects': secondary_subjects,
-            'current_year': current_year,
-            'success': True,
-            'school_name': school.name,
-            'district_name': school.district.name,
-        })
+        from django.utils.http import urlencode
+        params = urlencode({'tab': 'head', 'submitted': '1', 'school_id': school.id})
+        messages.success(request, f'Asante {head_name}! Ombi la {school.name} limetumwa. Ingia sasa kuona hali yake.')
+        return redirect(f"{reverse('board_login')}?{params}")
 
     # Stage 0: initial code entry — handle POST stages
     if request.method == 'POST':

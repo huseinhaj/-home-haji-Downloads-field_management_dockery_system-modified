@@ -291,7 +291,7 @@
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <label class="form-label">{% if LANG == 'sw' %}Jina la Mwalimu{% else %}Teacher Name{% endif %}</label>
-                                    <input type="text" id="teacher_name" class="form-control" value="{{ request.user.email }}">
+                                    <input type="text" id="teacher_name" class="form-control" value="{{ student.full_name|default:request.user.email }}">
                                 </div>
                             </div>
                         </div>

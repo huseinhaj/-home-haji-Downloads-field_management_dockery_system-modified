@@ -28,15 +28,28 @@ def generate_scheme_view(request):
     form = SchemeOfWorkForm()
     education_levels = EducationLevel.objects.all().order_by('order')
 
+    student = None
+    school = None
+    if request.user.is_authenticated:
+        try:
+            student = StudentTeacher.objects.get(user=request.user)
+            school = student.selected_school
+        except StudentTeacher.DoesNotExist:
+            pass
+
     return render(request, 'field_app/generate_scheme.html', {
         'form': form,
         'education_levels': education_levels,
+        'student': student,
+        'school': school,
     })
 
 
 @login_required
 def ajax_generate_scheme(request):
     """API ya AI kuzalisha Scheme of Work kwa format ya KitabuSmart"""
+    if client is None:
+        return JsonResponse({'success': False, 'error': 'Huduma ya AI haitumiki. Ufunguo wa API (GOOGLE_API_KEY) haujawekwa. Wasiliana na msimamizi.'}, status=503)
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -628,15 +641,25 @@ def lesson_plan_view(request):
     education_levels = EducationLevel.objects.all().order_by('order')
     subjects = Subject.objects.all().order_by('name')
 
+    student = None
+    if request.user.is_authenticated:
+        try:
+            student = StudentTeacher.objects.get(user=request.user)
+        except StudentTeacher.DoesNotExist:
+            pass
+
     return render(request, 'field_app/lesson_plan.html', {
         'education_levels': education_levels,
         'subjects': subjects,
+        'student': student,
     })
 
 
 @login_required
 def ajax_generate_lessonplan(request):
     """Generate lesson plan using AI"""
+    if client is None:
+        return JsonResponse({'success': False, 'error': 'Huduma ya AI haitumiki. Ufunguo wa API (GOOGLE_API_KEY) haujawekwa. Wasiliana na msimamizi.'}, status=503)
     if request.method == 'POST':
         try:
             import json as json_module
