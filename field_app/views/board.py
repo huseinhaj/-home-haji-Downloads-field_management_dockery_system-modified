@@ -103,6 +103,42 @@ def head_teacher_login(request):
             messages.success(request, f'Karibu {bm.full_name}! Nywila yako imewekwa.')
             return redirect('board_head_teacher', school_id=bm.school.id)
 
+        elif mode == 'head_reset':
+            email = request.POST.get('email', '').strip().lower()
+            password1 = request.POST.get('password1', '')
+            password2 = request.POST.get('password2', '')
+
+            ctx = {'show_reset': True, 'prefill_reset_email': email}
+
+            if not email:
+                ctx['reset_error'] = 'Weka barua pepe yako.'
+                return render(request, 'field_app/head_teacher_login.html', ctx)
+
+            bm = BoardMember.objects.filter(
+                user__email__iexact=email, role='head_teacher', is_active=True
+            ).select_related('school', 'user').first()
+
+            if not bm:
+                ctx['reset_error'] = 'Barua pepe hii haipo kwenye mfumo wa wakuu wa shule. Wasiliana na DEO wako.'
+                return render(request, 'field_app/head_teacher_login.html', ctx)
+            if not password1:
+                ctx['reset_error'] = 'Weka nywila mpya.'
+                return render(request, 'field_app/head_teacher_login.html', ctx)
+            if len(password1) < 6:
+                ctx['reset_error'] = 'Nywila iwe na herufi 6 au zaidi.'
+                return render(request, 'field_app/head_teacher_login.html', ctx)
+            if password1 != password2:
+                ctx['reset_error'] = 'Nywila mbili hazifanani. Jaribu tena.'
+                return render(request, 'field_app/head_teacher_login.html', ctx)
+
+            bm.user.set_password(password1)
+            bm.user.save()
+            login(request, bm.user, backend='field_app.backends.EmailBackend')
+            messages.success(request, 'Nywila imebadilishwa kikamilifu. Umeingia mfumoni.')
+            if bm.school:
+                return redirect('board_head_teacher', school_id=bm.school.id)
+            return redirect('board_home')
+
         else:
             email = request.POST.get('email', '').strip().lower()
             password = request.POST.get('password', '')

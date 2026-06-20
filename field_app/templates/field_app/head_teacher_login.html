@@ -197,22 +197,46 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
         </button>
       </form>
 
-      <div class="reset-box" id="resetBox">
-        <h4>Weka Upya Nywila</h4>
-        <p>Weka barua pepe yako. Utapokea maelekezo ya kuweka upya nywila kupitia barua pepe.</p>
-        <form method="POST" action="{% url 'password_reset' %}">
+      <div class="reset-box {% if show_reset %}show{% endif %}" id="resetBox">
+        <h4><i class="fas fa-key" style="margin-right:6px;color:var(--gold);"></i>Weka Upya Nywila</h4>
+        <p>Weka barua pepe iliyosajiliwa na nywila mpya. Mfumo utathibitisha kama barua pepe ipo kwenye orodha ya wakuu.</p>
+        {% if reset_error %}
+        <div class="msg msg-err" style="margin-bottom:12px;">
+          <i class="fas fa-exclamation-circle"></i> {{ reset_error }}
+        </div>
+        {% endif %}
+        <form method="POST" action="{% url 'head_login' %}">
           {% csrf_token %}
+          <input type="hidden" name="mode" value="head_reset">
           <div class="field">
             <label>Barua Pepe</label>
             <div class="inp-wrap">
               <i class="fas fa-envelope inp-ico"></i>
               <input type="email" name="email" required
-                     value="{{ prefill_email }}"
-                     placeholder="barua.pepe@yako.com">
+                     value="{{ prefill_reset_email|default:'' }}"
+                     placeholder="barua.pepe@yako.com" autofocus>
+            </div>
+          </div>
+          <div class="field">
+            <label>Nywila Mpya</label>
+            <div class="inp-wrap">
+              <i class="fas fa-lock inp-ico"></i>
+              <input type="password" name="password1" id="rpwd1" required minlength="6"
+                     placeholder="Angalau herufi 6" style="padding-right:38px;">
+              <button type="button" class="eye" onclick="togglePwd('rpwd1','reye1')"><i class="fas fa-eye" id="reye1"></i></button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Thibitisha Nywila</label>
+            <div class="inp-wrap">
+              <i class="fas fa-lock inp-ico"></i>
+              <input type="password" name="password2" id="rpwd2" required minlength="6"
+                     placeholder="Rudia nywila hiyo hiyo" style="padding-right:38px;">
+              <button type="button" class="eye" onclick="togglePwd('rpwd2','reye2')"><i class="fas fa-eye" id="reye2"></i></button>
             </div>
           </div>
           <button type="submit" class="btn-reset">
-            <i class="fas fa-paper-plane" style="margin-right:6px;"></i>Tuma Link ya Kubadilisha
+            <i class="fas fa-check-circle" style="margin-right:6px;"></i>Badilisha Nywila
           </button>
           <button type="button" class="btn-cancel" onclick="hideReset()">Rudi Kuingia</button>
         </form>
@@ -236,19 +260,24 @@ function togglePwd(id,ico){
   else{i.type='password';c.classList.replace('fa-eye-slash','fa-eye');}
 }
 function showReset(){
-  const f=document.querySelector('form[action*="head_login"]');
-  const r=document.getElementById('resetBox');
-  if(f) f.style.display='none';
-  document.querySelector('.row2').style.display='none';
-  r.classList.add('show');
+  const forms=document.querySelectorAll('form[action*="head_login"]');
+  forms.forEach(f=>f.style.display='none');
+  const r2=document.querySelector('.row2');
+  if(r2) r2.style.display='none';
+  document.getElementById('resetBox').classList.add('show');
 }
 function hideReset(){
-  const f=document.querySelector('form[action*="head_login"]');
-  const r=document.getElementById('resetBox');
-  if(f) f.style.display='';
-  document.querySelector('.row2').style.display='';
-  r.classList.remove('show');
+  const forms=document.querySelectorAll('form[action*="head_login"]');
+  forms.forEach(f=>f.style.display='');
+  const r2=document.querySelector('.row2');
+  if(r2) r2.style.display='';
+  document.getElementById('resetBox').classList.remove('show');
 }
+{% if show_reset %}
+document.addEventListener('DOMContentLoaded', function(){
+  showReset();
+});
+{% endif %}
 </script>
 </body>
 </html>
