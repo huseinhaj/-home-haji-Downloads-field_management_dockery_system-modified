@@ -29,11 +29,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 # Runtime-only system libraries (no build tools)
+# Chromium deps included for Playwright
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     gdal-bin \
     libgdal36 \
     libgeos-c1v5 \
+    # Chromium / Playwright runtime deps
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+    libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+    libgbm1 libasound2 libpango-1.0-0 libcairo2 libx11-6 libx11-xcb1 \
+    libxcb1 libxext6 libxshmfence1 fonts-liberation \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -52,12 +58,16 @@ RUN GDAL_PATH=$(find /usr/lib/x86_64-linux-gnu -maxdepth 1 -name 'libgdal.so.*' 
     echo "Detected GEOS_LIBRARY_PATH=$GEOS_PATH" && \
     printf "GDAL_LIBRARY_PATH=%s\nGEOS_LIBRARY_PATH=%s\n" "$GDAL_PATH" "$GEOS_PATH" > /app/.geoenv
 
+# ── Install Playwright browsers (Chromium only) ────────────────────────────────
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright
+RUN python -m playwright install chromium
+
 # ── Application code ───────────────────────────────────────────────────────────
 COPY . .
 
 # ── Non-root user for security ────────────────────────────────────────────────
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
-    && mkdir -p /app/staticfiles /app/media \
+    && mkdir -p /app/staticfiles /app/media /app/.playwright \
     && chown -R appuser:appgroup /app
 
 # ── Startup script ─────────────────────────────────────────────────────────────
