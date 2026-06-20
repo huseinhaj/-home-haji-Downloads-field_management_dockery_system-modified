@@ -9,7 +9,7 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_POST
 
 from google.genai import types as genai_types
-from field_app.ai_utils import client, model_name
+from field_app.ai_utils import client, model_name, FALLBACK_MODELS
 
 SYSTEM_PROMPT = """Wewe ni "Msaidizi" — AI inayosaidia wanafunzi wa Tanzania kuandaa maombi ya mkopo wa HESLB na udahili wa TCU kwa njia ya mazungumzo ya kawaida kwa Kiswahili.
 
@@ -123,23 +123,34 @@ def _extract_data(text: str) -> dict | None:
         return None
 
 
+def _is_quota_err(err: str) -> bool:
+    return "429" in err or "RESOURCE_EXHAUSTED" in err
+
+
+def _friendly_err(err: str) -> str:
+    if _is_quota_err(err):
+        return "Samahani, mfumo wa AI una msongamano kwa sasa. Tafadhali subiri dakika moja kisha jaribu tena."
+    return "Samahani, hitilafu imetokea. Tafadhali jaribu tena."
+
+
 def _call_gemini(history: list) -> str:
-    """Non-streaming call for the opening message only."""
+    """Non-streaming call for the opening message only. Tries all fallback models."""
     if client is None:
         return "Samahani, huduma ya AI haitumiki kwa sasa."
     cfg = _make_cfg()
-    for attempt in range(3):
-        try:
-            resp = client.models.generate_content(
-                model=model_name, contents=_build_contents(history), config=cfg)
-            return resp.text or "Samahani, jibu halijapatikana."
-        except Exception as e:
-            err = str(e)
-            if ("429" in err or "RESOURCE_EXHAUSTED" in err) and attempt < 2:
-                time.sleep(8 * (attempt + 1))
-                continue
-            return f"Hitilafu ya AI: {err[:100]}."
-    return "Samahani, mfumo haujaweza kujibu. Jaribu tena."
+    contents = _build_contents(history)
+    for mdl in FALLBACK_MODELS:
+        for attempt in range(2):
+            try:
+                resp = client.models.generate_content(model=mdl, contents=contents, config=cfg)
+                return resp.text or "Samahani, jibu halijapatikana."
+            except Exception as e:
+                err = str(e)
+                if _is_quota_err(err) and attempt == 0:
+                    time.sleep(10)
+                    continue
+                break  # try next model
+    return "Samahani, mfumo wa AI una msongamano kwa sasa. Tafadhali subiri dakika moja kisha jaribu tena."
 
 
 def application_assistant(request):
@@ -191,40 +202,49 @@ def application_chat_stream(request):
     def generate():
         full_text = ""
         data_block_started = False
+        succeeded = False
 
-        for attempt in range(3):
-            try:
-                for chunk in client.models.generate_content_stream(
-                    model=model_name, contents=contents, config=cfg
-                ):
-                    token = chunk.text or ""
-                    if not token:
-                        continue
-                    full_text += token
+        for mdl in FALLBACK_MODELS:
+            if succeeded:
+                break
+            for attempt in range(2):
+                try:
+                    for chunk in client.models.generate_content_stream(
+                        model=mdl, contents=contents, config=cfg
+                    ):
+                        token = chunk.text or ""
+                        if not token:
+                            continue
+                        full_text += token
+                        if not data_block_started:
+                            if "[[DATA_READY]]" in full_text:
+                                data_block_started = True
+                                marker_pos = full_text.index("[[DATA_READY]]")
+                                prev_visible = full_text[:marker_pos]
+                                chunk_start = marker_pos - len(token)
+                                visible_from_chunk = prev_visible[max(0, chunk_start):]
+                                if visible_from_chunk:
+                                    yield f"data: {json.dumps({'t': visible_from_chunk})}\n\n"
+                            else:
+                                yield f"data: {json.dumps({'t': token})}\n\n"
+                    succeeded = True
+                    break
+                except Exception as e:
+                    err = str(e)
+                    if _is_quota_err(err):
+                        if attempt == 0:
+                            # brief pause then retry same model once
+                            time.sleep(5)
+                            continue
+                        # model exhausted — try next one silently
+                        break
+                    # non-quota error — show friendly message and stop
+                    yield f"data: {json.dumps({'t': _friendly_err(err)})}\n\n"
+                    return
 
-                    # Stream only text before [[DATA_READY]] marker
-                    if not data_block_started:
-                        if "[[DATA_READY]]" in full_text:
-                            data_block_started = True
-                            # Yield only the visible portion from this chunk
-                            marker_pos = full_text.index("[[DATA_READY]]")
-                            prev_visible = full_text[:marker_pos]
-                            chunk_start = marker_pos - len(token)
-                            visible_from_chunk = prev_visible[max(0, chunk_start):]
-                            if visible_from_chunk:
-                                yield f"data: {json.dumps({'t': visible_from_chunk})}\n\n"
-                        else:
-                            yield f"data: {json.dumps({'t': token})}\n\n"
-                break  # success — exit retry loop
-
-            except Exception as e:
-                err = str(e)
-                if ("429" in err or "RESOURCE_EXHAUSTED" in err) and attempt < 2:
-                    yield f"data: {json.dumps({'t': ' [subiri kidogo...] '})}\n\n"
-                    time.sleep(8 * (attempt + 1))
-                    continue
-                yield f"data: {json.dumps({'error': err[:120]})}\n\n"
-                return
+        if not succeeded and not full_text:
+            yield f"data: {json.dumps({'t': 'Samahani, mfumo wa AI una msongamano kwa sasa. Tafadhali subiri dakika moja kisha jaribu tena.'})}\n\n"
+            return
 
         # Extract structured data
         extracted = _extract_data(full_text)
