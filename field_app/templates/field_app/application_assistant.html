@@ -332,10 +332,10 @@ html,body{height:100%;font-family:var(--font);font-size:.8125rem;background:var(
   <div class="alert alert-info">
     <span class="material-icons">info</span>
     <div>
-      <strong>Kabla ya Kuanza:</strong>
-      Msaidizi wa AI atakusaidia kukusanya taarifa zako zote muhimu hatua kwa hatua kwa lugha ya Kiswahili.
-      Baada ya mazungumzo kukamilika, taarifa zako zitajazwa kwenye mfumo wa HESLB kiotomatiki.
-      Kwa msaada piga simu <strong>0736 665 533</strong> (Jumatatu–Ijumaa, 8:00–17:00).
+      <strong>Dirisha la Mkopo 2026/2027:</strong>
+      Juni 19 – Agosti 31, 2026 &nbsp;|&nbsp; Ada ya maombi: <strong>Tsh 30,000</strong> (hazirudishwi) &nbsp;|&nbsp;
+      Hakikisha una: <strong>Birth Verification Code (2026-BV)</strong>, <strong>NaPA Reference</strong>, <strong>NIDA</strong> (umri 18+) na <strong>Akaunti ya Benki</strong>.
+      Msaada: <strong>0736 665 533</strong> (Jumatatu–Ijumaa 8:00–17:00)
     </div>
   </div>
 
@@ -470,37 +470,81 @@ const CSRF        = '{{ csrf_token }}';
 const CIRC        = 2 * Math.PI * 24;
 
 const SECS = [
-  {l:'Taarifa za Kibinafsi',ic:'person',fs:[
-    {k:'jina_kamili',l:'Jina Kamili'},{k:'tarehe_kuzaliwa',l:'Tarehe ya Kuzaliwa'},
-    {k:'jinsia',l:'Jinsia'},{k:'namba_nida',l:'Namba ya NIDA'},
-    {k:'namba_simu',l:'Namba ya Simu'},{k:'barua_pepe',l:'Barua Pepe'},
-    {k:'mkoa_asili',l:'Mkoa wa Asili'},{k:'wilaya_asili',l:'Wilaya'},
+  {l:'Aina ya Mwombaji',ic:'category',fs:[
+    {k:'aina_mwombaji',l:'Aina ya Mwombaji'},
   ]},
-  {l:'Taarifa za HESLB',ic:'article',fs:[
-    {k:'mahali_kuzaliwa',l:'Mahali pa Kuzaliwa'},
-    {k:'aina_ya_elimu',l:'Aina ya Elimu'},{k:'rita_namba',l:'Namba ya RITA'},
+  {l:'Basic Information — Taarifa za Msingi',ic:'person',fs:[
+    {k:'jina_la_kwanza',l:'Jina la Kwanza (First Name)'},
+    {k:'jina_la_kati',l:'Jina la Kati (Middle Name)'},
+    {k:'jina_la_mwisho',l:'Jina la Mwisho (Surname)'},
+    {k:'necta_form4_index',l:'Form 4 Index Number'},
+    {k:'birth_verification_code',l:'Birth Verification Code (BV)'},
+    {k:'barua_pepe',l:'Email Address'},
+    {k:'namba_benki',l:'Namba ya Akaunti ya Benki'},
+    {k:'jina_benki',l:'Jina la Benki'},
+    {k:'namba_simu',l:'Namba ya Simu'},
   ]},
-  {l:'O-Level (Form Four)',ic:'school',fs:[
-    {k:'necta_olevel_aina',l:'Aina (S/P)'},{k:'necta_olevel_shule',l:'Namba ya Shule'},
-    {k:'necta_olevel_mtahiniwa',l:'Namba ya Mtahiniwa'},
-    {k:'mwaka_olevel',l:'Mwaka'},{k:'daraja_olevel',l:'Daraja'},
+  {l:'Demographic Information',ic:'location_on',fs:[
+    {k:'namba_nida',l:'Namba ya NIDA (NIN)'},
+    {k:'mkoa_kuzaliwa',l:'Mkoa wa Kuzaliwa'},
+    {k:'wilaya_kuzaliwa',l:'Wilaya ya Kuzaliwa'},
+    {k:'kata_kuzaliwa',l:'Kata ya Kuzaliwa'},
+    {k:'napa_reference',l:'NaPA Reference Number'},
   ]},
-  {l:'A-Level (Form Six)',ic:'military_tech',fs:[
-    {k:'necta_alevel_aina',l:'Aina (S/P)'},{k:'necta_alevel_shule',l:'Namba ya Shule'},
-    {k:'necta_alevel_mtahiniwa',l:'Namba ya Mtahiniwa'},
-    {k:'mwaka_alevel',l:'Mwaka'},{k:'masomo_alama',l:'Masomo na Alama'},
-    {k:'gpa_alevel',l:'GPA'},
+  {l:'Preliminary — Hali ya Mwombaji',ic:'checklist',fs:[
+    {k:'una_ulemavu',l:'Una Ulemavu? (NDIYO/HAPANA)'},
+    {k:'namba_ulemavu',l:'Namba ya Ulemavu (kama ipo)'},
+    {k:'ulifadhiliwa',l:'Ulifadhiliwa Sekondari?'},
+    {k:'ulilelewa_yatima',l:'Ulilelewa Kituo cha Yatima?'},
   ]},
-  {l:'Chaguo za Programu (TCU)',ic:'account_balance',fs:[
-    {k:'chuo_1',l:'Chuo cha 1'},{k:'chuo_2',l:'Chuo cha 2'},{k:'chuo_3',l:'Chuo cha 3'},
+  {l:'Taarifa za Mama',ic:'face',fs:[
+    {k:'mama_anajulikana',l:'Mama Anajulikana?'},
+    {k:'mama_yupo_hai',l:'Mama Yupo Hai?'},
+    {k:'mama_death_code',l:'Death Verification Code ya Mama (DV)'},
+    {k:'mama_jina_kamili',l:'Majina Matatu ya Mama'},
+    {k:'mama_simu',l:'Simu ya Mama'},
+    {k:'mama_mkoa',l:'Mkoa wa Mama'},
+    {k:'mama_kazi',l:'Kazi ya Mama'},
+    {k:'mama_napa_reference',l:'NaPA ya Mama'},
   ]},
-  {l:'Taarifa za Familia',ic:'people',fs:[
-    {k:'jina_baba',l:'Jina la Baba'},{k:'jina_mama',l:'Jina la Mama'},
-    {k:'mlezi',l:'Mlezi / Guardian'},{k:'mapato_familia',l:'Mapato (Tsh/mwezi)'},
-    {k:'idadi_ndugu',l:'Idadi ya Ndugu'},
+  {l:'Taarifa za Baba',ic:'face_3',fs:[
+    {k:'baba_anajulikana',l:'Baba Anajulikana?'},
+    {k:'baba_yupo_hai',l:'Baba Yupo Hai?'},
+    {k:'baba_death_code',l:'Death Verification Code ya Baba (DV)'},
+    {k:'baba_jina_kamili',l:'Majina Matatu ya Baba'},
+    {k:'baba_simu',l:'Simu ya Baba'},
+    {k:'baba_mkoa',l:'Mkoa wa Baba'},
+    {k:'baba_kazi',l:'Kazi ya Baba'},
+    {k:'baba_napa_reference',l:'NaPA ya Baba'},
+  ]},
+  {l:'TASAF',ic:'volunteer_activism',fs:[
+    {k:'kuna_tasaf',l:'Kuna TASAF Nyumbani?'},
+    {k:'tasaf_membership_number',l:'TASAF Membership Number'},
+  ]},
+  {l:'Education Information — Taarifa za Elimu',ic:'school',fs:[
+    {k:'necta_form6_index',l:'Form 6 Index Number (ACSEE)'},
+    {k:'mwaka_form6',l:'Mwaka wa Form 6'},
+    {k:'chuo_kilichokubali',l:'Chuo na Kozi Iliyokukubali'},
+    {k:'registration_number',l:'Registration Number (Continuing)'},
+    {k:'mwaka_wa_masomo',l:'Mwaka wa Masomo (Continuing)'},
+    {k:'avn_number',l:'AVN Number (Diploma)'},
+    {k:'chuo_diploma',l:'Chuo cha Diploma'},
+    {k:'gpa_diploma',l:'GPA ya Diploma'},
+  ]},
+  {l:'Guarantor Information — Taarifa za Mdhamini',ic:'verified_user',fs:[
+    {k:'mdhamini_aina_id',l:'Aina ya Kitambulisho cha Mdhamini'},
+    {k:'mdhamini_jina_kamili',l:'Majina Matatu ya Mdhamini'},
+    {k:'mdhamini_namba_nida',l:'NIDA ya Mdhamini'},
+    {k:'mdhamini_mkoa',l:'Mkoa wa Kuzaliwa Mdhamini'},
+    {k:'mdhamini_wilaya',l:'Wilaya ya Kuzaliwa Mdhamini'},
+    {k:'mdhamini_kata',l:'Kata ya Kuzaliwa Mdhamini'},
+    {k:'mdhamini_wilaya_darasa7',l:'Wilaya ya Darasa la 7 Mdhamini'},
+    {k:'mdhamini_shule_msingi',l:'Shule ya Msingi ya Mdhamini'},
+    {k:'mdhamini_simu_nida',l:'Simu ya NIDA ya Mdhamini'},
+    {k:'mdhamini_napa_reference',l:'NaPA ya Mdhamini'},
   ]},
 ];
-const TOTAL=30;
+const TOTAL=48;
 let appData={},appStatus='collecting',busy=false,pollTimer=null;
 document.getElementById('ts0').textContent=nt();
 
@@ -681,24 +725,36 @@ async function pollStatus(){
 
 function loadDemo(){
   appData={
-    jina_kamili:'Haji Hamisi Huseni',tarehe_kuzaliwa:'05/06/2001',
-    jinsia:'Kiume',namba_nida:'20010605411190000125',
-    namba_simu:'0625607088',barua_pepe:'huseinhaj09@gmail.com',
-    mkoa_asili:'Dodoma',wilaya_asili:'Chemba',
-    mahali_kuzaliwa:'Mainland (Tanzania Bara)',aina_ya_elimu:'Bachelor Degree',
-    rita_namba:'2342',
-    necta_olevel_aina:'S',necta_olevel_shule:'2895',necta_olevel_mtahiniwa:'0030',
-    mwaka_olevel:'2018',daraja_olevel:'Division II',
-    necta_alevel_aina:'S',necta_alevel_shule:'2895',necta_alevel_mtahiniwa:'0030',
-    mwaka_alevel:'2020',masomo_alama:'Physics B, Chemistry C, Mathematics B',gpa_alevel:'3.2',
-    chuo_1:'University of Dar es Salaam — BSc Computer Science',
-    chuo_2:'Ardhi University — BSc Information Technology',
-    chuo_3:'University of Dodoma — BSc Computer Science',
-    jina_baba:'Hamisi Huseni (Amefariki)',jina_mama:'Fatuma Juma',
-    mlezi:'Sina',mapato_familia:'150,000',idadi_ndugu:'5',
+    aina_mwombaji:'fresh_alevel',
+    jina_la_kwanza:'Haji',jina_la_kati:'Hamisi',jina_la_mwisho:'Huseni',
+    necta_form4_index:'S2895/0030/2018',
+    birth_verification_code:'2026783421-BV',
+    barua_pepe:'huseinhaj09@gmail.com',
+    namba_benki:'01J1003621500',jina_benki:'CRDB Bank',
+    namba_simu:'0625607088',
+    namba_nida:'20010605411190000125',
+    mkoa_kuzaliwa:'Dodoma',wilaya_kuzaliwa:'Chemba',kata_kuzaliwa:'Chemba',
+    napa_reference:'12345678-NaPA-2026',
+    una_ulemavu:'HAPANA',ulifadhiliwa:'HAPANA',ulilelewa_yatima:'HAPANA',
+    mama_anajulikana:'NDIYO',mama_yupo_hai:'NDIYO',
+    mama_jina_kamili:'Fatuma Juma Ally',mama_simu:'0754123456',
+    mama_mkoa:'Dodoma',mama_kazi:'Mkulima',mama_napa_reference:'12345679-NaPA-2026',
+    baba_anajulikana:'NDIYO',baba_yupo_hai:'HAPANA',
+    baba_death_code:'2026456789-DV',
+    kuna_tasaf:'HAPANA',
+    necta_form6_index:'S2895/0030/2020',mwaka_form6:'2020',
+    chuo_kilichokubali:'University of Dar es Salaam — BSc Computer Science',
+    mdhamini_aina_id:'NIDA',
+    mdhamini_jina_kamili:'Juma Ally Hassan',
+    mdhamini_namba_nida:'19650302411190000456',
+    mdhamini_mkoa:'Dodoma',mdhamini_wilaya:'Chemba',mdhamini_kata:'Chemba',
+    mdhamini_wilaya_darasa7:'Chemba (1980)',
+    mdhamini_shule_msingi:'Chemba Primary School',
+    mdhamini_simu_nida:'0754123456',
+    mdhamini_napa_reference:'12345680-NaPA-2026',
   };
   appStatus='preview';renderPanel();
-  addAiMsg('✅ Demo imepakiwa! Taarifa za mfano zimejazwa. Unaweza kuhariri kila sehemu kwa kubonyeza ikoni ya kalamu, kisha bonyeza THIBITISHA TAARIFA ZOTE.');
+  addAiMsg('✅ Demo imepakiwa! Taarifa za mfano za HESLB 2026/2027 zimejazwa. Unaweza kuhariri kila sehemu kwa kubonyeza ikoni ya kalamu, kisha bonyeza THIBITISHA TAARIFA ZOTE.');
   Object.entries(appData).forEach(([k,v])=>{
     const fd=new FormData();fd.append('field',k);fd.append('value',v);fd.append('csrfmiddlewaretoken',CSRF);
     fetch(EDIT_URL,{method:'POST',body:fd});
