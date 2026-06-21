@@ -62,16 +62,19 @@ RUN GDAL_PATH=$(find /usr/lib/x86_64-linux-gnu -maxdepth 1 -name 'libgdal.so.*' 
 
 # ── Cache bust: 2026-06-21 ─────────────────────────────────────────────────────
 ENV BUILD_DATE=2026-06-21
-# ── Install Playwright browsers (Chromium only) ────────────────────────────────
+# ── Model/browser cache dirs ──────────────────────────────────────────────────
 ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright
+ENV HF_HOME=/app/.cache/huggingface
+ENV XDG_CACHE_HOME=/app/.cache
+ENV HOME=/app
 RUN python -m playwright install chromium
 
 # ── Application code ───────────────────────────────────────────────────────────
 COPY . .
 
 # ── Non-root user for security ────────────────────────────────────────────────
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
-    && mkdir -p /app/staticfiles /app/media /app/.playwright \
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup --home /app appuser \
+    && mkdir -p /app/staticfiles /app/media /app/.playwright /app/.cache/huggingface \
     && chown -R appuser:appgroup /app
 
 # ── Startup script ─────────────────────────────────────────────────────────────
