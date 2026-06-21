@@ -53,11 +53,9 @@ class ExamUploadForm(forms.Form):
                 if col not in df.columns:
                     raise ValidationError(f"Missing required student column: {col}")
 
-            subjects = Subject.objects.all()
-            subject_names = [subj.name for subj in subjects]
             subject_cols = extract_subject_columns(df)
-            if not any(subj in subject_cols for subj in subject_names):
-                raise ValidationError(f"No valid subject columns found. Available subjects: {', '.join(subject_names)}")
+            if not subject_cols:
+                raise ValidationError("No subject columns found. Ensure the file has subject columns beyond First Name, Last Name, and Gender.")
 
             # Check all subject columns have numeric values
             for col in [column for column in subject_cols if column in subject_names]:

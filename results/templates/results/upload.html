@@ -15,11 +15,67 @@
     {% endif %}
   </div>
 
+  {% if no_exams %}
+  <div class="support-box mb-4" style="border-left: 4px solid #C9A84C; background:#fffbf0;">
+    <strong>Hakuna mitihani kwenye mfumo.</strong> Unda mtihani mpya hapa chini kabla ya kupakia matokeo.
+  </div>
+  {% endif %}
+
+  {% if exam_created %}
+  <div class="support-box mb-4" style="border-left: 4px solid #28a745; background:#f0fff4;">
+    ✅ Mtihani <strong>{{ exam_created }}</strong> umeundwa. Sasa pakia faili ya matokeo.
+  </div>
+  {% endif %}
+
+  <!-- Create New Exam -->
+  <details {% if no_exams %}open{% endif %} class="mb-4">
+    <summary class="fw-bold" style="cursor:pointer; padding:8px 0; color:#1B3A6B;">
+      + Unda Mtihani Mpya
+    </summary>
+    <form method="post" class="mt-3" id="createExamForm">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_exam">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Jina la Mtihani</label>
+          <input name="exam_name" class="form-control" placeholder="e.g. Mid-Term Exam" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Mwaka</label>
+          <input name="exam_year" class="form-control" type="number" value="2026" min="2000" max="2100" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Darasa (Form)</label>
+          <select name="exam_form" class="form-select" required>
+            <option value="1">Form 1</option>
+            <option value="2">Form 2</option>
+            <option value="3">Form 3</option>
+            <option value="4" selected>Form 4</option>
+            <option value="5">Form 5</option>
+            <option value="6">Form 6</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Aina ya Mtihani</label>
+          <select name="exam_type_new" class="form-select" required>
+            {% for value, label in exam_type_choices %}
+              {% if value %}<option value="{{ value }}">{{ label }}</option>{% endif %}
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-outline-dark mt-3">Unda Mtihani</button>
+    </form>
+  </details>
+
+  <hr class="my-4">
+
   <form method="post" enctype="multipart/form-data" id="uploadForm" novalidate class="needs-validation">
     {% csrf_token %}
+    <input type="hidden" name="action" value="upload">
 
     <div class="field">
-      <label for="{{ form.exam_type.id_for_label }}">Exam Type</label>
+      <label for="{{ form.exam_type.id_for_label }}">Aina ya Mtihani</label>
       <select
         name="{{ form.exam_type.name }}"
         id="{{ form.exam_type.id_for_label }}"
@@ -40,9 +96,9 @@
     </div>
 
     <div class="field">
-      <label for="id_exam">Exam</label>
+      <label for="id_exam">Mtihani</label>
       <select name="{{ form.exam.name }}" id="id_exam" class="form-select" required>
-        <option value="">-- Select Exam --</option>
+        <option value="">-- Chagua Mtihani --</option>
         {% for exam in form.fields.exam.queryset %}
           <option value="{{ exam.id }}" {% if form.exam.value|stringformat:'s' == exam.id|stringformat:'s' %}selected{% endif %}>
             {{ exam.name }} ({{ exam.year }})

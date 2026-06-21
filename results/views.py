@@ -13,6 +13,8 @@ from .services.upload_processing_service import (
     process_uploaded_results,
 )
 
+_EXAM_TYPE_CHOICES = Exam.EXAM_TYPE_CHOICES
+
 
 def home(request):
     exams = Exam.objects.all().order_by('-year', 'name')
@@ -28,30 +30,62 @@ def home(request):
 
 
 def upload_results(request):
+    exam_created = None
+    no_exams = not Exam.objects.exists()
+
     if request.method == 'POST':
+        action = request.POST.get('action', 'upload')
+
+        if action == 'create_exam':
+            name = request.POST.get('exam_name', '').strip()
+            year = request.POST.get('exam_year', '2026')
+            form_level = request.POST.get('exam_form', '4')
+            exam_type = request.POST.get('exam_type_new', 'TERMINAL')
+            if name:
+                exam, created = Exam.objects.get_or_create(
+                    name=name,
+                    year=int(year),
+                    form=int(form_level),
+                    exam_type=exam_type,
+                )
+                exam_created = str(exam)
+                no_exams = False
+            form = ExamUploadForm()
+            return render(request, 'results/upload.html', {
+                'form': form,
+                'exam_created': exam_created,
+                'no_exams': no_exams,
+                'exam_type_choices': _EXAM_TYPE_CHOICES,
+            })
+
         form = ExamUploadForm(request.POST, request.FILES)
         if form.is_valid():
             exam = form.cleaned_data['exam']
             file = form.cleaned_data['file']
-
             try:
                 process_uploaded_results(exam=exam, uploaded_file=file)
-
-                messages.success(request, f"Results uploaded and processed for exam: {exam.name}")
+                messages.success(request, f"Matokeo yamepakiwa: {exam.name}")
                 download_url = reverse('generate_results_pdf', args=[exam.id])
                 return render(request, 'results/upload.html', {
                     'form': ExamUploadForm(),
-                    'download_url': download_url
+                    'download_url': download_url,
+                    'no_exams': False,
+                    'exam_type_choices': _EXAM_TYPE_CHOICES,
                 })
             except UploadProcessingError as error:
                 messages.error(request, str(error))
                 return redirect(request.path)
             except Exception as e:
-                messages.error(request, f"Error processing file: {str(e)}")
+                messages.error(request, f"Hitilafu: {str(e)}")
                 return redirect(request.path)
     else:
         form = ExamUploadForm()
-    return render(request, 'results/upload.html', {'form': form})
+
+    return render(request, 'results/upload.html', {
+        'form': form,
+        'no_exams': no_exams,
+        'exam_type_choices': _EXAM_TYPE_CHOICES,
+    })
 
 
 def filter_exams(request):
