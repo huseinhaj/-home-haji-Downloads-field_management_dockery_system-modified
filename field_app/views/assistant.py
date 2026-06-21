@@ -214,7 +214,13 @@ def _is_quota_err(err: str) -> bool:
     return "429" in err or "RESOURCE_EXHAUSTED" in err
 
 
+def _is_auth_err(err: str) -> bool:
+    return "401" in err or "403" in err or "API_KEY" in err or "INVALID_ARGUMENT" in err
+
+
 def _friendly_err(err: str) -> str:
+    if _is_auth_err(err):
+        return "Samahani, API key ya AI si sahihi. Tafadhali wasiliana na msimamizi wa mfumo."
     if _is_quota_err(err):
         return "Samahani, mfumo wa AI una msongamano kwa sasa. Tafadhali subiri dakika moja kisha jaribu tena."
     return "Samahani, hitilafu imetokea. Tafadhali jaribu tena."
@@ -223,21 +229,21 @@ def _friendly_err(err: str) -> str:
 def _call_gemini(history: list) -> str:
     """Non-streaming call for the opening message only. Tries all fallback models."""
     if client is None:
-        return "Samahani, huduma ya AI haitumiki kwa sasa."
+        return "Samahani, huduma ya AI haikusanidiwa. Tafadhali wasiliana na msimamizi."
     cfg = _make_cfg()
     contents = _build_contents(history)
     for mdl in FALLBACK_MODELS:
-        for attempt in range(2):
-            try:
-                resp = client.models.generate_content(model=mdl, contents=contents, config=cfg)
-                return resp.text or "Samahani, jibu halijapatikana."
-            except Exception as e:
-                err = str(e)
-                if _is_quota_err(err) and attempt == 0:
-                    time.sleep(10)
-                    continue
-                break  # try next model
-    return "Samahani, mfumo wa AI una msongamano kwa sasa. Tafadhali subiri dakika moja kisha jaribu tena."
+        try:
+            resp = client.models.generate_content(model=mdl, contents=contents, config=cfg)
+            return resp.text or "Samahani, jibu halijapatikana."
+        except Exception as e:
+            err = str(e)
+            if _is_auth_err(err):
+                return _friendly_err(err)   # auth errors won't change with retry
+            if _is_quota_err(err):
+                time.sleep(3)               # short pause only, then try next model
+            continue
+    return "Samahani, mfumo wa AI hauwezi kujibu sasa hivi. Tafadhali jaribu tena baadaye."
 
 
 def application_assistant(request):
@@ -294,43 +300,36 @@ def application_chat_stream(request):
         for mdl in FALLBACK_MODELS:
             if succeeded:
                 break
-            for attempt in range(2):
-                try:
-                    for chunk in client.models.generate_content_stream(
-                        model=mdl, contents=contents, config=cfg
-                    ):
-                        token = chunk.text or ""
-                        if not token:
-                            continue
-                        full_text += token
-                        if not data_block_started:
-                            if "[[DATA_READY]]" in full_text:
-                                data_block_started = True
-                                marker_pos = full_text.index("[[DATA_READY]]")
-                                prev_visible = full_text[:marker_pos]
-                                chunk_start = marker_pos - len(token)
-                                visible_from_chunk = prev_visible[max(0, chunk_start):]
-                                if visible_from_chunk:
-                                    yield f"data: {json.dumps({'t': visible_from_chunk})}\n\n"
-                            else:
-                                yield f"data: {json.dumps({'t': token})}\n\n"
-                    succeeded = True
-                    break
-                except Exception as e:
-                    err = str(e)
-                    if _is_quota_err(err):
-                        if attempt == 0:
-                            # brief pause then retry same model once
-                            time.sleep(5)
-                            continue
-                        # model exhausted — try next one silently
-                        break
-                    # non-quota error — show friendly message and stop
+            try:
+                for chunk in client.models.generate_content_stream(
+                    model=mdl, contents=contents, config=cfg
+                ):
+                    token = chunk.text or ""
+                    if not token:
+                        continue
+                    full_text += token
+                    if not data_block_started:
+                        if "[[DATA_READY]]" in full_text:
+                            data_block_started = True
+                            marker_pos = full_text.index("[[DATA_READY]]")
+                            prev_visible = full_text[:marker_pos]
+                            chunk_start = marker_pos - len(token)
+                            visible_from_chunk = prev_visible[max(0, chunk_start):]
+                            if visible_from_chunk:
+                                yield f"data: {json.dumps({'t': visible_from_chunk})}\n\n"
+                        else:
+                            yield f"data: {json.dumps({'t': token})}\n\n"
+                succeeded = True
+            except Exception as e:
+                err = str(e)
+                if _is_auth_err(err):
                     yield f"data: {json.dumps({'t': _friendly_err(err)})}\n\n"
                     return
+                # quota or other — try next model immediately (no sleep)
+                continue
 
         if not succeeded and not full_text:
-            yield f"data: {json.dumps({'t': 'Samahani, mfumo wa AI una msongamano kwa sasa. Tafadhali subiri dakika moja kisha jaribu tena.'})}\n\n"
+            yield f"data: {json.dumps({'t': 'Samahani, mfumo wa AI hauwezi kujibu sasa hivi. Tafadhali jaribu tena.'})}\n\n"
             return
 
         # Extract structured data
