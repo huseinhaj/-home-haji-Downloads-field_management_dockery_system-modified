@@ -120,13 +120,13 @@
   <div class="col-lg-4">
     <section class="panel h-100">
       <div class="panel-head">
-        <h3 class="mb-0">Open Session</h3>
+        <h3 class="mb-0">Hatua 1: Fungua Kipindi</h3>
       </div>
       <div class="panel-body">
         <div class="field">
-          <label for="exam_id">Exam</label>
+          <label for="exam_id">Mtihani</label>
           <select id="exam_id" class="form-select">
-            <option value="">Select exam</option>
+            <option value="">— Chagua mtihani —</option>
             {% for exam in exams %}
               <option value="{{ exam.id }}" {% if preselect_exam_id == exam.id|stringformat:"s" %}selected{% endif %}>
                 {{ exam.name }} ({{ exam.year }})
@@ -135,9 +135,9 @@
           </select>
         </div>
         <div class="field">
-          <label for="subject_id">Subject</label>
+          <label for="subject_id">Somo</label>
           <select id="subject_id" class="form-select">
-            <option value="">Select subject</option>
+            <option value="">— Chagua somo —</option>
             {% for subject in subjects %}
               <option value="{{ subject.id }}" {% if preselect_subject_id == subject.id|stringformat:"s" %}selected{% endif %}>
                 {{ subject.name }}
@@ -146,32 +146,25 @@
           </select>
         </div>
         <div class="field">
-          <label for="teacher_name">Teacher Name</label>
-          <input id="teacher_name" class="form-control" placeholder="e.g. Mr. Mushi">
+          <label for="teacher_name">Jina la Mwalimu</label>
+          <input id="teacher_name" class="form-control" placeholder="Mfano: Mwl. Mushi">
         </div>
         <div class="field">
-          <label for="language">Language / Lugha</label>
-          <select id="language" class="form-select" required>
-            <option value="">Select Language</option>
+          <label for="language">Lugha ya Kurekodi</label>
+          <select id="language" class="form-select">
+            <option value="sw" selected>Kiswahili</option>
             <option value="en">English</option>
-            <option value="sw">Swahili (Kiswahili)</option>
           </select>
         </div>
-        <div class="field">
-          <label for="roster_students">Class List</label>
+        <div class="field" style="display:none;">
           <select id="roster_students" class="form-select" multiple size="8"></select>
-          <div class="hint mt-1">Choose the students in this class. The session size updates automatically.</div>
         </div>
-        <div class="field">
-          <label for="expected_student_count">Selected Students</label>
-          <input id="expected_student_count" class="form-control" type="number" min="1" readonly value="0">
-        </div>
-        <div class="d-grid gap-2">
-          <button id="openSessionBtn" class="btn btn-brand" type="button">Open Session</button>
-          <button id="finalizeSessionBtn" class="btn btn-outline-dark" type="button" disabled>Finalize Session</button>
+        <div class="d-grid gap-2 mt-3">
+          <button id="openSessionBtn" class="btn btn-brand" type="button">▶ Fungua Kipindi</button>
+          <button id="finalizeSessionBtn" class="btn btn-outline-dark" type="button" disabled>✔ Maliza &amp; Hifadhi PDF</button>
         </div>
         <div id="sessionStatus" class="support-box mt-3 small text-secondary">
-          Open a session to start recording.
+          Jaza fomu hapo juu kisha bonyeza <strong>Fungua Kipindi</strong>.
         </div>
       </div>
     </section>
@@ -180,26 +173,26 @@
   <div class="col-lg-8">
     <section class="panel h-100">
       <div class="panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h3 class="mb-0">Live Capture</h3>
+        <h3 class="mb-0">Hatua 2: Rekodi Alama</h3>
         <div class="d-flex gap-2 flex-wrap">
-          <button id="recordBtn" class="btn btn-brand" type="button" disabled>Start Recording</button>
-          <button id="useTranscriptBtn" class="btn btn-outline-secondary" type="button" disabled>Submit Transcript</button>
+          <button id="recordBtn" class="btn btn-brand" type="button" disabled>🎙 Anza Kurekodi</button>
+          <button id="useTranscriptBtn" class="btn btn-outline-secondary" type="button" disabled>Wasilisha Maandishi</button>
         </div>
       </div>
       <div class="panel-body">
         <div class="row g-3">
           <div class="col-lg-7">
-            <label class="form-label fw-bold">Live Transcript</label>
-            <textarea id="transcript" class="form-control transcript-box" rows="7" placeholder="Transcript will appear here or paste it manually"></textarea>
+            <label class="form-label fw-bold">Maandishi ya Sauti</label>
+            <textarea id="transcript" class="form-control transcript-box" rows="7" placeholder="Maandishi yataonekana hapa — au unaweza kuandika mwenyewe&#10;&#10;Mfano: Halima Ally sabini na tano. Peter Mushi themanini. Fatuma Ali tisini. Nimemaliza."></textarea>
             <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
-              <div id="confidenceBox" class="small text-secondary">Confidence: -</div>
-              <div id="audioState" class="small text-secondary">Idle</div>
+              <div id="confidenceBox" class="small text-secondary">Hali: —</div>
+              <div id="audioState" class="small text-secondary">Imesimama</div>
             </div>
           </div>
           <div class="col-lg-5">
-            <label class="form-label fw-bold">Batch Processing Notes</label>
+            <label class="form-label fw-bold">Matokeo ya Uchambuzi</label>
             <div id="candidatePanel" class="support-box candidate-panel">
-              Submit one long transcript with multiple students. Example: "Amina Juma, sabini. Peter Mushi, themanini. Nimemaliza".
+              Sema wanafunzi wengi mfululizo: <em>"Amina Juma sabini, Peter Mushi themanini, Nimemaliza"</em>.
             </div>
             <div class="mt-3">
               <label class="form-label fw-bold">Overwrite Existing Marks</label>
@@ -272,7 +265,6 @@
   const examEl = document.getElementById('exam_id');
   const subjectEl = document.getElementById('subject_id');
   const teacherEl = document.getElementById('teacher_name');
-  const expectedEl = document.getElementById('expected_student_count');
   const rosterEl = document.getElementById('roster_students');
   const openBtn = document.getElementById('openSessionBtn');
   const finalizeBtn = document.getElementById('finalizeSessionBtn');
@@ -311,7 +303,7 @@
       }
     }
     // Disable entry controls
-    if (recordBtn) { recordBtn.disabled = true; recordBtn.textContent = 'Kipindi Kimefungwa'; }
+    if (recordBtn) { recordBtn.disabled = true; recordBtn.textContent = '🔒 Kipindi Kimefungwa'; }
     if (useTranscriptBtn) useTranscriptBtn.disabled = true;
     if (finalizeBtn) finalizeBtn.disabled = true;
   }
@@ -355,9 +347,7 @@
   }
 
   function refreshRosterSize() {
-    const selectedCount = Array.from(rosterEl.selectedOptions).length;
-    expectedEl.value = selectedCount > 0 ? String(selectedCount) : 'Wote (open)';
-    openBtn.disabled = false; // roster si lazima — wanafunzi wataundwa kutoka speech
+    openBtn.disabled = false;
   }
 
   function loadRosterOptions() {
@@ -455,7 +445,9 @@
     recordBtn.disabled = false;
     useTranscriptBtn.disabled = false;
     finalizeBtn.disabled = false;
-    setStatus(`Session opened. Access key saved. Expected students: ${data.expected_student_count}`, 'success');
+    setStatus('✅ Kipindi kimefunguliwa! Bonyeza "Anza Kurekodi" na sema majina na alama.', 'success');
+    openBtn.textContent = '✔ Kipindi Kimefunguliwa';
+    openBtn.disabled = true;
     await refreshStatus();
   }
 
@@ -586,16 +578,16 @@
 
     state.recorder.start();
     state.isRecording = true;
-    recordBtn.textContent = 'Stop Recording';
-    audioState.textContent = 'Recording...';
+    recordBtn.textContent = '⏹ Simama Kurekodi';
+    audioState.textContent = '🔴 Inarekodi...';
   }
 
   function stopRecording() {
     if (state.recorder && state.isRecording) {
       state.recorder.stop();
       state.isRecording = false;
-      recordBtn.textContent = 'Start Recording';
-      audioState.textContent = 'Processing audio...';
+      recordBtn.textContent = '🎙 Anza Kurekodi';
+      audioState.textContent = '⏳ Inachakata sauti...';
     }
   }
 
