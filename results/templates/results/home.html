@@ -40,10 +40,25 @@
         {% for exam in exams|slice:":8" %}
           <li class="exam-item">
             <div>
-              <strong>{{ exam.name }}</strong>
+              <a href="{% url 'exam_overview' exam.id %}" style="color:#1B3A6B;font-weight:700;text-decoration:none;">
+                {{ exam.name }}
+              </a>
               <div class="text-secondary small">Form {{ exam.form }} | {{ exam.year }}</div>
+              {% if exam.total_submissions > 0 %}
+                <div class="small mt-1">
+                  <span style="color:{% if exam.submitted_count == exam.total_submissions %}#1a7a3b{% else %}#7a5200{% endif %};font-weight:600;">
+                    {{ exam.submitted_count }}/{{ exam.total_submissions }} masomo yamewasilishwa
+                  </span>
+                </div>
+              {% endif %}
             </div>
-            <span class="badge-soft">{{ exam.get_exam_type_display }}</span>
+            <div class="d-flex flex-column gap-1 align-items-end">
+              <span class="badge-soft">{{ exam.get_exam_type_display }}</span>
+              <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm"
+                 style="font-size:0.72rem;padding:0.2rem 0.6rem;background:#1B3A6B;color:#fff;border-radius:2px;font-weight:600;border:none;">
+                Muhtasari
+              </a>
+            </div>
           </li>
         {% endfor %}
       </ul>

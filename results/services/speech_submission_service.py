@@ -8,7 +8,7 @@ from typing import Iterable, List, Optional, Tuple
 from django.db import transaction
 from django.utils import timezone
 
-from ..models import Exam, ExamResult, ProcessedResult, SpeechSubmissionEntry, SpeechSubmissionSession, Student
+from ..models import Exam, ExamResult, ProcessedResult, SpeechSubmissionEntry, SpeechSubmissionSession, Student, SubjectSubmission
 from .upload_processing_service import recompute_processed_results_for_exam
 
 try:
@@ -52,6 +52,32 @@ SCORE_FILLER_WORDS = {
     "to",
     "the",
 }
+
+
+FINALIZE_KEYWORDS = frozenset({
+    'nimemaliza',
+    'nimekwisha',
+    'namaliza',
+    'imekamilika',
+    'finished',
+    'done',
+    'complete',
+    'completed',
+})
+
+
+def contains_finalize_signal(transcript: str) -> bool:
+    normalized = normalize_text(transcript)
+    words = set(normalized.split())
+    return bool(FINALIZE_KEYWORDS & words)
+
+
+def is_finalize_only(transcript: str) -> bool:
+    """True if transcript is ONLY a finalize signal with no student entry."""
+    normalized = normalize_text(transcript)
+    words = set(normalized.split())
+    remaining = words - FINALIZE_KEYWORDS - {'na', 'ya', 'hiyo', 'hizo'}
+    return bool(FINALIZE_KEYWORDS & words) and len(remaining) <= 1
 
 
 ENGLISH_NUMBER_WORDS = {
@@ -365,6 +391,7 @@ def submit_speech_entry(
     explicit_update: bool = False,
     confirm_student_id: Optional[int] = None,
     confidence_threshold: float = 0.9,
+    teacher_name: str = '',
 ) -> dict:
     if session.status == SpeechSubmissionSession.STATUS_FINALIZED:
         raise SpeechSubmissionError("This speech submission session is already finalized.")
@@ -439,12 +466,29 @@ def submit_speech_entry(
                 )
                 if matched_student is not None:
                     student_name = recovered_name
+
         logger.debug(
             "submit_speech_entry: fuzzy match result student_id=%s confidence=%s candidates=%s",
             getattr(matched_student, "id", None),
             confidence,
             candidates,
         )
+
+        # Auto-create student when truly no match exists (confidence < 0.45)
+        if matched_student is None and confidence < 0.45:
+            parts = student_name.strip().split()
+            first = parts[0].capitalize() if parts else 'Unknown'
+            last = ' '.join(parts[1:]).capitalize() if len(parts) > 1 else 'Unknown'
+            matched_student = Student.objects.create(first_name=first, last_name=last, gender='M')
+            confidence = 1.0
+            candidates = [{'student_id': matched_student.id, 'name': student_name, 'confidence': 1.0}]
+            logger.info(
+                "submit_speech_entry: auto-created student id=%s name=%r from transcript=%r",
+                matched_student.id,
+                student_name,
+                transcript,
+            )
+
         if matched_student is None:
             logger.info(
                 "submit_speech_entry: low confidence match session_id=%s transcript=%r parsed_name=%r confidence=%s candidates=%s",
@@ -518,6 +562,7 @@ def submit_speech_entry(
             if session.is_complete:
                 session.mark_finalized()
                 session_finalized = True
+                _update_subject_submission(session, teacher_name=teacher_name or session.teacher_name)
                 exam_finalized = maybe_finalize_exam(session.exam)
 
     logger.info(
@@ -565,25 +610,65 @@ def submit_speech_entries_batch(
     session: SpeechSubmissionSession,
     transcript: str,
     confidence_threshold: float = 0.9,
+    teacher_name: str = '',
 ) -> dict:
+    # Check for finalize signal in the overall transcript
+    finalize_detected = contains_finalize_signal(transcript)
+
+    # If the ENTIRE transcript is only "nimemaliza" with no student data, skip processing
+    if is_finalize_only(transcript):
+        logger.info(
+            "submit_speech_entries_batch: finalize-only transcript detected session_id=%s transcript=%r",
+            session.id,
+            transcript,
+        )
+        return {
+            "status": "saved",
+            "mode": "batch",
+            "saved_count": 0,
+            "skipped_count": 0,
+            "saved_entries": [],
+            "skipped_entries": [],
+            "session_finalized": False,
+            "exam_finalized": False,
+            "finalize_detected": True,
+        }
+
     chunks = split_transcript_entries(transcript)
     if not chunks:
         raise SpeechSubmissionError(
             "Transcript is empty. Please record a clear voice entry with student names and marks."
         )
 
+    # Filter out finalize-only chunks from the data chunks
+    data_chunks = [chunk for chunk in chunks if not is_finalize_only(chunk)]
+    if not data_chunks and chunks:
+        # All chunks were finalize signals
+        return {
+            "status": "saved",
+            "mode": "batch",
+            "saved_count": 0,
+            "skipped_count": 0,
+            "saved_entries": [],
+            "skipped_entries": [],
+            "session_finalized": False,
+            "exam_finalized": False,
+            "finalize_detected": True,
+        }
+
     saved_entries: list[dict] = []
     skipped_entries: list[dict] = []
     session_finalized = False
     exam_finalized = False
 
-    for chunk in chunks:
+    for chunk in data_chunks:
         try:
             result = submit_speech_entry(
                 session=session,
                 transcript=chunk,
                 explicit_update=True,
                 confidence_threshold=confidence_threshold,
+                teacher_name=teacher_name,
             )
             saved_entries.append(result)
             if result.get("session_finalized"):
@@ -613,13 +698,14 @@ def submit_speech_entries_batch(
         )
 
     logger.info(
-        "submit_speech_entries_batch: session_id=%s total_chunks=%s saved=%s skipped=%s session_finalized=%s exam_finalized=%s",
+        "submit_speech_entries_batch: session_id=%s total_chunks=%s saved=%s skipped=%s session_finalized=%s exam_finalized=%s finalize_detected=%s",
         session.id,
-        len(chunks),
+        len(data_chunks),
         len(saved_entries),
         len(skipped_entries),
         session_finalized,
         exam_finalized,
+        finalize_detected,
     )
 
     return {
@@ -631,7 +717,25 @@ def submit_speech_entries_batch(
         "skipped_entries": skipped_entries,
         "session_finalized": session_finalized,
         "exam_finalized": exam_finalized,
+        "finalize_detected": finalize_detected,
     }
+
+
+def _update_subject_submission(session: SpeechSubmissionSession, teacher_name: str = '') -> SubjectSubmission:
+    """Create or update SubjectSubmission when a session is finalized via speech."""
+    student_count = session.entries.count()
+    submission, _ = SubjectSubmission.objects.update_or_create(
+        exam=session.exam,
+        subject=session.subject,
+        defaults={
+            'status': SubjectSubmission.STATUS_SUBMITTED,
+            'method': 'SPEECH',
+            'submitted_by': teacher_name or session.teacher_name,
+            'submitted_at': timezone.now(),
+            'student_count': student_count,
+        },
+    )
+    return submission
 
 
 @transaction.atomic

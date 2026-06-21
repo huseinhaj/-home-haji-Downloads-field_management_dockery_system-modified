@@ -46,6 +46,7 @@ class Exam(models.Model):
         default='TERMINAL'
     )
     date = models.DateField(null=True, blank=True)
+    school_name = models.CharField(max_length=200, blank=True)
 
     def __str__(self):
         return f"{self.get_exam_type_display()} - {self.name} ({self.year})"
@@ -109,6 +110,28 @@ class ProcessedResult(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.division}"
+
+
+class SubjectSubmission(models.Model):
+    METHOD_CHOICES = [('SPEECH', 'Speech Entry'), ('UPLOAD', 'File Upload')]
+    STATUS_PENDING = 'PENDING'
+    STATUS_SUBMITTED = 'SUBMITTED'
+    STATUS_CHOICES = [(STATUS_PENDING, 'Pending'), (STATUS_SUBMITTED, 'Submitted')]
+
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='subject_submissions')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='submissions')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    method = models.CharField(max_length=20, choices=METHOD_CHOICES, blank=True)
+    submitted_by = models.CharField(max_length=100, blank=True)  # teacher name
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    student_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = [('exam', 'subject')]
+        ordering = ['subject__name']
+
+    def __str__(self):
+        return f"{self.exam} - {self.subject} ({self.status})"
 
 
 class SpeechSubmissionSession(models.Model):
@@ -181,4 +204,3 @@ class SpeechSubmissionEntry(models.Model):
 
     def __str__(self):
         return f"{self.session} - {self.student} ({self.score})"
-

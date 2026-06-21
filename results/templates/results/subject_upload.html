@@ -1,0 +1,138 @@
+{% extends 'results/base.html' %}
+
+{% block title %}Pakia Alama — {{ subject.name }} | School Results{% endblock %}
+
+{% block content %}
+<style>
+  .upload-card {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+  .upload-hero {
+    background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
+    border: 2px solid #C9A84C;
+    border-radius: 2px;
+    padding: 1.4rem 1.8rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+  }
+  .upload-hero h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.2rem; }
+  .upload-hero .meta { font-size: 0.82rem; color: #C9A84C; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .format-box {
+    background: #f8f9fa;
+    border: 1.5px solid #dee2e6;
+    border-left: 4px solid #C9A84C;
+    border-radius: 2px;
+    padding: 0.9rem 1rem;
+    font-size: 0.82rem;
+    color: #444;
+    margin-bottom: 1.2rem;
+  }
+  .format-box table { margin-top: 0.5rem; width: 100%; border-collapse: collapse; }
+  .format-box th, .format-box td {
+    border: 1px solid #dee2e6;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.78rem;
+  }
+  .format-box th { background: #1B3A6B; color: #fff; font-weight: 600; }
+
+  .field { margin-bottom: 1rem; }
+  .field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #1B3A6B;
+    margin-bottom: 0.3rem;
+  }
+  .btn-upload-submit {
+    background: #1B3A6B;
+    color: #fff;
+    border: 2px solid #C9A84C;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0.6rem 1.5rem;
+    border-radius: 2px;
+    text-transform: uppercase;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .btn-upload-submit:hover { background: #14305a; color: #fff; }
+</style>
+
+<div class="upload-card">
+  <!-- Hero -->
+  <div class="upload-hero">
+    <h1>{{ subject.name }}</h1>
+    <div class="meta">
+      {{ exam.get_exam_type_display }} &bull; {{ exam.name }} &bull; Fomu {{ exam.form }} &bull; {{ exam.year }}
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} mb-3" role="alert">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Format guide -->
+  <div class="format-box">
+    <strong>Muundo wa Faili (CSV au Excel):</strong>
+    <p class="mb-1 mt-1">Faili lazima liwe na safu hizi (headers katika mstari wa kwanza):</p>
+    <table>
+      <tr>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Gender</th>
+        <th>Score</th>
+      </tr>
+      <tr>
+        <td>Halima</td>
+        <td>Ally</td>
+        <td>F</td>
+        <td>78</td>
+      </tr>
+      <tr>
+        <td>Peter</td>
+        <td>Mushi</td>
+        <td>M</td>
+        <td>62</td>
+      </tr>
+    </table>
+    <div class="mt-2">
+      <strong>Kumbuka:</strong> Safu ya <em>Score</em> inaweza kuitwa pia <em>Alama</em>, <em>Marks</em>, au <em>Mark</em>.
+      Jinsia inaweza kuwa F/M au Female/Male.
+    </div>
+  </div>
+
+  <!-- Upload form -->
+  <div class="panel">
+    <div class="panel-head">
+      <h3 class="mb-0">Pakia Faili la Alama</h3>
+    </div>
+    <div class="panel-body">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="field">
+          <label for="teacher_name">Jina la Mwalimu (si lazima)</label>
+          <input id="teacher_name" name="teacher_name" class="form-control" placeholder="e.g. Mwl. Fatuma Hassan">
+        </div>
+        <div class="field">
+          <label for="file">Chagua Faili (CSV au Excel)</label>
+          <input id="file" name="file" type="file" class="form-control" accept=".csv,.xlsx,.xls" required>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="submit" class="btn-upload-submit">Pakia Alama</button>
+          <a href="{{ overview_url }}" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;">
+            Rudi Nyuma
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

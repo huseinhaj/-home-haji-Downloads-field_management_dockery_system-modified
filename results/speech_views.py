@@ -4,10 +4,12 @@ import logging
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import render
 
-from .models import Exam, SpeechSubmissionSession, Student, Subject
+from .models import Exam, SpeechSubmissionSession, Student, Subject, SubjectSubmission
 from .services.speech_asr_service import transcribe_uploaded_audio, SpeechTranscriptionError
 from .services.speech_submission_service import (
     SpeechMatchReviewRequired,
@@ -18,6 +20,7 @@ from .services.speech_submission_service import (
     submit_speech_entries_batch,
     submit_speech_entry,
 )
+from .services.upload_processing_service import recompute_processed_results_for_exam
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +31,11 @@ def speech_entry_page(request):
     exams = Exam.objects.all().order_by('-year', 'name')
     subjects = Subject.objects.all().order_by('name')
     students = Student.objects.all().order_by('first_name', 'last_name')
+
+    # Pre-select exam/subject from URL params
+    preselect_exam_id = request.GET.get('exam')
+    preselect_subject_id = request.GET.get('subject')
+
     return render(
         request,
         'results/speech_entry.html',
@@ -36,6 +44,8 @@ def speech_entry_page(request):
             'subjects': subjects,
             'students': students,
             'debug_mode': settings.DEBUG,
+            'preselect_exam_id': preselect_exam_id or '',
+            'preselect_subject_id': preselect_subject_id or '',
         },
     )
 
@@ -122,6 +132,7 @@ def ingest_speech_entry(request, session_id):
         payload = _parse_payload(request)
         session = _session_with_access_key(session_id, payload.get("access_key"))
         transcript = payload.get("transcript") or payload.get("text") or ""
+        teacher_name = (payload.get("teacher_name") or session.teacher_name or "").strip()
         audio_file = request.FILES.get("audio")
         if audio_file:
             language = payload.get("language") or "en"
@@ -157,14 +168,45 @@ def ingest_speech_entry(request, session_id):
             session=session,
             transcript=transcript,
             confidence_threshold=float(payload.get("confidence_threshold", 0.9)),
+            teacher_name=teacher_name,
         )
+
+        # Handle "nimemaliza" finalize signal
+        if result.get("finalize_detected"):
+            session.refresh_from_db()
+            if session.status != SpeechSubmissionSession.STATUS_FINALIZED:
+                session.mark_finalized()
+
+            # Update or create SubjectSubmission record
+            student_count = session.entries.count()
+            submission, _ = SubjectSubmission.objects.update_or_create(
+                exam=session.exam,
+                subject=session.subject,
+                defaults={
+                    'status': SubjectSubmission.STATUS_SUBMITTED,
+                    'method': 'SPEECH',
+                    'submitted_by': teacher_name or session.teacher_name,
+                    'submitted_at': timezone.now(),
+                    'student_count': student_count,
+                },
+            )
+
+            # Recompute processed results
+            recompute_processed_results_for_exam(session.exam)
+
+            # Build PDF URL for this subject
+            subject_pdf_url = reverse('subject_pdf', args=[session.exam_id, session.subject_id])
+            result['subject_pdf_url'] = subject_pdf_url
+            result['session_finalized'] = True
+
         logger.info(
-            "ingest_speech_entry: success session_id=%s saved_count=%s skipped_count=%s session_finalized=%s exam_finalized=%s",
+            "ingest_speech_entry: success session_id=%s saved_count=%s skipped_count=%s session_finalized=%s exam_finalized=%s finalize_detected=%s",
             session.id,
             result.get("saved_count"),
             result.get("skipped_count"),
             result.get("session_finalized"),
             result.get("exam_finalized"),
+            result.get("finalize_detected"),
         )
         return JsonResponse(result)
     except SpeechTranscriptionError as exc:
@@ -206,6 +248,7 @@ def confirm_speech_candidate(request, session_id):
         payload = _parse_payload(request)
         session = _session_with_access_key(session_id, payload.get("access_key"))
         transcript = payload.get("transcript") or payload.get("text") or ""
+        teacher_name = (payload.get("teacher_name") or session.teacher_name or "").strip()
         logger.info(
             "confirm_speech_candidate: session_id=%s confirm_student_id=%s transcript=%r explicit_update=%s",
             session.id,
@@ -219,6 +262,7 @@ def confirm_speech_candidate(request, session_id):
             explicit_update=str(payload.get("explicit_update", "false")).lower() in {"1", "true", "yes"},
             confirm_student_id=int(payload.get("confirm_student_id")),
             confidence_threshold=float(payload.get("confidence_threshold", 0.9)),
+            teacher_name=teacher_name,
         )
         logger.info(
             "confirm_speech_candidate: success session_id=%s student_id=%s score=%s confidence=%s",
@@ -258,6 +302,7 @@ def finalize_speech_session(request, session_id):
     try:
         payload = _parse_payload(request)
         session = _session_with_access_key(session_id, payload.get("access_key"))
+        teacher_name = (payload.get("teacher_name") or session.teacher_name or "").strip()
         logger.info(
             "finalize_speech_session: session_id=%s submitted_count=%s expected_count=%s status=%s",
             session.id,
@@ -282,7 +327,24 @@ def finalize_speech_session(request, session_id):
             )
 
         session.mark_finalized()
+
+        # Update SubjectSubmission
+        student_count = session.entries.count()
+        SubjectSubmission.objects.update_or_create(
+            exam=session.exam,
+            subject=session.subject,
+            defaults={
+                'status': SubjectSubmission.STATUS_SUBMITTED,
+                'method': 'SPEECH',
+                'submitted_by': teacher_name or session.teacher_name,
+                'submitted_at': timezone.now(),
+                'student_count': student_count,
+            },
+        )
+
         exam_finalized = maybe_finalize_exam(session.exam)
+        subject_pdf_url = reverse('subject_pdf', args=[session.exam_id, session.subject_id])
+
         logger.info(
             "finalize_speech_session: finalized session_id=%s exam_finalized=%s",
             session.id,
@@ -293,6 +355,7 @@ def finalize_speech_session(request, session_id):
             "status": session.status,
             "finalized_at": session.finalized_at,
             "exam_finalized": exam_finalized,
+            "subject_pdf_url": subject_pdf_url,
         })
     except SpeechSubmissionError as exc:
         logger.warning("finalize_speech_session: validation error session_id=%s error=%s", session_id, exc)

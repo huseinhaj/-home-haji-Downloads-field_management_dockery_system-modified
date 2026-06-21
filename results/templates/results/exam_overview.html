@@ -1,0 +1,245 @@
+{% extends 'results/base.html' %}
+
+{% block title %}{{ exam.name }} — Muhtasari | School Results{% endblock %}
+
+{% block content %}
+<style>
+  .ov-hero {
+    background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
+    border: 2px solid #C9A84C;
+    border-radius: 2px;
+    padding: 1.6rem 2rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+  }
+  .ov-hero h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.25rem; letter-spacing: 0.02em; }
+  .ov-hero .meta-row { font-size: 0.85rem; color: #C9A84C; letter-spacing: 0.03em; text-transform: uppercase; }
+  .ov-progress-bar-wrap {
+    background: #e9ecef;
+    border-radius: 2px;
+    height: 8px;
+    overflow: hidden;
+    margin: 0.75rem 0 0.4rem;
+  }
+  .ov-progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #C9A84C, #e8b84b);
+    transition: width 0.4s;
+  }
+  .ov-progress-label { font-size: 0.78rem; color: #C9A84C; font-weight: 600; letter-spacing: 0.05em; }
+
+  .subject-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  .subject-card {
+    background: #fff;
+    border: 1.5px solid #dee2e6;
+    border-radius: 2px;
+    padding: 1rem 1.1rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    transition: border-color 0.15s;
+  }
+  .subject-card:hover { border-color: #1B3A6B; }
+  .subject-card.is-submitted { border-left: 4px solid #1a7a3b; }
+  .subject-card.is-pending { border-left: 4px solid #C9A84C; }
+
+  .subject-card .subject-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1B3A6B;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 0.18rem 0.7rem;
+    border-radius: 2px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  .status-badge.submitted { background: #e6f7ec; color: #1a7a3b; border: 1px solid #a3d9b4; }
+  .status-badge.pending { background: #fff8e6; color: #7a5200; border: 1px solid #f0d07a; }
+
+  .subject-meta { font-size: 0.78rem; color: #666; }
+  .subject-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.35rem; }
+  .subject-actions .btn { font-size: 0.75rem; padding: 0.3rem 0.75rem; border-radius: 2px; font-weight: 600; }
+
+  .finalize-section {
+    background: #f8f9fa;
+    border: 1.5px solid #dee2e6;
+    border-radius: 2px;
+    padding: 1.2rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .finalize-section h4 { font-size: 1rem; font-weight: 700; color: #1B3A6B; margin: 0; }
+  .finalize-section p { font-size: 0.82rem; color: #666; margin: 0.2rem 0 0; }
+
+  .btn-finalize {
+    background: #1B3A6B;
+    color: #fff;
+    border: 2px solid #C9A84C;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0.6rem 1.5rem;
+    border-radius: 2px;
+    text-transform: uppercase;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .btn-finalize:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    color: #fff;
+  }
+  .btn-finalize:not(:disabled):hover {
+    background: #14305a;
+  }
+  .btn-speech { background: #1B3A6B; color: #fff; border: none; }
+  .btn-speech:hover { background: #14305a; color: #fff; }
+  .btn-upload-sm { background: #fff; color: #1B3A6B; border: 1.5px solid #1B3A6B; }
+  .btn-upload-sm:hover { background: #1B3A6B; color: #fff; }
+  .btn-pdf { background: #fff; color: #1a7a3b; border: 1.5px solid #1a7a3b; }
+  .btn-pdf:hover { background: #1a7a3b; color: #fff; }
+</style>
+
+<!-- Hero -->
+<div class="ov-hero">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h1>{{ exam.name }}</h1>
+      <div class="meta-row">
+        {{ exam.get_exam_type_display }} &nbsp;|&nbsp;
+        Fomu {{ exam.form }} &nbsp;|&nbsp;
+        Mwaka {{ exam.year }}
+        {% if exam.school_name %}&nbsp;|&nbsp;{{ exam.school_name }}{% endif %}
+      </div>
+    </div>
+    <div>
+      <a href="{% url 'home' %}" class="btn btn-sm" style="background:#C9A84C;color:#1B3A6B;font-weight:700;border-radius:2px;">
+        &larr; Dashboard
+      </a>
+    </div>
+  </div>
+
+  <div class="ov-progress-bar-wrap">
+    <div class="ov-progress-bar-fill" style="width: {{ progress_pct }}%;"></div>
+  </div>
+  <div class="ov-progress-label">
+    {{ submitted_count }} / {{ total_subjects }} MASOMO YAMEWASILISHWA
+    {% if all_submitted %}&nbsp;— YOTE YAMEKAMILIKA{% endif %}
+  </div>
+</div>
+
+<!-- Subject cards -->
+{% if subjects_ctx %}
+<div class="subject-grid">
+  {% for ctx in subjects_ctx %}
+  <div class="subject-card {% if ctx.is_submitted %}is-submitted{% else %}is-pending{% endif %}">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="subject-name">{{ ctx.subject.name }}</div>
+      {% if ctx.is_submitted %}
+        <span class="status-badge submitted">Imewasilishwa</span>
+      {% else %}
+        <span class="status-badge pending">Inasubiri</span>
+      {% endif %}
+    </div>
+
+    {% if ctx.submission %}
+      <div class="subject-meta">
+        {% if ctx.submission.submitted_by %}
+          <span>Mwalimu: <strong>{{ ctx.submission.submitted_by }}</strong></span><br>
+        {% endif %}
+        {% if ctx.submission.student_count %}
+          <span>Wanafunzi: <strong>{{ ctx.submission.student_count }}</strong></span>
+          {% if ctx.submission.method %}
+            &nbsp;&bull;&nbsp;
+            <span>Njia: <strong>{{ ctx.submission.get_method_display }}</strong></span>
+          {% endif %}
+        {% endif %}
+        {% if ctx.submission.submitted_at %}
+          <br><span style="color:#999;">{{ ctx.submission.submitted_at|date:"d M Y H:i" }}</span>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="subject-meta" style="color:#aaa;">Bado haijasajiliwa</div>
+    {% endif %}
+
+    <div class="subject-actions">
+      <a href="{{ ctx.speech_url }}" class="btn btn-speech">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+          <path d="M5 3a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0V3z"/>
+          <path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"/>
+        </svg>
+        Speech
+      </a>
+      <a href="{{ ctx.upload_url }}" class="btn btn-upload-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+        </svg>
+        Pakia Faili
+      </a>
+      {% if ctx.pdf_url %}
+      <a href="{{ ctx.pdf_url }}" class="btn btn-pdf" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+        </svg>
+        PDF
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="support-box">
+  Hakuna masomo yaliyosajiliwa kwa mtihani huu bado. Anza na Speech Entry au Pakia Faili.
+</div>
+{% endif %}
+
+<!-- Finalize section -->
+<div class="finalize-section">
+  <div>
+    <h4>Tengeneza Matokeo ya Mwisho</h4>
+    <p>
+      {% if all_submitted %}
+        Masomo yote yamewasilishwa. Unaweza kutengeneza Excel ya mwisho sasa.
+      {% elif enough_to_finalize %}
+        Masomo {{ submitted_count }} yamewasilishwa. Unaweza kuendelea kwa sasa au kusubiri masomo yote.
+      {% else %}
+        Unajaza masomo zaidi ya moja ili uweze kufungua. Imewasilishwa: {{ submitted_count }}/{{ total_subjects }}.
+      {% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if enough_to_finalize %}
+    <form method="post" action="{{ finalize_url }}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" class="btn-finalize">
+        Tengeneza Excel ya Mwisho
+      </button>
+    </form>
+    {% else %}
+    <button class="btn-finalize" disabled>Tengeneza Excel ya Mwisho</button>
+    {% endif %}
+
+    {% if submitted_count > 0 %}
+    <a href="{{ excel_url }}" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
+      Pakua Excel (Sasa Hivi)
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
