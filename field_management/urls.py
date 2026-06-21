@@ -29,4 +29,7 @@ urlpatterns = [
 
     # Your app's URLs
     path('', include('field_app.urls')),
+
+    # School Results app
+    path('shule/', include('results.urls')),
 ]

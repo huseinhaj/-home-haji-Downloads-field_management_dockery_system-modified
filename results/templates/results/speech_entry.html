@@ -1,0 +1,518 @@
+{% extends 'results/base.html' %}
+
+{% block title %}Speech Entry | School Results{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
+    <div>
+      <h1 class="mb-2">Teacher Speech Entry</h1>
+      <p class="mb-0 text-secondary">Record student name and mark, confirm matches, and let the system save results safely.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <span class="badge-soft">Offline AI</span>
+      <span class="badge-soft">English + Swahili</span>
+      <span class="badge-soft">Live Confirmation</span>
+    </div>
+  </div>
+</section>
+
+<div class="row g-4 mt-1">
+  <div class="col-lg-4">
+    <section class="panel h-100">
+      <div class="panel-head">
+        <h3 class="mb-0">Open Session</h3>
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label for="exam_id">Exam</label>
+          <select id="exam_id" class="form-select">
+            <option value="">Select exam</option>
+            {% for exam in exams %}
+              <option value="{{ exam.id }}">{{ exam.name }} ({{ exam.year }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="subject_id">Subject</label>
+          <select id="subject_id" class="form-select">
+            <option value="">Select subject</option>
+            {% for subject in subjects %}
+              <option value="{{ subject.id }}">{{ subject.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="teacher_name">Teacher Name</label>
+          <input id="teacher_name" class="form-control" placeholder="e.g. Mr. Mushi">
+        </div>
+        <div class="field">
+          <label for="language">Language / Lugha</label>
+          <select id="language" class="form-select" required>
+            <option value="">Select Language</option>
+            <option value="en">English</option>
+            <option value="sw">Swahili (Kiswahili)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="roster_students">Class List</label>
+          <select id="roster_students" class="form-select" multiple size="8"></select>
+          <div class="hint mt-1">Choose the students in this class. The session size updates automatically.</div>
+        </div>
+        <div class="field">
+          <label for="expected_student_count">Selected Students</label>
+          <input id="expected_student_count" class="form-control" type="number" min="1" readonly value="0">
+        </div>
+        <div class="d-grid gap-2">
+          <button id="openSessionBtn" class="btn btn-brand" type="button">Open Session</button>
+          <button id="finalizeSessionBtn" class="btn btn-outline-dark" type="button" disabled>Finalize Session</button>
+        </div>
+        <div id="sessionStatus" class="support-box mt-3 small text-secondary">
+          Open a session to start recording.
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="col-lg-8">
+    <section class="panel h-100">
+      <div class="panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h3 class="mb-0">Live Capture</h3>
+        <div class="d-flex gap-2 flex-wrap">
+          <button id="recordBtn" class="btn btn-brand" type="button" disabled>Start Recording</button>
+          <button id="useTranscriptBtn" class="btn btn-outline-secondary" type="button" disabled>Submit Transcript</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <label class="form-label fw-bold">Live Transcript</label>
+            <textarea id="transcript" class="form-control transcript-box" rows="7" placeholder="Transcript will appear here or paste it manually"></textarea>
+            <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+              <div id="confidenceBox" class="small text-secondary">Confidence: -</div>
+              <div id="audioState" class="small text-secondary">Idle</div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <label class="form-label fw-bold">Batch Processing Notes</label>
+            <div id="candidatePanel" class="support-box candidate-panel">
+              Submit one long transcript with multiple students. Example: "Amina Juma, sabini. Peter Mushi, themanini.".
+            </div>
+            <div class="mt-3">
+              <label class="form-label fw-bold">Overwrite Existing Marks</label>
+              <select id="explicit_update" class="form-select">
+                <option value="true">Always overwrite (recommended)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div>
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <h4 class="mb-0">Recent Saved Entries</h4>
+            <small id="progressBox" class="text-secondary">0 / 0 submitted</small>
+          </div>
+          <div id="entryList" class="support-box">
+            No entries yet.
+          </div>
+        </div>
+
+        {% if debug_mode %}
+        <hr class="my-4">
+
+        <div>
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <h4 class="mb-0">Actual Subject Marks (Development)</h4>
+            <small class="text-secondary">Live DB snapshot for this exam + subject</small>
+          </div>
+          <div id="existingMarksList" class="support-box">
+            Open a session to load current marks.
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const createSessionUrl = "{% url 'create_speech_session' %}";
+  const statusUrlTemplate = "{% url 'speech_session_status' 0 %}";
+  const ingestUrlTemplate = "{% url 'ingest_speech_entry' 0 %}";
+  const confirmUrlTemplate = "{% url 'confirm_speech_candidate' 0 %}";
+  const finalizeUrlTemplate = "{% url 'finalize_speech_session' 0 %}";
+  const isDebugMode = {{ debug_mode|yesno:"true,false" }};
+
+  function sessionUrl(template, sessionId) {
+    return template.replace('/0/', `/${sessionId}/`);
+  }
+
+  const state = {
+    sessionId: null,
+    accessKey: null,
+    recorder: null,
+    chunks: [],
+    lastTranscript: '',
+    candidates: [],
+    entries: [],
+    isRecording: false,
+  };
+
+  const examEl = document.getElementById('exam_id');
+  const subjectEl = document.getElementById('subject_id');
+  const teacherEl = document.getElementById('teacher_name');
+  const expectedEl = document.getElementById('expected_student_count');
+  const rosterEl = document.getElementById('roster_students');
+  const openBtn = document.getElementById('openSessionBtn');
+  const finalizeBtn = document.getElementById('finalizeSessionBtn');
+  const recordBtn = document.getElementById('recordBtn');
+  const useTranscriptBtn = document.getElementById('useTranscriptBtn');
+  const transcriptEl = document.getElementById('transcript');
+  const candidatePanel = document.getElementById('candidatePanel');
+  const sessionStatus = document.getElementById('sessionStatus');
+  const confidenceBox = document.getElementById('confidenceBox');
+  const audioState = document.getElementById('audioState');
+  const entryList = document.getElementById('entryList');
+  const progressBox = document.getElementById('progressBox');
+  const explicitUpdateEl = document.getElementById('explicit_update');
+  const languageEl = document.getElementById('language');
+  const existingMarksList = document.getElementById('existingMarksList');
+
+  function setStatus(message, tone = 'secondary') {
+    sessionStatus.className = `support-box mt-3 small text-${tone}`;
+    sessionStatus.textContent = message;
+  }
+
+  function refreshProgress(status) {
+    progressBox.textContent = `${status.submitted_count} / ${status.expected_student_count} submitted`;
+    if (status.status === 'FINALIZED') {
+      finalizeBtn.disabled = true;
+      recordBtn.disabled = true;
+      useTranscriptBtn.disabled = true;
+      recordBtn.textContent = 'Session Finalized';
+      setStatus('This session has been finalized.', 'success');
+    }
+  }
+
+  function renderExistingMarks(status) {
+    if (!isDebugMode || !existingMarksList) {
+      return;
+    }
+
+    const marks = status.existing_subject_marks || [];
+    if (!marks.length) {
+      existingMarksList.innerHTML = 'No saved marks yet for this subject.';
+      return;
+    }
+
+    existingMarksList.innerHTML = marks.map(row => `
+      <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+        <div>
+          <strong>${row.student_name}</strong>
+          <div class="small text-secondary">${row.score} marks</div>
+        </div>
+        <span class="badge text-bg-light">${row.source === 'speech_session' ? 'Speech' : 'Existing'}</span>
+      </div>
+    `).join('');
+  }
+
+  function refreshRosterSize() {
+    const selectedCount = Array.from(rosterEl.selectedOptions).length;
+    expectedEl.value = String(selectedCount);
+    openBtn.disabled = selectedCount === 0;
+  }
+
+  function loadRosterOptions() {
+    const students = [
+      {% for student in students %}
+        { id: {{ student.id }}, name: "{{ student.first_name|escapejs }} {{ student.last_name|escapejs }}" },
+      {% endfor %}
+    ];
+
+    rosterEl.innerHTML = students.map(student => `<option value="${student.id}">${student.name}</option>`).join('');
+    refreshRosterSize();
+  }
+
+  function renderCandidates(candidates) {
+    if (!candidates || !candidates.length) {
+      candidatePanel.innerHTML = 'No candidate matches available.';
+      return;
+    }
+
+    candidatePanel.innerHTML = candidates.map(candidate => `
+      <button class="btn btn-outline-dark w-100 mb-2 candidate-choice" type="button" data-student-id="${candidate.student_id}">
+        <div class="d-flex justify-content-between align-items-center gap-2">
+          <span>${candidate.name}</span>
+          <span class="badge text-bg-light">${Number(candidate.confidence).toFixed(2)}</span>
+        </div>
+      </button>
+    `).join('');
+  }
+
+  function renderEntries() {
+    if (!state.entries.length) {
+      entryList.innerHTML = 'No entries yet.';
+      return;
+    }
+
+    entryList.innerHTML = state.entries.map(entry => `
+      <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+        <div>
+          <strong>${entry.student}</strong>
+          <div class="small text-secondary">${entry.score} marks | confidence ${Number(entry.confidence).toFixed(2)}</div>
+        </div>
+        <span class="badge-soft">Saved</span>
+      </div>
+    `).join('');
+  }
+
+  function renderSkippedEntries(skippedEntries) {
+    if (!skippedEntries || !skippedEntries.length) {
+      candidatePanel.innerHTML = 'All parsed entries were saved.';
+      return;
+    }
+
+    candidatePanel.innerHTML = skippedEntries.map(item => `
+      <div class="border-bottom pb-2 mb-2">
+        <div class="small"><strong>Skipped:</strong> ${item.transcript}</div>
+        <div class="small text-danger">${item.error}</div>
+      </div>
+    `).join('');
+  }
+
+  async function createSession() {
+    const examId = examEl.value;
+    const subjectId = subjectEl.value;
+    const teacherName = teacherEl.value.trim();
+    const rosterStudentIds = Array.from(rosterEl.selectedOptions).map(option => Number(option.value));
+
+    if (!examId || !subjectId || !teacherName || !rosterStudentIds.length) {
+      setStatus('Select exam, subject, teacher name, and at least one student.', 'danger');
+      return;
+    }
+
+    const response = await fetch(createSessionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+      },
+      body: JSON.stringify({
+        exam_id: examId,
+        subject_id: subjectId,
+        teacher_name: teacherName,
+        roster_student_ids: rosterStudentIds,
+        expected_student_count: rosterStudentIds.length,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      setStatus(data.error || 'Unable to open session.', 'danger');
+      return;
+    }
+
+    state.sessionId = data.session_id;
+    state.accessKey = data.access_key;
+    recordBtn.disabled = false;
+    useTranscriptBtn.disabled = false;
+    finalizeBtn.disabled = false;
+    setStatus(`Session opened. Access key saved. Expected students: ${data.expected_student_count}`, 'success');
+    await refreshStatus();
+  }
+
+  async function refreshStatus() {
+    if (!state.sessionId || !state.accessKey) return;
+    const url = `${sessionUrl(statusUrlTemplate, state.sessionId)}?access_key=${encodeURIComponent(state.accessKey)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (response.ok) {
+      refreshProgress(data);
+      renderExistingMarks(data);
+    }
+  }
+
+  async function submitTranscript(transcript, audioBlob = null, confirmStudentId = null) {
+    if (!state.sessionId || !state.accessKey) {
+      setStatus('Open a session first.', 'danger');
+      return;
+    }
+
+    const url = confirmStudentId
+      ? sessionUrl(confirmUrlTemplate, state.sessionId)
+      : sessionUrl(ingestUrlTemplate, state.sessionId);
+    const formData = new FormData();
+    formData.append('access_key', state.accessKey);
+    formData.append('transcript', transcript);
+    formData.append('explicit_update', explicitUpdateEl.value);
+    formData.append('confidence_threshold', '0.9');
+    if (languageEl.value) {
+      formData.append('language', languageEl.value);
+    }
+    if (confirmStudentId) {
+      formData.append('confirm_student_id', confirmStudentId);
+    }
+    if (audioBlob) {
+      formData.append('audio', audioBlob, 'speech.webm');
+    }
+    if (!transcript && !audioBlob) {
+      setStatus('Enter a transcript or record audio first.', 'warning');
+      return;
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error || 'Failed to save entry.', 'danger');
+      return;
+    }
+
+    if (Array.isArray(data.saved_entries)) {
+      const mappedEntries = data.saved_entries.map(item => ({
+        student: item.student?.name || 'Unknown',
+        score: item.score,
+        confidence: item.confidence ?? 0,
+      }));
+      state.entries = [...mappedEntries, ...state.entries];
+      renderSkippedEntries(data.skipped_entries || []);
+      confidenceBox.textContent = `Saved: ${data.saved_count || mappedEntries.length}, Skipped: ${data.skipped_count || 0}`;
+      setStatus(`Batch saved ${data.saved_count || mappedEntries.length} entries.`, (data.skipped_count || 0) ? 'warning' : 'success');
+    } else {
+      state.entries.unshift({
+        student: data.student?.name || 'Unknown',
+        score: data.score,
+        confidence: data.confidence ?? 0,
+      });
+      candidatePanel.innerHTML = 'Transcript saved.';
+      confidenceBox.textContent = `Confidence: ${Number(data.confidence).toFixed(2)}`;
+      setStatus(`Saved ${data.student.name} with ${data.score} marks.`, 'success');
+    }
+
+    transcriptEl.value = '';
+    renderEntries();
+    await refreshStatus();
+  }
+
+  async function startRecording() {
+    if (!state.sessionId) {
+      setStatus('Open a session first.', 'danger');
+      return;
+    }
+
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      setStatus('This browser cannot record audio.', 'danger');
+      return;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.chunks = [];
+    state.recorder = new MediaRecorder(stream);
+
+    state.recorder.ondataavailable = event => {
+      if (event.data.size > 0) {
+        state.chunks.push(event.data);
+      }
+    };
+
+    state.recorder.onstop = async () => {
+      const blob = new Blob(state.chunks, { type: 'audio/webm' });
+      await submitTranscript('', blob);
+      stream.getTracks().forEach(track => track.stop());
+      audioState.textContent = 'Idle';
+    };
+
+    state.recorder.start();
+    state.isRecording = true;
+    recordBtn.textContent = 'Stop Recording';
+    audioState.textContent = 'Recording...';
+  }
+
+  function stopRecording() {
+    if (state.recorder && state.isRecording) {
+      state.recorder.stop();
+      state.isRecording = false;
+      recordBtn.textContent = 'Start Recording';
+      audioState.textContent = 'Processing audio...';
+    }
+  }
+
+  async function finalizeSession() {
+    if (!state.sessionId || !state.accessKey) return;
+    const response = await fetch(sessionUrl(finalizeUrlTemplate, state.sessionId), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+      },
+      body: JSON.stringify({ access_key: state.accessKey }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      setStatus(data.error || 'Unable to finalize session.', 'danger');
+      return;
+    }
+
+    setStatus('Session finalized. All subject results are now ready to compute.', 'success');
+    await refreshStatus();
+  }
+
+  async function confirmCandidate(studentId) {
+    await submitTranscript(state.lastTranscript, null, studentId);
+  }
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+  }
+
+  openBtn.addEventListener('click', createSession);
+  finalizeBtn.addEventListener('click', finalizeSession);
+  recordBtn.addEventListener('click', () => {
+    if (state.isRecording) {
+      stopRecording();
+    } else {
+      startRecording().catch(error => setStatus(error.message || 'Unable to start recording.', 'danger'));
+    }
+  });
+  useTranscriptBtn.addEventListener('click', () => {
+    const transcript = transcriptEl.value.trim();
+    if (!transcript) {
+      setStatus('Enter or speak a transcript first.', 'warning');
+      return;
+    }
+    submitTranscript(transcript).catch(error => setStatus(error.message || 'Unable to submit transcript.', 'danger'));
+  });
+
+  candidatePanel.addEventListener('click', event => {
+    const button = event.target.closest('.candidate-choice');
+    if (!button) return;
+    confirmCandidate(button.dataset.studentId).catch(error => setStatus(error.message || 'Unable to confirm candidate.', 'danger'));
+  });
+
+  transcriptEl.addEventListener('input', () => {
+    if (transcriptEl.value.trim()) {
+      candidatePanel.innerHTML = 'Paste or record a transcript, then submit to get matching suggestions.';
+    }
+  });
+
+  rosterEl.addEventListener('change', refreshRosterSize);
+  loadRosterOptions();
+})();
+</script>
+{% endblock %}

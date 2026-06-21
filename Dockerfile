@@ -35,6 +35,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdal-bin \
     libgdal36 \
     libgeos-c1v5 \
+    # ffmpeg for audio processing (faster-whisper)
+    ffmpeg \
     # Chromium / Playwright runtime deps
     libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
     libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \

@@ -1,0 +1,55 @@
+{% extends 'results/base.html' %}
+
+{% block title %}Dashboard | School Results{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="d-flex flex-column flex-lg-row justify-content-between gap-4 align-items-lg-center">
+    <div>
+      <h1 class="mb-2">Exam Results Command Center</h1>
+      <p class="mb-0 text-secondary">Manage uploads, monitor activity, and keep exam records organized in one place.</p>
+    </div>
+    <div>
+      <a href="{% url 'upload_results' %}" class="btn btn-brand">Upload New Results</a>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <article class="metric">
+      <span class="label">Total Exams</span>
+      <span class="value">{{ exam_count }}</span>
+    </article>
+    <article class="metric">
+      <span class="label">Latest Exam</span>
+      <span class="value">{% if latest_exam %}{{ latest_exam.name }}{% else %}-{% endif %}</span>
+    </article>
+    <article class="metric">
+      <span class="label">System</span>
+      <span class="value">Operational</span>
+    </article>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h3 class="mb-0">Recent Exams</h3>
+  </div>
+  <div class="panel-body">
+    {% if exams %}
+      <ul class="exam-list">
+        {% for exam in exams|slice:":8" %}
+          <li class="exam-item">
+            <div>
+              <strong>{{ exam.name }}</strong>
+              <div class="text-secondary small">Form {{ exam.form }} | {{ exam.year }}</div>
+            </div>
+            <span class="badge-soft">{{ exam.get_exam_type_display }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="support-box">No exams found yet. Start by uploading your first results file.</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

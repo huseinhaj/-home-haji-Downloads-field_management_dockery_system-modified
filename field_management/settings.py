@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'field_app',
     'django_celery_results',
+    'results',
     'rest_framework',
     'django_filters',
     'import_export',
@@ -270,6 +271,17 @@ CELERY_BEAT_SCHEDULE = {
         "options": {"expires": 3600},
     },
 }
+
+# =========================
+# SCHOOL RESULTS — SPEECH RECOGNITION
+# =========================
+SPEECH_RECOGNITION_MODEL_SIZE         = os.environ.get("SPEECH_RECOGNITION_MODEL_SIZE", "small")
+SPEECH_RECOGNITION_SWAHILI_MODEL_SIZE = os.environ.get("SPEECH_RECOGNITION_SWAHILI_MODEL_SIZE", "small")
+SPEECH_RECOGNITION_DEVICE             = os.environ.get("SPEECH_RECOGNITION_DEVICE", "cpu")
+SPEECH_RECOGNITION_COMPUTE_TYPE       = os.environ.get("SPEECH_RECOGNITION_COMPUTE_TYPE", "int8")
+SPEECH_RECOGNITION_VAD_ENABLED        = os.environ.get("SPEECH_RECOGNITION_VAD_ENABLED", "true")
+SPEECH_RECOGNITION_SW_BEAM_SIZE       = os.environ.get("SPEECH_RECOGNITION_SW_BEAM_SIZE", "5")
+SPEECH_RECOGNITION_SW_BEST_OF         = os.environ.get("SPEECH_RECOGNITION_SW_BEST_OF", "5")
 
 # =========================
 # REST FRAMEWORK

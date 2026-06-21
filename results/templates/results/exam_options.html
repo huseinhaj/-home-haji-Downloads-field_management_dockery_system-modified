@@ -1,0 +1,5 @@
+<option value="">-- Select Exam --</option>
+{% for exam in exams %}
+  <option value="{{ exam.id }}">{{ exam.name }} ({{ exam.year }})</option>
+{% endfor %}
+
