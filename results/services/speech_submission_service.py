@@ -376,9 +376,10 @@ def create_or_get_session_with_roster(*, exam: Exam, subject, teacher_name: str,
         subject=subject,
         teacher_name=teacher_name,
         expected_student_count=expected_student_count,
-        roster_student_ids=[int(student_id) for student_id in roster_student_ids],
+        roster_student_ids=[int(sid) for sid in roster_student_ids] if roster_student_ids else [],
     )
-    if session.expected_student_count != len(session.roster_student_ids):
+    # Kama hakuna roster — open mode, expected_count si lazima
+    if roster_student_ids and session.expected_student_count != len(session.roster_student_ids):
         session.expected_student_count = len(session.roster_student_ids)
         session.save(update_fields=["expected_student_count"])
     return session

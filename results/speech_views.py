@@ -85,15 +85,15 @@ def create_speech_session(request):
         if not isinstance(roster_student_ids, list):
             return JsonResponse({"error": "roster_student_ids must be a list."}, status=400)
         roster_student_ids = [int(student_id) for student_id in roster_student_ids if str(student_id).strip()]
-        if not roster_student_ids:
-            return JsonResponse({"error": "Select at least one student for the class list."}, status=400)
+        # roster_student_ids inaweza kuwa tupu — mfumo utafanya kazi kwa open mode
+        # wanafunzi wataundwa moja kwa moja kutoka kwa maneno ya mwalimu
 
         session = create_or_get_session_with_roster(
             exam=exam,
             subject=subject,
             teacher_name=teacher_name,
             roster_student_ids=roster_student_ids,
-            expected_student_count=len(roster_student_ids),
+            expected_student_count=len(roster_student_ids) if roster_student_ids else None,
         )
         logger.info(
             "create_speech_session: created session_id=%s exam_id=%s subject_id=%s roster_size=%s",

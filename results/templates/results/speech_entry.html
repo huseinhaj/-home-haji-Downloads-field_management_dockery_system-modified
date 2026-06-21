@@ -353,8 +353,8 @@
 
   function refreshRosterSize() {
     const selectedCount = Array.from(rosterEl.selectedOptions).length;
-    expectedEl.value = String(selectedCount);
-    openBtn.disabled = selectedCount === 0;
+    expectedEl.value = selectedCount > 0 ? String(selectedCount) : 'Wote (open)';
+    openBtn.disabled = false; // roster si lazima — wanafunzi wataundwa kutoka speech
   }
 
   function loadRosterOptions() {
@@ -421,8 +421,8 @@
     const teacherName = teacherEl.value.trim();
     const rosterStudentIds = Array.from(rosterEl.selectedOptions).map(option => Number(option.value));
 
-    if (!examId || !subjectId || !teacherName || !rosterStudentIds.length) {
-      setStatus('Select exam, subject, teacher name, and at least one student.', 'danger');
+    if (!examId || !subjectId || !teacherName) {
+      setStatus('Chagua mtihani, somo, na jina la mwalimu.', 'danger');
       return;
     }
 
