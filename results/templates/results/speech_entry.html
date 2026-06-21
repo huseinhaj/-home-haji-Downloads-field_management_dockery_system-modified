@@ -322,7 +322,10 @@
   }
 
   function refreshProgress(status) {
-    progressBox.textContent = `${status.submitted_count} / ${status.expected_student_count} submitted`;
+    const exp = status.expected_student_count;
+    progressBox.textContent = (exp && exp > 0)
+      ? `${status.submitted_count} / ${exp} submitted`
+      : `${status.submitted_count} wanafunzi wamehifadhiwa`;
     if (status.status === 'FINALIZED') {
       if (!state.isFinalized) {
         showFinalizedBanner(null);

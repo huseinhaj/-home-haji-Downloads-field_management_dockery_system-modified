@@ -310,7 +310,9 @@ def finalize_speech_session(request, session_id):
             session.effective_expected_count,
             session.status,
         )
-        if not session.is_complete:
+        # Open mode (no roster/expected count) always allows finalization
+        is_open_mode = session.effective_expected_count is None
+        if not is_open_mode and not session.is_complete:
             logger.warning(
                 "finalize_speech_session: blocked incomplete session_id=%s submitted_count=%s expected_count=%s",
                 session.id,

@@ -169,7 +169,9 @@ class SpeechSubmissionSession(models.Model):
     def effective_expected_count(self):
         if self.expected_student_count:
             return self.expected_student_count
-        return len(self.roster_student_ids)
+        if self.roster_student_ids:
+            return len(self.roster_student_ids)
+        return None  # open mode — no fixed count
 
     @property
     def has_selected_roster(self):
@@ -177,6 +179,9 @@ class SpeechSubmissionSession(models.Model):
 
     @property
     def is_complete(self):
+        # open mode (no roster, no expected count) never auto-completes
+        if self.effective_expected_count is None:
+            return False
         return self.submitted_count >= self.effective_expected_count
 
     def mark_finalized(self):
