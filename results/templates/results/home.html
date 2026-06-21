@@ -1,70 +1,68 @@
 {% extends 'results/base.html' %}
 
-{% block title %}Dashboard | School Results{% endblock %}
+{% block title %}Matokeo ya Shule{% endblock %}
 
 {% block content %}
 <section class="hero">
-  <div class="d-flex flex-column flex-lg-row justify-content-between gap-4 align-items-lg-center">
+  <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
     <div>
-      <h1 class="mb-2">Exam Results Command Center</h1>
-      <p class="mb-0 text-secondary">Manage uploads, monitor activity, and keep exam records organized in one place.</p>
+      <h1 class="mb-1">Mfumo wa Matokeo</h1>
+      <p class="mb-0 text-secondary">Walimu wanaingiza alama kwa sauti. Admin anafunga na kuzalisha ripoti ya mwisho.</p>
     </div>
-    <div>
-      <a href="{% url 'upload_results' %}" class="btn btn-brand">Upload New Results</a>
-    </div>
-  </div>
-
-  <div class="metrics">
-    <article class="metric">
-      <span class="label">Total Exams</span>
-      <span class="value">{{ exam_count }}</span>
-    </article>
-    <article class="metric">
-      <span class="label">Latest Exam</span>
-      <span class="value">{% if latest_exam %}{{ latest_exam.name }}{% else %}-{% endif %}</span>
-    </article>
-    <article class="metric">
-      <span class="label">System</span>
-      <span class="value">Operational</span>
-    </article>
+    <a href="{% url 'upload_results' %}" class="btn btn-brand">+ Unda Mtihani Mpya</a>
   </div>
 </section>
 
-<section class="panel">
-  <div class="panel-head">
-    <h3 class="mb-0">Recent Exams</h3>
+{% if not exams %}
+<div style="border:2px dashed #C9A84C;border-radius:2px;padding:2.5rem;text-align:center;background:#fffbf0;margin-top:1rem;">
+  <div style="font-size:2.5rem;margin-bottom:0.5rem;">📋</div>
+  <h3 style="color:#1B3A6B;font-weight:800;">Hakuna Mtihani Bado</h3>
+  <p class="text-secondary mb-3">Admin anaunda mtihani kwanza, kisha walimu wanaingiza alama zao kwa sauti.</p>
+  <a href="{% url 'upload_results' %}" class="btn btn-brand">Unda Mtihani wa Kwanza</a>
+</div>
+{% else %}
+
+<div class="row g-3 mt-1">
+  {% for exam in exams %}
+  <div class="col-md-6 col-lg-4">
+    <div class="panel h-100" style="border-left:4px solid {% if exam.submitted_count == exam.total_submissions and exam.total_submissions > 0 %}#1a7a3b{% elif exam.submitted_count > 0 %}#C9A84C{% else %}#1B3A6B{% endif %};">
+      <div class="panel-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <div style="font-weight:800;color:#1B3A6B;font-size:1rem;">{{ exam.name }}</div>
+            <div class="text-secondary" style="font-size:0.8rem;">Form {{ exam.form }} &nbsp;|&nbsp; {{ exam.year }} &nbsp;|&nbsp; {{ exam.get_exam_type_display }}</div>
+          </div>
+          <span class="badge-soft" style="font-size:0.7rem;white-space:nowrap;">
+            {% if exam.submitted_count == exam.total_submissions and exam.total_submissions > 0 %}
+              ✅ Kamili
+            {% elif exam.submitted_count > 0 %}
+              🔄 Inaendelea
+            {% else %}
+              ⏳ Inasubiri
+            {% endif %}
+          </span>
+        </div>
+
+        {% if exam.total_submissions > 0 %}
+        <div style="background:#e9ecef;border-radius:2px;height:6px;overflow:hidden;margin:0.5rem 0;">
+          <div style="height:100%;background:linear-gradient(90deg,#1B3A6B,#C9A84C);width:{% widthratio exam.submitted_count exam.total_submissions 100 %}%;"></div>
+        </div>
+        <div style="font-size:0.75rem;color:#555;margin-bottom:0.75rem;">
+          <strong>{{ exam.submitted_count }}</strong>/{{ exam.total_submissions }} masomo yamewasilishwa
+        </div>
+        {% else %}
+        <div style="font-size:0.78rem;color:#888;margin:0.5rem 0 0.75rem;">Masomo hayajawekwa bado</div>
+        {% endif %}
+
+        <div class="d-flex gap-2 flex-wrap mt-auto">
+          <a href="{% url 'exam_overview' exam.id %}" class="btn btn-brand btn-sm" style="font-size:0.78rem;">Muhtasari wa Mtihani</a>
+          <a href="{% url 'speech_entry_page' %}?exam={{ exam.id }}" class="btn btn-sm" style="font-size:0.78rem;border:1.5px solid #1B3A6B;color:#1B3A6B;">Speech Entry</a>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="panel-body">
-    {% if exams %}
-      <ul class="exam-list">
-        {% for exam in exams|slice:":8" %}
-          <li class="exam-item">
-            <div>
-              <a href="{% url 'exam_overview' exam.id %}" style="color:#1B3A6B;font-weight:700;text-decoration:none;">
-                {{ exam.name }}
-              </a>
-              <div class="text-secondary small">Form {{ exam.form }} | {{ exam.year }}</div>
-              {% if exam.total_submissions > 0 %}
-                <div class="small mt-1">
-                  <span style="color:{% if exam.submitted_count == exam.total_submissions %}#1a7a3b{% else %}#7a5200{% endif %};font-weight:600;">
-                    {{ exam.submitted_count }}/{{ exam.total_submissions }} masomo yamewasilishwa
-                  </span>
-                </div>
-              {% endif %}
-            </div>
-            <div class="d-flex flex-column gap-1 align-items-end">
-              <span class="badge-soft">{{ exam.get_exam_type_display }}</span>
-              <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm"
-                 style="font-size:0.72rem;padding:0.2rem 0.6rem;background:#1B3A6B;color:#fff;border-radius:2px;font-weight:600;border:none;">
-                Muhtasari
-              </a>
-            </div>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <div class="support-box">No exams found yet. Start by uploading your first results file.</div>
-    {% endif %}
-  </div>
-</section>
+  {% endfor %}
+</div>
+
+{% endif %}
 {% endblock %}

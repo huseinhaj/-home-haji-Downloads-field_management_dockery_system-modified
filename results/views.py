@@ -20,6 +20,13 @@ from .utils import normalize_gender, parse_score
 
 _EXAM_TYPE_CHOICES = Exam.EXAM_TYPE_CHOICES
 
+COMMON_SUBJECTS = [
+    'Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry',
+    'Physics', 'History', 'Geography', 'Civics', 'Computer Studies',
+    'Agriculture', 'Business Studies', 'CRE', 'IRE', 'Fine Art',
+    'Music', 'Physical Education', 'Further Mathematics',
+]
+
 
 def home(request):
     exams = Exam.objects.all().order_by('-year', 'name')
@@ -51,31 +58,34 @@ def upload_results(request):
         action = request.POST.get('action', 'upload')
 
         if action == 'create_exam':
+            import json as _json
             name = request.POST.get('exam_name', '').strip()
             year = request.POST.get('exam_year', '2026')
             form_level = request.POST.get('exam_form', '4')
             exam_type = request.POST.get('exam_type_new', 'TERMINAL')
             school_name = request.POST.get('school_name', '').strip()
+            subjects_raw = request.POST.get('subjects', '[]')
+            try:
+                subject_names = [s.strip() for s in _json.loads(subjects_raw) if str(s).strip()]
+            except Exception:
+                subject_names = []
+
             if name:
-                exam, created = Exam.objects.get_or_create(
-                    name=name,
-                    year=int(year),
-                    form=int(form_level),
-                    exam_type=exam_type,
+                exam, _ = Exam.objects.get_or_create(
+                    name=name, year=int(year), form=int(form_level), exam_type=exam_type,
                     defaults={'school_name': school_name},
                 )
-                if not created and school_name:
+                if school_name:
                     exam.school_name = school_name
                     exam.save(update_fields=['school_name'])
-                exam_created = str(exam)
-                no_exams = False
-            form = ExamUploadForm()
-            return render(request, 'results/upload.html', {
-                'form': form,
-                'exam_created': exam_created,
-                'no_exams': no_exams,
-                'exam_type_choices': _EXAM_TYPE_CHOICES,
-            })
+
+                # Create subjects + SubjectSubmission (PENDING) for each
+                for sname in subject_names:
+                    subject, _ = Subject.objects.get_or_create(name=sname)
+                    SubjectSubmission.objects.get_or_create(exam=exam, subject=subject)
+
+                # Redirect to exam overview — main hub for teachers
+                return redirect(reverse('exam_overview', args=[exam.id]))
 
         form = ExamUploadForm(request.POST, request.FILES)
         if form.is_valid():
@@ -98,12 +108,11 @@ def upload_results(request):
                 messages.error(request, f"Hitilafu: {str(e)}")
                 return redirect(request.path)
     else:
-        form = ExamUploadForm()
+        pass
 
     return render(request, 'results/upload.html', {
-        'form': form,
-        'no_exams': no_exams,
         'exam_type_choices': _EXAM_TYPE_CHOICES,
+        'common_subjects': COMMON_SUBJECTS,
     })
 
 

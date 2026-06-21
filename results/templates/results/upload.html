@@ -1,185 +1,217 @@
 {% extends 'results/base.html' %}
-{% load widget_tweaks %}
 
-{% block title %}Upload Results | School Results{% endblock %}
+{% block title %}Unda Mtihani Mpya{% endblock %}
 
 {% block content %}
 <section class="hero form-shell">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
     <div>
-      <h2 class="mb-1">Upload Exam Results</h2>
-      <p class="mb-0 text-secondary">Import Excel or CSV scores and process rankings instantly.</p>
+      <h2 class="mb-1">Unda Mtihani Mpya</h2>
+      <p class="mb-0 text-secondary">Admin anaunda mtihani na kuweka masomo. Kisha walimu wanaingiza alama.</p>
     </div>
-    {% if download_url %}
-      <a href="{{ download_url }}" class="btn btn-outline-success fw-bold">Download PDF Report</a>
-    {% endif %}
+    <a href="{% url 'home' %}" class="btn btn-sm" style="border:1.5px solid #1B3A6B;color:#1B3A6B;">← Rudi Nyumbani</a>
+  </div>
+</section>
+
+<div class="row g-4">
+  <!-- LEFT: Create Exam -->
+  <div class="col-lg-6">
+    <section class="panel">
+      <div class="panel-head">
+        <h3 class="mb-0">Taarifa za Mtihani</h3>
+      </div>
+      <div class="panel-body">
+        <form method="post" id="createExamForm">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="create_exam">
+
+          <div class="field">
+            <label>Jina la Mtihani</label>
+            <input name="exam_name" class="form-control" placeholder="Mfano: Terminal Exam 2026" required>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="field">
+                <label>Mwaka</label>
+                <input name="exam_year" class="form-control" type="number" value="2026" min="2020" max="2100" required>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="field">
+                <label>Darasa (Form)</label>
+                <select name="exam_form" class="form-select" required>
+                  <option value="1">Form 1</option>
+                  <option value="2">Form 2</option>
+                  <option value="3">Form 3</option>
+                  <option value="4" selected>Form 4</option>
+                  <option value="5">Form 5</option>
+                  <option value="6">Form 6</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Aina ya Mtihani</label>
+            <select name="exam_type_new" class="form-select" required>
+              {% for value, label in exam_type_choices %}
+                {% if value %}<option value="{{ value }}">{{ label }}</option>{% endif %}
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Jina la Shule <span class="text-secondary" style="font-weight:400;">(si lazima)</span></label>
+            <input name="school_name" class="form-control" placeholder="Mfano: Shule ya Sekondari Mwanza">
+          </div>
+
+          <hr class="my-3">
+
+          <div class="field">
+            <label style="font-weight:700;color:#1B3A6B;">Masomo ya Mtihani Huu</label>
+            <div class="hint mb-2">Weka masomo. Unaweza kuchagua kutoka kwenye orodha au kuandika yako mwenyewe.</div>
+
+            <!-- Quick-select common subjects -->
+            <div class="mb-2" id="subjectChips">
+              {% for subj in common_subjects %}
+              <button type="button" class="btn btn-sm subject-chip mb-1"
+                style="border:1.5px solid #dee2e6;border-radius:2px;font-size:0.78rem;padding:0.2rem 0.6rem;background:#fff;color:#333;"
+                data-name="{{ subj }}">{{ subj }}</button>
+              {% endfor %}
+            </div>
+
+            <div id="selectedSubjectsList" style="margin-bottom:0.5rem;"></div>
+            <input type="hidden" name="subjects" id="subjectsInput">
+
+            <div class="d-flex gap-2">
+              <input id="customSubjectInput" class="form-control form-control-sm" placeholder="Ongeza somo lingine..." style="max-width:220px;">
+              <button type="button" id="addCustomSubjectBtn" class="btn btn-sm" style="border:1.5px solid #C9A84C;color:#7a5200;border-radius:2px;">+ Ongeza</button>
+            </div>
+          </div>
+
+          <div class="d-grid mt-4">
+            <button type="submit" class="btn btn-brand">Unda Mtihani →</button>
+          </div>
+        </form>
+      </div>
+    </section>
   </div>
 
-  {% if no_exams %}
-  <div class="support-box mb-4" style="border-left: 4px solid #C9A84C; background:#fffbf0;">
-    <strong>Hakuna mitihani kwenye mfumo.</strong> Unda mtihani mpya hapa chini kabla ya kupakia matokeo.
-  </div>
-  {% endif %}
+  <!-- RIGHT: How it works -->
+  <div class="col-lg-6">
+    <section class="panel">
+      <div class="panel-head">
+        <h3 class="mb-0">Mtiririko wa Mfumo</h3>
+      </div>
+      <div class="panel-body">
+        <ol style="padding-left:1.2rem;line-height:2;">
+          <li><strong>Admin</strong> anaunda mtihani na kuweka masomo (hapa)</li>
+          <li><strong>Mwalimu wa kila somo</strong> anaingia Speech Entry → anasema majina na alama → anasema <em>"Nimemaliza"</em></li>
+          <li>Mfumo unazalisha <strong>PDF ya somo lake</strong> moja kwa moja</li>
+          <li><em>Mbadala:</em> Mwalimu anaweza <strong>upload file</strong> badala ya speech</li>
+          <li><strong>Admin</strong> anaona masomo yaliyokamilika → anabonyeza <em>"Zalisha Matokeo ya Mwisho"</em></li>
+          <li>Mfumo unazalisha <strong>Excel ya kitaalamu</strong> na wanafunzi wote, masomo yote, position, division</li>
+        </ol>
 
-  {% if exam_created %}
-  <div class="support-box mb-4" style="border-left: 4px solid #28a745; background:#f0fff4;">
-    ✅ Mtihani <strong>{{ exam_created }}</strong> umeundwa. Sasa pakia faili ya matokeo.
-  </div>
-  {% endif %}
+        <div class="support-box mt-3" style="border-left:4px solid #C9A84C;background:#fffbf0;">
+          <strong>Format ya faili ya Speech Entry:</strong><br>
+          Mwalimu anasema kwa Kiswahili au Kiingereza:<br>
+          <em>"Halima Ally kapata sabini na tano. Peter Mushi themanini. Fatuma Ali tisini."</em><br>
+          Kisha: <strong>"Nimemaliza"</strong>
+        </div>
 
-  <!-- Create New Exam -->
-  <details {% if no_exams %}open{% endif %} class="mb-4">
-    <summary class="fw-bold" style="cursor:pointer; padding:8px 0; color:#1B3A6B;">
-      + Unda Mtihani Mpya
-    </summary>
-    <form method="post" class="mt-3" id="createExamForm">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="create_exam">
-      <div class="row g-3">
-        <div class="col-md-4">
-          <label class="form-label">Jina la Mtihani</label>
-          <input name="exam_name" class="form-control" placeholder="e.g. Mid-Term Exam" required>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Mwaka</label>
-          <input name="exam_year" class="form-control" type="number" value="2026" min="2000" max="2100" required>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Darasa (Form)</label>
-          <select name="exam_form" class="form-select" required>
-            <option value="1">Form 1</option>
-            <option value="2">Form 2</option>
-            <option value="3">Form 3</option>
-            <option value="4" selected>Form 4</option>
-            <option value="5">Form 5</option>
-            <option value="6">Form 6</option>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Aina ya Mtihani</label>
-          <select name="exam_type_new" class="form-select" required>
-            {% for value, label in exam_type_choices %}
-              {% if value %}<option value="{{ value }}">{{ label }}</option>{% endif %}
-            {% endfor %}
-          </select>
+        <div class="support-box mt-3" style="border-left:4px solid #1B3A6B;background:#f0f4ff;">
+          <strong>Format ya Upload (mbadala):</strong><br>
+          Excel yenye safu: <code>First Name | Last Name | Gender | Score</code><br>
+          Safu moja tu ya alama kwa somo lake.
         </div>
       </div>
-      <button type="submit" class="btn btn-outline-dark mt-3">Unda Mtihani</button>
-    </form>
-  </details>
-
-  <hr class="my-4">
-
-  <form method="post" enctype="multipart/form-data" id="uploadForm" novalidate class="needs-validation">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="upload">
-
-    <div class="field">
-      <label for="{{ form.exam_type.id_for_label }}">Aina ya Mtihani</label>
-      <select
-        name="{{ form.exam_type.name }}"
-        id="{{ form.exam_type.id_for_label }}"
-        class="form-select"
-        required
-        hx-get="{% url 'filter_exams' %}"
-        hx-trigger="change"
-        hx-target="#id_exam"
-        hx-indicator="#loading-indicator"
-      >
-        {% for value, label in form.exam_type.field.choices %}
-          <option value="{{ value }}" {% if form.exam_type.value == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-      {% if form.exam_type.errors %}
-        <div class="text-danger small mt-1">{{ form.exam_type.errors }}</div>
-      {% endif %}
-    </div>
-
-    <div class="field">
-      <label for="id_exam">Mtihani</label>
-      <select name="{{ form.exam.name }}" id="id_exam" class="form-select" required>
-        <option value="">-- Chagua Mtihani --</option>
-        {% for exam in form.fields.exam.queryset %}
-          <option value="{{ exam.id }}" {% if form.exam.value|stringformat:'s' == exam.id|stringformat:'s' %}selected{% endif %}>
-            {{ exam.name }} ({{ exam.year }})
-          </option>
-        {% endfor %}
-      </select>
-      {% if form.exam.errors %}
-        <div class="text-danger small mt-1">{{ form.exam.errors }}</div>
-      {% endif %}
-    </div>
-
-    <div class="field">
-      <label for="{{ form.file.id_for_label }}">Results File</label>
-      {{ form.file|add_class:"form-control" }}
-      <div class="hint mt-1">Supported formats: .xlsx, .xls, .csv</div>
-      {% if form.file.errors %}
-        <div class="text-danger small mt-1">{{ form.file.errors }}</div>
-      {% endif %}
-    </div>
-
-    <div class="d-grid mt-4">
-      <button type="submit" class="btn btn-brand">Upload and Process</button>
-    </div>
-
-    <div id="loading-indicator" class="mt-3 text-secondary" style="display:none;">
-      <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-      Loading exams...
-    </div>
-  </form>
-
-  <div class="support-box mt-4">
-    <h4 class="mb-2">Upload Checklist</h4>
-    <p class="mb-2">Use these columns in your file before uploading:</p>
-    <ul class="mb-0">
-      <li>First Name</li>
-      <li>Last Name</li>
-      <li>Gender</li>
-      <li>One or more subject columns with numeric scores</li>
-    </ul>
+    </section>
   </div>
-</section>
+</div>
 
-<section class="panel form-shell mt-3">
-  <div class="panel-head">
-    <h4 class="mb-0">Process Flow</h4>
-  </div>
-  <div class="panel-body">
-    <ol class="mb-0">
-      <li>Select exam type.</li>
-      <li>Choose an exam from the filtered list.</li>
-      <li>Attach the results file.</li>
-      <li>Submit to calculate totals, positions, and divisions.</li>
-    </ol>
-  </div>
-</section>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/htmx.org@1.9.6"></script>
 <script>
-  document.body.addEventListener('htmx:configRequest', function(evt) {
-    document.getElementById('loading-indicator').style.display = 'block';
-  });
-  document.body.addEventListener('htmx:afterSwap', function(evt) {
-    document.getElementById('loading-indicator').style.display = 'none';
+(() => {
+  const selected = new Set();
+  const chipsEl = document.getElementById('subjectChips');
+  const listEl = document.getElementById('selectedSubjectsList');
+  const input = document.getElementById('subjectsInput');
+  const customInput = document.getElementById('customSubjectInput');
+  const addBtn = document.getElementById('addCustomSubjectBtn');
+
+  function updateHiddenInput() {
+    input.value = JSON.stringify([...selected]);
+  }
+
+  function renderSelected() {
+    listEl.innerHTML = [...selected].map(name => `
+      <span style="display:inline-flex;align-items:center;gap:0.3rem;background:#1B3A6B;color:#fff;
+        border-radius:2px;padding:0.15rem 0.5rem;font-size:0.78rem;margin:0.15rem;">
+        ${name}
+        <button type="button" data-name="${name}" class="remove-chip"
+          style="background:none;border:none;color:#C9A84C;font-size:1rem;line-height:1;cursor:pointer;padding:0;">×</button>
+      </span>
+    `).join('');
+    listEl.querySelectorAll('.remove-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = btn.dataset.name;
+        selected.delete(name);
+        // Re-enable chip button
+        chipsEl.querySelectorAll('.subject-chip').forEach(c => {
+          if (c.dataset.name === name) {
+            c.style.background = '#fff';
+            c.style.color = '#333';
+            c.style.borderColor = '#dee2e6';
+          }
+        });
+        renderSelected();
+        updateHiddenInput();
+      });
+    });
+  }
+
+  function addSubject(name) {
+    name = name.trim();
+    if (!name) return;
+    selected.add(name);
+    renderSelected();
+    updateHiddenInput();
+  }
+
+  chipsEl.querySelectorAll('.subject-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name;
+      if (selected.has(name)) {
+        selected.delete(name);
+        btn.style.background = '#fff';
+        btn.style.color = '#333';
+        btn.style.borderColor = '#dee2e6';
+      } else {
+        selected.add(name);
+        btn.style.background = '#1B3A6B';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#1B3A6B';
+      }
+      renderSelected();
+      updateHiddenInput();
+    });
   });
 
-  (function() {
-    'use strict';
-    const forms = document.querySelectorAll('.needs-validation');
-    
-    Array.from(forms).forEach(function(form) {
-      form.addEventListener('submit', function(event) {
-        if (!form.checkValidity()) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        
-        form.classList.add('was-validated');
-      }, false);
-    });
-  })();
+  addBtn.addEventListener('click', () => {
+    addSubject(customInput.value);
+    customInput.value = '';
+  });
+  customInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addSubject(customInput.value); customInput.value = ''; }
+  });
+
+  document.getElementById('createExamForm').addEventListener('submit', e => {
+    if (selected.size === 0) {
+      e.preventDefault();
+      alert('Tafadhali ongeza masomo angalau moja.');
+    }
+  });
+})();
 </script>
 {% endblock %}
