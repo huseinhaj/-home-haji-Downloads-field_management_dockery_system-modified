@@ -76,6 +76,8 @@ def register(request):
                 academic_year=_cached_active_year(),
             )
 
+            request.session['prefill_email'] = form.cleaned_data['email']
+            request.session['prefill_password'] = form.cleaned_data['password1']
             messages.success(request, 'Account created successfully. Please login.')
             return redirect('login')
         else:
@@ -161,9 +163,14 @@ def login_view(request):
     else:
         form = CustomLoginForm()
 
+    prefill_email = request.session.pop('prefill_email', '')
+    prefill_password = request.session.pop('prefill_password', '')
+
     return render(request, 'field_app/registration/login.html', {
         'form': form,
-        'hide_navbar': True
+        'hide_navbar': True,
+        'prefill_email': prefill_email,
+        'prefill_password': prefill_password,
     })
 
 # views.py - Badilisha logout_view kwa hii

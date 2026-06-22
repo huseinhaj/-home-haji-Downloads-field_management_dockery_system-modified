@@ -237,7 +237,8 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
           <div class="inp-wrap">
             <i class="fas fa-envelope inp-ico"></i>
             <input type="text" name="username" autocomplete="email" required
-                   placeholder="{% if LANG == 'sw' %}mfano@chuo.ac.tz{% else %}email@college.ac.tz{% endif %}">
+                   placeholder="{% if LANG == 'sw' %}mfano@chuo.ac.tz{% else %}email@college.ac.tz{% endif %}"
+                   value="{{ prefill_email }}">
           </div>
         </div>
 
@@ -246,7 +247,8 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
           <div class="inp-wrap">
             <i class="fas fa-lock inp-ico"></i>
             <input type="password" name="password" id="pwd" style="padding-right:38px;" required
-                   placeholder="{% if LANG == 'sw' %}Nywila yako{% else %}Your password{% endif %}">
+                   placeholder="{% if LANG == 'sw' %}Nywila yako{% else %}Your password{% endif %}"
+                   value="{{ prefill_password }}">
             <button type="button" class="eye" onclick="togglePwd()"><i class="fas fa-eye" id="eyeIco"></i></button>
           </div>
         </div>
