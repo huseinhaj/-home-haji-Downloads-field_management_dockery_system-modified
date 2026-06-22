@@ -9,9 +9,8 @@ client = genai.Client(api_key=api_key) if api_key else None
 
 # Primary model has the most generous free tier (15 RPM, 1500 RPD).
 # Fallbacks tried in order when 429 is hit.
-model_name = "gemini-2.5-flash-lite-preview-06-17"
+model_name = "gemini-2.0-flash-lite"
 FALLBACK_MODELS = [
-    "gemini-2.5-flash-lite-preview-06-17",
     "gemini-2.0-flash-lite",
     "gemini-2.0-flash",
 ]
