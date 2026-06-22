@@ -186,7 +186,8 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
               <input type="email" name="{{ form.email.name }}" id="{{ form.email.id_for_label }}"
                      class="{% if form.email.errors %}err{% endif %}"
                      value="{{ form.email.value|default:'' }}"
-                     placeholder="email@college.ac.tz" required>
+                     placeholder="email@college.ac.tz"
+                     autocomplete="email" required>
             </div>
             {% if form.email.errors %}<div class="f-err"><i class="fas fa-times-circle"></i>{{ form.email.errors.0 }}</div>{% endif %}
           </div>
