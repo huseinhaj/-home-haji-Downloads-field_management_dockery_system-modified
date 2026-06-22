@@ -741,6 +741,7 @@ def ajax_generate_lessonplan(request):
                             student=student_obj,
                             subject=subj_obj_cached,
                             topic__iexact=topic,
+                            subtopic__iexact=subtopic or '',
                             class_name=class_name,
                             term=term,
                             year=int(year),
