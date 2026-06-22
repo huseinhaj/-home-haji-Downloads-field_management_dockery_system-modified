@@ -8,8 +8,12 @@ from django.shortcuts import render
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_POST
 
-from google.genai import types as genai_types
-from field_app.ai_utils import client, model_name, FALLBACK_MODELS
+from field_app.ai_utils import client, model_name, FALLBACK_MODELS, GenerateContentConfig as genai_types_cfg
+
+class _GenaiTypesCompat:
+    GenerateContentConfig = genai_types_cfg
+
+genai_types = _GenaiTypesCompat()
 
 SYSTEM_PROMPT = """Wewe ni "HESLB Msaidizi" — AI inayosaidia wanafunzi wa Tanzania kukusanya taarifa zote zinazohitajika kwa maombi ya mkopo wa HESLB 2026/2027.
 
