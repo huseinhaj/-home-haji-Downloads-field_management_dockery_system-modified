@@ -188,17 +188,18 @@ Example row:
             import traceback
             traceback.print_exc()
             raw = str(e)
+            print(f"[AI SCHEME ERROR] {raw}")
             if 'PERMISSION_DENIED' in raw or 'suspended' in raw.lower() or '403' in raw:
                 user_msg = (
                     "Huduma ya AI imesimamishwa kwa sababu ya ufunguo wa API uliosimamishwa. "
                     "Tafadhali wasiliana na msimamizi ili upate ufunguo mpya wa Google AI."
                 )
-            elif 'quota' in raw.lower() or '429' in raw:
-                user_msg = "Kikomo cha matumizi ya AI kimefikiwa. Jaribu tena baadaye."
+            elif 'quota' in raw.lower() or '429' in raw or 'rate' in raw.lower() or 'exhausted' in raw.lower() or 'resource' in raw.lower():
+                user_msg = f"Kikomo cha matumizi: {raw[:200]}"
             elif 'API_KEY' in raw or 'api_key' in raw.lower():
                 user_msg = "Ufunguo wa API ya AI haujawekwa. Wasiliana na msimamizi."
             else:
-                user_msg = "Hitilafu ya ndani imetokea. Tafadhali jaribu tena."
+                user_msg = f"Hitilafu: {raw[:200]}"
             return JsonResponse({'success': False, 'error': user_msg}, status=500)
 
     return JsonResponse({'success': False}, status=400)
@@ -847,13 +848,14 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
             import traceback
             traceback.print_exc()
             raw = str(e)
+            print(f"[AI LESSON ERROR] {raw}")
             if 'PERMISSION_DENIED' in raw or 'suspended' in raw.lower() or '403' in raw:
                 user_msg = (
                     "Huduma ya AI imesimamishwa kwa sababu ya ufunguo wa API uliosimamishwa. "
                     "Tafadhali wasiliana na msimamizi ili upate ufunguo mpya wa Google AI."
                 )
-            elif 'quota' in raw.lower() or '429' in raw:
-                user_msg = "Kikomo cha matumizi ya AI kimefikiwa. Jaribu tena baadaye."
+            elif 'quota' in raw.lower() or '429' in raw or 'rate' in raw.lower() or 'exhausted' in raw.lower() or 'resource' in raw.lower():
+                user_msg = f"Kikomo cha matumizi: {raw[:200]}"
             elif 'API_KEY' in raw or 'api_key' in raw.lower():
                 user_msg = "Ufunguo wa API ya AI haujawekwa. Wasiliana na msimamizi."
             else:
