@@ -74,6 +74,30 @@ def ajax_generate_scheme(request):
             school_name = data.get('school_name')
             reference_source = data.get('reference_source', '')
             breaks = data.get('breaks', [])
+            force_regenerate = data.get('force_regenerate', False)
+
+            # Angalia cache kwanza — isipigie API kama tayari ipo
+            if not force_regenerate:
+                try:
+                    student_obj = StudentTeacher.objects.get(user=request.user)
+                    subj_obj_cached = Subject.objects.filter(name__iexact=subject).first()
+                    if subj_obj_cached:
+                        cached = SchemeOfWork.objects.filter(
+                            student=student_obj,
+                            subject=subj_obj_cached,
+                            term=term,
+                            year=int(year),
+                            generated_by_ai=True,
+                        ).first()
+                        if cached and cached.scheme_data:
+                            return JsonResponse({
+                                'success': True,
+                                'data': cached.scheme_data,
+                                'saved_id': cached.id,
+                                'from_cache': True,
+                            })
+                except Exception:
+                    pass
 
             breaks_text = ""
             if breaks:
@@ -698,6 +722,51 @@ def ajax_generate_lessonplan(request):
             teaching_methods = data.get('teaching_methods', '')
             reference_source = data.get('reference_source', '')
             teacher_name = data.get('teacher_name', '')
+            force_regenerate = data.get('force_regenerate', False)
+
+            # Angalia cache kwanza
+            if not force_regenerate:
+                try:
+                    student_obj = StudentTeacher.objects.get(user=request.user)
+                    subj_obj_cached = None
+                    if subject_id:
+                        try:
+                            subj_obj_cached = Subject.objects.get(id=int(subject_id))
+                        except (Subject.DoesNotExist, ValueError):
+                            pass
+                    if not subj_obj_cached and subject:
+                        subj_obj_cached = Subject.objects.filter(name__iexact=subject).first()
+                    if subj_obj_cached and topic:
+                        cached_lp = LessonPlan.objects.filter(
+                            student=student_obj,
+                            subject=subj_obj_cached,
+                            topic__iexact=topic,
+                            class_name=class_name,
+                            term=term,
+                            year=int(year),
+                            generated_by_ai=True,
+                        ).order_by('-id').first()
+                        if cached_lp and cached_lp.lesson_development:
+                            lesson_data = {
+                                'lesson_title': f"{subject} - {topic}",
+                                'date': str(cached_lp.date),
+                                'main_competence': cached_lp.main_competence,
+                                'specific_competence': cached_lp.specific_competence,
+                                'previous_knowledge': cached_lp.previous_knowledge,
+                                'learning_objectives': cached_lp.learning_objectives,
+                                'teaching_methods': cached_lp.teaching_methods,
+                                'teaching_resources': cached_lp.teaching_resources,
+                                'lesson_development': cached_lp.lesson_development,
+                                'remarks': cached_lp.remarks,
+                            }
+                            return JsonResponse({
+                                'success': True,
+                                'data': lesson_data,
+                                'saved_id': cached_lp.id,
+                                'from_cache': True,
+                            })
+                except Exception:
+                    pass
 
             prompt = f"""
 You are an AI assistant for Tanzanian teachers. Generate a detailed LESSON PLAN following TIE Tanzania standards.
