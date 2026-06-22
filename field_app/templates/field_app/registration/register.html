@@ -214,7 +214,8 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
               <i class="fas fa-lock ico"></i>
               <input type="password" name="{{ form.password1.name }}" id="{{ form.password1.id_for_label }}"
                      class="{% if form.password1.errors %}err{% endif %}" style="padding-right:38px;"
-                     placeholder="{% if LANG == 'sw' %}Nywila imara{% else %}Strong password{% endif %}" required>
+                     placeholder="{% if LANG == 'sw' %}Nywila imara{% else %}Strong password{% endif %}"
+                     autocomplete="new-password" required>
               <button type="button" class="eye" onclick="togglePwd('{{ form.password1.id_for_label }}')"><i class="fas fa-eye"></i></button>
             </div>
             <div class="sbar"><div class="sfill" id="sfill"></div></div>
@@ -229,7 +230,8 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
               <i class="fas fa-lock ico"></i>
               <input type="password" name="{{ form.password2.name }}" id="{{ form.password2.id_for_label }}"
                      class="{% if form.password2.errors %}err{% endif %}" style="padding-right:38px;"
-                     placeholder="{% if LANG == 'sw' %}Ingiza tena{% else %}Re-enter password{% endif %}" required>
+                     placeholder="{% if LANG == 'sw' %}Ingiza tena{% else %}Re-enter password{% endif %}"
+                     autocomplete="new-password" required>
               <button type="button" class="eye" onclick="togglePwd('{{ form.password2.id_for_label }}')"><i class="fas fa-eye"></i></button>
             </div>
             {% if form.password2.errors %}<div class="f-err"><i class="fas fa-times-circle"></i>{{ form.password2.errors.0 }}</div>{% endif %}
