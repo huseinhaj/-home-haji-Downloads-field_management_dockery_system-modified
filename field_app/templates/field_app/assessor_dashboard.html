@@ -374,7 +374,7 @@
                 <span class="bst-wait"><i class="fas fa-clock me-1"></i>{% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}</span>
                 {% endif %}
                 <div class="mt-2">
-                  <a href="{% url 'assessor_student_detail' data.school.id %}"
+                  <a href="{% url 'assessor_student_assessment' student_info.student.id %}"
                      style="background:{% if student_info.assessment %}#EEF1F6{% else %}#0A2B5E{% endif %}; color:{% if student_info.assessment %}#0A2B5E{% else %}#fff{% endif %}; border-radius:5px; padding:4px 12px; font-size:0.72rem; font-weight:700; text-decoration:none; white-space:nowrap;">
                     {% if student_info.assessment %}<i class="fas fa-edit me-1"></i>{% if LANG == 'sw' %}Hariri{% else %}Edit{% endif %}
                     {% else %}<i class="fas fa-play me-1"></i>{% if LANG == 'sw' %}Anza{% else %}Start{% endif %}{% endif %}
