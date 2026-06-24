@@ -119,22 +119,24 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
       {% endif %}
 
       <!-- FORM: DEO/REO/Chair -->
-      <form method="post" action="{% url 'board_login' %}">
+      <form method="post" action="{% url 'board_login' %}" autocomplete="off">
         {% csrf_token %}
         <div class="field">
           <label>Barua Pepe</label>
           <div class="inp-wrap">
             <i class="fas fa-envelope inp-ico"></i>
-            <input type="email" name="email" required autocomplete="email"
-                   placeholder="barua.pepe@yako.com" autofocus>
+            <input type="text" name="email" id="board_email" required autocomplete="off"
+                   placeholder="barua.pepe@yako.com" readonly
+                   onfocus="this.removeAttribute('readonly')">
           </div>
         </div>
         <div class="field">
           <label>Nywila</label>
           <div class="inp-wrap">
             <i class="fas fa-lock inp-ico"></i>
-            <input type="password" name="password" id="pwd" style="padding-right:38px;" required autocomplete="current-password"
-                   placeholder="Nywila yako">
+            <input type="password" name="password" id="pwd" style="padding-right:38px;" required autocomplete="off"
+                   placeholder="Nywila yako" readonly
+                   onfocus="this.removeAttribute('readonly')">
             <button type="button" class="eye" onclick="togglePwd('pwd','eyepwd')"><i class="fas fa-eye" id="eyepwd"></i></button>
           </div>
         </div>
