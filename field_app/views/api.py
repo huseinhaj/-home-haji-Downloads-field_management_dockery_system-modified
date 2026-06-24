@@ -322,7 +322,6 @@ def api_get_schools_for_change(request):
         'has_previous': page > 1,
     })
 
-@login_required
 def get_classes_by_level(request):
     """AJAX endpoint to get classes based on education level"""
     level_id = request.GET.get('level_id')
@@ -331,7 +330,6 @@ def get_classes_by_level(request):
         return JsonResponse(list(classes), safe=False)
     return JsonResponse([], safe=False)
 
-@login_required
 def get_subjects_by_level(request):
     """AJAX endpoint to get subjects based on education level"""
     level_id = request.GET.get('level_id')
