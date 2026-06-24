@@ -1670,6 +1670,36 @@ def download_individual_letter(request):
 
     y = draw_para("5", "Nakutakia kila la kheri katika mazoezi yako ya kufundisha.", y)
 
+    # ── SCHOOL PRINCIPAL SECTION ───────────────────────────────────────────────
+    y -= 0.3 * cm
+    # Separator line
+    c.setStrokeColor(NAVY); c.setLineWidth(1.0)
+    c.line(LM, y, RM, y); y -= 0.02 * cm
+    c.setLineWidth(0.4); c.line(LM, y, RM, y); y -= 0.45 * cm
+
+    # Header kwa Mkuu wa Shule
+    school_hdr = f"KWA: MKUU WA SHULE — {school_name.upper()}"
+    c.setFont('Helvetica-Bold', 9.5); c.setFillColor(NAVY)
+    c.drawString(LM, y, school_hdr)
+    sh_w = c.stringWidth(school_hdr, 'Helvetica-Bold', 9.5)
+    c.setLineWidth(0.7); c.line(LM, y - 1.5, LM + sh_w, y - 1.5)
+    y -= 0.55 * cm
+
+    # Maandishi kwa Mkuu wa Shule
+    school_body_w = RM - LM
+    c.setFont('Helvetica', 10); c.setFillColor(BLACK)
+    school_msg = (
+        f"Ndugu Mkuu wa Shule, tunakuomba umpokee mwanafunzi mwalimu "
+        f"{student.full_name} ambaye amepangiwa kufanya mazoezi ya kufundisha "
+        f"(Teaching Practice/Internship) katika shule yako kwa Mwaka wa Masomo {yr_str}. "
+        f"Tafadhali mpe mazingira mazuri ya kufundisha na usimamizi unaohitajika "
+        f"ili aweze kukamilisha mafunzo yake kwa ufanisi. "
+        f"Ushirikiano wako ni muhimu sana katika kukamilisha mafunzo yake."
+    )
+    for line in simpleSplit(school_msg, 'Helvetica', 10, school_body_w):
+        c.drawString(LM, y, line)
+        y -= 0.52 * cm
+
     # ── IMS SIGNATURE ─────────────────────────────────────────────────────────
     y -= 0.4 * cm
     sig_x = CX - 3 * cm
