@@ -1884,3 +1884,54 @@ def download_group_letter(request):
     response['Content-Disposition'] = f'attachment; filename="barua_kikundi_{school.name}.pdf"'
     messages.success(request, "Barua ya kikundi imepakuliwa kikamilifu!")
     return response
+
+
+@staff_member_required
+def send_test_email_api(request):
+    """Send a test email to verify SMTP is working — staff only."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    recipient = request.POST.get('email') or request.user.email
+    if not recipient:
+        return JsonResponse({'error': 'Hakuna email iliyotolewa'}, status=400)
+
+    try:
+        send_mail(
+            subject='✅ IMS Test Email — SMTP Inafanya Kazi',
+            message=(
+                f'Hii ni email ya majaribio kutoka IMS.\n\n'
+                f'Kama unaona ujumbe huu maana yake SMTP inafanya kazi vizuri.\n\n'
+                f'Imetumwa kwa: {recipient}\n'
+                f'Kutoka: {settings.DEFAULT_FROM_EMAIL}\n'
+                f'Backend: {settings.EMAIL_BACKEND}\n'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[recipient],
+            html_message=f"""
+<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:24px;
+     border:2px solid #0A2B5E;border-radius:12px;">
+  <h2 style="color:#0A2B5E;margin:0 0 16px;">✅ IMS Test Email</h2>
+  <p>Email hii ni ya majaribio ya mfumo wa IMS.</p>
+  <p>Kama unaipokea maana yake <strong>SMTP inafanya kazi vizuri!</strong></p>
+  <hr style="border-color:#C8900A;">
+  <small style="color:#666;">
+    Imetumwa kwa: {recipient}<br>
+    Backend: {settings.EMAIL_BACKEND}
+  </small>
+</div>""",
+            fail_silently=False,
+        )
+        return JsonResponse({
+            'success': True,
+            'message': f'Email imetumwa kwa {recipient}. Angalia inbox (na Spam folder).',
+            'backend': settings.EMAIL_BACKEND,
+            'from': settings.DEFAULT_FROM_EMAIL,
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'backend': settings.EMAIL_BACKEND,
+            'from': settings.DEFAULT_FROM_EMAIL,
+        }, status=500)
