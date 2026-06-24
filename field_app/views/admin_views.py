@@ -1457,53 +1457,278 @@ def new_year_credentials(request):
 
 @login_required
 def download_individual_letter(request):
-    student = get_or_create_student_profile(request.user)
+    import io, os
+    from reportlab.pdfgen import canvas as rl_canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors as rl_colors
+    from reportlab.lib.utils import simpleSplit
 
+    student = get_or_create_student_profile(request.user)
     approved_applications = StudentApplication.objects.filter(
-        student=student,
-        status='approved'
-    )
+        student=student, status='approved'
+    ).select_related('subject', 'school')
 
     if not approved_applications.exists():
-        messages.error(request, "You don't have any approved applications to download a letter.")
+        messages.error(request, "Huna maombi yaliyoidhinishwa. Pakua barua baada ya kuidhinishwa.")
         return redirect('dashboard')
 
-    buffer = BytesIO()
-    p = canvas.Canvas(buffer)
+    school      = student.selected_school
+    district    = school.district if school else None
+    region      = district.region if district else None
+    today       = timezone.now().date()
 
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(100, 800, "INDIVIDUAL FIELD PLACEMENT APPROVAL LETTER")
+    from field_app.views.utils import _cached_active_year
+    current_year = _cached_active_year()
+    yr_str       = current_year.year if current_year else str(today.year)
 
-    p.setFont("Helvetica", 12)
-    p.drawString(100, 770, f"Student Name: {student.full_name}")
-    p.drawString(100, 750, f"Student ID: {student.id}")
-    p.drawString(100, 730, f"Phone: {student.phone_number}")
-    p.drawString(100, 710, f"Email: {student.user.email}")
+    school_name  = school.name if school else '—'
+    dist_name    = district.name if district else '—'
+    region_name  = region.name if region else '—'
+    date_str     = today.strftime('%d %B %Y')
+    dist_code    = ''.join(c for c in dist_name.upper()[:5] if c.isalpha())
+    ref_no       = f"IMS.ELIMU/{today.year}/{dist_code}/{student.id:05d}"
+    serial_no    = f"IMS/{today.year}/{dist_code}/{student.id:05d}"
+    subj_list    = ", ".join(a.subject.name for a in approved_applications)
 
-    if student.selected_school:
-        p.drawString(100, 680, f"Assigned School: {student.selected_school.name}")
-        p.drawString(100, 660, f"School District: {student.selected_school.district.name}")
-        p.drawString(100, 640, f"School Region: {student.selected_school.district.region.name}")
+    BLACK = rl_colors.black
+    NAVY  = rl_colors.HexColor('#0A2B5E')
 
-    p.drawString(100, 610, "Approved Teaching Subjects:")
-    y_position = 590
-    for application in approved_applications:
-        p.drawString(120, y_position, f"- {application.subject.name} at {application.school.name}")
-        y_position -= 20
-        if application.approval_date:
-            p.drawString(140, y_position, f"Approved on: {application.approval_date.strftime('%Y-%m-%d')}")
-            y_position -= 20
+    # ── Coat of arms ─────────────────────────────────────────────────────────
+    from django.conf import settings as _s
+    from django.contrib.staticfiles import finders as _f
+    _base  = getattr(_s, 'BASE_DIR', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    _sroot = getattr(_s, 'STATIC_ROOT', '') or ''
+    coat_img_path = next((p for p in [
+        _f.find('images/tz_coat_of_arms.png'),
+        os.path.join(_sroot, 'images', 'tz_coat_of_arms.png'),
+        os.path.join(_base, 'field_app', 'static', 'images', 'tz_coat_of_arms.png'),
+        os.path.join(_base, 'staticfiles', 'images', 'tz_coat_of_arms.png'),
+    ] if p and os.path.exists(p)), None)
 
-    p.drawString(100, 530, "This letter confirms that the above student has been approved")
-    p.drawString(100, 510, "for field placement teaching practice.")
-    p.drawString(100, 490, f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M')}")
+    buf = io.BytesIO()
+    W, H = A4
+    CX = W / 2
+    LM = 2.0 * cm
+    RM = W - 2.0 * cm
 
-    p.showPage()
-    p.save()
+    c = rl_canvas.Canvas(buf, pagesize=A4)
 
-    buffer.seek(0)
-    response = HttpResponse(buffer, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="individual_approval_{student.full_name}.pdf"'
+    def _watermarks():
+        micro = f"IMS MAFUNZO YA UALIMU • {serial_no} • HALISI •  "
+        mw = c.stringWidth(micro, 'Helvetica', 5.5)
+        c.saveState()
+        c.setFont('Helvetica', 5.5); c.setFillColor(NAVY); c.setFillAlpha(0.05)
+        ri, yp = 0, 4.0
+        while yp < H + 9:
+            xp = (-mw / 2) if ri % 2 else 0.0
+            while xp < W + mw:
+                c.drawString(xp, yp, micro); xp += mw
+            yp += 9.0; ri += 1
+        c.restoreState()
+        c.saveState()
+        c.setFont('Helvetica-Bold', 60); c.setFillColor(NAVY); c.setFillAlpha(0.03)
+        c.translate(CX, H / 2); c.rotate(45)
+        c.drawCentredString(0, 48, "IMS"); c.drawCentredString(0, -20, "HALISI")
+        c.restoreState()
+
+    _watermarks()
+
+    # ── TITLE ─────────────────────────────────────────────────────────────────
+    y = H - 1.6 * cm
+    c.setFont('Helvetica-Bold', 14); c.setFillColor(BLACK)
+    c.drawCentredString(CX, y, "JAMHURI YA MUUNGANO WA TANZANIA"); y -= 0.65 * cm
+    c.setFont('Helvetica-Bold', 12)
+    c.drawCentredString(CX, y, "OFISI YA RAIS"); y -= 0.38 * cm
+    c.setStrokeColor(BLACK); c.setLineWidth(1.8)
+    c.line(LM, y, RM, y); y -= 3
+    c.setLineWidth(0.5); c.line(LM, y, RM, y); y -= 0.5 * cm
+
+    # ── 3-COLUMN HEADER ───────────────────────────────────────────────────────
+    sec_top = y
+    coa_w, coa_h = 70, 85
+    if coat_img_path:
+        try:
+            c.drawImage(coat_img_path, CX - coa_w / 2, sec_top - coa_h,
+                        width=coa_w, height=coa_h, mask='auto')
+        except Exception:
+            pass
+
+    # Left block
+    ly = sec_top - 0.05 * cm
+    for entry in [
+        ('bold', f'Simu ya Upepo "{dist_name.upper()}"'),
+        ('mix',  'Simu: ', '255 (0) —'),
+        ('mix',  'Tovuti: ', 'www.tamisemi.go.tz'),
+        ('mix',  'Baruapepe: ', 'elimu@tamisemi.go.tz'),
+        ('bold', 'Unapojibu Taja:'),
+    ]:
+        if entry[0] == 'bold':
+            c.setFont('Helvetica-Bold', 8.5); c.setFillColor(BLACK)
+            c.drawString(LM, ly, entry[1])
+        else:
+            lbl, val = entry[1], entry[2]
+            lw = c.stringWidth(lbl, 'Helvetica-Bold', 8.5)
+            c.setFont('Helvetica-Bold', 8.5); c.drawString(LM, ly, lbl)
+            c.setFont('Helvetica', 8.5); c.drawString(LM + lw, ly, val)
+        ly -= 0.42 * cm
+
+    # Right block
+    right_col = CX + coa_w / 2 + 0.5 * cm
+    ry = sec_top - 0.05 * cm
+    for bold, line in [
+        (False, "Ofisi ya Afisa Elimu wa Wilaya,"),
+        (False, f"Wilaya ya {dist_name},"),
+        (False, f"Mkoa wa {region_name},"),
+        (True,  f"{region_name.upper()}."),
+    ]:
+        fn = 'Helvetica-Bold' if bold else 'Helvetica'
+        c.setFont(fn, 8.5); c.setFillColor(BLACK)
+        c.drawString(right_col, ry, line)
+        if bold:
+            tw = c.stringWidth(line, fn, 8.5)
+            c.setLineWidth(0.6); c.line(right_col, ry - 1.5, right_col + tw, ry - 1.5)
+        ry -= 0.42 * cm
+
+    y = sec_top - coa_h - 0.4 * cm
+    c.setStrokeColor(BLACK); c.setLineWidth(1.8)
+    c.line(LM, y, RM, y); y -= 3
+    c.setLineWidth(0.5); c.line(LM, y, RM, y); y -= 0.6 * cm
+
+    # ── REFERENCE + DATE ──────────────────────────────────────────────────────
+    c.setFont('Helvetica-Bold', 9.5); c.setFillColor(BLACK)
+    c.drawString(LM, y, f"Kumb. Na. {ref_no}")
+    c.drawRightString(RM, y, date_str)
+    y -= 1.0 * cm
+
+    # ── RECIPIENT ─────────────────────────────────────────────────────────────
+    c.setFont('Helvetica-Bold', 10); c.setFillColor(BLACK)
+    c.drawString(LM, y, f"{student.full_name},"); y -= 0.50 * cm
+    c.setFont('Helvetica', 10)
+    c.drawString(LM, y, f"{school_name},"); y -= 0.50 * cm
+    c.setFont('Helvetica-Bold', 10)
+    dist_label = f"{dist_name.upper()}."
+    c.drawString(LM, y, dist_label)
+    dw = c.stringWidth(dist_label, 'Helvetica-Bold', 10)
+    c.setLineWidth(0.8); c.line(LM, y - 1.5, LM + dw, y - 1.5)
+    y -= 1.0 * cm
+
+    # ── SUBJECT LINE ──────────────────────────────────────────────────────────
+    subj_text = "YAH: KUPANGIWA KITUO CHA MAZOEZI YA KUFUNDISHA (TEACHING PRACTICE)"
+    c.setFont('Helvetica-Bold', 10.5); c.setFillColor(BLACK)
+    sw = c.stringWidth(subj_text, 'Helvetica-Bold', 10.5)
+    c.drawCentredString(CX, y, subj_text)
+    c.setLineWidth(0.9); c.line(CX - sw / 2, y - 2, CX + sw / 2, y - 2)
+    y -= 1.1 * cm
+
+    # ── BODY ──────────────────────────────────────────────────────────────────
+    body_w = RM - LM - 1.4 * cm
+    txt_x  = LM + 1.4 * cm
+    num_x  = LM + 0.5 * cm
+
+    def draw_para(num, text, cur_y):
+        c.setFont('Helvetica', 10); c.setFillColor(BLACK)
+        c.drawString(num_x, cur_y, f"{num}.")
+        for line in simpleSplit(text, 'Helvetica', 10, body_w):
+            c.drawString(txt_x, cur_y, line)
+            cur_y -= 0.52 * cm
+        return cur_y - 0.28 * cm
+
+    y = draw_para("1", (
+        f"Tafadhali rejea maombi yako ya kufanya mazoezi ya kufundisha ({subj_list}) "
+        f"uliyoyaomba kupitia Mfumo wa Usimamizi wa Mazoezi ya Kufundisha (IMS) "
+        f"kwa Mwaka wa Masomo {yr_str}. Ninayo furaha kukufahamisha kuwa ulifaulu "
+        f"na umepangiwa kufanya mazoezi ya kufundisha katika {school_name} "
+        f"katika Halmashauri ya Wilaya ya {dist_name}."
+    ), y)
+
+    y = draw_para("2", (
+        "Hivyo, upatapo barua hii unatakiwa kwenda kuripoti katika kituo chako cha mazoezi "
+        "ndani ya muda wa siku kumi na nne (14) kuanzia tarehe ya kupokea barua hii. "
+        "Ukishindwa kufanya hivyo katika muda uliowekwa, nafasi yako itajazwa na "
+        "mwanafunzi mwingine ambaye alifanya maombi na kufaulu lakini hakupangiwa "
+        "kituo cha mazoezi kutokana na uchache wa nafasi."
+    ), y)
+
+    y = draw_para("3", (
+        "Mwajiri wako ataendelea na taratibu nyingine za mazoezi yako kwa mujibu wa "
+        "mwongozo wa Wizara ya Elimu, Sayansi na Teknolojia unaosimamia Mafunzo ya "
+        "Awali ya Ualimu (Initial Teacher Education — ITE) nchini Tanzania."
+    ), y)
+
+    y = draw_para("4", (
+        "Aidha, unatakiwa kwenda na vyeti vyako halisi (Original Certificates) "
+        "pamoja na barua hii ili viweze kuhakikiwa na Mkuu wa Shule "
+        "kabla hujapewa darasa la kufundisha."
+    ), y)
+
+    y = draw_para("5", "Nakutakia kila la kheri katika mazoezi yako ya kufundisha.", y)
+
+    # ── SIGNATURE ─────────────────────────────────────────────────────────────
+    y -= 0.5 * cm
+    sig_x = CX - 3 * cm
+    c.setFont('Helvetica-Oblique', 13); c.setFillColor(NAVY)
+    c.drawString(sig_x, y, "Msimamizi wa IMS"); y -= 0.40 * cm
+    c.setStrokeColor(BLACK); c.setLineWidth(0.7)
+    c.line(sig_x, y, sig_x + 6.0 * cm, y); y -= 0.44 * cm
+    c.setFont('Helvetica-Bold', 10); c.setFillColor(BLACK)
+    c.drawString(sig_x, y, "MSIMAMIZI WA MFUMO (IMS)"); y -= 0.44 * cm
+    c.drawString(sig_x, y, f"Wilaya ya {dist_name}")
+
+    # Footer
+    fy = 1.6 * cm
+    c.setStrokeColor(BLACK); c.setLineWidth(0.5)
+    c.line(LM, fy + 0.55 * cm, RM, fy + 0.55 * cm)
+    c.setFont('Helvetica', 7); c.setFillColor(rl_colors.HexColor('#333333'))
+    c.drawString(LM, fy + 0.22 * cm, f"Kumb.: {serial_no}   |   Tarehe: {date_str}")
+    c.drawRightString(RM, fy + 0.22 * cm, "Hati Rasmi — IMS • Ofisi ya Afisa Elimu wa Wilaya")
+
+    # ── PAGE 2 — NAKALA ───────────────────────────────────────────────────────
+    c.showPage()
+    _watermarks()
+
+    ny = H - 2.5 * cm
+    c.setFont('Helvetica-Bold', 9.5); c.setFillColor(BLACK)
+    c.drawString(LM, ny, "Nakala:"); ny -= 0.15 * cm
+
+    INDENT = LM + 3.5 * cm
+    for block in [
+        [
+            "Katibu Mkuu,",
+            "Ofisi ya Rais,",
+            "Menejimenti ya Utumishi wa Umma na Utawala Bora,",
+            "S.L.P. 670,",
+            "DODOMA.",
+        ],
+        [
+            f"Mkurugenzi Mtendaji,",
+            f"Halmashauri ya Wilaya ya {dist_name},",
+            f"Mkoa wa {region_name}.",
+            "(Tafadhali mpokee na kukamilisha taratibu za mazoezi yake)",
+        ],
+        [
+            "Mkuu wa Shule,",
+            f"{school_name},",
+            f"Wilaya ya {dist_name}.",
+        ],
+    ]:
+        ny -= 0.25 * cm
+        for line in block:
+            is_city = line.isupper() and line.endswith('.')
+            fn = 'Helvetica-Bold' if is_city else 'Helvetica'
+            c.setFont(fn, 9.5); c.setFillColor(BLACK)
+            c.drawString(INDENT, ny, line)
+            if is_city:
+                tw = c.stringWidth(line, fn, 9.5)
+                c.setLineWidth(0.6); c.line(INDENT, ny - 1.5, INDENT + tw, ny - 1.5)
+            ny -= 0.42 * cm
+        ny -= 0.15 * cm
+
+    c.save()
+    buf.seek(0)
+    safe_name = student.full_name.replace(' ', '_').replace('/', '_')
+    response = HttpResponse(buf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Barua_Uwekaji_{safe_name}.pdf"'
     return response
 
 
