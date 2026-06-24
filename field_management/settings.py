@@ -193,20 +193,18 @@ EMAIL_HOST_PASSWORD = (
     ''
 )
 
-# Tumia Gmail SMTP - force IPv4 ili kuepuka tatizo la Railway
 if EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = '74.125.133.108'  # smtp.gmail.com IPv4 (force IPv4)
-    EMAIL_PORT = 465
-    EMAIL_USE_TLS = False
-    EMAIL_USE_SSL = True
+    EMAIL_HOST = 'smtp.gmail.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_USE_SSL = False
 else:
-    # Kama password haijawekwa - andika kwenye logs badala ya kutuma
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 DEFAULT_FROM_EMAIL = f'IMS System <{EMAIL_HOST_USER}>'
 SERVER_EMAIL = EMAIL_HOST_USER
-EMAIL_TIMEOUT = 30
+EMAIL_TIMEOUT = 15
 
 # GDAL Configuration for GeoDjango
 GDAL_LIBRARY_PATH = os.environ.get('GDAL_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/libgdal.so')

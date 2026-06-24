@@ -695,11 +695,11 @@ body{{font-family:'Segoe UI',Arial,sans-serif;line-height:1.6;color:#333;margin:
                         from_email=from_email,
                         recipient_list=[task['to']],
                         html_message=task['html'],
-                        fail_silently=True,
+                        fail_silently=False,
                     )
                     print(f"✅ [BG] Email sent to {task['to']}")
                 except Exception as e:
-                    print(f"❌ [BG] Email failed for {task['to']}: {e}")
+                    print(f"❌ [BG] Email FAILED for {task['to']}: {type(e).__name__}: {e}")
 
         bg = threading.Thread(
             target=_send_all,
