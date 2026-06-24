@@ -141,7 +141,6 @@
     <div class="ht-hdr-actions">
       <a href="{% url 'head_teacher_monthly_report' school.id %}" class="btn-gold">Ripoti ya Mwezi</a>
       {% if bm.role == 'head_teacher' %}<a href="{% url 'public_school_head_form' %}" target="_blank" class="btn-navy">Tuma Ombi</a>{% endif %}
-      <a href="{% url 'board_logout' %}" style="color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;margin-left:8px;">Toka</a>
     </div>
   </div>
 
@@ -154,10 +153,6 @@
     <div class="kpi g">
       <div class="kpi-num" style="color:var(--success);">{{ approved_count }}</div>
       <div class="kpi-lbl">Walioidhinishwa</div>
-    </div>
-    <div class="kpi t">
-      <div class="kpi-num" style="color:#0891B2;">{{ present_today }}</div>
-      <div class="kpi-lbl">Waliofika Leo</div>
     </div>
     <div class="kpi {% if compliance_pct >= 80 %}g{% elif compliance_pct >= 50 %}a{% else %}{% endif %}">
       <div class="kpi-num" style="color:{% if compliance_pct >= 80 %}var(--success){% elif compliance_pct >= 50 %}var(--warn){% else %}var(--danger){% endif %};">{{ compliance_pct }}%</div>
