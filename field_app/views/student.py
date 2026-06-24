@@ -1645,15 +1645,15 @@ def student_certificate_pdf(request):
 
     # ── SCORE TABLE ───────────────────────────────────────────────────────────
     tbl_data = [
-        ('ASSESSMENT CRITERION',  'MSIMAMIZI', 'MKUU', 'WASTANI', 'MAX'),
-        ('Attendance',            _fmt(sa.kuhudhuria if sa else combined['kuhudhuria']),        str(fa.kuhudhuria),        _fmt(combined['kuhudhuria']),        '20'),
-        ('Work Diary (Logbook)',  _fmt(sa.daftari_la_kazi if sa else combined['daftari_la_kazi']),   str(fa.daftari_la_kazi),   _fmt(combined['daftari_la_kazi']),   '20'),
-        ('Scheme of Work',        _fmt(sa.mpango_wa_kazi if sa else combined['mpango_wa_kazi']),    str(fa.mpango_wa_kazi),    _fmt(combined['mpango_wa_kazi']),    '20'),
-        ('Lesson Planning',       _fmt(sa.mpango_wa_somo if sa else combined['mpango_wa_somo']),    str(fa.mpango_wa_somo),    _fmt(combined['mpango_wa_somo']),    '20'),
-        ('Classroom Performance', _fmt(sa.utendaji_darasani if sa else combined['utendaji_darasani']), str(fa.utendaji_darasani), _fmt(combined['utendaji_darasani']), '20'),
-        ('TOTAL',                 _fmt(sa.jumla if sa else combined['jumla']),             str(fa.jumla),             _fmt(combined['jumla']),             '100'),
+        ('ASSESSMENT CRITERION',  'MARKS', 'MAX'),
+        ('Attendance',            _fmt(combined['kuhudhuria']),        '20'),
+        ('Work Diary (Logbook)',  _fmt(combined['daftari_la_kazi']),   '20'),
+        ('Scheme of Work',        _fmt(combined['mpango_wa_kazi']),    '20'),
+        ('Lesson Planning',       _fmt(combined['mpango_wa_somo']),    '20'),
+        ('Classroom Performance', _fmt(combined['utendaji_darasani']), '20'),
+        ('TOTAL',                 _fmt(combined['jumla']),             '100'),
     ]
-    COL_W   = [W - 2*LM - 10*cm, 2*cm, 2*cm, 2.5*cm, 2*cm]
+    COL_W   = [W - 2*LM - 6*cm, 3*cm, 3*cm]
     ROW_H   = 25
     tbl_top = y
 
