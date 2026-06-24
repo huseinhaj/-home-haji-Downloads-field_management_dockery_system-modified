@@ -324,6 +324,7 @@
   </div>
 </div>
 
+{% if bm.role != 'deo' %}
 <!-- Filter Bar -->
 <div class="filter-bar">
   <i class="fas fa-search"></i>
@@ -464,6 +465,7 @@
 </div>
 {% endwith %}
 {% endfor %}
+{% endif %}{# end: hide school list from DEO #}
 {% endblock %}
 
 {% block extra_js %}
