@@ -859,7 +859,7 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
             elif 'API_KEY' in raw or 'api_key' in raw.lower():
                 user_msg = "Ufunguo wa API ya AI haujawekwa. Wasiliana na msimamizi."
             else:
-                user_msg = "Hitilafu ya ndani imetokea. Tafadhali jaribu tena."
+                user_msg = f"Hitilafu ya AI: {raw[:300]}"
             return JsonResponse({'success': False, 'error': user_msg}, status=500)
 
     return JsonResponse({'success': False}, status=400)

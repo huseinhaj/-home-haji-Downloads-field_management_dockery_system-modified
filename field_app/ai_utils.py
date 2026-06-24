@@ -9,6 +9,7 @@ FALLBACK_MODELS = [
     "llama-3.3-70b-versatile",
     "llama-3.1-70b-versatile",
     "mixtral-8x7b-32768",
+    "gemma2-9b-it",
 ]
 
 
@@ -68,13 +69,28 @@ class _GroqModels:
             max_tokens = getattr(config, "max_output_tokens", 8192)
 
         messages = _contents_to_messages(contents, system_instruction)
-        response = self._groq.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        return _GroqResponse(response.choices[0].message.content)
+
+        # Try primary model first, then fallbacks
+        models_to_try = [model] + [m for m in FALLBACK_MODELS if m != model]
+        last_error = None
+        for attempt_model in models_to_try:
+            try:
+                response = self._groq.chat.completions.create(
+                    model=attempt_model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                return _GroqResponse(response.choices[0].message.content)
+            except Exception as e:
+                last_error = e
+                err_str = str(e).lower()
+                # Only continue to next model on rate-limit or model-unavailable errors
+                if any(k in err_str for k in ('rate', '429', 'quota', 'limit', 'model', 'unavailable', 'overloaded', 'capacity')):
+                    continue
+                # For other errors (auth, bad request, etc.) raise immediately
+                raise
+        raise last_error
 
     def generate_content_stream(self, model, contents, config=None):
         system_instruction = None
@@ -86,17 +102,30 @@ class _GroqModels:
             max_tokens = getattr(config, "max_output_tokens", 8192)
 
         messages = _contents_to_messages(contents, system_instruction)
-        stream = self._groq.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=True,
-        )
-        for chunk in stream:
-            content = chunk.choices[0].delta.content
-            if content:
-                yield _GroqChunk(content)
+
+        models_to_try = [model] + [m for m in FALLBACK_MODELS if m != model]
+        last_error = None
+        for attempt_model in models_to_try:
+            try:
+                stream = self._groq.chat.completions.create(
+                    model=attempt_model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    stream=True,
+                )
+                for chunk in stream:
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        yield _GroqChunk(content)
+                return
+            except Exception as e:
+                last_error = e
+                err_str = str(e).lower()
+                if any(k in err_str for k in ('rate', '429', 'quota', 'limit', 'model', 'unavailable', 'overloaded', 'capacity')):
+                    continue
+                raise
+        raise last_error
 
 
 class GroqClient:
