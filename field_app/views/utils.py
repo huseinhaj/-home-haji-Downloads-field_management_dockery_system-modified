@@ -686,28 +686,34 @@ body{{font-family:'Segoe UI',Arial,sans-serif;line-height:1.6;color:#333;margin:
 
     # ========== SEND EMAILS IN BACKGROUND (non-blocking) ==========
     if email_tasks:
-        def _send_all(tasks, from_email):
+        def _send_all(tasks):
+            from field_app.gmail_api import send_email_via_gmail_api, gmail_api_available
+            use_gmail_api = gmail_api_available()
             for task in tasks:
                 try:
-                    send_mail(
-                        subject=task['subject'],
-                        message=task['text'],
-                        from_email=from_email,
-                        recipient_list=[task['to']],
-                        html_message=task['html'],
-                        fail_silently=False,
-                    )
+                    if use_gmail_api:
+                        send_email_via_gmail_api(
+                            to=task['to'],
+                            subject=task['subject'],
+                            html_body=task['html'],
+                            text_body=task['text'],
+                        )
+                    else:
+                        send_mail(
+                            subject=task['subject'],
+                            message=task['text'],
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[task['to']],
+                            html_message=task['html'],
+                            fail_silently=False,
+                        )
                     print(f"✅ [BG] Email sent to {task['to']}")
                 except Exception as e:
                     print(f"❌ [BG] Email FAILED for {task['to']}: {type(e).__name__}: {e}")
 
-        bg = threading.Thread(
-            target=_send_all,
-            args=(email_tasks, settings.DEFAULT_FROM_EMAIL),
-            daemon=True,
-        )
+        bg = threading.Thread(target=_send_all, args=(email_tasks,), daemon=True)
         bg.start()
-        print(f"🚀 Background email thread started for {len(email_tasks)} emails")
+        print(f"🚀 Background email thread started ({len(email_tasks)} emails)")
 
     # ========== FINAL STATISTICS ==========
     sent_count = email_sent_count

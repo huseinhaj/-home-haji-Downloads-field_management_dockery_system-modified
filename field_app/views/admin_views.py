@@ -1888,7 +1888,42 @@ def download_group_letter(request):
 
 @staff_member_required
 def send_test_email_api(request):
-    """Send a test email to verify SMTP is working — staff only."""
+    """Send a test email via Gmail API — GET shows form, POST sends."""
+    from field_app.gmail_api import send_email_via_gmail_api, gmail_api_available
+
+    if request.method == 'GET':
+        recipient = request.user.email or ''
+        return HttpResponse(f"""
+<!DOCTYPE html><html><head><title>Test Email</title>
+<style>body{{font-family:Arial,sans-serif;max-width:500px;margin:40px auto;padding:20px;}}
+input,button{{width:100%;padding:10px;margin:8px 0;box-sizing:border-box;font-size:15px;}}
+button{{background:#0A2B5E;color:white;border:none;cursor:pointer;border-radius:6px;}}
+.result{{margin-top:16px;padding:12px;border-radius:6px;display:none;}}
+</style></head><body>
+<h2>🔧 IMS — Test Email (Gmail API)</h2>
+<p>Gmail API: <strong>{'✅ Configured' if gmail_api_available() else '❌ NOT configured'}</strong></p>
+<form method="post">
+<input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE','')}"
+       id="csrf">
+<label>Email ya kupokea:</label>
+<input type="email" name="email" value="{recipient}" required>
+<button type="submit">Tuma Email ya Majaribio</button>
+</form>
+<script>
+document.querySelector('form').onsubmit = async function(e) {{
+  e.preventDefault();
+  const fd = new FormData(this);
+  fd.set('csrfmiddlewaretoken', document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '');
+  const r = await fetch('', {{method:'POST', body:fd}});
+  const j = await r.json();
+  const el = document.createElement('div');
+  el.style.cssText = 'margin-top:16px;padding:12px;border-radius:6px;background:'+(j.success?'#d4edda':'#f8d7da')+';';
+  el.innerHTML = j.success ? '✅ '+j.message : '❌ Error: '+j.error;
+  document.body.appendChild(el);
+}};
+</script>
+</body></html>""")
+
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
 
@@ -1896,42 +1931,42 @@ def send_test_email_api(request):
     if not recipient:
         return JsonResponse({'error': 'Hakuna email iliyotolewa'}, status=400)
 
-    try:
-        send_mail(
-            subject='✅ IMS Test Email — SMTP Inafanya Kazi',
-            message=(
-                f'Hii ni email ya majaribio kutoka IMS.\n\n'
-                f'Kama unaona ujumbe huu maana yake SMTP inafanya kazi vizuri.\n\n'
-                f'Imetumwa kwa: {recipient}\n'
-                f'Kutoka: {settings.DEFAULT_FROM_EMAIL}\n'
-                f'Backend: {settings.EMAIL_BACKEND}\n'
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[recipient],
-            html_message=f"""
+    html_body = f"""
 <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:24px;
      border:2px solid #0A2B5E;border-radius:12px;">
-  <h2 style="color:#0A2B5E;margin:0 0 16px;">✅ IMS Test Email</h2>
+  <h2 style="color:#0A2B5E;margin:0 0 16px;">✅ IMS Test Email — Gmail API</h2>
   <p>Email hii ni ya majaribio ya mfumo wa IMS.</p>
-  <p>Kama unaipokea maana yake <strong>SMTP inafanya kazi vizuri!</strong></p>
+  <p>Kama unaipokea maana yake <strong>Gmail API inafanya kazi vizuri!</strong></p>
   <hr style="border-color:#C8900A;">
-  <small style="color:#666;">
-    Imetumwa kwa: {recipient}<br>
-    Backend: {settings.EMAIL_BACKEND}
-  </small>
-</div>""",
-            fail_silently=False,
-        )
+  <small style="color:#666;">Imetumwa kwa: {recipient}</small>
+</div>"""
+
+    try:
+        if gmail_api_available():
+            send_email_via_gmail_api(
+                to=recipient,
+                subject='✅ IMS Test Email — Gmail API',
+                html_body=html_body,
+                text_body=f'IMS Test Email. Imetumwa kwa: {recipient}',
+            )
+            method = 'Gmail API'
+        else:
+            send_mail(
+                subject='✅ IMS Test Email — SMTP',
+                message=f'IMS Test Email. Imetumwa kwa: {recipient}',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient],
+                html_message=html_body,
+                fail_silently=False,
+            )
+            method = 'SMTP'
         return JsonResponse({
             'success': True,
-            'message': f'Email imetumwa kwa {recipient}. Angalia inbox (na Spam folder).',
-            'backend': settings.EMAIL_BACKEND,
-            'from': settings.DEFAULT_FROM_EMAIL,
+            'message': f'Email imetumwa kwa {recipient} via {method}. Angalia inbox (na Spam).',
         })
     except Exception as e:
         return JsonResponse({
             'success': False,
             'error': str(e),
-            'backend': settings.EMAIL_BACKEND,
-            'from': settings.DEFAULT_FROM_EMAIL,
+            'gmail_api_available': gmail_api_available(),
         }, status=500)
