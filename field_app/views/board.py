@@ -765,6 +765,25 @@ def board_head_teacher(request, school_id):
                 messages.success(request, f'Maoni kwa {student_obj.full_name} yamehifadhiwa.')
         return redirect('board_head_teacher', school_id=school.id)
 
+    # POST: kubali au kataa mwanafunzi
+    if request.method == 'POST' and request.POST.get('action') in ('approve_student', 'reject_student'):
+        if bm.role in ('head_teacher', 'deo', 'chair'):
+            student_id = request.POST.get('student_id')
+            student_obj = StudentTeacher.objects.filter(id=student_id, selected_school=school).first()
+            if student_obj:
+                action = request.POST.get('action')
+                if action == 'approve_student':
+                    student_obj.approval_status = 'approved'
+                    student_obj.approved_by = request.user
+                    student_obj.approval_date = timezone.now()
+                    student_obj.save(update_fields=['approval_status', 'approved_by', 'approval_date'])
+                    messages.success(request, f'{student_obj.full_name} ameidhinishwa.')
+                else:
+                    student_obj.approval_status = 'rejected'
+                    student_obj.save(update_fields=['approval_status'])
+                    messages.success(request, f'Ombi la {student_obj.full_name} limekataliwa.')
+        return redirect('board_head_teacher', school_id=school.id)
+
     # Wanafunzi wote wa shule hii (mwaka wa sasa tu)
     students = _active_year_students().filter(
         selected_school=school

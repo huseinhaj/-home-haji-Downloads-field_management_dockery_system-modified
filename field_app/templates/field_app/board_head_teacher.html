@@ -235,6 +235,22 @@
                 <span class="b b-app">Aidhinishwa</span>
               {% elif sd.obj.approval_status == 'pending' %}
                 <span class="b b-pend">Inasubiri</span>
+                {% if can_edit %}
+                <div style="display:flex;gap:4px;margin-top:6px;">
+                  <form method="post" style="margin:0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="approve_student">
+                    <input type="hidden" name="student_id" value="{{ sd.obj.id }}">
+                    <button type="submit" style="background:#059669;color:#fff;border:none;border-radius:3px;padding:3px 10px;font-size:10.5px;font-weight:700;cursor:pointer;">Kubali</button>
+                  </form>
+                  <form method="post" style="margin:0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reject_student">
+                    <input type="hidden" name="student_id" value="{{ sd.obj.id }}">
+                    <button type="submit" style="background:#DC2626;color:#fff;border:none;border-radius:3px;padding:3px 10px;font-size:10.5px;font-weight:700;cursor:pointer;">Kataa</button>
+                  </form>
+                </div>
+                {% endif %}
               {% else %}
                 <span class="b b-rej">Imekataliwa</span>
               {% endif %}
