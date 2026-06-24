@@ -814,142 +814,292 @@ def get_current_academic_year():
 # =========================
 
 def _build_individual_letter_pdf(student):
-    """Returns bytes of the individual approval letter PDF for a student."""
+    """Returns bytes of the individual approval letter PDF — GoT placement letter format."""
+    import io, os, math as _math
+    from reportlab.pdfgen import canvas as rl_canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import cm
     from reportlab.lib import colors
-    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
-                                    TableStyle, HRFlowable)
-    from reportlab.lib.styles import ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+    from reportlab.lib.utils import simpleSplit
+
+    school        = student.selected_school
+    district      = school.district if school else None
+    region        = district.region if district else None
+    today         = timezone.now().date()
+    current_year  = _cached_active_year()
+    yr_str        = current_year.year if current_year else str(today.year)
 
     approved_applications = StudentApplication.objects.filter(
         student=student, status='approved'
     ).select_related('subject', 'school')
 
-    school = student.selected_school
-    current_year = _cached_active_year()
-    today = timezone.now().date()
-    ref_no = f"IMS/{today.year}/{student.id:04d}"
+    school_name  = school.name if school else '—'
+    dist_name    = district.name if district else '—'
+    region_name  = region.name if region else '—'
+    date_str     = today.strftime('%d %B %Y')
+    ref_no       = f"IMS.ELIMU/{today.year}/{dist_name.upper()[:5].replace(' ','')}/{student.id:05d}"
+    serial_no    = f"IMS/{today.year}/{dist_name.upper()[:5].replace(' ','')}/{student.id:05d}"
 
-    NAVY  = colors.HexColor('#0A2B5E')
-    GOLD  = colors.HexColor('#C8900A')
-    LIGHT = colors.HexColor('#EEF1F6')
-    WHITE = colors.white
     BLACK = colors.black
+    NAVY  = colors.HexColor('#0A2B5E')
 
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4,
-                            leftMargin=3*cm, rightMargin=2.5*cm,
-                            topMargin=2*cm, bottomMargin=2.5*cm)
+    # ── Coat of arms ─────────────────────────────────────────────────────────
+    from django.conf import settings as _settings
+    from django.contrib.staticfiles import finders as _finders
+    _base  = getattr(_settings, 'BASE_DIR', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    _sroot = getattr(_settings, 'STATIC_ROOT', '') or ''
+    coat_img_path = next((p for p in [
+        _finders.find('images/tz_coat_of_arms.png'),
+        os.path.join(_sroot, 'images', 'tz_coat_of_arms.png'),
+        os.path.join(_base, 'field_app', 'static', 'images', 'tz_coat_of_arms.png'),
+        os.path.join(_base, 'staticfiles', 'images', 'tz_coat_of_arms.png'),
+    ] if p and os.path.exists(p)), None)
 
-    def S(name, **kw):
-        d = dict(fontName='Helvetica', fontSize=10, leading=14,
-                 textColor=BLACK, alignment=TA_LEFT)
-        d.update(kw)
-        return ParagraphStyle(name, **d)
+    buf = io.BytesIO()
+    W, H = A4
+    CX = W / 2
+    LM = 2.0 * cm
+    RM = W - 2.0 * cm
 
-    story = []
-    story.append(Paragraph('JAMHURI YA MUUNGANO WA TANZANIA', S('cb', fontName='Helvetica-Bold', alignment=TA_CENTER)))
-    story.append(Paragraph('WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA', S('cn', alignment=TA_CENTER)))
-    story.append(Paragraph('MFUMO WA USIMAMIZI WA MAZOEZI YA KUFUNDISHA (IMS)', S('csm', fontSize=8.5, alignment=TA_CENTER, textColor=colors.HexColor('#555'))))
-    story.append(Spacer(1, 4))
-    story.append(HRFlowable(width='100%', thickness=2.5, color=NAVY))
-    story.append(HRFlowable(width='100%', thickness=1, color=GOLD, spaceAfter=10))
+    c = rl_canvas.Canvas(buf, pagesize=A4)
 
-    ref_tbl = Table([[
-        Paragraph(f'Kumb. Na.: <b>{ref_no}</b>', S('ln')),
-        Paragraph(f'Tarehe: <b>{today.strftime("%d %B %Y")}</b>', S('rn', alignment=TA_RIGHT)),
-    ]], colWidths=[8*cm, 8*cm])
-    ref_tbl.setStyle(TableStyle([('PADDING', (0,0), (-1,-1), 0)]))
-    story.append(ref_tbl)
-    story.append(Spacer(1, 12))
+    # ── Watermarks ───────────────────────────────────────────────────────────
+    def _watermarks():
+        micro = f"IMS MAFUNZO YA UALIMU • {serial_no} • HALISI •  "
+        mw = c.stringWidth(micro, 'Helvetica', 5.5)
+        c.saveState()
+        c.setFont('Helvetica', 5.5); c.setFillColor(NAVY); c.setFillAlpha(0.05)
+        ri, yp = 0, 4.0
+        while yp < H + 9:
+            xp = (-mw / 2) if ri % 2 else 0.0
+            while xp < W + mw:
+                c.drawString(xp, yp, micro); xp += mw
+            yp += 9.0; ri += 1
+        c.restoreState()
+        c.saveState()
+        c.setFont('Helvetica-Bold', 60); c.setFillColor(NAVY); c.setFillAlpha(0.03)
+        c.translate(CX, H / 2); c.rotate(45)
+        c.drawCentredString(0, 48, "IMS"); c.drawCentredString(0, -20, "HALISI")
+        c.restoreState()
 
-    if school:
-        district = school.district
-        story.append(Paragraph('<b>Mkurugenzi wa Halmashauri,</b>', S('ln')))
-        story.append(Paragraph(f'<b>Halmashauri ya {district.name},</b>', S('ln')))
-        story.append(Paragraph(f'Mkoa wa {district.region.name}.', S('ln')))
-        story.append(Spacer(1, 6))
-        story.append(Paragraph('<b>NA:</b>', S('ln')))
-        story.append(Paragraph('<b>Mkuu wa Shule,</b>', S('ln')))
-        story.append(Paragraph(f'<b>{school.name},</b>', S('ln')))
-        story.append(Paragraph(f'Wilaya ya {district.name}.', S('ln')))
-    story.append(Spacer(1, 14))
+    _watermarks()
 
-    story.append(Paragraph(
-        'BARUA YA UTHIBITISHO WA MWANAFUNZI MWALIMU — MAZOEZI YA KUFUNDISHA',
-        S('subj', fontName='Helvetica-Bold', fontSize=10.5, alignment=TA_CENTER,
-          textColor=NAVY, borderColor=NAVY, borderWidth=0.5, borderPadding=6)))
-    story.append(Spacer(1, 14))
+    # ══════════════════════════════════════════════════════════════════════════
+    # TITLE
+    # ══════════════════════════════════════════════════════════════════════════
+    y = H - 1.6 * cm
+    c.setFont('Helvetica-Bold', 14); c.setFillColor(BLACK)
+    c.drawCentredString(CX, y, "JAMHURI YA MUUNGANO WA TANZANIA"); y -= 0.65 * cm
+    c.setFont('Helvetica-Bold', 12)
+    c.drawCentredString(CX, y, "OFISI YA RAIS"); y -= 0.38 * cm
 
-    story.append(Paragraph('Ndugu,', S('ln')))
-    story.append(Spacer(1, 8))
+    c.setStrokeColor(BLACK); c.setLineWidth(1.8)
+    c.line(LM, y, RM, y); y -= 3
+    c.setLineWidth(0.5); c.line(LM, y, RM, y); y -= 0.5 * cm
 
-    yr_str = current_year.year if current_year else str(today.year)
-    story.append(Paragraph(
-        f'Barua hii inathibitisha kuwa <b>{student.full_name.upper()}</b> '
-        f'(Simu: {student.phone_number} | Barua pepe: {student.user.email}) '
-        f'ameidhinishwa rasmi kufanya mazoezi ya kufundisha katika '
-        f'<b>{school.name if school else "—"}</b>, Wilaya ya '
-        f'<b>{school.district.name if school else "—"}</b>, '
-        f'kwa mwaka wa masomo wa <b>{yr_str}</b>.',
-        S('jn', alignment=TA_JUSTIFY, leading=15)))
-    story.append(Spacer(1, 8))
-    story.append(Paragraph(
-        'Mwanafunzi huyu ameidhinishwa kufundisha masomo yafuatayo:',
-        S('ln')))
-    story.append(Spacer(1, 8))
+    # ══════════════════════════════════════════════════════════════════════════
+    # 3-COLUMN HEADER
+    # ══════════════════════════════════════════════════════════════════════════
+    sec_top = y
+    coa_w, coa_h = 70, 85
+    if coat_img_path:
+        try:
+            c.drawImage(coat_img_path, CX - coa_w / 2, sec_top - coa_h,
+                        width=coa_w, height=coa_h, mask='auto')
+        except Exception:
+            pass
 
-    subj_data = [[
-        Paragraph('Na.', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE, alignment=TA_CENTER)),
-        Paragraph('Somo', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE)),
-        Paragraph('Shule', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE)),
-        Paragraph('Tarehe ya Idhini', S('th', fontName='Helvetica-Bold', fontSize=9, textColor=WHITE, alignment=TA_CENTER)),
-    ]]
-    for i, app in enumerate(approved_applications, 1):
-        approved_date = app.approval_date.strftime('%d/%m/%Y') if app.approval_date else '—'
-        subj_data.append([
-            Paragraph(str(i), S('c', fontSize=9, alignment=TA_CENTER)),
-            Paragraph(app.subject.name, S('lsm', fontSize=9, leading=13)),
-            Paragraph(app.school.name, S('lsm', fontSize=9, leading=13)),
-            Paragraph(approved_date, S('c', fontSize=9, alignment=TA_CENTER)),
-        ])
-    s_tbl = Table(subj_data, colWidths=[1*cm, 5.5*cm, 6*cm, 3.5*cm])
-    s_tbl.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), NAVY),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [WHITE, LIGHT]),
-        ('GRID', (0,0), (-1,-1), 0.4, colors.HexColor('#CBD5E0')),
-        ('PADDING', (0,0), (-1,-1), 5),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-    ]))
-    story.append(s_tbl)
-    story.append(Spacer(1, 12))
+    # Left contact block
+    left_entries = [
+        ('bold', f'Simu ya Upepo "{dist_name.upper()}"'),
+        ('mix',  'Simu: ', '255 (0) —'),
+        ('mix',  'Tovuti: ', 'www.tamisemi.go.tz'),
+        ('mix',  'Baruapepe: ', 'elimu@tamisemi.go.tz'),
+        ('bold', 'Unapojibu Taja:'),
+    ]
+    ly = sec_top - 0.05 * cm
+    for entry in left_entries:
+        if entry[0] == 'bold':
+            c.setFont('Helvetica-Bold', 8.5); c.setFillColor(BLACK)
+            c.drawString(LM, ly, entry[1])
+        else:
+            lbl, val = entry[1], entry[2]
+            c.setFont('Helvetica-Bold', 8.5); c.setFillColor(BLACK)
+            lw = c.stringWidth(lbl, 'Helvetica-Bold', 8.5)
+            c.drawString(LM, ly, lbl)
+            c.setFont('Helvetica', 8.5); c.drawString(LM + lw, ly, val)
+        ly -= 0.42 * cm
 
-    story.append(Paragraph(
-        'Tunaomba ushirikiano wa Halmashauri na Mkuu wa Shule kuhakikisha mwanafunzi '
-        'huyu anapokewa na kupewa mazingira mazuri ya kufanya mazoezi ya kufundisha '
-        'kwa mujibu wa kanuni za Wizara ya Elimu.',
-        S('jn', alignment=TA_JUSTIFY, leading=15)))
-    story.append(Spacer(1, 30))
+    # Right address block
+    right_col = CX + coa_w / 2 + 0.5 * cm
+    ry = sec_top - 0.05 * cm
+    right_lines = [
+        (False, f"Ofisi ya Afisa Elimu wa Wilaya,"),
+        (False, f"Wilaya ya {dist_name},"),
+        (False, f"Mkoa wa {region_name},"),
+        (True,  f"{region_name.upper()}."),
+    ]
+    for bold, line in right_lines:
+        fn = 'Helvetica-Bold' if bold else 'Helvetica'
+        c.setFont(fn, 8.5); c.setFillColor(BLACK)
+        c.drawString(right_col, ry, line)
+        if bold:
+            tw = c.stringWidth(line, fn, 8.5)
+            c.setLineWidth(0.6); c.line(right_col, ry - 1.5, right_col + tw, ry - 1.5)
+        ry -= 0.42 * cm
 
-    sig_tbl = Table([[
-        Paragraph('___________________________', S('ln')),
-        Paragraph('___________________________', S('rn', alignment=TA_RIGHT)),
-    ],[
-        Paragraph('<b>Msimamizi wa Mfumo (IMS)</b>', S('sm', fontSize=9)),
-        Paragraph('<b>Tarehe ya Kupokea / Muhuri wa Halmashauri</b>', S('rsm', fontSize=9, alignment=TA_RIGHT)),
-    ]], colWidths=[8*cm, 8*cm])
-    sig_tbl.setStyle(TableStyle([('PADDING', (0,0), (-1,-1), 2)]))
-    story.append(sig_tbl)
+    y = sec_top - coa_h - 0.4 * cm
+    c.setStrokeColor(BLACK); c.setLineWidth(1.8)
+    c.line(LM, y, RM, y); y -= 3
+    c.setLineWidth(0.5); c.line(LM, y, RM, y); y -= 0.6 * cm
 
-    story.append(Spacer(1, 16))
-    story.append(HRFlowable(width='100%', thickness=0.5, color=colors.HexColor('#CBD5E0')))
-    story.append(Paragraph(
-        f'Hati hii imetolewa kwa njia ya mfumo wa IMS tarehe {today.strftime("%d/%m/%Y")}. Kumb.: {ref_no}',
-        S('ft', fontSize=7.5, alignment=TA_CENTER, textColor=colors.HexColor('#999'))))
+    # ══════════════════════════════════════════════════════════════════════════
+    # REFERENCE + DATE
+    # ══════════════════════════════════════════════════════════════════════════
+    c.setFont('Helvetica-Bold', 9.5); c.setFillColor(BLACK)
+    c.drawString(LM, y, f"Kumb. Na. {ref_no}")
+    c.drawRightString(RM, y, date_str)
+    y -= 1.0 * cm
 
-    doc.build(story)
+    # ══════════════════════════════════════════════════════════════════════════
+    # RECIPIENT ADDRESS
+    # ══════════════════════════════════════════════════════════════════════════
+    c.setFont('Helvetica-Bold', 10); c.setFillColor(BLACK)
+    c.drawString(LM, y, f"{student.full_name},"); y -= 0.50 * cm
+    c.setFont('Helvetica', 10)
+    c.drawString(LM, y, f"{school_name},"); y -= 0.50 * cm
+    c.setFont('Helvetica-Bold', 10)
+    dist_label = f"{dist_name.upper()}."
+    c.drawString(LM, y, dist_label)
+    dw = c.stringWidth(dist_label, 'Helvetica-Bold', 10)
+    c.setLineWidth(0.8); c.line(LM, y - 1.5, LM + dw, y - 1.5)
+    y -= 1.0 * cm
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # SUBJECT LINE
+    # ══════════════════════════════════════════════════════════════════════════
+    subj_text = "YAH: KUPANGIWA KITUO CHA MAZOEZI YA KUFUNDISHA (TEACHING PRACTICE)"
+    c.setFont('Helvetica-Bold', 10.5); c.setFillColor(BLACK)
+    sw = c.stringWidth(subj_text, 'Helvetica-Bold', 10.5)
+    c.drawCentredString(CX, y, subj_text)
+    c.setLineWidth(0.9); c.line(CX - sw / 2, y - 2, CX + sw / 2, y - 2)
+    y -= 1.1 * cm
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # BODY PARAGRAPHS
+    # ══════════════════════════════════════════════════════════════════════════
+    body_w = RM - LM - 1.4 * cm
+    txt_x  = LM + 1.4 * cm
+    num_x  = LM + 0.5 * cm
+
+    subj_list = ", ".join(a.subject.name for a in approved_applications) or "masomo yaliyoidhinishwa"
+
+    def draw_para(num, text, cur_y):
+        c.setFont('Helvetica', 10); c.setFillColor(BLACK)
+        c.drawString(num_x, cur_y, f"{num}.")
+        for line in simpleSplit(text, 'Helvetica', 10, body_w):
+            c.drawString(txt_x, cur_y, line)
+            cur_y -= 0.52 * cm
+        return cur_y - 0.28 * cm
+
+    p1 = (
+        f"Tafadhali rejea maombi yako ya kufanya mazoezi ya kufundisha (Teaching Practice) "
+        f"ya {subj_list} uliyoomba kupitia Mfumo wa Usimamizi wa Mazoezi ya Kufundisha (IMS) "
+        f"kwa Mwaka wa Masomo {yr_str}. Ninayo furaha kukufahamisha kuwa umepangiwa "
+        f"kufanya mazoezi ya kufundisha katika {school_name} katika Halmashauri ya Wilaya ya {dist_name}."
+    )
+    y = draw_para("1", p1, y)
+
+    p2 = (
+        f"Hivyo, upatapo barua hii unatakiwa kwenda kuripoti katika kituo chako cha mazoezi "
+        f"ndani ya muda wa siku kumi na nne (14) kuanzia tarehe ya kupokea barua hii. "
+        f"Ukishindwa kufanya hivyo katika muda uliowekwa, nafasi yako itajazwa na mwanafunzi mwingine."
+    )
+    y = draw_para("2", p2, y)
+
+    p3 = (
+        "Mwajiri wako ataendelea na taratibu nyingine za mazoezi yako kwa mujibu wa "
+        "mwongozo wa Wizara ya Elimu, Sayansi na Teknolojia unaosimamia Mafunzo ya "
+        "Awali ya Ualimu (Initial Teacher Education — ITE) nchini Tanzania."
+    )
+    y = draw_para("3", p3, y)
+
+    p4 = (
+        "Aidha, unatakiwa kwenda na vyeti vyako halisi (Original Certificates) na barua hii "
+        "ili viweze kuhakikiwa na Mkuu wa Shule kabla hujapewa kituo cha kufundisha."
+    )
+    y = draw_para("4", p4, y)
+
+    p5 = "Nakutakia kila la kheri katika mazoezi yako ya kufundisha."
+    y = draw_para("5", p5, y)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # SIGNATURE — centred, GoT style
+    # ══════════════════════════════════════════════════════════════════════════
+    y -= 0.5 * cm
+    sig_x = CX - 3 * cm
+
+    c.setFont('Helvetica-Oblique', 13); c.setFillColor(NAVY)
+    c.drawString(sig_x, y, "Msimamizi wa IMS"); y -= 0.40 * cm
+    c.setStrokeColor(BLACK); c.setLineWidth(0.7)
+    c.line(sig_x, y, sig_x + 6.0 * cm, y); y -= 0.44 * cm
+    c.setFont('Helvetica-Bold', 10); c.setFillColor(BLACK)
+    c.drawString(sig_x, y, "MSIMAMIZI WA MFUMO (IMS)"); y -= 0.44 * cm
+    c.drawString(sig_x, y, f"Wilaya ya {dist_name}")
+
+    # Footer
+    fy = 1.6 * cm
+    c.setStrokeColor(BLACK); c.setLineWidth(0.5)
+    c.line(LM, fy + 0.55 * cm, RM, fy + 0.55 * cm)
+    c.setFont('Helvetica', 7); c.setFillColor(colors.HexColor('#333333'))
+    c.drawString(LM, fy + 0.22 * cm, f"Kumb.: {serial_no}   |   Tarehe: {date_str}")
+    c.drawRightString(RM, fy + 0.22 * cm, "Hati Rasmi — IMS • Ofisi ya Afisa Elimu wa Wilaya")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # PAGE 2 — NAKALA
+    # ══════════════════════════════════════════════════════════════════════════
+    c.showPage()
+    _watermarks()
+
+    ny = H - 2.5 * cm
+    c.setFont('Helvetica-Bold', 9.5); c.setFillColor(BLACK)
+    c.drawString(LM, ny, "Nakala:"); ny -= 0.15 * cm
+
+    INDENT = LM + 3.5 * cm
+    nakala_blocks = [
+        [
+            "Katibu Mkuu,",
+            "Ofisi ya Rais,",
+            "Menejimenti ya Utumishi wa Umma na Utawala Bora,",
+            "S.L.P. 670,",
+            "DODOMA.",
+        ],
+        [
+            f"Mkurugenzi Mtendaji,",
+            f"Halmashauri ya Wilaya ya {dist_name},",
+            f"Mkoa wa {region_name}.",
+            "(Tafadhali mpokee na kukamilisha taratibu za mazoezi yake)",
+        ],
+        [
+            "Mkuu wa Shule,",
+            f"{school_name},",
+            f"Wilaya ya {dist_name}.",
+        ],
+    ]
+    for block in nakala_blocks:
+        ny -= 0.25 * cm
+        for i, line in enumerate(block):
+            is_city = line.isupper() and line.endswith('.')
+            fn = 'Helvetica-Bold' if is_city else 'Helvetica'
+            c.setFont(fn, 9.5); c.setFillColor(BLACK)
+            c.drawString(INDENT, ny, line)
+            if is_city:
+                tw = c.stringWidth(line, fn, 9.5)
+                c.setLineWidth(0.6); c.line(INDENT, ny - 1.5, INDENT + tw, ny - 1.5)
+            ny -= 0.42 * cm
+        ny -= 0.15 * cm
+
+    c.save()
     return buf.getvalue()
 
 
