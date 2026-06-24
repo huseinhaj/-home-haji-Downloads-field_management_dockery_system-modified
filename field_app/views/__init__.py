@@ -121,6 +121,7 @@ from .admin_views import (
     new_year_credentials,
     download_individual_letter,
     download_group_letter,
+    send_test_email_api,
 )
 
 from .api import (
