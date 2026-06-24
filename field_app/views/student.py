@@ -1370,7 +1370,6 @@ def change_school(request):
 # CHETI CHA MWANAFUNZI — Internship Completion Certificate
 # ─────────────────────────────────────────────────────────────────────────────
 
-@login_required
 def _compute_combined(fa, sa):
     """Combine mkuu (50%) + assessor (50%) scores. Returns dict with per-criterion and total."""
     FIELDS = ['kuhudhuria', 'daftari_la_kazi', 'mpango_wa_kazi', 'mpango_wa_somo', 'utendaji_darasani']
@@ -1387,6 +1386,7 @@ def _compute_combined(fa, sa):
     return combined
 
 
+@login_required
 def student_certificate(request):
     """Onesha cheti — preview daima, download baada ya is_final=True."""
     from field_app.models import BoardMember, StudentAssessment
