@@ -382,31 +382,33 @@
         const resultDiv = document.getElementById('result');
 
         // Load saved lesson plan from DB (no AI call)
-        loadSavedBtn.addEventListener('click', async () => {
-            loadSavedBtn.disabled = true;
-            loadSavedBtn.innerHTML = '<span class="loading-spinner me-2"></span> Inapakia...';
-            try {
-                const resp = await fetch("{% url 'ajax_load_saved_lessonplan' %}", {
-                    headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
-                });
-                const res = await resp.json();
-                if (res.success) {
-                    displayLessonPlan(res.data, res.form_data);
-                    resultDiv.insertAdjacentHTML('afterbegin',
-                        `<div class="alert alert-info mb-3" style="border-left:4px solid #0A2B5E;">
-                           <i class="fas fa-database me-2"></i>
-                           <strong>Imepakiwa kutoka hifadhidata</strong> — ilihifadhiwa tarehe ${res.updated_at}
-                         </div>`);
-                } else {
-                    alert(res.error);
+        if (loadSavedBtn) {
+            loadSavedBtn.addEventListener('click', async () => {
+                loadSavedBtn.disabled = true;
+                loadSavedBtn.innerHTML = '<span class="loading-spinner me-2"></span> Inapakia...';
+                try {
+                    const resp = await fetch("{% url 'ajax_load_saved_lessonplan' %}", {
+                        headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
+                    });
+                    const res = await resp.json();
+                    if (res.success) {
+                        displayLessonPlan(res.data, res.form_data);
+                        resultDiv.insertAdjacentHTML('afterbegin',
+                            `<div class="alert alert-info mb-3" style="border-left:4px solid #0A2B5E;">
+                               <i class="fas fa-database me-2"></i>
+                               <strong>Imepakiwa kutoka hifadhidata</strong> — ilihifadhiwa tarehe ${res.updated_at}
+                             </div>`);
+                    } else {
+                        alert(res.error);
+                    }
+                } catch(err) {
+                    alert('Hitilafu ya mtandao: ' + err.message);
+                } finally {
+                    loadSavedBtn.disabled = false;
+                    loadSavedBtn.innerHTML = '<i class="fas fa-database me-2"></i> Pakia Iliyohifadhiwa';
                 }
-            } catch(err) {
-                alert('Hitilafu ya mtandao: ' + err.message);
-            } finally {
-                loadSavedBtn.disabled = false;
-                loadSavedBtn.innerHTML = '<i class="fas fa-database me-2"></i> Pakia Iliyohifadhiwa';
-            }
-        });
+            });
+        }
         
         // Dynamic class dropdown based on education level
         const educationLevelSelect = document.getElementById('education_level');

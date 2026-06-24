@@ -425,34 +425,36 @@
         const resultDiv = document.getElementById('result');
 
         // Load saved scheme from DB (no AI call)
-        loadSavedBtn.addEventListener('click', async () => {
-            loadSavedBtn.disabled = true;
-            loadSavedBtn.innerHTML = '<span class="loading-spinner me-2"></span> Inapakia...';
-            try {
-                const resp = await fetch("{% url 'ajax_load_saved_scheme' %}", {
-                    headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
-                });
-                const res = await resp.json();
-                if (res.success) {
-                    _schemeData = res.data;
-                    const m = res.meta;
-                    displayScheme(res.data, m.subject, m.class_name, m.term, m.year,
-                                  m.syllabus, m.teacher_name, m.school_name, m.total_weeks);
-                    resultDiv.insertAdjacentHTML('afterbegin',
-                        `<div class="alert alert-info mb-3" style="border-left:4px solid #0A2B5E;">
-                           <i class="fas fa-database me-2"></i>
-                           <strong>Imepakiwa kutoka hifadhidata</strong> — ilihifadhiwa tarehe ${m.updated_at}
-                         </div>`);
-                } else {
-                    alert(res.error);
+        if (loadSavedBtn) {
+            loadSavedBtn.addEventListener('click', async () => {
+                loadSavedBtn.disabled = true;
+                loadSavedBtn.innerHTML = '<span class="loading-spinner me-2"></span> Inapakia...';
+                try {
+                    const resp = await fetch("{% url 'ajax_load_saved_scheme' %}", {
+                        headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
+                    });
+                    const res = await resp.json();
+                    if (res.success) {
+                        _schemeData = res.data;
+                        const m = res.meta;
+                        displayScheme(res.data, m.subject, m.class_name, m.term, m.year,
+                                      m.syllabus, m.teacher_name, m.school_name, m.total_weeks);
+                        resultDiv.insertAdjacentHTML('afterbegin',
+                            `<div class="alert alert-info mb-3" style="border-left:4px solid #0A2B5E;">
+                               <i class="fas fa-database me-2"></i>
+                               <strong>Imepakiwa kutoka hifadhidata</strong> — ilihifadhiwa tarehe ${m.updated_at}
+                             </div>`);
+                    } else {
+                        alert(res.error);
+                    }
+                } catch(err) {
+                    alert('Hitilafu ya mtandao: ' + err.message);
+                } finally {
+                    loadSavedBtn.disabled = false;
+                    loadSavedBtn.innerHTML = '<i class="fas fa-database me-2"></i> Pakia Iliyohifadhiwa';
                 }
-            } catch(err) {
-                alert('Hitilafu ya mtandao: ' + err.message);
-            } finally {
-                loadSavedBtn.disabled = false;
-                loadSavedBtn.innerHTML = '<i class="fas fa-database me-2"></i> Pakia Iliyohifadhiwa';
-            }
-        });
+            });
+        }
         
         // Add break functionality
         document.getElementById('add-break').addEventListener('click', function() {
