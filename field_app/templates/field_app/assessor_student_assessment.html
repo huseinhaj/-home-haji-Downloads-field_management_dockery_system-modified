@@ -97,12 +97,6 @@ body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;
         <div class="info-item"><div class="lbl">Jina Kamili</div><div class="val">{{ student.full_name }}</div></div>
         <div class="info-item"><div class="lbl">Barua Pepe</div><div class="val" style="font-weight:400;">{{ student.user.email }}</div></div>
         <div class="info-item"><div class="lbl">Shule</div><div class="val">{{ student.selected_school.name }}</div></div>
-        <div class="info-item"><div class="lbl">Hali ya Maombi</div>
-          <div class="val">
-            {% if student.approval_status == 'approved' %}<span class="badge-ok"><i class="fas fa-check-circle"></i> Imeidhinishwa</span>
-            {% else %}<span class="badge-warn"><i class="fas fa-clock"></i> Inasubiri</span>{% endif %}
-          </div>
-        </div>
         <div class="info-item"><div class="lbl">Idadi ya Logbook</div><div class="val">{{ logbook_entries|length }} siku</div></div>
       </div>
     </div>
@@ -182,13 +176,18 @@ body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;
               {% if sa.is_final %}
               <span style="background:#10B981;color:white;padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;"><i class="fas fa-lock"></i> FINAL</span>
               {% else %}
-              <span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;">Rasimu</span>
+              <span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;" title="Imehifadhiwa tu — bonyeza FINALIZE mwishoni kukamilisha">Rasimu</span>
               {% endif %}
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+      {% if all_assessments %}
+      <div style="background:#fefce8;border-left:3px solid #f59e0b;padding:8px 14px;margin:10px 0 0;font-size:12px;color:#78350f;">
+        <i class="fas fa-info-circle"></i> <strong>Rasimu</strong> = Imehifadhiwa lakini bado haijafinalishwa. Bonyeza <strong>FINALIZE</strong> chini ya ukurasa huu kukamilisha tathmini ya mwisho.
+      </div>
+      {% endif %}
     </div>
   </div>
   {% endif %}
