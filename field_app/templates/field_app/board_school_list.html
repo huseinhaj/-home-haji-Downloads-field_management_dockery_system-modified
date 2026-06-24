@@ -62,7 +62,7 @@
     <div style="display:flex;flex-wrap:wrap;gap:16px;">
       <span style="color:rgba(255,255,255,.85);font-size:.82rem;"><i class="fas fa-school me-1" style="color:#C8900A;"></i><strong>{{ schools|length }}</strong> {% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}</span>
       <span style="color:rgba(255,255,255,.85);font-size:.82rem;"><i class="fas fa-user-graduate me-1" style="color:#C8900A;"></i><strong>{{ students_data|length }}</strong> {% if LANG == 'sw' %}Walimu Wanafunzi{% else %}Student Teachers{% endif %}</span>
-      {% if inactive_count %}<span style="color:#FCA5A5;font-size:.82rem;"><i class="fas fa-exclamation-triangle me-1"></i><strong>{{ inactive_count }}</strong> {% if LANG == 'sw' %}Hawafanyi Kazi{% else %}Inactive{% endif %}</span>{% endif %}
+      {% if inactive_count and bm.role != 'deo' %}<span style="color:#FCA5A5;font-size:.82rem;"><i class="fas fa-exclamation-triangle me-1"></i><strong>{{ inactive_count }}</strong> {% if LANG == 'sw' %}Hawafanyi Kazi{% else %}Inactive {% endif %}</span>{% endif %}
     </div>
   </div>
   <!-- Quick action buttons -->
