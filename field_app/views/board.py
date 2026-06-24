@@ -967,7 +967,7 @@ def board_final_assessment(request, student_id):
 
         if not error:
             maoni = request.POST.get('maoni', '').strip()
-            # Hifadhi rekodi ya ziara hii
+            # Hifadhi rekodi ya tathmini hii
             visit = SupervisionVisit(student=student, school=school, assessed_by=bm, maoni=maoni)
             for fname, v in scores.items():
                 setattr(visit, fname, v)
@@ -984,11 +984,11 @@ def board_final_assessment(request, student_id):
             if fa.is_final:
                 msg = 'Tathmini imekamilishwa na kufungwa. Subiri DEO wa wilaya aidhibiti cheti.'
             else:
-                msg = 'Tathmini ya ziara imehifadhiwa. Unaweza kurekodi tena ziara nyingine.'
+                msg = 'Tathmini imehifadhiwa. Unaweza kurekodi tathmini nyingine siku nyingine.'
             messages.success(request, msg)
             return redirect('board_final_assessment', student_id=student.id)
 
-    # Historia ya ziara zote (mpya kwanza)
+    # Historia ya tathmini zote (mpya kwanza)
     visit_history = SupervisionVisit.objects.filter(student=student, school=school).order_by('-visited_at')
 
     # Back URL
@@ -997,7 +997,7 @@ def board_final_assessment(request, student_id):
     from field_app.models import StudentAssessment as SA
     sa = SA.objects.filter(student=student, school=school, is_final=True).first()
 
-    # Form iwe tupu (form mpya kwa kila ziara)
+    # Form iwe tupu (form mpya kwa kila tathmini)
     score_fields_with_values = [(fname, label, desc, 0) for fname, label, desc in SCORE_FIELDS]
 
     return render(request, 'field_app/final_assessment_form.html', {
