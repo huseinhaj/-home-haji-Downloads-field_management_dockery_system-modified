@@ -9,6 +9,7 @@ import os
 import re
 import secrets
 import string
+import threading
 from io import BytesIO
 from datetime import datetime, timedelta
 
@@ -368,6 +369,7 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
 
     # Process each assessor
     email_results = []
+    email_tasks = []
     new_accounts_count = 0
     new_year_resets = 0
     assignments_created = 0
@@ -550,171 +552,79 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
 
         print(f"\n📊 This assessor: {assignments_for_this_assessor} NEW assignments, {skipped_assignments} SKIPPED")
 
-        # ========== SEND BEAUTIFUL HTML EMAIL ==========
+        # Build schools list for email
+        login_url = request.build_absolute_uri(reverse('assessor_login'))
+        sc = 0
+        assigned_schools_list = ""
+        for school in schools:
+            if SchoolAssessment.objects.filter(
+                assessor=assessor, school=school, academic_year=current_academic_year
+            ).exists():
+                sc += 1
+                assigned_schools_list += f"{sc}. {school.name} ({school.district.name})\n"
+
+        # ========== QUEUE EMAIL (sent async after loop) ==========
         if send_email and temp_password:
-            try:
-                login_url = request.build_absolute_uri(reverse('assessor_login'))
+            subject = f'🎓 Vitambulisho vya Uwanjani & Ugawaji — {current_academic_year.year}'
+            html_content = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+body{{font-family:'Segoe UI',Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:20px;background:#f0f2f5;}}
+.container{{max-width:550px;margin:0 auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1);}}
+.header{{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:30px;text-align:center;}}
+.header h1{{margin:0;font-size:22px;}}
+.content{{padding:28px;}}
+.cred-box{{background:#fef9e6;border-left:4px solid #f59e0b;padding:18px;margin:18px 0;border-radius:10px;}}
+.schools-box{{background:#e7f3ff;padding:18px;margin:18px 0;border-radius:10px;}}
+.button{{display:block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;text-decoration:none;padding:14px 24px;border-radius:50px;text-align:center;margin:20px 0;font-weight:700;}}
+.footer{{background:#f8f9fa;padding:16px;text-align:center;font-size:11px;color:#888;border-top:1px solid #e9ecef;}}
+code{{background:#fff3cd;padding:4px 8px;border-radius:6px;font-size:14px;}}
+</style></head>
+<body><div class="container">
+<div class="header"><h1>🎓 Mfumo wa Ufuatiliaji wa Walimu Wanafunzi</h1><p>Wizara ya Elimu, Sayansi na Teknolojia</p></div>
+<div class="content">
+<p style="font-size:18px;font-weight:600;">👋 Ndugu {assessor.full_name},</p>
+<p>Umepewa kazi ya <strong>Mkaguzi wa Mafunzo ya Uwanjani</strong> kwa mwaka <strong>{current_academic_year.year}</strong>.</p>
+<div class="cred-box">
+<h3 style="margin:0 0 12px 0;">🔐 VITAMBULISHO VYA KUINGIA</h3>
+<p><strong>📧 Barua pepe:</strong> {assessor.email}</p>
+<p><strong>🔑 Nywila:</strong> <code>{temp_password}</code></p>
+<p style="margin:12px 0 0;color:#856404;">⚠️ Badilisha nywila baada ya kuingia mara ya kwanza</p>
+</div>
+<div class="schools-box">
+<h3 style="margin:0 0 12px 0;">🏫 SHULE ULIZOPEWA ({assignments_for_this_assessor})</h3>
+<pre style="background:white;padding:12px;border-radius:8px;margin:0;font-size:13px;">{assigned_schools_list or 'Hakuna shule mpya'}</pre>
+</div>
+<a href="{login_url}" class="button">🔐 INGIA KWENYE DASHIBODI</a>
+</div>
+<div class="footer"><p>IMS — Mfumo wa Ufuatiliaji wa Walimu Wanafunzi</p><p>Ujumbe huu umetumwa kiotomatiki.</p></div>
+</div></body></html>"""
+            text_content = (
+                f"Ndugu {assessor.full_name},\n\nVITAMBULISHO:\n"
+                f"Barua pepe: {assessor.email}\nNywila: {temp_password}\n\n"
+                f"Shule ({assignments_for_this_assessor}):\n{assigned_schools_list}\nIngia: {login_url}\n"
+            )
+            email_tasks.append({
+                'to': assessor.email,
+                'subject': subject,
+                'html': html_content,
+                'text': text_content,
+            })
+            email_results.append({
+                'assessor': assessor.full_name,
+                'email': assessor.email,
+                'status': f'✅ {assignments_for_this_assessor} ugawaji — barua pepe inatumwa...',
+                'credentials': temp_password,
+                'assignments_count': assignments_for_this_assessor,
+                'credential_action': credential_action,
+                'academic_year': current_academic_year.year,
+                'is_new': is_new,
+                'is_new_year': is_new_year,
+            })
+            email_sent_count += 1
 
-                # Build schools list for email
-                assigned_schools_list = ""
-                school_counter = 0
-                for school in schools:
-                    if SchoolAssessment.objects.filter(
-                        assessor=assessor,
-                        school=school,
-                        academic_year=current_academic_year
-                    ).exists():
-                        school_counter += 1
-                        assigned_schools_list += f"{school_counter}. {school.name} ({school.district.name})\n"
-
-                # Create beautiful HTML email
-                html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Field Placement Credentials</title>
-    <style>
-        body {{ font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background: #f0f2f5; }}
-        .container {{ max-width: 550px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
-        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }}
-        .header h1 {{ margin: 0; font-size: 24px; }}
-        .header p {{ margin: 8px 0 0; opacity: 0.9; }}
-        .content {{ padding: 30px; }}
-        .greeting {{ font-size: 20px; font-weight: 600; margin-bottom: 20px; }}
-        .credential-box {{ background: #fef9e6; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 12px; }}
-        .schools-box {{ background: #e7f3ff; padding: 20px; margin: 20px 0; border-radius: 12px; }}
-        .button {{ display: block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 14px 24px; border-radius: 50px; text-align: center; margin: 24px 0; font-weight: 600; }}
-        .footer {{ background: #f8f9fa; padding: 20px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #e9ecef; }}
-        code {{ background: #fff3cd; padding: 4px 8px; border-radius: 6px; font-size: 14px; }}
-        @media only screen and (max-width: 480px) {{ .content {{ padding: 20px; }} }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🎓 Mfumo wa Ufuatiliaji wa Walimu Wanafunzi</h1>
-            <p>Wizara ya Elimu, Sayansi na Teknolojia</p>
-        </div>
-        <div class="content">
-            <div class="greeting">👋 Dear {assessor.full_name},</div>
-            <p>You have been assigned as a <strong>Field Placement Assessor</strong> for <strong>{current_academic_year.year}</strong>.</p>
-            <div class="credential-box">
-                <h3 style="margin: 0 0 15px 0;">🔐 YOUR LOGIN CREDENTIALS</h3>
-                <p><strong>📧 Email:</strong> {assessor.email}</p>
-                <p><strong>🔑 Password:</strong> <code>{temp_password}</code></p>
-                <p style="margin: 15px 0 0 0; color: #856404;">⚠️ Change password after first login</p>
-            </div>
-            <div class="schools-box">
-                <h3 style="margin: 0 0 15px 0;">🏫 ASSIGNED SCHOOLS ({assignments_for_this_assessor})</h3>
-                <pre style="background: white; padding: 12px; border-radius: 8px; margin: 0; font-size: 14px;">{assigned_schools_list if assigned_schools_list else 'No new assignments'}</pre>
-            </div>
-            <a href="{login_url}" class="button">🔐 LOGIN TO YOUR DASHBOARD</a>
-            <div style="background: #fff3e0; padding: 15px; border-radius: 12px;">
-                <h3 style="margin: 0 0 8px 0;">✅ After Login You Can:</h3>
-                <ul style="margin: 0; padding-left: 20px;">
-                    <li>View assigned school details</li>
-                    <li>See list of students</li>
-                    <li>Track logbook entries</li>
-                    <li>Submit assessment reports</li>
-                </ul>
-            </div>
-        </div>
-        <div class="footer">
-            <p>Wizara ya Elimu, Sayansi na Teknolojia — IMS v2.1.0</p>
-            <p>📧 Ujumbe huu umetumwa kiotomatiki. Tafadhali usijibu.</p>
-        </div>
-    </div>
-</body>
-</html>"""
-
-                # Plain text fallback
-                text_content = f"""
-FIELD PLACEMENT ASSESSOR CREDENTIALS & ASSIGNMENTS
-{'='*60}
-
-Dear {assessor.full_name},
-
-{'NEW ACCOUNT CREATED FOR YOU' if is_new else f'NEW CREDENTIALS FOR {current_academic_year.year}'}
-
-ACADEMIC YEAR: {current_academic_year.year}
-
-YOUR LOGIN DETAILS:
-• Login URL: {login_url}
-• Email: {assessor.email}
-• Password: {temp_password}
-
-YOUR ASSIGNMENTS ({assignments_for_this_assessor} schools):
-{assigned_schools_list if assigned_schools_list else 'No new assignments created'}
-
-IMPORTANT INSTRUCTIONS:
-1. This is a temporary password
-2. Change it immediately after first login
-3. Login to see your assigned schools and students
-
-Best regards,
-Kitengo cha Uratibu wa Mafunzo ya Uwanjani
-Wizara ya Elimu, Sayansi na Teknolojia
-"""
-
-                subject = f'🎓 Field Placement Credentials & Assignments - {current_academic_year.year}'
-
-                # Send HTML email
-                send_mail(
-                    subject=subject,
-                    message=text_content,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[assessor.email],
-                    html_message=html_content,
-                    fail_silently=False,
-                )
-
-                email_sent_count += 1
-                print(f"✅ HTML email sent successfully to: {assessor.email}")
-
-                email_results.append({
-                    'assessor': assessor.full_name,
-                    'email': assessor.email,
-                    'status': f'✅ HTML Credentials sent & {assignments_for_this_assessor} new assignments',
-                    'credentials': temp_password,
-                    'assignments_count': assignments_for_this_assessor,
-                    'credential_action': credential_action,
-                    'academic_year': current_academic_year.year,
-                    'is_new': is_new,
-                    'is_new_year': is_new_year,
-                })
-
-            except Exception as e:
-                print(f"❌ EMAIL SEND FAILED: {e}")
-                import traceback
-                traceback.print_exc()
-
-                email_results.append({
-                    'assessor': assessor.full_name,
-                    'email': assessor.email,
-                    'status': f'⚠️ Email failed - {assignments_for_this_assessor} assignments created',
-                    'credentials': temp_password,
-                    'assignments_count': assignments_for_this_assessor,
-                    'is_new': is_new,
-                    'is_new_year': is_new_year,
-                    'error': str(e)[:100],
-                    'note': 'MANUALLY SHARE THESE CREDENTIALS'
-                })
-        # Send assignment notification for existing assessors (no new credentials)
-        if not send_email and assignments_for_this_assessor > 0:
-            try:
-                login_url = request.build_absolute_uri(reverse('assessor_login'))
-                assigned_schools_list = ""
-                sc = 0
-                for school in schools:
-                    if SchoolAssessment.objects.filter(
-                        assessor=assessor, school=school,
-                        academic_year=current_academic_year
-                    ).exists():
-                        sc += 1
-                        assigned_schools_list += f"{sc}. {school.name} ({school.district.name})\n"
-
-                notif_html = f"""<!DOCTYPE html>
+        elif not send_email and assignments_for_this_assessor > 0:
+            subject = f'📋 Ugawaji Mpya wa Shule — IMS {current_academic_year.year}'
+            notif_html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><style>
 body{{font-family:'Segoe UI',Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:20px;background:#f0f2f5;}}
 .container{{max-width:550px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1);}}
@@ -737,57 +647,67 @@ body{{font-family:'Segoe UI',Arial,sans-serif;line-height:1.6;color:#333;margin:
 <a href="{login_url}" class="button">🔐 INGIA KWENYE DASHIBODI YAKO</a>
 <p style="color:#666;font-size:13px;">Tumia akaunti yako iliyopo kuingia na kuona majukumu yako mapya.</p>
 </div>
-<div class="footer"><p>IMS — Mfumo wa Ufuatiliaji wa Walimu Wanafunzi</p><p>Ujumbe huu umetumwa kiotomatiki. Tafadhali usijibu.</p></div>
+<div class="footer"><p>IMS — Mfumo wa Ufuatiliaji wa Walimu Wanafunzi</p><p>Ujumbe huu umetumwa kiotomatiki.</p></div>
 </div></body></html>"""
+            notif_text = (
+                f"Ndugu {assessor.full_name},\n\n"
+                f"Umepewa shule mpya {assignments_for_this_assessor} za kutathmini kwa {current_academic_year.year}:\n"
+                f"{assigned_schools_list}\nIngia: {login_url}\n"
+            )
+            email_tasks.append({
+                'to': assessor.email,
+                'subject': subject,
+                'html': notif_html,
+                'text': notif_text,
+            })
+            email_results.append({
+                'assessor': assessor.full_name,
+                'email': assessor.email,
+                'status': f'✅ Shule mpya {assignments_for_this_assessor} — taarifa inatumwa...',
+                'credentials': 'Akaunti iliyopo',
+                'assignments_count': assignments_for_this_assessor,
+                'credential_action': credential_action,
+                'is_new': False,
+                'is_new_year': False,
+            })
+            email_sent_count += 1
 
-                notif_text = (
-                    f"Ndugu {assessor.full_name},\n\n"
-                    f"Umepewa shule mpya {assignments_for_this_assessor} za kutathmini kwa {current_academic_year.year}:\n"
-                    f"{assigned_schools_list}\n"
-                    f"Ingia: {login_url}\n"
-                )
-                send_mail(
-                    subject=f'📋 Ugawaji Mpya wa Shule — IMS {current_academic_year.year}',
-                    message=notif_text,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[assessor.email],
-                    html_message=notif_html,
-                    fail_silently=False,
-                )
-                email_sent_count += 1
-                print(f"✅ Assignment notification sent to: {assessor.email}")
-                email_results.append({
-                    'assessor': assessor.full_name,
-                    'email': assessor.email,
-                    'status': f'✅ Taarifa ya ugawaji imetumwa — shule mpya {assignments_for_this_assessor}',
-                    'credentials': 'Existing credentials',
-                    'assignments_count': assignments_for_this_assessor,
-                    'credential_action': credential_action,
-                    'is_new': False,
-                    'is_new_year': False,
-                })
-            except Exception as e:
-                print(f"❌ Notification email failed: {e}")
-                email_results.append({
-                    'assessor': assessor.full_name,
-                    'email': assessor.email,
-                    'status': f'⚠️ {assignments_for_this_assessor} assignments created — email failed: {str(e)[:80]}',
-                    'credentials': 'Existing credentials',
-                    'assignments_count': assignments_for_this_assessor,
-                    'is_new': False,
-                    'is_new_year': False,
-                })
         elif not send_email and assignments_for_this_assessor == 0:
             email_results.append({
                 'assessor': assessor.full_name,
                 'email': assessor.email,
-                'status': f'⚠️ Hakuna ugawaji mpya — shule zote {len(schools)} zimeshapewa',
-                'credentials': 'Existing credentials',
+                'status': f'⚠️ Hakuna ugawaji mpya — shule zote {len(schools)} zimeshapewa tayari',
+                'credentials': 'Akaunti iliyopo',
                 'assignments_count': 0,
                 'credential_action': credential_action,
                 'is_new': False,
                 'is_new_year': False,
             })
+
+    # ========== SEND EMAILS IN BACKGROUND (non-blocking) ==========
+    if email_tasks:
+        def _send_all(tasks, from_email):
+            for task in tasks:
+                try:
+                    send_mail(
+                        subject=task['subject'],
+                        message=task['text'],
+                        from_email=from_email,
+                        recipient_list=[task['to']],
+                        html_message=task['html'],
+                        fail_silently=True,
+                    )
+                    print(f"✅ [BG] Email sent to {task['to']}")
+                except Exception as e:
+                    print(f"❌ [BG] Email failed for {task['to']}: {e}")
+
+        bg = threading.Thread(
+            target=_send_all,
+            args=(email_tasks, settings.DEFAULT_FROM_EMAIL),
+            daemon=True,
+        )
+        bg.start()
+        print(f"🚀 Background email thread started for {len(email_tasks)} emails")
 
     # ========== FINAL STATISTICS ==========
     sent_count = email_sent_count
