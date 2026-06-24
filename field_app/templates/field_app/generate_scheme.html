@@ -490,45 +490,46 @@
             return breaks;
         }
         
+        // Inline data from server — no AJAX needed
+        const CLASSES_BY_LEVEL = {{ classes_by_level_json|safe }};
+        const SUBJECTS_BY_LEVEL = {{ subjects_by_level_json|safe }};
+
         // Dynamic dropdowns for class and subject
         document.getElementById('education_level').addEventListener('change', function() {
             const levelId = this.value;
-            
+            const classSelect = document.getElementById('class_level');
+            const subjectSelect = document.getElementById('subject');
+
+            classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Darasa{% else %}Select Class{% endif %}</option>';
+            subjectSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Somo{% else %}Select Subject{% endif %}</option>';
+            classSelect.disabled = true;
+            subjectSelect.disabled = true;
+
             if (levelId) {
-                // Load classes
-                fetch(`/get-classes/?level_id=${levelId}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        const classSelect = document.getElementById('class_level');
-                        classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Darasa{% else %}Select Class{% endif %}</option>';
-                        data.forEach(cls => {
-                            classSelect.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
-                        });
-                        classSelect.disabled = false;
-                    });
+                const classes = CLASSES_BY_LEVEL[levelId] || [];
+                classes.forEach(cls => {
+                    classSelect.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+                });
+                if (classes.length) classSelect.disabled = false;
 
-                // Load subjects
-                fetch(`/get-subjects-by-level/?level_id=${levelId}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        const subjectSelect = document.getElementById('subject');
-                        subjectSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Somo{% else %}Select Subject{% endif %}</option>';
-                        data.forEach(subj => {
-                            subjectSelect.innerHTML += `<option value="${subj.id}">${subj.name}</option>`;
-                        });
-                        subjectSelect.disabled = false;
-                    });
+                const subjects = SUBJECTS_BY_LEVEL[levelId] || [];
+                subjects.forEach(subj => {
+                    subjectSelect.innerHTML += `<option value="${subj.id}">${subj.name}</option>`;
+                });
+                if (subjects.length) subjectSelect.disabled = false;
 
-                // Load textbooks
+                // Load textbooks via AJAX (optional, no critical data)
                 fetch(`/get-textbooks/?level_id=${levelId}`)
                     .then(res => res.json())
                     .then(data => {
                         const refSelect = document.getElementById('reference_source');
-                        refSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Chanzo cha Marejeleo{% else %}Select Reference Source{% endif %}</option>';
-                        data.forEach(book => {
-                            refSelect.innerHTML += `<option value="${book.id}">${book.title}</option>`;
-                        });
-                    });
+                        if (refSelect) {
+                            refSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Chanzo cha Marejeleo{% else %}Select Reference Source{% endif %}</option>';
+                            data.forEach(book => {
+                                refSelect.innerHTML += `<option value="${book.id}">${book.title}</option>`;
+                            });
+                        }
+                    }).catch(() => {});
             }
         });
         

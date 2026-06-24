@@ -414,45 +414,30 @@
         
         const subjectSelect = document.getElementById('subject');
 
+        // Inline data from server — no AJAX needed
+        const CLASSES_BY_LEVEL = {{ classes_by_level_json|safe }};
+        const SUBJECTS_BY_LEVEL = {{ subjects_by_level_json|safe }};
+
         educationLevelSelect.addEventListener('change', function() {
             const levelId = this.value;
 
-            // Reset dependents
             classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Darasa{% else %}Select Class{% endif %}</option>';
             classSelect.disabled = true;
             subjectSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Somo{% else %}Select Subject{% endif %}</option>';
             subjectSelect.disabled = true;
 
             if (levelId) {
-                // Load classes
-                fetch(`/get-classes/?level_id=${levelId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.length > 0) {
-                            data.forEach(cls => {
-                                classSelect.innerHTML += `<option value="${cls.id}" data-name="${cls.name}">${cls.name}</option>`;
-                            });
-                            classSelect.disabled = false;
-                        } else {
-                            classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Hakuna madarasa yanayopatikana{% else %}No classes available{% endif %}</option>';
-                        }
-                    })
-                    .catch(() => {
-                        classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Hitilafu ya kupakia madarasa{% else %}Error loading classes{% endif %}</option>';
-                    });
+                const classes = CLASSES_BY_LEVEL[levelId] || [];
+                classes.forEach(cls => {
+                    classSelect.innerHTML += `<option value="${cls.id}" data-name="${cls.name}">${cls.name}</option>`;
+                });
+                if (classes.length) classSelect.disabled = false;
 
-                // Load subjects filtered by level
-                fetch(`/get-subjects-by-level/?level_id=${levelId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.length > 0) {
-                            data.forEach(subj => {
-                                subjectSelect.innerHTML += `<option value="${subj.id}" data-name="${subj.name}">${subj.name}</option>`;
-                            });
-                            subjectSelect.disabled = false;
-                        }
-                    })
-                    .catch(() => {});
+                const subjects = SUBJECTS_BY_LEVEL[levelId] || [];
+                subjects.forEach(subj => {
+                    subjectSelect.innerHTML += `<option value="${subj.id}" data-name="${subj.name}">${subj.name}</option>`;
+                });
+                if (subjects.length) subjectSelect.disabled = false;
             }
         });
         

@@ -24,10 +24,27 @@ from .models import (
 
 @login_required
 def generate_scheme_view(request):
-    from .models import EducationLevel, StudentApplication
+    from .models import EducationLevel, ClassLevel, StudentApplication
 
     form = SchemeOfWorkForm()
     education_levels = EducationLevel.objects.all().order_by('order')
+
+    # Build inline JSON maps so template needs no AJAX for dropdowns
+    import json as _json
+    classes_by_level = {}
+    for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
+        classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
+
+    primary_ids = list(
+        EducationLevel.objects.filter(name__icontains='primary').values_list('id', flat=True)
+    )
+    subjects_by_level = {
+        lvl.id: list(
+            Subject.objects.filter(level='primary' if lvl.id in primary_ids else 'secondary')
+            .order_by('name').values('id', 'name')
+        )
+        for lvl in education_levels
+    }
 
     student = None
     school = None
@@ -47,6 +64,8 @@ def generate_scheme_view(request):
     return render(request, 'field_app/generate_scheme.html', {
         'form': form,
         'education_levels': education_levels,
+        'classes_by_level_json': _json.dumps(classes_by_level),
+        'subjects_by_level_json': _json.dumps(subjects_by_level),
         'student': student,
         'school': school,
     })
@@ -644,16 +663,30 @@ def download_lesson_plan_word(request):
 @login_required
 def lesson_plan_view(request):
     """Display lesson plan generator form"""
-    from .models import EducationLevel, Subject
+    from .models import EducationLevel, ClassLevel, StudentApplication
 
+    import json as _json
     education_levels = EducationLevel.objects.all().order_by('order')
-    subjects = Subject.objects.all().order_by('name')
+
+    classes_by_level = {}
+    for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
+        classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
+
+    primary_ids = list(
+        EducationLevel.objects.filter(name__icontains='primary').values_list('id', flat=True)
+    )
+    subjects_by_level = {
+        lvl.id: list(
+            Subject.objects.filter(level='primary' if lvl.id in primary_ids else 'secondary')
+            .order_by('name').values('id', 'name')
+        )
+        for lvl in education_levels
+    }
 
     student = None
     school = None
     if request.user.is_authenticated:
         try:
-            from .models import StudentApplication
             student = StudentTeacher.objects.select_related('selected_school').get(user=request.user)
             school = student.selected_school
             if not school:
@@ -667,7 +700,8 @@ def lesson_plan_view(request):
 
     return render(request, 'field_app/lesson_plan.html', {
         'education_levels': education_levels,
-        'subjects': subjects,
+        'classes_by_level_json': _json.dumps(classes_by_level),
+        'subjects_by_level_json': _json.dumps(subjects_by_level),
         'student': student,
         'school': school,
     })
