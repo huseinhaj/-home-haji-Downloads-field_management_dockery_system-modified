@@ -572,6 +572,14 @@
                                     <i class="fas fa-inbox fa-3x text-muted mb-3 d-block"></i>
                                     <h5 class="text-muted">{% if LANG == 'sw' %}Hakuna Matokeo{% else %}No Results{% endif %}</h5>
                                     <p class="text-muted">{% if LANG == 'sw' %}Hakuna matokeo ya barua pepe yanayopatikana{% else %}No email results available{% endif %}</p>
+                                    {% if results.debug_submitted_ids %}
+                                    <div class="alert alert-warning mt-3 text-start" style="font-size:12px;font-family:monospace;">
+                                        <strong>DEBUG:</strong><br>
+                                        IDs Zilizotumwa: {{ results.debug_submitted_ids }}<br>
+                                        Assessors Zilizopatikana DB: {{ results.debug_found_count }}<br>
+                                        IDs Zote kwenye DB: {{ results.debug_all_ids_in_db }}
+                                    </div>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

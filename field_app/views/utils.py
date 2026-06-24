@@ -357,8 +357,14 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
     assessors = Assessor.objects.filter(id__in=assessor_ids).select_related('user')
     schools = School.objects.filter(id__in=school_ids).select_related('district', 'district__region')
 
-    print(f"✅ Found {assessors.count()} assessors")
-    print(f"✅ Found {schools.count()} schools")
+    _debug_assessors_found = assessors.count()
+    _debug_schools_found = schools.count()
+    _debug_all_assessor_ids = list(Assessor.objects.values_list('id', flat=True)[:20])
+
+    print(f"✅ Found {_debug_assessors_found} assessors")
+    print(f"✅ Found {_debug_schools_found} schools")
+    print(f"🔍 Submitted assessor_ids: {assessor_ids}")
+    print(f"🔍 All assessor IDs in DB: {_debug_all_assessor_ids}")
 
     # Process each assessor
     email_results = []
@@ -811,7 +817,10 @@ body{{font-family:'Segoe UI',Arial,sans-serif;line-height:1.6;color:#333;margin:
         'new_accounts_count': new_accounts_count,
         'new_year_resets': new_year_resets,
         'assignments_created': assignments_created,
-        'note': f'Successfully created {assignments_created} new assignments for {current_academic_year.year}'
+        'note': f'Successfully created {assignments_created} new assignments for {current_academic_year.year}',
+        'debug_submitted_ids': list(assessor_ids),
+        'debug_found_count': _debug_assessors_found,
+        'debug_all_ids_in_db': _debug_all_assessor_ids,
     }
 def get_or_create_student_profile(user):
     """Hakikisha kila user ana StudentTeacher profile. Cached for 2 minutes."""
