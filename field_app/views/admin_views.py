@@ -1473,10 +1473,10 @@ def download_individual_letter(request):
         messages.error(request, "Huna maombi yaliyoidhinishwa. Pakua barua baada ya kuidhinishwa.")
         return redirect('dashboard')
 
-    school      = student.selected_school
-    district    = school.district if school else None
-    region      = district.region if district else None
-    today       = timezone.now().date()
+    school       = student.selected_school
+    district     = school.district if school else None
+    region       = district.region if district else None
+    today        = timezone.now().date()
 
     from field_app.views.utils import _cached_active_year
     current_year = _cached_active_year()
@@ -1486,10 +1486,19 @@ def download_individual_letter(request):
     dist_name    = district.name if district else '—'
     region_name  = region.name if region else '—'
     date_str     = today.strftime('%d %B %Y')
-    dist_code    = ''.join(c for c in dist_name.upper()[:5] if c.isalpha())
-    ref_no       = f"IMS.ELIMU/{today.year}/{dist_code}/{student.id:05d}"
+    dist_code    = ''.join(ch for ch in dist_name.upper()[:5] if ch.isalpha())
+    ref_no       = f"IMS.MAZOEZI/{today.year}/{dist_code}/{student.id:05d}"
     serial_no    = f"IMS/{today.year}/{dist_code}/{student.id:05d}"
     subj_list    = ", ".join(a.subject.name for a in approved_applications)
+
+    # Determine school level for DEO signature label
+    school_level = (school.level or '').lower() if school else ''
+    if school_level == 'primary':
+        deo_title = "AFISA ELIMU MSINGI WA WILAYA"
+        deo_label = "Afisa Elimu Msingi wa Wilaya"
+    else:
+        deo_title = "AFISA ELIMU SEKONDARI WA WILAYA"
+        deo_label = "Afisa Elimu Sekondari wa Wilaya"
 
     BLACK = rl_colors.black
     NAVY  = rl_colors.HexColor('#0A2B5E')
@@ -1515,7 +1524,7 @@ def download_individual_letter(request):
     c = rl_canvas.Canvas(buf, pagesize=A4)
 
     def _watermarks():
-        micro = f"IMS MAFUNZO YA UALIMU • {serial_no} • HALISI •  "
+        micro = f"IMS MAZOEZI YA KUFUNDISHA • {serial_no} • HALISI •  "
         mw = c.stringWidth(micro, 'Helvetica', 5.5)
         c.saveState()
         c.setFont('Helvetica', 5.5); c.setFillColor(NAVY); c.setFillAlpha(0.05)
@@ -1577,7 +1586,7 @@ def download_individual_letter(request):
     right_col = CX + coa_w / 2 + 0.5 * cm
     ry = sec_top - 0.05 * cm
     for bold, line in [
-        (False, "Ofisi ya Afisa Elimu wa Wilaya,"),
+        (False, f"Ofisi ya {deo_label},"),
         (False, f"Wilaya ya {dist_name},"),
         (False, f"Mkoa wa {region_name},"),
         (True,  f"{region_name.upper()}."),
@@ -1637,23 +1646,20 @@ def download_individual_letter(request):
     y = draw_para("1", (
         f"Tafadhali rejea maombi yako ya kufanya mazoezi ya kufundisha ({subj_list}) "
         f"uliyoyaomba kupitia Mfumo wa Usimamizi wa Mazoezi ya Kufundisha (IMS) "
-        f"kwa Mwaka wa Masomo {yr_str}. Ninayo furaha kukufahamisha kuwa ulifaulu "
-        f"na umepangiwa kufanya mazoezi ya kufundisha katika {school_name} "
-        f"katika Halmashauri ya Wilaya ya {dist_name}."
+        f"kwa Mwaka wa Masomo {yr_str}. Ninayo furaha kukufahamisha kuwa umepangiwa "
+        f"kufanya mazoezi yako katika {school_name} katika Halmashauri ya Wilaya ya {dist_name}."
     ), y)
 
     y = draw_para("2", (
-        "Hivyo, upatapo barua hii unatakiwa kwenda kuripoti katika kituo chako cha mazoezi "
-        "ndani ya muda wa siku kumi na nne (14) kuanzia tarehe ya kupokea barua hii. "
-        "Ukishindwa kufanya hivyo katika muda uliowekwa, nafasi yako itajazwa na "
-        "mwanafunzi mwingine ambaye alifanya maombi na kufaulu lakini hakupangiwa "
-        "kituo cha mazoezi kutokana na uchache wa nafasi."
+        "Hivyo, upatapo barua hii unatakiwa kwanza kuripoti katika Ofisi ya "
+        f"{deo_label} wa Wilaya ya {dist_name} ili barua hii ipate sahihi na muhuri "
+        "wa uthibitisho, kisha ndo uende kuripoti katika kituo chako cha mazoezi "
+        "ndani ya muda wa siku kumi na nne (14) kuanzia tarehe ya kupokea barua hii."
     ), y)
 
     y = draw_para("3", (
-        "Mwajiri wako ataendelea na taratibu nyingine za mazoezi yako kwa mujibu wa "
-        "mwongozo wa Wizara ya Elimu, Sayansi na Teknolojia unaosimamia Mafunzo ya "
-        "Awali ya Ualimu (Initial Teacher Education — ITE) nchini Tanzania."
+        "Ukishindwa kuripoti katika muda uliowekwa, nafasi yako itajazwa na mwanafunzi "
+        "mwingine. Hivyo, unatakiwa kufuata taratibu hizi kwa wakati uliowekwa."
     ), y)
 
     y = draw_para("4", (
@@ -1664,24 +1670,63 @@ def download_individual_letter(request):
 
     y = draw_para("5", "Nakutakia kila la kheri katika mazoezi yako ya kufundisha.", y)
 
-    # ── SIGNATURE ─────────────────────────────────────────────────────────────
-    y -= 0.5 * cm
+    # ── IMS SIGNATURE ─────────────────────────────────────────────────────────
+    y -= 0.4 * cm
     sig_x = CX - 3 * cm
-    c.setFont('Helvetica-Oblique', 13); c.setFillColor(NAVY)
-    c.drawString(sig_x, y, "Msimamizi wa IMS"); y -= 0.40 * cm
+    c.setFont('Helvetica-Oblique', 12); c.setFillColor(NAVY)
+    c.drawString(sig_x, y, "Msimamizi wa IMS"); y -= 0.38 * cm
     c.setStrokeColor(BLACK); c.setLineWidth(0.7)
-    c.line(sig_x, y, sig_x + 6.0 * cm, y); y -= 0.44 * cm
+    c.line(sig_x, y, sig_x + 6.0 * cm, y); y -= 0.42 * cm
     c.setFont('Helvetica-Bold', 10); c.setFillColor(BLACK)
-    c.drawString(sig_x, y, "MSIMAMIZI WA MFUMO (IMS)"); y -= 0.44 * cm
+    c.drawString(sig_x, y, "MSIMAMIZI WA MFUMO (IMS)"); y -= 0.42 * cm
     c.drawString(sig_x, y, f"Wilaya ya {dist_name}")
 
+    # ── DEO SIGN SECTION ──────────────────────────────────────────────────────
+    # Box/separator
+    y -= 0.8 * cm
+    c.setStrokeColor(NAVY); c.setLineWidth(1.0)
+    c.line(LM, y, RM, y); y -= 0.02 * cm
+    c.setLineWidth(0.4); c.line(LM, y, RM, y); y -= 0.4 * cm
+
+    # Section header
+    hdr = f"KUTHIBITISHWA NA {deo_title} WA WILAYA YA {dist_name.upper()}"
+    c.setFont('Helvetica-Bold', 9); c.setFillColor(NAVY)
+    c.drawCentredString(CX, y, hdr); y -= 0.55 * cm
+
+    # Three columns: Sahihi | Tarehe | Muhuri
+    col1_x = LM
+    col2_x = LM + 5.5 * cm
+    col3_x = LM + 10.5 * cm
+    dash_len = 4.5 * cm
+
+    c.setStrokeColor(BLACK); c.setLineWidth(0.7)
+    c.line(col1_x, y, col1_x + dash_len, y)
+    c.line(col2_x, y, col2_x + dash_len, y)
+
+    # Muhuri box
+    muh_w, muh_h = 3.5 * cm, 1.6 * cm
+    c.setLineWidth(0.5)
+    c.rect(col3_x, y - muh_h + 0.15*cm, muh_w, muh_h)
+
+    y -= 0.30 * cm
+    c.setFont('Helvetica', 8); c.setFillColor(BLACK)
+    c.drawString(col1_x, y, "Sahihi:")
+    c.drawString(col2_x, y, "Tarehe: _____ / _____ / _______")
+    c.drawCentredString(col3_x + muh_w / 2, y - 0.3 * cm, "MUHURI")
+    y -= 0.45 * cm
+
+    c.setFont('Helvetica', 8)
+    c.drawString(col1_x, y, f"Jina: ________________________________"); y -= 0.42 * cm
+    c.setFont('Helvetica-Bold', 8)
+    c.drawString(col1_x, y, deo_title)
+
     # Footer
-    fy = 1.6 * cm
+    fy = 1.3 * cm
     c.setStrokeColor(BLACK); c.setLineWidth(0.5)
     c.line(LM, fy + 0.55 * cm, RM, fy + 0.55 * cm)
     c.setFont('Helvetica', 7); c.setFillColor(rl_colors.HexColor('#333333'))
     c.drawString(LM, fy + 0.22 * cm, f"Kumb.: {serial_no}   |   Tarehe: {date_str}")
-    c.drawRightString(RM, fy + 0.22 * cm, "Hati Rasmi — IMS • Ofisi ya Afisa Elimu wa Wilaya")
+    c.drawRightString(RM, fy + 0.22 * cm, f"Hati Rasmi — IMS • {deo_label}")
 
     # ── PAGE 2 — NAKALA ───────────────────────────────────────────────────────
     c.showPage()
@@ -1694,11 +1739,9 @@ def download_individual_letter(request):
     INDENT = LM + 3.5 * cm
     for block in [
         [
-            "Katibu Mkuu,",
-            "Ofisi ya Rais,",
-            "Menejimenti ya Utumishi wa Umma na Utawala Bora,",
-            "S.L.P. 670,",
-            "DODOMA.",
+            f"{deo_label},",
+            f"Wilaya ya {dist_name},",
+            f"Mkoa wa {region_name}.",
         ],
         [
             f"Mkurugenzi Mtendaji,",
@@ -1728,7 +1771,7 @@ def download_individual_letter(request):
     buf.seek(0)
     safe_name = student.full_name.replace(' ', '_').replace('/', '_')
     response = HttpResponse(buf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="Barua_Uwekaji_{safe_name}.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="Barua_Mazoezi_{safe_name}.pdf"'
     return response
 
 
