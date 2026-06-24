@@ -114,6 +114,7 @@ urlpatterns = [
     #path('api/send-test-email/', views.send_test_email_api, name='send_test_email'),
     path('generate-scheme/', views.generate_scheme_view, name='generate_scheme'),
     path('ajax-generate-scheme/', views.ajax_generate_scheme, name='ajax_generate_scheme'),
+    path('ajax-load-saved-scheme/', views.ajax_load_saved_scheme, name='ajax_load_saved_scheme'),
     path('download-scheme-pdf/', views.download_scheme_pdf, name='download_scheme_pdf'),
     path('download-scheme-word/', views.download_scheme_word, name='download_scheme_word'),
     path('admin-report-pdf/', views.admin_report_pdf, name='admin_report_pdf'),
@@ -123,6 +124,7 @@ urlpatterns = [
     # Lesson Plan URLs
     path('lesson-plan/', views.lesson_plan_view, name='lesson_plan'),
     path('ajax-generate-lessonplan/', views.ajax_generate_lessonplan, name='ajax_generate_lessonplan'),
+    path('ajax-load-saved-lessonplan/', views.ajax_load_saved_lessonplan, name='ajax_load_saved_lessonplan'),
     path('download-lesson-plan-pdf/', views.download_lesson_plan_pdf, name='download_lesson_plan_pdf'),
     path('download-lesson-plan-word/', views.download_lesson_plan_word, name='download_lesson_plan_word'),
     path('api/districts-by-region/', views.api_districts_by_region, name='api_districts_by_region'),

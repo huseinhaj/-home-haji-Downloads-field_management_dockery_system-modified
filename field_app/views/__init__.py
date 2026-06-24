@@ -141,12 +141,14 @@ from .api import (
 from .schemes import (
     generate_scheme_view,
     ajax_generate_scheme,
+    ajax_load_saved_scheme,
     download_scheme_pdf,
     download_scheme_word,
     download_lesson_plan_pdf,
     download_lesson_plan_word,
     lesson_plan_view,
     ajax_generate_lessonplan,
+    ajax_load_saved_lessonplan,
 )
 
 from .public import (

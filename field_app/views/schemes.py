@@ -863,3 +863,81 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
             return JsonResponse({'success': False, 'error': user_msg}, status=500)
 
     return JsonResponse({'success': False}, status=400)
+
+
+@login_required
+def ajax_load_saved_scheme(request):
+    """Load most recent saved SchemeOfWork for this student from DB — no AI call."""
+    try:
+        student = StudentTeacher.objects.get(user=request.user)
+        scheme = (SchemeOfWork.objects
+                  .filter(student=student)
+                  .select_related('subject')
+                  .order_by('-updated_at')
+                  .first())
+        if not scheme or not scheme.scheme_data:
+            return JsonResponse({'success': False, 'error': 'Hakuna mpango uliohifadhiwa. Tengeneza kwanza.'}, status=404)
+        return JsonResponse({
+            'success': True,
+            'data': scheme.scheme_data,
+            'saved_id': scheme.id,
+            'meta': {
+                'subject': scheme.subject.name,
+                'class_name': scheme.class_name,
+                'term': scheme.term,
+                'year': scheme.year,
+                'teacher_name': scheme.teacher_name,
+                'school_name': scheme.school.name if scheme.school else '',
+                'total_weeks': scheme.total_weeks,
+                'syllabus': scheme.syllabus,
+                'updated_at': scheme.updated_at.strftime('%d %b %Y, %H:%M'),
+            }
+        })
+    except StudentTeacher.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Wasifu wa mwanafunzi haupatikani.'}, status=404)
+
+
+@login_required
+def ajax_load_saved_lessonplan(request):
+    """Load most recent saved LessonPlan for this student from DB — no AI call."""
+    try:
+        student = StudentTeacher.objects.get(user=request.user)
+        lp = (LessonPlan.objects
+              .filter(student=student)
+              .select_related('subject')
+              .order_by('-created_at')
+              .first())
+        if not lp or not lp.lesson_development:
+            return JsonResponse({'success': False, 'error': 'Hakuna mpango wa somo uliohifadhiwa. Tengeneza kwanza.'}, status=404)
+        lesson_data = {
+            'lesson_title': f"{lp.subject.name} - {lp.topic}",
+            'main_competence': lp.main_competence,
+            'specific_competence': lp.specific_competence,
+            'previous_knowledge': lp.previous_knowledge,
+            'learning_objectives': lp.learning_objectives,
+            'teaching_methods': lp.teaching_methods,
+            'teaching_resources': lp.teaching_resources,
+            'lesson_development': lp.lesson_development,
+            'remarks': lp.remarks,
+        }
+        form_data = {
+            'subject': lp.subject.name,
+            'class_name': lp.class_name,
+            'term': lp.term,
+            'year': lp.year,
+            'topic': lp.topic,
+            'subtopic': lp.subtopic,
+            'teacher_name': lp.teacher_name,
+            'duration': lp.duration,
+            'total_students': lp.total_students,
+            'present_students': lp.present_students,
+        }
+        return JsonResponse({
+            'success': True,
+            'data': lesson_data,
+            'form_data': form_data,
+            'saved_id': lp.id,
+            'updated_at': lp.created_at.strftime('%d %b %Y, %H:%M'),
+        })
+    except StudentTeacher.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Wasifu wa mwanafunzi haupatikani.'}, status=404)
