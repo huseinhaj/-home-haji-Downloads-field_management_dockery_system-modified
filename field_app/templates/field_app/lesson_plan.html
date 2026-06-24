@@ -247,11 +247,8 @@
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">{% if LANG == 'sw' %}Somo *{% else %}Subject *{% endif %}</label>
-                                    <select id="subject" class="form-select" required>
-                                        <option value="">{% if LANG == 'sw' %}Chagua Somo{% else %}Select Subject{% endif %}</option>
-                                        {% for subject in subjects %}
-                                        <option value="{{ subject.id }}" data-name="{{ subject.name }}" data-level="{{ subject.level }}">{{ subject.name }} ({{ subject.get_level_display }})</option>
-                                        {% endfor %}
+                                    <select id="subject" class="form-select" required disabled>
+                                        <option value="">{% if LANG == 'sw' %}Chagua Kiwango cha Elimu kwanza{% else %}Select Education Level first{% endif %}</option>
                                     </select>
                                 </div>
                             </div>
@@ -415,19 +412,22 @@
         const educationLevelSelect = document.getElementById('education_level');
         const classSelect = document.getElementById('class_level');
         
+        const subjectSelect = document.getElementById('subject');
+
         educationLevelSelect.addEventListener('change', function() {
             const levelId = this.value;
-            
+
+            // Reset dependents
+            classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Darasa{% else %}Select Class{% endif %}</option>';
+            classSelect.disabled = true;
+            subjectSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Somo{% else %}Select Subject{% endif %}</option>';
+            subjectSelect.disabled = true;
+
             if (levelId) {
-                // Get selected level text
-                const selectedOption = this.options[this.selectedIndex];
-                const levelName = selectedOption.getAttribute('data-level') || selectedOption.text;
-                
-                // Fetch classes for this education level
+                // Load classes
                 fetch(`/get-classes/?level_id=${levelId}`)
                     .then(response => response.json())
                     .then(data => {
-                        classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Darasa{% else %}Select Class{% endif %}</option>';
                         if (data.length > 0) {
                             data.forEach(cls => {
                                 classSelect.innerHTML += `<option value="${cls.id}" data-name="${cls.name}">${cls.name}</option>`;
@@ -435,17 +435,24 @@
                             classSelect.disabled = false;
                         } else {
                             classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Hakuna madarasa yanayopatikana{% else %}No classes available{% endif %}</option>';
-                            classSelect.disabled = true;
                         }
                     })
-                    .catch(error => {
-                        console.error('Error fetching classes:', error);
+                    .catch(() => {
                         classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Hitilafu ya kupakia madarasa{% else %}Error loading classes{% endif %}</option>';
-                        classSelect.disabled = true;
                     });
-            } else {
-                classSelect.innerHTML = '<option value="">{% if LANG == "sw" %}Chagua Kiwango cha Elimu kwanza{% else %}Select Education Level first{% endif %}</option>';
-                classSelect.disabled = true;
+
+                // Load subjects filtered by level
+                fetch(`/get-subjects-by-level/?level_id=${levelId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            data.forEach(subj => {
+                                subjectSelect.innerHTML += `<option value="${subj.id}" data-name="${subj.name}">${subj.name}</option>`;
+                            });
+                            subjectSelect.disabled = false;
+                        }
+                    })
+                    .catch(() => {});
             }
         });
         

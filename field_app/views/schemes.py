@@ -22,6 +22,7 @@ from .models import (
 )
 
 
+@login_required
 def generate_scheme_view(request):
     from .models import EducationLevel, StudentApplication
 

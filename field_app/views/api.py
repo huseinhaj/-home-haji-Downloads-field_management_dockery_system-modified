@@ -339,16 +339,12 @@ def get_subjects_by_level(request):
         try:
             education_level = EducationLevel.objects.get(id=level_id)
             level_name = education_level.name.lower()
-
-            # Filter subjects based on education level
             if 'primary' in level_name:
                 subjects = Subject.objects.filter(level='primary')
-            elif 'ordinary' in level_name or 'secondary' in level_name:
+            else:
                 subjects = Subject.objects.filter(level='secondary')
-                subjects = Subject.objects.all()
-
-            return JsonResponse(list(subjects.values('id', 'name')), safe=False)
-        except:
+            return JsonResponse(list(subjects.order_by('name').values('id', 'name')), safe=False)
+        except EducationLevel.DoesNotExist:
             return JsonResponse([], safe=False)
     return JsonResponse([], safe=False)
 
