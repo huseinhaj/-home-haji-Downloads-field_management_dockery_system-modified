@@ -476,6 +476,7 @@ def process_bulk_assignment_with_academic_year(assessor_ids, school_ids, assessm
                         'error': str(e)[:100]
                     })
                     continue
+            else:
                 print(f"✅ Already has credentials for {current_academic_year.year}")
                 credential_action = f"Already has credentials for {current_academic_year.year}"
                 send_email = False
@@ -693,22 +694,94 @@ Wizara ya Elimu, Sayansi na Teknolojia
                     'error': str(e)[:100],
                     'note': 'MANUALLY SHARE THESE CREDENTIALS'
                 })
-            status_msg = f'ℹ️ {assignments_for_this_assessor} new assignments created'
-            if not send_email:
-                status_msg += ' (no email - already has credentials)'
-            elif assignments_for_this_assessor == 0:
-                status_msg = f'⚠️ No new assignments - all {len(schools)} schools already assigned'
+            # Send assignment notification for existing assessors (no new credentials)
+            if not send_email and assignments_for_this_assessor > 0:
+                try:
+                    login_url = request.build_absolute_uri(reverse('assessor_login'))
+                    assigned_schools_list = ""
+                    sc = 0
+                    for school in schools:
+                        if SchoolAssessment.objects.filter(
+                            assessor=assessor, school=school,
+                            academic_year=current_academic_year
+                        ).exists():
+                            sc += 1
+                            assigned_schools_list += f"{sc}. {school.name} ({school.district.name})\n"
 
-            email_results.append({
-                'assessor': assessor.full_name,
-                'email': assessor.email,
-                'status': status_msg,
-                'credentials': temp_password if temp_password else 'Existing credentials',
-                'assignments_count': assignments_for_this_assessor,
-                'credential_action': credential_action,
-                'is_new': False,
-                'is_new_year': False,
-            })
+                    notif_html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+body{{font-family:'Segoe UI',Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:20px;background:#f0f2f5;}}
+.container{{max-width:550px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1);}}
+.header{{background:linear-gradient(135deg,#0A2B5E 0%,#1a4a8a 100%);color:white;padding:28px;text-align:center;}}
+.header h1{{margin:0;font-size:22px;}}
+.content{{padding:28px;}}
+.schools-box{{background:#e7f3ff;border-left:4px solid #0A2B5E;padding:18px;margin:18px 0;border-radius:10px;}}
+.button{{display:block;background:linear-gradient(135deg,#0A2B5E,#1a4a8a);color:white;text-decoration:none;padding:14px 24px;border-radius:50px;text-align:center;margin:20px 0;font-weight:700;}}
+.footer{{background:#f8f9fa;padding:16px;text-align:center;font-size:11px;color:#888;border-top:1px solid #e9ecef;}}
+</style></head>
+<body><div class="container">
+<div class="header"><h1>📋 Ugawaji Mpya wa Shule — IMS</h1><p>Mwaka wa Masomo: {current_academic_year.year}</p></div>
+<div class="content">
+<p style="font-size:18px;font-weight:600;">👋 Ndugu {assessor.full_name},</p>
+<p>Umepewa shule mpya za kutathmini wanafunzi walimu kwa Mwaka wa Masomo <strong>{current_academic_year.year}</strong>.</p>
+<div class="schools-box">
+<h3 style="margin:0 0 12px 0;">🏫 SHULE MPYA ULIZOPEWA ({assignments_for_this_assessor})</h3>
+<pre style="background:white;padding:12px;border-radius:8px;margin:0;font-size:14px;">{assigned_schools_list}</pre>
+</div>
+<a href="{login_url}" class="button">🔐 INGIA KWENYE DASHIBODI YAKO</a>
+<p style="color:#666;font-size:13px;">Tumia akaunti yako iliyopo kuingia na kuona majukumu yako mapya.</p>
+</div>
+<div class="footer"><p>IMS — Mfumo wa Ufuatiliaji wa Walimu Wanafunzi</p><p>Ujumbe huu umetumwa kiotomatiki. Tafadhali usijibu.</p></div>
+</div></body></html>"""
+
+                    notif_text = (
+                        f"Ndugu {assessor.full_name},\n\n"
+                        f"Umepewa shule mpya {assignments_for_this_assessor} za kutathmini kwa {current_academic_year.year}:\n"
+                        f"{assigned_schools_list}\n"
+                        f"Ingia: {login_url}\n"
+                    )
+                    send_mail(
+                        subject=f'📋 Ugawaji Mpya wa Shule — IMS {current_academic_year.year}',
+                        message=notif_text,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[assessor.email],
+                        html_message=notif_html,
+                        fail_silently=False,
+                    )
+                    email_sent_count += 1
+                    print(f"✅ Assignment notification sent to: {assessor.email}")
+                    email_results.append({
+                        'assessor': assessor.full_name,
+                        'email': assessor.email,
+                        'status': f'✅ Taarifa ya ugawaji imetumwa — shule mpya {assignments_for_this_assessor}',
+                        'credentials': 'Existing credentials',
+                        'assignments_count': assignments_for_this_assessor,
+                        'credential_action': credential_action,
+                        'is_new': False,
+                        'is_new_year': False,
+                    })
+                except Exception as e:
+                    print(f"❌ Notification email failed: {e}")
+                    email_results.append({
+                        'assessor': assessor.full_name,
+                        'email': assessor.email,
+                        'status': f'⚠️ {assignments_for_this_assessor} assignments created — email failed: {str(e)[:80]}',
+                        'credentials': 'Existing credentials',
+                        'assignments_count': assignments_for_this_assessor,
+                        'is_new': False,
+                        'is_new_year': False,
+                    })
+            elif not send_email and assignments_for_this_assessor == 0:
+                email_results.append({
+                    'assessor': assessor.full_name,
+                    'email': assessor.email,
+                    'status': f'⚠️ Hakuna ugawaji mpya — shule zote {len(schools)} zimeshapewa',
+                    'credentials': 'Existing credentials',
+                    'assignments_count': 0,
+                    'credential_action': credential_action,
+                    'is_new': False,
+                    'is_new_year': False,
+                })
 
     # ========== FINAL STATISTICS ==========
     sent_count = email_sent_count
