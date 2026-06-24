@@ -227,7 +227,10 @@ body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;
 
   <!-- Logbook Entries with Remarks -->
   <div class="card">
-    <div class="card-hd"><i class="fas fa-book-open"></i> Logbook — Ongeza Maoni kwa Kila Siku</div>
+    <div class="card-hd">
+      <i class="fas fa-book-open"></i> LOGBOOK — {{ student.full_name }}
+      <span style="margin-left:auto;font-size:11px;font-weight:400;opacity:.8;">Ongeza maoni kwa kila siku</span>
+    </div>
     <div class="card-body" style="padding:14px;">
       {% for entry in logbook_entries %}
       <div class="lb-entry">
