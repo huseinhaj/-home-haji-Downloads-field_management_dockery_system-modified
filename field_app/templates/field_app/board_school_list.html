@@ -315,6 +315,7 @@
       <div class="stat-lbl">{% if LANG == 'sw' %}Maombi Yanayosubiri{% else %}Pending Requests{% endif %}</div>
     </div>
   </div>
+  {% if bm.role != 'deo' %}
   <div class="stat-card">
     <div class="stat-icon si-red"><i class="fas fa-exclamation-triangle"></i></div>
     <div>
@@ -322,6 +323,7 @@
       <div class="stat-lbl">{% if LANG == 'sw' %}Hawajafanya Kazi (7+ Siku){% else %}Inactive (7+ Days){% endif %}</div>
     </div>
   </div>
+  {% endif %}
 </div>
 
 {% if bm.role != 'deo' %}
