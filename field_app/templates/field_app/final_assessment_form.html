@@ -130,9 +130,9 @@
   {% endif %}
 
   {% if fa.is_final %}
-  <!-- View-only mode -->
+  <!-- View-only mode (tathmini ya mwisho) -->
   <div class="sec">
-    <div class="sec-hd">Matokeo ya Tathmini</div>
+    <div class="sec-hd">Matokeo ya Tathmini — IMEFUNGWA</div>
     <div class="sec-body">
       {% for fname, label, desc, cur_val in score_fields %}
       <div class="score-row">
@@ -141,7 +141,14 @@
           <div class="score-desc">{{ desc }}</div>
         </div>
         <div style="text-align:center;">
-          <div class="score-inp" style="cursor:default;background:var(--light);">{{ cur_val }}</div>
+          <div class="score-inp" style="cursor:default;background:var(--light);">
+            {% if fname == 'kuhudhuria' %}{{ fa.kuhudhuria }}
+            {% elif fname == 'daftari_la_kazi' %}{{ fa.daftari_la_kazi }}
+            {% elif fname == 'mpango_wa_kazi' %}{{ fa.mpango_wa_kazi }}
+            {% elif fname == 'mpango_wa_somo' %}{{ fa.mpango_wa_somo }}
+            {% elif fname == 'utendaji_darasani' %}{{ fa.utendaji_darasani }}
+            {% endif %}
+          </div>
           <div class="score-max">/ 20</div>
         </div>
       </div>
@@ -207,20 +214,60 @@
       <div class="sec-hd">Maoni ya Jumla</div>
       <div class="sec-body">
         <textarea name="maoni" class="textarea-inp"
-          placeholder="Andika maoni ya jumla kuhusu mwanafunzi huyu...">{{ fa.maoni }}</textarea>
+          placeholder="Andika maoni ya jumla kuhusu mwanafunzi huyu..."></textarea>
       </div>
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
       <button type="submit" name="action" value="save" class="btn-navy">
-        <i class="fas fa-save"></i> Hifadhi Rasimu
+        <i class="fas fa-save"></i> Hifadhi Ziara Hii
       </button>
       <button type="submit" name="action" value="finalize" class="btn-gold"
         onclick="return confirm('Ukikamilisha, tathmini haiwezi kubadilishwa tena. Endelea?')">
-        <i class="fas fa-check-circle"></i> Kamilisha na Funga
+        <i class="fas fa-check-circle"></i> Kamilisha na Funga (Mwisho)
       </button>
     </div>
+    <p style="font-size:11px;color:#555;margin-top:8px;"><i class="fas fa-info-circle"></i> Kila ziara = rekodi mpya. Kamilisha mwisho wa internship tu.</p>
   </form>
+  {% endif %}
+
+  <!-- Historia ya Ziara za Mkuu -->
+  {% if visit_history %}
+  <div class="sec" style="margin-top:20px;">
+    <div class="sec-hd">Historia ya Ziara — {{ visit_history|length }} Rekodi</div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+        <thead>
+          <tr style="background:#f8fafc;">
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e2e8f0;font-weight:700;color:#666;">#</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e2e8f0;font-weight:700;color:#666;">Tarehe ya Ziara</th>
+            <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e2e8f0;font-weight:700;color:#666;">Kuhudh.</th>
+            <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e2e8f0;font-weight:700;color:#666;">Daftari</th>
+            <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e2e8f0;font-weight:700;color:#666;">Mp.Kazi</th>
+            <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e2e8f0;font-weight:700;color:#666;">Mp.Somo</th>
+            <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e2e8f0;font-weight:700;color:#666;">Utend.</th>
+            <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e2e8f0;font-weight:700;color:#666;">JUMLA</th>
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e2e8f0;font-weight:700;color:#666;">Maoni</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in visit_history %}
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 10px;color:#999;">{{ forloop.counter }}</td>
+            <td style="padding:8px 10px;font-weight:600;">{{ v.visited_at|date:"d/m/Y H:i" }}</td>
+            <td style="padding:8px 10px;text-align:center;">{{ v.kuhudhuria }}</td>
+            <td style="padding:8px 10px;text-align:center;">{{ v.daftari_la_kazi }}</td>
+            <td style="padding:8px 10px;text-align:center;">{{ v.mpango_wa_kazi }}</td>
+            <td style="padding:8px 10px;text-align:center;">{{ v.mpango_wa_somo }}</td>
+            <td style="padding:8px 10px;text-align:center;">{{ v.utendaji_darasani }}</td>
+            <td style="padding:8px 10px;text-align:center;font-weight:800;">{{ v.jumla }}/100</td>
+            <td style="padding:8px 10px;font-size:11.5px;color:#555;">{{ v.maoni|truncatechars:40|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
   {% endif %}
 </div>
 

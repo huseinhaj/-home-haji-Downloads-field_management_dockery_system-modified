@@ -646,9 +646,10 @@ class StudentAssessment(models.Model):
     # Finalization
     is_final     = models.BooleanField(default=False, help_text="Assessor amekamilisha tathmini")
     finalized_at = models.DateTimeField(null=True, blank=True)
+    created_at   = models.DateTimeField(auto_now_add=True, null=True)
 
     class Meta:
-        unique_together = ['assessor', 'student', 'school', 'academic_year']
+        ordering = ['-created_at']
 
     @property
     def jumla(self):
@@ -1347,3 +1348,34 @@ class FinalAssessment(models.Model):
 
     def __str__(self):
         return f"{self.student.full_name} — {self.daraja} ({self.jumla}/100)"
+
+
+class SupervisionVisit(models.Model):
+    """Rekodi ya kila ziara ya mkuu wa shule kwa ajili ya tathmini ya mwanafunzi."""
+    student     = models.ForeignKey('StudentTeacher', on_delete=models.CASCADE, related_name='supervision_visits')
+    school      = models.ForeignKey('School', on_delete=models.CASCADE)
+    assessed_by = models.ForeignKey('BoardMember', on_delete=models.SET_NULL, null=True, blank=True)
+
+    kuhudhuria        = models.PositiveSmallIntegerField(default=0)
+    daftari_la_kazi   = models.PositiveSmallIntegerField(default=0)
+    mpango_wa_kazi    = models.PositiveSmallIntegerField(default=0)
+    mpango_wa_somo    = models.PositiveSmallIntegerField(default=0)
+    utendaji_darasani = models.PositiveSmallIntegerField(default=0)
+    maoni       = models.TextField(blank=True)
+    visited_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-visited_at']
+
+    @property
+    def jumla(self):
+        return (self.kuhudhuria + self.daftari_la_kazi +
+                self.mpango_wa_kazi + self.mpango_wa_somo + self.utendaji_darasani)
+
+    @property
+    def daraja(self):
+        j = self.jumla
+        if j >= 80: return 'A'
+        if j >= 65: return 'B'
+        if j >= 50: return 'C'
+        return 'F'

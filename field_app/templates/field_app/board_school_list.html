@@ -380,6 +380,7 @@
       </a>
     </div>
   </div>
+  {% if bm.role != 'deo' %}
   <div class="school-block-body">
     <div class="table-wrap">
     <table id="tbl-{{ school.id }}">
@@ -459,6 +460,7 @@
     </table>
     </div>
   </div>
+  {% endif %}{# end: hide student table from DEO #}
 </div>
 {% endwith %}
 {% endfor %}

@@ -550,28 +550,29 @@ def assessor_student_assessment(request, student_id):
         messages.error(request, "You are not assigned to assess this student.")
         return redirect('assessor_dashboard')
 
-    student_assessment, created = StudentAssessment.objects.get_or_create(
-        assessor=assessor,
-        student=student,
-        school=student.selected_school,
-        defaults={
-            'assessment_date': timezone.now().date()
-        }
-    )
+    school = student.selected_school
 
     SCORE_FIELDS = [
-        ('kuhudhuria',        'Kuhudhuria',        'Mwanafunzi alihudhuria vizuri darasani na shuleni', 'kuhudhuria'),
-        ('daftari_la_kazi',   'Daftari la Kazi',   'Ubora wa daftari la kazi (logbook)', 'daftari_la_kazi'),
-        ('mpango_wa_kazi',    'Mpango wa Kazi',     'Ubora wa Scheme of Work', 'mpango_wa_kazi'),
-        ('mpango_wa_somo',    'Mpango wa Somo',     'Ubora wa Lesson Plans', 'mpango_wa_somo'),
-        ('utendaji_darasani', 'Utendaji Darasani',  'Ujuzi wa kufundisha darasani', 'utendaji_darasani'),
+        ('kuhudhuria',        'Kuhudhuria',        'Mwanafunzi alihudhuria vizuri darasani na shuleni'),
+        ('daftari_la_kazi',   'Daftari la Kazi',   'Ubora wa daftari la kazi (logbook)'),
+        ('mpango_wa_kazi',    'Mpango wa Kazi',     'Ubora wa Scheme of Work'),
+        ('mpango_wa_somo',    'Mpango wa Somo',     'Ubora wa Lesson Plans'),
+        ('utendaji_darasani', 'Utendaji Darasani',  'Ujuzi wa kufundisha darasani'),
     ]
 
+    # Historia ya tathmini zote (mpya kwanza)
+    all_assessments = StudentAssessment.objects.filter(
+        assessor=assessor, student=student, school=school
+    ).order_by('-created_at')
+
+    # Kama tayari ipo is_final=True → assessment imefungwa
+    final_sa = all_assessments.filter(is_final=True).first()
+
     error = None
-    if request.method == 'POST' and not student_assessment.is_final:
+    if request.method == 'POST' and not final_sa:
         action = request.POST.get('action', 'save')
         scores = {}
-        for fname, _, _, _ in SCORE_FIELDS:
+        for fname, _, _ in SCORE_FIELDS:
             try:
                 v = int(request.POST.get(fname, 0))
                 if not (0 <= v <= 20):
@@ -582,49 +583,55 @@ def assessor_student_assessment(request, student_id):
                 break
 
         if not error:
+            new_sa = StudentAssessment(
+                assessor=assessor,
+                student=student,
+                school=school,
+                assessment_date=timezone.now().date(),
+                comments=request.POST.get('comments', '').strip(),
+                status='in_progress',
+            )
             for fname, v in scores.items():
-                setattr(student_assessment, fname, v)
-            student_assessment.comments = request.POST.get('comments', '').strip()
-            student_assessment.status = 'in_progress'
+                setattr(new_sa, fname, v)
             if action == 'finalize':
-                student_assessment.is_final = True
-                student_assessment.finalized_at = timezone.now()
-                student_assessment.status = 'completed'
-            student_assessment.save()
-            if student_assessment.is_final:
-                msg = f'Tathmini ya {student.full_name} imekamilishwa na kufungwa.'
+                new_sa.is_final = True
+                new_sa.finalized_at = timezone.now()
+                new_sa.status = 'completed'
+            new_sa.save()
+            if new_sa.is_final:
+                messages.success(request, f'Tathmini ya {student.full_name} imekamilishwa na kufungwa.')
             else:
-                msg = f'Tathmini ya {student.full_name} imehifadhiwa.'
-            messages.success(request, msg)
+                messages.success(request, f'Tathmini ya {student.full_name} imehifadhiwa. Unaweza kurekodi tena siku nyingine.')
             return redirect('assessor_student_assessment', student_id=student.id)
 
-    logbook_entries = LogbookEntry.objects.filter(
-        student=student
-    ).order_by('-date')[:20]
-
+    logbook_entries = LogbookEntry.objects.filter(student=student).order_by('-date')[:20]
     approved_subjects = student.subjects.all()
 
-    # Angalia kama mkuu pia amefinalize
     from field_app.models import FinalAssessment
     fa = FinalAssessment.objects.filter(student=student).first()
 
-    # Pakia current values kwenye score_fields
-    score_fields_with_values = [
-        (fname, label, desc, getattr(student_assessment, fname, 0))
-        for fname, label, desc, _ in SCORE_FIELDS
-    ]
+    # Tupu kwa default kwa form mpya
+    score_fields_with_values = [(fname, label, desc, 0) for fname, label, desc in SCORE_FIELDS]
+
+    # Reload history baada ya POST
+    all_assessments = StudentAssessment.objects.filter(
+        assessor=assessor, student=student, school=school
+    ).order_by('-created_at')
+    final_sa = all_assessments.filter(is_final=True).first()
 
     return render(request, 'field_app/assessor_student_assessment.html', {
         'assessor': assessor,
         'student': student,
-        'student_assessment': student_assessment,
+        'student_assessment': final_sa,
+        'all_assessments': all_assessments,
         'logbook_entries': logbook_entries,
         'approved_subjects': approved_subjects,
         'school_assignment': school_assignment,
         'score_fields': score_fields_with_values,
         'final_assessment': fa,
         'error': error,
-        'both_finalized': student_assessment.is_final and (fa and fa.is_final),
+        'both_finalized': bool(final_sa) and (fa and fa.is_final),
+        'is_locked': bool(final_sa),
     })
 
 

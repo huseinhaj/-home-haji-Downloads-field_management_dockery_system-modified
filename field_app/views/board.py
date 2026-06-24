@@ -950,6 +950,7 @@ def board_final_assessment(request, student_id):
         ('utendaji_darasani', 'Utendaji Darasani',  'Ujuzi wa kufundisha darasani'),
     ]
 
+    from field_app.models import SupervisionVisit
     error = None
     if request.method == 'POST' and not fa.is_final:
         action = request.POST.get('action', 'save')
@@ -965,34 +966,39 @@ def board_final_assessment(request, student_id):
                 break
 
         if not error:
+            maoni = request.POST.get('maoni', '').strip()
+            # Hifadhi rekodi ya ziara hii
+            visit = SupervisionVisit(student=student, school=school, assessed_by=bm, maoni=maoni)
+            for fname, v in scores.items():
+                setattr(visit, fname, v)
+            visit.save()
+            # Sasisisha FinalAssessment na alama za hivi karibuni
             for fname, v in scores.items():
                 setattr(fa, fname, v)
-            fa.maoni = request.POST.get('maoni', '').strip()
+            fa.maoni = maoni
             fa.assessed_by = bm
             if action == 'finalize':
-                from django.utils import timezone
                 fa.is_final = True
                 fa.finalized_at = timezone.now()
             fa.save()
             if fa.is_final:
                 msg = 'Tathmini imekamilishwa na kufungwa. Subiri DEO wa wilaya aidhibiti cheti.'
             else:
-                msg = 'Tathmini imehifadhiwa.'
+                msg = 'Tathmini ya ziara imehifadhiwa. Unaweza kurekodi tena ziara nyingine.'
             messages.success(request, msg)
             return redirect('board_final_assessment', student_id=student.id)
+
+    # Historia ya ziara zote (mpya kwanza)
+    visit_history = SupervisionVisit.objects.filter(student=student, school=school).order_by('-visited_at')
 
     # Back URL
     back_url = reverse('board_head_teacher', args=[school.id])
 
-    # Angalia hali ya assessor
     from field_app.models import StudentAssessment as SA
-    sa = SA.objects.filter(student=student, school=school).first()
+    sa = SA.objects.filter(student=student, school=school, is_final=True).first()
 
-    # Pakia current values
-    score_fields_with_values = [
-        (fname, label, desc, getattr(fa, fname, 0))
-        for fname, label, desc in SCORE_FIELDS
-    ]
+    # Form iwe tupu (form mpya kwa kila ziara)
+    score_fields_with_values = [(fname, label, desc, 0) for fname, label, desc in SCORE_FIELDS]
 
     return render(request, 'field_app/final_assessment_form.html', {
         'bm': bm,
@@ -1003,7 +1009,8 @@ def board_final_assessment(request, student_id):
         'back_url': back_url,
         'error': error,
         'assessor_assessment': sa,
-        'both_finalized': fa.is_final and (sa and sa.is_final),
+        'both_finalized': fa.is_final and bool(sa),
+        'visit_history': visit_history,
     })
 
 
