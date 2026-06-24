@@ -110,14 +110,14 @@
                             <h5 class="mb-0" style="color: var(--bold);">
                                 <i class="fas fa-user-graduate me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}
                             </h5>
-                            {% if students %}
+                            {% if students_data %}
                             <span class="badge px-3 py-2" style="background: var(--bold); color: var(--white);">
-                                {{ students.count }} {% if LANG == 'sw' %}Mwanafunzi{% else %}Student{{ students.count|pluralize }}{% endif %}
+                                {{ students_data|length }} {% if LANG == 'sw' %}Mwanafunzi{% else %}Student{% endif %}
                             </span>
                             {% endif %}
                         </div>
                         <div class="card-body p-0">
-                            {% if students %}
+                            {% if students_data %}
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead style="background: var(--light);">
@@ -125,24 +125,23 @@
                                             <th class="ps-4 py-3" style="width: 50px; color: var(--text-dark);">#</th>
                                             <th class="py-3" style="color: var(--text-dark);">{% if LANG == 'sw' %}Mwanafunzi{% else %}Student{% endif %}</th>
                                             <th class="py-3" style="color: var(--text-dark);">{% if LANG == 'sw' %}Mawasiliano{% else %}Contact{% endif %}</th>
-                                            <th class="py-3" style="color: var(--text-dark);">{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+                                            <th class="py-3" style="color: var(--text-dark);">{% if LANG == 'sw' %}Hali ya Tathmini{% else %}Assessment Status{% endif %}</th>
                                             <th class="py-3 text-end pe-4" style="color: var(--text-dark);">{% if LANG == 'sw' %}Vitendo{% else %}Actions{% endif %}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for student in students %}
+                                        {% for sd in students_data %}
                                         <tr class="border-bottom" style="border-color: var(--border);">
                                             <td class="ps-4 py-3 fw-semibold text-muted">{{ forloop.counter }}</td>
                                             <td class="py-3">
                                                 <div class="d-flex align-items-center">
                                                     <div class="student-avatar me-3">
                                                         <div class="d-flex align-items-center justify-content-center rounded-circle fw-bold" style="width: 40px; height: 40px; background: rgba(10, 43, 94, 0.1); color: var(--bold);">
-                                                            {{ student.full_name|first|upper }}
+                                                            {{ sd.student.full_name|first|upper }}
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <div class="fw-medium" style="color: var(--text-dark);">{{ student.full_name }}</div>
-                                                        <small class="text-muted">ID: {{ student.id|slice:":8" }}...</small>
+                                                        <div class="fw-medium" style="color: var(--text-dark);">{{ sd.student.full_name }}</div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -151,50 +150,46 @@
                                                     <div class="mb-1">
                                                         <small class="text-muted">
                                                             <i class="fas fa-envelope me-1"></i>
-                                                            {% if student.user.email %}{{ student.user.email }}{% else %}{% if LANG == 'sw' %}Hakuna barua pepe{% else %}No email{% endif %}{% endif %}
+                                                            {% if sd.student.user.email %}{{ sd.student.user.email }}{% else %}Hakuna barua pepe{% endif %}
                                                         </small>
                                                     </div>
                                                     <div>
                                                         <small class="text-muted">
                                                             <i class="fas fa-phone me-1"></i>
-                                                            {% if student.phone_number %}{{ student.phone_number }}{% else %}{% if LANG == 'sw' %}Hakuna simu{% else %}No phone{% endif %}{% endif %}
+                                                            {% if sd.student.phone_number %}{{ sd.student.phone_number }}{% else %}Hakuna simu{% endif %}
                                                         </small>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td class="py-3">
-                                                {% with assessment=student_assessments|dictsort:"student.id"|first %}
-                                                    {% if assessment %}
-                                                        {% if assessment.score %}
-                                                        <span class="badge px-3 py-2" style="background: #D1FAE5; color: #065F46; border: 1px solid var(--success);">
-                                                            <i class="fas fa-check-circle me-1"></i>{% if LANG == 'sw' %}Amekaguliwa{% else %}Assessed{% endif %}
-                                                        </span>
-                                                        {% else %}
-                                                        <span class="badge px-3 py-2" style="background: #FEF3C7; color: #92400E; border: 1px solid var(--warning);">
-                                                            <i class="fas fa-clock me-1"></i>{% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}
-                                                        </span>
-                                                        {% endif %}
-                                                    {% else %}
-                                                    <span class="badge px-3 py-2" style="background: var(--light); color: var(--text-gray); border: 1px solid var(--border);">
-                                                        <i class="fas fa-hourglass-start me-1"></i>{% if LANG == 'sw' %}Haijaanza{% else %}Not Started{% endif %}
-                                                    </span>
-                                                    {% endif %}
-                                                {% endwith %}
+                                                {% if sd.is_final %}
+                                                <span class="badge px-3 py-2" style="background:#D1FAE5;color:#065F46;border:1px solid #10B981;">
+                                                    <i class="fas fa-lock me-1"></i>Amefinalize
+                                                </span>
+                                                {% elif sd.is_draft %}
+                                                <span class="badge px-3 py-2" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;">
+                                                    <i class="fas fa-edit me-1"></i>Rasimu
+                                                </span>
+                                                {% else %}
+                                                <span class="badge px-3 py-2" style="background:var(--light);color:var(--text-gray);border:1px solid var(--border);">
+                                                    <i class="fas fa-hourglass-start me-1"></i>Hajakaguliwa
+                                                </span>
+                                                {% endif %}
                                             </td>
                                             <td class="py-3 text-end pe-4">
-                                                <div class="btn-group" role="group">
-                                                    <a href="{% url 'assessor_student_assessment' student.id %}" class="btn btn-sm px-3 rounded-start" style="background: transparent; color: var(--bold); border: 1px solid var(--bold);">
-                                                        <i class="fas fa-eye me-1"></i>{% if LANG == 'sw' %}Angalia{% else %}View{% endif %}
-                                                    </a>
-                                                    <a href="{% url 'assessor_student_assessment' student.id %}" class="btn btn-sm px-3 rounded-end" style="background: var(--success); color: white; border: none;">
-                                                        <i class="fas fa-clipboard-check me-1"></i>{% if LANG == 'sw' %}Kagua{% else %}Assess{% endif %}
-                                                    </a>
-                                                </div>
+                                                <a href="{% url 'assessor_student_assessment' sd.student.id %}" class="btn btn-sm px-3" style="background:var(--bold);color:#fff;border:none;border-radius:5px;">
+                                                    <i class="fas fa-clipboard-check me-1"></i>{% if sd.assessment %}Hariri{% else %}Kagua{% endif %}
+                                                </a>
                                             </td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-5 text-muted">
+                                <i class="fas fa-user-slash fa-2x mb-2"></i>
+                                <p>Hakuna wanafunzi katika shule hii.</p>
                             </div>
                             {% endif %}
                         </div>
@@ -202,65 +197,12 @@
                 </div>
             </div>
             
-            <!-- OTHER ASSESSORS SECTION -->
-            {% if other_assessors %}
+            <!-- BACK BUTTON -->
             <div class="row mt-4">
                 <div class="col-12">
-                    <div class="card" style="border: 1px solid var(--border); border-radius: 8px;">
-                        <div class="card-header bg-transparent border-0 py-3">
-                            <h5 class="mb-0" style="color: var(--text-dark);">
-                                <i class="fas fa-user-friends me-2" style="color: var(--medium);"></i>{% if LANG == 'sw' %}Wakaguzi Wengine katika Shule Hii{% else %}Other Assessors at This School{% endif %}
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                {% for other in other_assessors %}
-                                <div class="col-md-4">
-                                    <div class="p-3 border rounded-3 hover-lift" style="border-color: var(--border); border-radius: 8px;">
-                                        <div class="d-flex align-items-center">
-                                            <div class="d-flex align-items-center justify-content-center rounded-circle fw-bold me-3" style="width: 50px; height: 50px; background: rgba(10, 43, 94, 0.1); color: var(--bold);">
-                                                {{ other.full_name|first|upper }}
-                                            </div>
-                                            <div>
-                                                <h6 class="mb-1" style="color: var(--text-dark);">{{ other.full_name }}</h6>
-                                                <div class="text-muted small">
-                                                    <div class="mb-1">
-                                                        <i class="fas fa-envelope me-1"></i>{{ other.email }}
-                                                    </div>
-                                                    {% if other.phone_number %}
-                                                    <div>
-                                                        <i class="fas fa-phone me-1"></i>{{ other.phone_number }}
-                                                    </div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            
-            <!-- ACTION BUTTONS -->
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                        <a href="{% url 'assessor_dashboard' %}" class="btn px-4 py-2 rounded-pill" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold);">
-                            <i class="fas fa-arrow-left me-2"></i>{% if LANG == 'sw' %}Rudi Dashibodi{% else %}Back to Dashboard{% endif %}
-                        </a>
-                        <div class="btn-group" role="group">
-                            <button type="button" class="btn px-4 py-2 rounded-start" style="background: transparent; color: var(--bold); border: 1px solid var(--bold);">
-                                <i class="fas fa-download me-2"></i>{% if LANG == 'sw' %}Pakua{% else %}Export{% endif %}
-                            </button>
-                            <button type="button" class="btn px-4 py-2 rounded-end" style="background: var(--bold); color: var(--white); border: none;">
-                                <i class="fas fa-sync-alt me-2"></i>{% if LANG == 'sw' %}Onyesha Upya{% else %}Refresh{% endif %}
-                            </button>
-                        </div>
-                    </div>
+                    <a href="{% url 'assessor_dashboard' %}" class="btn px-4 py-2 rounded-pill" style="background: transparent; color: var(--bold); border: 1.5px solid var(--bold);">
+                        <i class="fas fa-arrow-left me-2"></i>Rudi Dashibodi
+                    </a>
                 </div>
             </div>
         </div>

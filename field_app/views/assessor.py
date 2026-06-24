@@ -473,60 +473,37 @@ def assessor_student_detail(request, school_id):
         messages.error(request, "You are not assigned to this school.")
         return redirect('assessor_dashboard')
 
-    # ========== FIX: GET STUDENTS FROM BOTH SOURCES ==========
-
-    # Method 1: Students who selected this school directly
-    students_selected = StudentTeacher.objects.filter(
-        selected_school=school,
-        approval_status='approved'
-    )
-
-    # Method 2: Students with approved applications for this school
-    approved_app_student_ids = StudentApplication.objects.filter(
-        school=school,
-        status='approved'
-    ).values_list('student_id', flat=True).distinct()
-
-    students_with_apps = StudentTeacher.objects.filter(
-        id__in=approved_app_student_ids
-    )
-
-    # Combine both querysets
-    student_ids = set()
-    for student in students_selected:
-        student_ids.add(student.id)
-    for student in students_with_apps:
-        student_ids.add(student.id)
-
-    # Get all unique students
+    # All students at this school (any approval status)
     students = StudentTeacher.objects.filter(
-        id__in=list(student_ids)
-    ).select_related('user')
+        selected_school=school
+    ).select_related('user').order_by('full_name')
 
-    print(f"📊 Found {students.count()} students for school {school.name}")
-    for student in students:
-        print(f"   - {student.full_name}")
-
-    # Get assessments
-    student_assessments = StudentAssessment.objects.filter(
+    # Build per-student assessment map
+    assessments_qs = StudentAssessment.objects.filter(
         assessor=assessor,
         school=school
-    ).select_related('student')
+    ).select_related('student').order_by('-assessment_date')
 
-    # Get other assessors
-    other_assessors_assessments = SchoolAssessment.objects.filter(
-        school=school
-    ).exclude(assessor=assessor).select_related('assessor')
+    assessment_map = {}
+    for sa in assessments_qs:
+        if sa.student_id not in assessment_map:
+            assessment_map[sa.student_id] = sa
 
-    other_assessors = [oa.assessor for oa in other_assessors_assessments]
+    students_data = []
+    for student in students:
+        sa = assessment_map.get(student.id)
+        students_data.append({
+            'student': student,
+            'assessment': sa,
+            'is_final': sa is not None and sa.is_final,
+            'is_draft': sa is not None and not sa.is_final,
+        })
 
     return render(request, 'field_app/assessor_student_detail.html', {
         'assessor': assessor,
         'school': school,
-        'students': students,  # ← SASA ITAKUWA NA DATA
-        'student_assessments': student_assessments,
+        'students_data': students_data,
         'school_assignment': school_assignment,
-        'other_assessors': other_assessors,
     })
 
 
