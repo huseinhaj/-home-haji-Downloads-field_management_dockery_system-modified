@@ -250,8 +250,30 @@
             <td>
               <a href="{% url 'board_final_assessment' sd.obj.id %}"
                  class="btn-gold btn-sm" style="display:inline-flex;align-items:center;gap:4px;margin-bottom:4px;">
-                <i class="fas fa-star-half-alt"></i> Tathmini
+                <i class="fas fa-star-half-alt"></i> {% if sd.mkuu_finalized %}Imefungwa{% else %}Tathmini{% endif %}
               </a>
+              <!-- Finalization badges -->
+              <div style="margin:4px 0;display:flex;flex-direction:column;gap:3px;">
+                <span style="font-size:10px;padding:2px 7px;border-radius:3px;font-weight:700;
+                  background:{% if sd.mkuu_finalized %}#d1fae5{% else %}#fef3c7{% endif %};
+                  color:{% if sd.mkuu_finalized %}#065f46{% else %}#92400e{% endif %};">
+                  <i class="fas fa-{% if sd.mkuu_finalized %}lock{% else %}clock{% endif %}"></i> Mkuu: {% if sd.mkuu_finalized %}✓{% else %}Bado{% endif %}
+                </span>
+                <span style="font-size:10px;padding:2px 7px;border-radius:3px;font-weight:700;
+                  background:{% if sd.assessor_finalized %}#d1fae5{% else %}#fef3c7{% endif %};
+                  color:{% if sd.assessor_finalized %}#065f46{% else %}#92400e{% endif %};">
+                  <i class="fas fa-{% if sd.assessor_finalized %}lock{% else %}clock{% endif %}"></i> Assessor: {% if sd.assessor_finalized %}✓{% else %}Bado{% endif %}
+                </span>
+                {% if sd.deo_approved %}
+                <span style="font-size:10px;padding:2px 7px;border-radius:3px;font-weight:700;background:#dbeafe;color:#1e40af;">
+                  <i class="fas fa-certificate"></i> DEO: Imeidhinishwa
+                </span>
+                {% elif sd.both_finalized %}
+                <span style="font-size:10px;padding:2px 7px;border-radius:3px;font-weight:700;background:#f3e8ff;color:#6b21a8;">
+                  <i class="fas fa-hourglass-half"></i> Inasubiri DEO
+                </span>
+                {% endif %}
+              </div>
               {% if can_edit %}
               <button type="button" class="btn-outline btn-sm" onclick="toggleCmt({{ sd.obj.id }})">Maoni</button>
               {% endif %}

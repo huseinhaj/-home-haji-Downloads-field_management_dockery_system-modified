@@ -108,45 +108,120 @@ body{font-family:'Segoe UI',sans-serif;background:var(--light);min-height:100vh;
     </div>
   </div>
 
+  <!-- Finalization Status Banner -->
+  {% if student_assessment.is_final %}
+  <div style="background:#d1fae5;border:2px solid #10B981;border-radius:8px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+    <i class="fas fa-lock" style="color:#10B981;font-size:18px;"></i>
+    <div>
+      <strong style="color:#065f46;">Tathmini Imefungwa</strong>
+      <div style="font-size:12px;color:#065f46;">Umefinalize tathmini hii — haiwezi kubadilishwa tena.
+      {% if student_assessment.finalized_at %} ({{ student_assessment.finalized_at|date:"d/m/Y H:i" }}){% endif %}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if error %}
+  <div style="background:#fee2e2;border:1.5px solid #DC2626;border-radius:6px;padding:10px 16px;margin-bottom:14px;color:#991b1b;font-size:13px;">
+    <i class="fas fa-exclamation-circle"></i> {{ error }}
+  </div>
+  {% endif %}
+
   <!-- Assessment Scores Form -->
   <div class="card">
-    <div class="card-hd"><i class="fas fa-clipboard-check"></i> Tathmini ya Jumla</div>
+    <div class="card-hd">
+      <i class="fas fa-clipboard-check"></i> FOMU YA TATHMINI — MSIMAMIZI (ASSESSOR)
+      {% if student_assessment.is_final %}
+      <span style="margin-left:auto;background:#10B981;color:white;padding:2px 12px;border-radius:10px;font-size:11px;font-weight:700;">IMEFUNGWA</span>
+      {% endif %}
+    </div>
     <div class="card-body">
+
+      <!-- Status ya wote wawili -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div style="background:{% if student_assessment.is_final %}#d1fae5{% else %}#fef9c3{% endif %};border-radius:8px;padding:12px 16px;border:1.5px solid {% if student_assessment.is_final %}#10B981{% else %}#f59e0b{% endif %};">
+          <div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;">Msimamizi (Wewe)</div>
+          <div style="font-weight:700;color:{% if student_assessment.is_final %}#065f46{% else %}#92400e{% endif %};margin-top:4px;">
+            {% if student_assessment.is_final %}<i class="fas fa-check-circle"></i> Umefinalize{% else %}<i class="fas fa-clock"></i> Bado{% endif %}
+          </div>
+        </div>
+        <div style="background:{% if final_assessment.is_final %}#d1fae5{% else %}#fef9c3{% endif %};border-radius:8px;padding:12px 16px;border:1.5px solid {% if final_assessment.is_final %}#10B981{% else %}#f59e0b{% endif %};">
+          <div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;">Mkuu wa Shule</div>
+          <div style="font-weight:700;color:{% if final_assessment.is_final %}#065f46{% else %}#92400e{% endif %};margin-top:4px;">
+            {% if final_assessment.is_final %}<i class="fas fa-check-circle"></i> Amefinalize{% else %}<i class="fas fa-clock"></i> Bado{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if both_finalized %}
+      <div style="background:#d1fae5;border:2px solid #10B981;border-radius:8px;padding:12px 16px;margin-bottom:16px;text-align:center;">
+        <i class="fas fa-check-double" style="color:#10B981;font-size:20px;"></i>
+        <strong style="color:#065f46;display:block;margin-top:4px;">Wote Wawili Mmefinalize! DEO anaweza kuidhibiti cheti sasa.</strong>
+      </div>
+      {% endif %}
+
+      {% if not student_assessment.is_final %}
       <form method="post">
         {% csrf_token %}
-        <input type="hidden" name="form_type" value="assessment">
-        <div class="score-grid">
-          <div class="score-item">
-            <label>Mahudhurio (0–100)</label>
-            <input type="number" name="attendance_score" min="0" max="100" value="{{ student_assessment.attendance_score|default:'' }}" placeholder="0–100">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:18px;">
+          {% for fname, label, desc, cur_val in score_fields %}
+          <div style="background:var(--light);border-radius:8px;padding:14px;border:1px solid var(--border);">
+            <label style="font-size:12px;font-weight:700;color:var(--gray);text-transform:uppercase;display:block;margin-bottom:6px;">
+              {{ label }} <span style="color:var(--medium);">(0–20)</span>
+            </label>
+            <div style="font-size:11px;color:var(--gray);margin-bottom:8px;">{{ desc }}</div>
+            <input type="number" name="{{ fname }}" min="0" max="20"
+                   value="{{ cur_val }}"
+                   style="width:100%;border:1.5px solid var(--border);border-radius:5px;padding:8px 10px;font-size:15px;font-weight:700;color:var(--bold);text-align:center;"
+                   required>
           </div>
-          <div class="score-item">
-            <label>Ushiriki (0–100)</label>
-            <input type="number" name="participation_score" min="0" max="100" value="{{ student_assessment.participation_score|default:'' }}" placeholder="0–100">
-          </div>
-          <div class="score-item">
-            <label>Ujuzi wa Kufundisha (0–100)</label>
-            <input type="number" name="teaching_skills_score" min="0" max="100" value="{{ student_assessment.teaching_skills_score|default:'' }}" placeholder="0–100">
-          </div>
-          <div class="score-item">
-            <label>Mipango ya Masomo (0–100)</label>
-            <input type="number" name="lesson_planning_score" min="0" max="100" value="{{ student_assessment.lesson_planning_score|default:'' }}" placeholder="0–100">
-          </div>
-          <div class="score-item">
-            <label>Usimamizi wa Darasa (0–100)</label>
-            <input type="number" name="classroom_management_score" min="0" max="100" value="{{ student_assessment.classroom_management_score|default:'' }}" placeholder="0–100">
-          </div>
-          <div class="score-item">
-            <label>Alama ya Jumla (0–100)</label>
-            <input type="number" name="overall_score" min="0" max="100" value="{{ student_assessment.overall_score|default:'' }}" placeholder="0–100">
-          </div>
+          {% endfor %}
         </div>
+
+        <!-- Jumla ya muda wa sasa -->
+        <div style="background:var(--bold);color:white;border-radius:8px;padding:14px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:700;font-size:14px;">JUMLA YA ALAMA (iliyohifadhiwa)</span>
+          <span style="font-size:22px;font-weight:900;color:var(--medium);">{{ student_assessment.jumla }}/100</span>
+        </div>
+
         <div class="form-group">
           <label>Maoni ya Jumla</label>
-          <textarea name="comments" placeholder="Andika maoni ya jumla kuhusu mwanafunzi...">{{ student_assessment.comments|default:'' }}</textarea>
+          <textarea name="comments" placeholder="Andika maoni ya jumla kuhusu utendaji wa mwanafunzi..." rows="3">{{ student_assessment.comments|default:'' }}</textarea>
         </div>
-        <button type="submit" class="btn-save"><i class="fas fa-save"></i> Hifadhi Tathmini</button>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
+          <button type="submit" name="action" value="save" class="btn-save">
+            <i class="fas fa-save"></i> Hifadhi
+          </button>
+          <button type="submit" name="action" value="finalize"
+                  style="background:#DC2626;color:white;border:none;border-radius:5px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"
+                  onclick="return confirm('Una uhakika wa Finalize? Baada ya hapo HUWEZI kubadilisha tathmini hii.')">
+            <i class="fas fa-lock"></i> FINALIZE TATHMINI
+          </button>
+        </div>
+        <p style="font-size:11px;color:#DC2626;margin-top:8px;"><i class="fas fa-exclamation-triangle"></i> FINALIZE = Kufunga tathmini kabisa. Fanya hivyo MWISHO wa internship tu.</p>
       </form>
+
+      {% else %}
+      <!-- Read-only view wakati imefungwa -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:18px;">
+        {% for fname, label, desc, cur_val in score_fields %}
+        <div style="background:var(--light);border-radius:8px;padding:14px;border:1px solid var(--border);">
+          <label style="font-size:12px;font-weight:700;color:var(--gray);text-transform:uppercase;display:block;margin-bottom:4px;">{{ label }}</label>
+          <div style="font-size:26px;font-weight:900;color:var(--bold);">{{ cur_val }}<span style="font-size:13px;color:var(--gray);">/20</span></div>
+        </div>
+        {% endfor %}
+      </div>
+      <div style="background:var(--bold);color:white;border-radius:8px;padding:14px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:700;">JUMLA</span>
+        <span style="font-size:24px;font-weight:900;color:var(--medium);">{{ student_assessment.jumla }}/100 — {{ student_assessment.daraja }} ({{ student_assessment.daraja_maana }})</span>
+      </div>
+      {% if student_assessment.comments %}
+      <div style="background:var(--light);border-radius:6px;padding:12px;border-left:3px solid var(--medium);">
+        <strong style="font-size:12px;color:var(--gray);">MAONI:</strong>
+        <p style="margin-top:4px;font-size:13px;">{{ student_assessment.comments }}</p>
+      </div>
+      {% endif %}
+      {% endif %}
     </div>
   </div>
 

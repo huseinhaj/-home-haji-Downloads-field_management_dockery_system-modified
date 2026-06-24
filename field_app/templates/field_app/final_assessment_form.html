@@ -102,26 +102,46 @@
     {% endif %}
   </div>
 
+  <!-- Hali ya Finalization: Mkuu + Assessor -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+    <div style="background:{% if fa.is_final %}#d1fae5{% else %}#fef9c3{% endif %};border-radius:8px;padding:12px 16px;border:1.5px solid {% if fa.is_final %}#10B981{% else %}#f59e0b{% endif %};">
+      <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;">Mkuu wa Shule (Wewe)</div>
+      <div style="font-weight:700;color:{% if fa.is_final %}#065f46{% else %}#92400e{% endif %};margin-top:4px;">
+        {% if fa.is_final %}<i class="fas fa-lock"></i> Umefinalize{% else %}<i class="fas fa-clock"></i> Bado{% endif %}
+      </div>
+    </div>
+    <div style="background:{% if assessor_assessment.is_final %}#d1fae5{% else %}#fef9c3{% endif %};border-radius:8px;padding:12px 16px;border:1.5px solid {% if assessor_assessment.is_final %}#10B981{% else %}#f59e0b{% endif %};">
+      <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;">Msimamizi (Assessor)</div>
+      <div style="font-weight:700;color:{% if assessor_assessment.is_final %}#065f46{% else %}#92400e{% endif %};margin-top:4px;">
+        {% if assessor_assessment.is_final %}<i class="fas fa-lock"></i> Amefinalize{% else %}<i class="fas fa-clock"></i> Bado{% endif %}
+      </div>
+    </div>
+  </div>
+  {% if both_finalized and fa.deo_approved %}
+  <div style="background:#dbeafe;border:2px solid #2563eb;border-radius:8px;padding:12px 16px;margin-bottom:14px;text-align:center;">
+    <i class="fas fa-certificate" style="color:#2563eb;font-size:20px;"></i>
+    <strong style="color:#1e40af;display:block;margin-top:4px;">DEO ameidhibiti — Mwanafunzi anaweza kupakua cheti!</strong>
+  </div>
+  {% elif both_finalized %}
+  <div style="background:#f3e8ff;border:2px solid #7c3aed;border-radius:8px;padding:12px 16px;margin-bottom:14px;text-align:center;">
+    <i class="fas fa-hourglass-half" style="color:#7c3aed;font-size:18px;"></i>
+    <strong style="color:#6b21a8;display:block;margin-top:4px;">Wote Wawili Mmefinalize! DEO aidhibiti wilaya ili kutoa vyeti.</strong>
+  </div>
+  {% endif %}
+
   {% if fa.is_final %}
   <!-- View-only mode -->
   <div class="sec">
     <div class="sec-hd">Matokeo ya Tathmini</div>
     <div class="sec-body">
-      {% for fname, label, desc in score_fields %}
+      {% for fname, label, desc, cur_val in score_fields %}
       <div class="score-row">
         <div>
           <div class="score-label">{{ label }}</div>
           <div class="score-desc">{{ desc }}</div>
         </div>
         <div style="text-align:center;">
-          <div class="score-inp" style="cursor:default;background:var(--light);">
-            {% if fname == 'kuhudhuria' %}{{ fa.kuhudhuria }}
-            {% elif fname == 'daftari_la_kazi' %}{{ fa.daftari_la_kazi }}
-            {% elif fname == 'mpango_wa_kazi' %}{{ fa.mpango_wa_kazi }}
-            {% elif fname == 'mpango_wa_somo' %}{{ fa.mpango_wa_somo }}
-            {% elif fname == 'utendaji_darasani' %}{{ fa.utendaji_darasani }}
-            {% endif %}
-          </div>
+          <div class="score-inp" style="cursor:default;background:var(--light);">{{ cur_val }}</div>
           <div class="score-max">/ 20</div>
         </div>
       </div>
@@ -152,7 +172,7 @@
     <div class="sec">
       <div class="sec-hd">Weka Alama (kila kipengele max 20)</div>
       <div class="sec-body">
-        {% for fname, label, desc in score_fields %}
+        {% for fname, label, desc, cur_val in score_fields %}
         <div class="score-row">
           <div>
             <div class="score-label">{{ label }}</div>
@@ -162,7 +182,7 @@
             <input type="number" name="{{ fname }}" min="0" max="20"
               class="score-inp"
               id="f_{{ fname }}" oninput="calcTotal()"
-              value="{% if fname == 'kuhudhuria' %}{{ fa.kuhudhuria }}{% elif fname == 'daftari_la_kazi' %}{{ fa.daftari_la_kazi }}{% elif fname == 'mpango_wa_kazi' %}{{ fa.mpango_wa_kazi }}{% elif fname == 'mpango_wa_somo' %}{{ fa.mpango_wa_somo }}{% elif fname == 'utendaji_darasani' %}{{ fa.utendaji_darasani }}{% endif %}">
+              value="{{ cur_val }}">
             <div class="score-max">/ 20</div>
           </div>
         </div>

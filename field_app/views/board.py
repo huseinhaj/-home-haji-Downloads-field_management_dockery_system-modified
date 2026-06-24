@@ -835,12 +835,24 @@ def board_head_teacher(request, school_id):
             d += timedelta(days=1)
     total_working_days = max(1, total_working_days)
 
+    # Finalization status kwa kila mwanafunzi
+    from field_app.models import StudentAssessment as SA
+    fa_map = {
+        fa.student_id: fa
+        for fa in FinalAssessment.objects.filter(student__in=students)
+    }
+    sa_map = {}
+    for sa in SA.objects.filter(student__in=students, school=school):
+        sa_map[sa.student_id] = sa
+
     students_data = []
     for st in students:
         last_log  = latest_logs.get(st.id)
         days_since = (today - last_log).days if last_log else None
         lb_count   = logbook_counts.get(st.id, 0)
         pct = min(100, int(lb_count / total_working_days * 100)) if total_working_days > 0 else 0
+        fa = fa_map.get(st.id)
+        sa = sa_map.get(st.id)
         students_data.append({
             'obj': st,
             'present_today': st.id in today_checkins,
@@ -854,6 +866,11 @@ def board_head_teacher(request, school_id):
             'lp_count': lp_counts.get(st.id, 0),
             'progress_pct': pct,
             'subjects': approved_apps.get(st.id, []),
+            'mkuu_finalized': fa.is_final if fa else False,
+            'assessor_finalized': sa.is_final if sa else False,
+            'both_finalized': (fa and fa.is_final and sa and sa.is_final),
+            'deo_approved': fa.deo_approved if fa else False,
+            'final_assessment': fa,
         })
 
     # DEO Allocation
@@ -967,14 +984,26 @@ def board_final_assessment(request, student_id):
     # Back URL
     back_url = reverse('board_head_teacher', args=[school.id])
 
+    # Angalia hali ya assessor
+    from field_app.models import StudentAssessment as SA
+    sa = SA.objects.filter(student=student, school=school).first()
+
+    # Pakia current values
+    score_fields_with_values = [
+        (fname, label, desc, getattr(fa, fname, 0))
+        for fname, label, desc in SCORE_FIELDS
+    ]
+
     return render(request, 'field_app/final_assessment_form.html', {
         'bm': bm,
         'student': student,
         'school': school,
         'fa': fa,
-        'score_fields': SCORE_FIELDS,
+        'score_fields': score_fields_with_values,
         'back_url': back_url,
         'error': error,
+        'assessor_assessment': sa,
+        'both_finalized': fa.is_final and (sa and sa.is_final),
     })
 
 
@@ -1148,19 +1177,32 @@ def deo_approve_district_certificates(request, district_id):
 
     if request.method == 'POST':
         from django.utils import timezone as tz
-        # Approve all finalized (is_final=True) but not yet deo_approved in this district
-        to_approve = FinalAssessment.objects.filter(
-            student__selected_school__district=district,
+        from field_app.models import StudentAssessment as SA
+        # Idhibiti wanafunzi ambao WOTE WAWILI (mkuu NA assessor) wamefinalize
+        students_in_district = StudentTeacher.objects.filter(
+            selected_school__district=district,
+            approval_status='approved',
+        )
+        approved_count = 0
+        for fa in FinalAssessment.objects.filter(
+            student__in=students_in_district,
             is_final=True,
             deo_approved=False,
-        )
-        count = to_approve.count()
-        to_approve.update(
-            deo_approved=True,
-            deo_approved_at=tz.now(),
-            deo_approved_by=bm,
-        )
-        messages.success(request, f'Vyeti vya wanafunzi {count} vimeidhibitiwa. Wanaweza kupakua sasa.')
+        ).select_related('student'):
+            # Angalia assessor pia amefinalize
+            assessor_done = SA.objects.filter(
+                student=fa.student, is_final=True
+            ).exists()
+            if assessor_done:
+                fa.deo_approved = True
+                fa.deo_approved_at = tz.now()
+                fa.deo_approved_by = bm
+                fa.save(update_fields=['deo_approved', 'deo_approved_at', 'deo_approved_by'])
+                approved_count += 1
+        if approved_count:
+            messages.success(request, f'Vyeti vya wanafunzi {approved_count} vimeidhibitiwa. Wanaweza kupakua sasa.')
+        else:
+            messages.warning(request, 'Hakuna mwanafunzi aliyekidhi masharti (mkuu NA assessor lazima wote wamefinalize).')
     return redirect('board_school_list', district_id=district_id)
 
 

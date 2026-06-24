@@ -636,13 +636,41 @@ class StudentAssessment(models.Model):
     score = models.CharField(max_length=10, blank=True, default='')
     comments = models.TextField(blank=True, default='')
 
+    # Vigezo 5 vya tathmini (sawa na FinalAssessment ya mkuu) — kila kimoja 0–20
+    kuhudhuria        = models.PositiveSmallIntegerField(default=0, help_text="Kuhudhuria (0–20)")
+    daftari_la_kazi   = models.PositiveSmallIntegerField(default=0, help_text="Daftari la Kazi (0–20)")
+    mpango_wa_kazi    = models.PositiveSmallIntegerField(default=0, help_text="Mpango wa Kazi (0–20)")
+    mpango_wa_somo    = models.PositiveSmallIntegerField(default=0, help_text="Mpango wa Somo (0–20)")
+    utendaji_darasani = models.PositiveSmallIntegerField(default=0, help_text="Utendaji Darasani (0–20)")
+
+    # Finalization
+    is_final     = models.BooleanField(default=False, help_text="Assessor amekamilisha tathmini")
+    finalized_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         unique_together = ['assessor', 'student', 'school', 'academic_year']
-    
+
+    @property
+    def jumla(self):
+        return (self.kuhudhuria + self.daftari_la_kazi +
+                self.mpango_wa_kazi + self.mpango_wa_somo + self.utendaji_darasani)
+
+    @property
+    def daraja(self):
+        j = self.jumla
+        if j >= 80: return 'A'
+        if j >= 65: return 'B'
+        if j >= 50: return 'C'
+        return 'F'
+
+    @property
+    def daraja_maana(self):
+        return {'A': 'Bora Sana', 'B': 'Vizuri', 'C': 'Wastani', 'F': 'Haijafaulu'}.get(self.daraja, '')
+
     def __str__(self):
         year = self.academic_year.year if self.academic_year else "No Year"
         return f"{self.assessor} - {self.student} ({year})"
-    
+
     def save(self, *args, **kwargs):
         if not self.academic_year:
             try:
@@ -651,7 +679,6 @@ class StudentAssessment(models.Model):
                     self.academic_year = current_year
             except Exception as e:
                 print(f"⚠️ Error setting academic year: {e}")
-        
         super().save(*args, **kwargs)
 
 # =========================

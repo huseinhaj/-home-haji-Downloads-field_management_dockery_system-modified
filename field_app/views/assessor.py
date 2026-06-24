@@ -559,26 +559,60 @@ def assessor_student_assessment(request, student_id):
         }
     )
 
-    if request.method == 'POST':
-        student_assessment.attendance_score = request.POST.get('attendance_score')
-        student_assessment.participation_score = request.POST.get('participation_score')
-        student_assessment.teaching_skills_score = request.POST.get('teaching_skills_score')
-        student_assessment.lesson_planning_score = request.POST.get('lesson_planning_score')
-        student_assessment.classroom_management_score = request.POST.get('classroom_management_score')
-        student_assessment.overall_score = request.POST.get('overall_score')
-        student_assessment.comments = request.POST.get('comments')
-        student_assessment.is_completed = True
-        student_assessment.completed_date = timezone.now()
-        student_assessment.save()
+    SCORE_FIELDS = [
+        ('kuhudhuria',        'Kuhudhuria',        'Mwanafunzi alihudhuria vizuri darasani na shuleni', 'kuhudhuria'),
+        ('daftari_la_kazi',   'Daftari la Kazi',   'Ubora wa daftari la kazi (logbook)', 'daftari_la_kazi'),
+        ('mpango_wa_kazi',    'Mpango wa Kazi',     'Ubora wa Scheme of Work', 'mpango_wa_kazi'),
+        ('mpango_wa_somo',    'Mpango wa Somo',     'Ubora wa Lesson Plans', 'mpango_wa_somo'),
+        ('utendaji_darasani', 'Utendaji Darasani',  'Ujuzi wa kufundisha darasani', 'utendaji_darasani'),
+    ]
 
-        messages.success(request, f"Assessment for {student.full_name} submitted successfully!")
-        return redirect('assessor_student_detail', school_id=student.selected_school.id)
+    error = None
+    if request.method == 'POST' and not student_assessment.is_final:
+        action = request.POST.get('action', 'save')
+        scores = {}
+        for fname, _, _, _ in SCORE_FIELDS:
+            try:
+                v = int(request.POST.get(fname, 0))
+                if not (0 <= v <= 20):
+                    raise ValueError
+                scores[fname] = v
+            except ValueError:
+                error = f'Alama za "{fname}" lazima ziwe kati ya 0 na 20.'
+                break
+
+        if not error:
+            for fname, v in scores.items():
+                setattr(student_assessment, fname, v)
+            student_assessment.comments = request.POST.get('comments', '').strip()
+            student_assessment.status = 'in_progress'
+            if action == 'finalize':
+                student_assessment.is_final = True
+                student_assessment.finalized_at = timezone.now()
+                student_assessment.status = 'completed'
+            student_assessment.save()
+            if student_assessment.is_final:
+                msg = f'Tathmini ya {student.full_name} imekamilishwa na kufungwa.'
+            else:
+                msg = f'Tathmini ya {student.full_name} imehifadhiwa.'
+            messages.success(request, msg)
+            return redirect('assessor_student_assessment', student_id=student.id)
 
     logbook_entries = LogbookEntry.objects.filter(
         student=student
     ).order_by('-date')[:20]
 
     approved_subjects = student.subjects.all()
+
+    # Angalia kama mkuu pia amefinalize
+    from field_app.models import FinalAssessment
+    fa = FinalAssessment.objects.filter(student=student).first()
+
+    # Pakia current values kwenye score_fields
+    score_fields_with_values = [
+        (fname, label, desc, getattr(student_assessment, fname, 0))
+        for fname, label, desc, _ in SCORE_FIELDS
+    ]
 
     return render(request, 'field_app/assessor_student_assessment.html', {
         'assessor': assessor,
@@ -587,6 +621,10 @@ def assessor_student_assessment(request, student_id):
         'logbook_entries': logbook_entries,
         'approved_subjects': approved_subjects,
         'school_assignment': school_assignment,
+        'score_fields': score_fields_with_values,
+        'final_assessment': fa,
+        'error': error,
+        'both_finalized': student_assessment.is_final and (fa and fa.is_final),
     })
 
 
