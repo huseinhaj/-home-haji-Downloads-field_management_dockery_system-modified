@@ -1371,14 +1371,31 @@ def change_school(request):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @login_required
+def _compute_combined(fa, sa):
+    """Combine mkuu (50%) + assessor (50%) scores. Returns dict with per-criterion and total."""
+    FIELDS = ['kuhudhuria', 'daftari_la_kazi', 'mpango_wa_kazi', 'mpango_wa_somo', 'utendaji_darasani']
+    if fa and sa:
+        combined = {f: (getattr(fa, f) + getattr(sa, f)) / 2 for f in FIELDS}
+    elif fa:
+        combined = {f: float(getattr(fa, f)) for f in FIELDS}
+    else:
+        return None
+    combined['jumla'] = sum(combined[f] for f in FIELDS)
+    j = combined['jumla']
+    combined['daraja'] = 'A' if j >= 80 else 'B' if j >= 65 else 'C' if j >= 50 else 'F'
+    combined['daraja_maana'] = {'A': 'Bora Sana', 'B': 'Vizuri', 'C': 'Wastani', 'F': 'Haijafaulu'}[combined['daraja']]
+    return combined
+
+
 def student_certificate(request):
     """Onesha cheti — preview daima, download baada ya is_final=True."""
-    from field_app.models import BoardMember
+    from field_app.models import BoardMember, StudentAssessment
     student = get_or_create_student_profile(request.user)
     fa = getattr(student, 'final_assessment', None)
+    sa = StudentAssessment.objects.filter(student=student, is_final=True).first()
+    combined = _compute_combined(fa, sa)
     completed = fa is not None and fa.certificate_ready
 
-    # Auto-lookup DEO wa wilaya ya shule
     deo = None
     if student.selected_school and student.selected_school.district:
         deo = BoardMember.objects.filter(
@@ -1390,6 +1407,8 @@ def student_certificate(request):
     return render(request, 'field_app/student_certificate.html', {
         'student': student,
         'fa': fa,
+        'sa': sa,
+        'combined': combined,
         'completed': completed,
         'deo': deo,
     })
@@ -1405,8 +1424,10 @@ def student_certificate_pdf(request):
     from reportlab.lib import colors
     from reportlab.lib.utils import simpleSplit
 
+    from field_app.models import StudentAssessment
     student = get_or_create_student_profile(request.user)
     fa = getattr(student, 'final_assessment', None)
+    sa = StudentAssessment.objects.filter(student=student, is_final=True).first()
     # TEMPORARY PREVIEW — any logged-in user can download with sample data
     # TODO: restore gate after review: if not fa or not fa.certificate_ready: return Forbidden
     if fa is None:
@@ -1421,6 +1442,12 @@ def student_certificate_pdf(request):
             finalized_at=_dt.now(), updated_at=_dt.now(),
             certificate_ready=True,
         )
+    combined = _compute_combined(fa, sa) or {
+        'kuhudhuria': fa.kuhudhuria, 'daftari_la_kazi': fa.daftari_la_kazi,
+        'mpango_wa_kazi': fa.mpango_wa_kazi, 'mpango_wa_somo': fa.mpango_wa_somo,
+        'utendaji_darasani': fa.utendaji_darasani,
+        'jumla': fa.jumla, 'daraja': fa.daraja,
+    }
 
     # ── Colors ────────────────────────────────────────────────────────────────
     NAVY  = colors.HexColor('#0A2B5E')
@@ -1459,7 +1486,10 @@ def student_certificate_pdf(request):
     date_str        = cert_date.strftime('%d %B %Y') if cert_date else dt_date.today().strftime('%d %B %Y')
     supervisor_name = fa.assessed_by.full_name if fa.assessed_by else '—'
     deo_name        = deo.full_name if deo else '—'
-    grade           = fa.daraja or 'B'
+    grade           = combined['daraja']
+
+    def _fmt(v):
+        return str(int(v)) if v == int(v) else f"{v:.1f}"
 
     # ── Serial number (security ID unique per student) ───────────────────────
     cert_date2 = fa.finalized_at or fa.updated_at
@@ -1615,15 +1645,15 @@ def student_certificate_pdf(request):
 
     # ── SCORE TABLE ───────────────────────────────────────────────────────────
     tbl_data = [
-        ('ASSESSMENT CRITERION',  'MARKS', 'MAX'),
-        ('Attendance',            str(fa.kuhudhuria),        '20'),
-        ('Work Diary (Logbook)',  str(fa.daftari_la_kazi),   '20'),
-        ('Scheme of Work',        str(fa.mpango_wa_kazi),    '20'),
-        ('Lesson Planning',       str(fa.mpango_wa_somo),    '20'),
-        ('Classroom Performance', str(fa.utendaji_darasani), '20'),
-        ('TOTAL',                 str(fa.jumla),             '100'),
+        ('ASSESSMENT CRITERION',  'MSIMAMIZI', 'MKUU', 'WASTANI', 'MAX'),
+        ('Attendance',            _fmt(sa.kuhudhuria if sa else combined['kuhudhuria']),        str(fa.kuhudhuria),        _fmt(combined['kuhudhuria']),        '20'),
+        ('Work Diary (Logbook)',  _fmt(sa.daftari_la_kazi if sa else combined['daftari_la_kazi']),   str(fa.daftari_la_kazi),   _fmt(combined['daftari_la_kazi']),   '20'),
+        ('Scheme of Work',        _fmt(sa.mpango_wa_kazi if sa else combined['mpango_wa_kazi']),    str(fa.mpango_wa_kazi),    _fmt(combined['mpango_wa_kazi']),    '20'),
+        ('Lesson Planning',       _fmt(sa.mpango_wa_somo if sa else combined['mpango_wa_somo']),    str(fa.mpango_wa_somo),    _fmt(combined['mpango_wa_somo']),    '20'),
+        ('Classroom Performance', _fmt(sa.utendaji_darasani if sa else combined['utendaji_darasani']), str(fa.utendaji_darasani), _fmt(combined['utendaji_darasani']), '20'),
+        ('TOTAL',                 _fmt(sa.jumla if sa else combined['jumla']),             str(fa.jumla),             _fmt(combined['jumla']),             '100'),
     ]
-    COL_W   = [W - 2*LM - 6*cm, 3*cm, 3*cm]
+    COL_W   = [W - 2*LM - 10*cm, 2*cm, 2*cm, 2.5*cm, 2*cm]
     ROW_H   = 25
     tbl_top = y
 
@@ -1657,7 +1687,7 @@ def student_certificate_pdf(request):
     c.line(LM, y+6, RM, y+6);  y -= 10
 
     c.setFont('Helvetica-Bold', 12); c.setFillColor(GOLD)
-    c.drawCentredString(CX, y, f"OVERALL GRADE: {GRADE_LABEL.get(grade,'')}  ({fa.jumla}/100)");  y -= 14
+    c.drawCentredString(CX, y, f"OVERALL GRADE: {GRADE_LABEL.get(grade,'')}  ({_fmt(combined['jumla'])}/100)");  y -= 14
 
     c.setFont('Helvetica-Bold', 48); c.setFillColor(GRADE_COL.get(grade, NAVY))
     c.drawCentredString(CX, y, grade);  y -= 46

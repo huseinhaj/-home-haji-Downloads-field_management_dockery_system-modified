@@ -88,7 +88,7 @@
   .cert-statement { font-size: 10.5px; color: #444; line-height: 1.6; max-width: 580px; margin: 0 auto 16px; }
 
   /* Score table */
-  .score-table { width: 100%; border-collapse: collapse; margin: 0 auto 16px; max-width: 520px; font-size: 11px; }
+  .score-table { width: 100%; border-collapse: collapse; margin: 0 auto 16px; max-width: 640px; font-size: 11px; }
   .score-table thead tr { background: #0A2B5E; color: #fff; }
   .score-table thead th { padding: 8px 12px; font-weight: 600; }
   .score-table thead th:first-child { text-align: left; }
@@ -199,37 +199,42 @@
       </div>
 
       <!-- Scores -->
-      {% if fa %}
+      {% if combined %}
+      <p style="text-align:center;font-size:9px;color:#666;margin-bottom:6px;">
+        Alama ni wastani wa tathmini ya Msimamizi (50%) na Mkuu wa Shule (50%)
+      </p>
       <table class="score-table">
         <thead>
           <tr>
-            <th>Assessment Criterion</th>
-            <th>Marks Awarded</th>
-            <th>Maximum</th>
+            <th style="text-align:left;">Assessment Criterion</th>
+            <th>Msimamizi</th>
+            <th>Mkuu wa Shule</th>
+            <th>Wastani (/20)</th>
+            <th>Max</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td>Attendance</td><td>{{ fa.kuhudhuria }}</td><td>20</td></tr>
-          <tr><td>Work Diary</td><td>{{ fa.daftari_la_kazi }}</td><td>20</td></tr>
-          <tr><td>Scheme of Work</td><td>{{ fa.mpango_wa_kazi }}</td><td>20</td></tr>
-          <tr><td>Lesson Planning</td><td>{{ fa.mpango_wa_somo }}</td><td>20</td></tr>
-          <tr><td>Classroom Performance</td><td>{{ fa.utendaji_darasani }}</td><td>20</td></tr>
+          <tr><td>Attendance</td><td>{% if sa %}{{ sa.kuhudhuria }}{% else %}—{% endif %}</td><td>{{ fa.kuhudhuria }}</td><td><strong>{{ combined.kuhudhuria }}</strong></td><td>20</td></tr>
+          <tr><td>Work Diary (Logbook)</td><td>{% if sa %}{{ sa.daftari_la_kazi }}{% else %}—{% endif %}</td><td>{{ fa.daftari_la_kazi }}</td><td><strong>{{ combined.daftari_la_kazi }}</strong></td><td>20</td></tr>
+          <tr><td>Scheme of Work</td><td>{% if sa %}{{ sa.mpango_wa_kazi }}{% else %}—{% endif %}</td><td>{{ fa.mpango_wa_kazi }}</td><td><strong>{{ combined.mpango_wa_kazi }}</strong></td><td>20</td></tr>
+          <tr><td>Lesson Planning</td><td>{% if sa %}{{ sa.mpango_wa_somo }}{% else %}—{% endif %}</td><td>{{ fa.mpango_wa_somo }}</td><td><strong>{{ combined.mpango_wa_somo }}</strong></td><td>20</td></tr>
+          <tr><td>Classroom Performance</td><td>{% if sa %}{{ sa.utendaji_darasani }}{% else %}—{% endif %}</td><td>{{ fa.utendaji_darasani }}</td><td><strong>{{ combined.utendaji_darasani }}</strong></td><td>20</td></tr>
         </tbody>
         <tfoot>
-          <tr><td>TOTAL</td><td>{{ fa.jumla }}</td><td>100</td></tr>
+          <tr><td>TOTAL</td><td>{% if sa %}{{ sa.jumla }}{% else %}—{% endif %}</td><td>{{ fa.jumla }}</td><td><strong>{{ combined.jumla }}</strong></td><td>100</td></tr>
         </tfoot>
       </table>
 
       <!-- Grade -->
       <div class="cert-grade-wrap">
-        <div class="cert-grade-circle grade-{{ fa.daraja }}">{{ fa.daraja }}</div><br>
+        <div class="cert-grade-circle grade-{{ combined.daraja }}">{{ combined.daraja }}</div><br>
         <div class="cert-grade-text">
           OVERALL GRADE:
-          {% if fa.daraja == 'A' %}EXCELLENT
-          {% elif fa.daraja == 'B' %}GOOD
-          {% elif fa.daraja == 'C' %}AVERAGE
+          {% if combined.daraja == 'A' %}EXCELLENT
+          {% elif combined.daraja == 'B' %}GOOD
+          {% elif combined.daraja == 'C' %}AVERAGE
           {% else %}FAIL{% endif %}
-          &nbsp;({{ fa.jumla }}/100)
+          &nbsp;({{ combined.jumla }}/100)
         </div>
       </div>
 
