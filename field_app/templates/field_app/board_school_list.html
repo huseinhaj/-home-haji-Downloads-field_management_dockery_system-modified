@@ -4,17 +4,23 @@
 {% block title %}{% if LANG == 'sw' %}{{ district.name }} — Shule{% else %}{{ district.name }} — Schools{% endif %}{% endblock %}
 
 {% block mobile_nav_extra %}
+{% if bm.role != 'deo' %}
 <a href="{% url 'board_district_list' district.region.id %}"><i class="fas fa-building"></i> {{ district.region.name }}</a>
+{% endif %}
 <a href="{% url 'board_school_list' district.id %}"><i class="fas fa-school"></i> {{ district.name }}</a>
 {% endblock %}
 
 {% block breadcrumb %}
 <div class="breadcrumb">
+  {% if bm.role == 'deo' %}
+  <a href="{% url 'board_school_list' district.id %}"><i class="fas fa-home"></i> {{ district.name }}</a>
+  {% else %}
   <a href="{% url 'board_home' %}"><i class="fas fa-home"></i> {% if LANG == 'sw' %}Mikoa{% else %}Regions{% endif %}</a>
   <span class="bc-sep"><i class="fas fa-chevron-right"></i></span>
   <a href="{% url 'board_district_list' district.region.id %}">{{ district.region.name }}</a>
   <span class="bc-sep"><i class="fas fa-chevron-right"></i></span>
   <span class="bc-cur">{{ district.name }}</span>
+  {% endif %}
 </div>
 {% endblock %}
 

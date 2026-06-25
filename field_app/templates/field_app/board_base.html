@@ -650,7 +650,11 @@ textarea { resize: vertical; min-height: 88px; }
       <div class="mm-user-role">{{ bm.get_role_display }}</div>
     </div>
     <nav class="mm-nav">
+      {% if bm.role == 'deo' and bm.district %}
+      <a href="{% url 'board_school_list' bm.district.id %}"><i class="fas fa-home"></i> {{ bm.district.name }}</a>
+      {% else %}
       <a href="{% url 'board_home' %}"><i class="fas fa-home"></i> {% if LANG == 'sw' %}Mikoa{% else %}Regions{% endif %}</a>
+      {% endif %}
       {% block mobile_nav_extra %}{% endblock %}
     </nav>
     <div class="mm-lang">
