@@ -416,6 +416,8 @@ def api_get_schools(request):
             'occupancy_percentage': occupancy,
             'is_pinned': is_pinned,
             'is_selectable': is_selectable,
+            'special_needs_education': school.special_needs_education,
+            'is_inclusive': school.is_inclusive,
         })
 
     return JsonResponse({
@@ -497,6 +499,8 @@ def api_filter_schools(request):
             'occupancy_percentage': occupancy,
             'is_pinned': is_pinned,
             'is_selectable': is_selectable,
+            'special_needs_education': school.special_needs_education,
+            'is_inclusive': school.is_inclusive,
         })
 
     return JsonResponse({

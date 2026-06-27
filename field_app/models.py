@@ -200,6 +200,15 @@ class School(models.Model):
     head_name = models.CharField(max_length=255, blank=True, default='')
     head_phone = models.CharField(max_length=20, blank=True, default='')
 
+    special_needs_education = models.BooleanField(
+        default=False,
+        help_text="Shule hii inatoa mafunzo ya elimu maalumu (viziwi, wasioona, n.k.)"
+    )
+    is_inclusive = models.BooleanField(
+        default=True,
+        help_text="Shule hii inafuata mtaala wa elimu jumuishi (Tanzania 2021–2026)"
+    )
+
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     address = models.TextField(blank=True, null=True)

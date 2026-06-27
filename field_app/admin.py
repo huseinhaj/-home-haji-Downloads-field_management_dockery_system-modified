@@ -416,10 +416,11 @@ class DistrictAdmin(admin.ModelAdmin):
 # SCHOOL ADMIN
 # =========================
 class SchoolAdmin(admin.ModelAdmin):
-    list_display = ['name', 'school_code', 'district', 'level', 'ownership', 'head_name', 'head_phone']
-    list_filter = ['level', 'ownership', 'district__region']
+    list_display = ['name', 'school_code', 'district', 'level', 'ownership',
+                    'special_needs_education', 'is_inclusive', 'head_name', 'head_phone']
+    list_filter = ['level', 'ownership', 'special_needs_education', 'is_inclusive', 'district__region']
     search_fields = ['name', 'school_code', 'head_name', 'head_phone']
-    list_editable = ['school_code', 'ownership', 'head_name', 'head_phone']
+    list_editable = ['school_code', 'ownership', 'special_needs_education', 'is_inclusive', 'head_name', 'head_phone']
     list_select_related = ['district__region']
     list_per_page = 50
     show_full_result_count = False

@@ -309,6 +309,7 @@ def select_school(request, district_id):
     search_query = request.GET.get('q', '')
     selected_level = request.GET.get('level', 'Secondary')
     selected_ownership = request.GET.get('ownership', '')
+    selected_special_needs = request.GET.get('special_needs', '')
 
     # Get schools
     schools_qs = School.objects.filter(district=district, level=selected_level)
@@ -316,6 +317,8 @@ def select_school(request, district_id):
         schools_qs = schools_qs.filter(name__icontains=search_query)
     if selected_ownership:
         schools_qs = schools_qs.filter(ownership=selected_ownership)
+    if selected_special_needs == '1':
+        schools_qs = schools_qs.filter(special_needs_education=True)
 
     # Fetch district allocation and per-school quotas for display
     da_qs = DistrictAllocation.objects.filter(district=district)
@@ -504,6 +507,7 @@ def select_school(request, district_id):
         'query': search_query,
         'selected_level': selected_level,
         'selected_ownership': selected_ownership,
+        'selected_special_needs': selected_special_needs,
         'total_schools': total_schools,
         'pinned_schools_count': pinned_schools_count,
         'available_schools_count': available_schools_count,
@@ -530,11 +534,15 @@ def search_schools_ajax(request, district_id):
             academic_year=current_year, is_pinned=True
         ).values_list('school_id', flat=True))
 
+    special_needs = request.GET.get('special_needs', '')
+
     qs = School.objects.filter(district=district, level=level)
     if q:
         qs = qs.filter(name__icontains=q)
     if ownership:
         qs = qs.filter(ownership=ownership)
+    if special_needs == '1':
+        qs = qs.filter(special_needs_education=True)
 
     da_qs = DistrictAllocation.objects.filter(district=district)
     if current_year:
@@ -575,6 +583,8 @@ def search_schools_ajax(request, district_id):
             'deo_quota':    sa.quota    if sa else None,
             'deo_filled':   sa.filled   if sa else None,
             'deo_remaining':sa.remaining if sa else None,
+            'special_needs_education': school.special_needs_education,
+            'is_inclusive': school.is_inclusive,
         })
 
     return JsonResponse({'schools': results, 'total': len(results)})

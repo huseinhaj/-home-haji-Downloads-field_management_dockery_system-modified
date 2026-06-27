@@ -47,7 +47,7 @@ python manage.py loaddata education_levels.json || true
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
-# Load schools + link subjects in background
+# Load schools + link subjects + mark special needs in background
 echo "Loading schools in background..."
 (python manage.py loaddata schools.json || true; \
  python manage.py loaddata missing_schools.json || true; \
@@ -55,7 +55,8 @@ echo "Loading schools in background..."
  python manage.py loaddata mainland_private_schools.json || true; \
  python manage.py setup_school_subjects || true; \
  python manage.py shell -c "from field_app.models import School; School.objects.update(current_students=0); print('Reset current_students to 0')" || true; \
- python manage.py import_schools_pdf --overwrite || true) &
+ python manage.py import_schools_pdf --overwrite || true; \
+ python manage.py mark_special_needs_schools || true) &
 
 # Trigger initial HESLB knowledge fetch in background (first boot only)
 echo "Scheduling initial HESLB knowledge fetch..."
