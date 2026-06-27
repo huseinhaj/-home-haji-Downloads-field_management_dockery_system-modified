@@ -9,41 +9,29 @@ Matumizi:
     python manage.py mark_special_needs_schools --dry-run
 """
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 from field_app.models import School
 
 
-# Maneno yanayoonyesha shule inatoa elimu maalumu
+# Maneno yanayoonyesha WAZI kwamba shule inatoa elimu maalumu
+# (lazima yawe kwenye jina la shule yenyewe)
 SPECIAL_NEEDS_KEYWORDS = [
     # Kiswahili
-    'maalumu', 'viziwi', 'wasioona', 'viwete', 'wasiosikia',
-    'albino', 'ulemavu', 'walemavu', 'nguvu maalum',
+    'viziwi', 'wasioona', 'walemavu', 'viwete', 'wasiosikia',
+    'maalumu', 'albino', 'ulemavu',
     # Kiingereza
-    'special', 'deaf', 'blind', 'disability', 'disabled',
-    'hearing', 'visual impair', 'inclusive unit', 'sped',
-    'special need', 'special education',
+    'blind', 'deaf', 'disabled', 'disability',
+    'special need', 'special education', 'sped',
+    'hearing impair', 'visual impair',
 ]
 
-# Shule mahususi Tanzania zinazojulikana kutoa elimu maalumu
-# (jina, wilaya/mkoa - kwa utambulisho wa ziada)
-KNOWN_SPECIAL_SCHOOLS = [
-    # Dar es Salaam
-    'Buguruni',
-    'Furaha',
-    # Dodoma
-    'Kisasa',
-    # Arusha
-    'Ilboru Special',
-    # Tabora
-    'Buhangija',
-    'Tabora Deaf',
-    # Tanga / Lushoto
-    'Irente',
-    # Mwanza
-    'Mitindo',
-    # Morogoro
-    'Mazimbu',
-    # Pemba / Zanzibar
-    'Fuoni Special',
+# Shule mahususi zinazojulikana Tanzania — zinatambulishwa kwa JINA + WILAYA
+# ili kuepuka false positives (e.g. "Furaha" ni jina la kawaida)
+KNOWN_SPECIAL_SCHOOLS_BY_DISTRICT = [
+    # (jina_icontains, district_name_icontains)
+    ('Irente',   'Lushoto'),    # Irente School for the Blind Girls — Tanga
+    ('Mitindo',  'Misungwi'),   # Mitindo Primary (Deaf) — Mwanza
+    ('Buhangija','Shinyanga'),  # Buhangija Special Needs Centre — Shinyanga
 ]
 
 
@@ -61,39 +49,39 @@ class Command(BaseCommand):
         verb = 'DRY-RUN' if dry_run else 'KUTEKELEZA'
         self.stdout.write(f'\n=== {verb}: Kuweka alama shule za elimu maalumu ===\n')
 
-        # Hatua 1: Shule zote → is_inclusive = True (mtaala mpya Tanzania)
-        all_schools = School.objects.all()
-        total = all_schools.count()
+        # Hatua 1: Shule zote → is_inclusive = True (mtaala mpya Tanzania 2021–2026)
+        total = School.objects.count()
         self.stdout.write(f'Jumla ya shule: {total}')
 
         if not dry_run:
             updated = School.objects.filter(is_inclusive=False).update(is_inclusive=True)
             self.stdout.write(self.style.SUCCESS(
-                f'✓ Shule {updated} zimewekwa is_inclusive=True (zilizobaki tayari zilikuwa True)'
+                f'✓ Shule {updated} zimewekwa is_inclusive=True'
             ))
         else:
-            not_inclusive = School.objects.filter(is_inclusive=False).count()
-            self.stdout.write(f'[DRY] Shule {not_inclusive} zingehitaji is_inclusive=True')
+            self.stdout.write(f'[DRY] Shule {School.objects.filter(is_inclusive=False).count()} zingehitaji is_inclusive=True')
 
-        # Hatua 2: Tafuta shule za elimu maalumu kwa maneno maalum
-        from django.db.models import Q
+        # Hatua 2: Keyword matching — maneno dhahiri kwenye jina la shule
         keyword_q = Q()
         for kw in SPECIAL_NEEDS_KEYWORDS:
             keyword_q |= Q(name__icontains=kw)
 
-        name_q = Q()
-        for name in KNOWN_SPECIAL_SCHOOLS:
-            name_q |= Q(name__icontains=name)
+        # Hatua 3: District-aware matching — shule zinazojulikana bila keyword
+        district_q = Q()
+        for school_name, district_name in KNOWN_SPECIAL_SCHOOLS_BY_DISTRICT:
+            district_q |= Q(
+                name__icontains=school_name,
+                district__name__icontains=district_name
+            )
 
-        combined_q = keyword_q | name_q
-        sn_schools = School.objects.filter(combined_q)
+        sn_schools = School.objects.filter(keyword_q | district_q).select_related('district__region')
         sn_count = sn_schools.count()
 
-        self.stdout.write(f'\nShule zinazofanana na vigezo vya elimu maalumu: {sn_count}')
-        for s in sn_schools.select_related('district__region').order_by('district__region__name', 'name'):
-            flag = '' if s.special_needs_education else '[MPYA]'
+        self.stdout.write(f'\nShule za elimu maalumu zilizopatikana: {sn_count}')
+        for s in sn_schools.order_by('district__region__name', 'name'):
+            tag = '' if s.special_needs_education else '[MPYA]'
             self.stdout.write(
-                f'  {flag} {s.name} | {s.level} | {s.district.name} | {s.district.region.name}'
+                f'  {tag} {s.name} | {s.level} | {s.district.name} | {s.district.region.name}'
             )
 
         if not dry_run and sn_count > 0:
