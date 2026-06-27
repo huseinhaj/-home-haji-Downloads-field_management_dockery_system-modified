@@ -88,10 +88,10 @@ class Command(BaseCommand):
             self.stdout.write(f'  {tag} {s.name} | {s.level} | {s.district.name} | {s.district.region.name}')
 
         if not dry_run and sn_count > 0:
-            updated = sn_qs.update(special_needs_education=True)
-            self.stdout.write(self.style.SUCCESS(f'\n✓ special_needs_education=True kwa shule {updated}'))
+            updated = sn_qs.update(special_needs_education=True, is_inclusive=False)
+            self.stdout.write(self.style.SUCCESS(f'\n✓ special_needs_education=True, is_inclusive=False kwa shule {updated}'))
         elif dry_run:
-            self.stdout.write(f'\n[DRY] {sn_count} zingehitaji special_needs_education=True')
+            self.stdout.write(f'\n[DRY] {sn_count} zingehitaji special_needs_education=True, is_inclusive=False')
 
         # ── Hatua 3: Ongeza shule mpya kutoka CSV ──────────────────────────
         self.stdout.write('\nKuongeza shule mpya kutoka CSV:')
@@ -104,7 +104,7 @@ class Command(BaseCommand):
                 # Weka alama ya special needs kama haijawekwa
                 if not dry_run:
                     School.objects.filter(name__iexact=school_name).update(
-                        special_needs_education=True, is_inclusive=True
+                        special_needs_education=True, is_inclusive=False
                     )
                 continue
 
@@ -122,7 +122,7 @@ class Command(BaseCommand):
                     ownership=ownership,
                     capacity=10,
                     special_needs_education=True,
-                    is_inclusive=True,
+                    is_inclusive=False,
                 )
                 self.stdout.write(self.style.SUCCESS(
                     f'  [IMEONGEZWA] {school.name} | {level} | {district.name} | {district.region.name}'

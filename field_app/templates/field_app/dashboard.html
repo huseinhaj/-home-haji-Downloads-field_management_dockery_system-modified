@@ -743,8 +743,7 @@ body {
                             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;">
                               {% if student.selected_school.special_needs_education %}
                               <span style="background:rgba(147,51,234,0.12);color:#6d28d9;border:1px solid rgba(147,51,234,0.3);border-radius:12px;padding:2px 8px;font-size:10.5px;font-weight:700;">♿ {% if LANG == 'sw' %}Elimu Maalumu{% else %}Special Needs{% endif %}</span>
-                              {% endif %}
-                              {% if student.selected_school.is_inclusive %}
+                              {% elif student.selected_school.is_inclusive %}
                               <span style="background:rgba(6,182,212,0.1);color:#0891b2;border:1px solid rgba(6,182,212,0.3);border-radius:12px;padding:2px 8px;font-size:10.5px;font-weight:700;">🤝 {% if LANG == 'sw' %}Elimu Jumuishi{% else %}Inclusive{% endif %}</span>
                               {% endif %}
                             </div>

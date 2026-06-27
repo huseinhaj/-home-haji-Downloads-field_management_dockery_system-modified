@@ -41,26 +41,25 @@ def seed_special_needs(apps, schema_editor):
     # 1. Shule zote → is_inclusive = True
     School.objects.using(db).filter(is_inclusive=False).update(is_inclusive=True)
 
-    # 2. Keyword matching
+    # 2. Keyword matching — special needs schools ziwe is_inclusive=False
     from django.db.models import Q
     kw_q = Q()
     for kw in SPECIAL_NEEDS_KEYWORDS:
         kw_q |= Q(name__icontains=kw)
-    School.objects.using(db).filter(kw_q).update(special_needs_education=True, is_inclusive=True)
+    School.objects.using(db).filter(kw_q).update(special_needs_education=True, is_inclusive=False)
 
-    # 3. District-aware matching
+    # 3. District-aware matching — pia is_inclusive=False
     for sname, dname in KNOWN_BY_DISTRICT:
         School.objects.using(db).filter(
             name__icontains=sname,
             district__name__icontains=dname
-        ).update(special_needs_education=True, is_inclusive=True)
+        ).update(special_needs_education=True, is_inclusive=False)
 
     # 4. Ongeza shule mpya za CSV (kama hazijapo)
     for school_name, district_kw, level, ownership in CSV_NEW_SCHOOLS:
         if School.objects.using(db).filter(name__iexact=school_name).exists():
-            # Weka alama tu
             School.objects.using(db).filter(name__iexact=school_name).update(
-                special_needs_education=True, is_inclusive=True
+                special_needs_education=True, is_inclusive=False
             )
             continue
 
@@ -78,7 +77,7 @@ def seed_special_needs(apps, schema_editor):
             capacity=10,
             current_students=0,
             special_needs_education=True,
-            is_inclusive=True,
+            is_inclusive=False,
         )
 
 

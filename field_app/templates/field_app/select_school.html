@@ -165,8 +165,7 @@
                         <span class="badge" style="background:rgba(147,51,234,0.85);" title="{% if LANG == 'sw' %}Shule hii inatoa elimu maalumu{% else %}This school offers special needs education{% endif %}">
                             ♿ {% if LANG == 'sw' %}Elimu Maalumu{% else %}Special Needs{% endif %}
                         </span>
-                        {% endif %}
-                        {% if school.is_inclusive %}
+                        {% elif school.is_inclusive %}
                         <span class="badge" style="background:rgba(6,182,212,0.75);" title="{% if LANG == 'sw' %}Elimu Jumuishi (Mtaala Mpya Tanzania){% else %}Inclusive Education (Tanzania New Curriculum){% endif %}">
                             🤝 {% if LANG == 'sw' %}Jumuishi{% else %}Inclusive{% endif %}
                         </span>
@@ -347,11 +346,11 @@ function renderSchools(schools) {
 
         const snBadge = s.special_needs_education
             ? `<span class="badge" style="background:rgba(147,51,234,0.85);" title="${LANG==='sw'?'Shule hii inatoa elimu maalumu':'This school offers special needs education'}">♿ ${LANG==='sw'?'Elimu Maalumu':'Special Needs'}</span>`
-            : '';
+            : (s.is_inclusive
+                ? `<span class="badge" style="background:rgba(6,182,212,0.75);" title="${LANG==='sw'?'Elimu Jumuishi (Mtaala Mpya Tanzania)':'Inclusive Education (Tanzania New Curriculum)'}">🤝 ${LANG==='sw'?'Jumuishi':'Inclusive'}</span>`
+                : '');
 
-        const inclBadge = s.is_inclusive
-            ? `<span class="badge" style="background:rgba(6,182,212,0.75);" title="${LANG==='sw'?'Elimu Jumuishi (Mtaala Mpya Tanzania)':'Inclusive Education (Tanzania New Curriculum'}">🤝 ${LANG==='sw'?'Jumuishi':'Inclusive'}</span>`
-            : '';
+        const inclBadge = '';
 
         let quotaHtml = '';
         if (s.deo_quota) {
