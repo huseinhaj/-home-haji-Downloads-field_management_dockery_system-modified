@@ -22,16 +22,19 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '.railway.app',  # Inaruhusu subdomain zote za railway.app
-    '.up.railway.app',  # Alternative railway domain
+    '.railway.app',
+    '.up.railway.app',
     'home-haji-downloads-fieldmanagementdockerysy-production.up.railway.app',
+    'internshipmanagementsystem.online',
+    'www.internshipmanagementsystem.online',
 ]
 
-# CSRF Trusted Origins - Muhimu kwa Railway!
 CSRF_TRUSTED_ORIGINS = [
     'https://*.railway.app',
     'https://*.up.railway.app',
     'https://home-haji-downloads-fieldmanagementdockerysy-production.up.railway.app',
+    'https://internshipmanagementsystem.online',
+    'https://www.internshipmanagementsystem.online',
     'http://localhost',
     'http://localhost:8000',
     'http://127.0.0.1',
