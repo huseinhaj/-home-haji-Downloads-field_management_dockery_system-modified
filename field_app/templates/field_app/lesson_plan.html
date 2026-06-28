@@ -623,15 +623,16 @@
                             </ul>
                         </div>
 
-                        <!-- Lesson Development -->
+                        <!-- Lesson Development — IDDR Model -->
                         <div class="mb-4">
-                            <h6 class="fw-bold" style="color: var(--bold);">{% if LANG == "sw" %}MAENDELEO YA SOMO{% else %}LESSON DEVELOPMENT{% endif %}</h6>
+                            <h6 class="fw-bold" style="color: var(--bold);">{% if LANG == "sw" %}MAENDELEO YA SOMO (Mfano wa IDDR){% else %}LESSON DEVELOPMENT (IDDR Model){% endif %}</h6>
                             <div class="lesson-development-table">
                                 <table class="table table-bordered">
                                     <thead>
                                         <tr>
                                             <th>{% if LANG == "sw" %}Muda{% else %}Time{% endif %}</th>
-                                            <th>{% if LANG == "sw" %}Hatua{% else %}Stage{% endif %}</th>
+                                            <th>{% if LANG == "sw" %}Hatua (IDDR){% else %}Stage (IDDR){% endif %}</th>
+                                            <th>{% if LANG == "sw" %}Mbinu{% else %}Methods{% endif %}</th>
                                             <th>{% if LANG == "sw" %}Shughuli za Mwalimu{% else %}Teacher Activities{% endif %}</th>
                                             <th>{% if LANG == "sw" %}Shughuli za Mwanafunzi{% else %}Student Activities{% endif %}</th>
                                             <th>{% if LANG == "sw" %}Vigezo vya Tathmini{% else %}Assessment Criteria{% endif %}</th>
@@ -640,8 +641,9 @@
                                     <tbody>
                                         ${(lesson.lesson_development || []).map(step => `
                                             <tr>
-                                                <td>${step.time || ''}</td>
-                                                <td>${step.stage || ''}</td>
+                                                <td style="white-space:nowrap;">${step.time || ''}</td>
+                                                <td><strong>${step.stage || ''}</strong></td>
+                                                <td>${step.methods || ''}</td>
                                                 <td>${step.teacher_activities || ''}</td>
                                                 <td>${step.student_activities || ''}</td>
                                                 <td>${step.assessment_criteria || ''}</td>
@@ -652,10 +654,14 @@
                             </div>
                         </div>
 
-                        <!-- Remarks -->
+                        <!-- Remarks — Strength / Weakness / Way Forward -->
                         <div class="mb-3">
                             <h6 class="fw-bold" style="color: var(--bold);">{% if LANG == "sw" %}MAONI{% else %}REMARKS{% endif %}</h6>
-                            <p>${lesson.remarks || '{% if LANG == "sw" %}Wahimize wanafunzi kushiriki{% else %}Encourage student participation{% endif %}'}</p>
+                            ${typeof lesson.remarks === 'object' && lesson.remarks !== null ? `
+                                <p><strong>{% if LANG == "sw" %}1. Nguvu:{% else %}1. Strength:{% endif %}</strong> ${lesson.remarks.strength || '—'}</p>
+                                <p><strong>{% if LANG == "sw" %}2. Udhaifu:{% else %}2. Weakness:{% endif %}</strong> ${lesson.remarks.weakness || '—'}</p>
+                                <p><strong>{% if LANG == "sw" %}3. Hatua ya Mbele:{% else %}3. Way Forward:{% endif %}</strong> ${lesson.remarks.way_forward || '—'}</p>
+                            ` : `<p>${lesson.remarks || ''}</p>`}
                         </div>
 
                         <div class="text-muted small mt-3 pt-3 border-top">

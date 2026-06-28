@@ -102,11 +102,11 @@ def ajax_generate_scheme(request):
                     breaks_text += f"- {b.get('name', 'Break')}: {b.get('start', '')} to {b.get('end', '')}\n"
 
             prompt = f"""
-You are an AI assistant for Tanzanian teachers. Generate a complete Scheme of Work following EXACTLY the KitabuSmart format.
+You are an AI assistant for Tanzanian teachers. Generate a complete Scheme of Work following EXACTLY the SEQUIP/TIE Tanzania revised format (2023).
 
 Input details:
 - Education Level: {education_level}
-- Class: {class_name}
+- Class/Form: {class_name}
 - Subject: {subject}
 - Term: {term} {year}
 - Syllabus: {syllabus}
@@ -118,21 +118,23 @@ Input details:
 - School: {school_name}
 - Reference Source: {reference_source}
 {breaks_text}
-The output MUST be a JSON list of objects. Each object must have exactly these 12 keys (column names):
-"Main Competence", "Specific Competence", "Learning Activities", "Specific Learning Activities", "Month", "Week", "Periods", "Reference", "Teaching & Learning Methods", "Teaching & Learning Resources", "Assessment Tools", "Remarks"
+The output MUST be a JSON list of objects. Each object must have exactly these 12 keys:
+"Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
 
 Requirements:
 1. Distribute content across {total_weeks} weeks, respecting any breaks (skip weeks that fall on breaks).
 2. For each week, assign appropriate Month (e.g., MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER).
 3. "Week" column should be like "1st", "2nd", "3rd", etc.
-4. "Periods" should be {periods_per_week} for normal weeks.
-5. "Reference" should include {reference_source} with page numbers (e.g., "ENGLISH_iv-vii.pdf, page 10-15").
-6. "Main Competence" should be numbered like "1.0 Demonstrate mastery of BASIC MATHEMATICS fundamental principles".
-7. Content must be realistic for {education_level} {class_name} {subject} in Tanzania.
-8. After the last week, add a row with remarks about examination preparation if needed.
-9. Return ONLY valid JSON, no extra text.
+4. "Number of Periods" should be {periods_per_week} for normal weeks.
+5. "Specific Learning Activities" are obtained by DECONSTRUCTING the Main Learning Activity into smaller measurable steps (easy to difficult).
+6. "References" must follow APA style version 7: Author, Year, Title, Publisher. E.g. "Ministry of Education (2023). {subject} Syllabus Form I-IV. TIE, Dar es Salaam."
+7. "Main Competence" should be numbered like "1.0 Demonstrate mastery of {subject} fundamental principles".
+8. "Teaching and Learning Methods" should include CBC-aligned methods (group discussion, brainstorming, Q&A, role play, investigation, etc.).
+9. "Remarks" should address: Strength of the activity, Weakness/challenges, and Way forward. Leave blank for future teacher to fill.
+10. Content must be realistic for {education_level} {class_name} {subject} in Tanzania.
+11. Return ONLY valid JSON, no extra text.
 Example row:
-{{"Main Competence": "1.0 Demonstrate mastery of concepts", "Specific Competence": "Understand numbers", "Learning Activities": "Group discussion", "Specific Learning Activities": "Define numbers", "Month": "MAY", "Week": "1st", "Periods": 8, "Reference": "book.pdf, page 5-10", "Teaching & Learning Methods": "Think-Pair-Share", "Teaching & Learning Resources": "Charts", "Assessment Tools": "Quizzes", "Remarks": "Emphasize basics"}}
+{{"Main Competence": "1.0 Demonstrate understanding of {subject} concepts", "Specific Competences": "Explain key concepts of the topic", "Main Learning Activities": "Describe the concept of {subject}", "Specific Learning Activities": "1. Explain the concept\\n2. Analyse branches\\n3. Evaluate importance", "Month": "MAY", "Week": "1st", "Number of Periods": {periods_per_week}, "Teaching and Learning Methods": "Group discussion, Q&A, Brainstorming", "Teaching and Learning Resources": "Textbook, Charts, Chalkboard", "Assessment Tools": "Oral questions, Quiz", "References": "TIE (2023). {subject} Syllabus. TIE, Dar es Salaam.", "Remarks": ""}}
 """
 
             response = client.models.generate_content(model=model_name, contents=prompt)
@@ -272,13 +274,12 @@ def download_scheme_pdf(request):
         headers = list(scheme_data[0].keys())
 
         WIDTH_MAP = {
-            'Main Competence': 76, 'Specific Competence': 76,
-            'Learning Activities': 72, 'Specific Learning Activities': 76,
-            'Month': 40, 'Week': 36, 'Periods': 34,
-            'Reference': 64,
-            'Teaching & Learning Methods': 64,
-            'Teaching & Learning Resources': 64,
-            'Assessment Tools': 58, 'Remarks': 72,
+            'Main Competence': 72, 'Specific Competences': 72,
+            'Main Learning Activities': 68, 'Specific Learning Activities': 76,
+            'Month': 38, 'Week': 34, 'Number of Periods': 32,
+            'Teaching and Learning Methods': 64,
+            'Teaching and Learning Resources': 64,
+            'Assessment Tools': 54, 'References': 64, 'Remarks': 68,
         }
         TOTAL = 806
         col_widths = []
@@ -364,13 +365,12 @@ def download_scheme_word(request):
         table.style = 'Table Grid'
 
         WIDTH_CM = {
-            'Main Competence': 2.8, 'Specific Competence': 2.8,
-            'Learning Activities': 2.6, 'Specific Learning Activities': 2.8,
-            'Month': 1.4, 'Week': 1.3, 'Periods': 1.2,
-            'Reference': 2.2,
-            'Teaching & Learning Methods': 2.2,
-            'Teaching & Learning Resources': 2.2,
-            'Assessment Tools': 2.0, 'Remarks': 2.5,
+            'Main Competence': 2.6, 'Specific Competences': 2.6,
+            'Main Learning Activities': 2.4, 'Specific Learning Activities': 2.8,
+            'Month': 1.3, 'Week': 1.2, 'Number of Periods': 1.1,
+            'Teaching and Learning Methods': 2.2,
+            'Teaching and Learning Resources': 2.2,
+            'Assessment Tools': 1.9, 'References': 2.2, 'Remarks': 2.5,
         }
         TOTAL_CM = 24.0
         col_cms = []
@@ -529,19 +529,20 @@ def download_lesson_plan_pdf(request):
 
     ld = lesson.get('lesson_development', [])
     if ld:
-        elements.append(Paragraph("Lesson Development", section_hdr))
-        ld_headers = ['Time', 'Stage', 'Teacher Activities', 'Student Activities', 'Assessment']
+        elements.append(Paragraph("Lesson Development (IDDR Model)", section_hdr))
+        ld_headers = ['Time', 'Stage (IDDR)', 'Methods', 'Teacher Activities', 'Student Activities', 'Assessment Criteria']
         ld_data = [[Paragraph(h, hdr_s) for h in ld_headers]]
         for i, stage in enumerate(ld):
             bg = colors.white if i % 2 == 0 else STRIPE
             ld_data.append([
                 Paragraph(str(stage.get('time', '') or ''), cell_s),
                 Paragraph(str(stage.get('stage', stage.get('phase', '')) or ''), cell_s),
+                Paragraph(str(stage.get('methods', '') or ''), cell_s),
                 Paragraph(str(stage.get('teacher_activities', '') or ''), cell_s),
                 Paragraph(str(stage.get('student_activities', '') or ''), cell_s),
                 Paragraph(str(stage.get('assessment_criteria', '') or ''), cell_s),
             ])
-        ld_tbl = Table(ld_data, colWidths=[44, 68, 138, 138, 135], repeatRows=1)
+        ld_tbl = Table(ld_data, colWidths=[38, 72, 72, 118, 118, 105], repeatRows=1)
         ld_ts = [
             ('BACKGROUND',   (0, 0), (-1, 0),  NAVY),
             ('LINEBELOW',    (0, 0), (-1, 0),  1.2, GOLD),
@@ -561,7 +562,13 @@ def download_lesson_plan_pdf(request):
     remarks = lesson.get('remarks', '')
     if remarks:
         elements.append(Spacer(1, 8))
-        elements.append(Paragraph(f"<b>Remarks:</b>  {remarks}", normal))
+        elements.append(Paragraph("Remarks", section_hdr))
+        if isinstance(remarks, dict):
+            for label, key in [('1. Strength', 'strength'), ('2. Weakness', 'weakness'), ('3. Way Forward', 'way_forward')]:
+                val = remarks.get(key, '') or '...............................................'
+                elements.append(Paragraph(f"<b>{label}:</b>  {val}", normal))
+        else:
+            elements.append(Paragraph(str(remarks), normal))
 
     doc.build(elements)
     buffer.seek(0)
@@ -630,26 +637,34 @@ def download_lesson_plan_word(request):
 
     ld = lesson.get('lesson_development', [])
     if ld:
-        doc.add_heading('Lesson Development', level=2)
-        ld_table = doc.add_table(rows=1, cols=5)
+        doc.add_heading('Lesson Development (IDDR Model)', level=2)
+        ld_table = doc.add_table(rows=1, cols=6)
         ld_table.style = 'Table Grid'
         hdr = ld_table.rows[0].cells
-        for i, h in enumerate(['Time', 'Stage', 'Teacher Activities', 'Student Activities', 'Assessment']):
+        for i, h in enumerate(['Time', 'Stage (IDDR)', 'Methods', 'Teacher Activities', 'Student Activities', 'Assessment Criteria']):
             hdr[i].text = h
             hdr[i].paragraphs[0].runs[0].bold = True
         for stage in ld:
             row = ld_table.add_row().cells
             row[0].text = stage.get('time', '')
             row[1].text = stage.get('stage', stage.get('phase', ''))
-            row[2].text = stage.get('teacher_activities', '')
-            row[3].text = stage.get('student_activities', '')
-            row[4].text = stage.get('assessment_criteria', '')
+            row[2].text = stage.get('methods', '')
+            row[3].text = stage.get('teacher_activities', '')
+            row[4].text = stage.get('student_activities', '')
+            row[5].text = stage.get('assessment_criteria', '')
 
     remarks = lesson.get('remarks', '')
     if remarks:
-        p = doc.add_paragraph()
-        p.add_run('Remarks: ').bold = True
-        p.add_run(remarks)
+        doc.add_heading('Remarks', level=2)
+        if isinstance(remarks, dict):
+            for label, key in [('1. Strength', 'strength'), ('2. Weakness', 'weakness'), ('3. Way Forward', 'way_forward')]:
+                p = doc.add_paragraph()
+                p.add_run(f"{label}: ").bold = True
+                p.add_run(remarks.get(key, '') or '...............................................')
+        else:
+            p = doc.add_paragraph()
+            p.add_run('Remarks: ').bold = True
+            p.add_run(str(remarks))
 
     buffer = BytesIO()
     doc.save(buffer)
@@ -736,11 +751,17 @@ def ajax_generate_lessonplan(request):
             teacher_name = data.get('teacher_name', '')
 
             prompt = f"""
-You are an AI assistant for Tanzanian teachers. Generate a detailed LESSON PLAN following TIE Tanzania standards.
+You are an AI assistant for Tanzanian teachers. Generate a detailed LESSON PLAN following the SEQUIP/TIE Tanzania IDDR revised format (2023).
+
+The IDDR model stages are:
+- I = Introduction: Engage learners, activate prior knowledge, arouse curiosity, use questions/activities related to new content.
+- D = Competence Development: Guide learners to build competence through reading, discussion, investigation, videos, group work, presentation.
+- D = Design: Deepen learning — apply knowledge in real-life/other contexts. Role play, problem solving, creating models.
+- R = Realisation: Assess and evaluate student achievement using portfolios, performance assessments, quizzes, peer/self-assessment.
 
 Input Details:
 - Education Level: {education_level}
-- Class: {class_name}
+- Class/Form: {class_name}
 - Subject: {subject}
 - Topic: {topic}
 - Subtopic: {subtopic}
@@ -753,23 +774,30 @@ Input Details:
 - Teaching Methods: {teaching_methods}
 - Reference Source: {reference_source}
 
+Allocate time across the 4 IDDR stages proportionally within {duration} minutes.
+Introduction ≈ 15% | Competence Development ≈ 40% | Design ≈ 30% | Realisation ≈ 15%
+
 Output MUST be ONLY valid JSON. Do not include any other text. Use this exact structure:
 {{
     "lesson_title": "{subject} - {topic}",
     "date": "today's date",
-    "main_competence": "Main competence here",
-    "specific_competence": "Specific competence here",
-    "previous_knowledge": "Previous knowledge here",
-    "learning_objectives": ["Objective 1", "Objective 2"],
-    "teaching_methods": ["Method 1", "Method 2"],
-    "teaching_resources": ["Resource 1", "Resource 2"],
+    "main_competence": "Main competence from syllabus",
+    "specific_competence": "Specific competence from syllabus",
+    "previous_knowledge": "What students already know related to this topic",
+    "learning_objectives": ["By end of lesson, students will be able to...", "..."],
+    "teaching_methods": ["Group discussion", "Q&A", "Brainstorming", "Role play"],
+    "teaching_resources": ["Textbook", "Chalkboard", "Charts", "Realia"],
     "lesson_development": [
-        {{"time": "5 min", "stage": "Introduction", "teacher_activities": "Activities", "student_activities": "Activities", "assessment_criteria": "Criteria"}},
-        {{"time": "15 min", "stage": "Presentation", "teacher_activities": "Activities", "student_activities": "Activities", "assessment_criteria": "Criteria"}},
-        {{"time": "15 min", "stage": "Practice", "teacher_activities": "Activities", "student_activities": "Activities", "assessment_criteria": "Criteria"}},
-        {{"time": "5 min", "stage": "Conclusion", "teacher_activities": "Activities", "student_activities": "Activities", "assessment_criteria": "Criteria"}}
+        {{"time": "X min", "stage": "Introduction (I)", "methods": "...", "teacher_activities": "...", "student_activities": "...", "assessment_criteria": "..."}},
+        {{"time": "X min", "stage": "Competence Development (D)", "methods": "...", "teacher_activities": "...", "student_activities": "...", "assessment_criteria": "..."}},
+        {{"time": "X min", "stage": "Design (D)", "methods": "...", "teacher_activities": "...", "student_activities": "...", "assessment_criteria": "..."}},
+        {{"time": "X min", "stage": "Realisation (R)", "methods": "...", "teacher_activities": "...", "student_activities": "...", "assessment_criteria": "..."}}
     ],
-    "remarks": "Remarks here"
+    "remarks": {{
+        "strength": "What went well in this lesson",
+        "weakness": "What did not go well / challenges",
+        "way_forward": "What will be done to improve"
+    }}
 }}
 """
 
@@ -793,16 +821,20 @@ Output MUST be ONLY valid JSON. Do not include any other text. Use this exact st
                     "main_competence": f"Demonstrate understanding of {topic}",
                     "specific_competence": f"Explain key concepts of {topic}",
                     "previous_knowledge": "Basic knowledge from previous lessons",
-                    "learning_objectives": [f"Define {topic}", f"Explain {topic}", f"Apply {topic}"],
-                    "teaching_methods": ["Lecture", "Discussion", "Question and Answer"],
-                    "teaching_resources": ["Chalkboard", "Textbook", "Handouts"],
+                    "learning_objectives": [f"Define {topic}", f"Explain {topic}", f"Apply {topic} in real-life situations"],
+                    "teaching_methods": ["Group discussion", "Q&A", "Brainstorming", "Role play"],
+                    "teaching_resources": ["Chalkboard", "Textbook", "Charts"],
                     "lesson_development": [
-                        {"time": "5 min", "stage": "Introduction", "teacher_activities": f"Introduce {topic}", "student_activities": "Listen and respond", "assessment_criteria": "Participation"},
-                        {"time": "15 min", "stage": "Presentation", "teacher_activities": "Explain key concepts", "student_activities": "Take notes and ask questions", "assessment_criteria": "Understanding demonstrated"},
-                        {"time": "15 min", "stage": "Practice", "teacher_activities": "Guide through examples", "student_activities": "Work on exercises", "assessment_criteria": "Correct answers"},
-                        {"time": "5 min", "stage": "Conclusion", "teacher_activities": "Summarize key points", "student_activities": "Review and ask questions", "assessment_criteria": "Recall of main points"}
+                        {"time": f"{max(5, int(int(duration)*0.15))} min", "stage": "Introduction (I)", "methods": "Q&A, Brainstorming", "teacher_activities": f"Use questions to activate prior knowledge about {topic}", "student_activities": "Respond to questions and share what they know", "assessment_criteria": "Active participation and relevant responses"},
+                        {"time": f"{max(10, int(int(duration)*0.40))} min", "stage": "Competence Development (D)", "methods": "Group discussion, Guided discovery", "teacher_activities": f"Guide students through group discussions to explore {topic}", "student_activities": "Conduct discussions, explore content, present findings", "assessment_criteria": "Accuracy of explanations and active participation"},
+                        {"time": f"{max(8, int(int(duration)*0.30))} min", "stage": "Design (D)", "methods": "Role play, Problem solving", "teacher_activities": f"Organise activities where students apply {topic} in real-life scenarios", "student_activities": "Apply knowledge creatively to solve real-life problems", "assessment_criteria": "Correct application and creativity demonstrated"},
+                        {"time": f"{max(5, int(int(duration)*0.15))} min", "stage": "Realisation (R)", "methods": "Quiz, Peer assessment", "teacher_activities": "Administer assessment activities and provide feedback", "student_activities": "Complete assessment tasks and self/peer assess", "assessment_criteria": "Achievement of learning objectives"}
                     ],
-                    "remarks": "Students participated well"
+                    "remarks": {
+                        "strength": "",
+                        "weakness": "",
+                        "way_forward": ""
+                    }
                 }
 
             saved_id = None
