@@ -584,10 +584,18 @@
                 <div class="live-dot"></div>
                 {{ teacher.name|title|truncatechars:18 }}
             </div>
+            <!-- Logout: clears session, profile stays active -->
+            <form method="post" action="{% url 'transfer:logout' %}" class="m-0 d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn-exit" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.85);">
+                    <i class="fas fa-sign-out-alt me-1"></i>Toka
+                </button>
+            </form>
+            <!-- Ondoa: deactivates profile permanently -->
             <form method="post" action="{% url 'transfer:deactivate' %}" class="m-0 d-inline">
                 {% csrf_token %}
-                <button type="submit" class="btn-exit" onclick="return confirm('Unataka kufuta taarifa zako na kutoka?')">
-                    <i class="fas fa-sign-out-alt me-1"></i>Ondoa
+                <button type="submit" class="btn-exit" onclick="return confirm('Unataka kufuta taarifa zako kabisa kutoka kwenye orodha?')">
+                    <i class="fas fa-trash-alt me-1"></i>Ondoa
                 </button>
             </form>
             {% endif %}
@@ -622,7 +630,7 @@
         <a href="{% url 'dashboard' %}">Internship Management System ↗</a>
     </div>
     <div style="margin-top:.3rem;font-size:.65rem;opacity:.35;">
-        Inaendeshwa na TAMISEMI &middot; Powered by IMS Platform
+        Powered by IMS Platform
     </div>
 </footer>
 

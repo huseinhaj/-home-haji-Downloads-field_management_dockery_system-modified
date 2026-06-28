@@ -304,6 +304,13 @@ def login_returning(request):
     })
 
 
+def logout_transfer(request):
+    """Toka tu — session inafutwa lakini taarifa zinabaki kwenye orodha."""
+    if request.method == 'POST':
+        request.session.pop('transfer_session_key', None)
+    return redirect('transfer:home')
+
+
 def deactivate(request):
     if request.method == 'POST':
         teacher = _get_teacher(request)

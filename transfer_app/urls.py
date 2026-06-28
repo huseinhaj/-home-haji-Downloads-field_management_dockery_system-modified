@@ -14,5 +14,6 @@ urlpatterns = [
     path('pay/', views.submit_payment, name='submit_payment'),
     path('login/', views.login_returning, name='login'),
     path('ajax/districts/', views.get_districts_ajax, name='get_districts_ajax'),
+    path('logout/', views.logout_transfer, name='logout'),
     path('deactivate/', views.deactivate, name='deactivate'),
 ]
