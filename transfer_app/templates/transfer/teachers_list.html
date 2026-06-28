@@ -2,6 +2,61 @@
 
 {% block title %}Walimu — {{ district.name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+/* ── Page-specific styles ── */
+.filter-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.6rem;}
+.credits-pill{display:inline-flex;align-items:center;gap:.5rem;padding:.42rem 1.1rem;border-radius:50px;font-size:.78rem;font-weight:700;cursor:pointer;text-decoration:none;transition:all .18s;}
+.credits-pill.has-credits{background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(10,92,68,.08));border:1.5px solid rgba(16,185,129,.3);color:var(--p1);}
+.credits-pill.no-credits{background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(239,68,68,.04));border:1.5px solid rgba(239,68,68,.25);color:#b91c1c;}
+.credits-pill .num{font-size:.95rem;font-weight:900;}
+.filter-select{border:1.5px solid var(--br);border-radius:50px;padding:.42rem 1.1rem;font-size:.78rem;font-weight:600;color:var(--p1);background:#fff;outline:none;cursor:pointer;appearance:none;padding-right:1.8rem;background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230a5c44' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right .6rem center;background-size:10px;}
+.filter-select:focus{border-color:var(--p3);box-shadow:0 0 0 3px rgba(16,185,129,.12);}
+
+/* Teacher cards */
+.tcard{background:#fff;border:1.5px solid var(--br);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;height:100%;transition:box-shadow .22s,transform .22s,border-color .22s;}
+.tcard:hover{border-color:var(--p3);box-shadow:0 8px 32px rgba(10,92,68,.13);transform:translateY(-3px);}
+.tcard-top{height:5px;background:linear-gradient(90deg,var(--p1) 0%,var(--p3) 60%,var(--gld) 100%);}
+.tcard-head{padding:1rem 1.15rem .75rem;display:flex;align-items:center;gap:.85rem;}
+.tcard-av{width:48px;height:48px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;color:#fff;border:3px solid var(--bg2);}
+.tcard-av.av-primary{background:linear-gradient(135deg,#0a5c44,#10b981);}
+.tcard-av.av-secondary{background:linear-gradient(135deg,#92400e,#f59e0b);}
+.tcard-nm{font-weight:800;font-size:.88rem;color:var(--drk);line-height:1.2;}
+.tcard-sc{font-size:.7rem;color:var(--mu);margin-top:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
+.tcard-body{padding:.6rem 1.15rem .9rem;flex:1;display:flex;flex-direction:column;gap:.55rem;}
+.tcard-row{display:flex;align-items:center;gap:.4rem;font-size:.74rem;color:var(--tx2);}
+.tcard-row i{color:var(--p1);width:13px;flex-shrink:0;font-size:.7rem;}
+.tcard-subj{background:linear-gradient(135deg,rgba(16,185,129,.06),rgba(10,92,68,.03));border:1px solid rgba(16,185,129,.18);border-radius:8px;padding:.4rem .7rem;font-size:.72rem;color:var(--tx2);margin-top:.1rem;}
+.tcard-foot{margin-top:auto;padding:.75rem 1.15rem 1rem;}
+
+/* Badge variants */
+.lv{display:inline-flex;align-items:center;gap:.3rem;font-size:.63rem;font-weight:800;border-radius:50px;padding:.2rem .6rem;letter-spacing:.3px;}
+.lv-pri{background:rgba(10,92,68,.1);color:var(--p1);border:1px solid rgba(10,92,68,.2);}
+.lv-sec{background:rgba(245,158,11,.1);color:#92400e;border:1px solid rgba(245,158,11,.25);}
+.lv-vil{background:rgba(34,197,94,.08);color:#166534;border:1px solid rgba(34,197,94,.2);}
+.lv-urb{background:rgba(99,102,241,.08);color:#4338ca;border:1px solid rgba(99,102,241,.2);}
+.lv-mid{background:rgba(14,165,233,.08);color:#0369a1;border:1px solid rgba(14,165,233,.2);}
+
+/* Phone reveal */
+.phone-locked{display:flex;align-items:center;justify-content:center;gap:.6rem;padding:.6rem;background:var(--bg);border:1.5px dashed var(--br2);border-radius:50px;font-size:.82rem;color:var(--mu);margin-bottom:.5rem;font-family:monospace;letter-spacing:2px;}
+.btn-unlock{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.62rem 1rem;border:none;border-radius:50px;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .18s;background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;box-shadow:0 3px 12px rgba(10,92,68,.25);}
+.btn-unlock:hover{background:linear-gradient(135deg,var(--p2),var(--p3));box-shadow:0 5px 18px rgba(10,92,68,.35);transform:translateY(-1px);}
+.btn-buy-cred{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.6rem 1rem;border:1.5px solid var(--gld);border-radius:50px;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .18s;background:rgba(245,158,11,.07);color:#92400e;text-decoration:none;}
+.btn-buy-cred:hover{background:rgba(245,158,11,.15);box-shadow:0 3px 12px rgba(245,158,11,.2);}
+.btn-call{display:flex;align-items:center;justify-content:center;gap:.6rem;width:100%;padding:.65rem 1rem;border:none;border-radius:50px;font-size:.85rem;font-weight:800;background:linear-gradient(135deg,#059669,#10b981);color:#fff;text-decoration:none;box-shadow:0 3px 14px rgba(5,150,105,.3);transition:all .18s;}
+.btn-call:hover{box-shadow:0 5px 20px rgba(5,150,105,.4);transform:translateY(-1px);}
+
+/* No-credits banner */
+.no-cred-banner{display:flex;align-items:center;flex-wrap:wrap;gap:.9rem;padding:1rem 1.3rem;background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(245,158,11,.03));border:1.5px solid rgba(245,158,11,.28);border-radius:14px;margin-bottom:1.5rem;}
+.no-cred-banner .label{font-weight:800;font-size:.88rem;color:#92400e;}
+.no-cred-banner .sub{font-size:.76rem;color:#a16207;margin-top:.1rem;}
+
+/* Come-back strip */
+.comeback-strip{display:flex;align-items:flex-start;gap:.9rem;padding:1.1rem 1.4rem;background:linear-gradient(135deg,rgba(245,158,11,.07),rgba(245,158,11,.03));border:1.5px solid rgba(245,158,11,.22);border-radius:14px;margin-top:2.5rem;}
+.comeback-strip i{color:var(--gld);font-size:1.1rem;flex-shrink:0;margin-top:.1rem;}
+</style>
+{% endblock %}
+
 {% block hero %}
 <div class="t-hero">
     <div class="t-hero-content">
@@ -9,15 +64,16 @@
             <i class="fas fa-users" style="font-size:.7rem;"></i>
             {{ region.name }} › {{ district.name }}
         </div>
-        <h1>Walimu Wanaotaka Kubadilishana</h1>
+        <h1>Walimu Wanaotaka<br><span>Kubadilishana</span></h1>
         <p>Fungua namba ya simu kwa credit moja — wasiliana moja kwa moja</p>
     </div>
 </div>
 {% endblock %}
 
 {% block content %}
+
 <!-- Breadcrumb -->
-<div class="t-breadcrumb">
+<div class="t-breadcrumb" style="margin-bottom:1.4rem;">
     <a href="{% url 'transfer:home' %}"><i class="fas fa-home me-1"></i>Nyumbani</a>
     <span class="sep">›</span>
     <a href="{% url 'transfer:browse_regions' %}">Mikoa</a>
@@ -27,171 +83,153 @@
     <span class="current">{{ district.name }}</span>
 </div>
 
-<!-- Filter bar -->
-<div class="filter-bar">
-    <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
-        <div class="stats-chip">
-            <i class="fas fa-users" style="color:var(--accent);"></i>
+<!-- Filter row -->
+<div class="filter-row">
+    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+        <!-- Total count -->
+        <div class="credits-pill has-credits" style="background:rgba(10,92,68,.07);border-color:rgba(10,92,68,.2);">
+            <i class="fas fa-users" style="font-size:.75rem;"></i>
             <span class="num">{{ total }}</span>
-            mwalimu {% if total == 1 %}anayepatikana{% else %}wanaopatikana{% endif %}
+            <span>walimu</span>
         </div>
-        <!-- Credits chip -->
-        <a href="{% url 'transfer:buy_credits' %}" style="text-decoration:none;">
-            <div class="stats-chip" style="{% if credits == 0 %}border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05);{% endif %}">
-                <i class="fas fa-coins" style="color:{% if credits > 0 %}var(--gold){% else %}var(--danger){% endif %};"></i>
-                <span class="num" style="color:{% if credits > 0 %}var(--primary){% else %}var(--danger){% endif %};">{{ credits }}</span>
-                <span style="font-size:.72rem;color:var(--muted);">credits{% if credits == 0 %} — Nunua ↗{% endif %}</span>
-            </div>
+        <!-- Credits -->
+        <a href="{% url 'transfer:buy_credits' %}" class="credits-pill {% if credits > 0 %}has-credits{% else %}no-credits{% endif %}">
+            <i class="fas fa-coins" style="font-size:.78rem;"></i>
+            <span class="num">{{ credits }}</span>
+            <span>credit{% if credits != 1 %}s{% endif %}{% if credits == 0 %} — Nunua ↗{% endif %}</span>
         </a>
     </div>
-
-    <form method="get" class="d-flex align-items-center gap-2">
-        <span style="font-size:.78rem;font-weight:600;color:var(--muted);white-space:nowrap;">Chuja:</span>
-        <select name="level" class="form-select-t" onchange="this.form.submit()"
-                style="min-width:160px;padding:.5rem .9rem;font-size:.82rem;">
-            <option value="">Kiwango Chochote</option>
-            <option value="primary"   {% if level_filter == 'primary'   %}selected{% endif %}>Shule ya Msingi</option>
-            <option value="secondary" {% if level_filter == 'secondary' %}selected{% endif %}>Shule ya Sekondari</option>
+    <!-- Level filter -->
+    <form method="get">
+        <select name="level" class="filter-select" onchange="this.form.submit()">
+            <option value="">Kiwango Chote</option>
+            <option value="primary"   {% if level_filter == 'primary'   %}selected{% endif %}>🏫 Shule ya Msingi</option>
+            <option value="secondary" {% if level_filter == 'secondary' %}selected{% endif %}>🏛️ Shule ya Sekondari</option>
         </select>
     </form>
 </div>
 
 {% if credits == 0 %}
-<!-- Credits warning banner -->
-<div style="display:flex;align-items:center;gap:.9rem;padding:1rem 1.3rem;background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(245,158,11,.04));border:1.5px solid rgba(245,158,11,.25);border-radius:var(--radius-md);margin-bottom:1.5rem;">
-    <i class="fas fa-lock" style="color:var(--gold);font-size:1.2rem;flex-shrink:0;"></i>
-    <div>
-        <div style="font-weight:700;font-size:.88rem;color:#92400e;">Huna Credits</div>
-        <div style="font-size:.78rem;color:#a16207;margin-top:.1rem;">Nunua credits (kuanzia TZS 1,000) ili uone namba za simu za walimu</div>
+<!-- No-credits banner -->
+<div class="no-cred-banner">
+    <i class="fas fa-lock" style="color:var(--gld);font-size:1.2rem;flex-shrink:0;"></i>
+    <div class="flex-grow-1">
+        <div class="label">Huna Credits</div>
+        <div class="sub">Nunua credits (kuanzia TZS 1,000) ili uone namba za simu za walimu</div>
     </div>
-    <a href="{% url 'transfer:buy_credits' %}" class="btn-t-primary ms-auto" style="font-size:.82rem;padding:.6rem 1.4rem;white-space:nowrap;">
+    <a href="{% url 'transfer:buy_credits' %}" class="btn-t-primary" style="font-size:.8rem;padding:.56rem 1.3rem;white-space:nowrap;">
         <i class="fas fa-coins"></i>Nunua Credits
     </a>
 </div>
 {% endif %}
 
 {% if teachers %}
-<div class="row g-4">
+<!-- Teacher cards -->
+<div class="row g-3">
     {% for t in teachers %}
-    {% with is_unlocked=t.id|stringformat:"s" %}
     <div class="col-xl-4 col-md-6 fade-up" style="animation-delay:{{ forloop.counter0 }}0ms;">
-        <div class="teacher-card">
-            <!-- Accent bar -->
-            <div class="tc-accent-bar"></div>
-
-            <!-- Header -->
-            <div style="padding:1.1rem 1.2rem .6rem;display:flex;align-items:center;gap:.9rem;border-bottom:1px solid var(--border);">
-                <div class="tc-avatar">{{ t.name|slice:":1"|upper }}</div>
+        <div class="tcard">
+            <div class="tcard-top"></div>
+            <div class="tcard-head">
+                <div class="tcard-av {% if t.level == 'primary' %}av-primary{% else %}av-secondary{% endif %}">
+                    {{ t.name|slice:":1"|upper }}
+                </div>
                 <div class="flex-grow-1 min-w-0">
-                    <div class="tc-name">{{ t.name }}</div>
-                    <div class="tc-school" title="{{ t.current_school }}">
-                        <i class="fas fa-school me-1" style="color:var(--muted-2);font-size:.7rem;"></i>
-                        {{ t.current_school }}
+                    <div class="tcard-nm">{{ t.name|title }}</div>
+                    <div class="tcard-sc" title="{{ t.current_school }}">
+                        <i class="fas fa-school me-1" style="color:var(--mu2);font-size:.65rem;"></i>{{ t.current_school }}
                     </div>
+                </div>
+                <!-- Level badge -->
+                {% if t.level == 'primary' %}
+                <span class="lv lv-pri"><i class="fas fa-graduation-cap"></i>Msingi</span>
+                {% else %}
+                <span class="lv lv-sec"><i class="fas fa-university"></i>Sekondari</span>
+                {% endif %}
+            </div>
+
+            <div class="tcard-body">
+                <!-- Location -->
+                <div class="tcard-row">
+                    <i class="fas fa-map-pin"></i>
+                    {% if t.location_type == 'village' %}
+                    <span class="lv lv-vil">🌿 Kijijini</span>
+                    {% elif t.location_type == 'urban' %}
+                    <span class="lv lv-urb">🏙️ Mjini</span>
+                    {% else %}
+                    <span class="lv lv-mid">🏘️ Mji Mdogo</span>
+                    {% endif %}
+                </div>
+                <!-- Willing to go -->
+                {% if t.willing_to_go %}
+                <div class="tcard-row">
+                    <i class="fas fa-arrow-right" style="color:var(--gld);"></i>
+                    <span>Anataka kwenda: <strong>{{ t.get_willing_to_go_display }}</strong></span>
+                </div>
+                {% endif %}
+                <!-- Subjects -->
+                {% if t.subjects %}
+                <div class="tcard-subj">
+                    <i class="fas fa-book me-1" style="color:var(--p1);font-size:.68rem;"></i>{{ t.subjects }}
+                </div>
+                {% endif %}
+                <!-- Date -->
+                <div class="tcard-row" style="color:var(--mu2);font-size:.7rem;">
+                    <i class="fas fa-clock" style="color:var(--mu2);"></i>
+                    {{ t.created_at|date:"d M Y" }}
                 </div>
             </div>
 
-            <!-- Body -->
-            <div class="tc-body">
-                <div class="tc-meta">
-                    <div class="tc-meta-item">
-                        <i class="fas fa-graduation-cap"></i>
-                        {% if t.level == 'primary' %}
-                        <span class="badge-level badge-primary">Msingi</span>
-                        {% else %}
-                        <span class="badge-level badge-secondary">Sekondari</span>
-                        {% endif %}
-                    </div>
-                    <div class="tc-meta-item">
-                        <i class="fas fa-map-pin"></i>
-                        {% if t.location_type == 'village' %}
-                        <span class="badge-level badge-village">🌿 Kijijini</span>
-                        {% elif t.location_type == 'urban' %}
-                        <span class="badge-level badge-urban">🏙️ Mjini</span>
-                        {% else %}
-                        <span class="badge-level badge-middle">🏘️ Mji Mdogo</span>
-                        {% endif %}
-                    </div>
-                    {% if t.willing_to_go %}
-                    <div class="tc-meta-item" style="grid-column:1/-1;">
-                        <i class="fas fa-arrow-right" style="color:var(--gold);"></i>
-                        <span style="font-size:.75rem;">Anataka kwenda: <strong>{{ t.get_willing_to_go_display }}</strong></span>
-                    </div>
-                    {% endif %}
-                    <div class="tc-meta-item" style="grid-column:1/-1;">
-                        <i class="fas fa-clock" style="color:var(--muted-2);"></i>
-                        <span style="color:var(--muted-2);font-size:.72rem;">{{ t.created_at|date:"d M Y" }}</span>
-                    </div>
+            <!-- Phone section -->
+            <div class="tcard-foot">
+                {% if t.id in unlocked_ids %}
+                <a href="tel:{{ t.phone }}" class="btn-call">
+                    <i class="fas fa-phone"></i>{{ t.phone }}
+                </a>
+                {% else %}
+                <div class="phone-locked">
+                    <i class="fas fa-lock" style="font-size:.7rem;letter-spacing:0;"></i>
+                    {{ t.phone|slice:":4" }} *** ***
                 </div>
-
-                {% if t.subjects %}
-                <div class="tc-subjects">
-                    <i class="fas fa-book me-1" style="color:var(--primary);font-size:.72rem;"></i>
-                    <span style="font-size:.75rem;">{{ t.subjects }}</span>
-                </div>
+                {% if credits > 0 %}
+                <form method="post" action="{% url 'transfer:unlock_contact' t.id %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-unlock">
+                        <i class="fas fa-unlock-alt"></i>Fungua Namba — Credit 1
+                    </button>
+                </form>
+                {% else %}
+                <a href="{% url 'transfer:buy_credits' %}" class="btn-buy-cred">
+                    <i class="fas fa-coins"></i>Nunua Credits — TZS 1,000
+                </a>
                 {% endif %}
-
-                <!-- Phone: locked or unlocked -->
-                <div class="tc-footer">
-                    {% if t.id in unlocked_ids %}
-                    <!-- UNLOCKED — onyesha namba kamili -->
-                    <a href="tel:{{ t.phone }}" class="btn-t-call">
-                        <i class="fas fa-phone"></i>
-                        {{ t.phone }}
-                    </a>
-                    {% else %}
-                    <!-- LOCKED — ficha namba -->
-                    <div style="display:flex;flex-direction:column;gap:.5rem;">
-                        <div style="display:flex;align-items:center;justify-content:center;gap:.6rem;padding:.65rem;background:var(--bg);border:1px dashed var(--border-2);border-radius:50px;font-size:.82rem;color:var(--muted);">
-                            <i class="fas fa-lock" style="color:var(--muted-2);font-size:.75rem;"></i>
-                            <span style="letter-spacing:2px;font-family:monospace;">
-                                {{ t.phone|slice:":4" }} *** ***
-                            </span>
-                        </div>
-                        {% if credits > 0 %}
-                        <form method="post" action="{% url 'transfer:unlock_contact' t.id %}" class="m-0">
-                            {% csrf_token %}
-                            <button type="submit" class="btn-t-primary w-100 justify-content-center" style="font-size:.8rem;padding:.62rem;">
-                                <i class="fas fa-unlock-alt"></i>
-                                Fungua Namba — Credit 1
-                            </button>
-                        </form>
-                        {% else %}
-                        <a href="{% url 'transfer:buy_credits' %}" class="btn-t-outline w-100 justify-content-center" style="font-size:.8rem;padding:.6rem;border-color:var(--gold);color:#92400e;">
-                            <i class="fas fa-coins"></i>
-                            Nunua Credits — TZS 1,000
-                        </a>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
+                {% endif %}
             </div>
         </div>
     </div>
-    {% endwith %}
     {% endfor %}
 </div>
 
-<!-- "Come back" reminder — onyesha kila wakati chini ya orodha -->
-{% if teachers %}
-<div style="margin-top:2.5rem;display:flex;align-items:flex-start;gap:.9rem;padding:1.1rem 1.4rem;background:linear-gradient(135deg,rgba(245,158,11,.07),rgba(245,158,11,.03));border:1.5px solid rgba(245,158,11,.22);border-radius:var(--radius-md);">
-    <i class="fas fa-clock" style="color:var(--gold);font-size:1.1rem;flex-shrink:0;margin-top:.1rem;"></i>
+<!-- Come-back reminder -->
+<div class="comeback-strip">
+    <i class="fas fa-clock"></i>
     <div>
-        <div style="font-weight:700;font-size:.88rem;color:#92400e;margin-bottom:.2rem;">Haukupata unayemtafuta?</div>
-        <div style="font-size:.8rem;color:#a16207;line-height:1.6;">
+        <div style="font-weight:800;font-size:.88rem;color:#92400e;margin-bottom:.25rem;">Haukupata unayemtafuta?</div>
+        <div style="font-size:.78rem;color:#a16207;line-height:1.6;">
             Subiri — walimu wengine wanajisajili kila siku. Rudi mfumo kuangalia mara kwa mara.
-            Taarifa zinasasishwa mara walimu wapya wanapojaza fomu.
         </div>
     </div>
 </div>
+
 {% else %}
+<!-- Empty state -->
 <div class="empty-state">
     <div class="empty-icon"><i class="fas fa-user-slash"></i></div>
     <h5>Hakuna Mwalimu Anayepatikana Sasa Hivi</h5>
     <p style="max-width:380px;margin:0 auto;">
         Hakuna mwalimu aliyejisajili katika wilaya ya <strong>{{ district.name }}</strong> kwa wakati huu.
         <br><br>
-        <strong>Subiri na urudi kuangalia</strong> — walimu wengine wanajisajili kila siku na jina lako litaonekana kwao pia.
+        <strong>Subiri na urudi kuangalia</strong> — walimu wengine wanajisajili kila siku.
     </p>
     <div style="display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-top:1.2rem;">
         <a href="{% url 'transfer:browse_districts' region.id %}" class="btn-t-outline">
@@ -203,4 +241,5 @@
     </div>
 </div>
 {% endif %}
+
 {% endblock %}
