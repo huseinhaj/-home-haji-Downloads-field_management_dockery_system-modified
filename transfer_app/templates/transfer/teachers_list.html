@@ -172,14 +172,35 @@
     {% endfor %}
 </div>
 
+<!-- "Come back" reminder — onyesha kila wakati chini ya orodha -->
+{% if teachers %}
+<div style="margin-top:2.5rem;display:flex;align-items:flex-start;gap:.9rem;padding:1.1rem 1.4rem;background:linear-gradient(135deg,rgba(245,158,11,.07),rgba(245,158,11,.03));border:1.5px solid rgba(245,158,11,.22);border-radius:var(--radius-md);">
+    <i class="fas fa-clock" style="color:var(--gold);font-size:1.1rem;flex-shrink:0;margin-top:.1rem;"></i>
+    <div>
+        <div style="font-weight:700;font-size:.88rem;color:#92400e;margin-bottom:.2rem;">Haukupata unayemtafuta?</div>
+        <div style="font-size:.8rem;color:#a16207;line-height:1.6;">
+            Subiri — walimu wengine wanajisajili kila siku. Rudi mfumo kuangalia mara kwa mara.
+            Taarifa zinasasishwa mara walimu wapya wanapojaza fomu.
+        </div>
+    </div>
+</div>
 {% else %}
 <div class="empty-state">
     <div class="empty-icon"><i class="fas fa-user-slash"></i></div>
-    <h5>Hakuna Mwalimu Anayepatikana</h5>
-    <p>Hakuna mwalimu aliyejisajili katika wilaya ya <strong>{{ district.name }}</strong> kwa wakati huu.</p>
-    <a href="{% url 'transfer:browse_districts' region.id %}" class="btn-t-outline mt-3">
-        <i class="fas fa-arrow-left"></i>Rudi kwenye Wilaya
-    </a>
+    <h5>Hakuna Mwalimu Anayepatikana Sasa Hivi</h5>
+    <p style="max-width:380px;margin:0 auto;">
+        Hakuna mwalimu aliyejisajili katika wilaya ya <strong>{{ district.name }}</strong> kwa wakati huu.
+        <br><br>
+        <strong>Subiri na urudi kuangalia</strong> — walimu wengine wanajisajili kila siku na jina lako litaonekana kwao pia.
+    </p>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-top:1.2rem;">
+        <a href="{% url 'transfer:browse_districts' region.id %}" class="btn-t-outline">
+            <i class="fas fa-arrow-left"></i>Jaribu Wilaya Nyingine
+        </a>
+        <a href="{% url 'transfer:browse_regions' %}" class="btn-t-ghost">
+            <i class="fas fa-map"></i>Jaribu Mkoa Mwingine
+        </a>
+    </div>
 </div>
 {% endif %}
 {% endblock %}

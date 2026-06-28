@@ -83,12 +83,35 @@
                     na anataka kubadilishana kituo. Jaza taarifa zako mara moja — pata mawasiliano ya mwenzako ndani ya dakika.
                 </p>
 
-                <a href="{% url 'transfer:register' %}" class="btn-t-primary w-100 justify-content-center" style="font-size:.95rem;padding:.9rem;">
-                    <i class="fas fa-user-plus"></i>
-                    Jaza Taarifa Zangu — Anza Sasa
+                <!-- Option 1: New registration -->
+                <a href="{% url 'transfer:register' %}" style="display:block;border:2px solid var(--primary);border-radius:var(--radius-md);padding:1.1rem 1.3rem;background:linear-gradient(135deg,rgba(6,95,70,.04),rgba(16,185,129,.03));text-decoration:none;margin-bottom:.75rem;">
+                    <div style="display:flex;align-items:center;gap:1rem;">
+                        <div style="width:46px;height:46px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-user-plus" style="color:#fff;font-size:.95rem;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div style="font-weight:800;color:var(--primary);font-size:.92rem;">Bado Sijajaza — Jisajili Sasa</div>
+                            <div style="font-size:.78rem;color:var(--muted);margin-top:.15rem;">Jaza taarifa zako ili uonekane kwenye orodha ya walimu</div>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color:var(--border-2);"></i>
+                    </div>
                 </a>
 
-                <div class="info-box mt-3">
+                <!-- Option 2: Returning user login -->
+                <a href="{% url 'transfer:login' %}" style="display:block;border:1.5px solid var(--border-2);border-radius:var(--radius-md);padding:1.1rem 1.3rem;background:var(--surface);text-decoration:none;margin-bottom:1rem;">
+                    <div style="display:flex;align-items:center;gap:1rem;">
+                        <div style="width:46px;height:46px;background:rgba(6,95,70,.08);border:1.5px solid var(--border-2);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-sign-in-alt" style="color:var(--primary);font-size:.95rem;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div style="font-weight:800;color:var(--text);font-size:.92rem;">Nimekwisha Jaza — Ingia</div>
+                            <div style="font-size:.78rem;color:var(--muted);margin-top:.15rem;">Tumia namba ya simu + wilaya kuingia upya</div>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color:var(--border-2);"></i>
+                    </div>
+                </a>
+
+                <div class="info-box">
                     <i class="fas fa-lock"></i>
                     <span>Namba yako ya simu itaonekana kwa walimu wanaotaka kukupigia tu. Taarifa zako zinatumika kwa madhumuni ya kubadilishana peke yake.</span>
                 </div>

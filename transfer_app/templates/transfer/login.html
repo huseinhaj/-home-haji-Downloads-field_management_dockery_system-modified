@@ -1,0 +1,91 @@
+{% extends 'transfer/base.html' %}
+
+{% block title %}Ingia — Kubadilishana Walimu{% endblock %}
+
+{% block hero %}
+<div class="t-hero">
+    <div class="t-hero-content">
+        <div class="t-hero-badge">
+            <i class="fas fa-sign-in-alt" style="font-size:.7rem;"></i>
+            Mwalimu Aliyekwisha Jaza
+        </div>
+        <h1>Ingia Mfumo</h1>
+        <p>Tumia namba yako ya simu na wilaya uliyoandika wakati wa kujisajili</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-5 col-lg-6 col-md-8">
+
+        <div class="t-card fade-up">
+            <div class="t-card-header">
+                <div class="t-card-header-icon">
+                    <i class="fas fa-key"></i>
+                </div>
+                <div>
+                    <h4>Ingia kwa Taarifa Zako</h4>
+                    <p>Namba ya simu + wilaya = ufikiaji wako</p>
+                </div>
+            </div>
+            <div class="t-card-body">
+
+                {% if errors.__all__ %}
+                <div style="display:flex;align-items:flex-start;gap:.75rem;padding:.9rem 1.2rem;border-radius:var(--radius-sm);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#b91c1c;font-size:.85rem;margin-bottom:1.2rem;">
+                    <i class="fas fa-times-circle" style="margin-top:.1rem;flex-shrink:0;"></i>
+                    <span>{{ errors.__all__ }}</span>
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div style="margin-bottom:1.1rem;">
+                        <label class="form-label-t">Namba ya Simu Uliyosajilisha *</label>
+                        <div class="input-icon-wrap">
+                            <i class="icon fas fa-phone"></i>
+                            <input type="tel" name="phone"
+                                   class="form-control-t {% if errors.phone %}is-invalid{% endif %}"
+                                   value="{{ form_data.phone|default:'' }}"
+                                   placeholder="0712 345 678"
+                                   required autofocus>
+                        </div>
+                        {% if errors.phone %}<div class="invalid-msg"><i class="fas fa-exclamation-circle me-1"></i>{{ errors.phone }}</div>{% endif %}
+                    </div>
+
+                    <div style="margin-bottom:1.5rem;">
+                        <label class="form-label-t">Wilaya Unayofundisha *</label>
+                        <div class="input-icon-wrap">
+                            <i class="icon fas fa-map-marker-alt"></i>
+                            <input type="text" name="district"
+                                   class="form-control-t {% if errors.district %}is-invalid{% endif %}"
+                                   value="{{ form_data.district|default:'' }}"
+                                   placeholder="mfano: Kinondoni"
+                                   required>
+                        </div>
+                        {% if errors.district %}<div class="invalid-msg"><i class="fas fa-exclamation-circle me-1"></i>{{ errors.district }}</div>{% endif %}
+                        <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">
+                            <i class="fas fa-info-circle me-1"></i>Andika jina la wilaya kama ulivyoandika wakati wa kujisajili
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-t-primary w-100 justify-content-center" style="font-size:.92rem;padding:.85rem;">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Ingia Mfumo
+                    </button>
+                </form>
+
+                <div style="text-align:center;margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid var(--border);">
+                    <div style="font-size:.8rem;color:var(--muted);margin-bottom:.75rem;">Bado hujajisajili?</div>
+                    <a href="{% url 'transfer:register' %}" class="btn-t-outline" style="font-size:.85rem;">
+                        <i class="fas fa-user-plus"></i>Jaza Taarifa Zangu — Anza Sasa
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
