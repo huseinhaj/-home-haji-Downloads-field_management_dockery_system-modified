@@ -31,10 +31,10 @@
             </div>
             <div class="t-card-body">
 
-                {% if errors.__all__ %}
-                <div style="display:flex;align-items:flex-start;gap:.75rem;padding:.9rem 1.2rem;border-radius:var(--radius-sm);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#b91c1c;font-size:.85rem;margin-bottom:1.2rem;">
+                {% if errors.general %}
+                <div style="display:flex;align-items:flex-start;gap:.75rem;padding:.9rem 1.2rem;border-radius:var(--r1);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#b91c1c;font-size:.85rem;margin-bottom:1.2rem;">
                     <i class="fas fa-times-circle" style="margin-top:.1rem;flex-shrink:0;"></i>
-                    <span>{{ errors.__all__ }}</span>
+                    <span>{{ errors.general }}</span>
                 </div>
                 {% endif %}
 

@@ -296,7 +296,7 @@ def login_returning(request):
                 messages.success(request, f'Karibu tena, {teacher.name}! Umeingia mfumo.')
                 return redirect('transfer:home')
             else:
-                errors['__all__'] = 'Namba ya simu au wilaya si sahihi. Hakikisha umeandika vizuri kama ulivyojaza kwanza.'
+                errors['general'] = 'Namba ya simu au wilaya si sahihi. Hakikisha umeandika vizuri kama ulivyojaza kwanza.'
 
     return render(request, 'transfer/login.html', {
         'errors': errors,
