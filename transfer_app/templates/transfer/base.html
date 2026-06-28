@@ -643,6 +643,20 @@
 {% block hero %}{% endblock %}
 
 <div class="t-main">
+    {% if messages %}
+    <div style="margin-bottom:1.5rem;">
+        {% for msg in messages %}
+        <div style="display:flex;align-items:flex-start;gap:.75rem;padding:.9rem 1.2rem;border-radius:var(--radius-md);margin-bottom:.5rem;
+            {% if msg.tags == 'success' %}background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#065f46;
+            {% elif msg.tags == 'error' %}background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#b91c1c;
+            {% else %}background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#92400e;{% endif %}
+            font-size:.85rem;font-weight:500;">
+            <i class="fas {% if msg.tags == 'success' %}fa-check-circle{% elif msg.tags == 'error' %}fa-times-circle{% else %}fa-exclamation-triangle{% endif %}" style="margin-top:.15rem;flex-shrink:0;"></i>
+            <span>{{ msg }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
 </div>
 

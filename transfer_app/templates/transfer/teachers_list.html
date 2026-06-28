@@ -10,7 +10,7 @@
             {{ region.name }} › {{ district.name }}
         </div>
         <h1>Walimu Wanaotaka Kubadilishana</h1>
-        <p>Wasiliana moja kwa moja — bonyeza namba ya simu kupiga</p>
+        <p>Fungua namba ya simu kwa credit moja — wasiliana moja kwa moja</p>
     </div>
 </div>
 {% endblock %}
@@ -29,10 +29,20 @@
 
 <!-- Filter bar -->
 <div class="filter-bar">
-    <div class="stats-chip">
-        <i class="fas fa-users" style="color:var(--accent);"></i>
-        <span class="num">{{ total }}</span>
-        mwalimu {% if total == 1 %}anayepatikana{% else %}wanaopatikana{% endif %}
+    <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+        <div class="stats-chip">
+            <i class="fas fa-users" style="color:var(--accent);"></i>
+            <span class="num">{{ total }}</span>
+            mwalimu {% if total == 1 %}anayepatikana{% else %}wanaopatikana{% endif %}
+        </div>
+        <!-- Credits chip -->
+        <a href="{% url 'transfer:buy_credits' %}" style="text-decoration:none;">
+            <div class="stats-chip" style="{% if credits == 0 %}border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05);{% endif %}">
+                <i class="fas fa-coins" style="color:{% if credits > 0 %}var(--gold){% else %}var(--danger){% endif %};"></i>
+                <span class="num" style="color:{% if credits > 0 %}var(--primary){% else %}var(--danger){% endif %};">{{ credits }}</span>
+                <span style="font-size:.72rem;color:var(--muted);">credits{% if credits == 0 %} — Nunua ↗{% endif %}</span>
+            </div>
+        </a>
     </div>
 
     <form method="get" class="d-flex align-items-center gap-2">
@@ -46,20 +56,32 @@
     </form>
 </div>
 
+{% if credits == 0 %}
+<!-- Credits warning banner -->
+<div style="display:flex;align-items:center;gap:.9rem;padding:1rem 1.3rem;background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(245,158,11,.04));border:1.5px solid rgba(245,158,11,.25);border-radius:var(--radius-md);margin-bottom:1.5rem;">
+    <i class="fas fa-lock" style="color:var(--gold);font-size:1.2rem;flex-shrink:0;"></i>
+    <div>
+        <div style="font-weight:700;font-size:.88rem;color:#92400e;">Huna Credits</div>
+        <div style="font-size:.78rem;color:#a16207;margin-top:.1rem;">Nunua credits (kuanzia TZS 1,000) ili uone namba za simu za walimu</div>
+    </div>
+    <a href="{% url 'transfer:buy_credits' %}" class="btn-t-primary ms-auto" style="font-size:.82rem;padding:.6rem 1.4rem;white-space:nowrap;">
+        <i class="fas fa-coins"></i>Nunua Credits
+    </a>
+</div>
+{% endif %}
+
 {% if teachers %}
 <div class="row g-4">
     {% for t in teachers %}
+    {% with is_unlocked=t.id|stringformat:"s" %}
     <div class="col-xl-4 col-md-6 fade-up" style="animation-delay:{{ forloop.counter0 }}0ms;">
         <div class="teacher-card">
-            <!-- Color accent bar -->
+            <!-- Accent bar -->
             <div class="tc-accent-bar"></div>
 
             <!-- Header -->
             <div style="padding:1.1rem 1.2rem .6rem;display:flex;align-items:center;gap:.9rem;border-bottom:1px solid var(--border);">
-                <!-- Avatar with initials -->
-                <div class="tc-avatar">
-                    {{ t.name|slice:":1"|upper }}
-                </div>
+                <div class="tc-avatar">{{ t.name|slice:":1"|upper }}</div>
                 <div class="flex-grow-1 min-w-0">
                     <div class="tc-name">{{ t.name }}</div>
                     <div class="tc-school" title="{{ t.current_school }}">
@@ -74,25 +96,21 @@
                 <div class="tc-meta">
                     <div class="tc-meta-item">
                         <i class="fas fa-graduation-cap"></i>
-                        <span>
-                            {% if t.level == 'primary' %}
-                            <span class="badge-level badge-primary">Msingi</span>
-                            {% else %}
-                            <span class="badge-level badge-secondary">Sekondari</span>
-                            {% endif %}
-                        </span>
+                        {% if t.level == 'primary' %}
+                        <span class="badge-level badge-primary">Msingi</span>
+                        {% else %}
+                        <span class="badge-level badge-secondary">Sekondari</span>
+                        {% endif %}
                     </div>
                     <div class="tc-meta-item">
                         <i class="fas fa-map-pin"></i>
-                        <span>
-                            {% if t.location_type == 'village' %}
-                            <span class="badge-level badge-village">🌿 Kijijini</span>
-                            {% elif t.location_type == 'urban' %}
-                            <span class="badge-level badge-urban">🏙️ Mjini</span>
-                            {% else %}
-                            <span class="badge-level badge-middle">🏘️ Mji Mdogo</span>
-                            {% endif %}
-                        </span>
+                        {% if t.location_type == 'village' %}
+                        <span class="badge-level badge-village">🌿 Kijijini</span>
+                        {% elif t.location_type == 'urban' %}
+                        <span class="badge-level badge-urban">🏙️ Mjini</span>
+                        {% else %}
+                        <span class="badge-level badge-middle">🏘️ Mji Mdogo</span>
+                        {% endif %}
                     </div>
                     {% if t.willing_to_go %}
                     <div class="tc-meta-item" style="grid-column:1/-1;">
@@ -102,7 +120,7 @@
                     {% endif %}
                     <div class="tc-meta-item" style="grid-column:1/-1;">
                         <i class="fas fa-clock" style="color:var(--muted-2);"></i>
-                        <span style="color:var(--muted-2);font-size:.72rem;">Alisajiliwa {{ t.created_at|date:"d M Y" }}</span>
+                        <span style="color:var(--muted-2);font-size:.72rem;">{{ t.created_at|date:"d M Y" }}</span>
                     </div>
                 </div>
 
@@ -113,29 +131,52 @@
                 </div>
                 {% endif %}
 
-                <!-- Call button -->
+                <!-- Phone: locked or unlocked -->
                 <div class="tc-footer">
+                    {% if t.id in unlocked_ids %}
+                    <!-- UNLOCKED — onyesha namba kamili -->
                     <a href="tel:{{ t.phone }}" class="btn-t-call">
                         <i class="fas fa-phone"></i>
                         {{ t.phone }}
                     </a>
+                    {% else %}
+                    <!-- LOCKED — ficha namba -->
+                    <div style="display:flex;flex-direction:column;gap:.5rem;">
+                        <div style="display:flex;align-items:center;justify-content:center;gap:.6rem;padding:.65rem;background:var(--bg);border:1px dashed var(--border-2);border-radius:50px;font-size:.82rem;color:var(--muted);">
+                            <i class="fas fa-lock" style="color:var(--muted-2);font-size:.75rem;"></i>
+                            <span style="letter-spacing:2px;font-family:monospace;">
+                                {{ t.phone|slice:":4" }} *** ***
+                            </span>
+                        </div>
+                        {% if credits > 0 %}
+                        <form method="post" action="{% url 'transfer:unlock_contact' t.id %}" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-t-primary w-100 justify-content-center" style="font-size:.8rem;padding:.62rem;">
+                                <i class="fas fa-unlock-alt"></i>
+                                Fungua Namba — Credit 1
+                            </button>
+                        </form>
+                        {% else %}
+                        <a href="{% url 'transfer:buy_credits' %}" class="btn-t-outline w-100 justify-content-center" style="font-size:.8rem;padding:.6rem;border-color:var(--gold);color:#92400e;">
+                            <i class="fas fa-coins"></i>
+                            Nunua Credits — TZS 1,000
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
+    {% endwith %}
     {% endfor %}
 </div>
 
 {% else %}
 <div class="empty-state">
-    <div class="empty-icon">
-        <i class="fas fa-user-slash"></i>
-    </div>
+    <div class="empty-icon"><i class="fas fa-user-slash"></i></div>
     <h5>Hakuna Mwalimu Anayepatikana</h5>
-    <p>
-        Hakuna mwalimu aliyejisajili katika wilaya ya <strong>{{ district.name }}</strong> kwa wakati huu.
-        <br>Jaribu wilaya nyingine au rudi baadaye.
-    </p>
+    <p>Hakuna mwalimu aliyejisajili katika wilaya ya <strong>{{ district.name }}</strong> kwa wakati huu.</p>
     <a href="{% url 'transfer:browse_districts' region.id %}" class="btn-t-outline mt-3">
         <i class="fas fa-arrow-left"></i>Rudi kwenye Wilaya
     </a>

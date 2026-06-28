@@ -1,0 +1,247 @@
+{% extends 'transfer/base.html' %}
+
+{% block title %}Nunua Credits{% endblock %}
+
+{% block hero %}
+<div class="t-hero">
+    <div class="t-hero-content">
+        <div class="t-hero-badge">
+            <i class="fas fa-coins" style="font-size:.7rem;"></i>
+            Malipo ya Salama
+        </div>
+        <h1>Nunua Credits</h1>
+        <p>Lipa mara moja — ona namba za simu za walimu wanaotaka kubadilishana nawe</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-8 col-lg-9 col-md-11">
+
+        <!-- Credits balance -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.8rem;padding:1rem 1.4rem;background:var(--surface);border-radius:var(--radius-md);border:1.5px solid var(--border-2);box-shadow:var(--shadow-sm);">
+            <div style="display:flex;align-items:center;gap:.75rem;">
+                <div style="width:42px;height:42px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:12px;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-coins" style="color:#fff;font-size:.95rem;"></i>
+                </div>
+                <div>
+                    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">Credits Zako Sasa</div>
+                    <div style="font-size:1.5rem;font-weight:900;color:var(--primary);line-height:1.1;">
+                        {{ credits }} <span style="font-size:.85rem;font-weight:600;color:var(--muted);">credits</span>
+                    </div>
+                </div>
+            </div>
+            <a href="{% url 'transfer:browse_regions' %}" class="btn-t-ghost">
+                <i class="fas fa-arrow-left"></i>Rudi
+            </a>
+        </div>
+
+        <!-- Packages -->
+        <div class="t-card fade-up mb-4">
+            <div class="t-card-header">
+                <div class="t-card-header-icon">
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <div>
+                    <h4>Chagua Kifurushi</h4>
+                    <p>Tuma pesa kwanza, kisha jaza kumbukumbu hapa chini</p>
+                </div>
+            </div>
+            <div class="t-card-body">
+
+                <!-- Package options -->
+                <div class="row g-3 mb-4" id="packageOptions">
+
+                    <!-- Single -->
+                    <div class="col-md-4">
+                        <label class="pkg-card" data-pkg="single" data-price="1000">
+                            <input type="radio" name="pkg_select" value="single" style="display:none;">
+                            <div class="pkg-inner">
+                                <div class="pkg-icon">
+                                    <i class="fas fa-phone"></i>
+                                </div>
+                                <div class="pkg-credits">1</div>
+                                <div class="pkg-label">Namba 1</div>
+                                <div class="pkg-price">TZS 1,000</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Pack 5 — Recommended -->
+                    <div class="col-md-4">
+                        <label class="pkg-card recommended" data-pkg="pack5" data-price="3500">
+                            <input type="radio" name="pkg_select" value="pack5" style="display:none;" checked>
+                            <div class="pkg-badge">Bora Zaidi</div>
+                            <div class="pkg-inner">
+                                <div class="pkg-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="pkg-credits">5</div>
+                                <div class="pkg-label">Namba 5</div>
+                                <div class="pkg-price">TZS 3,500</div>
+                                <div style="font-size:.68rem;color:var(--accent);font-weight:700;margin-top:.2rem;">Okoa TZS 1,500</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Unlimited -->
+                    <div class="col-md-4">
+                        <label class="pkg-card" data-pkg="unlimited3" data-price="8000">
+                            <input type="radio" name="pkg_select" value="unlimited3" style="display:none;">
+                            <div class="pkg-inner">
+                                <div class="pkg-icon" style="background:linear-gradient(135deg,var(--gold),var(--gold-2));">
+                                    <i class="fas fa-infinity"></i>
+                                </div>
+                                <div class="pkg-credits">∞</div>
+                                <div class="pkg-label">Unlimited</div>
+                                <div class="pkg-price">TZS 8,000</div>
+                                <div style="font-size:.68rem;color:var(--muted);margin-top:.2rem;">Miezi 3</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Payment instructions -->
+                <div style="background:linear-gradient(135deg,rgba(6,95,70,.06),rgba(16,185,129,.04));border:1.5px solid var(--border-2);border-radius:var(--radius-md);padding:1.3rem 1.5rem;margin-bottom:1.5rem;">
+                    <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--primary);margin-bottom:.9rem;">
+                        <i class="fas fa-mobile-alt me-1"></i>Jinsi ya Kulipa
+                    </div>
+                    <ol style="padding-left:1.2rem;font-size:.88rem;color:var(--text-2);margin:0;line-height:2;">
+                        <li>Fungua M-Pesa / Tigo Pesa / Airtel Money kwenye simu yako</li>
+                        <li>Chagua <strong>Lipa Bili</strong> au <strong>Send Money</strong></li>
+                        <li>Tuma kiasi cha kifurushi ulichochagua kwenye:
+                            <div style="background:var(--surface);border:1px solid var(--border-2);border-radius:10px;padding:.7rem 1rem;margin:.4rem 0;display:inline-flex;align-items:center;gap:.75rem;width:100%;">
+                                <div style="width:36px;height:36px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-phone-square-alt" style="color:#fff;font-size:.9rem;"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:.72rem;color:var(--muted);font-weight:600;">Namba ya Lipa</div>
+                                    <div style="font-size:1.1rem;font-weight:900;color:var(--primary);letter-spacing:.5px;">{{ mpesa_number }}</div>
+                                    <div style="font-size:.72rem;color:var(--muted);">{{ mpesa_name }}</div>
+                                </div>
+                            </div>
+                        </li>
+                        <li>Nakili namba ya kumbukumbu (Transaction ID) uliyopata</li>
+                        <li>Jaza fomu hapa chini</li>
+                    </ol>
+                </div>
+
+                <!-- Submit form -->
+                <form method="post" action="{% url 'transfer:submit_payment' %}" id="payForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="package" id="packageInput" value="pack5">
+
+                    <div style="margin-bottom:1rem;">
+                        <label class="form-label-t">Namba ya Kumbukumbu ya Malipo *</label>
+                        <div class="input-icon-wrap">
+                            <i class="icon fas fa-hashtag"></i>
+                            <input type="text" name="mpesa_ref" class="form-control-t"
+                                   placeholder="mfano: QXY1234567" required
+                                   style="text-transform:uppercase;letter-spacing:.5px;"
+                                   oninput="this.value=this.value.toUpperCase()">
+                        </div>
+                        <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Namba hii inatumwa na M-Pesa/Tigo/Airtel baada ya malipo kukamilika (SMS)
+                        </div>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1.2rem;padding:.8rem 1rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:var(--radius-sm);font-size:.82rem;color:#92400e;">
+                        <i class="fas fa-clock" style="flex-shrink:0;"></i>
+                        <span>Credits zitaongezwa ndani ya <strong>saa 1–2</strong> baada ya kuona malipo yako</span>
+                    </div>
+
+                    <button type="submit" class="btn-t-primary w-100 justify-content-center" style="font-size:.92rem;padding:.85rem;">
+                        <i class="fas fa-paper-plane"></i>
+                        Tuma Ombi — <span id="submitLabel">TZS 3,500 (Namba 5)</span>
+                    </button>
+                </form>
+
+            </div>
+        </div>
+
+        <!-- Pending payments notice -->
+        <div class="info-box">
+            <i class="fas fa-question-circle"></i>
+            <div>
+                <strong>Tatizo?</strong> Kama credits hazikuongezwa ndani ya saa 2, wasiliana nasi ukitumia namba ya kumbukumbu yako.
+                Taarifa zako za malipo zimehifadhiwa salama.
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.pkg-card {
+    display: block;
+    border: 2px solid var(--border-2);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+}
+.pkg-card:hover { border-color: var(--accent); }
+.pkg-card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(6,95,70,.12);
+    background: linear-gradient(135deg, rgba(6,95,70,.03), rgba(16,185,129,.04));
+}
+.pkg-card.recommended { border-color: var(--accent); }
+.pkg-badge {
+    position: absolute; top: .6rem; right: .6rem;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #fff;
+    font-size: .6rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .4px;
+    padding: .2rem .55rem;
+    border-radius: 20px;
+}
+.pkg-inner { padding: 1.4rem 1rem; text-align: center; }
+.pkg-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto .8rem;
+    color: #fff; font-size: 1.1rem;
+}
+.pkg-credits { font-size: 2rem; font-weight: 900; color: var(--primary); line-height: 1; }
+.pkg-label { font-size: .75rem; font-weight: 700; color: var(--muted); margin: .2rem 0; }
+.pkg-price { font-size: 1rem; font-weight: 800; color: var(--text); }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const cards   = document.querySelectorAll('.pkg-card');
+const pkgInput = document.getElementById('packageInput');
+const submitLabel = document.getElementById('submitLabel');
+
+const labels = {
+    single:     'TZS 1,000 (Namba 1)',
+    pack5:      'TZS 3,500 (Namba 5)',
+    unlimited3: 'TZS 8,000 (Unlimited)',
+};
+
+function selectCard(card) {
+    cards.forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    const pkg = card.dataset.pkg;
+    pkgInput.value = pkg;
+    submitLabel.textContent = labels[pkg] || '';
+    card.querySelector('input[type=radio]').checked = true;
+}
+
+// Default select recommended
+cards.forEach(card => {
+    card.addEventListener('click', () => selectCard(card));
+    if (card.dataset.pkg === 'pack5') selectCard(card);
+});
+</script>
+{% endblock %}
