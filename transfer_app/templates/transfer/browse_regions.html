@@ -1,0 +1,74 @@
+{% extends 'transfer/base.html' %}
+
+{% block title %}Chagua Mkoa{% endblock %}
+
+{% block hero %}
+<div class="hero">
+    <h1><i class="fas fa-map me-2"></i>Chagua Mkoa</h1>
+    <p>Chagua mkoa ambao unataka kutafuta mwalimu wa kubadilishana naye</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div class="mb-4">
+    <div class="breadcrumb-t">
+        <a href="{% url 'transfer:home' %}"><i class="fas fa-home me-1"></i>Nyumbani</a>
+        <span class="sep">›</span>
+        <span>Mikoa</span>
+    </div>
+</div>
+
+<!-- Search -->
+<div class="row mb-4">
+    <div class="col-md-5">
+        <div class="input-group">
+            <span class="input-group-text" style="background:var(--light-g);border-color:var(--border);">
+                <i class="fas fa-search" style="color:var(--green);"></i>
+            </span>
+            <input type="text" id="regionSearch" class="form-control"
+                   placeholder="Tafuta mkoa..." style="border-color:var(--border);">
+        </div>
+    </div>
+</div>
+
+<!-- Regions Grid -->
+<div class="row g-3" id="regionsGrid">
+    {% for region in regions %}
+    <div class="col-md-4 col-sm-6 region-item">
+        <a href="{% url 'transfer:browse_districts' region.id %}" class="region-card">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width:42px;height:42px;background:var(--light-g);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-map-marker-alt" style="color:var(--green);"></i>
+                </div>
+                <div>
+                    <div style="font-weight:700;font-size:.95rem;">{{ region.name }}</div>
+                    <div style="font-size:.78rem;color:#888;">Bonyeza kuona wilaya</div>
+                </div>
+                <i class="fas fa-chevron-right ms-auto" style="color:var(--border);font-size:.8rem;"></i>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="text-center py-4" id="noResults" style="display:none;">
+    <i class="fas fa-search fa-2x mb-2" style="color:var(--border);"></i>
+    <p class="text-muted">Hakuna mkoa unaolingana na utafutaji wako.</p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('regionSearch').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    let found = 0;
+    document.querySelectorAll('.region-item').forEach(item => {
+        const name = item.querySelector('a').textContent.toLowerCase();
+        item.style.display = name.includes(q) ? '' : 'none';
+        if (name.includes(q)) found++;
+    });
+    document.getElementById('noResults').style.display = found ? 'none' : 'block';
+});
+</script>
+{% endblock %}

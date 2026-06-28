@@ -1,0 +1,111 @@
+{% extends 'transfer/base.html' %}
+
+{% block title %}Walimu — {{ district.name }}{% endblock %}
+
+{% block hero %}
+<div class="hero">
+    <h1><i class="fas fa-users me-2"></i>{{ district.name }}</h1>
+    <p>{{ region.name }} &mdash; Walimu wanaotaka kubadilishana</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div class="mb-4">
+    <div class="breadcrumb-t">
+        <a href="{% url 'transfer:home' %}"><i class="fas fa-home me-1"></i>Nyumbani</a>
+        <span class="sep">›</span>
+        <a href="{% url 'transfer:browse_regions' %}">Mikoa</a>
+        <span class="sep">›</span>
+        <a href="{% url 'transfer:browse_districts' region.id %}">{{ region.name }}</a>
+        <span class="sep">›</span>
+        <span>{{ district.name }}</span>
+    </div>
+</div>
+
+<!-- Stats + Filter -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <span class="stats-pill"><i class="fas fa-users me-1"></i>{{ total }} mwalimu {% if total == 1 %}anayepatikana{% else %}wanaopatikana{% endif %}</span>
+    </div>
+    <form method="get" class="d-flex gap-2 align-items-center">
+        <label class="form-label mb-0" style="white-space:nowrap;font-size:.85rem;">Chuja:</label>
+        <select name="level" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:150px;">
+            <option value="">Kiwango Chochote</option>
+            <option value="primary" {% if level_filter == 'primary' %}selected{% endif %}>Msingi</option>
+            <option value="secondary" {% if level_filter == 'secondary' %}selected{% endif %}>Sekondari</option>
+        </select>
+    </form>
+</div>
+
+{% if teachers %}
+<div class="row g-4">
+    {% for t in teachers %}
+    <div class="col-md-6 col-lg-4">
+        <div class="teacher-card h-100">
+            <!-- Header -->
+            <div class="tc-header d-flex align-items-center gap-3">
+                <div style="width:46px;height:46px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-user-tie text-white fs-5"></i>
+                </div>
+                <div class="flex-grow-1 min-w-0">
+                    <div style="font-weight:700;font-size:.95rem;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.name }}</div>
+                    <div style="font-size:.78rem;color:#666;">{{ t.current_school }}</div>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="p-3">
+                <div class="row g-2 mb-3" style="font-size:.82rem;">
+                    <div class="col-6">
+                        <i class="fas fa-graduation-cap me-1" style="color:var(--green);width:14px;"></i>
+                        <span class="badge {% if t.level == 'primary' %}badge-level-primary{% else %}badge-level-secondary{% endif %}" style="font-size:.75rem;">
+                            {{ t.get_level_display }}
+                        </span>
+                    </div>
+                    <div class="col-6">
+                        <i class="fas fa-home me-1" style="color:var(--green);width:14px;"></i>{{ t.get_location_type_display }}
+                    </div>
+                    {% if t.subjects %}
+                    <div class="col-12">
+                        <i class="fas fa-book me-1" style="color:var(--green);width:14px;"></i>
+                        <span style="color:#555;">{{ t.subjects }}</span>
+                    </div>
+                    {% endif %}
+                    {% if t.willing_to_go %}
+                    <div class="col-12">
+                        <i class="fas fa-arrow-right me-1" style="color:#d4a017;width:14px;"></i>
+                        <span style="color:#555;">Anataka: {{ t.get_willing_to_go_display }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="col-12" style="color:#999;font-size:.75rem;">
+                        <i class="fas fa-clock me-1"></i>Alisajiliwa {{ t.created_at|date:"d M Y" }}
+                    </div>
+                </div>
+
+                <!-- Phone Button -->
+                <a href="tel:{{ t.phone }}" class="btn btn-primary-t w-100" style="font-size:.88rem;">
+                    <i class="fas fa-phone me-2"></i>{{ t.phone }}
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="text-center py-5">
+    <div style="width:72px;height:72px;background:var(--light-g);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+        <i class="fas fa-user-slash fa-2x" style="color:var(--border);"></i>
+    </div>
+    <h5 style="color:#888;">Hakuna mwalimu anayepatikana kwa sasa</h5>
+    <p class="text-muted" style="font-size:.88rem;">
+        Hakuna mwalimu aliyejisajili katika wilaya ya {{ district.name }} kwa wakati huu.
+        <br>Jaribu wilaya nyingine au rudi baadaye.
+    </p>
+    <a href="{% url 'transfer:browse_districts' region.id %}" class="btn btn-outline-t mt-2">
+        <i class="fas fa-arrow-left me-1"></i>Rudi kwenye Wilaya
+    </a>
+</div>
+{% endif %}
+{% endblock %}

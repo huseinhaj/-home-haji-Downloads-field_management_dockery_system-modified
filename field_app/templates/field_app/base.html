@@ -689,6 +689,15 @@
                         <li><hr class="dropdown-divider"></li>
 
                         <li>
+                            <a class="dropdown-item" href="{% url 'transfer:home' %}">
+                                <i class="fas fa-exchange-alt me-2" style="color:#0d6e4e;"></i>
+                                {% if LANG == 'sw' %}Kubadilishana Walimu{% else %}Teacher Transfer{% endif %}
+                            </a>
+                        </li>
+
+                        <li><hr class="dropdown-divider"></li>
+
+                        <li>
                             <a class="dropdown-item" href="{% url 'help_page' %}">
                                 <i class="fas fa-life-ring me-2" style="color:var(--medium,#C8900A);"></i>
                                 {% if LANG == 'sw' %}Msaada{% else %}Help & Guide{% endif %}

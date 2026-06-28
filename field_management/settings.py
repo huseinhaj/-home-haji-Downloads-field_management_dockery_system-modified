@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'field_app',
+    'transfer_app',
     'django_celery_results',
     'results',
     'rest_framework',
@@ -130,10 +131,18 @@ import dj_database_url
 DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3'),
-        conn_max_age=600,        # Weka connections wazi 10 min - punguza overhead
-        conn_health_checks=True, # Kagua connection kabla kutumia
-    )
+        conn_max_age=600,
+        conn_health_checks=True,
+    ),
+    'transfer': dj_database_url.config(
+        env='TRANSFER_DATABASE_URL',
+        default='sqlite:///transfer_db.sqlite3',
+        conn_max_age=600,
+        conn_health_checks=True,
+    ),
 }
+
+DATABASE_ROUTERS = ['transfer_app.router.TransferRouter']
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

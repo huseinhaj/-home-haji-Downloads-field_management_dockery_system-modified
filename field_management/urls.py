@@ -32,4 +32,7 @@ urlpatterns = [
 
     # School Results app
     path('shule/', include('results.urls')),
+
+    # Teacher Transfer Matching app
+    path('transfer/', include('transfer_app.urls', namespace='transfer')),
 ]
