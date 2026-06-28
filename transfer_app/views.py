@@ -7,8 +7,8 @@ from django.contrib import messages
 from .models import TeacherTransfer, CreditBalance, UnlockedContact, PaymentRequest, CREDIT_PACKAGES
 
 # ── Badilisha namba hii na namba yako halisi ya Lipa Namba ──
-MPESA_NUMBER = os.environ.get('TRANSFER_MPESA_NUMBER', '000 000 0000')
-MPESA_NAME   = os.environ.get('TRANSFER_MPESA_NAME',   'Kubadilishana Walimu TZ')
+MPESA_NUMBER = os.environ.get('TRANSFER_MPESA_NUMBER', '0625607088')
+MPESA_NAME   = os.environ.get('TRANSFER_MPESA_NAME',   'Haji Hamisi Huseni')
 
 
 def _get_regions():
@@ -267,6 +267,41 @@ def submit_payment(request):
         f"Credits zitaongezwa ndani ya saa 1-2 baada ya kuthibitisha malipo yako."
     )
     return redirect('transfer:buy_credits')
+
+
+def login_returning(request):
+    """Mwalimu aliyekwisha jaza taarifa aingie kwa namba ya simu + wilaya."""
+    errors = {}
+    form_data = {}
+
+    if request.method == 'POST':
+        form_data = request.POST.dict()
+        phone    = request.POST.get('phone', '').strip()
+        district = request.POST.get('district', '').strip()
+
+        if not phone:
+            errors['phone'] = 'Weka namba yako ya simu'
+        if not district:
+            errors['district'] = 'Weka wilaya unayofundisha'
+
+        if not errors:
+            teacher = TeacherTransfer.objects.using('transfer').filter(
+                phone=phone,
+                district_name__iexact=district,
+                is_active=True,
+            ).first()
+
+            if teacher:
+                request.session['transfer_session_key'] = teacher.session_key
+                messages.success(request, f'Karibu tena, {teacher.name}! Umeingia mfumo.')
+                return redirect('transfer:home')
+            else:
+                errors['__all__'] = 'Namba ya simu au wilaya si sahihi. Hakikisha umeandika vizuri kama ulivyojaza kwanza.'
+
+    return render(request, 'transfer/login.html', {
+        'errors': errors,
+        'form_data': form_data,
+    })
 
 
 def deactivate(request):

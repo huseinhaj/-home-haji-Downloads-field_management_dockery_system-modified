@@ -105,25 +105,25 @@
                 <!-- Payment instructions -->
                 <div style="background:linear-gradient(135deg,rgba(6,95,70,.06),rgba(16,185,129,.04));border:1.5px solid var(--border-2);border-radius:var(--radius-md);padding:1.3rem 1.5rem;margin-bottom:1.5rem;">
                     <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--primary);margin-bottom:.9rem;">
-                        <i class="fas fa-mobile-alt me-1"></i>Jinsi ya Kulipa
+                        <i class="fas fa-sim-card me-1"></i>Jinsi ya Kulipa kwa Halopesa
                     </div>
                     <ol style="padding-left:1.2rem;font-size:.88rem;color:var(--text-2);margin:0;line-height:2;">
-                        <li>Fungua M-Pesa / Tigo Pesa / Airtel Money kwenye simu yako</li>
-                        <li>Chagua <strong>Lipa Bili</strong> au <strong>Send Money</strong></li>
-                        <li>Tuma kiasi cha kifurushi ulichochagua kwenye:
-                            <div style="background:var(--surface);border:1px solid var(--border-2);border-radius:10px;padding:.7rem 1rem;margin:.4rem 0;display:inline-flex;align-items:center;gap:.75rem;width:100%;">
-                                <div style="width:36px;height:36px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                    <i class="fas fa-phone-square-alt" style="color:#fff;font-size:.9rem;"></i>
+                        <li>Fungua <strong>Halopesa</strong> kwenye simu yako (Zantel)</li>
+                        <li>Chagua <strong>Tuma Pesa</strong> (Send Money)</li>
+                        <li>Tuma kiasi cha kifurushi ulichochagua kwenye namba hii:
+                            <div style="background:var(--surface);border:1.5px solid var(--border-2);border-radius:10px;padding:.9rem 1.1rem;margin:.5rem 0;display:flex;align-items:center;gap:.9rem;width:100%;">
+                                <div style="width:42px;height:42px;background:linear-gradient(135deg,#1a6b3c,#2d9e5f);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-sim-card" style="color:#fff;font-size:1rem;"></i>
                                 </div>
                                 <div>
-                                    <div style="font-size:.72rem;color:var(--muted);font-weight:600;">Namba ya Lipa</div>
-                                    <div style="font-size:1.1rem;font-weight:900;color:var(--primary);letter-spacing:.5px;">{{ mpesa_number }}</div>
-                                    <div style="font-size:.72rem;color:var(--muted);">{{ mpesa_name }}</div>
+                                    <div style="font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Halopesa — Namba ya Kupokea</div>
+                                    <div style="font-size:1.3rem;font-weight:900;color:var(--primary);letter-spacing:1px;">{{ mpesa_number }}</div>
+                                    <div style="font-size:.78rem;color:var(--text-2);font-weight:600;">{{ mpesa_name }}</div>
                                 </div>
                             </div>
                         </li>
-                        <li>Nakili namba ya kumbukumbu (Transaction ID) uliyopata</li>
-                        <li>Jaza fomu hapa chini</li>
+                        <li>Baada ya kutuma, utapata <strong>SMS ya uthibitisho</strong> na namba ya kumbukumbu</li>
+                        <li>Nakili namba hiyo ya kumbukumbu (Transaction ID) na jaza fomu hapa chini</li>
                     </ol>
                 </div>
 
@@ -133,7 +133,7 @@
                     <input type="hidden" name="package" id="packageInput" value="pack5">
 
                     <div style="margin-bottom:1rem;">
-                        <label class="form-label-t">Namba ya Kumbukumbu ya Malipo *</label>
+                        <label class="form-label-t">Namba ya Kumbukumbu ya Halopesa (Transaction ID) *</label>
                         <div class="input-icon-wrap">
                             <i class="icon fas fa-hashtag"></i>
                             <input type="text" name="mpesa_ref" class="form-control-t"
@@ -143,7 +143,7 @@
                         </div>
                         <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">
                             <i class="fas fa-info-circle me-1"></i>
-                            Namba hii inatumwa na M-Pesa/Tigo/Airtel baada ya malipo kukamilika (SMS)
+                            Namba hii inatumwa na Halopesa kwenye simu yako baada ya malipo kukamilika (SMS)
                         </div>
                     </div>
 
