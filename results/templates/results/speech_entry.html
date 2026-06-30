@@ -1,131 +1,282 @@
 {% extends 'results/base.html' %}
-
-{% block title %}Speech Entry | School Results{% endblock %}
+{% block title %}Ingiza Alama kwa Sauti{% endblock %}
 
 {% block content %}
 <style>
-  .nimemaliza-info {
-    background: linear-gradient(90deg, #1B3A6B 0%, #24508a 100%);
-    border: 1.5px solid #C9A84C;
-    border-radius: 2px;
-    padding: 0.75rem 1.1rem;
-    color: #fff;
-    font-size: 0.83rem;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-  .nimemaliza-info .badge-kw {
-    background: #C9A84C;
-    color: #1B3A6B;
-    font-weight: 800;
-    font-size: 0.78rem;
-    padding: 0.2rem 0.55rem;
-    border-radius: 2px;
-    letter-spacing: 0.06em;
-    white-space: nowrap;
-  }
+/* ── Layout ── */
+.phase { transition: opacity .25s; }
+.phase.hidden { display: none !important; }
 
-  .session-context-bar {
-    background: #f8f9fa;
-    border: 1.5px solid #dee2e6;
-    border-left: 4px solid #C9A84C;
-    border-radius: 2px;
-    padding: 0.65rem 1rem;
-    font-size: 0.82rem;
-    color: #444;
-    margin-bottom: 1rem;
-    display: flex;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-  }
-  .session-context-bar .ctx-label { font-weight: 700; color: #1B3A6B; text-transform: uppercase; font-size: 0.72rem; }
+/* ── Setup Phase ── */
+.setup-card {
+  background: #fff;
+  border: 1.5px solid #e0e4ea;
+  border-radius: 10px;
+  padding: 2rem;
+  max-width: 680px;
+  margin: 2rem auto;
+  box-shadow: 0 2px 16px rgba(27,58,107,.07);
+}
+.setup-card h2 { font-size: 1.25rem; color: #1B3A6B; font-weight: 700; margin-bottom: 1.5rem; }
+.setup-card .field { margin-bottom: 1rem; }
+.setup-card label { font-size: .82rem; font-weight: 600; color: #444; display: block; margin-bottom: .3rem; }
 
-  .finalized-banner {
-    background: linear-gradient(90deg, #1a7a3b, #1d8a42);
-    color: #fff;
-    border: 1.5px solid #a3d9b4;
-    border-radius: 2px;
-    padding: 0.85rem 1.2rem;
-    margin-bottom: 1rem;
-    font-size: 0.88rem;
-    font-weight: 600;
-    display: none;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  .finalized-banner .pdf-link {
-    background: #fff;
-    color: #1a7a3b;
-    padding: 0.3rem 0.9rem;
-    border-radius: 2px;
-    font-weight: 700;
-    font-size: 0.78rem;
-    text-decoration: none;
-    border: 1.5px solid #a3d9b4;
-  }
-  .finalized-banner.visible { display: flex; }
+/* Drag-drop zone */
+.drop-zone {
+  border: 2.5px dashed #b0bec5;
+  border-radius: 8px;
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  background: #f8fafc;
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.dragover { border-color: #1B3A6B; background: #eef2f9; }
+.drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop-zone .dz-icon { font-size: 2rem; margin-bottom: .4rem; }
+.drop-zone .dz-text { font-size: .85rem; color: #666; }
+.drop-zone .dz-hint { font-size: .75rem; color: #999; margin-top: .25rem; }
+.roster-badge {
+  display: inline-block;
+  background: #1a7a3b;
+  color: #fff;
+  font-size: .8rem;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: .25rem .85rem;
+  margin-top: .6rem;
+}
+
+/* ── Session Phase ── */
+.session-topbar {
+  background: #1B3A6B;
+  color: #fff;
+  border-radius: 8px;
+  padding: .7rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.session-topbar .session-label { font-size: .78rem; opacity: .7; text-transform: uppercase; letter-spacing: .05em; }
+.session-topbar .session-value { font-size: .92rem; font-weight: 700; }
+.session-topbar .ms-auto { margin-left: auto !important; display: flex; gap: .5rem; flex-wrap: wrap; }
+
+/* Progress bar */
+.progress-wrap { margin-bottom: 1rem; }
+.progress-bar-label { font-size: .78rem; color: #555; margin-bottom: .25rem; display: flex; justify-content: space-between; }
+.progress-track { background: #e0e4ea; border-radius: 20px; height: 8px; overflow: hidden; }
+.progress-fill { background: linear-gradient(90deg, #1B3A6B, #C9A84C); height: 100%; border-radius: 20px; transition: width .4s ease; }
+
+/* Two-column layout */
+.session-grid { display: grid; grid-template-columns: 1fr 320px; gap: 1rem; }
+@media (max-width: 900px) { .session-grid { grid-template-columns: 1fr; } }
+
+/* Roster table */
+.roster-panel {
+  background: #fff;
+  border: 1.5px solid #e0e4ea;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(27,58,107,.05);
+}
+.roster-panel-head {
+  background: #f4f6fb;
+  padding: .6rem 1rem;
+  border-bottom: 1.5px solid #e0e4ea;
+  font-size: .8rem;
+  font-weight: 700;
+  color: #1B3A6B;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.roster-table-wrap { max-height: 520px; overflow-y: auto; }
+.roster-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+.roster-table th {
+  background: #f8f9fb;
+  padding: .45rem .75rem;
+  text-align: left;
+  font-size: .73rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  position: sticky; top: 0; z-index: 2;
+  border-bottom: 1.5px solid #e0e4ea;
+}
+.roster-table td { padding: .45rem .75rem; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+.roster-table tr.row-saved { background: #f0faf4; }
+.roster-table tr.row-active { background: #fff8e6; }
+.roster-table tr.row-flash { animation: rowFlash .8s ease; }
+@keyframes rowFlash {
+  0% { background: #fffbe6; }
+  30% { background: #c3f0d4; }
+  100% { background: #f0faf4; }
+}
+.score-val { font-weight: 700; color: #1a7a3b; font-size: .9rem; }
+.score-pending { color: #b0b8c1; font-size: .85rem; }
+.badge-saved { background: #1a7a3b; color: #fff; font-size: .68rem; padding: .15rem .5rem; border-radius: 20px; font-weight: 600; }
+.badge-pending { background: #e0e4ea; color: #888; font-size: .68rem; padding: .15rem .5rem; border-radius: 20px; }
+.badge-searching { background: #fff3cd; color: #856404; font-size: .68rem; padding: .15rem .5rem; border-radius: 20px; animation: pulse .8s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+
+/* Recording panel */
+.recording-panel {
+  background: #fff;
+  border: 1.5px solid #e0e4ea;
+  border-radius: 10px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(27,58,107,.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Mic visualization */
+.mic-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .6rem;
+  padding: 1rem 0;
+}
+.mic-ring-wrap {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mic-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid #1B3A6B;
+  opacity: 0;
+}
+.mic-ring-wrap.state-listening .mic-ring:nth-child(1) { width: 90px; height: 90px; animation: ringPulse 2s infinite .0s; }
+.mic-ring-wrap.state-listening .mic-ring:nth-child(2) { width: 90px; height: 90px; animation: ringPulse 2s infinite .4s; }
+.mic-ring-wrap.state-recording .mic-ring:nth-child(1) { border-color: #dc3545; width: 90px; height: 90px; animation: ringPulse 1s infinite .0s; }
+.mic-ring-wrap.state-recording .mic-ring:nth-child(2) { border-color: #dc3545; width: 90px; height: 90px; animation: ringPulse 1s infinite .2s; }
+.mic-ring-wrap.state-recording .mic-ring:nth-child(3) { border-color: #dc3545; width: 90px; height: 90px; animation: ringPulse 1s infinite .4s; }
+@keyframes ringPulse {
+  0% { transform: scale(.7); opacity: .7; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.mic-icon {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem;
+  background: #1B3A6B;
+  color: #fff;
+  z-index: 2;
+  transition: background .3s;
+  position: relative;
+}
+.mic-ring-wrap.state-recording .mic-icon { background: #dc3545; }
+.mic-ring-wrap.state-processing .mic-icon { background: #C9A84C; }
+.mic-ring-wrap.state-idle .mic-icon { background: #b0bec5; }
+.mic-ring-wrap.state-paused .mic-icon { background: #6c757d; }
+
+.mic-state-label { font-size: .85rem; font-weight: 600; color: #1B3A6B; }
+.mic-ring-wrap.state-recording ~ .mic-state-label { color: #dc3545; }
+.mic-ring-wrap.state-processing ~ .mic-state-label { color: #856404; }
+.mic-ring-wrap.state-idle ~ .mic-state-label { color: #6c757d; }
+
+/* Audio meter */
+.audio-meter-wrap { padding: 0 .5rem; }
+.audio-meter-label { font-size: .72rem; color: #888; margin-bottom: .2rem; display: flex; justify-content: space-between; }
+.audio-meter-track { background: #e0e4ea; border-radius: 4px; height: 5px; overflow: hidden; }
+.audio-meter-fill { background: #1B3A6B; height: 100%; border-radius: 4px; transition: width .05s linear; width: 0%; }
+.audio-meter-fill.loud { background: #dc3545; }
+.audio-meter-fill.active { background: #1a7a3b; }
+
+/* Result feed */
+.result-feed { font-size: .82rem; }
+.result-feed-label { font-size: .72rem; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .4rem; font-weight: 600; }
+.result-item {
+  background: #f8f9fb;
+  border-radius: 6px;
+  padding: .5rem .75rem;
+  margin-bottom: .4rem;
+  border-left: 3px solid #1B3A6B;
+}
+.result-item.result-success { border-left-color: #1a7a3b; background: #f0faf4; }
+.result-item.result-warn { border-left-color: #C9A84C; background: #fffce6; }
+.result-item.result-error { border-left-color: #dc3545; background: #fff5f5; }
+.result-student { font-weight: 700; color: #1B3A6B; }
+.result-score { color: #1a7a3b; font-weight: 700; }
+.result-transcript { color: #666; font-size: .75rem; font-style: italic; }
+
+/* Confirm modal */
+.confirm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.confirm-overlay.hidden { display: none !important; }
+.confirm-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.75rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 8px 40px rgba(0,0,0,.2);
+}
+.confirm-modal h4 { font-size: 1rem; font-weight: 700; color: #1B3A6B; margin-bottom: .3rem; }
+.confirm-modal .transcript-heard { font-size: .82rem; color: #666; font-style: italic; margin-bottom: 1rem; padding: .4rem .6rem; background: #f8f9fb; border-radius: 4px; }
+.candidate-btn {
+  display: block; width: 100%;
+  border: 1.5px solid #dee2e6;
+  background: #fff;
+  border-radius: 6px;
+  padding: .6rem .85rem;
+  margin-bottom: .4rem;
+  cursor: pointer;
+  text-align: left;
+  font-size: .85rem;
+  transition: border-color .15s, background .15s;
+}
+.candidate-btn:hover { border-color: #1B3A6B; background: #eef2f9; }
+.candidate-conf { float: right; font-size: .75rem; color: #888; font-weight: 600; }
+.conf-high { color: #1a7a3b; }
+.conf-mid { color: #856404; }
+
+/* Done banner */
+.done-banner {
+  background: linear-gradient(90deg, #1a7a3b, #1d9e4e);
+  color: #fff;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+}
+.done-banner.hidden { display: none !important; }
+.done-banner a { background: #fff; color: #1a7a3b; padding: .3rem 1rem; border-radius: 4px; font-weight: 700; font-size: .82rem; text-decoration: none; }
 </style>
 
-<section class="hero">
-  <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
-    <div>
-      <h1 class="mb-2">Teacher Speech Entry</h1>
-      <p class="mb-0 text-secondary">Record student name and mark, confirm matches, and let the system save results safely.</p>
-    </div>
-    <div class="d-flex gap-2 flex-wrap">
-      <span class="badge-soft">Offline AI</span>
-      <span class="badge-soft">English + Swahili</span>
-      <span class="badge-soft">Live Confirmation</span>
-    </div>
-  </div>
-</section>
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PHASE 1: SETUP                                              -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="setupPhase" class="phase">
+  <section class="hero">
+    <h1 class="mb-1">Ingiza Alama kwa Sauti</h1>
+    <p class="mb-0 text-secondary">Pakia orodha ya wanafunzi, kisha sema jina na alama — AI itajaza score sheet moja kwa moja.</p>
+  </section>
 
-<!-- Instructions banner -->
-<div class="nimemaliza-info">
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#C9A84C" viewBox="0 0 16 16" style="flex-shrink:0">
-    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
-  </svg>
-  <div>
-    <strong>Jinsi ya kutumia:</strong>
-    Sema jina la mwanafunzi na alama zake, k.m. <em>"Halima Ally kapata ishirini"</em> au <em>"Peter Mushi 80"</em>.
-    Weka alama nyingi mfululizo ukitengana kwa nukta au mapumziko.
-    Ukimaliza, sema <span class="badge-kw">NIMEMALIZA</span> — mfumo utafunga kipindi hicho moja kwa moja.
-  </div>
-</div>
+  <div class="setup-card">
+    <h2>Hatua 1 — Maelezo ya Kipindi</h2>
 
-<!-- Pre-selected session context bar -->
-{% if preselect_exam_id and preselect_subject_id %}
-<div class="session-context-bar" id="sessionContextBar">
-  <div>
-    <div class="ctx-label">Mtihani</div>
-    <div id="ctxExamName">—</div>
-  </div>
-  <div>
-    <div class="ctx-label">Somo</div>
-    <div id="ctxSubjectName">—</div>
-  </div>
-</div>
-{% endif %}
-
-<!-- Finalized banner (shown when nimemaliza or session finalized) -->
-<div class="finalized-banner" id="finalizedBanner">
-  <span>Kipindi imefungwa. Alama za somo zimehifadhiwa.</span>
-  <a href="#" id="pdfDownloadLink" class="pdf-link" target="_blank" style="display:none;">Pakua PDF ya Somo</a>
-</div>
-
-<div class="row g-4 mt-1">
-  <div class="col-lg-4">
-    <section class="panel h-100">
-      <div class="panel-head">
-        <h3 class="mb-0">Hatua 1: Fungua Kipindi</h3>
-      </div>
-      <div class="panel-body">
+    <div class="row g-3">
+      <div class="col-md-6">
         <div class="field">
-          <label for="exam_id">Mtihani</label>
-          <select id="exam_id" class="form-select">
+          <label for="s_exam_id">Mtihani</label>
+          <select id="s_exam_id" class="form-select form-select-sm">
             <option value="">— Chagua mtihani —</option>
             {% for exam in exams %}
               <option value="{{ exam.id }}" {% if preselect_exam_id == exam.id|stringformat:"s" %}selected{% endif %}>
@@ -134,9 +285,11 @@
             {% endfor %}
           </select>
         </div>
+      </div>
+      <div class="col-md-6">
         <div class="field">
-          <label for="subject_id">Somo</label>
-          <select id="subject_id" class="form-select">
+          <label for="s_subject_id">Somo</label>
+          <select id="s_subject_id" class="form-select form-select-sm">
             <option value="">— Chagua somo —</option>
             {% for subject in subjects %}
               <option value="{{ subject.id }}" {% if preselect_subject_id == subject.id|stringformat:"s" %}selected{% endif %}>
@@ -145,520 +298,805 @@
             {% endfor %}
           </select>
         </div>
+      </div>
+      <div class="col-md-6">
         <div class="field">
-          <label for="teacher_name">Jina la Mwalimu</label>
-          <input id="teacher_name" class="form-control" placeholder="Mfano: Mwl. Mushi">
+          <label for="s_teacher_name">Jina la Mwalimu</label>
+          <input id="s_teacher_name" class="form-control form-control-sm" placeholder="Mfano: Mwl. Omari">
         </div>
+      </div>
+      <div class="col-md-6">
         <div class="field">
-          <label for="language">Lugha ya Kurekodi</label>
-          <select id="language" class="form-select">
+          <label for="s_language">Lugha ya Kusema</label>
+          <select id="s_language" class="form-select form-select-sm">
             <option value="sw" selected>Kiswahili</option>
             <option value="en">English</option>
           </select>
         </div>
-        <div class="field" style="display:none;">
-          <select id="roster_students" class="form-select" multiple size="8"></select>
-        </div>
-        <div class="d-grid gap-2 mt-3">
-          <button id="openSessionBtn" class="btn btn-brand" type="button">▶ Fungua Kipindi</button>
-          <button id="finalizeSessionBtn" class="btn btn-outline-dark" type="button" disabled>✔ Maliza &amp; Hifadhi PDF</button>
-        </div>
-        <div id="sessionStatus" class="support-box mt-3 small text-secondary">
-          Jaza fomu hapo juu kisha bonyeza <strong>Fungua Kipindi</strong>.
-        </div>
       </div>
-    </section>
-  </div>
+    </div>
 
-  <div class="col-lg-8">
-    <section class="panel h-100">
-      <div class="panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h3 class="mb-0">Hatua 2: Rekodi Alama</h3>
-        <div class="d-flex gap-2 flex-wrap">
-          <button id="recordBtn" class="btn btn-brand" type="button" disabled>🎙 Anza Kurekodi</button>
-          <button id="useTranscriptBtn" class="btn btn-outline-secondary" type="button" disabled>Wasilisha Maandishi</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div class="row g-3">
-          <div class="col-lg-7">
-            <label class="form-label fw-bold">Maandishi ya Sauti</label>
-            <textarea id="transcript" class="form-control transcript-box" rows="7" placeholder="Maandishi yataonekana hapa — au unaweza kuandika mwenyewe&#10;&#10;Mfano: Halima Ally sabini na tano. Peter Mushi themanini. Fatuma Ali tisini. Nimemaliza."></textarea>
-            <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
-              <div id="confidenceBox" class="small text-secondary">Hali: —</div>
-              <div id="audioState" class="small text-secondary">Imesimama</div>
-            </div>
-          </div>
-          <div class="col-lg-5">
-            <label class="form-label fw-bold">Matokeo ya Uchambuzi</label>
-            <div id="candidatePanel" class="support-box candidate-panel">
-              Sema wanafunzi wengi mfululizo: <em>"Amina Juma sabini, Peter Mushi themanini, Nimemaliza"</em>.
-            </div>
-            <div class="mt-3">
-              <label class="form-label fw-bold">Overwrite Existing Marks</label>
-              <select id="explicit_update" class="form-select">
-                <option value="true">Always overwrite (recommended)</option>
-              </select>
-            </div>
-          </div>
-        </div>
+    <hr class="my-3">
+    <h2>Hatua 2 — Pakia Orodha ya Wanafunzi</h2>
+    <p class="text-secondary" style="font-size:.82rem;">Pakia CSV au Excel yenye majina ya wanafunzi. Safu: <strong>First Name, Last Name</strong> (au safu moja ya jina kamili).</p>
 
-        <hr class="my-4">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="rosterFile" accept=".csv,.xlsx,.xls">
+      <div class="dz-icon">📋</div>
+      <div class="dz-text" id="dzText">Buruta faili hapa, au bonyeza kuchagua</div>
+      <div class="dz-hint">CSV au Excel (.csv, .xlsx) — safu: First Name, Last Name</div>
+      <div id="rosterBadge"></div>
+    </div>
 
-        <div>
-          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-            <h4 class="mb-0">Recent Saved Entries</h4>
-            <small id="progressBox" class="text-secondary">0 / 0 submitted</small>
-          </div>
-          <div id="entryList" class="support-box">
-            No entries yet.
-          </div>
-        </div>
+    <div id="setupError" class="alert alert-danger mt-3 d-none" style="font-size:.83rem;"></div>
 
-        {% if debug_mode %}
-        <hr class="my-4">
-
-        <div>
-          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-            <h4 class="mb-0">Actual Subject Marks (Development)</h4>
-            <small class="text-secondary">Live DB snapshot for this exam + subject</small>
-          </div>
-          <div id="existingMarksList" class="support-box">
-            Open a session to load current marks.
-          </div>
-        </div>
-        {% endif %}
-      </div>
-    </section>
+    <div class="d-grid mt-4">
+      <button id="startSessionBtn" class="btn btn-brand btn-lg" type="button" disabled>
+        ▶ Anza Kuingiza Alama
+      </button>
+    </div>
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PHASE 2: ACTIVE SESSION                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="sessionPhase" class="phase hidden">
+
+  <!-- Done Banner -->
+  <div class="done-banner hidden" id="doneBanner">
+    <span style="font-size:1.1rem;">✅</span>
+    <div>
+      <strong>Wanafunzi wote wamewekewa alama!</strong>
+      <div style="font-size:.82rem;opacity:.9;">Score sheet imekamilika. Pakua ripoti chini.</div>
+    </div>
+    <a id="pdfLink" href="#" target="_blank" class="ms-auto">Pakua PDF</a>
+  </div>
+
+  <!-- Top bar -->
+  <div class="session-topbar">
+    <div>
+      <div class="session-label">Mtihani</div>
+      <div class="session-value" id="tb_exam">—</div>
+    </div>
+    <div>
+      <div class="session-label">Somo</div>
+      <div class="session-value" id="tb_subject">—</div>
+    </div>
+    <div>
+      <div class="session-label">Mwalimu</div>
+      <div class="session-value" id="tb_teacher">—</div>
+    </div>
+    <div class="ms-auto">
+      <button id="pauseBtn" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">
+        ⏸ Sitisha
+      </button>
+      <button id="finalizeBtn" class="btn btn-sm" style="background:#C9A84C;color:#1B3A6B;font-weight:700;border:none;">
+        ✓ Maliza &amp; Hifadhi
+      </button>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-wrap">
+    <div class="progress-bar-label">
+      <span id="progressText">0 / 0 wanafunzi</span>
+      <span id="progressPct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Main grid -->
+  <div class="session-grid">
+
+    <!-- LEFT: Roster Table -->
+    <div class="roster-panel">
+      <div class="roster-panel-head">
+        <span>Orodha ya Wanafunzi</span>
+        <span id="rosterCountBadge" style="font-weight:400;color:#666;font-size:.75rem;"></span>
+      </div>
+      <div class="roster-table-wrap">
+        <table class="roster-table" id="rosterTable">
+          <thead>
+            <tr>
+              <th style="width:36px">#</th>
+              <th>Jina la Mwanafunzi</th>
+              <th style="width:60px;text-align:center;">Alama</th>
+              <th style="width:80px;text-align:center;">Hali</th>
+            </tr>
+          </thead>
+          <tbody id="rosterBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT: Recording Panel -->
+    <div class="recording-panel">
+
+      <!-- Mic visualization -->
+      <div class="mic-center">
+        <div class="mic-ring-wrap state-idle" id="micRingWrap">
+          <div class="mic-ring"></div>
+          <div class="mic-ring"></div>
+          <div class="mic-ring"></div>
+          <div class="mic-icon">🎙</div>
+        </div>
+        <div class="mic-state-label" id="micStateLabel">Imeanza...</div>
+      </div>
+
+      <!-- Audio meter -->
+      <div class="audio-meter-wrap">
+        <div class="audio-meter-label">
+          <span>Kiwango cha Sauti</span>
+          <span id="meterValue">0%</span>
+        </div>
+        <div class="audio-meter-track">
+          <div class="audio-meter-fill" id="meterFill"></div>
+        </div>
+      </div>
+
+      <!-- Last result feed -->
+      <div class="result-feed">
+        <div class="result-feed-label">Matokeo ya Hivi Karibuni</div>
+        <div id="resultFeed">
+          <div class="result-item" style="border-left-color:#b0bec5;">
+            <span style="color:#999;font-size:.8rem;">Bado hakuna rekodi...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual override -->
+      <div>
+        <div style="font-size:.72rem;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:.3rem;">Au Andika Mwenyewe</div>
+        <div class="d-flex gap-2">
+          <input id="manualTranscript" class="form-control form-control-sm" placeholder='Mfano: "Amina Juma tisini"' style="font-size:.82rem;">
+          <button id="manualSubmitBtn" class="btn btn-sm btn-outline-secondary" type="button" style="white-space:nowrap;font-size:.78rem;">Wasilisha</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- CONFIRM MODAL                                               -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="confirm-overlay hidden" id="confirmOverlay">
+  <div class="confirm-modal">
+    <h4>❓ Thibitisha Mwanafunzi</h4>
+    <div class="transcript-heard" id="confirmTranscript">—</div>
+    <div style="font-size:.78rem;color:#666;margin-bottom:.6rem;font-weight:600;">Chagua mwanafunzi sahihi:</div>
+    <div id="candidateList"></div>
+    <button class="btn btn-sm btn-outline-secondary w-100 mt-1" id="skipConfirmBtn" type="button">Ruka (Alama hii)</button>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
 (() => {
-  const createSessionUrl = "{% url 'create_speech_session' %}";
-  const statusUrlTemplate = "{% url 'speech_session_status' 0 %}";
-  const ingestUrlTemplate = "{% url 'ingest_speech_entry' 0 %}";
-  const confirmUrlTemplate = "{% url 'confirm_speech_candidate' 0 %}";
-  const finalizeUrlTemplate = "{% url 'finalize_speech_session' 0 %}";
-  const isDebugMode = {{ debug_mode|yesno:"true,false" }};
-  const preselectExamId = "{{ preselect_exam_id }}";
-  const preselectSubjectId = "{{ preselect_subject_id }}";
+  // ── URL constants ─────────────────────────────────────────────────────────
+  const URL_UPLOAD_ROSTER   = "{% url 'upload_roster' %}";
+  const URL_CREATE_SESSION  = "{% url 'create_speech_session' %}";
+  const URL_INGEST_TPL      = "{% url 'ingest_speech_entry' 0 %}";
+  const URL_CONFIRM_TPL     = "{% url 'confirm_speech_candidate' 0 %}";
+  const URL_FINALIZE_TPL    = "{% url 'finalize_speech_session' 0 %}";
+  const URL_STATUS_TPL      = "{% url 'speech_session_status' 0 %}";
 
-  function sessionUrl(template, sessionId) {
-    return template.replace('/0/', `/${sessionId}/`);
+  function sessionUrl(tpl, id) { return tpl.replace('/0/', `/${id}/`); }
+
+  // ── CSRF ─────────────────────────────────────────────────────────────────
+  function getCookie(name) {
+    const v = `; ${document.cookie}`;
+    const p = v.split(`; ${name}=`);
+    return p.length === 2 ? p.pop().split(';').shift() : '';
   }
 
-  const state = {
-    sessionId: null,
-    accessKey: null,
-    recorder: null,
-    chunks: [],
-    lastTranscript: '',
-    candidates: [],
-    entries: [],
-    isRecording: false,
+  // ── State ─────────────────────────────────────────────────────────────────
+  const S = {
+    roster: [],           // [{id, name}]
+    session: null,        // {sessionId, accessKey}
+    scores: {},           // {studentId: score}
+    pendingTranscript: '',
+    language: 'sw',
+    teacherName: '',
+    savedCount: 0,
     isFinalized: false,
+    isPaused: false,
   };
 
-  const examEl = document.getElementById('exam_id');
-  const subjectEl = document.getElementById('subject_id');
-  const teacherEl = document.getElementById('teacher_name');
-  const rosterEl = document.getElementById('roster_students');
-  const openBtn = document.getElementById('openSessionBtn');
-  const finalizeBtn = document.getElementById('finalizeSessionBtn');
-  const recordBtn = document.getElementById('recordBtn');
-  const useTranscriptBtn = document.getElementById('useTranscriptBtn');
-  const transcriptEl = document.getElementById('transcript');
-  const candidatePanel = document.getElementById('candidatePanel');
-  const sessionStatus = document.getElementById('sessionStatus');
-  const confidenceBox = document.getElementById('confidenceBox');
-  const audioState = document.getElementById('audioState');
-  const entryList = document.getElementById('entryList');
-  const progressBox = document.getElementById('progressBox');
-  const explicitUpdateEl = document.getElementById('explicit_update');
-  const languageEl = document.getElementById('language');
-  const existingMarksList = document.getElementById('existingMarksList');
-  const finalizedBanner = document.getElementById('finalizedBanner');
-  const pdfDownloadLink = document.getElementById('pdfDownloadLink');
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const $  = id => document.getElementById(id);
+  const setupPhase    = $('setupPhase');
+  const sessionPhase  = $('sessionPhase');
+  const dropZone      = $('dropZone');
+  const rosterFile    = $('rosterFile');
+  const dzText        = $('dzText');
+  const rosterBadge   = $('rosterBadge');
+  const setupError    = $('setupError');
+  const startBtn      = $('startSessionBtn');
+  const doneBanner    = $('doneBanner');
+  const pdfLink       = $('pdfLink');
+  const tbExam        = $('tb_exam');
+  const tbSubject     = $('tb_subject');
+  const tbTeacher     = $('tb_teacher');
+  const pauseBtn      = $('pauseBtn');
+  const finalizeBtn   = $('finalizeBtn');
+  const progressText  = $('progressText');
+  const progressPct   = $('progressPct');
+  const progressFill  = $('progressFill');
+  const rosterBody    = $('rosterBody');
+  const rosterCount   = $('rosterCountBadge');
+  const micWrap       = $('micRingWrap');
+  const micLabel      = $('micStateLabel');
+  const meterFill     = $('meterFill');
+  const meterValue    = $('meterValue');
+  const resultFeed    = $('resultFeed');
+  const manualInput   = $('manualTranscript');
+  const manualBtn     = $('manualSubmitBtn');
+  const confirmOverlay = $('confirmOverlay');
+  const confirmTrans  = $('confirmTranscript');
+  const candidateList = $('candidateList');
+  const skipBtn       = $('skipConfirmBtn');
 
-  // Pre-populate context bar if we have pre-selected IDs
-  if (preselectExamId && preselectSubjectId) {
-    const examOption = examEl ? examEl.querySelector(`option[value="${preselectExamId}"]`) : null;
-    const subjectOption = subjectEl ? subjectEl.querySelector(`option[value="${preselectSubjectId}"]`) : null;
-    const ctxExam = document.getElementById('ctxExamName');
-    const ctxSubject = document.getElementById('ctxSubjectName');
-    if (ctxExam && examOption) ctxExam.textContent = examOption.textContent.trim();
-    if (ctxSubject && subjectOption) ctxSubject.textContent = subjectOption.textContent.trim();
+  // ── Phase switching ───────────────────────────────────────────────────────
+  function showSession() {
+    setupPhase.classList.add('hidden');
+    sessionPhase.classList.remove('hidden');
   }
 
-  function showFinalizedBanner(pdfUrl) {
-    state.isFinalized = true;
-    if (finalizedBanner) {
-      finalizedBanner.classList.add('visible');
-      if (pdfUrl && pdfDownloadLink) {
-        pdfDownloadLink.href = pdfUrl;
-        pdfDownloadLink.style.display = '';
-      }
-    }
-    // Disable entry controls
-    if (recordBtn) { recordBtn.disabled = true; recordBtn.textContent = '🔒 Kipindi Kimefungwa'; }
-    if (useTranscriptBtn) useTranscriptBtn.disabled = true;
-    if (finalizeBtn) finalizeBtn.disabled = true;
-  }
+  // ── Roster file upload ────────────────────────────────────────────────────
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) processRosterFile(file);
+  });
+  rosterFile.addEventListener('change', e => {
+    if (e.target.files[0]) processRosterFile(e.target.files[0]);
+  });
 
-  function setStatus(message, tone = 'secondary') {
-    sessionStatus.className = `support-box mt-3 small text-${tone}`;
-    sessionStatus.textContent = message;
-  }
+  async function processRosterFile(file) {
+    dzText.textContent = `Inapakia: ${file.name}...`;
+    rosterBadge.innerHTML = '';
+    setupError.classList.add('d-none');
 
-  function refreshProgress(status) {
-    const exp = status.expected_student_count;
-    progressBox.textContent = (exp && exp > 0)
-      ? `${status.submitted_count} / ${exp} submitted`
-      : `${status.submitted_count} wanafunzi wamehifadhiwa`;
-    if (status.status === 'FINALIZED') {
-      if (!state.isFinalized) {
-        showFinalizedBanner(null);
-      }
-      setStatus('This session has been finalized.', 'success');
-    }
-  }
-
-  function renderExistingMarks(status) {
-    if (!isDebugMode || !existingMarksList) return;
-
-    const marks = status.existing_subject_marks || [];
-    if (!marks.length) {
-      existingMarksList.innerHTML = 'No saved marks yet for this subject.';
-      return;
-    }
-
-    existingMarksList.innerHTML = marks.map(row => `
-      <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-        <div>
-          <strong>${row.student_name}</strong>
-          <div class="small text-secondary">${row.score} marks</div>
-        </div>
-        <span class="badge text-bg-light">${row.source === 'speech_session' ? 'Speech' : 'Existing'}</span>
-      </div>
-    `).join('');
-  }
-
-  function refreshRosterSize() {
-    openBtn.disabled = false;
-  }
-
-  function loadRosterOptions() {
-    const students = [
-      {% for student in students %}
-        { id: {{ student.id }}, name: "{{ student.first_name|escapejs }} {{ student.last_name|escapejs }}" },
-      {% endfor %}
-    ];
-
-    rosterEl.innerHTML = students.map(student => `<option value="${student.id}">${student.name}</option>`).join('');
-    refreshRosterSize();
-  }
-
-  function renderCandidates(candidates) {
-    if (!candidates || !candidates.length) {
-      candidatePanel.innerHTML = 'No candidate matches available.';
-      return;
-    }
-
-    candidatePanel.innerHTML = candidates.map(candidate => `
-      <button class="btn btn-outline-dark w-100 mb-2 candidate-choice" type="button" data-student-id="${candidate.student_id}">
-        <div class="d-flex justify-content-between align-items-center gap-2">
-          <span>${candidate.name}</span>
-          <span class="badge text-bg-light">${Number(candidate.confidence).toFixed(2)}</span>
-        </div>
-      </button>
-    `).join('');
-  }
-
-  function renderEntries() {
-    if (!state.entries.length) {
-      entryList.innerHTML = 'No entries yet.';
-      return;
-    }
-
-    entryList.innerHTML = state.entries.map(entry => `
-      <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-        <div>
-          <strong>${entry.student}</strong>
-          <div class="small text-secondary">${entry.score} marks | confidence ${Number(entry.confidence).toFixed(2)}</div>
-        </div>
-        <span class="badge-soft">Saved</span>
-      </div>
-    `).join('');
-  }
-
-  function renderSkippedEntries(skippedEntries) {
-    if (!skippedEntries || !skippedEntries.length) {
-      candidatePanel.innerHTML = 'All parsed entries were saved.';
-      return;
-    }
-
-    candidatePanel.innerHTML = skippedEntries.map(item => `
-      <div class="border-bottom pb-2 mb-2">
-        <div class="small"><strong>Skipped:</strong> ${item.transcript}</div>
-        <div class="small text-danger">${item.error}</div>
-      </div>
-    `).join('');
-  }
-
-  async function createSession() {
-    const examId = examEl.value;
-    const subjectId = subjectEl.value;
-    const teacherName = teacherEl.value.trim();
-    const rosterStudentIds = Array.from(rosterEl.selectedOptions).map(option => Number(option.value));
-
-    if (!examId || !subjectId || !teacherName) {
-      setStatus('Chagua mtihani, somo, na jina la mwalimu.', 'danger');
-      return;
-    }
-
-    const response = await fetch(createSessionUrl, {
+    const fd = new FormData();
+    fd.append('file', file);
+    const resp = await fetch(URL_UPLOAD_ROSTER, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCookie('csrftoken'),
-      },
-      body: JSON.stringify({
-        exam_id: examId,
-        subject_id: subjectId,
-        teacher_name: teacherName,
-        roster_student_ids: rosterStudentIds,
-        expected_student_count: rosterStudentIds.length,
-      }),
+      headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      body: fd,
     });
+    const data = await resp.json();
 
-    const data = await response.json();
-    if (!response.ok) {
-      setStatus(data.error || 'Unable to open session.', 'danger');
+    if (!resp.ok) {
+      showSetupError(data.error || 'Hitilafu ya faili.');
+      dzText.textContent = 'Buruta faili hapa, au bonyeza kuchagua';
       return;
     }
 
-    state.sessionId = data.session_id;
-    state.accessKey = data.access_key;
-    recordBtn.disabled = false;
-    useTranscriptBtn.disabled = false;
-    finalizeBtn.disabled = false;
-    setStatus('✅ Kipindi kimefunguliwa! Bonyeza "Anza Kurekodi" na sema majina na alama.', 'success');
-    openBtn.textContent = '✔ Kipindi Kimefunguliwa';
-    openBtn.disabled = true;
-    await refreshStatus();
+    S.roster = data.students;
+    dzText.textContent = `✓ ${file.name}`;
+    rosterBadge.innerHTML = `<span class="roster-badge">✓ ${data.count} wanafunzi wamepakiwa</span>`;
+    checkCanStart();
   }
 
-  async function refreshStatus() {
-    if (!state.sessionId || !state.accessKey) return;
-    const url = `${sessionUrl(statusUrlTemplate, state.sessionId)}?access_key=${encodeURIComponent(state.accessKey)}`;
-    const response = await fetch(url);
-    const data = await response.json();
-    if (response.ok) {
-      refreshProgress(data);
-      renderExistingMarks(data);
-    }
+  function showSetupError(msg) {
+    setupError.textContent = msg;
+    setupError.classList.remove('d-none');
   }
 
-  async function submitTranscript(transcript, audioBlob = null, confirmStudentId = null) {
-    if (!state.sessionId || !state.accessKey) {
-      setStatus('Open a session first.', 'danger');
-      return;
-    }
+  // ── Enable start button ───────────────────────────────────────────────────
+  function checkCanStart() {
+    const ok = $('s_exam_id').value && $('s_subject_id').value && $('s_teacher_name').value.trim() && S.roster.length > 0;
+    startBtn.disabled = !ok;
+  }
+  ['s_exam_id','s_subject_id','s_teacher_name'].forEach(id => $(id).addEventListener('input', checkCanStart));
+  $('s_teacher_name').addEventListener('keyup', checkCanStart);
 
-    const url = confirmStudentId
-      ? sessionUrl(confirmUrlTemplate, state.sessionId)
-      : sessionUrl(ingestUrlTemplate, state.sessionId);
-    const formData = new FormData();
-    formData.append('access_key', state.accessKey);
-    formData.append('transcript', transcript);
-    formData.append('teacher_name', teacherEl.value.trim());
-    formData.append('explicit_update', explicitUpdateEl.value);
-    formData.append('confidence_threshold', '0.9');
-    if (languageEl.value) {
-      formData.append('language', languageEl.value);
-    }
-    if (confirmStudentId) {
-      formData.append('confirm_student_id', confirmStudentId);
-    }
-    if (audioBlob) {
-      formData.append('audio', audioBlob, 'speech.webm');
-    }
-    if (!transcript && !audioBlob) {
-      setStatus('Enter a transcript or record audio first.', 'warning');
-      return;
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': getCookie('csrftoken'),
-      },
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      if (response.status === 409 && data.candidates) {
-        renderCandidates(data.candidates);
-        state.lastTranscript = transcript;
-        setStatus(data.error || 'Please confirm the student match.', 'warning');
-      } else {
-        setStatus(data.error || 'Failed to save entry.', 'danger');
-      }
-      return;
-    }
-
-    // Handle nimemaliza / session finalized signal
-    if (data.finalize_detected || data.session_finalized) {
-      showFinalizedBanner(data.subject_pdf_url || null);
-      setStatus('Kipindi imefungwa. Alama zimehifadhiwa.', 'success');
-    }
-
-    if (Array.isArray(data.saved_entries)) {
-      const mappedEntries = data.saved_entries.map(item => ({
-        student: item.student?.name || 'Unknown',
-        score: item.score,
-        confidence: item.confidence ?? 0,
-      }));
-      state.entries = [...mappedEntries, ...state.entries];
-      renderSkippedEntries(data.skipped_entries || []);
-      confidenceBox.textContent = `Saved: ${data.saved_count || mappedEntries.length}, Skipped: ${data.skipped_count || 0}`;
-      if (!data.finalize_detected) {
-        setStatus(`Batch saved ${data.saved_count || mappedEntries.length} entries.`, (data.skipped_count || 0) ? 'warning' : 'success');
-      }
-    } else if (data.student) {
-      state.entries.unshift({
-        student: data.student?.name || 'Unknown',
-        score: data.score,
-        confidence: data.confidence ?? 0,
-      });
-      candidatePanel.innerHTML = 'Transcript saved.';
-      confidenceBox.textContent = `Confidence: ${Number(data.confidence).toFixed(2)}`;
-      if (!data.finalize_detected) {
-        setStatus(`Saved ${data.student.name} with ${data.score} marks.`, 'success');
-      }
-    }
-
-    transcriptEl.value = '';
-    renderEntries();
-    await refreshStatus();
+  // ── Render roster table ───────────────────────────────────────────────────
+  function buildRosterTable() {
+    rosterBody.innerHTML = S.roster.map((st, i) => `
+      <tr id="row_${st.id}" data-student-id="${st.id}">
+        <td style="color:#999;">${i + 1}</td>
+        <td>${st.name}</td>
+        <td style="text-align:center;" class="score-cell">
+          <span class="score-pending">—</span>
+        </td>
+        <td style="text-align:center;" class="status-cell">
+          <span class="badge-pending">⏳</span>
+        </td>
+      </tr>
+    `).join('');
+    rosterCount.textContent = `Jumla: ${S.roster.length}`;
+    updateProgress();
   }
 
-  async function startRecording() {
-    if (!state.sessionId) {
-      setStatus('Open a session first.', 'danger');
-      return;
+  function markStudentSaved(studentId, score) {
+    S.scores[studentId] = score;
+    S.savedCount = Object.keys(S.scores).length;
+
+    const row = document.getElementById(`row_${studentId}`);
+    if (row) {
+      row.querySelector('.score-cell').innerHTML = `<span class="score-val">${score}</span>`;
+      row.querySelector('.status-cell').innerHTML = `<span class="badge-saved">✓</span>`;
+      row.classList.remove('row-active');
+      row.classList.add('row-saved', 'row-flash');
+      setTimeout(() => row.classList.remove('row-flash'), 1500);
+      row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-
-    if (!navigator.mediaDevices || !window.MediaRecorder) {
-      setStatus('This browser cannot record audio.', 'danger');
-      return;
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    state.chunks = [];
-    state.recorder = new MediaRecorder(stream);
-
-    state.recorder.ondataavailable = event => {
-      if (event.data.size > 0) {
-        state.chunks.push(event.data);
-      }
-    };
-
-    state.recorder.onstop = async () => {
-      const blob = new Blob(state.chunks, { type: 'audio/webm' });
-      await submitTranscript('', blob);
-      stream.getTracks().forEach(track => track.stop());
-      audioState.textContent = 'Idle';
-    };
-
-    state.recorder.start();
-    state.isRecording = true;
-    recordBtn.textContent = '⏹ Simama Kurekodi';
-    audioState.textContent = '🔴 Inarekodi...';
+    updateProgress();
+    checkAllDone();
   }
 
-  function stopRecording() {
-    if (state.recorder && state.isRecording) {
-      state.recorder.stop();
-      state.isRecording = false;
-      recordBtn.textContent = '🎙 Anza Kurekodi';
-      audioState.textContent = '⏳ Inachakata sauti...';
-    }
-  }
-
-  async function finalizeSession() {
-    if (!state.sessionId || !state.accessKey) return;
-    const response = await fetch(sessionUrl(finalizeUrlTemplate, state.sessionId), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCookie('csrftoken'),
-      },
-      body: JSON.stringify({
-        access_key: state.accessKey,
-        teacher_name: teacherEl.value.trim(),
-      }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      setStatus(data.error || 'Unable to finalize session.', 'danger');
-      return;
-    }
-
-    showFinalizedBanner(data.subject_pdf_url || null);
-    setStatus('Session finalized. All subject results are now ready to compute.', 'success');
-    await refreshStatus();
-  }
-
-  async function confirmCandidate(studentId) {
-    await submitTranscript(state.lastTranscript, null, studentId);
-  }
-
-  function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return '';
-  }
-
-  openBtn.addEventListener('click', createSession);
-  finalizeBtn.addEventListener('click', finalizeSession);
-  recordBtn.addEventListener('click', () => {
-    if (state.isRecording) {
-      stopRecording();
+  function setSearchingRow(studentId, searching) {
+    const row = document.getElementById(`row_${studentId}`);
+    if (!row) return;
+    if (searching) {
+      row.classList.add('row-active');
+      row.querySelector('.status-cell').innerHTML = `<span class="badge-searching">🔍</span>`;
     } else {
-      startRecording().catch(error => setStatus(error.message || 'Unable to start recording.', 'danger'));
+      row.classList.remove('row-active');
+      if (!S.scores[studentId]) {
+        row.querySelector('.status-cell').innerHTML = `<span class="badge-pending">⏳</span>`;
+      }
     }
+  }
+
+  function updateProgress() {
+    const total = S.roster.length;
+    const done = S.savedCount;
+    const pct = total ? Math.round(done / total * 100) : 0;
+    progressText.textContent = `${done} / ${total} wanafunzi`;
+    progressPct.textContent = `${pct}%`;
+    progressFill.style.width = `${pct}%`;
+    rosterCount.textContent = `${done}/${total} ✓`;
+  }
+
+  function checkAllDone() {
+    if (S.savedCount >= S.roster.length && S.roster.length > 0) {
+      rec.pause();
+      setMicState('idle');
+      doneBanner.classList.remove('hidden');
+      pauseBtn.disabled = true;
+    }
+  }
+
+  // ── Mic state UI ──────────────────────────────────────────────────────────
+  const MIC_LABELS = {
+    idle: 'Imeanza...',
+    listening: 'Inasikiliza...',
+    recording: 'Inarekodi...',
+    processing: 'Inachakata...',
+    paused: 'Imesitishwa',
+  };
+  function setMicState(state) {
+    micWrap.className = `mic-ring-wrap state-${state}`;
+    micLabel.textContent = MIC_LABELS[state] || state;
+  }
+
+  // ── Result feed ───────────────────────────────────────────────────────────
+  function pushResult({ type, studentName, score, transcript, error }) {
+    const cls = type === 'success' ? 'result-success' : type === 'warn' ? 'result-warn' : 'result-error';
+    const inner = type === 'success'
+      ? `<div class="result-student">${studentName}</div>
+         <div>Alama: <span class="result-score">${score}</span></div>
+         ${transcript ? `<div class="result-transcript">"${transcript}"</div>` : ''}`
+      : `<div style="color:#dc3545;font-weight:600;">${error || 'Hitilafu'}</div>
+         ${transcript ? `<div class="result-transcript">"${transcript}"</div>` : ''}`;
+
+    const el = document.createElement('div');
+    el.className = `result-item ${cls}`;
+    el.innerHTML = inner;
+    resultFeed.insertBefore(el, resultFeed.firstChild);
+    // Keep last 5
+    while (resultFeed.children.length > 5) resultFeed.removeChild(resultFeed.lastChild);
+  }
+
+  // ── Audio meter ───────────────────────────────────────────────────────────
+  function updateMeter(level) {
+    const pct = Math.min(100, Math.round(level / 255 * 100));
+    meterFill.style.width = `${pct}%`;
+    meterValue.textContent = `${pct}%`;
+    meterFill.className = 'audio-meter-fill' + (pct > 70 ? ' loud' : pct > 20 ? ' active' : '');
+  }
+
+  // ── Continuous VAD Recorder ───────────────────────────────────────────────
+  class ContinuousRecorder {
+    constructor({ onAudioReady, onStateChange, onLevel }) {
+      this.onAudioReady  = onAudioReady;
+      this.onStateChange = onStateChange;
+      this.onLevel       = onLevel;
+
+      this.VOICE_THRESH    = 18;    // 0–255 amplitude
+      this.SILENCE_MS      = 1300;  // silence before submitting
+      this.MIN_SPEECH_MS   = 400;   // discard blips shorter than this
+      this.MAX_SPEECH_MS   = 14000; // auto-submit if teacher talks too long
+
+      this.stream      = null;
+      this.audioCtx    = null;
+      this.analyser    = null;
+      this.mediaRec    = null;
+      this.chunks      = [];
+      this.isActive    = false;
+      this.isSpeaking  = false;
+      this.isProcessing = false;
+      this._discard    = false;
+      this.speechStart = null;
+      this.lastSpeech  = null;
+      this.vadTimer    = null;
+    }
+
+    async start() {
+      this.stream    = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      this.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+      this.analyser  = this.audioCtx.createAnalyser();
+      this.analyser.fftSize = 256;
+      const src = this.audioCtx.createMediaStreamSource(this.stream);
+      src.connect(this.analyser);
+      this.isActive = true;
+      this._runVAD();
+      this.onStateChange('listening');
+    }
+
+    _runVAD() {
+      const data = new Uint8Array(this.analyser.frequencyBinCount);
+      this.vadTimer = setInterval(() => {
+        if (!this.isActive) return;
+        this.analyser.getByteFrequencyData(data);
+        // Focus on voice-frequency range (roughly first half of FFT bins)
+        const slice = data.slice(0, data.length >> 1);
+        const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+        this.onLevel(avg);
+        const now = Date.now();
+
+        if (avg > this.VOICE_THRESH) {
+          this.lastSpeech = now;
+          if (!this.isSpeaking && !this.isProcessing) {
+            this.isSpeaking = true;
+            this.speechStart = now;
+            this._beginCapture();
+            this.onStateChange('recording');
+          } else if (this.isSpeaking && now - this.speechStart > this.MAX_SPEECH_MS) {
+            this._endCapture();
+          }
+        } else {
+          if (this.isSpeaking && this.lastSpeech && now - this.lastSpeech > this.SILENCE_MS) {
+            const dur = this.lastSpeech - this.speechStart;
+            if (dur >= this.MIN_SPEECH_MS) {
+              this._endCapture();
+            } else {
+              this._discardCapture();
+            }
+          }
+        }
+      }, 60);
+    }
+
+    _beginCapture() {
+      this.chunks  = [];
+      this._discard = false;
+      this.mediaRec = new MediaRecorder(this.stream);
+      this.mediaRec.ondataavailable = e => { if (e.data.size > 0) this.chunks.push(e.data); };
+      this.mediaRec.onstop = () => {
+        if (this._discard) { this._discard = false; return; }
+        const blob = new Blob(this.chunks, { type: 'audio/webm' });
+        this.onAudioReady(blob);
+      };
+      this.mediaRec.start();
+    }
+
+    _endCapture() {
+      if (this.mediaRec && this.isSpeaking) {
+        this.isSpeaking = false;
+        this.isProcessing = true;
+        this.mediaRec.stop();
+        this.onStateChange('processing');
+      }
+    }
+
+    _discardCapture() {
+      if (this.mediaRec && this.isSpeaking) {
+        this._discard = true;
+        this.isSpeaking = false;
+        this.mediaRec.stop();
+        if (this.isActive) this.onStateChange('listening');
+      }
+    }
+
+    processingDone() {
+      this.isProcessing = false;
+      if (this.isActive && !S.isPaused) this.onStateChange('listening');
+    }
+
+    pause() {
+      this.isActive = false;
+      if (this.isSpeaking) this._discardCapture();
+      this.onStateChange('paused');
+      S.isPaused = true;
+    }
+
+    resume() {
+      this.isActive = true;
+      S.isPaused = false;
+      this.onStateChange('listening');
+    }
+
+    destroy() {
+      this.isActive = false;
+      if (this.vadTimer) clearInterval(this.vadTimer);
+      if (this.isSpeaking) this._discardCapture();
+      if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+      if (this.audioCtx) this.audioCtx.close();
+    }
+  }
+
+  // ── Recorder instance ─────────────────────────────────────────────────────
+  const rec = new ContinuousRecorder({
+    onAudioReady: handleAudioBlob,
+    onStateChange: setMicState,
+    onLevel: updateMeter,
   });
-  useTranscriptBtn.addEventListener('click', () => {
-    const transcript = transcriptEl.value.trim();
-    if (!transcript) {
-      setStatus('Enter or speak a transcript first.', 'warning');
+
+  // ── API: submit audio blob ────────────────────────────────────────────────
+  async function handleAudioBlob(blob) {
+    if (!S.session || S.isFinalized) { rec.processingDone(); return; }
+
+    const fd = new FormData();
+    fd.append('access_key', S.session.accessKey);
+    fd.append('language', S.language);
+    fd.append('teacher_name', S.teacherName);
+    fd.append('confidence_threshold', '0.88');
+    fd.append('audio', blob, 'speech.webm');
+
+    try {
+      const resp = await fetch(sessionUrl(URL_INGEST_TPL, S.session.sessionId), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: fd,
+      });
+      const data = await resp.json();
+      await handleIngestResponse(resp.status, data, blob);
+    } catch (err) {
+      pushResult({ type: 'error', error: 'Hitilafu ya mtandao: ' + err.message });
+    } finally {
+      rec.processingDone();
+    }
+  }
+
+  // ── API: submit manual text ───────────────────────────────────────────────
+  async function handleManualText(text) {
+    if (!S.session || S.isFinalized) return;
+
+    const fd = new FormData();
+    fd.append('access_key', S.session.accessKey);
+    fd.append('transcript', text);
+    fd.append('teacher_name', S.teacherName);
+    fd.append('confidence_threshold', '0.88');
+
+    try {
+      const resp = await fetch(sessionUrl(URL_INGEST_TPL, S.session.sessionId), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: fd,
+      });
+      const data = await resp.json();
+      await handleIngestResponse(resp.status, data, null, text);
+    } catch (err) {
+      pushResult({ type: 'error', error: 'Hitilafu: ' + err.message });
+    }
+  }
+
+  async function handleIngestResponse(status, data, _blob, manualText) {
+    if (status === 409 && data.candidates) {
+      // Low confidence — show confirm modal
+      S.pendingTranscript = data.transcript || manualText || '';
+      showConfirmModal(data.candidates, S.pendingTranscript);
       return;
     }
-    submitTranscript(transcript).catch(error => setStatus(error.message || 'Unable to submit transcript.', 'danger'));
-  });
 
-  candidatePanel.addEventListener('click', event => {
-    const button = event.target.closest('.candidate-choice');
-    if (!button) return;
-    confirmCandidate(button.dataset.studentId).catch(error => setStatus(error.message || 'Unable to confirm candidate.', 'danger'));
-  });
+    if (!data || status >= 400) {
+      pushResult({ type: 'error', error: data?.error || 'Hitilafu ya seva.' });
+      return;
+    }
 
-  transcriptEl.addEventListener('input', () => {
-    if (transcriptEl.value.trim()) {
-      candidatePanel.innerHTML = 'Paste or record a transcript, then submit to get matching suggestions.';
+    // Batch response
+    const saved = data.saved_entries || (data.student ? [data] : []);
+    for (const entry of saved) {
+      const sid = entry.student?.id;
+      const score = entry.score;
+      const name = entry.student?.name || '—';
+      const transcript = entry.transcript || '';
+      if (sid) markStudentSaved(sid, score);
+      pushResult({ type: 'success', studentName: name, score, transcript });
+    }
+
+    if (data.skipped_entries?.length) {
+      for (const skip of data.skipped_entries) {
+        pushResult({ type: 'warn', error: skip.error, transcript: skip.transcript });
+      }
+    }
+
+    if (data.finalize_detected || data.session_finalized) {
+      handleFinalized(data.subject_pdf_url);
+    }
+  }
+
+  // ── Confirm modal ─────────────────────────────────────────────────────────
+  function showConfirmModal(candidates, transcript) {
+    rec.pause();
+    confirmTrans.textContent = `Sauti iliyosikika: "${transcript}"`;
+    candidateList.innerHTML = candidates.map(c => {
+      const pct = Math.round(c.confidence * 100);
+      const cls = pct >= 85 ? 'conf-high' : pct >= 70 ? 'conf-mid' : '';
+      return `<button class="candidate-btn" data-student-id="${c.student_id}" data-transcript="${transcript}">
+        ${c.name}
+        <span class="candidate-conf ${cls}">${pct}%</span>
+      </button>`;
+    }).join('');
+    confirmOverlay.classList.remove('hidden');
+  }
+
+  function hideConfirmModal() {
+    confirmOverlay.classList.add('hidden');
+    if (!S.isFinalized && !S.isPaused) rec.resume();
+  }
+
+  candidateList.addEventListener('click', async e => {
+    const btn = e.target.closest('.candidate-btn');
+    if (!btn) return;
+    hideConfirmModal();
+    const studentId = btn.dataset.studentId;
+    const transcript = btn.dataset.transcript || S.pendingTranscript;
+
+    const fd = new FormData();
+    fd.append('access_key', S.session.accessKey);
+    fd.append('transcript', transcript);
+    fd.append('confirm_student_id', studentId);
+    fd.append('teacher_name', S.teacherName);
+    fd.append('confidence_threshold', '0.88');
+
+    try {
+      const resp = await fetch(sessionUrl(URL_CONFIRM_TPL, S.session.sessionId), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: fd,
+      });
+      const data = await resp.json();
+      if (resp.ok && data.student) {
+        markStudentSaved(data.student.id, data.score);
+        pushResult({ type: 'success', studentName: data.student.name, score: data.score, transcript });
+      } else {
+        pushResult({ type: 'error', error: data.error || 'Hitilafu ya uthibitisho.' });
+      }
+    } catch (err) {
+      pushResult({ type: 'error', error: err.message });
     }
   });
 
-  rosterEl.addEventListener('change', refreshRosterSize);
-  loadRosterOptions();
+  skipBtn.addEventListener('click', () => { hideConfirmModal(); });
+
+  // ── Finalize session ──────────────────────────────────────────────────────
+  async function handleFinalized(pdfUrl) {
+    S.isFinalized = true;
+    rec.pause();
+    setMicState('idle');
+    if (pdfUrl) {
+      pdfLink.href = pdfUrl;
+      doneBanner.classList.remove('hidden');
+    }
+    finalizeBtn.disabled = true;
+    pauseBtn.disabled = true;
+  }
+
+  finalizeBtn.addEventListener('click', async () => {
+    if (!S.session) return;
+    finalizeBtn.disabled = true;
+    try {
+      const resp = await fetch(sessionUrl(URL_FINALIZE_TPL, S.session.sessionId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ access_key: S.session.accessKey, teacher_name: S.teacherName }),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        handleFinalized(data.subject_pdf_url || null);
+      } else {
+        pushResult({ type: 'error', error: data.error || 'Hitilafu ya kufunga.' });
+        finalizeBtn.disabled = false;
+      }
+    } catch (err) {
+      pushResult({ type: 'error', error: err.message });
+      finalizeBtn.disabled = false;
+    }
+  });
+
+  // ── Pause / Resume ────────────────────────────────────────────────────────
+  pauseBtn.addEventListener('click', () => {
+    if (S.isPaused) {
+      rec.resume();
+      pauseBtn.innerHTML = '⏸ Sitisha';
+    } else {
+      rec.pause();
+      pauseBtn.innerHTML = '▶ Endelea';
+    }
+  });
+
+  // ── Manual transcript submit ───────────────────────────────────────────────
+  manualBtn.addEventListener('click', () => {
+    const text = manualInput.value.trim();
+    if (!text) return;
+    manualInput.value = '';
+    handleManualText(text);
+  });
+  manualInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); manualBtn.click(); }
+  });
+
+  // ── Start session ─────────────────────────────────────────────────────────
+  startBtn.addEventListener('click', async () => {
+    startBtn.disabled = true;
+    startBtn.textContent = 'Inafungua kipindi...';
+    setupError.classList.add('d-none');
+
+    const examId      = $('s_exam_id').value;
+    const subjectId   = $('s_subject_id').value;
+    const teacherName = $('s_teacher_name').value.trim();
+    S.language        = $('s_language').value;
+    S.teacherName     = teacherName;
+
+    // Create session
+    let sessionData;
+    try {
+      const resp = await fetch(URL_CREATE_SESSION, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+          exam_id: examId,
+          subject_id: subjectId,
+          teacher_name: teacherName,
+          roster_student_ids: S.roster.map(s => s.id),
+          expected_student_count: S.roster.length,
+        }),
+      });
+      sessionData = await resp.json();
+      if (!resp.ok) throw new Error(sessionData.error || 'Hitilafu ya seva.');
+    } catch (err) {
+      showSetupError(err.message);
+      startBtn.disabled = false;
+      startBtn.textContent = '▶ Anza Kuingiza Alama';
+      return;
+    }
+
+    S.session = { sessionId: sessionData.session_id, accessKey: sessionData.access_key };
+
+    // Fill topbar
+    const examOpt    = $('s_exam_id').querySelector(`option[value="${examId}"]`);
+    const subjectOpt = $('s_subject_id').querySelector(`option[value="${subjectId}"]`);
+    tbExam.textContent    = examOpt?.textContent?.trim()    || `Mtihani #${examId}`;
+    tbSubject.textContent = subjectOpt?.textContent?.trim() || `Somo #${subjectId}`;
+    tbTeacher.textContent = teacherName;
+
+    // Build roster + switch phase
+    buildRosterTable();
+    showSession();
+
+    // Start recorder
+    try {
+      await rec.start();
+    } catch (err) {
+      pushResult({ type: 'error', error: 'Haikuweza kufungua maikrofoni: ' + err.message });
+      setMicState('idle');
+    }
+  });
+
 })();
 </script>
 {% endblock %}

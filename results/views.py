@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 
 from .forms import ExamUploadForm
 from .models import Exam, ExamResult, Student, Subject, SubjectSubmission
@@ -320,6 +320,70 @@ def subject_pdf(request, exam_id, subject_id):
         pass
 
     return generate_subject_pdf_response(exam, subject, teacher_name=teacher_name)
+
+
+# ── Roster Upload ─────────────────────────────────────────────────────────────
+
+def _pick_col(row, col_lower_map, keys):
+    for k in keys:
+        if k in col_lower_map:
+            val = str(row[col_lower_map[k]]).strip()
+            return '' if val in ('nan', 'None', '') else val
+    return ''
+
+
+@require_POST
+def upload_roster(request):
+    """Accept CSV/Excel of student names → create/get Student objects → return IDs."""
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        return JsonResponse({'error': 'Hakuna faili lililotumwa.'}, status=400)
+    try:
+        import pandas as pd
+        uploaded_file.seek(0)
+        fname = uploaded_file.name.lower()
+        df = pd.read_csv(uploaded_file) if fname.endswith('.csv') else pd.read_excel(uploaded_file)
+        df.columns = [str(c).strip() for c in df.columns]
+        col_lower = {c.lower(): c for c in df.columns}
+
+        students_out = []
+        for _, row in df.iterrows():
+            first = _pick_col(row, col_lower, ['first name', 'firstname', 'jina la kwanza'])
+            last = _pick_col(row, col_lower, ['last name', 'lastname', 'surname', 'jina la mwisho', 'ukoo'])
+            full = _pick_col(row, col_lower, ['name', 'full name', 'jina kamili', 'majina', 'jina'])
+
+            if not first and full:
+                parts = full.split(None, 1)
+                first = parts[0]
+                last = parts[1] if len(parts) > 1 else 'Unknown'
+
+            if not first:
+                val = str(row.iloc[0]).strip()
+                if val and val not in ('nan', 'None', ''):
+                    parts = val.split(None, 1)
+                    first = parts[0]
+                    last = parts[1] if len(parts) > 1 else 'Unknown'
+
+            if not first or first in ('nan', 'None', ''):
+                continue
+            if not last or last in ('nan', 'None', ''):
+                last = 'Unknown'
+
+            gender_raw = _pick_col(row, col_lower, ['gender', 'jinsia', 'sex']) or 'M'
+            student, _ = Student.objects.get_or_create(
+                first_name=first.strip().capitalize(),
+                last_name=last.strip().capitalize(),
+                defaults={'gender': normalize_gender(gender_raw)},
+            )
+            name_parts = [p for p in [student.first_name, student.middle_name, student.last_name] if p]
+            students_out.append({'id': student.id, 'name': ' '.join(name_parts)})
+
+        if not students_out:
+            return JsonResponse({'error': 'Hakuna wanafunzi kwenye faili. Angalia muundo wa CSV.'}, status=400)
+
+        return JsonResponse({'students': students_out, 'count': len(students_out)})
+    except Exception as exc:
+        return JsonResponse({'error': f'Hitilafu ya faili: {exc}'}, status=400)
 
 
 # ── Finalize Exam ─────────────────────────────────────────────────────────────

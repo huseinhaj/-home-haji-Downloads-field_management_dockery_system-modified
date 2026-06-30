@@ -9,6 +9,7 @@ from .views import (
     subject_upload,
     subject_pdf,
     finalize_exam,
+    upload_roster,
 )
 from .speech_views import (
     confirm_speech_candidate,
@@ -30,6 +31,8 @@ urlpatterns = [
     path('exam/<int:exam_id>/subject/<int:subject_id>/upload/', subject_upload, name='subject_upload'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/pdf/', subject_pdf, name='subject_pdf'),
     path('exam/<int:exam_id>/finalize/', finalize_exam, name='finalize_exam'),
+    # Roster upload (AJAX)
+    path('upload-roster/', upload_roster, name='upload_roster'),
     # Speech entry
     path('speech/', speech_entry_page, name='speech_entry_page'),
     path('speech-sessions/', create_speech_session, name='create_speech_session'),
