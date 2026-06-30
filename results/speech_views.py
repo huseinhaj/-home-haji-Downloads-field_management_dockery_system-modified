@@ -156,30 +156,27 @@ def ingest_speech_entry(request, session_id):
             payload.get("language"),
         )
         if not transcript or not transcript.strip():
-            logger.warning(
-                "ingest_speech_entry: empty transcript provided session_id=%s",
-                session.id,
-            )
-            raise SpeechSubmissionError(
-                "Transcript is empty. Please record a clear voice entry with both student name and mark."
-            )
+            logger.warning("ingest_speech_entry: empty transcript session_id=%s", session.id)
+            return JsonResponse({
+                "error": "Sauti haikutambuliwa. Sema kwa sauti ya wazi karibu na maikrofoni.",
+                "transcript": "",
+            }, status=400)
 
-        result = submit_speech_entries_batch(
-            session=session,
-            transcript=transcript,
-            confidence_threshold=float(payload.get("confidence_threshold", 0.9)),
-            teacher_name=teacher_name,
-        )
+        confidence_threshold = float(payload.get("confidence_threshold", 0.85))
 
-        # Handle "nimemaliza" finalize signal
-        if result.get("finalize_detected"):
+        # Audio blob from VAD = one student at a time → use single-entry path.
+        # Manual text submission may contain multiple students → use batch path.
+        if audio_file:
+            result = _ingest_single(session, transcript, confidence_threshold, teacher_name)
+        else:
+            result = _ingest_batch(session, transcript, confidence_threshold, teacher_name)
+
+        if result.get("finalize_detected") or result.get("session_finalized"):
             session.refresh_from_db()
             if session.status != SpeechSubmissionSession.STATUS_FINALIZED:
                 session.mark_finalized()
-
-            # Update or create SubjectSubmission record
             student_count = session.entries.count()
-            submission, _ = SubjectSubmission.objects.update_or_create(
+            SubjectSubmission.objects.update_or_create(
                 exam=session.exam,
                 subject=session.subject,
                 defaults={
@@ -190,55 +187,69 @@ def ingest_speech_entry(request, session_id):
                     'student_count': student_count,
                 },
             )
-
-            # Recompute processed results
             recompute_processed_results_for_exam(session.exam)
-
-            # Build PDF URL for this subject
-            subject_pdf_url = reverse('subject_pdf', args=[session.exam_id, session.subject_id])
-            result['subject_pdf_url'] = subject_pdf_url
+            result['subject_pdf_url'] = reverse('subject_pdf', args=[session.exam_id, session.subject_id])
             result['session_finalized'] = True
 
         logger.info(
-            "ingest_speech_entry: success session_id=%s saved_count=%s skipped_count=%s session_finalized=%s exam_finalized=%s finalize_detected=%s",
-            session.id,
-            result.get("saved_count"),
-            result.get("skipped_count"),
-            result.get("session_finalized"),
-            result.get("exam_finalized"),
-            result.get("finalize_detected"),
+            "ingest_speech_entry: success session_id=%s transcript=%r saved_count=%s",
+            session.id, transcript, result.get("saved_count", 1),
         )
         return JsonResponse(result)
+
     except SpeechTranscriptionError as exc:
-        logger.warning(
-            "ingest_speech_entry: transcription error session_id=%s error=%s",
-            session_id,
-            exc,
-        )
-        return JsonResponse({"error": str(exc)}, status=400)
+        logger.warning("ingest_speech_entry: transcription error session_id=%s error=%s", session_id, exc)
+        return JsonResponse({"error": str(exc), "transcript": transcript}, status=400)
     except SpeechMatchReviewRequired as exc:
-        logger.info(
-            "ingest_speech_entry: review required session_id=%s transcript=%r candidates=%s",
-            session_id,
-            transcript,
-            exc.candidates,
-        )
+        logger.info("ingest_speech_entry: review required session_id=%s transcript=%r", session_id, transcript)
         return JsonResponse({"error": str(exc), "candidates": exc.candidates, "transcript": transcript}, status=409)
     except SpeechSubmissionError as exc:
-        logger.warning(
-            "ingest_speech_entry: validation error session_id=%s transcript=%r error=%s",
-            session_id,
-            transcript,
-            exc,
-        )
-        return JsonResponse({"error": str(exc)}, status=400)
+        logger.warning("ingest_speech_entry: submission error session_id=%s transcript=%r error=%s", session_id, transcript, exc)
+        return JsonResponse({"error": str(exc), "transcript": transcript}, status=400)
     except Exception as exc:
-        logger.exception(
-            "ingest_speech_entry: unexpected error session_id=%s transcript=%r",
-            session_id,
-            transcript,
-        )
-        return JsonResponse({"error": str(exc)}, status=400)
+        logger.exception("ingest_speech_entry: unexpected error session_id=%s transcript=%r", session_id, transcript)
+        return JsonResponse({"error": str(exc), "transcript": transcript}, status=400)
+
+
+def _ingest_single(session, transcript, confidence_threshold, teacher_name):
+    """Single-student path — used when audio blob comes from VAD recording."""
+    from .services.speech_submission_service import (
+        contains_finalize_signal, is_finalize_only,
+    )
+    if is_finalize_only(transcript):
+        return {
+            "status": "saved", "saved_count": 0, "skipped_count": 0,
+            "saved_entries": [], "skipped_entries": [],
+            "session_finalized": False, "exam_finalized": False,
+            "finalize_detected": True,
+        }
+
+    result = submit_speech_entry(
+        session=session,
+        transcript=transcript,
+        explicit_update=True,
+        confidence_threshold=confidence_threshold,
+        teacher_name=teacher_name,
+    )
+    result["transcript"] = transcript
+    result["saved_count"] = 1
+    result["saved_entries"] = [result]
+    result["skipped_count"] = 0
+    result["skipped_entries"] = []
+    result["finalize_detected"] = contains_finalize_signal(transcript)
+    return result
+
+
+def _ingest_batch(session, transcript, confidence_threshold, teacher_name):
+    """Multi-student path — used when teacher types multiple entries manually."""
+    result = submit_speech_entries_batch(
+        session=session,
+        transcript=transcript,
+        confidence_threshold=confidence_threshold,
+        teacher_name=teacher_name,
+    )
+    result["transcript"] = transcript
+    return result
 
 
 @require_POST

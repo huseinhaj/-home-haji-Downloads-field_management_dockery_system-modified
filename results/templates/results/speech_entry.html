@@ -685,18 +685,21 @@
   // ── Result feed ───────────────────────────────────────────────────────────
   function pushResult({ type, studentName, score, transcript, error }) {
     const cls = type === 'success' ? 'result-success' : type === 'warn' ? 'result-warn' : 'result-error';
+    const heardLine = transcript
+      ? `<div class="result-transcript">AI ilisikia: "${transcript}"</div>`
+      : '';
     const inner = type === 'success'
       ? `<div class="result-student">${studentName}</div>
          <div>Alama: <span class="result-score">${score}</span></div>
-         ${transcript ? `<div class="result-transcript">"${transcript}"</div>` : ''}`
-      : `<div style="color:#dc3545;font-weight:600;">${error || 'Hitilafu'}</div>
-         ${transcript ? `<div class="result-transcript">"${transcript}"</div>` : ''}`;
+         ${heardLine}`
+      : `<div style="color:#dc3545;font-weight:600;font-size:.8rem;">${error || 'Hitilafu'}</div>
+         ${heardLine}
+         ${!transcript ? '<div style="font-size:.75rem;color:#999;">Jaribu tena: sema jina na alama kwa sauti ya wazi</div>' : ''}`;
 
     const el = document.createElement('div');
     el.className = `result-item ${cls}`;
     el.innerHTML = inner;
     resultFeed.insertBefore(el, resultFeed.firstChild);
-    // Keep last 5
     while (resultFeed.children.length > 5) resultFeed.removeChild(resultFeed.lastChild);
   }
 
@@ -715,9 +718,9 @@
       this.onStateChange = onStateChange;
       this.onLevel       = onLevel;
 
-      this.VOICE_THRESH    = 18;    // 0–255 amplitude
-      this.SILENCE_MS      = 1300;  // silence before submitting
-      this.MIN_SPEECH_MS   = 400;   // discard blips shorter than this
+      this.VOICE_THRESH    = 15;    // 0–255 amplitude (lower = more sensitive)
+      this.SILENCE_MS      = 2000;  // wait 2s of silence before submitting
+      this.MIN_SPEECH_MS   = 600;   // discard blips shorter than this
       this.MAX_SPEECH_MS   = 14000; // auto-submit if teacher talks too long
 
       this.stream      = null;
@@ -903,7 +906,7 @@
     }
 
     if (!data || status >= 400) {
-      pushResult({ type: 'error', error: data?.error || 'Hitilafu ya seva.' });
+      pushResult({ type: 'error', error: data?.error || 'Hitilafu ya seva.', transcript: data?.transcript || '' });
       return;
     }
 
