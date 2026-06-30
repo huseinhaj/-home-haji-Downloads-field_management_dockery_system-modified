@@ -725,11 +725,12 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
 
   // ── Live box + mic state ──────────────────────────────────────────────────
   const MIC_LABELS = {
-    idle: 'Imeanza...',
-    listening: 'Inasikiliza...',
-    recording: 'Inarekodi...',
-    processing: 'Inachakata...',
-    paused: 'Imesitishwa',
+    idle:        'Tayari...',
+    calibrating: 'Inajipanga maikrofoni...',
+    listening:   'Inasikiliza — sema jina na alama...',
+    recording:   'Inarekodi sauti yako...',
+    processing:  'Inachakata...',
+    paused:      'Imesitishwa',
   };
 
   function setMicState(state) {
@@ -737,7 +738,12 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
     micLabel.textContent = MIC_LABELS[state] || state;
     // Update live box
     liveBox.className = 'live-box';
-    if (state === 'listening') {
+    if (state === 'calibrating') {
+      liveIcon.textContent = '⚙️';
+      liveMain.textContent = 'Inapima kelele za mazingira (sekunde 1)...';
+      liveSub.textContent = 'Kimya kidogo wakati inapima';
+      ScanEngine.stop();
+    } else if (state === 'listening') {
       liveIcon.textContent = '👂';
       liveMain.textContent = 'Inasikiliza — sema jina na alama...';
       liveSub.textContent = '';
@@ -811,11 +817,13 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
   }
 
   // ── Audio meter ───────────────────────────────────────────────────────────
-  function updateMeter(level) {
-    const pct = Math.min(100, Math.round(level / 255 * 100));
+  function updateMeter(level, threshold) {
+    const pct      = Math.min(100, Math.round(level / 255 * 100));
+    const threshPct = threshold ? Math.min(100, Math.round(threshold / 255 * 100)) : null;
     meterFill.style.width = `${pct}%`;
-    meterValue.textContent = `${pct}%`;
-    meterFill.className = 'audio-meter-fill' + (pct > 70 ? ' loud' : pct > 20 ? ' active' : '');
+    const aboveThresh = threshold && level > threshold;
+    meterValue.textContent = `${pct}%${aboveThresh ? ' 🎤' : ''}`;
+    meterFill.className = 'audio-meter-fill' + (aboveThresh ? ' active' : '');
   }
 
   // ── Continuous VAD Recorder ───────────────────────────────────────────────
@@ -825,52 +833,77 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
       this.onStateChange = onStateChange;
       this.onLevel       = onLevel;
 
-      this.VOICE_THRESH    = 14;    // 0–255 amplitude
-      this.SILENCE_MS      = 2200;  // wait 2.2s of silence before submitting
-      this.MIN_SPEECH_MS   = 800;   // discard blips shorter than this
-      this.MAX_SPEECH_MS   = 14000; // auto-submit if teacher talks too long
+      this.SILENCE_MS      = 2200;   // silence duration before submitting
+      this.MIN_SPEECH_MS   = 700;    // discard blips shorter than this
+      this.MAX_SPEECH_MS   = 14000;  // auto-submit if speaking too long
+      this.CALIBRATE_MS    = 900;    // baseline noise measurement window
+      this.THRESH_MARGIN   = 28;     // how much above baseline = "speech"
 
-      this.stream      = null;
-      this.audioCtx    = null;
-      this.analyser    = null;
-      this.mediaRec    = null;
-      this.chunks      = [];
-      this.isActive    = false;
-      this.isSpeaking  = false;
+      this.stream       = null;
+      this.audioCtx     = null;
+      this.analyser     = null;
+      this.mediaRec     = null;
+      this.chunks       = [];
+      this.isActive     = false;
+      this.isSpeaking   = false;
       this.isProcessing = false;
-      this._discard    = false;
-      this.speechStart = null;
-      this.lastSpeech  = null;
-      this.vadTimer    = null;
+      this._discard     = false;
+      this.speechStart  = null;
+      this.lastSpeech   = null;
+      this.vadTimer     = null;
+      this.threshold    = 40;   // will be overwritten after calibration
     }
 
     async start() {
-      this.stream    = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      this.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
-      this.analyser  = this.audioCtx.createAnalyser();
-      this.analyser.fftSize = 256;
+      this.stream   = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // Resume context — some browsers start it suspended
+      if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
+      this.analyser = this.audioCtx.createAnalyser();
+      this.analyser.fftSize = 512;
       const src = this.audioCtx.createMediaStreamSource(this.stream);
       src.connect(this.analyser);
       this.isActive = true;
+      this.onStateChange('calibrating');
       this._runVAD();
-      this.onStateChange('listening');
     }
 
     _runVAD() {
       const data = new Uint8Array(this.analyser.frequencyBinCount);
+      let baselineSum   = 0;
+      let baselineTicks = 0;
+      const calibEnd    = Date.now() + this.CALIBRATE_MS;
+
       this.vadTimer = setInterval(() => {
         if (!this.isActive) return;
         this.analyser.getByteFrequencyData(data);
-        // Focus on voice-frequency range (roughly first half of FFT bins)
-        const slice = data.slice(0, data.length >> 1);
-        const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-        this.onLevel(avg);
+        // Voice frequency range: ~300 Hz – 4 kHz
+        // With fftSize=512, sampleRate≈44100: each bin ≈ 86 Hz
+        // Bin 3 ≈ 258 Hz … Bin 47 ≈ 4042 Hz
+        const voiceBins = data.slice(3, 48);
+        const avg = voiceBins.reduce((a, b) => a + b, 0) / voiceBins.length;
+        this.onLevel(avg, this.threshold);
+
         const now = Date.now();
 
-        if (avg > this.VOICE_THRESH) {
+        // ── Calibration phase ──────────────────────────────────────────
+        if (now < calibEnd) {
+          baselineSum  += avg;
+          baselineTicks++;
+          return;
+        }
+        if (baselineTicks > 0 && this.threshold === 40) {
+          // First tick after calibration: set adaptive threshold
+          const baseline = baselineSum / baselineTicks;
+          this.threshold = Math.max(20, baseline + this.THRESH_MARGIN);
+          this.onStateChange('listening');
+        }
+
+        // ── Speech detection ───────────────────────────────────────────
+        if (avg > this.threshold) {
           this.lastSpeech = now;
           if (!this.isSpeaking && !this.isProcessing) {
-            this.isSpeaking = true;
+            this.isSpeaking  = true;
             this.speechStart = now;
             this._beginCapture();
             this.onStateChange('recording');
@@ -1245,11 +1278,9 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
     buildRosterTable();
     showSession();
 
-    // Start recorder
+    // Start recorder — calibrates first, then enters listening state automatically
     try {
       await rec.start();
-      liveMain.textContent = 'Inasikiliza — sema jina na alama...';
-      liveIcon.textContent = '👂';
     } catch (err) {
       pushResult({ type: 'error', error: 'Haikuweza kufungua maikrofoni: ' + err.message });
       setMicState('idle');
