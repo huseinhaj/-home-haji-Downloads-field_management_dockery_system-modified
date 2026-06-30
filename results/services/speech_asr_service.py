@@ -121,17 +121,26 @@ _HALLUCINATION_PHRASES = [
     "taja jina la mwanafunzi kisha alama",
     "mfano wa jina la mwanafunzi",
     "mfano juma ali",
-    "school context",
+    "school context say the student name",
     "say the student name followed by mark",
     "example juma ali",
-    "maneno ya alama",
-    "kwa hivyo",          # common Whisper filler when no speech
-    "asante kwa kutazama",
-    "nakushukuru",
+    "maneno ya alama sifuri",
+    "jina la kwanza jina la kati",
 ]
 
+_HALLUCINATION_EXACT = {
+    "jina na alama",
+    "name and score",
+    "jina na alama.",
+    "name and score.",
+}
+
 def _is_hallucination(transcript: str) -> bool:
-    t = transcript.lower().strip()
+    t = transcript.lower().strip().rstrip('.')
+    # Exact match of our short prompts
+    if t in _HALLUCINATION_EXACT:
+        return True
+    # Contains long known-bad phrases
     return any(phrase in t for phrase in _HALLUCINATION_PHRASES)
 
 
@@ -158,19 +167,12 @@ def transcribe_uploaded_audio(uploaded_file, language: Optional[str] = None) -> 
         normalized_language,
     )
 
+    # Keep prompts very short — long prompts cause Whisper to hallucinate them back
     initial_prompt = None
     if normalized_language == "sw":
-        initial_prompt = (
-            "Muktadha wa shule: taja jina la mwanafunzi kisha alama. "
-            "Mfano: Juma Ali tisini na mbili. "
-            "Maneno ya alama: sifuri, moja, mbili, tatu, nne, tano, sita, saba, nane, tisa, "
-            "kumi, ishirini, thelathini, arobaini, hamsini, sitini, sabini, themanini, tisini, mia."
-        )
+        initial_prompt = "Jina na alama:"
     elif normalized_language == "en":
-        initial_prompt = (
-            "School context: say the student name followed by mark. "
-            "Example: Juma Ali ninety two."
-        )
+        initial_prompt = "Name and score:"
 
     try:
         with NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:

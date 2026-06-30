@@ -95,22 +95,20 @@
 .live-box .live-text { flex: 1; }
 .live-box .live-sub  { opacity: .78; font-size: .78rem; font-style: italic; display: block; margin-top: .1rem; }
 
-/* Scan line animation during processing */
-@keyframes scanLine {
-  0%   { top: 0; opacity: .9; }
-  100% { top: 100%; opacity: 0; }
+/* Row scan animations */
+@keyframes rowScan {
+  0%   { background: rgba(201,168,76,0);    box-shadow: none; }
+  40%  { background: rgba(201,168,76,0.22); box-shadow: inset 3px 0 0 #C9A84C; }
+  100% { background: rgba(201,168,76,0);    box-shadow: none; }
+}
+@keyframes rowFound {
+  0%   { background: #bbf7d0; box-shadow: inset 3px 0 0 #16a34a; }
+  60%  { background: #dcfce7; }
+  100% { background: #f0faf4; box-shadow: none; }
 }
 .roster-table-wrap { position: relative; max-height: 520px; overflow-y: auto; }
-.roster-table-wrap.scanning::before {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; top: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #C9A84C 50%, transparent);
-  animation: scanLine 1s linear infinite;
-  z-index: 5;
-  pointer-events: none;
-}
+tr.row-scan-active td { animation: rowScan .18s ease-out; }
+tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
 
 /* Roster table */
 .roster-panel {
@@ -743,42 +741,41 @@
       liveIcon.textContent = '👂';
       liveMain.textContent = 'Inasikiliza — sema jina na alama...';
       liveSub.textContent = '';
-      rosterWrap.classList.remove('scanning');
+      ScanEngine.stop();
     } else if (state === 'recording') {
       liveBox.classList.add('state-recording');
       liveIcon.textContent = '🎙';
       liveMain.textContent = 'Inarekodi sauti yako...';
       liveSub.textContent = '';
-      rosterWrap.classList.remove('scanning');
+      ScanEngine.stop();
     } else if (state === 'processing') {
       liveBox.classList.add('state-processing');
       liveIcon.textContent = '🔍';
       liveMain.textContent = 'Inatafuta mwanafunzi...';
       liveSub.textContent = '';
-      rosterWrap.classList.add('scanning');
+      ScanEngine.start();
     } else if (state === 'paused') {
       liveIcon.textContent = '⏸';
       liveMain.textContent = 'Imesitishwa';
       liveSub.textContent = '';
-      rosterWrap.classList.remove('scanning');
+      ScanEngine.stop();
     } else {
       liveIcon.textContent = '⏳';
       liveMain.textContent = 'Tayari';
       liveSub.textContent = '';
-      rosterWrap.classList.remove('scanning');
+      ScanEngine.stop();
     }
   }
 
   function setLiveMatched(studentName, score, transcript) {
-    rosterWrap.classList.remove('scanning');
+    ScanEngine.stop();
     liveBox.className = 'live-box state-matched';
     liveIcon.textContent = '✅';
     liveMain.textContent = `${studentName} — Alama: ${score}`;
-    liveSub.textContent = `Ilisikiwa: "${transcript}"`;
-    // Return to listening after 2s
+    liveSub.textContent = transcript ? `Ilisikiwa: "${transcript}"` : '';
     setTimeout(() => {
       if (!S.isFinalized && !S.isPaused) setMicState('listening');
-    }, 2000);
+    }, 2200);
   }
 
   function setLiveError(errorMsg, transcript) {
@@ -828,9 +825,9 @@
       this.onStateChange = onStateChange;
       this.onLevel       = onLevel;
 
-      this.VOICE_THRESH    = 15;    // 0–255 amplitude (lower = more sensitive)
-      this.SILENCE_MS      = 2000;  // wait 2s of silence before submitting
-      this.MIN_SPEECH_MS   = 600;   // discard blips shorter than this
+      this.VOICE_THRESH    = 14;    // 0–255 amplitude
+      this.SILENCE_MS      = 2200;  // wait 2.2s of silence before submitting
+      this.MIN_SPEECH_MS   = 800;   // discard blips shorter than this
       this.MAX_SPEECH_MS   = 14000; // auto-submit if teacher talks too long
 
       this.stream      = null;
@@ -951,6 +948,35 @@
     }
   }
 
+  // ── Scan animation engine ─────────────────────────────────────────────────
+  const ScanEngine = (() => {
+    let timer = null;
+    let rows = [];
+    let idx = 0;
+
+    function start() {
+      stop();
+      rows = Array.from(rosterBody.querySelectorAll('tr:not(.row-saved)'));
+      if (!rows.length) return;
+      idx = 0;
+      timer = setInterval(() => {
+        rows.forEach(r => r.classList.remove('row-scan-active'));
+        if (idx >= rows.length) idx = 0;
+        rows[idx].classList.add('row-scan-active');
+        // Scroll into view smoothly
+        rows[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        idx++;
+      }, 90);
+    }
+
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+      rosterBody.querySelectorAll('.row-scan-active').forEach(r => r.classList.remove('row-scan-active'));
+    }
+
+    return { start, stop };
+  })();
+
   // ── Recorder instance ─────────────────────────────────────────────────────
   const rec = new ContinuousRecorder({
     onAudioReady: handleAudioBlob,
@@ -961,6 +987,12 @@
   // ── API: submit audio blob ────────────────────────────────────────────────
   async function handleAudioBlob(blob) {
     if (!S.session || S.isFinalized) { rec.processingDone(); return; }
+
+    // Too small = silence or noise, not real speech
+    if (blob.size < 2000) {
+      rec.processingDone();
+      return;
+    }
 
     const fd = new FormData();
     fd.append('access_key', S.session.accessKey);
