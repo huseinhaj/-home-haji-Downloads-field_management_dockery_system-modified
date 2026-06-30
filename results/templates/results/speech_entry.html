@@ -74,6 +74,44 @@
 .session-grid { display: grid; grid-template-columns: 1fr 320px; gap: 1rem; }
 @media (max-width: 900px) { .session-grid { grid-template-columns: 1fr; } }
 
+/* Live hearing box */
+.live-box {
+  background: #1B3A6B;
+  color: #fff;
+  border-radius: 8px;
+  padding: .65rem 1rem;
+  margin-bottom: .75rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  font-size: .88rem;
+  min-height: 44px;
+  transition: background .3s;
+}
+.live-box.state-recording  { background: #b91c1c; }
+.live-box.state-processing { background: #92660a; }
+.live-box.state-matched    { background: #166534; }
+.live-box .live-icon { font-size: 1.1rem; flex-shrink: 0; }
+.live-box .live-text { flex: 1; }
+.live-box .live-sub  { opacity: .78; font-size: .78rem; font-style: italic; display: block; margin-top: .1rem; }
+
+/* Scan line animation during processing */
+@keyframes scanLine {
+  0%   { top: 0; opacity: .9; }
+  100% { top: 100%; opacity: 0; }
+}
+.roster-table-wrap { position: relative; max-height: 520px; overflow-y: auto; }
+.roster-table-wrap.scanning::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #C9A84C 50%, transparent);
+  animation: scanLine 1s linear infinite;
+  z-index: 5;
+  pointer-events: none;
+}
+
 /* Roster table */
 .roster-panel {
   background: #fff;
@@ -392,12 +430,22 @@
   <div class="session-grid">
 
     <!-- LEFT: Roster Table -->
+    <div>
+    <!-- Live hearing status -->
+    <div class="live-box" id="liveBox">
+      <span class="live-icon" id="liveIcon">⏳</span>
+      <span class="live-text">
+        <span id="liveMain">Inasubiri kipindi kufunguliwa...</span>
+        <span class="live-sub" id="liveSub"></span>
+      </span>
+    </div>
+
     <div class="roster-panel">
       <div class="roster-panel-head">
         <span>Orodha ya Wanafunzi</span>
         <span id="rosterCountBadge" style="font-weight:400;color:#666;font-size:.75rem;"></span>
       </div>
-      <div class="roster-table-wrap">
+      <div class="roster-table-wrap" id="rosterTableWrap">
         <table class="roster-table" id="rosterTable">
           <thead>
             <tr>
@@ -412,6 +460,9 @@
         </table>
       </div>
     </div>
+
+    </div><!-- /roster-panel -->
+    </div><!-- /left column wrapper -->
 
     <!-- RIGHT: Recording Panel -->
     <div class="recording-panel">
@@ -531,6 +582,11 @@
   const progressFill  = $('progressFill');
   const rosterBody    = $('rosterBody');
   const rosterCount   = $('rosterCountBadge');
+  const liveBox       = $('liveBox');
+  const liveIcon      = $('liveIcon');
+  const liveMain      = $('liveMain');
+  const liveSub       = $('liveSub');
+  const rosterWrap    = $('rosterTableWrap');
   const micWrap       = $('micRingWrap');
   const micLabel      = $('micStateLabel');
   const meterFill     = $('meterFill');
@@ -669,7 +725,7 @@
     }
   }
 
-  // ── Mic state UI ──────────────────────────────────────────────────────────
+  // ── Live box + mic state ──────────────────────────────────────────────────
   const MIC_LABELS = {
     idle: 'Imeanza...',
     listening: 'Inasikiliza...',
@@ -677,9 +733,63 @@
     processing: 'Inachakata...',
     paused: 'Imesitishwa',
   };
+
   function setMicState(state) {
     micWrap.className = `mic-ring-wrap state-${state}`;
     micLabel.textContent = MIC_LABELS[state] || state;
+    // Update live box
+    liveBox.className = 'live-box';
+    if (state === 'listening') {
+      liveIcon.textContent = '👂';
+      liveMain.textContent = 'Inasikiliza — sema jina na alama...';
+      liveSub.textContent = '';
+      rosterWrap.classList.remove('scanning');
+    } else if (state === 'recording') {
+      liveBox.classList.add('state-recording');
+      liveIcon.textContent = '🎙';
+      liveMain.textContent = 'Inarekodi sauti yako...';
+      liveSub.textContent = '';
+      rosterWrap.classList.remove('scanning');
+    } else if (state === 'processing') {
+      liveBox.classList.add('state-processing');
+      liveIcon.textContent = '🔍';
+      liveMain.textContent = 'Inatafuta mwanafunzi...';
+      liveSub.textContent = '';
+      rosterWrap.classList.add('scanning');
+    } else if (state === 'paused') {
+      liveIcon.textContent = '⏸';
+      liveMain.textContent = 'Imesitishwa';
+      liveSub.textContent = '';
+      rosterWrap.classList.remove('scanning');
+    } else {
+      liveIcon.textContent = '⏳';
+      liveMain.textContent = 'Tayari';
+      liveSub.textContent = '';
+      rosterWrap.classList.remove('scanning');
+    }
+  }
+
+  function setLiveMatched(studentName, score, transcript) {
+    rosterWrap.classList.remove('scanning');
+    liveBox.className = 'live-box state-matched';
+    liveIcon.textContent = '✅';
+    liveMain.textContent = `${studentName} — Alama: ${score}`;
+    liveSub.textContent = `Ilisikiwa: "${transcript}"`;
+    // Return to listening after 2s
+    setTimeout(() => {
+      if (!S.isFinalized && !S.isPaused) setMicState('listening');
+    }, 2000);
+  }
+
+  function setLiveError(errorMsg, transcript) {
+    rosterWrap.classList.remove('scanning');
+    liveBox.className = 'live-box state-recording';
+    liveIcon.textContent = '⚠️';
+    liveMain.textContent = errorMsg;
+    liveSub.textContent = transcript ? `Ilisikiwa: "${transcript}"` : 'Jaribu tena kwa sauti ya wazi';
+    setTimeout(() => {
+      if (!S.isFinalized && !S.isPaused) setMicState('listening');
+    }, 3000);
   }
 
   // ── Result feed ───────────────────────────────────────────────────────────
@@ -898,31 +1008,43 @@
   }
 
   async function handleIngestResponse(status, data, _blob, manualText) {
+    const heardTranscript = data?.transcript || manualText || '';
+
     if (status === 409 && data.candidates) {
-      // Low confidence — show confirm modal
-      S.pendingTranscript = data.transcript || manualText || '';
-      showConfirmModal(data.candidates, S.pendingTranscript);
+      S.pendingTranscript = heardTranscript;
+      setLiveError('Sielewi vizuri — thibitisha mwanafunzi', heardTranscript);
+      showConfirmModal(data.candidates, heardTranscript);
       return;
     }
 
     if (!data || status >= 400) {
-      pushResult({ type: 'error', error: data?.error || 'Hitilafu ya seva.', transcript: data?.transcript || '' });
+      const errMsg = data?.error || 'Hitilafu ya seva.';
+      // If session already finalized, just show done state
+      if (errMsg.includes('already finalized')) {
+        handleFinalized(null);
+        return;
+      }
+      setLiveError(errMsg, heardTranscript);
+      pushResult({ type: 'error', error: errMsg, transcript: heardTranscript });
       return;
     }
 
-    // Batch response
     const saved = data.saved_entries || (data.student ? [data] : []);
     for (const entry of saved) {
-      const sid = entry.student?.id;
+      const sid   = entry.student?.id;
       const score = entry.score;
-      const name = entry.student?.name || '—';
-      const transcript = entry.transcript || '';
-      if (sid) markStudentSaved(sid, score);
-      pushResult({ type: 'success', studentName: name, score, transcript });
+      const name  = entry.student?.name || '—';
+      const t     = entry.transcript || heardTranscript;
+      if (sid) {
+        markStudentSaved(sid, score);
+        setLiveMatched(name, score, t);
+      }
+      pushResult({ type: 'success', studentName: name, score, transcript: t });
     }
 
     if (data.skipped_entries?.length) {
       for (const skip of data.skipped_entries) {
+        setLiveError(skip.error, skip.transcript);
         pushResult({ type: 'warn', error: skip.error, transcript: skip.transcript });
       }
     }
@@ -1094,9 +1216,13 @@
     // Start recorder
     try {
       await rec.start();
+      liveMain.textContent = 'Inasikiliza — sema jina na alama...';
+      liveIcon.textContent = '👂';
     } catch (err) {
       pushResult({ type: 'error', error: 'Haikuweza kufungua maikrofoni: ' + err.message });
       setMicState('idle');
+      liveMain.textContent = 'Maikrofoni haikufunguka — ruhusa maikrofoni kwenye browser';
+      liveIcon.textContent = '🚫';
     }
   });
 

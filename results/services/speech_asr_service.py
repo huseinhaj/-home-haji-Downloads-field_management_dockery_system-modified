@@ -116,6 +116,25 @@ def _run_transcription(model, temp_path: str, *, normalized_language: Optional[s
     )
 
 
+_HALLUCINATION_PHRASES = [
+    "muktadha wa shule",
+    "taja jina la mwanafunzi kisha alama",
+    "mfano wa jina la mwanafunzi",
+    "mfano juma ali",
+    "school context",
+    "say the student name followed by mark",
+    "example juma ali",
+    "maneno ya alama",
+    "kwa hivyo",          # common Whisper filler when no speech
+    "asante kwa kutazama",
+    "nakushukuru",
+]
+
+def _is_hallucination(transcript: str) -> bool:
+    t = transcript.lower().strip()
+    return any(phrase in t for phrase in _HALLUCINATION_PHRASES)
+
+
 def transcribe_uploaded_audio(uploaded_file, language: Optional[str] = None) -> str:
     if not uploaded_file:
         raise ValidationError("No audio file provided.")
@@ -246,7 +265,17 @@ def transcribe_uploaded_audio(uploaded_file, language: Optional[str] = None) -> 
                 vad_enabled,
             )
             raise SpeechTranscriptionError(
-                "Could not transcribe any speech from the audio. Please check: (1) audio is loud enough, (2) background noise is minimal, or (3) try again."
+                "Sauti haikutambuliwa. Sema kwa sauti ya wazi karibu na maikrofoni."
+            )
+
+        if _is_hallucination(transcript):
+            logger.warning(
+                "speech_asr: hallucination detected — transcript matches initial_prompt file=%r transcript=%r",
+                getattr(uploaded_file, "name", None),
+                transcript,
+            )
+            raise SpeechTranscriptionError(
+                "Sauti haikutambuliwa wazi. Sema tena: jina la mwanafunzi kisha alama."
             )
 
         logger.info(
