@@ -332,54 +332,158 @@ def _pick_col(row, col_lower_map, keys):
     return ''
 
 
+GENDER_TOKENS = {'m', 'me', 'male', 'kiume', 'f', 'fe', 'female', 'kike'}
+
+
+def _parse_roster_line(line):
+    """Parse one text line: 'FirstName MiddleName LastName Gender' → (first, middle, last, gender)."""
+    parts = line.split()
+    if len(parts) < 2:
+        return None
+
+    # Last token is gender if it's a known gender word
+    gender = 'M'
+    if parts[-1].lower() in GENDER_TOKENS:
+        gender = normalize_gender(parts[-1])
+        parts = parts[:-1]
+
+    if len(parts) == 1:
+        return parts[0].capitalize(), '', 'Unknown', gender
+    if len(parts) == 2:
+        return parts[0].capitalize(), '', parts[1].capitalize(), gender
+    # 3+ parts: first, middle(s), last
+    return parts[0].capitalize(), ' '.join(p.capitalize() for p in parts[1:-1]), parts[-1].capitalize(), gender
+
+
+def _save_student(first, middle, last, gender):
+    student, _ = Student.objects.get_or_create(
+        first_name=first,
+        last_name=last or 'Unknown',
+        defaults={'middle_name': middle, 'gender': gender},
+    )
+    if middle and not student.middle_name:
+        student.middle_name = middle
+        student.save(update_fields=['middle_name'])
+    name_parts = [p for p in [student.first_name, student.middle_name, student.last_name] if p]
+    return {'id': student.id, 'name': ' '.join(name_parts)}
+
+
+def _parse_pdf_roster(uploaded_file):
+    """Extract student rows from a PDF roster using pdfplumber."""
+    import pdfplumber, re
+    students_out = []
+    uploaded_file.seek(0)
+    raw_bytes = uploaded_file.read()
+    import io
+    with pdfplumber.open(io.BytesIO(raw_bytes)) as pdf:
+        for page in pdf.pages:
+            # Try table extraction first (structured PDFs)
+            tables = page.extract_tables()
+            if tables:
+                for table in tables:
+                    for row in table:
+                        if not row:
+                            continue
+                        cells = [str(c).strip() for c in row if c and str(c).strip()]
+                        if len(cells) < 2:
+                            continue
+                        # Skip header rows
+                        if any(h in ' '.join(cells).lower() for h in ('jina', 'name', 'first', 'gender', 'jinsia', '#', 'no')):
+                            continue
+                        # Try joining all cells as one line
+                        line = ' '.join(cells)
+                        parsed = _parse_roster_line(line)
+                        if parsed:
+                            first, middle, last, gender = parsed
+                            if first and first.lower() not in ('nan', 'none', ''):
+                                students_out.append(_save_student(first, middle, last, gender))
+            else:
+                # Plain text extraction — each line is one student
+                text = page.extract_text() or ''
+                for line in text.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    # Remove leading numbering like "1." "1)" "01."
+                    line = re.sub(r'^\d+[.)]\s*', '', line).strip()
+                    if not line:
+                        continue
+                    # Skip obvious header lines
+                    if any(h in line.lower() for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'student')):
+                        continue
+                    parsed = _parse_roster_line(line)
+                    if parsed:
+                        first, middle, last, gender = parsed
+                        if first and first.lower() not in ('nan', 'none', ''):
+                            students_out.append(_save_student(first, middle, last, gender))
+    return students_out
+
+
+def _parse_spreadsheet_roster(uploaded_file):
+    """Parse CSV or Excel roster with flexible column detection."""
+    import pandas as pd
+    uploaded_file.seek(0)
+    fname = uploaded_file.name.lower()
+    df = pd.read_csv(uploaded_file) if fname.endswith('.csv') else pd.read_excel(uploaded_file)
+    df.columns = [str(c).strip() for c in df.columns]
+    col_lower = {c.lower(): c for c in df.columns}
+
+    students_out = []
+    for _, row in df.iterrows():
+        first  = _pick_col(row, col_lower, ['first name', 'firstname', 'jina la kwanza'])
+        middle = _pick_col(row, col_lower, ['middle name', 'middlename', 'jina la kati', 'jina la pili'])
+        last   = _pick_col(row, col_lower, ['last name', 'lastname', 'surname', 'jina la mwisho', 'ukoo'])
+        full   = _pick_col(row, col_lower, ['name', 'full name', 'jina kamili', 'majina', 'jina'])
+
+        if not first and full:
+            parts = full.split()
+            if len(parts) >= 3:
+                first  = parts[0].capitalize()
+                middle = ' '.join(p.capitalize() for p in parts[1:-1])
+                last   = parts[-1].capitalize()
+            elif len(parts) == 2:
+                first = parts[0].capitalize()
+                last  = parts[1].capitalize()
+            elif parts:
+                first = parts[0].capitalize()
+
+        if not first:
+            val = str(row.iloc[0]).strip()
+            if val and val not in ('nan', 'None', ''):
+                parsed = _parse_roster_line(val)
+                if parsed:
+                    first, middle, last, _ = parsed
+
+        if not first or first in ('nan', 'None', ''):
+            continue
+
+        gender_raw = _pick_col(row, col_lower, ['gender', 'jinsia', 'sex']) or 'M'
+        students_out.append(_save_student(
+            first.strip().capitalize(),
+            (middle or '').strip().capitalize(),
+            (last or 'Unknown').strip().capitalize(),
+            normalize_gender(gender_raw),
+        ))
+    return students_out
+
+
 @require_POST
 def upload_roster(request):
-    """Accept CSV/Excel of student names → create/get Student objects → return IDs."""
+    """Accept PDF, CSV, or Excel roster → create/get Student objects → return IDs."""
     uploaded_file = request.FILES.get('file')
     if not uploaded_file:
         return JsonResponse({'error': 'Hakuna faili lililotumwa.'}, status=400)
     try:
-        import pandas as pd
-        uploaded_file.seek(0)
         fname = uploaded_file.name.lower()
-        df = pd.read_csv(uploaded_file) if fname.endswith('.csv') else pd.read_excel(uploaded_file)
-        df.columns = [str(c).strip() for c in df.columns]
-        col_lower = {c.lower(): c for c in df.columns}
-
-        students_out = []
-        for _, row in df.iterrows():
-            first = _pick_col(row, col_lower, ['first name', 'firstname', 'jina la kwanza'])
-            last = _pick_col(row, col_lower, ['last name', 'lastname', 'surname', 'jina la mwisho', 'ukoo'])
-            full = _pick_col(row, col_lower, ['name', 'full name', 'jina kamili', 'majina', 'jina'])
-
-            if not first and full:
-                parts = full.split(None, 1)
-                first = parts[0]
-                last = parts[1] if len(parts) > 1 else 'Unknown'
-
-            if not first:
-                val = str(row.iloc[0]).strip()
-                if val and val not in ('nan', 'None', ''):
-                    parts = val.split(None, 1)
-                    first = parts[0]
-                    last = parts[1] if len(parts) > 1 else 'Unknown'
-
-            if not first or first in ('nan', 'None', ''):
-                continue
-            if not last or last in ('nan', 'None', ''):
-                last = 'Unknown'
-
-            gender_raw = _pick_col(row, col_lower, ['gender', 'jinsia', 'sex']) or 'M'
-            student, _ = Student.objects.get_or_create(
-                first_name=first.strip().capitalize(),
-                last_name=last.strip().capitalize(),
-                defaults={'gender': normalize_gender(gender_raw)},
-            )
-            name_parts = [p for p in [student.first_name, student.middle_name, student.last_name] if p]
-            students_out.append({'id': student.id, 'name': ' '.join(name_parts)})
+        if fname.endswith('.pdf'):
+            students_out = _parse_pdf_roster(uploaded_file)
+        else:
+            students_out = _parse_spreadsheet_roster(uploaded_file)
 
         if not students_out:
-            return JsonResponse({'error': 'Hakuna wanafunzi kwenye faili. Angalia muundo wa CSV.'}, status=400)
+            return JsonResponse({
+                'error': 'Hakuna wanafunzi waliopatikana. Angalia muundo wa faili — kila mstari: Jina la Kwanza Jina la Kati Jina la Mwisho Jinsia'
+            }, status=400)
 
         return JsonResponse({'students': students_out, 'count': len(students_out)})
     except Exception as exc:
