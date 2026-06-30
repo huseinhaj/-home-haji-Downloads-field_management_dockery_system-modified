@@ -1021,8 +1021,8 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
   async function handleAudioBlob(blob) {
     if (!S.session || S.isFinalized) { rec.processingDone(); return; }
 
-    // Too small = silence or noise, not real speech
-    if (blob.size < 2000) {
+    // Too small = truly empty webm container, not real speech
+    if (blob.size < 400) {
       rec.processingDone();
       return;
     }

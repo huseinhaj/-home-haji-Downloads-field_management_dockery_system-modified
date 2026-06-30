@@ -231,13 +231,29 @@ def _ingest_single(session, transcript, confidence_threshold, teacher_name):
         confidence_threshold=confidence_threshold,
         teacher_name=teacher_name,
     )
-    result["transcript"] = transcript
-    result["saved_count"] = 1
-    result["saved_entries"] = [result]
-    result["skipped_count"] = 0
-    result["skipped_entries"] = []
-    result["finalize_detected"] = contains_finalize_signal(transcript)
-    return result
+    finalize_detected = contains_finalize_signal(transcript)
+    # Build a flat entry summary — do NOT nest result inside itself
+    entry_summary = {
+        "student":    result.get("student"),
+        "score":      result.get("score"),
+        "confidence": result.get("confidence"),
+        "transcript": transcript,
+    }
+    return {
+        "status":           "saved",
+        "transcript":       transcript,
+        "student":          result.get("student"),
+        "score":            result.get("score"),
+        "confidence":       result.get("confidence"),
+        "candidates":       result.get("candidates", []),
+        "saved_count":      1,
+        "saved_entries":    [entry_summary],
+        "skipped_count":    0,
+        "skipped_entries":  [],
+        "session_finalized": result.get("session_finalized", False),
+        "exam_finalized":   result.get("exam_finalized", False),
+        "finalize_detected": finalize_detected,
+    }
 
 
 def _ingest_batch(session, transcript, confidence_threshold, teacher_name):
