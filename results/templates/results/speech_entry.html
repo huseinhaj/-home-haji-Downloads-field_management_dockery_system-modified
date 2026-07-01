@@ -740,8 +740,8 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
     liveBox.className = 'live-box';
     if (state === 'calibrating') {
       liveIcon.textContent = '⚙️';
-      liveMain.textContent = 'Inapima kelele za mazingira (sekunde 1)...';
-      liveSub.textContent = 'Kimya kidogo wakati inapima';
+      liveMain.textContent = 'Inaunganisha maikrofoni...';
+      liveSub.textContent  = '';
       ScanEngine.stop();
     } else if (state === 'listening') {
       liveIcon.textContent = '👂';
@@ -981,6 +981,109 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
     }
   }
 
+  // ── Web Speech Recorder (primary — Chrome / Edge) ────────────────────────
+  class WebSpeechRecorder {
+    constructor({ onTranscript, onInterim, onStateChange, onLevel, language }) {
+      this.onTranscript  = onTranscript;
+      this.onInterim     = onInterim;
+      this.onStateChange = onStateChange;
+      this.onLevel       = onLevel;
+      this.lang          = (language === 'sw') ? 'sw' : 'en-US';
+      this.rec           = null;
+      this.isActive      = false;
+      this.stream        = null;
+      this.audioCtx      = null;
+      this.analyser      = null;
+      this.meterTimer    = null;
+    }
+
+    async start() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) throw new Error('Tumia Chrome — kivinjari hiki hakisaidii usikivu wa sauti.');
+
+      // Level meter via AudioContext (visual only)
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
+      this.analyser = this.audioCtx.createAnalyser();
+      this.analyser.fftSize = 256;
+      this.audioCtx.createMediaStreamSource(this.stream).connect(this.analyser);
+      const data = new Uint8Array(this.analyser.frequencyBinCount);
+      this.meterTimer = setInterval(() => {
+        if (!this.analyser) return;
+        this.analyser.getByteFrequencyData(data);
+        const avg = data.slice(3, 32).reduce((a, b) => a + b, 0) / 29;
+        this.onLevel(avg, 0);
+      }, 80);
+
+      // Speech recognition
+      this.rec = new SR();
+      this.rec.lang            = this.lang;
+      this.rec.interimResults  = true;
+      this.rec.continuous      = true;
+      this.rec.maxAlternatives = 1;
+
+      this.rec.onstart = () => {
+        this.isActive = true;
+        this.onStateChange('listening');
+      };
+
+      this.rec.onresult = (event) => {
+        const latest = event.results[event.results.length - 1];
+        const text   = latest[0].transcript.trim();
+        if (latest.isFinal) {
+          if (text) {
+            this.onStateChange('processing');
+            this.onTranscript(text);
+          }
+        } else {
+          if (text) this.onInterim(text);
+        }
+      };
+
+      this.rec.onerror = (event) => {
+        if (event.error === 'no-speech' || event.error === 'aborted') return;
+        if (event.error === 'not-allowed') { this.isActive = false; }
+        this.onStateChange('listening');
+      };
+
+      this.rec.onend = () => {
+        // Auto-restart while session is live
+        if (this.isActive && !S.isPaused) {
+          setTimeout(() => { try { if (this.isActive) this.rec.start(); } catch (_) {} }, 300);
+        }
+      };
+
+      this.onStateChange('calibrating');
+      this.rec.start();
+    }
+
+    processingDone() {
+      if (this.isActive && !S.isPaused) this.onStateChange('listening');
+    }
+
+    pause() {
+      this.isActive = false;
+      S.isPaused    = true;
+      try { this.rec?.stop(); } catch (_) {}
+      this.onStateChange('paused');
+    }
+
+    resume() {
+      this.isActive = true;
+      S.isPaused    = false;
+      try { this.rec.start(); } catch (_) {}
+    }
+
+    destroy() {
+      this.isActive = false;
+      if (this.meterTimer) clearInterval(this.meterTimer);
+      try { this.rec?.stop(); } catch (_) {}
+      if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+      if (this.audioCtx) this.audioCtx.close().catch(() => {});
+    }
+  }
+
   // ── Scan animation engine ─────────────────────────────────────────────────
   const ScanEngine = (() => {
     let timer = null;
@@ -1010,12 +1113,8 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
     return { start, stop };
   })();
 
-  // ── Recorder instance ─────────────────────────────────────────────────────
-  const rec = new ContinuousRecorder({
-    onAudioReady: handleAudioBlob,
-    onStateChange: setMicState,
-    onLevel: updateMeter,
-  });
+  // ── Recorder instance (chosen at session start) ───────────────────────────
+  let rec = null;
 
   // ── API: submit audio blob ────────────────────────────────────────────────
   async function handleAudioBlob(blob) {
@@ -1049,15 +1148,17 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
     }
   }
 
-  // ── API: submit manual text ───────────────────────────────────────────────
+  // ── API: submit text transcript (from Web Speech or manual input) ─────────
   async function handleManualText(text) {
-    if (!S.session || S.isFinalized) return;
+    if (!S.session || S.isFinalized) { rec?.processingDone(); return; }
+
+    setMicState('processing');
 
     const fd = new FormData();
     fd.append('access_key', S.session.accessKey);
     fd.append('transcript', text);
     fd.append('teacher_name', S.teacherName);
-    fd.append('confidence_threshold', '0.88');
+    fd.append('confidence_threshold', '0.85');
 
     try {
       const resp = await fetch(sessionUrl(URL_INGEST_TPL, S.session.sessionId), {
@@ -1069,6 +1170,9 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
       await handleIngestResponse(resp.status, data, null, text);
     } catch (err) {
       pushResult({ type: 'error', error: 'Hitilafu: ' + err.message });
+      setLiveError('Hitilafu ya mtandao', text);
+    } finally {
+      rec?.processingDone();
     }
   }
 
@@ -1278,7 +1382,30 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
     buildRosterTable();
     showSession();
 
-    // Start recorder — calibrates first, then enters listening state automatically
+    // Choose recorder: Web Speech API (Chrome/Edge) or Whisper VAD fallback
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) {
+      rec = new WebSpeechRecorder({
+        language:      S.language,
+        onStateChange: setMicState,
+        onLevel:       updateMeter,
+        onTranscript:  (text) => handleManualText(text),
+        onInterim:     (text) => {
+          // Show live text as teacher speaks
+          liveBox.className = 'live-box state-recording';
+          liveIcon.textContent = '🎙';
+          liveMain.textContent = text;
+          liveSub.textContent  = '';
+        },
+      });
+    } else {
+      rec = new ContinuousRecorder({
+        onAudioReady:  handleAudioBlob,
+        onStateChange: setMicState,
+        onLevel:       updateMeter,
+      });
+    }
+
     try {
       await rec.start();
     } catch (err) {
