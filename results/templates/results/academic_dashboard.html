@@ -205,6 +205,17 @@
       </div>
       {% endif %}
 
+      <!-- Pending subjects alert -->
+      {% if ed.pending_subs %}
+      <div style="background:#fff8e6;border-top:1px solid #f0d07a;border-bottom:1px solid #f0d07a;padding:0.5rem 1rem;display:flex;align-items:flex-start;gap:0.6rem;flex-wrap:wrap;">
+        <span style="font-size:1rem;line-height:1.4;">&#9203;</span>
+        <div>
+          <span style="font-size:0.78rem;font-weight:700;color:#7a5200;">BADO ({{ ed.pending_subs|length }} somo{{ ed.pending_subs|length|pluralize }}):</span>
+          <span style="font-size:0.78rem;color:#5a3c00;margin-left:0.3rem;">{{ ed.pending_names }}</span>
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Subjects table -->
       {% if ed.submissions %}
       <table class="subjects-table">
@@ -220,15 +231,18 @@
         </thead>
         <tbody>
           {% for sub in ed.submissions %}
-          <tr>
-            <td><strong>{{ sub.subject.name }}</strong></td>
+          <tr {% if sub.status == 'PENDING' %}style="background:#fffdf5;"{% endif %}>
+            <td>
+              <strong>{{ sub.subject.name }}</strong>
+              {% if sub.status == 'PENDING' %}<span style="color:#c9840c;font-size:0.68rem;margin-left:0.3rem;">&#9203;</span>{% endif %}
+            </td>
             <td>
               {% if sub.status == 'APPROVED' %}
-                <span class="badge-approved">Imeidhinishwa</span>
+                <span class="badge-approved">&#10003; Imeidhinishwa</span>
               {% elif sub.status == 'SUBMITTED' %}
-                <span class="badge-submitted">Imewasilishwa</span>
+                <span class="badge-submitted">&#8679; Imewasilishwa</span>
               {% else %}
-                <span class="badge-pending">Inasubiri</span>
+                <span class="badge-pending">&#9203; BADO</span>
               {% endif %}
             </td>
             <td>{{ sub.submitted_by|default:"—" }}</td>
@@ -245,17 +259,30 @@
               </form>
               {% elif sub.status == 'APPROVED' %}
               <span style="font-size:0.72rem;color:#1a7a3b;">
-                ✓ {{ sub.approved_by }}
+                &#10003; {{ sub.approved_by }}
                 {% if sub.approved_at %}<br><span style="color:#999;">{{ sub.approved_at|date:"d M Y" }}</span>{% endif %}
               </span>
               {% else %}
-              <span style="color:#bbb;font-size:0.72rem;">Bado</span>
+              <span style="color:#bbb;font-size:0.72rem;">Inasubiri mwalimu</span>
               {% endif %}
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+
+      <!-- Final submission bar -->
+      {% if ed.pending_subs %}
+      <div style="background:#f8f9fb;border-top:1px solid #e9ecef;padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+        <span style="font-size:0.78rem;color:#888;">
+          Bado: <strong style="color:#c9840c;">{{ ed.pending_names }}</strong>
+          &nbsp;&mdash;&nbsp;({{ ed.pending_subs|length }} masomo hayajapakiwa)
+        </span>
+        <button class="btn-bulk-approve" disabled style="opacity:0.45;cursor:not-allowed;">
+          Idhinisha Yote
+        </button>
+      </div>
+      {% endif %}
       {% else %}
       <div style="padding:0.75rem 1rem;color:#aaa;font-size:0.8rem;">Hakuna masomo yaliyosajiliwa bado.</div>
       {% endif %}

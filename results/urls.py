@@ -15,6 +15,10 @@ from .views import (
     approve_exam_submissions,
     form_results,
     form_results_excel,
+    school_setup,
+    school_subjects,
+    create_exam_for_school,
+    teacher_dashboard,
 )
 from .speech_views import (
     confirm_speech_candidate,
@@ -44,6 +48,12 @@ urlpatterns = [
     path('academic/', academic_dashboard, name='academic_dashboard'),
     path('form/<int:form_num>/results/', form_results, name='form_results'),
     path('form/<int:form_num>/excel/', form_results_excel, name='form_results_excel'),
+    # School management
+    path('school/', school_setup, name='school_setup'),
+    path('school/<int:school_id>/subjects/', school_subjects, name='school_subjects'),
+    path('school/<int:school_id>/create-exam/', create_exam_for_school, name='create_exam_for_school'),
+    # Teacher dashboard
+    path('teacher/', teacher_dashboard, name='teacher_dashboard'),
     # Speech entry
     path('speech/', speech_entry_page, name='speech_entry_page'),
     path('speech-sessions/', create_speech_session, name='create_speech_session'),

@@ -6,12 +6,35 @@ import pandas as pd
 from django.http import HttpResponse
 
 
+class School(models.Model):
+    name = models.CharField(max_length=200)
+    region = models.CharField(max_length=100)
+    district = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Subject(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, blank=True)
 
     def __str__(self):
         return self.name
+
+
+class SchoolSubject(models.Model):
+    """Masomo yanayofundishwa katika shule fulani."""
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_subjects')
+    subject = models.ForeignKey('Subject', on_delete=models.CASCADE)
+    form_levels = models.CharField(max_length=20, default='1,2,3,4')  # e.g. "1,2,3,4" or "5,6"
+
+    class Meta:
+        unique_together = [('school', 'subject')]
+
+    def __str__(self):
+        return f"{self.school} — {self.subject}"
 
 
 class Student(models.Model):
@@ -47,6 +70,9 @@ class Exam(models.Model):
     )
     date = models.DateField(null=True, blank=True)
     school_name = models.CharField(max_length=200, blank=True)
+    school = models.ForeignKey(
+        'School', null=True, blank=True, on_delete=models.SET_NULL, related_name='exams'
+    )
 
     def __str__(self):
         return f"{self.get_exam_type_display()} - {self.name} ({self.year})"

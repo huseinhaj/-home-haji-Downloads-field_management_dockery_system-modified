@@ -1,0 +1,199 @@
+{% extends 'results/base.html' %}
+{% block title %}Unda Mtihani — {{ school.name }} | School Results{% endblock %}
+
+{% block content %}
+<style>
+.exam-hero {
+  background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
+  border: 2px solid #C9A84C;
+  border-radius: 2px;
+  padding: 1.5rem 2rem;
+  color: #fff;
+  margin-bottom: 1.5rem;
+}
+.exam-hero h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.2rem; }
+.exam-hero .sub { font-size: 0.82rem; color: #C9A84C; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.panel {
+  background: #fff;
+  border: 1.5px solid #dee2e6;
+  border-radius: 2px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+.panel-head {
+  background: #f4f6fb;
+  border-bottom: 1.5px solid #e9ecef;
+  padding: 0.65rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #1B3A6B;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.panel-body { padding: 1.5rem; }
+
+.form-label-sm { font-size: 0.78rem; font-weight: 700; color: #444; margin-bottom: 0.3rem; }
+.form-control-styled {
+  font-size: 0.88rem;
+  padding: 0.45rem 0.75rem;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 2px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-control-styled:focus { border-color: #1B3A6B; box-shadow: 0 0 0 3px rgba(27,58,107,0.08); }
+
+.btn-primary-navy {
+  background: #1B3A6B;
+  color: #fff;
+  border: 2px solid #C9A84C;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.55rem 1.8rem;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+.btn-primary-navy:hover { background: #14305a; }
+
+.subjects-preview {
+  background: #f4f6fb;
+  border: 1px solid #dee2e6;
+  border-radius: 2px;
+  padding: 1rem;
+}
+.subject-pill {
+  display: inline-flex;
+  align-items: center;
+  background: #eef2f9;
+  border: 1px solid #c6d3ee;
+  color: #1B3A6B;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.75rem;
+  border-radius: 20px;
+  margin: 0.2rem;
+}
+.subject-pill-count {
+  background: #C9A84C;
+  color: #1B3A6B;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.05rem 0.4rem;
+  border-radius: 10px;
+  margin-left: 0.4rem;
+}
+.warning-box {
+  background: #fff8e6;
+  border: 1.5px solid #f0d07a;
+  border-radius: 2px;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: #7a5200;
+}
+</style>
+
+<div class="exam-hero">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h1>Unda Mtihani Mpya</h1>
+      <div class="sub">{{ school.name }} &mdash; {{ school.region }}, {{ school.district }}</div>
+    </div>
+    <a href="{% url 'school_subjects' school.id %}" style="color:#C9A84C;font-size:0.78rem;text-decoration:none;align-self:center;">
+      &larr; Masomo ya Shule
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="panel">
+      <div class="panel-head">Maelezo ya Mtihani</div>
+      <div class="panel-body">
+        {% if not school_subjects %}
+        <div class="warning-box mb-3">
+          &#9888; Shule hii haina masomo yaliyosajiliwa bado.
+          <a href="{% url 'school_subjects' school.id %}" style="color:#7a5200;font-weight:700;">
+            Ongeza masomo kwanza &rarr;
+          </a>
+        </div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label-sm">Jina la Mtihani</label>
+            <input type="text" name="exam_name" class="form-control-styled"
+                   placeholder="Mid-term 2026" required>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-sm-4">
+              <label class="form-label-sm">Mwaka (Year)</label>
+              <select name="exam_year" class="form-control-styled">
+                {% for yr in year_range %}
+                <option value="{{ yr }}" {% if yr == current_year %}selected{% endif %}>{{ yr }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label-sm">Darasa (Form)</label>
+              <select name="exam_form" class="form-control-styled">
+                <option value="1">Form 1</option>
+                <option value="2">Form 2</option>
+                <option value="3">Form 3</option>
+                <option value="4" selected>Form 4</option>
+                <option value="5">Form 5</option>
+                <option value="6">Form 6</option>
+              </select>
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label-sm">Aina ya Mtihani</label>
+              <select name="exam_type" class="form-control-styled">
+                {% for val, label in exam_type_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="d-flex gap-3 align-items-center flex-wrap mt-2">
+            <button type="submit" class="btn-primary-navy" {% if not school_subjects %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}>
+              Unda Mtihani
+            </button>
+            <span style="font-size:0.75rem;color:#888;">
+              Masomo {{ school_subjects|length }} yataunganishwa otomatiki
+            </span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="panel">
+      <div class="panel-head">Masomo Yatakayounganishwa ({{ school_subjects|length }})</div>
+      <div class="panel-body">
+        {% if school_subjects %}
+        <div class="subjects-preview">
+          {% for ss in school_subjects %}
+          <span class="subject-pill">
+            {{ ss.subject.name }}
+            <span class="subject-pill-count">F{{ ss.form_levels }}</span>
+          </span>
+          {% endfor %}
+        </div>
+        <div style="font-size:0.75rem;color:#888;margin-top:0.75rem;">
+          Masomo haya yote yataanzishwa kama PENDING — walimu watapakia alama zao moja baada ya moja.
+        </div>
+        {% else %}
+        <div style="color:#aaa;font-size:0.85rem;text-align:center;padding:1rem 0;">
+          Hakuna masomo. <a href="{% url 'school_subjects' school.id %}">Ongeza masomo kwanza</a>.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

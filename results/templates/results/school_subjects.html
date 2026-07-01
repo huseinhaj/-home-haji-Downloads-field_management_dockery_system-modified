@@ -1,0 +1,229 @@
+{% extends 'results/base.html' %}
+{% block title %}Masomo ya {{ school.name }} | School Results{% endblock %}
+
+{% block content %}
+<style>
+.school-hero {
+  background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
+  border: 2px solid #C9A84C;
+  border-radius: 2px;
+  padding: 1.5rem 2rem;
+  color: #fff;
+  margin-bottom: 1.5rem;
+}
+.school-hero h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.2rem; }
+.school-hero .sub { font-size: 0.82rem; color: #C9A84C; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.panel {
+  background: #fff;
+  border: 1.5px solid #dee2e6;
+  border-radius: 2px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+.panel-head {
+  background: #f4f6fb;
+  border-bottom: 1.5px solid #e9ecef;
+  padding: 0.65rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #1B3A6B;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panel-body { padding: 1.25rem; }
+
+.form-label-sm { font-size: 0.78rem; font-weight: 700; color: #444; margin-bottom: 0.25rem; }
+.form-control-sm-custom {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.7rem;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 2px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-control-sm-custom:focus { border-color: #1B3A6B; }
+
+.btn-primary-navy {
+  background: #1B3A6B;
+  color: #fff;
+  border: 2px solid #C9A84C;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.4rem 1.1rem;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.btn-primary-navy:hover { background: #14305a; }
+
+.btn-danger-sm {
+  background: #c0392b;
+  color: #fff;
+  border: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.18rem 0.5rem;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.btn-danger-sm:hover { background: #a93226; }
+
+.subjects-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.subjects-table th {
+  background: #f4f6fb;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  font-weight: 700;
+  border-bottom: 1.5px solid #e9ecef;
+  text-align: left;
+}
+.subjects-table td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+.subjects-table tr:last-child td { border-bottom: none; }
+
+.badge-count {
+  background: #1B3A6B;
+  color: #C9A84C;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+}
+
+.link-gold { color: #C9A84C; font-weight: 700; text-decoration: none; font-size: 0.82rem; }
+.link-gold:hover { color: #b8973a; text-decoration: underline; }
+
+.common-chips { display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.5rem; }
+.chip {
+  background: #eef2f9;
+  border: 1px solid #d0d8ee;
+  color: #1B3A6B;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.chip:hover { background: #dce4f7; }
+.empty-state { text-align:center; padding:1.5rem 1rem; color:#aaa; font-size:0.85rem; }
+</style>
+
+<div class="school-hero">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h1>{{ school.name }}</h1>
+      <div class="sub">{{ school.region }} &mdash; {{ school.district }} &nbsp;|&nbsp; Usimamizi wa Masomo</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'create_exam_for_school' school.id %}" class="btn-primary-navy" style="text-decoration:none;display:inline-flex;align-items:center;">
+        + Unda Mtihani
+      </a>
+      <a href="{% url 'school_setup' %}" style="color:#C9A84C;font-size:0.78rem;text-decoration:none;align-self:center;">
+        &larr; Shule Zote
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Current subjects -->
+  <div class="col-lg-7">
+    <div class="panel">
+      <div class="panel-head">
+        <span>Masomo Yaliyosajiliwa</span>
+        <span class="badge-count">{{ school_subjects|length }}</span>
+      </div>
+      {% if school_subjects %}
+      <table class="subjects-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Somo</th>
+            <th>Madarasa</th>
+            <th>Ondoa</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ss in school_subjects %}
+          <tr>
+            <td style="color:#aaa;font-size:0.72rem;">{{ forloop.counter }}</td>
+            <td><strong>{{ ss.subject.name }}</strong>{% if ss.subject.code %} <span style="color:#aaa;font-size:0.72rem;">({{ ss.subject.code }})</span>{% endif %}</td>
+            <td style="color:#777;font-size:0.78rem;">Form {{ ss.form_levels }}</td>
+            <td>
+              <form method="post" onsubmit="return confirm('Ondoa {{ ss.subject.name }}?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="remove">
+                <input type="hidden" name="school_subject_id" value="{{ ss.id }}">
+                <button type="submit" class="btn-danger-sm">Ondoa</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        Masomo hayajasajiliwa bado. Ongeza masomo upande wa kulia.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Add subject -->
+  <div class="col-lg-5">
+    <div class="panel">
+      <div class="panel-head">Ongeza Somo</div>
+      <div class="panel-body">
+        <form method="post" id="addSubjectForm">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add">
+          <div class="mb-3">
+            <label class="form-label-sm">Jina la Somo</label>
+            <input type="text" name="subject_name" id="subjectNameInput"
+                   class="form-control-sm-custom" placeholder="Mathematics" required>
+            <div class="common-chips">
+              {% for s in common_subjects %}
+              <span class="chip" onclick="document.getElementById('subjectNameInput').value='{{ s }}'">{{ s }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label-sm">Madarasa (Form Levels)</label>
+            <input type="text" name="form_levels" class="form-control-sm-custom"
+                   value="1,2,3,4" placeholder="1,2,3,4">
+            <div style="font-size:0.72rem;color:#888;margin-top:0.2rem;">
+              Mfano: "1,2,3,4" au "5,6" kwa A-Level
+            </div>
+          </div>
+          <button type="submit" class="btn-primary-navy">Ongeza Somo</button>
+        </form>
+
+        {% if available_subjects %}
+        <div style="margin-top:1.25rem;">
+          <div class="form-label-sm" style="margin-bottom:0.4rem;">Au chagua kutoka masomo yaliyopo:</div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add">
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+              <select name="subject_name" class="form-control-sm-custom" style="max-width:200px;">
+                {% for subj in available_subjects %}
+                <option value="{{ subj.name }}">{{ subj.name }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn-primary-navy">Ongeza</button>
+            </div>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

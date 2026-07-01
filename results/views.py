@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
 
 from .forms import ExamUploadForm
-from .models import Exam, ExamResult, Student, Subject, SubjectSubmission
+from .models import Exam, ExamResult, School, SchoolSubject, Student, Subject, SubjectSubmission
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
 from .services.pdf_export_service import generate_results_pdf_response
 from .services.subject_pdf_service import generate_subject_pdf_response
@@ -516,23 +516,39 @@ def finalize_exam(request, exam_id):
 
 def academic_dashboard(request):
     """Dashboard for academic officer: see all exams grouped by form, approve submissions."""
-    exams = Exam.objects.prefetch_related('subject_submissions__subject').order_by('form', '-year', 'name')
+    exams = Exam.objects.prefetch_related(
+        'subject_submissions__subject'
+    ).select_related('school').order_by('form', '-year', 'name')
 
     forms_map = {}
     for exam in exams:
         subs = list(exam.subject_submissions.all())
         total = len(subs)
-        submitted = sum(1 for s in subs if s.status in (SubjectSubmission.STATUS_SUBMITTED, SubjectSubmission.STATUS_APPROVED))
+        submitted = sum(
+            1 for s in subs
+            if s.status in (SubjectSubmission.STATUS_SUBMITTED, SubjectSubmission.STATUS_APPROVED)
+        )
         approved = sum(1 for s in subs if s.status == SubjectSubmission.STATUS_APPROVED)
         all_submitted = total > 0 and submitted == total
         all_approved = total > 0 and approved == total
         ready_for_approval = all_submitted and not all_approved
+
+        # Split subjects by status for clear pending display
+        pending_subs = [s for s in subs if s.status == SubjectSubmission.STATUS_PENDING]
+        submitted_subs = [s for s in subs if s.status == SubjectSubmission.STATUS_SUBMITTED]
+        approved_subs_list = [s for s in subs if s.status == SubjectSubmission.STATUS_APPROVED]
+        pending_names = ', '.join(s.subject.name for s in pending_subs)
+
         form_key = exam.form
         if form_key not in forms_map:
             forms_map[form_key] = []
         forms_map[form_key].append({
             'exam': exam,
             'submissions': subs,
+            'pending_subs': pending_subs,
+            'submitted_subs': submitted_subs,
+            'approved_subs_list': approved_subs_list,
+            'pending_names': pending_names,
             'total': total,
             'submitted': submitted,
             'approved': approved,
@@ -774,3 +790,161 @@ def form_results_excel(request, form_num):
     response['Content-Disposition'] = f'attachment; filename="Matokeo_{label}.xlsx"'
     wb.save(response)
     return response
+
+
+# ── School Setup ──────────────────────────────────────────────────────────────
+
+def school_setup(request):
+    """GET: list registered schools. POST: register a new school."""
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        region = request.POST.get('region', '').strip()
+        district = request.POST.get('district', '').strip()
+        if name and region and district:
+            school, created = School.objects.get_or_create(
+                name=name,
+                defaults={'region': region, 'district': district},
+            )
+            if created:
+                messages.success(request, f"Shule '{school.name}' imesajiliwa.")
+            else:
+                messages.info(request, f"Shule '{school.name}' tayari ipo.")
+            return redirect(reverse('school_subjects', args=[school.id]))
+        else:
+            messages.error(request, "Tafadhali jaza sehemu zote.")
+
+    schools = School.objects.all().order_by('name')
+    return render(request, 'results/school_setup.html', {
+        'schools': schools,
+        # Pre-fill defaults for Isingiro
+        'default_name': 'Isingiro Secondary School',
+        'default_region': 'Kagera',
+        'default_district': 'Kyerwa',
+    })
+
+
+# ── School Subjects Management ────────────────────────────────────────────────
+
+def school_subjects(request, school_id):
+    """Add/remove subjects taught at a school."""
+    school = get_object_or_404(School, id=school_id)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add':
+            subject_name = request.POST.get('subject_name', '').strip()
+            form_levels = request.POST.get('form_levels', '1,2,3,4').strip()
+            if subject_name:
+                subject, _ = Subject.objects.get_or_create(name=subject_name)
+                ss, created = SchoolSubject.objects.get_or_create(
+                    school=school,
+                    subject=subject,
+                    defaults={'form_levels': form_levels},
+                )
+                if created:
+                    messages.success(request, f"Somo '{subject.name}' limeongezwa.")
+                else:
+                    messages.info(request, f"Somo '{subject.name}' tayari lipo.")
+            else:
+                messages.error(request, "Andika jina la somo.")
+
+        elif action == 'remove':
+            ss_id = request.POST.get('school_subject_id')
+            if ss_id:
+                SchoolSubject.objects.filter(id=ss_id, school=school).delete()
+                messages.success(request, "Somo limeondolewa.")
+
+        return redirect(reverse('school_subjects', args=[school.id]))
+
+    school_subjects_qs = school.school_subjects.select_related('subject').order_by('subject__name')
+    existing_ids = school_subjects_qs.values_list('subject_id', flat=True)
+    available_subjects = Subject.objects.exclude(id__in=existing_ids).order_by('name')
+
+    return render(request, 'results/school_subjects.html', {
+        'school': school,
+        'school_subjects': school_subjects_qs,
+        'available_subjects': available_subjects,
+        'common_subjects': COMMON_SUBJECTS,
+    })
+
+
+# ── Create Exam for School ────────────────────────────────────────────────────
+
+def create_exam_for_school(request, school_id):
+    """Create an Exam linked to a school and auto-create PENDING SubjectSubmissions."""
+    school = get_object_or_404(School, id=school_id)
+
+    if request.method == 'POST':
+        name = request.POST.get('exam_name', '').strip()
+        year = int(request.POST.get('exam_year', timezone.now().year))
+        form_level = int(request.POST.get('exam_form', 4))
+        exam_type = request.POST.get('exam_type', 'TERMINAL')
+
+        if not name:
+            messages.error(request, "Tafadhali weka jina la mtihani.")
+            return redirect(request.path)
+
+        exam, created = Exam.objects.get_or_create(
+            name=name,
+            year=year,
+            form=form_level,
+            exam_type=exam_type,
+            school=school,
+            defaults={'school_name': school.name},
+        )
+        if not created:
+            messages.info(request, f"Mtihani '{exam.name}' tayari upo.")
+        else:
+            # Auto-create PENDING SubjectSubmissions for each school subject
+            school_subjs = school.school_subjects.select_related('subject').all()
+            for ss in school_subjs:
+                SubjectSubmission.objects.get_or_create(
+                    exam=exam,
+                    subject=ss.subject,
+                    defaults={'status': SubjectSubmission.STATUS_PENDING},
+                )
+            messages.success(
+                request,
+                f"Mtihani '{exam.name}' umeundwa. Masomo {school_subjs.count()} yanangojea kupakiwa."
+            )
+
+        return redirect(reverse('exam_overview', args=[exam.id]))
+
+    school_subjects_qs = school.school_subjects.select_related('subject').order_by('subject__name')
+    current_year = timezone.now().year
+
+    return render(request, 'results/create_exam.html', {
+        'school': school,
+        'school_subjects': school_subjects_qs,
+        'exam_type_choices': _EXAM_TYPE_CHOICES,
+        'current_year': current_year,
+        'year_range': range(current_year - 2, current_year + 3),
+    })
+
+
+# ── Teacher Dashboard ─────────────────────────────────────────────────────────
+
+def teacher_dashboard(request):
+    """Walimu wanaona masomo yao ya kupakia (submission status kwa kila exam)."""
+    exams = Exam.objects.prefetch_related(
+        'subject_submissions__subject'
+    ).order_by('-year', 'form', 'name')
+
+    exams_ctx = []
+    for exam in exams:
+        subs = list(exam.subject_submissions.all())
+        pending = [s for s in subs if s.status == SubjectSubmission.STATUS_PENDING]
+        submitted = [s for s in subs if s.status == SubjectSubmission.STATUS_SUBMITTED]
+        approved = [s for s in subs if s.status == SubjectSubmission.STATUS_APPROVED]
+        exams_ctx.append({
+            'exam': exam,
+            'pending': pending,
+            'submitted': submitted,
+            'approved': approved,
+            'total': len(subs),
+        })
+
+    return render(request, 'results/teacher_dashboard.html', {
+        'exams_ctx': exams_ctx,
+    })
