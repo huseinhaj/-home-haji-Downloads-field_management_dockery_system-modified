@@ -93,9 +93,14 @@
     <h1>Matokeo — {{ form_label }}</h1>
     <div class="sub">Matokeo ya mwisho baada ya idhini</div>
   </div>
-  <a href="{% url 'academic_dashboard' %}" class="btn btn-sm" style="background:#C9A84C;color:#1B3A6B;font-weight:700;border-radius:2px;">
-    &larr; Academic Dashboard
-  </a>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{{ excel_url }}" class="btn btn-sm" style="background:#1a7a3b;color:#fff;font-weight:700;border-radius:2px;">
+      ⬇ Pakua Excel — Form {{ form_num }} Yote
+    </a>
+    <a href="{% url 'academic_dashboard' %}" class="btn btn-sm" style="background:#C9A84C;color:#1B3A6B;font-weight:700;border-radius:2px;">
+      &larr; Academic Dashboard
+    </a>
+  </div>
 </div>
 
 <!-- Form navigation -->

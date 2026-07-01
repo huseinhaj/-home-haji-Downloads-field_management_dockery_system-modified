@@ -14,6 +14,7 @@ from .views import (
     approve_subject,
     approve_exam_submissions,
     form_results,
+    form_results_excel,
 )
 from .speech_views import (
     confirm_speech_candidate,
@@ -42,6 +43,7 @@ urlpatterns = [
     # Academic dashboard & form results
     path('academic/', academic_dashboard, name='academic_dashboard'),
     path('form/<int:form_num>/results/', form_results, name='form_results'),
+    path('form/<int:form_num>/excel/', form_results_excel, name='form_results_excel'),
     # Speech entry
     path('speech/', speech_entry_page, name='speech_entry_page'),
     path('speech-sessions/', create_speech_session, name='create_speech_session'),

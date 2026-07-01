@@ -629,4 +629,148 @@ def form_results(request, form_num):
         'form_num': form_num,
         'exams_ctx': exams_ctx,
         'form_label': f'Form {form_num}' if form_num <= 4 else f'Form {form_num} (Advanced)',
+        'excel_url': reverse('form_results_excel', args=[form_num]),
     })
+
+
+# ── Form-Level Excel Export ───────────────────────────────────────────────────
+
+def form_results_excel(request, form_num):
+    """Single Excel workbook with one sheet per exam for the given form."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    NAVY, GOLD, WHITE, GREY = "1B3A6B", "C9A84C", "FFFFFF", "F2F4F7"
+
+    def _fill(hex_c):
+        return PatternFill(start_color=hex_c, end_color=hex_c, fill_type="solid")
+
+    def _border():
+        s = Side(style="thin", color="CCCCCC")
+        return Border(left=s, right=s, top=s, bottom=s)
+
+    def _score_color(score):
+        if score is None:
+            return None, None
+        if score >= 75: return "C6F4D6", "145A32"
+        if score >= 65: return "D5F5E3", "1E8449"
+        if score >= 50: return "FFF9C4", "7D6608"
+        if score >= 40: return "FDEBD0", "784212"
+        return "FADBD8", "922B21"
+
+    exams = Exam.objects.filter(form=form_num).order_by('-year', 'name')
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)  # remove default empty sheet
+
+    for exam in exams:
+        from .services.export_data import get_exam_export_payload
+        payload = get_exam_export_payload(exam)
+        subjects = payload['subjects']
+        results = payload['processed_results']
+        score_lookup = payload['score_lookup']
+
+        sheet_title = f"{exam.name[:25]} {exam.year}"[:31]
+        ws = wb.create_sheet(title=sheet_title)
+
+        total_cols = 3 + len(subjects) + 4  # POS JINA JINSIA + subjects + JUMLA WASTANI DARAJA POINTI
+
+        # Title
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=total_cols)
+        c = ws.cell(row=1, column=1)
+        school = exam.school_name or 'SHULE'
+        c.value = f"{school.upper()} — {exam.get_exam_type_display().upper()} {exam.year} — FORM {exam.form}"
+        c.font = Font(bold=True, size=13, color=WHITE, name='Calibri')
+        c.fill = _fill(NAVY)
+        c.alignment = Alignment(horizontal='center', vertical='center')
+        ws.row_dimensions[1].height = 26
+
+        ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=total_cols)
+        c2 = ws.cell(row=2, column=1)
+        c2.value = exam.name
+        c2.font = Font(bold=False, size=10, color=GOLD, name='Calibri')
+        c2.fill = _fill(NAVY)
+        c2.alignment = Alignment(horizontal='center', vertical='center')
+        ws.row_dimensions[2].height = 16
+
+        # Header row
+        headers = ['POS', 'JINA', 'JINSIA'] + [s.name.upper() for s in subjects] + ['JUMLA', 'WASTANI', 'DARAJA', 'POINTI']
+        for ci, h in enumerate(headers, 1):
+            cell = ws.cell(row=3, column=ci, value=h)
+            cell.font = Font(color=WHITE, bold=True, name='Calibri', size=9)
+            cell.fill = _fill(NAVY)
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            cell.border = _border()
+        ws.row_dimensions[3].height = 20
+        ws.freeze_panes = ws.cell(row=4, column=1)
+
+        # Data rows
+        for ri, result in enumerate(results):
+            row = 4 + ri
+            st = result.student
+            name = ' '.join(p for p in [st.first_name, st.middle_name or '', st.last_name] if p)
+            row_fill = _fill(GREY) if ri % 2 == 0 else None
+
+            ws.cell(row=row, column=1, value=result.position)
+            ws.cell(row=row, column=2, value=name)
+            ws.cell(row=row, column=3, value=st.gender)
+
+            for si, subj in enumerate(subjects):
+                score = score_lookup.get((st.id, subj.id))
+                col = 4 + si
+                cell = ws.cell(row=row, column=col)
+                if score is not None:
+                    cell.value = score
+                    bg, fg = _score_color(score)
+                    if bg: cell.fill = _fill(bg)
+                    if fg: cell.font = Font(bold=True, name='Calibri', size=9, color=fg)
+                else:
+                    cell.value = '—'
+
+            base = 4 + len(subjects)
+            ws.cell(row=row, column=base).value = result.total_score
+            ws.cell(row=row, column=base).font = Font(bold=True, name='Calibri', size=9, color=NAVY)
+            avg_cell = ws.cell(row=row, column=base + 1, value=float(result.average_score))
+            avg_cell.number_format = '0.00'
+            ws.cell(row=row, column=base + 2, value=result.division)
+            ws.cell(row=row, column=base + 3, value=result.points)
+
+            for ci in range(1, total_cols + 1):
+                cell = ws.cell(row=row, column=ci)
+                cell.border = _border()
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                if row_fill and not cell.fill.fgColor.rgb not in ('00000000', '000000'):
+                    if not cell.fill or cell.fill.fill_type == 'none':
+                        cell.fill = row_fill
+            ws.cell(row=row, column=2).alignment = Alignment(horizontal='left', vertical='center')
+
+        # Summary row
+        if results:
+            last = 4 + len(results)
+            ws.merge_cells(start_row=last, start_column=1, end_row=last, end_column=3)
+            sc = ws.cell(row=last, column=1, value=f"Jumla ya Wanafunzi: {len(results)}")
+            sc.font = Font(bold=True, name='Calibri', size=9, color=WHITE)
+            sc.fill = _fill(NAVY)
+            sc.alignment = Alignment(horizontal='left', vertical='center')
+
+        # Auto column widths
+        for col in ws.columns:
+            max_len = 8
+            col_letter = get_column_letter(col[0].column)
+            for cell in col:
+                if cell.value:
+                    max_len = max(max_len, len(str(cell.value)))
+            ws.column_dimensions[col_letter].width = min(max_len + 2, 30)
+        ws.column_dimensions['B'].width = 28
+
+    if not wb.sheetnames:
+        ws = wb.create_sheet("Hakuna Data")
+        ws.cell(row=1, column=1, value=f"Hakuna mitihani ya Form {form_num} bado.")
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    label = f'Form_{form_num}'
+    response['Content-Disposition'] = f'attachment; filename="Matokeo_{label}.xlsx"'
+    wb.save(response)
+    return response
