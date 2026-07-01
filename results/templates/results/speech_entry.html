@@ -988,13 +988,26 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
       this.onInterim     = onInterim;
       this.onStateChange = onStateChange;
       this.onLevel       = onLevel;
-      this.lang          = (language === 'sw') ? 'sw' : 'en-US';
+      // 'sw' alone is not reliably supported — 'sw-TZ' works better in Chrome
+      this.lang          = (language === 'sw') ? 'sw-TZ' : 'en-US';
       this.rec           = null;
       this.isActive      = false;
       this.stream        = null;
       this.audioCtx      = null;
       this.analyser      = null;
       this.meterTimer    = null;
+      this.interimText   = '';
+      this.interimTimer  = null;
+      this.INTERIM_MS    = 1500; // submit after 1.5s silence if isFinal never fires
+    }
+
+    _submitInterim() {
+      const t = this.interimText;
+      this.interimText = '';
+      if (t && this.isActive && !S.isPaused) {
+        this.onStateChange('processing');
+        this.onTranscript(t);
+      }
     }
 
     async start() {
@@ -1032,12 +1045,20 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
         const latest = event.results[event.results.length - 1];
         const text   = latest[0].transcript.trim();
         if (latest.isFinal) {
+          clearTimeout(this.interimTimer);
+          this.interimText = '';
           if (text) {
             this.onStateChange('processing');
             this.onTranscript(text);
           }
         } else {
-          if (text) this.onInterim(text);
+          if (text) {
+            this.interimText = text;
+            this.onInterim(text);
+            // Chrome sometimes never fires isFinal — force-submit after silence
+            clearTimeout(this.interimTimer);
+            this.interimTimer = setTimeout(() => this._submitInterim(), this.INTERIM_MS);
+          }
         }
       };
 
@@ -1048,6 +1069,11 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
       };
 
       this.rec.onend = () => {
+        // Flush any pending interim before restarting
+        if (this.interimText) {
+          clearTimeout(this.interimTimer);
+          this._submitInterim();
+        }
         // Auto-restart while session is live
         if (this.isActive && !S.isPaused) {
           setTimeout(() => { try { if (this.isActive) this.rec.start(); } catch (_) {} }, 300);
@@ -1065,6 +1091,8 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
     pause() {
       this.isActive = false;
       S.isPaused    = true;
+      clearTimeout(this.interimTimer);
+      this.interimText = '';
       try { this.rec?.stop(); } catch (_) {}
       this.onStateChange('paused');
     }
@@ -1077,6 +1105,7 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
 
     destroy() {
       this.isActive = false;
+      clearTimeout(this.interimTimer);
       if (this.meterTimer) clearInterval(this.meterTimer);
       try { this.rec?.stop(); } catch (_) {}
       if (this.stream) this.stream.getTracks().forEach(t => t.stop());
