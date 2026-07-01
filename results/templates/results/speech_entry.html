@@ -988,8 +988,8 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
       this.onInterim     = onInterim;
       this.onStateChange = onStateChange;
       this.onLevel       = onLevel;
-      // 'sw' alone is not reliably supported — 'sw-TZ' works better in Chrome
-      this.lang          = (language === 'sw') ? 'sw-TZ' : 'en-US';
+      this.prefLang      = (language === 'sw') ? 'sw-TZ' : 'en-US';
+      this.lang          = this.prefLang;
       this.rec           = null;
       this.isActive      = false;
       this.stream        = null;
@@ -998,23 +998,100 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
       this.meterTimer    = null;
       this.interimText   = '';
       this.interimTimer  = null;
-      this.INTERIM_MS    = 1500; // submit after 1.5s silence if isFinal never fires
+      this.INTERIM_MS    = 1500;
+      this._submitting   = false;    // lock: one request at a time
+      this._noResultsTimer = null;   // fallback to en-US if sw-TZ silent
+      this._gotResult    = false;
     }
 
     _submitInterim() {
+      if (this._submitting) return;
       const t = this.interimText;
       this.interimText = '';
       if (t && this.isActive && !S.isPaused) {
+        this._submitting = true;
         this.onStateChange('processing');
         this.onTranscript(t);
       }
+    }
+
+    _startRecognition() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      this.rec = new SR();
+      this.rec.lang            = this.lang;
+      this.rec.interimResults  = true;
+      this.rec.continuous      = true;
+      this.rec.maxAlternatives = 1;
+
+      this.rec.onstart = () => {
+        this.onStateChange('listening');
+        // If sw-TZ produces no results in 8s, fall back to en-US
+        if (this.lang !== 'en-US') {
+          this._noResultsTimer = setTimeout(() => {
+            if (!this._gotResult && this.isActive) {
+              this.lang = 'en-US';
+              liveSub.textContent = '(Imebadilisha: Kiingereza — sw-TZ haikusaidiwa)';
+              try { this.rec.stop(); } catch (_) {}
+            }
+          }, 8000);
+        }
+      };
+
+      this.rec.onresult = (event) => {
+        this._gotResult = true;
+        clearTimeout(this._noResultsTimer);
+        const latest = event.results[event.results.length - 1];
+        const text   = latest[0].transcript.trim();
+        if (latest.isFinal) {
+          clearTimeout(this.interimTimer);
+          this.interimText = '';
+          if (text && !this._submitting) {
+            this._submitting = true;
+            this.onStateChange('processing');
+            this.onTranscript(text);
+          }
+        } else {
+          if (text) {
+            this.interimText = text;
+            this.onInterim(text);
+            clearTimeout(this.interimTimer);
+            this.interimTimer = setTimeout(() => this._submitInterim(), this.INTERIM_MS);
+          }
+        }
+      };
+
+      this.rec.onerror = (event) => {
+        if (event.error === 'no-speech' || event.error === 'aborted') return;
+        if (event.error === 'not-allowed') { this.isActive = false; return; }
+        if (event.error === 'language-not-supported' && this.lang !== 'en-US') {
+          this.lang = 'en-US';
+          liveSub.textContent = '(sw-TZ haikusaidiwa — inatumia Kiingereza)';
+        }
+        this.onStateChange('listening');
+      };
+
+      this.rec.onend = () => {
+        clearTimeout(this._noResultsTimer);
+        if (this.interimText && !this._submitting) {
+          clearTimeout(this.interimTimer);
+          this._submitInterim();
+        }
+        if (this.isActive && !S.isPaused) {
+          setTimeout(() => {
+            if (this.isActive) {
+              try { this._startRecognition(); } catch (_) {}
+            }
+          }, 300);
+        }
+      };
+
+      this.rec.start();
     }
 
     async start() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) throw new Error('Tumia Chrome — kivinjari hiki hakisaidii usikivu wa sauti.');
 
-      // Level meter via AudioContext (visual only)
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
@@ -1029,69 +1106,22 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
         this.onLevel(avg, 0);
       }, 80);
 
-      // Speech recognition
-      this.rec = new SR();
-      this.rec.lang            = this.lang;
-      this.rec.interimResults  = true;
-      this.rec.continuous      = true;
-      this.rec.maxAlternatives = 1;
-
-      this.rec.onstart = () => {
-        this.isActive = true;
-        this.onStateChange('listening');
-      };
-
-      this.rec.onresult = (event) => {
-        const latest = event.results[event.results.length - 1];
-        const text   = latest[0].transcript.trim();
-        if (latest.isFinal) {
-          clearTimeout(this.interimTimer);
-          this.interimText = '';
-          if (text) {
-            this.onStateChange('processing');
-            this.onTranscript(text);
-          }
-        } else {
-          if (text) {
-            this.interimText = text;
-            this.onInterim(text);
-            // Chrome sometimes never fires isFinal — force-submit after silence
-            clearTimeout(this.interimTimer);
-            this.interimTimer = setTimeout(() => this._submitInterim(), this.INTERIM_MS);
-          }
-        }
-      };
-
-      this.rec.onerror = (event) => {
-        if (event.error === 'no-speech' || event.error === 'aborted') return;
-        if (event.error === 'not-allowed') { this.isActive = false; }
-        this.onStateChange('listening');
-      };
-
-      this.rec.onend = () => {
-        // Flush any pending interim before restarting
-        if (this.interimText) {
-          clearTimeout(this.interimTimer);
-          this._submitInterim();
-        }
-        // Auto-restart while session is live
-        if (this.isActive && !S.isPaused) {
-          setTimeout(() => { try { if (this.isActive) this.rec.start(); } catch (_) {} }, 300);
-        }
-      };
-
+      this.isActive = true;
       this.onStateChange('calibrating');
-      this.rec.start();
+      setTimeout(() => { if (this.isActive) this._startRecognition(); }, 300);
     }
 
     processingDone() {
+      this._submitting = false;
       if (this.isActive && !S.isPaused) this.onStateChange('listening');
     }
 
     pause() {
-      this.isActive = false;
-      S.isPaused    = true;
+      this.isActive   = false;
+      S.isPaused      = true;
+      this._submitting = false;
       clearTimeout(this.interimTimer);
+      clearTimeout(this._noResultsTimer);
       this.interimText = '';
       try { this.rec?.stop(); } catch (_) {}
       this.onStateChange('paused');
@@ -1100,12 +1130,13 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
     resume() {
       this.isActive = true;
       S.isPaused    = false;
-      try { this.rec.start(); } catch (_) {}
+      this._startRecognition();
     }
 
     destroy() {
       this.isActive = false;
       clearTimeout(this.interimTimer);
+      clearTimeout(this._noResultsTimer);
       if (this.meterTimer) clearInterval(this.meterTimer);
       try { this.rec?.stop(); } catch (_) {}
       if (this.stream) this.stream.getTracks().forEach(t => t.stop());
@@ -1180,8 +1211,13 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
   // ── API: submit text transcript (from Web Speech or manual input) ─────────
   async function handleManualText(text) {
     if (!S.session || S.isFinalized) { rec?.processingDone(); return; }
+    if (!text || !text.trim()) { rec?.processingDone(); return; }
 
-    setMicState('processing');
+    // Show immediately what was heard — user can see transcript before backend reply
+    liveBox.className = 'live-box state-processing';
+    liveIcon.textContent = '🔍';
+    liveMain.textContent = `Nimeona: "${text}"`;
+    liveSub.textContent  = 'Inatafuta mwanafunzi...';
 
     const fd = new FormData();
     fd.append('access_key', S.session.accessKey);
@@ -1198,7 +1234,7 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
       const data = await resp.json();
       await handleIngestResponse(resp.status, data, null, text);
     } catch (err) {
-      pushResult({ type: 'error', error: 'Hitilafu: ' + err.message });
+      pushResult({ type: 'error', error: 'Hitilafu ya mtandao: ' + err.message });
       setLiveError('Hitilafu ya mtandao', text);
     } finally {
       rec?.processingDone();
