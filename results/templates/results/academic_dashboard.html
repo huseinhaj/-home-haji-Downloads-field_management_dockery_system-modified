@@ -1,0 +1,272 @@
+{% extends 'results/base.html' %}
+{% block title %}Academic Dashboard | School Results{% endblock %}
+
+{% block content %}
+<style>
+.acad-hero {
+  background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
+  border: 2px solid #C9A84C;
+  border-radius: 2px;
+  padding: 1.5rem 2rem;
+  color: #fff;
+  margin-bottom: 1.5rem;
+}
+.acad-hero h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.2rem; }
+.acad-hero .sub { font-size: 0.82rem; color: #C9A84C; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.form-section { margin-bottom: 2rem; }
+.form-section-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #1B3A6B;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 0.3rem 0.8rem;
+  background: #eef2f9;
+  border-left: 4px solid #1B3A6B;
+  margin-bottom: 0.75rem;
+}
+
+.exam-card {
+  background: #fff;
+  border: 1.5px solid #dee2e6;
+  border-radius: 2px;
+  margin-bottom: 0.85rem;
+  overflow: hidden;
+}
+.exam-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #f8f9fb;
+  border-bottom: 1px solid #e9ecef;
+}
+.exam-card-head .exam-name { font-weight: 700; font-size: 0.95rem; color: #1B3A6B; }
+.exam-card-head .exam-meta { font-size: 0.75rem; color: #777; }
+
+.progress-mini-wrap { margin: 0 1rem 0.5rem; }
+.progress-mini-row { display: flex; justify-content: space-between; font-size: 0.72rem; color: #666; margin-bottom: 0.15rem; }
+.progress-mini-track { background: #e9ecef; height: 5px; border-radius: 3px; overflow: hidden; margin-bottom: 0.1rem; }
+.progress-mini-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+.fill-submitted { background: #C9A84C; }
+.fill-approved { background: #1a7a3b; }
+
+.subjects-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.subjects-table th {
+  background: #f4f6fb;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  font-weight: 700;
+  border-bottom: 1.5px solid #e9ecef;
+  text-align: left;
+}
+.subjects-table td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+.subjects-table tr:last-child td { border-bottom: none; }
+
+.badge-pending  { background:#fff8e6; color:#7a5200; border:1px solid #f0d07a; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.badge-submitted { background:#e8f4ff; color:#0056b3; border:1px solid #b3d4f5; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.badge-approved  { background:#e6f7ec; color:#1a7a3b; border:1px solid #a3d9b4; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+
+.approve-form-inline { display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; }
+.approve-form-inline input[type=text] { font-size:0.75rem; padding:0.2rem 0.5rem; border:1px solid #ccc; border-radius:2px; width:130px; }
+.btn-approve { background:#1a7a3b; color:#fff; border:none; font-size:0.72rem; padding:0.25rem 0.7rem; border-radius:2px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.btn-approve:hover { background:#155e2e; }
+
+.bulk-approve-bar {
+  background: linear-gradient(90deg, #e6f7ec, #f0faf4);
+  border: 1.5px solid #a3d9b4;
+  border-radius: 2px;
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0 0 0.1rem;
+}
+.bulk-approve-bar .bulk-msg { font-size: 0.82rem; color: #1a7a3b; font-weight: 600; }
+.bulk-approve-bar .bulk-form { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
+.bulk-approve-bar input[type=text] { font-size:0.75rem; padding:0.25rem 0.6rem; border:1px solid #a3d9b4; border-radius:2px; width:160px; }
+.btn-bulk-approve { background:#1B3A6B; color:#fff; border:2px solid #C9A84C; font-size:0.78rem; font-weight:700; padding:0.3rem 1rem; border-radius:2px; cursor:pointer; }
+.btn-bulk-approve:hover { background:#14305a; }
+
+.all-approved-bar {
+  background: #e6f7ec;
+  border: 1.5px solid #a3d9b4;
+  border-radius: 2px;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.1rem;
+}
+.all-approved-bar .msg { font-size: 0.82rem; color: #1a7a3b; font-weight: 700; }
+
+.form-results-link {
+  background: #C9A84C; color: #1B3A6B; font-weight: 700;
+  font-size: 0.75rem; padding: 0.25rem 0.8rem; border-radius: 2px;
+  text-decoration: none; white-space: nowrap;
+}
+.form-results-link:hover { background: #b8973a; color: #1B3A6B; }
+
+.empty-state { text-align:center; padding:3rem 1rem; color:#999; font-size:0.9rem; }
+</style>
+
+<div class="acad-hero">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h1>Academic Dashboard</h1>
+      <div class="sub">Idhini ya Mawasilisho ya Masomo &nbsp;|&nbsp; Matokeo kwa Darasa</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      {% for fn in forms_list %}
+        <a href="{% url 'form_results' fn.0 %}" class="form-results-link">Form {{ fn.0 }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% if forms_list %}
+  {% for form_num, exams_data in forms_list %}
+  <div class="form-section">
+    <div class="form-section-title">
+      Form {{ form_num }}
+      {% if form_num >= 5 %} — Advanced Level{% endif %}
+      &nbsp;({{ exams_data|length }} mtihani{{ exams_data|length|pluralize }})
+    </div>
+
+    {% for ed in exams_data %}
+    <div class="exam-card">
+      <div class="exam-card-head">
+        <div>
+          <div class="exam-name">{{ ed.exam.name }}</div>
+          <div class="exam-meta">
+            {{ ed.exam.get_exam_type_display }} &bull; {{ ed.exam.year }}
+            {% if ed.exam.school_name %}&bull; {{ ed.exam.school_name }}{% endif %}
+          </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <a href="{% url 'exam_overview' ed.exam.id %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">
+            Tazama
+          </a>
+          <a href="{% url 'form_results' form_num %}" class="form-results-link">
+            Matokeo Form {{ form_num }}
+          </a>
+        </div>
+      </div>
+
+      <!-- Progress bars -->
+      <div class="progress-mini-wrap mt-2">
+        <div class="progress-mini-row">
+          <span>Yamewasilishwa: {{ ed.submitted }}/{{ ed.total }}</span>
+          <span>{{ ed.progress_pct }}%</span>
+        </div>
+        <div class="progress-mini-track">
+          <div class="progress-mini-fill fill-submitted" style="width:{{ ed.progress_pct }}%"></div>
+        </div>
+        <div class="progress-mini-row mt-1">
+          <span>Yameidhinishwa: {{ ed.approved }}/{{ ed.total }}</span>
+          <span>{{ ed.approval_pct }}%</span>
+        </div>
+        <div class="progress-mini-track">
+          <div class="progress-mini-fill fill-approved" style="width:{{ ed.approval_pct }}%"></div>
+        </div>
+      </div>
+
+      <!-- Bulk approve bar (shown when all submitted but not all approved) -->
+      {% if ed.ready_for_approval %}
+      <div class="bulk-approve-bar">
+        <div class="bulk-msg">✅ Masomo yote yamewasilishwa — tayari kwa idhini ya pamoja</div>
+        <form method="post" action="{% url 'approve_exam_submissions' ed.exam.id %}" class="bulk-form">
+          {% csrf_token %}
+          <input type="text" name="approved_by" placeholder="Jina la Academic Officer" required>
+          <button type="submit" class="btn-bulk-approve">Idhinisha Yote</button>
+        </form>
+      </div>
+      {% elif ed.all_approved %}
+      <div class="all-approved-bar">
+        <div class="msg">✅ Masomo yote yameidhinishwa</div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'export_results_excel' ed.exam.id %}" class="btn btn-sm btn-outline-success" style="font-size:0.72rem;border-radius:2px;">
+            Pakua Excel
+          </a>
+          <a href="{% url 'generate_results_pdf' ed.exam.id %}" class="btn btn-sm btn-outline-danger" style="font-size:0.72rem;border-radius:2px;">
+            Pakua PDF
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Subjects table -->
+      {% if ed.submissions %}
+      <table class="subjects-table">
+        <thead>
+          <tr>
+            <th>Somo</th>
+            <th>Hali</th>
+            <th>Mwalimu</th>
+            <th>Wanafunzi</th>
+            <th>Tarehe</th>
+            <th>Hatua</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sub in ed.submissions %}
+          <tr>
+            <td><strong>{{ sub.subject.name }}</strong></td>
+            <td>
+              {% if sub.status == 'APPROVED' %}
+                <span class="badge-approved">Imeidhinishwa</span>
+              {% elif sub.status == 'SUBMITTED' %}
+                <span class="badge-submitted">Imewasilishwa</span>
+              {% else %}
+                <span class="badge-pending">Inasubiri</span>
+              {% endif %}
+            </td>
+            <td>{{ sub.submitted_by|default:"—" }}</td>
+            <td>{{ sub.student_count|default:"—" }}</td>
+            <td style="color:#999;font-size:0.72rem;">
+              {% if sub.submitted_at %}{{ sub.submitted_at|date:"d M Y" }}{% else %}—{% endif %}
+            </td>
+            <td>
+              {% if sub.status == 'SUBMITTED' %}
+              <form method="post" action="{% url 'approve_subject' ed.exam.id sub.subject.id %}" class="approve-form-inline">
+                {% csrf_token %}
+                <input type="text" name="approved_by" placeholder="Jina lako" required>
+                <button type="submit" class="btn-approve">Idhinisha</button>
+              </form>
+              {% elif sub.status == 'APPROVED' %}
+              <span style="font-size:0.72rem;color:#1a7a3b;">
+                ✓ {{ sub.approved_by }}
+                {% if sub.approved_at %}<br><span style="color:#999;">{{ sub.approved_at|date:"d M Y" }}</span>{% endif %}
+              </span>
+              {% else %}
+              <span style="color:#bbb;font-size:0.72rem;">Bado</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="padding:0.75rem 1rem;color:#aaa;font-size:0.8rem;">Hakuna masomo yaliyosajiliwa bado.</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty-state">
+  <div style="font-size:2rem;margin-bottom:0.5rem;">📋</div>
+  Hakuna mitihani yoyote bado. <a href="{% url 'upload_results' %}">Unda mtihani wa kwanza</a>.
+</div>
+{% endif %}
+{% endblock %}

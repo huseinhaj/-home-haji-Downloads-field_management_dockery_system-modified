@@ -116,15 +116,23 @@ class SubjectSubmission(models.Model):
     METHOD_CHOICES = [('SPEECH', 'Speech Entry'), ('UPLOAD', 'File Upload')]
     STATUS_PENDING = 'PENDING'
     STATUS_SUBMITTED = 'SUBMITTED'
-    STATUS_CHOICES = [(STATUS_PENDING, 'Pending'), (STATUS_SUBMITTED, 'Submitted')]
+    STATUS_APPROVED = 'APPROVED'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_SUBMITTED, 'Submitted'),
+        (STATUS_APPROVED, 'Approved'),
+    ]
 
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='subject_submissions')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='submissions')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     method = models.CharField(max_length=20, choices=METHOD_CHOICES, blank=True)
-    submitted_by = models.CharField(max_length=100, blank=True)  # teacher name
+    submitted_by = models.CharField(max_length=100, blank=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
     student_count = models.PositiveIntegerField(default=0)
+    approved_by = models.CharField(max_length=100, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approval_notes = models.TextField(blank=True)
 
     class Meta:
         unique_together = [('exam', 'subject')]

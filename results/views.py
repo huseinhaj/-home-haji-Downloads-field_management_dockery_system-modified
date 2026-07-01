@@ -164,36 +164,49 @@ def exam_overview(request, exam_id):
     # Build per-subject context
     subjects_ctx = []
     submitted_count = 0
+    approved_count = 0
     for subject in all_subjects:
         submission = submission_map.get(subject.id)
         is_submitted = submission and submission.status == SubjectSubmission.STATUS_SUBMITTED
-        if is_submitted:
+        is_approved = submission and submission.status == SubjectSubmission.STATUS_APPROVED
+        if is_submitted or is_approved:
             submitted_count += 1
+        if is_approved:
+            approved_count += 1
         subjects_ctx.append({
             'subject': subject,
             'submission': submission,
             'is_submitted': is_submitted,
+            'is_approved': is_approved,
             'speech_url': reverse('speech_entry_page') + f'?exam={exam.id}&subject={subject.id}',
             'upload_url': reverse('subject_upload', args=[exam.id, subject.id]),
-            'pdf_url': reverse('subject_pdf', args=[exam.id, subject.id]) if is_submitted else None,
+            'pdf_url': reverse('subject_pdf', args=[exam.id, subject.id]) if (is_submitted or is_approved) else None,
+            'approve_url': reverse('approve_subject', args=[exam.id, subject.id]) if is_submitted else None,
         })
 
     total_subjects = len(all_subjects)
     all_submitted = submitted_count == total_subjects and total_subjects > 0
+    all_approved = approved_count == total_subjects and total_subjects > 0
     enough_to_finalize = submitted_count >= 2 or all_submitted
 
     progress_pct = round(submitted_count / total_subjects * 100) if total_subjects else 0
+    approval_pct = round(approved_count / total_subjects * 100) if total_subjects else 0
 
     return render(request, 'results/exam_overview.html', {
         'exam': exam,
         'subjects_ctx': subjects_ctx,
         'submitted_count': submitted_count,
+        'approved_count': approved_count,
         'total_subjects': total_subjects,
         'all_submitted': all_submitted,
+        'all_approved': all_approved,
         'enough_to_finalize': enough_to_finalize,
         'progress_pct': progress_pct,
+        'approval_pct': approval_pct,
         'finalize_url': reverse('finalize_exam', args=[exam.id]),
+        'approve_all_url': reverse('approve_exam_submissions', args=[exam.id]),
         'excel_url': reverse('export_results_excel', args=[exam.id]),
+        'form_results_url': reverse('form_results', args=[exam.form]),
     })
 
 
@@ -495,9 +508,125 @@ def upload_roster(request):
 @require_POST
 def finalize_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-
-    # Recompute processed results
     recompute_processed_results_for_exam(exam)
-
-    # Return professional multi-sheet Excel
     return generate_professional_excel_response(exam)
+
+
+# ── Academic Dashboard ────────────────────────────────────────────────────────
+
+def academic_dashboard(request):
+    """Dashboard for academic officer: see all exams grouped by form, approve submissions."""
+    exams = Exam.objects.prefetch_related('subject_submissions__subject').order_by('form', '-year', 'name')
+
+    forms_map = {}
+    for exam in exams:
+        subs = list(exam.subject_submissions.all())
+        total = len(subs)
+        submitted = sum(1 for s in subs if s.status in (SubjectSubmission.STATUS_SUBMITTED, SubjectSubmission.STATUS_APPROVED))
+        approved = sum(1 for s in subs if s.status == SubjectSubmission.STATUS_APPROVED)
+        all_submitted = total > 0 and submitted == total
+        all_approved = total > 0 and approved == total
+        ready_for_approval = all_submitted and not all_approved
+        form_key = exam.form
+        if form_key not in forms_map:
+            forms_map[form_key] = []
+        forms_map[form_key].append({
+            'exam': exam,
+            'submissions': subs,
+            'total': total,
+            'submitted': submitted,
+            'approved': approved,
+            'all_submitted': all_submitted,
+            'all_approved': all_approved,
+            'ready_for_approval': ready_for_approval,
+            'progress_pct': round(submitted / total * 100) if total else 0,
+            'approval_pct': round(approved / total * 100) if total else 0,
+        })
+
+    forms_list = sorted(forms_map.items())
+    return render(request, 'results/academic_dashboard.html', {
+        'forms_list': forms_list,
+        'total_exams': exams.count(),
+    })
+
+
+# ── Approve Subject Submission ────────────────────────────────────────────────
+
+@require_POST
+def approve_subject(request, exam_id, subject_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    subject = get_object_or_404(Subject, id=subject_id)
+    sub = get_object_or_404(SubjectSubmission, exam=exam, subject=subject)
+
+    if sub.status != SubjectSubmission.STATUS_SUBMITTED:
+        messages.error(request, f"{subject.name} haijawa na hali ya Submitted.")
+        return redirect(reverse('academic_dashboard'))
+
+    approved_by = request.POST.get('approved_by', '').strip() or 'Academic Officer'
+    notes = request.POST.get('notes', '').strip()
+
+    sub.status = SubjectSubmission.STATUS_APPROVED
+    sub.approved_by = approved_by
+    sub.approved_at = timezone.now()
+    sub.approval_notes = notes
+    sub.save(update_fields=['status', 'approved_by', 'approved_at', 'approval_notes'])
+
+    messages.success(request, f"Somo la {subject.name} limeidhinishwa.")
+    return redirect(reverse('exam_overview', args=[exam.id]))
+
+
+# ── Bulk Approve All Subjects for an Exam ────────────────────────────────────
+
+@require_POST
+def approve_exam_submissions(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    approved_by = request.POST.get('approved_by', '').strip() or 'Academic Officer'
+    notes = request.POST.get('notes', '').strip()
+    now = timezone.now()
+
+    updated = SubjectSubmission.objects.filter(
+        exam=exam, status=SubjectSubmission.STATUS_SUBMITTED
+    ).update(
+        status=SubjectSubmission.STATUS_APPROVED,
+        approved_by=approved_by,
+        approved_at=now,
+        approval_notes=notes,
+    )
+
+    if updated == 0:
+        messages.warning(request, "Hakuna masomo yaliyokuwa tayari kwa idhini.")
+    else:
+        recompute_processed_results_for_exam(exam)
+        messages.success(request, f"Masomo {updated} yameidhinishwa. Matokeo yamehesabiwa upya.")
+
+    return redirect(reverse('exam_overview', args=[exam.id]))
+
+
+# ── Form-Level Results View ───────────────────────────────────────────────────
+
+def form_results(request, form_num):
+    """Results for all approved exams of a given form level."""
+    exams = Exam.objects.filter(form=form_num).order_by('-year', 'name')
+
+    exams_ctx = []
+    for exam in exams:
+        subs = exam.subject_submissions.select_related('subject')
+        total_subs = subs.count()
+        approved_subs = subs.filter(status=SubjectSubmission.STATUS_APPROVED).count()
+        processed = exam.processedresult_set.select_related('student').order_by('position')
+        exams_ctx.append({
+            'exam': exam,
+            'total_subs': total_subs,
+            'approved_subs': approved_subs,
+            'all_approved': total_subs > 0 and approved_subs == total_subs,
+            'processed_results': list(processed),
+            'excel_url': reverse('export_results_excel', args=[exam.id]),
+            'pdf_url': reverse('generate_results_pdf', args=[exam.id]),
+            'overview_url': reverse('exam_overview', args=[exam.id]),
+        })
+
+    return render(request, 'results/form_results.html', {
+        'form_num': form_num,
+        'exams_ctx': exams_ctx,
+        'form_label': f'Form {form_num}' if form_num <= 4 else f'Form {form_num} (Advanced)',
+    })
