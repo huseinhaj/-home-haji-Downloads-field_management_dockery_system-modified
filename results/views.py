@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -8,6 +9,7 @@ from django.views.decorators.http import require_POST, require_GET
 
 from .forms import ExamUploadForm
 from .models import Exam, ExamResult, School, SchoolSubject, Student, Subject, SubjectSubmission
+from .permissions import academic_required, results_login_required as login_required, teacher_required
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
 from .services.pdf_export_service import generate_results_pdf_response
 from .services.subject_pdf_service import generate_subject_pdf_response
@@ -28,6 +30,7 @@ COMMON_SUBJECTS = [
 ]
 
 
+@login_required
 def home(request):
     exams = Exam.objects.all().order_by('-year', 'name')
 
@@ -50,6 +53,7 @@ def home(request):
     )
 
 
+@academic_required
 def upload_results(request):
     exam_created = None
     no_exams = not Exam.objects.exists()
@@ -116,6 +120,7 @@ def upload_results(request):
     })
 
 
+@login_required
 def filter_exams(request):
     exam_type = request.GET.get('exam_type')
     exams = Exam.objects.all()
@@ -126,11 +131,13 @@ def filter_exams(request):
     return HttpResponse(options_html)
 
 
+@academic_required
 def generate_results_pdf(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     return generate_results_pdf_response(exam)
 
 
+@academic_required
 def export_results_excel(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     return generate_results_excel_response(exam)
@@ -138,8 +145,10 @@ def export_results_excel(request, exam_id):
 
 # ── Exam Overview Dashboard ───────────────────────────────────────────────────
 
+@login_required
 def exam_overview(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
+    is_academic = getattr(request.user, 'is_academic', False)
 
     # Get all subjects that have results for this exam + known subjects from submissions
     subjects_with_results = list(
@@ -181,7 +190,7 @@ def exam_overview(request, exam_id):
             'speech_url': reverse('speech_entry_page') + f'?exam={exam.id}&subject={subject.id}',
             'upload_url': reverse('subject_upload', args=[exam.id, subject.id]),
             'pdf_url': reverse('subject_pdf', args=[exam.id, subject.id]) if (is_submitted or is_approved) else None,
-            'approve_url': reverse('approve_subject', args=[exam.id, subject.id]) if is_submitted else None,
+            'approve_url': reverse('approve_subject', args=[exam.id, subject.id]) if (is_submitted and is_academic) else None,
         })
 
     total_subjects = len(all_subjects)
@@ -203,18 +212,22 @@ def exam_overview(request, exam_id):
         'enough_to_finalize': enough_to_finalize,
         'progress_pct': progress_pct,
         'approval_pct': approval_pct,
-        'finalize_url': reverse('finalize_exam', args=[exam.id]),
-        'approve_all_url': reverse('approve_exam_submissions', args=[exam.id]),
-        'excel_url': reverse('export_results_excel', args=[exam.id]),
+        'is_academic': is_academic,
+        'finalize_url': reverse('finalize_exam', args=[exam.id]) if is_academic else None,
+        'approve_all_url': reverse('approve_exam_submissions', args=[exam.id]) if is_academic else None,
+        'excel_url': reverse('export_results_excel', args=[exam.id]) if is_academic else None,
         'form_results_url': reverse('form_results', args=[exam.form]),
     })
 
 
 # ── Subject Upload (CSV/Excel for one subject) ────────────────────────────────
 
+@teacher_required
 def subject_upload(request, exam_id, subject_id):
     exam = get_object_or_404(Exam, id=exam_id)
     subject = get_object_or_404(Subject, id=subject_id)
+    if not request.user.subjects.filter(pk=subject.pk).exists():
+        raise PermissionDenied("You are not assigned to teach this subject.")
 
     if request.method == 'POST':
         uploaded_file = request.FILES.get('file')
@@ -289,7 +302,8 @@ def subject_upload(request, exam_id, subject_id):
                 defaults={
                     'status': SubjectSubmission.STATUS_SUBMITTED,
                     'method': 'UPLOAD',
-                    'submitted_by': request.POST.get('teacher_name', '').strip(),
+                    'submitted_by': request.user.full_name or request.user.email,
+                    'submitted_by_user': request.user,
                     'submitted_at': timezone.now(),
                     'student_count': saved_count,
                 },
@@ -320,6 +334,7 @@ def subject_upload(request, exam_id, subject_id):
 
 # ── Subject PDF Download ──────────────────────────────────────────────────────
 
+@login_required
 def subject_pdf(request, exam_id, subject_id):
     exam = get_object_or_404(Exam, id=exam_id)
     subject = get_object_or_404(Subject, id=subject_id)
@@ -505,6 +520,7 @@ def upload_roster(request):
 
 # ── Finalize Exam ─────────────────────────────────────────────────────────────
 
+@academic_required
 @require_POST
 def finalize_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -514,6 +530,7 @@ def finalize_exam(request, exam_id):
 
 # ── Academic Dashboard ────────────────────────────────────────────────────────
 
+@academic_required
 def academic_dashboard(request):
     """Dashboard for academic officer: see all exams grouped by form, approve submissions."""
     exams = Exam.objects.prefetch_related(
@@ -568,6 +585,7 @@ def academic_dashboard(request):
 
 # ── Approve Subject Submission ────────────────────────────────────────────────
 
+@academic_required
 @require_POST
 def approve_subject(request, exam_id, subject_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -578,14 +596,15 @@ def approve_subject(request, exam_id, subject_id):
         messages.error(request, f"{subject.name} haijawa na hali ya Submitted.")
         return redirect(reverse('academic_dashboard'))
 
-    approved_by = request.POST.get('approved_by', '').strip() or 'Academic Officer'
+    approved_by = request.user.full_name or request.user.email
     notes = request.POST.get('notes', '').strip()
 
     sub.status = SubjectSubmission.STATUS_APPROVED
     sub.approved_by = approved_by
+    sub.approved_by_user = request.user
     sub.approved_at = timezone.now()
     sub.approval_notes = notes
-    sub.save(update_fields=['status', 'approved_by', 'approved_at', 'approval_notes'])
+    sub.save(update_fields=['status', 'approved_by', 'approved_by_user', 'approved_at', 'approval_notes'])
 
     messages.success(request, f"Somo la {subject.name} limeidhinishwa.")
     return redirect(reverse('exam_overview', args=[exam.id]))
@@ -593,10 +612,11 @@ def approve_subject(request, exam_id, subject_id):
 
 # ── Bulk Approve All Subjects for an Exam ────────────────────────────────────
 
+@academic_required
 @require_POST
 def approve_exam_submissions(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-    approved_by = request.POST.get('approved_by', '').strip() or 'Academic Officer'
+    approved_by = request.user.full_name or request.user.email
     notes = request.POST.get('notes', '').strip()
     now = timezone.now()
 
@@ -605,6 +625,7 @@ def approve_exam_submissions(request, exam_id):
     ).update(
         status=SubjectSubmission.STATUS_APPROVED,
         approved_by=approved_by,
+        approved_by_user=request.user,
         approved_at=now,
         approval_notes=notes,
     )
@@ -620,6 +641,7 @@ def approve_exam_submissions(request, exam_id):
 
 # ── Form-Level Results View ───────────────────────────────────────────────────
 
+@login_required
 def form_results(request, form_num):
     """Results for all approved exams of a given form level."""
     exams = Exam.objects.filter(form=form_num).order_by('-year', 'name')
@@ -651,6 +673,7 @@ def form_results(request, form_num):
 
 # ── Form-Level Excel Export ───────────────────────────────────────────────────
 
+@academic_required
 def form_results_excel(request, form_num):
     """Single Excel workbook with one sheet per exam for the given form."""
     import openpyxl
@@ -794,6 +817,7 @@ def form_results_excel(request, form_num):
 
 # ── School Setup ──────────────────────────────────────────────────────────────
 
+@academic_required
 def school_setup(request):
     """GET: list registered schools. POST: register a new school."""
     if request.method == 'POST':
@@ -825,6 +849,7 @@ def school_setup(request):
 
 # ── School Subjects Management ────────────────────────────────────────────────
 
+@academic_required
 def school_subjects(request, school_id):
     """Add/remove subjects taught at a school."""
     school = get_object_or_404(School, id=school_id)
@@ -871,6 +896,7 @@ def school_subjects(request, school_id):
 
 # ── Create Exam for School ────────────────────────────────────────────────────
 
+@academic_required
 def create_exam_for_school(request, school_id):
     """Create an Exam linked to a school and auto-create PENDING SubjectSubmissions."""
     school = get_object_or_404(School, id=school_id)
@@ -925,15 +951,20 @@ def create_exam_for_school(request, school_id):
 
 # ── Teacher Dashboard ─────────────────────────────────────────────────────────
 
+@teacher_required
 def teacher_dashboard(request):
-    """Walimu wanaona masomo yao ya kupakia (submission status kwa kila exam)."""
+    """Walimu wanaona masomo yao pekee ya kupakia (submission status kwa kila exam)."""
+    teacher_subject_ids = set(request.user.subjects.values_list('id', flat=True))
+
     exams = Exam.objects.prefetch_related(
         'subject_submissions__subject'
     ).order_by('-year', 'form', 'name')
 
     exams_ctx = []
     for exam in exams:
-        subs = list(exam.subject_submissions.all())
+        subs = [s for s in exam.subject_submissions.all() if s.subject_id in teacher_subject_ids]
+        if not subs:
+            continue
         pending = [s for s in subs if s.status == SubjectSubmission.STATUS_PENDING]
         submitted = [s for s in subs if s.status == SubjectSubmission.STATUS_SUBMITTED]
         approved = [s for s in subs if s.status == SubjectSubmission.STATUS_APPROVED]

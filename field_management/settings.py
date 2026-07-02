@@ -140,9 +140,15 @@ DATABASES = {
         conn_max_age=600,
         conn_health_checks=True,
     ),
+    'results': dj_database_url.config(
+        env='RESULTS_DATABASE_URL',
+        default='sqlite:///results_db.sqlite3',
+        conn_max_age=600,
+        conn_health_checks=True,
+    ),
 }
 
-DATABASE_ROUTERS = ['transfer_app.router.TransferRouter']
+DATABASE_ROUTERS = ['transfer_app.router.TransferRouter', 'results.router.ResultsRouter']
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -186,6 +192,7 @@ AUTH_USER_MODEL = 'field_app.CustomUser'
 AUTHENTICATION_BACKENDS = [
     'field_app.backends.EmailBackend',
     'django.contrib.auth.backends.ModelBackend',
+    'results.backends.ResultsAuthBackend',
 ]
 
 # Login URLs

@@ -1,0 +1,50 @@
+{% extends 'results/base.html' %}
+{% block title %}Simamia Walimu - School Results{% endblock %}
+{% block content %}
+<h3 class="mb-3">Simamia Walimu</h3>
+
+<div class="row">
+  <div class="col-md-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Ongeza Mwalimu Mpya</h5>
+        <form method="post">
+          {% csrf_token %}
+          {{ form.as_p }}
+          <button type="submit" class="btn btn-primary">Ongeza</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-7">
+    <table class="table table-sm bg-white">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Jina</th>
+          <th>Role</th>
+          <th>Hali</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in teachers %}
+        <tr>
+          <td>{{ t.email }}</td>
+          <td>{{ t.full_name }}</td>
+          <td>{{ t.get_role_display }}</td>
+          <td>
+            {% if t.is_activated %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-secondary">Pending</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-muted">Hakuna walimu bado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

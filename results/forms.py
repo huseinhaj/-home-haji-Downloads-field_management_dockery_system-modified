@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 import pandas as pd
 
-from .models import Exam, Subject
+from .models import Exam, Subject, TeacherAccount
 from .utils import extract_subject_columns, load_results_dataframe
 
 class ExamUploadForm(forms.Form):
@@ -78,4 +78,22 @@ class ExamUploadForm(forms.Form):
         if exam_type and exam and exam.exam_type != exam_type:
             raise ValidationError("Selected exam doesn't match the selected exam type.")
         return cleaned_data
+
+
+class TeacherAccountForm(forms.ModelForm):
+    class Meta:
+        model = TeacherAccount
+        fields = ['email', 'full_name', 'role', 'subjects']
+        widgets = {
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'full_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'role': forms.Select(attrs={'class': 'form-control'}),
+            'subjects': forms.SelectMultiple(attrs={'class': 'form-control'}),
+        }
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip().lower()
+        if TeacherAccount.objects.filter(email__iexact=email).exists():
+            raise ValidationError("Email hii tayari ipo kwenye mfumo.")
+        return email
 

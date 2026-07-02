@@ -1,4 +1,5 @@
 from django.urls import path
+from .auth_views import results_login, results_logout, manage_teachers
 from .views import (
     home,
     upload_results,
@@ -30,6 +31,10 @@ from .speech_views import (
 )
 
 urlpatterns = [
+    # Results-app-only authentication (separate from field_app student login)
+    path('ingia/', results_login, name='results_login'),
+    path('toka/', results_logout, name='results_logout'),
+    path('walimu/', manage_teachers, name='manage_teachers'),
     path('', home, name='home'),
     path('upload/', upload_results, name='upload_results'),
     path('results-pdf/<int:exam_id>/', generate_results_pdf, name='generate_results_pdf'),

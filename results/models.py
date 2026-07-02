@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
 import pandas as pd
@@ -154,9 +155,15 @@ class SubjectSubmission(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     method = models.CharField(max_length=20, choices=METHOD_CHOICES, blank=True)
     submitted_by = models.CharField(max_length=100, blank=True)
+    submitted_by_user = models.ForeignKey(
+        'TeacherAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
     submitted_at = models.DateTimeField(null=True, blank=True)
     student_count = models.PositiveIntegerField(default=0)
     approved_by = models.CharField(max_length=100, blank=True)
+    approved_by_user = models.ForeignKey(
+        'TeacherAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
     approved_at = models.DateTimeField(null=True, blank=True)
     approval_notes = models.TextField(blank=True)
 
@@ -166,6 +173,56 @@ class SubjectSubmission(models.Model):
 
     def __str__(self):
         return f"{self.exam} - {self.subject} ({self.status})"
+
+
+class TeacherAccountManager(BaseUserManager):
+    def create_pending(self, email, full_name='', role=None, subjects=None):
+        """Academic officer pre-registers a teacher's email; account has no
+        usable password until the teacher activates it themselves."""
+        email = self.normalize_email(email)
+        account = self.model(email=email, full_name=full_name, role=role or self.model.ROLE_TEACHER)
+        account.set_unusable_password()
+        account.save(using=self._db)
+        if subjects:
+            account.subjects.set(subjects)
+        return account
+
+
+class TeacherAccount(AbstractBaseUser):
+    ROLE_ACADEMIC = 'ACADEMIC'
+    ROLE_TEACHER = 'TEACHER'
+
+    ROLE_CHOICES = [
+        (ROLE_ACADEMIC, 'Academic'),
+        (ROLE_TEACHER, 'Teacher'),
+    ]
+
+    email = models.EmailField(unique=True)
+    full_name = models.CharField(max_length=150, blank=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_TEACHER)
+    subjects = models.ManyToManyField(Subject, blank=True, related_name='teachers')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+
+    objects = TeacherAccountManager()
+
+    def __str__(self):
+        return f"{self.full_name or self.email} ({self.get_role_display()})"
+
+    @property
+    def is_academic(self):
+        return self.role == self.ROLE_ACADEMIC
+
+    @property
+    def is_teacher(self):
+        return self.role == self.ROLE_TEACHER
+
+    @property
+    def is_activated(self):
+        return self.has_usable_password()
 
 
 class SpeechSubmissionSession(models.Model):

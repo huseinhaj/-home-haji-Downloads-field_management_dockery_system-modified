@@ -1,0 +1,55 @@
+{% extends 'results/base.html' %}
+{% block title %}Ingia - School Results{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card shadow-sm mt-4">
+      <div class="card-body p-4">
+        <h4 class="mb-3">Ingia Mfumoni</h4>
+
+        {% if step == 'email' %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="step" value="email">
+          <div class="mb-3">
+            <label class="form-label">Barua pepe (Email)</label>
+            <input type="email" name="email" class="form-control" required autofocus value="{{ email|default:'' }}">
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Endelea</button>
+        </form>
+
+        {% elif step == 'activate' %}
+        <p class="text-muted small">Karibu {{ email }}! Hii ni mara yako ya kwanza kuingia — tengeneza password yako.</p>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="step" value="activate">
+          <input type="hidden" name="email" value="{{ email }}">
+          <div class="mb-3">
+            <label class="form-label">Password Mpya</label>
+            <input type="password" name="password1" class="form-control" required autofocus>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Thibitisha Password</label>
+            <input type="password" name="password2" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Tengeneza Akaunti</button>
+        </form>
+
+        {% elif step == 'login' %}
+        <p class="text-muted small">Karibu tena, {{ email }}.</p>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="step" value="login">
+          <input type="hidden" name="email" value="{{ email }}">
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" name="password" class="form-control" required autofocus>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Ingia</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

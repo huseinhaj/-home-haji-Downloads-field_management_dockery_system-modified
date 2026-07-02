@@ -13,6 +13,7 @@ echo "GEOS_LIBRARY_PATH=$GEOS_LIBRARY_PATH"
 echo "Running migrations..."
 python manage.py migrate --noinput
 python manage.py migrate --database=transfer --noinput
+python manage.py migrate --database=results --noinput
 
 # Create superuser and board member if DJANGO_SUPERUSER_EMAIL is set
 if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
