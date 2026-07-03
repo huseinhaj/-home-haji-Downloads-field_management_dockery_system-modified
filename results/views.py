@@ -995,4 +995,5 @@ def teacher_dashboard(request):
 
     return render(request, 'results/teacher_dashboard.html', {
         'exams_ctx': exams_ctx,
+        'has_subjects': bool(teacher_subject_ids),
     })

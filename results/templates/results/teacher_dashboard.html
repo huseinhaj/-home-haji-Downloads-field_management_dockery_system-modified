@@ -180,8 +180,11 @@
 {% else %}
 <div class="empty-state">
   <div style="font-size:2rem;margin-bottom:0.5rem;">&#128196;</div>
-  Hakuna mitihani yoyote bado.
-  <a href="{% url 'school_setup' %}">Sajili shule na unda mtihani wa kwanza</a>.
+  {% if has_subjects %}
+    Hakuna mtihani wenye masomo yako bado. Wasiliana na Afisa Taaluma kuhusu ratiba ya mtihani.
+  {% else %}
+    Hujapangiwa somo lolote bado. Wasiliana na Afisa Taaluma ili akusajili kwenye somo unalofundisha.
+  {% endif %}
 </div>
 {% endif %}
 {% endblock %}
