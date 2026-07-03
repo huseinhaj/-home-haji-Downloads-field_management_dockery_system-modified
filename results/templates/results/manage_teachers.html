@@ -17,21 +17,28 @@
     </div>
   </div>
   <div class="col-md-7">
-    <table class="table table-sm bg-white">
+    <table class="table table-sm bg-white align-middle">
       <thead>
         <tr>
           <th>Email</th>
           <th>Jina</th>
-          <th>Role</th>
+          <th>Masomo</th>
           <th>Hali</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
-        {% for t in teachers %}
+        {% for t, sform in teachers_with_forms %}
         <tr>
           <td>{{ t.email }}</td>
           <td>{{ t.full_name }}</td>
-          <td>{{ t.get_role_display }}</td>
+          <td>
+            {% for s in t.subjects.all %}
+              <span class="badge bg-light text-dark border">{{ s.name }}</span>
+            {% empty %}
+              <span class="text-danger small">Hakuna somo</span>
+            {% endfor %}
+          </td>
           <td>
             {% if t.is_activated %}
               <span class="badge bg-success">Active</span>
@@ -39,9 +46,26 @@
               <span class="badge bg-secondary">Pending</span>
             {% endif %}
           </td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#edit-{{ t.id }}">
+              Hariri masomo
+            </button>
+          </td>
+        </tr>
+        <tr class="collapse" id="edit-{{ t.id }}">
+          <td colspan="5">
+            <form method="post" class="d-flex align-items-start gap-2 flex-wrap">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="edit_subjects">
+              <input type="hidden" name="teacher_id" value="{{ t.id }}">
+              {{ sform.role }}
+              {{ sform.subjects }}
+              <button type="submit" class="btn btn-sm btn-primary">Hifadhi</button>
+            </form>
+          </td>
         </tr>
         {% empty %}
-        <tr><td colspan="4" class="text-muted">Hakuna walimu bado.</td></tr>
+        <tr><td colspan="5" class="text-muted">Hakuna walimu bado.</td></tr>
         {% endfor %}
       </tbody>
     </table>

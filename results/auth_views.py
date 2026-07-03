@@ -2,10 +2,10 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from .backends import ResultsAuthBackend
-from .forms import TeacherAccountForm
+from .forms import TeacherAccountForm, TeacherSubjectsForm
 from .models import TeacherAccount
 from .permissions import academic_required
 
@@ -79,6 +79,18 @@ def results_logout(request):
 @academic_required
 def manage_teachers(request):
     if request.method == 'POST':
+        action = request.POST.get('action', 'create')
+
+        if action == 'edit_subjects':
+            teacher = get_object_or_404(TeacherAccount, pk=request.POST.get('teacher_id'))
+            subjects_form = TeacherSubjectsForm(request.POST, instance=teacher)
+            if subjects_form.is_valid():
+                subjects_form.save()
+                messages.success(request, f"Masomo ya {teacher.email} yamesasishwa.")
+            else:
+                messages.error(request, "Imeshindwa kusasisha masomo. Jaribu tena.")
+            return redirect('manage_teachers')
+
         form = TeacherAccountForm(request.POST)
         if form.is_valid():
             account = form.save(commit=False)
@@ -93,8 +105,9 @@ def manage_teachers(request):
     else:
         form = TeacherAccountForm()
 
-    teachers = TeacherAccount.objects.all().order_by('-created_at')
+    teachers = TeacherAccount.objects.all().prefetch_related('subjects').order_by('-created_at')
+    teachers_with_forms = [(t, TeacherSubjectsForm(instance=t)) for t in teachers]
     return render(request, 'results/manage_teachers.html', {
         'form': form,
-        'teachers': teachers,
+        'teachers_with_forms': teachers_with_forms,
     })

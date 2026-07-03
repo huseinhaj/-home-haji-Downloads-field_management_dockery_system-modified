@@ -97,3 +97,14 @@ class TeacherAccountForm(forms.ModelForm):
             raise ValidationError("Email hii tayari ipo kwenye mfumo.")
         return email
 
+
+class TeacherSubjectsForm(forms.ModelForm):
+    """Edit role + subjects for an existing teacher account."""
+    class Meta:
+        model = TeacherAccount
+        fields = ['role', 'subjects']
+        widgets = {
+            'role': forms.Select(attrs={'class': 'form-control'}),
+            'subjects': forms.SelectMultiple(attrs={'class': 'form-control', 'size': 8}),
+        }
+

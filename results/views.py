@@ -196,7 +196,10 @@ def exam_overview(request, exam_id):
     total_subjects = len(all_subjects)
     all_submitted = submitted_count == total_subjects and total_subjects > 0
     all_approved = approved_count == total_subjects and total_subjects > 0
-    enough_to_finalize = submitted_count >= 2 or all_submitted
+    # General school results are only ready once every subject for this exam
+    # has been submitted by its teacher — partial results would misrepresent
+    # each student's overall division/position.
+    enough_to_finalize = all_submitted
 
     progress_pct = round(submitted_count / total_subjects * 100) if total_subjects else 0
     approval_pct = round(approved_count / total_subjects * 100) if total_subjects else 0
@@ -524,6 +527,18 @@ def upload_roster(request):
 @require_POST
 def finalize_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
+    subs = exam.subject_submissions.all()
+    total = subs.count()
+    submitted = subs.filter(
+        status__in=[SubjectSubmission.STATUS_SUBMITTED, SubjectSubmission.STATUS_APPROVED]
+    ).count()
+    if total == 0 or submitted < total:
+        messages.error(
+            request,
+            f"Bado hayajakamilika: masomo {submitted}/{total} yamewasilishwa. "
+            "Matokeo ya jumla yanaweza kuzalishwa tu masomo yote yakishawasilishwa."
+        )
+        return redirect(reverse('exam_overview', args=[exam.id]))
     recompute_processed_results_for_exam(exam)
     return generate_professional_excel_response(exam)
 
@@ -968,6 +983,8 @@ def teacher_dashboard(request):
         pending = [s for s in subs if s.status == SubjectSubmission.STATUS_PENDING]
         submitted = [s for s in subs if s.status == SubjectSubmission.STATUS_SUBMITTED]
         approved = [s for s in subs if s.status == SubjectSubmission.STATUS_APPROVED]
+        for s in submitted + approved:
+            s.pdf_url = reverse('subject_pdf', args=[exam.id, s.subject_id])
         exams_ctx.append({
             'exam': exam,
             'pending': pending,
