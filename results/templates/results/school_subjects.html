@@ -4,15 +4,15 @@
 {% block content %}
 <style>
 .school-hero {
-  background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
-  border: 2px solid #C9A84C;
+  background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+  border: 2px solid #D9A441;
   border-radius: 2px;
   padding: 1.5rem 2rem;
   color: #fff;
   margin-bottom: 1.5rem;
 }
 .school-hero h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.2rem; }
-.school-hero .sub { font-size: 0.82rem; color: #C9A84C; text-transform: uppercase; letter-spacing: 0.05em; }
+.school-hero .sub { font-size: 0.82rem; color: #D9A441; text-transform: uppercase; letter-spacing: 0.05em; }
 
 .panel {
   background: #fff;
@@ -27,7 +27,7 @@
   padding: 0.65rem 1rem;
   font-size: 0.75rem;
   font-weight: 800;
-  color: #1B3A6B;
+  color: #1F7A3D;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   display: flex;
@@ -46,19 +46,19 @@
   outline: none;
   transition: border-color 0.2s;
 }
-.form-control-sm-custom:focus { border-color: #1B3A6B; }
+.form-control-sm-custom:focus { border-color: #1F7A3D; }
 
 .btn-primary-navy {
-  background: #1B3A6B;
+  background: #1F7A3D;
   color: #fff;
-  border: 2px solid #C9A84C;
+  border: 2px solid #D9A441;
   font-weight: 700;
   font-size: 0.82rem;
   padding: 0.4rem 1.1rem;
   border-radius: 2px;
   cursor: pointer;
 }
-.btn-primary-navy:hover { background: #14305a; }
+.btn-primary-navy:hover { background: #145226; }
 
 .btn-danger-sm {
   background: #c0392b;
@@ -88,22 +88,22 @@
 .subjects-table tr:last-child td { border-bottom: none; }
 
 .badge-count {
-  background: #1B3A6B;
-  color: #C9A84C;
+  background: #1F7A3D;
+  color: #D9A441;
   font-size: 0.68rem;
   font-weight: 800;
   padding: 0.1rem 0.5rem;
   border-radius: 10px;
 }
 
-.link-gold { color: #C9A84C; font-weight: 700; text-decoration: none; font-size: 0.82rem; }
+.link-gold { color: #D9A441; font-weight: 700; text-decoration: none; font-size: 0.82rem; }
 .link-gold:hover { color: #b8973a; text-decoration: underline; }
 
 .common-chips { display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.5rem; }
 .chip {
   background: #eef2f9;
   border: 1px solid #d0d8ee;
-  color: #1B3A6B;
+  color: #1F7A3D;
   font-size: 0.72rem;
   font-weight: 600;
   padding: 0.2rem 0.6rem;
@@ -122,10 +122,10 @@
       <div class="sub">{{ school.region }} &mdash; {{ school.district }} &nbsp;|&nbsp; Usimamizi wa Masomo</div>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-      <a href="{% url 'create_exam_for_school' school.id %}" class="btn-primary-navy" style="text-decoration:none;display:inline-flex;align-items:center;">
+      <a href="{% url 'create_exam_for_school' %}" class="btn-primary-navy" style="text-decoration:none;display:inline-flex;align-items:center;">
         + Unda Mtihani
       </a>
-      <a href="{% url 'school_setup' %}" style="color:#C9A84C;font-size:0.78rem;text-decoration:none;align-self:center;">
+      <a href="{% url 'school_setup' %}" style="color:#D9A441;font-size:0.78rem;text-decoration:none;align-self:center;">
         &larr; Shule Zote
       </a>
     </div>

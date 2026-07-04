@@ -46,9 +46,9 @@ def _grade_color(grade: str):
     return palette.get(grade, colors.black)
 
 
-NAVY = colors.HexColor('#1B3A6B')
-GOLD = colors.HexColor('#C9A84C')
-LIGHT_GOLD = colors.HexColor('#F5EDD6')
+NAVY = colors.HexColor('#1F7A3D')
+GOLD = colors.HexColor('#D9A441')
+LIGHT_GOLD = colors.HexColor('#FBEFD3')
 WHITE = colors.white
 LIGHT_GREY = colors.HexColor('#F0F2F5')
 DARK_GREY = colors.HexColor('#444444')

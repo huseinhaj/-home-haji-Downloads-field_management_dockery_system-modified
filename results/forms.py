@@ -31,14 +31,16 @@ class ExamUploadForm(forms.Form):
         required=True,
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, school=None, **kwargs):
         super().__init__(*args, **kwargs)
-        # Load all exams initially or filtered by exam_type if provided in data
+        # Scoped to the academic officer's own school; load all their exams
+        # initially, or filtered by exam_type if provided in data.
+        base_qs = Exam.objects.filter(school=school) if school else Exam.objects.none()
         exam_type = self.data.get('exam_type')
         if exam_type:
-            self.fields['exam'].queryset = Exam.objects.filter(exam_type=exam_type).order_by('-year', '-date')
+            self.fields['exam'].queryset = base_qs.filter(exam_type=exam_type).order_by('-year', '-date')
         else:
-            self.fields['exam'].queryset = Exam.objects.all().order_by('-year', '-date')
+            self.fields['exam'].queryset = base_qs.order_by('-year', '-date')
 
     def clean_file(self):
         file = self.cleaned_data.get('file')

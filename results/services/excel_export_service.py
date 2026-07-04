@@ -12,8 +12,8 @@ from ..models import ExamResult
 
 
 # ── Color palette ────────────────────────────────────────────────────────────
-NAVY = "1B3A6B"
-GOLD = "C9A84C"
+NAVY = "1F7A3D"
+GOLD = "D9A441"
 WHITE = "FFFFFF"
 LIGHT_GREY = "F2F4F7"
 DARK_GREY = "444444"

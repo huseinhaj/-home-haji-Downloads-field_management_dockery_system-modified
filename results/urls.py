@@ -59,10 +59,10 @@ urlpatterns = [
     path('academic/', academic_dashboard, name='academic_dashboard'),
     path('form/<int:form_num>/results/', form_results, name='form_results'),
     path('form/<int:form_num>/excel/', form_results_excel, name='form_results_excel'),
-    # School management
+    # My school (each academic officer is scoped to exactly one school)
     path('school/', school_setup, name='school_setup'),
-    path('school/<int:school_id>/subjects/', school_subjects, name='school_subjects'),
-    path('school/<int:school_id>/create-exam/', create_exam_for_school, name='create_exam_for_school'),
+    path('school/masomo/', school_subjects, name='school_subjects'),
+    path('school/unda-mtihani/', create_exam_for_school, name='create_exam_for_school'),
     # Teacher dashboard
     path('teacher/', teacher_dashboard, name='teacher_dashboard'),
     path('masomo-yangu/', select_my_subjects, name='select_my_subjects'),

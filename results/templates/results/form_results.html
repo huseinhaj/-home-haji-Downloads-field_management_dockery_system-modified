@@ -4,8 +4,8 @@
 {% block content %}
 <style>
 .fr-hero {
-  background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
-  border: 2px solid #C9A84C;
+  background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+  border: 2px solid #D9A441;
   border-radius: 2px;
   padding: 1.4rem 2rem;
   color: #fff;
@@ -17,7 +17,7 @@
   gap: 1rem;
 }
 .fr-hero h1 { font-size: 1.4rem; font-weight: 800; margin: 0; }
-.fr-hero .sub { font-size: 0.8rem; color: #C9A84C; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.2rem; }
+.fr-hero .sub { font-size: 0.8rem; color: #D9A441; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.2rem; }
 
 .form-nav { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; }
 .form-nav a {
@@ -27,10 +27,10 @@
   font-weight: 700;
   text-decoration: none;
   background: #f0f2f5;
-  color: #1B3A6B;
+  color: #1F7A3D;
   border: 1.5px solid #dee2e6;
 }
-.form-nav a.active, .form-nav a:hover { background: #1B3A6B; color: #fff; border-color: #1B3A6B; }
+.form-nav a.active, .form-nav a:hover { background: #1F7A3D; color: #fff; border-color: #1F7A3D; }
 
 .exam-block {
   background: #fff;
@@ -49,7 +49,7 @@
   background: #f4f6fb;
   border-bottom: 1.5px solid #e9ecef;
 }
-.exam-block-head .ename { font-weight: 700; color: #1B3A6B; font-size: 0.95rem; }
+.exam-block-head .ename { font-weight: 700; color: #1F7A3D; font-size: 0.95rem; }
 .exam-block-head .emeta { font-size: 0.75rem; color: #888; }
 
 .not-approved-notice {
@@ -82,7 +82,7 @@
 .div-IV  { background:#f8d7da; color:#721c24; font-weight:700; padding:.1rem .5rem; border-radius:2px; font-size:.72rem; }
 .div-0   { background:#e2e3e5; color:#383d41; font-weight:700; padding:.1rem .5rem; border-radius:2px; font-size:.72rem; }
 
-.pos-badge { background:#1B3A6B; color:#fff; font-weight:700; padding:.1rem .55rem; border-radius:2px; font-size:.75rem; }
+.pos-badge { background:#1F7A3D; color:#fff; font-weight:700; padding:.1rem .55rem; border-radius:2px; font-size:.75rem; }
 
 .empty-notice { padding:1.5rem; text-align:center; color:#aaa; font-size:0.85rem; }
 </style>
@@ -98,11 +98,11 @@
     <a href="{{ excel_url }}" class="btn btn-sm" style="background:#1a7a3b;color:#fff;font-weight:700;border-radius:2px;">
       ⬇ {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %} — Form {{ form_num }} {% if LANG == 'sw' %}Yote{% else %}All{% endif %}
     </a>
-    <a href="{% url 'academic_dashboard' %}" class="btn btn-sm" style="background:#C9A84C;color:#1B3A6B;font-weight:700;border-radius:2px;">
+    <a href="{% url 'academic_dashboard' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
       &larr; Academic Dashboard
     </a>
     {% else %}
-    <a href="{% url 'teacher_dashboard' %}" class="btn btn-sm" style="background:#C9A84C;color:#1B3A6B;font-weight:700;border-radius:2px;">
+    <a href="{% url 'teacher_dashboard' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
       &larr; {% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}
     </a>
     {% endif %}
@@ -167,7 +167,7 @@
           <td>
             <strong>{{ res.student.first_name }} {% if res.student.middle_name %}{{ res.student.middle_name }} {% endif %}{{ res.student.last_name }}</strong>
           </td>
-          <td style="text-align:center;font-weight:700;color:#1B3A6B;">{{ res.total_score }}</td>
+          <td style="text-align:center;font-weight:700;color:#1F7A3D;">{{ res.total_score }}</td>
           <td style="text-align:center;">{{ res.average_score }}</td>
           <td style="text-align:center;">{{ res.points }}</td>
           <td style="text-align:center;">

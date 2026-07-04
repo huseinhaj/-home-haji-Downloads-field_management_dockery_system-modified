@@ -40,7 +40,7 @@ COMMON_SUBJECTS = [
 
 @login_required
 def home(request):
-    exams = Exam.objects.all().order_by('-year', 'name')
+    exams = Exam.objects.filter(school=request.user.school).order_by('-year', 'name')
 
     # Annotate each exam with submission progress
     exams_list = list(exams)
@@ -63,8 +63,8 @@ def home(request):
 
 @academic_required
 def upload_results(request):
-    exam_created = None
-    no_exams = not Exam.objects.exists()
+    school = request.user.school
+    no_exams = not Exam.objects.filter(school=school).exists()
 
     if request.method == 'POST':
         action = request.POST.get('action', 'upload')
@@ -75,7 +75,6 @@ def upload_results(request):
             year = request.POST.get('exam_year', '2026')
             form_level = request.POST.get('exam_form', '4')
             exam_type = request.POST.get('exam_type_new', 'TERMINAL')
-            school_name = request.POST.get('school_name', '').strip()
             subjects_raw = request.POST.get('subjects', '[]')
             try:
                 subject_names = [s.strip() for s in _json.loads(subjects_raw) if str(s).strip()]
@@ -84,12 +83,9 @@ def upload_results(request):
 
             if name:
                 exam, _ = Exam.objects.get_or_create(
-                    name=name, year=int(year), form=int(form_level), exam_type=exam_type,
-                    defaults={'school_name': school_name},
+                    name=name, year=int(year), form=int(form_level), exam_type=exam_type, school=school,
+                    defaults={'school_name': school.name if school else ''},
                 )
-                if school_name:
-                    exam.school_name = school_name
-                    exam.save(update_fields=['school_name'])
 
                 # Create subjects + SubjectSubmission (PENDING) for each
                 for sname in subject_names:
@@ -99,7 +95,7 @@ def upload_results(request):
                 # Redirect to exam overview — main hub for teachers
                 return redirect(reverse('exam_overview', args=[exam.id]))
 
-        form = ExamUploadForm(request.POST, request.FILES)
+        form = ExamUploadForm(request.POST, request.FILES, school=school)
         if form.is_valid():
             exam = form.cleaned_data['exam']
             file = form.cleaned_data['file']
@@ -108,7 +104,7 @@ def upload_results(request):
                 messages.success(request, f"Matokeo yamepakiwa: {exam.name}")
                 download_url = reverse('generate_results_pdf', args=[exam.id])
                 return render(request, 'results/upload.html', {
-                    'form': ExamUploadForm(),
+                    'form': ExamUploadForm(school=school),
                     'download_url': download_url,
                     'no_exams': False,
                     'exam_type_choices': _EXAM_TYPE_CHOICES,
@@ -125,13 +121,14 @@ def upload_results(request):
     return render(request, 'results/upload.html', {
         'exam_type_choices': _EXAM_TYPE_CHOICES,
         'common_subjects': COMMON_SUBJECTS,
+        'form': ExamUploadForm(school=school),
     })
 
 
 @login_required
 def filter_exams(request):
     exam_type = request.GET.get('exam_type')
-    exams = Exam.objects.all()
+    exams = Exam.objects.filter(school=request.user.school)
     if exam_type:
         exams = exams.filter(exam_type=exam_type)
 
@@ -141,13 +138,13 @@ def filter_exams(request):
 
 @academic_required
 def generate_results_pdf(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id)
+    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
     return generate_results_pdf_response(exam)
 
 
 @academic_required
 def export_results_excel(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id)
+    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
     return generate_results_excel_response(exam)
 
 
@@ -155,7 +152,7 @@ def export_results_excel(request, exam_id):
 
 @login_required
 def exam_overview(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id)
+    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
     is_academic = getattr(request.user, 'is_academic', False)
 
     # Get all subjects that have results for this exam + known subjects from submissions
@@ -235,7 +232,7 @@ def exam_overview(request, exam_id):
 
 @teacher_required
 def subject_upload(request, exam_id, subject_id):
-    exam = get_object_or_404(Exam, id=exam_id)
+    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
     subject = get_object_or_404(Subject, id=subject_id)
     if not request.user.subjects.filter(pk=subject.pk).exists():
         raise PermissionDenied("You are not assigned to teach this subject.")
@@ -355,7 +352,7 @@ def subject_upload(request, exam_id, subject_id):
 
 @login_required
 def subject_pdf(request, exam_id, subject_id):
-    exam = get_object_or_404(Exam, id=exam_id)
+    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
     subject = get_object_or_404(Subject, id=subject_id)
 
     # Get teacher name from SubjectSubmission if available
@@ -377,7 +374,7 @@ def subject_summary(request, exam_id, subject_id):
     """Same analysis as the PDF (distribution, gender, recommendations) but
     viewable directly in the app — teachers don't have to download anything
     to see how their subject did and what to do next."""
-    exam = get_object_or_404(Exam, id=exam_id)
+    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
     subject = get_object_or_404(Subject, id=subject_id)
 
     teacher_name = ''
@@ -610,7 +607,7 @@ def upload_roster(request):
 @academic_required
 @require_POST
 def finalize_exam(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id)
+    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
     subs = exam.subject_submissions.all()
     total = subs.count()
     submitted = subs.filter(
@@ -632,7 +629,7 @@ def finalize_exam(request, exam_id):
 @academic_required
 def academic_dashboard(request):
     """Dashboard for academic officer: see all exams grouped by form, approve submissions."""
-    exams = Exam.objects.prefetch_related(
+    exams = Exam.objects.filter(school=request.user.school).prefetch_related(
         'subject_submissions__subject'
     ).select_related('school').order_by('form', '-year', 'name')
 
@@ -687,7 +684,7 @@ def academic_dashboard(request):
 @academic_required
 @require_POST
 def approve_subject(request, exam_id, subject_id):
-    exam = get_object_or_404(Exam, id=exam_id)
+    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
     subject = get_object_or_404(Subject, id=subject_id)
     sub = get_object_or_404(SubjectSubmission, exam=exam, subject=subject)
 
@@ -715,7 +712,7 @@ def approve_subject(request, exam_id, subject_id):
 @academic_required
 @require_POST
 def approve_exam_submissions(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id)
+    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
     approved_by = request.user.full_name or request.user.email
     notes = request.POST.get('notes', '').strip()
     now = timezone.now()
@@ -744,7 +741,7 @@ def approve_exam_submissions(request, exam_id):
 @login_required
 def form_results(request, form_num):
     """Results for all approved exams of a given form level."""
-    exams = Exam.objects.filter(form=form_num).order_by('-year', 'name')
+    exams = Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name')
 
     exams_ctx = []
     for exam in exams:
@@ -781,7 +778,7 @@ def form_results_excel(request, form_num):
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
-    NAVY, GOLD, WHITE, GREY = "1B3A6B", "C9A84C", "FFFFFF", "F2F4F7"
+    NAVY, GOLD, WHITE, GREY = "1F7A3D", "D9A441", "FFFFFF", "F2F4F7"
 
     def _fill(hex_c):
         return PatternFill(start_color=hex_c, end_color=hex_c, fill_type="solid")
@@ -799,7 +796,7 @@ def form_results_excel(request, form_num):
         if score >= 40: return "FDEBD0", "784212"
         return "FADBD8", "922B21"
 
-    exams = Exam.objects.filter(form=form_num).order_by('-year', 'name')
+    exams = Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name')
     wb = openpyxl.Workbook()
     wb.remove(wb.active)  # remove default empty sheet
 
@@ -916,44 +913,33 @@ def form_results_excel(request, form_num):
     return response
 
 
-# ── School Setup ──────────────────────────────────────────────────────────────
+# ── My School ─────────────────────────────────────────────────────────────────
+# Schools themselves are registered by the site's system administrator via
+# Django admin (each with its first Academic account). An academic officer
+# only ever sees and manages their own school — they can no longer browse or
+# create other schools from here.
 
 @academic_required
 def school_setup(request):
-    """GET: list registered schools. POST: register a new school."""
-    if request.method == 'POST':
-        name = request.POST.get('name', '').strip()
-        region = request.POST.get('region', '').strip()
-        district = request.POST.get('district', '').strip()
-        if name and region and district:
-            school, created = School.objects.get_or_create(
-                name=name,
-                defaults={'region': region, 'district': district},
-            )
-            if created:
-                messages.success(request, f"Shule '{school.name}' imesajiliwa.")
-            else:
-                messages.info(request, f"Shule '{school.name}' tayari ipo.")
-            return redirect(reverse('school_subjects', args=[school.id]))
-        else:
-            messages.error(request, "Tafadhali jaza sehemu zote.")
-
-    schools = School.objects.all().order_by('name')
-    return render(request, 'results/school_setup.html', {
-        'schools': schools,
-        # Pre-fill defaults for Isingiro
-        'default_name': 'Isingiro Secondary School',
-        'default_region': 'Kagera',
-        'default_district': 'Kyerwa',
-    })
+    """Read-only info about the academic officer's own school."""
+    school = request.user.school
+    if not school:
+        messages.error(
+            request,
+            "Akaunti yako haijapangiwa shule. Wasiliana na msimamizi wa mfumo (system admin)."
+        )
+    return render(request, 'results/school_setup.html', {'school': school})
 
 
 # ── School Subjects Management ────────────────────────────────────────────────
 
 @academic_required
-def school_subjects(request, school_id):
-    """Add/remove subjects taught at a school."""
-    school = get_object_or_404(School, id=school_id)
+def school_subjects(request):
+    """Add/remove subjects taught at the academic officer's own school."""
+    school = request.user.school
+    if not school:
+        messages.error(request, "Akaunti yako haijapangiwa shule. Wasiliana na msimamizi wa mfumo.")
+        return redirect(reverse('home'))
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -981,7 +967,7 @@ def school_subjects(request, school_id):
                 SchoolSubject.objects.filter(id=ss_id, school=school).delete()
                 messages.success(request, "Somo limeondolewa.")
 
-        return redirect(reverse('school_subjects', args=[school.id]))
+        return redirect(reverse('school_subjects'))
 
     school_subjects_qs = school.school_subjects.select_related('subject').order_by('subject__name')
     existing_ids = school_subjects_qs.values_list('subject_id', flat=True)
@@ -998,9 +984,13 @@ def school_subjects(request, school_id):
 # ── Create Exam for School ────────────────────────────────────────────────────
 
 @academic_required
-def create_exam_for_school(request, school_id):
-    """Create an Exam linked to a school and auto-create PENDING SubjectSubmissions."""
-    school = get_object_or_404(School, id=school_id)
+def create_exam_for_school(request):
+    """Create an Exam for the academic officer's own school and auto-create
+    PENDING SubjectSubmissions for every subject the school teaches."""
+    school = request.user.school
+    if not school:
+        messages.error(request, "Akaunti yako haijapangiwa shule. Wasiliana na msimamizi wa mfumo.")
+        return redirect(reverse('home'))
 
     if request.method == 'POST':
         name = request.POST.get('exam_name', '').strip()
@@ -1057,7 +1047,7 @@ def teacher_dashboard(request):
     """Walimu wanaona masomo yao pekee ya kupakia (submission status kwa kila exam)."""
     teacher_subject_ids = set(request.user.subjects.values_list('id', flat=True))
 
-    exams = Exam.objects.prefetch_related(
+    exams = Exam.objects.filter(school=request.user.school).prefetch_related(
         'subject_submissions__subject'
     ).order_by('-year', 'form', 'name')
 

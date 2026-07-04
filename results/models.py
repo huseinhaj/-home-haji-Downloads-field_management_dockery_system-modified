@@ -204,6 +204,11 @@ class TeacherAccount(AbstractBaseUser):
     email = models.EmailField(unique=True)
     full_name = models.CharField(max_length=150, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_TEACHER)
+    school = models.ForeignKey(
+        School, on_delete=models.SET_NULL, null=True, blank=True, related_name='teacher_accounts',
+        help_text="The school this account belongs to. All exams, subjects and teachers this account "
+                  "can see are scoped to this school.",
+    )
     subjects = models.ManyToManyField(Subject, blank=True, related_name='teachers')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -1,160 +1,35 @@
 {% extends 'results/base.html' %}
-{% block title %}Usajili wa Shule | School Results{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Shule Yangu{% else %}My School{% endif %} | School Results{% endblock %}
 
 {% block content %}
-<style>
-.school-hero {
-  background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
-  border: 2px solid #C9A84C;
-  border-radius: 2px;
-  padding: 1.5rem 2rem;
-  color: #fff;
-  margin-bottom: 1.5rem;
-}
-.school-hero h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.2rem; }
-.school-hero .sub { font-size: 0.82rem; color: #C9A84C; text-transform: uppercase; letter-spacing: 0.05em; }
-
-.panel {
-  background: #fff;
-  border: 1.5px solid #dee2e6;
-  border-radius: 2px;
-  margin-bottom: 1.5rem;
-  overflow: hidden;
-}
-.panel-head {
-  background: #f4f6fb;
-  border-bottom: 1.5px solid #e9ecef;
-  padding: 0.65rem 1rem;
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: #1B3A6B;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.panel-body { padding: 1.25rem; }
-
-.form-label-sm { font-size: 0.78rem; font-weight: 700; color: #444; margin-bottom: 0.25rem; }
-.form-control-sm-custom {
-  font-size: 0.85rem;
-  padding: 0.4rem 0.7rem;
-  border: 1.5px solid #d0d5dd;
-  border-radius: 2px;
-  width: 100%;
-  outline: none;
-  transition: border-color 0.2s;
-}
-.form-control-sm-custom:focus { border-color: #1B3A6B; }
-
-.btn-primary-navy {
-  background: #1B3A6B;
-  color: #fff;
-  border: 2px solid #C9A84C;
-  font-weight: 700;
-  font-size: 0.85rem;
-  padding: 0.45rem 1.4rem;
-  border-radius: 2px;
-  cursor: pointer;
-  letter-spacing: 0.04em;
-}
-.btn-primary-navy:hover { background: #14305a; }
-
-.schools-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.schools-table th {
-  background: #f4f6fb;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #888;
-  font-weight: 700;
-  border-bottom: 1.5px solid #e9ecef;
-  text-align: left;
-}
-.schools-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
-.schools-table tr:last-child td { border-bottom: none; }
-.schools-table tr:hover td { background: #f8f9fb; }
-
-.link-gold { color: #C9A84C; font-weight: 700; text-decoration: none; font-size: 0.78rem; }
-.link-gold:hover { color: #b8973a; text-decoration: underline; }
-.link-navy { color: #1B3A6B; font-weight: 700; text-decoration: none; font-size: 0.78rem; }
-.link-navy:hover { color: #14305a; text-decoration: underline; }
-
-.empty-state { text-align:center; padding:2rem 1rem; color:#aaa; font-size:0.9rem; }
-.note-prefill { font-size:0.75rem; color:#888; margin-top:0.35rem; font-style: italic; }
-</style>
-
-<div class="school-hero">
-  <h1>Usajili wa Shule</h1>
-  <div class="sub">Sajili shule na unda orodha ya masomo inayofundishwa</div>
-</div>
-
-<div class="row g-4">
-  <!-- Register new school -->
-  <div class="col-lg-5">
-    <div class="panel">
-      <div class="panel-head">Sajili Shule Mpya</div>
-      <div class="panel-body">
-        <form method="post">
-          {% csrf_token %}
-          <div class="mb-3">
-            <label class="form-label-sm">Jina la Shule</label>
-            <input type="text" name="name" class="form-control-sm-custom"
-                   value="{{ default_name }}" placeholder="Isingiro Secondary School" required>
-            <div class="note-prefill">Pre-filled kwa Isingiro Secondary School</div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label-sm">Mkoa (Region)</label>
-            <input type="text" name="region" class="form-control-sm-custom"
-                   value="{{ default_region }}" placeholder="Kagera" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label-sm">Wilaya (District)</label>
-            <input type="text" name="district" class="form-control-sm-custom"
-                   value="{{ default_district }}" placeholder="Kyerwa" required>
-          </div>
-          <button type="submit" class="btn-primary-navy">Sajili Shule</button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Existing schools -->
-  <div class="col-lg-7">
-    <div class="panel">
-      <div class="panel-head">Shule Zilizosajiliwa ({{ schools|length }})</div>
-      {% if schools %}
-      <table class="schools-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Jina la Shule</th>
-            <th>Mkoa / Wilaya</th>
-            <th>Hatua</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for school in schools %}
-          <tr>
-            <td style="color:#aaa;font-size:0.72rem;">{{ forloop.counter }}</td>
-            <td>
-              <strong style="color:#1B3A6B;">{{ school.name }}</strong>
-            </td>
-            <td style="color:#666;font-size:0.78rem;">{{ school.region }} &mdash; {{ school.district }}</td>
-            <td>
-              <a href="{% url 'school_subjects' school.id %}" class="link-navy">Masomo</a>
-              &nbsp;|&nbsp;
-              <a href="{% url 'create_exam_for_school' school.id %}" class="link-gold">Unda Mtihani</a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<section class="hero">
+  <div>
+    <h1 class="mb-1">{% if LANG == 'sw' %}Shule Yangu{% else %}My School{% endif %}</h1>
+    <p class="mb-0 text-secondary">
+      {% if LANG == 'sw' %}
+      Shule mpya husajiliwa na msimamizi wa mfumo (system admin). Hapa unaona taarifa za shule yako pekee.
       {% else %}
-      <div class="empty-state">
-        Hakuna shule zilizosajiliwa bado. Sajili shule yako ya kwanza.
-      </div>
+      New schools are registered by the system administrator. Here you can see your own school's details.
       {% endif %}
+    </p>
+  </div>
+</section>
+
+<div class="panel mt-3">
+  <div class="panel-body">
+    {% if school %}
+    <h3 style="font-family:'Sora',sans-serif;color:var(--accent-500);">{{ school.name }}</h3>
+    <p class="text-secondary mb-3">{{ school.region }} &mdash; {{ school.district }}</p>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'school_subjects' %}" class="btn btn-brand">{% if LANG == 'sw' %}Masomo ya Shule{% else %}School Subjects{% endif %}</a>
+      <a href="{% url 'create_exam_for_school' %}" class="btn btn-outline-secondary">{% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}</a>
     </div>
+    {% else %}
+    <p class="text-secondary mb-0">
+      {% if LANG == 'sw' %}Akaunti yako haijapangiwa shule bado. Wasiliana na msimamizi wa mfumo.
+      {% else %}Your account hasn't been assigned a school yet. Contact the system administrator.{% endif %}
+    </p>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

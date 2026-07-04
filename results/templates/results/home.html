@@ -24,9 +24,9 @@
 </section>
 
 {% if not exams %}
-<div style="border:2px dashed #C9A84C;border-radius:2px;padding:2.5rem;text-align:center;background:#fffbf0;margin-top:1rem;">
+<div style="border:2px dashed #D9A441;border-radius:2px;padding:2.5rem;text-align:center;background:#fffbf0;margin-top:1rem;">
   <div style="font-size:2.5rem;margin-bottom:0.5rem;">📋</div>
-  <h3 style="color:#1B3A6B;font-weight:800;">{% if LANG == 'sw' %}Hakuna Mtihani Bado{% else %}No Exams Yet{% endif %}</h3>
+  <h3 style="color:#1F7A3D;font-weight:800;">{% if LANG == 'sw' %}Hakuna Mtihani Bado{% else %}No Exams Yet{% endif %}</h3>
   <p class="text-secondary mb-3">
     {% if LANG == 'sw' %}Mtaaluma anaunda mtihani kwanza, kisha kila mwalimu anapakia alama za somo lake (au kuingiza kwa sauti).
     {% else %}The academic officer creates an exam first, then each teacher uploads their subject's scores (or uses voice entry).{% endif %}
@@ -40,11 +40,11 @@
 <div class="row g-3 mt-1">
   {% for exam in exams %}
   <div class="col-md-6 col-lg-4">
-    <div class="panel h-100" style="border-left:4px solid {% if exam.submitted_count == exam.total_submissions and exam.total_submissions > 0 %}#1a7a3b{% elif exam.submitted_count > 0 %}#C9A84C{% else %}#1B3A6B{% endif %};">
+    <div class="panel h-100" style="border-left:4px solid {% if exam.submitted_count == exam.total_submissions and exam.total_submissions > 0 %}#1a7a3b{% elif exam.submitted_count > 0 %}#D9A441{% else %}#1F7A3D{% endif %};">
       <div class="panel-body">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <div>
-            <div style="font-weight:800;color:#1B3A6B;font-size:1rem;">{{ exam.name }}</div>
+            <div style="font-weight:800;color:#1F7A3D;font-size:1rem;">{{ exam.name }}</div>
             <div class="text-secondary" style="font-size:0.8rem;">Form {{ exam.form }} &nbsp;|&nbsp; {{ exam.year }} &nbsp;|&nbsp; {{ exam.get_exam_type_display }}</div>
           </div>
           <span class="badge-soft" style="font-size:0.7rem;white-space:nowrap;">
@@ -60,7 +60,7 @@
 
         {% if exam.total_submissions > 0 %}
         <div style="background:#e9ecef;border-radius:2px;height:6px;overflow:hidden;margin:0.5rem 0;">
-          <div style="height:100%;background:linear-gradient(90deg,#1B3A6B,#C9A84C);width:{% widthratio exam.submitted_count exam.total_submissions 100 %}%;"></div>
+          <div style="height:100%;background:linear-gradient(90deg,#1F7A3D,#D9A441);width:{% widthratio exam.submitted_count exam.total_submissions 100 %}%;"></div>
         </div>
         <div style="font-size:0.75rem;color:#555;margin-bottom:0.75rem;">
           <strong>{{ exam.submitted_count }}</strong>/{{ exam.total_submissions }} {% if LANG == 'sw' %}masomo yamewasilishwa{% else %}subjects submitted{% endif %}
@@ -71,7 +71,7 @@
 
         <div class="d-flex gap-2 flex-wrap mt-auto">
           <a href="{% url 'exam_overview' exam.id %}" class="btn btn-brand btn-sm" style="font-size:0.78rem;">{% if LANG == 'sw' %}Muhtasari wa Mtihani{% else %}Exam Overview{% endif %}</a>
-          <a href="{% url 'speech_entry_page' %}?exam={{ exam.id }}" class="btn btn-sm" style="font-size:0.78rem;border:1.5px solid #1B3A6B;color:#1B3A6B;">Speech Entry</a>
+          <a href="{% url 'speech_entry_page' %}?exam={{ exam.id }}" class="btn btn-sm" style="font-size:0.78rem;border:1.5px solid #1F7A3D;color:#1F7A3D;">Speech Entry</a>
         </div>
       </div>
     </div>

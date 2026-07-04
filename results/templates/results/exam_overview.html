@@ -5,15 +5,15 @@
 {% block content %}
 <style>
   .ov-hero {
-    background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
-    border: 2px solid #C9A84C;
+    background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+    border: 2px solid #D9A441;
     border-radius: 2px;
     padding: 1.6rem 2rem;
     color: #fff;
     margin-bottom: 1.5rem;
   }
   .ov-hero h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.25rem; letter-spacing: 0.02em; }
-  .ov-hero .meta-row { font-size: 0.85rem; color: #C9A84C; letter-spacing: 0.03em; text-transform: uppercase; }
+  .ov-hero .meta-row { font-size: 0.85rem; color: #D9A441; letter-spacing: 0.03em; text-transform: uppercase; }
   .ov-progress-bar-wrap {
     background: #e9ecef;
     border-radius: 2px;
@@ -23,10 +23,10 @@
   }
   .ov-progress-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #C9A84C, #e8b84b);
+    background: linear-gradient(90deg, #D9A441, #e8b84b);
     transition: width 0.4s;
   }
-  .ov-progress-label { font-size: 0.78rem; color: #C9A84C; font-weight: 600; letter-spacing: 0.05em; }
+  .ov-progress-label { font-size: 0.78rem; color: #D9A441; font-weight: 600; letter-spacing: 0.05em; }
 
   .subject-grid {
     display: grid;
@@ -43,15 +43,15 @@
     gap: 0.45rem;
     transition: border-color 0.15s;
   }
-  .subject-card:hover { border-color: #1B3A6B; }
+  .subject-card:hover { border-color: #1F7A3D; }
   .subject-card.is-submitted { border-left: 4px solid #0056b3; }
   .subject-card.is-approved { border-left: 4px solid #1a7a3b; }
-  .subject-card.is-pending { border-left: 4px solid #C9A84C; }
+  .subject-card.is-pending { border-left: 4px solid #D9A441; }
 
   .subject-card .subject-name {
     font-weight: 700;
     font-size: 0.95rem;
-    color: #1B3A6B;
+    color: #1F7A3D;
     letter-spacing: 0.01em;
     text-transform: uppercase;
   }
@@ -84,13 +84,13 @@
     gap: 1rem;
     margin-top: 1.5rem;
   }
-  .finalize-section h4 { font-size: 1rem; font-weight: 700; color: #1B3A6B; margin: 0; }
+  .finalize-section h4 { font-size: 1rem; font-weight: 700; color: #1F7A3D; margin: 0; }
   .finalize-section p { font-size: 0.82rem; color: #666; margin: 0.2rem 0 0; }
 
   .btn-finalize {
-    background: #1B3A6B;
+    background: #1F7A3D;
     color: #fff;
-    border: 2px solid #C9A84C;
+    border: 2px solid #D9A441;
     font-weight: 700;
     letter-spacing: 0.04em;
     padding: 0.6rem 1.5rem;
@@ -105,12 +105,12 @@
     color: #fff;
   }
   .btn-finalize:not(:disabled):hover {
-    background: #14305a;
+    background: #145226;
   }
-  .btn-speech { background: #1B3A6B; color: #fff; border: none; }
-  .btn-speech:hover { background: #14305a; color: #fff; }
-  .btn-upload-sm { background: #fff; color: #1B3A6B; border: 1.5px solid #1B3A6B; }
-  .btn-upload-sm:hover { background: #1B3A6B; color: #fff; }
+  .btn-speech { background: #1F7A3D; color: #fff; border: none; }
+  .btn-speech:hover { background: #145226; color: #fff; }
+  .btn-upload-sm { background: #fff; color: #1F7A3D; border: 1.5px solid #1F7A3D; }
+  .btn-upload-sm:hover { background: #1F7A3D; color: #fff; }
   .btn-pdf { background: #fff; color: #1a7a3b; border: 1.5px solid #1a7a3b; }
   .btn-pdf:hover { background: #1a7a3b; color: #fff; }
 </style>
@@ -128,7 +128,7 @@
       </div>
     </div>
     <div>
-      <a href="{% url 'home' %}" class="btn btn-sm" style="background:#C9A84C;color:#1B3A6B;font-weight:700;border-radius:2px;">
+      <a href="{% url 'home' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
         &larr; Dashboard
       </a>
     </div>

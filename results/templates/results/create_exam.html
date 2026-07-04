@@ -4,15 +4,15 @@
 {% block content %}
 <style>
 .exam-hero {
-  background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
-  border: 2px solid #C9A84C;
+  background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+  border: 2px solid #D9A441;
   border-radius: 2px;
   padding: 1.5rem 2rem;
   color: #fff;
   margin-bottom: 1.5rem;
 }
 .exam-hero h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.2rem; }
-.exam-hero .sub { font-size: 0.82rem; color: #C9A84C; text-transform: uppercase; letter-spacing: 0.05em; }
+.exam-hero .sub { font-size: 0.82rem; color: #D9A441; text-transform: uppercase; letter-spacing: 0.05em; }
 
 .panel {
   background: #fff;
@@ -27,7 +27,7 @@
   padding: 0.65rem 1rem;
   font-size: 0.75rem;
   font-weight: 800;
-  color: #1B3A6B;
+  color: #1F7A3D;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -43,12 +43,12 @@
   outline: none;
   transition: border-color 0.2s;
 }
-.form-control-styled:focus { border-color: #1B3A6B; box-shadow: 0 0 0 3px rgba(27,58,107,0.08); }
+.form-control-styled:focus { border-color: #1F7A3D; box-shadow: 0 0 0 3px rgba(27,58,107,0.08); }
 
 .btn-primary-navy {
-  background: #1B3A6B;
+  background: #1F7A3D;
   color: #fff;
-  border: 2px solid #C9A84C;
+  border: 2px solid #D9A441;
   font-weight: 700;
   font-size: 0.9rem;
   padding: 0.55rem 1.8rem;
@@ -56,7 +56,7 @@
   cursor: pointer;
   letter-spacing: 0.04em;
 }
-.btn-primary-navy:hover { background: #14305a; }
+.btn-primary-navy:hover { background: #145226; }
 
 .subjects-preview {
   background: #f4f6fb;
@@ -69,7 +69,7 @@
   align-items: center;
   background: #eef2f9;
   border: 1px solid #c6d3ee;
-  color: #1B3A6B;
+  color: #1F7A3D;
   font-size: 0.78rem;
   font-weight: 600;
   padding: 0.2rem 0.75rem;
@@ -77,8 +77,8 @@
   margin: 0.2rem;
 }
 .subject-pill-count {
-  background: #C9A84C;
-  color: #1B3A6B;
+  background: #D9A441;
+  color: #1F7A3D;
   font-size: 0.65rem;
   font-weight: 800;
   padding: 0.05rem 0.4rem;
@@ -101,7 +101,7 @@
       <h1>Unda Mtihani Mpya</h1>
       <div class="sub">{{ school.name }} &mdash; {{ school.region }}, {{ school.district }}</div>
     </div>
-    <a href="{% url 'school_subjects' school.id %}" style="color:#C9A84C;font-size:0.78rem;text-decoration:none;align-self:center;">
+    <a href="{% url 'school_subjects' %}" style="color:#D9A441;font-size:0.78rem;text-decoration:none;align-self:center;">
       &larr; Masomo ya Shule
     </a>
   </div>
@@ -115,7 +115,7 @@
         {% if not school_subjects %}
         <div class="warning-box mb-3">
           &#9888; Shule hii haina masomo yaliyosajiliwa bado.
-          <a href="{% url 'school_subjects' school.id %}" style="color:#7a5200;font-weight:700;">
+          <a href="{% url 'school_subjects' %}" style="color:#7a5200;font-weight:700;">
             Ongeza masomo kwanza &rarr;
           </a>
         </div>
@@ -189,7 +189,7 @@
         </div>
         {% else %}
         <div style="color:#aaa;font-size:0.85rem;text-align:center;padding:1rem 0;">
-          Hakuna masomo. <a href="{% url 'school_subjects' school.id %}">Ongeza masomo kwanza</a>.
+          Hakuna masomo. <a href="{% url 'school_subjects' %}">Ongeza masomo kwanza</a>.
         </div>
         {% endif %}
       </div>

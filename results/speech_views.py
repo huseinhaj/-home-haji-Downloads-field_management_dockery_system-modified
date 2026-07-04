@@ -10,6 +10,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import render
 
 from .models import Exam, SpeechSubmissionSession, Student, Subject, SubjectSubmission
+from .permissions import results_login_required as login_required
 from .services.speech_asr_service import transcribe_uploaded_audio, SpeechTranscriptionError
 from .services.speech_submission_service import (
     SpeechMatchReviewRequired,
@@ -26,9 +27,10 @@ from .services.upload_processing_service import recompute_processed_results_for_
 logger = logging.getLogger(__name__)
 
 
+@login_required
 @require_GET
 def speech_entry_page(request):
-    exams = Exam.objects.all().order_by('-year', 'name')
+    exams = Exam.objects.filter(school=request.user.school).order_by('-year', 'name')
     subjects = Subject.objects.all().order_by('name')
     students = Student.objects.all().order_by('first_name', 'last_name')
 
@@ -63,6 +65,7 @@ def _session_with_access_key(session_id, access_key):
     return get_object_or_404(SpeechSubmissionSession, id=session_id, access_key=access_key)
 
 
+@login_required
 @require_POST
 def create_speech_session(request):
     try:
@@ -74,7 +77,7 @@ def create_speech_session(request):
             payload.get("teacher_name"),
             payload.get("roster_student_ids"),
         )
-        exam = get_object_or_404(Exam, id=payload.get("exam_id"))
+        exam = get_object_or_404(Exam, id=payload.get("exam_id"), school=request.user.school)
         subject = get_object_or_404(Subject, id=payload.get("subject_id"))
         teacher_name = (payload.get("teacher_name") or "").strip()
         if not teacher_name:

@@ -6,7 +6,10 @@ from field_app.admin import custom_admin_site
 from .models import (
     Exam,
     ExamResult,
+    PersonalUpload,
     ProcessedResult,
+    School,
+    SchoolSubject,
     SpeechSubmissionEntry,
     SpeechSubmissionSession,
     Student,
@@ -73,11 +76,25 @@ class SubjectSubmissionAdmin(admin.ModelAdmin):
 
 
 class TeacherAccountAdmin(admin.ModelAdmin):
-    list_display = ('email', 'full_name', 'role', 'is_active', 'created_at')
-    list_filter = ('role', 'is_active')
+    list_display = ('email', 'full_name', 'role', 'school', 'is_active', 'created_at')
+    list_filter = ('role', 'school', 'is_active')
     search_fields = ('email', 'full_name')
     filter_horizontal = ('subjects',)
     readonly_fields = ('password', 'last_login')
+    autocomplete_fields = ('school',)
+
+
+class SchoolAdmin(admin.ModelAdmin):
+    list_display = ('name', 'region', 'district', 'created_at')
+    list_filter = ('region', 'district')
+    search_fields = ('name',)
+    ordering = ('name',)
+
+
+class SchoolSubjectAdmin(admin.ModelAdmin):
+    list_display = ('school', 'subject', 'form_levels')
+    list_filter = ('school', 'subject')
+    search_fields = ('school__name', 'subject__name')
 
 
 custom_admin_site.register(Exam, ExamAdmin)
@@ -89,3 +106,6 @@ custom_admin_site.register(SpeechSubmissionSession, SpeechSubmissionSessionAdmin
 custom_admin_site.register(SpeechSubmissionEntry, SpeechSubmissionEntryAdmin)
 custom_admin_site.register(SubjectSubmission, SubjectSubmissionAdmin)
 custom_admin_site.register(TeacherAccount, TeacherAccountAdmin)
+custom_admin_site.register(School, SchoolAdmin)
+custom_admin_site.register(SchoolSubject, SchoolSubjectAdmin)
+custom_admin_site.register(PersonalUpload)

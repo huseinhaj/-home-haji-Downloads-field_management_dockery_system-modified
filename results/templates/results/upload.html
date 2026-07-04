@@ -9,7 +9,7 @@
       <h2 class="mb-1">Unda Mtihani Mpya</h2>
       <p class="mb-0 text-secondary">Admin anaunda mtihani na kuweka masomo. Kisha walimu wanaingiza alama.</p>
     </div>
-    <a href="{% url 'home' %}" class="btn btn-sm" style="border:1.5px solid #1B3A6B;color:#1B3A6B;">← Rudi Nyumbani</a>
+    <a href="{% url 'home' %}" class="btn btn-sm" style="border:1.5px solid #1F7A3D;color:#1F7A3D;">← Rudi Nyumbani</a>
   </div>
 </section>
 
@@ -66,7 +66,7 @@
           <hr class="my-3">
 
           <div class="field">
-            <label style="font-weight:700;color:#1B3A6B;">Masomo ya Mtihani Huu</label>
+            <label style="font-weight:700;color:#1F7A3D;">Masomo ya Mtihani Huu</label>
             <div class="hint mb-2">Weka masomo. Unaweza kuchagua kutoka kwenye orodha au kuandika yako mwenyewe.</div>
 
             <!-- Quick-select common subjects -->
@@ -83,7 +83,7 @@
 
             <div class="d-flex gap-2">
               <input id="customSubjectInput" class="form-control form-control-sm" placeholder="Ongeza somo lingine..." style="max-width:220px;">
-              <button type="button" id="addCustomSubjectBtn" class="btn btn-sm" style="border:1.5px solid #C9A84C;color:#7a5200;border-radius:2px;">+ Ongeza</button>
+              <button type="button" id="addCustomSubjectBtn" class="btn btn-sm" style="border:1.5px solid #D9A441;color:#7a5200;border-radius:2px;">+ Ongeza</button>
             </div>
           </div>
 
@@ -111,14 +111,14 @@
           <li>Mfumo unazalisha <strong>Excel ya kitaalamu</strong> na wanafunzi wote, masomo yote, position, division</li>
         </ol>
 
-        <div class="support-box mt-3" style="border-left:4px solid #C9A84C;background:#fffbf0;">
+        <div class="support-box mt-3" style="border-left:4px solid #D9A441;background:#fffbf0;">
           <strong>Format ya faili ya Speech Entry:</strong><br>
           Mwalimu anasema kwa Kiswahili au Kiingereza:<br>
           <em>"Halima Ally kapata sabini na tano. Peter Mushi themanini. Fatuma Ali tisini."</em><br>
           Kisha: <strong>"Nimemaliza"</strong>
         </div>
 
-        <div class="support-box mt-3" style="border-left:4px solid #1B3A6B;background:#f0f4ff;">
+        <div class="support-box mt-3" style="border-left:4px solid #1F7A3D;background:#f0f4ff;">
           <strong>Format ya Upload (mbadala):</strong><br>
           Excel yenye safu: <code>First Name | Last Name | Gender | Score</code><br>
           Safu moja tu ya alama kwa somo lake.
@@ -146,11 +146,11 @@
 
   function renderSelected() {
     listEl.innerHTML = [...selected].map(name => `
-      <span style="display:inline-flex;align-items:center;gap:0.3rem;background:#1B3A6B;color:#fff;
+      <span style="display:inline-flex;align-items:center;gap:0.3rem;background:#1F7A3D;color:#fff;
         border-radius:2px;padding:0.15rem 0.5rem;font-size:0.78rem;margin:0.15rem;">
         ${name}
         <button type="button" data-name="${name}" class="remove-chip"
-          style="background:none;border:none;color:#C9A84C;font-size:1rem;line-height:1;cursor:pointer;padding:0;">×</button>
+          style="background:none;border:none;color:#D9A441;font-size:1rem;line-height:1;cursor:pointer;padding:0;">×</button>
       </span>
     `).join('');
     listEl.querySelectorAll('.remove-chip').forEach(btn => {
@@ -189,9 +189,9 @@
         btn.style.borderColor = '#dee2e6';
       } else {
         selected.add(name);
-        btn.style.background = '#1B3A6B';
+        btn.style.background = '#1F7A3D';
         btn.style.color = '#fff';
-        btn.style.borderColor = '#1B3A6B';
+        btn.style.borderColor = '#1F7A3D';
       }
       renderSelected();
       updateHiddenInput();

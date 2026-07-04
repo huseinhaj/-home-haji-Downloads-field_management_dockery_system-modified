@@ -78,11 +78,13 @@ def results_logout(request):
 
 @academic_required
 def manage_teachers(request):
+    school = request.user.school
+
     if request.method == 'POST':
         action = request.POST.get('action', 'create')
 
         if action == 'edit_subjects':
-            teacher = get_object_or_404(TeacherAccount, pk=request.POST.get('teacher_id'))
+            teacher = get_object_or_404(TeacherAccount, pk=request.POST.get('teacher_id'), school=school)
             subjects_form = TeacherSubjectsForm(request.POST, instance=teacher)
             if subjects_form.is_valid():
                 subjects_form.save()
@@ -94,6 +96,7 @@ def manage_teachers(request):
         form = TeacherAccountForm(request.POST)
         if form.is_valid():
             account = form.save(commit=False)
+            account.school = school
             account.set_unusable_password()
             account.save()
             form.save_m2m()
@@ -105,9 +108,10 @@ def manage_teachers(request):
     else:
         form = TeacherAccountForm()
 
-    teachers = TeacherAccount.objects.all().prefetch_related('subjects').order_by('-created_at')
+    teachers = TeacherAccount.objects.filter(school=school).prefetch_related('subjects').order_by('-created_at')
     teachers_with_forms = [(t, TeacherSubjectsForm(instance=t)) for t in teachers]
     return render(request, 'results/manage_teachers.html', {
         'form': form,
         'teachers_with_forms': teachers_with_forms,
+        'school': school,
     })

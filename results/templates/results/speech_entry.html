@@ -17,7 +17,7 @@
   margin: 2rem auto;
   box-shadow: 0 2px 16px rgba(27,58,107,.07);
 }
-.setup-card h2 { font-size: 1.25rem; color: #1B3A6B; font-weight: 700; margin-bottom: 1.5rem; }
+.setup-card h2 { font-size: 1.25rem; color: #1F7A3D; font-weight: 700; margin-bottom: 1.5rem; }
 .setup-card .field { margin-bottom: 1rem; }
 .setup-card label { font-size: .82rem; font-weight: 600; color: #444; display: block; margin-bottom: .3rem; }
 
@@ -32,7 +32,7 @@
   background: #f8fafc;
   position: relative;
 }
-.drop-zone:hover, .drop-zone.dragover { border-color: #1B3A6B; background: #eef2f9; }
+.drop-zone:hover, .drop-zone.dragover { border-color: #1F7A3D; background: #eef2f9; }
 .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .drop-zone .dz-icon { font-size: 2rem; margin-bottom: .4rem; }
 .drop-zone .dz-text { font-size: .85rem; color: #666; }
@@ -50,7 +50,7 @@
 
 /* ── Session Phase ── */
 .session-topbar {
-  background: #1B3A6B;
+  background: #1F7A3D;
   color: #fff;
   border-radius: 8px;
   padding: .7rem 1.2rem;
@@ -68,7 +68,7 @@
 .progress-wrap { margin-bottom: 1rem; }
 .progress-bar-label { font-size: .78rem; color: #555; margin-bottom: .25rem; display: flex; justify-content: space-between; }
 .progress-track { background: #e0e4ea; border-radius: 20px; height: 8px; overflow: hidden; }
-.progress-fill { background: linear-gradient(90deg, #1B3A6B, #C9A84C); height: 100%; border-radius: 20px; transition: width .4s ease; }
+.progress-fill { background: linear-gradient(90deg, #1F7A3D, #D9A441); height: 100%; border-radius: 20px; transition: width .4s ease; }
 
 /* Two-column layout */
 .session-grid { display: grid; grid-template-columns: 1fr 320px; gap: 1rem; }
@@ -76,7 +76,7 @@
 
 /* Live hearing box */
 .live-box {
-  background: #1B3A6B;
+  background: #1F7A3D;
   color: #fff;
   border-radius: 8px;
   padding: .65rem 1rem;
@@ -98,7 +98,7 @@
 /* Row scan animations */
 @keyframes rowScan {
   0%   { background: rgba(201,168,76,0);    box-shadow: none; }
-  40%  { background: rgba(201,168,76,0.22); box-shadow: inset 3px 0 0 #C9A84C; }
+  40%  { background: rgba(201,168,76,0.22); box-shadow: inset 3px 0 0 #D9A441; }
   100% { background: rgba(201,168,76,0);    box-shadow: none; }
 }
 @keyframes rowFound {
@@ -124,7 +124,7 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
   border-bottom: 1.5px solid #e0e4ea;
   font-size: .8rem;
   font-weight: 700;
-  color: #1B3A6B;
+  color: #1F7A3D;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -189,7 +189,7 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
 .mic-ring {
   position: absolute;
   border-radius: 50%;
-  border: 2px solid #1B3A6B;
+  border: 2px solid #1F7A3D;
   opacity: 0;
 }
 .mic-ring-wrap.state-listening .mic-ring:nth-child(1) { width: 90px; height: 90px; animation: ringPulse 2s infinite .0s; }
@@ -206,18 +206,18 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 1.5rem;
-  background: #1B3A6B;
+  background: #1F7A3D;
   color: #fff;
   z-index: 2;
   transition: background .3s;
   position: relative;
 }
 .mic-ring-wrap.state-recording .mic-icon { background: #dc3545; }
-.mic-ring-wrap.state-processing .mic-icon { background: #C9A84C; }
+.mic-ring-wrap.state-processing .mic-icon { background: #D9A441; }
 .mic-ring-wrap.state-idle .mic-icon { background: #b0bec5; }
 .mic-ring-wrap.state-paused .mic-icon { background: #6c757d; }
 
-.mic-state-label { font-size: .85rem; font-weight: 600; color: #1B3A6B; }
+.mic-state-label { font-size: .85rem; font-weight: 600; color: #1F7A3D; }
 .mic-ring-wrap.state-recording ~ .mic-state-label { color: #dc3545; }
 .mic-ring-wrap.state-processing ~ .mic-state-label { color: #856404; }
 .mic-ring-wrap.state-idle ~ .mic-state-label { color: #6c757d; }
@@ -226,7 +226,7 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
 .audio-meter-wrap { padding: 0 .5rem; }
 .audio-meter-label { font-size: .72rem; color: #888; margin-bottom: .2rem; display: flex; justify-content: space-between; }
 .audio-meter-track { background: #e0e4ea; border-radius: 4px; height: 5px; overflow: hidden; }
-.audio-meter-fill { background: #1B3A6B; height: 100%; border-radius: 4px; transition: width .05s linear; width: 0%; }
+.audio-meter-fill { background: #1F7A3D; height: 100%; border-radius: 4px; transition: width .05s linear; width: 0%; }
 .audio-meter-fill.loud { background: #dc3545; }
 .audio-meter-fill.active { background: #1a7a3b; }
 
@@ -238,12 +238,12 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
   border-radius: 6px;
   padding: .5rem .75rem;
   margin-bottom: .4rem;
-  border-left: 3px solid #1B3A6B;
+  border-left: 3px solid #1F7A3D;
 }
 .result-item.result-success { border-left-color: #1a7a3b; background: #f0faf4; }
-.result-item.result-warn { border-left-color: #C9A84C; background: #fffce6; }
+.result-item.result-warn { border-left-color: #D9A441; background: #fffce6; }
 .result-item.result-error { border-left-color: #dc3545; background: #fff5f5; }
-.result-student { font-weight: 700; color: #1B3A6B; }
+.result-student { font-weight: 700; color: #1F7A3D; }
 .result-score { color: #1a7a3b; font-weight: 700; }
 .result-transcript { color: #666; font-size: .75rem; font-style: italic; }
 
@@ -264,7 +264,7 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
   width: 100%;
   box-shadow: 0 8px 40px rgba(0,0,0,.2);
 }
-.confirm-modal h4 { font-size: 1rem; font-weight: 700; color: #1B3A6B; margin-bottom: .3rem; }
+.confirm-modal h4 { font-size: 1rem; font-weight: 700; color: #1F7A3D; margin-bottom: .3rem; }
 .confirm-modal .transcript-heard { font-size: .82rem; color: #666; font-style: italic; margin-bottom: 1rem; padding: .4rem .6rem; background: #f8f9fb; border-radius: 4px; }
 .candidate-btn {
   display: block; width: 100%;
@@ -278,7 +278,7 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
   font-size: .85rem;
   transition: border-color .15s, background .15s;
 }
-.candidate-btn:hover { border-color: #1B3A6B; background: #eef2f9; }
+.candidate-btn:hover { border-color: #1F7A3D; background: #eef2f9; }
 .candidate-conf { float: right; font-size: .75rem; color: #888; font-weight: 600; }
 .conf-high { color: #1a7a3b; }
 .conf-mid { color: #856404; }
@@ -407,7 +407,7 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
       <button id="pauseBtn" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);">
         ⏸ Sitisha
       </button>
-      <button id="finalizeBtn" class="btn btn-sm" style="background:#C9A84C;color:#1B3A6B;font-weight:700;border:none;">
+      <button id="finalizeBtn" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border:none;">
         ✓ Maliza &amp; Hifadhi
       </button>
     </div>
