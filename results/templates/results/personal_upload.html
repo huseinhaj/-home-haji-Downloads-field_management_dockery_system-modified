@@ -1,0 +1,77 @@
+{% extends 'results/base.html' %}
+{% block title %}Matokeo Binafsi | School Results{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h1 class="mb-1">Matokeo Binafsi</h1>
+    <p class="mb-0 text-secondary">
+      Pakia alama za somo lako mwenyewe na upate PDF ya matokeo papo hapo.
+      Hii ni kwa matumizi yako binafsi — <strong>haihitaji mtihani wa shule uliopo</strong> na
+      <strong>haiathiri matokeo ya jumla ya shule</strong>.
+    </p>
+  </div>
+</section>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6">
+    <div class="panel h-100">
+      <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">Pakia Faili</h3></div>
+      <div class="panel-body">
+        {% if teacher_subjects %}
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="field">
+            <label for="subject_id">Somo</label>
+            <select name="subject_id" id="subject_id" class="form-select" required>
+              {% for subject in teacher_subjects %}
+              <option value="{{ subject.id }}">{{ subject.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="title">Jina la Tathmini</label>
+            <input type="text" name="title" id="title" class="form-control" placeholder="mf. Mtihani wa Mwezi - Julai 2026" required>
+          </div>
+          <div class="field">
+            <label for="file">Faili la Alama (.xlsx, .xls, .csv)</label>
+            <input type="file" name="file" id="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+            <div class="hint mt-1">Safu mbili tu zinahitajika: <strong>Jina</strong> na <strong>Alama</strong>.</div>
+          </div>
+          <button type="submit" class="btn btn-brand w-100 mt-2">Pakia na Zalisha Matokeo</button>
+        </form>
+        {% else %}
+        <p class="text-secondary mb-0">
+          Hujapangiwa somo lolote bado. Wasiliana na Afisa Taaluma ili akusajili kwenye somo unalofundisha.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="panel h-100">
+      <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">Historia Yako</h3></div>
+      <div class="panel-body">
+        {% if recent_uploads %}
+        <ul class="exam-list">
+          {% for upload in recent_uploads %}
+          <li class="exam-item">
+            <div>
+              <div style="font-weight:700;">{{ upload.title }}</div>
+              <div class="exam-meta">{{ upload.subject.name }} &bull; {{ upload.created_at|date:"d M Y, H:i" }}</div>
+            </div>
+            <a href="{% url 'personal_upload_pdf' upload.id %}" class="badge-soft" style="text-decoration:none;" target="_blank">
+              &#128196; PDF
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-secondary mb-0">Bado hujapakia matokeo binafsi yoyote.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -7,9 +7,13 @@
   <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
     <div>
       <h1 class="mb-1">Mfumo wa Matokeo</h1>
-      <p class="mb-0 text-secondary">Walimu wanaingiza alama kwa sauti. Admin anafunga na kuzalisha ripoti ya mwisho.</p>
+      <p class="mb-0 text-secondary">Walimu wanapakia alama za masomo yao (au kuingiza kwa sauti) na kupata matokeo ya somo lao papo hapo. Mtaaluma anazalisha matokeo ya jumla ya shule pale masomo yote yatakapowasilishwa.</p>
     </div>
+    {% if user.is_academic %}
     <a href="{% url 'upload_results' %}" class="btn btn-brand">+ Unda Mtihani Mpya</a>
+    {% elif user.is_teacher %}
+    <a href="{% url 'teacher_dashboard' %}" class="btn btn-brand">Dashibodi Yangu</a>
+    {% endif %}
   </div>
 </section>
 
@@ -17,8 +21,10 @@
 <div style="border:2px dashed #C9A84C;border-radius:2px;padding:2.5rem;text-align:center;background:#fffbf0;margin-top:1rem;">
   <div style="font-size:2.5rem;margin-bottom:0.5rem;">📋</div>
   <h3 style="color:#1B3A6B;font-weight:800;">Hakuna Mtihani Bado</h3>
-  <p class="text-secondary mb-3">Admin anaunda mtihani kwanza, kisha walimu wanaingiza alama zao kwa sauti.</p>
+  <p class="text-secondary mb-3">Mtaaluma anaunda mtihani kwanza, kisha kila mwalimu anapakia alama za somo lake (au kuingiza kwa sauti).</p>
+  {% if user.is_academic %}
   <a href="{% url 'upload_results' %}" class="btn btn-brand">Unda Mtihani wa Kwanza</a>
+  {% endif %}
 </div>
 {% else %}
 

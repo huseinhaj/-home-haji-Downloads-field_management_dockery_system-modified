@@ -1,190 +1,113 @@
 {% extends 'results/base.html' %}
-{% block title %}Dashibodi ya Walimu | School Results{% endblock %}
+{% block title %}Dashibodi ya Mwalimu | School Results{% endblock %}
 
 {% block content %}
-<style>
-.teacher-hero {
-  background: linear-gradient(135deg, #1B3A6B 0%, #24508a 100%);
-  border: 2px solid #C9A84C;
-  border-radius: 2px;
-  padding: 1.5rem 2rem;
-  color: #fff;
-  margin-bottom: 1.5rem;
-}
-.teacher-hero h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.2rem; }
-.teacher-hero .sub { font-size: 0.82rem; color: #C9A84C; text-transform: uppercase; letter-spacing: 0.05em; }
-
-.exam-card {
-  background: #fff;
-  border: 1.5px solid #dee2e6;
-  border-radius: 2px;
-  margin-bottom: 1rem;
-  overflow: hidden;
-}
-.exam-card-head {
-  background: #f8f9fb;
-  border-bottom: 1px solid #e9ecef;
-  padding: 0.75rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-.exam-title { font-weight: 700; font-size: 0.95rem; color: #1B3A6B; }
-.exam-meta { font-size: 0.75rem; color: #888; }
-
-.subjects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.75rem;
-  padding: 1rem;
-}
-.subject-tile {
-  border: 1.5px solid #e9ecef;
-  border-radius: 2px;
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  transition: border-color 0.2s;
-}
-.subject-tile:hover { border-color: #1B3A6B; }
-.subject-tile.pending { border-left: 4px solid #C9A84C; background: #fffdf5; }
-.subject-tile.submitted { border-left: 4px solid #0056b3; background: #f0f7ff; }
-.subject-tile.approved { border-left: 4px solid #1a7a3b; background: #f0faf4; }
-
-.subject-tile .s-name { font-weight: 700; font-size: 0.88rem; color: #222; }
-.subject-tile .s-status { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-.s-status.pending { color: #7a5200; }
-.s-status.submitted { color: #0056b3; }
-.s-status.approved { color: #1a7a3b; }
-
-.s-teacher { font-size: 0.72rem; color: #888; }
-
-.btn-upload-sm {
-  background: #1B3A6B;
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.2rem 0.65rem;
-  border-radius: 2px;
-  text-decoration: none;
-  display: inline-block;
-  margin-top: 0.2rem;
-  border: 1px solid #C9A84C;
-}
-.btn-upload-sm:hover { background: #14305a; color: #C9A84C; }
-
-.btn-speech-sm {
-  background: #f4f6fb;
-  color: #1B3A6B;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.2rem 0.65rem;
-  border-radius: 2px;
-  text-decoration: none;
-  display: inline-block;
-  margin-top: 0.2rem;
-  border: 1px solid #c6d3ee;
-}
-.btn-speech-sm:hover { background: #e0e8f7; }
-
-.empty-state { text-align:center; padding:3rem 1rem; color:#999; font-size:0.9rem; }
-.section-sep { border-top: 1px solid #f0f2f5; padding-top: 0.5rem; margin-top: 0.5rem; }
-</style>
-
-<div class="teacher-hero">
-  <h1>Dashibodi ya Walimu</h1>
-  <div class="sub">Ona hali ya masomo yote &mdash; pakua alama za somo lako</div>
-</div>
-
-{% if exams_ctx %}
-  {% for ec in exams_ctx %}
-  <div class="exam-card">
-    <div class="exam-card-head">
-      <div>
-        <div class="exam-title">{{ ec.exam.name }}</div>
-        <div class="exam-meta">
-          {{ ec.exam.get_exam_type_display }} &bull; {{ ec.exam.year }} &bull; Form {{ ec.exam.form }}
-          {% if ec.exam.school_name %}&bull; {{ ec.exam.school_name }}{% endif %}
-        </div>
-      </div>
-      <div class="d-flex gap-2 flex-wrap">
-        {% if ec.pending %}
-        <span style="background:#fff8e6;border:1px solid #f0d07a;color:#7a5200;font-size:0.72rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:2px;">
-          &#9203; Bado: {{ ec.pending|length }}
-        </span>
-        {% endif %}
-        {% if ec.submitted %}
-        <span style="background:#e8f4ff;border:1px solid #b3d4f5;color:#0056b3;font-size:0.72rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:2px;">
-          &#8679; Imewasilishwa: {{ ec.submitted|length }}
-        </span>
-        {% endif %}
-        {% if ec.approved %}
-        <span style="background:#e6f7ec;border:1px solid #a3d9b4;color:#1a7a3b;font-size:0.72rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:2px;">
-          &#10003; Imeidhinishwa: {{ ec.approved|length }}
-        </span>
-        {% endif %}
-        <a href="{% url 'exam_overview' ec.exam.id %}" style="font-size:0.72rem;color:#1B3A6B;text-decoration:none;border:1px solid #dee2e6;padding:0.2rem 0.6rem;border-radius:2px;background:#fff;">
-          Tazama Yote
-        </a>
-      </div>
-    </div>
-
-    {% if ec.pending or ec.submitted or ec.approved %}
-    <div class="subjects-grid">
-      {% for sub in ec.pending %}
-      <div class="subject-tile pending">
-        <div class="s-name">{{ sub.subject.name }}</div>
-        <div class="s-status pending">&#9203; BADO — Inasubiri mwalimu</div>
-        <div class="d-flex gap-1 flex-wrap">
-          <a href="{% url 'subject_upload' ec.exam.id sub.subject.id %}" class="btn-upload-sm">
-            &#8679; Pakia Faili
-          </a>
-          <a href="{% url 'speech_entry_page' %}?exam={{ ec.exam.id }}&subject={{ sub.subject.id }}" class="btn-speech-sm">
-            &#127908; Sauti
-          </a>
-        </div>
-      </div>
-      {% endfor %}
-
-      {% for sub in ec.submitted %}
-      <div class="subject-tile submitted">
-        <div class="s-name">{{ sub.subject.name }}</div>
-        <div class="s-status submitted">&#8679; Imewasilishwa</div>
-        <div class="s-teacher">Mwalimu: {{ sub.submitted_by|default:"—" }}</div>
-        <div class="s-teacher">Wanafunzi: {{ sub.student_count }}</div>
-        {% if sub.submitted_at %}
-        <div class="s-teacher">{{ sub.submitted_at|date:"d M Y" }}</div>
-        {% endif %}
-        <a href="{{ sub.pdf_url }}" class="btn-upload-sm" target="_blank">&#128196; Generate Results (PDF)</a>
-      </div>
-      {% endfor %}
-
-      {% for sub in ec.approved %}
-      <div class="subject-tile approved">
-        <div class="s-name">{{ sub.subject.name }}</div>
-        <div class="s-status approved">&#10003; Imeidhinishwa</div>
-        <div class="s-teacher">Mwalimu: {{ sub.submitted_by|default:"—" }}</div>
-        <div class="s-teacher">Imeidhinishwa na: {{ sub.approved_by|default:"—" }}</div>
-        <a href="{{ sub.pdf_url }}" class="btn-upload-sm" target="_blank">&#128196; Generate Results (PDF)</a>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div style="padding:0.75rem 1rem;color:#aaa;font-size:0.82rem;">Hakuna masomo yaliyosajiliwa kwa mtihani huu.</div>
-    {% endif %}
+<section class="hero">
+  <div>
+    <h1 class="mb-1">Dashibodi ya Mwalimu</h1>
+    <p class="mb-0 text-secondary">Chagua hatua unayotaka kuchukua kwa somo lako.</p>
   </div>
-  {% endfor %}
-{% else %}
-<div class="empty-state">
-  <div style="font-size:2rem;margin-bottom:0.5rem;">&#128196;</div>
-  {% if has_subjects %}
-    Hakuna mtihani wenye masomo yako bado. Wasiliana na Afisa Taaluma kuhusu ratiba ya mtihani.
+
+  <div class="action-grid">
+    <a href="#masomo-rasmi" class="action-card">
+      <span class="icon">&#128228;</span>
+      <h3>Pakia kwa Mtaaluma</h3>
+      <p>Pakia alama za somo lako kwa mtihani rasmi wa shule. Baada ya kuwasilisha, Afisa Taaluma ataona na kuidhinisha.</p>
+    </a>
+    <a href="{% url 'personal_upload' %}" class="action-card gold">
+      <span class="icon">&#129518;</span>
+      <h3>Matokeo Binafsi</h3>
+      <p>Pakia alama zako mwenyewe (mf. mtihani wa mwezi) na upate PDF ya matokeo papo hapo — hauitaji mtihani rasmi.</p>
+    </a>
+    <a href="{% url 'speech_entry_page' %}" class="action-card">
+      <span class="icon">&#127908;</span>
+      <h3>Speech Entry</h3>
+      <p>Ingiza alama za somo lako kwa sauti badala ya kupakia faili.</p>
+    </a>
+  </div>
+</section>
+
+<div id="masomo-rasmi" class="mt-4">
+  <h2 style="font-family:'Sora',sans-serif;font-size:1.1rem;color:var(--ink-900);">Masomo ya Mitihani Rasmi</h2>
+  <p class="text-secondary" style="font-size:0.85rem;">Hali ya kila somo unalofundisha, kwa kila mtihani wa shule.</p>
+
+  {% if exams_ctx %}
+    {% for ec in exams_ctx %}
+    <div class="panel">
+      <div class="panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <div style="font-weight:700;color:var(--ink-900);">{{ ec.exam.name }}</div>
+          <div class="exam-meta">
+            {{ ec.exam.get_exam_type_display }} &bull; {{ ec.exam.year }} &bull; Form {{ ec.exam.form }}
+            {% if ec.exam.school_name %}&bull; {{ ec.exam.school_name }}{% endif %}
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          {% if ec.pending %}
+          <span class="badge-soft" style="background:var(--secondary-300);">&#9203; Bado: {{ ec.pending|length }}</span>
+          {% endif %}
+          {% if ec.submitted %}
+          <span class="badge-soft" style="background:#e8f4ff;color:#0056b3;">&#8679; Imewasilishwa: {{ ec.submitted|length }}</span>
+          {% endif %}
+          {% if ec.approved %}
+          <span class="badge-soft" style="background:#e6f7ec;color:var(--ok-500);">&#10003; Imeidhinishwa: {{ ec.approved|length }}</span>
+          {% endif %}
+          <a href="{% url 'exam_overview' ec.exam.id %}" class="btn-tile ghost">Tazama Yote</a>
+        </div>
+      </div>
+
+      {% if ec.pending or ec.submitted or ec.approved %}
+      <div class="panel-body">
+        <div class="subjects-grid">
+          {% for sub in ec.pending %}
+          <div class="subject-tile pending">
+            <div class="s-name">{{ sub.subject.name }}</div>
+            <div class="s-status pending">&#9203; BADO &mdash; Inasubiri mwalimu</div>
+            <div class="d-flex gap-1 flex-wrap">
+              <a href="{% url 'subject_upload' ec.exam.id sub.subject.id %}" class="btn-tile primary">&#8679; Pakia Faili</a>
+              <a href="{% url 'speech_entry_page' %}?exam={{ ec.exam.id }}&subject={{ sub.subject.id }}" class="btn-tile ghost">&#127908; Sauti</a>
+            </div>
+          </div>
+          {% endfor %}
+
+          {% for sub in ec.submitted %}
+          <div class="subject-tile submitted">
+            <div class="s-name">{{ sub.subject.name }}</div>
+            <div class="s-status submitted">&#8679; Imewasilishwa</div>
+            <div class="s-meta">Mwalimu: {{ sub.submitted_by|default:"—" }}</div>
+            <div class="s-meta">Wanafunzi: {{ sub.student_count }}</div>
+            {% if sub.submitted_at %}<div class="s-meta">{{ sub.submitted_at|date:"d M Y" }}</div>{% endif %}
+            <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; Generate Results (PDF)</a>
+          </div>
+          {% endfor %}
+
+          {% for sub in ec.approved %}
+          <div class="subject-tile approved">
+            <div class="s-name">{{ sub.subject.name }}</div>
+            <div class="s-status approved">&#10003; Imeidhinishwa</div>
+            <div class="s-meta">Mwalimu: {{ sub.submitted_by|default:"—" }}</div>
+            <div class="s-meta">Imeidhinishwa na: {{ sub.approved_by|default:"—" }}</div>
+            <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; Generate Results (PDF)</a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div class="panel-body text-secondary" style="font-size:0.82rem;">Hakuna masomo yaliyosajiliwa kwa mtihani huu.</div>
+      {% endif %}
+    </div>
+    {% endfor %}
   {% else %}
-    Hujapangiwa somo lolote bado. Wasiliana na Afisa Taaluma ili akusajili kwenye somo unalofundisha.
+  <div class="panel">
+    <div class="panel-body empty-state">
+      <div style="font-size:2rem;margin-bottom:0.5rem;">&#128196;</div>
+      {% if has_subjects %}
+        Hakuna mtihani wenye masomo yako bado. Wasiliana na Afisa Taaluma kuhusu ratiba ya mtihani.
+      {% else %}
+        Hujapangiwa somo lolote bado. Wasiliana na Afisa Taaluma ili akusajili kwenye somo unalofundisha.
+      {% endif %}
+    </div>
+  </div>
   {% endif %}
 </div>
-{% endif %}
 {% endblock %}

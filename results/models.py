@@ -225,6 +225,37 @@ class TeacherAccount(AbstractBaseUser):
         return self.has_usable_password()
 
 
+class PersonalUpload(models.Model):
+    """A private, ad-hoc scoresheet a teacher uploads for their own use.
+
+    Deliberately not linked to Exam/SubjectSubmission — it never feeds the
+    school's official/general results, it's just a quick way for a teacher
+    to turn a scoresheet into a results PDF for their own subject.
+    """
+    teacher = models.ForeignKey(TeacherAccount, on_delete=models.CASCADE, related_name='personal_uploads')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='personal_uploads')
+    title = models.CharField(max_length=150)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} — {self.subject} ({self.teacher})"
+
+
+class PersonalUploadResult(models.Model):
+    upload = models.ForeignKey(PersonalUpload, on_delete=models.CASCADE, related_name='results')
+    student_name = models.CharField(max_length=200)
+    score = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ['-score']
+
+    def __str__(self):
+        return f"{self.student_name}: {self.score}"
+
+
 class SpeechSubmissionSession(models.Model):
     STATUS_OPEN = 'OPEN'
     STATUS_FINALIZED = 'FINALIZED'

@@ -90,6 +90,37 @@ def get_grade(score):
     return "F"
 
 
+def parse_name_score_sheet(uploaded_file) -> list[tuple[str, int]]:
+    """Parse a simple 'Name, Score' CSV/Excel sheet for ad-hoc/personal uploads."""
+    data_frame = load_results_dataframe(uploaded_file)
+    col_lower = {str(c).strip().lower(): c for c in data_frame.columns}
+
+    name_col = next(
+        (col_lower[k] for k in ('name', 'jina', 'full name', 'jina kamili', 'student', 'jina la mwanafunzi') if k in col_lower),
+        data_frame.columns[0],
+    )
+    score_col = next(
+        (col_lower[k] for k in ('score', 'alama', 'marks', 'mark', 'result') if k in col_lower),
+        None,
+    )
+    if score_col is None:
+        numeric_cols = [c for c in data_frame.columns if pd.to_numeric(data_frame[c], errors='coerce').notna().any()]
+        score_col = numeric_cols[-1] if numeric_cols else None
+    if score_col is None:
+        raise ValidationError("Hakuna safu ya alama iliyopatikana. Tumia jina kama 'Score' au 'Alama'.")
+
+    rows: list[tuple[str, int]] = []
+    for _, row in data_frame.iterrows():
+        name = str(row.get(name_col, '')).strip()
+        if not name or name in ('nan', 'None'):
+            continue
+        score = parse_score(row.get(score_col))
+        if score is None:
+            continue
+        rows.append((name, score))
+    return rows
+
+
 def get_division(points):
     if points <= 17:
         return "I"

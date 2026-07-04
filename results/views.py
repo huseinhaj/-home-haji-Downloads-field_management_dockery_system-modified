@@ -7,18 +7,20 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
 
+from django.core.exceptions import ValidationError
+
 from .forms import ExamUploadForm
-from .models import Exam, ExamResult, School, SchoolSubject, Student, Subject, SubjectSubmission
+from .models import Exam, ExamResult, PersonalUpload, PersonalUploadResult, School, SchoolSubject, Student, Subject, SubjectSubmission
 from .permissions import academic_required, results_login_required as login_required, teacher_required
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
 from .services.pdf_export_service import generate_results_pdf_response
-from .services.subject_pdf_service import generate_subject_pdf_response
+from .services.subject_pdf_service import generate_personal_pdf_response, generate_subject_pdf_response
 from .services.upload_processing_service import (
     UploadProcessingError,
     process_uploaded_results,
     recompute_processed_results_for_exam,
 )
-from .utils import normalize_gender, parse_score
+from .utils import normalize_gender, parse_name_score_sheet, parse_score
 
 _EXAM_TYPE_CHOICES = Exam.EXAM_TYPE_CHOICES
 
@@ -997,3 +999,60 @@ def teacher_dashboard(request):
         'exams_ctx': exams_ctx,
         'has_subjects': bool(teacher_subject_ids),
     })
+
+
+# ── Personal (Binafsi) Upload — private scratch tool, not part of the official exam ──
+
+@teacher_required
+def personal_upload(request):
+    """Mwalimu anapakia alama za somo lake mwenyewe na kupata PDF papo hapo.
+
+    Hii haihitaji Mtihani (Exam) uliotengenezwa na Afisa Taaluma, na
+    haiathiri matokeo ya jumla ya shule kwa vyovyote vile.
+    """
+    teacher_subjects = request.user.subjects.all().order_by('name')
+    recent_uploads = PersonalUpload.objects.filter(teacher=request.user).select_related('subject')[:10]
+
+    if request.method == 'POST':
+        subject_id = request.POST.get('subject_id')
+        title = request.POST.get('title', '').strip() or 'Matokeo Binafsi'
+        uploaded_file = request.FILES.get('file')
+
+        subject = teacher_subjects.filter(pk=subject_id).first()
+        if not subject:
+            messages.error(request, "Chagua somo unalofundisha.")
+            return redirect('personal_upload')
+        if not uploaded_file:
+            messages.error(request, "Hakuna faili lililochaguliwa.")
+            return redirect('personal_upload')
+
+        try:
+            rows = parse_name_score_sheet(uploaded_file)
+        except ValidationError as e:
+            messages.error(request, str(e))
+            return redirect('personal_upload')
+        except Exception as e:
+            messages.error(request, f"Hitilafu ya faili: {e}")
+            return redirect('personal_upload')
+
+        if not rows:
+            messages.error(request, "Hakuna wanafunzi waliopatikana kwenye faili.")
+            return redirect('personal_upload')
+
+        upload = PersonalUpload.objects.create(teacher=request.user, subject=subject, title=title)
+        PersonalUploadResult.objects.bulk_create([
+            PersonalUploadResult(upload=upload, student_name=name, score=score) for name, score in rows
+        ])
+        messages.success(request, f"Alama {len(rows)} zimepakiwa. Pakua PDF ya matokeo hapa chini.")
+        return redirect('personal_upload')
+
+    return render(request, 'results/personal_upload.html', {
+        'teacher_subjects': teacher_subjects,
+        'recent_uploads': recent_uploads,
+    })
+
+
+@teacher_required
+def personal_upload_pdf(request, upload_id):
+    upload = get_object_or_404(PersonalUpload, id=upload_id, teacher=request.user)
+    return generate_personal_pdf_response(upload)

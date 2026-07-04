@@ -20,6 +20,8 @@ from .views import (
     school_subjects,
     create_exam_for_school,
     teacher_dashboard,
+    personal_upload,
+    personal_upload_pdf,
 )
 from .speech_views import (
     confirm_speech_candidate,
@@ -59,6 +61,9 @@ urlpatterns = [
     path('school/<int:school_id>/create-exam/', create_exam_for_school, name='create_exam_for_school'),
     # Teacher dashboard
     path('teacher/', teacher_dashboard, name='teacher_dashboard'),
+    # Personal (binafsi) upload — private, not tied to any official exam
+    path('binafsi/', personal_upload, name='personal_upload'),
+    path('binafsi/<int:upload_id>/pdf/', personal_upload_pdf, name='personal_upload_pdf'),
     # Speech entry
     path('speech/', speech_entry_page, name='speech_entry_page'),
     path('speech-sessions/', create_speech_session, name='create_speech_session'),

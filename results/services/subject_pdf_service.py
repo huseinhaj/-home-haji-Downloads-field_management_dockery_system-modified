@@ -84,15 +84,51 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '') -> Http
             'grade': grade,
         })
 
+    safe_subject = subject.name.replace(' ', '_').replace('/', '-')
+    meta_parts = [p for p in [exam.school_name, str(exam), f"Teacher: {teacher_name}" if teacher_name else ''] if p]
+
+    return _render_results_pdf(
+        heading=subject.name.upper(),
+        meta_parts=meta_parts,
+        rows_data=rows_data,
+        filename_stub=f"{safe_subject}_{exam.id}_results",
+    )
+
+
+def generate_personal_pdf_response(upload) -> HttpResponse:
+    """Generate the same-style PDF for a teacher's private (non-official) upload."""
+    results = list(upload.results.order_by('-score', 'student_name'))
+    rows_data = []
+    for pos, result in enumerate(results, 1):
+        rows_data.append({
+            'position': pos,
+            'name': result.student_name,
+            'score': result.score,
+            'grade': _score_to_grade(result.score),
+        })
+
+    teacher_label = upload.teacher.full_name or upload.teacher.email
+    meta_parts = [f"Somo: {upload.subject.name}", f"Mwalimu: {teacher_label}", upload.created_at.strftime('%d %b %Y')]
+    safe_title = upload.title.replace(' ', '_').replace('/', '-') or 'matokeo'
+
+    return _render_results_pdf(
+        heading=upload.title.upper(),
+        meta_parts=meta_parts,
+        rows_data=rows_data,
+        filename_stub=f"binafsi_{safe_title}_{upload.id}",
+    )
+
+
+def _render_results_pdf(*, heading: str, meta_parts: list[str], rows_data: list[dict], filename_stub: str) -> HttpResponse:
+    """Shared A4 PDF renderer: position/name/score/grade table + summary stats."""
+
     total_students = len(rows_data)
     pass_count = sum(1 for r in rows_data if r['score'] >= PASS_SCORE)
     pass_rate = round((pass_count / total_students * 100), 1) if total_students else 0
     class_avg = round(sum(r['score'] for r in rows_data) / total_students, 1) if total_students else 0
 
-    # Build PDF
     response = HttpResponse(content_type='application/pdf')
-    safe_subject = subject.name.replace(' ', '_').replace('/', '-')
-    response['Content-Disposition'] = f'attachment; filename="{safe_subject}_{exam.id}_results.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="{filename_stub}.pdf"'
 
     if not REPORTLAB_AVAILABLE:
         response.write(b"reportlab is not installed. Cannot generate PDF.")
@@ -146,12 +182,8 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '') -> Http
     story = []
 
     # --- Header banner ---
-    school_line = exam.school_name if exam.school_name else ''
-    exam_line = str(exam)
-    teacher_line = f"Teacher: {teacher_name}" if teacher_name else ''
-
     header_table_data = [[
-        Paragraph(subject.name.upper(), title_style),
+        Paragraph(heading, title_style),
         '',
     ]]
     header_table = Table(header_table_data, colWidths=['100%'])
@@ -167,13 +199,6 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '') -> Http
     story.append(Spacer(1, 0.3 * cm))
 
     # Meta info row
-    meta_parts = []
-    if school_line:
-        meta_parts.append(school_line)
-    meta_parts.append(exam_line)
-    if teacher_line:
-        meta_parts.append(teacher_line)
-
     meta_text = '   |   '.join(meta_parts)
     story.append(Paragraph(meta_text, label_style))
     story.append(Spacer(1, 0.4 * cm))
