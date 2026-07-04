@@ -82,6 +82,7 @@ class TeacherAccountAdmin(admin.ModelAdmin):
     filter_horizontal = ('subjects',)
     readonly_fields = ('password', 'last_login')
     autocomplete_fields = ('school',)
+    actions = ['reset_password']
 
     def save_model(self, request, obj, form, change):
         # New accounts created here (e.g. a school's first Academic, added
@@ -91,6 +92,17 @@ class TeacherAccountAdmin(admin.ModelAdmin):
         if not change:
             obj.set_unusable_password()
         super().save_model(request, obj, form, change)
+
+    @admin.action(description="Reset password (they set a new one on next login)")
+    def reset_password(self, request, queryset):
+        for account in queryset:
+            account.set_unusable_password()
+            account.save(update_fields=['password'])
+        self.message_user(
+            request,
+            f"Password imeondolewa kwa akaunti {queryset.count()}. Waambie waingie na email yao "
+            "kwenye /shule/ingia/ — mfumo utawataka waweke password mpya.",
+        )
 
 
 class SchoolAdmin(admin.ModelAdmin):
