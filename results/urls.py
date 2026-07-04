@@ -1,5 +1,11 @@
 from django.urls import path
 from .auth_views import results_login, results_logout, manage_teachers
+from .registration_views import (
+    ajax_districts,
+    ajax_schools,
+    register_school_confirm,
+    register_school_start,
+)
 from .views import (
     home,
     upload_results,
@@ -39,6 +45,11 @@ urlpatterns = [
     # Results-app-only authentication (separate from field_app student login)
     path('ingia/', results_login, name='results_login'),
     path('toka/', results_logout, name='results_logout'),
+    # Self-service registration: pick Region -> District -> School nationwide
+    path('jiunge/', register_school_start, name='register_school_start'),
+    path('jiunge/wilaya/', ajax_districts, name='ajax_districts'),
+    path('jiunge/shule/', ajax_schools, name='ajax_schools'),
+    path('jiunge/thibitisha/', register_school_confirm, name='register_school_confirm'),
     path('walimu/', manage_teachers, name='manage_teachers'),
     path('', home, name='home'),
     path('upload/', upload_results, name='upload_results'),

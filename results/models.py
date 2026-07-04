@@ -11,6 +11,11 @@ class School(models.Model):
     name = models.CharField(max_length=200)
     region = models.CharField(max_length=100)
     district = models.CharField(max_length=100)
+    source_school_id = models.PositiveIntegerField(
+        null=True, blank=True, unique=True,
+        help_text="PK of the matching field_app.School record (nationwide master list). "
+                  "Used so self-registration never creates a duplicate row for the same school.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

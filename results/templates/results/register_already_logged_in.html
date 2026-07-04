@@ -1,0 +1,14 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Umeshaingia{% else %}Already Logged In{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<div class="panel mt-4">
+  <div class="panel-body text-center">
+    <p class="text-secondary">
+      {% if LANG == 'sw' %}Umeshaingia kwenye mfumo. Toka kwanza ukitaka kusajili shule nyingine.
+      {% else %}You're already logged in. Log out first if you want to register another school.{% endif %}
+    </p>
+    <a href="{% url 'home' %}" class="btn btn-brand">{% if LANG == 'sw' %}Rudi Nyumbani{% else %}Back Home{% endif %}</a>
+  </div>
+</div>
+{% endblock %}

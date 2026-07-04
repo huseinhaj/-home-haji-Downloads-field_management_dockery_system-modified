@@ -82,6 +82,12 @@ class TeacherAccountAdmin(admin.ModelAdmin):
     filter_horizontal = ('subjects',)
     readonly_fields = ('password', 'last_login')
     autocomplete_fields = ('school',)
+    actions = ['approve_accounts']
+
+    @admin.action(description="Approve selected accounts (activate self-registered academics)")
+    def approve_accounts(self, request, queryset):
+        updated = queryset.update(is_active=True)
+        self.message_user(request, f"{updated} account(s) approved.")
 
 
 class SchoolAdmin(admin.ModelAdmin):

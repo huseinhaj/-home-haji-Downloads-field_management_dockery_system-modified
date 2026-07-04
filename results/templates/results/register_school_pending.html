@@ -1,0 +1,23 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Usajili Umepokelewa{% else %}Registration Received{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<div class="panel mt-4">
+  <div class="panel-body text-center">
+    <div style="font-size:2.5rem;margin-bottom:0.5rem;">✅</div>
+    <h3 style="font-family:'Sora',sans-serif;color:var(--accent-500);">
+      {% if LANG == 'sw' %}Usajili wa {{ school.name }} Umepokelewa{% else %}Registration for {{ school.name }} Received{% endif %}
+    </h3>
+    <p class="text-secondary">
+      {% if LANG == 'sw' %}
+      Akaunti yako ({{ email }}) kama Afisa Taaluma wa shule hii inasubiri idhini ya Msimamizi wa Mfumo kabla hujaweza kuingia.
+      Utaarifiwa/utaweza kuingia mara akaunti yako itakapoidhinishwa.
+      {% else %}
+      Your account ({{ email }}) as this school's Academic officer is waiting on approval from the System Administrator before you can log in.
+      You'll be able to log in once your account is approved.
+      {% endif %}
+    </p>
+    <a href="{% url 'results_login' %}" class="btn btn-brand mt-2">{% if LANG == 'sw' %}Rudi kwenye Kuingia{% else %}Back to Login{% endif %}</a>
+  </div>
+</div>
+{% endblock %}
