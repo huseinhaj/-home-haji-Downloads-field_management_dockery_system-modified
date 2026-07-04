@@ -274,7 +274,12 @@ def subject_upload(request, exam_id, subject_id):
             if score_col is None:
                 raise UploadProcessingError("Hakuna safu ya alama iliyopatikana. Tumia jina kama 'Score' au 'Alama'.")
 
-            saved_count = 0
+            # Parse every row first without touching the database, then do
+            # the whole upload in a handful of bulk queries instead of two
+            # round trips per student — with a remote DB, per-row
+            # get_or_create/update_or_create made a 20-student file take
+            # over a minute; this brings it down to a few queries total.
+            parsed_rows = []
             for _, row in df.iterrows():
                 first_name = str(row.get('First Name', row.get('first_name', ''))).strip()
                 last_name = str(row.get('Last Name', row.get('last_name', ''))).strip()
@@ -287,21 +292,44 @@ def subject_upload(request, exam_id, subject_id):
                 if score_val is None:
                     continue
 
-                gender = normalize_gender(gender_raw)
+                parsed_rows.append((first_name, last_name or 'Unknown', normalize_gender(gender_raw), score_val))
 
-                student, _ = Student.objects.get_or_create(
-                    first_name=first_name,
-                    last_name=last_name or 'Unknown',
-                    defaults={'gender': gender},
-                )
+            saved_count = 0
+            if parsed_rows:
+                from django.db.models import Q
 
-                ExamResult.objects.update_or_create(
-                    exam=exam,
-                    student=student,
-                    subject=subject,
-                    defaults={'score': score_val},
+                name_pairs = {(fn, ln) for fn, ln, _, _ in parsed_rows}
+                name_filter = Q()
+                for fn, ln in name_pairs:
+                    name_filter |= Q(first_name=fn, last_name=ln)
+
+                student_map = {(s.first_name, s.last_name): s for s in Student.objects.filter(name_filter)}
+
+                new_students = []
+                seen = set()
+                for fn, ln, gender, _ in parsed_rows:
+                    key = (fn, ln)
+                    if key not in student_map and key not in seen:
+                        seen.add(key)
+                        new_students.append(Student(first_name=fn, last_name=ln, gender=gender))
+                if new_students:
+                    Student.objects.bulk_create(new_students)
+                    student_map = {(s.first_name, s.last_name): s for s in Student.objects.filter(name_filter)}
+
+                exam_results = []
+                for fn, ln, _, score_val in parsed_rows:
+                    student = student_map.get((fn, ln))
+                    if not student:
+                        continue
+                    exam_results.append(ExamResult(exam=exam, student=student, subject=subject, score=score_val))
+                    saved_count += 1
+
+                ExamResult.objects.bulk_create(
+                    exam_results,
+                    update_conflicts=True,
+                    unique_fields=['exam', 'student', 'subject'],
+                    update_fields=['score'],
                 )
-                saved_count += 1
 
             if saved_count == 0:
                 messages.error(

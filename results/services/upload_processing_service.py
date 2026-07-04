@@ -36,6 +36,10 @@ def process_uploaded_results(exam, uploaded_file):
         subject, _ = Subject.objects.get_or_create(name=normalized_name)
         subjects_by_column[column_name] = subject
 
+    # Parse every row first, then do the whole upload in a handful of bulk
+    # queries instead of one-plus-one-per-subject round trips per student —
+    # with a remote DB that made even a small file painfully slow to upload.
+    parsed_students = []
     for _, row in data_frame.iterrows():
         first_name = str(row.get('First Name', '')).strip() or 'Unknown'
         middle_name = str(row.get('Middle Name', '')).strip() if 'Middle Name' in data_frame.columns else ''
@@ -44,25 +48,52 @@ def process_uploaded_results(exam, uploaded_file):
         if not (first_name or middle_name or last_name):
             continue
 
-        student, _ = Student.objects.get_or_create(
-            first_name=first_name,
-            last_name=last_name,
-            defaults={
-                'middle_name': middle_name,
-                'gender': normalize_gender(row.get('Gender', '')),
-            },
-        )
-
+        gender = normalize_gender(row.get('Gender', ''))
+        row_scores = {}
         for column_name, subject in subjects_by_column.items():
             score = parse_score(row.get(column_name))
-            if score is None:
-                continue
+            if score is not None:
+                row_scores[column_name] = score
 
-            ExamResult.objects.update_or_create(
-                exam=exam,
-                student=student,
-                subject=subject,
-                defaults={'score': score},
+        parsed_students.append((first_name, middle_name, last_name, gender, row_scores))
+
+    if parsed_students:
+        from django.db.models import Q
+
+        name_pairs = {(fn, ln) for fn, _, ln, _, _ in parsed_students}
+        name_filter = Q()
+        for fn, ln in name_pairs:
+            name_filter |= Q(first_name=fn, last_name=ln)
+
+        student_map = {(s.first_name, s.last_name): s for s in Student.objects.filter(name_filter)}
+
+        new_students = []
+        seen = set()
+        for fn, mn, ln, gender, _ in parsed_students:
+            key = (fn, ln)
+            if key not in student_map and key not in seen:
+                seen.add(key)
+                new_students.append(Student(first_name=fn, middle_name=mn, last_name=ln, gender=gender))
+        if new_students:
+            Student.objects.bulk_create(new_students)
+            student_map = {(s.first_name, s.last_name): s for s in Student.objects.filter(name_filter)}
+
+        exam_results = []
+        for fn, mn, ln, gender, row_scores in parsed_students:
+            student = student_map.get((fn, ln))
+            if not student:
+                continue
+            for column_name, score in row_scores.items():
+                exam_results.append(
+                    ExamResult(exam=exam, student=student, subject=subjects_by_column[column_name], score=score)
+                )
+
+        if exam_results:
+            ExamResult.objects.bulk_create(
+                exam_results,
+                update_conflicts=True,
+                unique_fields=['exam', 'student', 'subject'],
+                update_fields=['score'],
             )
 
     recompute_processed_results_for_exam(exam)
@@ -125,16 +156,26 @@ def recompute_processed_results_for_exam(exam):
 
     student_data.sort(key=lambda item: item['total'], reverse=True)
 
-    for position, data in enumerate(student_data, start=1):
-        ProcessedResult.objects.update_or_create(
+    # One bulk upsert instead of one update_or_create per student — the
+    # remote DB's per-query latency made this the slowest part of an
+    # upload for exams with more than a handful of students.
+    processed_results = [
+        ProcessedResult(
             exam=exam,
             student=data['student'],
-            defaults={
-                'total_score': data['total'],
-                'average_score': round(data['average'], 2),
-                'points': data['points'],
-                'division': data['division'],
-                'position': position,
-                'counted_subjects': data['counted_subjects'],
-            },
+            total_score=data['total'],
+            average_score=round(data['average'], 2),
+            points=data['points'],
+            division=data['division'],
+            position=position,
+            counted_subjects=data['counted_subjects'],
+        )
+        for position, data in enumerate(student_data, start=1)
+    ]
+    if processed_results:
+        ProcessedResult.objects.bulk_create(
+            processed_results,
+            update_conflicts=True,
+            unique_fields=['exam', 'student'],
+            update_fields=['total_score', 'average_score', 'points', 'division', 'position', 'counted_subjects'],
         )
