@@ -1,16 +1,16 @@
 {% extends 'results/base.html' %}
 {% load static %}
-{% block title %}{% if LANG == 'sw' %}Jiunge na Shule Yako{% else %}Join Your School{% endif %} | School Results{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Tafuta Shule Yako{% else %}Find Your School{% endif %} | School Results{% endblock %}
 
 {% block content %}
 <section class="hero">
   <div>
-    <h1 class="mb-1">{% if LANG == 'sw' %}Jiunge na Shule Yako{% else %}Join Your School{% endif %}</h1>
+    <h1 class="mb-1">{% if LANG == 'sw' %}Tafuta Shule Yako{% else %}Find Your School{% endif %}</h1>
     <p class="mb-0 text-secondary">
       {% if LANG == 'sw' %}
-      Chagua Mkoa, Wilaya, kisha Shule yako ya Sekondari. Ukiwa wa kwanza kujisajili kwa shule hiyo, utakuwa Afisa Taaluma (Academic) wake.
+      Chagua Mkoa, Wilaya, kisha Shule yako ya Sekondari kuona kama tayari ipo kwenye mfumo.
       {% else %}
-      Pick your Region, District, then your Secondary School. If you're the first to register for that school, you'll become its Academic officer.
+      Pick your Region, District, then your Secondary School to see if it's already set up in the system.
       {% endif %}
     </p>
   </div>
@@ -28,7 +28,7 @@
   <div class="panel-body form-shell">
     <form method="post" action="{% url 'register_school_confirm' %}" id="registerForm">
       {% csrf_token %}
-      <input type="hidden" name="school_id" id="schoolIdInput" value="{% if preselect_school %}{{ preselect_school.id }}{% endif %}">
+      <input type="hidden" name="school_id" id="schoolIdInput">
 
       <div class="row g-2">
         <div class="col-md-4">
@@ -37,7 +37,7 @@
             <select id="regionSelect" class="form-select" required>
               <option value="">{% if LANG == 'sw' %}-- Chagua Mkoa --{% else %}-- Select Region --{% endif %}</option>
               {% for r in regions %}
-              <option value="{{ r.id }}" {% if preselect_region_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+              <option value="{{ r.id }}">{{ r.name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -55,40 +55,12 @@
             <label>{% if LANG == 'sw' %}Shule (Sekondari){% else %}School (Secondary){% endif %}</label>
             <select id="schoolSelect" class="form-select" required disabled>
               <option value="">{% if LANG == 'sw' %}-- Chagua Shule --{% else %}-- Select School --{% endif %}</option>
-              {% if preselect_school %}<option value="{{ preselect_school.id }}" selected>{{ preselect_school.name }}</option>{% endif %}
             </select>
           </div>
         </div>
       </div>
 
-      <div id="regFields" style="{% if not preselect_school %}display:none;{% endif %}" class="mt-3">
-        <hr>
-        <div class="field">
-          <label>{% if LANG == 'sw' %}Barua pepe{% else %}Email{% endif %}</label>
-          <input type="email" name="email" class="form-control" value="{{ email|default:'' }}" required>
-        </div>
-        <div class="field">
-          <label>{% if LANG == 'sw' %}Jina Kamili{% else %}Full Name{% endif %}</label>
-          <input type="text" name="full_name" class="form-control" value="{{ full_name|default:'' }}" required>
-        </div>
-        <div class="field">
-          <label>{% if LANG == 'sw' %}Namba ya Simu ya Idhini (Admin){% else %}Admin Authorization Phone Number{% endif %}</label>
-          <input type="tel" name="admin_phone" class="form-control" required>
-          <div class="hint mt-1">
-            {% if LANG == 'sw' %}Omba namba hii kwa msimamizi wa mfumo — inathibitisha una ruhusa ya kuwa Academic wa shule hii.
-            {% else %}Ask the system administrator for this number — it confirms you're authorized to become this school's Academic.{% endif %}
-          </div>
-        </div>
-        <div class="field">
-          <label>Password</label>
-          <input type="password" name="password1" class="form-control" required>
-        </div>
-        <div class="field">
-          <label>{% if LANG == 'sw' %}Thibitisha Password{% else %}Confirm Password{% endif %}</label>
-          <input type="password" name="password2" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-brand w-100">{% if LANG == 'sw' %}Jisajili{% else %}Register{% endif %}</button>
-      </div>
+      <button type="submit" id="submitBtn" class="btn btn-brand w-100 mt-3" disabled>{% if LANG == 'sw' %}Endelea{% else %}Continue{% endif %}</button>
     </form>
   </div>
 </div>
@@ -106,7 +78,7 @@
   const districtSelect = document.getElementById('districtSelect');
   const schoolSelect = document.getElementById('schoolSelect');
   const schoolIdInput = document.getElementById('schoolIdInput');
-  const regFields = document.getElementById('regFields');
+  const submitBtn = document.getElementById('submitBtn');
 
   function resetSelect(select, placeholder) {
     select.innerHTML = `<option value="">${placeholder}</option>`;
@@ -114,10 +86,10 @@
   }
 
   regionSelect.addEventListener('change', async () => {
-    resetSelect(districtSelect, districtSelect.dataset.placeholder || districtSelect.options[0].text);
-    resetSelect(schoolSelect, schoolSelect.dataset.placeholder || schoolSelect.options[0].text);
+    resetSelect(districtSelect, '-- {% if LANG == "sw" %}Chagua Wilaya{% else %}Select District{% endif %} --');
+    resetSelect(schoolSelect, '-- {% if LANG == "sw" %}Chagua Shule{% else %}Select School{% endif %} --');
     schoolIdInput.value = '';
-    regFields.style.display = 'none';
+    submitBtn.disabled = true;
     if (!regionSelect.value) return;
 
     const resp = await fetch(`{% url 'ajax_districts' %}?region_id=${regionSelect.value}`);
@@ -128,9 +100,9 @@
   });
 
   districtSelect.addEventListener('change', async () => {
-    resetSelect(schoolSelect, schoolSelect.dataset.placeholder || schoolSelect.options[0].text);
+    resetSelect(schoolSelect, '-- {% if LANG == "sw" %}Chagua Shule{% else %}Select School{% endif %} --');
     schoolIdInput.value = '';
-    regFields.style.display = 'none';
+    submitBtn.disabled = true;
     if (!districtSelect.value) return;
 
     const resp = await fetch(`{% url 'ajax_schools' %}?district_id=${districtSelect.value}`);
@@ -142,7 +114,7 @@
 
   schoolSelect.addEventListener('change', () => {
     schoolIdInput.value = schoolSelect.value;
-    regFields.style.display = schoolSelect.value ? 'block' : 'none';
+    submitBtn.disabled = !schoolSelect.value;
   });
 })();
 </script>

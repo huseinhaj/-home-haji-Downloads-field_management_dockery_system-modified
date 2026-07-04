@@ -82,12 +82,15 @@ class TeacherAccountAdmin(admin.ModelAdmin):
     filter_horizontal = ('subjects',)
     readonly_fields = ('password', 'last_login')
     autocomplete_fields = ('school',)
-    actions = ['approve_accounts']
 
-    @admin.action(description="Approve selected accounts (activate self-registered academics)")
-    def approve_accounts(self, request, queryset):
-        updated = queryset.update(is_active=True)
-        self.message_user(request, f"{updated} account(s) approved.")
+    def save_model(self, request, obj, form, change):
+        # New accounts created here (e.g. a school's first Academic, added
+        # after they contact the system admin) get no usable password —
+        # they activate themselves the normal way, by logging in with this
+        # email for the first time and setting their own password.
+        if not change:
+            obj.set_unusable_password()
+        super().save_model(request, obj, form, change)
 
 
 class SchoolAdmin(admin.ModelAdmin):

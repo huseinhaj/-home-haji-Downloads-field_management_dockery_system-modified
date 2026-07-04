@@ -107,6 +107,7 @@
           {% if request.user.is_authenticated and request.user.school %}{{ request.user.school.region }}, Tanzania{% else %}{% if LANG == 'sw' %}Jamhuri ya Muungano wa Tanzania{% else %}United Republic of Tanzania{% endif %}{% endif %}
           &bull; School Results System &copy; {% now "Y" %}
         </span>
+        <span>{% if LANG == 'sw' %}Msaada{% else %}Support{% endif %}: <a href="tel:{{ SUPPORT_PHONE }}" style="color:inherit;">{{ SUPPORT_PHONE }}</a></span>
       </div>
     </div>
   </footer>

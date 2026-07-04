@@ -2,6 +2,11 @@
 # copy in our own static files.
 TZ_EMBLEM_URL = "https://upload.wikimedia.org/wikipedia/commons/c/c2/Coat_of_arms_of_Tanzania.svg"
 
+# Published contact number academics across every school can use to reach
+# the system administrator (also shown in registration_views.py's
+# school-needs-an-academic page).
+SUPPORT_PHONE = "0625607088"
+
 
 def branding(request):
     """Per-district branding for the masthead/header/footer.
@@ -19,4 +24,5 @@ def branding(request):
         'DISTRICT_NAME': district,
         'IS_KYERWA': is_kyerwa,
         'TZ_EMBLEM_URL': TZ_EMBLEM_URL,
+        'SUPPORT_PHONE': SUPPORT_PHONE,
     }

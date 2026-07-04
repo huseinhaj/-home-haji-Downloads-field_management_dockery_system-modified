@@ -1,40 +1,29 @@
-"""registration_views.py — Self-service onboarding for a new school.
+"""registration_views.py — School discovery for onboarding a new school.
 
 Lets anyone browse the nationwide Region -> District -> School list
 (the same master data used by the internship/field_app side of this
-project) and register as the first Academic officer for their school,
-without a system administrator having to pre-create every school by
-hand. Registration requires the system administrator's authorization
-phone number as a shared passcode — anyone who knows it (because the
-admin gave it to them) is auto-activated immediately; without it, no
-account is created at all. This keeps the flow fully automatic (no
-manual Django-admin approval step) while still preventing a random
-stranger from claiming a school that isn't theirs.
+project) to find their school and check whether it already has an
+Academic officer registered.
+
+Accounts themselves are NOT created here. The system administrator
+adds each school's first Academic manually in Django admin (using
+TeacherAccount.objects.create_pending, same as an Academic adding
+their own teachers) after the person contacts the admin directly using
+the published support phone number. The Academic then activates their
+own account the normal way, by logging in with that email for the
+first time and setting their own password.
 """
 
 from __future__ import annotations
 
-import re
-
-from django.contrib import messages
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 
 from field_app.models import District, Region
 from field_app.models import School as SourceSchool
 
+from .context_processors import SUPPORT_PHONE
 from .models import School, TeacherAccount
-
-# Shared authorization passcode for becoming a school's first Academic
-# officer. Whoever the system administrator shares this number with can
-# self-register and is activated immediately.
-ADMIN_AUTHORIZATION_PHONE = "0625607088"
-
-
-def _normalize_phone(value: str) -> str:
-    return re.sub(r"\D", "", value or "")
 
 
 def register_school_start(request):
@@ -42,7 +31,7 @@ def register_school_start(request):
         return render(request, 'results/register_already_logged_in.html')
 
     regions = Region.objects.order_by('name')
-    return render(request, 'results/register_school.html', {'regions': regions})
+    return render(request, 'results/register_school.html', {'regions': regions, 'support_phone': SUPPORT_PHONE})
 
 
 def ajax_districts(request):
@@ -69,7 +58,9 @@ def _mask_email(email: str) -> str:
 
 def _get_or_create_school(source_school):
     """Mirror a field_app.School into the results app's own School table,
-    keyed by source_school_id so repeat registrations never duplicate it."""
+    keyed by source_school_id so repeat lookups never duplicate it. This
+    makes the school immediately available for the admin to pick in
+    Django admin, without waiting for anyone to have registered yet."""
     school, _ = School.objects.get_or_create(
         source_school_id=source_school.id,
         defaults={
@@ -82,23 +73,20 @@ def _get_or_create_school(source_school):
 
 
 def register_school_confirm(request):
+    """POST: the visitor picked a school. Show whether it already has an
+    Academic (contact them) or needs one set up (contact the admin)."""
     if request.user.is_authenticated:
         return render(request, 'results/register_already_logged_in.html')
 
     if request.method != 'POST':
-        return render(request, 'results/register_school.html', {'regions': Region.objects.order_by('name')})
+        return render(request, 'results/register_school.html', {
+            'regions': Region.objects.order_by('name'), 'support_phone': SUPPORT_PHONE,
+        })
 
     source_school_id = request.POST.get('school_id')
-    email = request.POST.get('email', '').strip().lower()
-    full_name = request.POST.get('full_name', '').strip()
-    admin_phone = request.POST.get('admin_phone', '')
-    password1 = request.POST.get('password1', '')
-    password2 = request.POST.get('password2', '')
-
     source_school = get_object_or_404(SourceSchool, id=source_school_id, level='Secondary')
     school = _get_or_create_school(source_school)
 
-    errors = []
     existing = TeacherAccount.objects.filter(school=school, role=TeacherAccount.ROLE_ACADEMIC).first()
     if existing:
         return render(request, 'results/register_school_exists.html', {
@@ -106,39 +94,7 @@ def register_school_confirm(request):
             'academic_email': _mask_email(existing.email),
         })
 
-    if _normalize_phone(admin_phone) != ADMIN_AUTHORIZATION_PHONE:
-        errors.append("Namba ya simu ya idhini si sahihi. Wasiliana na msimamizi wa mfumo kupata namba sahihi.")
-
-    if not email:
-        errors.append("Barua pepe inahitajika.")
-    elif TeacherAccount.objects.filter(email__iexact=email).exists():
-        errors.append("Barua pepe hii tayari ipo kwenye mfumo.")
-
-    if password1 != password2:
-        errors.append("Password hazifanani.")
-    else:
-        try:
-            validate_password(password1)
-        except ValidationError as exc:
-            errors.extend(exc.messages)
-
-    if errors:
-        for err in errors:
-            messages.error(request, err)
-        return render(request, 'results/register_school.html', {
-            'regions': Region.objects.order_by('name'),
-            'preselect_school': source_school,
-            'preselect_district_id': source_school.district_id,
-            'preselect_region_id': source_school.district.region_id,
-            'email': email,
-            'full_name': full_name,
-        })
-
-    account = TeacherAccount(
-        email=email, full_name=full_name, role=TeacherAccount.ROLE_ACADEMIC,
-        school=school, is_active=True,
-    )
-    account.set_password(password1)
-    account.save()
-
-    return render(request, 'results/register_school_success.html', {'school': school, 'email': email})
+    return render(request, 'results/register_school_contact_admin.html', {
+        'school': school,
+        'support_phone': SUPPORT_PHONE,
+    })
