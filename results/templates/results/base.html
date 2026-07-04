@@ -10,17 +10,27 @@
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'results/styles.css' %}">
-  <link rel="icon" href="{% static 'results/img/kyerwa_logo.jpg' %}">
+  <link rel="icon" href="{% if IS_KYERWA %}{% static 'results/img/kyerwa_logo.jpg' %}{% else %}{% static 'results/img/generic_emblem.svg' %}{% endif %}">
 </head>
 <body>
   <div class="site-bg"></div>
 
   <div class="masthead">
+    {% if IS_KYERWA %}
     <img class="masthead-logo" src="{% static 'results/img/kyerwa_logo.jpg' %}" alt="Kyerwa DC">
+    {% else %}
+    <img class="masthead-logo" src="{% static 'results/img/generic_emblem.svg' %}" alt="Tanzania">
+    {% endif %}
     <div class="masthead-text">
       <div class="masthead-line masthead-country">{% if LANG == 'sw' %}JAMHURI YA MUUNGANO WA TANZANIA{% else %}THE UNITED REPUBLIC OF TANZANIA{% endif %}</div>
       <div class="masthead-line masthead-ministry">{% if LANG == 'sw' %}WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA{% else %}MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY{% endif %}</div>
-      <div class="masthead-line masthead-council">{% if LANG == 'sw' %}HALMASHAURI YA WILAYA YA KYERWA{% else %}KYERWA DISTRICT COUNCIL{% endif %}</div>
+      <div class="masthead-line masthead-council">
+        {% if DISTRICT_NAME %}
+          {% if LANG == 'sw' %}HALMASHAURI YA WILAYA YA {{ DISTRICT_NAME|upper }}{% else %}{{ DISTRICT_NAME|upper }} DISTRICT COUNCIL{% endif %}
+        {% else %}
+          {% if LANG == 'sw' %}HALMASHAURI YA WILAYA{% else %}DISTRICT COUNCIL{% endif %}
+        {% endif %}
+      </div>
       <div class="masthead-line masthead-system">{% if LANG == 'sw' %}KITUO CHA UDHIBITI CHA MFUMO WA MATOKEO YA SHULE{% else %}SCHOOL RESULTS SYSTEM COMMAND CENTER{% endif %}</div>
     </div>
   </div>
@@ -28,9 +38,13 @@
   <header class="app-header">
     <div class="container app-header-inner">
       <a class="brand" href="{% url 'home' %}">
+        {% if IS_KYERWA %}
         <img class="brand-mark" src="{% static 'results/img/kyerwa_logo.jpg' %}" alt="Halmashauri ya Wilaya ya Kyerwa">
+        {% else %}
+        <img class="brand-mark" src="{% static 'results/img/generic_emblem.svg' %}" alt="Tanzania">
+        {% endif %}
         <span class="brand-text">
-          <strong>{% if request.user.is_authenticated and request.user.school %}{{ request.user.school.name }}{% else %}Kyerwa DC{% endif %}</strong>
+          <strong>{% if request.user.is_authenticated and request.user.school %}{{ request.user.school.name }}{% else %}{% if LANG == 'sw' %}Matokeo ya Shule{% else %}School Results{% endif %}{% endif %}</strong>
           <small>{% if LANG == 'sw' %}Mfumo wa Matokeo{% else %}Results System{% endif %}</small>
         </span>
       </a>
@@ -76,10 +90,23 @@
 
   <footer class="app-footer">
     <div class="container app-footer-inner">
+      {% if IS_KYERWA %}
       <img src="{% static 'results/img/kyerwa_logo.jpg' %}" alt="Kyerwa DC" class="footer-logo">
+      {% else %}
+      <img src="{% static 'results/img/generic_emblem.svg' %}" alt="Tanzania" class="footer-logo">
+      {% endif %}
       <div class="footer-text">
-        <strong>{% if LANG == 'sw' %}Halmashauri ya Wilaya ya Kyerwa{% else %}Kyerwa District Council{% endif %}</strong>
-        <span>{% if LANG == 'sw' %}Mkoa wa Kagera, Tanzania{% else %}Kagera Region, Tanzania{% endif %} &bull; School Results System &copy; {% now "Y" %}</span>
+        <strong>
+          {% if DISTRICT_NAME %}
+            {% if LANG == 'sw' %}Halmashauri ya Wilaya ya {{ DISTRICT_NAME }}{% else %}{{ DISTRICT_NAME }} District Council{% endif %}
+          {% else %}
+            {% if LANG == 'sw' %}Wizara ya Elimu, Sayansi na Teknolojia{% else %}Ministry of Education, Science and Technology{% endif %}
+          {% endif %}
+        </strong>
+        <span>
+          {% if request.user.is_authenticated and request.user.school %}{{ request.user.school.region }}, Tanzania{% else %}{% if LANG == 'sw' %}Jamhuri ya Muungano wa Tanzania{% else %}United Republic of Tanzania{% endif %}{% endif %}
+          &bull; School Results System &copy; {% now "Y" %}
+        </span>
       </div>
     </div>
   </footer>

@@ -1,0 +1,16 @@
+def branding(request):
+    """Per-district branding for the masthead/header/footer.
+
+    The results app now serves any secondary school in Tanzania, not just
+    Kyerwa DC, so the district name (and whether we actually have that
+    council's logo on file) must come from the logged-in user's own
+    school rather than being hardcoded.
+    """
+    user = getattr(request, 'user', None)
+    school = getattr(user, 'school', None) if user and getattr(user, 'is_authenticated', False) else None
+    district = school.district if school else None
+    is_kyerwa = bool(district) and 'kyerwa' in district.lower()
+    return {
+        'DISTRICT_NAME': district,
+        'IS_KYERWA': is_kyerwa,
+    }
