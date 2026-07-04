@@ -88,7 +88,7 @@ def recompute_processed_results_for_exam(exam):
     reports.
     """
     students = Student.objects.filter(examresult__exam=exam).distinct().prefetch_related(
-        Prefetch('examresult_set', queryset=ExamResult.objects.filter(exam=exam))
+        Prefetch('examresult_set', queryset=ExamResult.objects.filter(exam=exam).select_related('subject'))
     )
 
     best_n = _DIVISION_SUBJECT_COUNT.get(exam.form, 7)
@@ -102,9 +102,15 @@ def recompute_processed_results_for_exam(exam):
         total = sum(result.score for result in results)
         count = len(results)
         average = (total / count) if count else 0.0
-        subject_points = sorted(get_grade_points(get_grade_for_form(r.score, exam.form)) for r in results)
-        points = sum(subject_points[:best_n])  # lowest point values == best grades
+
+        graded = sorted(
+            ((r, get_grade_points(get_grade_for_form(r.score, exam.form))) for r in results),
+            key=lambda pair: pair[1],
+        )
+        best = graded[:best_n]  # lowest point values == best grades
+        points = sum(p for _, p in best)
         division = get_division(points)
+        counted_subjects = ', '.join(r.subject.name for r, _ in best)
 
         student_data.append(
             {
@@ -113,6 +119,7 @@ def recompute_processed_results_for_exam(exam):
                 'average': average,
                 'points': points,
                 'division': division,
+                'counted_subjects': counted_subjects,
             }
         )
 
@@ -128,5 +135,6 @@ def recompute_processed_results_for_exam(exam):
                 'points': data['points'],
                 'division': data['division'],
                 'position': position,
+                'counted_subjects': data['counted_subjects'],
             },
         )

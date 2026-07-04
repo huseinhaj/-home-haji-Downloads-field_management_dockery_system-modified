@@ -131,6 +131,10 @@ class ProcessedResult(models.Model):
     position = models.PositiveIntegerField()
     points = models.PositiveIntegerField()
     division = models.CharField(max_length=3, choices=DIVISION_CHOICES)
+    counted_subjects = models.CharField(
+        max_length=500, blank=True,
+        help_text="Masomo bora yaliyotumika kuhesabu Daraja (mf. 7 bora kwa CSEE, 3 kwa ACSEE).",
+    )
 
     class Meta:
         unique_together = ('exam', 'student')

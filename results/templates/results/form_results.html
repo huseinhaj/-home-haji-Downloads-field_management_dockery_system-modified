@@ -171,7 +171,7 @@
           <td style="text-align:center;">{{ res.average_score }}</td>
           <td style="text-align:center;">{{ res.points }}</td>
           <td style="text-align:center;">
-            <span class="div-{{ res.division }}">Daraja {{ res.division }}</span>
+            <span class="div-{{ res.division }}" {% if res.counted_subjects %}title="Masomo yaliyotumika: {{ res.counted_subjects }}"{% endif %}>Daraja {{ res.division }}</span>
           </td>
         </tr>
         {% endfor %}
