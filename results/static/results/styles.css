@@ -34,6 +34,9 @@ body {
 }
 
 .masthead {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   background: linear-gradient(135deg, var(--accent-600), var(--accent-500));
   border-bottom: 3px solid var(--secondary-500);
   padding: 0.85rem 1.25rem;
@@ -141,8 +144,7 @@ body {
 }
 
 .app-header {
-  position: sticky;
-  top: 0;
+  position: static;
   backdrop-filter: blur(8px);
   background: rgba(255, 255, 255, 0.8);
   border-bottom: 1px solid var(--line);
