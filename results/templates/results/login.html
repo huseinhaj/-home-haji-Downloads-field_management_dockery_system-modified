@@ -1,51 +1,56 @@
 {% extends 'results/base.html' %}
-{% block title %}Ingia - School Results{% endblock %}
+{% load static %}
+{% block title %}{% if LANG == 'sw' %}Ingia{% else %}Login{% endif %} - School Results{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-md-5">
-    <div class="card shadow-sm mt-4">
-      <div class="card-body p-4">
-        <h4 class="mb-3">Ingia Mfumoni</h4>
+    <div class="panel mt-4">
+      <div class="panel-body text-center">
+        <img src="{% static 'results/img/kyerwa_logo.jpg' %}" alt="Kyerwa DC" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--secondary-500);margin-bottom:0.75rem;">
+        <h4 class="mb-3" style="font-family:'Sora',sans-serif;">{% if LANG == 'sw' %}Ingia Mfumoni{% else %}Sign In{% endif %}</h4>
 
         {% if step == 'email' %}
-        <form method="post">
+        <form method="post" class="text-start">
           {% csrf_token %}
           <input type="hidden" name="step" value="email">
-          <div class="mb-3">
-            <label class="form-label">Barua pepe (Email)</label>
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Barua pepe (Email){% else %}Email{% endif %}</label>
             <input type="email" name="email" class="form-control" required autofocus value="{{ email|default:'' }}">
           </div>
-          <button type="submit" class="btn btn-primary w-100">Endelea</button>
+          <button type="submit" class="btn btn-brand w-100">{% if LANG == 'sw' %}Endelea{% else %}Continue{% endif %}</button>
         </form>
 
         {% elif step == 'activate' %}
-        <p class="text-muted small">Karibu {{ email }}! Hii ni mara yako ya kwanza kuingia — tengeneza password yako.</p>
-        <form method="post">
+        <p class="text-secondary small text-start">
+          {% if LANG == 'sw' %}Karibu {{ email }}! Hii ni mara yako ya kwanza kuingia — tengeneza password yako.
+          {% else %}Welcome {{ email }}! This is your first time logging in — set your password.{% endif %}
+        </p>
+        <form method="post" class="text-start">
           {% csrf_token %}
           <input type="hidden" name="step" value="activate">
           <input type="hidden" name="email" value="{{ email }}">
-          <div class="mb-3">
-            <label class="form-label">Password Mpya</label>
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Password Mpya{% else %}New Password{% endif %}</label>
             <input type="password" name="password1" class="form-control" required autofocus>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Thibitisha Password</label>
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Thibitisha Password{% else %}Confirm Password{% endif %}</label>
             <input type="password" name="password2" class="form-control" required>
           </div>
-          <button type="submit" class="btn btn-primary w-100">Tengeneza Akaunti</button>
+          <button type="submit" class="btn btn-brand w-100">{% if LANG == 'sw' %}Tengeneza Akaunti{% else %}Create Account{% endif %}</button>
         </form>
 
         {% elif step == 'login' %}
-        <p class="text-muted small">Karibu tena, {{ email }}.</p>
-        <form method="post">
+        <p class="text-secondary small text-start">{% if LANG == 'sw' %}Karibu tena, {{ email }}.{% else %}Welcome back, {{ email }}.{% endif %}</p>
+        <form method="post" class="text-start">
           {% csrf_token %}
           <input type="hidden" name="step" value="login">
           <input type="hidden" name="email" value="{{ email }}">
-          <div class="mb-3">
-            <label class="form-label">Password</label>
+          <div class="field">
+            <label>Password</label>
             <input type="password" name="password" class="form-control" required autofocus>
           </div>
-          <button type="submit" class="btn btn-primary w-100">Ingia</button>
+          <button type="submit" class="btn btn-brand w-100">{% if LANG == 'sw' %}Ingia{% else %}Login{% endif %}</button>
         </form>
         {% endif %}
       </div>

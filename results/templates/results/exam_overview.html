@@ -1,6 +1,6 @@
 {% extends 'results/base.html' %}
 
-{% block title %}{{ exam.name }} — Muhtasari | School Results{% endblock %}
+{% block title %}{{ exam.name }} — {% if LANG == 'sw' %}Muhtasari{% else %}Overview{% endif %} | School Results{% endblock %}
 
 {% block content %}
 <style>
@@ -122,8 +122,8 @@
       <h1>{{ exam.name }}</h1>
       <div class="meta-row">
         {{ exam.get_exam_type_display }} &nbsp;|&nbsp;
-        Fomu {{ exam.form }} &nbsp;|&nbsp;
-        Mwaka {{ exam.year }}
+        Form {{ exam.form }} &nbsp;|&nbsp;
+        {% if LANG == 'sw' %}Mwaka{% else %}Year{% endif %} {{ exam.year }}
         {% if exam.school_name %}&nbsp;|&nbsp;{{ exam.school_name }}{% endif %}
       </div>
     </div>
@@ -138,10 +138,10 @@
     <div class="ov-progress-bar-fill" style="width: {{ progress_pct }}%;"></div>
   </div>
   <div class="ov-progress-label">
-    {{ submitted_count }} / {{ total_subjects }} YAMEWASILISHWA
+    {{ submitted_count }} / {{ total_subjects }} {% if LANG == 'sw' %}YAMEWASILISHWA{% else %}SUBMITTED{% endif %}
     &nbsp;&bull;&nbsp;
-    {{ approved_count }} / {{ total_subjects }} YAMEIDHINISHWA
-    {% if all_approved %}&nbsp;— YAMEKAMILIKA ✓{% endif %}
+    {{ approved_count }} / {{ total_subjects }} {% if LANG == 'sw' %}YAMEIDHINISHWA{% else %}APPROVED{% endif %}
+    {% if all_approved %}&nbsp;— {% if LANG == 'sw' %}YAMEKAMILIKA{% else %}COMPLETE{% endif %} ✓{% endif %}
   </div>
 </div>
 
@@ -153,24 +153,24 @@
     <div class="d-flex justify-content-between align-items-center">
       <div class="subject-name">{{ ctx.subject.name }}</div>
       {% if ctx.is_approved %}
-        <span class="status-badge approved">Imeidhinishwa</span>
+        <span class="status-badge approved">{% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}</span>
       {% elif ctx.is_submitted %}
-        <span class="status-badge submitted">Imewasilishwa</span>
+        <span class="status-badge submitted">{% if LANG == 'sw' %}Imewasilishwa{% else %}Submitted{% endif %}</span>
       {% else %}
-        <span class="status-badge pending">Inasubiri</span>
+        <span class="status-badge pending">{% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}</span>
       {% endif %}
     </div>
 
     {% if ctx.submission %}
       <div class="subject-meta">
         {% if ctx.submission.submitted_by %}
-          <span>Mwalimu: <strong>{{ ctx.submission.submitted_by }}</strong></span><br>
+          <span>{% if LANG == 'sw' %}Mwalimu{% else %}Teacher{% endif %}: <strong>{{ ctx.submission.submitted_by }}</strong></span><br>
         {% endif %}
         {% if ctx.submission.student_count %}
-          <span>Wanafunzi: <strong>{{ ctx.submission.student_count }}</strong></span>
+          <span>{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}: <strong>{{ ctx.submission.student_count }}</strong></span>
           {% if ctx.submission.method %}
             &nbsp;&bull;&nbsp;
-            <span>Njia: <strong>{{ ctx.submission.get_method_display }}</strong></span>
+            <span>{% if LANG == 'sw' %}Njia{% else %}Method{% endif %}: <strong>{{ ctx.submission.get_method_display }}</strong></span>
           {% endif %}
         {% endif %}
         {% if ctx.submission.submitted_at %}
@@ -178,13 +178,13 @@
         {% endif %}
       </div>
     {% else %}
-      <div class="subject-meta" style="color:#aaa;">Bado haijasajiliwa</div>
+      <div class="subject-meta" style="color:#aaa;">{% if LANG == 'sw' %}Bado haijasajiliwa{% else %}Not registered yet{% endif %}</div>
     {% endif %}
 
     <div class="subject-actions">
       {% if not ctx.is_approved and not is_academic %}
       <a href="{{ ctx.speech_url }}" class="btn btn-speech">Speech</a>
-      <a href="{{ ctx.upload_url }}" class="btn btn-upload-sm">Pakia Faili</a>
+      <a href="{{ ctx.upload_url }}" class="btn btn-upload-sm">{% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
       {% endif %}
       {% if ctx.pdf_url %}
       <a href="{{ ctx.pdf_url }}" class="btn btn-pdf" target="_blank">PDF</a>
@@ -193,7 +193,7 @@
       <form method="post" action="{{ ctx.approve_url }}" style="display:inline;">
         {% csrf_token %}
         <button type="submit" class="btn" style="background:#1a7a3b;color:#fff;font-size:.72rem;padding:.28rem .7rem;border-radius:2px;font-weight:700;border:none;">
-          ✓ Idhinisha
+          ✓ {% if LANG == 'sw' %}Idhinisha{% else %}Approve{% endif %}
         </button>
       </form>
       {% endif %}
@@ -203,23 +203,24 @@
 </div>
 {% else %}
 <div class="support-box">
-  Hakuna masomo yaliyosajiliwa kwa mtihani huu bado. Anza na Speech Entry au Pakia Faili.
+  {% if LANG == 'sw' %}Hakuna masomo yaliyosajiliwa kwa mtihani huu bado. Anza na Speech Entry au Pakia Faili.
+  {% else %}No subjects registered for this exam yet. Start with Speech Entry or Upload File.{% endif %}
 </div>
 {% endif %}
 
 <!-- Finalize / Approval section -->
 <div class="finalize-section">
   <div>
-    <h4>Idhini na Matokeo ya Mwisho</h4>
+    <h4>{% if LANG == 'sw' %}Idhini na Matokeo ya Mwisho{% else %}Approval and Final Results{% endif %}</h4>
     <p>
       {% if all_approved %}
-        Masomo yote yameidhinishwa. Unaweza kupakua matokeo ya mwisho.
+        {% if LANG == 'sw' %}Masomo yote yameidhinishwa. Unaweza kupakua matokeo ya mwisho.{% else %}All subjects approved. You can download the final results.{% endif %}
       {% elif all_submitted %}
-        Masomo yote yamewasilishwa — subiri idhini ya Academic Officer.
+        {% if LANG == 'sw' %}Masomo yote yamewasilishwa — subiri idhini ya Academic Officer.{% else %}All subjects submitted — waiting on the academic officer's approval.{% endif %}
       {% elif enough_to_finalize %}
-        Masomo {{ submitted_count }}/{{ total_subjects }} yamewasilishwa, {{ approved_count }} yameidhinishwa.
+        {% if LANG == 'sw' %}Masomo {{ submitted_count }}/{{ total_subjects }} yamewasilishwa, {{ approved_count }} yameidhinishwa.{% else %}{{ submitted_count }}/{{ total_subjects }} subjects submitted, {{ approved_count }} approved.{% endif %}
       {% else %}
-        Yamewasilishwa: {{ submitted_count }}/{{ total_subjects }}.
+        {% if LANG == 'sw' %}Yamewasilishwa{% else %}Submitted{% endif %}: {{ submitted_count }}/{{ total_subjects }}.
       {% endif %}
     </p>
   </div>
@@ -229,7 +230,7 @@
       <form method="post" action="{{ approve_all_url }}" style="display:inline;">
         {% csrf_token %}
         <button type="submit" class="btn-finalize" style="background:#1a7a3b;border-color:#1a7a3b;">
-          ✓ Idhinisha Masomo Yote
+          ✓ {% if LANG == 'sw' %}Idhinisha Masomo Yote{% else %}Approve All Subjects{% endif %}
         </button>
       </form>
       {% endif %}
@@ -238,23 +239,23 @@
       <form method="post" action="{{ finalize_url }}" style="display:inline;">
         {% csrf_token %}
         <button type="submit" class="btn-finalize">
-          Tengeneza Excel ya Mwisho
+          {% if LANG == 'sw' %}Tengeneza Excel ya Mwisho{% else %}Generate Final Excel{% endif %}
         </button>
       </form>
       {% else %}
-      <button class="btn-finalize" disabled>Tengeneza Excel ya Mwisho</button>
+      <button class="btn-finalize" disabled>{% if LANG == 'sw' %}Tengeneza Excel ya Mwisho{% else %}Generate Final Excel{% endif %}</button>
       {% endif %}
 
       {% if submitted_count > 0 %}
       <a href="{{ excel_url }}" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
-        Pakua Excel
+        {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %}
       </a>
       {% endif %}
     {% endif %}
 
     {% if submitted_count > 0 %}
     <a href="{{ form_results_url }}" class="btn btn-outline-primary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
-      Matokeo Form {{ exam.form }}
+      {% if LANG == 'sw' %}Matokeo{% else %}Results{% endif %} Form {{ exam.form }}
     </a>
     {% endif %}
   </div>

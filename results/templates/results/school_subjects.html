@@ -1,5 +1,5 @@
 {% extends 'results/base.html' %}
-{% block title %}Masomo ya {{ school.name }} | School Results{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Masomo ya{% else %}Subjects at{% endif %} {{ school.name }} | School Results{% endblock %}
 
 {% block content %}
 <style>
@@ -119,14 +119,14 @@
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
     <div>
       <h1>{{ school.name }}</h1>
-      <div class="sub">{{ school.region }} &mdash; {{ school.district }} &nbsp;|&nbsp; Usimamizi wa Masomo</div>
+      <div class="sub">{{ school.region }} &mdash; {{ school.district }} &nbsp;|&nbsp; {% if LANG == 'sw' %}Usimamizi wa Masomo{% else %}Subject Management{% endif %}</div>
     </div>
     <div class="d-flex gap-2 flex-wrap">
       <a href="{% url 'create_exam_for_school' %}" class="btn-primary-navy" style="text-decoration:none;display:inline-flex;align-items:center;">
-        + Unda Mtihani
+        + {% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}
       </a>
       <a href="{% url 'school_setup' %}" style="color:#D9A441;font-size:0.78rem;text-decoration:none;align-self:center;">
-        &larr; Shule Zote
+        &larr; {% if LANG == 'sw' %}Shule Yangu{% else %}My School{% endif %}
       </a>
     </div>
   </div>
@@ -137,7 +137,7 @@
   <div class="col-lg-7">
     <div class="panel">
       <div class="panel-head">
-        <span>Masomo Yaliyosajiliwa</span>
+        <span>{% if LANG == 'sw' %}Masomo Yaliyosajiliwa{% else %}Registered Subjects{% endif %}</span>
         <span class="badge-count">{{ school_subjects|length }}</span>
       </div>
       {% if school_subjects %}
@@ -145,9 +145,9 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Somo</th>
-            <th>Madarasa</th>
-            <th>Ondoa</th>
+            <th>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Madarasa{% else %}Forms{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Ondoa{% else %}Remove{% endif %}</th>
           </tr>
         </thead>
         <tbody>
@@ -157,11 +157,11 @@
             <td><strong>{{ ss.subject.name }}</strong>{% if ss.subject.code %} <span style="color:#aaa;font-size:0.72rem;">({{ ss.subject.code }})</span>{% endif %}</td>
             <td style="color:#777;font-size:0.78rem;">Form {{ ss.form_levels }}</td>
             <td>
-              <form method="post" onsubmit="return confirm('Ondoa {{ ss.subject.name }}?')">
+              <form method="post" onsubmit="return confirm('{% if LANG == 'sw' %}Ondoa{% else %}Remove{% endif %} {{ ss.subject.name }}?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="remove">
                 <input type="hidden" name="school_subject_id" value="{{ ss.id }}">
-                <button type="submit" class="btn-danger-sm">Ondoa</button>
+                <button type="submit" class="btn-danger-sm">{% if LANG == 'sw' %}Ondoa{% else %}Remove{% endif %}</button>
               </form>
             </td>
           </tr>
@@ -170,7 +170,7 @@
       </table>
       {% else %}
       <div class="empty-state">
-        Masomo hayajasajiliwa bado. Ongeza masomo upande wa kulia.
+        {% if LANG == 'sw' %}Masomo hayajasajiliwa bado. Ongeza masomo upande wa kulia.{% else %}No subjects registered yet. Add subjects on the right.{% endif %}
       </div>
       {% endif %}
     </div>
@@ -179,13 +179,13 @@
   <!-- Add subject -->
   <div class="col-lg-5">
     <div class="panel">
-      <div class="panel-head">Ongeza Somo</div>
+      <div class="panel-head">{% if LANG == 'sw' %}Ongeza Somo{% else %}Add Subject{% endif %}</div>
       <div class="panel-body">
         <form method="post" id="addSubjectForm">
           {% csrf_token %}
           <input type="hidden" name="action" value="add">
           <div class="mb-3">
-            <label class="form-label-sm">Jina la Somo</label>
+            <label class="form-label-sm">{% if LANG == 'sw' %}Jina la Somo{% else %}Subject Name{% endif %}</label>
             <input type="text" name="subject_name" id="subjectNameInput"
                    class="form-control-sm-custom" placeholder="Mathematics" required>
             <div class="common-chips">
@@ -195,19 +195,19 @@
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label-sm">Madarasa (Form Levels)</label>
+            <label class="form-label-sm">{% if LANG == 'sw' %}Madarasa (Form Levels){% else %}Form Levels{% endif %}</label>
             <input type="text" name="form_levels" class="form-control-sm-custom"
                    value="1,2,3,4" placeholder="1,2,3,4">
             <div style="font-size:0.72rem;color:#888;margin-top:0.2rem;">
-              Mfano: "1,2,3,4" au "5,6" kwa A-Level
+              {% if LANG == 'sw' %}Mfano: "1,2,3,4" au "5,6" kwa A-Level{% else %}Example: "1,2,3,4" or "5,6" for A-Level{% endif %}
             </div>
           </div>
-          <button type="submit" class="btn-primary-navy">Ongeza Somo</button>
+          <button type="submit" class="btn-primary-navy">{% if LANG == 'sw' %}Ongeza Somo{% else %}Add Subject{% endif %}</button>
         </form>
 
         {% if available_subjects %}
         <div style="margin-top:1.25rem;">
-          <div class="form-label-sm" style="margin-bottom:0.4rem;">Au chagua kutoka masomo yaliyopo:</div>
+          <div class="form-label-sm" style="margin-bottom:0.4rem;">{% if LANG == 'sw' %}Au chagua kutoka masomo yaliyopo:{% else %}Or pick from existing subjects:{% endif %}</div>
           <form method="post">
             {% csrf_token %}
             <input type="hidden" name="action" value="add">
@@ -217,7 +217,7 @@
                 <option value="{{ subj.name }}">{{ subj.name }}</option>
                 {% endfor %}
               </select>
-              <button type="submit" class="btn-primary-navy">Ongeza</button>
+              <button type="submit" class="btn-primary-navy">{% if LANG == 'sw' %}Ongeza{% else %}Add{% endif %}</button>
             </div>
           </form>
         </div>

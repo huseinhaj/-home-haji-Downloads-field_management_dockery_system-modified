@@ -1,74 +1,104 @@
 {% extends 'results/base.html' %}
-{% block title %}Simamia Walimu - School Results{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %} - School Results{% endblock %}
 {% block content %}
-<h3 class="mb-3">Simamia Walimu</h3>
+<section class="hero">
+  <div>
+    <h1 class="mb-1">{% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</h1>
+    <p class="mb-0 text-secondary">
+      {% if school %}{{ school.name }}{% endif %} —
+      {% if LANG == 'sw' %}Ongeza email za walimu wako; wataweza kujiwekea password wenyewe wakiingia mara ya kwanza.
+      {% else %}Add your teachers' emails; they'll set their own password the first time they log in.{% endif %}
+    </p>
+  </div>
+</section>
 
-<div class="row">
-  <div class="col-md-5">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title">Ongeza Mwalimu Mpya</h5>
+<div class="row g-3 mt-1">
+  <div class="col-lg-4">
+    <div class="panel h-100">
+      <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">{% if LANG == 'sw' %}Ongeza Mwalimu Mpya{% else %}Add New Teacher{% endif %}</h3></div>
+      <div class="panel-body">
         <form method="post">
           {% csrf_token %}
-          {{ form.as_p }}
-          <button type="submit" class="btn btn-primary">Ongeza</button>
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Barua pepe{% else %}Email{% endif %}</label>
+            {{ form.email }}
+          </div>
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Jina Kamili{% else %}Full Name{% endif %}</label>
+            {{ form.full_name }}
+          </div>
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Wadhifa{% else %}Role{% endif %}</label>
+            {{ form.role }}
+          </div>
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}</label>
+            {{ form.subjects }}
+          </div>
+          <button type="submit" class="btn btn-brand w-100">{% if LANG == 'sw' %}Ongeza{% else %}Add{% endif %}</button>
         </form>
       </div>
     </div>
   </div>
-  <div class="col-md-7">
-    <table class="table table-sm bg-white align-middle">
-      <thead>
-        <tr>
-          <th>Email</th>
-          <th>Jina</th>
-          <th>Masomo</th>
-          <th>Hali</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for t, sform in teachers_with_forms %}
-        <tr>
-          <td>{{ t.email }}</td>
-          <td>{{ t.full_name }}</td>
-          <td>
-            {% for s in t.subjects.all %}
-              <span class="badge bg-light text-dark border">{{ s.name }}</span>
+
+  <div class="col-lg-8">
+    <div class="panel h-100">
+      <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">{% if LANG == 'sw' %}Walimu{% else %}Teachers{% endif %} ({{ teachers_with_forms|length }})</h3></div>
+      <div class="panel-body" style="overflow-x:auto;">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>{% if LANG == 'sw' %}Jina{% else %}Name{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t, sform in teachers_with_forms %}
+            <tr>
+              <td>{{ t.email }}</td>
+              <td>{{ t.full_name }}</td>
+              <td>
+                {% for s in t.subjects.all %}
+                  <span class="badge-soft">{{ s.name }}</span>
+                {% empty %}
+                  <span class="text-danger small">{% if LANG == 'sw' %}Hakuna somo{% else %}No subject{% endif %}</span>
+                {% endfor %}
+              </td>
+              <td>
+                {% if t.is_activated %}
+                  <span class="badge-soft" style="background:#e6f7ec;color:var(--ok-500);">Active</span>
+                {% else %}
+                  <span class="badge-soft" style="background:#f0f2f5;color:var(--ink-500);">Pending</span>
+                {% endif %}
+              </td>
+              <td>
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#edit-{{ t.id }}">
+                  {% if LANG == 'sw' %}Hariri masomo{% else %}Edit subjects{% endif %}
+                </button>
+              </td>
+            </tr>
+            <tr class="collapse" id="edit-{{ t.id }}">
+              <td colspan="5">
+                <form method="post" class="d-flex align-items-start gap-2 flex-wrap">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="edit_subjects">
+                  <input type="hidden" name="teacher_id" value="{{ t.id }}">
+                  {{ sform.role }}
+                  {{ sform.subjects }}
+                  <button type="submit" class="btn btn-brand btn-sm">{% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}</button>
+                </form>
+              </td>
+            </tr>
             {% empty %}
-              <span class="text-danger small">Hakuna somo</span>
+            <tr><td colspan="5" class="text-secondary">{% if LANG == 'sw' %}Hakuna walimu bado.{% else %}No teachers yet.{% endif %}</td></tr>
             {% endfor %}
-          </td>
-          <td>
-            {% if t.is_activated %}
-              <span class="badge bg-success">Active</span>
-            {% else %}
-              <span class="badge bg-secondary">Pending</span>
-            {% endif %}
-          </td>
-          <td>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#edit-{{ t.id }}">
-              Hariri masomo
-            </button>
-          </td>
-        </tr>
-        <tr class="collapse" id="edit-{{ t.id }}">
-          <td colspan="5">
-            <form method="post" class="d-flex align-items-start gap-2 flex-wrap">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="edit_subjects">
-              <input type="hidden" name="teacher_id" value="{{ t.id }}">
-              {{ sform.role }}
-              {{ sform.subjects }}
-              <button type="submit" class="btn btn-sm btn-primary">Hifadhi</button>
-            </form>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5" class="text-muted">Hakuna walimu bado.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

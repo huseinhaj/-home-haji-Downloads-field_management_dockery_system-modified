@@ -123,8 +123,11 @@
 <div class="acad-hero">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
     <div>
-      <h1>Academic Dashboard</h1>
-      <div class="sub">Idhini ya Mawasilisho ya Masomo &nbsp;|&nbsp; Matokeo kwa Darasa</div>
+      <h1>Academic Dashboard{% if request.user.school %} — {{ request.user.school.name }}{% endif %}</h1>
+      <div class="sub">
+        {% if LANG == 'sw' %}Idhini ya Mawasilisho ya Masomo &nbsp;|&nbsp; Matokeo kwa Darasa
+        {% else %}Subject Submission Approvals &nbsp;|&nbsp; Results by Form{% endif %}
+      </div>
     </div>
     <div class="d-flex gap-2 flex-wrap">
       {% for fn in forms_list %}
@@ -140,7 +143,7 @@
     <div class="form-section-title">
       Form {{ form_num }}
       {% if form_num >= 5 %} — Advanced Level{% endif %}
-      &nbsp;({{ exams_data|length }} mtihani{{ exams_data|length|pluralize }})
+      &nbsp;({{ exams_data|length }} {% if LANG == 'sw' %}mtihani{{ exams_data|length|pluralize }}{% else %}exam{{ exams_data|length|pluralize }}{% endif %})
     </div>
 
     {% for ed in exams_data %}
@@ -155,10 +158,10 @@
         </div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
           <a href="{% url 'exam_overview' ed.exam.id %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">
-            Tazama
+            {% if LANG == 'sw' %}Tazama{% else %}View{% endif %}
           </a>
           <a href="{% url 'form_results' form_num %}" class="form-results-link">
-            Matokeo Form {{ form_num }}
+            {% if LANG == 'sw' %}Matokeo{% else %}Results{% endif %} Form {{ form_num }}
           </a>
         </div>
       </div>
@@ -166,14 +169,14 @@
       <!-- Progress bars -->
       <div class="progress-mini-wrap mt-2">
         <div class="progress-mini-row">
-          <span>Yamewasilishwa: {{ ed.submitted }}/{{ ed.total }}</span>
+          <span>{% if LANG == 'sw' %}Yamewasilishwa{% else %}Submitted{% endif %}: {{ ed.submitted }}/{{ ed.total }}</span>
           <span>{{ ed.progress_pct }}%</span>
         </div>
         <div class="progress-mini-track">
           <div class="progress-mini-fill fill-submitted" style="width:{{ ed.progress_pct }}%"></div>
         </div>
         <div class="progress-mini-row mt-1">
-          <span>Yameidhinishwa: {{ ed.approved }}/{{ ed.total }}</span>
+          <span>{% if LANG == 'sw' %}Yameidhinishwa{% else %}Approved{% endif %}: {{ ed.approved }}/{{ ed.total }}</span>
           <span>{{ ed.approval_pct }}%</span>
         </div>
         <div class="progress-mini-track">
@@ -184,22 +187,22 @@
       <!-- Bulk approve bar (shown when all submitted but not all approved) -->
       {% if ed.ready_for_approval %}
       <div class="bulk-approve-bar">
-        <div class="bulk-msg">✅ Masomo yote yamewasilishwa — tayari kwa idhini ya pamoja</div>
+        <div class="bulk-msg">✅ {% if LANG == 'sw' %}Masomo yote yamewasilishwa — tayari kwa idhini ya pamoja{% else %}All subjects submitted — ready for bulk approval{% endif %}</div>
         <form method="post" action="{% url 'approve_exam_submissions' ed.exam.id %}" class="bulk-form">
           {% csrf_token %}
-          <input type="text" name="approved_by" placeholder="Jina la Academic Officer" required>
-          <button type="submit" class="btn-bulk-approve">Idhinisha Yote</button>
+          <input type="text" name="approved_by" placeholder="{% if LANG == 'sw' %}Jina la Academic Officer{% else %}Academic Officer's name{% endif %}" required>
+          <button type="submit" class="btn-bulk-approve">{% if LANG == 'sw' %}Idhinisha Yote{% else %}Approve All{% endif %}</button>
         </form>
       </div>
       {% elif ed.all_approved %}
       <div class="all-approved-bar">
-        <div class="msg">✅ Masomo yote yameidhinishwa</div>
+        <div class="msg">✅ {% if LANG == 'sw' %}Masomo yote yameidhinishwa{% else %}All subjects approved{% endif %}</div>
         <div class="d-flex gap-2">
           <a href="{% url 'export_results_excel' ed.exam.id %}" class="btn btn-sm btn-outline-success" style="font-size:0.72rem;border-radius:2px;">
-            Pakua Excel
+            {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %}
           </a>
           <a href="{% url 'generate_results_pdf' ed.exam.id %}" class="btn btn-sm btn-outline-danger" style="font-size:0.72rem;border-radius:2px;">
-            Pakua PDF
+            {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}
           </a>
         </div>
       </div>
@@ -210,7 +213,7 @@
       <div style="background:#fff8e6;border-top:1px solid #f0d07a;border-bottom:1px solid #f0d07a;padding:0.5rem 1rem;display:flex;align-items:flex-start;gap:0.6rem;flex-wrap:wrap;">
         <span style="font-size:1rem;line-height:1.4;">&#9203;</span>
         <div>
-          <span style="font-size:0.78rem;font-weight:700;color:#7a5200;">BADO ({{ ed.pending_subs|length }} somo{{ ed.pending_subs|length|pluralize }}):</span>
+          <span style="font-size:0.78rem;font-weight:700;color:#7a5200;">{% if LANG == 'sw' %}BADO{% else %}PENDING{% endif %} ({{ ed.pending_subs|length }} {% if LANG == 'sw' %}somo{{ ed.pending_subs|length|pluralize }}{% else %}subject{{ ed.pending_subs|length|pluralize }}{% endif %}):</span>
           <span style="font-size:0.78rem;color:#5a3c00;margin-left:0.3rem;">{{ ed.pending_names }}</span>
         </div>
       </div>
@@ -221,12 +224,12 @@
       <table class="subjects-table">
         <thead>
           <tr>
-            <th>Somo</th>
-            <th>Hali</th>
-            <th>Mwalimu</th>
-            <th>Wanafunzi</th>
-            <th>Tarehe</th>
-            <th>Hatua</th>
+            <th>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Mwalimu{% else %}Teacher{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Tarehe{% else %}Date{% endif %}</th>
+            <th>{% if LANG == 'sw' %}Hatua{% else %}Action{% endif %}</th>
           </tr>
         </thead>
         <tbody>
@@ -238,11 +241,11 @@
             </td>
             <td>
               {% if sub.status == 'APPROVED' %}
-                <span class="badge-approved">&#10003; Imeidhinishwa</span>
+                <span class="badge-approved">&#10003; {% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}</span>
               {% elif sub.status == 'SUBMITTED' %}
-                <span class="badge-submitted">&#8679; Imewasilishwa</span>
+                <span class="badge-submitted">&#8679; {% if LANG == 'sw' %}Imewasilishwa{% else %}Submitted{% endif %}</span>
               {% else %}
-                <span class="badge-pending">&#9203; BADO</span>
+                <span class="badge-pending">&#9203; {% if LANG == 'sw' %}BADO{% else %}PENDING{% endif %}</span>
               {% endif %}
             </td>
             <td>{{ sub.submitted_by|default:"—" }}</td>
@@ -254,8 +257,8 @@
               {% if sub.status == 'SUBMITTED' %}
               <form method="post" action="{% url 'approve_subject' ed.exam.id sub.subject.id %}" class="approve-form-inline">
                 {% csrf_token %}
-                <input type="text" name="approved_by" placeholder="Jina lako" required>
-                <button type="submit" class="btn-approve">Idhinisha</button>
+                <input type="text" name="approved_by" placeholder="{% if LANG == 'sw' %}Jina lako{% else %}Your name{% endif %}" required>
+                <button type="submit" class="btn-approve">{% if LANG == 'sw' %}Idhinisha{% else %}Approve{% endif %}</button>
               </form>
               {% elif sub.status == 'APPROVED' %}
               <span style="font-size:0.72rem;color:#1a7a3b;">
@@ -263,7 +266,7 @@
                 {% if sub.approved_at %}<br><span style="color:#999;">{{ sub.approved_at|date:"d M Y" }}</span>{% endif %}
               </span>
               {% else %}
-              <span style="color:#bbb;font-size:0.72rem;">Inasubiri mwalimu</span>
+              <span style="color:#bbb;font-size:0.72rem;">{% if LANG == 'sw' %}Inasubiri mwalimu{% else %}Waiting on teacher{% endif %}</span>
               {% endif %}
             </td>
           </tr>
@@ -275,16 +278,16 @@
       {% if ed.pending_subs %}
       <div style="background:#f8f9fb;border-top:1px solid #e9ecef;padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
         <span style="font-size:0.78rem;color:#888;">
-          Bado: <strong style="color:#c9840c;">{{ ed.pending_names }}</strong>
-          &nbsp;&mdash;&nbsp;({{ ed.pending_subs|length }} masomo hayajapakiwa)
+          {% if LANG == 'sw' %}Bado{% else %}Pending{% endif %}: <strong style="color:#c9840c;">{{ ed.pending_names }}</strong>
+          &nbsp;&mdash;&nbsp;({{ ed.pending_subs|length }} {% if LANG == 'sw' %}masomo hayajapakiwa{% else %}subjects not yet uploaded{% endif %})
         </span>
         <button class="btn-bulk-approve" disabled style="opacity:0.45;cursor:not-allowed;">
-          Idhinisha Yote
+          {% if LANG == 'sw' %}Idhinisha Yote{% else %}Approve All{% endif %}
         </button>
       </div>
       {% endif %}
       {% else %}
-      <div style="padding:0.75rem 1rem;color:#aaa;font-size:0.8rem;">Hakuna masomo yaliyosajiliwa bado.</div>
+      <div style="padding:0.75rem 1rem;color:#aaa;font-size:0.8rem;">{% if LANG == 'sw' %}Hakuna masomo yaliyosajiliwa bado.{% else %}No subjects registered yet.{% endif %}</div>
       {% endif %}
     </div>
     {% endfor %}
@@ -293,7 +296,7 @@
 {% else %}
 <div class="empty-state">
   <div style="font-size:2rem;margin-bottom:0.5rem;">📋</div>
-  Hakuna mitihani yoyote bado. <a href="{% url 'upload_results' %}">Unda mtihani wa kwanza</a>.
+  {% if LANG == 'sw' %}Hakuna mitihani yoyote bado.{% else %}No exams yet.{% endif %} <a href="{% url 'upload_results' %}">{% if LANG == 'sw' %}Unda mtihani wa kwanza{% else %}Create the first exam{% endif %}</a>.
 </div>
 {% endif %}
 {% endblock %}

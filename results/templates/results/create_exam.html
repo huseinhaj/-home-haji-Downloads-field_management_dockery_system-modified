@@ -1,5 +1,5 @@
 {% extends 'results/base.html' %}
-{% block title %}Unda Mtihani — {{ school.name }} | School Results{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %} — {{ school.name }} | School Results{% endblock %}
 
 {% block content %}
 <style>
@@ -98,11 +98,11 @@
 <div class="exam-hero">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
     <div>
-      <h1>Unda Mtihani Mpya</h1>
+      <h1>{% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}Create New Exam{% endif %}</h1>
       <div class="sub">{{ school.name }} &mdash; {{ school.region }}, {{ school.district }}</div>
     </div>
     <a href="{% url 'school_subjects' %}" style="color:#D9A441;font-size:0.78rem;text-decoration:none;align-self:center;">
-      &larr; Masomo ya Shule
+      &larr; {% if LANG == 'sw' %}Masomo ya Shule{% else %}School Subjects{% endif %}
     </a>
   </div>
 </div>
@@ -110,13 +110,13 @@
 <div class="row g-4">
   <div class="col-lg-7">
     <div class="panel">
-      <div class="panel-head">Maelezo ya Mtihani</div>
+      <div class="panel-head">{% if LANG == 'sw' %}Maelezo ya Mtihani{% else %}Exam Details{% endif %}</div>
       <div class="panel-body">
         {% if not school_subjects %}
         <div class="warning-box mb-3">
-          &#9888; Shule hii haina masomo yaliyosajiliwa bado.
+          &#9888; {% if LANG == 'sw' %}Shule hii haina masomo yaliyosajiliwa bado.{% else %}This school has no subjects registered yet.{% endif %}
           <a href="{% url 'school_subjects' %}" style="color:#7a5200;font-weight:700;">
-            Ongeza masomo kwanza &rarr;
+            {% if LANG == 'sw' %}Ongeza masomo kwanza{% else %}Add subjects first{% endif %} &rarr;
           </a>
         </div>
         {% endif %}
@@ -124,13 +124,13 @@
         <form method="post">
           {% csrf_token %}
           <div class="mb-3">
-            <label class="form-label-sm">Jina la Mtihani</label>
+            <label class="form-label-sm">{% if LANG == 'sw' %}Jina la Mtihani{% else %}Exam Name{% endif %}</label>
             <input type="text" name="exam_name" class="form-control-styled"
                    placeholder="Mid-term 2026" required>
           </div>
           <div class="row g-3 mb-3">
             <div class="col-sm-4">
-              <label class="form-label-sm">Mwaka (Year)</label>
+              <label class="form-label-sm">{% if LANG == 'sw' %}Mwaka (Year){% else %}Year{% endif %}</label>
               <select name="exam_year" class="form-control-styled">
                 {% for yr in year_range %}
                 <option value="{{ yr }}" {% if yr == current_year %}selected{% endif %}>{{ yr }}</option>
@@ -138,7 +138,7 @@
               </select>
             </div>
             <div class="col-sm-4">
-              <label class="form-label-sm">Darasa (Form)</label>
+              <label class="form-label-sm">{% if LANG == 'sw' %}Darasa (Form){% else %}Form{% endif %}</label>
               <select name="exam_form" class="form-control-styled">
                 <option value="1">Form 1</option>
                 <option value="2">Form 2</option>
@@ -149,7 +149,7 @@
               </select>
             </div>
             <div class="col-sm-4">
-              <label class="form-label-sm">Aina ya Mtihani</label>
+              <label class="form-label-sm">{% if LANG == 'sw' %}Aina ya Mtihani{% else %}Exam Type{% endif %}</label>
               <select name="exam_type" class="form-control-styled">
                 {% for val, label in exam_type_choices %}
                 <option value="{{ val }}">{{ label }}</option>
@@ -160,10 +160,10 @@
 
           <div class="d-flex gap-3 align-items-center flex-wrap mt-2">
             <button type="submit" class="btn-primary-navy" {% if not school_subjects %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}>
-              Unda Mtihani
+              {% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}
             </button>
             <span style="font-size:0.75rem;color:#888;">
-              Masomo {{ school_subjects|length }} yataunganishwa otomatiki
+              {% if LANG == 'sw' %}Masomo {{ school_subjects|length }} yataunganishwa otomatiki{% else %}{{ school_subjects|length }} subjects will be linked automatically{% endif %}
             </span>
           </div>
         </form>
@@ -173,7 +173,7 @@
 
   <div class="col-lg-5">
     <div class="panel">
-      <div class="panel-head">Masomo Yatakayounganishwa ({{ school_subjects|length }})</div>
+      <div class="panel-head">{% if LANG == 'sw' %}Masomo Yatakayounganishwa{% else %}Subjects to be Linked{% endif %} ({{ school_subjects|length }})</div>
       <div class="panel-body">
         {% if school_subjects %}
         <div class="subjects-preview">
@@ -185,11 +185,13 @@
           {% endfor %}
         </div>
         <div style="font-size:0.75rem;color:#888;margin-top:0.75rem;">
-          Masomo haya yote yataanzishwa kama PENDING — walimu watapakia alama zao moja baada ya moja.
+          {% if LANG == 'sw' %}Masomo haya yote yataanzishwa kama PENDING — walimu watapakia alama zao moja baada ya moja.
+          {% else %}All these subjects will start as PENDING — teachers will upload their scores one by one.{% endif %}
         </div>
         {% else %}
         <div style="color:#aaa;font-size:0.85rem;text-align:center;padding:1rem 0;">
-          Hakuna masomo. <a href="{% url 'school_subjects' %}">Ongeza masomo kwanza</a>.
+          {% if LANG == 'sw' %}Hakuna masomo. <a href="{% url 'school_subjects' %}">Ongeza masomo kwanza</a>.
+          {% else %}No subjects. <a href="{% url 'school_subjects' %}">Add subjects first</a>.{% endif %}
         </div>
         {% endif %}
       </div>

@@ -1,15 +1,18 @@
 {% extends 'results/base.html' %}
 
-{% block title %}Unda Mtihani Mpya{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}Create New Exam{% endif %}{% endblock %}
 
 {% block content %}
 <section class="hero form-shell">
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
     <div>
-      <h2 class="mb-1">Unda Mtihani Mpya</h2>
-      <p class="mb-0 text-secondary">Admin anaunda mtihani na kuweka masomo. Kisha walimu wanaingiza alama.</p>
+      <h2 class="mb-1">{% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}Create New Exam{% endif %}</h2>
+      <p class="mb-0 text-secondary">
+        {{ request.user.school.name }} —
+        {% if LANG == 'sw' %}Weka masomo, kisha walimu wataingiza alama.{% else %}Set up the subjects, then teachers will enter their scores.{% endif %}
+      </p>
     </div>
-    <a href="{% url 'home' %}" class="btn btn-sm" style="border:1.5px solid #1F7A3D;color:#1F7A3D;">← Rudi Nyumbani</a>
+    <a href="{% url 'home' %}" class="btn btn-sm" style="border:1.5px solid #1F7A3D;color:#1F7A3D;">← {% if LANG == 'sw' %}Rudi Nyumbani{% else %}Back Home{% endif %}</a>
   </div>
 </section>
 
@@ -18,7 +21,7 @@
   <div class="col-lg-6">
     <section class="panel">
       <div class="panel-head">
-        <h3 class="mb-0">Taarifa za Mtihani</h3>
+        <h3 class="mb-0">{% if LANG == 'sw' %}Taarifa za Mtihani{% else %}Exam Details{% endif %}</h3>
       </div>
       <div class="panel-body">
         <form method="post" id="createExamForm">
@@ -26,19 +29,19 @@
           <input type="hidden" name="action" value="create_exam">
 
           <div class="field">
-            <label>Jina la Mtihani</label>
-            <input name="exam_name" class="form-control" placeholder="Mfano: Terminal Exam 2026" required>
+            <label>{% if LANG == 'sw' %}Jina la Mtihani{% else %}Exam Name{% endif %}</label>
+            <input name="exam_name" class="form-control" placeholder="{% if LANG == 'sw' %}Mfano: Terminal Exam 2026{% else %}e.g. Terminal Exam 2026{% endif %}" required>
           </div>
           <div class="row g-2">
             <div class="col-6">
               <div class="field">
-                <label>Mwaka</label>
+                <label>{% if LANG == 'sw' %}Mwaka{% else %}Year{% endif %}</label>
                 <input name="exam_year" class="form-control" type="number" value="2026" min="2020" max="2100" required>
               </div>
             </div>
             <div class="col-6">
               <div class="field">
-                <label>Darasa (Form)</label>
+                <label>{% if LANG == 'sw' %}Darasa (Form){% else %}Form{% endif %}</label>
                 <select name="exam_form" class="form-select" required>
                   <option value="1">Form 1</option>
                   <option value="2">Form 2</option>
@@ -51,23 +54,19 @@
             </div>
           </div>
           <div class="field">
-            <label>Aina ya Mtihani</label>
+            <label>{% if LANG == 'sw' %}Aina ya Mtihani{% else %}Exam Type{% endif %}</label>
             <select name="exam_type_new" class="form-select" required>
               {% for value, label in exam_type_choices %}
                 {% if value %}<option value="{{ value }}">{{ label }}</option>{% endif %}
               {% endfor %}
             </select>
           </div>
-          <div class="field">
-            <label>Jina la Shule <span class="text-secondary" style="font-weight:400;">(si lazima)</span></label>
-            <input name="school_name" class="form-control" placeholder="Mfano: Shule ya Sekondari Mwanza">
-          </div>
 
           <hr class="my-3">
 
           <div class="field">
-            <label style="font-weight:700;color:#1F7A3D;">Masomo ya Mtihani Huu</label>
-            <div class="hint mb-2">Weka masomo. Unaweza kuchagua kutoka kwenye orodha au kuandika yako mwenyewe.</div>
+            <label style="font-weight:700;color:#1F7A3D;">{% if LANG == 'sw' %}Masomo ya Mtihani Huu{% else %}Subjects for this Exam{% endif %}</label>
+            <div class="hint mb-2">{% if LANG == 'sw' %}Weka masomo. Unaweza kuchagua kutoka kwenye orodha au kuandika yako mwenyewe.{% else %}Add subjects. Pick from the list below or type your own.{% endif %}</div>
 
             <!-- Quick-select common subjects -->
             <div class="mb-2" id="subjectChips">
@@ -82,13 +81,13 @@
             <input type="hidden" name="subjects" id="subjectsInput">
 
             <div class="d-flex gap-2">
-              <input id="customSubjectInput" class="form-control form-control-sm" placeholder="Ongeza somo lingine..." style="max-width:220px;">
-              <button type="button" id="addCustomSubjectBtn" class="btn btn-sm" style="border:1.5px solid #D9A441;color:#7a5200;border-radius:2px;">+ Ongeza</button>
+              <input id="customSubjectInput" class="form-control form-control-sm" placeholder="{% if LANG == 'sw' %}Ongeza somo lingine...{% else %}Add another subject...{% endif %}" style="max-width:220px;">
+              <button type="button" id="addCustomSubjectBtn" class="btn btn-sm" style="border:1.5px solid #D9A441;color:#7a5200;border-radius:2px;">+ {% if LANG == 'sw' %}Ongeza{% else %}Add{% endif %}</button>
             </div>
           </div>
 
           <div class="d-grid mt-4">
-            <button type="submit" class="btn btn-brand">Unda Mtihani →</button>
+            <button type="submit" class="btn btn-brand">{% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %} →</button>
           </div>
         </form>
       </div>
@@ -99,29 +98,53 @@
   <div class="col-lg-6">
     <section class="panel">
       <div class="panel-head">
-        <h3 class="mb-0">Mtiririko wa Mfumo</h3>
+        <h3 class="mb-0">{% if LANG == 'sw' %}Mtiririko wa Mfumo{% else %}How It Works{% endif %}</h3>
       </div>
       <div class="panel-body">
+        {% if LANG == 'sw' %}
         <ol style="padding-left:1.2rem;line-height:2;">
-          <li><strong>Admin</strong> anaunda mtihani na kuweka masomo (hapa)</li>
+          <li><strong>Academic</strong> anaunda mtihani na kuweka masomo (hapa)</li>
           <li><strong>Mwalimu wa kila somo</strong> anaingia Speech Entry → anasema majina na alama → anasema <em>"Nimemaliza"</em></li>
           <li>Mfumo unazalisha <strong>PDF ya somo lake</strong> moja kwa moja</li>
           <li><em>Mbadala:</em> Mwalimu anaweza <strong>upload file</strong> badala ya speech</li>
-          <li><strong>Admin</strong> anaona masomo yaliyokamilika → anabonyeza <em>"Zalisha Matokeo ya Mwisho"</em></li>
+          <li><strong>Academic</strong> anaona masomo yaliyokamilika → anabonyeza <em>"Zalisha Matokeo ya Mwisho"</em></li>
           <li>Mfumo unazalisha <strong>Excel ya kitaalamu</strong> na wanafunzi wote, masomo yote, position, division</li>
         </ol>
+        {% else %}
+        <ol style="padding-left:1.2rem;line-height:2;">
+          <li><strong>Academic officer</strong> creates the exam and sets up its subjects (here)</li>
+          <li><strong>Each subject's teacher</strong> opens Speech Entry → says names and scores → says <em>"Done"</em></li>
+          <li>The system generates that <strong>subject's PDF</strong> instantly</li>
+          <li><em>Alternative:</em> a teacher can <strong>upload a file</strong> instead of speech</li>
+          <li><strong>Academic officer</strong> sees which subjects are complete → clicks <em>"Generate Final Results"</em></li>
+          <li>The system generates a <strong>professional Excel</strong> with all students, subjects, position, and division</li>
+        </ol>
+        {% endif %}
 
         <div class="support-box mt-3" style="border-left:4px solid #D9A441;background:#fffbf0;">
+          {% if LANG == 'sw' %}
           <strong>Format ya faili ya Speech Entry:</strong><br>
           Mwalimu anasema kwa Kiswahili au Kiingereza:<br>
           <em>"Halima Ally kapata sabini na tano. Peter Mushi themanini. Fatuma Ali tisini."</em><br>
           Kisha: <strong>"Nimemaliza"</strong>
+          {% else %}
+          <strong>Speech Entry format:</strong><br>
+          The teacher speaks in Swahili or English:<br>
+          <em>"Halima Ally got seventy five. Peter Mushi eighty. Fatuma Ali ninety."</em><br>
+          Then: <strong>"Done"</strong>
+          {% endif %}
         </div>
 
         <div class="support-box mt-3" style="border-left:4px solid #1F7A3D;background:#f0f4ff;">
+          {% if LANG == 'sw' %}
           <strong>Format ya Upload (mbadala):</strong><br>
           Excel yenye safu: <code>First Name | Last Name | Gender | Score</code><br>
           Safu moja tu ya alama kwa somo lake.
+          {% else %}
+          <strong>Upload format (alternative):</strong><br>
+          Excel with columns: <code>First Name | Last Name | Gender | Score</code><br>
+          Just one score column per subject.
+          {% endif %}
         </div>
       </div>
     </section>

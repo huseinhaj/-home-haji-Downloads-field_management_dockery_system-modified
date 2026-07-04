@@ -33,6 +33,113 @@ body {
   z-index: -1;
 }
 
+.masthead {
+  background: linear-gradient(135deg, var(--accent-600), var(--accent-500));
+  border-bottom: 3px solid var(--secondary-500);
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  text-align: center;
+  flex-wrap: wrap;
+}
+
+.masthead-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--secondary-500);
+  background: white;
+  flex-shrink: 0;
+}
+
+.masthead-text {
+  color: white;
+  line-height: 1.35;
+}
+
+.masthead-line {
+  font-family: "Sora", sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.masthead-country {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--secondary-300);
+  text-transform: uppercase;
+}
+
+.masthead-ministry {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.masthead-council {
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--secondary-500);
+}
+
+.masthead-system {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 600px) {
+  .masthead-ministry, .masthead-country { font-size: 0.65rem; }
+  .masthead-council { font-size: 0.8rem; }
+  .masthead-system { font-size: 0.6rem; }
+}
+
+.app-footer {
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.6);
+  margin-top: 3rem;
+  padding: 1.25rem 0;
+}
+
+.app-footer-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  justify-content: center;
+  text-align: center;
+  flex-wrap: wrap;
+}
+
+.footer-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--secondary-500);
+}
+
+.footer-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.footer-text strong {
+  font-family: "Sora", sans-serif;
+  color: var(--accent-500);
+  font-size: 0.85rem;
+}
+
+.footer-text span {
+  color: var(--ink-500);
+  font-size: 0.75rem;
+}
+
 .app-header {
   position: sticky;
   top: 0;

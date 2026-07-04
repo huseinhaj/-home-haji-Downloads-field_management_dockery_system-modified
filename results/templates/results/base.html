@@ -14,6 +14,17 @@
 </head>
 <body>
   <div class="site-bg"></div>
+
+  <div class="masthead">
+    <img class="masthead-logo" src="{% static 'results/img/kyerwa_logo.jpg' %}" alt="Kyerwa DC">
+    <div class="masthead-text">
+      <div class="masthead-line masthead-country">{% if LANG == 'sw' %}JAMHURI YA MUUNGANO WA TANZANIA{% else %}THE UNITED REPUBLIC OF TANZANIA{% endif %}</div>
+      <div class="masthead-line masthead-ministry">{% if LANG == 'sw' %}WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA{% else %}MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY{% endif %}</div>
+      <div class="masthead-line masthead-council">{% if LANG == 'sw' %}HALMASHAURI YA WILAYA YA KYERWA{% else %}KYERWA DISTRICT COUNCIL{% endif %}</div>
+      <div class="masthead-line masthead-system">{% if LANG == 'sw' %}KITUO CHA UDHIBITI CHA MFUMO WA MATOKEO YA SHULE{% else %}SCHOOL RESULTS SYSTEM COMMAND CENTER{% endif %}</div>
+    </div>
+  </div>
+
   <header class="app-header">
     <div class="container app-header-inner">
       <a class="brand" href="{% url 'home' %}">
@@ -62,6 +73,16 @@
 
     {% block content %}{% endblock %}
   </main>
+
+  <footer class="app-footer">
+    <div class="container app-footer-inner">
+      <img src="{% static 'results/img/kyerwa_logo.jpg' %}" alt="Kyerwa DC" class="footer-logo">
+      <div class="footer-text">
+        <strong>{% if LANG == 'sw' %}Halmashauri ya Wilaya ya Kyerwa{% else %}Kyerwa District Council{% endif %}</strong>
+        <span>{% if LANG == 'sw' %}Mkoa wa Kagera, Tanzania{% else %}Kagera Region, Tanzania{% endif %} &bull; School Results System &copy; {% now "Y" %}</span>
+      </div>
+    </div>
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   {% block scripts %}{% endblock %}
