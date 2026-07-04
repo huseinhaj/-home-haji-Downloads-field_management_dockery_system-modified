@@ -93,6 +93,16 @@ def manage_teachers(request):
                 messages.error(request, "Imeshindwa kusasisha masomo. Jaribu tena.")
             return redirect('manage_teachers')
 
+        if action == 'delete':
+            teacher = get_object_or_404(TeacherAccount, pk=request.POST.get('teacher_id'), school=school)
+            if teacher.pk == request.user.pk:
+                messages.error(request, "Huwezi kujifuta mwenyewe.")
+            else:
+                email = teacher.email
+                teacher.delete()
+                messages.success(request, f"Akaunti ya {email} imeondolewa.")
+            return redirect('manage_teachers')
+
         form = TeacherAccountForm(request.POST)
         if form.is_valid():
             account = form.save(commit=False)

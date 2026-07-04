@@ -74,10 +74,18 @@
                   <span class="badge-soft" style="background:#f0f2f5;color:var(--ink-500);">Pending</span>
                 {% endif %}
               </td>
-              <td>
+              <td class="d-flex gap-1 flex-wrap">
                 <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#edit-{{ t.id }}">
                   {% if LANG == 'sw' %}Hariri masomo{% else %}Edit subjects{% endif %}
                 </button>
+                {% if t.pk != request.user.pk %}
+                <form method="post" onsubmit="return confirm('{% if LANG == "sw" %}Una uhakika unataka kuondoa{% else %}Are you sure you want to remove{% endif %} {{ t.email }}?')">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="teacher_id" value="{{ t.id }}">
+                  <button type="submit" class="btn btn-outline-danger btn-sm">{% if LANG == 'sw' %}Futa{% else %}Delete{% endif %}</button>
+                </form>
+                {% endif %}
               </td>
             </tr>
             <tr class="collapse" id="edit-{{ t.id }}">

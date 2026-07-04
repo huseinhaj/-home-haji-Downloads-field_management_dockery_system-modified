@@ -1078,15 +1078,17 @@ def teacher_dashboard(request):
 
 # ── Self-Service Subject Selection — teacher picks their own subject(s) ──────
 
-@teacher_required
+@login_required
 def select_my_subjects(request):
-    """Teacher picks the subject(s) they teach themselves — no academic officer needed."""
+    """Pick the subject(s) you teach yourself — no one else needs to assign
+    them. Open to both roles: academic officers often teach a subject too,
+    on top of their admin duties."""
     if request.method == 'POST':
         form = TeacherSelfSubjectsForm(request.POST, instance=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, "Masomo yako yamesasishwa.")
-            return redirect('teacher_dashboard')
+            return redirect('academic_dashboard' if request.user.is_academic else 'teacher_dashboard')
     else:
         form = TeacherSelfSubjectsForm(instance=request.user)
 
