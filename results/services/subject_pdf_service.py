@@ -56,8 +56,27 @@ DARK_GREY = colors.HexColor('#444444')
 GRADE_KEYS_OLEVEL = [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
 GRADE_KEYS_ALEVEL = [('A', '80-100'), ('B', '70-79'), ('C', '60-69'), ('D', '50-59'), ('E', '40-49'), ('S', '35-39'), ('F', '0-34')]
 
+_LABELS = {
+    'sw': {
+        'name': 'JINA LA MWANAFUNZI', 'score': 'ALAMA', 'grade': 'DARAJA',
+        'total_students': 'JUMLA YA WANAFUNZI', 'passed': 'WALIOFAULU', 'pass_rate': 'ASILIMIA KUFAULU',
+        'class_avg': 'WASTANI WA DARASA', 'distribution': 'MGAWANYO WA MADARAJA',
+        'gender_comparison': 'ULINGANISHO WA JINSIA', 'gender': 'JINSIA', 'count': 'IDADI',
+        'girls': 'WASICHANA', 'boys': 'WAVULANA', 'average': 'WASTANI',
+        'recommendations': 'MAPENDEKEZO KWA MWALIMU', 'teacher': 'Mwalimu', 'subject': 'Somo',
+    },
+    'en': {
+        'name': 'STUDENT NAME', 'score': 'SCORE', 'grade': 'GRADE',
+        'total_students': 'TOTAL STUDENTS', 'passed': 'PASSED', 'pass_rate': 'PASS RATE',
+        'class_avg': 'CLASS AVERAGE', 'distribution': 'GRADE DISTRIBUTION',
+        'gender_comparison': 'GENDER COMPARISON', 'gender': 'GENDER', 'count': 'COUNT',
+        'girls': 'GIRLS', 'boys': 'BOYS', 'average': 'AVERAGE',
+        'recommendations': 'RECOMMENDATIONS FOR TEACHER', 'teacher': 'Teacher', 'subject': 'Subject',
+    },
+}
 
-def generate_subject_pdf_response(exam, subject, teacher_name: str = '') -> HttpResponse:
+
+def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: str = 'sw') -> HttpResponse:
     """Generate an A4 PDF for ONE subject: position, name, score, grade,
     grade distribution, gender comparison, and teacher recommendations."""
 
@@ -83,8 +102,9 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '') -> Http
             'gender': student.gender,
         })
 
+    labels = _LABELS.get(lang, _LABELS['sw'])
     safe_subject = subject.name.replace(' ', '_').replace('/', '-')
-    meta_parts = [p for p in [exam.school_name, str(exam), f"Teacher: {teacher_name}" if teacher_name else ''] if p]
+    meta_parts = [p for p in [exam.school_name, str(exam), f"{labels['teacher']}: {teacher_name}" if teacher_name else ''] if p]
 
     return _render_results_pdf(
         heading=subject.name.upper(),
@@ -93,10 +113,11 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '') -> Http
         filename_stub=f"{safe_subject}_{exam.id}_results",
         subject_name=subject.name,
         grade_keys=GRADE_KEYS_ALEVEL if is_alevel else GRADE_KEYS_OLEVEL,
+        lang=lang,
     )
 
 
-def generate_personal_pdf_response(upload) -> HttpResponse:
+def generate_personal_pdf_response(upload, lang: str = 'sw') -> HttpResponse:
     """Generate the same-style advanced PDF for a teacher's private (non-official) upload."""
     results = list(upload.results.order_by('-score', 'student_name'))
     rows_data = []
@@ -109,8 +130,9 @@ def generate_personal_pdf_response(upload) -> HttpResponse:
             'gender': None,
         })
 
+    labels = _LABELS.get(lang, _LABELS['sw'])
     teacher_label = upload.teacher.full_name or upload.teacher.email
-    meta_parts = [f"Somo: {upload.subject.name}", f"Mwalimu: {teacher_label}", upload.created_at.strftime('%d %b %Y')]
+    meta_parts = [f"{labels['subject']}: {upload.subject.name}", f"{labels['teacher']}: {teacher_label}", upload.created_at.strftime('%d %b %Y')]
     safe_title = upload.title.replace(' ', '_').replace('/', '-') or 'matokeo'
 
     return _render_results_pdf(
@@ -120,6 +142,7 @@ def generate_personal_pdf_response(upload) -> HttpResponse:
         filename_stub=f"binafsi_{safe_title}_{upload.id}",
         subject_name=upload.subject.name,
         grade_keys=GRADE_KEYS_OLEVEL,
+        lang=lang,
     )
 
 
@@ -131,11 +154,13 @@ def _render_results_pdf(
     filename_stub: str,
     subject_name: str,
     grade_keys: list[tuple[str, str]],
+    lang: str = 'sw',
 ) -> HttpResponse:
     """Shared A4 PDF renderer: table + distribution + gender + recommendations."""
 
+    labels = _LABELS.get(lang, _LABELS['sw'])
     stats = compute_subject_stats(rows_data)
-    recommendations = generate_recommendations(stats, subject_name=subject_name)
+    recommendations = generate_recommendations(stats, subject_name=subject_name, lang=lang)
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename_stub}.pdf"'
@@ -192,7 +217,7 @@ def _render_results_pdf(
 
     # --- Results table ---
     col_widths = [1.5 * cm, 9.5 * cm, 2.5 * cm, 2.5 * cm]
-    table_data = [['POS', 'JINA LA MWANAFUNZI', 'ALAMA', 'DARAJA']]
+    table_data = [['POS', labels['name'], labels['score'], labels['grade']]]
     for row in rows_data:
         table_data.append([str(row['position']), row['name'], str(row['score']), row['grade']])
 
@@ -235,7 +260,7 @@ def _render_results_pdf(
 
     # --- Footer stats ---
     footer_data = [
-        ['JUMLA YA WANAFUNZI', 'WALIOFAULU', 'ASILIMIA KUFAULU', 'WASTANI WA DARASA'],
+        [labels['total_students'], labels['passed'], labels['pass_rate'], labels['class_avg']],
         [str(stats['total']), str(stats['pass_count']), f"{stats['pass_rate']}%", f"{stats['class_avg']}"],
     ]
     footer_table = Table(footer_data, colWidths=['25%', '25%', '25%', '25%'])
@@ -260,7 +285,7 @@ def _render_results_pdf(
 
     # --- Grade distribution ---
     total = stats['total'] or 1
-    story.append(Paragraph('MGAWANYO WA MADARAJA', section_style))
+    story.append(Paragraph(labels['distribution'], section_style))
     dist_header = [g for g, _ in grade_keys]
     dist_counts = [str(stats['grade_counts'].get(g, 0)) for g, _ in grade_keys]
     dist_pcts = [f"{round(stats['grade_counts'].get(g, 0) / total * 100)}%" for g, _ in grade_keys]
@@ -285,9 +310,9 @@ def _render_results_pdf(
     # --- Gender comparison (only when the data has genders) ---
     gender_stats = stats.get('gender_stats') or {}
     if gender_stats:
-        story.append(Paragraph('ULINGANISHO WA JINSIA', section_style))
-        g_rows = [['JINSIA', 'IDADI', 'ASILIMIA KUFAULU', 'WASTANI']]
-        for g, label in (('F', 'WASICHANA'), ('M', 'WAVULANA')):
+        story.append(Paragraph(labels['gender_comparison'], section_style))
+        g_rows = [[labels['gender'], labels['count'], labels['pass_rate'], labels['average']]]
+        for g, label in (('F', labels['girls']), ('M', labels['boys'])):
             gs = gender_stats.get(g)
             if gs:
                 g_rows.append([label, str(gs['count']), f"{gs['pass_rate']}%", str(gs['avg'])])
@@ -307,7 +332,7 @@ def _render_results_pdf(
         story.append(Spacer(1, 0.5 * cm))
 
     # --- Recommendations ---
-    story.append(Paragraph('MAPENDEKEZO KWA MWALIMU', section_style))
+    story.append(Paragraph(labels['recommendations'], section_style))
     rec_rows = [[Paragraph(f"&bull;&nbsp;&nbsp;{text}", rec_style)] for text in recommendations]
     rec_table = Table(rec_rows, colWidths=['100%'])
     rec_table.setStyle(TableStyle([

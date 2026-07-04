@@ -1,14 +1,20 @@
 {% extends 'results/base.html' %}
-{% block title %}Matokeo Binafsi | School Results{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Matokeo Binafsi{% else %}Personal Results{% endif %} | School Results{% endblock %}
 
 {% block content %}
 <section class="hero">
   <div>
-    <h1 class="mb-1">Matokeo Binafsi</h1>
+    <h1 class="mb-1">{% if LANG == 'sw' %}Matokeo Binafsi{% else %}Personal Results{% endif %}</h1>
     <p class="mb-0 text-secondary">
+      {% if LANG == 'sw' %}
       Pakia alama za somo lako mwenyewe na upate PDF ya matokeo papo hapo.
       Hii ni kwa matumizi yako binafsi — <strong>haihitaji mtihani wa shule uliopo</strong> na
       <strong>haiathiri matokeo ya jumla ya shule</strong>.
+      {% else %}
+      Upload your own subject's scores and get a results PDF instantly.
+      This is for your own use — <strong>it doesn't require an existing school exam</strong> and
+      <strong>doesn't affect the school's overall results</strong>.
+      {% endif %}
     </p>
   </div>
 </section>
@@ -16,13 +22,13 @@
 <div class="row g-3 mt-1">
   <div class="col-lg-6">
     <div class="panel h-100">
-      <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">Pakia Faili</h3></div>
+      <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">{% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</h3></div>
       <div class="panel-body">
         {% if teacher_subjects %}
         <form method="post" enctype="multipart/form-data">
           {% csrf_token %}
           <div class="field">
-            <label for="subject_id">Somo</label>
+            <label for="subject_id">{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</label>
             <select name="subject_id" id="subject_id" class="form-select" required>
               {% for subject in teacher_subjects %}
               <option value="{{ subject.id }}">{{ subject.name }}</option>
@@ -30,19 +36,22 @@
             </select>
           </div>
           <div class="field">
-            <label for="title">Jina la Tathmini</label>
-            <input type="text" name="title" id="title" class="form-control" placeholder="mf. Mtihani wa Mwezi - Julai 2026" required>
+            <label for="title">{% if LANG == 'sw' %}Jina la Tathmini{% else %}Assessment Name{% endif %}</label>
+            <input type="text" name="title" id="title" class="form-control" placeholder="{% if LANG == 'sw' %}mf. Mtihani wa Mwezi - Julai 2026{% else %}e.g. Monthly Test - July 2026{% endif %}" required>
           </div>
           <div class="field">
-            <label for="file">Faili la Alama (.xlsx, .xls, .csv)</label>
+            <label for="file">{% if LANG == 'sw' %}Faili la Alama{% else %}Scores File{% endif %} (.xlsx, .xls, .csv)</label>
             <input type="file" name="file" id="file" class="form-control" accept=".xlsx,.xls,.csv" required>
-            <div class="hint mt-1">Safu mbili tu zinahitajika: <strong>Jina</strong> na <strong>Alama</strong>.</div>
+            <div class="hint mt-1">
+              {% if LANG == 'sw' %}Safu mbili tu zinahitajika: <strong>Jina</strong> na <strong>Alama</strong>.
+              {% else %}Only two columns are needed: <strong>Name</strong> and <strong>Score</strong>.{% endif %}
+            </div>
           </div>
-          <button type="submit" class="btn btn-brand w-100 mt-2">Pakia na Zalisha Matokeo</button>
+          <button type="submit" class="btn btn-brand w-100 mt-2">{% if LANG == 'sw' %}Pakia na Zalisha Matokeo{% else %}Upload and Generate Results{% endif %}</button>
         </form>
         {% else %}
-        <p class="text-secondary mb-2">Hujachagua somo lolote bado.</p>
-        <a href="{% url 'select_my_subjects' %}" class="btn btn-brand">Chagua Masomo Yangu</a>
+        <p class="text-secondary mb-2">{% if LANG == 'sw' %}Hujachagua somo lolote bado.{% else %}You haven't picked any subject yet.{% endif %}</p>
+        <a href="{% url 'select_my_subjects' %}" class="btn btn-brand">{% if LANG == 'sw' %}Chagua Masomo Yangu{% else %}Choose My Subjects{% endif %}</a>
         {% endif %}
       </div>
     </div>
@@ -50,7 +59,7 @@
 
   <div class="col-lg-6">
     <div class="panel h-100">
-      <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">Historia Yako</h3></div>
+      <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">{% if LANG == 'sw' %}Historia Yako{% else %}Your History{% endif %}</h3></div>
       <div class="panel-body">
         {% if recent_uploads %}
         <ul class="exam-list">
@@ -62,7 +71,7 @@
             </div>
             <div class="d-flex gap-2">
               <a href="{% url 'personal_upload_summary' upload.id %}" class="badge-soft" style="text-decoration:none;">
-                &#128202; Muhtasari
+                &#128202; {% if LANG == 'sw' %}Muhtasari{% else %}Summary{% endif %}
               </a>
               <a href="{% url 'personal_upload_pdf' upload.id %}" class="badge-soft" style="text-decoration:none;" target="_blank">
                 &#128196; PDF
@@ -72,7 +81,7 @@
           {% endfor %}
         </ul>
         {% else %}
-        <p class="text-secondary mb-0">Bado hujapakia matokeo binafsi yoyote.</p>
+        <p class="text-secondary mb-0">{% if LANG == 'sw' %}Bado hujapakia matokeo binafsi yoyote.{% else %}You haven't uploaded any personal results yet.{% endif %}</p>
         {% endif %}
       </div>
     </div>

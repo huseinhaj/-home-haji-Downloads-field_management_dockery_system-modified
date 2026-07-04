@@ -1,18 +1,24 @@
 {% extends 'results/base.html' %}
 
-{% block title %}Matokeo ya Shule{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Matokeo ya Shule{% else %}School Results{% endif %}{% endblock %}
 
 {% block content %}
 <section class="hero">
   <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
     <div>
-      <h1 class="mb-1">Mfumo wa Matokeo</h1>
-      <p class="mb-0 text-secondary">Walimu wanapakia alama za masomo yao (au kuingiza kwa sauti) na kupata matokeo ya somo lao papo hapo. Mtaaluma anazalisha matokeo ya jumla ya shule pale masomo yote yatakapowasilishwa.</p>
+      <h1 class="mb-1">{% if LANG == 'sw' %}Mfumo wa Matokeo{% else %}Results System{% endif %}</h1>
+      <p class="mb-0 text-secondary">
+        {% if LANG == 'sw' %}
+        Walimu wanapakia alama za masomo yao (au kuingiza kwa sauti) na kupata matokeo ya somo lao papo hapo. Mtaaluma anazalisha matokeo ya jumla ya shule pale masomo yote yatakapowasilishwa.
+        {% else %}
+        Teachers upload their subject scores (or use voice entry) and get their subject results instantly. The academic officer generates the school's overall results once every subject has been submitted.
+        {% endif %}
+      </p>
     </div>
     {% if user.is_academic %}
-    <a href="{% url 'upload_results' %}" class="btn btn-brand">+ Unda Mtihani Mpya</a>
+    <a href="{% url 'upload_results' %}" class="btn btn-brand">+ {% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}New Exam{% endif %}</a>
     {% elif user.is_teacher %}
-    <a href="{% url 'teacher_dashboard' %}" class="btn btn-brand">Dashibodi Yangu</a>
+    <a href="{% url 'teacher_dashboard' %}" class="btn btn-brand">{% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}</a>
     {% endif %}
   </div>
 </section>
@@ -20,10 +26,13 @@
 {% if not exams %}
 <div style="border:2px dashed #C9A84C;border-radius:2px;padding:2.5rem;text-align:center;background:#fffbf0;margin-top:1rem;">
   <div style="font-size:2.5rem;margin-bottom:0.5rem;">📋</div>
-  <h3 style="color:#1B3A6B;font-weight:800;">Hakuna Mtihani Bado</h3>
-  <p class="text-secondary mb-3">Mtaaluma anaunda mtihani kwanza, kisha kila mwalimu anapakia alama za somo lake (au kuingiza kwa sauti).</p>
+  <h3 style="color:#1B3A6B;font-weight:800;">{% if LANG == 'sw' %}Hakuna Mtihani Bado{% else %}No Exams Yet{% endif %}</h3>
+  <p class="text-secondary mb-3">
+    {% if LANG == 'sw' %}Mtaaluma anaunda mtihani kwanza, kisha kila mwalimu anapakia alama za somo lake (au kuingiza kwa sauti).
+    {% else %}The academic officer creates an exam first, then each teacher uploads their subject's scores (or uses voice entry).{% endif %}
+  </p>
   {% if user.is_academic %}
-  <a href="{% url 'upload_results' %}" class="btn btn-brand">Unda Mtihani wa Kwanza</a>
+  <a href="{% url 'upload_results' %}" class="btn btn-brand">{% if LANG == 'sw' %}Unda Mtihani wa Kwanza{% else %}Create the First Exam{% endif %}</a>
   {% endif %}
 </div>
 {% else %}
@@ -40,11 +49,11 @@
           </div>
           <span class="badge-soft" style="font-size:0.7rem;white-space:nowrap;">
             {% if exam.submitted_count == exam.total_submissions and exam.total_submissions > 0 %}
-              ✅ Kamili
+              ✅ {% if LANG == 'sw' %}Kamili{% else %}Complete{% endif %}
             {% elif exam.submitted_count > 0 %}
-              🔄 Inaendelea
+              🔄 {% if LANG == 'sw' %}Inaendelea{% else %}In Progress{% endif %}
             {% else %}
-              ⏳ Inasubiri
+              ⏳ {% if LANG == 'sw' %}Inasubiri{% else %}Pending{% endif %}
             {% endif %}
           </span>
         </div>
@@ -54,14 +63,14 @@
           <div style="height:100%;background:linear-gradient(90deg,#1B3A6B,#C9A84C);width:{% widthratio exam.submitted_count exam.total_submissions 100 %}%;"></div>
         </div>
         <div style="font-size:0.75rem;color:#555;margin-bottom:0.75rem;">
-          <strong>{{ exam.submitted_count }}</strong>/{{ exam.total_submissions }} masomo yamewasilishwa
+          <strong>{{ exam.submitted_count }}</strong>/{{ exam.total_submissions }} {% if LANG == 'sw' %}masomo yamewasilishwa{% else %}subjects submitted{% endif %}
         </div>
         {% else %}
-        <div style="font-size:0.78rem;color:#888;margin:0.5rem 0 0.75rem;">Masomo hayajawekwa bado</div>
+        <div style="font-size:0.78rem;color:#888;margin:0.5rem 0 0.75rem;">{% if LANG == 'sw' %}Masomo hayajawekwa bado{% else %}No subjects set up yet{% endif %}</div>
         {% endif %}
 
         <div class="d-flex gap-2 flex-wrap mt-auto">
-          <a href="{% url 'exam_overview' exam.id %}" class="btn btn-brand btn-sm" style="font-size:0.78rem;">Muhtasari wa Mtihani</a>
+          <a href="{% url 'exam_overview' exam.id %}" class="btn btn-brand btn-sm" style="font-size:0.78rem;">{% if LANG == 'sw' %}Muhtasari wa Mtihani{% else %}Exam Overview{% endif %}</a>
           <a href="{% url 'speech_entry_page' %}?exam={{ exam.id }}" class="btn btn-sm" style="font-size:0.78rem;border:1.5px solid #1B3A6B;color:#1B3A6B;">Speech Entry</a>
         </div>
       </div>

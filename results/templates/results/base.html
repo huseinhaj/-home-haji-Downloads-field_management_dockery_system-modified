@@ -24,22 +24,26 @@
       </a>
       <nav class="app-nav">
         {% if user.is_authenticated %}
-          <a href="{% url 'home' %}">Mitihani</a>
+          <a href="{% url 'home' %}">{% if LANG == 'sw' %}Mitihani{% else %}Exams{% endif %}</a>
           {% if user.is_academic %}
-            <a href="{% url 'school_setup' %}">Shule</a>
-            <a href="{% url 'upload_results' %}">Unda Mtihani</a>
+            <a href="{% url 'school_setup' %}">{% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}</a>
+            <a href="{% url 'upload_results' %}">{% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}</a>
             <a href="{% url 'academic_dashboard' %}">Academic</a>
-            <a href="{% url 'manage_teachers' %}">Simamia Walimu</a>
+            <a href="{% url 'manage_teachers' %}">{% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</a>
           {% elif user.is_teacher %}
-            <a href="{% url 'teacher_dashboard' %}">Walimu</a>
-            <a href="{% url 'select_my_subjects' %}">Masomo Yangu</a>
-            <a href="{% url 'personal_upload' %}">Binafsi</a>
+            <a href="{% url 'teacher_dashboard' %}">{% if LANG == 'sw' %}Walimu{% else %}Dashboard{% endif %}</a>
+            <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
+            <a href="{% url 'personal_upload' %}">{% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
           {% endif %}
           <a href="{% url 'speech_entry_page' %}">Speech Entry</a>
-          <a href="{% url 'results_logout' %}">Toka</a>
+          <a href="{% url 'results_logout' %}">{% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}</a>
         {% else %}
-          <a href="{% url 'results_login' %}">Ingia</a>
+          <a href="{% url 'results_login' %}">{% if LANG == 'sw' %}Ingia{% else %}Login{% endif %}</a>
         {% endif %}
+        <span class="lang-switch">
+          <a href="{% url 'set_language' %}?lang=en&next={{ request.path|urlencode }}" class="{% if LANG == 'en' %}active{% endif %}">EN</a>
+          <a href="{% url 'set_language' %}?lang=sw&next={{ request.path|urlencode }}" class="{% if LANG == 'sw' %}active{% endif %}">SW</a>
+        </span>
       </nav>
     </div>
   </header>

@@ -106,6 +106,27 @@ body {
   border-color: rgba(15, 23, 42, 0.3);
 }
 
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-left: 0.3rem;
+}
+
+.lang-switch a {
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0.45rem 0.7rem !important;
+  font-size: 0.78rem;
+  background: white;
+}
+
+.lang-switch a.active {
+  background: var(--accent-500);
+  color: white !important;
+}
+
 .page-shell {
   padding-top: 1.4rem;
   padding-bottom: 2.5rem;

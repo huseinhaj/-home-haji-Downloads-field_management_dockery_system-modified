@@ -90,20 +90,20 @@
 <!-- Hero -->
 <div class="fr-hero">
   <div>
-    <h1>Matokeo — {{ form_label }}</h1>
-    <div class="sub">Matokeo ya mwisho baada ya idhini</div>
+    <h1>{% if LANG == 'sw' %}Matokeo{% else %}Results{% endif %} — {{ form_label }}</h1>
+    <div class="sub">{% if LANG == 'sw' %}Matokeo ya mwisho baada ya idhini{% else %}Final results after approval{% endif %}</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
     {% if is_academic %}
     <a href="{{ excel_url }}" class="btn btn-sm" style="background:#1a7a3b;color:#fff;font-weight:700;border-radius:2px;">
-      ⬇ Pakua Excel — Form {{ form_num }} Yote
+      ⬇ {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %} — Form {{ form_num }} {% if LANG == 'sw' %}Yote{% else %}All{% endif %}
     </a>
     <a href="{% url 'academic_dashboard' %}" class="btn btn-sm" style="background:#C9A84C;color:#1B3A6B;font-weight:700;border-radius:2px;">
       &larr; Academic Dashboard
     </a>
     {% else %}
     <a href="{% url 'teacher_dashboard' %}" class="btn btn-sm" style="background:#C9A84C;color:#1B3A6B;font-weight:700;border-radius:2px;">
-      &larr; Dashibodi Yangu
+      &larr; {% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}
     </a>
     {% endif %}
   </div>
@@ -129,7 +129,7 @@
         <div class="emeta">
           {{ ed.exam.get_exam_type_display }} &bull; {{ ed.exam.year }}
           {% if ed.exam.school_name %}&bull; {{ ed.exam.school_name }}{% endif %}
-          &bull; Masomo: {{ ed.approved_subs }}/{{ ed.total_subs }} yameidhinishwa
+          &bull; {% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}: {{ ed.approved_subs }}/{{ ed.total_subs }} {% if LANG == 'sw' %}yameidhinishwa{% else %}approved{% endif %}
         </div>
       </div>
       <div class="d-flex gap-2 flex-wrap">
@@ -137,14 +137,14 @@
           <a href="{{ ed.excel_url }}" class="btn btn-sm btn-outline-success" style="font-size:0.72rem;border-radius:2px;">Excel</a>
           <a href="{{ ed.pdf_url }}" class="btn btn-sm btn-outline-danger" style="font-size:0.72rem;border-radius:2px;">PDF</a>
         {% endif %}
-        <a href="{{ ed.overview_url }}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">Maelezo</a>
+        <a href="{{ ed.overview_url }}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">{% if LANG == 'sw' %}Maelezo{% else %}Details{% endif %}</a>
       </div>
     </div>
 
     {% if not ed.all_approved %}
     <div class="not-approved-notice">
-      ⚠️ Masomo {{ ed.approved_subs }}/{{ ed.total_subs }} tu yameidhinishwa — matokeo haya si ya mwisho bado.
-      <a href="{% url 'academic_dashboard' %}" style="color:#7a5200;font-weight:600;">Idhinisha →</a>
+      ⚠️ {% if LANG == 'sw' %}Masomo {{ ed.approved_subs }}/{{ ed.total_subs }} tu yameidhinishwa — matokeo haya si ya mwisho bado.{% else %}Only {{ ed.approved_subs }}/{{ ed.total_subs }} subjects are approved — these results are not final yet.{% endif %}
+      <a href="{% url 'academic_dashboard' %}" style="color:#7a5200;font-weight:600;">{% if LANG == 'sw' %}Idhinisha{% else %}Approve{% endif %} →</a>
     </div>
     {% endif %}
 
@@ -152,12 +152,12 @@
     <table class="results-table">
       <thead>
         <tr>
-          <th style="width:50px">Nafasi</th>
-          <th>Jina la Mwanafunzi</th>
-          <th style="width:90px;text-align:center;">Jumla</th>
-          <th style="width:90px;text-align:center;">Wastani</th>
-          <th style="width:70px;text-align:center;">Pointi</th>
-          <th style="width:90px;text-align:center;">Daraja</th>
+          <th style="width:50px">{% if LANG == 'sw' %}Nafasi{% else %}Pos.{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Jina la Mwanafunzi{% else %}Student Name{% endif %}</th>
+          <th style="width:90px;text-align:center;">{% if LANG == 'sw' %}Jumla{% else %}Total{% endif %}</th>
+          <th style="width:90px;text-align:center;">{% if LANG == 'sw' %}Wastani{% else %}Average{% endif %}</th>
+          <th style="width:70px;text-align:center;">{% if LANG == 'sw' %}Pointi{% else %}Points{% endif %}</th>
+          <th style="width:90px;text-align:center;">{% if LANG == 'sw' %}Daraja{% else %}Division{% endif %}</th>
         </tr>
       </thead>
       <tbody>
@@ -171,7 +171,7 @@
           <td style="text-align:center;">{{ res.average_score }}</td>
           <td style="text-align:center;">{{ res.points }}</td>
           <td style="text-align:center;">
-            <span class="div-{{ res.division }}" {% if res.counted_subjects %}title="Masomo yaliyotumika: {{ res.counted_subjects }}"{% endif %}>Daraja {{ res.division }}</span>
+            <span class="div-{{ res.division }}" {% if res.counted_subjects %}title="{% if LANG == 'sw' %}Masomo yaliyotumika{% else %}Subjects counted{% endif %}: {{ res.counted_subjects }}"{% endif %}>{% if LANG == 'sw' %}Daraja{% else %}Division{% endif %} {{ res.division }}</span>
           </td>
         </tr>
         {% endfor %}
@@ -179,7 +179,7 @@
     </table>
     {% else %}
     <div class="empty-notice">
-      Matokeo bado hayajahesabiwa. Idhinisha masomo yote kwanza, kisha system itahesabu.
+      {% if LANG == 'sw' %}Matokeo bado hayajahesabiwa. Idhinisha masomo yote kwanza, kisha system itahesabu.{% else %}Results haven't been computed yet. Approve every subject first, then the system will calculate them.{% endif %}
     </div>
     {% endif %}
   </div>
@@ -187,8 +187,8 @@
 {% else %}
 <div style="text-align:center;padding:3rem 1rem;color:#999;">
   <div style="font-size:2rem;margin-bottom:0.5rem;">📊</div>
-  Hakuna mitihani ya {{ form_label }} iliyosajiliwa bado.
-  <br><a href="{% url 'upload_results' %}">Unda mtihani mpya</a>
+  {% if LANG == 'sw' %}Hakuna mitihani ya {{ form_label }} iliyosajiliwa bado.{% else %}No {{ form_label }} exams registered yet.{% endif %}
+  <br><a href="{% url 'upload_results' %}">{% if LANG == 'sw' %}Unda mtihani mpya{% else %}Create a new exam{% endif %}</a>
 </div>
 {% endif %}
 {% endblock %}

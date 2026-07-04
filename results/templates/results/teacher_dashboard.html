@@ -1,35 +1,35 @@
 {% extends 'results/base.html' %}
-{% block title %}Dashibodi ya Mwalimu | School Results{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Dashibodi ya Mwalimu{% else %}Teacher Dashboard{% endif %} | School Results{% endblock %}
 
 {% block content %}
 <section class="hero">
   <div>
-    <h1 class="mb-1">Dashibodi ya Mwalimu</h1>
-    <p class="mb-0 text-secondary">Chagua hatua unayotaka kuchukua kwa somo lako.</p>
+    <h1 class="mb-1">{% if LANG == 'sw' %}Dashibodi ya Mwalimu{% else %}Teacher Dashboard{% endif %}</h1>
+    <p class="mb-0 text-secondary">{% if LANG == 'sw' %}Chagua hatua unayotaka kuchukua kwa somo lako.{% else %}Choose what you'd like to do for your subject.{% endif %}</p>
   </div>
 
   <div class="action-grid">
     <a href="#masomo-rasmi" class="action-card">
       <span class="icon">&#128228;</span>
-      <h3>Pakia kwa Mtaaluma</h3>
-      <p>Pakia alama za somo lako kwa mtihani rasmi wa shule. Baada ya kuwasilisha, Afisa Taaluma ataona na kuidhinisha.</p>
+      <h3>{% if LANG == 'sw' %}Pakia kwa Mtaaluma{% else %}Submit to Academic{% endif %}</h3>
+      <p>{% if LANG == 'sw' %}Pakia alama za somo lako kwa mtihani rasmi wa shule. Baada ya kuwasilisha, Afisa Taaluma ataona na kuidhinisha.{% else %}Upload your subject's scores for the school's official exam. Once submitted, the academic officer will see and approve it.{% endif %}</p>
     </a>
     <a href="{% url 'personal_upload' %}" class="action-card gold">
       <span class="icon">&#129518;</span>
-      <h3>Matokeo Binafsi</h3>
-      <p>Pakia alama zako mwenyewe (mf. mtihani wa mwezi) na upate PDF ya matokeo papo hapo — hauitaji mtihani rasmi.</p>
+      <h3>{% if LANG == 'sw' %}Matokeo Binafsi{% else %}Personal Results{% endif %}</h3>
+      <p>{% if LANG == 'sw' %}Pakia alama zako mwenyewe (mf. mtihani wa mwezi) na upate PDF ya matokeo papo hapo — hauitaji mtihani rasmi.{% else %}Upload your own scores (e.g. a monthly test) and get a results PDF instantly — no official exam needed.{% endif %}</p>
     </a>
     <a href="{% url 'speech_entry_page' %}" class="action-card">
       <span class="icon">&#127908;</span>
       <h3>Speech Entry</h3>
-      <p>Ingiza alama za somo lako kwa sauti badala ya kupakia faili.</p>
+      <p>{% if LANG == 'sw' %}Ingiza alama za somo lako kwa sauti badala ya kupakia faili.{% else %}Enter your subject's scores by voice instead of uploading a file.{% endif %}</p>
     </a>
   </div>
 </section>
 
 <div id="masomo-rasmi" class="mt-4">
-  <h2 style="font-family:'Sora',sans-serif;font-size:1.1rem;color:var(--ink-900);">Masomo ya Mitihani Rasmi</h2>
-  <p class="text-secondary" style="font-size:0.85rem;">Hali ya kila somo unalofundisha, kwa kila mtihani wa shule.</p>
+  <h2 style="font-family:'Sora',sans-serif;font-size:1.1rem;color:var(--ink-900);">{% if LANG == 'sw' %}Masomo ya Mitihani Rasmi{% else %}Official Exam Subjects{% endif %}</h2>
+  <p class="text-secondary" style="font-size:0.85rem;">{% if LANG == 'sw' %}Hali ya kila somo unalofundisha, kwa kila mtihani wa shule.{% else %}Status of every subject you teach, for each school exam.{% endif %}</p>
 
   {% if exams_ctx %}
     {% for ec in exams_ctx %}
@@ -44,15 +44,15 @@
         </div>
         <div class="d-flex gap-2 flex-wrap">
           {% if ec.pending %}
-          <span class="badge-soft" style="background:var(--secondary-300);">&#9203; Bado: {{ ec.pending|length }}</span>
+          <span class="badge-soft" style="background:var(--secondary-300);">&#9203; {% if LANG == 'sw' %}Bado{% else %}Pending{% endif %}: {{ ec.pending|length }}</span>
           {% endif %}
           {% if ec.submitted %}
-          <span class="badge-soft" style="background:#e8f4ff;color:#0056b3;">&#8679; Imewasilishwa: {{ ec.submitted|length }}</span>
+          <span class="badge-soft" style="background:#e8f4ff;color:#0056b3;">&#8679; {% if LANG == 'sw' %}Imewasilishwa{% else %}Submitted{% endif %}: {{ ec.submitted|length }}</span>
           {% endif %}
           {% if ec.approved %}
-          <span class="badge-soft" style="background:#e6f7ec;color:var(--ok-500);">&#10003; Imeidhinishwa: {{ ec.approved|length }}</span>
+          <span class="badge-soft" style="background:#e6f7ec;color:var(--ok-500);">&#10003; {% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}: {{ ec.approved|length }}</span>
           {% endif %}
-          <a href="{% url 'exam_overview' ec.exam.id %}" class="btn-tile ghost">Tazama Yote</a>
+          <a href="{% url 'exam_overview' ec.exam.id %}" class="btn-tile ghost">{% if LANG == 'sw' %}Tazama Yote{% else %}View All{% endif %}</a>
         </div>
       </div>
 
@@ -62,10 +62,10 @@
           {% for sub in ec.pending %}
           <div class="subject-tile pending">
             <div class="s-name">{{ sub.subject.name }}</div>
-            <div class="s-status pending">&#9203; BADO &mdash; Inasubiri mwalimu</div>
+            <div class="s-status pending">&#9203; {% if LANG == 'sw' %}BADO &mdash; Inasubiri mwalimu{% else %}PENDING &mdash; waiting on teacher{% endif %}</div>
             <div class="d-flex gap-1 flex-wrap">
-              <a href="{% url 'subject_upload' ec.exam.id sub.subject.id %}" class="btn-tile primary">&#8679; Pakia Faili</a>
-              <a href="{% url 'speech_entry_page' %}?exam={{ ec.exam.id }}&subject={{ sub.subject.id }}" class="btn-tile ghost">&#127908; Sauti</a>
+              <a href="{% url 'subject_upload' ec.exam.id sub.subject.id %}" class="btn-tile primary">&#8679; {% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
+              <a href="{% url 'speech_entry_page' %}?exam={{ ec.exam.id }}&subject={{ sub.subject.id }}" class="btn-tile ghost">&#127908; {% if LANG == 'sw' %}Sauti{% else %}Voice{% endif %}</a>
             </div>
           </div>
           {% endfor %}
@@ -73,12 +73,12 @@
           {% for sub in ec.submitted %}
           <div class="subject-tile submitted">
             <div class="s-name">{{ sub.subject.name }}</div>
-            <div class="s-status submitted">&#8679; Imewasilishwa</div>
-            <div class="s-meta">Mwalimu: {{ sub.submitted_by|default:"—" }}</div>
-            <div class="s-meta">Wanafunzi: {{ sub.student_count }}</div>
+            <div class="s-status submitted">&#8679; {% if LANG == 'sw' %}Imewasilishwa{% else %}Submitted{% endif %}</div>
+            <div class="s-meta">{% if LANG == 'sw' %}Mwalimu{% else %}Teacher{% endif %}: {{ sub.submitted_by|default:"—" }}</div>
+            <div class="s-meta">{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}: {{ sub.student_count }}</div>
             {% if sub.submitted_at %}<div class="s-meta">{{ sub.submitted_at|date:"d M Y" }}</div>{% endif %}
             <div class="d-flex gap-1 flex-wrap">
-              <a href="{{ sub.summary_url }}" class="btn-tile ghost">&#128202; Muhtasari &amp; Mapendekezo</a>
+              <a href="{{ sub.summary_url }}" class="btn-tile ghost">&#128202; {% if LANG == 'sw' %}Muhtasari &amp; Mapendekezo{% else %}Summary &amp; Recommendations{% endif %}</a>
               <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; PDF</a>
             </div>
           </div>
@@ -87,11 +87,11 @@
           {% for sub in ec.approved %}
           <div class="subject-tile approved">
             <div class="s-name">{{ sub.subject.name }}</div>
-            <div class="s-status approved">&#10003; Imeidhinishwa</div>
-            <div class="s-meta">Mwalimu: {{ sub.submitted_by|default:"—" }}</div>
-            <div class="s-meta">Imeidhinishwa na: {{ sub.approved_by|default:"—" }}</div>
+            <div class="s-status approved">&#10003; {% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}</div>
+            <div class="s-meta">{% if LANG == 'sw' %}Mwalimu{% else %}Teacher{% endif %}: {{ sub.submitted_by|default:"—" }}</div>
+            <div class="s-meta">{% if LANG == 'sw' %}Imeidhinishwa na{% else %}Approved by{% endif %}: {{ sub.approved_by|default:"—" }}</div>
             <div class="d-flex gap-1 flex-wrap">
-              <a href="{{ sub.summary_url }}" class="btn-tile ghost">&#128202; Muhtasari &amp; Mapendekezo</a>
+              <a href="{{ sub.summary_url }}" class="btn-tile ghost">&#128202; {% if LANG == 'sw' %}Muhtasari &amp; Mapendekezo{% else %}Summary &amp; Recommendations{% endif %}</a>
               <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; PDF</a>
             </div>
           </div>
@@ -99,7 +99,7 @@
         </div>
       </div>
       {% else %}
-      <div class="panel-body text-secondary" style="font-size:0.82rem;">Hakuna masomo yaliyosajiliwa kwa mtihani huu.</div>
+      <div class="panel-body text-secondary" style="font-size:0.82rem;">{% if LANG == 'sw' %}Hakuna masomo yaliyosajiliwa kwa mtihani huu.{% else %}No subjects registered for this exam.{% endif %}</div>
       {% endif %}
     </div>
     {% endfor %}
@@ -108,10 +108,10 @@
     <div class="panel-body empty-state">
       <div style="font-size:2rem;margin-bottom:0.5rem;">&#128196;</div>
       {% if has_subjects %}
-        Hakuna mtihani wenye masomo yako bado. Wasiliana na Afisa Taaluma kuhusu ratiba ya mtihani.
+        {% if LANG == 'sw' %}Hakuna mtihani wenye masomo yako bado. Wasiliana na Afisa Taaluma kuhusu ratiba ya mtihani.{% else %}No exam with your subjects yet. Talk to the academic officer about the exam schedule.{% endif %}
       {% else %}
-        Hujachagua somo lolote bado.
-        <div class="mt-2"><a href="{% url 'select_my_subjects' %}" class="btn btn-brand">Chagua Masomo Yangu</a></div>
+        {% if LANG == 'sw' %}Hujachagua somo lolote bado.{% else %}You haven't picked any subject yet.{% endif %}
+        <div class="mt-2"><a href="{% url 'select_my_subjects' %}" class="btn btn-brand">{% if LANG == 'sw' %}Chagua Masomo Yangu{% else %}Choose My Subjects{% endif %}</a></div>
       {% endif %}
     </div>
   </div>

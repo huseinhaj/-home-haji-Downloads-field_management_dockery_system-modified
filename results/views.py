@@ -366,7 +366,8 @@ def subject_pdf(request, exam_id, subject_id):
     except SubjectSubmission.DoesNotExist:
         pass
 
-    return generate_subject_pdf_response(exam, subject, teacher_name=teacher_name)
+    lang = request.session.get('ui_lang', 'en')
+    return generate_subject_pdf_response(exam, subject, teacher_name=teacher_name, lang=lang)
 
 
 # ── Subject Results Summary (in-app view: stats + recommendations) ───────────
@@ -404,14 +405,16 @@ def subject_summary(request, exam_id, subject_id):
             'gender': student.gender,
         })
 
+    lang = request.session.get('ui_lang', 'en')
     stats = compute_subject_stats(rows_data)
-    recommendations = generate_recommendations(stats, subject_name=subject.name)
+    recommendations = generate_recommendations(stats, subject_name=subject.name, lang=lang)
     grade_keys = GRADE_KEYS_ALEVEL if is_alevel else GRADE_KEYS_OLEVEL
     distribution = _build_distribution(stats, grade_keys)
+    teacher_label = 'Mwalimu' if lang == 'sw' else 'Teacher'
 
     return render(request, 'results/results_summary.html', {
         'heading': subject.name,
-        'meta_parts': [p for p in [exam.school_name, str(exam), f"Mwalimu: {teacher_name}" if teacher_name else ''] if p],
+        'meta_parts': [p for p in [exam.school_name, str(exam), f"{teacher_label}: {teacher_name}" if teacher_name else ''] if p],
         'rows_data': rows_data,
         'stats': stats,
         'recommendations': recommendations,
@@ -1154,7 +1157,8 @@ def personal_upload(request):
 @teacher_required
 def personal_upload_pdf(request, upload_id):
     upload = get_object_or_404(PersonalUpload, id=upload_id, teacher=request.user)
-    return generate_personal_pdf_response(upload)
+    lang = request.session.get('ui_lang', 'en')
+    return generate_personal_pdf_response(upload, lang=lang)
 
 
 @teacher_required
@@ -1171,14 +1175,16 @@ def personal_upload_summary(request, upload_id):
             'gender': None,
         })
 
+    lang = request.session.get('ui_lang', 'en')
     stats = compute_subject_stats(rows_data)
-    recommendations = generate_recommendations(stats, subject_name=upload.subject.name)
-    teacher_label = upload.teacher.full_name or upload.teacher.email
+    recommendations = generate_recommendations(stats, subject_name=upload.subject.name, lang=lang)
+    uploader_name = upload.teacher.full_name or upload.teacher.email
+    subject_word, teacher_word = ('Somo', 'Mwalimu') if lang == 'sw' else ('Subject', 'Teacher')
     distribution = _build_distribution(stats, GRADE_KEYS_OLEVEL)
 
     return render(request, 'results/results_summary.html', {
         'heading': upload.title,
-        'meta_parts': [f"Somo: {upload.subject.name}", f"Mwalimu: {teacher_label}", upload.created_at.strftime('%d %b %Y')],
+        'meta_parts': [f"{subject_word}: {upload.subject.name}", f"{teacher_word}: {uploader_name}", upload.created_at.strftime('%d %b %Y')],
         'rows_data': rows_data,
         'stats': stats,
         'recommendations': recommendations,

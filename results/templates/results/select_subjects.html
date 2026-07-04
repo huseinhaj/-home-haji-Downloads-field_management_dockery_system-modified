@@ -1,12 +1,16 @@
 {% extends 'results/base.html' %}
-{% block title %}Masomo Yangu | School Results{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %} | School Results{% endblock %}
 
 {% block content %}
 <section class="hero">
   <div>
-    <h1 class="mb-1">Masomo Yangu</h1>
+    <h1 class="mb-1">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</h1>
     <p class="mb-0 text-secondary">
+      {% if LANG == 'sw' %}
       Chagua somo/masomo unayofundisha. Huhitaji Afisa Taaluma akuchagulie — bofya, hifadhi, na uanze kupakia.
+      {% else %}
+      Pick the subject(s) you teach. You don't need the academic officer to assign them — just select, save, and start uploading.
+      {% endif %}
     </p>
   </div>
 </section>
@@ -16,10 +20,10 @@
     <form method="post">
       {% csrf_token %}
       <div class="field">
-        <label>Masomo</label>
+        <label>{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}</label>
         {{ form.subjects }}
       </div>
-      <button type="submit" class="btn btn-brand mt-2">Hifadhi Masomo Yangu</button>
+      <button type="submit" class="btn btn-brand mt-2">{% if LANG == 'sw' %}Hifadhi Masomo Yangu{% else %}Save My Subjects{% endif %}</button>
     </form>
   </div>
 </div>
