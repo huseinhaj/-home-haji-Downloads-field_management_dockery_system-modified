@@ -300,6 +300,14 @@ def subject_upload(request, exam_id, subject_id):
                 )
                 saved_count += 1
 
+            if saved_count == 0:
+                messages.error(
+                    request,
+                    "Hakuna mwanafunzi aliyesomwa kwenye faili — angalia kama safu za 'First Name', "
+                    "'Last Name' na 'Score' zipo na zina data sahihi. Hakuna kilichopakiwa."
+                )
+                return redirect(request.path)
+
             # Mark SubjectSubmission as SUBMITTED
             SubjectSubmission.objects.update_or_create(
                 exam=exam,
@@ -622,6 +630,7 @@ def approve_subject(request, exam_id, subject_id):
     sub.approved_at = timezone.now()
     sub.approval_notes = notes
     sub.save(update_fields=['status', 'approved_by', 'approved_by_user', 'approved_at', 'approval_notes'])
+    recompute_processed_results_for_exam(exam)
 
     messages.success(request, f"Somo la {subject.name} limeidhinishwa.")
     return redirect(reverse('exam_overview', args=[exam.id]))
