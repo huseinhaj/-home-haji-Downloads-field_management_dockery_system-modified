@@ -60,9 +60,14 @@
               <div style="font-weight:700;">{{ upload.title }}</div>
               <div class="exam-meta">{{ upload.subject.name }} &bull; {{ upload.created_at|date:"d M Y, H:i" }}</div>
             </div>
-            <a href="{% url 'personal_upload_pdf' upload.id %}" class="badge-soft" style="text-decoration:none;" target="_blank">
-              &#128196; PDF
-            </a>
+            <div class="d-flex gap-2">
+              <a href="{% url 'personal_upload_summary' upload.id %}" class="badge-soft" style="text-decoration:none;">
+                &#128202; Muhtasari
+              </a>
+              <a href="{% url 'personal_upload_pdf' upload.id %}" class="badge-soft" style="text-decoration:none;" target="_blank">
+                &#128196; PDF
+              </a>
+            </div>
           </li>
           {% endfor %}
         </ul>

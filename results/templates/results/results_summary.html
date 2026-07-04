@@ -1,0 +1,125 @@
+{% extends 'results/base.html' %}
+{% block title %}Muhtasari — {{ heading }} | School Results{% endblock %}
+
+{% block content %}
+<style>
+  .grade-a, .grade-b { color: var(--ok-500); }
+  .grade-c { color: #8a6f00; }
+  .grade-d, .grade-e { color: #b35c00; }
+  .grade-s { color: #946200; }
+  .grade-f { color: var(--danger-500); }
+
+  .dist-bar-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.45rem; }
+  .dist-bar-label { width: 90px; font-weight: 700; font-size: 0.8rem; }
+  .dist-bar-track { flex: 1; background: var(--surface-200); border-radius: 999px; height: 14px; overflow: hidden; }
+  .dist-bar-fill { height: 100%; border-radius: 999px; }
+  .dist-bar-count { width: 70px; text-align: right; font-size: 0.78rem; color: var(--ink-500); }
+
+  .rec-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+  .rec-list li {
+    background: var(--surface-100);
+    border-left: 4px solid var(--secondary-500);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 0.88rem;
+  }
+</style>
+
+<section class="hero">
+  <div>
+    <h1 class="mb-1">{{ heading }}</h1>
+    <p class="mb-0 text-secondary">{{ meta_parts|join:"   •   " }}</p>
+  </div>
+  <div class="metrics">
+    <div class="metric">
+      <span class="value">{{ stats.total }}</span>
+      <span class="label">Jumla ya Wanafunzi</span>
+    </div>
+    <div class="metric">
+      <span class="value">{{ stats.pass_rate }}%</span>
+      <span class="label">Asilimia Kufaulu</span>
+    </div>
+    <div class="metric">
+      <span class="value">{{ stats.class_avg }}</span>
+      <span class="label">Wastani wa Darasa</span>
+    </div>
+  </div>
+</section>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-7">
+    <div class="panel h-100">
+      <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">Mgawanyo wa Madaraja</h3></div>
+      <div class="panel-body">
+        {% for d in distribution %}
+        <div class="dist-bar-row">
+          <div class="dist-bar-label grade-{{ d.grade|lower }}">{{ d.grade }} ({{ d.range }})</div>
+          <div class="dist-bar-track">
+            <div class="dist-bar-fill grade-{{ d.grade|lower }}" style="width: {{ d.pct }}%; background: currentColor;"></div>
+          </div>
+          <div class="dist-bar-count">{{ d.count }} ({{ d.pct }}%)</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="panel h-100">
+      <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">Ulinganisho wa Jinsia</h3></div>
+      <div class="panel-body">
+        {% if stats.gender_stats %}
+        <table class="table table-sm">
+          <thead><tr><th>Jinsia</th><th>Idadi</th><th>% Kufaulu</th><th>Wastani</th></tr></thead>
+          <tbody>
+            {% if stats.gender_stats.F %}
+            <tr><td>Wasichana</td><td>{{ stats.gender_stats.F.count }}</td><td>{{ stats.gender_stats.F.pass_rate }}%</td><td>{{ stats.gender_stats.F.avg }}</td></tr>
+            {% endif %}
+            {% if stats.gender_stats.M %}
+            <tr><td>Wavulana</td><td>{{ stats.gender_stats.M.count }}</td><td>{{ stats.gender_stats.M.pass_rate }}%</td><td>{{ stats.gender_stats.M.avg }}</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-secondary mb-0" style="font-size:0.85rem;">Hakuna taarifa ya jinsia kwa data hii.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel mt-3">
+  <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">Mapendekezo kwa Mwalimu</h3></div>
+  <div class="panel-body">
+    <ul class="rec-list">
+      {% for rec in recommendations %}
+      <li>{{ rec }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="panel mt-3">
+  <div class="panel-head"><h3 class="mb-0" style="font-size:1rem;">Matokeo Kamili</h3></div>
+  <div class="panel-body" style="overflow-x:auto;">
+    <table class="table table-sm">
+      <thead><tr><th>Nafasi</th><th>Jina</th><th>Alama</th><th>Daraja</th></tr></thead>
+      <tbody>
+        {% for row in rows_data %}
+        <tr>
+          <td>{{ row.position }}</td>
+          <td>{{ row.name }}</td>
+          <td>{{ row.score }}</td>
+          <td class="grade-{{ row.grade|lower }}" style="font-weight:700;">{{ row.grade }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="d-flex gap-2 flex-wrap mt-3">
+  <a href="{{ pdf_url }}" class="btn btn-brand" target="_blank">&#128196; Pakua PDF</a>
+  {% if back_url %}<a href="{{ back_url }}" class="btn btn-outline-secondary">&larr; Rudi Nyuma</a>{% endif %}
+</div>
+{% endblock %}

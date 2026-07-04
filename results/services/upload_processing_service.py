@@ -4,6 +4,9 @@ from django.db.models import Prefetch
 from ..models import ExamResult, ProcessedResult, Student, Subject
 from ..utils import (
     extract_subject_columns,
+    get_division,
+    get_grade_for_form,
+    get_grade_points,
     load_results_dataframe,
     normalize_gender,
     normalize_subject_name,
@@ -65,35 +68,30 @@ def process_uploaded_results(exam, uploaded_file):
     recompute_processed_results_for_exam(exam)
 
 
-def _calculate_division(average):
-    if average >= 75.0:
-        return 'I'
-    if 65.0 <= average < 75.0:
-        return 'II'
-    if 45.0 <= average < 65.0:
-        return 'III'
-    if 30.0 <= average < 45.0:
-        return 'IV'
-    return '0'
-
-
-def _subject_point(score):
-    if score >= 75:
-        return 1
-    if score >= 65:
-        return 2
-    if score >= 50:
-        return 3
-    if score >= 40:
-        return 4
-    return 5
+# Division is computed from a candidate's BEST subjects only — matching real
+# NECTA practice (CSEE: best 7; ACSEE: 3 principal subjects) — not every
+# subject the school happens to test. Without this, an exam covering many
+# subjects (e.g. 18) would push nearly everyone into Division 0 by raw point
+# accumulation, regardless of how well they actually performed.
+_DIVISION_SUBJECT_COUNT = {1: 7, 2: 7, 3: 7, 4: 7, 5: 3, 6: 3}
 
 
 def recompute_processed_results_for_exam(exam):
+    """Recompute each student's total/average/points/division for this exam.
+
+    Points and division follow the official NECTA method: convert each
+    subject score to a grade (CSEE for Form 1-4, ACSEE for Form 5-6), take
+    the student's best subjects, sum those grades' point values, then map
+    the total to a division — the same source of truth
+    (utils.get_grade_for_form/get_division) used for per-subject results,
+    so "Daraja" never disagrees between the subject-level and whole-exam
+    reports.
+    """
     students = Student.objects.filter(examresult__exam=exam).distinct().prefetch_related(
         Prefetch('examresult_set', queryset=ExamResult.objects.filter(exam=exam))
     )
 
+    best_n = _DIVISION_SUBJECT_COUNT.get(exam.form, 7)
     student_data = []
 
     for student in students:
@@ -104,8 +102,9 @@ def recompute_processed_results_for_exam(exam):
         total = sum(result.score for result in results)
         count = len(results)
         average = (total / count) if count else 0.0
-        points = sum(_subject_point(result.score) for result in results)
-        division = _calculate_division(average)
+        subject_points = sorted(get_grade_points(get_grade_for_form(r.score, exam.form)) for r in results)
+        points = sum(subject_points[:best_n])  # lowest point values == best grades
+        division = get_division(points)
 
         student_data.append(
             {

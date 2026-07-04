@@ -77,7 +77,10 @@
             <div class="s-meta">Mwalimu: {{ sub.submitted_by|default:"—" }}</div>
             <div class="s-meta">Wanafunzi: {{ sub.student_count }}</div>
             {% if sub.submitted_at %}<div class="s-meta">{{ sub.submitted_at|date:"d M Y" }}</div>{% endif %}
-            <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; Generate Results (PDF)</a>
+            <div class="d-flex gap-1 flex-wrap">
+              <a href="{{ sub.summary_url }}" class="btn-tile ghost">&#128202; Muhtasari &amp; Mapendekezo</a>
+              <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; PDF</a>
+            </div>
           </div>
           {% endfor %}
 
@@ -87,7 +90,10 @@
             <div class="s-status approved">&#10003; Imeidhinishwa</div>
             <div class="s-meta">Mwalimu: {{ sub.submitted_by|default:"—" }}</div>
             <div class="s-meta">Imeidhinishwa na: {{ sub.approved_by|default:"—" }}</div>
-            <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; Generate Results (PDF)</a>
+            <div class="d-flex gap-1 flex-wrap">
+              <a href="{{ sub.summary_url }}" class="btn-tile ghost">&#128202; Muhtasari &amp; Mapendekezo</a>
+              <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; PDF</a>
+            </div>
           </div>
           {% endfor %}
         </div>

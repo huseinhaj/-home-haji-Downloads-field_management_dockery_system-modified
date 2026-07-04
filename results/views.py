@@ -14,13 +14,19 @@ from .models import Exam, ExamResult, PersonalUpload, PersonalUploadResult, Scho
 from .permissions import academic_required, results_login_required as login_required, teacher_required
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
 from .services.pdf_export_service import generate_results_pdf_response
-from .services.subject_pdf_service import generate_personal_pdf_response, generate_subject_pdf_response
+from .services.subject_pdf_service import (
+    GRADE_KEYS_ALEVEL,
+    GRADE_KEYS_OLEVEL,
+    generate_personal_pdf_response,
+    generate_subject_pdf_response,
+)
+from .services.results_analytics import compute_subject_stats, generate_recommendations
 from .services.upload_processing_service import (
     UploadProcessingError,
     process_uploaded_results,
     recompute_processed_results_for_exam,
 )
-from .utils import normalize_gender, parse_name_score_sheet, parse_score
+from .utils import get_grade, get_grade_for_form, normalize_gender, parse_name_score_sheet, parse_score
 
 _EXAM_TYPE_CHOICES = Exam.EXAM_TYPE_CHOICES
 
@@ -361,6 +367,71 @@ def subject_pdf(request, exam_id, subject_id):
         pass
 
     return generate_subject_pdf_response(exam, subject, teacher_name=teacher_name)
+
+
+# ── Subject Results Summary (in-app view: stats + recommendations) ───────────
+
+@login_required
+def subject_summary(request, exam_id, subject_id):
+    """Same analysis as the PDF (distribution, gender, recommendations) but
+    viewable directly in the app — teachers don't have to download anything
+    to see how their subject did and what to do next."""
+    exam = get_object_or_404(Exam, id=exam_id)
+    subject = get_object_or_404(Subject, id=subject_id)
+
+    teacher_name = ''
+    try:
+        submission = SubjectSubmission.objects.get(exam=exam, subject=subject)
+        teacher_name = submission.submitted_by or ''
+    except SubjectSubmission.DoesNotExist:
+        pass
+
+    results = list(
+        ExamResult.objects.filter(exam=exam, subject=subject).select_related('student')
+    )
+    results.sort(key=lambda r: r.score, reverse=True)
+
+    is_alevel = exam.form in (5, 6)
+    rows_data = []
+    for pos, result in enumerate(results, 1):
+        student = result.student
+        full_name = ' '.join(part for part in [student.first_name, student.middle_name, student.last_name] if part)
+        rows_data.append({
+            'position': pos,
+            'name': full_name,
+            'score': result.score,
+            'grade': get_grade_for_form(result.score, exam.form),
+            'gender': student.gender,
+        })
+
+    stats = compute_subject_stats(rows_data)
+    recommendations = generate_recommendations(stats, subject_name=subject.name)
+    grade_keys = GRADE_KEYS_ALEVEL if is_alevel else GRADE_KEYS_OLEVEL
+    distribution = _build_distribution(stats, grade_keys)
+
+    return render(request, 'results/results_summary.html', {
+        'heading': subject.name,
+        'meta_parts': [p for p in [exam.school_name, str(exam), f"Mwalimu: {teacher_name}" if teacher_name else ''] if p],
+        'rows_data': rows_data,
+        'stats': stats,
+        'recommendations': recommendations,
+        'distribution': distribution,
+        'pdf_url': reverse('subject_pdf', args=[exam.id, subject.id]),
+        'back_url': reverse('exam_overview', args=[exam.id]),
+    })
+
+
+def _build_distribution(stats, grade_keys):
+    total = stats['total'] or 1
+    return [
+        {
+            'grade': g,
+            'range': rng,
+            'count': stats['grade_counts'].get(g, 0),
+            'pct': round(stats['grade_counts'].get(g, 0) / total * 100),
+        }
+        for g, rng in grade_keys
+    ]
 
 
 # ── Roster Upload ─────────────────────────────────────────────────────────────
@@ -997,6 +1068,7 @@ def teacher_dashboard(request):
         approved = [s for s in subs if s.status == SubjectSubmission.STATUS_APPROVED]
         for s in submitted + approved:
             s.pdf_url = reverse('subject_pdf', args=[exam.id, s.subject_id])
+            s.summary_url = reverse('subject_summary', args=[exam.id, s.subject_id])
         exams_ctx.append({
             'exam': exam,
             'pending': pending,
@@ -1083,3 +1155,34 @@ def personal_upload(request):
 def personal_upload_pdf(request, upload_id):
     upload = get_object_or_404(PersonalUpload, id=upload_id, teacher=request.user)
     return generate_personal_pdf_response(upload)
+
+
+@teacher_required
+def personal_upload_summary(request, upload_id):
+    upload = get_object_or_404(PersonalUpload, id=upload_id, teacher=request.user)
+    results = list(upload.results.order_by('-score', 'student_name'))
+    rows_data = []
+    for pos, result in enumerate(results, 1):
+        rows_data.append({
+            'position': pos,
+            'name': result.student_name,
+            'score': result.score,
+            'grade': get_grade(result.score),
+            'gender': None,
+        })
+
+    stats = compute_subject_stats(rows_data)
+    recommendations = generate_recommendations(stats, subject_name=upload.subject.name)
+    teacher_label = upload.teacher.full_name or upload.teacher.email
+    distribution = _build_distribution(stats, GRADE_KEYS_OLEVEL)
+
+    return render(request, 'results/results_summary.html', {
+        'heading': upload.title,
+        'meta_parts': [f"Somo: {upload.subject.name}", f"Mwalimu: {teacher_label}", upload.created_at.strftime('%d %b %Y')],
+        'rows_data': rows_data,
+        'stats': stats,
+        'recommendations': recommendations,
+        'distribution': distribution,
+        'pdf_url': reverse('personal_upload_pdf', args=[upload.id]),
+        'back_url': reverse('personal_upload'),
+    })

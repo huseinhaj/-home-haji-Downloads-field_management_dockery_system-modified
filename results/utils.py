@@ -79,6 +79,7 @@ def normalize_gender(raw_gender: str) -> str:
 
 
 def get_grade(score):
+    """NECTA CSEE (O-Level, Form 1-4) subject grade."""
     if score >= 75:
         return "A"
     if score >= 65:
@@ -88,6 +89,44 @@ def get_grade(score):
     if score >= 30:
         return "D"
     return "F"
+
+
+def get_grade_alevel(score):
+    """NECTA ACSEE (A-Level, Form 5-6) subject grade — wider 7-band scale."""
+    if score >= 80:
+        return "A"
+    if score >= 70:
+        return "B"
+    if score >= 60:
+        return "C"
+    if score >= 50:
+        return "D"
+    if score >= 40:
+        return "E"
+    if score >= 35:
+        return "S"
+    return "F"
+
+
+def get_grade_for_form(score, form):
+    """Pick the right NECTA scale: ACSEE for Form 5/6, CSEE otherwise."""
+    if form in (5, 6):
+        return get_grade_alevel(score)
+    return get_grade(score)
+
+
+def is_passing_grade(grade):
+    """Under both CSEE and ACSEE, F is the only failing grade."""
+    return grade != "F"
+
+
+GRADE_POINTS = {"A": 1, "B": 2, "C": 3, "D": 4, "F": 5}
+
+
+def get_grade_points(grade):
+    """NECTA CSEE point value for a subject grade (A=1 ... F=5), used to sum
+    a student's total points across subjects for division classification."""
+    return GRADE_POINTS.get(grade, 5)
 
 
 def parse_name_score_sheet(uploaded_file) -> list[tuple[str, int]]:
