@@ -108,3 +108,17 @@ class TeacherSubjectsForm(forms.ModelForm):
             'subjects': forms.SelectMultiple(attrs={'class': 'form-control', 'size': 8}),
         }
 
+
+class TeacherSelfSubjectsForm(forms.ModelForm):
+    """Self-service: a teacher picks the subject(s) they teach themselves.
+
+    Deliberately excludes 'role' — a teacher must never be able to grant
+    themselves academic access through this form.
+    """
+    class Meta:
+        model = TeacherAccount
+        fields = ['subjects']
+        widgets = {
+            'subjects': forms.CheckboxSelectMultiple(),
+        }
+

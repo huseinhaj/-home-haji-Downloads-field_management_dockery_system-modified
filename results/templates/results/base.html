@@ -32,6 +32,7 @@
             <a href="{% url 'manage_teachers' %}">Simamia Walimu</a>
           {% elif user.is_teacher %}
             <a href="{% url 'teacher_dashboard' %}">Walimu</a>
+            <a href="{% url 'select_my_subjects' %}">Masomo Yangu</a>
             <a href="{% url 'personal_upload' %}">Binafsi</a>
           {% endif %}
           <a href="{% url 'speech_entry_page' %}">Speech Entry</a>

@@ -20,6 +20,7 @@ from .views import (
     school_subjects,
     create_exam_for_school,
     teacher_dashboard,
+    select_my_subjects,
     personal_upload,
     personal_upload_pdf,
 )
@@ -61,6 +62,7 @@ urlpatterns = [
     path('school/<int:school_id>/create-exam/', create_exam_for_school, name='create_exam_for_school'),
     # Teacher dashboard
     path('teacher/', teacher_dashboard, name='teacher_dashboard'),
+    path('masomo-yangu/', select_my_subjects, name='select_my_subjects'),
     # Personal (binafsi) upload — private, not tied to any official exam
     path('binafsi/', personal_upload, name='personal_upload'),
     path('binafsi/<int:upload_id>/pdf/', personal_upload_pdf, name='personal_upload_pdf'),

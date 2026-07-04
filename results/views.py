@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST, require_GET
 
 from django.core.exceptions import ValidationError
 
-from .forms import ExamUploadForm
+from .forms import ExamUploadForm, TeacherSelfSubjectsForm
 from .models import Exam, ExamResult, PersonalUpload, PersonalUploadResult, School, SchoolSubject, Student, Subject, SubjectSubmission
 from .permissions import academic_required, results_login_required as login_required, teacher_required
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
@@ -999,6 +999,23 @@ def teacher_dashboard(request):
         'exams_ctx': exams_ctx,
         'has_subjects': bool(teacher_subject_ids),
     })
+
+
+# ── Self-Service Subject Selection — teacher picks their own subject(s) ──────
+
+@teacher_required
+def select_my_subjects(request):
+    """Teacher picks the subject(s) they teach themselves — no academic officer needed."""
+    if request.method == 'POST':
+        form = TeacherSelfSubjectsForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Masomo yako yamesasishwa.")
+            return redirect('teacher_dashboard')
+    else:
+        form = TeacherSelfSubjectsForm(instance=request.user)
+
+    return render(request, 'results/select_subjects.html', {'form': form})
 
 
 # ── Personal (Binafsi) Upload — private scratch tool, not part of the official exam ──

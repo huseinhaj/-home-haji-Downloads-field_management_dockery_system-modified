@@ -1,0 +1,26 @@
+{% extends 'results/base.html' %}
+{% block title %}Masomo Yangu | School Results{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h1 class="mb-1">Masomo Yangu</h1>
+    <p class="mb-0 text-secondary">
+      Chagua somo/masomo unayofundisha. Huhitaji Afisa Taaluma akuchagulie — bofya, hifadhi, na uanze kupakia.
+    </p>
+  </div>
+</section>
+
+<div class="panel mt-3">
+  <div class="panel-body form-shell">
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label>Masomo</label>
+        {{ form.subjects }}
+      </div>
+      <button type="submit" class="btn btn-brand mt-2">Hifadhi Masomo Yangu</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

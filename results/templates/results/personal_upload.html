@@ -41,9 +41,8 @@
           <button type="submit" class="btn btn-brand w-100 mt-2">Pakia na Zalisha Matokeo</button>
         </form>
         {% else %}
-        <p class="text-secondary mb-0">
-          Hujapangiwa somo lolote bado. Wasiliana na Afisa Taaluma ili akusajili kwenye somo unalofundisha.
-        </p>
+        <p class="text-secondary mb-2">Hujachagua somo lolote bado.</p>
+        <a href="{% url 'select_my_subjects' %}" class="btn btn-brand">Chagua Masomo Yangu</a>
         {% endif %}
       </div>
     </div>
