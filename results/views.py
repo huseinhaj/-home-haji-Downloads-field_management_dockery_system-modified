@@ -685,6 +685,7 @@ def form_results(request, form_num):
         'exams_ctx': exams_ctx,
         'form_label': f'Form {form_num}' if form_num <= 4 else f'Form {form_num} (Advanced)',
         'excel_url': reverse('form_results_excel', args=[form_num]),
+        'is_academic': getattr(request.user, 'is_academic', False),
     })
 
 
