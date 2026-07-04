@@ -218,6 +218,17 @@ class TeacherAccount(AbstractBaseUser):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # This project's AUTHENTICATION_BACKENDS include both ResultsAuthBackend
+    # and the main site's backends, so a TeacherAccount can legitimately end
+    # up as request.user on ANY page, including /admin/ (e.g. someone logged
+    # into /shule/ in the same browser session navigating to the Django
+    # admin). Django's AdminSite.has_permission() checks
+    # `request.user.is_active and request.user.is_staff` unconditionally —
+    # without these, that check raises AttributeError instead of just
+    # denying access. TeacherAccount is never a staff/superuser account.
+    is_staff = False
+    is_superuser = False
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
@@ -225,6 +236,19 @@ class TeacherAccount(AbstractBaseUser):
 
     def __str__(self):
         return f"{self.full_name or self.email} ({self.get_role_display()})"
+
+    # Minimal no-op stand-ins for PermissionsMixin's API (we don't need real
+    # Django permissions here, just to satisfy admin/permission checks that
+    # may run against this model when it ends up as request.user — see the
+    # is_staff/is_superuser comment above).
+    def has_perm(self, perm, obj=None):
+        return False
+
+    def has_perms(self, perm_list, obj=None):
+        return False
+
+    def has_module_perms(self, app_label):
+        return False
 
     @property
     def is_academic(self):
