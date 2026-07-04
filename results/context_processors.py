@@ -1,3 +1,8 @@
+# National coat of arms, served from Wikimedia Commons' CDN rather than a
+# copy in our own static files.
+TZ_EMBLEM_URL = "https://upload.wikimedia.org/wikipedia/commons/c/c2/Coat_of_arms_of_Tanzania.svg"
+
+
 def branding(request):
     """Per-district branding for the masthead/header/footer.
 
@@ -13,4 +18,5 @@ def branding(request):
     return {
         'DISTRICT_NAME': district,
         'IS_KYERWA': is_kyerwa,
+        'TZ_EMBLEM_URL': TZ_EMBLEM_URL,
     }

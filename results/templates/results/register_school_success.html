@@ -1,0 +1,21 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Usajili Umefanikiwa{% else %}Registration Successful{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<div class="panel mt-4">
+  <div class="panel-body text-center">
+    <div style="font-size:2.5rem;margin-bottom:0.5rem;">✅</div>
+    <h3 style="font-family:'Sora',sans-serif;color:var(--accent-500);">
+      {% if LANG == 'sw' %}Umesajiliwa kama Academic wa {{ school.name }}{% else %}Registered as Academic for {{ school.name }}{% endif %}
+    </h3>
+    <p class="text-secondary">
+      {% if LANG == 'sw' %}
+      Akaunti yako ({{ email }}) imeidhinishwa moja kwa moja. Unaweza kuingia sasa na kuanza kusimamia shule yako.
+      {% else %}
+      Your account ({{ email }}) has been approved automatically. You can log in now and start managing your school.
+      {% endif %}
+    </p>
+    <a href="{% url 'results_login' %}" class="btn btn-brand mt-2">{% if LANG == 'sw' %}Ingia Sasa{% else %}Login Now{% endif %}</a>
+  </div>
+</div>
+{% endblock %}

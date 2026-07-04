@@ -4,13 +4,17 @@ Lets anyone browse the nationwide Region -> District -> School list
 (the same master data used by the internship/field_app side of this
 project) and register as the first Academic officer for their school,
 without a system administrator having to pre-create every school by
-hand. New accounts start inactive (is_active=False) and must be
-approved by a superuser in Django admin before they can log in — this
-keeps the "automatic" self-service flow while still preventing a
-stranger from silently claiming a school that isn't theirs.
+hand. Registration requires the system administrator's authorization
+phone number as a shared passcode — anyone who knows it (because the
+admin gave it to them) is auto-activated immediately; without it, no
+account is created at all. This keeps the flow fully automatic (no
+manual Django-admin approval step) while still preventing a random
+stranger from claiming a school that isn't theirs.
 """
 
 from __future__ import annotations
+
+import re
 
 from django.contrib import messages
 from django.contrib.auth.password_validation import validate_password
@@ -22,6 +26,15 @@ from field_app.models import District, Region
 from field_app.models import School as SourceSchool
 
 from .models import School, TeacherAccount
+
+# Shared authorization passcode for becoming a school's first Academic
+# officer. Whoever the system administrator shares this number with can
+# self-register and is activated immediately.
+ADMIN_AUTHORIZATION_PHONE = "0625607088"
+
+
+def _normalize_phone(value: str) -> str:
+    return re.sub(r"\D", "", value or "")
 
 
 def register_school_start(request):
@@ -78,6 +91,7 @@ def register_school_confirm(request):
     source_school_id = request.POST.get('school_id')
     email = request.POST.get('email', '').strip().lower()
     full_name = request.POST.get('full_name', '').strip()
+    admin_phone = request.POST.get('admin_phone', '')
     password1 = request.POST.get('password1', '')
     password2 = request.POST.get('password2', '')
 
@@ -91,6 +105,9 @@ def register_school_confirm(request):
             'school': school,
             'academic_email': _mask_email(existing.email),
         })
+
+    if _normalize_phone(admin_phone) != ADMIN_AUTHORIZATION_PHONE:
+        errors.append("Namba ya simu ya idhini si sahihi. Wasiliana na msimamizi wa mfumo kupata namba sahihi.")
 
     if not email:
         errors.append("Barua pepe inahitajika.")
@@ -119,9 +136,9 @@ def register_school_confirm(request):
 
     account = TeacherAccount(
         email=email, full_name=full_name, role=TeacherAccount.ROLE_ACADEMIC,
-        school=school, is_active=False,
+        school=school, is_active=True,
     )
     account.set_password(password1)
     account.save()
 
-    return render(request, 'results/register_school_pending.html', {'school': school, 'email': email})
+    return render(request, 'results/register_school_success.html', {'school': school, 'email': email})

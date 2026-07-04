@@ -72,6 +72,14 @@
           <input type="text" name="full_name" class="form-control" value="{{ full_name|default:'' }}" required>
         </div>
         <div class="field">
+          <label>{% if LANG == 'sw' %}Namba ya Simu ya Idhini (Admin){% else %}Admin Authorization Phone Number{% endif %}</label>
+          <input type="tel" name="admin_phone" class="form-control" required>
+          <div class="hint mt-1">
+            {% if LANG == 'sw' %}Omba namba hii kwa msimamizi wa mfumo — inathibitisha una ruhusa ya kuwa Academic wa shule hii.
+            {% else %}Ask the system administrator for this number — it confirms you're authorized to become this school's Academic.{% endif %}
+          </div>
+        </div>
+        <div class="field">
           <label>Password</label>
           <input type="password" name="password1" class="form-control" required>
         </div>
