@@ -1,0 +1,28 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Lipia{% else %}Pay{% endif %} — {{ plan.name }} | School Results{% endblock %}
+
+{% block content %}
+<div class="panel mt-4">
+  <div class="panel-body form-shell text-center">
+    <h3 style="font-family:'Sora',sans-serif;color:var(--accent-500);">{{ plan.name }}</h3>
+    <div style="font-size:1.8rem;font-weight:800;">{{ plan.price_tzs|floatformat:0 }} TZS</div>
+    <p class="text-secondary">{{ school.name }} &mdash; {{ plan.duration_days }} {% if LANG == 'sw' %}siku{% else %}days{% endif %}</p>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-danger shadow-sm mb-2 text-start" role="alert">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" class="text-start mt-3">
+      {% csrf_token %}
+      <div class="field">
+        <label>{% if LANG == 'sw' %}Namba ya Simu (M-Pesa/Tigo Pesa/Airtel/HaloPesa){% else %}Phone Number (M-Pesa/Tigo Pesa/Airtel/HaloPesa){% endif %}</label>
+        <input type="tel" name="phone_number" class="form-control" placeholder="0712345678" required>
+        <div class="hint mt-1">{% if LANG == 'sw' %}Utapokea ombi la kuweka PIN kwenye simu yako baada ya kubonyeza "Lipa".{% else %}You'll get a PIN prompt on your phone after clicking "Pay".{% endif %}</div>
+      </div>
+      <button type="submit" class="btn btn-brand w-100">{% if LANG == 'sw' %}Lipa Sasa{% else %}Pay Now{% endif %}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

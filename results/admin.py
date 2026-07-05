@@ -6,15 +6,18 @@ from field_app.admin import custom_admin_site
 from .models import (
     Exam,
     ExamResult,
+    PaymentTransaction,
     PersonalUpload,
     ProcessedResult,
     School,
     SchoolSubject,
+    SchoolSubscription,
     SpeechSubmissionEntry,
     SpeechSubmissionSession,
     Student,
     Subject,
     SubjectSubmission,
+    SubscriptionPlan,
     TeacherAccount,
 )
 
@@ -118,6 +121,31 @@ class SchoolSubjectAdmin(admin.ModelAdmin):
     search_fields = ('school__name', 'subject__name')
 
 
+class SubscriptionPlanAdmin(admin.ModelAdmin):
+    list_display = ('name', 'price_tzs', 'duration_days', 'is_active', 'sort_order')
+    list_filter = ('is_active',)
+    ordering = ('sort_order', 'duration_days')
+
+
+class SchoolSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('school', 'plan', 'active_until', 'is_active')
+    list_filter = ('plan',)
+    search_fields = ('school__name',)
+    autocomplete_fields = ('school',)
+
+    @admin.display(boolean=True)
+    def is_active(self, obj):
+        return obj.is_active
+
+
+class PaymentTransactionAdmin(admin.ModelAdmin):
+    list_display = ('school', 'plan', 'amount', 'phone_number', 'status', 'order_reference', 'created_at')
+    list_filter = ('status', 'plan')
+    search_fields = ('school__name', 'phone_number', 'order_reference', 'clickpesa_payment_id')
+    readonly_fields = ('order_reference', 'clickpesa_payment_id', 'raw_response', 'created_at', 'updated_at')
+    ordering = ('-created_at',)
+
+
 custom_admin_site.register(Exam, ExamAdmin)
 custom_admin_site.register(Subject, SubjectAdmin)
 custom_admin_site.register(Student, StudentAdmin)
@@ -130,3 +158,6 @@ custom_admin_site.register(TeacherAccount, TeacherAccountAdmin)
 custom_admin_site.register(School, SchoolAdmin)
 custom_admin_site.register(SchoolSubject, SchoolSubjectAdmin)
 custom_admin_site.register(PersonalUpload)
+custom_admin_site.register(SubscriptionPlan, SubscriptionPlanAdmin)
+custom_admin_site.register(SchoolSubscription, SchoolSubscriptionAdmin)
+custom_admin_site.register(PaymentTransaction, PaymentTransactionAdmin)

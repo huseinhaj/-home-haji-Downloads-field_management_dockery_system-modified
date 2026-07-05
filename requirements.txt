@@ -59,3 +59,4 @@ rapidfuzz==3.10.1
 numpy==2.2.6
 pandas==2.2.3
 faster-whisper==1.1.1
+requests==2.31.0

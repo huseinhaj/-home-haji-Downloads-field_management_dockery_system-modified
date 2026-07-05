@@ -1,0 +1,47 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Mipango ya Malipo{% else %}Subscription Plans{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h1 class="mb-1">{% if LANG == 'sw' %}Mipango ya Malipo{% else %}Subscription Plans{% endif %}</h1>
+    <p class="mb-0 text-secondary">
+      {{ school.name }} —
+      {% if subscription.is_active %}
+        {% if LANG == 'sw' %}Una ufikiaji hai hadi {{ subscription.active_until|date:"d M Y" }}.{% else %}Your access is active until {{ subscription.active_until|date:"d M Y" }}.{% endif %}
+      {% else %}
+        {% if LANG == 'sw' %}Huna mpango hai kwa sasa — chagua mpango ili uweze kuzalisha matokeo ya jumla.{% else %}You have no active plan right now — pick a plan to generate official/general results.{% endif %}
+      {% endif %}
+    </p>
+  </div>
+</section>
+
+{% if messages %}
+  <section class="messages-wrap mt-3">
+    {% for message in messages %}
+      <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} shadow-sm mb-2" role="alert">{{ message }}</div>
+    {% endfor %}
+  </section>
+{% endif %}
+
+<div class="row g-3 mt-1">
+  {% for plan in plans %}
+  <div class="col-md-4">
+    <div class="panel h-100">
+      <div class="panel-body text-center d-flex flex-column">
+        <h3 style="font-family:'Sora',sans-serif;color:var(--accent-500);">{{ plan.name }}</h3>
+        <div style="font-size:1.8rem;font-weight:800;color:var(--ink-900);margin:0.5rem 0;">
+          {{ plan.price_tzs|floatformat:0 }} <span style="font-size:0.85rem;color:var(--ink-500);">TZS</span>
+        </div>
+        <p class="text-secondary" style="font-size:0.85rem;">{{ plan.duration_days }} {% if LANG == 'sw' %}siku{% else %}days{% endif %}</p>
+        <a href="{% url 'pay_for_plan' plan.id %}" class="btn btn-brand mt-auto">{% if LANG == 'sw' %}Lipia{% else %}Pay{% endif %}</a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="support-box">{% if LANG == 'sw' %}Hakuna mipango iliyowekwa bado. Wasiliana na msimamizi wa mfumo.{% else %}No plans configured yet. Contact the system administrator.{% endif %}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

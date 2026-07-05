@@ -369,3 +369,72 @@ class SpeechSubmissionEntry(models.Model):
 
     def __str__(self):
         return f"{self.session} - {self.student} ({self.score})"
+
+
+# ── Billing (ClickPesa mobile money subscriptions) ───────────────────────────
+
+class SubscriptionPlan(models.Model):
+    """A billing tier a school can subscribe to (e.g. monthly / 6 months /
+    annual). Prices are set by the system admin in Django admin — not
+    hardcoded — so they can be changed without a code deploy."""
+    name = models.CharField(max_length=100)
+    duration_days = models.PositiveIntegerField(help_text="How many days this plan grants access for.")
+    price_tzs = models.PositiveIntegerField(help_text="Price in Tanzanian Shillings.")
+    is_active = models.BooleanField(default=True, help_text="Uncheck to hide this plan from schools without deleting it.")
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'duration_days']
+
+    def __str__(self):
+        return f"{self.name} — {self.price_tzs:,} TZS / {self.duration_days} days"
+
+
+class SchoolSubscription(models.Model):
+    """A school's current billing state. Generating official/general results
+    (finalize, PDF, Excel) is gated on this being active."""
+    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name='subscription')
+    plan = models.ForeignKey(SubscriptionPlan, null=True, blank=True, on_delete=models.SET_NULL)
+    active_until = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.school} — until {self.active_until or 'never'}"
+
+    @property
+    def is_active(self):
+        return bool(self.active_until and self.active_until > timezone.now())
+
+
+class PaymentTransaction(models.Model):
+    """One ClickPesa USSD-push attempt. Status is updated by ClickPesa's
+    webhook, not by us — we only know a payment succeeded once ClickPesa
+    tells us so."""
+    STATUS_PENDING = 'PENDING'
+    STATUS_PROCESSING = 'PROCESSING'
+    STATUS_SUCCESS = 'SUCCESS'
+    STATUS_FAILED = 'FAILED'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_PROCESSING, 'Processing'),
+        (STATUS_SUCCESS, 'Success'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='payments')
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT)
+    initiated_by = models.ForeignKey('TeacherAccount', on_delete=models.SET_NULL, null=True, blank=True)
+    phone_number = models.CharField(max_length=20, help_text="255XXXXXXXXX format, as sent to ClickPesa.")
+    order_reference = models.CharField(max_length=100, unique=True)
+    clickpesa_payment_id = models.CharField(max_length=100, blank=True)
+    amount = models.PositiveIntegerField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    raw_response = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.school} — {self.amount} TZS ({self.status})"

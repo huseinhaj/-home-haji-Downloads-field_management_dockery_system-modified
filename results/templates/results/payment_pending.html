@@ -1,0 +1,53 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Inasubiri Malipo{% else %}Awaiting Payment{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<div class="panel mt-4">
+  <div class="panel-body text-center">
+    <div style="font-size:2.5rem;margin-bottom:0.5rem;" id="statusIcon">⏳</div>
+    <h3 style="font-family:'Sora',sans-serif;color:var(--accent-500);" id="statusTitle">
+      {% if LANG == 'sw' %}Tunasubiri Uthibitisho{% else %}Waiting for Confirmation{% endif %}
+    </h3>
+    <p class="text-secondary" id="statusText">
+      {% if LANG == 'sw' %}Angalia simu yako ({{ transaction.phone_number }}) na uweke PIN yako ya malipo.
+      {% else %}Check your phone ({{ transaction.phone_number }}) and enter your payment PIN.{% endif %}
+    </p>
+    <a href="{% url 'choose_plan' %}" class="btn btn-outline-secondary mt-2">{% if LANG == 'sw' %}Rudi kwenye Mipango{% else %}Back to Plans{% endif %}</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const statusUrl = "{% url 'payment_status_json' transaction.id %}";
+  const icon = document.getElementById('statusIcon');
+  const title = document.getElementById('statusTitle');
+  const text = document.getElementById('statusText');
+  const lang = "{{ LANG }}";
+
+  async function poll() {
+    try {
+      const resp = await fetch(statusUrl);
+      const data = await resp.json();
+      if (data.status === 'SUCCESS') {
+        icon.textContent = '✅';
+        title.textContent = lang === 'sw' ? 'Malipo Yamefanikiwa' : 'Payment Successful';
+        text.textContent = lang === 'sw' ? 'Ufikiaji wako umeongezwa.' : 'Your access has been extended.';
+        return;
+      }
+      if (data.status === 'FAILED') {
+        icon.textContent = '❌';
+        title.textContent = lang === 'sw' ? 'Malipo Yameshindwa' : 'Payment Failed';
+        text.textContent = lang === 'sw' ? 'Jaribu tena.' : 'Please try again.';
+        return;
+      }
+      setTimeout(poll, 4000);
+    } catch (e) {
+      setTimeout(poll, 6000);
+    }
+  }
+  poll();
+})();
+</script>
+{% endblock %}

@@ -1,5 +1,12 @@
 from django.urls import path
 from .auth_views import results_login, results_logout, manage_teachers
+from .billing_views import (
+    choose_plan,
+    pay_for_plan,
+    payment_pending,
+    payment_status_json,
+    payment_webhook,
+)
 from .registration_views import (
     ajax_districts,
     ajax_schools,
@@ -81,6 +88,12 @@ urlpatterns = [
     path('binafsi/', personal_upload, name='personal_upload'),
     path('binafsi/<int:upload_id>/pdf/', personal_upload_pdf, name='personal_upload_pdf'),
     path('binafsi/<int:upload_id>/muhtasari/', personal_upload_summary, name='personal_upload_summary'),
+    # Billing (ClickPesa mobile money subscription)
+    path('malipo/', choose_plan, name='choose_plan'),
+    path('malipo/lipa/<int:plan_id>/', pay_for_plan, name='pay_for_plan'),
+    path('malipo/inasubiri/<int:transaction_id>/', payment_pending, name='payment_pending'),
+    path('malipo/status/<int:transaction_id>/', payment_status_json, name='payment_status_json'),
+    path('malipo/webhook/', payment_webhook, name='payment_webhook'),
     # Speech entry
     path('speech/', speech_entry_page, name='speech_entry_page'),
     path('speech-sessions/', create_speech_session, name='create_speech_session'),

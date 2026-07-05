@@ -231,6 +231,12 @@ GMAIL_CLIENT_ID = os.environ.get('GMAIL_CLIENT_ID', '')
 GMAIL_CLIENT_SECRET = os.environ.get('GMAIL_CLIENT_SECRET', '')
 GMAIL_REFRESH_TOKEN = os.environ.get('GMAIL_REFRESH_TOKEN', '')
 
+# ClickPesa (results app billing) — set once a merchant account is approved.
+# Left blank on purpose: results/services/clickpesa_service.py refuses to
+# call the API without these rather than pretending a payment went through.
+CLICKPESA_CLIENT_ID = os.environ.get('CLICKPESA_CLIENT_ID', '')
+CLICKPESA_API_KEY = os.environ.get('CLICKPESA_API_KEY', '')
+
 # GDAL Configuration for GeoDjango
 GDAL_LIBRARY_PATH = os.environ.get('GDAL_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/libgdal.so')
 GEOS_LIBRARY_PATH = os.environ.get('GEOS_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/libgeos_c.so')

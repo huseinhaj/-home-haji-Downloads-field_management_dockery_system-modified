@@ -57,6 +57,7 @@
             <a href="{% url 'academic_dashboard' %}">Academic</a>
             <a href="{% url 'manage_teachers' %}">{% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</a>
             <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
+            <a href="{% url 'choose_plan' %}">{% if LANG == 'sw' %}Malipo{% else %}Billing{% endif %}</a>
           {% elif user.is_teacher %}
             <a href="{% url 'teacher_dashboard' %}">{% if LANG == 'sw' %}Walimu{% else %}Dashboard{% endif %}</a>
             <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
