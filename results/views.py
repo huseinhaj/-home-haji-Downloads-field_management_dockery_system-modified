@@ -148,6 +148,95 @@ def export_results_excel(request, exam_id):
     return generate_results_excel_response(exam)
 
 
+# ── Public Results Portal — Search Page (NECTA-style, no login required) ───
+
+def public_results_search(request):
+    """Public search portal — no login required.
+    Parents can search for their child's results by name.
+    Like NECTA's online results portal."""
+    query = request.GET.get('q', '').strip()
+    selected_form = request.GET.get('form', '').strip()
+    selected_year = request.GET.get('year', '').strip()
+
+    results = []
+    has_searched = bool(query)
+    lang = 'sw'  # Default to Swahili for public page
+
+    # Detect language from browser
+    accept_lang = request.META.get('HTTP_ACCEPT_LANGUAGE', '')
+    if 'en' in accept_lang and 'sw' not in accept_lang:
+        lang = 'en'
+
+    form_choices = range(1, 7)
+    current_year = timezone.now().year
+    year_choices = range(current_year, current_year - 5, -1)
+
+    if has_searched:
+        # Build query for ProcessedResult, filtering by student name
+        from django.db.models import Q
+
+        qs = ProcessedResult.objects.select_related(
+            'student', 'exam', 'exam__school'
+        ).all()
+
+        # Filter by form
+        if selected_form:
+            try:
+                qs = qs.filter(exam__form=int(selected_form))
+            except ValueError:
+                pass
+
+        # Filter by year
+        if selected_year:
+            try:
+                qs = qs.filter(exam__year=int(selected_year))
+            except ValueError:
+                pass
+
+        # Search by name — split query into parts and match across name fields
+        name_parts = query.split()
+        name_filter = Q()
+        for part in name_parts:
+            name_filter &= (
+                Q(student__first_name__icontains=part) |
+                Q(student__middle_name__icontains=part) |
+                Q(student__last_name__icontains=part)
+            )
+        qs = qs.filter(name_filter)
+
+        # Order by exam year descending, then position
+        qs = qs.order_by('-exam__year', 'position')
+
+        # Limit to recent results (max 50 to avoid overload)
+        qs = qs[:50]
+
+        for r in qs:
+            st = r.student
+            name = ' '.join(p for p in [st.first_name, st.middle_name or '', st.last_name] if p)
+            school_name = r.exam.school_name or (r.exam.school.name if r.exam.school else '')
+            results.append({
+                'student_name': name,
+                'school_name': school_name,
+                'exam_type': r.exam.get_exam_type_display(),
+                'form': r.exam.form,
+                'year': r.exam.year,
+                'division': r.division,
+                'position': r.position,
+                'share_token': str(r.share_token),
+            })
+
+    return render(request, 'results/student_results_search.html', {
+        'query': query,
+        'selected_form': selected_form,
+        'selected_year': selected_year,
+        'results': results,
+        'has_searched': has_searched,
+        'form_choices': form_choices,
+        'year_choices': year_choices,
+        'lang': lang,
+    })
+
+
 # ── Public Results Lookup (NECTA-style, no login required) ───────────────────
 
 def student_result_public(request, token):

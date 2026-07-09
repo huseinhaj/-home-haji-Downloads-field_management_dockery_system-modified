@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Online Results Portal — Tafuta Matokeo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root { --navy: #1F497D; --gold: #D9A441; --green: #1EB53A; --light-bg: #f4f6fb; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Sora', 'Manrope', sans-serif;
+      background: linear-gradient(135deg, #e8ecf4 0%, #f4f6fb 50%, #eef1f7 100%);
+      min-height: 100vh;
+      margin: 0;
+    }
+    /* ── Flag bar ── */
+    .flag-bar {
+      height: 5px;
+      background: linear-gradient(90deg, #1EB53A 0%, #1EB53A 25%, #FCD116 25%, #FCD116 50%, #000 50%, #000 75%, #00A3DD 75%, #00A3DD 100%);
+    }
+    /* ── Hero / Header ── */
+    .portal-header {
+      background: linear-gradient(135deg, #1F497D 0%, #153b6b 100%);
+      color: #fff;
+      padding: 2.5rem 1rem 2rem;
+      text-align: center;
+      border-bottom: 4px solid var(--gold);
+    }
+    .portal-header .nembo {
+      width: 64px; height: 64px;
+      margin-bottom: 0.75rem;
+      background: rgba(255,255,255,0.12);
+      border-radius: 50%;
+      padding: 8px;
+    }
+    .portal-header h1 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.1rem;
+      opacity: 0.9;
+    }
+    .portal-header h2 {
+      font-size: 0.78rem;
+      font-weight: 500;
+      opacity: 0.65;
+      margin: 0.1rem 0;
+    }
+    .portal-header .portal-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--gold);
+      margin-top: 0.6rem;
+    }
+    .portal-header .portal-sub {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.2rem;
+    }
+    /* ── Search card ── */
+    .search-section {
+      max-width: 700px;
+      margin: -1.5rem auto 1.5rem;
+      position: relative;
+      z-index: 2;
+      padding: 0 1rem;
+    }
+    .search-card {
+      background: #fff;
+      border: 2px solid var(--gold);
+      border-radius: 4px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+      padding: 1.5rem 2rem;
+    }
+    .search-card .form-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--navy);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .search-card input, .search-card select {
+      border: 2px solid #dee2e6;
+      border-radius: 2px;
+      padding: 0.6rem 0.9rem;
+      font-size: 0.95rem;
+      font-family: 'Sora', sans-serif;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    .search-card input:focus, .search-card select:focus {
+      border-color: var(--navy);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(31,73,125,0.12);
+    }
+    .search-card .btn-search {
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.65rem 2rem;
+      border-radius: 2px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+    .search-card .btn-search:hover { background: #123263; }
+    /* ── Results list ── */
+    .results-container {
+      max-width: 800px;
+      margin: 0 auto 3rem;
+      padding: 0 1rem;
+    }
+    .result-count {
+      font-size: 0.82rem;
+      color: #888;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .result-card {
+      background: #fff;
+      border: 1.5px solid #dee2e6;
+      border-radius: 2px;
+      margin-bottom: 0.75rem;
+      padding: 1rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .result-card:hover {
+      border-color: var(--gold);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .result-card .student-info { flex: 1; min-width: 180px; }
+    .result-card .student-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .result-card .student-meta {
+      font-size: 0.72rem;
+      color: #888;
+      margin-top: 0.15rem;
+    }
+    .result-card .exam-badge {
+      display: inline-block;
+      background: #e8ecf4;
+      color: var(--navy);
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 2px;
+      margin-right: 0.25rem;
+    }
+    .result-card .div-badge {
+      font-weight: 800;
+      font-size: 0.78rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: 2px;
+      text-align: center;
+      min-width: 70px;
+    }
+    .div-I   { background:#d4edda; color:#155724; }
+    .div-II  { background:#cce5ff; color:#004085; }
+    .div-III { background:#fff3cd; color:#856404; }
+    .div-IV  { background:#f8d7da; color:#721c24; }
+    .div-0   { background:#e2e3e5; color:#383d41; }
+    .result-card .btn-view {
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.4rem 0.9rem;
+      border-radius: 2px;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+    .result-card .btn-view:hover { background: #123263; color: #fff; }
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #999;
+      background: #fff;
+      border: 1.5px dashed #dee2e6;
+      border-radius: 2px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 0.5rem; }
+    .empty-state h3 { font-size: 1rem; font-weight: 700; color: #666; }
+    .empty-state p { font-size: 0.78rem; }
+    /* ── Footer ── */
+    .portal-footer {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      font-size: 0.72rem;
+      color: #aaa;
+      border-top: 1px solid #e9ecef;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .portal-footer strong { color: var(--navy); }
+    /* ── Loading spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 20px; height: 20px;
+      border: 2px solid #ddd;
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 576px) {
+      .search-card { padding: 1rem; }
+      .portal-header { padding: 1.5rem 1rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Flag Bar -->
+  <div class="flag-bar"></div>
+
+  <!-- Header -->
+  <div class="portal-header">
+    <svg class="nembo" viewBox="0 0 100 100" fill="none">
+      <rect width="100" height="100" rx="50" fill="white" opacity="0.9"/>
+      <path d="M50 15C50 15 65 30 65 50C65 70 50 85 50 85C50 85 35 70 35 50C35 30 50 15 50 15Z" fill="#D9A441"/>
+      <path d="M50 25C50 25 60 35 60 50C60 65 50 75 50 75C50 75 40 65 40 50C40 35 50 25 50 25Z" fill="#1F497D"/>
+    </svg>
+    <h1>Ministry of Education, Science and Technology</h1>
+    <h2>Wizara ya Elimu, Sayansi na Teknolojia</h2>
+    <div class="portal-title">📋 ONLINE RESULTS PORTAL</div>
+    <div class="portal-sub">Tafuta matokeo ya mtoto wako kwa kuingiza jina lake</div>
+  </div>
+
+  <!-- Search Card -->
+  <div class="search-section">
+    <div class="search-card">
+      <form method="GET" action="{% url 'student_results_search' %}" id="searchForm">
+        <div class="mb-3">
+          <label class="form-label" for="q">👤 Jina la Mwanafunzi / Student Name</label>
+          <input type="text" id="q" name="q" class="form-control"
+                 placeholder="Ingiza jina la mtoto wako… e.g. Juma Mohamed"
+                 value="{{ query }}" autocomplete="off" autofocus>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label" for="form">Darasa / Form</label>
+            <select id="form" name="form" class="form-select">
+              <option value="">— Darasa / Form yoyote —</option>
+              {% for f in form_choices %}
+              <option value="{{ f }}" {% if selected_form == f|stringformat:'i' %}selected{% endif %}>Form {{ f }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="year">Mwaka / Year</label>
+            <select id="year" name="year" class="form-select">
+              <option value="">— Mwaka wowote —</option>
+              {% for y in year_choices %}
+              <option value="{{ y }}" {% if selected_year == y|stringformat:'i' %}selected{% endif %}>{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn-search" id="searchBtn">
+          🔍 Tafuta / Search
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-container">
+    {% if has_searched %}
+      {% if results %}
+        <div class="result-count">
+          {% if lang == 'sw' %}
+            Wamepatikana wanafunzi <strong>{{ results|length }}</strong>
+          {% else %}
+            Found <strong>{{ results|length }}</strong> student(s)
+          {% endif %}
+        </div>
+        {% for r in results %}
+        <div class="result-card">
+          <div class="student-info">
+            <div class="student-name">{{ r.student_name }}</div>
+            <div class="student-meta">
+              <span class="exam-badge">{{ r.exam_type }}</span>
+              <span class="exam-badge">Form {{ r.form }}</span>
+              <span class="exam-badge">{{ r.year }}</span>
+              {{ r.school_name }} &bull; #{{ r.position }}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <span class="div-badge div-{{ r.division }}">{{ r.division }}</span>
+            <a href="{% url 'student_result_public' token=r.share_token %}" class="btn-view">
+              Angalia &rarr;
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <div class="icon">🔍</div>
+          <h3>
+            {% if lang == 'sw' %}
+              Hakuna mwanafunzi aliyepatikana
+            {% else %}
+              No student found
+            {% endif %}
+          </h3>
+          <p>
+            {% if lang == 'sw' %}
+              Jaribu kuandika jina tofauti au kuondoa vichujio vya darasa/mwaka.
+              Unaweza pia kuandika sehemu ya jina tu.
+            {% else %}
+              Try a different name or remove the form/year filters.
+              You can also type just part of the name.
+            {% endif %}
+          </p>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <h3>
+          {% if lang == 'sw' %}
+            Tafuta Matokeo ya Mtoto Wako
+          {% else %}
+            Search for Your Child's Results
+          {% endif %}
+        </h3>
+        <p>
+          {% if lang == 'sw' %}
+            Andika jina la mwanafunzi kwenye kisanduku cha juu kisha bofya "Tafuta".
+            Unaweza pia kuchuja kwa Darasa (Form) na Mwaka.
+            Matokeo yanaonyesha wanafunzi wote wenye jina linalofanana na uliloandika.
+          {% else %}
+            Type the student's name in the search box above and click "Search".
+            You can also filter by Form and Year.
+            Results show all students with names matching your search.
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Footer -->
+  <div class="portal-footer">
+    <strong>School Results Management System</strong><br>
+    <span>Online Results Portal — Tanzania</span>
+  </div>
+
+  <script>
+    // Auto-submit loading state
+    document.getElementById('searchForm')?.addEventListener('submit', function() {
+      const btn = document.getElementById('searchBtn');
+      btn.innerHTML = '<span class="spinner"></span> Inatafuta…';
+      btn.disabled = true;
+    });
+  </script>
+</body>
+</html>

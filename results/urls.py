@@ -39,6 +39,7 @@ from .views import (
     personal_upload_pdf,
     personal_upload_summary,
     student_result_public,
+    public_results_search,
     exam_share_links,
 )
 from .speech_views import (
@@ -65,7 +66,9 @@ urlpatterns = [
     path('results-pdf/<int:exam_id>/', generate_results_pdf, name='generate_results_pdf'),
     path('results-excel/<int:exam_id>/', export_results_excel, name='export_results_excel'),
     path('filter_exams/', filter_exams, name='filter_exams'),
-    # Public results lookup (NECTA-style, no login)
+    # Public results portal — search page (NECTA-style, no login)
+    path('matokeo/', public_results_search, name='student_results_search'),
+    # Public results lookup by token (NECTA-style, no login)
     path('matokeo/<uuid:token>/', student_result_public, name='student_result_public'),
     # Shareable links management (academic only)
     path('exam/<int:exam_id>/viungo/', exam_share_links, name='exam_share_links'),
