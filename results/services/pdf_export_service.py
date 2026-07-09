@@ -146,55 +146,63 @@ def generate_results_pdf_response(exam):
             })
 
     # ── Helper: draw the flag-colour header block ──────────────────────
-    def _draw_header(y):
+    def _draw_header(y, header_w=None):
+        """
+        Draw the header block. header_w can override the content width
+        for landscape (wider) pages.
+        """
+        hdr_w = header_w if header_w else CW
+        hdr_lm = (W - hdr_w) / 2  # left margin for this header
+
         # Green bar background
         p.setFillColor(TZ_GREEN_CLR)
-        p.rect(LM - 5, y - 95, W - 2 * LM + 10, 95, fill=1, stroke=0)
+        p.rect(hdr_lm, y - 100, hdr_w, 100, fill=1, stroke=0)
 
-        # Ministry name (white on green)
+        # THE UNITED REPUBLIC OF TANZANIA (top line)
         p.setFillColor(TZ_WHITE_CLR)
+        p.setFont("Helvetica-Bold", 11)
+        country_line = "THE UNITED REPUBLIC OF TANZANIA" if lang == 'en' \
+            else "JAMHURI YA MUUNGANO WA TANZANIA"
+        p.drawCentredString(W / 2, y - 12, country_line)
+
+        # Ministry name (second line)
         p.setFont("Helvetica-Bold", 13)
-        p.drawCentredString(W / 2, y - 8,
+        p.drawCentredString(W / 2, y - 30,
             "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY" if lang == 'en'
             else "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA")
 
         # School type subtitle
-        p.setFont("Helvetica", 9)
+        p.setFont("Helvetica", 8)
         sub_lines = {
             'en': f"{'SECONDARY' if school_type == 'secondary' else 'PRIMARY'} SCHOOL — EXAMINATION SECTION",
             'sw': f"{'SEKONDARI' if school_type == 'secondary' else 'MSINGI'} — SEHEMU YA MITIHANI",
         }
-        p.drawCentredString(W / 2, y - 25, sub_lines.get(lang, sub_lines['en']))
+        p.drawCentredString(W / 2, y - 46, sub_lines.get(lang, sub_lines['en']))
 
         # Tanzania flag-colour divider bar (green → yellow → black → blue)
-        bar_y = y - 38
-        bar_h = 6
-        bar_w = CW + 10
-        for i, (clr, fraction) in enumerate([
-            (FLAG_GREEN, 0.25),
-            (FLAG_YELLOW, 0.25),
-            (FLAG_BLACK, 0.25),
-            (FLAG_BLUE, 0.25),
-        ]):
+        bar_y = y - 55
+        bar_h = 5
+        bar_parts = 4
+        for i, clr in enumerate([FLAG_GREEN, FLAG_YELLOW, FLAG_BLACK, FLAG_BLUE]):
             p.setFillColor(clr)
-            p.rect(LM - 5 + i * bar_w * fraction, bar_y,
-                   bar_w * fraction, bar_h, fill=1, stroke=0)
+            p.rect(hdr_lm + i * hdr_w / bar_parts, bar_y,
+                   hdr_w / bar_parts, bar_h, fill=1, stroke=0)
 
         # School name (gold on green background)
         p.setFillColor(TZ_YELLOW_CLR)
         p.setFont("Helvetica-Bold", 14)
-        p.drawCentredString(W / 2, y - 56, school_disp)
+        p.drawCentredString(W / 2, y - 72, school_disp)
 
         # Location
         p.setFillColor(TZ_WHITE_CLR)
-        p.setFont("Helvetica", 9)
+        p.setFont("Helvetica", 8)
         loc = _get_location(exam)
-        p.drawCentredString(W / 2, y - 74, loc)
+        p.drawCentredString(W / 2, y - 88, loc)
 
-        # Exam name below the header
+        # Gold line below header
         p.setStrokeColor(TZ_GOLD_CLR)
         p.setLineWidth(1.5)
-        p.line(LM, y - 90, W - LM, y - 90)
+        p.line(hdr_lm, y - 98, hdr_lm + hdr_w, y - 98)
 
     # ── Helper: section heading line ───────────────────────────────────
     def _section_heading(y, section_key):
@@ -400,17 +408,32 @@ def generate_results_pdf_response(exam):
     p.showPage()
 
     # ═══════════════════════════════════════════════════════════════════
-    #  PAGE 2+ — MATOKEO KAMILI / FULL RESULTS
+    #  PAGE 2+ — MATOKEO KAMILI / FULL RESULTS (Landscape for many subjects)
     # ═══════════════════════════════════════════════════════════════════
-    col_pos   = 32
-    col_name  = 140
-    col_sex   = 28
-    col_subj  = max(36, min(50, int((CW - (col_pos + col_name + col_sex + 170))
-                                     / max(len(subjects), 1))))
-    col_total = 42
-    col_avg   = 42
-    col_div   = 36
-    col_pts   = 32
+    # If there are 10+ subjects, use landscape to avoid clipping
+    USE_LANDSCAPE = len(subjects) >= 9
+    if USE_LANDSCAPE:
+        from reportlab.lib.pagesizes import landscape as _landscape
+        W, H = _landscape(A4)  # 842 x 595
+        # Recalculate content width for landscape
+        LM = 40  # slightly narrower margins in landscape
+        CW = W - 2 * LM
+
+    # Compute column widths dynamically
+    # Reserve space for fixed columns
+    fixed_cols_width = 28 + 110 + 20 + 28 + 28 + 24 + 24  # POS + NAME + SEX + TOTAL + AVG + DIV + PTS
+    avail_for_subjects = CW - fixed_cols_width
+    col_subj = max(22, int(avail_for_subjects / max(len(subjects), 1)))
+    # Cap subject columns so they don't get too wide
+    col_subj = min(col_subj, 45)
+
+    col_pos   = 28
+    col_name  = 110
+    col_sex   = 20
+    col_total = 28
+    col_avg   = 28
+    col_div   = 24
+    col_pts   = 24
     col_widths = ([col_pos, col_name, col_sex] + [col_subj] * len(subjects)
                   + [col_total, col_avg, col_div, col_pts])
 
@@ -418,17 +441,18 @@ def generate_results_pdf_response(exam):
     cols_en  = ["POS", "NAME", "SEX"]
     lang_cols = cols_sw if lang == 'sw' else cols_en
 
+    # Shorten subject names to 8 chars max for header
     headers = (lang_cols
-               + [s.name.upper()[:10] for s in subjects]
+               + [s.name.upper()[:8] for s in subjects]
                + (["JUMLA", "WASTANI", "DARAJA", "POINTI"] if lang == 'sw'
                   else ["TOTAL", "AVG", "DIV.", "PTS"]))
 
     tbl_w = sum(col_widths)
 
-    row_h  = 16
-    head_h = 40
-    avail  = H - 250
-    rpp    = max(5, int((avail - head_h) / row_h))
+    row_h  = 14
+    head_h = 32
+    avail  = H - 260
+    rpp    = max(8, int((avail - head_h) / row_h))
     pages  = [all_results[i:i + rpp] for i in range(0, len(all_results), rpp)]
 
     full_results_title = get_section_title(exam, 'full_results')
@@ -437,29 +461,30 @@ def generate_results_pdf_response(exam):
         if pn > 1:
             p.showPage()
 
-        y = H - 50
-        _draw_header(y)
-        y -= 100
+        y = H - 40
+        _draw_header(y, header_w=CW if USE_LANDSCAPE else None)
+        y -= 110
 
         # Title
-        p.setFont("Helvetica-Bold", 12)
+        p.setFont("Helvetica-Bold", 11)
         p.setFillColor(TZ_GREEN_CLR)
         disp = f"{school_disp} — {etype_disp} {exam.year} — FORM {exam.form}" if lang == 'en' \
             else f"{school_disp} — {report_label}"
         p.drawCentredString(W / 2, y, disp)
-        y -= 18
-        p.setFont("Helvetica", 9)
+        y -= 16
+        p.setFont("Helvetica", 8)
         p.setFillColor(TZ_DARK_GREY_CLR)
         p.drawCentredString(W / 2, y, f"{exam.name}  |  {full_results_title} (PAGE {pn})")
-        y -= 20
+        y -= 18
 
         # Build table
         data = [headers]
+        fontsize = 6.5 if len(subjects) >= 12 else 7.0 if len(subjects) >= 9 else 7.5
         for r in group:
             stu = r.student
             nm  = ' '.join(p for p in [stu.first_name, stu.middle_name or '', stu.last_name] if p)
-            if len(nm) > 28:
-                nm = nm[:26] + ".."
+            if len(nm) > 22:
+                nm = nm[:20] + ".."
             row = [str(r.position), nm, stu.gender or 'M']
             for subj in subjects:
                 sc = score_lookup.get((stu.id, subj.id))
@@ -474,14 +499,14 @@ def generate_results_pdf_response(exam):
             ('BACKGROUND', (0, 0), (-1, 0), TZ_GREEN_CLR),
             ('TEXTCOLOR', (0, 0), (-1, 0), TZ_WHITE_CLR),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 7.5),
+            ('FONTSIZE', (0, 0), (-1, -1), fontsize),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-            ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor("#CCCCCC")),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ('LEFTPADDING', (0, 0), (-1, -1), 3),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor("#CCCCCC")),
+            ('TOPPADDING', (0, 0), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+            ('LEFTPADDING', (0, 0), (-1, -1), 2),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 2),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]
 
@@ -512,29 +537,30 @@ def generate_results_pdf_response(exam):
         tbl.setStyle(_make_style(*style))
 
         tx = LM + (CW - tbl_w) / 2
-        th = len(data) * 15 + 4
+        th = len(data) * row_h + 4
         tbl.wrapOn(p, tbl_w, th)
         tbl.drawOn(p, tx, y - th)
 
         # Grade legend at bottom
-        ly = y - th - 18
-        if ly > 50:
+        ly = y - th - 14
+        if ly > 40:
             leg_data = [["A (75-100)", "B (65-74)", "C (50-64)",
                          "D (40-49)", "F (<40)"]]
-            leg_cols = [CW / 5] * 5
+            leg_w = min(CW - 20, 400)
+            leg_cols = [leg_w / 5] * 5
             lt = Table(leg_data, colWidths=leg_cols)
             ls_cmds = [
                 ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 7),
+                ('FONTSIZE', (0, 0), (-1, -1), 6),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ('TOPPADDING', (0, 0), (-1, -1), 1),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
                 ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
             ]
             for i, bg in enumerate(["#C6F4D6", "#D5F5E3", "#FFF9C4", "#FDEBD0", "#FADBD8"]):
                 ls_cmds.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(bg)))
             lt.setStyle(_make_style(*ls_cmds))
-            lt.wrapOn(p, CW, 18)
+            lt.wrapOn(p, leg_w, 14)
             lt.drawOn(p, LM + 10, ly)
 
         _draw_footer(pn, len(pages))
