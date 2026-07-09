@@ -251,6 +251,12 @@
         {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %}
       </a>
       {% endif %}
+
+      {% if all_approved and is_academic %}
+      <a href="{% url 'exam_share_links' exam.id %}" class="btn" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;font-size:0.82rem;">
+        🔗 {% if LANG == 'sw' %}Viungo vya Matokeo{% else %}Share Links{% endif %}
+      </a>
+      {% endif %}
     {% endif %}
 
     {% if submitted_count > 0 %}

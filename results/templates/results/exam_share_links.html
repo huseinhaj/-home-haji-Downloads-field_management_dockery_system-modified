@@ -1,0 +1,252 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Viungo vya Matokeo{% else %}Result Links{% endif %} — {{ exam.name }}{% endblock %}
+
+{% block content %}
+<style>
+  .sl-hero {
+    background: linear-gradient(135deg, #1F497D 0%, #24508a 100%);
+    border: 2px solid #D9A441;
+    border-radius: 2px;
+    padding: 1.4rem 2rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .sl-hero h1 { font-size: 1.3rem; font-weight: 800; margin: 0; }
+  .sl-hero .sub { font-size: 0.78rem; color: #D9A441; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sl-hero .count-badge {
+    background: #D9A441;
+    color: #1F497D;
+    font-weight: 800;
+    padding: 0.3rem 1rem;
+    border-radius: 2px;
+    font-size: 0.8rem;
+  }
+  .sl-controls {
+    background: #fff;
+    border: 1.5px solid #dee2e6;
+    border-radius: 2px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .sl-controls label { font-size: 0.78rem; font-weight: 600; color: #555; white-space: nowrap; }
+  .sl-controls select, .sl-controls input {
+    border: 1.5px solid #dee2e6;
+    border-radius: 2px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.82rem;
+  }
+  .btn-copy-all {
+    background: #1F7A3D;
+    color: #fff;
+    border: none;
+    font-weight: 700;
+    font-size: 0.78rem;
+    padding: 0.4rem 1rem;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  .btn-copy-all:hover { background: #145226; }
+
+  .sl-student {
+    background: #fff;
+    border: 1.5px solid #dee2e6;
+    border-radius: 2px;
+    margin-bottom: 0.6rem;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    transition: border-color 0.15s;
+  }
+  .sl-student:hover { border-color: #1F497D; }
+  .sl-student .pos { font-weight: 800; color: #1F497D; font-size: 0.82rem; min-width: 35px; }
+  .sl-student .name { font-weight: 600; color: #333; font-size: 0.88rem; flex: 1; }
+  .sl-student .div-badge {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 2px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-right: 0.5rem;
+  }
+  .div-I   { background:#d4edda; color:#155724; }
+  .div-II  { background:#cce5ff; color:#004085; }
+  .div-III { background:#fff3cd; color:#856404; }
+  .div-IV  { background:#f8d7da; color:#721c24; }
+  .div-0   { background:#e2e3e5; color:#383d41; }
+
+  .link-display {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 250px;
+    max-width: 450px;
+  }
+  .link-display input {
+    flex: 1;
+    border: 1.5px solid #dee2e6;
+    border-radius: 2px;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.72rem;
+    color: #555;
+    background: #f8f9fb;
+    font-family: 'Courier New', monospace;
+  }
+  .btn-copy {
+    background: #1F497D;
+    color: #fff;
+    border: none;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.35rem 0.7rem;
+    border-radius: 2px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-copy:hover { background: #123263; }
+  .btn-copy.copied { background: #1a7a3b; }
+  .sl-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #999;
+  }
+  .toast-msg {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1F7A3D;
+    color: #fff;
+    padding: 0.6rem 1.5rem;
+    border-radius: 2px;
+    font-weight: 600;
+    font-size: 0.82rem;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .toast-msg.show { opacity: 1; }
+</style>
+
+<div class="sl-hero">
+  <div>
+    <h1>{% if LANG == 'sw' %}Viungo vya Matokeo{% else %}Shareable Result Links{% endif %}</h1>
+    <div class="sub">{{ school_name }} &bull; {{ etype }} {{ exam.year }} &bull; {{ exam.name }}</div>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <span class="count-badge">{{ total_students }} {% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</span>
+    <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;">
+      &larr; {% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}
+    </a>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="sl-controls">
+  <label for="filter-div">{% if LANG == 'sw' %}Chuja kwa Daraja{% else %}Filter by Division{% endif %}:</label>
+  <select id="filter-div" onchange="filterLinks()">
+    <option value="all">{% if LANG == 'sw' %}Wote{% else %}All{% endif %}</option>
+    <option value="I">Daraja I</option>
+    <option value="II">Daraja II</option>
+    <option value="III">Daraja III</option>
+    <option value="IV">Daraja IV</option>
+    <option value="0">{% if LANG == 'sw' %}Hakuna{% else %}Fail{% endif %}</option>
+  </select>
+
+  <label for="search-name">{% if LANG == 'sw' %}Tafuta{% else %}Search{% endif %}:</label>
+  <input type="text" id="search-name" placeholder="{% if LANG == 'sw' %}Jina la mwanafunzi...{% else %}Student name...{% endif %}" oninput="filterLinks()" style="flex:1;min-width:150px;">
+
+  <button class="btn-copy-all" onclick="copyAllLinks()">
+    📋 {% if LANG == 'sw' %}Nakili Vyote{% else %}Copy All Links{% endif %}
+  </button>
+</div>
+
+<!-- Student list -->
+{% if students_links %}
+<div id="students-container">
+  {% for s in students_links %}
+  <div class="sl-student" data-division="{{ s.division }}" data-name="{{ s.name|lower }}">
+    <span class="pos">#{{ s.position }}</span>
+    <span class="name">
+      <span class="div-badge div-{{ s.division }}">{{ s.division }}</span>
+      {{ s.name }}
+    </span>
+    <div class="link-display">
+      <input type="text" value="{{ s.full_url }}" id="link-{{ forloop.counter }}" readonly onclick="this.select()">
+      <button class="btn-copy" onclick="copyLink('link-{{ forloop.counter }}', this)">
+        {% if LANG == 'sw' %}Nakili{% else %}Copy{% endif %}
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="sl-empty">
+  <div style="font-size:2rem;margin-bottom:0.5rem;">🔗</div>
+  {% if LANG == 'sw' %}
+    Hakuna matokeo yaliyochakatwa bado. Maliza kwanza ukaguzi wa masomo yote.
+  {% else %}
+    No processed results yet. Finalize all subject approvals first.
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Toast message -->
+<div id="toast" class="toast-msg">{% if LANG == 'sw' %}Imenakiliwa!{% else %}Copied!{% endif %}</div>
+
+<script>
+function filterLinks() {
+  const div = document.getElementById('filter-div').value;
+  const query = document.getElementById('search-name').value.toLowerCase();
+  const cards = document.querySelectorAll('.sl-student');
+  cards.forEach(card => {
+    const matchDiv = div === 'all' || card.dataset.division === div;
+    const matchName = !query || card.dataset.name.includes(query);
+    card.style.display = matchDiv && matchName ? '' : 'none';
+  });
+}
+
+function copyLink(inputId, btn) {
+  const input = document.getElementById(inputId);
+  input.select();
+  input.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(input.value).then(() => {
+    showToast();
+    btn.textContent = '✓ {% if LANG == 'sw' %}Imenakiliwa{% else %}Copied{% endif %}';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '{% if LANG == 'sw' %}Nakili{% else %}Copy{% endif %}';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function copyAllLinks() {
+  const inputs = document.querySelectorAll('.link-display input');
+  const links = Array.from(inputs).map(inp => inp.value).join('\n');
+  navigator.clipboard.writeText(links).then(() => {
+    showToast('{% if LANG == 'sw' %}Viungo vyote vimenakiliwa!{% else %}All links copied!{% endif %}');
+  });
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  if (msg) toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+</script>
+{% endblock %}

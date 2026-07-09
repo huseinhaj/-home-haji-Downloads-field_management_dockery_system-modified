@@ -148,6 +148,99 @@ def export_results_excel(request, exam_id):
     return generate_results_excel_response(exam)
 
 
+# ── Public Results Lookup (NECTA-style, no login required) ───────────────────
+
+def student_result_public(request, token):
+    """Public view — no login required. Look up a student's result by share token.
+    Returns a clean, professional results page like NECTA's online portal."""
+    result = get_object_or_404(ProcessedResult, share_token=token)
+    exam = result.exam
+    student = result.student
+
+    # Get all subjects and scores for this exam+student
+    subjects = list(Subject.objects.filter(examresult__exam=exam).distinct().order_by('name'))
+    scores = {
+        er.subject_id: er.score
+        for er in ExamResult.objects.filter(exam=exam, student=student)
+    }
+
+    # Prepare row data for each subject
+    subject_rows = []
+    for subj in subjects:
+        score = scores.get(subj.id)
+        if score is not None:
+            subject_rows.append({
+                'subject': subj.name,
+                'score': score,
+                'grade': get_grade_for_form(score, exam.form),
+            })
+
+    student_name = ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p)
+    location = ''
+    if exam.school:
+        parts = []
+        if exam.school.district:
+            parts.append(exam.school.district)
+        if exam.school.region:
+            parts.append(exam.school.region)
+        location = ', '.join(parts)
+
+    division_label = dict(ProcessedResult.DIVISION_CHOICES).get(result.division, result.division)
+
+    return render(request, 'results/student_result_public.html', {
+        'result': result,
+        'exam': exam,
+        'student': student,
+        'student_name': student_name,
+        'subject_rows': subject_rows,
+        'division_label': division_label,
+        'location': location,
+        'school_name': exam.school_name or (exam.school.name if exam.school else ''),
+    })
+
+
+# ── Shareable Links Management (academic only) ───────────────────────────────
+
+@academic_required
+def exam_share_links(request, exam_id):
+    """Academic officer views all shareable links for an exam's students.
+    Each link can be copied and shared with parents for online results lookup."""
+    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    results = list(
+        ProcessedResult.objects.filter(exam=exam)
+        .select_related('student')
+        .order_by('position')
+    )
+
+    # Build the base URL from request
+    base_url = f"{request.scheme}://{request.get_host()}"
+
+    students_links = []
+    for r in results:
+        st = r.student
+        name = ' '.join(p for p in [st.first_name, st.middle_name or '', st.last_name] if p)
+        full_url = f"{base_url}/matokeo/{r.share_token}/"
+        students_links.append({
+            'position': r.position,
+            'name': name,
+            'division': r.division,
+            'token': str(r.share_token),
+            'full_url': full_url,
+        })
+
+    school_name = exam.school_name or (exam.school.name if exam.school else '')
+    etype = exam.get_exam_type_display()
+
+    return render(request, 'results/exam_share_links.html', {
+        'exam': exam,
+        'school_name': school_name,
+        'etype': etype,
+        'students_links': students_links,
+        'total_students': len(students_links),
+        'base_url': base_url,
+    })
+
+
 # ── Exam Overview Dashboard ───────────────────────────────────────────────────
 
 @login_required

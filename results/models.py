@@ -1,3 +1,4 @@
+import uuid
 from uuid import uuid4
 
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
@@ -139,6 +140,10 @@ class ProcessedResult(models.Model):
     counted_subjects = models.CharField(
         max_length=500, blank=True,
         help_text="Masomo bora yaliyotumika kuhesabu Daraja (mf. 7 bora kwa CSEE, 3 kwa ACSEE).",
+    )
+    share_token = models.UUIDField(
+        default=uuid.uuid4, unique=True, editable=False,
+        help_text="Unique token for anonymous public access to this student's result.",
     )
 
     class Meta:

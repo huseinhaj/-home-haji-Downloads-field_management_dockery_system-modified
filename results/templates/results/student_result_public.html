@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ student_name }} — {{ school_name }} | Matokeo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root { --navy: #1F497D; --gold: #D9A441; --green: #1F7A3D; --light-bg: #f4f6fb; }
+    body {
+      font-family: 'Sora', 'Manrope', sans-serif;
+      background: linear-gradient(135deg, #e8ecf4 0%, #f4f6fb 50%, #eef1f7 100%);
+      min-height: 100vh;
+    }
+    .watermark-bg {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 10L60 40L90 40L65 60L75 90L50 70L25 90L35 60L10 40L40 40Z" fill="%231F497D" opacity="0.03"/></svg>');
+      background-size: 200px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .print-area {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 2rem auto;
+    }
+    .result-card {
+      background: #fff;
+      border: 2px solid var(--gold);
+      border-radius: 4px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .result-header {
+      background: linear-gradient(135deg, var(--navy) 0%, #24508a 100%);
+      color: #fff;
+      padding: 2rem 2rem 1.2rem;
+      text-align: center;
+      border-bottom: 3px solid var(--gold);
+    }
+    .result-header .nembo {
+      width: 60px;
+      height: 60px;
+      margin-bottom: 0.5rem;
+      opacity: 0.9;
+    }
+    .result-header h1 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0;
+      opacity: 0.9;
+    }
+    .result-header h2 {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      opacity: 0.75;
+      margin: 0.1rem 0;
+    }
+    .result-header .school-name {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--gold);
+      margin-top: 0.5rem;
+      letter-spacing: 0.02em;
+    }
+    .result-header .exam-info {
+      font-size: 0.78rem;
+      opacity: 0.8;
+      margin-top: 0.15rem;
+    }
+    .result-body {
+      padding: 1.5rem 2rem;
+    }
+    .student-banner {
+      background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fb 100%);
+      border-left: 4px solid var(--navy);
+      border-radius: 2px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .student-banner .student-name {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--navy);
+    }
+    .student-banner .student-meta {
+      font-size: 0.78rem;
+      color: #666;
+    }
+    .division-box {
+      background: var(--navy);
+      color: #fff;
+      padding: 0.6rem 1.2rem;
+      border-radius: 2px;
+      text-align: center;
+      min-width: 120px;
+    }
+    .division-box .div-label {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0.75;
+    }
+    .division-box .div-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--gold);
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.25rem;
+    }
+    .results-table th {
+      background: var(--navy);
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .results-table td {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.88rem;
+      border: 1px solid #e9ecef;
+      vertical-align: middle;
+    }
+    .results-table tr:nth-child(even) td {
+      background: #f8f9fb;
+    }
+    .results-table .subject-cell {
+      font-weight: 600;
+      color: #333;
+    }
+    .results-table .score-cell {
+      text-align: center;
+      font-weight: 700;
+    }
+    .score-A { background: #C6F4D6 !important; color: #145A32; }
+    .score-B { background: #D5F5E3 !important; color: #1E8449; }
+    .score-C { background: #FFF9C4 !important; color: #7D6608; }
+    .score-D { background: #FDEBD0 !important; color: #784212; }
+    .score-F { background: #FADBD8 !important; color: #922B21; }
+
+    .summary-strip {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #f8f9fb;
+      border-radius: 2px;
+      border: 1px solid #e9ecef;
+    }
+    .summary-item {
+      text-align: center;
+    }
+    .summary-item .label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+    }
+    .summary-item .value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--navy);
+    }
+
+    .footer-note {
+      text-align: center;
+      padding: 1rem 2rem 1.5rem;
+      font-size: 0.72rem;
+      color: #999;
+      border-top: 1px solid #e9ecef;
+    }
+    .footer-note a { color: var(--navy); }
+
+    .grade-key {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 1rem 0 0.5rem;
+      padding: 0.6rem 1rem;
+      background: #f8f9fb;
+      border-radius: 2px;
+      border: 1px solid #e9ecef;
+    }
+    .grade-key-item {
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 2px;
+    }
+
+    .alert-message {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      color: #856404;
+      padding: 1rem 1.5rem;
+      border-radius: 2px;
+      margin-bottom: 1rem;
+      font-size: 0.88rem;
+      text-align: center;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .watermark-bg { display: none; }
+      .no-print { display: none !important; }
+      .print-area { margin: 0; }
+      .result-card { box-shadow: none; border: 1px solid #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <div class="watermark-bg"></div>
+
+  <div class="container print-area">
+    <!-- Print button -->
+    <div class="text-end mb-2 no-print">
+      <button onclick="window.print()" class="btn btn-sm" style="background:var(--navy);color:#fff;font-weight:600;border-radius:2px;border:none;">
+        🖨️ Print / PDF
+      </button>
+    </div>
+
+    <div class="result-card">
+      <!-- Header: Ministry branding -->
+      <div class="result-header">
+        <svg class="nembo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="50" fill="white" opacity="0.9"/>
+          <path d="M50 15C50 15 65 30 65 50C65 70 50 85 50 85C50 85 35 70 35 50C35 30 50 15 50 15Z" fill="#D9A441"/>
+          <path d="M50 25C50 25 60 35 60 50C60 65 50 75 50 75C50 75 40 65 40 50C40 35 50 25 50 25Z" fill="#1F497D"/>
+        </svg>
+        <h1>Ministry of Education, Science and Technology</h1>
+        <h2>Wizara ya Elimu, Sayansi na Teknolojia</h2>
+        <div class="school-name">{{ school_name }}</div>
+        {% if location %}
+        <div class="exam-info">{{ location }}</div>
+        {% endif %}
+        <div class="exam-info">
+          {{ exam.get_exam_type_display }} — {{ exam.year }} &bull; Form {{ exam.form }}
+          &bull; {{ exam.name }}
+        </div>
+      </div>
+
+      <div class="result-body">
+        <!-- Student Banner -->
+        <div class="student-banner">
+          <div>
+            <div class="student-name">{{ student_name }}</div>
+            <div class="student-meta">
+              {% if student.gender == 'M' %}Male / Kiume{% else %}Female / Kike{% endif %}
+              &bull; Position: {{ result.position }} of {{ exam.processedresult_set.count }}
+            </div>
+          </div>
+          <div class="division-box">
+            <div class="div-label">Division / Daraja</div>
+            <div class="div-value">{{ result.division }}</div>
+          </div>
+        </div>
+
+        <!-- Subject Scores Table -->
+        {% if subject_rows %}
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th style="width:60%;">Subject / Somo</th>
+              <th style="width:20%;">Score / Alama</th>
+              <th style="width:20%;">Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sr in subject_rows %}
+            <tr>
+              <td class="subject-cell">{{ sr.subject }}</td>
+              <td class="score-cell score-{{ sr.grade }}">{{ sr.score }}</td>
+              <td class="score-cell score-{{ sr.grade }}">{{ sr.grade }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="alert-message">
+          Subject scores are not available for this result.
+        </div>
+        {% endif %}
+
+        <!-- Summary stats -->
+        <div class="summary-strip">
+          <div class="summary-item">
+            <div class="label">Total Score / Jumla</div>
+            <div class="value">{{ result.total_score }}</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">Average / Wastani</div>
+            <div class="value">{{ result.average_score }}</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">Points / Pointi</div>
+            <div class="value">{{ result.points }}</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">Division / Daraja</div>
+            <div class="value">{{ result.division }}</div>
+          </div>
+        </div>
+
+        <!-- Grade Key -->
+        <div class="grade-key">
+          <span class="grade-key-item" style="background:#C6F4D6;color:#145A32;">A (75-100)</span>
+          <span class="grade-key-item" style="background:#D5F5E3;color:#1E8449;">B (65-74)</span>
+          <span class="grade-key-item" style="background:#FFF9C4;color:#7D6608;">C (50-64)</span>
+          <span class="grade-key-item" style="background:#FDEBD0;color:#784212;">D (40-49)</span>
+          <span class="grade-key-item" style="background:#FADBD8;color:#922B21;">F (&lt;40)</span>
+        </div>
+
+        {% if result.counted_subjects %}
+        <div style="font-size:0.75rem;color:#888;text-align:center;margin-top:0.75rem;">
+          Subjects counted for division: {{ result.counted_subjects }}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Footer -->
+      <div class="footer-note">
+        <strong>School Results System</strong> &mdash; Online Results Portal<br>
+        <span style="font-size:0.65rem;">
+          This is an official results slip generated from the School Results Management System.<br>
+          {% if location %}{{ location }}, Tanzania &bull; {% endif %}
+          Generated on {% now "d/m/Y H:i" %}
+        </span>
+      </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="text-center mt-3 no-print" style="font-size:0.7rem;color:#aaa;">
+      <a href="{% url 'home' %}" style="color:var(--navy);font-weight:600;">&larr; Back to School Dashboard</a>
+      &nbsp;&bull;&nbsp;
+      <a href="javascript:void(0)" onclick="window.print()" style="color:var(--navy);font-weight:600;">🖨️ Print this page</a>
+    </div>
+  </div>
+</body>
+</html>
