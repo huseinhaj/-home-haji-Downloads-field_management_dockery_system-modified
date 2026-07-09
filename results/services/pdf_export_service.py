@@ -65,11 +65,11 @@ def _score_fill(score):
     """Return (background-hex, font-hex) for a score value."""
     if score is None or not isinstance(score, (int, float)):
         return None, None
-    if score >= 75:  return "C6F4D6", "145A32"
-    if score >= 65:  return "D5F5E3", "1E8449"
-    if score >= 50:  return "FFF9C4", "7D6608"
-    if score >= 40:  return "FDEBD0", "784212"
-    return "FADBD8", "922B21"
+    if score >= 75:  return "#C6F4D6", "#145A32"
+    if score >= 65:  return "#D5F5E3", "#1E8449"
+    if score >= 50:  return "#FFF9C4", "#7D6608"
+    if score >= 40:  return "#FDEBD0", "#784212"
+    return "#FADBD8", "#922B21"
 
 
 def _make_style(*cmds):
@@ -324,7 +324,7 @@ def generate_results_pdf_response(exam):
     p.setFillColor(NAVY)
     p.drawString(LM, y_footer + 12, "UFUNGUO WA DARAJA (GRADING KEY):")
     grad_data = [["A (75-100)", "B (65-74)", "C (50-64)", "D (40-49)", "F (<40)"]]
-    grad_colors = ["C6F4D6", "D5F5E3", "FFF9C4", "FDEBD0", "FADBD8"]
+    grad_colors = ["#C6F4D6", "#D5F5E3", "#FFF9C4", "#FDEBD0", "#FADBD8"]
     gt = Table(grad_data, colWidths=[(CW - 20) / 5] * 5)
     gs_cmds = [
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
@@ -464,7 +464,7 @@ def generate_results_pdf_response(exam):
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
                 ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
             ]
-            for i, bg in enumerate(["C6F4D6", "D5F5E3", "FFF9C4", "FDEBD0", "FADBD8"]):
+            for i, bg in enumerate(["#C6F4D6", "#D5F5E3", "#FFF9C4", "#FDEBD0", "#FADBD8"]):
                 ls_cmds.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(bg)))
             lt.setStyle(_make_style(*ls_cmds))
             lt.wrapOn(p, CW, 18)
