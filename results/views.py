@@ -989,7 +989,7 @@ def form_results_excel(request, form_num):
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
-    NAVY, GOLD, WHITE, GREY = "1F7A3D", "D9A441", "FFFFFF", "F2F4F7"
+    NAVY, GOLD, WHITE, GREY = "FF1F7A3D", "FFD9A441", "FFFFFFFF", "FFF2F4F7"
 
     def _fill(hex_c):
         return PatternFill(start_color=hex_c, end_color=hex_c, fill_type="solid")
@@ -1001,11 +1001,11 @@ def form_results_excel(request, form_num):
     def _score_color(score):
         if score is None:
             return None, None
-        if score >= 75: return "C6F4D6", "145A32"
-        if score >= 65: return "D5F5E3", "1E8449"
-        if score >= 50: return "FFF9C4", "7D6608"
-        if score >= 40: return "FDEBD0", "784212"
-        return "FADBD8", "922B21"
+        if score >= 75: return "FFC6F4D6", "FF145A32"
+        if score >= 65: return "FFD5F5E3", "FF1E8449"
+        if score >= 50: return "FFFFF9C4", "FF7D6608"
+        if score >= 40: return "FFFDEBD0", "FF784212"
+        return "FFFADBD8", "FF922B21"
 
     exams = Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name')
     wb = openpyxl.Workbook()

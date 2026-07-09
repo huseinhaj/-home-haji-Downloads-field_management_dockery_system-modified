@@ -15,14 +15,14 @@ from __future__ import annotations
 #   Blue   #00A3DD  —  Bahari / Indian Ocean
 #   Gold   #D9A441  —  Accent (legacy, kept for secondary elements)
 
-TZ_GREEN  = "#1EB53A"
-TZ_YELLOW = "#FCD116"
-TZ_BLACK  = "#000000"
-TZ_BLUE   = "#00A3DD"
-TZ_GOLD   = "#D9A441"
-TZ_WHITE  = "#FFFFFF"
-TZ_LIGHT_GREY = "#F2F4F7"
-TZ_DARK_GREY  = "#555555"
+TZ_GREEN  = "FF1EB53A"
+TZ_YELLOW = "FFFCD116"
+TZ_BLACK  = "FF000000"
+TZ_BLUE   = "FF00A3DD"
+TZ_GOLD   = "FFD9A441"
+TZ_WHITE  = "FFFFFFFF"
+TZ_LIGHT_GREY = "FFF2F4F7"
+TZ_DARK_GREY  = "FF555555"
 
 # For reportlab (PDF) — HexColor objects
 def get_school_type_for_exam(exam):

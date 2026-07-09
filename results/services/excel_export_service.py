@@ -46,11 +46,11 @@ DARK_GREY  = TZ_DARK_GREY
 def _score_fill(score) -> tuple[str | None, str | None]:
     if not isinstance(score, (int, float)):
         return None, None
-    if score >= 75: return "C6F4D6", "145A32"
-    if score >= 65: return "D5F5E3", "1E8449"
-    if score >= 50: return "FFF9C4", "7D6608"
-    if score >= 40: return "FDEBD0", "784212"
-    return "FADBD8", "922B21"
+    if score >= 75: return "FFC6F4D6", "FF145A32"
+    if score >= 65: return "FFD5F5E3", "FF1E8449"
+    if score >= 50: return "FFFFF9C4", "FF7D6608"
+    if score >= 40: return "FFFDEBD0", "FF784212"
+    return "FFFADBD8", "FF922B21"
 
 
 def _score_grade(score) -> str:
@@ -67,7 +67,7 @@ def _make_fill(hex_color: str) -> PatternFill:
     return PatternFill(start_color=hex_color, end_color=hex_color, fill_type="solid")
 
 
-def _make_border(color: str = "CCCCCC") -> Border:
+def _make_border(color: str = "FFCCCCCC") -> Border:
     side = Side(style="thin", color=color)
     return Border(left=side, right=side, top=side, bottom=side)
 
@@ -210,14 +210,14 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
 
         div_cell = ws.cell(row=data_row, column=div_col, value=result.division)
         if result.division == 'I':
-            div_cell.fill = _make_fill("C6F4D6")
-            div_cell.font = Font(bold=True, name='Calibri', size=9, color="145A32")
+            div_cell.fill = _make_fill("FFC6F4D6")
+            div_cell.font = Font(bold=True, name='Calibri', size=9, color="FF145A32")
         elif result.division in ('II', 'III'):
-            div_cell.fill = _make_fill("FFF9C4")
-            div_cell.font = Font(bold=True, name='Calibri', size=9, color="7D6608")
+            div_cell.fill = _make_fill("FFFFF9C4")
+            div_cell.font = Font(bold=True, name='Calibri', size=9, color="FF7D6608")
         elif result.division in ('IV', '0'):
-            div_cell.fill = _make_fill("FADBD8")
-            div_cell.font = Font(bold=True, name='Calibri', size=9, color="922B21")
+            div_cell.fill = _make_fill("FFFADBD8")
+            div_cell.font = Font(bold=True, name='Calibri', size=9, color="FF922B21")
 
         ws.cell(row=data_row, column=pts_col, value=result.points)
 
@@ -225,11 +225,11 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
     last_data_row = header_row + len(results) + 1
     legend_row = last_data_row + 2
     legend_labels = [
-        ("A  (75-100)", "C6F4D6", "145A32"),
-        ("B  (65-74)", "D5F5E3", "1E8449"),
-        ("C  (50-64)", "FFF9C4", "7D6608"),
-        ("D  (40-49)", "FDEBD0", "784212"),
-        ("F  (<40)", "FADBD8", "922B21"),
+        ("A  (75-100)", "FFC6F4D6", "FF145A32"),
+        ("B  (65-74)", "FFD5F5E3", "FF1E8449"),
+        ("C  (50-64)", "FFFFF9C4", "FF7D6608"),
+        ("D  (40-49)", "FFFDEBD0", "FF784212"),
+        ("F  (<40)", "FFFADBD8", "FF922B21"),
     ]
     if lang == 'sw':
         ws.cell(row=legend_row, column=1, value="UFUNGUO WA DARAJA:")
