@@ -6,22 +6,37 @@ from django.http import HttpResponse
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle
 
 from .export_data import get_exam_export_payload
 
 
-def _get_score_color(score):
-    if score >= 75:
-        return colors.HexColor("#4CAF50")
-    if score >= 65:
-        return colors.HexColor("#8BC34A")
-    if score >= 50:
-        return colors.HexColor("#FFC107")
-    if score >= 40:
-        return colors.HexColor("#FF9800")
-    return colors.HexColor("#F44336")
+NAVY = colors.HexColor("#1F497D")       # Dark navy for headers
+GOLD = colors.HexColor("#D9A441")       # Gold accent
+WHITE = colors.white
+LIGHT_GREY = colors.HexColor("#F2F4F7")
+BLACK = colors.black
+DARK_GREY = colors.HexColor("#444444")
+
+
+def _get_location(exam):
+    """Extract location from the exam's school, falling back to a placeholder."""
+    if exam.school and exam.school.district and exam.school.region:
+        return f"{exam.school.district} DISTRICT — {exam.school.region} REGION".upper()
+    if exam.school and exam.school.district:
+        return f"{exam.school.district} DISTRICT".upper()
+    return "LOCATION UNKNOWN"
+
+
+def _get_school_name(exam):
+    """Extract school name from the exam."""
+    if exam.school_name:
+        return exam.school_name.upper()
+    if exam.school:
+        return exam.school.name.upper()
+    return "SCHOOL NAME UNKNOWN"
 
 
 def generate_results_pdf_response(exam):
@@ -34,66 +49,63 @@ def generate_results_pdf_response(exam):
     p = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    primary_color = colors.HexColor("#1565C0")
-    secondary_color = colors.HexColor("#E3F2FD")
-    accent_color = colors.HexColor("#FF6F00")
-    success_color = colors.HexColor("#2E7D32")
-    danger_color = colors.HexColor("#C62828")
+    left_margin = 55
+    content_width = width - 2 * left_margin
 
-    left_margin = 50
-    content_width = width - 100
-
-    def draw_decorative_border():
-        p.setStrokeColor(primary_color)
-        p.setLineWidth(3)
-        p.rect(20, 20, width - 40, height - 40)
-
-        p.setStrokeColor(secondary_color)
-        p.setLineWidth(1)
-        p.rect(25, 25, width - 50, height - 50)
-
-        corner_size = 15
-        p.setFillColor(accent_color)
-        p.circle(35, height - 35, corner_size / 2, fill=1)
-        p.circle(width - 35, height - 35, corner_size / 2, fill=1)
-        p.circle(35, 35, corner_size / 2, fill=1)
-        p.circle(width - 35, 35, corner_size / 2, fill=1)
-
-    def draw_header():
-        draw_decorative_border()
-        p.setFillColor(primary_color)
-        p.rect(left_margin, height - 150, content_width, 100, fill=1)
-
-        p.setFillColor(colors.white)
-        p.setFont("Helvetica-Bold", 16)
-        p.drawCentredString(width / 2, height - 70, "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY")
-
+    # ── Page dimensions helper ───────────────────────────────────────────
+    def _write_header(p, y_start):
+        """Draw the standard header block at the given y-position."""
+        # Ministry line
+        p.setFillColor(NAVY)
         p.setFont("Helvetica-Bold", 14)
-        p.drawCentredString(width / 2, height - 90, getattr(exam, 'location', 'LOCATION UNKNOWN').upper())
+        p.drawCentredString(width / 2, y_start, "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY")
 
-        p.setFont("Helvetica-Bold", 12)
-        p.drawCentredString(width / 2, height - 110, getattr(exam, 'school_name', 'SCHOOL NAME UNKNOWN').upper())
-
-        p.setFillColor(accent_color)
-        p.rect(left_margin, height - 180, content_width, 25, fill=1)
-
-        p.setFillColor(colors.white)
-        p.setFont("Helvetica-Bold", 12)
-        p.drawCentredString(width / 2, height - 172, f"{exam.name.upper()} EXAMINATION RESULTS")
-
-        p.setFillColor(colors.black)
+        # Location
         p.setFont("Helvetica", 10)
-        p.drawCentredString(width / 2, height - 195, f"Academic Year: {getattr(exam, 'year', 'YEAR UNKNOWN')}")
+        p.setFillColor(DARK_GREY)
+        p.drawCentredString(width / 2, y_start - 18, _get_location(exam))
 
-    draw_header()
-    current_y = height - 220
+        # School name
+        p.setFont("Helvetica-Bold", 11)
+        p.setFillColor(BLACK)
+        p.drawCentredString(width / 2, y_start - 36, _get_school_name(exam))
 
-    p.setFillColor(success_color)
-    p.rect(left_margin, current_y - 25, content_width, 25, fill=1)
-    p.setFillColor(colors.white)
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(left_margin + 10, current_y - 18, "Exam Summary Statistics")
-    current_y -= 40
+        # Gold separator line
+        p.setStrokeColor(GOLD)
+        p.setLineWidth(1.5)
+        p.line(left_margin, y_start - 50, width - left_margin, y_start - 50)
+
+        # Exam type + title
+        exam_type_display = exam.get_exam_type_display().upper()
+        p.setFont("Helvetica-Bold", 11)
+        p.setFillColor(NAVY)
+        p.drawCentredString(width / 2, y_start - 68, f"{exam_type_display} EXAMINATION RESULTS")
+
+        # Academic year
+        p.setFont("Helvetica", 10)
+        p.setFillColor(DARK_GREY)
+        p.drawCentredString(width / 2, y_start - 84, f"Academic Year: {exam.year}")
+
+    def _write_section_header(p, y_start, text):
+        """Write a bold section header."""
+        p.setFont("Helvetica-Bold", 11)
+        p.setFillColor(NAVY)
+        p.drawString(left_margin, y_start, text.upper())
+        p.setStrokeColor(GOLD)
+        p.setLineWidth(0.75)
+        p.line(left_margin, y_start - 2, width - left_margin, y_start - 2)
+        return y_start - 18
+
+    # ═══════════════════════════════════════════════════════════════════
+    # PAGE 1 — SUMMARY
+    # ═══════════════════════════════════════════════════════════════════
+    current_y = height - 55
+    _write_header(p, current_y)
+    current_y -= 110
+
+    # ── Summary Statistics ───────────────────────────────────────────────
+    current_y = _write_section_header(p, current_y, "EXAMINATION SUMMARY STATISTICS")
+    current_y -= 8
 
     total_students = len(all_results)
     total_score_sum = sum(r.total_score for r in all_results)
@@ -102,158 +114,168 @@ def generate_results_pdf_response(exam):
     avg_avg = (avg_score_sum / total_students) if total_students else 0
     division_counts = Counter(r.division for r in all_results)
 
-    summary_data = [
+    def _pct(div):
+        return f"{(division_counts.get(div, 0) / total_students * 100):.1f}%" if total_students else "0%"
+
+    summary_rows = [
         ["METRIC", "VALUE", "PERCENTAGE"],
         ["Total Students", str(total_students), "100%"],
         ["Average Total Score", f"{avg_total:.1f}", "-"],
         ["Average Mean Score", f"{avg_avg:.1f}", "-"],
-        ["Division I", str(division_counts['I']), f"{(division_counts['I']/total_students*100):.1f}%" if total_students else "0%"],
-        ["Division II", str(division_counts['II']), f"{(division_counts['II']/total_students*100):.1f}%" if total_students else "0%"],
-        ["Division III", str(division_counts['III']), f"{(division_counts['III']/total_students*100):.1f}%" if total_students else "0%"],
-        ["Division IV", str(division_counts['IV']), f"{(division_counts['IV']/total_students*100):.1f}%" if total_students else "0%"],
-        ["Failures (Div 0)", str(division_counts['0']), f"{(division_counts['0']/total_students*100):.1f}%" if total_students else "0%"],
+        ["Division I", str(division_counts.get('I', 0)), _pct('I')],
+        ["Division II", str(division_counts.get('II', 0)), _pct('II')],
+        ["Division III", str(division_counts.get('III', 0)), _pct('III')],
+        ["Division IV", str(division_counts.get('IV', 0)), _pct('IV')],
+        ["Failures (Div 0)", str(division_counts.get('0', 0)), _pct('0')],
     ]
 
-    summary_table = Table(summary_data, colWidths=[150, 80, 80])
+    summary_table = Table(summary_rows, colWidths=[170, 80, 80])
     summary_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), primary_color),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, secondary_color]),
+        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, LIGHT_GREY]),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
+    sum_width = 330
+    sum_x = left_margin + (content_width - sum_width) / 2
+    sum_h = len(summary_rows) * 20 + 4
+    summary_table.wrapOn(p, sum_width, sum_h)
+    summary_table.drawOn(p, sum_x, current_y - sum_h)
+    current_y -= sum_h + 20
 
-    summary_table.wrapOn(p, content_width, height)
-    table_height = len(summary_data) * 20
-    summary_table.drawOn(p, left_margin + (content_width - 310) / 2, current_y - table_height)
-    current_y -= table_height + 30
-
-    p.setFillColor(success_color)
-    p.rect(left_margin, current_y - 25, content_width / 2 - 10, 25, fill=1)
-    p.setFillColor(colors.white)
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(left_margin + 10, current_y - 18, "TOP 10 PERFORMERS")
-
-    p.setFillColor(danger_color)
-    p.rect(left_margin + content_width / 2 + 10, current_y - 25, content_width / 2 - 10, 25, fill=1)
-    p.setFillColor(colors.white)
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(left_margin + content_width / 2 + 20, current_y - 18, "BOTTOM 10 PERFORMERS")
-    current_y -= 40
+    # ── Top 10 / Bottom 10 ────────────────────────────────────────────────
+    p.setFont("Helvetica-Bold", 10)
+    p.setFillColor(NAVY)
+    p.drawString(left_margin, current_y, "TOP 10 PERFORMERS")
+    p.drawString(left_margin + content_width / 2 + 20, current_y, "BOTTOM 10 PERFORMERS")
+    current_y -= 14
 
     top_10 = all_results[:10]
     top_data = [["Pos", "Student Name", "Total", "Div"]]
-    for result in top_10:
-        student_name = f"{result.student.first_name} {result.student.last_name}"
-        if len(student_name) > 20:
-            student_name = student_name[:20] + "..."
-        top_data.append([str(result.position), student_name, str(result.total_score), result.division])
-
-    top_table = Table(top_data, colWidths=[30, 120, 50, 30])
-    top_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), success_color),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#E8F5E8")]),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
+    for r in top_10:
+        name = f"{r.student.first_name} {r.student.last_name}"
+        if len(name) > 22:
+            name = name[:20] + ".."
+        top_data.append([str(r.position), name, str(r.total_score), r.division])
 
     bottom_10 = sorted(all_results, key=lambda r: r.position, reverse=True)[:10]
     bottom_data = [["Pos", "Student Name", "Total", "Div"]]
-    for result in bottom_10:
-        student_name = f"{result.student.first_name} {result.student.last_name}"
-        if len(student_name) > 20:
-            student_name = student_name[:20] + "..."
-        bottom_data.append([str(result.position), student_name, str(result.total_score), result.division])
+    for r in bottom_10:
+        name = f"{r.student.first_name} {r.student.last_name}"
+        if len(name) > 22:
+            name = name[:20] + ".."
+        bottom_data.append([str(r.position), name, str(r.total_score), r.division])
 
-    bottom_table = Table(bottom_data, colWidths=[30, 120, 50, 30])
-    bottom_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), danger_color),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+    half_w = (content_width - 30) / 2
+    col_w_small = [28, half_w - 108, 40, 28]
+
+    tbl_top = Table(top_data, colWidths=col_w_small)
+    tbl_top.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#FFE8E8")]),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, LIGHT_GREY]),
     ]))
 
-    table_height = len(top_data) * 18
-    top_table.wrapOn(p, content_width / 2, height)
-    top_table.drawOn(p, left_margin, current_y - table_height)
+    tbl_bottom = Table(bottom_data, colWidths=col_w_small)
+    tbl_bottom.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, LIGHT_GREY]),
+    ]))
 
-    bottom_table.wrapOn(p, content_width / 2, height)
-    bottom_table.drawOn(p, left_margin + content_width / 2 + 20, current_y - table_height)
-    current_y -= table_height + 30
+    tbl_h = len(top_data) * 18 + 4
+    tbl_top.wrapOn(p, half_w, tbl_h)
+    tbl_top.drawOn(p, left_margin, current_y - tbl_h)
+    tbl_bottom.wrapOn(p, half_w, tbl_h)
+    tbl_bottom.drawOn(p, left_margin + half_w + 20, current_y - tbl_h)
+    current_y -= tbl_h + 20
 
-    p.setFillColor(accent_color)
-    p.rect(left_margin, current_y - 25, content_width, 25, fill=1)
-    p.setFillColor(colors.white)
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(left_margin + 10, current_y - 18, "ACADEMIC RECOMMENDATIONS")
-    current_y -= 40
+    # ── Academic Recommendations ──────────────────────────────────────────
+    if current_y > 120:
+        current_y = _write_section_header(p, current_y, "ACADEMIC RECOMMENDATIONS")
+        current_y -= 10
 
-    recommendations = [
-        "- Celebrate and recognize top performers to motivate other students",
-        "- Provide intensive remedial classes for Division 0 students",
-        "- Review and improve teaching methodologies for underperforming subjects",
-        "- Implement peer tutoring programs for struggling students",
-        "- Conduct regular progress assessments and monitoring",
-        "- Organize parent-teacher conferences for academic improvement strategies",
-    ]
+        recommendations = [
+            "Celebrate and recognize top performers to motivate other students.",
+            "Provide intensive remedial classes for Division 0 students.",
+            "Review and improve teaching methodologies for underperforming subjects.",
+            "Implement peer tutoring programs for struggling students.",
+            "Conduct regular progress assessments and monitoring.",
+            "Organize parent-teacher conferences for academic improvement strategies.",
+        ]
 
-    p.setFillColor(colors.black)
-    p.setFont("Helvetica", 10)
-    for recommendation in recommendations:
-        if current_y < 100:
-            break
-        p.drawString(left_margin + 20, current_y, recommendation)
-        current_y -= 20
+        p.setFont("Helvetica", 9)
+        p.setFillColor(BLACK)
+        for rec in recommendations:
+            if current_y < 80:
+                break
+            p.drawString(left_margin + 10, current_y, f"\u2022  {rec}")
+            current_y -= 16
 
     p.showPage()
 
-    available_width = content_width - 40
-    fixed_cols_width = 40 + 150 + 30
-    summary_cols_width = 50 + 40 + 30 + 40
-    subject_width = (available_width - fixed_cols_width - summary_cols_width) / len(subjects) if subjects else 40
-    subject_width = max(35, min(50, subject_width))
+    # ═══════════════════════════════════════════════════════════════════
+    # PAGE 2+ — DETAILED RESULTS
+    # ═══════════════════════════════════════════════════════════════════
+    # Column widths for the detailed table
+    col_name_w = 140
+    col_small = 36
+    subject_w = max(38, min(50, (content_width - (col_name_w + col_small + 3 * col_small + 170)) / max(len(subjects), 1)))
 
-    col_widths = [40, 150, 30] + [subject_width] * len(subjects) + [50, 40, 30, 40]
+    col_widths = [col_small, col_name_w, col_small] + [subject_w] * len(subjects) + [50, 42, 36, 36]
 
-    row_height = 20
-    header_height = 40
-    available_height = height - 250
-    rows_per_page = int((available_height - header_height) / row_height)
+    row_height = 18
+    header_h = 42
+    avail_h = height - 220
+    rows_per_page = max(5, int((avail_h - header_h) / row_height))
     student_pages = [all_results[i:i + rows_per_page] for i in range(0, len(all_results), rows_per_page)]
 
     for page_num, students in enumerate(student_pages, 1):
         if page_num > 1:
             p.showPage()
 
-        draw_header()
+        current_y = height - 55
+        _write_header(p, current_y)
+        current_y -= 100
 
-        p.setFillColor(primary_color)
-        p.rect(left_margin, height - 210, content_width, 25, fill=1)
-        p.setFillColor(colors.white)
-        p.setFont("Helvetica-Bold", 12)
-        p.drawCentredString(width / 2, height - 202, f"DETAILED EXAMINATION RESULTS - PAGE {page_num}")
+        # Detailed results section header
+        p.setFont("Helvetica-Bold", 11)
+        p.setFillColor(NAVY)
+        p.drawCentredString(width / 2, current_y, f"DETAILED EXAMINATION RESULTS - PAGE {page_num}")
+        current_y -= 16
 
-        current_y = height - 250
-
-        header = ["POS", "STUDENT NAME", "SEX"] + [subj.name[:8] for subj in subjects] + ["TOTAL", "AVG", "DIV", "PTS"]
-        data = [header]
+        # Table headers
+        headers = ["POS", "STUDENT NAME", "SEX"] + [s.name[:8] for s in subjects] + ["TOTAL", "AVG", "DIV", "PTS"]
+        data = [headers]
 
         for result in students:
             student = result.student
             student_name = f"{student.first_name} {student.last_name}"
             if len(student_name) > 25:
-                student_name = student_name[:25] + "..."
+                student_name = student_name[:24] + "."
 
             row = [
                 str(result.position),
@@ -273,61 +295,65 @@ def generate_results_pdf_response(exam):
             ])
             data.append(row)
 
-        table = Table(data, colWidths=col_widths)
-        style = TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), primary_color),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        # Build the table
+        tbl = Table(data, colWidths=col_widths)
+
+        # Header style
+        style_cmds = [
+            ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+            ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('FONTSIZE', (0, 0), (-1, -1), 7.5),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, secondary_color]),
-        ])
+        ]
 
-        for row_index, result in enumerate(students, start=1):
-            for subject_offset in range(len(subjects)):
-                col_idx = 3 + subject_offset
-                if col_idx < len(data[row_index]):
-                    score_str = data[row_index][col_idx]
-                    if score_str != "-":
-                        try:
-                            score = int(score_str)
-                            color = _get_score_color(score)
-                            style.add('BACKGROUND', (col_idx, row_index), (col_idx, row_index), color)
-                            if score < 50:
-                                style.add('TEXTCOLOR', (col_idx, row_index), (col_idx, row_index), colors.white)
-                        except ValueError:
-                            continue
+        # Alternating row backgrounds
+        for i in range(1, len(data)):
+            if i % 2 == 0:
+                style_cmds.append(('BACKGROUND', (0, i), (-1, i), LIGHT_GREY))
 
-            div_col = len(header) - 2
-            div_colors = {
-                'I': colors.HexColor("#4CAF50"),
-                'II': colors.HexColor("#8BC34A"),
-                'III': colors.HexColor("#FFC107"),
-                'IV': colors.HexColor("#FF9800"),
-                '0': colors.HexColor("#F44336"),
-            }
-            if result.division in div_colors:
-                style.add('BACKGROUND', (div_col, row_index), (div_col, row_index), div_colors[result.division])
-                if result.division in ['IV', '0']:
-                    style.add('TEXTCOLOR', (div_col, row_index), (div_col, row_index), colors.white)
+        # Division column coloring (subtle)
+        div_col = len(headers) - 2
+        div_colors = {
+            'I': ('#C6F4D6', '#145A32'),
+            'II': ('#D5F5E3', '#1E8449'),
+            'III': ('#FFF9C4', '#7D6608'),
+            'IV': ('#FDEBD0', '#784212'),
+            '0': ('#FADBD8', '#922B21'),
+        }
+        for i, result in enumerate(students, 1):
+            d = result.division
+            if d in div_colors:
+                bg, fg = div_colors[d]
+                style_cmds.append(('BACKGROUND', (div_col, i), (div_col, i), colors.HexColor(bg)))
+                style_cmds.append(('TEXTCOLOR', (div_col, i), (div_col, i), colors.HexColor(fg)))
 
-        table.setStyle(style)
+        tbl.setStyle(TableStyle(style_cmds))
 
-        table_width = sum(col_widths)
-        table_x = left_margin + (content_width - table_width) / 2
+        tbl_width = sum(col_widths)
+        tbl_x = left_margin + (content_width - tbl_width) / 2
+        tbl_h = len(data) * 17 + 4
 
-        table.wrapOn(p, content_width, available_height)
-        table.drawOn(p, table_x, current_y - len(data) * row_height)
+        tbl.wrapOn(p, tbl_width, tbl_h)
+        tbl.drawOn(p, tbl_x, current_y - tbl_h)
 
-        p.setFillColor(primary_color)
-        p.rect(left_margin, 30, content_width, 20, fill=1)
-        p.setFillColor(colors.white)
-        p.setFont("Helvetica", 8)
+        # ── Footer ────────────────────────────────────────────────────────
+        p.setStrokeColor(NAVY)
+        p.setLineWidth(0.5)
+        p.line(left_margin, 42, width - left_margin, 42)
+
+        p.setFont("Helvetica", 7.5)
+        p.setFillColor(DARK_GREY)
         p.drawCentredString(
             width / 2,
-            37,
+            32,
             f"Page {page_num} of {len(student_pages)} | Generated: {datetime.now().strftime('%d/%m/%Y at %H:%M')} | Academic Excellence Report",
         )
 
