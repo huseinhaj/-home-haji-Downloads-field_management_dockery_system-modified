@@ -34,13 +34,13 @@ from .report_helpers import (
 )
 
 
-# ── Color palette — Tanzania flag ───────────────────────────────────────────
-GREEN = TZ_GREEN
-GOLD  = TZ_GOLD
-BLUE  = TZ_BLUE
-WHITE = TZ_WHITE
-LIGHT_GREY = TZ_LIGHT_GREY
-DARK_GREY  = TZ_DARK_GREY
+# ── Color palette — Tanzania flag (FF prefix for openpyxl aRGB) ────────────
+GREEN = "FF" + TZ_GREEN
+GOLD  = "FF" + TZ_GOLD
+BLUE  = "FF" + TZ_BLUE
+WHITE = "FF" + TZ_WHITE
+LIGHT_GREY = "FF" + TZ_LIGHT_GREY
+DARK_GREY  = "FF" + TZ_DARK_GREY
 
 
 def _score_fill(score) -> tuple[str | None, str | None]:

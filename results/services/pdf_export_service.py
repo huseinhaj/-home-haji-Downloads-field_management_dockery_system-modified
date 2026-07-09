@@ -41,14 +41,14 @@ from .report_helpers import (
 
 # ── Colour palette (ReportLab native) ────────────────────────────────────────
 # Tanzania flag: green (#1EB53A), yellow (#FCD116), black (#000000), blue (#00A3DD)
-TZ_GREEN_CLR    = colors.HexColor(TZ_GREEN)
+TZ_GREEN_CLR    = colors.HexColor(f"#{TZ_GREEN}")
 TZ_YELLOW_CLR   = colors.HexColor("#FCD116")
-TZ_BLUE_CLR     = colors.HexColor(TZ_BLUE)
-TZ_GOLD_CLR     = colors.HexColor(TZ_GOLD)
+TZ_BLUE_CLR     = colors.HexColor(f"#{TZ_BLUE}")
+TZ_GOLD_CLR     = colors.HexColor(f"#{TZ_GOLD}")
 TZ_BLACK_CLR    = colors.black
 TZ_WHITE_CLR    = colors.white
-TZ_LIGHT_GREY_CLR = colors.HexColor(TZ_LIGHT_GREY)
-TZ_DARK_GREY_CLR  = colors.HexColor(TZ_DARK_GREY)
+TZ_LIGHT_GREY_CLR = colors.HexColor(f"#{TZ_LIGHT_GREY}")
+TZ_DARK_GREY_CLR  = colors.HexColor(f"#{TZ_DARK_GREY}")
 
 # Flag-bar colours for the header divider
 FLAG_GREEN = colors.HexColor("#1EB53A")
