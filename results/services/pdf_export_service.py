@@ -275,7 +275,8 @@ def generate_results_pdf_response(exam):
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ('BOX', (0, 0), (-1, -1), 1.5, TZ_GREEN_CLR),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TZ_WHITE_CLR, TZ_LIGHT_GREY_CLR]),
         ('TOPPADDING', (0, 0), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
@@ -291,24 +292,50 @@ def generate_results_pdf_response(exam):
     div_table_h = len(div_rows) * 22 + 8
     dt.drawOn(p, LM + 10, y - div_table_h)
 
-    # ── Key stats (right side of division table) ───────────────────────
+    # ── Key stats table (right side of division table) ─────────────────
+    stats_width = 180
     stats_x = LM + 310
-    p.setFont("Helvetica", 10)
-    p.setFillColor(TZ_BLACK_CLR)
     if lang == 'sw':
-        stats_info = [
-            f"Jumla ya Wanafunzi:    {total_students}",
-            f"Wastani wa Jumla:      {avg_total:.1f}",
-            f"Wastani wa Mean:       {avg_avg:.1f}",
+        stats_title = "MUHTASARI WA MAENDELEO"
+        stats_rows = [
+            ["Jumla ya Wanafunzi", str(total_students)],
+            ["Wastani wa Jumla", f"{avg_total:.1f}"],
+            ["Wastani wa Mean", f"{avg_avg:.1f}"],
         ]
     else:
-        stats_info = [
-            f"Total Students:        {total_students}",
-            f"Overall Average:       {avg_total:.1f}",
-            f"Mean of Averages:      {avg_avg:.1f}",
+        stats_title = "PERFORMANCE SUMMARY"
+        stats_rows = [
+            ["Total Students", str(total_students)],
+            ["Overall Average", f"{avg_total:.1f}"],
+            ["Mean of Averages", f"{avg_avg:.1f}"],
         ]
-    for i, line in enumerate(stats_info):
-        p.drawString(stats_x, y - 16 - i * 16, line)
+
+    # Build stats table with branded styling
+    stats_header = [[stats_title, ""]]
+    stats_all = stats_header + stats_rows
+    st_tbl = Table(stats_all, colWidths=[stats_width * 0.58, stats_width * 0.42])
+    st_tbl.setStyle(_make_style(
+        ('BACKGROUND', (0, 0), (-1, 0), TZ_GREEN_CLR),
+        ('TEXTCOLOR', (0, 0), (-1, 0), TZ_WHITE_CLR),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ('BOX', (0, 0), (-1, -1), 1.5, TZ_GREEN_CLR),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TZ_WHITE_CLR, TZ_LIGHT_GREY_CLR]),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+    ))
+    st_h = len(stats_all) * 22 + 8
+    st_tbl.wrapOn(p, stats_width, st_h)
+    st_tbl.drawOn(p, stats_x, y - st_h)
     y -= div_table_h + 25
 
     # ── Subject Statistics ─────────────────────────────────────────────
@@ -334,7 +361,8 @@ def generate_results_pdf_response(exam):
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 8.5),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ('BOX', (0, 0), (-1, -1), 1.5, TZ_GREEN_CLR),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TZ_WHITE_CLR, TZ_LIGHT_GREY_CLR]),
             ('TOPPADDING', (0, 0), (-1, -1), 3),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
@@ -371,7 +399,8 @@ def generate_results_pdf_response(exam):
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+        ('BOX', (0, 0), (-1, -1), 1.5, TZ_GREEN_CLR),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TZ_WHITE_CLR, TZ_LIGHT_GREY_CLR]),
             ('TOPPADDING', (0, 0), (-1, -1), 4),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
@@ -398,6 +427,8 @@ def generate_results_pdf_response(exam):
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('TOPPADDING', (0, 0), (-1, -1), 2),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('BOX', (0, 0), (-1, -1), 1, TZ_GREEN_CLR),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
     ]
     for i, bg in enumerate(grad_colors):
         gs_cmds.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(bg)))
@@ -506,7 +537,8 @@ def generate_results_pdf_response(exam):
             ('FONTSIZE', (0, 0), (-1, -1), fontsize),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-            ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor("#CCCCCC")),
+            ('INNERGRID', (0, 0), (-1, -1), 0.3, colors.HexColor("#CCCCCC")),
+            ('BOX', (0, 0), (-1, -1), 1.5, TZ_GREEN_CLR),
             ('TOPPADDING', (0, 0), (-1, -1), 1),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
             ('LEFTPADDING', (0, 0), (-1, -1), 2),
@@ -559,7 +591,8 @@ def generate_results_pdf_response(exam):
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('TOPPADDING', (0, 0), (-1, -1), 1),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
-                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
+                ('BOX', (0, 0), (-1, -1), 1, TZ_GREEN_CLR),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
             ]
             for i, bg in enumerate(["#C6F4D6", "#D5F5E3", "#FFF9C4", "#FDEBD0", "#FADBD8"]):
                 ls_cmds.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(bg)))
