@@ -154,7 +154,9 @@ def recompute_processed_results_for_exam(exam):
             }
         )
 
-    student_data.sort(key=lambda item: item['total'], reverse=True)
+    # NECTA ranking: sort by points ascending (lower points = better),
+    # then by total score descending as tiebreaker
+    student_data.sort(key=lambda item: (item['points'], -item['total']))
 
     # One bulk upsert instead of one update_or_create per student — the
     # remote DB's per-query latency made this the slowest part of an

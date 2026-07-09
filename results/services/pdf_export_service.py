@@ -145,6 +145,25 @@ def generate_results_pdf_response(exam):
                 'pass_pct': round(passing / len(scores) * 100, 1),
             })
 
+    # ── Helper: draw Tanzania flag-colour page border ────────────────
+    def _draw_page_border():
+        """Draw 4 thin coloured bands around the page perimeter — green top,
+        yellow right, black bottom, blue left (Tanzania flag order)."""
+        bw = 6   # border band thickness/width
+        gm = 15  # gap from page edge
+        # Top — Green
+        p.setFillColor(TZ_GREEN_CLR)
+        p.rect(gm, H - gm - bw, W - 2 * gm, bw, fill=1, stroke=0)
+        # Right — Yellow
+        p.setFillColor(TZ_YELLOW_CLR)
+        p.rect(W - gm - bw, gm, bw, H - 2 * gm, fill=1, stroke=0)
+        # Bottom — Black
+        p.setFillColor(TZ_BLACK_CLR)
+        p.rect(gm, gm, W - 2 * gm, bw, fill=1, stroke=0)
+        # Left — Blue
+        p.setFillColor(TZ_BLUE_CLR)
+        p.rect(gm, gm, bw, H - 2 * gm, fill=1, stroke=0)
+
     # ── Helper: draw the flag-colour header block ──────────────────────
     def _draw_header(y, header_w=None):
         """
@@ -232,6 +251,9 @@ def generate_results_pdf_response(exam):
     # ═══════════════════════════════════════════════════════════════════
     #  PAGE 1 — MUHTASARI / SUMMARY
     # ═══════════════════════════════════════════════════════════════════
+
+    # Page border
+    _draw_page_border()
 
     # Header
     y = H - 50
@@ -336,7 +358,7 @@ def generate_results_pdf_response(exam):
     st_h = len(stats_all) * 22 + 8
     st_tbl.wrapOn(p, stats_width, st_h)
     st_tbl.drawOn(p, stats_x, y - st_h)
-    y -= div_table_h + 25
+    y -= max(div_table_h, st_h) + 25
 
     # ── Subject Statistics ─────────────────────────────────────────────
     if subj_stats and y > 200:
@@ -495,6 +517,9 @@ def generate_results_pdf_response(exam):
         # Switch to landscape pagesize after first page
         if USE_LANDSCAPE:
             p.setPageSize(_landscape(A4))
+
+        # Page border on every page
+        _draw_page_border()
 
         y = H - 40
         _draw_header(y, header_w=CW if USE_LANDSCAPE else None)
