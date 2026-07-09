@@ -461,6 +461,10 @@ def generate_results_pdf_response(exam):
         if pn > 1:
             p.showPage()
 
+        # Switch to landscape pagesize after first page
+        if USE_LANDSCAPE:
+            p.setPageSize(_landscape(A4))
+
         y = H - 40
         _draw_header(y, header_w=CW if USE_LANDSCAPE else None)
         y -= 110
