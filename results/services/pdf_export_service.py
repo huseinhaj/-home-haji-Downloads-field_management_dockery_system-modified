@@ -1,23 +1,15 @@
 """
-pdf_export_service.py — Professional academic report PDF
-=======================================================
+pdf_export_service.py — Professional academic report PDF with Tanzania flag colours.
 
-Produces a multi-page PDF that any head teacher can understand:
+Page 1   MUHTASARI / SUMMARY
+         - Tanzania-flag-branded header (green, yellow, black, blue)
+         - Full school name ("KWADELO SECONDARY SCHOOL" not "KWADELO")
+         - English for secondary schools, Kiswahili for primary schools
+         - Division breakdown, subject stats, top 5
 
-  Page 1   MUHTASARI (Summary)
-           - Ministry header, school info
-           - Division breakdown with percentages
-           - Per-subject statistics (average, highest, lowest, pass rate)
-           - Top 5 students
-
-  Page 2+  MATOKEO KAMILI (Full Results)
-           - Full results table (POS, JINA, JINSIA, subjects, JUMLA,
-             WASTANI, DARAJA, POINTI)
-           - Score color-coding (green→yellow→red)
-           - Grade legend
-           - Footer with page numbers
-
-Excel export (3-sheet) is untouched — both PDF and Excel coexist.
+Page 2+  MATOKEO KAMILI / FULL RESULTS
+         - Full results table with colour-coded scores
+         - Grade legend, page footer
 """
 
 from collections import Counter
@@ -32,15 +24,37 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle
 
 from .export_data import get_exam_export_payload
+from .report_helpers import (
+    TZ_BLUE,
+    TZ_DARK_GREY,
+    TZ_GOLD,
+    TZ_GREEN,
+    TZ_LIGHT_GREY,
+    TZ_WHITE,
+    get_full_school_name,
+    get_report_label,
+    get_report_language,
+    get_section_title,
+    get_school_type_for_exam,
+)
 
 
-# ── Colour palette ───────────────────────────────────────────────────────────
-NAVY    = colors.HexColor("#1F497D")
-GOLD     = colors.HexColor("#D9A441")
-WHITE    = colors.white
-LIGHT_GREY = colors.HexColor("#F2F4F7")
-BLACK    = colors.black
-DARK_GREY  = colors.HexColor("#555555")
+# ── Colour palette (ReportLab native) ────────────────────────────────────────
+# Tanzania flag: green (#1EB53A), yellow (#FCD116), black (#000000), blue (#00A3DD)
+TZ_GREEN_CLR    = colors.HexColor(TZ_GREEN)
+TZ_YELLOW_CLR   = colors.HexColor("#FCD116")
+TZ_BLUE_CLR     = colors.HexColor(TZ_BLUE)
+TZ_GOLD_CLR     = colors.HexColor(TZ_GOLD)
+TZ_BLACK_CLR    = colors.black
+TZ_WHITE_CLR    = colors.white
+TZ_LIGHT_GREY_CLR = colors.HexColor(TZ_LIGHT_GREY)
+TZ_DARK_GREY_CLR  = colors.HexColor(TZ_DARK_GREY)
+
+# Flag-bar colours for the header divider
+FLAG_GREEN = colors.HexColor("#1EB53A")
+FLAG_YELLOW = colors.HexColor("#FCD116")
+FLAG_BLACK = colors.black
+FLAG_BLUE  = colors.HexColor("#00A3DD")
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -51,14 +65,6 @@ def _get_location(exam):
     if exam.school and exam.school.district:
         return f"{exam.school.district} DISTRICT".upper()
     return "LOCATION UNKNOWN"
-
-
-def _get_school_name(exam):
-    if exam.school_name:
-        return exam.school_name.upper()
-    if exam.school:
-        return exam.school.name.upper()
-    return "SCHOOL NAME UNKNOWN"
 
 
 def _score_fill(score):
@@ -75,6 +81,7 @@ def _score_fill(score):
 def _make_style(*cmds):
     """Shortcut — wrap a list of TableStyle commands."""
     return TableStyle(list(cmds))
+
 
 DIV_PALETTE = {
     'I':  ('#C6F4D6', '#145A32'),
@@ -103,6 +110,11 @@ def generate_results_pdf_response(exam):
     CW = W - 2 * LM  # content width
 
     total_students = len(all_results)
+    school_type = get_school_type_for_exam(exam)
+    lang = get_report_language(exam)
+    school_disp = get_full_school_name(exam)
+    etype_disp = exam.get_exam_type_display().upper()
+    report_label = get_report_label(exam)
 
     # ── Summary stats pre-computed --------------------------------------
     if total_students:
@@ -133,102 +145,133 @@ def generate_results_pdf_response(exam):
                 'pass_pct': round(passing / len(scores) * 100, 1),
             })
 
-    # ── Helper: draw the Ministry header block ───────────────────────────
+    # ── Helper: draw the flag-colour header block ──────────────────────
     def _draw_header(y):
-        p.setFillColor(NAVY)
+        # Green bar background
+        p.setFillColor(TZ_GREEN_CLR)
+        p.rect(LM - 5, y - 95, W - 2 * LM + 10, 95, fill=1, stroke=0)
+
+        # Ministry name (white on green)
+        p.setFillColor(TZ_WHITE_CLR)
+        p.setFont("Helvetica-Bold", 13)
+        p.drawCentredString(W / 2, y - 8,
+            "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY" if lang == 'en'
+            else "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA")
+
+        # School type subtitle
+        p.setFont("Helvetica", 9)
+        sub_lines = {
+            'en': f"{'SECONDARY' if school_type == 'secondary' else 'PRIMARY'} SCHOOL — EXAMINATION SECTION",
+            'sw': f"{'SEKONDARI' if school_type == 'secondary' else 'MSINGI'} — SEHEMU YA MITIHANI",
+        }
+        p.drawCentredString(W / 2, y - 25, sub_lines.get(lang, sub_lines['en']))
+
+        # Tanzania flag-colour divider bar (green → yellow → black → blue)
+        bar_y = y - 38
+        bar_h = 6
+        bar_w = CW + 10
+        for i, (clr, fraction) in enumerate([
+            (FLAG_GREEN, 0.25),
+            (FLAG_YELLOW, 0.25),
+            (FLAG_BLACK, 0.25),
+            (FLAG_BLUE, 0.25),
+        ]):
+            p.setFillColor(clr)
+            p.rect(LM - 5 + i * bar_w * fraction, bar_y,
+                   bar_w * fraction, bar_h, fill=1, stroke=0)
+
+        # School name (gold on green background)
+        p.setFillColor(TZ_YELLOW_CLR)
         p.setFont("Helvetica-Bold", 14)
-        p.drawCentredString(W / 2, y, "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY")
+        p.drawCentredString(W / 2, y - 56, school_disp)
 
-        p.setFont("Helvetica", 10)
-        p.setFillColor(DARK_GREY)
-        p.drawCentredString(W / 2, y - 18, _get_location(exam))
+        # Location
+        p.setFillColor(TZ_WHITE_CLR)
+        p.setFont("Helvetica", 9)
+        loc = _get_location(exam)
+        p.drawCentredString(W / 2, y - 74, loc)
 
-        p.setFont("Helvetica-Bold", 11)
-        p.setFillColor(BLACK)
-        p.drawCentredString(W / 2, y - 36, _get_school_name(exam))
-
-        p.setStrokeColor(GOLD)
+        # Exam name below the header
+        p.setStrokeColor(TZ_GOLD_CLR)
         p.setLineWidth(1.5)
-        p.line(LM, y - 50, W - LM, y - 50)
+        p.line(LM, y - 90, W - LM, y - 90)
 
-        etype = exam.get_exam_type_display().upper()
-        p.setFont("Helvetica-Bold", 11)
-        p.setFillColor(NAVY)
-        p.drawCentredString(W / 2, y - 68, f"{etype} EXAMINATION RESULTS")
-
-        p.setFont("Helvetica", 10)
-        p.setFillColor(DARK_GREY)
-        p.drawCentredString(W / 2, y - 84, f"Academic Year: {exam.year}")
-
-    # ── Helper: section heading line ─────────────────────────────────────
-    def _section_heading(y, text):
-        p.setFont("Helvetica-Bold", 12)
-        p.setFillColor(NAVY)
-        p.drawString(LM, y, text.upper())
-        p.setStrokeColor(GOLD)
+    # ── Helper: section heading line ───────────────────────────────────
+    def _section_heading(y, section_key):
+        title = get_section_title(exam, section_key)
+        p.setFont("Helvetica-Bold", 12 if lang == 'en' else 11)
+        p.setFillColor(TZ_GREEN_CLR)
+        p.drawString(LM, y, title.upper())
+        p.setStrokeColor(TZ_GOLD_CLR)
         p.setLineWidth(1)
         p.line(LM, y - 2, W - LM, y - 2)
         return y - 20
 
-    # ── Helper: page footer ──────────────────────────────────────────────
+    # ── Helper: page footer ─────────────────────────────────────────---
     def _draw_footer(page, total_pages):
-        p.setStrokeColor(NAVY)
+        p.setStrokeColor(TZ_GREEN_CLR)
         p.setLineWidth(0.5)
         p.line(LM, 32, W - LM, 32)
         p.setFont("Helvetica", 7)
-        p.setFillColor(DARK_GREY)
+        p.setFillColor(TZ_DARK_GREY_CLR)
         ts = datetime.now().strftime('%d/%m/%Y at %H:%M')
-        p.drawCentredString(W / 2, 22,
-            f"Page {page} of {total_pages} | Generated: {ts} | Academic Excellence Report")
+        footer_text = {
+            'en': f"Page {page} of {total_pages} | Generated: {ts} | Academic Excellence Report",
+            'sw': f"Ukurasa {page} kati ya {total_pages} | Imeandaliwa: {ts} | Ripoti ya Taaluma",
+        }
+        p.drawCentredString(W / 2, 22, footer_text.get(lang, footer_text['en']))
 
-    # ═════════════════════════════════════════════════════════════════════
-    #  PAGE 1 — MUHTASARI (Summary)
-    # ═════════════════════════════════════════════════════════════════════
-    school_disp = _get_school_name(exam)
-    etype_disp  = exam.get_exam_type_display().upper()
+    # ═══════════════════════════════════════════════════════════════════
+    #  PAGE 1 — MUHTASARI / SUMMARY
+    # ═══════════════════════════════════════════════════════════════════
 
     # Header
     y = H - 50
     _draw_header(y)
-    y -= 100
+    y -= 110
 
     # School title line
     p.setFont("Helvetica-Bold", 13)
-    p.setFillColor(NAVY)
-    p.drawCentredString(W / 2, y, f"{school_disp} — {etype_disp} {exam.year} — FORM {exam.form}")
+    p.setFillColor(TZ_GREEN_CLR)
+    title_text = f"{school_disp} — {etype_disp} {exam.year} — FORM {exam.form}" if lang == 'en' \
+        else f"{school_disp} — {report_label}"
+    p.drawCentredString(W / 2, y, title_text)
     y -= 20
     p.setFont("Helvetica", 9)
-    p.setFillColor(DARK_GREY)
+    p.setFillColor(TZ_DARK_GREY_CLR)
     p.drawCentredString(W / 2, y, exam.name)
     y -= 28
 
-    # ── Division breakdown table ────────────────────────────────────────
-    y = _section_heading(y, "MUHTASARI WA DARAJA (DIVISION SUMMARY)")
+    # ── Division breakdown table ──────────────────────────────────────
+    y = _section_heading(y, 'division_summary')
     y -= 6
 
-    div_rows = [
-        ["DARAJA", "IDADI", "ASILIMIA"],
-        ["Daraja I",  str(div_counts.get('I', 0)),  _pct(div_counts.get('I', 0))],
-        ["Daraja II", str(div_counts.get('II', 0)), _pct(div_counts.get('II', 0))],
-        ["Daraja III",str(div_counts.get('III',0)), _pct(div_counts.get('III',0))],
-        ["Daraja IV", str(div_counts.get('IV', 0)), _pct(div_counts.get('IV', 0))],
-        ["Fail (0)",  str(div_counts.get('0', 0)),  _pct(div_counts.get('0', 0))],
-        ["Jumla",     str(total_students),           "100%"],
-    ]
+    div_header = ["DARAJA", "IDADI", "ASILIMIA"] if lang == 'sw' \
+        else ["DIVISION", "COUNT", "PERCENTAGE"]
+    div_rows = [div_header]
+    div_labels = {'I': 'Daraja I', 'II': 'Daraja II', 'III': 'Daraja III',
+                  'IV': 'Daraja IV', '0': 'Fail (0)'}
+    if lang == 'en':
+        div_labels = {'I': 'Division I', 'II': 'Division II', 'III': 'Division III',
+                      'IV': 'Division IV', '0': 'Fail (0)'}
+    for d in ('I', 'II', 'III', 'IV', '0'):
+        div_rows.append([div_labels[d], str(div_counts.get(d, 0)),
+                         _pct(div_counts.get(d, 0))])
+    div_rows.append(["Jumla" if lang == 'sw' else "Total",
+                     str(total_students), "100%"])
 
     dt = Table(div_rows, colWidths=[140, 80, 80])
     dt.setStyle(_make_style(
-        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('BACKGROUND', (0, 0), (-1, 0), TZ_GREEN_CLR),
+        ('TEXTCOLOR', (0, 0), (-1, 0), TZ_WHITE_CLR),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, LIGHT_GREY]),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TZ_WHITE_CLR, TZ_LIGHT_GREY_CLR]),
         ('TOPPADDING', (0, 0), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ))
-    # Colour the division cells
     for i, d in enumerate(('I', 'II', 'III', 'IV', '0'), 1):
         bg, fg = DIV_PALETTE.get(d, ('FFFFFF', '000000'))
         dt.setStyle(_make_style(
@@ -240,25 +283,35 @@ def generate_results_pdf_response(exam):
     div_table_h = len(div_rows) * 22 + 8
     dt.drawOn(p, LM + 10, y - div_table_h)
 
-    # ── Key stats (right side of division table) ─────────────────────────
+    # ── Key stats (right side of division table) ───────────────────────
     stats_x = LM + 310
     p.setFont("Helvetica", 10)
-    p.setFillColor(BLACK)
-    stats_info = [
-        f"Jumla ya Wanafunzi:    {total_students}",
-        f"Wastani wa Jumla:      {avg_total:.1f}",
-        f"Wastani wa Mean:       {avg_avg:.1f}",
-    ]
+    p.setFillColor(TZ_BLACK_CLR)
+    if lang == 'sw':
+        stats_info = [
+            f"Jumla ya Wanafunzi:    {total_students}",
+            f"Wastani wa Jumla:      {avg_total:.1f}",
+            f"Wastani wa Mean:       {avg_avg:.1f}",
+        ]
+    else:
+        stats_info = [
+            f"Total Students:        {total_students}",
+            f"Overall Average:       {avg_total:.1f}",
+            f"Mean of Averages:      {avg_avg:.1f}",
+        ]
     for i, line in enumerate(stats_info):
         p.drawString(stats_x, y - 16 - i * 16, line)
     y -= div_table_h + 25
 
-    # ── Subject Statistics ───────────────────────────────────────────────
+    # ── Subject Statistics ─────────────────────────────────────────────
     if subj_stats and y > 200:
-        y = _section_heading(y, "TAKWIMU ZA MASOMO (SUBJECT STATISTICS)")
+        y = _section_heading(y, 'subject_stats')
         y -= 8
 
-        subj_header = ["SOMO", "WASTANI", "JUU", "CHINI", "KUFAULU"]
+        if lang == 'sw':
+            subj_header = ["SOMO", "WASTANI", "JUU", "CHINI", "KUFAULU"]
+        else:
+            subj_header = ["SUBJECT", "AVERAGE", "HIGH", "LOW", "PASS %"]
         subj_data = [subj_header]
         for ss in subj_stats:
             subj_data.append([
@@ -268,13 +321,13 @@ def generate_results_pdf_response(exam):
 
         st = Table(subj_data, colWidths=[110, 70, 50, 50, 70])
         st.setStyle(_make_style(
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-            ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+            ('BACKGROUND', (0, 0), (-1, 0), TZ_GREEN_CLR),
+            ('TEXTCOLOR', (0, 0), (-1, 0), TZ_WHITE_CLR),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 8.5),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, LIGHT_GREY]),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TZ_WHITE_CLR, TZ_LIGHT_GREY_CLR]),
             ('TOPPADDING', (0, 0), (-1, -1), 3),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
         ))
@@ -283,13 +336,17 @@ def generate_results_pdf_response(exam):
         st.drawOn(p, LM + 10, y - st_h)
         y -= st_h + 20
 
-    # ── Top 5 students ──────────────────────────────────────────────────
+    # ── Top 5 students ─────────────────────────────────────────────────
     if all_results and y > 140:
-        y = _section_heading(y, "WANAFUNZI BORA 5 (TOP 5 PERFORMERS)")
+        y = _section_heading(y, 'top_students')
         y -= 8
 
         top5 = all_results[:5]
-        top_data = [["NAFASI", "JINA", "JUMLA", "WASTANI", "DARAJA"]]
+        if lang == 'sw':
+            top_header = ["NAFASI", "JINA", "JUMLA", "WASTANI", "DARAJA"]
+        else:
+            top_header = ["POS.", "NAME", "TOTAL", "AVERAGE", "DIV."]
+        top_data = [top_header]
         for r in top5:
             st = r.student
             nm = ' '.join(p for p in [st.first_name, st.middle_name or '', st.last_name] if p)
@@ -300,14 +357,14 @@ def generate_results_pdf_response(exam):
 
         tt = Table(top_data, colWidths=[50, 180, 60, 70, 60])
         tt.setStyle(_make_style(
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-            ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+            ('BACKGROUND', (0, 0), (-1, 0), TZ_GREEN_CLR),
+            ('TEXTCOLOR', (0, 0), (-1, 0), TZ_WHITE_CLR),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('ALIGN', (1, 1), (1, -1), 'LEFT'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, LIGHT_GREY]),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TZ_WHITE_CLR, TZ_LIGHT_GREY_CLR]),
             ('TOPPADDING', (0, 0), (-1, -1), 4),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ))
@@ -315,14 +372,15 @@ def generate_results_pdf_response(exam):
         tt.wrapOn(p, 420, tt_h)
         tt.drawOn(p, LM + 10, y - tt_h)
 
-    # ── Grading key ──────────────────────────────────────────────────────
+    # ── Grading key ───────────────────────────────────────────────────
     y_footer = 50
-    p.setStrokeColor(GOLD)
+    p.setStrokeColor(TZ_GOLD_CLR)
     p.setLineWidth(0.75)
     p.line(LM, y_footer + 25, W - LM, y_footer + 25)
     p.setFont("Helvetica-Bold", 8)
-    p.setFillColor(NAVY)
-    p.drawString(LM, y_footer + 12, "UFUNGUO WA DARAJA (GRADING KEY):")
+    p.setFillColor(TZ_GREEN_CLR)
+    key_title = get_section_title(exam, 'grading_key')
+    p.drawString(LM, y_footer + 12, f"{key_title}:")
     grad_data = [["A (75-100)", "B (65-74)", "C (50-64)", "D (40-49)", "F (<40)"]]
     grad_colors = ["#C6F4D6", "#D5F5E3", "#FFF9C4", "#FDEBD0", "#FADBD8"]
     gt = Table(grad_data, colWidths=[(CW - 20) / 5] * 5)
@@ -341,9 +399,9 @@ def generate_results_pdf_response(exam):
 
     p.showPage()
 
-    # ═════════════════════════════════════════════════════════════════════
-    #  PAGE 2+ — MATOKEO KAMILI (Full Results)
-    # ═════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════════
+    #  PAGE 2+ — MATOKEO KAMILI / FULL RESULTS
+    # ═══════════════════════════════════════════════════════════════════
     col_pos   = 32
     col_name  = 140
     col_sex   = 28
@@ -355,9 +413,15 @@ def generate_results_pdf_response(exam):
     col_pts   = 32
     col_widths = ([col_pos, col_name, col_sex] + [col_subj] * len(subjects)
                   + [col_total, col_avg, col_div, col_pts])
-    headers = (["POS", "JINA", "JINSIA"]
+
+    cols_sw  = ["POS", "JINA", "JINSIA"]
+    cols_en  = ["POS", "NAME", "SEX"]
+    lang_cols = cols_sw if lang == 'sw' else cols_en
+
+    headers = (lang_cols
                + [s.name.upper()[:10] for s in subjects]
-               + ["JUMLA", "WASTANI", "DARAJA", "POINTI"])
+               + (["JUMLA", "WASTANI", "DARAJA", "POINTI"] if lang == 'sw'
+                  else ["TOTAL", "AVG", "DIV.", "PTS"]))
 
     tbl_w = sum(col_widths)
 
@@ -366,6 +430,8 @@ def generate_results_pdf_response(exam):
     avail  = H - 250
     rpp    = max(5, int((avail - head_h) / row_h))
     pages  = [all_results[i:i + rpp] for i in range(0, len(all_results), rpp)]
+
+    full_results_title = get_section_title(exam, 'full_results')
 
     for pn, group in enumerate(pages, 1):
         if pn > 1:
@@ -377,13 +443,14 @@ def generate_results_pdf_response(exam):
 
         # Title
         p.setFont("Helvetica-Bold", 12)
-        p.setFillColor(NAVY)
-        p.drawCentredString(W / 2, y,
-            f"{school_disp} — {etype_disp} {exam.year} — FORM {exam.form}")
+        p.setFillColor(TZ_GREEN_CLR)
+        disp = f"{school_disp} — {etype_disp} {exam.year} — FORM {exam.form}" if lang == 'en' \
+            else f"{school_disp} — {report_label}"
+        p.drawCentredString(W / 2, y, disp)
         y -= 18
         p.setFont("Helvetica", 9)
-        p.setFillColor(DARK_GREY)
-        p.drawCentredString(W / 2, y, f"{exam.name}  |  MATOKEO KAMILI (PAGE {pn})")
+        p.setFillColor(TZ_DARK_GREY_CLR)
+        p.drawCentredString(W / 2, y, f"{exam.name}  |  {full_results_title} (PAGE {pn})")
         y -= 20
 
         # Build table
@@ -404,8 +471,8 @@ def generate_results_pdf_response(exam):
         tbl = Table(data, colWidths=col_widths)
 
         style = [
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-            ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+            ('BACKGROUND', (0, 0), (-1, 0), TZ_GREEN_CLR),
+            ('TEXTCOLOR', (0, 0), (-1, 0), TZ_WHITE_CLR),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 7.5),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -420,7 +487,7 @@ def generate_results_pdf_response(exam):
 
         for i in range(1, len(data)):
             if i % 2 == 0:
-                style.append(('BACKGROUND', (0, i), (-1, i), LIGHT_GREY))
+                style.append(('BACKGROUND', (0, i), (-1, i), TZ_LIGHT_GREY_CLR))
 
         # Score colours
         for i, r in enumerate(group, 1):
@@ -435,7 +502,7 @@ def generate_results_pdf_response(exam):
                         style.append(('TEXTCOLOR', (ci, i), (ci, i), colors.HexColor(fg)))
 
         # Division colour
-        dc = len(headers) - 2  # DARAJA column
+        dc = len(headers) - 2  # DARAJA/DIV column
         for i, r in enumerate(group, 1):
             if r.division in DIV_PALETTE:
                 bg, fg = DIV_PALETTE[r.division]
@@ -477,5 +544,5 @@ def generate_results_pdf_response(exam):
 
     resp = HttpResponse(buf, content_type='application/pdf')
     safe_name = exam.name.replace(' ', '_')
-    resp['Content-Disposition'] = f'attachment; filename="{safe_name}_Academic_Report.pdf"'
+    resp['Content-Disposition'] = f'attachment; filename=\"{safe_name}_Academic_Report.pdf\"'
     return resp

@@ -79,14 +79,20 @@ def normalize_gender(raw_gender: str) -> str:
 
 
 def get_grade(score):
-    """NECTA CSEE (O-Level, Form 1-4) subject grade."""
+    """NECTA CSEE (O-Level, Form 1-4) subject grade.
+
+    IMPORTANT: These thresholds MUST stay in sync with the PDF and Excel
+    display services (pdf_export_service._score_fill, excel_export_service
+    _score_grade) — otherwise the points/division computed here will show
+    different letter grades than what the report tables display.
+    """
     if score >= 75:
         return "A"
     if score >= 65:
         return "B"
-    if score >= 45:
+    if score >= 50:
         return "C"
-    if score >= 30:
+    if score >= 40:
         return "D"
     return "F"
 
