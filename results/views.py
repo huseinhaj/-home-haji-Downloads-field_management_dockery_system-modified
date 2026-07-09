@@ -196,6 +196,7 @@ def student_result_public(request, token):
         'division_label': division_label,
         'location': location,
         'school_name': exam.school_name or (exam.school.name if exam.school else ''),
+        'total_students': ProcessedResult.objects.filter(exam=exam).count(),
     })
 
 

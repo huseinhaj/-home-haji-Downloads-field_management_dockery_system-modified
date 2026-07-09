@@ -269,7 +269,7 @@
             <div class="student-name">{{ student_name }}</div>
             <div class="student-meta">
               {% if student.gender == 'M' %}Male / Kiume{% else %}Female / Kike{% endif %}
-              &bull; Position: {{ result.position }} of {{ exam.processedresult_set.count }}
+              &bull; Position: {{ result.position }} of {{ total_students }}
             </div>
           </div>
           <div class="division-box">
