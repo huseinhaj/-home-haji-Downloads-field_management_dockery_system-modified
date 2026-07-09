@@ -220,7 +220,7 @@ def exam_share_links(request, exam_id):
     for r in results:
         st = r.student
         name = ' '.join(p for p in [st.first_name, st.middle_name or '', st.last_name] if p)
-        full_url = f"{base_url}/matokeo/{r.share_token}/"
+        full_url = f"{base_url}/shule/matokeo/{r.share_token}/"
         students_links.append({
             'position': r.position,
             'name': name,
