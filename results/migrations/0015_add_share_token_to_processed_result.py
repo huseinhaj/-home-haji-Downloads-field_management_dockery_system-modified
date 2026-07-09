@@ -33,7 +33,15 @@ class Migration(migrations.Migration):
                           "to this student's result.",
             ),
         ),
-        # Populate existing rows with unique UUIDs (overwrites the
-        # single eval-time default so every row gets a distinct value)
+        # Overwrite the single eval-time default with per-row unique UUIDs
         migrations.RunPython(populate_existing_tokens, migrations.RunPython.noop),
+        # Now that every row has a unique UUID, enforce the UNIQUE constraint
+        migrations.AlterField(
+            model_name='processedresult',
+            name='share_token',
+            field=models.UUIDField(
+                default=uuid.uuid4, editable=False, unique=True,
+                help_text="Unique token for anonymous public access to this student's result.",
+            ),
+        ),
     ]
