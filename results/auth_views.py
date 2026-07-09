@@ -17,9 +17,10 @@ def _redirect_for_role(account):
 
 
 def _lookup_account(email):
-    """Get a TeacherAccount by email, case-insensitive."""
+    """Get a TeacherAccount by email, case-insensitive.
+    Uses explicit database to avoid router mismatches."""
     try:
-        return TeacherAccount.objects.get(email__iexact=email.strip())
+        return TeacherAccount.objects.using('results').get(email__iexact=email.strip())
     except TeacherAccount.DoesNotExist:
         return None
 
@@ -90,7 +91,12 @@ def results_login(request):
             return render(request, 'results/login.html', {'step': 'activate', 'email': email})
 
         account.set_password(password1)
-        account.save()  # <-- use save() not update_fields to ensure persistence
+        account.save(using='results')
+        # Verify password was persisted
+        account.refresh_from_db(using='results')
+        if not account.has_usable_password():
+            messages.error(request, "Hitilafu ya mfumo: password haikuweza kuhifadhiwa. Jaribu tena.")
+            return render(request, 'results/login.html', {'step': 'activate', 'email': email})
 
         login(request, account, backend=RESULTS_BACKEND)
         messages.success(request, "Akaunti imeundwa. Karibu!")
@@ -132,7 +138,12 @@ def results_login(request):
             return render(request, 'results/login.html', {'step': 'forgot', 'email': email})
 
         account.set_password(password1)
-        account.save()
+        account.save(using='results')
+        # Verify password was persisted
+        account.refresh_from_db(using='results')
+        if not account.has_usable_password():
+            messages.error(request, "Hitilafu ya mfumo: password haikuweza kuhifadhiwa. Jaribu tena.")
+            return render(request, 'results/login.html', {'step': 'forgot', 'email': email})
 
         login(request, account, backend=RESULTS_BACKEND)
         messages.success(request, "Password yako imebadilishwa. Karibu tena!")
