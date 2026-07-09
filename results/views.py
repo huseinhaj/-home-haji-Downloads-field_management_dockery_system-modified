@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.core.exceptions import ValidationError
 
 from .forms import ExamUploadForm, TeacherSelfSubjectsForm
-from .models import Exam, ExamResult, PersonalUpload, PersonalUploadResult, School, SchoolSubject, Student, Subject, SubjectSubmission
+from .models import Exam, ExamResult, PersonalUpload, PersonalUploadResult, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission
 from .permissions import academic_required, results_login_required as login_required, teacher_required
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
 from .services.pdf_export_service import generate_results_pdf_response
