@@ -1423,8 +1423,9 @@ def get_topics_ai(request):
 
     prompt = (
         f"Wewe ni mtaalamu wa mtaala wa Tanzania (TIE/SEQUIP). "
-        f"Orodhesha mada kuu (topics) za somo la {subject.name} kwa {class_name} ({education_level}) "
-        f"kwa mujibu wa mtaala wa TIE Tanzania. "
+        f"Orodhesha mada kuu (topics) za somo la {subject.name} kwa darasa la {class_name} "
+        f"katika ngazi ya {education_level} kwa mujibu wa mtaala wa TIE Tanzania. "
+        f"TOPICS lazima zifae hasa kwa darasa la {class_name} — si darasa jingine. "
         f"Rudisha TU JSON array ya string: [\"Topic 1\", \"Topic 2\", ...]. "
         f"USIANDIKE chochote kingine — JSON pekee."
     )
@@ -1465,7 +1466,8 @@ def get_subtopics_ai(request):
     prompt = (
         f"Wewe ni mtaalamu wa mtaala wa Tanzania (TIE/SEQUIP). "
         f"Orodhesha mada ndogo (subtopics) za somo la {subject.name}, kwa mada kuu '{topic}', "
-        f"kwa {class_name} ({education_level}) kwa mujibu wa mtaala wa TIE Tanzania. "
+        f"kwa darasa la {class_name} ({education_level}) kwa mujibu wa mtaala wa TIE Tanzania. "
+        f"SUbTOPICS lazima zifae hasa kwa darasa la {class_name} — si darasa jingine. "
         f"Rudisha TU JSON array ya string: [\"Subtopic 1\", \"Subtopic 2\", ...]. "
         f"Kama hakuna subtopics, rudisha [] (array tupu). "
         f"USIANDIKE chochote kingine — JSON pekee."

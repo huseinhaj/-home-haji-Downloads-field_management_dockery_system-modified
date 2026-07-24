@@ -177,16 +177,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 subjectSelect.innerHTML += `<option value="${subj.id}" data-name="${subj.name}">${subj.name}</option>`;
             });
         }
-        // Reset topic dropdown
-        document.getElementById('topic').innerHTML = '<option value="">— Chagua Topic au Andika Mwenyewe —</option>';
+        // Reset topic & subtopic dropdowns
+        document.getElementById('topic').innerHTML = '<option value="">— Chagua Topic —</option>';
+        document.getElementById('subtopic').innerHTML = '<option value="">— Chagua Subtopic kwanza —</option>';
+        document.getElementById('topicManual').value = '';
+        document.getElementById('subtopicManual').value = '';
     });
 
-    // When subject changes, fetch topics from AI
-    document.getElementById('subject').addEventListener('change', function() {
-        const subjectId = this.value;
-        const classLevel = document.getElementById('class_level');
-        const classLevelOpt = classLevel.options[classLevel.selectedIndex];
-        const educationLevel = document.querySelector('#education_level option:checked').textContent || '';
+    // Helper: get selected class name (returns empty if not yet selected)
+    function getSelectedClassName() {
+        const cls = document.getElementById('class_level');
+        const opt = cls.options[cls.selectedIndex];
+        if (!opt || !opt.value) return '';
+        return opt.textContent;
+    }
+    
+    // Helper: get selected education level name
+    function getEducationLevelName() {
+        const el = document.querySelector('#education_level option:checked');
+        return el ? el.textContent : '';
+    }
+    
+    // Fetch topics from AI — only when BOTH subject AND class have valid values
+    function fetchTopicsFromAI() {
+        const subjectId = document.getElementById('subject').value;
+        const className = getSelectedClassName();
+        const educationLevel = getEducationLevelName();
         const topicSelect = document.getElementById('topic');
         const topicLoading = document.getElementById('topicLoading');
         const subtopicSelect = document.getElementById('subtopic');
@@ -195,11 +211,12 @@ document.addEventListener('DOMContentLoaded', function() {
         subtopicSelect.innerHTML = '<option value="">— Chagua Subtopic kwanza —</option>';
         document.getElementById('subtopicManual').value = '';
         
-        if (!subjectId) return;
+        // Only call AI if both subject AND class are selected
+        if (!subjectId || !className) return;
         
         topicLoading.style.display = 'block';
         
-        fetch(`{% url 'curriculum:get_topics_ai' %}?subject_id=${subjectId}&class_name=${encodeURIComponent(classLevelOpt ? classLevelOpt.textContent : '')}&education_level=${encodeURIComponent(educationLevel)}`)
+        fetch(`{% url 'curriculum:get_topics_ai' %}?subject_id=${subjectId}&class_name=${encodeURIComponent(className)}&education_level=${encodeURIComponent(educationLevel)}`)
             .then(r => r.json())
             .then(data => {
                 topicLoading.style.display = 'none';
@@ -213,26 +230,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 topicLoading.style.display = 'none';
                 console.log('AI topics failed, manual input available');
             });
-    });
+    }
     
-    // When topic changes, fetch subtopics from AI
-    document.getElementById('topic').addEventListener('change', function() {
-        const topic = this.value;
+    // Fetch subtopics from AI when a topic is selected
+    function fetchSubtopicsFromAI() {
+        const topic = document.getElementById('topic').value;
         const subjectId = document.getElementById('subject').value;
-        const classLevel = document.getElementById('class_level');
-        const classLevelOpt = classLevel.options[classLevel.selectedIndex];
-        const educationLevel = document.querySelector('#education_level option:checked').textContent || '';
+        const className = getSelectedClassName();
+        const educationLevel = getEducationLevelName();
         const subtopicSelect = document.getElementById('subtopic');
         const subtopicLoading = document.getElementById('subtopicLoading');
         
         subtopicSelect.innerHTML = '<option value="">— Chagua Subtopic —</option>';
         document.getElementById('subtopicManual').value = '';
         
-        if (!topic || !subjectId) return;
+        if (!topic || !subjectId || !className) return;
         
         subtopicLoading.style.display = 'block';
         
-        fetch(`{% url 'curriculum:get_subtopics_ai' %}?subject_id=${subjectId}&topic=${encodeURIComponent(topic)}&class_name=${encodeURIComponent(classLevelOpt ? classLevelOpt.textContent : '')}&education_level=${encodeURIComponent(educationLevel)}`)
+        fetch(`{% url 'curriculum:get_subtopics_ai' %}?subject_id=${subjectId}&topic=${encodeURIComponent(topic)}&class_name=${encodeURIComponent(className)}&education_level=${encodeURIComponent(educationLevel)}`)
             .then(r => r.json())
             .then(data => {
                 subtopicLoading.style.display = 'none';
@@ -248,6 +264,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 subtopicLoading.style.display = 'none';
                 console.log('AI subtopics failed, manual input available');
             });
+    }
+    
+    // When subject changes — trigger topic fetch if class is already selected
+    document.getElementById('subject').addEventListener('change', function() {
+        fetchTopicsFromAI();
+    });
+    
+    // When class changes — trigger topic fetch if subject is already selected
+    document.getElementById('class_level').addEventListener('change', function() {
+        fetchTopicsFromAI();
+    });
+    
+    // When topic changes — fetch subtopics from AI
+    document.getElementById('topic').addEventListener('change', function() {
+        fetchSubtopicsFromAI();
     });
 
     let currentLessonData = null;
