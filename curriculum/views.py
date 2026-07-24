@@ -85,9 +85,8 @@ def dashboard(request):
 # SCHEME OF WORK
 # =============================================================================
 
-@login_required
 def generate_scheme_view(request):
-    """Display scheme of work generator form."""
+    """Display scheme of work generator form — public access."""
     form = SchemeOfWorkForm()
     education_levels = EducationLevel.objects.all().order_by('order')
 
@@ -129,10 +128,10 @@ def generate_scheme_view(request):
         'subjects_by_level_json': _json.dumps(subjects_by_level),
         'student': student,
         'school': school,
+        'is_public': not request.user.is_authenticated,
     })
 
 
-@login_required
 def ajax_generate_scheme(request):
     """AI generates a Scheme of Work."""
     if client is None:
@@ -211,56 +210,57 @@ Requirements:
             scheme_data = []
 
         saved_id = None
-        try:
-            student = StudentTeacher.objects.get(user=request.user)
-            school = student.selected_school
-            if school and scheme_data:
-                level_map = {
-                    'primary school': 'primary',
-                    'ordinary level': 'ordinary',
-                    'advanced level': 'advanced',
-                }
-                edu_level = level_map.get(education_level.lower(), 'ordinary')
-                subj_obj = Subject.objects.filter(name__iexact=subject).first()
-                if subj_obj:
-                    start_dt = None
-                    end_dt = None
-                    if start_date:
-                        try:
-                            from datetime import date as _dt
-                            start_dt = _dt.fromisoformat(start_date)
-                        except Exception:
-                            pass
-                    if end_date:
-                        try:
-                            from datetime import date as _dt
-                            end_dt = _dt.fromisoformat(end_date)
-                        except Exception:
-                            pass
-                    scheme_obj, _ = SchemeOfWork.objects.update_or_create(
-                        student=student,
-                        subject=subj_obj,
-                        term=term,
-                        year=int(year),
-                        defaults={
-                            'school': school,
-                            'education_level': edu_level,
-                            'class_name': class_name,
-                            'syllabus': syllabus,
-                            'total_weeks': int(total_weeks),
-                            'periods_per_week': int(periods_per_week),
-                            'start_date': start_dt,
-                            'end_date': end_dt,
-                            'teacher_name': teacher_name,
-                            'reference_source': reference_source,
-                            'breaks': breaks,
-                            'scheme_data': scheme_data,
-                            'generated_by_ai': True,
-                        }
-                    )
-                    saved_id = scheme_obj.id
-        except Exception as save_err:
-            print(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
+        if request.user.is_authenticated:
+            try:
+                student = StudentTeacher.objects.get(user=request.user)
+                school = student.selected_school
+                if school and scheme_data:
+                    level_map = {
+                        'primary school': 'primary',
+                        'ordinary level': 'ordinary',
+                        'advanced level': 'advanced',
+                    }
+                    edu_level = level_map.get(education_level.lower(), 'ordinary')
+                    subj_obj = Subject.objects.filter(name__iexact=subject).first()
+                    if subj_obj:
+                        start_dt = None
+                        end_dt = None
+                        if start_date:
+                            try:
+                                from datetime import date as _dt
+                                start_dt = _dt.fromisoformat(start_date)
+                            except Exception:
+                                pass
+                        if end_date:
+                            try:
+                                from datetime import date as _dt
+                                end_dt = _dt.fromisoformat(end_date)
+                            except Exception:
+                                pass
+                        scheme_obj, _ = SchemeOfWork.objects.update_or_create(
+                            student=student,
+                            subject=subj_obj,
+                            term=term,
+                            year=int(year),
+                            defaults={
+                                'school': school,
+                                'education_level': edu_level,
+                                'class_name': class_name,
+                                'syllabus': syllabus,
+                                'total_weeks': int(total_weeks),
+                                'periods_per_week': int(periods_per_week),
+                                'start_date': start_dt,
+                                'end_date': end_dt,
+                                'teacher_name': teacher_name,
+                                'reference_source': reference_source,
+                                'breaks': breaks,
+                                'scheme_data': scheme_data,
+                                'generated_by_ai': True,
+                            }
+                        )
+                        saved_id = scheme_obj.id
+            except Exception as save_err:
+                print(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
 
         return JsonResponse({'success': True, 'data': scheme_data, 'saved_id': saved_id})
 
@@ -279,7 +279,6 @@ Requirements:
         return JsonResponse({'success': False, 'error': msg}, status=500)
 
 
-@login_required
 def download_scheme_pdf(request):
     """Generate PDF ya Scheme of Work."""
     if request.method != 'POST':
@@ -373,7 +372,6 @@ def download_scheme_pdf(request):
     return response
 
 
-@login_required
 def download_scheme_word(request):
     """Export Scheme of Work as Word (.docx)."""
     if request.method != 'POST':
@@ -516,9 +514,8 @@ def ajax_load_saved_scheme(request):
 # LESSON PLAN
 # =============================================================================
 
-@login_required
 def lesson_plan_view(request):
-    """Display lesson plan generator form."""
+    """Display lesson plan generator form — public access."""
     education_levels = EducationLevel.objects.all().order_by('order')
 
     import json as _json
@@ -558,10 +555,10 @@ def lesson_plan_view(request):
         'subjects_by_level_json': _json.dumps(subjects_by_level),
         'student': student,
         'school': school,
+        'is_public': not request.user.is_authenticated,
     })
 
 
-@login_required
 def ajax_generate_lessonplan(request):
     """Generate lesson plan using AI."""
     if client is None:
@@ -653,42 +650,43 @@ Output MUST be ONLY valid JSON:
             }
 
         saved_id = None
-        try:
-            student = StudentTeacher.objects.get(user=request.user)
-            school = student.selected_school
-            if school:
-                level_map = {'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}
-                edu_level = level_map.get((education_level or '').lower(), 'ordinary')
-                subj_obj = None
-                if subject_id:
-                    try:
-                        subj_obj = Subject.objects.get(id=int(subject_id))
-                    except (Subject.DoesNotExist, ValueError):
-                        pass
-                if not subj_obj and subject:
-                    subj_obj = Subject.objects.filter(name__iexact=subject).first()
-                if subj_obj:
-                    lp_obj = LessonPlan.objects.create(
-                        student=student, school=school, subject=subj_obj,
-                        education_level=edu_level, class_name=class_name,
-                        term=term, year=int(year), topic=topic, subtopic=subtopic or '',
-                        date=timezone.now().date(), duration=int(duration) or 40,
-                        total_students=int(total_students) if total_students else 0,
-                        present_students=int(present_students) if present_students else 0,
-                        teacher_name=teacher_name or student.full_name,
-                        main_competence=lesson_data.get('main_competence', ''),
-                        specific_competence=lesson_data.get('specific_competence', ''),
-                        previous_knowledge=lesson_data.get('previous_knowledge', ''),
-                        learning_objectives=lesson_data.get('learning_objectives', []),
-                        teaching_methods=lesson_data.get('teaching_methods', []),
-                        teaching_resources=lesson_data.get('teaching_resources', []),
-                        lesson_development=lesson_data.get('lesson_development', []),
-                        remarks=lesson_data.get('remarks', ''),
-                        generated_by_ai=True,
-                    )
-                    saved_id = lp_obj.id
-        except Exception as save_err:
-            print(f"[Curriculum] LessonPlan save error: {save_err}")
+        if request.user.is_authenticated:
+            try:
+                student = StudentTeacher.objects.get(user=request.user)
+                school = student.selected_school
+                if school:
+                    level_map = {'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}
+                    edu_level = level_map.get((education_level or '').lower(), 'ordinary')
+                    subj_obj = None
+                    if subject_id:
+                        try:
+                            subj_obj = Subject.objects.get(id=int(subject_id))
+                        except (Subject.DoesNotExist, ValueError):
+                            pass
+                    if not subj_obj and subject:
+                        subj_obj = Subject.objects.filter(name__iexact=subject).first()
+                    if subj_obj:
+                        lp_obj = LessonPlan.objects.create(
+                            student=student, school=school, subject=subj_obj,
+                            education_level=edu_level, class_name=class_name,
+                            term=term, year=int(year), topic=topic, subtopic=subtopic or '',
+                            date=timezone.now().date(), duration=int(duration) or 40,
+                            total_students=int(total_students) if total_students else 0,
+                            present_students=int(present_students) if present_students else 0,
+                            teacher_name=teacher_name or student.full_name,
+                            main_competence=lesson_data.get('main_competence', ''),
+                            specific_competence=lesson_data.get('specific_competence', ''),
+                            previous_knowledge=lesson_data.get('previous_knowledge', ''),
+                            learning_objectives=lesson_data.get('learning_objectives', []),
+                            teaching_methods=lesson_data.get('teaching_methods', []),
+                            teaching_resources=lesson_data.get('teaching_resources', []),
+                            lesson_development=lesson_data.get('lesson_development', []),
+                            remarks=lesson_data.get('remarks', ''),
+                            generated_by_ai=True,
+                        )
+                        saved_id = lp_obj.id
+            except Exception as save_err:
+                print(f"[Curriculum] LessonPlan save error: {save_err}")
 
         return JsonResponse({'success': True, 'data': lesson_data, 'saved_id': saved_id})
 
@@ -698,7 +696,6 @@ Output MUST be ONLY valid JSON:
         return JsonResponse({'success': False, 'error': f"Hitilafu ya AI: {str(e)[:300]}"}, status=500)
 
 
-@login_required
 def download_lesson_plan_pdf(request):
     """Export Lesson Plan as PDF."""
     if request.method != 'POST':
@@ -828,7 +825,6 @@ def download_lesson_plan_pdf(request):
     return response
 
 
-@login_required
 def download_lesson_plan_word(request):
     """Export Lesson Plan as Word (.docx)."""
     if request.method != 'POST':
@@ -1330,7 +1326,6 @@ def logbook_download_options(request):
 # API HELPERS
 # =============================================================================
 
-@login_required
 def get_classes_by_level(request):
     """AJAX: Get classes for a given education level."""
     level_id = request.GET.get('level_id')
@@ -1340,7 +1335,6 @@ def get_classes_by_level(request):
     return JsonResponse([{'id': c.id, 'name': c.name} for c in classes], safe=False)
 
 
-@login_required
 def get_subjects_by_level(request):
     """AJAX: Get subjects for a given education level."""
     level_id = request.GET.get('level_id')
@@ -1354,7 +1348,6 @@ def get_subjects_by_level(request):
     return JsonResponse([{'id': s.id, 'name': s.name} for s in subjects], safe=False)
 
 
-@login_required
 def get_textbooks_by_level(request):
     """AJAX: Get textbooks/references for a given education level."""
     level_id = request.GET.get('level_id')
