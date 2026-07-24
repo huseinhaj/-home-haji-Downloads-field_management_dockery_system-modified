@@ -1,0 +1,28 @@
+{% extends 'elearning/base.html' %}
+{% load static %}
+
+{% block title %}{% if LANG == 'sw' %}Wasifu{% else %}Profile{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="content-card p-4">
+            <a href="{% url 'elearning:dashboard' %}" class="btn btn-outline-brand btn-sm mb-3"><i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Nyuma{% else %}Back{% endif %}</a>
+            <h5 style="font-weight:800;color:var(--primary);margin-bottom:1rem;">
+                <i class="fas fa-user-edit me-1" style="color:var(--accent);"></i> {% if LANG == 'sw' %}Hariri Wasifu{% else %}Edit Profile{% endif %}
+            </h5>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}<div style="font-size:.75rem;color:var(--danger);">{% for e in field.errors %}{{ e }}{% endfor %}</div>{% endif %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-accent"><i class="fas fa-save me-1"></i> {% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

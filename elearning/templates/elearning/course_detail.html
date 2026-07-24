@@ -1,0 +1,206 @@
+{% extends 'elearning/base.html' %}
+{% load static %}
+
+{% block title %}{{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Course Header -->
+        <div class="content-card p-4 mb-4">
+            <div class="d-flex align-items-start justify-content-between mb-3">
+                <div>
+                    <span class="badge bg-primary mb-2" style="font-size:.65rem;letter-spacing:.8px;">{{ course.get_level_display }}</span>
+                    {% if course.subject %}<span class="badge bg-secondary ms-1" style="font-size:.65rem;">{{ course.subject }}</span>{% endif %}
+                    <h1 style="font-size:1.4rem;font-weight:800;color:var(--primary);margin:.5rem 0 .25rem;">{{ course.title }}</h1>
+                    {% if course.short_description %}
+                    <p style="color:var(--text-gray);font-size:.88rem;">{{ course.short_description }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-3 mb-3" style="font-size:.8rem;color:var(--text-gray);">
+                <span><i class="fas fa-book-open me-1" style="color:var(--accent);"></i> {{ total_lessons }} {% if LANG == 'sw' %}Masomo{% else %}Lessons{% endif %}</span>
+                <span><i class="far fa-clock me-1" style="color:var(--accent);"></i> {{ total_duration }} {% if LANG == 'sw' %}Dakika{% else %}Min{% endif %}</span>
+                <span><i class="fas fa-users me-1" style="color:var(--accent);"></i> {{ course.enrollment_count }} {% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</span>
+                {% if avg_rating %}
+                <span class="star-rating">
+                    {% for i in "12345" %}
+                    <i class="fas fa-star{% if forloop.counter > avg_rating %} empty{% endif %}"></i>
+                    {% endfor %}
+                    <span style="color:var(--text-gray);font-weight:600;">{{ avg_rating|floatformat:1 }}</span>
+                    <span style="color:var(--text-muted);">({{ review_count }})</span>
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Enrollment button -->
+            <div class="d-flex gap-2">
+                {% if is_enrolled %}
+                    <a href="#modules" class="btn btn-accent"><i class="fas fa-play me-1"></i>{% if LANG == 'sw' %}Endelea Kujifunza{% else %}Continue Learning{% endif %}</a>
+                    {% if enrollment %}
+                    <div class="d-flex align-items-center gap-2 ms-2">
+                        <div class="progress" style="width:120px;height:8px;">
+                            <div class="progress-bar" style="width:{{ enrollment.progress_percent }}%"></div>
+                        </div>
+                        <span style="font-size:.75rem;font-weight:700;color:var(--text-gray);">{{ enrollment.progress_percent }}%</span>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'elearning:enroll_course' course.slug %}" class="btn btn-accent btn-lg px-4">
+                        <i class="fas fa-user-plus me-1"></i>{% if LANG == 'sw' %}Jiandikisha Bure{% else %}Enroll Free{% endif %}
+                    </a>
+                    {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-accent btn-lg px-4">
+                        <i class="fas fa-sign-in-alt me-1"></i>{% if LANG == 'sw' %}Ingia Kujiandikisha{% else %}Login to Enroll{% endif %}
+                    </a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Description -->
+        {% if course.description %}
+        <div class="content-card p-4 mb-4">
+            <h5 style="font-weight:700;color:var(--primary);margin-bottom:.75rem;">
+                <i class="fas fa-info-circle me-1" style="color:var(--accent);"></i>
+                {% if LANG == 'sw' %}Maelezo ya Kozi{% else %}Course Description{% endif %}
+            </h5>
+            <div class="lesson-content">{{ course.description|linebreaks }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Modules / Lessons -->
+        <div id="modules" class="content-card p-4 mb-4">
+            <h5 style="font-weight:700;color:var(--primary);margin-bottom:1rem;">
+                <i class="fas fa-list me-1" style="color:var(--accent);"></i>
+                {% if LANG == 'sw' %}Muundo wa Kozi{% else %}Course Structure{% endif %}
+            </h5>
+            {% if modules %}
+            <div class="accordion" id="moduleAccordion">
+                {% for module in modules %}
+                <div class="accordion-item" style="border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:.5rem;overflow:hidden;">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#module{{ module.id }}" style="font-weight:600;font-size:.85rem;padding:.7rem 1rem;background:var(--light);">
+                            <span style="display:flex;align-items:center;gap:.5rem;width:100%;">
+                                <span style="background:var(--primary);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;flex-shrink:0;">{{ forloop.counter }}</span>
+                                <span>{{ module.title }}</span>
+                                <span class="ms-auto" style="font-size:.7rem;color:var(--text-muted);font-weight:400;">
+                                    {{ module.lessons.all|length }} {% if LANG == 'sw' %}masomo{% else %}lessons{% endif %}
+                                </span>
+                            </span>
+                        </button>
+                    </h2>
+                    <div id="module{{ module.id }}" class="accordion-collapse collapse" data-bs-parent="#moduleAccordion">
+                        <div class="accordion-body p-0">
+                            <div style="padding:.75rem 1rem;">
+                                {% if module.description %}
+                                <p style="font-size:.8rem;color:var(--text-gray);margin-bottom:.75rem;">{{ module.description }}</p>
+                                {% endif %}
+                                {% for lesson in module.lessons.all %}
+                                <a href="{% if is_enrolled %}{% url 'elearning:lesson_detail' course.slug lesson.id %}{% else %}#{% endif %}" class="module-item {% if not is_enrolled %}disabled{% endif %}" style="padding:.5rem .65rem;{% if not is_enrolled %}opacity:.6;cursor:default;{% endif %}">
+                                    <i class="fas fa-file-alt" style="color:var(--accent);font-size:.7rem;width:16px;"></i>
+                                    <span style="flex:1;">{{ lesson.title }}</span>
+                                    <span style="font-size:.68rem;color:var(--text-muted);">
+                                        <i class="far fa-clock"></i> {{ lesson.duration_minutes }}min
+                                    </span>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);font-size:.85rem;">{% if LANG == 'sw' %}Kozi hii haina moduli bado.{% else %}This course has no modules yet.{% endif %}</p>
+            {% endif %}
+        </div>
+
+        <!-- Reviews -->
+        <div class="content-card p-4 mb-4">
+            <h5 style="font-weight:700;color:var(--primary);margin-bottom:1rem;">
+                <i class="fas fa-star me-1" style="color:var(--accent);"></i>
+                {% if LANG == 'sw' %}Maoni{% else %}Reviews{% endif %}
+                {% if avg_rating %}<span style="font-size:.85rem;color:var(--text-gray);font-weight:400;">({{ avg_rating|floatformat:1 }} / 5)</span>{% endif %}
+            </h5>
+            {% if user.is_authenticated and is_enrolled %}
+            <form method="POST" action="{% url 'elearning:add_review' course.slug %}" class="mb-3 p-3" style="background:var(--light);border-radius:var(--radius-sm);">
+                {% csrf_token %}
+                <div class="row g-2">
+                    <div class="col-auto">
+                        <select name="rating" class="form-select" required>
+                            <option value="">{% if LANG == 'sw' %}Kiwango{% else %}Rating{% endif %}</option>
+                            {% for i in "12345" %}<option value="{{ forloop.counter }}">{{ forloop.counter }} ★</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col">
+                        <input type="text" name="comment" class="form-control" placeholder="{% if LANG == 'sw' %}Andika maoni yako...{% else %}Write your review...{% endif %}">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary-brand"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </form>
+            {% endif %}
+            {% for review in reviews %}
+            <div style="padding:.6rem 0;border-bottom:1px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem;">
+                    <span class="star-rating">
+                        {% for i in "12345" %}
+                        <i class="fas fa-star{% if forloop.counter > review.rating %} empty{% endif %}" style="font-size:.7rem;"></i>
+                        {% endfor %}
+                    </span>
+                    <span style="font-weight:600;font-size:.8rem;">{{ review.user.learner_profile.full_name|default:review.user.email }}</span>
+                </div>
+                {% if review.comment %}<p style="font-size:.8rem;color:var(--text-gray);margin:0;">{{ review.comment }}</p>{% endif %}
+            </div>
+            {% empty %}
+            <p style="color:var(--text-muted);font-size:.82rem;">{% if LANG == 'sw' %}Hakuna maoni bado.{% else %}No reviews yet.{% endif %}</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Discussions -->
+        <div class="content-card p-3 mb-3">
+            <h6 style="font-weight:700;color:var(--primary);margin-bottom:.75rem;">
+                <i class="fas fa-comments me-1" style="color:var(--accent);"></i>
+                {% if LANG == 'sw' %}Majadala{% else %}Discussions{% endif %}
+            </h6>
+            {% if discussions %}
+            {% for d in discussions %}
+            <a href="{% url 'elearning:discussion_detail' course.slug d.id %}" style="display:block;padding:.4rem 0;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text-dark);font-size:.8rem;">
+                <div style="font-weight:600;">{{ d.title|truncatechars:40 }}</div>
+                <div style="font-size:.7rem;color:var(--text-muted);">{{ d.user.learner_profile.full_name|default:d.user.email }}</div>
+            </a>
+            {% endfor %}
+            {% else %}
+            <p style="font-size:.78rem;color:var(--text-muted);">{% if LANG == 'sw' %}Hakuna majadala bado.{% else %}No discussions yet.{% endif %}</p>
+            {% endif %}
+            {% if user.is_authenticated and is_enrolled %}
+            <a href="{% url 'elearning:discussion_create' course.slug %}" class="btn btn-primary-brand btn-sm w-100 mt-2">{% if LANG == 'sw' %}Anzisha Mjadala{% else %}Start Discussion{% endif %}</a>
+            {% endif %}
+        </div>
+
+        <!-- Announcements -->
+        {% if announcements %}
+        <div class="content-card p-3 mb-3">
+            <h6 style="font-weight:700;color:var(--primary);margin-bottom:.75rem;">
+                <i class="fas fa-bullhorn me-1" style="color:var(--accent);"></i>
+                {% if LANG == 'sw' %}Matangazo{% else %}Announcements{% endif %}
+            </h6>
+            {% for a in announcements %}
+            <div style="padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.78rem;">
+                <div style="font-weight:600;">{% if a.is_important %}<i class="fas fa-exclamation-circle me-1" style="color:var(--danger);"></i>{% endif %}{{ a.title }}</div>
+                <div style="color:var(--text-muted);font-size:.7rem;">{{ a.created_at|date:"d M Y" }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

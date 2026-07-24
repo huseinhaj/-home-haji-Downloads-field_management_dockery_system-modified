@@ -1,0 +1,47 @@
+{% extends 'elearning/base.html' %}
+{% load static %}
+
+{% block title %}{% if LANG == 'sw' %}Wasilisha Kazi{% else %}Submit Assignment{% endif %} — {{ assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="content-card p-4 mb-4">
+            <a href="{% url 'elearning:course_detail' course.slug %}" class="btn btn-outline-brand btn-sm mb-3"><i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Nyuma{% else %}Back{% endif %}</a>
+            <h4 style="font-weight:800;color:var(--primary);margin-bottom:.25rem;">{{ assignment.title }}</h4>
+            <div style="display:flex;gap:1rem;font-size:.8rem;color:var(--text-gray);margin-bottom:1rem;">
+                <span><i class="far fa-calendar me-1"></i>{% if assignment.due_date %}{{ assignment.due_date|date:"d M Y H:i" }}{% else %}{% if LANG == 'sw' %}Hakuna tarehe{% else %}No deadline{% endif %}{% endif %}</span>
+                <span><i class="fas fa-star me-1"></i>{{ assignment.max_points }}pts</span>
+            </div>
+            {% if assignment.description %}
+            <div style="background:var(--light);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem;">
+                {{ assignment.description|linebreaks }}
+            </div>
+            {% endif %}
+            {% if assignment.instructions %}
+            <div style="margin-bottom:1rem;">
+                <h6 style="font-weight:700;color:var(--primary);">{% if LANG == 'sw' %}Maagizo{% else %}Instructions{% endif %}</h6>
+                <div style="font-size:.85rem;">{{ assignment.instructions|linebreaks }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="content-card p-4">
+            <h5 style="font-weight:700;color:var(--primary);margin-bottom:1rem;">
+                <i class="fas fa-upload me-1" style="color:var(--accent);"></i> {% if LANG == 'sw' %}Wasilisha Kazi Yako{% else %}Submit Your Work{% endif %}
+            </h5>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}<div style="font-size:.75rem;color:var(--danger);">{% for e in field.errors %}{{ e }}{% endfor %}</div>{% endif %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-accent"><i class="fas fa-paper-plane me-1"></i> {% if LANG == 'sw' %}Wasilisha{% else %}Submit{% endif %}</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

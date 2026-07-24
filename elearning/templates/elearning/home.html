@@ -1,0 +1,108 @@
+{% extends 'elearning/base.html' %}
+{% load static %}
+
+{% block title %}{% if LANG == 'sw' %}Nyumbani{% else %}Home{% endif %}{% endblock %}
+
+{% block hero %}
+<section class="hero-section">
+    <div class="hero-content animate-fade-up">
+        <div class="hero-badge">
+            <i class="fas fa-graduation-cap"></i>
+            {% if LANG == 'sw' %}Jukwaa la Elimu kwa Umbal{% else %}Distance Learning Platform{% endif %}
+        </div>
+        <h1>
+            {% if LANG == 'sw' %}
+            Karibu <span>Muungano</span> — Jifunze Popote, Wakati Wowote
+            {% else %}
+            Welcome to <span>Muungano</span> — Learn Anywhere, Anytime
+            {% endif %}
+        </h1>
+        <p>
+            {% if LANG == 'sw' %}
+            Jukwaa la elimu kwa umbali linalokuwezesha kujifunza kozi mbalimbali kwa urahisi. 
+            Jiunge na maelfu ya wanafunzi na walimu kwa safari ya elimu bora.
+            {% else %}
+            A distance learning platform empowering you to take courses easily. 
+            Join thousands of students and teachers on a journey to quality education.
+            {% endif %}
+        </p>
+        <div class="search-bar mb-4">
+            <i class="fas fa-search search-icon"></i>
+            <form action="{% url 'elearning:course_list' %}" method="GET">
+                <input type="text" name="search" placeholder="{% if LANG == 'sw' %}Tafuta kozi...{% else %}Search courses...{% endif %}">
+            </form>
+        </div>
+        <a href="{% url 'elearning:course_list' %}" class="btn btn-accent btn-lg px-4" style="font-size:.9rem;">
+            <i class="fas fa-search me-2"></i>{% if LANG == 'sw' %}Vinjari Kozi Zote{% else %}Browse All Courses{% endif %}
+        </a>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="num">{{ total_courses }}</span>
+                <span class="label">{% if LANG == 'sw' %}Kozi{% else %}Courses{% endif %}</span>
+            </div>
+            <div class="hero-stat">
+                <span class="num">{{ total_students }}</span>
+                <span class="label">{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</span>
+            </div>
+            <div class="hero-stat">
+                <span class="num">{{ total_lessons }}</span>
+                <span class="label">{% if LANG == 'sw' %}Masomo{% else %}Lessons{% endif %}</span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<!-- Featured Courses -->
+{% if featured %}
+<section class="mb-5">
+    <div class="section-title">
+        <h2><i class="fas fa-star me-2" style="color:var(--accent);"></i>{% if LANG == 'sw' %}Kozi Maarufu{% else %}Featured Courses{% endif %}</h2>
+        <a href="{% url 'elearning:course_list' %}" class="see-all">{% if LANG == 'sw' %}Ona Zote →{% else %}See All →{% endif %}</a>
+    </div>
+    <div class="row g-3">
+        {% for course in featured %}
+        <div class="col-lg-3 col-md-4 col-sm-6 animate-fade-up animate-delay-{{ forloop.counter }}">
+            <a href="{% url 'elearning:course_detail' course.slug %}" class="text-decoration-none">
+                <div class="card-course">
+                    <div class="card-course-img">
+                        <i class="fas {% if course.subject == 'Hisabati' or course.subject == 'Mathematics' %}fa-calculator{% elif course.subject == 'Kiswahili' %}fa-language{% elif course.subject == 'English' %}fa-book{% elif course.subject == 'Sayansi' or course.subject == 'Science' %}fa-flask{% else %}fa-graduation-cap{% endif %}"></i>
+                        <span class="level-badge level-{{ course.level }}">{{ course.get_level_display }}</span>
+                    </div>
+                    <div class="card-course-body">
+                        {% if course.subject %}<div class="subject-tag">{{ course.subject }}</div>{% endif %}
+                        <h5>{{ course.title }}</h5>
+                        <p>{{ course.short_description|default:course.description|truncatechars:100 }}</p>
+                        <div class="card-course-meta">
+                            <span><i class="fas fa-book-open"></i> {{ course.total_lessons }} {% if LANG == 'sw' %}masomo{% else %}lessons{% endif %}</span>
+                            <span><i class="fas fa-users"></i> {{ course.enrollment_count }}</span>
+                            {% if not course.is_free %}<span><i class="fas fa-tag"></i> TZS {{ course.price_tzs }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Categories -->
+{% if categories %}
+<section>
+    <div class="section-title">
+        <h2><i class="fas fa-th-large me-2" style="color:var(--accent);"></i>{% if LANG == 'sw' %}Makundi ya Kozi{% else %}Course Categories{% endif %}</h2>
+    </div>
+    <div class="row g-2">
+        {% for cat in categories %}
+        <div class="col-lg-2 col-md-3 col-4">
+            <a href="{% url 'elearning:course_list' %}?subject={{ cat.subject|urlencode }}" class="btn btn-outline-brand w-100 text-center" style="font-size:.78rem;padding:.45rem .5rem;">
+                {{ cat.subject }} <span class="badge bg-light text-dark ms-1">{{ cat.count }}</span>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}

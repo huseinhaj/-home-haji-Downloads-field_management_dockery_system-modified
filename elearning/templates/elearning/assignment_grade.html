@@ -1,0 +1,54 @@
+{% extends 'elearning/base.html' %}
+{% load static %}
+
+{% block title %}{% if LANG == 'sw' %}Kagua Kazi{% else %}Grade Assignment{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="content-card p-4">
+            <a href="{% url 'elearning:course_manage' course.slug %}" class="btn btn-outline-brand btn-sm mb-3"><i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Nyuma{% else %}Back{% endif %}</a>
+            <h5 style="font-weight:700;color:var(--primary);margin-bottom:.25rem;">{{ assignment.title }}</h5>
+            <p style="font-size:.82rem;color:var(--text-gray);">{{ course.title }}</p>
+
+            <h6 style="font-weight:600;margin-top:1rem;">{% if LANG == 'sw' %}Mwanafunzi{% else %}Student{% endif %}</h6>
+            <p style="font-size:.85rem;">{{ submission.student.learner_profile.full_name|default:submission.student.email }}</p>
+
+            <h6 style="font-weight:600;">{% if LANG == 'sw' %}Iliwasilishwa{% else %}Submitted{% endif %}</h6>
+            <p style="font-size:.85rem;">{{ submission.submitted_at|date:"d M Y H:i" }}</p>
+
+            {% if submission.file %}
+            <a href="{{ submission.file.url }}" class="btn btn-primary-brand btn-sm" target="_blank">
+                <i class="fas fa-download me-1"></i> {% if LANG == 'sw' %}Pakua Faili{% else %}Download File{% endif %}
+            </a>
+            {% endif %}
+
+            {% if submission.text_content %}
+            <div style="background:var(--light);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-top:.75rem;">
+                <h6 style="font-weight:600;font-size:.82rem;">{% if LANG == 'sw' %}Jibu{% else %}Answer{% endif %}</h6>
+                <div style="font-size:.85rem;">{{ submission.text_content|linebreaks }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="content-card p-4">
+            <h5 style="font-weight:700;color:var(--primary);margin-bottom:1rem;">
+                <i class="fas fa-check-circle me-1" style="color:var(--accent);"></i> {% if LANG == 'sw' %}Kadiria{% else %}Grade{% endif %}
+            </h5>
+            <form method="POST">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}<div style="font-size:.75rem;color:var(--danger);">{% for e in field.errors %}{{ e }}{% endfor %}</div>{% endif %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-accent"><i class="fas fa-check me-1"></i> {% if LANG == 'sw' %}Hifadhi Kadirio{% else %}Save Grade{% endif %}</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

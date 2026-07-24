@@ -1,0 +1,94 @@
+{% extends 'elearning/base.html' %}
+{% load static %}
+
+{% block title %}{% if LANG == 'sw' %}Matokeo ya Mtihani{% else %}Quiz Results{% endif %} — {{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="content-card p-4 mb-4 text-center">
+            <div style="width:80px;height:80px;border-radius:50%;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;
+                {% if attempt.passed %}background:rgba(14,162,113,.12);{% else %}background:rgba(220,38,38,.1);{% endif %}">
+                <i class="fas {% if attempt.passed %}fa-check-circle{% else %}fa-times-circle{% endif %}"
+                   style="font-size:2.2rem;{% if attempt.passed %}color:var(--success){% else %}color:var(--danger){% endif %}"></i>
+            </div>
+            <h4 style="font-weight:800;color:var(--primary);margin-bottom:.25rem;">
+                {% if attempt.passed %}
+                    {% if LANG == 'sw' %}Umefaulu! 🎉{% else %}You Passed! 🎉{% endif %}
+                {% else %}
+                    {% if LANG == 'sw' %}Hujafaulu{% else %}Did Not Pass{% endif %}
+                {% endif %}
+            </h4>
+            <p style="font-size:.85rem;color:var(--text-gray);">{{ quiz.title }}</p>
+
+            <div style="display:flex;justify-content:center;gap:2rem;flex-wrap:wrap;margin:1.5rem 0;">
+                <div>
+                    <div style="font-size:1.8rem;font-weight:900;color:var(--primary);">{{ attempt.score }}/{{ attempt.total_points }}</div>
+                    <div style="font-size:.75rem;color:var(--text-muted);">{% if LANG == 'sw' %}Alama{% else %}Score{% endif %}</div>
+                </div>
+                <div>
+                    <div style="font-size:1.8rem;font-weight:900;{% if attempt.passed %}color:var(--success){% else %}color:var(--danger){% endif %}">
+                        {{ attempt.percentage }}%
+                    </div>
+                    <div style="font-size:.75rem;color:var(--text-muted);">{% if LANG == 'sw' %}Asilimia{% else %}Percentage{% endif %}</div>
+                </div>
+                <div>
+                    <div style="font-size:1.8rem;font-weight:900;color:var(--text-gray);">{% if LANG == 'sw' %}Jaribio{% endif %} {{ attempt.attempt_number }}</div>
+                    <div style="font-size:.75rem;color:var(--text-muted);">{% if LANG == 'sw' %}Jaribio{% else %}Attempt{% endif %}</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+                {% if LANG == 'sw' %}
+                Alama ya kufaulu: {{ quiz.pass_percentage }}%
+                {% else %}
+                Pass mark: {{ quiz.pass_percentage }}%
+                {% endif %}
+            </div>
+
+            <a href="{% url 'elearning:course_detail' course.slug %}" class="btn btn-primary-brand">
+                <i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Rudi Kozi{% else %}Back to Course{% endif %}
+            </a>
+        </div>
+
+        <!-- Detailed Answers -->
+        <div class="content-card p-4">
+            <h5 style="font-weight:700;color:var(--primary);margin-bottom:1rem;">
+                <i class="fas fa-list-check me-1" style="color:var(--accent);"></i>
+                {% if LANG == 'sw' %}Majibu Yako{% else %}Your Answers{% endif %}
+            </h5>
+            {% for answer in answers %}
+            <div style="padding:.6rem 0;border-bottom:1px solid var(--border);">
+                <div style="display:flex;align-items:flex-start;gap:.5rem;margin-bottom:.4rem;">
+                    <span style="font-weight:600;font-size:.85rem;">
+                        {{ forloop.counter }}. {{ answer.question.text }}
+                    </span>
+                </div>
+                <div style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;margin-left:1.2rem;">
+                    {% if answer.is_correct %}
+                    <i class="fas fa-check-circle" style="color:var(--success);"></i>
+                    <span style="color:var(--success);font-weight:600;">
+                        {{ answer.selected_answer|default:"(hakuna)" }}
+                    </span>
+                    <span style="color:var(--success);font-weight:700;">+{{ answer.points_earned }}</span>
+                    {% else %}
+                    <i class="fas fa-times-circle" style="color:var(--danger);"></i>
+                    <span style="color:var(--danger);">
+                        {{ answer.selected_answer|default:"(hakuna)" }}
+                    </span>
+                    <span style="color:var(--text-muted);font-size:.75rem;">
+                        {% if LANG == 'sw' %}Sahihi:{% else %}Correct:{% endif %} {{ answer.question.correct_answer }}
+                    </span>
+                    {% endif %}
+                </div>
+                {% if answer.question.explanation %}
+                <div style="margin-left:1.2rem;font-size:.78rem;color:var(--text-gray);margin-top:.25rem;">
+                    <i class="fas fa-info-circle" style="color:var(--info);"></i> {{ answer.question.explanation }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

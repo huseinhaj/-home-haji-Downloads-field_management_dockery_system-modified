@@ -1,0 +1,111 @@
+{% extends 'elearning/base.html' %}
+{% load static %}
+
+{% block title %}{% if LANG == 'sw' %}Kozi Zote{% else %}All Courses{% endif %}{% endblock %}
+
+{% block hero %}
+<section class="hero-section" style="padding:2.5rem 1rem 3rem;">
+    <div class="hero-content">
+        <h1 style="font-size:1.5rem;">{% if LANG == 'sw' %}Vinjari Kozi Zote{% else %}Browse All Courses{% endif %}</h1>
+        <p style="font-size:.88rem;">
+            {% if LANG == 'sw' %}Pata kozi inayokufaa kati ya mkusanyiko wetu wa kozi mbalimbali.{% else %}Find the right course from our diverse collection.{% endif %}
+        </p>
+        <div class="search-bar" style="max-width:400px;">
+            <i class="fas fa-search search-icon"></i>
+            <form method="GET">
+                <input type="text" name="search" value="{{ search }}" placeholder="{% if LANG == 'sw' %}Tafuta kozi...{% else %}Search courses...{% endif %}">
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="content-card p-3 mb-4">
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">{% if LANG == 'sw' %}Kiwango{% else %}Level{% endif %}</label>
+            <select name="level" class="form-select" onchange="this.form.submit()">
+                <option value="">{% if LANG == 'sw' %}Zote{% else %}All{% endif %}</option>
+                <option value="beginner" {% if level == 'beginner' %}selected{% endif %}>{% if LANG == 'sw' %}Mwanzo{% else %}Beginner{% endif %}</option>
+                <option value="intermediate" {% if level == 'intermediate' %}selected{% endif %}>{% if LANG == 'sw' %}Wastani{% else %}Intermediate{% endif %}</option>
+                <option value="advanced" {% if level == 'advanced' %}selected{% endif %}>{% if LANG == 'sw' %}Juu{% else %}Advanced{% endif %}</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</label>
+            <select name="subject" class="form-select" onchange="this.form.submit()">
+                <option value="">{% if LANG == 'sw' %}Zote{% else %}All{% endif %}</option>
+                {% for s in subjects %}
+                <option value="{{ s }}" {% if subject == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">{% if LANG == 'sw' %}Panga{% else %}Sort{% endif %}</label>
+            <select name="sort" class="form-select" onchange="this.form.submit()">
+                <option value="-created_at" {% if sort == '-created_at' %}selected{% endif %}>{% if LANG == 'sw' %}Mpya{% else %}Newest{% endif %}</option>
+                <option value="created_at" {% if sort == 'created_at' %}selected{% endif %}>{% if LANG == 'sw' %}Zamani{% else %}Oldest{% endif %}</option>
+                <option value="-enrollment_count" {% if sort == '-enrollment_count' %}selected{% endif %}>{% if LANG == 'sw' %}Maarufu{% else %}Most Popular{% endif %}</option>
+                <option value="title" {% if sort == 'title' %}selected{% endif %}>{% if LANG == 'sw' %}Jina A-Z{% else %}Title A-Z{% endif %}</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">&nbsp;</label>
+            <a href="{% url 'elearning:course_list' %}" class="btn btn-outline-brand w-100">{% if LANG == 'sw' %}Weka Upya{% else %}Reset{% endif %}</a>
+        </div>
+    </form>
+</div>
+
+<!-- Results -->
+{% if courses %}
+<div class="row g-3">
+    {% for course in courses %}
+    <div class="col-lg-3 col-md-4 col-sm-6 animate-fade-up">
+        <a href="{% url 'elearning:course_detail' course.slug %}" class="text-decoration-none">
+            <div class="card-course">
+                <div class="card-course-img">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span class="level-badge level-{{ course.level }}">{{ course.get_level_display }}</span>
+                </div>
+                <div class="card-course-body">
+                    {% if course.subject %}<div class="subject-tag">{{ course.subject }}</div>{% endif %}
+                    <h5>{{ course.title }}</h5>
+                    <p>{{ course.short_description|default:''|truncatechars:100 }}</p>
+                    <div class="card-course-meta">
+                        <span><i class="fas fa-book-open"></i> {{ course.total_lessons }}</span>
+                        <span><i class="fas fa-users"></i> {{ course.enrollment_count }}</span>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if courses.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if courses.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page=1&search={{ search }}&level={{ level }}&subject={{ subject }}&sort={{ sort }}">&laquo;</a></li>
+        <li class="page-item"><a class="page-link" href="?page={{ courses.previous_page_number }}&search={{ search }}&level={{ level }}&subject={{ subject }}&sort={{ sort }}">&lsaquo;</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ courses.number }}/{{ courses.paginator.num_pages }}</span></li>
+        {% if courses.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ courses.next_page_number }}&search={{ search }}&level={{ level }}&subject={{ subject }}&sort={{ sort }}">&rsaquo;</a></li>
+        <li class="page-item"><a class="page-link" href="?page={{ courses.paginator.num_pages }}&search={{ search }}&level={{ level }}&subject={{ subject }}&sort={{ sort }}">&raquo;</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon"><i class="fas fa-search"></i></div>
+    <h5>{% if LANG == 'sw' %}Hakuna kozi zilizopatikana{% else %}No courses found{% endif %}</h5>
+    <p>{% if LANG == 'sw' %}Jaribu kutafuta kwa maneno mengine au kufuta vichujio.{% else %}Try searching with different terms or clearing filters.{% endif %}</p>
+    <a href="{% url 'elearning:course_list' %}" class="btn btn-primary-brand">{% if LANG == 'sw' %}Ona Kozi Zote{% else %}View All Courses{% endif %}</a>
+</div>
+{% endif %}
+{% endblock %}

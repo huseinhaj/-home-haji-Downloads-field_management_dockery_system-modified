@@ -1,0 +1,108 @@
+{% extends 'elearning/base.html' %}
+{% load static %}
+
+{% block title %}{% if LANG == 'sw' %}Dashibodi{% else %}Dashboard{% endif %}{% endblock %}
+
+{% block hero %}
+<section class="hero-section" style="padding:2rem 1rem 2.5rem;">
+    <div class="hero-content">
+        <h1 style="font-size:1.5rem;">
+            {% if LANG == 'sw' %}Karibu tena, {{ profile.full_name }}!{% else %}Welcome back, {{ profile.full_name }}!{% endif %}
+        </h1>
+        <p style="font-size:.88rem;">{% if LANG == 'sw' %}Endelea na safari yako ya kujifunza.{% else %}Continue your learning journey.{% endif %}</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="content-card p-3 text-center">
+            <div style="font-size:1.5rem;font-weight:900;color:var(--success);">{{ enrollments.count }}</div>
+            <div style="font-size:.72rem;color:var(--text-muted);font-weight:600;">{% if LANG == 'sw' %}Jumla ya Kozi{% else %}Total Courses{% endif %}</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="content-card p-3 text-center">
+            <div style="font-size:1.5rem;font-weight:900;color:var(--accent);">{{ active_count }}</div>
+            <div style="font-size:.72rem;color:var(--text-muted);font-weight:600;">{% if LANG == 'sw' %}Zinazoendelea{% else %}In Progress{% endif %}</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="content-card p-3 text-center">
+            <div style="font-size:1.5rem;font-weight:900;color:var(--primary);">{{ completed_count }}</div>
+            <div style="font-size:.72rem;color:var(--text-muted);font-weight:600;">{% if LANG == 'sw' %}Zimekamilika{% else %}Completed{% endif %}</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="content-card p-3 text-center">
+            <div style="font-size:1.5rem;font-weight:900;color:var(--info);">{{ total_lessons_completed }}</div>
+            <div style="font-size:.72rem;color:var(--text-muted);font-weight:600;">{% if LANG == 'sw' %}Masomo Yamekamilika{% else %}Lessons Done{% endif %}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Enrolled Courses -->
+<div class="content-card p-4">
+    <div class="section-header" style="margin-bottom:.75rem;">
+        <h1 style="font-size:1.1rem;">{% if LANG == 'sw' %}Kozi Zako{% else %}Your Courses{% endif %}</h1>
+    </div>
+    {% if enrollments %}
+    <div class="table-responsive">
+        <table class="table table-main">
+            <thead>
+                <tr>
+                    <th>{% if LANG == 'sw' %}Kozi{% else %}Course{% endif %}</th>
+                    <th>{% if LANG == 'sw' %}Maendeleo{% else %}Progress{% endif %}</th>
+                    <th>{% if LANG == 'sw' %}Hali{% else %}Status{% endif %}</th>
+                    <th>{% if LANG == 'sw' %}Mara ya Mwisho{% else %}Last Access{% endif %}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in enrollments %}
+                <tr>
+                    <td>
+                        <a href="{% url 'elearning:course_detail' e.course.slug %}" style="font-weight:600;color:var(--primary);text-decoration:none;">
+                            {{ e.course.title }}
+                        </a>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="max-width:120px;">
+                                <div class="progress-bar" style="width:{{ e.progress_percent }}%"></div>
+                            </div>
+                            <span style="font-size:.72rem;font-weight:700;">{{ e.progress_percent }}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if e.status == 'active' %}
+                        <span class="badge bg-warning text-dark">{% if LANG == 'sw' %}Inaendelea{% else %}Active{% endif %}</span>
+                        {% elif e.status == 'completed' %}
+                        <span class="badge bg-success">{% if LANG == 'sw' %}Imekamilika{% else %}Done{% endif %}</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ e.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:.78rem;color:var(--text-muted);">{{ e.last_accessed|date:"d M Y" }}</td>
+                    <td>
+                        <a href="{% url 'elearning:course_detail' e.course.slug %}" class="btn btn-primary-brand btn-sm">
+                            {% if LANG == 'sw' %}Endelea{% else %}Continue{% endif %}
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon"><i class="fas fa-book-open"></i></div>
+        <h5>{% if LANG == 'sw' %}Hujajiandikisha kwenye kozi yoyote{% else %}No courses enrolled yet{% endif %}</h5>
+        <p>{% if LANG == 'sw' %}Vinjari kozi zetu na uanze kujifunza!{% else %}Browse our courses and start learning!{% endif %}</p>
+        <a href="{% url 'elearning:course_list' %}" class="btn btn-accent">{% if LANG == 'sw' %}Vinjari Kozi{% else %}Browse Courses{% endif %}</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

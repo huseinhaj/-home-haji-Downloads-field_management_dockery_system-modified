@@ -1,0 +1,87 @@
+{% extends 'elearning/base.html' %}
+{% load static %}
+
+{% block title %}{% if LANG == 'sw' %}Maswali ya Mtihani{% else %}Quiz Questions{% endif %} — {{ quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="content-card p-4">
+            <a href="{% url 'elearning:course_manage' course.slug %}" class="btn btn-outline-brand btn-sm mb-3"><i class="fas fa-arrow-left me-1"></i> {% if LANG == 'sw' %}Nyuma{% else %}Back{% endif %}</a>
+            <h5 style="font-weight:700;color:var(--primary);margin-bottom:.25rem;">{{ quiz.title }}</h5>
+            <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:1rem;">
+                {{ questions|length }} {% if LANG == 'sw' %}maswali{% else %}questions{% endif %} &middot; {{ quiz.total_points }}pts
+            </p>
+
+            <h6 style="font-weight:700;color:var(--primary);margin-bottom:.75rem;">
+                <i class="fas fa-plus-circle me-1" style="color:var(--accent);"></i> {% if LANG == 'sw' %}Ongeza Swali{% else %}Add Question{% endif %}
+            </h6>
+            <form method="POST">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="form-text" style="font-size:.68rem;color:var(--text-muted);">{{ field.help_text }}</div>{% endif %}
+                    {% if field.errors %}<div style="font-size:.72rem;color:var(--danger);">{% for e in field.errors %}{{ e }}{% endfor %}</div>{% endif %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-accent btn-sm"><i class="fas fa-plus me-1"></i> {% if LANG == 'sw' %}Ongeza{% else %}Add{% endif %}</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="content-card p-4">
+            <h6 style="font-weight:700;color:var(--primary);margin-bottom:.75rem;">
+                <i class="fas fa-list me-1" style="color:var(--accent);"></i> {% if LANG == 'sw' %}Maswali{% else %}Questions{% endif %}
+                <span class="badge bg-primary ms-1">{{ questions|length }}</span>
+            </h6>
+            {% if questions %}
+            {% for q in questions %}
+            <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .75rem;margin-bottom:.5rem;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div style="flex:1;">
+                        <div style="font-size:.85rem;font-weight:600;">
+                            <span class="badge bg-light text-dark me-1" style="font-size:.6rem;">{{ q.get_question_type_display }}</span>
+                            {{ q.text|truncatechars:80 }}
+                        </div>
+                        <div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem;">
+                            {{ q.points }}pt{% if q.points > 1 %}s{% endif %}
+                            {% if q.correct_answer %}&middot; {% if LANG == 'sw' %}Jibu:{% else %}Answer:{% endif %} {{ q.correct_answer }}{% endif %}
+                        </div>
+                    </div>
+                    <form method="POST" action="{% url 'elearning:question_delete' course.slug quiz.id q.id %}" class="d-inline ms-2" onsubmit="return confirm('Delete?')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm" style="padding:.15rem .3rem;font-size:.65rem;color:var(--danger);"><i class="fas fa-times"></i></button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p style="font-size:.82rem;color:var(--text-muted);">{% if LANG == 'sw' %}Hakuna maswali bado. Ongeza swali la kwanza!{% else %}No questions yet. Add your first question!{% endif %}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function toggleOptions(select) {
+        const optionsField = document.getElementById('options-field');
+        const optionsRow = optionsField?.closest('.mb-3');
+        if (!optionsRow) return;
+        if (select.value === 'multiple_choice') {
+            optionsRow.style.display = 'block';
+        } else {
+            optionsRow.style.display = 'none';
+        }
+    }
+    const select = document.querySelector('[name="question_type"]');
+    if (select) {
+        toggleOptions(select);
+        select.addEventListener('change', function() { toggleOptions(this); });
+    }
+});
+</script>
+{% endblock %}
