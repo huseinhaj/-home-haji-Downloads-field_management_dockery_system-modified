@@ -55,13 +55,22 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Topic</label>
                         <select class="form-control" id="topic">
-                            <option value="">— Chagua Topic au Andika Mwenyewe —</option>
+                            <option value="">— Chagua Topic —</option>
                         </select>
-                        <input class="form-control mt-2" id="topicManual" placeholder="Andika topic yako mwenyewe (kama haipo kwenye orodha)" style="font-size:13px;">
+                        <div id="topicLoading" style="display:none;font-size:12px;color:var(--ink-500);margin-top:4px;">
+                            <i class="fas fa-spinner fa-spin"></i> AI inatafuta topics...
+                        </div>
+                        <input class="form-control mt-2" id="topicManual" placeholder="Andika topic yako mwenyewe (kama AI haipati topics)" style="font-size:13px;">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">Subtopic (optional)</label>
-                        <input class="form-control" id="subtopic" placeholder="e.g. Light Reaction">
+                        <label class="form-label fw-bold small">Subtopic</label>
+                        <select class="form-control" id="subtopic">
+                            <option value="">— Chagua Subtopic kwanza —</option>
+                        </select>
+                        <div id="subtopicLoading" style="display:none;font-size:12px;color:var(--ink-500);margin-top:4px;">
+                            <i class="fas fa-spinner fa-spin"></i> AI inatafuta subtopics...
+                        </div>
+                        <input class="form-control mt-2" id="subtopicManual" placeholder="Andika subtopic yako mwenyewe" style="font-size:13px;">
                     </div>
                     <div class="row g-2">
                         <div class="col-4">
@@ -172,29 +181,72 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('topic').innerHTML = '<option value="">— Chagua Topic au Andika Mwenyewe —</option>';
     });
 
-    // When subject changes, fetch topics
+    // When subject changes, fetch topics from AI
     document.getElementById('subject').addEventListener('change', function() {
         const subjectId = this.value;
-        const classLevelId = document.getElementById('class_level').value;
+        const classLevel = document.getElementById('class_level');
+        const classLevelOpt = classLevel.options[classLevel.selectedIndex];
+        const educationLevel = document.querySelector('#education_level option:checked').textContent || '';
         const topicSelect = document.getElementById('topic');
-        topicSelect.innerHTML = '<option value="">— Chagua Topic au Andika Mwenyewe —</option>';
+        const topicLoading = document.getElementById('topicLoading');
+        const subtopicSelect = document.getElementById('subtopic');
+        
+        topicSelect.innerHTML = '<option value="">— Chagua Topic —</option>';
+        subtopicSelect.innerHTML = '<option value="">— Chagua Subtopic kwanza —</option>';
+        document.getElementById('subtopicManual').value = '';
+        
         if (!subjectId) return;
-
-        fetch(`{% url 'curriculum:get_topics' %}?subject_id=${subjectId}&class_level_id=${classLevelId}`)
-            .then(r => {
-                if (!r.ok) throw new Error('Network response not OK');
-                return r.json();
-            })
+        
+        topicLoading.style.display = 'block';
+        
+        fetch(`{% url 'curriculum:get_topics_ai' %}?subject_id=${subjectId}&class_name=${encodeURIComponent(classLevelOpt ? classLevelOpt.textContent : '')}&education_level=${encodeURIComponent(educationLevel)}`)
+            .then(r => r.json())
             .then(data => {
-                if (data.length > 0) {
-                    data.forEach(function(t) {
-                        topicSelect.innerHTML += `<option value="${t.title}">${t.title}</option>`;
+                topicLoading.style.display = 'none';
+                if (data.success && data.topics && data.topics.length > 0) {
+                    data.topics.forEach(function(t) {
+                        topicSelect.innerHTML += `<option value="${t}">${t}</option>`;
                     });
                 }
             })
             .catch(() => {
-                // Topics failed to load - user can still type manually
-                console.log('Topics API failed, manual input available');
+                topicLoading.style.display = 'none';
+                console.log('AI topics failed, manual input available');
+            });
+    });
+    
+    // When topic changes, fetch subtopics from AI
+    document.getElementById('topic').addEventListener('change', function() {
+        const topic = this.value;
+        const subjectId = document.getElementById('subject').value;
+        const classLevel = document.getElementById('class_level');
+        const classLevelOpt = classLevel.options[classLevel.selectedIndex];
+        const educationLevel = document.querySelector('#education_level option:checked').textContent || '';
+        const subtopicSelect = document.getElementById('subtopic');
+        const subtopicLoading = document.getElementById('subtopicLoading');
+        
+        subtopicSelect.innerHTML = '<option value="">— Chagua Subtopic —</option>';
+        document.getElementById('subtopicManual').value = '';
+        
+        if (!topic || !subjectId) return;
+        
+        subtopicLoading.style.display = 'block';
+        
+        fetch(`{% url 'curriculum:get_subtopics_ai' %}?subject_id=${subjectId}&topic=${encodeURIComponent(topic)}&class_name=${encodeURIComponent(classLevelOpt ? classLevelOpt.textContent : '')}&education_level=${encodeURIComponent(educationLevel)}`)
+            .then(r => r.json())
+            .then(data => {
+                subtopicLoading.style.display = 'none';
+                if (data.success && data.subtopics && data.subtopics.length > 0) {
+                    data.subtopics.forEach(function(s) {
+                        subtopicSelect.innerHTML += `<option value="${s}">${s}</option>`;
+                    });
+                } else {
+                    subtopicSelect.innerHTML = '<option value="">— Hakuna subtopics —</option>';
+                }
+            })
+            .catch(() => {
+                subtopicLoading.style.display = 'none';
+                console.log('AI subtopics failed, manual input available');
             });
     });
 
@@ -218,13 +270,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const manualTopic = document.getElementById('topicManual').value.trim();
         const dropdownTopic = document.getElementById('topic').value;
         const topicValue = manualTopic || dropdownTopic;
+        // Same for subtopic
+        const manualSubtopic = document.getElementById('subtopicManual').value.trim();
+        const dropdownSubtopic = document.getElementById('subtopic').value;
+        const subtopicValue = manualSubtopic || dropdownSubtopic;
         return {
             education_level: document.querySelector('#education_level option:checked').textContent || '',
             class_name: document.getElementById('class_level').value,
             subject: selectedOption ? selectedOption.getAttribute('data-name') || selectedOption.textContent : '',
             subject_id: document.getElementById('subject').value,
             topic: topicValue,
-            subtopic: document.getElementById('subtopic').value,
+            subtopic: subtopicValue,
             term: document.getElementById('term').value,
             year: document.getElementById('year').value,
             duration: document.getElementById('duration').value,

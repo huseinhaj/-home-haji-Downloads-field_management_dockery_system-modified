@@ -1402,6 +1402,87 @@ def get_subjects_by_level(request):
     return JsonResponse([{'id': s.id, 'name': s.name} for s in subjects], safe=False)
 
 
+def get_topics_ai(request):
+    """
+    AJAX: Use AI to generate a list of topics for a given subject and class level.
+    Returns a JSON array of topic strings.
+    """
+    if client is None:
+        return JsonResponse({'success': False, 'error': 'AI haitumiki'}, status=503)
+
+    subject_id = request.GET.get('subject_id')
+    class_name = request.GET.get('class_name', '')
+    education_level = request.GET.get('education_level', '')
+
+    if not subject_id:
+        return JsonResponse({'success': False, 'error': 'subject_id inahitajika'}, status=400)
+
+    subject = Subject.objects.filter(id=subject_id).first()
+    if not subject:
+        return JsonResponse({'success': False, 'error': 'Somo halipatikani'}, status=404)
+
+    prompt = (
+        f"Wewe ni mtaalamu wa mtaala wa Tanzania (TIE/SEQUIP). "
+        f"Orodhesha mada kuu (topics) za somo la {subject.name} kwa {class_name} ({education_level}) "
+        f"kwa mujibu wa mtaala wa TIE Tanzania. "
+        f"Rudisha TU JSON array ya string: [\"Topic 1\", \"Topic 2\", ...]. "
+        f"USIANDIKE chochote kingine — JSON pekee."
+    )
+
+    try:
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        text = response.text.strip()
+        # Strip markdown code fences if present
+        text = re.sub(r'```(?:json)?', '', text).strip()
+        topics = json.loads(text)
+        if isinstance(topics, list):
+            return JsonResponse({'success': True, 'topics': topics})
+        return JsonResponse({'success': True, 'topics': []})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
+
+
+def get_subtopics_ai(request):
+    """
+    AJAX: Use AI to generate subtopics for a given subject, class level, and topic.
+    Returns a JSON array of subtopic strings.
+    """
+    if client is None:
+        return JsonResponse({'success': False, 'error': 'AI haitumiki'}, status=503)
+
+    subject_id = request.GET.get('subject_id')
+    topic = request.GET.get('topic', '')
+    class_name = request.GET.get('class_name', '')
+    education_level = request.GET.get('education_level', '')
+
+    if not subject_id or not topic:
+        return JsonResponse({'success': False, 'error': 'subject_id na topic vinahitajika'}, status=400)
+
+    subject = Subject.objects.filter(id=subject_id).first()
+    if not subject:
+        return JsonResponse({'success': False, 'error': 'Somo halipatikani'}, status=404)
+
+    prompt = (
+        f"Wewe ni mtaalamu wa mtaala wa Tanzania (TIE/SEQUIP). "
+        f"Orodhesha mada ndogo (subtopics) za somo la {subject.name}, kwa mada kuu '{topic}', "
+        f"kwa {class_name} ({education_level}) kwa mujibu wa mtaala wa TIE Tanzania. "
+        f"Rudisha TU JSON array ya string: [\"Subtopic 1\", \"Subtopic 2\", ...]. "
+        f"Kama hakuna subtopics, rudisha [] (array tupu). "
+        f"USIANDIKE chochote kingine — JSON pekee."
+    )
+
+    try:
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        text = response.text.strip()
+        text = re.sub(r'```(?:json)?', '', text).strip()
+        subtopics = json.loads(text)
+        if isinstance(subtopics, list):
+            return JsonResponse({'success': True, 'subtopics': subtopics})
+        return JsonResponse({'success': True, 'subtopics': []})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
+
+
 def get_textbooks_by_level(request):
     """AJAX: Get textbooks/references for a given education level."""
     level_id = request.GET.get('level_id')

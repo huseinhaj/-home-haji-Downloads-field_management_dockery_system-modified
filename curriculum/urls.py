@@ -32,6 +32,8 @@ urlpatterns = [
 
     # API helpers
     path('api/get-topics/', views.get_topics_by_subject, name='get_topics'),
+    path('api/get-topics-ai/', views.get_topics_ai, name='get_topics_ai'),
+    path('api/get-subtopics-ai/', views.get_subtopics_ai, name='get_subtopics_ai'),
     path('api/get-classes/', views.get_classes_by_level, name='get_classes'),
     path('api/get-subjects-by-level/', views.get_subjects_by_level, name='get_subjects_by_level'),
     path('api/get-textbooks/', views.get_textbooks_by_level, name='get_textbooks'),
