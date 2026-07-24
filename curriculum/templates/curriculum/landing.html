@@ -1,0 +1,63 @@
+{% extends 'curriculum/base.html' %}
+{% load static %}
+{% block title %}Teaching &amp; Learning Materials — TLM Tanzania{% endblock %}
+{% block content %}
+<div class="row justify-content-center" style="min-height:calc(100vh - 350px);">
+  <div class="col-md-6 col-lg-5">
+    <div class="p-card mt-4" style="border:2px solid var(--gold);">
+      <div class="p-card-body text-center px-4 py-5">
+        <!-- TZ Emblem -->
+        <img src="{{ TZ_EMBLEM_URL }}" alt="Nembo ya Taifa - Tanzania"
+             style="width:80px;height:80px;border-radius:50%;object-fit:contain;background:white;padding:8px;border:3px solid var(--gold);margin-bottom:1rem;">
+
+        <h4 style="font-family:'Sora',sans-serif;font-weight:800;color:var(--navy);margin-bottom:0.25rem;">
+          📚 Teaching &amp; Learning Materials
+        </h4>
+        <p style="font-size:0.82rem;color:var(--ink-500);margin-bottom:1.5rem;">
+          Mfumo wa Nyenzo za Kufundishia na Kujifunza — Tanzania
+        </p>
+
+        <p style="font-size:0.88rem;color:var(--ink-700);margin-bottom:2rem;line-height:1.6;">
+          Tengeneza <strong>Scheme of Work</strong>, <strong>Lesson Plans</strong> na <strong>Nyenzo Nyingine za Kufundishia</strong>
+          kwa Shule za Msingi na Sekondari Tanzania — kwa msaada wa AI.
+        </p>
+
+        <div class="d-grid gap-3">
+          <a href="{% url 'curriculum:generate_scheme' %}" class="btn btn-navy py-3" style="font-size:0.9rem;">
+            <i class="fas fa-calendar-alt me-2"></i> Generate Scheme of Work
+          </a>
+          <a href="{% url 'curriculum:lesson_plan' %}" class="btn btn-gold py-3" style="font-size:0.9rem;">
+            <i class="fas fa-chalkboard me-2"></i> Generate Lesson Plan
+          </a>
+        </div>
+
+        {% if not user.is_authenticated %}
+        <div class="mt-4 pt-3" style="border-top:1px solid var(--line);">
+          <p style="font-size:0.82rem;color:var(--ink-500);margin-bottom:0.5rem;">
+            <i class="fas fa-info-circle me-1" style="color:var(--gold);"></i>
+            Unaweza kutumia zana hizi bila kuingia. Lakini ukifanya
+            <a href="{% url 'login' %}" style="color:var(--navy);font-weight:700;">Ingia</a>
+            utaweza kuhifadhi kazi zako.
+          </p>
+          <a href="{% url 'login' %}" class="btn btn-ghost btn-sm mt-2">
+            <i class="fas fa-sign-in-alt me-1"></i> Ingia / Register
+          </a>
+        </div>
+        {% else %}
+        <div class="mt-4 pt-3" style="border-top:1px solid var(--line);">
+          <a href="{% url 'curriculum:dashboard' %}" class="btn btn-ghost btn-sm">
+            <i class="fas fa-columns me-1"></i> Dashboard Yangu
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <p class="text-center mt-3" style="font-size:0.72rem;color:var(--ink-500);">
+      <i class="fas fa-shield-alt me-1" style="color:var(--gold);"></i>
+      Zana za TLM — Tanzania<br>
+      Wizara ya Elimu, Sayansi na Teknolojia
+    </p>
+  </div>
+</div>
+{% endblock %}

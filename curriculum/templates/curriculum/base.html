@@ -414,7 +414,7 @@
     <!-- Navbar -->
     <div class="app-header">
         <div class="app-header-inner">
-            <a class="brand" href="{% url 'curriculum:dashboard' %}">
+            <a class="brand" href="{% url 'curriculum:landing' %}">
                 <div class="brand-icon"><i class="fas fa-book-open"></i></div>
                 <span class="brand-text">
                     <strong>TLM Tanzania</strong>
@@ -422,7 +422,7 @@
                 </span>
             </a>
             <nav class="app-nav">
-                <a href="{% url 'curriculum:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <a href="{% url 'curriculum:landing' %}" class="{% if request.resolver_match.url_name == 'landing' %}active{% endif %}">
                     <i class="fas fa-home"></i> Nyumbani
                 </a>
                 <a href="{% url 'curriculum:generate_scheme' %}" class="{% if request.resolver_match.url_name == 'generate_scheme' %}active{% endif %}">

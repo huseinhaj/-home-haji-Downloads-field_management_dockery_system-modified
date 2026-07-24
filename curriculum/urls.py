@@ -4,8 +4,11 @@ from . import views
 app_name = 'curriculum'
 
 urlpatterns = [
-    # Dashboard
-    path('', views.dashboard, name='dashboard'),
+    # Landing page (public, School Results login style)
+    path('', views.landing, name='landing'),
+
+    # Dashboard (login required)
+    path('dashboard/', views.dashboard, name='dashboard'),
 
     # Scheme of Work
     path('scheme/', views.generate_scheme_view, name='generate_scheme'),
@@ -28,6 +31,7 @@ urlpatterns = [
     path('logbook/download-options/', views.logbook_download_options, name='logbook_download_options'),
 
     # API helpers
+    path('api/get-topics/', views.get_topics_by_subject, name='get_topics'),
     path('api/get-classes/', views.get_classes_by_level, name='get_classes'),
     path('api/get-subjects-by-level/', views.get_subjects_by_level, name='get_subjects_by_level'),
     path('api/get-textbooks/', views.get_textbooks_by_level, name='get_textbooks'),

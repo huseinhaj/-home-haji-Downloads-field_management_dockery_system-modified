@@ -37,7 +37,19 @@ from field_app.views.utils import (
 
 
 # =============================================================================
-# DASHBOARD
+# LANDING PAGE (public, School Results login style)
+# =============================================================================
+
+def landing(request):
+    """Public landing page — looks like School Results login interface.
+    Centered card with TZ emblem, portal intro, and links to tools."""
+    return render(request, 'curriculum/landing.html', {
+        'is_public': not request.user.is_authenticated,
+    })
+
+
+# =============================================================================
+# DASHBOARD (login required)
 # =============================================================================
 
 @login_required
@@ -1325,6 +1337,48 @@ def logbook_download_options(request):
 # =============================================================================
 # API HELPERS
 # =============================================================================
+
+def get_topics_by_subject(request):
+    """AJAX: Get topics (from textbooks) for a given subject and class level."""
+    subject_id = request.GET.get('subject_id')
+    class_level_id = request.GET.get('class_level_id')
+    
+    if not subject_id:
+        return JsonResponse([], safe=False)
+    
+    subject = Subject.objects.filter(id=subject_id).first()
+    if not subject:
+        return JsonResponse([], safe=False)
+    
+    # Map subject level to textbook education_level
+    if subject.level == 'primary':
+        edu_level = 'primary'
+    else:
+        # For secondary, check class level to determine ordinary vs advanced
+        if class_level_id:
+            cl = ClassLevel.objects.filter(id=class_level_id).first()
+            if cl:
+                cl_name = cl.name.lower()
+                if 'form 5' in cl_name or 'form 6' in cl_name or 'advanced' in cl_name:
+                    edu_level = 'advanced'
+                else:
+                    edu_level = 'ordinary'
+            else:
+                edu_level = 'ordinary'
+        else:
+            edu_level = 'ordinary'
+    
+    textbooks = Textbook.objects.filter(
+        subject=subject,
+        education_level=edu_level,
+        is_active=True
+    ).order_by('title').values('id', 'title')
+    
+    topics = list(textbooks)
+    
+    # If no textbooks found, return empty list
+    return JsonResponse(topics, safe=False)
+
 
 def get_classes_by_level(request):
     """AJAX: Get classes for a given education level."""

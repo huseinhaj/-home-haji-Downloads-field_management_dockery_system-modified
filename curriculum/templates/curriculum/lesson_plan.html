@@ -54,7 +54,9 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Topic</label>
-                        <input class="form-control" id="topic" placeholder="e.g. Photosynthesis" required>
+                        <select class="form-control" id="topic" required>
+                            <option value="">— Chagua Topic —</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Subtopic (optional)</label>
@@ -162,9 +164,50 @@ document.addEventListener('DOMContentLoaded', function() {
         subjectSelect.innerHTML = '<option value="">Select Subject</option>';
         if (SUBJECTS_BY_LEVEL[levelId]) {
             SUBJECTS_BY_LEVEL[levelId].forEach(function(subj) {
-                subjectSelect.innerHTML += `<option value="${subj.name}">${subj.name}</option>`;
+                subjectSelect.innerHTML += `<option value="${subj.id}" data-name="${subj.name}">${subj.name}</option>`;
             });
         }
+        // Reset topic dropdown and remove manual input
+        document.getElementById('topic').innerHTML = '<option value="">— Chagua Topic —</option>';
+        const mi = document.getElementById('topicManualInput');
+        if (mi) mi.remove();
+    });
+
+    // When subject changes, fetch topics
+    document.getElementById('subject').addEventListener('change', function() {
+        const subjectId = this.value;
+        const classLevelId = document.getElementById('class_level').value;
+        const topicSelect = document.getElementById('topic');
+        topicSelect.innerHTML = '<option value="">— Chagua Topic —</option>';
+        // Remove manual input if exists
+        const oldManual = document.getElementById('topicManualInput');
+        if (oldManual) oldManual.remove();
+        if (!subjectId) return;
+        
+        fetch(`{% url 'curriculum:get_topics' %}?subject_id=${subjectId}&class_level_id=${classLevelId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.length === 0) {
+                    topicSelect.innerHTML = '<option value="">— Andika topic mwenyewe —</option>';
+                    // Allow typing when no topics found
+                    const textInput = document.createElement('input');
+                    textInput.className = 'form-control mt-2';
+                    textInput.id = 'topicManualInput';
+                    textInput.placeholder = 'Andika topic yako...';
+                    textInput.style.fontSize = '13px';
+                    topicSelect.parentNode.appendChild(textInput);
+                } else {
+                    // Remove manual input if it exists
+                    const manualInput = document.getElementById('topicManualInput');
+                    if (manualInput) manualInput.remove();
+                    data.forEach(function(t) {
+                        topicSelect.innerHTML += `<option value="${t.title}">${t.title}</option>`;
+                    });
+                }
+            })
+            .catch(() => {
+                topicSelect.innerHTML = '<option value="">— Hitilafu kupakia topics —</option>';
+            });
     });
 
     let currentLessonData = null;
@@ -181,12 +224,17 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('downloadWordBtn').addEventListener('click', downloadWord);
 
     function getFormData() {
+        const subjectSelect = document.getElementById('subject');
+        const selectedOption = subjectSelect.options[subjectSelect.selectedIndex];
+        const manualInput = document.getElementById('topicManualInput');
+        // Use manual input value if it exists (when no textbook topics available)
+        const topicValue = manualInput ? manualInput.value : document.getElementById('topic').value;
         return {
             education_level: document.querySelector('#education_level option:checked').textContent || '',
             class_name: document.getElementById('class_level').value,
-            subject: document.getElementById('subject').value,
-            subject_id: '',
-            topic: document.getElementById('topic').value,
+            subject: selectedOption ? selectedOption.getAttribute('data-name') || selectedOption.textContent : '',
+            subject_id: document.getElementById('subject').value,
+            topic: topicValue,
             subtopic: document.getElementById('subtopic').value,
             term: document.getElementById('term').value,
             year: document.getElementById('year').value,
@@ -354,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showAlert(type, msg) {
         const div = document.createElement('div');
-        div.className = 'alert alert-ims alert-dismissible fade show mb-2';
+        div.className = 'alert alert-tlm alert-dismissible fade show mb-2';
         div.style.borderLeftColor = type === 'success' ? '#059669' : type === 'error' ? '#DC2626' : '#D97706';
         div.innerHTML = msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
         document.querySelector('.container-fluid').prepend(div);
