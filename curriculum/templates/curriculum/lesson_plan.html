@@ -1,22 +1,22 @@
 {% extends 'curriculum/base.html' %}
 {% block title %}Generate Lesson Plan{% endblock %}
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid px-0">
     <div class="row mb-3">
         <div class="col-12">
-            <div class="premium-card p-3" style="border-left:5px solid var(--blue);">
+            <div class="p-card p-3" style="border-left:5px solid var(--navy);">
                 <div style="display:flex;align-items:center;gap:12px;">
-                    <div style="width:48px;height:48px;background:var(--navy);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <div style="width:48px;height:48px;background:var(--gold);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <i class="fas fa-chalkboard" style="color:#fff;font-size:20px;"></i>
                     </div>
                     <div>
-                        <div style="font-size:16px;font-weight:800;color:var(--navy);">Lesson Plan Generator</div>
-                        <div style="font-size:12px;color:var(--text-gray);">Tengeneza Lesson Plan kwa msaada wa AI — SEQUIP/TIE IDDR Tanzania format</div>
+                        <div style="font-size:16px;font-weight:800;color:var(--navy);">🎯 Lesson Plan Generator</div>
+                        <div style="font-size:12px;color:var(--ink-500);">Tengeneza Lesson Plan kwa msaada wa AI — SEQUIP/TIE IDDR Tanzania format</div>
                     </div>
                 </div>
                 {% if is_public %}
-                <div class="mt-2 p-2" style="background:rgba(37,99,235,.08);border-radius:var(--radius);border-left:3px solid var(--blue);font-size:12px;color:var(--text-gray);">
-                    <i class="fas fa-info-circle me-1" style="color:var(--blue);"></i>
+                <div class="mt-2 p-2" style="background:rgba(31,73,125,.06);border-radius:var(--radius);border-left:3px solid var(--navy);font-size:12px;color:var(--ink-500);">
+                    <i class="fas fa-info-circle me-1" style="color:var(--navy);"></i>
                     Huna account? Bado unaweza kutumia generator hii. PDF na Word zinapatikana.
                     <a href="{% url 'login' %}" style="color:var(--navy);font-weight:700;text-decoration:none;">Ingia</a> kuweza kuhifadhi kazi yako.
                 </div>
@@ -28,7 +28,7 @@
     <div class="row g-3">
         <!-- Form -->
         <div class="col-lg-4">
-            <div class="premium-card p-3">
+            <div class="p-card p-3">
                 <form id="lessonPlanForm">
                     {% csrf_token %}
                     <div class="mb-3">
@@ -112,8 +112,8 @@
             </div>
 
             <div id="resultsArea" style="display:none;">
-                <div class="premium-card p-3">
-                    <div class="section-hd mb-3">
+                <div class="p-card p-3">
+                    <div class="sec-hd mb-3">
                         <h3><i class="fas fa-chalkboard"></i>Generated Lesson Plan</h3>
                         <div style="display:flex;gap:6px;">
                             <button class="btn btn-navy btn-sm" id="downloadPdfBtn">
@@ -130,11 +130,11 @@
             </div>
 
             <div id="emptyState" class="text-center py-5">
-                <div style="width:80px;height:80px;background:var(--light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <div style="width:80px;height:80px;background:#eef2f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                     <i class="fas fa-chalkboard" style="font-size:32px;color:#94A3B8;"></i>
                 </div>
                 <h5 style="color:var(--navy);font-weight:800;">Jaza maelezo upande wa kushoto</h5>
-                <p style="color:var(--text-gray);font-size:13px;">Kisha bonyeza "Generate Lesson Plan" kupata mpango wa somo.</p>
+                <p style="color:var(--ink-500);font-size:13px;">Kisha bonyeza "Generate Lesson Plan" kupata mpango wa somo.</p>
             </div>
         </div>
     </div>

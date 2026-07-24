@@ -1,17 +1,17 @@
 {% extends 'curriculum/base.html' %}
 {% block title %}Andika Logbook{% endblock %}
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid px-0">
     <div class="row mb-3">
         <div class="col-12">
-            <div class="premium-card p-3" style="border-left:5px solid var(--green);">
+            <div class="p-card p-3" style="border-left:5px solid var(--green);">
                 <div style="display:flex;align-items:center;gap:12px;">
                     <div style="width:48px;height:48px;background:var(--navy);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <i class="fas fa-book-open" style="color:#fff;font-size:20px;"></i>
                     </div>
                     <div>
-                        <div style="font-size:16px;font-weight:800;color:var(--navy);">Logbook — {{ today_name }}, {{ today|date:"d F Y" }}</div>
-                        <div style="font-size:12px;color:var(--text-gray);">
+                        <div style="font-size:16px;font-weight:800;color:var(--navy);">📖 Logbook — {{ today_name }}, {{ today|date:"d F Y" }}</div>
+                        <div style="font-size:12px;color:var(--ink-500);">
                             {% if school %}{{ school.name }}{% endif %}
                             {% if student.selected_school and student.selected_school.district %}
                                 &bull; {{ student.selected_school.district.name }}
@@ -19,15 +19,19 @@
                         </div>
                     </div>
                 </div>
+                <div class="mt-2" style="font-size:11px;color:var(--ink-500);">
+                    <i class="fas fa-info-circle me-1" style="color:var(--gold);"></i>
+                    Thibitisha eneo lako kwa GPS kabla ya kuwasilisha
+                </div>
             </div>
         </div>
     </div>
 
     <div class="row">
         <div class="col-lg-8">
-            <div class="premium-card p-3">
+            <div class="p-card p-3">
                 {% if location_error %}
-                <div class="alert alert-warning alert-dismissible fade show" style="border-left:4px solid var(--amber);font-size:13px;">
+                <div class="alert alert-warning alert-dismissible fade show" style="border-left:4px solid #D97706;font-size:13px;">
                     <strong><i class="fas fa-map-marker-alt me-2"></i>Eneo halijathibitishwa!</strong>
                     <p class="mb-0 mt-1">Tafadhali bonyeza kitufe cha "Thibitisha Eneo" ili kuweza kuwasilisha logbook yako.</p>
                 </div>
@@ -37,13 +41,13 @@
                     {% csrf_token %}
 
                     <!-- Location Verification -->
-                    <div class="mb-4 p-3" style="background:var(--light);border-radius:var(--radius);border:1px solid var(--border);">
+                    <div class="mb-4 p-3" style="background:#f4f6fb;border-radius:var(--radius);border:1px solid var(--line);">
                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                             <div>
                                 <strong style="font-size:13px;color:var(--navy);">
                                     <i class="fas fa-map-marker-alt me-2" style="color:var(--gold);"></i>Uthibitisho wa Eneo
                                 </strong>
-                                <div style="font-size:11px;color:var(--text-gray);margin-top:2px;">
+                                <div style="font-size:11px;color:var(--ink-500);margin-top:2px;">
                                     <span id="locationStatus">Bado haujathibitishwa</span>
                                 </div>
                             </div>
@@ -61,7 +65,7 @@
                     <input type="hidden" name="lessons_data" id="lessons_data" value="[]">
 
                     <!-- Lesson Periods -->
-                    <div class="section-hd mb-2">
+                    <div class="sec-hd mb-2">
                         <h3><i class="fas fa-chalkboard"></i>Vipindi vya Masomo</h3>
                         <button type="button" class="btn btn-navy btn-sm" id="addPeriodBtn">
                             <i class="fas fa-plus me-1"></i>Ongeza Kipindi
@@ -71,20 +75,20 @@
 
                     <!-- Other Activities -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">{{ form.other_activities.label }}</label>
+                        <label class="form-label-tlm">{{ form.other_activities.label }}</label>
                         {{ form.other_activities }}
-                        <div style="font-size:10px;color:var(--text-gray);">Mikutano, majukumu ya shule, ziara, n.k.</div>
+                        <div style="font-size:10px;color:var(--ink-500);">Mikutano, majukumu ya shule, ziara, n.k.</div>
                     </div>
 
                     <!-- Challenges -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">{{ form.challenges_faced.label }}</label>
+                        <label class="form-label-tlm">{{ form.challenges_faced.label }}</label>
                         {{ form.challenges_faced }}
                     </div>
 
                     <!-- Lessons Learned -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">{{ form.lessons_learned.label }}</label>
+                        <label class="form-label-tlm">{{ form.lessons_learned.label }}</label>
                         {{ form.lessons_learned }}
                     </div>
 
@@ -97,9 +101,9 @@
 
         <!-- Side info -->
         <div class="col-lg-4">
-            <div class="premium-card p-3 mb-3">
-                <div class="section-hd"><h3><i class="fas fa-info-circle"></i>Maelekezo</h3></div>
-                <ul style="font-size:12px;color:var(--text-gray);padding-left:16px;margin-bottom:0;">
+            <div class="p-card p-3 mb-3">
+                <div class="sec-hd"><h3><i class="fas fa-info-circle"></i>Maelekezo</h3></div>
+                <ul style="font-size:12px;color:var(--ink-500);padding-left:16px;margin-bottom:0;">
                     <li class="mb-2">Thibitisha eneo lako kwa GPS kabla ya kuwasilisha</li>
                     <li class="mb-2">Jaza kila kipindi ulichofundisha</li>
                     <li class="mb-2">Andika changamoto na tafakari zako</li>
@@ -108,13 +112,13 @@
             </div>
 
             {% if logbook_entry and logbook_entry.lessons_data %}
-            <div class="premium-card p-3">
-                <div class="section-hd"><h3><i class="fas fa-history"></i>Leo Umeshajaza</h3></div>
+            <div class="p-card p-3">
+                <div class="sec-hd"><h3><i class="fas fa-history"></i>Leo Umeshajaza</h3></div>
                 {% for lesson in logbook_entry.lessons_data %}
-                <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background:var(--light);border-radius:var(--radius);">
+                <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background:#f4f6fb;border-radius:var(--radius);">
                     <div>
                         <strong style="font-size:12px;">{{ lesson.subject }}</strong>
-                        <div style="font-size:11px;color:var(--text-gray);">Darasa {{ lesson.class }} &bull; Kipindi {{ lesson.period }}</div>
+                        <div style="font-size:11px;color:var(--ink-500);">Darasa {{ lesson.class }} &bull; Kipindi {{ lesson.period }}</div>
                     </div>
                     <span class="chip chip-green" style="font-size:10px;">Imehifadhiwa</span>
                 </div>
@@ -137,10 +141,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const periodTemplate = function(index) {
         return `
-            <div class="period-card premium-card p-3 mb-3" data-index="${index}">
+            <div class="p-card p-3 mb-3" data-index="${index}">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <strong style="color:var(--navy);font-size:14px;">Kipindi #${index + 1}</strong>
-                    <button type="button" class="btn btn-sm remove-period" style="background:transparent;color:var(--red);border:1px solid var(--red);border-radius:3px;padding:2px 8px;font-size:11px;">
+                    <button type="button" class="btn btn-sm remove-period" style="background:transparent;color:#DC2626;border:1px solid #DC2626;border-radius:3px;padding:2px 8px;font-size:11px;">
                         <i class="fas fa-times"></i> Ondoa
                     </button>
                 </div>
@@ -213,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('periodsContainer').addEventListener('click', function(e) {
         if (e.target.closest('.remove-period')) {
-            e.target.closest('.period-card').remove();
+            e.target.closest('.p-card').remove();
             updateLessonsData();
         }
     });
@@ -222,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('periodsContainer').addEventListener('input', updateLessonsData);
 
     function updateLessonsData() {
-        const cards = document.querySelectorAll('.period-card');
+        const cards = document.querySelectorAll('.period-card, .p-card[data-index]');
         const data = [];
         cards.forEach(function(card) {
             data.push({
@@ -266,10 +270,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     .then(data => {
                         document.getElementById('location_address').value = data.display_name || '';
                         document.getElementById('locationStatus').innerHTML = '<span class="text-success fw-bold"><i class="fas fa-check-circle me-1"></i>Eneo limethibitishwa!</span>';
-                        document.getElementById('locationStatus').style.color = '#059669';
+                        document.getElementById('locationStatus').style.color = '#1a7a3b';
                         btn.innerHTML = '<i class="fas fa-check me-1"></i>Imehakikiwa';
                         btn.className = 'btn btn-sm';
-                        btn.style.background = '#059669';
+                        btn.style.background = '#1a7a3b';
                         btn.style.color = '#fff';
                         btn.style.border = 'none';
                         showAlert('success', 'Eneo lako limehakikiwa kwa mafanikio!');
@@ -291,10 +295,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function showAlert(type, msg) {
-        const container = document.querySelector('.container-fluid');
+        const container = document.querySelector('.page-shell');
         const div = document.createElement('div');
-        div.className = 'alert alert-ims alert-dismissible fade show mb-2';
-        div.style.borderLeftColor = type === 'success' ? '#059669' : '#DC2626';
+        div.className = 'alert alert-tlm alert-dismissible fade show mb-2';
+        div.style.borderLeftColor = type === 'success' ? '#1a7a3b' : '#DC2626';
         div.innerHTML = msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
         container.prepend(div);
         setTimeout(() => div.remove(), 5000);
