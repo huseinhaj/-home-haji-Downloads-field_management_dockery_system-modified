@@ -471,13 +471,10 @@
                 <a href="{% url 'dashboard' %}"><i class="fas fa-arrow-left"></i> IMS</a>
                 <a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Toka</a>
                 {% else %}
-                <a href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i> Ingia</a>
+                <a href="{% url 'curriculum:teacher_register' %}" class="active">
+                    <i class="fas fa-user-plus"></i> Jisajili
+                </a>
                 {% endif %}
-                <span class="nav-sep"></span>
-                <span class="lang-switch">
-                    <a href="{% url 'set_language' %}?lang=en&next={{ request.path|urlencode }}" class="">EN</a>
-                    <a href="{% url 'set_language' %}?lang=sw&next={{ request.path|urlencode }}" class="">SW</a>
-                </span>
             </nav>
         </div>
     </div>

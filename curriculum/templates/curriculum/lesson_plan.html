@@ -14,11 +14,10 @@
                         <div style="font-size:12px;color:var(--ink-500);">Tengeneza Lesson Plan kwa msaada wa AI — SEQUIP/TIE IDDR Tanzania format</div>
                     </div>
                 </div>
-                {% if is_public %}
-                <div class="mt-2 p-2" style="background:rgba(31,122,61,.06);border-radius:var(--radius);border-left:3px solid var(--navy);font-size:12px;color:var(--ink-500);">
-                    <i class="fas fa-info-circle me-1" style="color:var(--navy);"></i>
-                    Huna account? Bado unaweza kutumia generator hii. PDF na Word zinapatikana.
-                    <a href="{% url 'login' %}" style="color:var(--navy);font-weight:700;text-decoration:none;">Ingia</a> kuweza kuhifadhi kazi yako.
+                {% if teacher %}
+                <div class="mt-2 p-2" style="background:rgba(31,122,61,.06);border-radius:var(--radius);border-left:3px solid var(--accent-500);font-size:12px;color:var(--ink-500);">
+                    <i class="fas fa-user-check me-1" style="color:var(--accent-500);"></i>
+                    <strong>{{ teacher.full_name }}</strong> — {{ teacher.school.name }} · {{ teacher.subject.name }}
                 </div>
                 {% endif %}
             </div>

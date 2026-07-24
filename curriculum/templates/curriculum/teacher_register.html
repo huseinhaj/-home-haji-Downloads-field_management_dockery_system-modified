@@ -1,0 +1,206 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}Register — TLM Tanzania{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-6">
+    <div class="p-card mt-3">
+      <div class="p-card-body px-4 py-4">
+        <div class="text-center mb-4">
+          <div style="width:60px;height:60px;background:var(--accent-500);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+            <i class="fas fa-user-plus" style="color:#fff;font-size:24px;"></i>
+          </div>
+          <h4 style="font-family:'Sora',sans-serif;font-weight:800;color:var(--accent-500);">
+            Jisajili Kwanza
+          </h4>
+          <p style="font-size:0.85rem;color:var(--ink-500);margin-bottom:0;">
+            Weka taarifa zako ili kuanza kutumia zana za Teaching &amp; Learning Materials
+          </p>
+        </div>
+
+        <!-- Already registered? -->
+        <div class="mb-4 p-3" style="background:rgba(31,122,61,.05);border-radius:var(--radius);border-left:3px solid var(--accent-500);">
+          <p style="font-size:0.82rem;color:var(--ink-700);margin-bottom:6px;font-weight:600;">
+            <i class="fas fa-phone me-1" style="color:var(--accent-500);"></i>
+            Tayari umesajiliwa? Weka namba yako ya simu:
+          </p>
+          <div class="input-group">
+            <input type="tel" id="lookupPhone" class="form-control" placeholder="e.g. 0712 345 678" style="font-size:14px;">
+            <button class="btn btn-navy" id="lookupBtn" type="button">
+              <i class="fas fa-search me-1"></i>Tafuta
+            </button>
+          </div>
+          <div id="lookupResult" style="display:none;margin-top:6px;font-size:13px;"></div>
+        </div>
+
+        <hr style="border-color:var(--line);margin:18px 0;">
+
+        <form id="registerForm">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label-tlm">Jina Kamili</label>
+              <input type="text" class="form-control" id="fullName" placeholder="e.g. Juma Hamisi" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-tlm">Namba ya Simu</label>
+              <input type="tel" class="form-control" id="phoneNumber" placeholder="e.g. 0712345678" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-tlm">Mkoa</label>
+              <select class="form-control" id="region" required>
+                <option value="">— Chagua Mkoa —</option>
+                {% for r in regions %}
+                <option value="{{ r.id }}">{{ r.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-tlm">Wilaya</label>
+              <select class="form-control" id="district" required>
+                <option value="">— Chagua Wilaya Kwanza —</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-tlm">Shule</label>
+              <select class="form-control" id="school" required>
+                <option value="">— Chagua Shule Kwanza —</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-tlm">Somo</label>
+              <select class="form-control" id="subject" required>
+                <option value="">— Chagua Somo —</option>
+                {% for s in subjects %}
+                <option value="{{ s.id }}">{{ s.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div id="loadingIndicator" style="display:none;text-align:center;margin:16px 0;">
+            <div class="spinner-tlm"></div> Inahifadhi...
+          </div>
+
+          <button type="submit" class="btn btn-brand w-100 py-3 mt-3" id="submitBtn" style="font-size:0.9rem;border-radius:12px;">
+            <i class="fas fa-check-circle me-2"></i>Wasilisha &amp; Endelea
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // ── Lookup returning teacher ──
+  document.getElementById('lookupBtn').addEventListener('click', function() {
+    const phone = document.getElementById('lookupPhone').value.trim();
+    const resultDiv = document.getElementById('lookupResult');
+    if (!phone) {
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<span style="color:#DC2626;"><i class="fas fa-exclamation-circle"></i> Tafadhali weka namba ya simu</span>';
+      return;
+    }
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<span style="color:var(--ink-500);"><div class="spinner-tlm"></div> Inatafuta...</span>';
+    
+    fetch(`{% url 'curriculum:lookup_teacher' %}?phone=${encodeURIComponent(phone)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.found) {
+          resultDiv.innerHTML = `
+            <div style="background:rgba(31,122,61,.08);padding:10px 14px;border-radius:var(--radius);">
+              <span style="color:var(--accent-500);font-weight:700;"><i class="fas fa-check-circle"></i> Umepatikana!</span><br>
+              <span style="font-size:13px;"><b>${data.full_name}</b> — ${data.school_name}</span>
+              <br><a href="{% url 'curriculum:landing' %}" class="btn btn-brand btn-sm mt-2" style="border-radius:8px;">
+                <i class="fas fa-arrow-right"></i> Endelea
+              </a>
+            </div>`;
+        } else {
+          resultDiv.innerHTML = `
+            <div style="background:rgba(220,38,38,.06);padding:10px 14px;border-radius:var(--radius);">
+              <span style="color:#DC2626;"><i class="fas fa-exclamation-circle"></i> Hajapatikana. Jisajili hapa chini.</span>
+            </div>`;
+        }
+      })
+      .catch(() => {
+        resultDiv.innerHTML = '<span style="color:#DC2626;">Hitilafu. Jaribu tena.</span>';
+      });
+  });
+
+  // ── Cascading dropdowns ──
+  document.getElementById('region').addEventListener('change', function() {
+    const regionId = this.value;
+    const districtSelect = document.getElementById('district');
+    districtSelect.innerHTML = '<option value="">— Chagua Wilaya —</option>';
+    document.getElementById('school').innerHTML = '<option value="">— Chagua Shule Kwanza —</option>';
+    if (!regionId) return;
+    
+    fetch(`{% url 'curriculum:get_districts' %}?region_id=${regionId}`)
+      .then(r => r.json())
+      .then(data => {
+        data.forEach(function(d) {
+          districtSelect.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+        });
+      });
+  });
+
+  document.getElementById('district').addEventListener('change', function() {
+    const districtId = this.value;
+    const schoolSelect = document.getElementById('school');
+    schoolSelect.innerHTML = '<option value="">— Chagua Shule —</option>';
+    if (!districtId) return;
+    
+    fetch(`{% url 'curriculum:get_schools' %}?district_id=${districtId}`)
+      .then(r => r.json())
+      .then(data => {
+        data.forEach(function(s) {
+          schoolSelect.innerHTML += `<option value="${s.id}">${s.name} (${s.level === 'Primary' ? 'Msingi' : 'Sekondari'})</option>`;
+        });
+      });
+  });
+
+  // ── Save teacher registration ──
+  document.getElementById('registerForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const loading = document.getElementById('loadingIndicator');
+    btn.disabled = true;
+    loading.style.display = 'block';
+    
+    fetch('{% url "curriculum:save_teacher" %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+      body: JSON.stringify({
+        full_name: document.getElementById('fullName').value.trim(),
+        phone_number: document.getElementById('phoneNumber').value.trim(),
+        region_id: document.getElementById('region').value,
+        district_id: document.getElementById('district').value,
+        school_id: document.getElementById('school').value,
+        subject_id: document.getElementById('subject').value,
+      }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      loading.style.display = 'none';
+      btn.disabled = false;
+      if (data.success) {
+        // Redirect to the tool
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get('next') || '{% url "curriculum:landing" %}';
+        window.location.href = next;
+      } else {
+        alert(data.error || 'Hitilafu. Jaribu tena.');
+      }
+    })
+    .catch(err => {
+      loading.style.display = 'none';
+      btn.disabled = false;
+      alert('Network error: ' + err.message);
+    });
+  });
+});
+</script>
+{% endblock %}

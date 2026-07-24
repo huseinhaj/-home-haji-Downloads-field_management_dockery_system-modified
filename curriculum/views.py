@@ -27,7 +27,7 @@ from field_app.models import (
     StudentTeacher, Subject, SchemeOfWork, LessonPlan,
     LogbookEntry, EducationLevel, ClassLevel, School,
     SchoolSubjectCapacity, StudentApplication, SchoolAssessment,
-    AcademicYear, Textbook, BoardMember, BoardComment,
+    AcademicYear, Textbook, BoardMember, BoardComment, Region, District,
 )
 from field_app.views.utils import (
     _cached_active_year, _cached_subjects, _cached_today_logbook,
@@ -35,17 +35,135 @@ from field_app.views.utils import (
     get_current_academic_year, invalidate_student_cache,
 )
 
+from .models import TLMTeacher
+
 
 # =============================================================================
-# LANDING PAGE (public, School Results login style)
+# HELPER: Check/Get TLM teacher from session
+# =============================================================================
+
+def get_tlm_teacher(request):
+    """Get the registered TLM teacher from session, or None."""
+    teacher_id = request.session.get('tlm_teacher_id')
+    if teacher_id:
+        try:
+            return TLMTeacher.objects.get(id=teacher_id)
+        except TLMTeacher.DoesNotExist:
+            del request.session['tlm_teacher_id']
+    return None
+
+
+# =============================================================================
+# LANDING PAGE (public)
 # =============================================================================
 
 def landing(request):
-    """Public landing page — looks like School Results login interface.
-    Centered card with TZ emblem, portal intro, and links to tools."""
+    """Public landing page — shows tools. If teacher is registered, greet them."""
+    teacher = get_tlm_teacher(request)
     return render(request, 'curriculum/landing.html', {
-        'is_public': not request.user.is_authenticated,
+        'teacher': teacher,
     })
+
+
+# =============================================================================
+# TEACHER REGISTRATION (simple — no login needed)
+# =============================================================================
+
+def teacher_register(request):
+    """
+    Registration page: teacher selects Region → District → School → Subject.
+    If already registered (session), redirect to landing.
+    """
+    # Check if already registered
+    teacher = get_tlm_teacher(request)
+    if teacher:
+        # Already registered — redirect where they were going
+        next_url = request.GET.get('next', 'curriculum:landing')
+        return redirect(next_url)
+
+    regions = Region.objects.all().order_by('name')
+    subjects = Subject.objects.all().order_by('name')
+    return render(request, 'curriculum/teacher_register.html', {
+        'regions': regions,
+        'subjects': subjects,
+    })
+
+
+def ajax_get_districts(request):
+    """AJAX: Get districts for a given region."""
+    region_id = request.GET.get('region_id')
+    if not region_id:
+        return JsonResponse([], safe=False)
+    districts = District.objects.filter(region_id=region_id).order_by('name')
+    return JsonResponse([{'id': d.id, 'name': d.name} for d in districts], safe=False)
+
+
+def ajax_get_schools(request):
+    """AJAX: Get schools for a given district."""
+    district_id = request.GET.get('district_id')
+    if not district_id:
+        return JsonResponse([], safe=False)
+    schools = School.objects.filter(district_id=district_id).order_by('name')
+    return JsonResponse([{'id': s.id, 'name': s.name, 'level': s.level} for s in schools], safe=False)
+
+
+def ajax_save_teacher(request):
+    """AJAX: Save teacher registration."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=400)
+    
+    data = json.loads(request.body)
+    
+    full_name = data.get('full_name', '').strip()
+    phone_number = data.get('phone_number', '').strip()
+    region_id = data.get('region_id')
+    district_id = data.get('district_id')
+    school_id = data.get('school_id')
+    subject_id = data.get('subject_id')
+    
+    if not all([full_name, phone_number, region_id, district_id, school_id, subject_id]):
+        return JsonResponse({'success': False, 'error': 'Tafadhali jaza sehemu zote.'}, status=400)
+    
+    # Check if already exists by phone
+    existing = TLMTeacher.objects.filter(phone_number=phone_number).first()
+    if existing:
+        # Update their info
+        existing.full_name = full_name
+        existing.region_id = region_id
+        existing.district_id = district_id
+        existing.school_id = school_id
+        existing.subject_id = subject_id
+        existing.save()
+        request.session['tlm_teacher_id'] = existing.id
+        return JsonResponse({'success': True, 'is_new': False})
+    
+    teacher = TLMTeacher.objects.create(
+        full_name=full_name,
+        phone_number=phone_number,
+        region_id=region_id,
+        district_id=district_id,
+        school_id=school_id,
+        subject_id=subject_id,
+    )
+    request.session['tlm_teacher_id'] = teacher.id
+    return JsonResponse({'success': True, 'is_new': True})
+
+
+def ajax_lookup_teacher(request):
+    """AJAX: Lookup returning teacher by phone number."""
+    phone = request.GET.get('phone', '').strip()
+    if not phone:
+        return JsonResponse({'found': False})
+    
+    teacher = TLMTeacher.objects.filter(phone_number=phone).first()
+    if teacher:
+        request.session['tlm_teacher_id'] = teacher.id
+        return JsonResponse({
+            'found': True,
+            'full_name': teacher.full_name,
+            'school_name': teacher.school.name if teacher.school else '',
+        })
+    return JsonResponse({'found': False})
 
 
 # =============================================================================
@@ -98,7 +216,12 @@ def dashboard(request):
 # =============================================================================
 
 def generate_scheme_view(request):
-    """Display scheme of work generator form — public access."""
+    """Display scheme of work generator form — requires TLM registration."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        # Need to register first
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:generate_scheme')}")
+    
     form = SchemeOfWorkForm()
     education_levels = EducationLevel.objects.all().order_by('order')
 
@@ -140,7 +263,7 @@ def generate_scheme_view(request):
         'subjects_by_level_json': _json.dumps(subjects_by_level),
         'student': student,
         'school': school,
-        'is_public': not request.user.is_authenticated,
+        'teacher': teacher,
     })
 
 
@@ -527,7 +650,11 @@ def ajax_load_saved_scheme(request):
 # =============================================================================
 
 def lesson_plan_view(request):
-    """Display lesson plan generator form — public access."""
+    """Display lesson plan generator form — requires TLM registration."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:lesson_plan')}")
+    
     education_levels = EducationLevel.objects.all().order_by('order')
 
     import json as _json
@@ -567,7 +694,7 @@ def lesson_plan_view(request):
         'subjects_by_level_json': _json.dumps(subjects_by_level),
         'student': student,
         'school': school,
-        'is_public': not request.user.is_authenticated,
+        'teacher': teacher,
     })
 
 

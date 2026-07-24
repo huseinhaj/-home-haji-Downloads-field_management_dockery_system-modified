@@ -30,6 +30,13 @@ urlpatterns = [
     path('logbook/download/<str:period_type>/', views.download_logbook_pdf, name='download_logbook_pdf'),
     path('logbook/download-options/', views.logbook_download_options, name='logbook_download_options'),
 
+    # Teacher Registration (no login)
+    path('register/', views.teacher_register, name='teacher_register'),
+    path('api/get-districts/', views.ajax_get_districts, name='get_districts'),
+    path('api/get-schools/', views.ajax_get_schools, name='get_schools'),
+    path('api/save-teacher/', views.ajax_save_teacher, name='save_teacher'),
+    path('api/lookup-teacher/', views.ajax_lookup_teacher, name='lookup_teacher'),
+
     # API helpers
     path('api/get-topics/', views.get_topics_by_subject, name='get_topics'),
     path('api/get-topics-ai/', views.get_topics_ai, name='get_topics_ai'),
