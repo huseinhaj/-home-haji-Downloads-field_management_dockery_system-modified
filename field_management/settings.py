@@ -86,6 +86,8 @@ INSTALLED_APPS = [
     'django_filters',
     'import_export',
     'widget_tweaks',
+    'elearning',
+    'curriculum',
 ]
 
 MIDDLEWARE = [

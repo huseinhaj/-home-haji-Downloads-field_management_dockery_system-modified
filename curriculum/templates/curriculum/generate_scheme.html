@@ -1,0 +1,330 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}Generate Scheme of Work{% endblock %}
+{% load static %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="premium-card p-3" style="border-left:5px solid var(--gold);">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:48px;height:48px;background:var(--navy);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-calendar-alt" style="color:#fff;font-size:20px;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:16px;font-weight:800;color:var(--navy);">Scheme of Work Generator</div>
+                        <div style="font-size:12px;color:var(--text-gray);">Tengeneza Scheme of Work kwa msaada wa AI — SEQUIP/TIE Tanzania format</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Form -->
+        <div class="col-lg-4">
+            <div class="premium-card p-3">
+                <form id="schemeForm" method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Education Level</label>
+                        <select class="form-control" id="education_level" name="education_level" required>
+                            <option value="">Select Education Level</option>
+                            {% for level in education_levels %}
+                            <option value="{{ level.id }}">{{ level.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Class</label>
+                        <select class="form-control" id="class_level" name="class_level" required>
+                            <option value="">Select Class</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Subject</label>
+                        <select class="form-control" id="subject" name="subject" required>
+                            <option value="">Select Subject</option>
+                        </select>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Term</label>
+                            <select class="form-control" name="term">
+                                <option value="I">Term I</option>
+                                <option value="II">Term II</option>
+                                <option value="III">Term III</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Year</label>
+                            <input class="form-control" name="year" value="2026" type="number">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Syllabus</label>
+                        <input class="form-control" name="syllabus" value="New Syllabus">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Total Weeks</label>
+                            <input class="form-control" name="total_weeks" value="12" type="number" min="1" max="52">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Periods/Week</label>
+                            <input class="form-control" name="periods_per_week" value="8" type="number" min="1" max="50">
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Start Date</label>
+                            <input class="form-control" name="start_date" type="date">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">End Date</label>
+                            <input class="form-control" name="end_date" type="date">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Teacher Name</label>
+                        <input class="form-control" name="teacher_name" value="{{ student.full_name|default:'' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">School Name</label>
+                        <input class="form-control" name="school_name" value="{{ school.name|default:'' }}">
+                    </div>
+                    <button type="submit" class="btn btn-gold w-100 py-2" id="generateBtn">
+                        <i class="fas fa-magic me-2"></i>Generate with AI
+                    </button>
+                    <button type="button" class="btn btn-navy w-100 py-2 mt-2" id="loadSavedBtn">
+                        <i class="fas fa-folder-open me-2"></i>Load Saved
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="col-lg-8">
+            <div id="loadingSpinner" class="text-center py-5" style="display:none;">
+                <div class="spinner-border" style="width:3rem;height:3rem;color:var(--gold);" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 fw-bold" style="color:var(--navy);">AI inazalisha Scheme of Work... Tafadhali subiri...</p>
+            </div>
+
+            <div id="resultsArea" style="display:none;">
+                <div class="premium-card p-3">
+                    <div class="section-hd mb-3">
+                        <h3><i class="fas fa-table"></i>Generated Scheme of Work</h3>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-navy btn-sm" id="downloadPdfBtn">
+                                <i class="fas fa-file-pdf me-1"></i>PDF
+                            </button>
+                            <button class="btn btn-navy btn-sm" id="downloadWordBtn">
+                                <i class="fas fa-file-word me-1"></i>Word
+                            </button>
+                        </div>
+                    </div>
+                    <div id="tableContainer" style="overflow-x:auto;"></div>
+                </div>
+            </div>
+
+            <div id="emptyState" class="text-center py-5">
+                <div style="width:80px;height:80px;background:var(--light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <i class="fas fa-calendar-alt" style="font-size:32px;color:#94A3B8;"></i>
+                </div>
+                <h5 style="color:var(--navy);font-weight:800;">Jaza maelezo upande wa kushoto</h5>
+                <p style="color:var(--text-gray);font-size:13px;">Kisha bonyeza "Generate with AI" kupata Scheme of Work yako.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CLASSES_BY_LEVEL = {{ classes_by_level_json|safe }};
+const SUBJECTS_BY_LEVEL = {{ subjects_by_level_json|safe }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const levelSelect = document.getElementById('education_level');
+    const classSelect = document.getElementById('class_level');
+    const subjectSelect = document.getElementById('subject');
+
+    levelSelect.addEventListener('change', function() {
+        const levelId = this.value;
+        // Update classes
+        classSelect.innerHTML = '<option value="">Select Class</option>';
+        if (CLASSES_BY_LEVEL[levelId]) {
+            CLASSES_BY_LEVEL[levelId].forEach(function(cls) {
+                classSelect.innerHTML += `<option value="${cls.name}">${cls.name}</option>`;
+            });
+        }
+        // Update subjects
+        subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+        if (SUBJECTS_BY_LEVEL[levelId]) {
+            SUBJECTS_BY_LEVEL[levelId].forEach(function(subj) {
+                subjectSelect.innerHTML += `<option value="${subj.name}">${subj.name}</option>`;
+            });
+        }
+    });
+
+    const form = document.getElementById('schemeForm');
+    const generateBtn = document.getElementById('generateBtn');
+    const spinner = document.getElementById('loadingSpinner');
+    const resultsArea = document.getElementById('resultsArea');
+    const emptyState = document.getElementById('emptyState');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        generateScheme();
+    });
+
+    document.getElementById('loadSavedBtn').addEventListener('click', loadSavedScheme);
+    document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdf);
+    document.getElementById('downloadWordBtn').addEventListener('click', downloadWord);
+
+    let currentSchemeData = null;
+    let currentSavedId = null;
+
+    function getFormData() {
+        return {
+            education_level: document.querySelector('#education_level option:checked').textContent || levelSelect.value,
+            class_name: classSelect.value,
+            subject: subjectSelect.value,
+            term: document.querySelector('select[name="term"]').value,
+            year: document.querySelector('input[name="year"]').value,
+            syllabus: document.querySelector('input[name="syllabus"]').value,
+            total_weeks: document.querySelector('input[name="total_weeks"]').value,
+            periods_per_week: document.querySelector('input[name="periods_per_week"]').value,
+            start_date: document.querySelector('input[name="start_date"]').value,
+            end_date: document.querySelector('input[name="end_date"]').value,
+            teacher_name: document.querySelector('input[name="teacher_name"]').value,
+            school_name: document.querySelector('input[name="school_name"]').value,
+            breaks: [],
+        };
+    }
+
+    function generateScheme() {
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+        spinner.style.display = 'block';
+        resultsArea.style.display = 'none';
+        emptyState.style.display = 'none';
+
+        fetch('{% url "curriculum:ajax_generate_scheme" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify(getFormData()),
+        })
+        .then(r => r.json())
+        .then(data => {
+            spinner.style.display = 'none';
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate with AI';
+
+            if (data.success && data.data) {
+                currentSchemeData = data.data;
+                currentSavedId = data.saved_id;
+                renderTable(data.data);
+                resultsArea.style.display = 'block';
+                emptyState.style.display = 'none';
+                showAlert('success', 'Scheme of Work imezalishwa!');
+            } else {
+                showAlert('error', data.error || 'Hitilafu wakati wa kuzalisha.');
+                emptyState.style.display = 'block';
+            }
+        })
+        .catch(err => {
+            spinner.style.display = 'none';
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate with AI';
+            showAlert('error', 'Network error: ' + err.message);
+            emptyState.style.display = 'block';
+        });
+    }
+
+    function loadSavedScheme() {
+        fetch('{% url "curriculum:ajax_load_saved_scheme" %}', {
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data) {
+                currentSchemeData = data.data;
+                currentSavedId = data.saved_id;
+                if (data.meta) {
+                    document.querySelector('input[name="teacher_name"]').value = data.meta.teacher_name || '';
+                    document.querySelector('input[name="school_name"]').value = data.meta.school_name || '';
+                }
+                renderTable(data.data);
+                resultsArea.style.display = 'block';
+                emptyState.style.display = 'none';
+                showAlert('success', 'Scheme imepakiwa kutoka kwenye hifadhi!');
+            } else {
+                showAlert('warning', data.error || 'Hakuna scheme iliyohifadhiwa.');
+            }
+        })
+        .catch(err => showAlert('error', 'Hitilafu: ' + err.message));
+    }
+
+    function renderTable(data) {
+        if (!data || data.length === 0) return;
+        const headers = Object.keys(data[0]);
+        let html = '<table class="table table-bordered table-sm" style="font-size:11px;">';
+        html += '<thead style="background:var(--navy);color:#fff;">';
+        html += '<tr>' + headers.map(h => '<th class="p-2 text-nowrap">' + h + '</th>').join('') + '</tr>';
+        html += '</thead><tbody>';
+        data.forEach(function(row, i) {
+            const bg = i % 2 === 0 ? '#F8FAFC' : '#FFFFFF';
+            html += '<tr style="background:' + bg + ';">' +
+                headers.map(h => '<td class="p-2" style="font-size:10px;">' + (row[h] || '') + '</td>').join('') +
+                '</tr>';
+        });
+        html += '</tbody></table>';
+        document.getElementById('tableContainer').innerHTML = html;
+    }
+
+    function downloadPdf() {
+        if (!currentSchemeData) return;
+        const fd = { ...getFormData(), scheme_data: currentSchemeData };
+        fetch('{% url "curriculum:download_scheme_pdf" %}', {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify(fd),
+        })
+        .then(r => r.blob())
+        .then(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'Scheme_of_Work.pdf';
+            a.click();
+        });
+    }
+
+    function downloadWord() {
+        if (!currentSchemeData) return;
+        const fd = { ...getFormData(), scheme_data: currentSchemeData };
+        fetch('{% url "curriculum:download_scheme_word" %}', {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify(fd),
+        })
+        .then(r => r.blob())
+        .then(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'Scheme_of_Work.docx';
+            a.click();
+        });
+    }
+
+    function showAlert(type, msg) {
+        const container = document.querySelector('.container-fluid');
+        const div = document.createElement('div');
+        div.className = 'alert alert-ims alert-dismissible fade show mb-2';
+        div.style.borderLeftColor = type === 'success' ? '#059669' : type === 'error' ? '#DC2626' : '#D97706';
+        div.innerHTML = msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        container.prepend(div);
+        setTimeout(() => div.remove(), 5000);
+    }
+});
+</script>
+{% endblock %}

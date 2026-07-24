@@ -35,4 +35,10 @@ urlpatterns = [
 
     # Teacher Transfer Matching app
     path('transfer/', include('transfer_app.urls', namespace='transfer')),
+
+    # Muungano E-Learning Platform
+    path('elearning/', include('elearning.urls')),
+
+    # Muungano Curriculum — Scheme of Work, Lesson Plan & Logbook
+    path('curriculum/', include('curriculum.urls')),
 ]

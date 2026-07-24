@@ -1,0 +1,110 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}Logbook History{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div>
+            <h4 style="color:var(--navy);font-weight:800;margin:0;">
+                <i class="fas fa-history me-2" style="color:var(--gold);"></i>Historia ya Logbook
+            </h4>
+            <span style="font-size:12px;color:var(--text-gray);">{{ student.full_name }}</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <a href="{% url 'curriculum:submit_logbook' %}" class="btn btn-navy btn-sm">
+                <i class="fas fa-plus me-1"></i>Andika Mpya
+            </a>
+            <a href="{% url 'curriculum:logbook_download_options' %}" class="btn btn-navy btn-sm">
+                <i class="fas fa-download me-1"></i>Pakua
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="premium-card p-3 mb-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="small fw-bold">Wiki</label>
+                <input type="week" name="week" class="form-control form-control-sm" value="{{ request.GET.week }}">
+            </div>
+            <div class="col-auto">
+                <label class="small fw-bold">Mwezi</label>
+                <input type="month" name="month" class="form-control form-control-sm" value="{{ request.GET.month }}">
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <button type="submit" class="btn btn-navy btn-sm"><i class="fas fa-filter me-1"></i>Filter</button>
+                <a href="{% url 'curriculum:logbook_history' %}" class="btn btn-sm" style="background:var(--light);color:var(--text-gray);border:1px solid var(--border);">
+                    <i class="fas fa-undo me-1"></i>Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Entries -->
+    {% if entries %}
+        {% for entry in entries %}
+        <div class="premium-card p-3 mb-2" style="border-left:4px solid {% if entry.is_location_verified %}var(--green){% else %}var(--amber){% endif %};">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <strong style="font-size:14px;color:var(--navy);">{{ entry.date|date:"d/m/Y" }}</strong>
+                    <span style="font-size:12px;color:var(--text-gray);margin-left:8px;">{{ entry.get_day_of_week_display }}</span>
+                    {% if entry.school %}
+                    <span style="font-size:11px;color:var(--text-gray);margin-left:8px;">
+                        <i class="fas fa-school me-1" style="color:var(--gold);"></i>{{ entry.school.name }}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="chip {% if entry.is_location_verified %}chip-green{% else %}chip-red{% endif %}" style="font-size:10px;">
+                        <i class="fas fa-{% if entry.is_location_verified %}check-circle{% else %}exclamation-circle{% endif %} me-1"></i>
+                        {% if entry.is_location_verified %}GPS Verified{% else %}Not Verified{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            {% if entry.lessons_data %}
+            <div style="margin-top:8px;">
+                {% for lesson in entry.lessons_data %}
+                <div class="d-flex align-items-center gap-3 mb-1" style="font-size:12px;color:var(--text-gray);">
+                    <span class="chip chip-blue" style="font-size:10px;width:60px;">Kip.{{ lesson.period }}</span>
+                    <strong style="color:var(--navy);">{{ lesson.subject }}</strong>
+                    <span>Darasa {{ lesson.class }}</span>
+                    <span>{{ lesson.main_topic|truncatechars:25 }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if entry.other_activities %}
+            <div style="font-size:12px;color:var(--text-gray);margin-top:6px;">
+                <i class="fas fa-list me-1" style="color:var(--gold);"></i>{{ entry.other_activities|truncatechars:100 }}
+            </div>
+            {% endif %}
+
+            {% if entry.challenges_faced %}
+            <div style="font-size:12px;color:var(--text-gray);margin-top:4px;">
+                <i class="fas fa-exclamation-triangle me-1" style="color:var(--amber);"></i>{{ entry.challenges_faced|truncatechars:100 }}
+            </div>
+            {% endif %}
+
+            {% if entry.supervisor_remarks %}
+            <div style="margin-top:8px;padding:8px;background:rgba(200,144,10,.06);border-radius:var(--radius);border-left:3px solid var(--gold);">
+                <strong style="font-size:11px;color:var(--navy);"><i class="fas fa-user-check me-1"></i>Maoni ya Msimamizi:</strong>
+                <p style="font-size:12px;color:var(--text-gray);margin:4px 0 0 0;">{{ entry.supervisor_remarks }}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="text-center py-5">
+            <div style="width:72px;height:72px;background:var(--light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <i class="fas fa-book" style="font-size:28px;color:#94A3B8;"></i>
+            </div>
+            <h5 style="color:var(--navy);font-weight:700;">Hakuna logbook kwa kipindi hiki</h5>
+            <p style="color:var(--text-gray);font-size:13px;">Anza kuandika logbook yako leo!</p>
+            <a href="{% url 'curriculum:submit_logbook' %}" class="btn btn-gold px-4 py-2">
+                <i class="fas fa-pen me-2"></i>Andika Sasa
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

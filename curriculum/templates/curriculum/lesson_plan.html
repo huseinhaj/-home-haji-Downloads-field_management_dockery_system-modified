@@ -1,0 +1,358 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}Generate Lesson Plan{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="premium-card p-3" style="border-left:5px solid var(--blue);">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:48px;height:48px;background:var(--navy);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-chalkboard" style="color:#fff;font-size:20px;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:16px;font-weight:800;color:var(--navy);">Lesson Plan Generator</div>
+                        <div style="font-size:12px;color:var(--text-gray);">Tengeneza Lesson Plan kwa msaada wa AI — SEQUIP/TIE IDDR Tanzania format</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Form -->
+        <div class="col-lg-4">
+            <div class="premium-card p-3">
+                <form id="lessonPlanForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Education Level</label>
+                        <select class="form-control" id="education_level" required>
+                            <option value="">Select Level</option>
+                            {% for level in education_levels %}
+                            <option value="{{ level.id }}">{{ level.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Class</label>
+                        <select class="form-control" id="class_level" required>
+                            <option value="">Select Class</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Subject</label>
+                        <select class="form-control" id="subject" required>
+                            <option value="">Select Subject</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Topic</label>
+                        <input class="form-control" id="topic" placeholder="e.g. Photosynthesis" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Subtopic (optional)</label>
+                        <input class="form-control" id="subtopic" placeholder="e.g. Light Reaction">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <label class="form-label fw-bold small">Term</label>
+                            <select class="form-control" id="term">
+                                <option value="I">I</option>
+                                <option value="II">II</option>
+                                <option value="III">III</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-bold small">Year</label>
+                            <input class="form-control" id="year" value="2026" type="number">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-bold small">Duration</label>
+                            <input class="form-control" id="duration" value="40" type="number">
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Total Students</label>
+                            <input class="form-control" id="total_students" type="number">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Present</label>
+                            <input class="form-control" id="present_students" type="number">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Teacher Name</label>
+                        <input class="form-control" id="teacher_name" value="{{ student.full_name|default:'' }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-gold w-100 py-2" id="generateBtn">
+                        <i class="fas fa-magic me-2"></i>Generate Lesson Plan
+                    </button>
+                    <button type="button" class="btn btn-navy w-100 py-2 mt-2" id="loadSavedBtn">
+                        <i class="fas fa-folder-open me-2"></i>Load Saved
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="col-lg-8">
+            <div id="loadingSpinner" class="text-center py-5" style="display:none;">
+                <div class="spinner-border" style="width:3rem;height:3rem;color:var(--blue);" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 fw-bold" style="color:var(--navy);">AI inazalisha Lesson Plan... Tafadhali subiri...</p>
+            </div>
+
+            <div id="resultsArea" style="display:none;">
+                <div class="premium-card p-3">
+                    <div class="section-hd mb-3">
+                        <h3><i class="fas fa-chalkboard"></i>Generated Lesson Plan</h3>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-navy btn-sm" id="downloadPdfBtn">
+                                <i class="fas fa-file-pdf me-1"></i>PDF
+                            </button>
+                            <button class="btn btn-navy btn-sm" id="downloadWordBtn">
+                                <i class="fas fa-file-word me-1"></i>Word
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="lessonContent" class="mb-3"></div>
+                </div>
+            </div>
+
+            <div id="emptyState" class="text-center py-5">
+                <div style="width:80px;height:80px;background:var(--light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <i class="fas fa-chalkboard" style="font-size:32px;color:#94A3B8;"></i>
+                </div>
+                <h5 style="color:var(--navy);font-weight:800;">Jaza maelezo upande wa kushoto</h5>
+                <p style="color:var(--text-gray);font-size:13px;">Kisha bonyeza "Generate Lesson Plan" kupata mpango wa somo.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CLASSES_BY_LEVEL = {{ classes_by_level_json|safe }};
+const SUBJECTS_BY_LEVEL = {{ subjects_by_level_json|safe }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const levelSelect = document.getElementById('education_level');
+    const classSelect = document.getElementById('class_level');
+    const subjectSelect = document.getElementById('subject');
+
+    levelSelect.addEventListener('change', function() {
+        const levelId = this.value;
+        classSelect.innerHTML = '<option value="">Select Class</option>';
+        if (CLASSES_BY_LEVEL[levelId]) {
+            CLASSES_BY_LEVEL[levelId].forEach(function(cls) {
+                classSelect.innerHTML += `<option value="${cls.name}">${cls.name}</option>`;
+            });
+        }
+        subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+        if (SUBJECTS_BY_LEVEL[levelId]) {
+            SUBJECTS_BY_LEVEL[levelId].forEach(function(subj) {
+                subjectSelect.innerHTML += `<option value="${subj.name}">${subj.name}</option>`;
+            });
+        }
+    });
+
+    let currentLessonData = null;
+    let currentFormData = null;
+    let currentSavedId = null;
+
+    document.getElementById('lessonPlanForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        generateLessonPlan();
+    });
+
+    document.getElementById('loadSavedBtn').addEventListener('click', loadSaved);
+    document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdf);
+    document.getElementById('downloadWordBtn').addEventListener('click', downloadWord);
+
+    function getFormData() {
+        return {
+            education_level: document.querySelector('#education_level option:checked').textContent || '',
+            class_name: document.getElementById('class_level').value,
+            subject: document.getElementById('subject').value,
+            subject_id: '',
+            topic: document.getElementById('topic').value,
+            subtopic: document.getElementById('subtopic').value,
+            term: document.getElementById('term').value,
+            year: document.getElementById('year').value,
+            duration: document.getElementById('duration').value,
+            total_students: document.getElementById('total_students').value,
+            present_students: document.getElementById('present_students').value,
+            teacher_name: document.getElementById('teacher_name').value,
+        };
+    }
+
+    function generateLessonPlan() {
+        const btn = document.getElementById('generateBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+        document.getElementById('loadingSpinner').style.display = 'block';
+        document.getElementById('resultsArea').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'none';
+
+        fetch('{% url "curriculum:ajax_generate_lessonplan" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify(getFormData()),
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate Lesson Plan';
+
+            if (data.success && data.data) {
+                currentLessonData = data.data;
+                currentFormData = getFormData();
+                currentSavedId = data.saved_id;
+                renderLesson(data.data);
+                document.getElementById('resultsArea').style.display = 'block';
+                showAlert('success', 'Lesson Plan imezalishwa!');
+            } else {
+                showAlert('error', data.error || 'Hitilafu.');
+                document.getElementById('emptyState').style.display = 'block';
+            }
+        })
+        .catch(err => {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate Lesson Plan';
+            showAlert('error', 'Network error: ' + err.message);
+        });
+    }
+
+    function loadSaved() {
+        fetch('{% url "curriculum:ajax_load_saved_lessonplan" %}', {
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                currentLessonData = data.data;
+                currentFormData = data.form_data;
+                currentSavedId = data.saved_id;
+                renderLesson(data.data);
+                document.getElementById('resultsArea').style.display = 'block';
+                document.getElementById('emptyState').style.display = 'none';
+                showAlert('success', 'Lesson Plan imepakiwa!');
+            } else {
+                showAlert('warning', data.error || 'Hakuna iliyohifadhiwa.');
+            }
+        })
+        .catch(err => showAlert('error', 'Error: ' + err.message));
+    }
+
+    function renderLesson(data) {
+        let html = '';
+
+        // Main competence
+        if (data.main_competence) html += `<p><b>Main Competence:</b> ${data.main_competence}</p>`;
+        if (data.specific_competence) html += `<p><b>Specific Competence:</b> ${data.specific_competence}</p>`;
+        if (data.previous_knowledge) html += `<p><b>Previous Knowledge:</b> ${data.previous_knowledge}</p>`;
+
+        // Learning Objectives
+        if (data.learning_objectives && data.learning_objectives.length) {
+            html += '<div class="mb-2"><b>Learning Objectives:</b><ul>';
+            data.learning_objectives.forEach(function(obj) {
+                html += `<li style="font-size:12px;">${obj}</li>`;
+            });
+            html += '</ul></div>';
+        }
+
+        // Teaching Methods
+        if (data.teaching_methods && data.teaching_methods.length) {
+            html += '<div class="mb-2"><b>Teaching Methods:</b> <span style="font-size:12px;">' + data.teaching_methods.join(', ') + '</span></div>';
+        }
+
+        // Teaching Resources
+        if (data.teaching_resources && data.teaching_resources.length) {
+            html += '<div class="mb-2"><b>Resources:</b> <span style="font-size:12px;">' + data.teaching_resources.join(', ') + '</span></div>';
+        }
+
+        // Lesson Development Table
+        if (data.lesson_development && data.lesson_development.length) {
+            html += '<div class="mt-3"><b>Lesson Development (IDDR Model)</b></div>';
+            html += '<div style="overflow-x:auto;"><table class="table table-bordered table-sm mt-2" style="font-size:11px;">';
+            html += '<thead style="background:var(--navy);color:#fff;">';
+            html += '<tr><th>Time</th><th>Stage</th><th>Methods</th><th>Teacher Activities</th><th>Student Activities</th><th>Assessment Criteria</th></tr>';
+            html += '</thead><tbody>';
+            data.lesson_development.forEach(function(stage, i) {
+                const bg = i % 2 === 0 ? '#F8FAFC' : '#FFFFFF';
+                html += `<tr style="background:${bg};">`;
+                html += `<td>${stage.time || ''}</td>`;
+                html += `<td>${stage.stage || ''}</td>`;
+                html += `<td>${stage.methods || ''}</td>`;
+                html += `<td>${stage.teacher_activities || ''}</td>`;
+                html += `<td>${stage.student_activities || ''}</td>`;
+                html += `<td>${stage.assessment_criteria || ''}</td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+        }
+
+        // Remarks
+        if (data.remarks) {
+            html += '<div class="mt-2"><b>Remarks:</b></div>';
+            if (typeof data.remarks === 'object') {
+                html += `<p style="font-size:12px;margin-bottom:2px;"><b>Strength:</b> ${data.remarks.strength || '...'}</p>`;
+                html += `<p style="font-size:12px;margin-bottom:2px;"><b>Weakness:</b> ${data.remarks.weakness || '...'}</p>`;
+                html += `<p style="font-size:12px;margin-bottom:2px;"><b>Way Forward:</b> ${data.remarks.way_forward || '...'}</p>`;
+            } else {
+                html += `<p style="font-size:12px;">${data.remarks}</p>`;
+            }
+        }
+
+        document.getElementById('lessonContent').innerHTML = html;
+    }
+
+    function downloadPdf() {
+        if (!currentLessonData) return;
+        fetch('{% url "curriculum:download_lesson_plan_pdf" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify({lesson_data: currentLessonData, form_data: currentFormData}),
+        })
+        .then(r => r.blob())
+        .then(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'Lesson_Plan.pdf';
+            a.click();
+        });
+    }
+
+    function downloadWord() {
+        if (!currentLessonData) return;
+        fetch('{% url "curriculum:download_lesson_plan_word" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify({lesson_data: currentLessonData, form_data: currentFormData}),
+        })
+        .then(r => r.blob())
+        .then(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'Lesson_Plan.docx';
+            a.click();
+        });
+    }
+
+    function showAlert(type, msg) {
+        const div = document.createElement('div');
+        div.className = 'alert alert-ims alert-dismissible fade show mb-2';
+        div.style.borderLeftColor = type === 'success' ? '#059669' : type === 'error' ? '#DC2626' : '#D97706';
+        div.innerHTML = msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        document.querySelector('.container-fluid').prepend(div);
+        setTimeout(() => div.remove(), 5000);
+    }
+});
+</script>
+{% endblock %}
