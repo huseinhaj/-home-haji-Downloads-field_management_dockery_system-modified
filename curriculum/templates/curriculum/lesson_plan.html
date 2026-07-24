@@ -4,9 +4,9 @@
 <div class="container-fluid px-0">
     <div class="row mb-3">
         <div class="col-12">
-            <div class="p-card p-3" style="border-left:5px solid var(--navy);">
+            <div class="p-card p-3" style="border-left:5px solid var(--gold);">
                 <div style="display:flex;align-items:center;gap:12px;">
-                    <div style="width:48px;height:48px;background:var(--gold);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <div style="width:48px;height:48px;background:var(--navy);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <i class="fas fa-chalkboard" style="color:#fff;font-size:20px;"></i>
                     </div>
                     <div>
@@ -15,7 +15,7 @@
                     </div>
                 </div>
                 {% if is_public %}
-                <div class="mt-2 p-2" style="background:rgba(31,73,125,.06);border-radius:var(--radius);border-left:3px solid var(--navy);font-size:12px;color:var(--ink-500);">
+                <div class="mt-2 p-2" style="background:rgba(31,122,61,.06);border-radius:var(--radius);border-left:3px solid var(--navy);font-size:12px;color:var(--ink-500);">
                     <i class="fas fa-info-circle me-1" style="color:var(--navy);"></i>
                     Huna account? Bado unaweza kutumia generator hii. PDF na Word zinapatikana.
                     <a href="{% url 'login' %}" style="color:var(--navy);font-weight:700;text-decoration:none;">Ingia</a> kuweza kuhifadhi kazi yako.
@@ -54,9 +54,10 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Topic</label>
-                        <select class="form-control" id="topic" required>
-                            <option value="">— Chagua Topic —</option>
+                        <select class="form-control" id="topic">
+                            <option value="">— Chagua Topic au Andika Mwenyewe —</option>
                         </select>
+                        <input class="form-control mt-2" id="topicManual" placeholder="Andika topic yako mwenyewe (kama haipo kwenye orodha)" style="font-size:13px;">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Subtopic (optional)</label>
@@ -107,7 +108,7 @@
         <!-- Results -->
         <div class="col-lg-8">
             <div id="loadingSpinner" class="text-center py-5" style="display:none;">
-                <div class="spinner-border" style="width:3rem;height:3rem;color:var(--blue);" role="status">
+                <div class="spinner-border" style="width:3rem;height:3rem;color:var(--navy);" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
                 <p class="mt-3 fw-bold" style="color:var(--navy);">AI inazalisha Lesson Plan... Tafadhali subiri...</p>
@@ -167,10 +168,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 subjectSelect.innerHTML += `<option value="${subj.id}" data-name="${subj.name}">${subj.name}</option>`;
             });
         }
-        // Reset topic dropdown and remove manual input
-        document.getElementById('topic').innerHTML = '<option value="">— Chagua Topic —</option>';
-        const mi = document.getElementById('topicManualInput');
-        if (mi) mi.remove();
+        // Reset topic dropdown
+        document.getElementById('topic').innerHTML = '<option value="">— Chagua Topic au Andika Mwenyewe —</option>';
     });
 
     // When subject changes, fetch topics
@@ -178,35 +177,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const subjectId = this.value;
         const classLevelId = document.getElementById('class_level').value;
         const topicSelect = document.getElementById('topic');
-        topicSelect.innerHTML = '<option value="">— Chagua Topic —</option>';
-        // Remove manual input if exists
-        const oldManual = document.getElementById('topicManualInput');
-        if (oldManual) oldManual.remove();
+        topicSelect.innerHTML = '<option value="">— Chagua Topic au Andika Mwenyewe —</option>';
         if (!subjectId) return;
-        
+
         fetch(`{% url 'curriculum:get_topics' %}?subject_id=${subjectId}&class_level_id=${classLevelId}`)
-            .then(r => r.json())
+            .then(r => {
+                if (!r.ok) throw new Error('Network response not OK');
+                return r.json();
+            })
             .then(data => {
-                if (data.length === 0) {
-                    topicSelect.innerHTML = '<option value="">— Andika topic mwenyewe —</option>';
-                    // Allow typing when no topics found
-                    const textInput = document.createElement('input');
-                    textInput.className = 'form-control mt-2';
-                    textInput.id = 'topicManualInput';
-                    textInput.placeholder = 'Andika topic yako...';
-                    textInput.style.fontSize = '13px';
-                    topicSelect.parentNode.appendChild(textInput);
-                } else {
-                    // Remove manual input if it exists
-                    const manualInput = document.getElementById('topicManualInput');
-                    if (manualInput) manualInput.remove();
+                if (data.length > 0) {
                     data.forEach(function(t) {
                         topicSelect.innerHTML += `<option value="${t.title}">${t.title}</option>`;
                     });
                 }
             })
             .catch(() => {
-                topicSelect.innerHTML = '<option value="">— Hitilafu kupakia topics —</option>';
+                // Topics failed to load - user can still type manually
+                console.log('Topics API failed, manual input available');
             });
     });
 
@@ -226,9 +214,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function getFormData() {
         const subjectSelect = document.getElementById('subject');
         const selectedOption = subjectSelect.options[subjectSelect.selectedIndex];
-        const manualInput = document.getElementById('topicManualInput');
-        // Use manual input value if it exists (when no textbook topics available)
-        const topicValue = manualInput ? manualInput.value : document.getElementById('topic').value;
+        // Use manual input if it has a value, otherwise use dropdown
+        const manualTopic = document.getElementById('topicManual').value.trim();
+        const dropdownTopic = document.getElementById('topic').value;
+        const topicValue = manualTopic || dropdownTopic;
         return {
             education_level: document.querySelector('#education_level option:checked').textContent || '',
             class_name: document.getElementById('class_level').value,

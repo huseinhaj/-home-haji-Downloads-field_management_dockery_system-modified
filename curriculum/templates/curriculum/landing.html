@@ -1,16 +1,16 @@
 {% extends 'curriculum/base.html' %}
 {% load static %}
-{% block title %}Teaching &amp; Learning Materials — TLM Tanzania{% endblock %}
+{% block title %}Teaching &amp; Learning Materials{% endblock %}
 {% block content %}
-<div class="row justify-content-center" style="min-height:calc(100vh - 350px);">
+<div class="row justify-content-center" style="min-height:calc(100vh - 400px);">
   <div class="col-md-6 col-lg-5">
-    <div class="p-card mt-4" style="border:2px solid var(--gold);">
+    <div class="p-card mt-4" style="border:2px solid var(--secondary-500);border-radius:2px;">
       <div class="p-card-body text-center px-4 py-5">
-        <!-- TZ Emblem -->
+        <!-- TZ Emblem (same size as School Results login) -->
         <img src="{{ TZ_EMBLEM_URL }}" alt="Nembo ya Taifa - Tanzania"
-             style="width:80px;height:80px;border-radius:50%;object-fit:contain;background:white;padding:8px;border:3px solid var(--gold);margin-bottom:1rem;">
+             style="width:64px;height:64px;border-radius:50%;object-fit:contain;background:white;padding:6px;border:2px solid var(--secondary-500);margin-bottom:0.75rem;">
 
-        <h4 style="font-family:'Sora',sans-serif;font-weight:800;color:var(--navy);margin-bottom:0.25rem;">
+        <h4 style="font-family:'Sora',sans-serif;font-weight:800;color:var(--accent-500);margin-bottom:0.25rem;">
           📚 Teaching &amp; Learning Materials
         </h4>
         <p style="font-size:0.82rem;color:var(--ink-500);margin-bottom:1.5rem;">
@@ -23,10 +23,10 @@
         </p>
 
         <div class="d-grid gap-3">
-          <a href="{% url 'curriculum:generate_scheme' %}" class="btn btn-navy py-3" style="font-size:0.9rem;">
+          <a href="{% url 'curriculum:generate_scheme' %}" class="btn btn-brand py-3" style="font-size:0.9rem;border-radius:12px;">
             <i class="fas fa-calendar-alt me-2"></i> Generate Scheme of Work
           </a>
-          <a href="{% url 'curriculum:lesson_plan' %}" class="btn btn-gold py-3" style="font-size:0.9rem;">
+          <a href="{% url 'curriculum:lesson_plan' %}" class="btn btn-gold py-3" style="font-size:0.9rem;border-radius:2px;">
             <i class="fas fa-chalkboard me-2"></i> Generate Lesson Plan
           </a>
         </div>
@@ -34,9 +34,9 @@
         {% if not user.is_authenticated %}
         <div class="mt-4 pt-3" style="border-top:1px solid var(--line);">
           <p style="font-size:0.82rem;color:var(--ink-500);margin-bottom:0.5rem;">
-            <i class="fas fa-info-circle me-1" style="color:var(--gold);"></i>
+            <i class="fas fa-info-circle me-1" style="color:var(--secondary-500);"></i>
             Unaweza kutumia zana hizi bila kuingia. Lakini ukifanya
-            <a href="{% url 'login' %}" style="color:var(--navy);font-weight:700;">Ingia</a>
+            <a href="{% url 'login' %}" style="color:var(--accent-500);font-weight:700;">Ingia</a>
             utaweza kuhifadhi kazi zako.
           </p>
           <a href="{% url 'login' %}" class="btn btn-ghost btn-sm mt-2">
@@ -54,8 +54,8 @@
     </div>
 
     <p class="text-center mt-3" style="font-size:0.72rem;color:var(--ink-500);">
-      <i class="fas fa-shield-alt me-1" style="color:var(--gold);"></i>
-      Zana za TLM — Tanzania<br>
+      <i class="fas fa-shield-alt me-1" style="color:var(--secondary-500);"></i>
+      Teaching &amp; Learning Materials &bull; Tanzania<br>
       Wizara ya Elimu, Sayansi na Teknolojia
     </p>
   </div>
