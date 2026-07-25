@@ -478,13 +478,24 @@ Requirements:
 
         response = client.models.generate_content(model=model_name, contents=prompt)
         response_text = response.text
+        logger.info(f"[Scheme] AI response length: {len(response_text)} chars")
 
-        json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
-        json_data = json_match.group() if json_match else response_text
+        # Strip markdown code blocks (DeepSeek often wraps JSON in ```json ... ```)
+        cleaned = re.sub(r'```(?:json)?\s*', '', response_text)
+        cleaned = re.sub(r'```\s*', '', cleaned).strip()
 
-        try:
-            scheme_data = json.loads(json_data)
-        except Exception:
+        # Find JSON array by position (more reliable than regex search)
+        start_idx = cleaned.find('[')
+        end_idx = cleaned.rfind(']')
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            try:
+                scheme_data = json.loads(cleaned[start_idx:end_idx + 1])
+                logger.info(f"[Scheme] Parsed {len(scheme_data)} rows from AI response")
+            except json.JSONDecodeError as je:
+                logger.error(f"[Scheme] JSON parse error: {je}")
+                scheme_data = []
+        else:
+            logger.warning(f"[Scheme] No JSON array found in AI response (first 200 chars: {response_text[:200]})")
             scheme_data = []
 
         saved_id = None
