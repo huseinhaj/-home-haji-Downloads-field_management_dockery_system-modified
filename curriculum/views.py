@@ -472,9 +472,8 @@ Requirements:
 5. "Number of Periods" should be {periods_per_week} for normal weeks, fewer for exam weeks.
 6. "Specific Learning Activities" deconstruct Main Learning Activity into smaller measurable steps.
 7. "References" must follow APA style version 7.
-8. "Teaching and Learning Methods" should include CBC-aligned methods.
-9. Return ONLY valid JSON, no extra text.
-"""
+8. "Teaching and Learning Methods" should include CBC-aligned methods.9. ALL 12 field values must be PLAIN STRINGS, NOT arrays/lists. For example, "Specific Learning Activities" should be a string like "Solve linear equations in one variable" not an array ["Solve..."].
+10. Return ONLY valid JSON, no extra text."""
 
         response = client.models.generate_content(model=model_name, contents=prompt)
         response_text = response.text
@@ -494,8 +493,8 @@ Requirements:
             try:
                 scheme_data = json.loads(cleaned[start_idx:end_idx + 1])
                 logger.info(f"[Scheme] Strategy 1 OK: {len(scheme_data)} rows")
-            except json.JSONDecodeError:
-                logger.warning(f"[Scheme] Strategy 1 failed")
+            except json.JSONDecodeError as je:
+                logger.warning(f"[Scheme] Strategy 1 failed at pos {je.pos}: {je.msg}")
         
         # Strategy 2: Try to parse the ENTIRE cleaned text directly
         if scheme_data is None:
@@ -504,28 +503,26 @@ Requirements:
                 if isinstance(scheme_data, dict) and 'data' in scheme_data:
                     scheme_data = scheme_data['data']
                 elif isinstance(scheme_data, dict):
-                    # Wrapped in an object — extract first array value
                     for v in scheme_data.values():
                         if isinstance(v, list):
                             scheme_data = v
                             break
                 logger.info(f"[Scheme] Strategy 2 OK")
-            except (json.JSONDecodeError, TypeError):
-                logger.warning(f"[Scheme] Strategy 2 failed")
+            except (json.JSONDecodeError, TypeError) as je:
+                logger.warning(f"[Scheme] Strategy 2 failed: {je}")
         
-        # Strategy 3: regex search (last resort)
-        if scheme_data is None:
-            try:
-                json_match = re.search(r'\[.*\]', cleaned, re.DOTALL)
-                if json_match:
-                    scheme_data = json.loads(json_match.group())
-                    logger.info(f"[Scheme] Strategy 3 OK")
-            except (json.JSONDecodeError, TypeError):
-                pass
+        # Post-process: convert any arrays/lists to plain strings (AI sometimes returns arrays)
+        if scheme_data and isinstance(scheme_data, list):
+            for row in scheme_data:
+                for key in row:
+                    if isinstance(row[key], list):
+                        row[key] = ', '.join(str(v) for v in row[key] if v)
+                    elif not isinstance(row[key], str):
+                        row[key] = str(row[key] or '')
         
         if scheme_data is None:
             scheme_data = []
-            logger.error(f"[Scheme] ALL strategies failed! Raw response: {response_text[:500]}")
+            logger.error(f"[Scheme] ALL strategies failed! Raw response: {response_text[:1000]}")
 
         saved_id = None
         if request.user.is_authenticated:
@@ -581,11 +578,11 @@ Requirements:
                 print(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
 
         if not scheme_data:
-            preview = response_text[:400]
-            logger.error(f"[Scheme] AI returned invalid data: {preview}")
+            full_preview = response_text[:800]
+            logger.error(f"[Scheme] AI returned invalid data: {full_preview}")
             return JsonResponse({
                 'success': False,
-                'error': f"AI haikurudisha data sahihi. Sehemu ya majibu: {preview}",
+                'error': f"AI haikurudisha data sahihi. Sehemu ya majibu: {full_preview}",
             }, status=422)
 
         return JsonResponse({
