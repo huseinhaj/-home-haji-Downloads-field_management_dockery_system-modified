@@ -581,14 +581,11 @@ Requirements:
                 print(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
 
         if not scheme_data:
+            preview = response_text[:400]
+            logger.error(f"[Scheme] AI returned invalid data: {preview}")
             return JsonResponse({
                 'success': False,
-                'error': f"AI haikurudisha data sahihi. Jaribu tena au wasiliana na msimamizi.",
-                'debug': {
-                    'response_length': len(response_text),
-                    'rows_found': 0,
-                    'response_preview': response_text[:500],
-                }
+                'error': f"AI haikurudisha data sahihi. Sehemu ya majibu: {preview}",
             }, status=422)
 
         return JsonResponse({
