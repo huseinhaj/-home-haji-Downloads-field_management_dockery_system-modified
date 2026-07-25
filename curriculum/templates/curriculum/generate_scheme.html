@@ -186,6 +186,7 @@
               <div class="col-5">
                 <label>Term</label>
                 <select class="form-control form-select" id="term">
+                  <option value="Full Year">Full Year</option>
                   <option value="I">Term I</option>
                   <option value="II">Term II</option>
                   <option value="III">Term III</option>
@@ -295,6 +296,17 @@
           </div>
           <div class="c-card-body p-2">
             <div class="scheme-table-wrap" id="tableContainer"></div>
+            <div id="editActions" style="display:none;margin-top:0.75rem;" class="d-flex gap-2 flex-wrap">
+              <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="saveEditsBtn">
+                <i class="fas fa-save me-1"></i> Hifadhi Mabadiliko
+              </button>
+              <button class="btn-tlm btn-gold-tlm btn-sm-tlm" id="downloadPdfAfterEditBtn">
+                <i class="fas fa-file-pdf me-1"></i> Pakua PDF (Iliyohaririwa)
+              </button>
+              <span class="chip chip-green" id="editSavedBadge" style="display:none;">
+                <i class="fas fa-check-circle"></i> Imehifadhiwa
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -304,8 +316,8 @@
         <div class="empty-state-icon">
           <i class="fas fa-calendar-alt" style="font-size:1.8rem;color:var(--text-muted);"></i>
         </div>
-        <h5 style="color:var(--text-secondary);">Jaza maelezo upande wa kushoto</h5>
-        <p style="color:var(--text-muted);font-size:var(--font-size-sm);">Kisha bonyeza "Generate with AI" kupata Scheme of Work yako.</p>
+        <h5 style="color:var(--text-secondary);">Jaza taarifa sahihi kisha generate</h5>
+        <p style="color:var(--text-muted);font-size:var(--font-size-sm);">Chagua darasa, somo, na taarifa nyingine kisha bonyeza "Generate with AI" kupata Scheme of Work yako.</p>
       </div>
     </div>
   </div>
@@ -493,7 +505,7 @@ document.addEventListener('DOMContentLoaded', function() {
     .catch(err => showToast('Error: ' + err.message, 'error'));
   });
 
-  // ── Render table ──
+  // ── Render table (with contenteditable for editing) ──
   function renderTable(data) {
     if (!data || data.length === 0) return;
     const headers = Object.keys(data[0]);
@@ -516,11 +528,83 @@ document.addEventListener('DOMContentLoaded', function() {
     html += headers.map((h, i) => `<th style="min-width:${colStyles[i]}px;">${h}</th>`).join('');
     html += '</tr></thead><tbody>';
     data.forEach(function(row, i) {
-      html += '<tr>' + headers.map(h => `<td>${row[h] || ''}</td>`).join('') + '</tr>';
+      html += '<tr>' + headers.map(h => `<td contenteditable="true" class="editable-cell" data-col="${h}" style="cursor:text;">${row[h] || ''}</td>`).join('') + '</tr>';
     });
     html += '</tbody></table>';
     document.getElementById('tableContainer').innerHTML = html;
+    
+    // Show edit actions
+    document.getElementById('editActions').style.display = 'flex';
+    document.getElementById('editSavedBadge').style.display = 'none';
   }
+
+  // ── Save edited scheme data ──
+  document.getElementById('saveEditsBtn').addEventListener('click', function() {
+    if (!currentSchemeData) return;
+    const headers = Object.keys(currentSchemeData[0]);
+    const rows = document.querySelectorAll('#tableContainer table tbody tr');
+    const updatedData = [];
+    rows.forEach(function(row) {
+      const cells = row.querySelectorAll('td');
+      if (cells.length === headers.length) {
+        const rowData = {};
+        cells.forEach(function(cell, ci) {
+          rowData[headers[ci]] = cell.textContent.trim();
+        });
+        updatedData.push(rowData);
+      }
+    });
+    if (updatedData.length === 0) { showToast('Hakuna data ya kuhifadhi', 'warning'); return; }
+    
+    currentSchemeData = updatedData;
+    
+    // Save to DB via AJAX
+    const btn = document.getElementById('saveEditsBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-tlm" style="width:14px;height:14px;border-width:2px;"></div> Inahifadhi...';
+    
+    fetch('{% url "curriculum:save_scheme_edits" %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+      body: JSON.stringify({ saved_id: currentSavedId, scheme_data: updatedData }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save me-1"></i> Hifadhi Mabadiliko';
+      if (data.success) {
+        document.getElementById('editSavedBadge').style.display = 'inline-flex';
+        showToast('✅ Mabadiliko yamehifadhiwa!', 'success');
+      } else {
+        showToast(data.error || 'Hitilafu wakati wa kuhifadhi', 'error');
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save me-1"></i> Hifadhi Mabadiliko';
+      showToast('Network error: ' + err.message, 'error');
+    });
+  });
+
+  // ── Download PDF after edit ──
+  document.getElementById('downloadPdfAfterEditBtn').addEventListener('click', function() {
+    if (!currentSchemeData) return;
+    const fd = { ...getFormData(), scheme_data: currentSchemeData };
+    fetch('{% url "curriculum:download_scheme_pdf" %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+      body: JSON.stringify(fd),
+    })
+    .then(r => r.blob())
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Scheme_of_Work_${fd.subject || 'document'}.pdf`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('PDF imepakuliwa!', 'success');
+    });
+  });
 
   // ── Copy table ──
   document.getElementById('copyTableBtn').addEventListener('click', function() {

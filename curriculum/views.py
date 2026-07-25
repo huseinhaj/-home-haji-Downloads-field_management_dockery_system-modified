@@ -14,6 +14,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
@@ -60,8 +61,20 @@ def get_tlm_teacher(request):
 def landing(request):
     """Public landing page — shows tools. If teacher is registered, greet them."""
     teacher = get_tlm_teacher(request)
+    
+    # Real DB statistics for the landing page
+    from django.db.models import Count
+    total_teachers = TLMTeacher.objects.count()
+    total_schemes = SchemeOfWork.objects.count()
+    total_lesson_plans = LessonPlan.objects.count()
+    total_logbooks = LogbookEntry.objects.count()
+    
     return render(request, 'curriculum/landing.html', {
         'teacher': teacher,
+        'total_teachers': total_teachers,
+        'total_schemes': total_schemes,
+        'total_lesson_plans': total_lesson_plans,
+        'total_logbooks': total_logbooks,
     })
 
 
@@ -1066,6 +1079,78 @@ def download_lesson_plan_word(request):
     response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     response['Content-Disposition'] = f'attachment; filename="{safe_name}.docx"'
     return response
+
+
+# =============================================================================
+# SAVE EDITED SCHEME / LESSON PLAN
+# =============================================================================
+
+@require_POST
+def ajax_save_scheme_edits(request):
+    """Save edited scheme data back to DB."""
+    try:
+        data = json.loads(request.body)
+        scheme_id = data.get('saved_id')
+        scheme_data = data.get('scheme_data', [])
+        
+        if not scheme_data:
+            return JsonResponse({'success': False, 'error': 'Hakuna data'}, status=400)
+        
+        if scheme_id:
+            try:
+                scheme = SchemeOfWork.objects.get(id=scheme_id)
+                scheme.scheme_data = scheme_data
+                scheme.save(update_fields=['scheme_data'])
+            except SchemeOfWork.DoesNotExist:
+                pass
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
+
+
+@require_POST
+def ajax_save_lesson_edits(request):
+    """Save edited lesson plan data back to DB."""
+    try:
+        data = json.loads(request.body)
+        lesson_id = data.get('saved_id')
+        lesson_data = data.get('lesson_data', {})
+        form_data = data.get('form_data', {})
+        
+        if lesson_id:
+            try:
+                lp = LessonPlan.objects.get(id=lesson_id)
+                # Update fields that can be edited
+                if lesson_data.get('main_competence'):
+                    lp.main_competence = lesson_data['main_competence']
+                if lesson_data.get('specific_competence'):
+                    lp.specific_competence = lesson_data['specific_competence']
+                if lesson_data.get('previous_knowledge'):
+                    lp.previous_knowledge = lesson_data['previous_knowledge']
+                if lesson_data.get('learning_objectives'):
+                    lp.learning_objectives = lesson_data['learning_objectives']
+                if lesson_data.get('teaching_methods'):
+                    lp.teaching_methods = lesson_data['teaching_methods']
+                if lesson_data.get('teaching_resources'):
+                    lp.teaching_resources = lesson_data['teaching_resources']
+                if lesson_data.get('lesson_development'):
+                    lp.lesson_development = lesson_data['lesson_development']
+                if lesson_data.get('remarks'):
+                    lp.remarks = lesson_data['remarks']
+                if form_data.get('teacher_name'):
+                    lp.teacher_name = form_data['teacher_name']
+                if form_data.get('topic'):
+                    lp.topic = form_data['topic']
+                if form_data.get('subtopic') is not None:
+                    lp.subtopic = form_data['subtopic']
+                lp.save()
+            except LessonPlan.DoesNotExist:
+                pass
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
 
 
 @login_required

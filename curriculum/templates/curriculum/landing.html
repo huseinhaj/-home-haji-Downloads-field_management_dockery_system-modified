@@ -167,22 +167,22 @@
       Haraka, sahihi, na bila login!
     </p>
 
-    <!-- Stats counter -->
+    <!-- Stats counter — REAL data from DB -->
     <div class="stats-bar fade-in-delay-3">
       <div class="stat-item">
-        <div class="stat-num counter" data-target="500">0</div>
+        <div class="stat-num counter" data-target="{{ total_schemes|default:0 }}">0</div>
         <div class="stat-item-label">Schemes</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num counter" data-target="1200">0</div>
+        <div class="stat-num counter" data-target="{{ total_lesson_plans|default:0 }}">0</div>
         <div class="stat-item-label">Lesson Plans</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num counter" data-target="2000">0</div>
+        <div class="stat-num counter" data-target="{{ total_teachers|default:0 }}">0</div>
         <div class="stat-item-label">Teachers</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num counter" data-target="1500">0</div>
+        <div class="stat-num counter" data-target="{{ total_logbooks|default:0 }}">0</div>
         <div class="stat-item-label">Logbook Entries</div>
       </div>
     </div>

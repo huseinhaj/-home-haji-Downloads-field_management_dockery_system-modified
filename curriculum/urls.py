@@ -37,6 +37,10 @@ urlpatterns = [
     path('api/save-teacher/', views.ajax_save_teacher, name='save_teacher'),
     path('api/lookup-teacher/', views.ajax_lookup_teacher, name='lookup_teacher'),
 
+    # Save edited content
+    path('scheme/ajax-save-edits/', views.ajax_save_scheme_edits, name='save_scheme_edits'),
+    path('lesson-plan/ajax-save-edits/', views.ajax_save_lesson_edits, name='save_lesson_edits'),
+
     # API helpers
     path('api/get-topics/', views.get_topics_by_subject, name='get_topics'),
     path('api/get-topics-ai/', views.get_topics_ai, name='get_topics_ai'),
