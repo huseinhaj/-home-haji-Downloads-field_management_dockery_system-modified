@@ -484,19 +484,48 @@ Requirements:
         cleaned = re.sub(r'```(?:json)?\s*', '', response_text)
         cleaned = re.sub(r'```\s*', '', cleaned).strip()
 
-        # Find JSON array by position (more reliable than regex search)
+        # Try multiple JSON extraction strategies
+        scheme_data = None
+        
+        # Strategy 1: Find JSON array by position
         start_idx = cleaned.find('[')
         end_idx = cleaned.rfind(']')
         if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
             try:
                 scheme_data = json.loads(cleaned[start_idx:end_idx + 1])
-                logger.info(f"[Scheme] Parsed {len(scheme_data)} rows from AI response")
-            except json.JSONDecodeError as je:
-                logger.error(f"[Scheme] JSON parse error: {je}")
-                scheme_data = []
-        else:
-            logger.warning(f"[Scheme] No JSON array found in AI response (first 200 chars: {response_text[:200]})")
+                logger.info(f"[Scheme] Strategy 1 OK: {len(scheme_data)} rows")
+            except json.JSONDecodeError:
+                logger.warning(f"[Scheme] Strategy 1 failed")
+        
+        # Strategy 2: Try to parse the ENTIRE cleaned text directly
+        if scheme_data is None:
+            try:
+                scheme_data = json.loads(cleaned)
+                if isinstance(scheme_data, dict) and 'data' in scheme_data:
+                    scheme_data = scheme_data['data']
+                elif isinstance(scheme_data, dict):
+                    # Wrapped in an object — extract first array value
+                    for v in scheme_data.values():
+                        if isinstance(v, list):
+                            scheme_data = v
+                            break
+                logger.info(f"[Scheme] Strategy 2 OK")
+            except (json.JSONDecodeError, TypeError):
+                logger.warning(f"[Scheme] Strategy 2 failed")
+        
+        # Strategy 3: regex search (last resort)
+        if scheme_data is None:
+            try:
+                json_match = re.search(r'\[.*\]', cleaned, re.DOTALL)
+                if json_match:
+                    scheme_data = json.loads(json_match.group())
+                    logger.info(f"[Scheme] Strategy 3 OK")
+            except (json.JSONDecodeError, TypeError):
+                pass
+        
+        if scheme_data is None:
             scheme_data = []
+            logger.error(f"[Scheme] ALL strategies failed! Raw response: {response_text[:500]}")
 
         saved_id = None
         if request.user.is_authenticated:
@@ -551,7 +580,16 @@ Requirements:
             except Exception as save_err:
                 print(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
 
-        return JsonResponse({'success': True, 'data': scheme_data, 'saved_id': saved_id})
+        return JsonResponse({
+            'success': True,
+            'data': scheme_data,
+            'saved_id': saved_id,
+            'debug': {
+                'response_length': len(response_text),
+                'rows_found': len(scheme_data) if scheme_data else 0,
+                'response_preview': response_text[:300],
+            }
+        })
 
     except Exception as e:
         import traceback
