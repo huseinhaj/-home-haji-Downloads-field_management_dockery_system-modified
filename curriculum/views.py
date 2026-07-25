@@ -580,14 +580,24 @@ Requirements:
             except Exception as save_err:
                 print(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
 
+        if not scheme_data:
+            return JsonResponse({
+                'success': False,
+                'error': f"AI haikurudisha data sahihi. Jaribu tena au wasiliana na msimamizi.",
+                'debug': {
+                    'response_length': len(response_text),
+                    'rows_found': 0,
+                    'response_preview': response_text[:500],
+                }
+            }, status=422)
+
         return JsonResponse({
             'success': True,
             'data': scheme_data,
             'saved_id': saved_id,
             'debug': {
                 'response_length': len(response_text),
-                'rows_found': len(scheme_data) if scheme_data else 0,
-                'response_preview': response_text[:300],
+                'rows_found': len(scheme_data),
             }
         })
 
