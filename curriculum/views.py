@@ -472,7 +472,8 @@ Requirements:
 5. "Number of Periods" should be {periods_per_week} for normal weeks, fewer for exam weeks.
 6. "Specific Learning Activities" deconstruct Main Learning Activity into smaller measurable steps.
 7. "References" must follow APA style version 7.
-8. "Teaching and Learning Methods" should include CBC-aligned methods.9. ALL 12 field values must be PLAIN STRINGS, NOT arrays/lists. For example, "Specific Learning Activities" should be a string like "Solve linear equations in one variable" not an array ["Solve..."].
+8. "Teaching and Learning Methods" should include CBC-aligned methods.
+9. ALL 12 field values must be PLAIN STRINGS, NOT arrays/lists. For example, "Specific Learning Activities" should be a string like "Solve linear equations in one variable" not an array ["Solve..."].
 10. Return ONLY valid JSON, no extra text."""
 
         response = client.models.generate_content(model=model_name, contents=prompt)
@@ -483,35 +484,67 @@ Requirements:
         cleaned = re.sub(r'```(?:json)?\s*', '', response_text)
         cleaned = re.sub(r'```\s*', '', cleaned).strip()
 
-        # Try multiple JSON extraction strategies
-        scheme_data = None
+        # Helper: parse first valid JSON array from text using bracket matching
+        def _extract_first_json_array(text):
+            """Find the first valid JSON array in text using proper bracket matching.
+            Handles strings, escapes, and nested brackets."""
+            start = text.find('[')
+            if start == -1:
+                return None
+            depth = 0
+            in_str = False
+            esc = False
+            for i in range(start, len(text)):
+                ch = text[i]
+                if esc:
+                    esc = False
+                    continue
+                if ch == '\\' and in_str:
+                    esc = True
+                    continue
+                if ch == '"' and not esc:
+                    in_str = not in_str
+                    continue
+                if in_str:
+                    continue
+                if ch == '[':
+                    depth += 1
+                elif ch == ']':
+                    depth -= 1
+                    if depth == 0:
+                        candidate = text[start:i+1]
+                        try:
+                            return json.loads(candidate)
+                        except json.JSONDecodeError:
+                            continue  # try next closing bracket
+            return None
+
+        scheme_data = _extract_first_json_array(cleaned)
         
-        # Strategy 1: Find JSON array by position
-        start_idx = cleaned.find('[')
-        end_idx = cleaned.rfind(']')
-        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            try:
-                scheme_data = json.loads(cleaned[start_idx:end_idx + 1])
-                logger.info(f"[Scheme] Strategy 1 OK: {len(scheme_data)} rows")
-            except json.JSONDecodeError as je:
-                logger.warning(f"[Scheme] Strategy 1 failed at pos {je.pos}: {je.msg}")
-        
-        # Strategy 2: Try to parse the ENTIRE cleaned text directly
         if scheme_data is None:
+            # Fallback A: entire cleaned text as JSON
             try:
-                scheme_data = json.loads(cleaned)
-                if isinstance(scheme_data, dict) and 'data' in scheme_data:
-                    scheme_data = scheme_data['data']
-                elif isinstance(scheme_data, dict):
-                    for v in scheme_data.values():
+                parsed = json.loads(cleaned)
+                if isinstance(parsed, dict):
+                    for v in parsed.values():
                         if isinstance(v, list):
                             scheme_data = v
                             break
-                logger.info(f"[Scheme] Strategy 2 OK")
-            except (json.JSONDecodeError, TypeError) as je:
-                logger.warning(f"[Scheme] Strategy 2 failed: {je}")
+                elif isinstance(parsed, list):
+                    scheme_data = parsed
+            except (json.JSONDecodeError, TypeError):
+                logger.warning("[Scheme] Fallback A failed")
         
-        # Post-process: convert any arrays/lists to plain strings (AI sometimes returns arrays)
+        if scheme_data is None:
+            # Fallback B: greedy regex
+            try:
+                m = re.search(r'\[.*\]', cleaned, re.DOTALL)
+                if m:
+                    scheme_data = json.loads(m.group())
+            except (json.JSONDecodeError, TypeError):
+                logger.warning("[Scheme] Fallback B failed")
+        
+        # Post-process: convert arrays to strings in results
         if scheme_data and isinstance(scheme_data, list):
             for row in scheme_data:
                 for key in row:
