@@ -382,13 +382,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const districtId = this.value;
     const schoolSelect = document.getElementById('school');
     schoolSelect.innerHTML = '<option value=""></option>';
+    updateSelectLabel(schoolSelect);
     if (!districtId) { return; }
     fetch(`{% url 'curriculum:get_schools' %}?district_id=${districtId}`)
       .then(r => r.json())
       .then(data => {
-        data.forEach(function(s) {
-          schoolSelect.innerHTML += `<option value="${s.id}">${s.name} (${s.level === 'Primary' ? 'Msingi' : 'Sekondari'})</option>`;
-        });
+        if (data.length === 0) {
+          schoolSelect.innerHTML = '<option value="">— Hakuna shule katika wilaya hii —</option>';
+          showToast('Hakuna shule zilizopatikana kwenye wilaya hii', 'warning');
+        } else {
+          data.forEach(function(s) {
+            schoolSelect.innerHTML += `<option value="${s.id}">${s.name} (${s.level === 'Primary' ? 'Msingi' : 'Sekondari'})</option>`;
+          });
+        }
+        updateSelectLabel(schoolSelect);
+      })
+      .catch(() => {
+        schoolSelect.innerHTML = '<option value="">— Hitilafu kupakia shule —</option>';
+        showToast('Hitilafu ya mtandao wakati wa kupakia shule. Tafadhali jaribu tena.', 'error');
       });
   });
 
@@ -466,6 +477,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('successSchool').textContent = schoolText;
         document.getElementById('successMsg').textContent = data.is_new ? 'Usajili wako umekamilika!' : 'Taarifa zako zimesasishwa!';
         showStep(4);
+        // Set currentStep to 5 so Enter key doesn't re-submit
+        currentStep = 5;
         showToast(data.is_new ? 'Umefanikiwa kujisajili!' : 'Taarifa zimesasishwa!', 'success');
       } else {
         showToast(data.error || 'Hitilafu. Jaribu tena.', 'error');
