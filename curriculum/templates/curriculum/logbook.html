@@ -1,308 +1,290 @@
 {% extends 'curriculum/base.html' %}
 {% block title %}Andika Logbook{% endblock %}
 {% block content %}
+<style>
+  .gps-status {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.85rem;
+    border-radius: var(--radius-md);
+    background: rgba(15,23,42,0.02);
+    border: 1px solid var(--border-color);
+  }
+  .period-card {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    animation: fadeUp 250ms var(--ease-out);
+  }
+</style>
+
 <div class="container-fluid px-0">
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="p-card p-3" style="border-left:5px solid var(--green);">
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <div style="width:48px;height:48px;background:var(--navy);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fas fa-book-open" style="color:#fff;font-size:20px;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size:16px;font-weight:800;color:var(--navy);">📖 Logbook — {{ today_name }}, {{ today|date:"d F Y" }}</div>
-                        <div style="font-size:12px;color:var(--ink-500);">
-                            {% if school %}{{ school.name }}{% endif %}
-                            {% if student.selected_school and student.selected_school.district %}
-                                &bull; {{ student.selected_school.district.name }}
-                            {% endif %}
-                        </div>
-                    </div>
+  <!-- Header -->
+  <div class="c-card p-3 mb-3" style="border-left:4px solid var(--green-500);">
+    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+      <div class="stat-icon" style="background:var(--green-500);">
+        <i class="fas fa-book-open" style="color:#fff;font-size:1.1rem;"></i>
+      </div>
+      <div style="flex:1;">
+        <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:clamp(0.9rem,1.5vw,1.15rem);">
+          📖 Logbook — {{ today_name }}, {{ today|date:"d F Y" }}
+        </h4>
+        <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
+          {% if school %}{{ school.name }}{% endif %}
+          {% if student.selected_school.district %} &bull; {{ student.selected_school.district.name }}{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="c-card">
+        <div class="c-card-body">
+          {% if location_error %}
+          <div class="alert-tlm mb-3" style="border-left-color:var(--warning);">
+            <strong><i class="fas fa-map-marker-alt me-2"></i>Eneo halijathibitishwa!</strong>
+            <p class="mb-0 mt-1" style="font-size:var(--font-size-sm);">Bonyeza "Thibitisha Eneo" ili kuwasilisha logbook.</p>
+          </div>
+          {% endif %}
+
+          <form method="post" id="logbookForm">
+            {% csrf_token %}
+
+            <!-- Location Verification -->
+            <div class="gps-status mb-3">
+              <div style="flex:1;">
+                <strong style="font-size:var(--font-size-sm);color:var(--text-primary);">
+                  <i class="fas fa-map-marker-alt me-1" style="color:var(--gold-400);"></i>Uthibitisho wa Eneo
+                </strong>
+                <div style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:2px;">
+                  <span id="locationStatus">Bado haujathibitishwa</span>
                 </div>
-                <div class="mt-2" style="font-size:11px;color:var(--ink-500);">
-                    <i class="fas fa-info-circle me-1" style="color:var(--gold);"></i>
-                    Thibitisha eneo lako kwa GPS kabla ya kuwasilisha
-                </div>
+              </div>
+              <button type="button" class="btn-tlm btn-primary-tlm btn-sm-tlm" id="verifyLocationBtn">
+                <i class="fas fa-location-dot me-1"></i> Thibitisha
+              </button>
             </div>
+            <input type="hidden" name="latitude" id="latitude" value="">
+            <input type="hidden" name="longitude" id="longitude" value="">
+            <input type="hidden" name="location_address" id="location_address" value="">
+            <input type="hidden" name="is_location_verified" id="is_location_verified" value="false">
+            <input type="hidden" name="lessons_data" id="lessons_data" value="[]">
+
+            <!-- Lesson Periods -->
+            <div class="sec-hd mb-2">
+              <h3><i class="fas fa-chalkboard"></i>Vipindi vya Masomo</h3>
+              <button type="button" class="btn-tlm btn-primary-tlm btn-sm-tlm" id="addPeriodBtn">
+                <i class="fas fa-plus me-1"></i>Ongeza Kipindi
+              </button>
+            </div>
+            <div id="periodsContainer"></div>
+
+            <!-- Other Activities -->
+            <div class="mb-2">
+              <label class="form-label-tlm">{{ form.other_activities.label }}</label>
+              {{ form.other_activities }}
+            </div>
+            <div class="mb-2">
+              <label class="form-label-tlm">{{ form.challenges_faced.label }}</label>
+              {{ form.challenges_faced }}
+            </div>
+            <div class="mb-3">
+              <label class="form-label-tlm">{{ form.lessons_learned.label }}</label>
+              {{ form.lessons_learned }}
+            </div>
+
+            <button type="submit" class="btn-tlm btn-gold-tlm w-100 py-2" id="submitBtn" style="border-radius:var(--radius-md);">
+              <i class="fas fa-save me-2"></i>Wasilisha Logbook
+            </button>
+          </form>
         </div>
+      </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="p-card p-3">
-                {% if location_error %}
-                <div class="alert alert-warning alert-dismissible fade show" style="border-left:4px solid #D97706;font-size:13px;">
-                    <strong><i class="fas fa-map-marker-alt me-2"></i>Eneo halijathibitishwa!</strong>
-                    <p class="mb-0 mt-1">Tafadhali bonyeza kitufe cha "Thibitisha Eneo" ili kuweza kuwasilisha logbook yako.</p>
-                </div>
-                {% endif %}
+    <!-- Side info -->
+    <div class="col-lg-4">
+      <div class="c-card p-3 mb-3">
+        <div class="sec-hd"><h3><i class="fas fa-info-circle"></i>Maelekezo</h3></div>
+        <ul style="font-size:var(--font-size-sm);color:var(--text-secondary);padding-left:1rem;margin:0;">
+          <li class="mb-2">Thibitisha eneo lako kwa GPS kabla ya kuwasilisha</li>
+          <li class="mb-2">Jaza kila kipindi ulichofundisha</li>
+          <li class="mb-2">Andika changamoto na tafakari zako</li>
+          <li>Logbook inatumwa kwa siku za Jumatatu hadi Ijumaa tu</li>
+        </ul>
+      </div>
 
-                <form method="post" id="logbookForm">
-                    {% csrf_token %}
-
-                    <!-- Location Verification -->
-                    <div class="mb-4 p-3" style="background:#f4f6fb;border-radius:var(--radius);border:1px solid var(--line);">
-                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                            <div>
-                                <strong style="font-size:13px;color:var(--navy);">
-                                    <i class="fas fa-map-marker-alt me-2" style="color:var(--gold);"></i>Uthibitisho wa Eneo
-                                </strong>
-                                <div style="font-size:11px;color:var(--ink-500);margin-top:2px;">
-                                    <span id="locationStatus">Bado haujathibitishwa</span>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-navy btn-sm" id="verifyLocationBtn">
-                                <i class="fas fa-location-dot me-1"></i> Thibitisha Eneo
-                            </button>
-                        </div>
-                        <input type="hidden" name="latitude" id="latitude" value="">
-                        <input type="hidden" name="longitude" id="longitude" value="">
-                        <input type="hidden" name="location_address" id="location_address" value="">
-                        <input type="hidden" name="is_location_verified" id="is_location_verified" value="false">
-                    </div>
-
-                    <!-- Lessons Data (JSON) -->
-                    <input type="hidden" name="lessons_data" id="lessons_data" value="[]">
-
-                    <!-- Lesson Periods -->
-                    <div class="sec-hd mb-2">
-                        <h3><i class="fas fa-chalkboard"></i>Vipindi vya Masomo</h3>
-                        <button type="button" class="btn btn-navy btn-sm" id="addPeriodBtn">
-                            <i class="fas fa-plus me-1"></i>Ongeza Kipindi
-                        </button>
-                    </div>
-                    <div id="periodsContainer"></div>
-
-                    <!-- Other Activities -->
-                    <div class="mb-3">
-                        <label class="form-label-tlm">{{ form.other_activities.label }}</label>
-                        {{ form.other_activities }}
-                        <div style="font-size:10px;color:var(--ink-500);">Mikutano, majukumu ya shule, ziara, n.k.</div>
-                    </div>
-
-                    <!-- Challenges -->
-                    <div class="mb-3">
-                        <label class="form-label-tlm">{{ form.challenges_faced.label }}</label>
-                        {{ form.challenges_faced }}
-                    </div>
-
-                    <!-- Lessons Learned -->
-                    <div class="mb-3">
-                        <label class="form-label-tlm">{{ form.lessons_learned.label }}</label>
-                        {{ form.lessons_learned }}
-                    </div>
-
-                    <button type="submit" class="btn btn-gold w-100 py-2" id="submitBtn">
-                        <i class="fas fa-save me-2"></i>Wasilisha Logbook
-                    </button>
-                </form>
-            </div>
+      {% if logbook_entry and logbook_entry.lessons_data %}
+      <div class="c-card p-3">
+        <div class="sec-hd"><h3><i class="fas fa-history"></i>Leo Umeshajaza</h3></div>
+        {% for lesson in logbook_entry.lessons_data %}
+        <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background:rgba(15,23,42,0.02);border-radius:var(--radius-sm);">
+          <div>
+            <strong style="font-size:var(--font-size-sm);">{{ lesson.subject }}</strong>
+            <div style="font-size:var(--font-size-xs);color:var(--text-muted);">Darasa {{ lesson.class }} &bull; Kipindi {{ lesson.period }}</div>
+          </div>
+          <span class="chip chip-green" style="font-size:9px;">Imehifadhiwa</span>
         </div>
-
-        <!-- Side info -->
-        <div class="col-lg-4">
-            <div class="p-card p-3 mb-3">
-                <div class="sec-hd"><h3><i class="fas fa-info-circle"></i>Maelekezo</h3></div>
-                <ul style="font-size:12px;color:var(--ink-500);padding-left:16px;margin-bottom:0;">
-                    <li class="mb-2">Thibitisha eneo lako kwa GPS kabla ya kuwasilisha</li>
-                    <li class="mb-2">Jaza kila kipindi ulichofundisha</li>
-                    <li class="mb-2">Andika changamoto na tafakari zako</li>
-                    <li>Logbook inatumwa kwa siku za Jumatatu hadi Ijumaa tu</li>
-                </ul>
-            </div>
-
-            {% if logbook_entry and logbook_entry.lessons_data %}
-            <div class="p-card p-3">
-                <div class="sec-hd"><h3><i class="fas fa-history"></i>Leo Umeshajaza</h3></div>
-                {% for lesson in logbook_entry.lessons_data %}
-                <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background:#f4f6fb;border-radius:var(--radius);">
-                    <div>
-                        <strong style="font-size:12px;">{{ lesson.subject }}</strong>
-                        <div style="font-size:11px;color:var(--ink-500);">Darasa {{ lesson.class }} &bull; Kipindi {{ lesson.period }}</div>
-                    </div>
-                    <span class="chip chip-green" style="font-size:10px;">Imehifadhiwa</span>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let periodCount = 0;
+  let periodCount = 0;
+  const subjects = [{% for subj in subjects %}'{{ subj.name }}',{% endfor %}];
 
-    const subjects = [
-        {% for subj in subjects %}'{{ subj.name }}',{% endfor %}
-    ];
+  const periodTemplate = function(index) {
+    return `<div class="period-card" data-index="${index}">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <strong style="color:var(--text-primary);font-size:var(--font-size-sm);">Kipindi #${index + 1}</strong>
+        <button type="button" class="btn-tlm btn-sm-tlm remove-period" style="background:rgba(220,38,38,0.08);color:var(--error);border:none;padding:3px 8px;">
+          <i class="fas fa-times"></i> Ondoa
+        </button>
+      </div>
+      <div class="row g-2">
+        <div class="col-12 col-sm-4">
+          <label class="form-label-tlm" style="font-size:9px;">Subject</label>
+          <select class="form-control form-control-sm period-subject" style="font-size:12px;">
+            <option value="">Select</option>
+            ${subjects.map(s => `<option value="${s}">${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-6 col-sm-3">
+          <label class="form-label-tlm" style="font-size:9px;">Class</label>
+          <input class="form-control form-control-sm period-class" placeholder="e.g. Form 2A" style="font-size:12px;">
+        </div>
+        <div class="col-3 col-sm-2">
+          <label class="form-label-tlm" style="font-size:9px;">Period</label>
+          <input class="form-control form-control-sm period-num" type="number" min="1" value="${index + 1}" style="font-size:12px;">
+        </div>
+        <div class="col-3 col-sm-3">
+          <label class="form-label-tlm" style="font-size:9px;">Type</label>
+          <select class="form-control form-control-sm period-activity" style="font-size:12px;">
+            <option value="theory">Theory</option>
+            <option value="practical">Practical</option>
+            <option value="revision">Revision</option>
+            <option value="assessment">Assessment</option>
+          </select>
+        </div>
+      </div>
+      <div class="row g-2 mt-1">
+        <div class="col-6">
+          <label class="form-label-tlm" style="font-size:9px;">Main Topic</label>
+          <input class="form-control form-control-sm period-topic" placeholder="Mada kuu" style="font-size:12px;">
+        </div>
+        <div class="col-6">
+          <label class="form-label-tlm" style="font-size:9px;">Subtopic</label>
+          <input class="form-control form-control-sm period-subtopic" placeholder="Mada ndogo" style="font-size:12px;">
+        </div>
+      </div>
+      <div class="row g-2 mt-1">
+        <div class="col-4">
+          <label class="form-label-tlm" style="font-size:9px;">Enrolled</label>
+          <input class="form-control form-control-sm period-enrolled" type="number" placeholder="Total" style="font-size:12px;">
+        </div>
+        <div class="col-4">
+          <label class="form-label-tlm" style="font-size:9px;">Present</label>
+          <input class="form-control form-control-sm period-present" type="number" placeholder="Present" style="font-size:12px;">
+        </div>
+        <div class="col-4">
+          <label class="form-label-tlm" style="font-size:9px;">Aids</label>
+          <input class="form-control form-control-sm period-aids" placeholder="Vifaa" style="font-size:12px;">
+        </div>
+      </div>
+      <div class="row g-2 mt-1">
+        <div class="col-12">
+          <label class="form-label-tlm" style="font-size:9px;">Methods</label>
+          <input class="form-control form-control-sm period-methods" placeholder="e.g. Discussion, Q&A" style="font-size:12px;">
+        </div>
+      </div>
+    </div>`;
+  };
 
-    const periodTemplate = function(index) {
-        return `
-            <div class="p-card p-3 mb-3" data-index="${index}">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <strong style="color:var(--navy);font-size:14px;">Kipindi #${index + 1}</strong>
-                    <button type="button" class="btn btn-sm remove-period" style="background:transparent;color:#DC2626;border:1px solid #DC2626;border-radius:3px;padding:2px 8px;font-size:11px;">
-                        <i class="fas fa-times"></i> Ondoa
-                    </button>
-                </div>
-                <div class="row g-2">
-                    <div class="col-4">
-                        <label class="small fw-bold">Subject</label>
-                        <select class="form-control form-control-sm period-subject">
-                            <option value="">Select Subject</option>
-                            ${subjects.map(s => `<option value="${s}">${s}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="col-3">
-                        <label class="small fw-bold">Class</label>
-                        <input class="form-control form-control-sm period-class" placeholder="e.g. Form 2A">
-                    </div>
-                    <div class="col-2">
-                        <label class="small fw-bold">Period</label>
-                        <input class="form-control form-control-sm period-num" placeholder="1,2,3..." type="number" min="1" value="${index + 1}">
-                    </div>
-                    <div class="col-3">
-                        <label class="small fw-bold">Activity Type</label>
-                        <select class="form-control form-control-sm period-activity">
-                            <option value="theory">Theory</option>
-                            <option value="practical">Practical</option>
-                            <option value="revision">Revision</option>
-                            <option value="assessment">Assessment</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col-6">
-                        <label class="small fw-bold">Main Topic</label>
-                        <input class="form-control form-control-sm period-topic" placeholder="Mada kuu">
-                    </div>
-                    <div class="col-6">
-                        <label class="small fw-bold">Subtopic</label>
-                        <input class="form-control form-control-sm period-subtopic" placeholder="Mada ndogo">
-                    </div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col-4">
-                        <label class="small fw-bold">Enrolled</label>
-                        <input class="form-control form-control-sm period-enrolled" type="number" placeholder="Total">
-                    </div>
-                    <div class="col-4">
-                        <label class="small fw-bold">Present</label>
-                        <input class="form-control form-control-sm period-present" type="number" placeholder="Present">
-                    </div>
-                    <div class="col-4">
-                        <label class="small fw-bold">Teaching Aids</label>
-                        <input class="form-control form-control-sm period-aids" placeholder="Vifaa">
-                    </div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col-12">
-                        <label class="small fw-bold">Methods Used</label>
-                        <input class="form-control form-control-sm period-methods" placeholder="e.g. Discussion, Q&A, Group work">
-                    </div>
-                </div>
-            </div>
-        `;
-    };
+  document.getElementById('addPeriodBtn').addEventListener('click', function() {
+    const container = document.getElementById('periodsContainer');
+    container.insertAdjacentHTML('beforeend', periodTemplate(periodCount));
+    periodCount++;
+    updateLessonsData();
+  });
 
-    document.getElementById('addPeriodBtn').addEventListener('click', function() {
-        const container = document.getElementById('periodsContainer');
-        container.insertAdjacentHTML('beforeend', periodTemplate(periodCount));
-        periodCount++;
-        updateLessonsData();
+  document.getElementById('periodsContainer').addEventListener('click', function(e) {
+    if (e.target.closest('.remove-period')) {
+      e.target.closest('.period-card').remove();
+      updateLessonsData();
+    }
+  });
+
+  document.getElementById('periodsContainer').addEventListener('change', updateLessonsData);
+  document.getElementById('periodsContainer').addEventListener('input', updateLessonsData);
+
+  function updateLessonsData() {
+    const data = [];
+    document.querySelectorAll('.period-card').forEach(function(card) {
+      data.push({
+        period: card.querySelector('.period-num')?.value || '',
+        subject: card.querySelector('.period-subject')?.value || '',
+        class: card.querySelector('.period-class')?.value || '',
+        activity_type: card.querySelector('.period-activity')?.value || '',
+        main_topic: card.querySelector('.period-topic')?.value || '',
+        subtopic: card.querySelector('.period-subtopic')?.value || '',
+        enrolled: card.querySelector('.period-enrolled')?.value || '',
+        present: card.querySelector('.period-present')?.value || '',
+        teaching_aids: card.querySelector('.period-aids')?.value || '',
+        methods: card.querySelector('.period-methods')?.value || '',
+      });
     });
+    document.getElementById('lessons_data').value = JSON.stringify(data);
+  }
 
-    document.getElementById('periodsContainer').addEventListener('click', function(e) {
-        if (e.target.closest('.remove-period')) {
-            e.target.closest('.p-card').remove();
-            updateLessonsData();
-        }
-    });
+  // ── Location verification ──
+  document.getElementById('verifyLocationBtn').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Inathibitisha...';
 
-    document.getElementById('periodsContainer').addEventListener('change', updateLessonsData);
-    document.getElementById('periodsContainer').addEventListener('input', updateLessonsData);
-
-    function updateLessonsData() {
-        const cards = document.querySelectorAll('.period-card, .p-card[data-index]');
-        const data = [];
-        cards.forEach(function(card) {
-            data.push({
-                period: card.querySelector('.period-num').value,
-                subject: card.querySelector('.period-subject').value,
-                class: card.querySelector('.period-class').value,
-                activity_type: card.querySelector('.period-activity').value,
-                main_topic: card.querySelector('.period-topic').value,
-                subtopic: card.querySelector('.period-subtopic').value,
-                enrolled: card.querySelector('.period-enrolled').value,
-                present: card.querySelector('.period-present').value,
-                teaching_aids: card.querySelector('.period-aids').value,
-                methods: card.querySelector('.period-methods').value,
-            });
-        });
-        document.getElementById('lessons_data').value = JSON.stringify(data);
+    if (!navigator.geolocation) {
+      showToast('GPS haitumiki kwenye browser yako.', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-location-dot me-1"></i> Thibitisha';
+      return;
     }
 
-    // Location verification
-    document.getElementById('verifyLocationBtn').addEventListener('click', function() {
-        const btn = this;
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        document.getElementById('latitude').value = pos.coords.latitude;
+        document.getElementById('longitude').value = pos.coords.longitude;
+        document.getElementById('is_location_verified').value = 'true';
+        document.getElementById('locationStatus').innerHTML = '<span style="color:var(--success);font-weight:700;"><i class="fas fa-check-circle me-1"></i>Eneo limethibitishwa!</span>';
+        btn.innerHTML = '<i class="fas fa-check me-1"></i> Imehakikiwa';
+        btn.style.background = 'var(--success)';
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Inathibitisha...';
+        showToast('Eneo lako limehakikiwa kwa mafanikio!', 'success');
 
-        if (!navigator.geolocation) {
-            showAlert('error', 'GPS haitumiki kwenye browser yako.');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-location-dot me-1"></i> Thibitisha Eneo';
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            function(pos) {
-                document.getElementById('latitude').value = pos.coords.latitude;
-                document.getElementById('longitude').value = pos.coords.longitude;
-                document.getElementById('is_location_verified').value = 'true';
-
-                // Reverse geocode
-                fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`)
-                    .then(r => r.json())
-                    .then(data => {
-                        document.getElementById('location_address').value = data.display_name || '';
-                        document.getElementById('locationStatus').innerHTML = '<span class="text-success fw-bold"><i class="fas fa-check-circle me-1"></i>Eneo limethibitishwa!</span>';
-                        document.getElementById('locationStatus').style.color = '#1a7a3b';
-                        btn.innerHTML = '<i class="fas fa-check me-1"></i>Imehakikiwa';
-                        btn.className = 'btn btn-sm';
-                        btn.style.background = '#1a7a3b';
-                        btn.style.color = '#fff';
-                        btn.style.border = 'none';
-                        showAlert('success', 'Eneo lako limehakikiwa kwa mafanikio!');
-                    })
-                    .catch(() => {
-                        document.getElementById('locationStatus').innerHTML = '<span class="text-success fw-bold"><i class="fas fa-check-circle me-1"></i>Eneo limethibitishwa</span>';
-                    });
-                btn.disabled = true;
-            },
-            function(err) {
-                document.getElementById('is_location_verified').value = 'false';
-                document.getElementById('locationStatus').innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>Imeshindwa: ' + err.message + '</span>';
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-location-dot me-1"></i> Jaribu Tena';
-                showAlert('error', 'Hitilafu ya GPS: ' + err.message);
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
-    });
-
-    function showAlert(type, msg) {
-        const container = document.querySelector('.page-shell');
-        const div = document.createElement('div');
-        div.className = 'alert alert-tlm alert-dismissible fade show mb-2';
-        div.style.borderLeftColor = type === 'success' ? '#1a7a3b' : '#DC2626';
-        div.innerHTML = msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
-        container.prepend(div);
-        setTimeout(() => div.remove(), 5000);
-    }
+        // Reverse geocode
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`)
+          .then(r => r.json())
+          .then(data => {
+            document.getElementById('location_address').value = data.display_name || '';
+          })
+          .catch(() => {});
+      },
+      function(err) {
+        document.getElementById('is_location_verified').value = 'false';
+        document.getElementById('locationStatus').innerHTML = '<span style="color:var(--error);"><i class="fas fa-exclamation-circle me-1"></i>Imeshindwa: ' + err.message + '</span>';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-location-dot me-1"></i> Jaribu Tena';
+        showToast('GPS error: ' + err.message, 'error');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
 });
 </script>
 {% endblock %}

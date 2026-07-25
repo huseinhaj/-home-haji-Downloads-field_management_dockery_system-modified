@@ -2,90 +2,84 @@
 {% block title %}Pakua Logbook{% endblock %}
 {% block content %}
 <div class="container-fluid px-0">
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="p-card p-3" style="border-left:5px solid #D97706;">
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <div style="width:48px;height:48px;background:var(--navy);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fas fa-download" style="color:#fff;font-size:20px;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size:16px;font-weight:800;color:var(--navy);">⬇️ Pakua Logbook (PDF)</div>
-                        <div style="font-size:12px;color:var(--ink-500);">
-                            Logbook zako: <strong>{{ total_entries }}</strong> jumla
-                            {% if this_week_entries %} &bull; <strong>{{ this_week_entries }}</strong> wiki hii{% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <!-- Header -->
+  <div class="c-card p-3 mb-3" style="border-left:4px solid var(--warning);">
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      <div class="stat-icon" style="background:var(--green-500);">
+        <i class="fas fa-download" style="color:#fff;font-size:1.1rem;"></i>
+      </div>
+      <div>
+        <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:clamp(0.9rem,1.5vw,1.15rem);">
+          ⬇️ Pakua Logbook (PDF)
+        </h4>
+        <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:2px 0 0;">
+          Logbook zako: <strong>{{ total_entries }}</strong> jumla
+          {% if this_week_entries %} &bull; <strong>{{ this_week_entries }}</strong> wiki hii{% endif %}
+        </p>
+      </div>
     </div>
+  </div>
 
-    <div class="row g-3">
-        <div class="col-md-3">
-            <a href="{% url 'curriculum:download_logbook_pdf' 'today' %}" class="text-decoration-none">
-                <div class="p-card p-4 text-center" style="cursor:pointer;border:2px solid var(--line);transition:.2s;"
-                     onmouseover="this.style.borderColor='var(--gold)';this.style.boxShadow='var(--sh-md)'"
-                     onmouseout="this.style.borderColor='var(--line)';this.style.boxShadow='var(--sh-sm)'">
-                    <div style="width:56px;height:56px;background:rgba(217,164,65,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-                        <i class="fas fa-calendar-day" style="font-size:22px;color:var(--gold);"></i>
-                    </div>
-                    <h6 style="color:var(--navy);font-weight:800;">Leo</h6>
-                    <p style="font-size:12px;color:var(--ink-500);margin:0;">{% now "d/m/Y" %}</p>
-                    <span class="btn btn-navy btn-sm mt-3 w-100"><i class="fas fa-download me-1"></i>Pakua</span>
-                </div>
-            </a>
+  <div class="grid-4 mb-3">
+    <!-- Today -->
+    <a href="{% url 'curriculum:download_logbook_pdf' 'today' %}" class="stat-card stat-card-gold text-decoration-none d-block">
+      <div class="text-center">
+        <div style="width:48px;height:48px;background:rgba(217,164,65,0.1);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+          <i class="fas fa-calendar-day" style="font-size:1.3rem;color:var(--gold-400);"></i>
         </div>
-        <div class="col-md-3">
-            <a href="{% url 'curriculum:download_logbook_pdf' 'week' %}" class="text-decoration-none">
-                <div class="p-card p-4 text-center" style="cursor:pointer;border:2px solid var(--line);transition:.2s;"
-                     onmouseover="this.style.borderColor='var(--green)';this.style.boxShadow='var(--sh-md)'"
-                     onmouseout="this.style.borderColor='var(--line)';this.style.boxShadow='var(--sh-sm)'">
-                    <div style="width:56px;height:56px;background:rgba(30,181,58,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-                        <i class="fas fa-calendar-week" style="font-size:22px;color:var(--green);"></i>
-                    </div>
-                    <h6 style="color:var(--navy);font-weight:800;">Wiki Hii</h6>
-                    <p style="font-size:12px;color:var(--ink-500);margin:0;">{{ this_week_entries }} entries</p>
-                    <span class="btn btn-navy btn-sm mt-3 w-100"><i class="fas fa-download me-1"></i>Pakua</span>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3">
-            <a href="{% url 'curriculum:download_logbook_pdf' 'month' %}" class="text-decoration-none">
-                <div class="p-card p-4 text-center" style="cursor:pointer;border:2px solid var(--line);transition:.2s;"
-                     onmouseover="this.style.borderColor='var(--navy)';this.style.boxShadow='var(--sh-md)'"
-                     onmouseout="this.style.borderColor='var(--line)';this.style.boxShadow='var(--sh-sm)'">
-                    <div style="width:56px;height:56px;background:rgba(31,73,125,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-                        <i class="fas fa-calendar-alt" style="font-size:22px;color:var(--navy);"></i>
-                    </div>
-                    <h6 style="color:var(--navy);font-weight:800;">Mwezi Huu</h6>
-                    <p style="font-size:12px;color:var(--ink-500);margin:0;">{% now "F Y" %}</p>
-                    <span class="btn btn-navy btn-sm mt-3 w-100"><i class="fas fa-download me-1"></i>Pakua</span>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3">
-            <a href="{% url 'curriculum:download_logbook_pdf' 'all' %}" class="text-decoration-none">
-                <div class="p-card p-4 text-center" style="cursor:pointer;border:2px solid var(--line);transition:.2s;"
-                     onmouseover="this.style.borderColor='#DC2626';this.style.boxShadow='var(--sh-md)'"
-                     onmouseout="this.style.borderColor='var(--line)';this.style.boxShadow='var(--sh-sm)'">
-                    <div style="width:56px;height:56px;background:rgba(220,38,38,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-                        <i class="fas fa-archive" style="font-size:22px;color:#DC2626;"></i>
-                    </div>
-                    <h6 style="color:var(--navy);font-weight:800;">Zote</h6>
-                    <p style="font-size:12px;color:var(--ink-500);margin:0;">{{ total_entries }} entries</p>
-                    <span class="btn btn-navy btn-sm mt-3 w-100"><i class="fas fa-download me-1"></i>Pakua</span>
-                </div>
-            </a>
-        </div>
-    </div>
+        <h6 style="color:var(--text-primary);font-weight:800;margin-bottom:4px;">Leo</h6>
+        <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:0;">{% now "d/m/Y" %}</p>
+        <span class="btn-tlm btn-primary-tlm btn-sm-tlm w-100 mt-3">
+          <i class="fas fa-download me-1"></i>Pakua
+        </span>
+      </div>
+    </a>
 
-    <div class="row mt-3">
-        <div class="col-12">
-            <a href="{% url 'curriculum:logbook_history' %}" class="btn btn-sm btn-ghost">
-                <i class="fas fa-arrow-left me-1"></i>Rudi kwenye Historia
-            </a>
+    <!-- This Week -->
+    <a href="{% url 'curriculum:download_logbook_pdf' 'week' %}" class="stat-card stat-card-green text-decoration-none d-block">
+      <div class="text-center">
+        <div style="width:48px;height:48px;background:rgba(31,122,61,0.1);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+          <i class="fas fa-calendar-week" style="font-size:1.3rem;color:var(--green-500);"></i>
         </div>
-    </div>
+        <h6 style="color:var(--text-primary);font-weight:800;margin-bottom:4px;">Wiki Hii</h6>
+        <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:0;">{{ this_week_entries }} entries</p>
+        <span class="btn-tlm btn-primary-tlm btn-sm-tlm w-100 mt-3">
+          <i class="fas fa-download me-1"></i>Pakua
+        </span>
+      </div>
+    </a>
+
+    <!-- This Month -->
+    <a href="{% url 'curriculum:download_logbook_pdf' 'month' %}" class="stat-card stat-card-blue text-decoration-none d-block">
+      <div class="text-center">
+        <div style="width:48px;height:48px;background:rgba(37,99,235,0.1);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+          <i class="fas fa-calendar-alt" style="font-size:1.3rem;color:var(--info);"></i>
+        </div>
+        <h6 style="color:var(--text-primary);font-weight:800;margin-bottom:4px;">Mwezi Huu</h6>
+        <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:0;">{% now "F Y" %}</p>
+        <span class="btn-tlm btn-primary-tlm btn-sm-tlm w-100 mt-3">
+          <i class="fas fa-download me-1"></i>Pakua
+        </span>
+      </div>
+    </a>
+
+    <!-- All -->
+    <a href="{% url 'curriculum:download_logbook_pdf' 'all' %}" class="stat-card stat-card-amber text-decoration-none d-block">
+      <div class="text-center">
+        <div style="width:48px;height:48px;background:rgba(217,119,6,0.1);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+          <i class="fas fa-archive" style="font-size:1.3rem;color:var(--warning);"></i>
+        </div>
+        <h6 style="color:var(--text-primary);font-weight:800;margin-bottom:4px;">Zote</h6>
+        <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:0;">{{ total_entries }} entries</p>
+        <span class="btn-tlm btn-primary-tlm btn-sm-tlm w-100 mt-3">
+          <i class="fas fa-download me-1"></i>Pakua
+        </span>
+      </div>
+    </a>
+  </div>
+
+  <a href="{% url 'curriculum:logbook_history' %}" class="btn-tlm btn-outline-tlm btn-sm-tlm">
+    <i class="fas fa-arrow-left me-1"></i>Rudi kwenye Historia
+  </a>
 </div>
 {% endblock %}

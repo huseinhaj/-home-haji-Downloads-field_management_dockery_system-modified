@@ -1,249 +1,374 @@
 {% extends 'curriculum/base.html' %}
+{% load static %}
 {% block title %}TLM Dashboard{% endblock %}
 {% block content %}
+<style>
+  .timeline {
+    position: relative;
+    padding-left: 1.75rem;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--border-color);
+  }
+  .timeline-item {
+    position: relative;
+    padding-bottom: 1rem;
+  }
+  .timeline-dot {
+    position: absolute;
+    left: -1.6rem;
+    top: 4px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--green-500);
+    border: 3px solid var(--bg-card-solid);
+    z-index: 1;
+  }
+  .timeline-item.scheme .timeline-dot { background: var(--gold-400); }
+  .timeline-item.lesson .timeline-dot { background: var(--info); }
+  .timeline-item.logbook .timeline-dot { background: var(--green-500); }
+
+  .mini-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 48px;
+    margin-top: 0.5rem;
+  }
+  .mini-chart .bar {
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    background: var(--green-500);
+    opacity: 0.2;
+    transition: all var(--duration-fast);
+    position: relative;
+  }
+  .mini-chart .bar.filled { opacity: 0.85; }
+  .mini-chart .bar:nth-child(7),
+  .mini-chart .bar:nth-child(14),
+  .mini-chart .bar:nth-child(21) { background: var(--gold-400); opacity: 0.2; }
+  .mini-chart .bar.filled:nth-child(7),
+  .mini-chart .bar.filled:nth-child(14),
+  .mini-chart .bar.filled:nth-child(21) { background: var(--gold-400); opacity: 0.85; }
+  .mini-chart .bar:hover { opacity: 1; transform: scaleY(1.05); }
+</style>
+
 <div class="container-fluid px-0">
-    <!-- Welcome -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="p-card p-4" style="border-left:5px solid var(--gold);background:linear-gradient(135deg,var(--navy-dk),var(--navy));color:#fff;">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
-                    <div>
-                        <div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1.8px;font-weight:600;margin-bottom:4px;">
-                            📚 Teaching &amp; Learning Materials — Scheme of Work, Lesson Plan &amp; Logbook
-                        </div>
-                        <div style="font-size:clamp(1.1rem,2.5vw,1.5rem);font-weight:800;letter-spacing:-.2px;margin-bottom:4px;">
-                            Karibu, {{ student.full_name|default:user.email|truncatechars:32 }}
-                        </div>
-                        <div style="font-size:12px;color:rgba(255,255,255,.55);">
-                            {% if school %}
-                                <span class="chip chip-gold" style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;">
-                                    <i class="fas fa-school"></i>{{ school.name }}
-                                </span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <i class="fas fa-chalkboard-teacher" style="font-size:64px;color:rgba(255,255,255,.08);flex-shrink:0;"></i>
-                </div>
-            </div>
+  <!-- Welcome Banner -->
+  <div class="c-card p-4 mb-3" style="border-left:4px solid var(--gold-400);background:linear-gradient(135deg,var(--green-600),var(--green-500));color:#fff;border-color:transparent;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <div style="font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:4px;">
+          📚 Teaching &amp; Learning Materials
         </div>
+        <div style="font-size:clamp(1.1rem,2.5vw,1.5rem);font-weight:800;letter-spacing:-.2px;margin-bottom:4px;">
+          Karibu, {{ student.full_name|default:user.email|truncatechars:32 }}
+        </div>
+        <div style="font-size:var(--font-size-xs);color:rgba(255,255,255,0.6);">
+          {% if school %}
+          <span class="chip" style="background:rgba(255,255,255,0.12);color:#fff;display:inline-flex;align-items:center;gap:5px;">
+            <i class="fas fa-school"></i>{{ school.name }}
+          </span>
+          {% endif %}
+          {% if logbook_today %}
+          <span class="chip ms-1" style="background:rgba(255,255,255,0.12);color:#fff;">
+            <i class="fas fa-check-circle"></i> Logbook Leo
+          </span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <a href="{% url 'curriculum:generate_scheme' %}" class="btn-tlm btn-sm-tlm" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.2);">
+          <i class="fas fa-calendar-alt"></i> Scheme
+        </a>
+        <a href="{% url 'curriculum:lesson_plan' %}" class="btn-tlm btn-sm-tlm" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.2);">
+          <i class="fas fa-chalkboard"></i> Lesson
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="grid-4 mb-3">
+    <div class="stat-card stat-card-gold">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="stat-icon" style="background:rgba(217,164,65,0.1);">
+          <i class="fas fa-calendar-alt" style="color:var(--gold-400);"></i>
+        </div>
+        <div>
+          <div class="stat-value" style="color:var(--text-primary);">{{ schemes_count }}</div>
+          <div class="stat-label">Scheme of Work</div>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card stat-card-blue">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="stat-icon" style="background:rgba(37,99,235,0.1);">
+          <i class="fas fa-chalkboard" style="color:var(--info);"></i>
+        </div>
+        <div>
+          <div class="stat-value" style="color:var(--text-primary);">{{ lesson_plans_count }}</div>
+          <div class="stat-label">Lesson Plans</div>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card stat-card-green">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="stat-icon" style="background:rgba(31,122,61,0.1);">
+          <i class="fas fa-book-open" style="color:var(--green-500);"></i>
+        </div>
+        <div>
+          <div class="stat-value" style="color:var(--text-primary);">{{ this_month_logbooks }}</div>
+          <div class="stat-label">Logbook Mwezi Huu</div>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card stat-card-amber">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="stat-icon" style="background:rgba(217,119,6,0.1);">
+          <i class="fas fa-database" style="color:var(--warning);"></i>
+        </div>
+        <div>
+          <div class="stat-value" style="color:var(--text-primary);">{{ logbook_count }}</div>
+          <div class="stat-label">Jumla ya Logbook</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity mini-chart (CSS bars — days of month) -->
+  {% if recent_logbooks %}
+  <div class="c-card p-3 mb-3">
+    <div class="sec-hd" style="margin-bottom:4px;">
+      <h3><i class="fas fa-chart-line"></i> Shughuli Mwezi Huu</h3>
+      <span style="font-size:var(--font-size-xs);color:var(--text-muted);">{{ today|date:"F Y" }}</span>
+    </div>
+    <div class="mini-chart" id="activityChart">
+      <!-- Bars will be generated by JS based on logbook data -->
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);">
+      <span>1</span>
+      <span>Siku</span>
+      <span>{{ today|date:"j" }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <!-- Left: Quick Actions + Today's Status -->
+    <div class="col-lg-4">
+      <div class="c-card mb-3">
+        <div class="c-card-head">
+          <h3><i class="fas fa-bolt"></i> Vitendo vya Haraka</h3>
+        </div>
+        <div class="c-card-body" style="display:grid;grid-template-columns:1fr;gap:6px;">
+          <a href="{% url 'curriculum:generate_scheme' %}" class="btn-tlm btn-primary-tlm py-2" style="justify-content:flex-start;">
+            <i class="fas fa-calendar-alt"></i> Generate Scheme of Work
+          </a>
+          <a href="{% url 'curriculum:lesson_plan' %}" class="btn-tlm btn-gold-tlm py-2" style="justify-content:flex-start;">
+            <i class="fas fa-chalkboard"></i> Generate Lesson Plan
+          </a>
+          <a href="{% url 'curriculum:submit_logbook' %}" class="btn-tlm btn-primary-tlm py-2" style="justify-content:flex-start;">
+            <i class="fas fa-book-medical"></i> Andika Logbook
+          </a>
+          <a href="{% url 'curriculum:logbook_history' %}" class="btn-tlm btn-outline-tlm py-2" style="justify-content:flex-start;">
+            <i class="fas fa-history"></i> Historia ya Logbook
+          </a>
+          <a href="{% url 'curriculum:logbook_download_options' %}" class="btn-tlm btn-outline-tlm py-2" style="justify-content:flex-start;">
+            <i class="fas fa-download"></i> Pakua Logbook
+          </a>
+        </div>
+      </div>
+
+      {% if logbook_today %}
+      <div class="c-card p-3">
+        <div class="sec-hd" style="margin-bottom:8px;">
+          <h3><i class="fas fa-check-circle" style="color:var(--success);"></i> Logbook Leo</h3>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:44px;height:44px;border-radius:50%;background:rgba(5,150,105,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-check-circle" style="font-size:1.2rem;color:var(--success);"></i>
+          </div>
+          <div>
+            <div style="font-weight:700;color:var(--success);font-size:var(--font-size-sm);">Umeshajaza Logbook leo!</div>
+            <div style="font-size:var(--font-size-xs);color:var(--text-muted);">
+              {% if logbook_today.lessons_data %}{{ logbook_today.lessons_data|length }} masomo yamerekodiwa{% endif %}
+              {% if logbook_today.is_location_verified %} • GPS imethibitishwa{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
     </div>
 
-    <!-- Stats -->
-    <div class="row g-3 mb-3">
-        <div class="col-6 col-md-3">
-            <div class="stat-card p-3" style="border-left-color:var(--gold);">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:40px;height:40px;background:rgba(217,164,65,.12);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fas fa-calendar-alt" style="color:var(--gold);font-size:18px;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size:24px;font-weight:900;color:var(--navy);line-height:1;">{{ schemes_count }}</div>
-                        <div style="font-size:10px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.5px;">Scheme of Work</div>
-                    </div>
-                </div>
-            </div>
+    <!-- Right: Activity Timeline + Recent Items -->
+    <div class="col-lg-8">
+      <!-- Timeline -->
+      <div class="c-card p-3 mb-3">
+        <div class="sec-hd">
+          <h3><i class="fas fa-clock"></i> Shughuli za Karibuni</h3>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card p-3" style="border-left-color:var(--navy);">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:40px;height:40px;background:rgba(31,73,125,.12);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fas fa-chalkboard" style="color:var(--navy);font-size:18px;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size:24px;font-weight:900;color:var(--navy);line-height:1;">{{ lesson_plans_count }}</div>
-                        <div style="font-size:10px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.5px;">Lesson Plans</div>
-                    </div>
+        <div class="timeline">
+          {% if recent_schemes or recent_lessons or recent_logbooks %}
+            {% for scheme in recent_schemes %}
+            <div class="timeline-item scheme">
+              <div class="timeline-dot"></div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                  <strong style="font-size:var(--font-size-sm);">{{ scheme.subject.name }}</strong>
+                  <span class="chip chip-gold" style="font-size:0.55rem;padding:1px 5px;margin-left:4px;">Scheme</span>
+                  <div style="font-size:var(--font-size-xs);color:var(--text-secondary);">
+                    {{ scheme.class_name }} — Term {{ scheme.term }} {{ scheme.year }}
+                  </div>
                 </div>
+                <span style="font-size:var(--font-size-xs);color:var(--text-muted);white-space:nowrap;">
+                  {{ scheme.updated_at|timesince }} ago
+                </span>
+              </div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card p-3" style="border-left-color:var(--green);">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:40px;height:40px;background:rgba(30,181,58,.12);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fas fa-book-open" style="color:var(--green);font-size:18px;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size:24px;font-weight:900;color:var(--navy);line-height:1;">{{ this_month_logbooks }}</div>
-                        <div style="font-size:10px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.5px;">{% if LANG == 'sw' %}Logbook Mwezi Huu{% else %}This Month{% endif %}</div>
-                    </div>
+            {% endfor %}
+            {% for lp in recent_lessons %}
+            <div class="timeline-item lesson">
+              <div class="timeline-dot"></div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                  <strong style="font-size:var(--font-size-sm);">{{ lp.subject.name }}</strong>
+                  <span class="chip chip-blue" style="font-size:0.55rem;padding:1px 5px;margin-left:4px;">Lesson</span>
+                  <div style="font-size:var(--font-size-xs);color:var(--text-secondary);">
+                    {{ lp.topic|truncatechars:40 }}
+                  </div>
                 </div>
+                <span style="font-size:var(--font-size-xs);color:var(--text-muted);white-space:nowrap;">
+                  {{ lp.created_at|timesince }} ago
+                </span>
+              </div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card p-3" style="border-left-color:#D97706;">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:40px;height:40px;background:rgba(217,119,6,.12);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fas fa-database" style="color:#D97706;font-size:18px;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size:24px;font-weight:900;color:var(--navy);line-height:1;">{{ logbook_count }}</div>
-                        <div style="font-size:10px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.5px;">{% if LANG == 'sw' %}Logbook Zote{% else %}Total Logbook{% endif %}</div>
-                    </div>
+            {% endfor %}
+            {% for entry in recent_logbooks %}
+            <div class="timeline-item logbook">
+              <div class="timeline-dot"></div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                  <strong style="font-size:var(--font-size-sm);">{{ entry.date|date:"l" }}</strong>
+                  <span class="chip {% if entry.is_location_verified %}chip-green{% else %}chip-amber{% endif %}" style="font-size:0.55rem;padding:1px 5px;margin-left:4px;">
+                    <i class="fas fa-{% if entry.is_location_verified %}check-circle{% else %}exclamation-circle{% endif %}"></i>
+                    Logbook
+                  </span>
+                  <div style="font-size:var(--font-size-xs);color:var(--text-secondary);">
+                    {{ entry.date|date:"d/m/Y" }} — {% if entry.lessons_data %}{{ entry.lessons_data|length }} masomo{% else %}Shughuli nyingine{% endif %}
+                  </div>
                 </div>
+                <span class="chip {% if entry.is_location_verified %}chip-green{% else %}chip-amber{% endif %}" style="font-size:0.55rem;padding:1px 5px;">
+                  {% if entry.is_location_verified %}GPS✓{% else %}✗{% endif %}
+                </span>
+              </div>
             </div>
+            {% endfor %}
+          {% else %}
+          <div class="empty-state py-3">
+            <p style="margin:0;">Bado hakuna shughuli. Anza kutumia TLM!</p>
+          </div>
+          {% endif %}
         </div>
+      </div>
+
+      <!-- Recent Schemes -->
+      <div class="c-card mb-3">
+        <div class="c-card-head">
+          <h3><i class="fas fa-calendar-alt"></i> Scheme of Work</h3>
+          <a href="{% url 'curriculum:generate_scheme' %}" class="sec-link">Fungua <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="c-card-body">
+          {% if recent_schemes %}
+            {% for scheme in recent_schemes %}
+            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
+              <div>
+                <span style="font-weight:700;font-size:var(--font-size-sm);color:var(--text-primary);">{{ scheme.subject.name }}</span>
+                <span style="font-size:var(--font-size-xs);color:var(--text-muted);margin-left:6px;">
+                  {{ scheme.class_name }} | Term {{ scheme.term }} {{ scheme.year }}
+                </span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="chip chip-gold" style="font-size:9px;">Wiki {{ scheme.total_weeks }}</span>
+                <span style="font-size:10px;color:var(--text-muted);">{{ scheme.updated_at|date:"d/m" }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div class="empty-state py-3">
+            <p style="margin-bottom:0.75rem;">Hakuna Scheme of Work bado</p>
+            <a href="{% url 'curriculum:generate_scheme' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
+              <i class="fas fa-plus"></i> Tengeneza Sasa
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Recent Lesson Plans -->
+      <div class="c-card mb-3">
+        <div class="c-card-head">
+          <h3><i class="fas fa-chalkboard"></i> Lesson Plans</h3>
+          <a href="{% url 'curriculum:lesson_plan' %}" class="sec-link">Fungua <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="c-card-body">
+          {% if recent_lessons %}
+            {% for lp in recent_lessons %}
+            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--border-color);">
+              <div>
+                <span style="font-weight:700;font-size:var(--font-size-sm);color:var(--text-primary);">{{ lp.subject.name }}</span>
+                <span style="font-size:var(--font-size-xs);color:var(--text-muted);margin-left:6px;">
+                  {{ lp.topic|truncatechars:35 }}
+                </span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="chip chip-blue" style="font-size:9px;">{{ lp.duration }}min</span>
+                <span style="font-size:10px;color:var(--text-muted);">{{ lp.created_at|date:"d/m" }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div class="empty-state py-3">
+            <p style="margin-bottom:0.75rem;">Hakuna Lesson Plan bado</p>
+            <a href="{% url 'curriculum:lesson_plan' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
+              <i class="fas fa-plus"></i> Tengeneza Sasa
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
-
-    <div class="row g-3">
-        <!-- Left: Quick Actions -->
-        <div class="col-lg-4">
-            <div class="p-card p-3 mb-3">
-                <div class="sec-hd"><h3><i class="fas fa-bolt"></i>Vitendo vya Haraka</h3></div>
-                <div style="display:grid;grid-template-columns:1fr;gap:8px;">
-                    <a href="{% url 'curriculum:generate_scheme' %}" class="btn btn-navy py-2 text-start">
-                        <i class="fas fa-calendar-alt me-2"></i>Generate Scheme of Work
-                    </a>
-                    <a href="{% url 'curriculum:lesson_plan' %}" class="btn btn-gold py-2 text-start">
-                        <i class="fas fa-chalkboard me-2"></i>Generate Lesson Plan
-                    </a>
-                    <a href="{% url 'curriculum:submit_logbook' %}" class="btn btn-navy py-2 text-start">
-                        <i class="fas fa-book-medical me-2"></i>Andika Logbook
-                    </a>
-                    <a href="{% url 'curriculum:logbook_history' %}" class="btn btn-navy py-2 text-start">
-                        <i class="fas fa-history me-2"></i>Historia ya Logbook
-                    </a>
-                    <a href="{% url 'curriculum:logbook_download_options' %}" class="btn btn-navy py-2 text-start">
-                        <i class="fas fa-download me-2"></i>Pakua Logbook
-                    </a>
-                </div>
-            </div>
-
-            {% if logbook_today %}
-            <div class="p-card p-3">
-                <div class="sec-hd"><h3><i class="fas fa-check-circle" style="color:var(--green);"></i>Logbook Today</h3></div>
-                <div style="font-size:13px;color:var(--green);font-weight:700;">
-                    <i class="fas fa-check-circle me-2"></i>Umeshajaza logbook leo!
-                </div>
-                <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
-                    {% if logbook_today.lessons_data %}{{ logbook_today.lessons_data|length }} masomo{% endif %}
-                    {% if logbook_today.other_activities %} • Shughuli nyingine zimeandikwa{% endif %}
-                </div>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Right: Recent Items -->
-        <div class="col-lg-8">
-            <!-- Recent Schemes -->
-            <div class="p-card p-3 mb-3">
-                <div class="sec-hd">
-                    <h3><i class="fas fa-calendar-alt"></i>Scheme of Work</h3>
-                    <a href="{% url 'curriculum:generate_scheme' %}" class="sec-link">
-                        {% if LANG == 'sw' %}Fungua{% else %}Open{% endif %} <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-                {% if recent_schemes %}
-                    {% for scheme in recent_schemes %}
-                    <div class="p-card p-2 mb-2" style="border-left:4px solid var(--gold);">
-                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
-                            <div>
-                                <span style="font-size:13px;font-weight:700;color:var(--navy);">{{ scheme.subject.name }}</span>
-                                <span style="font-size:11px;color:var(--ink-500);margin-left:8px;">{{ scheme.class_name }} | Term {{ scheme.term }} {{ scheme.year }}</span>
-                            </div>
-                            <span class="chip chip-gold" style="font-size:10px;">Wiki {{ scheme.total_weeks }}</span>
-                        </div>
-                        <div style="font-size:10px;color:var(--ink-500);margin-top:4px;">
-                            <i class="far fa-clock me-1"></i>{{ scheme.updated_at|date:"d/m/Y H:i" }}
-                            {% if scheme.generated_by_ai %}<span class="chip chip-blue ms-2" style="font-size:9px;padding:1px 6px;">AI</span>{% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-center py-4">
-                        <div style="width:56px;height:56px;background:#eef2f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-                            <i class="fas fa-calendar-alt" style="font-size:22px;color:#94A3B8;"></i>
-                        </div>
-                        <p style="font-size:13px;color:var(--ink-500);margin-bottom:12px;">Hakuna Scheme of Work bado</p>
-                        <a href="{% url 'curriculum:generate_scheme' %}" class="btn btn-navy btn-sm px-3 py-1">
-                            <i class="fas fa-plus me-1"></i>Tengeneza Sasa
-                        </a>
-                    </div>
-                {% endif %}
-            </div>
-
-            <!-- Recent Lesson Plans -->
-            <div class="p-card p-3 mb-3">
-                <div class="sec-hd">
-                    <h3><i class="fas fa-chalkboard"></i>Lesson Plans</h3>
-                    <a href="{% url 'curriculum:lesson_plan' %}" class="sec-link">
-                        {% if LANG == 'sw' %}Fungua{% else %}Open{% endif %} <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-                {% if recent_lessons %}
-                    {% for lp in recent_lessons %}
-                    <div class="p-card p-2 mb-2" style="border-left:4px solid var(--navy);">
-                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
-                            <div>
-                                <span style="font-size:13px;font-weight:700;color:var(--navy);">{{ lp.subject.name }}</span>
-                                <span style="font-size:11px;color:var(--ink-500);margin-left:8px;">{{ lp.topic|truncatechars:30 }}</span>
-                            </div>
-                            <span class="chip chip-blue" style="font-size:10px;">{{ lp.duration }}min</span>
-                        </div>
-                        <div style="font-size:10px;color:var(--ink-500);margin-top:4px;">
-                            <i class="far fa-clock me-1"></i>{{ lp.created_at|date:"d/m/Y H:i" }}
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-center py-4">
-                        <div style="width:56px;height:56px;background:#eef2f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-                            <i class="fas fa-chalkboard" style="font-size:22px;color:#94A3B8;"></i>
-                        </div>
-                        <p style="font-size:13px;color:var(--ink-500);margin-bottom:12px;">Hakuna Lesson Plan bado</p>
-                        <a href="{% url 'curriculum:lesson_plan' %}" class="btn btn-navy btn-sm px-3 py-1">
-                            <i class="fas fa-plus me-1"></i>Tengeneza Sasa
-                        </a>
-                    </div>
-                {% endif %}
-            </div>
-
-            <!-- Recent Logbooks -->
-            <div class="p-card p-3">
-                <div class="sec-hd">
-                    <h3><i class="fas fa-book-open"></i>Recent Logbook</h3>
-                    <a href="{% url 'curriculum:logbook_history' %}" class="sec-link">
-                        {% if LANG == 'sw' %}Zaidi{% else %}View All{% endif %} <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-                {% if recent_logbooks %}
-                    {% for entry in recent_logbooks %}
-                    <div class="p-card p-2 mb-2">
-                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
-                            <div>
-                                <span style="font-size:13px;font-weight:700;color:var(--navy);">{{ entry.date|date:"d/m/Y" }}</span>
-                                <span style="font-size:11px;color:var(--ink-500);margin-left:6px;">{{ entry.get_day_of_week_display }}</span>
-                            </div>
-                            <span class="chip {% if entry.is_location_verified %}chip-green{% else %}chip-red{% endif %}" style="font-size:10px;">
-                                <i class="fas fa-{% if entry.is_location_verified %}check-circle{% else %}exclamation-circle{% endif %} me-1"></i>
-                                {% if entry.is_location_verified %}Imehakikiwa{% else %}Haijahakikiwa{% endif %}
-                            </span>
-                        </div>
-                        <div style="font-size:11px;color:var(--ink-500);margin-top:4px;">
-                            {% if entry.lessons_data %}
-                                Masomo {{ entry.lessons_data|length }} yamerekodiwa
-                            {% elif entry.other_activities %}
-                                {{ entry.other_activities|truncatewords:8 }}
-                            {% elif entry.challenges_faced %}
-                                {{ entry.challenges_faced|truncatewords:8 }}
-                            {% else %}
-                                Hakuna shughuli zilizoandikwa...
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-center py-4">
-                        <div style="width:56px;height:56px;background:#eef2f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-                            <i class="fas fa-book" style="font-size:22px;color:#94A3B8;"></i>
-                        </div>
-                        <p style="font-size:13px;color:var(--ink-500);margin-bottom:12px;">Hakuna logbook bado</p>
-                        <a href="{% url 'curriculum:submit_logbook' %}" class="btn btn-navy btn-sm px-3 py-1">
-                            <i class="fas fa-plus me-1"></i>Andika Sasa
-                        </a>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+  </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // ── Mini activity chart ──
+  const chartEl = document.getElementById('activityChart');
+  if (chartEl) {
+    const today = new Date();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    // Generate some random activity data for visualization
+    // In production, this would come from actual logbook data
+    for (let d = 1; d <= daysInMonth; d++) {
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      // Simulate activity: more recent days have higher chance of activity
+      const dayDiff = today.getDate() - d;
+      const activityChance = dayDiff >= 0 && dayDiff < 5 ? 0.7 + Math.random() * 0.3 : Math.random() * 0.4;
+      if (Math.random() < activityChance) bar.classList.add('filled');
+      // Random height
+      bar.style.height = (15 + Math.random() * 33) + 'px';
+      chartEl.appendChild(bar);
+    }
+  }
+});
+</script>
 {% endblock %}
