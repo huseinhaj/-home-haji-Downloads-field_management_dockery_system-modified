@@ -16,6 +16,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.contrib.auth import logout as django_logout
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
@@ -88,25 +89,44 @@ def landing(request):
 # =============================================================================
 
 def template_library(request):
-    """Browse saved schemes and lesson plans in a library view."""
+    """Browse ALL saved schemes and lesson plans from all teachers."""
     teacher = get_tlm_teacher(request)
     
-    # If Django-authenticated user, also show their items
-    user_schemes = []
-    user_lessons = []
-    if request.user.is_authenticated:
-        try:
-            student = StudentTeacher.objects.get(user=request.user)
-            user_schemes = SchemeOfWork.objects.filter(student=student).select_related('subject', 'school').order_by('-updated_at')[:20]
-            user_lessons = LessonPlan.objects.filter(student=student).select_related('subject').order_by('-created_at')[:20]
-        except StudentTeacher.DoesNotExist:
-            pass
+    # Show ALL schemes and lesson plans from ALL teachers — not just the logged-in user
+    # This creates a shared library where everyone can see what others have created
+    all_schemes = SchemeOfWork.objects.all().select_related(
+        'subject', 'school'
+    ).order_by('-updated_at')[:50]
+    
+    all_lessons = LessonPlan.objects.all().select_related(
+        'subject'
+    ).order_by('-created_at')[:50]
+    
+    # Counts for stats
+    total_schemes_count = SchemeOfWork.objects.count()
+    total_lessons_count = LessonPlan.objects.count()
     
     return render(request, 'curriculum/library.html', {
         'teacher': teacher,
-        'schemes': user_schemes,
-        'lesson_plans': user_lessons,
+        'schemes': all_schemes,
+        'lesson_plans': all_lessons,
+        'total_schemes_count': total_schemes_count,
+        'total_lessons_count': total_lessons_count,
     })
+
+
+# =============================================================================
+# TLM LOGOUT — clear session for TLM teachers
+# =============================================================================
+
+def tlm_logout(request):
+    """Logout from TLM system — clears the TLM teacher session and Django auth."""
+    # Clear the TLM teacher session
+    if 'tlm_teacher_id' in request.session:
+        del request.session['tlm_teacher_id']
+    # Also clear Django auth session (in case user is both TLM + Django logged in)
+    django_logout(request)
+    return redirect('curriculum:landing')
 
 
 # =============================================================================
@@ -764,6 +784,32 @@ def ajax_load_saved_scheme(request):
         return JsonResponse({'success': False, 'error': 'Wasifu wa mwanafunzi haupatikani.'}, status=404)
 
 
+def ajax_load_scheme_by_id(request, scheme_id):
+    """Load a specific SchemeOfWork by ID for viewing/editing from the library."""
+    try:
+        scheme = SchemeOfWork.objects.select_related('subject', 'school').get(id=scheme_id)
+        if not scheme.scheme_data:
+            return JsonResponse({'success': False, 'error': 'Scheme haina data.'}, status=404)
+        return JsonResponse({
+            'success': True,
+            'data': scheme.scheme_data,
+            'saved_id': scheme.id,
+            'meta': {
+                'subject': scheme.subject.name if scheme.subject else '',
+                'class_name': scheme.class_name,
+                'term': scheme.term,
+                'year': scheme.year,
+                'teacher_name': scheme.teacher_name or '',
+                'school_name': scheme.school.name if scheme.school else '',
+                'total_weeks': scheme.total_weeks,
+                'syllabus': scheme.syllabus,
+                'updated_at': scheme.updated_at.strftime('%d %b %Y, %H:%M'),
+            }
+        })
+    except SchemeOfWork.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Scheme haipatikani.'}, status=404)
+
+
 # =============================================================================
 # LESSON PLAN
 # =============================================================================
@@ -1305,6 +1351,35 @@ def ajax_load_saved_lessonplan(request):
         return JsonResponse({'success': True, 'data': lesson_data, 'form_data': form_data, 'saved_id': lp.id})
     except StudentTeacher.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Wasifu haupatikani.'}, status=404)
+
+
+def ajax_load_lesson_by_id(request, lesson_id):
+    """Load a specific LessonPlan by ID for viewing/editing from the library."""
+    try:
+        lp = LessonPlan.objects.select_related('subject', 'school').get(id=lesson_id)
+        if not lp.lesson_development:
+            return JsonResponse({'success': False, 'error': 'Lesson Plan haina data.'}, status=404)
+        lesson_data = {
+            'lesson_title': f"{lp.subject.name} - {lp.topic}",
+            'main_competence': lp.main_competence,
+            'specific_competence': lp.specific_competence,
+            'previous_knowledge': lp.previous_knowledge,
+            'learning_objectives': lp.learning_objectives,
+            'teaching_methods': lp.teaching_methods,
+            'teaching_resources': lp.teaching_resources,
+            'lesson_development': lp.lesson_development,
+            'remarks': lp.remarks,
+        }
+        form_data = {
+            'subject': lp.subject.name, 'class_name': lp.class_name,
+            'term': lp.term, 'year': lp.year, 'topic': lp.topic,
+            'subtopic': lp.subtopic, 'teacher_name': lp.teacher_name,
+            'duration': lp.duration, 'total_students': lp.total_students,
+            'present_students': lp.present_students,
+        }
+        return JsonResponse({'success': True, 'data': lesson_data, 'form_data': form_data, 'saved_id': lp.id})
+    except LessonPlan.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Lesson Plan haipatikani.'}, status=404)
 
 
 # =============================================================================

@@ -732,6 +732,32 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // ── Auto-load saved scheme from URL param ?load=123 ──
+  const urlParams = new URLSearchParams(window.location.search);
+  const loadId = urlParams.get('load');
+  if (loadId) {
+    fetch('{% url 'curriculum:generate_scheme' %}ajax-load-by-id/' + loadId + '/')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.data) {
+          currentSchemeData = data.data;
+          currentSavedId = data.saved_id;
+          renderTable(data.data);
+          resultsArea.style.display = 'block';
+          emptyState.style.display = 'none';
+          // Auto-fill form meta from the loaded scheme
+          if (data.meta) {
+            if (data.meta.teacher_name) document.getElementById('teacher_name').value = data.meta.teacher_name;
+            if (data.meta.school_name) document.getElementById('school_name').value = data.meta.school_name;
+            document.getElementById('total_weeks').value = data.meta.total_weeks || 36;
+            if (data.meta.syllabus) document.getElementById('syllabus').value = data.meta.syllabus;
+          }
+          showToast('📂 Scheme imepakiwa kutoka maktaba!', 'success');
+        }
+      })
+      .catch(() => showToast('Imeshindwa kupakia scheme kutoka maktaba', 'warning'));
+  }
+
   // ── Download Word ──
   document.getElementById('downloadWordBtn').addEventListener('click', function() {
     if (!currentSchemeData) return;

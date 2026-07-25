@@ -795,6 +795,30 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // ── Auto-load saved lesson plan from URL param ?load=123 ──
+  const urlParams = new URLSearchParams(window.location.search);
+  const loadId = urlParams.get('load');
+  if (loadId) {
+    fetch('{% url 'curriculum:lesson_plan' %}ajax-load-by-id/' + loadId + '/')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          currentLessonData = data.data;
+          currentFormData = data.form_data;
+          currentSavedId = data.saved_id;
+          renderLesson(data.data);
+          document.getElementById('resultsArea').style.display = 'block';
+          document.getElementById('emptyState').style.display = 'none';
+          // Auto-fill teacher name
+          if (data.form_data && data.form_data.teacher_name) {
+            document.getElementById('teacher_name').value = data.form_data.teacher_name;
+          }
+          showToast('📂 Lesson Plan imepakiwa kutoka maktaba!', 'success');
+        }
+      })
+      .catch(() => showToast('Imeshindwa kupakia Lesson Plan', 'warning'));
+  }
+
   // ── Download Word ──
   document.getElementById('downloadWordBtn').addEventListener('click', function() {
     if (!currentLessonData) return;

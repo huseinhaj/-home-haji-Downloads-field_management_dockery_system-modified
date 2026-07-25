@@ -14,6 +14,7 @@ urlpatterns = [
     path('scheme/', views.generate_scheme_view, name='generate_scheme'),
     path('scheme/ajax-generate/', views.ajax_generate_scheme, name='ajax_generate_scheme'),
     path('scheme/ajax-load-saved/', views.ajax_load_saved_scheme, name='ajax_load_saved_scheme'),
+    path('scheme/ajax-load-by-id/<int:scheme_id>/', views.ajax_load_scheme_by_id, name='ajax_load_scheme_by_id'),
     path('scheme/download-pdf/', views.download_scheme_pdf, name='download_scheme_pdf'),
     path('scheme/download-word/', views.download_scheme_word, name='download_scheme_word'),
 
@@ -21,6 +22,7 @@ urlpatterns = [
     path('lesson-plan/', views.lesson_plan_view, name='lesson_plan'),
     path('lesson-plan/ajax-generate/', views.ajax_generate_lessonplan, name='ajax_generate_lessonplan'),
     path('lesson-plan/ajax-load-saved/', views.ajax_load_saved_lessonplan, name='ajax_load_saved_lessonplan'),
+    path('lesson-plan/ajax-load-by-id/<int:lesson_id>/', views.ajax_load_lesson_by_id, name='ajax_load_lesson_by_id'),
     path('lesson-plan/download-pdf/', views.download_lesson_plan_pdf, name='download_lesson_plan_pdf'),
     path('lesson-plan/download-word/', views.download_lesson_plan_word, name='download_lesson_plan_word'),
 
@@ -32,6 +34,7 @@ urlpatterns = [
 
     # Teacher Registration (no login)
     path('register/', views.teacher_register, name='teacher_register'),
+    path('logout/', views.tlm_logout, name='tlm_logout'),
     path('api/get-districts/', views.ajax_get_districts, name='get_districts'),
     path('api/get-schools/', views.ajax_get_schools, name='get_schools'),
     path('api/save-teacher/', views.ajax_save_teacher, name='save_teacher'),
