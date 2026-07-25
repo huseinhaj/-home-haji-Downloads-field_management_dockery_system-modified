@@ -23,8 +23,12 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
 
+import logging
+
 from .ai_utils import client, model_name
 from .forms import SchemeOfWorkForm, LogbookForm
+
+logger = logging.getLogger(__name__)
 
 from field_app.models import (
     StudentTeacher, Subject, SchemeOfWork, LessonPlan,
@@ -542,10 +546,13 @@ Requirements:
         import traceback
         traceback.print_exc()
         raw = str(e)
+        logger.error(f"[Scheme Gen Error] {type(e).__name__}: {raw[:300]}")
         if 'PERMISSION_DENIED' in raw or 'suspended' in raw.lower() or '403' in raw:
             msg = "Huduma ya AI imesimamishwa. Wasiliana na msimamizi."
         elif 'quota' in raw.lower() or '429' in raw or 'rate' in raw.lower():
             msg = f"Kikomo cha matumizi: {raw[:200]}"
+        elif '413' in raw or 'request too large' in raw.lower():
+            msg = f"Ombi ni kubwa mno kwa AI. Jaribu kupunguza maelezo (wiki, vipindi) au kubadili somo. Hitilafu: {raw[:200]}"
         elif 'API_KEY' in raw or 'api_key' in raw.lower():
             msg = "Ufunguo wa API ya AI haujawekwa. Wasiliana na msimamizi."
         else:
@@ -1010,7 +1017,15 @@ Output MUST be ONLY valid JSON:
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return JsonResponse({'success': False, 'error': f"Hitilafu ya AI: {str(e)[:300]}"}, status=500)
+        raw = str(e)
+        logger.error(f"[Lesson Gen Error] {type(e).__name__}: {raw[:300]}")
+        if '413' in raw or 'request too large' in raw.lower():
+            msg = f"Ombi ni kubwa mno kwa AI. Jaribu kupunguza maelezo au kubadili somo. Hitilafu: {raw[:200]}"
+        elif 'quota' in raw.lower() or '429' in raw or 'rate' in raw.lower():
+            msg = f"Kikomo cha matumizi: {raw[:200]}"
+        else:
+            msg = f"Hitilafu ya AI: {raw[:200]}"
+        return JsonResponse({'success': False, 'error': msg}, status=500)
 
 
 def download_lesson_plan_pdf(request):

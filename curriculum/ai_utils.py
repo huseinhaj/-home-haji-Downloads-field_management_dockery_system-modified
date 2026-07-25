@@ -31,8 +31,13 @@ FALLBACK_MODELS_GROQ = [
 ]
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 class GenerateContentConfig:
-    def __init__(self, system_instruction=None, temperature=0.7, max_output_tokens=8192, **kwargs):
+    def __init__(self, system_instruction=None, temperature=0.7, max_output_tokens=4096, **kwargs):
         self.system_instruction = system_instruction
         self.temperature = temperature
         self.max_output_tokens = max_output_tokens
@@ -88,11 +93,11 @@ class _UnifiedModels:
     def generate_content(self, model, contents, config=None):
         system_instruction = None
         temperature = 0.7
-        max_tokens = 8192
+        max_tokens = 4096
         if config:
             system_instruction = getattr(config, "system_instruction", None)
             temperature = getattr(config, "temperature", 0.7)
-            max_tokens = getattr(config, "max_output_tokens", 8192)
+            max_tokens = getattr(config, "max_output_tokens", 4096)
 
         messages = _contents_to_messages(contents, system_instruction)
 
@@ -102,6 +107,7 @@ class _UnifiedModels:
             last_error = None
             for attempt_model in models_to_try:
                 try:
+                    logger.info(f"[AI] Trying OpenRouter model: {attempt_model}")
                     response = self._or.chat.completions.create(
                         model=attempt_model,
                         messages=messages,
@@ -112,15 +118,22 @@ class _UnifiedModels:
                             "X-Title": "TLM Tanzania - Teaching & Learning Materials",
                         }
                     )
+                    logger.info(f"[AI] OpenRouter success with model: {attempt_model}")
                     return _Response(response.choices[0].message.content)
                 except Exception as e:
                     last_error = e
                     err_str = str(e).lower()
+                    logger.warning(f"[AI] OpenRouter model {attempt_model} error: {type(e).__name__}: {str(e)[:150]}")
+                    # 413 = payload too large — not retryable for TPM limit
+                    if '413' in err_str or 'request too large' in err_str:
+                        logger.error(f"[AI] OpenRouter request too large for {attempt_model}, skipping all OpenRouter models")
+                        break
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
                         'overloaded', 'capacity', 'insufficient_quota', 'credits'
                     )):
                         continue
+                    logger.error(f"[AI] OpenRouter non-retryable error, raising: {str(e)[:200]}")
                     raise
 
         # ── FALLBACK TO GROQ ──
@@ -129,21 +142,30 @@ class _UnifiedModels:
             last_error = None
             for attempt_model in models_to_try:
                 try:
+                    logger.info(f"[AI] Trying Groq model: {attempt_model}")
                     response = self._groq.chat.completions.create(
                         model=attempt_model,
                         messages=messages,
                         temperature=temperature,
-                        max_tokens=max_tokens,
+                        max_tokens=2048,  # Lower for Groq (TPM limits are tight)
                     )
+                    logger.info(f"[AI] Groq success with model: {attempt_model}")
                     return _Response(response.choices[0].message.content)
                 except Exception as e:
                     last_error = e
                     err_str = str(e).lower()
+                    logger.warning(f"[AI] Groq model {attempt_model} error: {type(e).__name__}: {str(e)[:150]}")
+                    # For Groq: 413 = TPM limit — non-retryable on same tier
+                    if '413' in err_str or 'request too large' in err_str:
+                        logger.error(f"[AI] Groq request too large for {attempt_model}, not retrying further Groq models")
+                        # Don't continue — break immediately, this won't work on other Groq models either
+                        raise last_error
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
                         'overloaded', 'capacity'
                     )):
                         continue
+                    logger.error(f"[AI] Groq non-retryable error, raising: {str(e)[:200]}")
                     raise
             if last_error:
                 raise last_error
@@ -153,11 +175,11 @@ class _UnifiedModels:
     def generate_content_stream(self, model, contents, config=None):
         system_instruction = None
         temperature = 0.7
-        max_tokens = 8192
+        max_tokens = 4096
         if config:
             system_instruction = getattr(config, "system_instruction", None)
             temperature = getattr(config, "temperature", 0.7)
-            max_tokens = getattr(config, "max_output_tokens", 8192)
+            max_tokens = getattr(config, "max_output_tokens", 4096)
 
         messages = _contents_to_messages(contents, system_instruction)
 
@@ -167,6 +189,7 @@ class _UnifiedModels:
             last_error = None
             for attempt_model in models_to_try:
                 try:
+                    logger.info(f"[AI] Streaming with OpenRouter model: {attempt_model}")
                     stream = self._or.chat.completions.create(
                         model=attempt_model,
                         messages=messages,
@@ -178,6 +201,7 @@ class _UnifiedModels:
                             "X-Title": "TLM Tanzania - Teaching & Learning Materials",
                         }
                     )
+                    logger.info(f"[AI] OpenRouter stream started with {attempt_model}")
                     for chunk in stream:
                         content = chunk.choices[0].delta.content
                         if content:
@@ -186,6 +210,10 @@ class _UnifiedModels:
                 except Exception as e:
                     last_error = e
                     err_str = str(e).lower()
+                    logger.warning(f"[AI] OpenRouter stream {attempt_model}: {type(e).__name__}: {str(e)[:150]}")
+                    if '413' in err_str or 'request too large' in err_str:
+                        logger.error(f"[AI] OpenRouter stream request too large for {attempt_model}, skipping")
+                        break
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
                         'overloaded', 'capacity', 'insufficient_quota', 'credits'
@@ -199,6 +227,7 @@ class _UnifiedModels:
             last_error = None
             for attempt_model in models_to_try:
                 try:
+                    logger.info(f"[AI] Streaming with Groq model: {attempt_model}")
                     stream = self._groq.chat.completions.create(
                         model=attempt_model,
                         messages=messages,
@@ -206,6 +235,7 @@ class _UnifiedModels:
                         max_tokens=max_tokens,
                         stream=True,
                     )
+                    logger.info(f"[AI] Groq stream started with {attempt_model}")
                     for chunk in stream:
                         content = chunk.choices[0].delta.content
                         if content:
@@ -214,6 +244,9 @@ class _UnifiedModels:
                 except Exception as e:
                     last_error = e
                     err_str = str(e).lower()
+                    logger.warning(f"[AI] Groq stream {attempt_model}: {type(e).__name__}: {str(e)[:150]}")
+                    if '413' in err_str or 'request too large' in err_str:
+                        raise
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
                         'overloaded', 'capacity'
@@ -237,20 +270,29 @@ class UnifiedClient:
         if openrouter_key:
             try:
                 from openai import OpenAI
+                key_preview = openrouter_key[:12] + '...' if openrouter_key else 'NONE'
+                logger.info(f"[AI] Initializing OpenRouter client with key: {key_preview}")
                 self._or = OpenAI(
                     base_url="https://openrouter.ai/api/v1",
                     api_key=openrouter_key,
                 )
+                logger.info(f"[AI] OpenRouter client initialized successfully")
             except Exception as e:
-                print(f"[AI] OpenRouter initialization error: {e}")
+                logger.error(f"[AI] OpenRouter initialization error: {e}")
+        else:
+            logger.warning(f"[AI] OPENROUTER_API_KEY not set!")
 
         # Try to set up Groq as fallback
         if groq_key:
             try:
                 from groq import Groq
+                logger.info(f"[AI] Initializing Groq client (fallback)")
                 self._groq = Groq(api_key=groq_key)
+                logger.info(f"[AI] Groq client initialized")
             except Exception as e:
-                print(f"[AI] Groq initialization error: {e}")
+                logger.error(f"[AI] Groq initialization error: {e}")
+        else:
+            logger.warning(f"[AI] GROQ_API_KEY not set!")
 
         self.models = _UnifiedModels(
             openrouter_client=self._or,
@@ -259,9 +301,19 @@ class UnifiedClient:
 
 
 # Initialize the unified client
+logger.info(f"[AI] "
+    f"OPENROUTER_API_KEY={'SET' if OPENROUTER_API_KEY else 'NOT SET'} | "
+    f"GROQ_API_KEY={'SET' if GROQ_API_KEY else 'NOT SET'}")
 client = UnifiedClient(
     openrouter_key=OPENROUTER_API_KEY,
     groq_key=GROQ_API_KEY,
 ) if (OPENROUTER_API_KEY or GROQ_API_KEY) else None
 
 model_name = PRIMARY_MODEL
+logger.info(f"[AI] Model: {model_name} | Client ready: {client is not None}")
+
+# Also log if client has OpenRouter available
+if client and client._or:
+    logger.info(f"[AI] OpenRouter provider is AVAILABLE")
+if client and client._groq:
+    logger.info(f"[AI] Groq provider is AVAILABLE as fallback")
