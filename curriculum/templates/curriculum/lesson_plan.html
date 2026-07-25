@@ -205,7 +205,7 @@
             </div>
             <div class="mb-2">
               <label>Teacher Name</label>
-              <input class="form-control" id="teacher_name" value="{{ student.full_name|default:'' }}" required>
+              <input class="form-control" id="teacher_name" value="{{ teacher_name|default:student.full_name|default:'' }}" required>
             </div>
 
             <!-- Buttons -->
@@ -309,6 +309,45 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function getSelectedClassName() {
     return classSelect.value;
+  }
+
+  // ── Auto-fill subject from teacher registration ──
+  const teacherSubjectName = '{{ teacher_subject_name|escapejs }}';
+  const teacherSubjectId = '{{ teacher_subject_id|escapejs }}';
+  
+  if (teacherSubjectName) {
+    const observer = new MutationObserver(function() {
+      const opts = subjectSelect.querySelectorAll('option');
+      for (let opt of opts) {
+        const optName = opt.getAttribute('data-name') || opt.textContent;
+        if (optName.toLowerCase() === teacherSubjectName.toLowerCase()) {
+          subjectSelect.value = opt.value;
+          observer.disconnect();
+          break;
+        }
+      }
+    });
+    observer.observe(subjectSelect, { childList: true, subtree: true });
+    
+    // Pre-select education level that contains this subject
+    const subjLevel = '{{ teacher_subject_level|escapejs }}';
+    if (subjLevel) {
+      for (let opt of levelSelect.options) {
+        if (opt.value) {
+          const levelId = opt.value;
+          if (SUBJECTS_BY_LEVEL[levelId]) {
+            const found = SUBJECTS_BY_LEVEL[levelId].some(s => 
+              s.name.toLowerCase() === teacherSubjectName.toLowerCase()
+            );
+            if (found) {
+              levelSelect.value = levelId;
+              levelSelect.dispatchEvent(new Event('change'));
+              break;
+            }
+          }
+        }
+      }
+    }
   }
 
   // ── Cascading: Level → Class + Subject ──

@@ -223,11 +223,11 @@
             </div>
             <div class="mb-2">
               <label>Teacher Name</label>
-              <input class="form-control" id="teacher_name" value="{{ student.full_name|default:'' }}" required>
+              <input class="form-control" id="teacher_name" value="{{ teacher_name|default:student.full_name|default:'' }}" required>
             </div>
             <div class="mb-2">
               <label>School Name</label>
-              <input class="form-control" id="school_name" value="{{ school.name|default:'' }}">
+              <input class="form-control" id="school_name" value="{{ teacher_school_name|default:school.name|default:'' }}">
             </div>
 
             <!-- Advanced toggle -->
@@ -381,6 +381,47 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
   });
+
+  // ── Auto-fill subject from teacher registration ──
+  const teacherSubjectName = '{{ teacher_subject_name|escapejs }}';
+  const teacherSubjectId = '{{ teacher_subject_id|escapejs }}';
+  
+  if (teacherSubjectName) {
+    // After cascade populates subjects, select the teacher's subject
+    const observer = new MutationObserver(function() {
+      const opts = subjectSelect.querySelectorAll('option');
+      for (let opt of opts) {
+        if (opt.value.toLowerCase() === teacherSubjectName.toLowerCase()) {
+          subjectSelect.value = opt.value;
+          observer.disconnect();
+          break;
+        }
+      }
+    });
+    observer.observe(subjectSelect, { childList: true, subtree: true });
+    
+    // Also trigger cascade by selecting the education level that matches the subject's level
+    // We'll pre-select based on the subject's primary/secondary level
+    const subjLevel = '{{ teacher_subject_level|escapejs }}';
+    if (subjLevel) {
+      for (let opt of levelSelect.options) {
+        if (opt.value) {
+          // Find which education level contains this subject
+          const levelId = opt.value;
+          if (SUBJECTS_BY_LEVEL[levelId]) {
+            const found = SUBJECTS_BY_LEVEL[levelId].some(s => 
+              s.name.toLowerCase() === teacherSubjectName.toLowerCase()
+            );
+            if (found) {
+              levelSelect.value = levelId;
+              levelSelect.dispatchEvent(new Event('change'));
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
 
   // ── Break management ──
   document.getElementById('addBreakBtn').addEventListener('click', function() {

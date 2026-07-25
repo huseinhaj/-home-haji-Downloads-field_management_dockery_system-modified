@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.utils import IntegrityError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
@@ -211,16 +212,31 @@ def ajax_save_teacher(request):
         request.session['tlm_teacher_id'] = existing.id
         return JsonResponse({'success': True, 'is_new': False})
     
-    teacher = TLMTeacher.objects.create(
-        full_name=full_name,
-        phone_number=phone_number,
-        region_id=region_id,
-        district_id=district_id,
-        school_id=school_id,
-        subject_id=subject_id,
-    )
-    request.session['tlm_teacher_id'] = teacher.id
-    return JsonResponse({'success': True, 'is_new': True})
+    # Wrap in try-except for security: prevent duplicate phone numbers (race condition)
+    try:
+        teacher = TLMTeacher.objects.create(
+            full_name=full_name,
+            phone_number=phone_number,
+            region_id=region_id,
+            district_id=district_id,
+            school_id=school_id,
+            subject_id=subject_id,
+        )
+        request.session['tlm_teacher_id'] = teacher.id
+        return JsonResponse({'success': True, 'is_new': True})
+    except IntegrityError:
+        # Race condition: another request created this phone number between check and create
+        existing = TLMTeacher.objects.filter(phone_number=phone_number).first()
+        if existing:
+            existing.full_name = full_name
+            existing.region_id = region_id
+            existing.district_id = district_id
+            existing.school_id = school_id
+            existing.subject_id = subject_id
+            existing.save()
+            request.session['tlm_teacher_id'] = existing.id
+            return JsonResponse({'success': True, 'is_new': False})
+        return JsonResponse({'success': False, 'error': 'Hitilafu ya usajili. Jaribu tena.'}, status=400)
 
 
 def ajax_lookup_teacher(request):
@@ -330,6 +346,13 @@ def generate_scheme_view(request):
         except StudentTeacher.DoesNotExist:
             pass
 
+    # Get teacher info for auto-fill
+    teacher_name = teacher.full_name if teacher else ''
+    teacher_school_name = teacher.school.name if teacher and teacher.school else ''
+    teacher_subject_id = teacher.subject.id if teacher and teacher.subject else ''
+    teacher_subject_name = teacher.subject.name if teacher and teacher.subject else ''
+    teacher_subject_level = teacher.subject.level if teacher and teacher.subject else ''
+
     return render(request, 'curriculum/generate_scheme.html', {
         'form': form,
         'education_levels': education_levels,
@@ -338,6 +361,11 @@ def generate_scheme_view(request):
         'student': student,
         'school': school,
         'teacher': teacher,
+        'teacher_name': teacher_name,
+        'teacher_school_name': teacher_school_name,
+        'teacher_subject_id': teacher_subject_id,
+        'teacher_subject_name': teacher_subject_name,
+        'teacher_subject_level': teacher_subject_level,
     })
 
 
@@ -762,6 +790,13 @@ def lesson_plan_view(request):
         except StudentTeacher.DoesNotExist:
             pass
 
+    # Get teacher info for auto-fill
+    teacher_name = teacher.full_name if teacher else ''
+    teacher_school_name = teacher.school.name if teacher and teacher.school else ''
+    teacher_subject_id = teacher.subject.id if teacher and teacher.subject else ''
+    teacher_subject_name = teacher.subject.name if teacher and teacher.subject else ''
+    teacher_subject_level = teacher.subject.level if teacher and teacher.subject else ''
+
     return render(request, 'curriculum/lesson_plan.html', {
         'education_levels': education_levels,
         'classes_by_level_json': _json.dumps(classes_by_level),
@@ -769,6 +804,11 @@ def lesson_plan_view(request):
         'student': student,
         'school': school,
         'teacher': teacher,
+        'teacher_name': teacher_name,
+        'teacher_school_name': teacher_school_name,
+        'teacher_subject_id': teacher_subject_id,
+        'teacher_subject_name': teacher_subject_name,
+        'teacher_subject_level': teacher_subject_level,
     })
 
 
