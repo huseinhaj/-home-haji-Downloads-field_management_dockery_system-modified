@@ -8,7 +8,7 @@ from django.shortcuts import render
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_POST
 
-from field_app.ai_utils import client, model_name, FALLBACK_MODELS, GenerateContentConfig as genai_types_cfg
+from field_app.ai_utils import client, model_name, FALLBACK_MODELS_GROQ as FALLBACK_MODELS, GenerateContentConfig as genai_types_cfg
 
 class _GenaiTypesCompat:
     GenerateContentConfig = genai_types_cfg

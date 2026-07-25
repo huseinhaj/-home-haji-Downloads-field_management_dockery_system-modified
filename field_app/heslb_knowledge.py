@@ -54,7 +54,7 @@ def _fetch_text(url: str) -> str:
 
 def _summarise_with_gemini(raw: str) -> str | None:
     """Ask Gemini to extract current HESLB loan requirements from raw text."""
-    from field_app.ai_utils import client, FALLBACK_MODELS
+    from field_app.ai_utils import client, FALLBACK_MODELS_GROQ as FALLBACK_MODELS
     from google.genai import types as genai_types
 
     if not client or not raw.strip():
