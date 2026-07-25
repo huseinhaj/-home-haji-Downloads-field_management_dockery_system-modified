@@ -36,3 +36,26 @@ class TLMTeacher(models.Model):
 
     def __str__(self):
         return f"{self.full_name} — {self.phone_number}"
+
+
+class Testimonial(models.Model):
+    """Real testimonial/feedback from a teacher who has used TLM tools."""
+    teacher = models.ForeignKey(
+        TLMTeacher, on_delete=models.CASCADE, null=True, blank=True,
+        verbose_name="Mwalimu"
+    )
+    teacher_name = models.CharField(max_length=200, verbose_name="Jina la Mwalimu")
+    school_name = models.CharField(max_length=300, verbose_name="Jina la Shule", blank=True)
+    message = models.TextField(verbose_name="Ujumbe / Maoni")
+    role = models.CharField(max_length=100, verbose_name="Wadhifa",
+                            default="Mwalimu", blank=True)
+    is_approved = models.BooleanField(default=True, verbose_name="Imeidhinishwa")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Testimonial"
+        verbose_name_plural = "Testimonials"
+
+    def __str__(self):
+        return f"{self.teacher_name}: {self.message[:60]}"

@@ -317,53 +317,81 @@
   </div>
 </div>
 
-<!-- Testimonials -->
-<div class="mb-5">
+<!-- Real testimonials from teachers -->
+{% if testimonials %}
+<div class="mb-5" id="testimonials-section">
   <div class="text-center mb-4 fade-in">
     <span class="hero-badge"><i class="fas fa-quote-right"></i> Walimu Wanasema</span>
     <h2 style="font-family:var(--font-display);font-size:clamp(1.2rem,2.5vw,1.8rem);font-weight:800;color:var(--text-primary);">
-      Maoni Kutoka Kwa Walimu
+      Maoni Kutoka Kwa Walimu Halisi
     </h2>
   </div>
-  <div class="grid-3">
-    <div class="testimonial fade-in-delay-1">
-      <p style="font-size:var(--font-size-sm);color:var(--text-secondary);font-style:italic;margin-bottom:0.75rem;position:relative;z-index:1;">
-        "Scheme of Work ambayo ingechukua siku nzima kuandaa sasa inachukua dakika 1. Mfumo huu ni mkombozi kwangu."
+  <div class="grid-3" id="testimonialsContainer">
+    {% for t in testimonials %}
+    <div class="testimonial fade-in-delay-{{ forloop.counter|add:'-1'|stringformat:'s'|cut:'0'|default:'1' }}">
+      <p style="font-size:var(--font-size-sm);color:var(--text-primary);line-height:1.7;margin-bottom:0.75rem;font-style:italic;">
+        "{{ t.message }}"
       </p>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--green-500);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:var(--font-size-sm);">JM</div>
+      <div style="display:flex;align-items:center;gap:10px;border-top:1px solid var(--border-color);padding-top:0.65rem;">
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--green-500);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:0.85rem;flex-shrink:0;">
+          {{ t.teacher_name|first }}
+        </div>
         <div>
-          <div style="font-weight:700;font-size:var(--font-size-sm);">Juma M.</div>
-          <div style="font-size:var(--font-size-xs);color:var(--text-muted);">Mwalimu, Shule ya Sekondari</div>
+          <strong style="font-size:var(--font-size-sm);color:var(--text-primary);">{{ t.teacher_name }}</strong>
+          <span style="display:block;font-size:var(--font-size-xs);color:var(--text-muted);">{{ t.school_name|default:t.role|default:"Mwalimu" }}</span>
         </div>
       </div>
     </div>
-    <div class="testimonial fade-in-delay-2">
-      <p style="font-size:var(--font-size-sm);color:var(--text-secondary);font-style:italic;margin-bottom:0.75rem;position:relative;z-index:1;">
-        "Natumia simu yangu pekee. Hakuna haja ya laptop. Interface ni safi na inafanya kazi vizuri kwenye skrini ndogo."
-      </p>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--gold-400);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:var(--font-size-sm);">AH</div>
-        <div>
-          <div style="font-weight:700;font-size:var(--font-size-sm);">Amina H.</div>
-          <div style="font-size:var(--font-size-xs);color:var(--text-muted);">Mwalimu, Shule ya Msingi</div>
-        </div>
-      </div>
-    </div>
-    <div class="testimonial fade-in-delay-3">
-      <p style="font-size:var(--font-size-sm);color:var(--text-secondary);font-style:italic;margin-bottom:0.75rem;position:relative;z-index:1;">
-        "PDF inayotoka iko tayari kuchapishwa — font, jedwali, rangi zote zipo. Hii inaokoa muda mwingi."
-      </p>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--info);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:var(--font-size-sm);">PK</div>
-        <div>
-          <div style="font-weight:700;font-size:var(--font-size-sm);">Peter K.</div>
-          <div style="font-size:var(--font-size-xs);color:var(--text-muted);">Head Teacher, Shule ya Sekondari</div>
-        </div>
+    {% endfor %}
+  </div>
+  
+  <!-- Feedback form for teachers to submit their own testimonial -->
+  <div class="text-center mt-4 fade-in">
+    <button class="btn-tlm btn-ghost-tlm btn-sm-tlm" onclick="document.getElementById('feedbackForm').style.display=(document.getElementById('feedbackForm').style.display==='none'?'block':'none')">
+      <i class="fas fa-pen"></i> Andika Maoni Yako
+    </button>
+  </div>
+  <div id="feedbackForm" style="display:none;max-width:500px;margin:1rem auto 0;" class="fade-in">
+    <div class="c-card p-3">
+      <div class="c-card-body" style="padding:0;">
+        <h6 style="font-weight:700;margin-bottom:8px;color:var(--text-primary);">✍️ Andika maoni yako kuhusu TLM</h6>
+        <input class="form-control mb-2" id="fbName" placeholder="Jina lako" value="{% if teacher %}{{ teacher.full_name }}{% endif %}" required>
+        <input class="form-control mb-2" id="fbSchool" placeholder="Jina la shule yako" value="{% if teacher %}{{ teacher.school.name }}{% endif %}">
+        <textarea class="form-control mb-2" id="fbMessage" rows="3" placeholder="Andika maoni yako hapa..." required></textarea>
+        <button class="btn-tlm btn-primary-tlm btn-sm-tlm w-100" id="submitFbBtn" onclick="submitTestimonial()">
+          <i class="fas fa-paper-plane"></i> Tuma Maoni
+        </button>
+        <p id="fbStatus" style="font-size:var(--font-size-xs);color:var(--text-muted);margin:6px 0 0;display:none;"></p>
       </div>
     </div>
   </div>
 </div>
+{% else %}
+<!-- No testimonials yet — show feedback form only -->
+<div class="mb-5" id="testimonials-section">
+  <div class="text-center mb-3 fade-in">
+    <span class="hero-badge"><i class="fas fa-quote-right"></i> Walimu Wanasema</span>
+    <h2 style="font-family:var(--font-display);font-size:clamp(1.2rem,2.5vw,1.8rem);font-weight:800;color:var(--text-primary);">
+      Kuwa wa Kwanza Kutoa Maoni!
+    </h2>
+    <p style="color:var(--text-secondary);font-size:var(--font-size-sm);">WasaidIE walimu wengine kwa kushiriki uzoefu wako wa kutumia TLM.</p>
+  </div>
+  <div style="max-width:500px;margin:0 auto;" class="fade-in">
+    <div class="c-card p-3">
+      <div class="c-card-body" style="padding:0;">
+        <h6 style="font-weight:700;margin-bottom:8px;color:var(--text-primary);">✍️ Andika maoni yako</h6>
+        <input class="form-control mb-2" id="fbName" placeholder="Jina lako" value="{% if teacher %}{{ teacher.full_name }}{% endif %}" required>
+        <input class="form-control mb-2" id="fbSchool" placeholder="Jina la shule yako" value="{% if teacher %}{{ teacher.school.name }}{% endif %}">
+        <textarea class="form-control mb-2" id="fbMessage" rows="3" placeholder="Andika maoni yako hapa..." required></textarea>
+        <button class="btn-tlm btn-primary-tlm btn-sm-tlm w-100" id="submitFbBtn" onclick="submitTestimonial()">
+          <i class="fas fa-paper-plane"></i> Tuma Maoni
+        </button>
+        <p id="fbStatus" style="font-size:var(--font-size-xs);color:var(--text-muted);margin:6px 0 0;display:none;"></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Final CTA -->
 <div class="text-center fade-in" style="padding:2rem 0;">
@@ -418,5 +446,50 @@ document.addEventListener('DOMContentLoaded', function() {
     requestAnimationFrame(update);
   }
 });
+
+// ── Submit Testimonial / Feedback ──
+function submitTestimonial() {
+  const name = document.getElementById('fbName').value.trim();
+  const school = document.getElementById('fbSchool').value.trim();
+  const message = document.getElementById('fbMessage').value.trim();
+  const btn = document.getElementById('submitFbBtn');
+  const status = document.getElementById('fbStatus');
+  
+  if (!name) { showToast('Tafadhali weka jina lako', 'warning'); return; }
+  if (!message) { showToast('Tafadhali andika maoni yako', 'warning'); return; }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner-tlm" style="width:16px;height:16px;border-width:2px;"></div> Inatuma...';
+  status.style.display = 'none';
+  
+  fetch('{% url "curriculum:submit_testimonial" %}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+    body: JSON.stringify({ teacher_name: name, school_name: school, message: message }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Tuma Maoni';
+    if (data.success) {
+      status.style.display = 'block';
+      status.style.color = 'var(--success)';
+      status.textContent = '✅ Asante! Maoni yako yamepokelewa.';
+      document.getElementById('fbMessage').value = '';
+      showToast('✅ Asante kwa maoni yako!', 'success');
+    } else {
+      status.style.display = 'block';
+      status.style.color = 'var(--error)';
+      status.textContent = '❌ ' + (data.error || 'Hitilafu. Jaribu tena.');
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Tuma Maoni';
+    status.style.display = 'block';
+    status.style.color = 'var(--error)';
+    status.textContent = '❌ Network error. Jaribu tena.';
+  });
+}
 </script>
 {% endblock %}

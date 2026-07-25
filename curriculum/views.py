@@ -36,7 +36,7 @@ from field_app.views.utils import (
     get_current_academic_year, invalidate_student_cache,
 )
 
-from .models import TLMTeacher
+from .models import TLMTeacher, Testimonial
 
 
 # =============================================================================
@@ -69,13 +69,74 @@ def landing(request):
     total_lesson_plans = LessonPlan.objects.count()
     total_logbooks = LogbookEntry.objects.count()
     
+    # Real testimonials from teachers
+    testimonials = Testimonial.objects.filter(is_approved=True).select_related('teacher__school')[:6]
+    
     return render(request, 'curriculum/landing.html', {
         'teacher': teacher,
         'total_teachers': total_teachers,
         'total_schemes': total_schemes,
         'total_lesson_plans': total_lesson_plans,
         'total_logbooks': total_logbooks,
+        'testimonials': testimonials,
     })
+
+
+# =============================================================================
+# TEMPLATE LIBRARY — browse saved schemes & lesson plans
+# =============================================================================
+
+def template_library(request):
+    """Browse saved schemes and lesson plans in a library view."""
+    teacher = get_tlm_teacher(request)
+    
+    # If Django-authenticated user, also show their items
+    user_schemes = []
+    user_lessons = []
+    if request.user.is_authenticated:
+        try:
+            student = StudentTeacher.objects.get(user=request.user)
+            user_schemes = SchemeOfWork.objects.filter(student=student).select_related('subject', 'school').order_by('-updated_at')[:20]
+            user_lessons = LessonPlan.objects.filter(student=student).select_related('subject').order_by('-created_at')[:20]
+        except StudentTeacher.DoesNotExist:
+            pass
+    
+    return render(request, 'curriculum/library.html', {
+        'teacher': teacher,
+        'schemes': user_schemes,
+        'lesson_plans': user_lessons,
+    })
+
+
+# =============================================================================
+# SUBMIT TESTIMONIAL / FEEDBACK
+# =============================================================================
+
+@require_POST
+def ajax_submit_testimonial(request):
+    """Submit a testimonial/feedback from a teacher."""
+    try:
+        data = json.loads(request.body)
+        message = data.get('message', '').strip()
+        teacher_name = data.get('teacher_name', '').strip()
+        school_name = data.get('school_name', '').strip()
+        
+        if not message or not teacher_name:
+            return JsonResponse({'success': False, 'error': 'Tafadhali jaza jina na ujumbe.'}, status=400)
+        
+        teacher = get_tlm_teacher(request)
+        
+        testimonial = Testimonial.objects.create(
+            teacher=teacher,
+            teacher_name=teacher_name,
+            school_name=school_name,
+            message=message,
+            is_approved=True,  # Auto-approve for now
+        )
+        
+        return JsonResponse({'success': True, 'id': testimonial.id})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
 
 
 # =============================================================================

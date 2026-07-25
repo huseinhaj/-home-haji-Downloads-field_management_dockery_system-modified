@@ -1,0 +1,209 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}Template Library{% endblock %}
+{% block content %}
+<style>
+  .lib-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    transition: all var(--duration-normal) var(--ease-out);
+    position: relative;
+    overflow: hidden;
+  }
+  .lib-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--green-500);
+  }
+  .lib-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--green-500), var(--gold-400));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--duration-slow) var(--ease-out);
+  }
+  .lib-card:hover::after { transform: scaleX(1); }
+  .lib-badge {
+    position: absolute;
+    top: 0.75rem; right: 0.75rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+  }
+  .lib-badge.scheme { background: rgba(31,122,61,0.1); color: var(--green-500); }
+  .lib-badge.lesson { background: rgba(217,164,65,0.12); color: var(--gold-400); }
+  .lib-date { font-size: var(--font-size-xs); color: var(--text-muted); }
+  .lib-subject {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .lib-meta {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .lib-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .lib-preview {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .empty-library {
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+  .empty-library-icon {
+    width: 80px; height: 80px;
+    background: rgba(31,122,61,0.06);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+  }
+</style>
+
+<div class="mb-4">
+  <div class="c-card p-3" style="border-left:4px solid var(--gold-400);">
+    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+      <div class="stat-icon" style="background:var(--green-500);">
+        <i class="fas fa-layer-group" style="color:#fff;font-size:1.1rem;"></i>
+      </div>
+      <div style="flex:1;">
+        <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:clamp(0.9rem,1.5vw,1.15rem);">
+          📚 Template Library
+        </h4>
+        <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
+          Schemes of Work na Lesson Plans zilizohifadhiwa — bonyeza kuona na kuhariri
+        </p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <a href="{% url 'curriculum:generate_scheme' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
+          <i class="fas fa-plus"></i> New Scheme
+        </a>
+        <a href="{% url 'curriculum:lesson_plan' %}" class="btn-tlm btn-gold-tlm btn-sm-tlm">
+          <i class="fas fa-plus"></i> New Lesson
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if schemes or lesson_plans %}
+  <!-- Schemes Section -->
+  {% if schemes %}
+  <div class="mb-4">
+    <div class="sec-hd">
+      <h3><i class="fas fa-calendar-alt"></i> Schemes of Work ({{ schemes|length }})</h3>
+    </div>
+    <div class="grid-3">
+      {% for s in schemes %}
+      <div class="lib-card fade-in">
+        <span class="lib-badge scheme">Scheme</span>
+        <div class="lib-subject">{{ s.subject.name|default:"—" }}</div>
+        <div class="lib-meta">
+          <span><i class="fas fa-users"></i> {{ s.class_name }}</span>
+          <span><i class="fas fa-list"></i> Term {{ s.term }} {{ s.year }}</span>
+          <span><i class="fas fa-calendar-week"></i> {{ s.total_weeks }} weeks</span>
+        </div>
+        <div class="lib-preview">
+          {% if s.scheme_data %}
+            {{ s.scheme_data|length }} week(s) • {{ s.teacher_name|default:"Mwalimu" }}
+          {% else %}
+            Hakuna data ya scheme iliyohifadhiwa.
+          {% endif %}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+          <span class="lib-date"><i class="far fa-clock"></i> {{ s.updated_at|date:"d M Y, H:i" }}</span>
+          <div style="display:flex;gap:4px;">
+            <a href="{% url 'curriculum:generate_scheme' %}" class="btn-tlm btn-ghost-tlm btn-sm-tlm">
+              <i class="fas fa-external-link-alt"></i> Fungua Kijenereta
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Lesson Plans Section -->
+  {% if lesson_plans %}
+  <div class="mb-4">
+    <div class="sec-hd">
+      <h3><i class="fas fa-chalkboard"></i> Lesson Plans ({{ lesson_plans|length }})</h3>
+    </div>
+    <div class="grid-3">
+      {% for lp in lesson_plans %}
+      <div class="lib-card fade-in">
+        <span class="lib-badge lesson">Lesson Plan</span>
+        <div class="lib-subject">{{ lp.subject.name|default:"—" }}</div>
+        <div class="lib-meta">
+          <span><i class="fas fa-users"></i> {{ lp.class_name }}</span>
+          <span><i class="fas fa-book"></i> {{ lp.topic|truncatechars:25 }}</span>
+          <span><i class="fas fa-clock"></i> Term {{ lp.term }} {{ lp.year }}</span>
+        </div>
+        <div class="lib-preview">
+          {% if lp.main_competence %}
+            <strong>Main Competence:</strong> {{ lp.main_competence|truncatechars:80 }}<br>
+            <strong>Objectives:</strong> {{ lp.learning_objectives|length }} objectives
+          {% else %}
+            Hakuna data ya Lesson Plan.
+          {% endif %}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+          <span class="lib-date"><i class="far fa-clock"></i> {{ lp.created_at|date:"d M Y, H:i" }}</span>
+          <div style="display:flex;gap:4px;">
+            <a href="{% url 'curriculum:lesson_plan' %}" class="btn-tlm btn-ghost-tlm btn-sm-tlm">
+              <i class="fas fa-eye"></i> Fungua
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+{% else %}
+  <!-- Empty state -->
+  <div class="empty-library">
+    <div class="empty-library-icon">
+      <i class="fas fa-layer-group" style="font-size:2rem;color:var(--text-muted);"></i>
+    </div>
+    <h5 style="color:var(--text-secondary);font-weight:700;">Hakuna Schemes au Lesson Plans zilizohifadhiwa</h5>
+    <p style="color:var(--text-muted);font-size:var(--font-size-sm);max-width:400px;margin:0 auto 1.25rem;">
+      Bado hujahifadhi scheme au lesson plan yoyote. Tengeneza nyenzo zako za kwanza kwa kubonyeza vitufe vilivyo hapa juu.
+      Schemes na Lesson Plans zote utakazohifadhi zitaonekana hapa.
+    </p>
+    <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+      <a href="{% url 'curriculum:generate_scheme' %}" class="btn-tlm btn-primary-tlm btn-lg-tlm">
+        <i class="fas fa-calendar-alt"></i> Generate Scheme of Work
+      </a>
+      <a href="{% url 'curriculum:lesson_plan' %}" class="btn-tlm btn-gold-tlm btn-lg-tlm">
+        <i class="fas fa-chalkboard"></i> Generate Lesson Plan
+      </a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}{% endblock %}

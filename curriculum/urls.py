@@ -41,6 +41,12 @@ urlpatterns = [
     path('scheme/ajax-save-edits/', views.ajax_save_scheme_edits, name='save_scheme_edits'),
     path('lesson-plan/ajax-save-edits/', views.ajax_save_lesson_edits, name='save_lesson_edits'),
 
+    # Template Library
+    path('library/', views.template_library, name='template_library'),
+
+    # Testimonials
+    path('api/submit-testimonial/', views.ajax_submit_testimonial, name='submit_testimonial'),
+
     # API helpers
     path('api/get-topics/', views.get_topics_by_subject, name='get_topics'),
     path('api/get-topics-ai/', views.get_topics_ai, name='get_topics_ai'),
