@@ -385,6 +385,7 @@ def ajax_generate_scheme(request):
 
         education_level = data.get('education_level')
         class_name = data.get('class_name')
+        stream = data.get('stream', '')
         subject = data.get('subject')
         term = data.get('term')
         year = data.get('year')
@@ -404,12 +405,26 @@ def ajax_generate_scheme(request):
             for b in breaks:
                 breaks_text += f"- {b.get('name', 'Break')}: {b.get('start', '')} to {b.get('end', '')}\n"
 
+        # Build term-aware scope instructions
+        if term == 'Full Year':
+            term_scope = 'Cover ALL topics for the ENTIRE academic year. Distribute content across all {total_weeks} weeks from the beginning to the end of the syllabus.'
+        elif term == 'I':
+            term_scope = f'This is Term I (first term). Cover only the FIRST PORTION (first 1/3) of the year\'s content. Start from Topic 1 and distribute across {total_weeks} weeks of Term I. Do NOT include topics meant for Term II or Term III.'
+        elif term == 'II':
+            term_scope = f'This is Term II (second term). Cover only the MIDDLE PORTION (second 1/3) of the year\'s content. Start from where Term I stopped and distribute across {total_weeks} weeks of Term II. Do NOT include topics meant for Term I or Term III.'
+        elif term == 'III':
+            term_scope = f'This is Term III (third term). Cover only the FINAL PORTION (last 1/3) of the year\'s content. Start from where Term II stopped and complete the syllabus across {total_weeks} weeks of Term III. Do NOT include topics meant for Term I or Term II.'
+        else:
+            term_scope = f'Cover appropriate content for the selected term across {total_weeks} weeks.'
+
+        full_class_name = f"{class_name}{stream}" if stream else class_name
+
         prompt = f"""
 You are an AI assistant for Tanzanian teachers. Generate a complete Scheme of Work following EXACTLY the SEQUIP/TIE Tanzania revised format (2023).
 
 Input details:
 - Education Level: {education_level}
-- Class/Form: {class_name}
+- Class/Form: {full_class_name}
 - Subject: {subject}
 - Term: {term} {year}
 - Syllabus: {syllabus}
@@ -421,18 +436,20 @@ Input details:
 - School: {school_name}
 - Reference Source: {reference_source}
 {breaks_text}
+
 The output MUST be a JSON list of objects. Each object must have exactly these 12 keys:
 "Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
 
 Requirements:
-1. Distribute content across {total_weeks} weeks, respecting any breaks.
-2. For each week, assign appropriate Month (e.g., MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER).
-3. "Week" column should be like "1st", "2nd", "3rd", etc.
-4. "Number of Periods" should be {periods_per_week} for normal weeks.
-5. "Specific Learning Activities" deconstruct Main Learning Activity into smaller measurable steps.
-6. "References" must follow APA style version 7.
-7. "Teaching and Learning Methods" should include CBC-aligned methods.
-8. Return ONLY valid JSON, no extra text.
+1. TERM SCOPE: {term_scope}
+2. Distribute content across {total_weeks} weeks, respecting any breaks.
+3. For each week, assign appropriate Month (e.g., JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER).
+4. "Week" column should be like "1st", "2nd", "3rd", etc.
+5. "Number of Periods" should be {periods_per_week} for normal weeks, fewer for exam weeks.
+6. "Specific Learning Activities" deconstruct Main Learning Activity into smaller measurable steps.
+7. "References" must follow APA style version 7.
+8. "Teaching and Learning Methods" should include CBC-aligned methods.
+9. Return ONLY valid JSON, no extra text.
 """
 
         response = client.models.generate_content(model=model_name, contents=prompt)
@@ -825,6 +842,7 @@ def ajax_generate_lessonplan(request):
 
         education_level = data.get('education_level', '')
         class_name = data.get('class_name', '')
+        stream = data.get('stream', '')
         subject = data.get('subject', '')
         subject_id = data.get('subject_id', '')
         topic = data.get('topic', '')
@@ -847,7 +865,7 @@ The IDDR model stages:
 
 Input Details:
 - Education Level: {education_level}
-- Class/Form: {class_name}
+- Class/Form: {class_name}{stream if stream else ''}
 - Subject: {subject}
 - Topic: {topic}
 - Subtopic: {subtopic}

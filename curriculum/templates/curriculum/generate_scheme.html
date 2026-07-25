@@ -180,11 +180,25 @@
                 {% endfor %}
               </select>
             </div>
-            <div class="mb-2">
-              <label>Class</label>
-              <select class="form-control form-select" id="class_level" required>
-                <option value="">— Chagua Darasa —</option>
-              </select>
+            <div class="row g-1 mb-2">
+              <div class="col-7">
+                <label>Class</label>
+                <select class="form-control form-select" id="class_level" required>
+                  <option value="">— Chagua Darasa —</option>
+                </select>
+              </div>
+              <div class="col-5">
+                <label>Stream/Division</label>
+                <select class="form-control form-select" id="stream">
+                  <option value="">— Chagua —</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                </select>
+              </div>
             </div>
             <div class="mb-2">
               <label>Subject</label>
@@ -196,10 +210,10 @@
               <div class="col-5">
                 <label>Term</label>
                 <select class="form-control form-select" id="term">
-                  <option value="Full Year">Full Year</option>
-                  <option value="I">Term I</option>
-                  <option value="II">Term II</option>
-                  <option value="III">Term III</option>
+                  <option value="Full Year">Full Year (36 weeks)</option>
+                  <option value="I">Term I (12 weeks)</option>
+                  <option value="II">Term II (12 weeks)</option>
+                  <option value="III">Term III (12 weeks)</option>
                 </select>
               </div>
               <div class="col-3">
@@ -208,7 +222,7 @@
               </div>
               <div class="col-4">
                 <label>Weeks</label>
-                <input class="form-control" id="total_weeks" value="12" type="number" min="1" max="52">
+                <input class="form-control" id="total_weeks" value="36" type="number" min="1" max="52">
               </div>
             </div>
             <div class="row g-1 mb-2">
@@ -287,7 +301,17 @@
 
       <!-- Results -->
       <div id="resultsArea" style="display:none;">
-        <div class="c-card">
+        <div class="c-card" style="
+          border: 2.5px solid var(--green-500);
+          border-top: 4px solid var(--gold-400);
+          border-radius: var(--radius-md);
+          box-shadow: 0 3px 12px rgba(31,122,61,0.08), inset 0 1px 0 rgba(217,164,65,0.08);
+          position: relative;
+        ">
+          <!-- Decorative badge -->
+          <div style="position:absolute;top:-10px;left:12px;background:var(--gold-400);color:white;font-size:9px;font-weight:700;padding:2px 10px;border-radius:var(--radius-full);text-transform:uppercase;letter-spacing:0.06em;z-index:10;">
+            <i class="fas fa-print me-1"></i> RESULTS
+          </div>
           <div class="c-card-head">
             <h3 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);color:var(--text-primary);margin:0;">
               <i class="fas fa-table text-gold"></i> Generated Scheme of Work
@@ -306,7 +330,12 @@
           </div>
           <div class="c-card-body p-2">
             <div class="scheme-table-wrap" id="tableContainer"></div>
-            <div id="editActions" style="display:none;margin-top:0.75rem;" class="d-flex gap-2 flex-wrap">
+            <!-- Academic footer watermark -->
+      <div style="margin-top:0.75rem;padding:0.5rem 0.75rem;background:rgba(31,122,61,0.03);border-top:1.5px solid var(--gold-400);border-radius:0 0 var(--radius-sm) var(--radius-sm);font-size:9px;color:var(--text-muted);text-align:center;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
+        <span><i class="fas fa-certificate text-gold"></i> TIE SEQUIP Format — Tanzania</span>
+        <span id="resultMetaInfo" style="font-style:italic;"></span>
+      </div>
+          <div id="editActions" style="display:none;margin-top:0.75rem;" class="d-flex gap-2 flex-wrap">
               <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="saveEditsBtn">
                 <i class="fas fa-save me-1"></i> Hifadhi Mabadiliko
               </button>
@@ -363,9 +392,15 @@ document.addEventListener('DOMContentLoaded', function() {
   advancedToggle.addEventListener('click', function() {
     this.classList.toggle('open');
     advancedPanel.classList.toggle('open');
-  });
+  });    // ── Term → Weeks auto-adjust ──
+    document.getElementById('term').addEventListener('change', function() {
+      const weeksInput = document.getElementById('total_weeks');
+      const term = this.value;
+      if (term === 'Full Year') weeksInput.value = 36;
+      else weeksInput.value = 12;
+    });
 
-  // ── Cascading dropdowns ──
+    // ── Cascading dropdowns ──
   levelSelect.addEventListener('change', function() {
     const levelId = this.value;
     classSelect.innerHTML = '<option value="">— Chagua Darasa —</option>';
@@ -460,6 +495,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return {
       education_level: document.querySelector('#education_level option:checked')?.textContent || levelSelect.value,
       class_name: classSelect.value,
+      stream: document.getElementById('stream').value,
       subject: subjectSelect.value,
       term: document.getElementById('term').value,
       year: document.getElementById('year').value,
@@ -514,6 +550,10 @@ document.addEventListener('DOMContentLoaded', function() {
           currentSavedId = data.saved_id;
           renderTable(data.data);
           resultsArea.style.display = 'block';
+          // Update result metadata
+          const fd = getFormData();
+          document.getElementById('resultMetaInfo').textContent = fd.teacher_name ?
+            `${fd.teacher_name} — ${fd.class_name}${fd.stream ? fd.stream : ''} — Term ${fd.term} ${fd.year}` : '';
           showToast('✅ Scheme of Work imezalishwa!', 'success');
         } else {
           showToast(data.error || 'Hitilafu wakati wa kuzalisha.', 'error');
@@ -671,11 +711,15 @@ document.addEventListener('DOMContentLoaded', function() {
   // ── Download PDF ──
   document.getElementById('downloadPdfBtn').addEventListener('click', function() {
     if (!currentSchemeData) return;
-    const fd = { ...getFormData(), scheme_data: currentSchemeData };
+    const fd = getFormData();
+    // Update result metadata
+    document.getElementById('resultMetaInfo').textContent = fd.teacher_name ?
+      `${fd.teacher_name} — ${fd.class_name}${fd.stream ? fd.stream : ''} — Term ${fd.term} ${fd.year}` : '';
+    const bodyData = { ...fd, scheme_data: currentSchemeData };
     fetch('{% url "curriculum:download_scheme_pdf" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-      body: JSON.stringify(fd),
+      body: JSON.stringify(bodyData),
     })
     .then(r => r.blob())
     .then(blob => {
