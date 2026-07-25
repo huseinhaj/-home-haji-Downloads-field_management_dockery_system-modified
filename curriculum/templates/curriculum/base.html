@@ -897,9 +897,9 @@
                     <i class="fas fa-user-plus"></i> Jisajili
                 </a>
                 {% endif %}
-                <!-- Portal Back -->
-                <a href="/" class="nav-link-tlm" style="border:1.5px solid var(--gold-400);color:var(--gold-400);font-weight:700;">
-                    <i class="fas fa-external-link-alt"></i> IMS Portal
+                <!-- Logbook -->
+                <a href="{% url 'curriculum:submit_logbook' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">
+                    <i class="fas fa-book-medical"></i> Logbook
                 </a>
                 <!-- Dark mode toggle -->
                 <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Badilisha muonekano">
@@ -958,8 +958,8 @@
             </a>
             {% endif %}
             <div class="nav-sep"></div>
-            <a href="/" style="border:1.5px solid var(--gold-400);color:var(--gold-400);font-weight:700;border-radius:var(--radius-sm);">
-                <i class="fas fa-external-link-alt"></i> IMS Portal (Mfumo Mkuu)
+            <a href="{% url 'curriculum:submit_logbook' %}" class="{% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">
+                <i class="fas fa-book-medical"></i> Andika Logbook
             </a>
         </nav>
     </div>
@@ -990,8 +990,8 @@
             <i class="fas fa-user-plus"></i> Sajili
         </a>
         {% endif %}
-        <a href="/" style="color:var(--gold-400);">
-            <i class="fas fa-external-link-alt"></i> IMS
+        <a href="{% url 'curriculum:submit_logbook' %}" class="{% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">
+            <i class="fas fa-book-medical"></i> Logbook
         </a>
     </nav>
 
