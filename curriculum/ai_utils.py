@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class GenerateContentConfig:
-    def __init__(self, system_instruction=None, temperature=0.7, max_output_tokens=4096, **kwargs):
+    def __init__(self, system_instruction=None, temperature=0.7, max_output_tokens=8192, **kwargs):
         self.system_instruction = system_instruction
         self.temperature = temperature
         self.max_output_tokens = max_output_tokens
@@ -93,11 +93,11 @@ class _UnifiedModels:
     def generate_content(self, model, contents, config=None):
         system_instruction = None
         temperature = 0.7
-        max_tokens = 4096
+        max_tokens = 8192
         if config:
             system_instruction = getattr(config, "system_instruction", None)
             temperature = getattr(config, "temperature", 0.7)
-            max_tokens = getattr(config, "max_output_tokens", 4096)
+            max_tokens = getattr(config, "max_output_tokens", 8192)
 
         messages = _contents_to_messages(contents, system_instruction)
 
@@ -175,11 +175,11 @@ class _UnifiedModels:
     def generate_content_stream(self, model, contents, config=None):
         system_instruction = None
         temperature = 0.7
-        max_tokens = 4096
+        max_tokens = 8192
         if config:
             system_instruction = getattr(config, "system_instruction", None)
             temperature = getattr(config, "temperature", 0.7)
-            max_tokens = getattr(config, "max_output_tokens", 4096)
+            max_tokens = getattr(config, "max_output_tokens", 8192)
 
         messages = _contents_to_messages(contents, system_instruction)
 
