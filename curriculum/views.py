@@ -26,6 +26,13 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 
 import logging
 
+# Optional PIL for watermark support
+try:
+    from PIL import Image as PILImage
+except ImportError:
+    PILImage = None
+
+
 from .ai_utils import client, model_name
 from .forms import SchemeOfWorkForm, LogbookForm
 
@@ -645,7 +652,7 @@ def ajax_generate_scheme(request):
                     breaks_text += f"- {name}: {start} - {end} (EXAM ROW: \"Main Competence\": \"{name}\", \"Specific Competences\": \"Examination\", \"Specific Learning Activities\": \"Revision and sitting for examinations\", \"Number of Periods\": \"2\", \"Remarks\": \"Examination week\". Set Month based on start date, Week based on term week)\n"
                 else:
                     breaks_text += f"- {name}: {start} - {end} (HOLIDAY ROW: \"Main Competence\": \"{name}\", \"Specific Competences\": \"Holiday\", \"Specific Learning Activities\": \"School holiday break\", \"Number of Periods\": \"0\", \"Remarks\": \"School holiday\". Set Month based on start date, Week based on term week)\n"
-            breaks_text = f"\nIMPORTANT - School calendar breaks/holidays to include AS ROWS in the output:\n{breaks_text}\nFor EACH break listed above, you MUST add a corresponding row in the JSON array with the EXACT keys shown. These are NOT regular teaching weeks - they are exam or holiday rows. Do NOT skip them."
+            breaks_text = f"\nCRITICAL - YOU MUST INCLUDE these school calendar breaks/holidays AS ROWS in your output:\n{breaks_text}\nYou MUST add a row for EACH break listed above. Include them in the correct Month and Week position (exam weeks = fewer periods, holiday weeks = 0 periods). FAILURE TO INCLUDE THESE BREAK ROWS WILL MAKE THE SCHEME INCOMPLETE."
 
         # ── Reference source ──
         ref_text = f"\nReference source: {reference_source}" if reference_source else ''
@@ -684,6 +691,8 @@ Rules:
 - Remarks: Meaningful note on student achievement, challenges, or way forward for that week
 - One row per distinct topic/subtopic per week. A month can have 2-4 different topics across its weeks. Include midterm/exam weeks as separate rows.
 - CRITICAL: Use REAL Tanzanian syllabus topics and subtopics for {subject} {full_class_name}. Do NOT make up fake topics.
+- CRITICAL: You MUST cover ALL months in the range. For Full Year: JANUARY through NOVEMBER each MUST have content. Do NOT skip any month. Do NOT end in October - go through November.
+- DO NOT include 'MATCH', 'REVISION', 'EXAMINATION' as the only entry for a month. Each month must have REAL topic content with actual teaching/learning activities.
 - CRITICAL: DISTRIBUTE content across ALL months in the specified range. EACH month must have its own distinct topics.{breaks_text}
 
 CRITICAL: Return ONLY the JSON array. No other text. Write rich, detailed content that follows the TIE syllabus structure exactly."""
@@ -698,7 +707,7 @@ CRITICAL: Return ONLY the JSON array. No other text. Write rich, detailed conten
             logger.info(f"[Scheme] BATCHING: {total_weeks} weeks -> {half_weeks}+{remaining_weeks}")
 
             # Batch 1: First half (January to June, first topics)
-            scope1 = f'FIRST HALF of the full year. Cover the FIRST topics from the syllabus (January to June, {half_weeks} weeks). Start from the very beginning. Do NOT include topics from Term II.'
+            scope1 = f'FIRST HALF of the full year. Cover the FIRST topics from the syllabus (January to June, {half_weeks} weeks). Start from the very beginning. Cover JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE. Do NOT include topics from Term II.'
             prompt1 = _make_prompt(scope1, half_weeks)
             data1, resp1 = _generate_scheme_batch(prompt1)
             if data1:
@@ -707,7 +716,7 @@ CRITICAL: Return ONLY the JSON array. No other text. Write rich, detailed conten
                 logger.info(f"[Scheme] Batch 1 done: {len(data1)} rows")
 
             # Batch 2: Second half (July to November, remaining topics)
-            scope2 = f'SECOND HALF of the full year. Cover the REMAINING topics from the syllabus (July to November, {remaining_weeks} weeks). Continue from where the first half ended. Do NOT repeat topics from the first half.'
+            scope2 = f'SECOND HALF of the full year. Cover the REMAINING topics from the syllabus (July to November, {remaining_weeks} weeks). Continue from where the first half ended. Cover JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER. You MUST include content for NOVEMBER - do NOT end in October. Do NOT repeat topics from the first half.'
             prompt2 = _make_prompt(scope2, remaining_weeks)
             data2, resp2 = _generate_scheme_batch(prompt2)
             if data2:
@@ -837,20 +846,20 @@ def download_scheme_pdf(request):
 
     # ── Create Tanzania flag watermark ──
     _tz_watermark = None
-    try:
-        from PIL import Image as PILImage
-        _flag_path = os.path.join(os.path.dirname(__file__), 'static', 'curriculum', 'tz_flag.png')
-        if os.path.exists(_flag_path):
-            _pil_img = PILImage.open(_flag_path).convert('RGBA')
-            _r, _g, _b, _a = _pil_img.split()
-            _new_a = _a.point(lambda x: int(x * 0.10))
-            _faded = PILImage.merge('RGBA', (_r, _g, _b, _new_a))
-            _buf = BytesIO()
-            _faded.save(_buf, format='PNG')
-            _buf.seek(0)
-            _tz_watermark = _buf
-    except Exception:
-        pass
+    if PILImage:
+        try:
+            _flag_path = os.path.join(os.path.dirname(__file__), 'static', 'curriculum', 'tz_flag.png')
+            if os.path.exists(_flag_path):
+                _pil_img = PILImage.open(_flag_path).convert('RGBA')
+                _r, _g, _b, _a = _pil_img.split()
+                _new_a = _a.point(lambda x: int(x * 0.10))
+                _faded = PILImage.merge('RGBA', (_r, _g, _b, _new_a))
+                _buf = BytesIO()
+                _faded.save(_buf, format='PNG')
+                _buf.seek(0)
+                _tz_watermark = _buf
+        except Exception:
+            pass
 
     # ── Cover page: professional border drawing ──
     def _scheme_cover(can, doc_obj):
@@ -1464,20 +1473,20 @@ def download_lesson_plan_pdf(request):
 
     # ── Create Tanzania flag watermark ──
     _tz_watermark = None
-    try:
-        from PIL import Image as PILImage
-        _flag_path = os.path.join(os.path.dirname(__file__), 'static', 'curriculum', 'tz_flag.png')
-        if os.path.exists(_flag_path):
-            _pil_img = PILImage.open(_flag_path).convert('RGBA')
-            _r, _g, _b, _a = _pil_img.split()
-            _new_a = _a.point(lambda x: int(x * 0.10))
-            _faded = PILImage.merge('RGBA', (_r, _g, _b, _new_a))
-            _buf = BytesIO()
-            _faded.save(_buf, format='PNG')
-            _buf.seek(0)
-            _tz_watermark = _buf
-    except Exception:
-        pass
+    if PILImage:
+        try:
+            _flag_path = os.path.join(os.path.dirname(__file__), 'static', 'curriculum', 'tz_flag.png')
+            if os.path.exists(_flag_path):
+                _pil_img = PILImage.open(_flag_path).convert('RGBA')
+                _r, _g, _b, _a = _pil_img.split()
+                _new_a = _a.point(lambda x: int(x * 0.10))
+                _faded = PILImage.merge('RGBA', (_r, _g, _b, _new_a))
+                _buf = BytesIO()
+                _faded.save(_buf, format='PNG')
+                _buf.seek(0)
+                _tz_watermark = _buf
+        except Exception:
+            pass
 
     # ── Cover page: professional border drawing ──
     def _lp_cover(can, doc_obj):
