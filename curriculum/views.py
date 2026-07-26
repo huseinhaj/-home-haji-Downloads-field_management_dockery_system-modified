@@ -21,7 +21,7 @@ from django.contrib.auth import logout as django_logout
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable, PageBreak
 
 import logging
 
@@ -834,9 +834,40 @@ def download_scheme_pdf(request):
     BORDER = colors.HexColor('#9BAAC4')
 
 
-    # ── Page header (appears on every page) ──
+    # ── Cover page: professional border drawing ──
+    def _scheme_cover(can, doc_obj):
+        """Draw professional double-border frame on the standalone cover page."""
+        can.saveState()
+        pw = doc_obj.pagesize[0]
+        ph = doc_obj.pagesize[1]
+        # Outer gold border (thick)
+        can.setStrokeColor(GOLD)
+        can.setLineWidth(3.5)
+        can.rect(12, 12, pw - 24, ph - 24)
+        # Inner navy border (thin)
+        can.setStrokeColor(NAVY)
+        can.setLineWidth(1.5)
+        can.rect(18, 18, pw - 36, ph - 36)
+        # Top gold accent bar
+        can.setStrokeColor(GOLD)
+        can.setLineWidth(4)
+        can.line(18, ph - 55, pw - 18, ph - 55)
+        # Bottom gold accent bar
+        can.line(18, 55, pw - 18, 55)
+        # Top-left corner square
+        can.setFillColor(GOLD)
+        can.rect(18, ph - 26, 14, 8, fill=1, stroke=0)
+        # Top-right corner square
+        can.rect(pw - 32, ph - 26, 14, 8, fill=1, stroke=0)
+        # Bottom-left corner square
+        can.rect(18, 18, 14, 8, fill=1, stroke=0)
+        # Bottom-right corner square
+        can.rect(pw - 32, 18, 14, 8, fill=1, stroke=0)
+        can.restoreState()
+
+    # ── Page header (appears from page 2 onwards) ──
     def _scheme_header(can, doc_obj):
-        """Draw NAME OF SCHOOL / TEACHER header bar on every page."""
+        """Draw NAME OF SCHOOL / TEACHER header bar on pages 2+."""
         can.saveState()
         can.setFont('Helvetica-Bold', 7)
         can.setFillColor(NAVY)
@@ -896,6 +927,8 @@ def download_scheme_pdf(request):
         ParagraphStyle('coverInfo', fontName='Helvetica', fontSize=10, leading=18,
                        alignment=1, textColor=colors.HexColor('#333333'), spaceAfter=6)))
     elements.append(HRFlowable(width="70%", thickness=0.5, color=BORDER, spaceAfter=10))
+    # ── PageBreak: Cover page ends here, data table starts on page 2 ──
+    elements.append(PageBreak())
 
     if scheme_data:
         headers = list(scheme_data[0].keys())
@@ -942,7 +975,7 @@ def download_scheme_pdf(request):
         tbl.setStyle(TableStyle(ts))
         elements.append(tbl)
 
-    doc.build(elements, onFirstPage=_scheme_header, onLaterPages=_scheme_header)
+    doc.build(elements, onFirstPage=_scheme_cover, onLaterPages=_scheme_header)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="Scheme_of_Work_{subject}_{class_name}.pdf"'
@@ -1382,9 +1415,40 @@ def download_lesson_plan_pdf(request):
     def _get(new_key, old_key, default=''):
         return lesson.get(new_key, lesson.get(old_key, default))
 
-    # ── Page header (appears on every page) ──
+    # ── Cover page: professional border drawing ──
+    def _lp_cover(can, doc_obj):
+        """Draw professional double-border frame on the standalone cover page."""
+        can.saveState()
+        pw = doc_obj.pagesize[0]
+        ph = doc_obj.pagesize[1]
+        # Outer gold border (thick)
+        can.setStrokeColor(GOLD)
+        can.setLineWidth(3.5)
+        can.rect(30, 30, pw - 60, ph - 60)
+        # Inner navy border (thin)
+        can.setStrokeColor(NAVY)
+        can.setLineWidth(1.5)
+        can.rect(36, 36, pw - 72, ph - 72)
+        # Top gold accent bar
+        can.setStrokeColor(GOLD)
+        can.setLineWidth(4)
+        can.line(36, ph - 55, pw - 36, ph - 55)
+        # Bottom gold accent bar
+        can.line(36, 55, pw - 36, 55)
+        # Top-left corner square
+        can.setFillColor(GOLD)
+        can.rect(36, ph - 26, 14, 8, fill=1, stroke=0)
+        # Top-right corner square
+        can.rect(pw - 50, ph - 26, 14, 8, fill=1, stroke=0)
+        # Bottom-left corner square
+        can.rect(36, 36, 14, 8, fill=1, stroke=0)
+        # Bottom-right corner square
+        can.rect(pw - 50, 36, 14, 8, fill=1, stroke=0)
+        can.restoreState()
+
+    # ── Page header (appears from page 2 onwards) ──
     def _lp_header(can, doc_obj):
-        """Draw NAME OF SCHOOL / TEACHER header bar on every page."""
+        """Draw NAME OF SCHOOL / TEACHER header bar on pages 2+."""
         can.saveState()
         can.setFont('Helvetica-Bold', 7)
         can.setFillColor(NAVY)
@@ -1459,6 +1523,8 @@ def download_lesson_plan_pdf(request):
         ParagraphStyle('coverInfo', fontName='Helvetica', fontSize=10, leading=18,
                        alignment=1, textColor=colors.HexColor('#333333'), spaceAfter=6)))
     elements.append(HRFlowable(width="70%", thickness=0.5, color=BORDER, spaceAfter=10))
+    # ── PageBreak: Cover page ends here, lesson content starts on page 2 ──
+    elements.append(PageBreak())
 
     def P(txt, st=normal):
         return Paragraph(str(txt or ''), st)
@@ -1556,7 +1622,7 @@ def download_lesson_plan_pdf(request):
         else:
             elements.append(Paragraph(str(remarks), normal))
 
-    doc.build(elements, onFirstPage=_lp_header, onLaterPages=_lp_header)
+    doc.build(elements, onFirstPage=_lp_cover, onLaterPages=_lp_header)
     buffer.seek(0)
     safe_name = f"LessonPlan_{form.get('subject','')}_{form.get('topic','')}".replace(' ', '_')
     response = HttpResponse(buffer, content_type='application/pdf')
