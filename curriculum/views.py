@@ -591,10 +591,11 @@ Return ONLY the JSON array, no other text."""
                         row[key] = str(row[key] or '')
 
         if not scheme_data:
-            logger.error(f"[Scheme] ALL parsing failed! Raw: {response_text[:1000]}")
+            preview = response_text[:600]
+            logger.error(f"[Scheme] ALL parsing failed! Raw: {preview}")
             return JsonResponse({
                 'success': False,
-                'error': f"AI haikurudisha data sahihi. Jaribu tena au wasiliana na msimamizi.",
+                'error': f"AI haikurudisha data sahihi. Sehemu ya majibu: {preview}",
             }, status=422)
 
         # Save to DB
