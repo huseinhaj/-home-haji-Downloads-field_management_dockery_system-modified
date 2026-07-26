@@ -64,6 +64,187 @@ def _sanitize_json_control_chars(text):
 
 
 # =============================================================================
+# HELPER: Generate one batch of Scheme of Work data
+# =============================================================================
+
+def _generate_scheme_batch(prompt_text):
+    """Make a single AI call for one batch of scheme data and parse the JSON response.
+    Returns (scheme_data_list, response_text) or (None, response_text) on failure."""
+    response = client.models.generate_content(model=model_name, contents=prompt_text)
+    response_text = response.text
+    logger.info(f"[Scheme Batch] AI response length: {len(response_text)} chars")
+
+    # Strip markdown code blocks
+    cleaned = re.sub(r'```(?:json)?\s*', '', response_text)
+    cleaned = re.sub(r'```\s*', '', cleaned).strip()
+
+    # Helper: parse first valid JSON array from text using bracket matching
+    def _extract(text):
+        start = text.find('[')
+        if start == -1:
+            return None
+        depth = 0
+        in_str = False
+        esc = False
+        for i in range(start, len(text)):
+            ch = text[i]
+            if esc:
+                esc = False
+                continue
+            if ch == '\\' and in_str:
+                esc = True
+                continue
+            if ch == '"' and not esc:
+                in_str = not in_str
+                continue
+            if in_str:
+                continue
+            if ch == '[':
+                depth += 1
+            elif ch == ']':
+                depth -= 1
+                if depth == 0:
+                    candidate = text[start:i+1]
+                    try:
+                        return json.loads(candidate)
+                    except json.JSONDecodeError:
+                        try:
+                            return json.loads(_sanitize_json_control_chars(candidate))
+                        except json.JSONDecodeError:
+                            continue
+        # No closing bracket - extract complete objects
+        candidate = text[start:]
+        complete_objs = []
+        i = 0
+        obj_start = None
+        obj_depth = 0
+        in_str2 = False
+        esc2 = False
+        while i < len(candidate):
+            ch = candidate[i]
+            if esc2:
+                esc2 = False
+                i += 1
+                continue
+            if ch == '\\' and in_str2:
+                esc2 = True
+                i += 1
+                continue
+            if ch == '"' and not esc2:
+                in_str2 = not in_str2
+                i += 1
+                continue
+            if in_str2:
+                i += 1
+                continue
+            if ch == '{':
+                if obj_depth == 0:
+                    obj_start = i
+                obj_depth += 1
+            elif ch == '}':
+                obj_depth -= 1
+                if obj_depth == 0 and obj_start is not None:
+                    complete_objs.append(candidate[obj_start:i+1])
+                    obj_start = None
+            i += 1
+        if complete_objs:
+            rebuilt = '[' + ','.join(complete_objs) + ']'
+            try:
+                return json.loads(rebuilt)
+            except json.JSONDecodeError:
+                try:
+                    return json.loads(_sanitize_json_control_chars(rebuilt))
+                except json.JSONDecodeError:
+                    pass
+        # Bracket-closing fallback
+        if candidate.count('"') % 2 == 1:
+            candidate += '"'
+        open_b = candidate.count('{')
+        close_b = candidate.count('}')
+        if open_b > close_b:
+            candidate += '}' * (open_b - close_b)
+        open_arr = candidate.count('[')
+        close_arr = candidate.count(']')
+        if open_arr > close_arr:
+            candidate += ']' * (open_arr - close_arr)
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            try:
+                return json.loads(_sanitize_json_control_chars(candidate))
+            except json.JSONDecodeError:
+                return None
+
+    scheme_data = _extract(cleaned)
+    
+    # Fallbacks
+    if scheme_data is None:
+        try:
+            parsed = json.loads(cleaned)
+            if isinstance(parsed, dict):
+                for v in parsed.values():
+                    if isinstance(v, list):
+                        scheme_data = v
+                        break
+            elif isinstance(parsed, list):
+                scheme_data = parsed
+        except (json.JSONDecodeError, TypeError):
+            try:
+                parsed = json.loads(_sanitize_json_control_chars(cleaned))
+                if isinstance(parsed, dict):
+                    for v in parsed.values():
+                        if isinstance(v, list):
+                            scheme_data = v
+                            break
+                elif isinstance(parsed, list):
+                        scheme_data = parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    if scheme_data is None:
+        for attempt in [cleaned, _sanitize_json_control_chars(cleaned)]:
+            try:
+                m = re.search(r'\[.*?\]', attempt, re.DOTALL)
+                candidate = m.group() if m else None
+                if not candidate:
+                    start = attempt.find('[')
+                    if start != -1:
+                        candidate = attempt[start:]
+                if candidate:
+                    open_b = candidate.count('{')
+                    close_b = candidate.count('}')
+                    if open_b > close_b:
+                        candidate += '}' * (open_b - close_b)
+                    open_arr = candidate.count('[')
+                    close_arr = candidate.count(']')
+                    if open_arr > close_arr:
+                        candidate += ']' * (open_arr - close_arr)
+                    try:
+                        scheme_data = json.loads(candidate)
+                    except json.JSONDecodeError:
+                        try:
+                            scheme_data = json.loads(_sanitize_json_control_chars(candidate))
+                        except json.JSONDecodeError:
+                            continue
+                    if scheme_data:
+                        break
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+    # Post-process: convert arrays to strings
+    if scheme_data and isinstance(scheme_data, list):
+        for row in scheme_data:
+            for key in row:
+                if isinstance(row[key], list):
+                    row[key] = ', '.join(str(v) for v in row[key] if v)
+                elif not isinstance(row[key], str):
+                    row[key] = str(row[key] or '')
+
+    return scheme_data, response_text
+
+
+
+# =============================================================================
 # HELPER: Check/Get TLM teacher from session
 # =============================================================================
 
@@ -462,18 +643,20 @@ def ajax_generate_scheme(request):
         # ── Reference source ──
         ref_text = f"\nReference source: {reference_source}" if reference_source else ''
 
-        prompt = f"""Generate a Scheme of Work for a Tanzanian {education_level} class.
+        # ── Build base prompt template (shared between batches) ──
+        def _make_prompt(scope_text, weeks_count):
+            return f"""Generate a Scheme of Work for a Tanzanian {education_level} class.
 
 Class: {full_class_name}
 Subject: {subject}
 Term: {term} {year}
 Syllabus: {syllabus}
-Total weeks: {total_weeks}
+Total weeks: {weeks_count}
 Periods/week: {periods_per_week}
 Teacher: {teacher_name}
 School: {school_name}{ref_text}{breaks_text}
 
-Scope: {term_scope}
+Scope: {scope_text}
 
 Output a JSON array of objects. Each object has these 12 keys:
 "Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
@@ -493,193 +676,51 @@ Rules:
 
 CRITICAL: Return ONLY the JSON array. No other text. Write rich, detailed content that a teacher can use directly in the classroom."""
 
-        response = client.models.generate_content(model=model_name, contents=prompt)
-        response_text = response.text
-        logger.info(f"[Scheme] AI response length: {len(response_text)} chars")
+        all_scheme_data = []
+        all_response_texts = []
 
-        # Strip markdown code blocks
-        cleaned = re.sub(r'```(?:json)?\s*', '', response_text)
-        cleaned = re.sub(r'```\s*', '', cleaned).strip()
+        # ── Batch logic: For Full Year with >= 24 weeks, split into 2 batches ──
+        if term == 'Full Year' and total_weeks >= 24:
+            half_weeks = total_weeks // 2
+            remaining_weeks = total_weeks - half_weeks
+            logger.info(f"[Scheme] BATCHING: {total_weeks} weeks -> {half_weeks}+{remaining_weeks}")
 
-        # Helper: parse first valid JSON array from text using bracket matching
-        def _extract_first_json_array(text):
-            start = text.find('[')
-            if start == -1:
-                return None
-            depth = 0
-            in_str = False
-            esc = False
-            last_good_candidate = None
-            for i in range(start, len(text)):
-                ch = text[i]
-                if esc:
-                    esc = False
-                    continue
-                if ch == '\\' and in_str:
-                    esc = True
-                    continue
-                if ch == '"' and not esc:
-                    in_str = not in_str
-                    continue
-                if in_str:
-                    continue
-                if ch == '[':
-                    depth += 1
-                elif ch == ']':
-                    depth -= 1
-                    if depth == 0:
-                        candidate = text[start:i+1]
-                        try:
-                            return json.loads(candidate)
-                        except json.JSONDecodeError:
-                            try:
-                                return json.loads(_sanitize_json_control_chars(candidate))
-                            except json.JSONDecodeError:
-                                continue
-            # No closing bracket found - try to extract COMPLETE objects only
-            # This handles case where array is truncated mid-key-value (e.g. "Main Learning Activ")
-            # Closing brackets naively doesn't work when truncation is mid-key or mid-value
-            candidate = text[start:]
-            
-            # Strategy 1: Extract all complete {..} objects from the text
-            complete_objs = []
-            i = 0
-            obj_start = None
-            obj_depth = 0
-            in_str2 = False
-            esc2 = False
-            while i < len(candidate):
-                ch = candidate[i]
-                if esc2:
-                    esc2 = False
-                    i += 1
-                    continue
-                if ch == '\\' and in_str2:
-                    esc2 = True
-                    i += 1
-                    continue
-                if ch == '"' and not esc2:
-                    in_str2 = not in_str2
-                    i += 1
-                    continue
-                if in_str2:
-                    i += 1
-                    continue
-                if ch == '{':
-                    if obj_depth == 0:
-                        obj_start = i
-                    obj_depth += 1
-                elif ch == '}':
-                    obj_depth -= 1
-                    if obj_depth == 0 and obj_start is not None:
-                        complete_objs.append(candidate[obj_start:i+1])
-                        obj_start = None
-                i += 1
-            
-            if complete_objs:
-                rebuilt = '[' + ','.join(complete_objs) + ']'
-                try:
-                    return json.loads(rebuilt)
-                except json.JSONDecodeError:
-                    try:
-                        return json.loads(_sanitize_json_control_chars(rebuilt))
-                    except json.JSONDecodeError:
-                        pass
-            
-            # Strategy 2: Last resort - try closing brackets (works when truncated mid-value)
-            if candidate.count('"') % 2 == 1:
-                candidate += '"'
-            open_b = candidate.count('{')
-            close_b = candidate.count('}')
-            if open_b > close_b:
-                candidate += '}' * (open_b - close_b)
-            open_arr = candidate.count('[')
-            close_arr = candidate.count(']')
-            if open_arr > close_arr:
-                candidate += ']' * (open_arr - close_arr)
-            try:
-                return json.loads(candidate)
-            except json.JSONDecodeError:
-                try:
-                    return json.loads(_sanitize_json_control_chars(candidate))
-                except json.JSONDecodeError:
-                    return None
+            # Batch 1: First half (January to June, first topics)
+            scope1 = f'FIRST HALF of the full year. Cover the FIRST topics from the syllabus (January to June, {half_weeks} weeks). Start from the very beginning. Do NOT include topics from Term II.'
+            prompt1 = _make_prompt(scope1, half_weeks)
+            data1, resp1 = _generate_scheme_batch(prompt1)
+            if data1:
+                all_scheme_data.extend(data1)
+                all_response_texts.append(resp1)
+                logger.info(f"[Scheme] Batch 1 done: {len(data1)} rows")
 
-        scheme_data = _extract_first_json_array(cleaned)
+            # Batch 2: Second half (July to November, remaining topics)
+            scope2 = f'SECOND HALF of the full year. Cover the REMAINING topics from the syllabus (July to November, {remaining_weeks} weeks). Continue from where the first half ended. Do NOT repeat topics from the first half.'
+            prompt2 = _make_prompt(scope2, remaining_weeks)
+            data2, resp2 = _generate_scheme_batch(prompt2)
+            if data2:
+                all_scheme_data.extend(data2)
+                all_response_texts.append(resp2)
+                logger.info(f"[Scheme] Batch 2 done: {len(data2)} rows")
 
-        # Fallbacks
-        if scheme_data is None:
-            try:
-                parsed = json.loads(cleaned)
-                if isinstance(parsed, dict):
-                    for v in parsed.values():
-                        if isinstance(v, list):
-                            scheme_data = v
-                            break
-                elif isinstance(parsed, list):
-                    scheme_data = parsed
-            except (json.JSONDecodeError, TypeError):
-                try:
-                    parsed = json.loads(_sanitize_json_control_chars(cleaned))
-                    if isinstance(parsed, dict):
-                        for v in parsed.values():
-                            if isinstance(v, list):
-                                scheme_data = v
-                                break
-                    elif isinstance(parsed, list):
-                        scheme_data = parsed
-                except (json.JSONDecodeError, TypeError):
-                    pass
+        else:
+            # Single generation (Term I/II/III or small Full Year)
+            logger.info(f"[Scheme] Single generation: {total_weeks} weeks")
+            data, resp = _generate_scheme_batch(_make_prompt(term_scope, total_weeks))
+            if data:
+                all_scheme_data.extend(data)
+            all_response_texts.append(resp)
 
-        if scheme_data is None:
-            for attempt in [cleaned, _sanitize_json_control_chars(cleaned)]:
-                try:
-                    # Try with closing bracket first
-                    m = re.search(r'\[.*?\]', attempt, re.DOTALL)
-                    candidate = m.group() if m else None
-                    if not candidate:
-                        # Truncated JSON - no closing bracket. Take from first [ to end
-                        start = attempt.find('[')
-                        if start != -1:
-                            candidate = attempt[start:]
-                    if candidate:
-                        # Try to repair truncated JSON by closing brackets
-                        open_b = candidate.count('{')
-                        close_b = candidate.count('}')
-                        if open_b > close_b:
-                            candidate += '}' * (open_b - close_b)
-                        open_arr = candidate.count('[')
-                        close_arr = candidate.count(']')
-                        if open_arr > close_arr:
-                            candidate += ']' * (open_arr - close_arr)
-                        try:
-                            scheme_data = json.loads(candidate)
-                        except json.JSONDecodeError:
-                            try:
-                                scheme_data = json.loads(_sanitize_json_control_chars(candidate))
-                            except json.JSONDecodeError:
-                                continue
-                        if scheme_data:
-                            break
-                except (json.JSONDecodeError, TypeError):
-                    continue
-
-        # Post-process: convert arrays to strings
-        if scheme_data and isinstance(scheme_data, list):
-            for row in scheme_data:
-                for key in row:
-                    if isinstance(row[key], list):
-                        row[key] = ', '.join(str(v) for v in row[key] if v)
-                    elif not isinstance(row[key], str):
-                        row[key] = str(row[key] or '')
-
-        if not scheme_data:
-            preview = response_text[:600]
-            logger.error(f"[Scheme] ALL parsing failed! Raw: {preview}")
+        if not all_scheme_data:
+            preview = (all_response_texts[0] if all_response_texts else '')[:600]
+            logger.error(f"[Scheme] ALL batches failed! Raw: {preview}")
             return JsonResponse({
                 'success': False,
                 'error': f"AI haikurudisha data sahihi. Sehemu ya majibu: {preview}",
             }, status=422)
+
+        scheme_data = all_scheme_data
+        response_text = '\n'.join(all_response_texts)
 
         # Save to DB
         saved_id = None
