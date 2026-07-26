@@ -1602,7 +1602,7 @@ def download_lesson_plan_pdf(request):
     elements.append(HRFlowable(width="50%", thickness=1, color=GOLD, spaceAfter=6))
 
     # ── Title ──
-    elements.append(Paragraph("RASIMU YA MPANGOKAZI WA SOMO (LESSON PLAN)",
+    elements.append(Paragraph("TEACHER'S LESSON PLAN",
         ParagraphStyle('LP_T', fontName='Helvetica-Bold', fontSize=14, alignment=1,
                        textColor=NAVY, spaceAfter=2)))
     elements.append(Paragraph(

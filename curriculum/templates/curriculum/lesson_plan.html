@@ -221,6 +221,10 @@
               <label>Teacher Name</label>
               <input class="form-control" id="teacher_name" value="{{ teacher_name }}" required>
             </div>
+            <div class="mb-2">
+              <label>School Name</label>
+              <input class="form-control" id="school_name" value="{{ teacher_school_name }}">
+            </div>
 
             <!-- Buttons -->
             <button type="submit" class="btn-tlm btn-gold-tlm w-100 py-2 mt-1" id="generateBtn">
@@ -482,6 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
       total_students: document.getElementById('total_students').value,
       present_students: document.getElementById('present_students').value,
       teacher_name: document.getElementById('teacher_name').value,
+      school_name: document.getElementById('school_name').value,
     };
   }
 
