@@ -443,12 +443,12 @@ def ajax_generate_scheme(request):
 
         full_class_name = f"{class_name}{stream}" if stream else class_name
 
-        # ── Build comprehensive term scope ──
+        # ── Build comprehensive term scope with MONTH RANGES ──
         term_scope_map = {
-            'Full Year': f'This is a FULL YEAR scheme covering ALL topics in the syllabus from start to finish. Generate {total_weeks} weeks of content covering every topic sequentially.',
-            'I': f'TERM I only. Cover the FIRST PART of the syllabus (topics 1-5 or first ~1/3). Start from Topic 1 and progress through {total_weeks} weeks. Do NOT include Term II or III topics.',
-            'II': f'TERM II only. Cover the MIDDLE PART of the syllabus. Continue from where Term I ends through {total_weeks} weeks. Do NOT include Term I or III topics.',
-            'III': f'TERM III only. Cover the FINAL PART of the syllabus. Complete remaining topics through {total_weeks} weeks. Do NOT include Term I or II topics.',
+            'Full Year': f'FULL YEAR: Cover ALL topics in the syllabus from start to finish. Distribute across ALL months: JANUARY to NOVEMBER ({total_weeks} weeks total). Each month gets different topics. Do NOT concentrate everything in January only.',
+            'I': f'TERM I only: Cover topics from the FIRST HALF of the syllabus. Months: JANUARY to JUNE ({total_weeks} weeks). Start from Topic 1. Do NOT include Term II or III topics.',
+            'II': f'TERM II only: Cover topics from the SECOND HALF of the syllabus. Months: JULY to NOVEMBER/DECEMBER ({total_weeks} weeks). Continue from where Term I ends. Do NOT include Term I or III topics.',
+            'III': f'TERM III only: Cover the FINAL PART of the syllabus. Months: SEPTEMBER to NOVEMBER/DECEMBER ({total_weeks} weeks). Complete remaining topics. Do NOT include Term I or II topics.',
         }
         term_scope = term_scope_map.get(term, f'Cover content for {total_weeks} weeks.')
 
@@ -488,7 +488,8 @@ Rules:
 - References: Full APA v7 style (e.g. "TIE (2024). Biology Form Two. Tanzania Institute of Education.")
 - Methods: CBC-aligned, comma-separated (e.g. "Brainstorming, Group discussion, Discovery, Guided inquiry")
 - Remarks: Brief note on achievement or way forward
-- One row per distinct topic/subtopic per week. Include midterm/exam weeks where appropriate.{breaks_text}
+- One row per distinct topic/subtopic per week. Include midterm/exam weeks where appropriate.
+- IMPORTANT: DISTRIBUTE content across ALL months in the specified range. Do NOT put everything in January/February. Each month must have its own distinct topics.{breaks_text}
 
 CRITICAL: Return ONLY the JSON array. No other text. Make each cell useful for a teacher."""
 
