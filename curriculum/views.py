@@ -3,6 +3,7 @@ Curriculum app views — standalone Scheme of Work, Lesson Plan & Logbook.
 Uses models from field_app but provides its own views, templates, and URLs.
 """
 import json
+import os
 import re
 import threading
 from io import BytesIO
@@ -834,9 +835,26 @@ def download_scheme_pdf(request):
     BORDER = colors.HexColor('#9BAAC4')
 
 
+    # ── Create Tanzania flag watermark ──
+    _tz_watermark = None
+    try:
+        from PIL import Image as PILImage
+        _flag_path = os.path.join(os.path.dirname(__file__), 'static', 'curriculum', 'tz_flag.png')
+        if os.path.exists(_flag_path):
+            _pil_img = PILImage.open(_flag_path).convert('RGBA')
+            _r, _g, _b, _a = _pil_img.split()
+            _new_a = _a.point(lambda x: int(x * 0.10))
+            _faded = PILImage.merge('RGBA', (_r, _g, _b, _new_a))
+            _buf = BytesIO()
+            _faded.save(_buf, format='PNG')
+            _buf.seek(0)
+            _tz_watermark = _buf
+    except Exception:
+        pass
+
     # ── Cover page: professional border drawing ──
     def _scheme_cover(can, doc_obj):
-        """Draw professional double-border frame on the standalone cover page."""
+        """Draw professional double-border frame with flag watermark."""
         can.saveState()
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
@@ -863,6 +881,16 @@ def download_scheme_pdf(request):
         can.rect(18, 18, 14, 8, fill=1, stroke=0)
         # Bottom-right corner square
         can.rect(pw - 32, 18, 14, 8, fill=1, stroke=0)
+        # ── Draw Tanzania flag watermark ──
+        if _tz_watermark:
+            try:
+                _tz_watermark.seek(0)
+                fw = pw * 0.50
+                fh = fw * 2.0 / 3.0
+                can.drawImage(_tz_watermark, pw/2 - fw/2, ph/2 - fh/2,
+                              width=fw, height=fh, mask='auto')
+            except Exception:
+                pass
         can.restoreState()
 
     # ── Page header (appears from page 2 onwards) ──
@@ -917,16 +945,35 @@ def download_scheme_pdf(request):
         ParagraphStyle('ST', fontName='Helvetica-Bold', fontSize=18, alignment=1,
                        textColor=NAVY, spaceAfter=10)))
 
-    # ── Cover info (like reference document format) ──
-    elements.append(Paragraph(
-        f"""<b>Teacher's Name:</b>  {teacher_name}<br/>
-<b>School Name:</b>  {school_name or '____________________'}<br/>
-<b>Subject:</b>  {subject} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Class:</b>  {class_name}<br/>
-<b>Term:</b>  {term} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Year:</b>  {year} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Total Weeks:</b>  {total_weeks}<br/>
-<b>Syllabus:</b>  {syllabus}""",
-        ParagraphStyle('coverInfo', fontName='Helvetica', fontSize=10, leading=18,
-                       alignment=1, textColor=colors.HexColor('#333333'), spaceAfter=6)))
-    elements.append(HRFlowable(width="70%", thickness=0.5, color=BORDER, spaceAfter=10))
+    # ── Cover info: styled table ──
+    lbl = ParagraphStyle('lbl', fontName='Helvetica-Bold', fontSize=10, textColor=colors.white, leading=14)
+    val = ParagraphStyle('val', fontName='Helvetica', fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
+    info_rows = [
+        [Paragraph("Teacher's Name", lbl), Paragraph(teacher_name, val)],
+        [Paragraph('School Name', lbl), Paragraph(school_name or '____________________', val)],
+        [Paragraph('Subject', lbl), Paragraph(subject, val)],
+        [Paragraph('Class', lbl), Paragraph(class_name, val)],
+        [Paragraph('Term', lbl), Paragraph(term, val)],
+        [Paragraph('Year', lbl), Paragraph(str(year), val)],
+        [Paragraph('Total Weeks', lbl), Paragraph(str(total_weeks), val)],
+        [Paragraph('Syllabus', lbl), Paragraph(syllabus, val)],
+    ]
+    info_table = Table(info_rows, colWidths=[180, 280])
+    info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), NAVY),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.white),
+        ('BACKGROUND', (1, 0), (1, -1), colors.HexColor('#FAFBFD')),
+        ('ROWBACKGROUNDS', (1, 0), (1, -1), [colors.HexColor('#FAFBFD'), STRIPE]),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
+        ('BOX', (0, 0), (-1, -1), 2, GOLD),
+        ('LINEBELOW', (0, 0), (-1, 0), 1.2, GOLD),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(info_table)
     # ── PageBreak: Cover page ends here, data table starts on page 2 ──
     elements.append(PageBreak())
 
@@ -1415,9 +1462,26 @@ def download_lesson_plan_pdf(request):
     def _get(new_key, old_key, default=''):
         return lesson.get(new_key, lesson.get(old_key, default))
 
+    # ── Create Tanzania flag watermark ──
+    _tz_watermark = None
+    try:
+        from PIL import Image as PILImage
+        _flag_path = os.path.join(os.path.dirname(__file__), 'static', 'curriculum', 'tz_flag.png')
+        if os.path.exists(_flag_path):
+            _pil_img = PILImage.open(_flag_path).convert('RGBA')
+            _r, _g, _b, _a = _pil_img.split()
+            _new_a = _a.point(lambda x: int(x * 0.10))
+            _faded = PILImage.merge('RGBA', (_r, _g, _b, _new_a))
+            _buf = BytesIO()
+            _faded.save(_buf, format='PNG')
+            _buf.seek(0)
+            _tz_watermark = _buf
+    except Exception:
+        pass
+
     # ── Cover page: professional border drawing ──
     def _lp_cover(can, doc_obj):
-        """Draw professional double-border frame on the standalone cover page."""
+        """Draw professional double-border frame with flag watermark."""
         can.saveState()
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
@@ -1444,6 +1508,16 @@ def download_lesson_plan_pdf(request):
         can.rect(36, 36, 14, 8, fill=1, stroke=0)
         # Bottom-right corner square
         can.rect(pw - 50, 36, 14, 8, fill=1, stroke=0)
+        # ── Draw Tanzania flag watermark ──
+        if _tz_watermark:
+            try:
+                _tz_watermark.seek(0)
+                fw = pw * 0.45
+                fh = fw * 2.0 / 3.0
+                can.drawImage(_tz_watermark, pw/2 - fw/2, ph/2 - fh/2,
+                              width=fw, height=fh, mask='auto')
+            except Exception:
+                pass
         can.restoreState()
 
     # ── Page header (appears from page 2 onwards) ──
@@ -1514,15 +1588,35 @@ def download_lesson_plan_pdf(request):
         f"{form.get('subject','')}  |  {form.get('class_name','')}  |  Term {form.get('term','')} {form.get('year','')}",
         ParagraphStyle('LP_S', fontSize=9, alignment=1, textColor=colors.grey, spaceAfter=6)))
 
-    # ── Cover info (like reference document format) ──
-    elements.append(Paragraph(
-        f"""<b>Teacher's Name:</b>  {form.get('teacher_name','')}<br/>
-<b>School Name:</b>  {form.get('school_name','____________________')}<br/>
-<b>Subject:</b>  {form.get('subject','')} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Class:</b>  {form.get('class_name','')}<br/>
-<b>Term:</b>  {form.get('term','')} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Year:</b>  {form.get('year','')} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Duration:</b>  {form.get('duration','')} min""",
-        ParagraphStyle('coverInfo', fontName='Helvetica', fontSize=10, leading=18,
-                       alignment=1, textColor=colors.HexColor('#333333'), spaceAfter=6)))
-    elements.append(HRFlowable(width="70%", thickness=0.5, color=BORDER, spaceAfter=10))
+    # ── Cover info: styled table ──
+    lbl = ParagraphStyle('lbl', fontName='Helvetica-Bold', fontSize=10, textColor=colors.white, leading=14)
+    val = ParagraphStyle('val', fontName='Helvetica', fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
+    info_rows = [
+        [Paragraph("Teacher's Name", lbl), Paragraph(form.get('teacher_name',''), val)],
+        [Paragraph('School Name', lbl), Paragraph(form.get('school_name','____________________'), val)],
+        [Paragraph('Subject', lbl), Paragraph(form.get('subject',''), val)],
+        [Paragraph('Class', lbl), Paragraph(form.get('class_name',''), val)],
+        [Paragraph('Term', lbl), Paragraph(form.get('term',''), val)],
+        [Paragraph('Year', lbl), Paragraph(str(form.get('year','')), val)],
+        [Paragraph('Duration', lbl), Paragraph(form.get('duration','') + ' min', val)],
+        [Paragraph('Topic', lbl), Paragraph(form.get('topic',''), val)],
+    ]
+    info_table = Table(info_rows, colWidths=[180, 220])
+    info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), NAVY),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.white),
+        ('BACKGROUND', (1, 0), (1, -1), colors.HexColor('#FAFBFD')),
+        ('ROWBACKGROUNDS', (1, 0), (1, -1), [colors.HexColor('#FAFBFD'), STRIPE]),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
+        ('BOX', (0, 0), (-1, -1), 2, GOLD),
+        ('LINEBELOW', (0, 0), (-1, 0), 1.2, GOLD),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(info_table)
     # ── PageBreak: Cover page ends here, lesson content starts on page 2 ──
     elements.append(PageBreak())
 
