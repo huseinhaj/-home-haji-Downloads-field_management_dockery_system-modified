@@ -563,9 +563,15 @@ Return ONLY the JSON array, no other text."""
         if scheme_data is None:
             for attempt in [cleaned, _sanitize_json_control_chars(cleaned)]:
                 try:
+                    # Try with closing bracket first
                     m = re.search(r'\[.*?\]', attempt, re.DOTALL)
-                    if m:
-                        candidate = m.group()
+                    candidate = m.group() if m else None
+                    if not candidate:
+                        # Truncated JSON - no closing bracket. Take from first [ to end
+                        start = attempt.find('[')
+                        if start != -1:
+                            candidate = attempt[start:]
+                    if candidate:
                         # Try to repair truncated JSON by closing brackets
                         open_b = candidate.count('{')
                         close_b = candidate.count('}')
