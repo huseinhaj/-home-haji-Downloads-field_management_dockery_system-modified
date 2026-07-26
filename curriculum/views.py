@@ -833,57 +833,69 @@ def download_scheme_pdf(request):
     STRIPE = colors.HexColor('#EBF0FB')
     BORDER = colors.HexColor('#9BAAC4')
 
+
+    # ── Page header (appears on every page) ──
+    def _scheme_header(can, doc_obj):
+        """Draw NAME OF SCHOOL / TEACHER header bar on every page."""
+        can.saveState()
+        can.setFont('Helvetica-Bold', 7)
+        can.setFillColor(NAVY)
+        pw = doc_obj.pagesize[0]
+        ph = doc_obj.pagesize[1]
+        # Row 1: School | Subject | Class
+        can.drawString(18, ph - 18, f"NAME OF SCHOOL: {school_name or '____________________'}")
+        can.drawCentredString(pw / 2, ph - 18, f"SUBJECT: {subject}")
+        can.drawRightString(pw - 18, ph - 18, f"CLASS: {class_name}")
+        # Row 2: Teacher | Term | Year
+        can.drawString(18, ph - 30, f"TEACHER'S NAME: {teacher_name or '____________________'}")
+        can.drawCentredString(pw / 2, ph - 30, f"TERM: {term}")
+        can.drawRightString(pw - 18, ph - 30, f"YEAR: {year}")
+        # Gold underline
+        can.setStrokeColor(GOLD)
+        can.setLineWidth(0.8)
+        can.line(18, ph - 34, pw - 18, ph - 34)
+        can.restoreState()
+
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
-                            rightMargin=18, leftMargin=18, topMargin=22, bottomMargin=22)
+                            rightMargin=18, leftMargin=18, topMargin=40, bottomMargin=25)
     elements = []
 
-    # ── Top decorative line ──
+    # ── Cover page: decorative top lines ──
     elements.append(HRFlowable(width="100%", thickness=3, color=GOLD, spaceAfter=2))
-    elements.append(HRFlowable(width="100%", thickness=1.5, color=NAVY, spaceAfter=6))
+    elements.append(HRFlowable(width="100%", thickness=1.5, color=NAVY, spaceAfter=12))
 
     cell_style = ParagraphStyle('SchCell', fontName='Helvetica', fontSize=7,
                                 leading=10, wordWrap='LTR')
     hdr_style = ParagraphStyle('SchHdr', fontName='Helvetica-Bold', fontSize=7,
                                leading=10, textColor=colors.white, wordWrap='LTR', alignment=1)
 
-    # ── TAMISEMI Header ──
+    # ── TAMISEMI Header (centered, bold) ──
     elements.append(Paragraph(
         "PRIME MINISTER'S OFFICE",
-        ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=11, alignment=1,
-                       textColor=NAVY, spaceAfter=1)))
+        ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=13, alignment=1,
+                       textColor=NAVY, spaceAfter=2)))
     elements.append(Paragraph(
         "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT",
-        ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=9, alignment=1,
-                       textColor=NAVY, spaceAfter=1)))
-    elements.append(HRFlowable(width="60%", thickness=0.8, color=GOLD, spaceAfter=4))
+        ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=10, alignment=1,
+                       textColor=NAVY, spaceAfter=2)))
+    elements.append(HRFlowable(width="50%", thickness=1, color=GOLD, spaceAfter=8))
 
     # ── Title ──
     elements.append(Paragraph("SCHEME OF WORK",
-        ParagraphStyle('ST', fontName='Helvetica-Bold', fontSize=15, alignment=1,
-                       textColor=NAVY, spaceAfter=3)))
-    elements.append(Paragraph(
-        f"{subject}  |  {class_name}  |  {syllabus}",
-        ParagraphStyle('SS', fontSize=9, alignment=1, spaceAfter=1, textColor=colors.grey)))
-    elements.append(Paragraph(
-        f"Term {term} {year}  |  Total Weeks: {total_weeks}  |  Periods/Week: {data.get('periods_per_week','')}",
-        ParagraphStyle('SS2', fontSize=8, alignment=1, spaceAfter=1, textColor=DARK_GOLD)))
+        ParagraphStyle('ST', fontName='Helvetica-Bold', fontSize=18, alignment=1,
+                       textColor=NAVY, spaceAfter=10)))
 
-    # ── Teacher & School Info ──
-    info_data = [
-        [Paragraph(f"<b>Teacher:</b>  {teacher_name}", ParagraphStyle('info', fontName='Helvetica', fontSize=8, alignment=1)),
-         Paragraph(f"<b>School:</b>  {school_name or '____________________'}", ParagraphStyle('info', fontName='Helvetica', fontSize=8, alignment=1)),
-        ]
-    ]
-    info_tbl = Table(info_data, colWidths=[400, 406])
-    info_tbl.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-    ]))
-    elements.append(info_tbl)
-    elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceAfter=8))
+    # ── Cover info (like reference document format) ──
+    elements.append(Paragraph(
+        f"""<b>Teacher's Name:</b>  {teacher_name}<br/>
+<b>School Name:</b>  {school_name or '____________________'}<br/>
+<b>Subject:</b>  {subject} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Class:</b>  {class_name}<br/>
+<b>Term:</b>  {term} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Year:</b>  {year} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Total Weeks:</b>  {total_weeks}<br/>
+<b>Syllabus:</b>  {syllabus}""",
+        ParagraphStyle('coverInfo', fontName='Helvetica', fontSize=10, leading=18,
+                       alignment=1, textColor=colors.HexColor('#333333'), spaceAfter=6)))
+    elements.append(HRFlowable(width="70%", thickness=0.5, color=BORDER, spaceAfter=10))
 
     if scheme_data:
         headers = list(scheme_data[0].keys())
@@ -930,7 +942,7 @@ def download_scheme_pdf(request):
         tbl.setStyle(TableStyle(ts))
         elements.append(tbl)
 
-    doc.build(elements)
+    doc.build(elements, onFirstPage=_scheme_header, onLaterPages=_scheme_header)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="Scheme_of_Work_{subject}_{class_name}.pdf"'
@@ -1370,6 +1382,31 @@ def download_lesson_plan_pdf(request):
     def _get(new_key, old_key, default=''):
         return lesson.get(new_key, lesson.get(old_key, default))
 
+    # ── Page header (appears on every page) ──
+    def _lp_header(can, doc_obj):
+        """Draw NAME OF SCHOOL / TEACHER header bar on every page."""
+        can.saveState()
+        can.setFont('Helvetica-Bold', 7)
+        can.setFillColor(NAVY)
+        pw = doc_obj.pagesize[0]
+        ph = doc_obj.pagesize[1]
+        sn = form.get('school_name', '____________________')
+        tn = form.get('teacher_name', '____________________')
+        sbj = form.get('subject', '')
+        cls = form.get('class_name', '')
+        trm = form.get('term', '')
+        yr = form.get('year', '')
+        can.drawString(36, ph - 18, f"NAME OF SCHOOL: {sn}")
+        can.drawCentredString(pw / 2, ph - 18, f"SUBJECT: {sbj}")
+        can.drawRightString(pw - 36, ph - 18, f"CLASS: {cls}")
+        can.drawString(36, ph - 30, f"TEACHER'S NAME: {tn}")
+        can.drawCentredString(pw / 2, ph - 30, f"TERM: {trm}")
+        can.drawRightString(pw - 36, ph - 30, f"YEAR: {yr}")
+        can.setStrokeColor(GOLD)
+        can.setLineWidth(0.8)
+        can.line(36, ph - 34, pw - 36, ph - 34)
+        can.restoreState()
+
     NAVY = colors.HexColor('#0A2B5E')
     GOLD = colors.HexColor('#C8900A')
     DARK_GOLD = colors.HexColor('#A67B07')
@@ -1379,7 +1416,7 @@ def download_lesson_plan_pdf(request):
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
-                            rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+                            rightMargin=36, leftMargin=36, topMargin=40, bottomMargin=30)
     elements = []
 
     normal = ParagraphStyle('LP_N', fontName='Helvetica', fontSize=9, leading=13, wordWrap='LTR', spaceAfter=3)
@@ -1390,20 +1427,20 @@ def download_lesson_plan_pdf(request):
     title_s = ParagraphStyle('LP_TITLE', fontName='Helvetica-Bold', fontSize=16, alignment=1, textColor=NAVY, spaceAfter=1)
     subtitle_s = ParagraphStyle('LP_SUBTITLE', fontName='Helvetica-Bold', fontSize=8, alignment=1, textColor=DARK_GOLD, spaceAfter=1)
 
-    # ── Top decorative lines ──
+    # ── Cover page: decorative top lines ──
     elements.append(HRFlowable(width="100%", thickness=2.5, color=GOLD, spaceAfter=2))
-    elements.append(HRFlowable(width="100%", thickness=1.2, color=NAVY, spaceAfter=6))
+    elements.append(HRFlowable(width="100%", thickness=1.2, color=NAVY, spaceAfter=10))
 
-    # ── TAMISEMI Header ──
+    # ── TAMISEMI Header (centered, bold) ──
     elements.append(Paragraph(
         "PRIME MINISTER'S OFFICE",
-        ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=12, alignment=1,
-                       textColor=NAVY, spaceAfter=1)))
+        ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=13, alignment=1,
+                       textColor=NAVY, spaceAfter=2)))
     elements.append(Paragraph(
         "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT",
         ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=10, alignment=1,
-                       textColor=NAVY, spaceAfter=1)))
-    elements.append(HRFlowable(width="55%", thickness=0.7, color=GOLD, spaceAfter=4))
+                       textColor=NAVY, spaceAfter=2)))
+    elements.append(HRFlowable(width="50%", thickness=1, color=GOLD, spaceAfter=6))
 
     # ── Title ──
     elements.append(Paragraph("RASIMU YA MPANGOKAZI WA SOMO (LESSON PLAN)",
@@ -1412,6 +1449,16 @@ def download_lesson_plan_pdf(request):
     elements.append(Paragraph(
         f"{form.get('subject','')}  |  {form.get('class_name','')}  |  Term {form.get('term','')} {form.get('year','')}",
         ParagraphStyle('LP_S', fontSize=9, alignment=1, textColor=colors.grey, spaceAfter=6)))
+
+    # ── Cover info (like reference document format) ──
+    elements.append(Paragraph(
+        f"""<b>Teacher's Name:</b>  {form.get('teacher_name','')}<br/>
+<b>School Name:</b>  {form.get('school_name','____________________')}<br/>
+<b>Subject:</b>  {form.get('subject','')} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Class:</b>  {form.get('class_name','')}<br/>
+<b>Term:</b>  {form.get('term','')} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Year:</b>  {form.get('year','')} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Duration:</b>  {form.get('duration','')} min""",
+        ParagraphStyle('coverInfo', fontName='Helvetica', fontSize=10, leading=18,
+                       alignment=1, textColor=colors.HexColor('#333333'), spaceAfter=6)))
+    elements.append(HRFlowable(width="70%", thickness=0.5, color=BORDER, spaceAfter=10))
 
     def P(txt, st=normal):
         return Paragraph(str(txt or ''), st)
@@ -1509,7 +1556,7 @@ def download_lesson_plan_pdf(request):
         else:
             elements.append(Paragraph(str(remarks), normal))
 
-    doc.build(elements)
+    doc.build(elements, onFirstPage=_lp_header, onLaterPages=_lp_header)
     buffer.seek(0)
     safe_name = f"LessonPlan_{form.get('subject','')}_{form.get('topic','')}".replace(' ', '_')
     response = HttpResponse(buffer, content_type='application/pdf')
