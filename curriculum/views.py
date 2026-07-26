@@ -641,10 +641,10 @@ def ajax_generate_scheme(request):
                 start = b.get('start', '')
                 end = b.get('end', '')
                 if 'exam' in name.lower() or 'test' in name.lower() or 'midterm' in name.lower() or 'terminal' in name.lower():
-                    breaks_text += f"- {name}: {start} - {end} (EXAM WEEK row: Main Competence='{name}', Specific Competences='Examination', specific_learning_activities='Revision and examinations', Number of Periods=2, Remarks='Examination week')\n"
+                    breaks_text += f"- {name}: {start} - {end} (EXAM ROW: \"Main Competence\": \"{name}\", \"Specific Competences\": \"Examination\", \"Specific Learning Activities\": \"Revision and sitting for examinations\", \"Number of Periods\": \"2\", \"Remarks\": \"Examination week\". Set Month based on start date, Week based on term week)\n"
                 else:
-                    breaks_text += f"- {name}: {start} - {end} (HOLIDAY row: Main Competence='{name}', Specific Competences='Holiday', Number of Periods=0, Remarks='School holiday')\n"
-            breaks_text = f"\nIMPORTANT - School calendar breaks/holidays to include AS ROWS in the scheme:\n{breaks_text}\nFor each break above, ADD a row to your output with the month/week matching the dates. Do NOT skip these weeks - include them as rows in the JSON array."
+                    breaks_text += f"- {name}: {start} - {end} (HOLIDAY ROW: \"Main Competence\": \"{name}\", \"Specific Competences\": \"Holiday\", \"Specific Learning Activities\": \"School holiday break\", \"Number of Periods\": \"0\", \"Remarks\": \"School holiday\". Set Month based on start date, Week based on term week)\n"
+            breaks_text = f"\nIMPORTANT - School calendar breaks/holidays to include AS ROWS in the output:\n{breaks_text}\nFor EACH break listed above, you MUST add a corresponding row in the JSON array with the EXACT keys shown. These are NOT regular teaching weeks - they are exam or holiday rows. Do NOT skip them."
 
         # ── Reference source ──
         ref_text = f"\nReference source: {reference_source}" if reference_source else ''
