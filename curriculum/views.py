@@ -398,7 +398,7 @@ def ajax_generate_scheme(request):
     if client is None:
         return JsonResponse({
             'success': False,
-            'error': 'Huduma ya AI haitumiki. Ufunguo wa API (GROQ_API_KEY) haujawekwa. Wasiliana na msimamizi.'
+            'error': 'Huduma ya AI haitumiki. Ufunguo wa API haujawekwa. Wasiliana na msimamizi.'
         }, status=503)
 
     if request.method != 'POST':
@@ -414,8 +414,8 @@ def ajax_generate_scheme(request):
         term = data.get('term')
         year = data.get('year')
         syllabus = data.get('syllabus', 'New Syllabus')
-        total_weeks = data.get('total_weeks', 12)
-        periods_per_week = data.get('periods_per_week', 8)
+        total_weeks = int(data.get('total_weeks', 12))
+        periods_per_week = int(data.get('periods_per_week', 8))
         start_date = data.get('start_date')
         end_date = data.get('end_date')
         teacher_name = data.get('teacher_name')
@@ -423,71 +423,64 @@ def ajax_generate_scheme(request):
         reference_source = data.get('reference_source', '')
         breaks = data.get('breaks', [])
 
-        breaks_text = ""
-        if breaks:
-            breaks_text = "\nBreaks (holidays/exams) to respect:\n"
-            for b in breaks:
-                breaks_text += f"- {b.get('name', 'Break')}: {b.get('start', '')} to {b.get('end', '')}\n"
-
-        # Build term-aware scope instructions
-        if term == 'Full Year':
-            term_scope = 'Cover ALL topics for the ENTIRE academic year. Distribute content across all {total_weeks} weeks from the beginning to the end of the syllabus.'
-        elif term == 'I':
-            term_scope = f'This is Term I (first term). Cover only the FIRST PORTION (first 1/3) of the year\'s content. Start from Topic 1 and distribute across {total_weeks} weeks of Term I. Do NOT include topics meant for Term II or Term III.'
-        elif term == 'II':
-            term_scope = f'This is Term II (second term). Cover only the MIDDLE PORTION (second 1/3) of the year\'s content. Start from where Term I stopped and distribute across {total_weeks} weeks of Term II. Do NOT include topics meant for Term I or Term III.'
-        elif term == 'III':
-            term_scope = f'This is Term III (third term). Cover only the FINAL PORTION (last 1/3) of the year\'s content. Start from where Term II stopped and complete the syllabus across {total_weeks} weeks of Term III. Do NOT include topics meant for Term I or Term II.'
-        else:
-            term_scope = f'Cover appropriate content for the selected term across {total_weeks} weeks.'
-
         full_class_name = f"{class_name}{stream}" if stream else class_name
 
-        prompt = f"""
-You are an AI assistant for Tanzanian teachers. Generate a complete Scheme of Work following EXACTLY the SEQUIP/TIE Tanzania revised format (2023).
+        # ── Build concise term scope ──
+        term_scope_map = {
+            'Full Year': f'Cover ALL topics for the ENTIRE year across {total_weeks} weeks.',
+            'I': f'Term I only (first third of syllabus). Cover topics 1 onward across {total_weeks} weeks. Do NOT include Term II/III topics.',
+            'II': f'Term II only (middle third). Continue from Term I across {total_weeks} weeks. Do NOT include Term I/III topics.',
+            'III': f'Term III only (final third). Complete remaining syllabus across {total_weeks} weeks. Do NOT include Term I/II topics.',
+        }
+        term_scope = term_scope_map.get(term, f'Cover content for {total_weeks} weeks.')
 
-Input details:
-- Education Level: {education_level}
-- Class/Form: {full_class_name}
-- Subject: {subject}
-- Term: {term} {year}
-- Syllabus: {syllabus}
-- Total Weeks: {total_weeks} weeks
-- Periods per Week: {periods_per_week}
-- Start Date: {start_date}
-- End Date: {end_date}
-- Teacher: {teacher_name}
-- School: {school_name}
-- Reference Source: {reference_source}
-{breaks_text}
+        # ── Breaks (short) ──
+        breaks_text = ''
+        if breaks:
+            for b in breaks:
+                breaks_text += f"- {b.get('name', 'Break')}: {b.get('start', '')} - {b.get('end', '')}\n"
+            breaks_text = f"\nRespect these breaks (skip them):\n{breaks_text}"
 
-The output MUST be a JSON list of objects. Each object must have exactly these 12 keys:
+        # ── Reference source ──
+        ref_text = f"\nReference source: {reference_source}" if reference_source else ''
+
+        prompt = f"""Generate a Scheme of Work for a Tanzanian {education_level} class.
+
+Class: {full_class_name}
+Subject: {subject}
+Term: {term} {year}
+Syllabus: {syllabus}
+Total weeks: {total_weeks}
+Periods/week: {periods_per_week}
+Teacher: {teacher_name}
+School: {school_name}{ref_text}{breaks_text}
+
+Scope: {term_scope}
+
+Output ONLY a JSON array of objects. Each object MUST have these 12 keys:
 "Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
 
-Requirements:
-1. TERM SCOPE: {term_scope}
-2. Distribute content across {total_weeks} weeks, respecting any breaks.
-3. For each week, assign appropriate Month (e.g., JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER).
-4. "Week" column should be like "1st", "2nd", "3rd", etc.
-5. "Number of Periods" should be {periods_per_week} for normal weeks, fewer for exam weeks.
-6. "Specific Learning Activities" deconstruct Main Learning Activity into smaller measurable steps.
-7. "References" must follow APA style version 7.
-8. "Teaching and Learning Methods" should include CBC-aligned methods.
-9. ALL 12 field values must be PLAIN STRINGS, NOT arrays/lists. For example, "Specific Learning Activities" should be a string like "Solve linear equations in one variable" not an array ["Solve..."].
-10. Return ONLY valid JSON, no extra text."""
+Rules:
+- All values MUST be plain strings, NOT arrays. E.g. "Specific Learning Activities": "Solve linear equations" not ["Solve..."]
+- Week format: "1st", "2nd", "3rd", etc.
+- Month: JANUARY, FEBRUARY, etc.
+- Periods per week: {periods_per_week} for normal weeks, fewer for exam weeks
+- References: APA v7 style (e.g. TIE (2024). Biology Form Two. Tanzania Institute of Education.)
+- Methods: CBC-aligned (Brainstorming, Group discussion, Discovery, etc.)
+- One row per distinct topic/subtopic per week.{breaks_text}
+
+Return ONLY the JSON array, no other text."""
 
         response = client.models.generate_content(model=model_name, contents=prompt)
         response_text = response.text
         logger.info(f"[Scheme] AI response length: {len(response_text)} chars")
 
-        # Strip markdown code blocks (DeepSeek often wraps JSON in ```json ... ```)
+        # Strip markdown code blocks
         cleaned = re.sub(r'```(?:json)?\s*', '', response_text)
         cleaned = re.sub(r'```\s*', '', cleaned).strip()
 
         # Helper: parse first valid JSON array from text using bracket matching
         def _extract_first_json_array(text):
-            """Find the first valid JSON array in text using proper bracket matching.
-            Handles strings, escapes, and nested brackets."""
             start = text.find('[')
             if start == -1:
                 return None
@@ -516,13 +509,13 @@ Requirements:
                         try:
                             return json.loads(candidate)
                         except json.JSONDecodeError:
-                            continue  # try next closing bracket
+                            continue
             return None
 
         scheme_data = _extract_first_json_array(cleaned)
-        
+
+        # Fallbacks
         if scheme_data is None:
-            # Fallback A: entire cleaned text as JSON
             try:
                 parsed = json.loads(cleaned)
                 if isinstance(parsed, dict):
@@ -533,18 +526,27 @@ Requirements:
                 elif isinstance(parsed, list):
                     scheme_data = parsed
             except (json.JSONDecodeError, TypeError):
-                logger.warning("[Scheme] Fallback A failed")
-        
+                pass
+
         if scheme_data is None:
-            # Fallback B: greedy regex
             try:
-                m = re.search(r'\[.*\]', cleaned, re.DOTALL)
+                m = re.search(r'\[.*?\]', cleaned, re.DOTALL)
                 if m:
-                    scheme_data = json.loads(m.group())
+                    candidate = m.group()
+                    # Try to repair truncated JSON by closing brackets
+                    open_b = candidate.count('{')
+                    close_b = candidate.count('}')
+                    if open_b > close_b:
+                        candidate += '}' * (open_b - close_b)
+                    open_arr = candidate.count('[')
+                    close_arr = candidate.count(']')
+                    if open_arr > close_arr:
+                        candidate += ']' * (open_arr - close_arr)
+                    scheme_data = json.loads(candidate)
             except (json.JSONDecodeError, TypeError):
-                logger.warning("[Scheme] Fallback B failed")
-        
-        # Post-process: convert arrays to strings in results
+                pass
+
+        # Post-process: convert arrays to strings
         if scheme_data and isinstance(scheme_data, list):
             for row in scheme_data:
                 for key in row:
@@ -552,23 +554,23 @@ Requirements:
                         row[key] = ', '.join(str(v) for v in row[key] if v)
                     elif not isinstance(row[key], str):
                         row[key] = str(row[key] or '')
-        
-        if scheme_data is None:
-            scheme_data = []
-            logger.error(f"[Scheme] ALL strategies failed! Raw response: {response_text[:1000]}")
 
+        if not scheme_data:
+            logger.error(f"[Scheme] ALL parsing failed! Raw: {response_text[:1000]}")
+            return JsonResponse({
+                'success': False,
+                'error': f"AI haikurudisha data sahihi. Jaribu tena au wasiliana na msimamizi.",
+            }, status=422)
+
+        # Save to DB
         saved_id = None
         if request.user.is_authenticated:
             try:
                 student = StudentTeacher.objects.get(user=request.user)
                 school = student.selected_school
-                if school and scheme_data:
-                    level_map = {
-                        'primary school': 'primary',
-                        'ordinary level': 'ordinary',
-                        'advanced level': 'advanced',
-                    }
-                    edu_level = level_map.get(education_level.lower(), 'ordinary')
+                if school:
+                    level_map = {'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}
+                    edu_level = level_map.get((education_level or '').lower(), 'ordinary')
                     subj_obj = Subject.objects.filter(name__iexact=subject).first()
                     if subj_obj:
                         start_dt = None
@@ -608,15 +610,7 @@ Requirements:
                         )
                         saved_id = scheme_obj.id
             except Exception as save_err:
-                print(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
-
-        if not scheme_data:
-            full_preview = response_text[:800]
-            logger.error(f"[Scheme] AI returned invalid data: {full_preview}")
-            return JsonResponse({
-                'success': False,
-                'error': f"AI haikurudisha data sahihi. Sehemu ya majibu: {full_preview}",
-            }, status=422)
+                logger.warning(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
 
         return JsonResponse({
             'success': True,
@@ -969,7 +963,7 @@ def lesson_plan_view(request):
 
 
 def ajax_generate_lessonplan(request):
-    """Generate lesson plan using AI."""
+    """Generate lesson plan using AI — follows Tanzanian Teacher's Lesson Plan format."""
     if client is None:
         return JsonResponse({'success': False, 'error': 'Huduma ya AI haitumiki.'}, status=503)
 
@@ -988,49 +982,51 @@ def ajax_generate_lessonplan(request):
         subtopic = data.get('subtopic', '')
         term = data.get('term', 'I')
         year = data.get('year', 2026)
-        duration = data.get('duration', 40)
+        duration = int(data.get('duration', 40))
         total_students = data.get('total_students', '')
         present_students = data.get('present_students', '')
         teacher_name = data.get('teacher_name', '')
 
-        prompt = f"""
-You are an AI assistant for Tanzanian teachers. Generate a detailed LESSON PLAN following the SEQUIP/TIE Tanzania IDDR revised format (2023).
+        full_class = f"{class_name}{stream}" if stream else class_name
 
-The IDDR model stages:
-- I = Introduction: Engage learners, activate prior knowledge.
-- D = Competence Development: Guide learners to build competence.
-- D = Design: Deepen learning — apply knowledge in real-life contexts.
-- R = Realisation: Assess and evaluate student achievement.
+        # Calculate IDDR time allocation
+        intro_time = max(5, int(duration * 0.15))
+        dev_time = max(10, int(duration * 0.40))
+        design_time = max(8, int(duration * 0.30))
+        real_time = max(5, int(duration * 0.15))
 
-Input Details:
-- Education Level: {education_level}
-- Class/Form: {class_name}{stream if stream else ''}
-- Subject: {subject}
-- Topic: {topic}
-- Subtopic: {subtopic}
-- Term: {term}, Year: {year}
-- Duration: {duration} minutes
-- Total Students: {total_students}
-- Present Students: {present_students}
+        prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom.
 
-Allocate time: Introduction ≈ 15% | Competence Development ≈ 40% | Design ≈ 30% | Realisation ≈ 15%
+School: [school name]
+Teacher: {teacher_name}
+Subject: {subject}
+Form/Class: {full_class}
+Topic: {topic}
+Sub-topic: {subtopic or 'N/A'}
+Term: {term}, Year: {year}
+Duration: {duration} minutes
+Total students: {total_students or 'N/A'}, Present: {present_students or 'N/A'}
 
-Output MUST be ONLY valid JSON:
+Use the SEQUIP/TIE IDDR model (Introduction -> Competence Development -> Design -> Realisation).
+
+Output ONLY valid JSON with this EXACT structure:
 {{
-    "lesson_title": "...",
-    "main_competence": "...",
-    "specific_competence": "...",
-    "previous_knowledge": "...",
-    "learning_objectives": ["..."],
-    "teaching_methods": ["..."],
-    "teaching_resources": ["..."],
+    "main_competence": "Overall competence statement (e.g. Demonstrate mastery of concepts...)",
+    "specific_competence": "Specific competence breakdown",
+    "main_activity": "Within 1 period students should be able to...",
+    "specific_activity": "Within {duration} minutes, students should be able to:\n- (list 2-3 specific measurable outcomes)",
+    "teaching_resources": "e.g. Charts, textbooks, manila sheets, video, real objects",
+    "references": "TIE textbook in APA v7 format",
     "lesson_development": [
-        {{"time": "X min", "stage": "Introduction (I)", "methods": "...", "teacher_activities": "...", "student_activities": "...", "assessment_criteria": "..."}},
-        ...
+        {{"stage": "Introduction", "time": "{intro_time:02d}", "teaching_activities": "what teacher does", "learning_activities": "what students do", "assessment_criteria": "how to assess"}},
+        {{"stage": "Competence Development", "time": "{dev_time:02d}", "teaching_activities": "...", "learning_activities": "...", "assessment_criteria": "..."}},
+        {{"stage": "Design", "time": "{design_time:02d}", "teaching_activities": "...", "learning_activities": "...", "assessment_criteria": "..."}},
+        {{"stage": "Realisation", "time": "{real_time:02d}", "teaching_activities": "...", "learning_activities": "...", "assessment_criteria": "..."}}
     ],
-    "remarks": {{"strength": "...", "weakness": "...", "way_forward": "..."}}
+    "remarks": "Detailed remarks paragraph about student achievement, challenges, and way forward."
 }}
-"""
+
+All text values must be plain strings. Return ONLY the JSON object, no extra text."""
 
         response = client.models.generate_content(model=model_name, contents=prompt)
         response_text = response.text
@@ -1043,20 +1039,21 @@ Output MUST be ONLY valid JSON:
         if start_idx != -1 and end_idx != -1:
             lesson_data = json.loads(cleaned[start_idx:end_idx + 1])
         else:
+            # Fallback: generate sensible defaults
             lesson_data = {
                 "main_competence": f"Demonstrate understanding of {topic}",
                 "specific_competence": f"Explain key concepts of {topic}",
-                "previous_knowledge": "Basic knowledge from previous lessons",
-                "learning_objectives": [f"Define {topic}"],
-                "teaching_methods": ["Group discussion", "Q&A", "Brainstorming"],
-                "teaching_resources": ["Chalkboard", "Textbook", "Charts"],
+                "main_activity": f"Within 1 period students should be able to describe {topic}",
+                "specific_activity": f"Within {duration} minutes, students should be able to:\n- Define {topic}\n- Explain concepts of {topic}\n- Apply {topic} in real-life situations",
+                "teaching_resources": "Textbook, Chalkboard, Charts, Real objects",
+                "references": f"Tanzania Institute of Education. (2024). {subject} for secondary schools student's book. Tanzania Institute of Education.",
                 "lesson_development": [
-                    {"time": f"{max(5, int(int(duration)*0.15))} min", "stage": "Introduction (I)", "methods": "Q&A, Brainstorming", "teacher_activities": f"Activate prior knowledge about {topic}", "student_activities": "Respond to questions", "assessment_criteria": "Participation"},
-                    {"time": f"{max(10, int(int(duration)*0.40))} min", "stage": "Competence Development (D)", "methods": "Group discussion", "teacher_activities": "Guide discussions", "student_activities": "Explore content", "assessment_criteria": "Accuracy"},
-                    {"time": f"{max(8, int(int(duration)*0.30))} min", "stage": "Design (D)", "methods": "Problem solving", "teacher_activities": "Organise application activities", "student_activities": "Apply knowledge", "assessment_criteria": "Correct application"},
-                    {"time": f"{max(5, int(int(duration)*0.15))} min", "stage": "Realisation (R)", "methods": "Quiz", "teacher_activities": "Assess and provide feedback", "student_activities": "Complete assessment", "assessment_criteria": "Achievement of objectives"}
+                    {"stage": "Introduction", "time": f"{intro_time:02d}", "teaching_activities": f"Display pictures/video about {topic}. Ask students questions to activate prior knowledge.", "learning_activities": "Observe pictures and respond to questions.", "assessment_criteria": "Questions about the lesson are answered."},
+                    {"stage": "Competence Development", "time": f"{dev_time:02d}", "teaching_activities": f"Guide students in groups to explore {topic}. Provide guiding questions and resources.", "learning_activities": "Discuss in groups and share findings.", "assessment_criteria": "Concepts taught are clearly explained."},
+                    {"stage": "Design", "time": f"{design_time:02d}", "teaching_activities": f"Ask students to apply knowledge of {topic} in real-life contexts through exercises.", "learning_activities": "Complete exercises and present findings.", "assessment_criteria": "Correct application of concepts."},
+                    {"stage": "Realisation", "time": f"{real_time:02d}", "teaching_activities": "Assess student understanding through oral questions or short quiz. Provide feedback.", "learning_activities": "Respond to assessment questions and reflect.", "assessment_criteria": "Achievement of lesson objectives."}
                 ],
-                "remarks": {"strength": "", "weakness": "", "way_forward": ""}
+                "remarks": f"The students were able to explain things taught today due to the use of interactive teaching and learning methods. However, some students need more clarification. I will address this in the next lesson."
             }
 
         saved_id = None
@@ -1076,27 +1073,37 @@ Output MUST be ONLY valid JSON:
                     if not subj_obj and subject:
                         subj_obj = Subject.objects.filter(name__iexact=subject).first()
                     if subj_obj:
+                        # Build lesson_development for DB (map new keys to old keys)
+                        lp_development = []
+                        for stage in lesson_data.get('lesson_development', []):
+                            lp_development.append({
+                                'stage': stage.get('stage', ''),
+                                'time': stage.get('time', '') + ' min',
+                                'teacher_activities': stage.get('teaching_activities', ''),
+                                'student_activities': stage.get('learning_activities', ''),
+                                'assessment_criteria': stage.get('assessment_criteria', ''),
+                            })
                         lp_obj = LessonPlan.objects.create(
                             student=student, school=school, subject=subj_obj,
                             education_level=edu_level, class_name=class_name,
                             term=term, year=int(year), topic=topic, subtopic=subtopic or '',
-                            date=timezone.now().date(), duration=int(duration) or 40,
+                            date=timezone.now().date(), duration=duration,
                             total_students=int(total_students) if total_students else 0,
                             present_students=int(present_students) if present_students else 0,
                             teacher_name=teacher_name or student.full_name,
                             main_competence=lesson_data.get('main_competence', ''),
                             specific_competence=lesson_data.get('specific_competence', ''),
-                            previous_knowledge=lesson_data.get('previous_knowledge', ''),
-                            learning_objectives=lesson_data.get('learning_objectives', []),
-                            teaching_methods=lesson_data.get('teaching_methods', []),
-                            teaching_resources=lesson_data.get('teaching_resources', []),
-                            lesson_development=lesson_data.get('lesson_development', []),
+                            previous_knowledge=lesson_data.get('specific_activity', ''),
+                            learning_objectives=[lesson_data.get('specific_activity', '')],
+                            teaching_methods=[],
+                            teaching_resources=[lesson_data.get('teaching_resources', '')],
+                            lesson_development=lp_development,
                             remarks=lesson_data.get('remarks', ''),
                             generated_by_ai=True,
                         )
                         saved_id = lp_obj.id
             except Exception as save_err:
-                print(f"[Curriculum] LessonPlan save error: {save_err}")
+                logger.warning(f"[Curriculum] LessonPlan save error: {save_err}")
 
         return JsonResponse({'success': True, 'data': lesson_data, 'saved_id': saved_id})
 
@@ -1115,13 +1122,17 @@ Output MUST be ONLY valid JSON:
 
 
 def download_lesson_plan_pdf(request):
-    """Export Lesson Plan as PDF."""
+    """Export Lesson Plan as PDF — supports new Tanzanian format + old format."""
     if request.method != 'POST':
         return HttpResponse("Invalid request", status=400)
 
     data = json.loads(request.body)
     lesson = data.get('lesson_data', {})
     form = data.get('form_data', {})
+
+    # Helper: get value from new key or old key
+    def _get(new_key, old_key, default=''):
+        return lesson.get(new_key, lesson.get(old_key, default))
 
     NAVY = colors.HexColor('#0A2B5E')
     GOLD = colors.HexColor('#C8900A')
@@ -1177,28 +1188,35 @@ def download_lesson_plan_pdf(request):
     elements.append(meta_tbl)
     elements.append(Spacer(1, 10))
 
-    for label, key in [('Main Competence', 'main_competence'),
-                       ('Specific Competence', 'specific_competence'),
-                       ('Previous Knowledge', 'previous_knowledge')]:
-        val = lesson.get(key, '')
+    for label, key, fallback in [('Main Competence', 'main_competence', ''),
+                       ('Specific Competence', 'specific_competence', ''),
+                       ('Main Activity', 'main_activity', ''),
+                       ('Specific Activity', 'specific_activity', 'previous_knowledge')]:
+        val = lesson.get(key, lesson.get(fallback, '')) if fallback else lesson.get(key, '')
         if val:
             elements.append(Paragraph(f"<b>{label}:</b>  {val}", normal))
 
-    for label, key in [('Learning Objectives', 'learning_objectives'),
-                       ('Teaching Methods', 'teaching_methods'),
-                       ('Teaching Resources', 'teaching_resources')]:
-        items = lesson.get(key, [])
-        if items:
-            elements.append(Paragraph(label, section_hdr))
-            for item in items:
-                elements.append(Paragraph(
-                    f"<bullet>•</bullet> {item}",
+    # Teaching & Learning Resources (string in new format, array in old)
+    tlr = lesson.get('teaching_resources', '')
+    if tlr:
+        elements.append(Paragraph("Teaching & Learning Resources", section_hdr))
+        if isinstance(tlr, list):
+            for item in tlr:
+                elements.append(Paragraph(f"<bullet>•</bullet> {item}",
                     ParagraphStyle('LP_B', fontName='Helvetica', fontSize=9, leading=13, leftIndent=14, wordWrap='LTR')))
+        else:
+            elements.append(Paragraph(f"{tlr}", normal))
+
+    # References
+    ref = lesson.get('references', '')
+    if ref:
+        elements.append(Paragraph("References", section_hdr))
+        elements.append(Paragraph(f"{ref}", normal))
 
     ld = lesson.get('lesson_development', [])
     if ld:
         elements.append(Paragraph("Lesson Development (IDDR Model)", section_hdr))
-        ld_headers = ['Time', 'Stage (IDDR)', 'Methods', 'Teacher Activities', 'Student Activities', 'Assessment Criteria']
+        ld_headers = ['Time', 'Stage (IDDR)', 'Methods', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']
         ld_data = [[Paragraph(h, hdr_s) for h in ld_headers]]
         for i, stage in enumerate(ld):
             bg = colors.white if i % 2 == 0 else STRIPE
@@ -1206,8 +1224,8 @@ def download_lesson_plan_pdf(request):
                 Paragraph(str(stage.get('time', '') or ''), cell_s),
                 Paragraph(str(stage.get('stage', stage.get('phase', '')) or ''), cell_s),
                 Paragraph(str(stage.get('methods', '') or ''), cell_s),
-                Paragraph(str(stage.get('teacher_activities', '') or ''), cell_s),
-                Paragraph(str(stage.get('student_activities', '') or ''), cell_s),
+                Paragraph(str(stage.get('teaching_activities', stage.get('teacher_activities', '')) or ''), cell_s),
+                Paragraph(str(stage.get('learning_activities', stage.get('student_activities', '')) or ''), cell_s),
                 Paragraph(str(stage.get('assessment_criteria', '') or ''), cell_s),
             ])
         ld_tbl = Table(ld_data, colWidths=[38, 72, 72, 118, 118, 105], repeatRows=1)
@@ -1291,21 +1309,32 @@ def download_lesson_plan_word(request):
 
     for label, key in [('Main Competence', 'main_competence'),
                        ('Specific Competence', 'specific_competence'),
-                       ('Previous Knowledge', 'previous_knowledge')]:
+                       ('Main Activity', 'main_activity'),
+                       ('Specific Activity', 'specific_activity')]:
         val = lesson.get(key, '')
+        if not val:
+            val = lesson.get({'Main Activity': None, 'Specific Activity': 'previous_knowledge'}.get(key, ''), '')
         if val:
             p = doc.add_paragraph()
             p.add_run(f"{label}: ").bold = True
-            p.add_run(val)
+            p.add_run(str(val))
 
-    for label, key in [('Learning Objectives', 'learning_objectives'),
-                       ('Teaching Methods', 'teaching_methods'),
-                       ('Teaching Resources', 'teaching_resources')]:
-        items = lesson.get(key, [])
-        if items:
-            doc.add_heading(label, level=2)
-            for item in items:
-                doc.add_paragraph(item, style='List Bullet')
+    # Teaching & Learning Resources
+    tlr = lesson.get('teaching_resources', '')
+    if tlr:
+        doc.add_heading('Teaching & Learning Resources', level=2)
+        if isinstance(tlr, list):
+            for item in tlr:
+                doc.add_paragraph(str(item), style='List Bullet')
+        else:
+            doc.add_paragraph(str(tlr))
+
+    # References
+    ref = lesson.get('references', '')
+    if ref:
+        p = doc.add_paragraph()
+        p.add_run('References: ').bold = True
+        p.add_run(str(ref))
 
     ld = lesson.get('lesson_development', [])
     if ld:
@@ -1313,7 +1342,7 @@ def download_lesson_plan_word(request):
         ld_table = doc.add_table(rows=1, cols=6)
         ld_table.style = 'Table Grid'
         hdr = ld_table.rows[0].cells
-        for i, h in enumerate(['Time', 'Stage (IDDR)', 'Methods', 'Teacher Activities', 'Student Activities', 'Assessment Criteria']):
+        for i, h in enumerate(['Time', 'Stage (IDDR)', 'Methods', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']):
             hdr[i].text = h
             hdr[i].paragraphs[0].runs[0].bold = True
         for stage in ld:
@@ -1321,8 +1350,8 @@ def download_lesson_plan_word(request):
             row[0].text = stage.get('time', '')
             row[1].text = stage.get('stage', stage.get('phase', ''))
             row[2].text = stage.get('methods', '')
-            row[3].text = stage.get('teacher_activities', '')
-            row[4].text = stage.get('student_activities', '')
+            row[3].text = stage.get('teaching_activities', stage.get('teacher_activities', ''))
+            row[4].text = stage.get('learning_activities', stage.get('student_activities', ''))
             row[5].text = stage.get('assessment_criteria', '')
 
     remarks = lesson.get('remarks', '')
@@ -1377,7 +1406,7 @@ def ajax_save_scheme_edits(request):
 
 @require_POST
 def ajax_save_lesson_edits(request):
-    """Save edited lesson plan data back to DB."""
+    """Save edited lesson plan data back to DB (supports new + old key formats)."""
     try:
         data = json.loads(request.body)
         lesson_id = data.get('saved_id')
@@ -1387,27 +1416,55 @@ def ajax_save_lesson_edits(request):
         if lesson_id:
             try:
                 lp = LessonPlan.objects.get(id=lesson_id)
-                # Update fields that can be edited
+                # Map new keys AND old keys to DB fields
+                # Main competence
                 if lesson_data.get('main_competence'):
                     lp.main_competence = lesson_data['main_competence']
+                # Specific competence
                 if lesson_data.get('specific_competence'):
                     lp.specific_competence = lesson_data['specific_competence']
-                if lesson_data.get('previous_knowledge'):
-                    lp.previous_knowledge = lesson_data['previous_knowledge']
+                # Previous knowledge (new: specific_activity, old: previous_knowledge)
+                spec_act = lesson_data.get('specific_activity', lesson_data.get('previous_knowledge', ''))
+                if spec_act:
+                    lp.previous_knowledge = spec_act
+                # Learning objectives (new data may not have this)
                 if lesson_data.get('learning_objectives'):
                     lp.learning_objectives = lesson_data['learning_objectives']
+                elif spec_act:
+                    lp.learning_objectives = [spec_act]
+                # Teaching methods (new data may not have this)
                 if lesson_data.get('teaching_methods'):
                     lp.teaching_methods = lesson_data['teaching_methods']
-                if lesson_data.get('teaching_resources'):
-                    lp.teaching_resources = lesson_data['teaching_resources']
+                # Teaching resources (new: string, old: array)
+                tlr = lesson_data.get('teaching_resources', '')
+                if tlr:
+                    if isinstance(tlr, str):
+                        lp.teaching_resources = [tlr]
+                    else:
+                        lp.teaching_resources = tlr
+                # Lesson development - map new keys to old keys for DB storage
                 if lesson_data.get('lesson_development'):
-                    lp.lesson_development = lesson_data['lesson_development']
+                    mapped_dev = []
+                    for stage in lesson_data['lesson_development']:
+                        mapped_dev.append({
+                            'stage': stage.get('stage', stage.get('phase', '')),
+                            'time': stage.get('time', ''),
+                            'teacher_activities': stage.get('teaching_activities', stage.get('teacher_activities', '')),
+                            'student_activities': stage.get('learning_activities', stage.get('student_activities', '')),
+                            'methods': stage.get('methods', ''),
+                            'assessment_criteria': stage.get('assessment_criteria', ''),
+                        })
+                    lp.lesson_development = mapped_dev
+                # Remarks (new: string, old: dict with strength/weakness/way_forward)
                 if lesson_data.get('remarks'):
                     lp.remarks = lesson_data['remarks']
+                # Teacher name
                 if form_data.get('teacher_name'):
                     lp.teacher_name = form_data['teacher_name']
+                # Topic
                 if form_data.get('topic'):
                     lp.topic = form_data['topic']
+                # Subtopic
                 if form_data.get('subtopic') is not None:
                     lp.subtopic = form_data['subtopic']
                 lp.save()
@@ -1431,14 +1488,18 @@ def ajax_load_saved_lessonplan(request):
               .first())
         if not lp or not lp.lesson_development:
             return JsonResponse({'success': False, 'error': 'Hakuna mpango wa somo uliohifadhiwa.'}, status=404)
+        # Build lesson_data with backward-compatible keys
         lesson_data = {
             'lesson_title': f"{lp.subject.name} - {lp.topic}",
             'main_competence': lp.main_competence,
             'specific_competence': lp.specific_competence,
+            'main_activity': None,  # Not stored in old model
+            'specific_activity': lp.previous_knowledge or '',
             'previous_knowledge': lp.previous_knowledge,
             'learning_objectives': lp.learning_objectives,
             'teaching_methods': lp.teaching_methods,
             'teaching_resources': lp.teaching_resources,
+            'references': None,  # Not stored in old model
             'lesson_development': lp.lesson_development,
             'remarks': lp.remarks,
         }
@@ -1460,14 +1521,18 @@ def ajax_load_lesson_by_id(request, lesson_id):
         lp = LessonPlan.objects.select_related('subject', 'school').get(id=lesson_id)
         if not lp.lesson_development:
             return JsonResponse({'success': False, 'error': 'Lesson Plan haina data.'}, status=404)
+        # Build lesson_data with backward-compatible keys
         lesson_data = {
             'lesson_title': f"{lp.subject.name} - {lp.topic}",
             'main_competence': lp.main_competence,
             'specific_competence': lp.specific_competence,
+            'main_activity': None,  # Not stored in old model
+            'specific_activity': lp.previous_knowledge or '',
             'previous_knowledge': lp.previous_knowledge,
             'learning_objectives': lp.learning_objectives,
             'teaching_methods': lp.teaching_methods,
             'teaching_resources': lp.teaching_resources,
+            'references': None,  # Not stored in old model
             'lesson_development': lp.lesson_development,
             'remarks': lp.remarks,
         }

@@ -573,44 +573,45 @@ document.addEventListener('DOMContentLoaded', function() {
     html += '<i class="fas fa-pencil-alt text-gold"></i> Bonyeza moja kwa moja kwenye maandishi kuubadilisha, kisha bonyeza "Hifadhi Mabadiliko"';
     html += '</div>';
 
+    // TEACHER'S LESSON PLAN header
+    html += '<div style="text-align:center;margin-bottom:1rem;">';
+    html += '<h5 style="font-family:var(--font-display);font-weight:800;color:var(--green-600);margin:0;font-size:1rem;">TEACHER\'S LESSON PLAN</h5>';
+    html += '</div>';
+
     // Meta info cards — EDITABLE
     const metas = [];
     if (data.main_competence) metas.push({ label: 'Main Competence', key: 'main_competence', val: data.main_competence });
     if (data.specific_competence) metas.push({ label: 'Specific Competence', key: 'specific_competence', val: data.specific_competence });
-    if (data.previous_knowledge) metas.push({ label: 'Previous Knowledge', key: 'previous_knowledge', val: data.previous_knowledge });
+    if (data.main_activity) metas.push({ label: 'Main Activity', key: 'main_activity', val: data.main_activity });
+    if (data.specific_activity || data.previous_knowledge) metas.push({ label: 'Specific Activity', key: 'specific_activity', val: data.specific_activity || data.previous_knowledge });
     metas.forEach(m => {
       html += `<div class="lp-section"><div class="lp-section-body open" style="max-height:2000px;opacity:1;padding:0.75rem 0.85rem;">
         <strong style="font-size:var(--font-size-xs);color:var(--green-500);text-transform:uppercase;">${m.label}</strong>
-        <div contenteditable="true" class="editable-lesson" data-key="${m.key}" style="font-size:var(--font-size-sm);margin:4px 0 0;color:var(--text-primary);cursor:text;padding:4px;border-radius:3px;transition:background var(--duration-fast);" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${m.val}</div>
+        <div contenteditable="true" class="editable-lesson" data-key="${m.key}" style="font-size:var(--font-size-sm);margin:4px 0 0;color:var(--text-primary);cursor:text;padding:4px;border-radius:3px;transition:background var(--duration-fast);white-space:pre-wrap;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${m.val}</div>
       </div></div>`;
     });
 
-    // Learning Objectives — EDITABLE list
-    if (data.learning_objectives?.length) {
+    // Teaching & Learning Resources — EDITABLE
+    if (data.teaching_resources) {
       html += `<div class="lp-section"><button class="lp-section-header open" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open');">
-        <span><i class="fas fa-list-check text-gold me-1"></i> Learning Objectives (${data.learning_objectives.length})</span>
+        <span><i class="fas fa-tools text-gold me-1"></i> Teaching &amp; Learning Resources</span>
         <i class="fas fa-chevron-down"></i>
-      </button><div class="lp-section-body open" id="editable-objectives">`;
-      data.learning_objectives.forEach((o, idx) => {
-        html += `<div contenteditable="true" class="editable-lesson editable-obj" data-index="${idx}" style="font-size:var(--font-size-sm);margin-bottom:4px;padding:4px 6px;cursor:text;border-radius:3px;background:rgba(15,23,42,0.015);" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='rgba(15,23,42,0.015)';"><i class="fas fa-circle" style="font-size:6px;color:var(--gold-400);margin-right:6px;vertical-align:middle;"></i> ${o}</div>`;
-      });
+      </button><div class="lp-section-body open">`;
+      if (typeof data.teaching_resources === 'string') {
+        html += `<div contenteditable="true" class="editable-lesson" data-key="teaching_resources" style="font-size:var(--font-size-sm);cursor:text;padding:4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${data.teaching_resources}</div>`;
+      } else if (Array.isArray(data.teaching_resources)) {
+        html += `<div contenteditable="true" class="editable-lesson" data-key="teaching_resources" style="font-size:var(--font-size-sm);cursor:text;padding:4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${data.teaching_resources.join(', ')}</div>`;
+      }
       html += '</div></div>';
     }
 
-    // Teaching Methods & Resources — EDITABLE
-    if (data.teaching_methods?.length || data.teaching_resources?.length) {
+    // References — EDITABLE
+    if (data.references) {
       html += `<div class="lp-section"><button class="lp-section-header open" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open');">
-        <span><i class="fas fa-tools text-gold me-1"></i> Methods &amp; Resources</span>
+        <span><i class="fas fa-book text-gold me-1"></i> References</span>
         <i class="fas fa-chevron-down"></i>
       </button><div class="lp-section-body open">`;
-      if (data.teaching_methods?.length) {
-        html += `<div style="margin-bottom:6px;"><strong style="font-size:var(--font-size-xs);color:var(--text-secondary);">Methods:</strong>
-          <span contenteditable="true" class="editable-lesson" data-key="teaching_methods" style="font-size:var(--font-size-sm);cursor:text;padding:2px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${data.teaching_methods.join(', ')}</span></div>`;
-      }
-      if (data.teaching_resources?.length) {
-        html += `<div><strong style="font-size:var(--font-size-xs);color:var(--text-secondary);">Resources:</strong>
-          <span contenteditable="true" class="editable-lesson" data-key="teaching_resources" style="font-size:var(--font-size-sm);cursor:text;padding:2px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${data.teaching_resources.join(', ')}</span></div>`;
-      }
+      html += `<div contenteditable="true" class="editable-lesson" data-key="references" style="font-size:var(--font-size-sm);cursor:text;padding:4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${data.references}</div>`;
       html += '</div></div>';
     }
 
@@ -634,8 +635,10 @@ document.addEventListener('DOMContentLoaded', function() {
             <span contenteditable="true" class="editable-lesson editable-stage-time" data-stage="${i}" style="font-size:var(--font-size-xs);font-weight:700;color:var(--gold-400);cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.08)'" onblur="this.style.background='';">${stage.time || ''}</span>
           </div>`;
         if (stage.methods) html += `<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-bottom:4px;"><strong>Methods:</strong> <span contenteditable="true" class="editable-lesson editable-stage-methods" data-stage="${i}" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${stage.methods}</span></div>`;
-        if (stage.teacher_activities) html += `<div style="font-size:var(--font-size-xs);margin-bottom:2px;"><strong>Teacher:</strong> <span contenteditable="true" class="editable-lesson editable-stage-teacher" data-stage="${i}" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${stage.teacher_activities}</span></div>`;
-        if (stage.student_activities) html += `<div style="font-size:var(--font-size-xs);margin-bottom:2px;"><strong>Students:</strong> <span contenteditable="true" class="editable-lesson editable-stage-students" data-stage="${i}" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${stage.student_activities}</span></div>`;
+        if (stage.teaching_activities) html += `<div style="font-size:var(--font-size-xs);margin-bottom:2px;"><strong>Teaching Activities:</strong> <span contenteditable="true" class="editable-lesson editable-stage-teacher" data-stage="${i}" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${stage.teaching_activities}</span></div>`;
+        else if (stage.teacher_activities) html += `<div style="font-size:var(--font-size-xs);margin-bottom:2px;"><strong>Teaching Activities:</strong> <span contenteditable="true" class="editable-lesson editable-stage-teacher" data-stage="${i}" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${stage.teacher_activities}</span></div>`;
+        if (stage.learning_activities) html += `<div style="font-size:var(--font-size-xs);margin-bottom:2px;"><strong>Learning Activities:</strong> <span contenteditable="true" class="editable-lesson editable-stage-students" data-stage="${i}" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${stage.learning_activities}</span></div>`;
+        else if (stage.student_activities) html += `<div style="font-size:var(--font-size-xs);margin-bottom:2px;"><strong>Learning Activities:</strong> <span contenteditable="true" class="editable-lesson editable-stage-students" data-stage="${i}" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${stage.student_activities}</span></div>`;
         if (stage.assessment_criteria) html += `<div style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:2px;"><strong>Assessment:</strong> <span contenteditable="true" class="editable-lesson editable-stage-assessment" data-stage="${i}" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${stage.assessment_criteria}</span></div>`;
         html += '</div>';
       });
@@ -653,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
         html += `<div style="font-size:var(--font-size-sm);margin-bottom:4px;"><b>Weakness:</b> <span contenteditable="true" class="editable-lesson editable-remark" data-remark="weakness" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${data.remarks.weakness || '...'}</span></div>`;
         html += `<div style="font-size:var(--font-size-sm);margin-bottom:4px;"><b>Way Forward:</b> <span contenteditable="true" class="editable-lesson editable-remark" data-remark="way_forward" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${data.remarks.way_forward || '...'}</span></div>`;
       } else {
-        html += `<p contenteditable="true" class="editable-lesson" data-key="remarks" style="font-size:var(--font-size-sm);margin:0;cursor:text;padding:4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${data.remarks}</p>`;
+        html += `<p contenteditable="true" class="editable-lesson" data-key="remarks" style="font-size:var(--font-size-sm);margin:0;cursor:text;padding:4px;border-radius:3px;white-space:pre-wrap;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${data.remarks}</p>`;
       }
       html += '</div></div>';
     }
