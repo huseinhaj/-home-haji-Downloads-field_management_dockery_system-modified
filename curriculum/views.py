@@ -691,6 +691,8 @@ Rules:
 - Remarks: Meaningful note on student achievement, challenges, or way forward for that week
 - One row per distinct topic/subtopic per week. A month can have 2-4 different topics across its weeks. Include midterm/exam weeks as separate rows.
 - CRITICAL: Use REAL Tanzanian syllabus topics and subtopics for {subject} {full_class_name}. Do NOT make up fake topics.
+- MONTH SEQUENCE: Months MUST appear in correct chronological order: JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER. Do NOT jump months or put them out of order.
+- EXAM TIMING (Tanzanian schools): Midterm examinations typically fall in MARCH, Terminal examinations in JUNE, Annual/National examinations in OCTOBER/NOVEMBER. Include these as break rows at the correct months.
 - CRITICAL: You MUST cover ALL months in the range. For Full Year: JANUARY through NOVEMBER each MUST have content. Do NOT skip any month. Do NOT end in October - go through November.
 - DO NOT include 'MATCH', 'REVISION', 'EXAMINATION' as the only entry for a month. Each month must have REAL topic content with actual teaching/learning activities.
 - CRITICAL: DISTRIBUTE content across ALL months in the specified range. EACH month must have its own distinct topics.{breaks_text}
@@ -1291,6 +1293,7 @@ def ajax_generate_lessonplan(request):
         total_students = data.get('total_students', '')
         present_students = data.get('present_students', '')
         teacher_name = data.get('teacher_name', '')
+        school_name = data.get('school_name', '')
 
         full_class = f"{class_name}{stream}" if stream else class_name
 
@@ -1305,34 +1308,41 @@ def ajax_generate_lessonplan(request):
 ============================================
 PRIME MINISTER'S OFFICE
 REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
-RASIMU YA MPANGOKAZI WA SOMO (IDDR MODEL)
+TEACHER'S LESSON PLAN
 ============================================
 
-School: [School Name]
-Teacher: {teacher_name}
+School: {school_name or '[School Name]'}
+Teacher's Name: {teacher_name}
 Subject: {subject}
 Form/Class: {full_class}
+Date: {datetime.now().strftime("%d/%m/%Y")}
 
 Main Topic: {topic}
 Sub-topic: {subtopic or 'N/A'}
 
-Main Competence: Numbered format "1.0 Topic Name" - write the REAL numbered competence from the Tanzanian syllabus for this subject/class.
+Main Competence: Numbered format "1.0 Topic Name" - the REAL numbered competence from the Tanzanian syllabus for this subject/class.
 Specific Competence: The REAL specific competence from the syllabus for this subtopic.
 
 Term: {term}, Year: {year}
 Duration: {duration} minutes
-Total students: {total_students or 'N/A'}, Present: {present_students or 'N/A'}
 
-Use the SEQUIP/TIE IDDR model (Introduction -> Competence Development -> Design -> Realisation).
+-- STUDENT STATISTICS --
+Registered Girls: / Registered Boys: /
+Present Girls: / Present Boys: /
+Total Students: {total_students or 'N/A'}, Present: {present_students or 'N/A'}
+
+-- TEACHING PROCESS (IDDR Model) --
 
 CRITICAL REQUIREMENTS:
 1. main_competence: Use numbered format like "1.0 Topic Name" - the REAL Tanzanian syllabus competence
 2. specific_competence: REAL subtopic-specific competence from the syllabus
 3. specific_activity: Start with "By the end of this lesson, students should be able to:" then list 2-3 measurable outcomes
 4. references: Use the LATEST TIE textbook format - "Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education." If primary: "Tanzania Institute of Education. (2024). {subject} for Primary Schools Pupil's Book. Tanzania Institute of Education."
-5. lesson_development: Each stage MUST have detailed, Tanzania-specific content using CBC methodologies (Brainstorming, Group discussion, Discovery, Guided inquiry, Demonstration, Question and answer, Role play, Project-based learning, Field trip)
-6. resources: MUST include specific, real resources for THIS topic (not generic) - e.g. TIE textbook pages, charts, real specimens, manila sheets, markers, skip ropes, video clips, real objects
-7. remarks: Must be a detailed paragraph evaluating student achievement, specific challenges faced, and concrete way forward
+5. teaching_resources: MUST include specific, real resources for THIS topic (not generic) - e.g. TIE textbook pages, charts, real specimens, manila sheets, markers
+6. remarks: Must be a detailed paragraph evaluating student achievement, specific challenges faced, and concrete way forward
+7. student_statistics: Provide registered/present counts for girls and boys
+
+Lesson Development uses the IDDR Model with these 5 columns per stage: stage, time, teaching_activities, learning_activities, assessment_criteria. Each stage MUST have detailed, Tanzania-specific content using CBC methodologies.
 
 Output ONLY valid JSON with this EXACT structure:
 {{
@@ -1342,11 +1352,12 @@ Output ONLY valid JSON with this EXACT structure:
     "specific_activity": "By the end of this lesson, students should be able to:\n- (list 2-3 specific measurable outcomes)",
     "teaching_resources": "List specific resources for THIS lesson",
     "references": "Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education.",
+    "student_statistics": {{"registered_girls": "", "registered_boys": "", "present_girls": "", "present_boys": ""}},
     "lesson_development": [
-        {{"stage": "A: Introduction (Utangulizi)", "time": "{intro_time:02d}", "methods": "Brainstorming, Question and answer", "teaching_activities": "what the teacher does to activate prior knowledge", "learning_activities": "what students do to connect prior knowledge", "assessment_criteria": "how to assess students' readiness"}},
-        {{"stage": "B: Competence Development (Ukuzaji wa Uwezo)", "time": "{dev_time:02d}", "methods": "Group discussion, Discovery, Guided inquiry", "teaching_activities": "guide students to explore the topic", "learning_activities": "investigate, discuss, and share findings", "assessment_criteria": "mastery of the competence"}},
-        {{"stage": "C: Design (Ubunifu)", "time": "{design_time:02d}", "methods": "Problem-solving, Project-based learning, Demonstration", "teaching_activities": "guide students to apply knowledge in real contexts", "learning_activities": "create models, solve problems, present work", "assessment_criteria": "correct application of concepts"}},
-        {{"stage": "D: Realisation (Ufahamu / Tathmini)", "time": "{real_time:02d}", "methods": "Self-assessment, Peer assessment, Oral questions, Quiz", "teaching_activities": "assess learning through formative assessment and provide feedback", "learning_activities": "respond to assessment questions, reflect on learning", "assessment_criteria": "achievement of lesson objectives"}}
+        {{"stage": "Introduction (Utangulizi)", "time": "{intro_time:02d}", "teaching_activities": "what the teacher does to activate prior knowledge (e.g. display pictures, ask questions)", "learning_activities": "what students do (e.g. observe images, respond to questions)", "assessment_criteria": "how to assess readiness (e.g. questions answered correctly)"}},
+        {{"stage": "Competence Development (Ukuzaji wa Uwezo)", "time": "{dev_time:02d}", "teaching_activities": "guide students to explore the topic through group work and discussions", "learning_activities": "investigate, discuss in groups, and share findings", "assessment_criteria": "mastery of the competence (e.g. concepts clearly explained)"}},
+        {{"stage": "Design (Ubunifu)", "time": "{design_time:02d}", "teaching_activities": "guide students to apply knowledge in real-life contexts through exercises or projects", "learning_activities": "complete exercises, create models, solve problems, present work", "assessment_criteria": "correct application of concepts in practical tasks"}},
+        {{"stage": "Realisation (Ufahamu / Tathmini)", "time": "{real_time:02d}", "teaching_activities": "assess learning through formative assessment (oral questions, quiz) and provide feedback", "learning_activities": "respond to assessment questions, reflect on learning", "assessment_criteria": "achievement of lesson objectives"}}
     ],
     "remarks": "Detailed evaluation: strengths observed, specific challenges faced by students, and concrete way forward for the next lesson."
 }}
@@ -1385,11 +1396,12 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
                 "teaching_resources": "TIE textbook, Chalkboard/Whiteboard, Charts, Real objects, Manila sheets, Markers",
                 "references": f"Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education.",
                 "lesson_development": [
-                    {"stage": "A: Introduction (Utangulizi)", "time": f"{intro_time:02d}", "methods": "Brainstorming, Question and answer", "teaching_activities": f"Display pictures/video about {topic}. Ask students questions to activate prior knowledge.", "learning_activities": "Observe pictures and respond to questions.", "assessment_criteria": "Questions about the lesson are answered."},
-                    {"stage": "B: Competence Development (Ukuzaji wa Uwezo)", "time": f"{dev_time:02d}", "methods": "Group discussion, Discovery, Guided inquiry", "teaching_activities": f"Guide students in groups to explore {topic}. Provide guiding questions and resources.", "learning_activities": "Discuss in groups and share findings.", "assessment_criteria": "Concepts taught are clearly explained."},
-                    {"stage": "C: Design (Ubunifu)", "time": f"{design_time:02d}", "methods": "Problem-solving, Demonstration", "teaching_activities": f"Ask students to apply knowledge of {topic} in real-life contexts through exercises.", "learning_activities": "Complete exercises and present findings.", "assessment_criteria": "Correct application of concepts."},
-                    {"stage": "D: Realisation (Ufahamu / Tathmini)", "time": f"{real_time:02d}", "methods": "Self-assessment, Oral questions, Quiz", "teaching_activities": "Assess student understanding through oral questions or short quiz. Provide feedback.", "learning_activities": "Respond to assessment questions and reflect.", "assessment_criteria": "Achievement of lesson objectives."}
+                    {"stage": "Introduction (Utangulizi)", "time": f"{intro_time:02d}", "teaching_activities": f"Display pictures/video about {topic}. Ask students questions to activate prior knowledge.", "learning_activities": "Observe pictures and respond to questions.", "assessment_criteria": "Questions about the lesson are answered."},
+                    {"stage": "Competence Development (Ukuzaji wa Uwezo)", "time": f"{dev_time:02d}", "teaching_activities": f"Guide students in groups to explore {topic}. Provide guiding questions and resources.", "learning_activities": "Discuss in groups and share findings.", "assessment_criteria": "Concepts taught are clearly explained."},
+                    {"stage": "Design (Ubunifu)", "time": f"{design_time:02d}", "teaching_activities": f"Ask students to apply knowledge of {topic} in real-life contexts through exercises.", "learning_activities": "Complete exercises and present findings.", "assessment_criteria": "Correct application of concepts."},
+                    {"stage": "Realisation (Ufahamu / Tathmini)", "time": f"{real_time:02d}", "teaching_activities": "Assess student understanding through oral questions or short quiz. Provide feedback.", "learning_activities": "Respond to assessment questions and reflect.", "assessment_criteria": "Achievement of lesson objectives."}
                 ],
+                "student_statistics": {"registered_girls": "", "registered_boys": "", "present_girls": "", "present_boys": ""},
                 "remarks": f"The students were able to explain {topic} due to the use of interactive teaching and learning methods. However, some students need more clarification. I will address this in the next lesson through remedial activities."
             }
 
@@ -1688,7 +1700,7 @@ def download_lesson_plan_pdf(request):
     ld = lesson.get('lesson_development', [])
     if ld:
         elements.append(Paragraph("Lesson Development (IDDR Model)", section_hdr))
-        ld_headers = ['Time', 'Stage (IDDR)', 'Methods', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']
+        ld_headers = ['Time', 'Stage (IDDR)', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']
         ld_data = [[Paragraph(h, hdr_s) for h in ld_headers]]
         for i, stage in enumerate(ld):
             bg = colors.white if i % 2 == 0 else STRIPE
@@ -1814,7 +1826,7 @@ def download_lesson_plan_word(request):
         ld_table = doc.add_table(rows=1, cols=6)
         ld_table.style = 'Table Grid'
         hdr = ld_table.rows[0].cells
-        for i, h in enumerate(['Time', 'Stage (IDDR)', 'Methods', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']):
+        for i, h in enumerate(['Time', 'Stage (IDDR)', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']):
             hdr[i].text = h
             hdr[i].paragraphs[0].runs[0].bold = True
         for stage in ld:
