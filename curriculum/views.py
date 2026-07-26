@@ -2477,19 +2477,28 @@ def get_topics_ai(request):
         return JsonResponse({'success': False, 'error': 'Somo halipatikani'}, status=404)
 
     prompt = (
-        f"Wewe ni mtaalamu wa mtaala wa Tanzania (TIE/SEQUIP). "
-        f"Orodhesha mada kuu (topics) za somo la {subject.name} kwa darasa la {class_name} "
-        f"katika ngazi ya {education_level} kwa mujibu wa mtaala wa TIE Tanzania. "
-        f"MAKOSI: Topics lazima zilingane hasa na zile za vitabu vya TIE kwa darasa hili. "
-        f"LUGHA: Topics zirejeshwe kwa lugha ya somo lenyewe. Kwa mfano: "
-        f"- Somo la English → topics kwa Kiingereza (e.g. 'Parts of Speech', 'Tenses', 'Comprehension') \n"
-        f"- Somo la Hisabati → topics kwa Kiswahili (e.g. 'Namba', 'Jiometri', 'Aljebra') \n"
-        f"- Somo la Science → topics kwa Kiingereza (e.g. 'Living Things', 'Matter', 'Energy') \n"
-        f"- Somo la Historia → topics kwa Kiswahili (e.g. 'Enzi za Mawe', 'Ukoloni', 'Uhuru') \n"
-        f"TOPICS lazima zifae hasa kwa darasa la {class_name} — si darasa jingine. "
-        f"Rudisha TU JSON array ya string: [\"Topic 1\", \"Topic 2\", ...]. "
-        f"USIANDIKE chochote kingine — JSON pekee."
-    )
+            f"Wewe ni mtaalamu wa mtaala wa Tanzania (TIE/SEQUIP). "
+            f"Orodhesha mada kuu (topics) za somo la {subject.name} kwa darasa la {class_name} "
+            f"katika ngazi ya {education_level} kwa mujibu wa mtaala wa TIE Tanzania. "
+            f"\n\n"
+            f"!!! HII NI MUHIMU SANA: TOPICS LAZIMA ZIWE ZA DARASA LA {class_name} PEKEE. "
+            f"USIORODHESHE topics za darasa jingine! Kwa mfano: "
+            f"- Kama ni Form 2 → orodhesha topics za Form 2 PEKEE (sio Form 1, sio Form 3, sio Form 4) "
+            f"- Kama ni Form 1 → orodhesha topics za Form 1 PEKEE "
+            f"- Kama ni Form 3 → orodhesha topics za Form 3 PEKEE "
+            f"- Kama ni Form 4 → orodhesha topics za Form 4 PEKEE \n\n"
+            f"MAKOSI: Topics lazima zilingane hasa na zile za vitabu vya TIE kwa darasa la {class_name}. "
+            f"KAGUA: Hakikisha kila topic uliyoorodhesha ni ya {class_name} kulingana na silabasi ya TIE. "
+            f"USIORODHESHE topic zozote za Form 1, Form 3, au Form 4 kama unataka topics za Form 2. \n"
+            f"LUGHA: Topics zirejeshwe kwa lugha ya somo lenyewe. Kwa mfano: "
+            f"- Somo la English → topics kwa Kiingereza (e.g. 'Parts of Speech', 'Tenses', 'Comprehension') \n"
+            f"- Somo la Hisabati → topics kwa Kiswahili (e.g. 'Namba', 'Jiometri', 'Aljebra') \n"
+            f"- Somo la Science/Biology/Physics/Chemistry → topics kwa Kiingereza (e.g. 'Living Things', 'Matter', 'Energy') \n"
+            f"- Somo la Historia → topics kwa Kiswahili (e.g. 'Enzi za Mawe', 'Ukoloni', 'Uhuru') \n"
+            f"\n"
+            f"Rudisha TU JSON array ya string: [\"Topic 1\", \"Topic 2\", ...]. "
+            f"USIANDIKE chochote kingine — JSON pekee."
+        )
 
     try:
         response = client.models.generate_content(model=model_name, contents=prompt)
@@ -2525,16 +2534,21 @@ def get_subtopics_ai(request):
         return JsonResponse({'success': False, 'error': 'Somo halipatikani'}, status=404)
 
     prompt = (
-        f"Wewe ni mtaalamu wa mtaala wa Tanzania (TIE/SEQUIP). "
-        f"Orodhesha mada ndogo (subtopics) za somo la {subject.name}, kwa mada kuu '{topic}', "
-        f"kwa darasa la {class_name} ({education_level}) kwa mujibu wa mtaala wa TIE Tanzania. "
-        f"MAKOSI: Subtopics lazima zilingane na zile za vitabu vya TIE kwa darasa hili. "
-        f"LUGHA: Subtopics zirejeshwe kwa lugha ya somo lenyewe (English → Kiingereza, Hisabati → Kiswahili, Science → Kiingereza, Historia → Kiswahili, n.k.). "
-        f"Subtopics lazima zifae hasa kwa darasa la {class_name} — si darasa jingine. "
-        f"Rudisha TU JSON array ya string: [\"Subtopic 1\", \"Subtopic 2\", ...]. "
-        f"Kama hakuna subtopics, rudisha [] (array tupu). "
-        f"USIANDIKE chochote kingine — JSON pekee."
-    )
+            f"Wewe ni mtaalamu wa mtaala wa Tanzania (TIE/SEQUIP). "
+            f"Orodhesha mada ndogo (subtopics) za somo la {subject.name}, kwa mada kuu '{topic}', "
+            f"kwa darasa la {class_name} ({education_level}) kwa mujibu wa mtaala wa TIE Tanzania. "
+            f"\n\n"
+            f"!!! HII NI MUHIMU SANA: SUBTOPICS LAZIMA ZIWE ZA DARASA LA {class_name} PEKEE. "
+            f"USIORODHESHE subtopics za darasa jingine! Kama mada kuu '{topic}' inapatikana kwa darasa zaidi ya moja, "
+            f"chagua subtopics za {class_name} PEKEE, sio za darasa lingine. \n\n"
+            f"MAKOSI: Subtopics lazima zilingane na zile za vitabu vya TIE kwa darasa la {class_name}. "
+            f"KAGUA mara mbili: Hakikisha subtopics zote ni za {class_name} kulingana na silabasi ya TIE. "
+            f"LUGHA: Subtopics zirejeshwe kwa lugha ya somo lenyewe (English → Kiingereza, Hisabati → Kiswahili, Science/Biology/Physics/Chemistry → Kiingereza, Historia → Kiswahili, n.k.). "
+            f"\n"
+            f"Rudisha TU JSON array ya string: [\"Subtopic 1\", \"Subtopic 2\", ...]. "
+            f"Kama hakuna subtopics, rudisha [] (array tupu). "
+            f"USIANDIKE chochote kingine — JSON pekee."
+        )
 
     try:
         response = client.models.generate_content(model=model_name, contents=prompt)
