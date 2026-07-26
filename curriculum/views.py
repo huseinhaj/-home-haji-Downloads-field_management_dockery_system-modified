@@ -478,7 +478,7 @@ Scope: {term_scope}
 Output a JSON array of objects. Each object has these 12 keys:
 "Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
 
-IMPORTANT: Provide COMPREHENSIVE, DETAILED content for each cell. Values should be descriptive enough to guide actual teaching (10-20 words per cell). Do NOT use abbreviations.
+IMPORTANT: Provide DETAILED content for each cell. Values should be descriptive enough to guide actual teaching (8-15 words per cell is ideal). Do NOT use abbreviations.
 
 Rules:
 - All values MUST be plain strings, NOT arrays
