@@ -536,13 +536,59 @@ CRITICAL: Return ONLY the JSON array. No other text. MAX 3-5 WORDS PER CELL."""
                                 return json.loads(_sanitize_json_control_chars(candidate))
                             except json.JSONDecodeError:
                                 continue
-            # No closing bracket found - try to repair truncated JSON
-            # Take everything from [ to end, close brackets and unclosed strings
+            # No closing bracket found - try to extract COMPLETE objects only
+            # This handles case where array is truncated mid-key-value (e.g. "Main Learning Activ")
+            # Closing brackets naively doesn't work when truncation is mid-key or mid-value
             candidate = text[start:]
-            # Close unclosed string (odd number of unescaped quotes)
+            
+            # Strategy 1: Extract all complete {..} objects from the text
+            complete_objs = []
+            i = 0
+            obj_start = None
+            obj_depth = 0
+            in_str2 = False
+            esc2 = False
+            while i < len(candidate):
+                ch = candidate[i]
+                if esc2:
+                    esc2 = False
+                    i += 1
+                    continue
+                if ch == '\\' and in_str2:
+                    esc2 = True
+                    i += 1
+                    continue
+                if ch == '"' and not esc2:
+                    in_str2 = not in_str2
+                    i += 1
+                    continue
+                if in_str2:
+                    i += 1
+                    continue
+                if ch == '{':
+                    if obj_depth == 0:
+                        obj_start = i
+                    obj_depth += 1
+                elif ch == '}':
+                    obj_depth -= 1
+                    if obj_depth == 0 and obj_start is not None:
+                        complete_objs.append(candidate[obj_start:i+1])
+                        obj_start = None
+                i += 1
+            
+            if complete_objs:
+                rebuilt = '[' + ','.join(complete_objs) + ']'
+                try:
+                    return json.loads(rebuilt)
+                except json.JSONDecodeError:
+                    try:
+                        return json.loads(_sanitize_json_control_chars(rebuilt))
+                    except json.JSONDecodeError:
+                        pass
+            
+            # Strategy 2: Last resort - try closing brackets (works when truncated mid-value)
             if candidate.count('"') % 2 == 1:
                 candidate += '"'
-            # Close unclosed brackets
             open_b = candidate.count('{')
             close_b = candidate.count('}')
             if open_b > close_b:
