@@ -1700,19 +1700,18 @@ def download_lesson_plan_pdf(request):
     ld = lesson.get('lesson_development', [])
     if ld:
         elements.append(Paragraph("Lesson Development (IDDR Model)", section_hdr))
-        ld_headers = ['Time', 'Stage (IDDR)', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']
+        ld_headers = ['Stage', 'Time', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']
         ld_data = [[Paragraph(h, hdr_s) for h in ld_headers]]
         for i, stage in enumerate(ld):
             bg = colors.white if i % 2 == 0 else STRIPE
             ld_data.append([
-                Paragraph(str(stage.get('time', '') or ''), cell_s),
                 Paragraph(str(stage.get('stage', stage.get('phase', '')) or ''), cell_s),
-                Paragraph(str(stage.get('methods', '') or ''), cell_s),
+                Paragraph(str(stage.get('time', '') or ''), cell_s),
                 Paragraph(str(stage.get('teaching_activities', stage.get('teacher_activities', '')) or ''), cell_s),
                 Paragraph(str(stage.get('learning_activities', stage.get('student_activities', '')) or ''), cell_s),
                 Paragraph(str(stage.get('assessment_criteria', '') or ''), cell_s),
             ])
-        ld_tbl = Table(ld_data, colWidths=[38, 72, 72, 118, 118, 105], repeatRows=1)
+        ld_tbl = Table(ld_data, colWidths=[72, 38, 118, 118, 105], repeatRows=1)
         ld_ts = [
             ('BACKGROUND', (0, 0), (-1, 0), NAVY),
             ('LINEBELOW', (0, 0), (-1, 0), 1.2, GOLD),
@@ -1823,20 +1822,20 @@ def download_lesson_plan_word(request):
     ld = lesson.get('lesson_development', [])
     if ld:
         doc.add_heading('Lesson Development (IDDR Model)', level=2)
-        ld_table = doc.add_table(rows=1, cols=6)
+        ld_table = doc.add_table(rows=1, cols=5)
         ld_table.style = 'Table Grid'
         hdr = ld_table.rows[0].cells
-        for i, h in enumerate(['Time', 'Stage (IDDR)', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']):
+        for i, h in enumerate(['Stage', 'Time', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']):
             hdr[i].text = h
             hdr[i].paragraphs[0].runs[0].bold = True
         for stage in ld:
             row = ld_table.add_row().cells
-            row[0].text = stage.get('time', '')
-            row[1].text = stage.get('stage', stage.get('phase', ''))
-            row[2].text = stage.get('methods', '')
-            row[3].text = stage.get('teaching_activities', stage.get('teacher_activities', ''))
-            row[4].text = stage.get('learning_activities', stage.get('student_activities', ''))
-            row[5].text = stage.get('assessment_criteria', '')
+            row[0].text = stage.get('stage', stage.get('phase', ''))
+            row[1].text = stage.get('time', '')
+            row[2].text = stage.get('teaching_activities', stage.get('teacher_activities', ''))
+            row[3].text = stage.get('learning_activities', stage.get('student_activities', ''))
+            row[4].text = stage.get('assessment_criteria', '')
+            row[4].text = stage.get('assessment_criteria', '')
 
     remarks = lesson.get('remarks', '')
     if remarks:
