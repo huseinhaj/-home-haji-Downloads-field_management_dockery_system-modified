@@ -671,14 +671,15 @@ IMPORTANT: Write RICH, DETAILED content following the Tanzania TIE/SEQUIP syllab
 
 Rules:
 - All values MUST be plain strings, NOT arrays
-- Main Competence: Numbered format "1.0 Topic Name", "2.0 Topic Name" etc. Use REAL Tanzanian syllabus competences.
-- Specific Competences: MUST be REAL subtopics from the Tanzanian syllabus for this subject/class. Each week covers a specific subtopic.
-- Week format: "1st", "2nd", "3rd", etc.
-- Month: JANUARY, FEBRUARY, etc. (One month can have MULTIPLE topics across different weeks)
+- Main Competence: Numbered format "1.0 Topic Name", "2.0 Topic Name" etc. ONE Main Competence can span MULTIPLE months (e.g. "1.0 Demonstrate mastery of biology concepts" can cover January through October with different subtopics). Use REAL Tanzanian syllabus competences.
+- Specific Competences: Format "1.1 Subtopic Name" - the REAL specific competence from the Tanzanian syllabus. Multiple rows can share the same Specific Competence number if they are under the same Main Competence.
+- Main Learning Activities: Use sub-lettering format like "(a) Describe nutrition in humans", "(b) Describe transport in plants", "(c) Describe transport in human body", etc. to group related subtopics under the same Specific Competence.
+- Week format: "1st", "2nd", "3rd", "4th" or ranges like "1st & 2nd", "2nd & 3rd".
+- Month: JANUARY, FEBRUARY, etc. (One month can have MULTIPLE topics across different weeks. One Main Competence can span MANY months.)
 - Periods per week: {periods_per_week} for normal weeks, fewer for exam/midterm weeks
 - References: Full APA v7 style using LATEST TIE textbooks (e.g. "Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education.")
-- Methods: CBC-aligned, comma-separated list of specific methods (e.g. "Brainstorming, Group discussion, Discovery, Guided inquiry, Question and answer, Demonstration")
-- Teaching Resources: List specific resources for each topic (e.g. "TIE textbook, Charts, Real specimens, Manila sheets, Markers")
+- Methods: CBC-aligned, comma-separated list of specific methods (e.g. "Brainstorming, Group discussion, Discovery, Guided inquiry, Question and answer, Demonstration, Experimentation")
+- Teaching Resources: List specific resources for each topic (e.g. "TIE textbook, Charts/model/photographs, Real specimens, Manila sheets, Markers")
 - Remarks: Meaningful note on student achievement, challenges, or way forward for that week
 - One row per distinct topic/subtopic per week. A month can have 2-4 different topics across its weeks. Include midterm/exam weeks as separate rows.
 - CRITICAL: Use REAL Tanzanian syllabus topics and subtopics for {subject} {full_class_name}. Do NOT make up fake topics.
@@ -846,13 +847,13 @@ def download_scheme_pdf(request):
     hdr_style = ParagraphStyle('SchHdr', fontName='Helvetica-Bold', fontSize=7,
                                leading=10, textColor=colors.white, wordWrap='LTR', alignment=1)
 
-    # ── Ministry Header ──
+    # ── TAMISEMI Header ──
     elements.append(Paragraph(
-        "JAMHURI YA MUUNGANO WA TANZANIA",
+        "PRIME MINISTER'S OFFICE",
         ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=11, alignment=1,
                        textColor=NAVY, spaceAfter=1)))
     elements.append(Paragraph(
-        "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA",
+        "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT",
         ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=9, alignment=1,
                        textColor=NAVY, spaceAfter=1)))
     elements.append(HRFlowable(width="60%", thickness=0.8, color=GOLD, spaceAfter=4))
@@ -1198,11 +1199,11 @@ def ajax_generate_lessonplan(request):
         design_time = max(8, int(duration * 0.30))
         real_time = max(5, int(duration * 0.15))
 
-        prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom following the OFFICIAL MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY format.
+        prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom following the OFFICIAL TAMISEMI (PRIME MINISTER'S OFFICE - REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT) format.
 
 ============================================
-JAMHURI YA MUUNGANO WA TANZANIA
-WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA
+PRIME MINISTER'S OFFICE
+REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
 RASIMU YA MPANGOKAZI WA SOMO (IDDR MODEL)
 ============================================
 
@@ -1393,13 +1394,13 @@ def download_lesson_plan_pdf(request):
     elements.append(HRFlowable(width="100%", thickness=2.5, color=GOLD, spaceAfter=2))
     elements.append(HRFlowable(width="100%", thickness=1.2, color=NAVY, spaceAfter=6))
 
-    # ── Ministry Header ──
+    # ── TAMISEMI Header ──
     elements.append(Paragraph(
-        "JAMHURI YA MUUNGANO WA TANZANIA",
+        "PRIME MINISTER'S OFFICE",
         ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=12, alignment=1,
                        textColor=NAVY, spaceAfter=1)))
     elements.append(Paragraph(
-        "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA",
+        "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT",
         ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=10, alignment=1,
                        textColor=NAVY, spaceAfter=1)))
     elements.append(HRFlowable(width="55%", thickness=0.7, color=GOLD, spaceAfter=4))
