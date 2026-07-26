@@ -1333,14 +1333,28 @@ Total Students: {total_students or 'N/A'}, Present: {present_students or 'N/A'}
 
 -- TEACHING PROCESS (IDDR Model) --
 
-CRITICAL REQUIREMENTS:
-1. main_competence: Use numbered format like "1.0 Topic Name" - the REAL Tanzanian syllabus competence
-2. specific_competence: REAL subtopic-specific competence from the syllabus
-3. specific_activity: Start with "By the end of this lesson, students should be able to:" then list 2-3 measurable outcomes
+CRITICAL REQUIREMENTS - MUST FOLLOW EXACTLY:
+
+!!! CONTENT MATCHING (CRITICAL): ALL content below MUST be specifically about:
+   - Subject: {subject} (do NOT use a different subject)
+   - Class: {full_class} (do NOT use a different form level)
+   - Main Topic: "{topic}" (ALL content must relate DIRECTLY to this topic)
+   - Sub-topic: "{subtopic or 'N/A'}" (ALL content must relate DIRECTLY to this subtopic)
+   FAILURE: If you use content for a different topic, subject, or class, the output is WRONG.
+
+1. main_competence: Use numbered format like "1.0 Topic Name" - the REAL Tanzanian syllabus competence for {subject} {full_class}
+2. specific_competence: REAL subtopic-specific competence from the {subject} syllabus for this subtopic
+3. specific_activity: Start with "By the end of this lesson, students should be able to:" then list 2-3 measurable outcomes SPECIFIC to "{topic}" and "{subtopic}"
 4. references: Use the LATEST TIE textbook format - "Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education." If primary: "Tanzania Institute of Education. (2024). {subject} for Primary Schools Pupil's Book. Tanzania Institute of Education."
 5. teaching_resources: MUST include specific, real resources for THIS topic (not generic) - e.g. TIE textbook pages, charts, real specimens, manila sheets, markers
 6. remarks: Must be a detailed paragraph evaluating student achievement, specific challenges faced, and concrete way forward
 7. student_statistics: Provide registered/present counts for girls and boys
+
+!!! ALL lesson_development stages MUST use the EXACT topic "{topic}" and subtopic "{subtopic}":
+   - Introduction: relate directly to "{topic}"
+   - Competence Development: explore "{topic}" / "{subtopic}" specifically
+   - Design: apply "{topic}" in real-life contexts
+   - Realisation: assess understanding of "{topic}" / "{subtopic}"
 
 Lesson Development uses the IDDR Model with these 5 columns per stage: stage, time, teaching_activities, learning_activities, assessment_criteria. Each stage MUST have detailed, Tanzania-specific content using CBC methodologies.
 
