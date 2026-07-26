@@ -47,32 +47,21 @@
     .break-item .fields input.wide { grid-column: span 2; }
   }
 
-  /* ── Advanced toggle ── */
-  .advanced-toggle {
-    display: flex;
+  /* ── Preset break buttons ── */
+  .preset-break-btn {
+    transition: all var(--duration-fast) var(--ease-out);
+    white-space: nowrap;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    color: var(--text-muted);
-    padding: 4px 0;
-    transition: color var(--duration-fast);
-    border: none;
-    background: none;
+    gap: 3px;
+    font-size: 9px;
   }
-  .advanced-toggle:hover { color: var(--green-500); }
-  .advanced-toggle i { transition: transform var(--duration-fast); }
-  .advanced-toggle.open i { transform: rotate(180deg); }
-  .advanced-panel {
-    overflow: hidden;
-    max-height: 0;
-    opacity: 0;
-    transition: all var(--duration-normal) var(--ease-out);
+  .preset-break-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
   }
-  .advanced-panel.open {
-    max-height: 800px;
-    opacity: 1;
+  .preset-break-btn:active {
+    transform: translateY(0);
   }
 
   /* ── Table responsive ── */
@@ -244,35 +233,48 @@
               <input class="form-control" id="school_name" value="{{ teacher_school_name }}">
             </div>
 
-            <!-- Advanced toggle -->
-            <button type="button" class="advanced-toggle" id="advancedToggle">
-              <i class="fas fa-chevron-down"></i> Advanced &amp; Breaks
-            </button>
-            <div class="advanced-panel" id="advancedPanel">
-              <div class="row g-1 mb-2 mt-2">
-                <div class="col-6">
-                  <label>Start Date</label>
-                  <input class="form-control" id="start_date" type="date">
-                </div>
-                <div class="col-6">
-                  <label>End Date</label>
-                  <input class="form-control" id="end_date" type="date">
-                </div>
+            <div class="row g-1 mb-2 mt-2">
+              <div class="col-6">
+                <label>Start Date</label>
+                <input class="form-control" id="start_date" type="date">
+              </div>
+              <div class="col-6">
+                <label>End Date</label>
+                <input class="form-control" id="end_date" type="date">
+              </div>
+            </div>
+
+            <!-- Breaks & Holidays -->
+            <div class="mb-2" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:0.6rem;">
+              <label style="font-weight:700;color:var(--text-primary);margin-bottom:6px;display:flex;align-items:center;gap:6px;font-size:var(--font-size-xs);">
+                <i class="fas fa-calendar-times text-danger"></i> Breaks &amp; Holidays
+                <span style="font-weight:400;color:var(--text-muted);font-size:9px;">(mitihani, likizo, mapumziko)</span>
+              </label>
+              
+              <!-- Quick-add presets -->
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;">
+                <button type="button" class="preset-break-btn" data-preset="midterm" style="background:rgba(217,164,65,0.1);color:var(--gold-400);border:1px solid rgba(217,164,65,0.25);border-radius:var(--radius-sm);padding:3px 8px;font-size:9px;font-weight:600;cursor:pointer;">
+                  <i class="fas fa-pen"></i> Midterm Exam
+                </button>
+                <button type="button" class="preset-break-btn" data-preset="terminal" style="background:rgba(220,38,38,0.08);color:var(--error);border:1px solid rgba(220,38,38,0.2);border-radius:var(--radius-sm);padding:3px 8px;font-size:9px;font-weight:600;cursor:pointer;">
+                  <i class="fas fa-flag-checkered"></i> Terminal Exam
+                </button>
+                <button type="button" class="preset-break-btn" data-preset="easter" style="background:rgba(147,51,234,0.08);color:#9333ea;border:1px solid rgba(147,51,234,0.2);border-radius:var(--radius-sm);padding:3px 8px;font-size:9px;font-weight:600;cursor:pointer;">
+                  <i class="fas fa-cross"></i> Easter
+                </button>
+                <button type="button" class="preset-break-btn" data-preset="christmas" style="background:rgba(31,122,61,0.1);color:var(--green-500);border:1px solid rgba(31,122,61,0.2);border-radius:var(--radius-sm);padding:3px 8px;font-size:9px;font-weight:600;cursor:pointer;">
+                  <i class="fas fa-tree"></i> Christmas
+                </button>
+                <button type="button" class="preset-break-btn" data-preset="custom" style="background:rgba(100,116,139,0.08);color:var(--text-secondary);border:1px dashed var(--border-color);border-radius:var(--radius-sm);padding:3px 8px;font-size:9px;font-weight:600;cursor:pointer;">
+                  <i class="fas fa-plus"></i> Custom
+                </button>
               </div>
 
-              <!-- Breaks management -->
-              <div class="mb-2">
-                <label style="display:flex;align-items:center;justify-content:space-between;">
-                  <span>Breaks (Holidays/Exams)</span>
-                  <button type="button" class="btn-tlm btn-outline-tlm btn-sm-tlm" id="addBreakBtn" style="padding:2px 8px;font-size:10px;">
-                    <i class="fas fa-plus"></i> Add
-                  </button>
-                </label>
-                <div id="breaksList"></div>
-                <p id="noBreaksMsg" style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:4px;">
-                  <i class="far fa-calendar"></i> Hakuna breaks. Bonyeza "Add" kuongeza likizo au mitihani.
-                </p>
-              </div>
+              <!-- Break list -->
+              <div id="breaksList"></div>
+              <p id="noBreaksMsg" style="font-size:var(--font-size-xs);color:var(--text-muted);margin:4px 0 0;">
+                <i class="far fa-calendar"></i> Bonyeza kitufe cha juu kuongeza holiday au mtihani.
+              </p>
             </div>
 
             <!-- Buttons -->
@@ -381,24 +383,95 @@ document.addEventListener('DOMContentLoaded', function() {
   const progressBar = document.getElementById('progressBar');
   const breaksList = document.getElementById('breaksList');
   const noBreaksMsg = document.getElementById('noBreaksMsg');
-  const advancedToggle = document.getElementById('advancedToggle');
-  const advancedPanel = document.getElementById('advancedPanel');
 
   let currentSchemeData = null;
   let currentSavedId = null;
   let breakCount = 0;
 
-  // ── Advanced toggle ──
-  advancedToggle.addEventListener('click', function() {
-    this.classList.toggle('open');
-    advancedPanel.classList.toggle('open');
-  });    // ── Term → Weeks auto-adjust ──
-    document.getElementById('term').addEventListener('change', function() {
-      const weeksInput = document.getElementById('total_weeks');
-      const term = this.value;
-      if (term === 'Full Year') weeksInput.value = 36;
-      else weeksInput.value = 12;
+  // ── Helper: add a break item ──
+  function addBreakItem(name, startDate, endDate) {
+    breakCount++;
+    noBreaksMsg.style.display = 'none';
+    const div = document.createElement('div');
+    div.className = 'break-item';
+    div.dataset.id = breakCount;
+    div.innerHTML = `
+      <div class="fields">
+        <input type="text" class="wide" placeholder="Jina" data-field="name" value="${name || ''}">
+        <input type="date" data-field="start" value="${startDate || ''}">
+        <input type="date" data-field="end" value="${endDate || ''}">
+        <button type="button" class="btn-tlm btn-sm-tlm" style="background:rgba(220,38,38,0.1);color:var(--error);padding:4px 8px;" onclick="this.closest('.break-item').remove()">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </div>
+    `;
+    breaksList.appendChild(div);
+    setTimeout(() => div.style.opacity = '1', 10);
+    showToast(`${name || 'Break'} imeongezwa`, 'info');
+  }
+
+  // ── Calculate dates based on term/year ──
+  function getDefaultDates() {
+    const year = parseInt(document.getElementById('year').value) || 2026;
+    const term = document.getElementById('term').value;
+    if (term === 'Full Year') {
+      return {
+        midterm: { start: `${year}-03-23`, end: `${year}-04-03` },
+        terminal: { start: `${year}-06-01`, end: `${year}-06-12` },
+        easter: { start: `${year}-04-14`, end: `${year}-04-21` },
+        christmas: { start: `${year}-12-01`, end: `${year}-12-31` },
+      };
+    } else if (term === 'I') {
+      return {
+        midterm: { start: `${year}-02-16`, end: `${year}-02-20` },
+        terminal: { start: `${year}-04-06`, end: `${year}-04-17` },
+        easter: { start: `${year}-04-14`, end: `${year}-04-21` },
+        christmas: { start: '', end: '' },
+      };
+    } else if (term === 'II') {
+      return {
+        midterm: { start: `${year}-05-18`, end: `${year}-05-22` },
+        terminal: { start: `${year}-08-03`, end: `${year}-08-14` },
+        easter: { start: '', end: '' },
+        christmas: { start: '', end: '' },
+      };
+    } else {
+      return {
+        midterm: { start: `${year}-09-21`, end: `${year}-09-25` },
+        terminal: { start: `${year}-11-23`, end: `${year}-12-04` },
+        easter: { start: '', end: '' },
+        christmas: { start: `${year}-12-01`, end: `${year}-12-31` },
+      };
+    }
+  }
+
+  // ── Preset break buttons ──
+  document.querySelectorAll('.preset-break-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const preset = this.dataset.preset;
+      const dates = getDefaultDates();
+      
+      if (preset === 'midterm') {
+        addBreakItem('Midterm Exam', dates.midterm.start, dates.midterm.end);
+      } else if (preset === 'terminal') {
+        addBreakItem('Terminal Exam', dates.terminal.start, dates.terminal.end);
+      } else if (preset === 'easter') {
+        addBreakItem('Easter Holiday', dates.easter.start, dates.easter.end);
+      } else if (preset === 'christmas') {
+        addBreakItem('Christmas Holiday', dates.christmas.start, dates.christmas.end);
+      } else if (preset === 'custom') {
+        addBreakItem('', '', '');
+      }
     });
+  });
+
+  // ── Term → Weeks & dates auto-adjust ──
+  document.getElementById('term').addEventListener('change', function() {
+    const weeksInput = document.getElementById('total_weeks');
+    const term = this.value;
+    if (term === 'Full Year') weeksInput.value = 36;
+    else weeksInput.value = 12;
+  });
 
     // ── Cascading dropdowns ──
   levelSelect.addEventListener('change', function() {
@@ -457,29 +530,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   }
-
-  // ── Break management ──
-  document.getElementById('addBreakBtn').addEventListener('click', function() {
-    breakCount++;
-    noBreaksMsg.style.display = 'none';
-    const div = document.createElement('div');
-    div.className = 'break-item';
-    div.dataset.id = breakCount;
-    div.innerHTML = `
-      <div class="fields">
-        <input type="text" class="wide" placeholder="Jina la break (e.g. Easter)" data-field="name">
-        <input type="date" data-field="start" placeholder="Anza">
-        <input type="date" data-field="end" placeholder="Mwisho">
-        <button type="button" class="btn-tlm btn-sm-tlm" style="background:rgba(220,38,38,0.1);color:var(--error);padding:4px 8px;" onclick="this.closest('.break-item').remove()">
-          <i class="fas fa-trash-alt"></i>
-        </button>
-      </div>
-    `;
-    breaksList.appendChild(div);
-    // Animate
-    setTimeout(() => div.style.opacity = '1', 10);
-    showToast('Break imeongezwa', 'info');
-  });
 
   // ── Collect form data ──
   function getFormData() {

@@ -633,12 +633,18 @@ def ajax_generate_scheme(request):
         }
         term_scope = term_scope_map.get(term, f'Cover content for {total_weeks} weeks.')
 
-        # ── Breaks (short) ──
+        # ── Breaks & Holidays ──
         breaks_text = ''
         if breaks:
             for b in breaks:
-                breaks_text += f"- {b.get('name', 'Break')}: {b.get('start', '')} - {b.get('end', '')}\n"
-            breaks_text = f"\nRespect these breaks (skip them):\n{breaks_text}"
+                name = b.get('name', 'Break')
+                start = b.get('start', '')
+                end = b.get('end', '')
+                if 'exam' in name.lower() or 'test' in name.lower() or 'midterm' in name.lower() or 'terminal' in name.lower():
+                    breaks_text += f"- {name}: {start} - {end} (EXAM WEEK: reduce periods to 2-3 for tests/revision)\n"
+                else:
+                    breaks_text += f"- {name}: {start} - {end} (HOLIDAY: skip these weeks entirely)\n"
+            breaks_text = f"\nSchool calendar breaks/holidays to respect:\n{breaks_text}"
 
         # ── Reference source ──
         ref_text = f"\nReference source: {reference_source}" if reference_source else ''
