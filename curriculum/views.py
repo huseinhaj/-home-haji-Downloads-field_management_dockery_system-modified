@@ -443,12 +443,12 @@ def ajax_generate_scheme(request):
 
         full_class_name = f"{class_name}{stream}" if stream else class_name
 
-        # ── Build concise term scope ──
+        # ── Build comprehensive term scope ──
         term_scope_map = {
-            'Full Year': f'Cover ALL topics for the ENTIRE year across {total_weeks} weeks.',
-            'I': f'Term I only (first third of syllabus). Cover topics 1 onward across {total_weeks} weeks. Do NOT include Term II/III topics.',
-            'II': f'Term II only (middle third). Continue from Term I across {total_weeks} weeks. Do NOT include Term I/III topics.',
-            'III': f'Term III only (final third). Complete remaining syllabus across {total_weeks} weeks. Do NOT include Term I/II topics.',
+            'Full Year': f'This is a FULL YEAR scheme covering ALL topics in the syllabus from start to finish. Generate {total_weeks} weeks of content covering every topic sequentially.',
+            'I': f'TERM I only. Cover the FIRST PART of the syllabus (topics 1-5 or first ~1/3). Start from Topic 1 and progress through {total_weeks} weeks. Do NOT include Term II or III topics.',
+            'II': f'TERM II only. Cover the MIDDLE PART of the syllabus. Continue from where Term I ends through {total_weeks} weeks. Do NOT include Term I or III topics.',
+            'III': f'TERM III only. Cover the FINAL PART of the syllabus. Complete remaining topics through {total_weeks} weeks. Do NOT include Term I or II topics.',
         }
         term_scope = term_scope_map.get(term, f'Cover content for {total_weeks} weeks.')
 
@@ -478,20 +478,19 @@ Scope: {term_scope}
 Output a JSON array of objects. Each object has these 12 keys:
 "Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
 
-IMPORTANT - CRITICAL: Keep ALL values EXTREMELY SHORT (max 3-5 words). 
-Use abbreviations everywhere! Every cell must be very brief to fit all weeks.
+IMPORTANT: Provide COMPREHENSIVE, DETAILED content for each cell. Values should be descriptive enough to guide actual teaching (10-20 words per cell). Do NOT use abbreviations.
 
 Rules:
 - All values MUST be plain strings, NOT arrays
 - Week format: "1st", "2nd", "3rd", etc.
 - Month: JANUARY, FEBRUARY, etc.
-- Periods per week: {periods_per_week} for normal weeks, fewer for exam weeks
-- References: VERY SHORT (e.g. "TIE Bio F2" not full title)
-- Methods: Comma-separated, short (e.g. "Discussion, Demo")
-- Remarks: One word or short phrase
-- One row per distinct topic/subtopic per week.{breaks_text}
+- Periods per week: {periods_per_week} for normal weeks, fewer for exam/midterm weeks
+- References: Full APA v7 style (e.g. "TIE (2024). Biology Form Two. Tanzania Institute of Education.")
+- Methods: CBC-aligned, comma-separated (e.g. "Brainstorming, Group discussion, Discovery, Guided inquiry")
+- Remarks: Brief note on achievement or way forward
+- One row per distinct topic/subtopic per week. Include midterm/exam weeks where appropriate.{breaks_text}
 
-CRITICAL: Return ONLY the JSON array. No other text. MAX 3-5 WORDS PER CELL."""
+CRITICAL: Return ONLY the JSON array. No other text. Make each cell useful for a teacher."""
 
         response = client.models.generate_content(model=model_name, contents=prompt)
         response_text = response.text
