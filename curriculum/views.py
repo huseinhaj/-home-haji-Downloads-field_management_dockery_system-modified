@@ -45,6 +45,24 @@ from field_app.views.utils import (
 from .models import TLMTeacher, Testimonial
 
 
+def _sanitize_json_control_chars(text):
+    """Replace control characters inside JSON strings with their escaped forms.
+    This handles AI responses that include literal newlines/tabs in string values,
+    which would otherwise cause json.loads() to fail with 'Invalid control character'."""
+    result = []
+    in_str = False
+    prev = ''
+    for ch in text:
+        if ch == '"' and prev != '\\':
+            in_str = not in_str
+        if in_str and ch in ('\n', '\r', '\t'):
+            result.append({'\n': '\\n', '\r': '\\r', '\t': '\\t'}[ch])
+        else:
+            result.append(ch)
+        prev = ch
+    return ''.join(result)
+
+
 # =============================================================================
 # HELPER: Check/Get TLM teacher from session
 # =============================================================================
@@ -509,7 +527,11 @@ Return ONLY the JSON array, no other text."""
                         try:
                             return json.loads(candidate)
                         except json.JSONDecodeError:
-                            continue
+                            # Try with sanitized control chars
+                            try:
+                                return json.loads(_sanitize_json_control_chars(candidate))
+                            except json.JSONDecodeError:
+                                continue
             return None
 
         scheme_data = _extract_first_json_array(cleaned)
@@ -526,25 +548,38 @@ Return ONLY the JSON array, no other text."""
                 elif isinstance(parsed, list):
                     scheme_data = parsed
             except (json.JSONDecodeError, TypeError):
-                pass
+                try:
+                    parsed = json.loads(_sanitize_json_control_chars(cleaned))
+                    if isinstance(parsed, dict):
+                        for v in parsed.values():
+                            if isinstance(v, list):
+                                scheme_data = v
+                                break
+                    elif isinstance(parsed, list):
+                        scheme_data = parsed
+                except (json.JSONDecodeError, TypeError):
+                    pass
 
         if scheme_data is None:
-            try:
-                m = re.search(r'\[.*?\]', cleaned, re.DOTALL)
-                if m:
-                    candidate = m.group()
-                    # Try to repair truncated JSON by closing brackets
-                    open_b = candidate.count('{')
-                    close_b = candidate.count('}')
-                    if open_b > close_b:
-                        candidate += '}' * (open_b - close_b)
-                    open_arr = candidate.count('[')
-                    close_arr = candidate.count(']')
-                    if open_arr > close_arr:
-                        candidate += ']' * (open_arr - close_arr)
-                    scheme_data = json.loads(candidate)
-            except (json.JSONDecodeError, TypeError):
-                pass
+            for attempt in [cleaned, _sanitize_json_control_chars(cleaned)]:
+                try:
+                    m = re.search(r'\[.*?\]', attempt, re.DOTALL)
+                    if m:
+                        candidate = m.group()
+                        # Try to repair truncated JSON by closing brackets
+                        open_b = candidate.count('{')
+                        close_b = candidate.count('}')
+                        if open_b > close_b:
+                            candidate += '}' * (open_b - close_b)
+                        open_arr = candidate.count('[')
+                        close_arr = candidate.count(']')
+                        if open_arr > close_arr:
+                            candidate += ']' * (open_arr - close_arr)
+                        scheme_data = json.loads(candidate)
+                        if scheme_data:
+                            break
+                except (json.JSONDecodeError, TypeError):
+                    continue
 
         # Post-process: convert arrays to strings
         if scheme_data and isinstance(scheme_data, list):
@@ -1037,8 +1072,20 @@ All text values must be plain strings. Return ONLY the JSON object, no extra tex
         start_idx = cleaned.find('{')
         end_idx = cleaned.rfind('}')
         if start_idx != -1 and end_idx != -1:
-            lesson_data = json.loads(cleaned[start_idx:end_idx + 1])
+            json_str = cleaned[start_idx:end_idx + 1]
+            try:
+                lesson_data = json.loads(json_str)
+            except json.JSONDecodeError:
+                logger.warning(f"[Lesson] JSON parse error - sanitizing control chars...")
+                try:
+                    lesson_data = json.loads(_sanitize_json_control_chars(json_str))
+                except json.JSONDecodeError:
+                    lesson_data = None
         else:
+            lesson_data = None
+        
+        if lesson_data is None:
+            # Could not parse JSON, use fallback default data
             # Fallback: generate sensible defaults
             lesson_data = {
                 "main_competence": f"Demonstrate understanding of {topic}",
