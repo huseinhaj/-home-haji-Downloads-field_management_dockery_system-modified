@@ -475,19 +475,23 @@ School: {school_name}{ref_text}{breaks_text}
 
 Scope: {term_scope}
 
-Output ONLY a JSON array of objects. Each object MUST have these 12 keys:
+Output a JSON array of objects. Each object has these 12 keys:
 "Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
 
+IMPORTANT - CRITICAL: Keep ALL values EXTREMELY SHORT (max 3-5 words). 
+Use abbreviations everywhere! Every cell must be very brief to fit all weeks.
+
 Rules:
-- All values MUST be plain strings, NOT arrays. E.g. "Specific Learning Activities": "Solve linear equations" not ["Solve..."]
+- All values MUST be plain strings, NOT arrays
 - Week format: "1st", "2nd", "3rd", etc.
 - Month: JANUARY, FEBRUARY, etc.
 - Periods per week: {periods_per_week} for normal weeks, fewer for exam weeks
-- References: APA v7 style (e.g. TIE (2024). Biology Form Two. Tanzania Institute of Education.)
-- Methods: CBC-aligned (Brainstorming, Group discussion, Discovery, etc.)
+- References: VERY SHORT (e.g. "TIE Bio F2" not full title)
+- Methods: Comma-separated, short (e.g. "Discussion, Demo")
+- Remarks: One word or short phrase
 - One row per distinct topic/subtopic per week.{breaks_text}
 
-Return ONLY the JSON array, no other text."""
+CRITICAL: Return ONLY the JSON array. No other text. MAX 3-5 WORDS PER CELL."""
 
         response = client.models.generate_content(model=model_name, contents=prompt)
         response_text = response.text
@@ -505,6 +509,7 @@ Return ONLY the JSON array, no other text."""
             depth = 0
             in_str = False
             esc = False
+            last_good_candidate = None
             for i in range(start, len(text)):
                 ch = text[i]
                 if esc:
@@ -527,12 +532,32 @@ Return ONLY the JSON array, no other text."""
                         try:
                             return json.loads(candidate)
                         except json.JSONDecodeError:
-                            # Try with sanitized control chars
                             try:
                                 return json.loads(_sanitize_json_control_chars(candidate))
                             except json.JSONDecodeError:
                                 continue
-            return None
+            # No closing bracket found - try to repair truncated JSON
+            # Take everything from [ to end, close brackets and unclosed strings
+            candidate = text[start:]
+            # Close unclosed string (odd number of unescaped quotes)
+            if candidate.count('"') % 2 == 1:
+                candidate += '"'
+            # Close unclosed brackets
+            open_b = candidate.count('{')
+            close_b = candidate.count('}')
+            if open_b > close_b:
+                candidate += '}' * (open_b - close_b)
+            open_arr = candidate.count('[')
+            close_arr = candidate.count(']')
+            if open_arr > close_arr:
+                candidate += ']' * (open_arr - close_arr)
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                try:
+                    return json.loads(_sanitize_json_control_chars(candidate))
+                except json.JSONDecodeError:
+                    return None
 
         scheme_data = _extract_first_json_array(cleaned)
 
@@ -581,7 +606,13 @@ Return ONLY the JSON array, no other text."""
                         close_arr = candidate.count(']')
                         if open_arr > close_arr:
                             candidate += ']' * (open_arr - close_arr)
-                        scheme_data = json.loads(candidate)
+                        try:
+                            scheme_data = json.loads(candidate)
+                        except json.JSONDecodeError:
+                            try:
+                                scheme_data = json.loads(_sanitize_json_control_chars(candidate))
+                            except json.JSONDecodeError:
+                                continue
                         if scheme_data:
                             break
                 except (json.JSONDecodeError, TypeError):
