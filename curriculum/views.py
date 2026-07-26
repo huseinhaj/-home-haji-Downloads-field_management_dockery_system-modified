@@ -667,20 +667,24 @@ Scope: {scope_text}
 Output a JSON array of objects. Each object has these 12 keys:
 "Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
 
-IMPORTANT: Write RICH, DETAILED content. Each cell should have 1-2 detailed sentences (15-25 words) — enough for a teacher to follow without being a novel. Do NOT use abbreviations.
+IMPORTANT: Write RICH, DETAILED content following the Tanzania TIE/SEQUIP syllabus format. Do NOT use abbreviations.
 
 Rules:
 - All values MUST be plain strings, NOT arrays
+- Main Competence: Numbered format "1.0 Topic Name", "2.0 Topic Name" etc. Use REAL Tanzanian syllabus competences.
+- Specific Competences: MUST be REAL subtopics from the Tanzanian syllabus for this subject/class. Each week covers a specific subtopic.
 - Week format: "1st", "2nd", "3rd", etc.
 - Month: JANUARY, FEBRUARY, etc. (One month can have MULTIPLE topics across different weeks)
 - Periods per week: {periods_per_week} for normal weeks, fewer for exam/midterm weeks
-- References: Full APA v7 style (e.g. "TIE (2024). Biology Form Two. Tanzania Institute of Education.")
+- References: Full APA v7 style using LATEST TIE textbooks (e.g. "Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education.")
 - Methods: CBC-aligned, comma-separated list of specific methods (e.g. "Brainstorming, Group discussion, Discovery, Guided inquiry, Question and answer, Demonstration")
+- Teaching Resources: List specific resources for each topic (e.g. "TIE textbook, Charts, Real specimens, Manila sheets, Markers")
 - Remarks: Meaningful note on student achievement, challenges, or way forward for that week
-- One row per distinct topic/subtopic per week. A month can have 2-4 different topics across its weeks. Include midterm/exam weeks where appropriate.
-- CRITICAL: DISTRIBUTE content across ALL months in the specified range. EACH month must have its own distinct topics. Do NOT put everything in just one or two months.{breaks_text}
+- One row per distinct topic/subtopic per week. A month can have 2-4 different topics across its weeks. Include midterm/exam weeks as separate rows.
+- CRITICAL: Use REAL Tanzanian syllabus topics and subtopics for {subject} {full_class_name}. Do NOT make up fake topics.
+- CRITICAL: DISTRIBUTE content across ALL months in the specified range. EACH month must have its own distinct topics.{breaks_text}
 
-CRITICAL: Return ONLY the JSON array. No other text. Write rich, detailed content that a teacher can use directly in the classroom."""
+CRITICAL: Return ONLY the JSON array. No other text. Write rich, detailed content that follows the TIE syllabus structure exactly."""
 
         all_scheme_data = []
         all_response_texts = []
@@ -824,6 +828,7 @@ def download_scheme_pdf(request):
 
     NAVY = colors.HexColor('#0A2B5E')
     GOLD = colors.HexColor('#C8900A')
+    DARK_GOLD = colors.HexColor('#A67B07')
     STRIPE = colors.HexColor('#EBF0FB')
     BORDER = colors.HexColor('#9BAAC4')
 
@@ -832,20 +837,52 @@ def download_scheme_pdf(request):
                             rightMargin=18, leftMargin=18, topMargin=22, bottomMargin=22)
     elements = []
 
+    # ── Top decorative line ──
+    elements.append(HRFlowable(width="100%", thickness=3, color=GOLD, spaceAfter=2))
+    elements.append(HRFlowable(width="100%", thickness=1.5, color=NAVY, spaceAfter=6))
+
     cell_style = ParagraphStyle('SchCell', fontName='Helvetica', fontSize=7,
                                 leading=10, wordWrap='LTR')
     hdr_style = ParagraphStyle('SchHdr', fontName='Helvetica-Bold', fontSize=7,
                                leading=10, textColor=colors.white, wordWrap='LTR', alignment=1)
 
+    # ── Ministry Header ──
+    elements.append(Paragraph(
+        "JAMHURI YA MUUNGANO WA TANZANIA",
+        ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=11, alignment=1,
+                       textColor=NAVY, spaceAfter=1)))
+    elements.append(Paragraph(
+        "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA",
+        ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=9, alignment=1,
+                       textColor=NAVY, spaceAfter=1)))
+    elements.append(HRFlowable(width="60%", thickness=0.8, color=GOLD, spaceAfter=4))
+
+    # ── Title ──
     elements.append(Paragraph("SCHEME OF WORK",
-        ParagraphStyle('ST', fontName='Helvetica-Bold', fontSize=14, alignment=1,
+        ParagraphStyle('ST', fontName='Helvetica-Bold', fontSize=15, alignment=1,
                        textColor=NAVY, spaceAfter=3)))
     elements.append(Paragraph(
-        f"{subject}  |  {class_name}  |  Term {term} {year}  |  {syllabus}",
-        ParagraphStyle('SS', fontSize=9, alignment=1, spaceAfter=2)))
+        f"{subject}  |  {class_name}  |  {syllabus}",
+        ParagraphStyle('SS', fontSize=9, alignment=1, spaceAfter=1, textColor=colors.grey)))
     elements.append(Paragraph(
-        f"Teacher: {teacher_name}    |    School: {school_name}    |    Total Weeks: {total_weeks}",
-        ParagraphStyle('SI', fontSize=8, alignment=1, textColor=colors.grey, spaceAfter=10)))
+        f"Term {term} {year}  |  Total Weeks: {total_weeks}  |  Periods/Week: {data.get('periods_per_week','')}",
+        ParagraphStyle('SS2', fontSize=8, alignment=1, spaceAfter=1, textColor=DARK_GOLD)))
+
+    # ── Teacher & School Info ──
+    info_data = [
+        [Paragraph(f"<b>Teacher:</b>  {teacher_name}", ParagraphStyle('info', fontName='Helvetica', fontSize=8, alignment=1)),
+         Paragraph(f"<b>School:</b>  {school_name or '____________________'}", ParagraphStyle('info', fontName='Helvetica', fontSize=8, alignment=1)),
+        ]
+    ]
+    info_tbl = Table(info_data, colWidths=[400, 406])
+    info_tbl.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    elements.append(info_tbl)
+    elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceAfter=8))
 
     if scheme_data:
         headers = list(scheme_data[0].keys())
@@ -1161,38 +1198,58 @@ def ajax_generate_lessonplan(request):
         design_time = max(8, int(duration * 0.30))
         real_time = max(5, int(duration * 0.15))
 
-        prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom.
+        prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom following the OFFICIAL MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY format.
 
-School: [school name]
+============================================
+JAMHURI YA MUUNGANO WA TANZANIA
+WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA
+RASIMU YA MPANGOKAZI WA SOMO (IDDR MODEL)
+============================================
+
+School: [School Name]
 Teacher: {teacher_name}
 Subject: {subject}
 Form/Class: {full_class}
-Topic: {topic}
+
+Main Topic: {topic}
 Sub-topic: {subtopic or 'N/A'}
+
+Main Competence: Numbered format "1.0 Topic Name" - write the REAL numbered competence from the Tanzanian syllabus for this subject/class.
+Specific Competence: The REAL specific competence from the syllabus for this subtopic.
+
 Term: {term}, Year: {year}
 Duration: {duration} minutes
 Total students: {total_students or 'N/A'}, Present: {present_students or 'N/A'}
 
 Use the SEQUIP/TIE IDDR model (Introduction -> Competence Development -> Design -> Realisation).
 
+CRITICAL REQUIREMENTS:
+1. main_competence: Use numbered format like "1.0 Topic Name" - the REAL Tanzanian syllabus competence
+2. specific_competence: REAL subtopic-specific competence from the syllabus
+3. specific_activity: Start with "By the end of this lesson, students should be able to:" then list 2-3 measurable outcomes
+4. references: Use the LATEST TIE textbook format - "Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education." If primary: "Tanzania Institute of Education. (2024). {subject} for Primary Schools Pupil's Book. Tanzania Institute of Education."
+5. lesson_development: Each stage MUST have detailed, Tanzania-specific content using CBC methodologies (Brainstorming, Group discussion, Discovery, Guided inquiry, Demonstration, Question and answer, Role play, Project-based learning, Field trip)
+6. resources: MUST include specific, real resources for THIS topic (not generic) - e.g. TIE textbook pages, charts, real specimens, manila sheets, markers, skip ropes, video clips, real objects
+7. remarks: Must be a detailed paragraph evaluating student achievement, specific challenges faced, and concrete way forward
+
 Output ONLY valid JSON with this EXACT structure:
 {{
-    "main_competence": "Overall competence statement (e.g. Demonstrate mastery of concepts...)",
-    "specific_competence": "Specific competence breakdown",
+    "main_competence": "1.0 Topic Name - Overall competence statement",
+    "specific_competence": "By the end of this topic, students should be able to...",
     "main_activity": "Within 1 period students should be able to...",
-    "specific_activity": "Within {duration} minutes, students should be able to:\n- (list 2-3 specific measurable outcomes)",
-    "teaching_resources": "e.g. Charts, textbooks, manila sheets, video, real objects",
-    "references": "TIE textbook in APA v7 format",
+    "specific_activity": "By the end of this lesson, students should be able to:\n- (list 2-3 specific measurable outcomes)",
+    "teaching_resources": "List specific resources for THIS lesson",
+    "references": "Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education.",
     "lesson_development": [
-        {{"stage": "Introduction", "time": "{intro_time:02d}", "teaching_activities": "what teacher does", "learning_activities": "what students do", "assessment_criteria": "how to assess"}},
-        {{"stage": "Competence Development", "time": "{dev_time:02d}", "teaching_activities": "...", "learning_activities": "...", "assessment_criteria": "..."}},
-        {{"stage": "Design", "time": "{design_time:02d}", "teaching_activities": "...", "learning_activities": "...", "assessment_criteria": "..."}},
-        {{"stage": "Realisation", "time": "{real_time:02d}", "teaching_activities": "...", "learning_activities": "...", "assessment_criteria": "..."}}
+        {{"stage": "A: Introduction (Utangulizi)", "time": "{intro_time:02d}", "methods": "Brainstorming, Question and answer", "teaching_activities": "what the teacher does to activate prior knowledge", "learning_activities": "what students do to connect prior knowledge", "assessment_criteria": "how to assess students' readiness"}},
+        {{"stage": "B: Competence Development (Ukuzaji wa Uwezo)", "time": "{dev_time:02d}", "methods": "Group discussion, Discovery, Guided inquiry", "teaching_activities": "guide students to explore the topic", "learning_activities": "investigate, discuss, and share findings", "assessment_criteria": "mastery of the competence"}},
+        {{"stage": "C: Design (Ubunifu)", "time": "{design_time:02d}", "methods": "Problem-solving, Project-based learning, Demonstration", "teaching_activities": "guide students to apply knowledge in real contexts", "learning_activities": "create models, solve problems, present work", "assessment_criteria": "correct application of concepts"}},
+        {{"stage": "D: Realisation (Ufahamu / Tathmini)", "time": "{real_time:02d}", "methods": "Self-assessment, Peer assessment, Oral questions, Quiz", "teaching_activities": "assess learning through formative assessment and provide feedback", "learning_activities": "respond to assessment questions, reflect on learning", "assessment_criteria": "achievement of lesson objectives"}}
     ],
-    "remarks": "Detailed remarks paragraph about student achievement, challenges, and way forward."
+    "remarks": "Detailed evaluation: strengths observed, specific challenges faced by students, and concrete way forward for the next lesson."
 }}
 
-All text values must be plain strings. Return ONLY the JSON object, no extra text."""
+All text values must be plain strings. Use REAL Tanzanian content. Return ONLY the JSON object, no extra text."""
 
         response = client.models.generate_content(model=model_name, contents=prompt)
         response_text = response.text
@@ -1219,19 +1276,19 @@ All text values must be plain strings. Return ONLY the JSON object, no extra tex
             # Could not parse JSON, use fallback default data
             # Fallback: generate sensible defaults
             lesson_data = {
-                "main_competence": f"Demonstrate understanding of {topic}",
-                "specific_competence": f"Explain key concepts of {topic}",
-                "main_activity": f"Within 1 period students should be able to describe {topic}",
-                "specific_activity": f"Within {duration} minutes, students should be able to:\n- Define {topic}\n- Explain concepts of {topic}\n- Apply {topic} in real-life situations",
-                "teaching_resources": "Textbook, Chalkboard, Charts, Real objects",
-                "references": f"Tanzania Institute of Education. (2024). {subject} for secondary schools student's book. Tanzania Institute of Education.",
+                "main_competence": f"1.0 {topic} - Demonstrate understanding of {topic}",
+                "specific_competence": f"Explain key concepts of {topic} based on the Tanzanian syllabus",
+                "main_activity": f"Within 1 period students should be able to describe and apply {topic}",
+                "specific_activity": f"By the end of this lesson, students should be able to:\n- Define {topic}\n- Explain key concepts of {topic}\n- Apply {topic} in real-life situations",
+                "teaching_resources": "TIE textbook, Chalkboard/Whiteboard, Charts, Real objects, Manila sheets, Markers",
+                "references": f"Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education.",
                 "lesson_development": [
-                    {"stage": "Introduction", "time": f"{intro_time:02d}", "teaching_activities": f"Display pictures/video about {topic}. Ask students questions to activate prior knowledge.", "learning_activities": "Observe pictures and respond to questions.", "assessment_criteria": "Questions about the lesson are answered."},
-                    {"stage": "Competence Development", "time": f"{dev_time:02d}", "teaching_activities": f"Guide students in groups to explore {topic}. Provide guiding questions and resources.", "learning_activities": "Discuss in groups and share findings.", "assessment_criteria": "Concepts taught are clearly explained."},
-                    {"stage": "Design", "time": f"{design_time:02d}", "teaching_activities": f"Ask students to apply knowledge of {topic} in real-life contexts through exercises.", "learning_activities": "Complete exercises and present findings.", "assessment_criteria": "Correct application of concepts."},
-                    {"stage": "Realisation", "time": f"{real_time:02d}", "teaching_activities": "Assess student understanding through oral questions or short quiz. Provide feedback.", "learning_activities": "Respond to assessment questions and reflect.", "assessment_criteria": "Achievement of lesson objectives."}
+                    {"stage": "A: Introduction (Utangulizi)", "time": f"{intro_time:02d}", "methods": "Brainstorming, Question and answer", "teaching_activities": f"Display pictures/video about {topic}. Ask students questions to activate prior knowledge.", "learning_activities": "Observe pictures and respond to questions.", "assessment_criteria": "Questions about the lesson are answered."},
+                    {"stage": "B: Competence Development (Ukuzaji wa Uwezo)", "time": f"{dev_time:02d}", "methods": "Group discussion, Discovery, Guided inquiry", "teaching_activities": f"Guide students in groups to explore {topic}. Provide guiding questions and resources.", "learning_activities": "Discuss in groups and share findings.", "assessment_criteria": "Concepts taught are clearly explained."},
+                    {"stage": "C: Design (Ubunifu)", "time": f"{design_time:02d}", "methods": "Problem-solving, Demonstration", "teaching_activities": f"Ask students to apply knowledge of {topic} in real-life contexts through exercises.", "learning_activities": "Complete exercises and present findings.", "assessment_criteria": "Correct application of concepts."},
+                    {"stage": "D: Realisation (Ufahamu / Tathmini)", "time": f"{real_time:02d}", "methods": "Self-assessment, Oral questions, Quiz", "teaching_activities": "Assess student understanding through oral questions or short quiz. Provide feedback.", "learning_activities": "Respond to assessment questions and reflect.", "assessment_criteria": "Achievement of lesson objectives."}
                 ],
-                "remarks": f"The students were able to explain things taught today due to the use of interactive teaching and learning methods. However, some students need more clarification. I will address this in the next lesson."
+                "remarks": f"The students were able to explain {topic} due to the use of interactive teaching and learning methods. However, some students need more clarification. I will address this in the next lesson through remedial activities."
             }
 
         saved_id = None
@@ -1314,6 +1371,7 @@ def download_lesson_plan_pdf(request):
 
     NAVY = colors.HexColor('#0A2B5E')
     GOLD = colors.HexColor('#C8900A')
+    DARK_GOLD = colors.HexColor('#A67B07')
     LIGHT = colors.HexColor('#EEF1F6')
     STRIPE = colors.HexColor('#F4F7FF')
     BORDER = colors.HexColor('#9BAAC4')
@@ -1328,12 +1386,31 @@ def download_lesson_plan_pdf(request):
     cell_s = ParagraphStyle('LP_C', fontName='Helvetica', fontSize=8, leading=11, wordWrap='LTR')
     hdr_s = ParagraphStyle('LP_CH', fontName='Helvetica-Bold', fontSize=8, leading=11, textColor=colors.white, wordWrap='LTR', alignment=1)
     label_s = ParagraphStyle('LP_L', fontName='Helvetica-Bold', fontSize=8, leading=11, textColor=NAVY)
+    title_s = ParagraphStyle('LP_TITLE', fontName='Helvetica-Bold', fontSize=16, alignment=1, textColor=NAVY, spaceAfter=1)
+    subtitle_s = ParagraphStyle('LP_SUBTITLE', fontName='Helvetica-Bold', fontSize=8, alignment=1, textColor=DARK_GOLD, spaceAfter=1)
 
-    elements.append(Paragraph("LESSON PLAN",
-        ParagraphStyle('LP_T', fontName='Helvetica-Bold', fontSize=16, alignment=1, textColor=NAVY, spaceAfter=2)))
+    # ── Top decorative lines ──
+    elements.append(HRFlowable(width="100%", thickness=2.5, color=GOLD, spaceAfter=2))
+    elements.append(HRFlowable(width="100%", thickness=1.2, color=NAVY, spaceAfter=6))
+
+    # ── Ministry Header ──
+    elements.append(Paragraph(
+        "JAMHURI YA MUUNGANO WA TANZANIA",
+        ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=12, alignment=1,
+                       textColor=NAVY, spaceAfter=1)))
+    elements.append(Paragraph(
+        "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA",
+        ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=10, alignment=1,
+                       textColor=NAVY, spaceAfter=1)))
+    elements.append(HRFlowable(width="55%", thickness=0.7, color=GOLD, spaceAfter=4))
+
+    # ── Title ──
+    elements.append(Paragraph("RASIMU YA MPANGOKAZI WA SOMO (LESSON PLAN)",
+        ParagraphStyle('LP_T', fontName='Helvetica-Bold', fontSize=14, alignment=1,
+                       textColor=NAVY, spaceAfter=2)))
     elements.append(Paragraph(
         f"{form.get('subject','')}  |  {form.get('class_name','')}  |  Term {form.get('term','')} {form.get('year','')}",
-        ParagraphStyle('LP_S', fontSize=9, alignment=1, textColor=colors.grey, spaceAfter=10)))
+        ParagraphStyle('LP_S', fontSize=9, alignment=1, textColor=colors.grey, spaceAfter=6)))
 
     def P(txt, st=normal):
         return Paragraph(str(txt or ''), st)
