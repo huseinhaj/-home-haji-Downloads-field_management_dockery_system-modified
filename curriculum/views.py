@@ -478,20 +478,20 @@ Scope: {term_scope}
 Output a JSON array of objects. Each object has these 12 keys:
 "Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
 
-IMPORTANT: Provide DETAILED content for each cell. Values should be descriptive enough to guide actual teaching (8-15 words per cell is ideal). Do NOT use abbreviations.
+IMPORTANT: Write COMPREHENSIVE, DETAILED content. Each cell must have rich, descriptive text suitable for a real teacher to use. NO word limits — write as much as needed per cell. Do NOT use abbreviations.
 
 Rules:
 - All values MUST be plain strings, NOT arrays
 - Week format: "1st", "2nd", "3rd", etc.
-- Month: JANUARY, FEBRUARY, etc.
+- Month: JANUARY, FEBRUARY, etc. (One month can have MULTIPLE topics across different weeks)
 - Periods per week: {periods_per_week} for normal weeks, fewer for exam/midterm weeks
 - References: Full APA v7 style (e.g. "TIE (2024). Biology Form Two. Tanzania Institute of Education.")
-- Methods: CBC-aligned, comma-separated (e.g. "Brainstorming, Group discussion, Discovery, Guided inquiry")
-- Remarks: Brief note on achievement or way forward
-- One row per distinct topic/subtopic per week. Include midterm/exam weeks where appropriate.
-- IMPORTANT: DISTRIBUTE content across ALL months in the specified range. Do NOT put everything in January/February. Each month must have its own distinct topics.{breaks_text}
+- Methods: CBC-aligned, comma-separated list of specific methods (e.g. "Brainstorming, Group discussion, Discovery, Guided inquiry, Question and answer, Demonstration")
+- Remarks: Meaningful note on student achievement, challenges, or way forward for that week
+- One row per distinct topic/subtopic per week. A month can have 2-4 different topics across its weeks. Include midterm/exam weeks where appropriate.
+- CRITICAL: DISTRIBUTE content across ALL months in the specified range. EACH month must have its own distinct topics. Do NOT put everything in just one or two months.{breaks_text}
 
-CRITICAL: Return ONLY the JSON array. No other text. Make each cell useful for a teacher."""
+CRITICAL: Return ONLY the JSON array. No other text. Write rich, detailed content that a teacher can use directly in the classroom."""
 
         response = client.models.generate_content(model=model_name, contents=prompt)
         response_text = response.text
