@@ -743,55 +743,75 @@ CRITICAL: Return ONLY the JSON array. No other text. Write rich, detailed conten
         scheme_data = all_scheme_data
         response_text = '\n'.join(all_response_texts)
 
-        # Save to DB
+        # Save to DB (works for both Django users AND TLM teachers)
         saved_id = None
-        if request.user.is_authenticated:
-            try:
-                student = StudentTeacher.objects.get(user=request.user)
-                school = student.selected_school
-                if school:
-                    level_map = {'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}
-                    edu_level = level_map.get((education_level or '').lower(), 'ordinary')
-                    subj_obj = Subject.objects.filter(name__iexact=subject).first()
-                    if subj_obj:
-                        start_dt = None
-                        end_dt = None
-                        if start_date:
-                            try:
-                                from datetime import date as _dt
-                                start_dt = _dt.fromisoformat(start_date)
-                            except Exception:
-                                pass
-                        if end_date:
-                            try:
-                                from datetime import date as _dt
-                                end_dt = _dt.fromisoformat(end_date)
-                            except Exception:
-                                pass
+        try:
+            tlm_teacher = get_tlm_teacher(request)
+            student = None
+            school = None
+            if request.user.is_authenticated:
+                try:
+                    student = StudentTeacher.objects.get(user=request.user)
+                    school = student.selected_school
+                except StudentTeacher.DoesNotExist:
+                    pass
+            elif tlm_teacher and tlm_teacher.school:
+                school = tlm_teacher.school
+            
+            if school:
+                level_map = {'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}
+                edu_level = level_map.get((education_level or '').lower(), 'ordinary')
+                subj_obj = Subject.objects.filter(name__iexact=subject).first()
+                if subj_obj:
+                    start_dt = None
+                    end_dt = None
+                    if start_date:
+                        try:
+                            from datetime import date as _dt
+                            start_dt = _dt.fromisoformat(start_date)
+                        except Exception:
+                            pass
+                    if end_date:
+                        try:
+                            from datetime import date as _dt
+                            end_dt = _dt.fromisoformat(end_date)
+                        except Exception:
+                            pass
+                    
+                    defaults = {
+                        'school': school,
+                        'education_level': edu_level,
+                        'class_name': class_name,
+                        'syllabus': syllabus,
+                        'total_weeks': int(total_weeks),
+                        'periods_per_week': int(periods_per_week),
+                        'start_date': start_dt,
+                        'end_date': end_dt,
+                        'teacher_name': teacher_name,
+                        'reference_source': reference_source,
+                        'breaks': breaks,
+                        'scheme_data': scheme_data,
+                        'generated_by_ai': True,
+                    }
+                    
+                    if student:
+                        # Authenticated user: update existing or create new
                         scheme_obj, _ = SchemeOfWork.objects.update_or_create(
                             student=student,
                             subject=subj_obj,
                             term=term,
                             year=int(year),
-                            defaults={
-                                'school': school,
-                                'education_level': edu_level,
-                                'class_name': class_name,
-                                'syllabus': syllabus,
-                                'total_weeks': int(total_weeks),
-                                'periods_per_week': int(periods_per_week),
-                                'start_date': start_dt,
-                                'end_date': end_dt,
-                                'teacher_name': teacher_name,
-                                'reference_source': reference_source,
-                                'breaks': breaks,
-                                'scheme_data': scheme_data,
-                                'generated_by_ai': True,
-                            }
+                            defaults=defaults,
                         )
-                        saved_id = scheme_obj.id
-            except Exception as save_err:
-                logger.warning(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
+                    else:
+                        # TLM teacher: always create new record
+                        scheme_obj = SchemeOfWork.objects.create(
+                            student=None,
+                            **defaults,
+                        )
+                    saved_id = scheme_obj.id
+        except Exception as save_err:
+            logger.warning(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
 
         return JsonResponse({
             'success': True,
@@ -1419,57 +1439,66 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
             }
 
         saved_id = None
-        if request.user.is_authenticated:
-            try:
-                student = StudentTeacher.objects.get(user=request.user)
-                school = student.selected_school
-                if school:
-                    level_map = {'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}
-                    edu_level = level_map.get((education_level or '').lower(), 'ordinary')
-                    subj_obj = None
-                    if subject_id:
-                        try:
-                            subj_obj = Subject.objects.get(id=int(subject_id))
-                        except (Subject.DoesNotExist, ValueError):
-                            pass
-                    if not subj_obj and subject:
-                        subj_obj = Subject.objects.filter(name__iexact=subject).first()
-                    if subj_obj:
-                        # Build lesson_development for DB (map new keys to old keys)
-                        lp_development = []
-                        for stage in lesson_data.get('lesson_development', []):
-                            lp_development.append({
-                                'stage': stage.get('stage', ''),
-                                'time': stage.get('time', '') + ' min',
-                                'teacher_activities': stage.get('teaching_activities', ''),
-                                'student_activities': stage.get('learning_activities', ''),
-                                'assessment_criteria': stage.get('assessment_criteria', ''),
-                            })
-                        lp_obj = LessonPlan.objects.create(
-                            student=student, school=school, subject=subj_obj,
-                            education_level=edu_level, class_name=class_name,
-                            term=term, year=int(year), topic=topic, subtopic=subtopic or '',
-                            date=timezone.now().date(), duration=duration,
-                            total_boys=int(total_boys) if total_boys else 0,
-                            total_girls=int(total_girls) if total_girls else 0,
-                            total_students=int(total_students) if total_students else 0,
-                            present_boys=int(present_boys) if present_boys else 0,
-                            present_girls=int(present_girls) if present_girls else 0,
-                            present_students=int(present_students) if present_students else 0,
-                            teacher_name=teacher_name or student.full_name,
-                            main_competence=lesson_data.get('main_competence', ''),
-                            specific_competence=lesson_data.get('specific_competence', ''),
-                            previous_knowledge=lesson_data.get('specific_activity', ''),
-                            learning_objectives=[lesson_data.get('specific_activity', '')],
-                            teaching_methods=[],
-                            teaching_resources=[lesson_data.get('teaching_resources', '')],
-                            lesson_development=lp_development,
-                            remarks=lesson_data.get('remarks', ''),
-                            generated_by_ai=True,
-                        )
-                        saved_id = lp_obj.id
-            except Exception as save_err:
-                logger.warning(f"[Curriculum] LessonPlan save error: {save_err}")
+        try:
+            tlm_teacher = get_tlm_teacher(request)
+            student = None
+            school = None
+            if request.user.is_authenticated:
+                try:
+                    student = StudentTeacher.objects.get(user=request.user)
+                    school = student.selected_school
+                except StudentTeacher.DoesNotExist:
+                    pass
+            elif tlm_teacher and tlm_teacher.school:
+                school = tlm_teacher.school
+            
+            if school:
+                level_map = {'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}
+                edu_level = level_map.get((education_level or '').lower(), 'ordinary')
+                subj_obj = None
+                if subject_id:
+                    try:
+                        subj_obj = Subject.objects.get(id=int(subject_id))
+                    except (Subject.DoesNotExist, ValueError):
+                        pass
+                if not subj_obj and subject:
+                    subj_obj = Subject.objects.filter(name__iexact=subject).first()
+                if subj_obj:
+                    # Build lesson_development for DB (map new keys to old keys)
+                    lp_development = []
+                    for stage in lesson_data.get('lesson_development', []):
+                        lp_development.append({
+                            'stage': stage.get('stage', ''),
+                            'time': stage.get('time', '') + ' min',
+                            'teacher_activities': stage.get('teaching_activities', ''),
+                            'student_activities': stage.get('learning_activities', ''),
+                            'assessment_criteria': stage.get('assessment_criteria', ''),
+                        })
+                    lp_obj = LessonPlan.objects.create(
+                        student=student, school=school, subject=subj_obj,
+                        education_level=edu_level, class_name=class_name,
+                        term=term, year=int(year), topic=topic, subtopic=subtopic or '',
+                        date=timezone.now().date(), duration=duration,
+                        total_boys=int(total_boys) if total_boys else 0,
+                        total_girls=int(total_girls) if total_girls else 0,
+                        total_students=int(total_students) if total_students else 0,
+                        present_boys=int(present_boys) if present_boys else 0,
+                        present_girls=int(present_girls) if present_girls else 0,
+                        present_students=int(present_students) if present_students else 0,
+                        teacher_name=teacher_name or (student.full_name if student else ''),
+                        main_competence=lesson_data.get('main_competence', ''),
+                        specific_competence=lesson_data.get('specific_competence', ''),
+                        previous_knowledge=lesson_data.get('specific_activity', ''),
+                        learning_objectives=[lesson_data.get('specific_activity', '')],
+                        teaching_methods=[],
+                        teaching_resources=[lesson_data.get('teaching_resources', '')],
+                        lesson_development=lp_development,
+                        remarks=lesson_data.get('remarks', ''),
+                        generated_by_ai=True,
+                    )
+                    saved_id = lp_obj.id
+        except Exception as save_err:
+            logger.warning(f"[Curriculum] LessonPlan save error: {save_err}")
 
         return JsonResponse({'success': True, 'data': lesson_data, 'saved_id': saved_id})
 

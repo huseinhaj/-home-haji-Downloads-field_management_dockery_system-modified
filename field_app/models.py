@@ -777,7 +777,7 @@ class SchemeOfWork(models.Model):
     ]
     
     # Relation to student and school
-    student = models.ForeignKey(StudentTeacher, on_delete=models.CASCADE, related_name='schemes')
+    student = models.ForeignKey(StudentTeacher, on_delete=models.CASCADE, related_name='schemes', null=True, blank=True)
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='schemes')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='schemes')
     
@@ -842,7 +842,7 @@ class LessonPlan(models.Model):
     ]
     
     # Relation to student and school
-    student = models.ForeignKey(StudentTeacher, on_delete=models.CASCADE, related_name='lesson_plans')
+    student = models.ForeignKey(StudentTeacher, on_delete=models.CASCADE, related_name='lesson_plans', null=True, blank=True)
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='lesson_plans')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='lesson_plans')
     scheme = models.ForeignKey(SchemeOfWork, on_delete=models.SET_NULL, null=True, blank=True, related_name='lesson_plans')
