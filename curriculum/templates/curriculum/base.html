@@ -867,6 +867,9 @@
                 <a href="{% url 'curriculum:lesson_plan' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
                     <i class="fas fa-chalkboard"></i> Lesson Plan
                 </a>
+                <a href="{% url 'curriculum:lesson_plan' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
+                    <i class="fas fa-sticky-note"></i> Notes
+                </a>
                 <a href="{% url 'curriculum:template_library' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'template_library' %}active{% endif %}">
                     <i class="fas fa-layer-group"></i> Library
                 </a>
@@ -935,6 +938,9 @@
             <a href="{% url 'curriculum:lesson_plan' %}" class="{% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
                 <i class="fas fa-chalkboard"></i> Lesson Plan
             </a>
+            <a href="{% url 'curriculum:lesson_plan' %}" class="{% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
+                <i class="fas fa-sticky-note"></i> Lesson Notes
+            </a>
             <a href="{% url 'curriculum:template_library' %}" class="{% if request.resolver_match.url_name == 'template_library' %}active{% endif %}">
                 <i class="fas fa-layer-group"></i> Library / Mfano
             </a>
@@ -974,6 +980,9 @@
         </a>
         <a href="{% url 'curriculum:lesson_plan' %}" class="{% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
             <i class="fas fa-chalkboard"></i> Lesson
+        </a>
+        <a href="{% url 'curriculum:lesson_plan' %}" class="{% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
+            <i class="fas fa-sticky-note"></i> Notes
         </a>
         <a href="{% url 'curriculum:template_library' %}" class="{% if request.resolver_match.url_name == 'template_library' %}active{% endif %}">
             <i class="fas fa-layer-group"></i> Library

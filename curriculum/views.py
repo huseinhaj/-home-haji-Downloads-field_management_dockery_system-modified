@@ -655,6 +655,23 @@ def ajax_generate_scheme(request):
         # ── Reference source ──
         ref_text = f"\nReference source: {reference_source}" if reference_source else ''
 
+        # ── Determine language instruction based on school level ──
+        _lang_tlm = get_tlm_teacher(request)
+        _school_level = _lang_tlm.school.level if _lang_tlm and _lang_tlm.school else ''
+        _subject_lower = subject.lower()
+        if _school_level == 'Primary':
+            if _subject_lower in ('english', 'english language'):
+                language_instruction = "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
+            else:
+                language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili). Only column headers can stay in English. All explanations, activities, and descriptions MUST be in Swahili language. This is a Primary school subject."
+        elif _school_level == 'Secondary':
+            if _subject_lower in ('kiswahili', 'swahili'):
+                language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject for Secondary school."
+            else:
+                language_instruction = "LANGUAGE: Write ALL content in ENGLISH. This is a Secondary school subject taught in English."
+        else:
+            language_instruction = ""
+
         # ── Build base prompt template (shared between batches) ──
         def _make_prompt(scope_text, weeks_count):
             return f"""Generate a Scheme of Work for a Tanzanian {education_level} class.
@@ -669,6 +686,8 @@ Teacher: {teacher_name}
 School: {school_name}{ref_text}{breaks_text}
 
 Scope: {scope_text}
+
+{language_instruction}
 
 Output a JSON array of objects. Each object has these 12 keys:
 "Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
@@ -1166,14 +1185,27 @@ def download_scheme_word(request):
 
 @login_required
 def ajax_load_saved_scheme(request):
-    """Load most recent saved SchemeOfWork from DB."""
+    """Load most recent saved SchemeOfWork from DB (works for both Django users & TLM teachers)."""
     try:
-        student = StudentTeacher.objects.get(user=request.user)
-        scheme = (SchemeOfWork.objects
-                  .filter(student=student)
-                  .select_related('subject')
-                  .order_by('-updated_at')
-                  .first())
+        tlm_teacher = get_tlm_teacher(request)
+        scheme = None
+        if request.user.is_authenticated:
+            try:
+                student = StudentTeacher.objects.get(user=request.user)
+                scheme = (SchemeOfWork.objects
+                          .filter(student=student)
+                          .select_related('subject')
+                          .order_by('-updated_at')
+                          .first())
+            except StudentTeacher.DoesNotExist:
+                pass
+        if not scheme and tlm_teacher and tlm_teacher.school:
+            # TLM teacher: load by school and teacher_name
+            scheme = (SchemeOfWork.objects
+                      .filter(school=tlm_teacher.school, teacher_name=tlm_teacher.full_name)
+                      .select_related('subject')
+                      .order_by('-updated_at')
+                      .first())
         if not scheme or not scheme.scheme_data:
             return JsonResponse({'success': False, 'error': 'Hakuna mpango uliohifadhiwa. Tengeneza kwanza.'}, status=404)
         return JsonResponse({
@@ -1192,8 +1224,8 @@ def ajax_load_saved_scheme(request):
                 'updated_at': scheme.updated_at.strftime('%d %b %Y, %H:%M'),
             }
         })
-    except StudentTeacher.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Wasifu wa mwanafunzi haupatikani.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': 'Hitilafu: ' + str(e)[:100]}, status=500)
 
 
 def ajax_load_scheme_by_id(request, scheme_id):
@@ -1323,6 +1355,23 @@ def ajax_generate_lessonplan(request):
         design_time = max(8, int(duration * 0.30))
         real_time = max(5, int(duration * 0.15))
 
+        # ── Determine language for lesson plan (based on school level) ──
+        _lp_tlm = get_tlm_teacher(request)
+        _lp_school_level = _lp_tlm.school.level if _lp_tlm and _lp_tlm.school else ''
+        _lp_subject_lower = subject.lower()
+        if _lp_school_level == 'Primary':
+            if _lp_subject_lower in ('english', 'english language'):
+                lp_language_instruction = "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
+            else:
+                lp_language_instruction = "LANGUAGE: Write ALL lesson content in KISWAHILI (Swahili). Only the headings/section titles can stay in English. ALL descriptions, activities, explanations, and assessment criteria MUST be in Swahili language. This is a Primary school subject."
+        elif _lp_school_level == 'Secondary':
+            if _lp_subject_lower in ('kiswahili', 'swahili'):
+                lp_language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject for Secondary school."
+            else:
+                lp_language_instruction = "LANGUAGE: Write ALL content in ENGLISH. This is a Secondary school subject taught in English."
+        else:
+            lp_language_instruction = ""
+
         prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom following the OFFICIAL TAMISEMI (PRIME MINISTER'S OFFICE - REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT) format.
 
 ============================================
@@ -1345,6 +1394,8 @@ Specific Competence: The REAL specific competence from the syllabus for this sub
 
 Term: {term}, Year: {year}
 Duration: {duration} minutes
+
+{lp_language_instruction}
 
 -- STUDENT STATISTICS --
 Registered Boys: {total_boys or 'N/A'}, Registered Girls: {total_girls or 'N/A'}, Total: {total_students or 'N/A'}
@@ -2026,14 +2077,26 @@ def ajax_save_lesson_edits(request):
 
 @login_required
 def ajax_load_saved_lessonplan(request):
-    """Load most recent saved LessonPlan from DB."""
+    """Load most recent saved LessonPlan from DB (works for both Django users & TLM teachers)."""
     try:
-        student = StudentTeacher.objects.get(user=request.user)
-        lp = (LessonPlan.objects
-              .filter(student=student)
-              .select_related('subject')
-              .order_by('-created_at')
-              .first())
+        tlm_teacher = get_tlm_teacher(request)
+        lp = None
+        if request.user.is_authenticated:
+            try:
+                student = StudentTeacher.objects.get(user=request.user)
+                lp = (LessonPlan.objects
+                      .filter(student=student)
+                      .select_related('subject')
+                      .order_by('-created_at')
+                      .first())
+            except StudentTeacher.DoesNotExist:
+                pass
+        if not lp and tlm_teacher and tlm_teacher.school:
+            lp = (LessonPlan.objects
+                  .filter(school=tlm_teacher.school, teacher_name=tlm_teacher.full_name)
+                  .select_related('subject')
+                  .order_by('-created_at')
+                  .first())
         if not lp or not lp.lesson_development:
             return JsonResponse({'success': False, 'error': 'Hakuna mpango wa somo uliohifadhiwa.'}, status=404)
         # Build lesson_data with backward-compatible keys
@@ -2061,6 +2124,10 @@ def ajax_load_saved_lessonplan(request):
         return JsonResponse({'success': True, 'data': lesson_data, 'form_data': form_data, 'saved_id': lp.id})
     except StudentTeacher.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Wasifu haupatikani.'}, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': 'Hitilafu: ' + str(e)[:200]}, status=500)
 
 
 def ajax_load_lesson_by_id(request, lesson_id):
