@@ -995,73 +995,71 @@
         </a>
     </nav>
 
-    <!-- SYSTEM UPDATE NOTIFICATION BANNER -->
-    <div id="systemUpdateBanner" class="page-shell" style="padding-bottom:0;display:none;">
+    <!-- SYSTEM UPDATE NOTIFICATION BANNER (sticky, compact) -->
+    <div id="systemUpdateBanner" style="display:none;">
         <div style="
-            background: linear-gradient(135deg, rgba(31,122,61,0.06), rgba(217,164,65,0.08));
-            border: 1.5px solid var(--gold-400);
-            border-left: 5px solid var(--green-500);
-            border-radius: var(--radius-md);
-            padding: 1rem 1.25rem;
-            box-shadow: var(--shadow-sm);
-            position: relative;
+            position: sticky; top: 0; z-index: 95;
+            background: linear-gradient(135deg, #1F7A3D, #0D4F2B);
+            color: white;
+            padding: 0.55rem 1rem;
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
         ">
+            <i class="fas fa-megaphone" style="color:var(--gold-400);font-size:0.85rem;"></i>
+            <span>
+                📢 <strong>Ndugu walimu, angalieni maboresho mapya ya mfumo!</strong>
+                <span style="font-weight:400;opacity:0.9;">— Search shule, masomo yote, Business Studies, n.k.</span>
+            </span>
+            <button onclick="toggleUpdateDetails()" style="
+                background: rgba(255,255,255,0.15);
+                border: 1px solid rgba(255,255,255,0.25);
+                border-radius: var(--radius-full);
+                color: white;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 3px 10px;
+                cursor: pointer;
+                white-space: nowrap;
+            "><i class="fas fa-chevron-down" id="updateDetailChevron"></i> Maelezo</button>
             <button onclick="dismissUpdateBanner()" style="
-                position: absolute; top: 8px; right: 10px;
-                background: none; border: none; cursor: pointer;
-                color: var(--text-muted); font-size: 1rem;
-                padding: 4px;
-                transition: color var(--duration-fast);
+                background: rgba(255,255,255,0.1);
+                border: none;
+                border-radius: 50%;
+                color: white;
+                width: 24px; height: 24px;
+                cursor: pointer;
+                font-size: 12px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
             " aria-label="Funga"><i class="fas fa-times"></i></button>
-            
-            <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-                <div style="
-                    width:44px; height:44px; border-radius:50%;
-                    background: var(--green-500);
-                    display:flex; align-items:center; justify-content:center;
-                    flex-shrink:0;
-                ">
-                    <i class="fas fa-megaphone" style="color:white;font-size:1.1rem;"></i>
+        </div>
+        <!-- Detailed panel (hidden by default) -->
+        <div id="updateDetailsPanel" style="display:none;background:linear-gradient(135deg, rgba(31,122,61,0.04), rgba(217,164,65,0.06));border-bottom:1px solid var(--border-color);padding:0.85rem 1rem;font-size:var(--font-size-xs);">
+            <div style="max-width:800px;margin:0 auto;">
+                <p style="font-weight:700;color:var(--green-600);margin:0 0 6px;"><i class="fas fa-star text-gold me-1"></i> MABORESHO MAPYA (Julai 2026):</p>
+                <ul style="margin:0 0 8px;padding-left:1.2rem;line-height:1.8;color:var(--text-secondary);">
+                    <li><strong>Tafuta shule</strong> — search autocomplete kwenye usajili</li>
+                    <li><strong>Masomo yote</strong> kwa kila ngazi — hakuna filtering</li>
+                    <li><strong>Business Studies</strong> limeongezwa</li>
+                    <li><strong>Maadhimisho ya Kiislamu</strong> kwenye Scheme breaks</li>
+                    <li><strong>Takwimu za Wanafunzi</strong> (Boys/Girls) kwenye Lesson Plan</li>
+                </ul>
+                <!-- Mini comment form -->
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                    <span style="color:var(--text-muted);"><i class="fas fa-comment-dots text-gold me-1"></i>Maoni/changamoto:</span>
+                    <input type="text" id="updateCommentName" placeholder="Jina" style="padding:0.35rem 0.6rem;border:1px solid var(--border-color);border-radius:var(--radius-sm);font-size:11px;background:var(--bg-card-solid);color:var(--text-primary);width:120px;" value="{% if tlm_teacher %}{{ tlm_teacher.full_name }}{% endif %}">
+                    <input type="text" id="updateCommentMsg" placeholder="Andika maoni yako..." style="flex:1;min-width:160px;padding:0.35rem 0.6rem;border:1px solid var(--border-color);border-radius:var(--radius-sm);font-size:11px;background:var(--bg-card-solid);color:var(--text-primary);">
+                    <button onclick="submitUpdateComment()" class="btn-tlm btn-primary-tlm" style="padding:0.35rem 0.7rem;font-size:10px;" id="updateCommentBtn" type="button"><i class="fas fa-paper-plane"></i> Tuma</button>
                 </div>
-                <div style="flex:1;min-width:200px;">
-                    <h5 style="font-family:var(--font-display);font-weight:800;color:var(--green-600);margin:0 0 4px;font-size:0.9rem;">
-                        <i class="fas fa-star text-gold me-1"></i> MABORESHO MAPYA YA MFUMO / SYSTEM UPDATES
-                    </h5>
-                    <p style="font-size:var(--font-size-sm);color:var(--text-secondary);margin:0 0 8px;line-height:1.5;">
-                        <strong style="color:var(--green-500);">📅 27 Julai 2026</strong> —
-                        Mfumo umeboreshwa! Sasa unaweza:
-                    </p>
-                    <ul style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:0 0 6px;padding-left:1.2rem;line-height:1.7;">
-                        <li><strong>Tafuta shule</strong> kwa kuandika jina (Search Autocomplete) — usichague tena kutoka dropdown ndefu</li>
-                        <li><strong>Masomo yote</strong> yanaonekana kwa kila ngazi ya elimu — hakuna filtering ya primary/secondary</li>
-                        <li><strong>Business Studies</strong> limeongezwa kwenye masomo</li>
-                        <li><strong>Maadhimisho ya Kiislamu</strong> (Eid al-Fitr, Eid al-Adha, Maulid) yameongezwa kwenye Scheme breaks</li>
-                        <li><strong>Takwimu za Wanafunzi</strong> (Boys/Girls Registered &amp; Present) kwenye Lesson Plan</li>
-                    </ul>
-                    <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:0;">
-                        <i class="fas fa-exclamation-triangle text-gold me-1"></i>
-                        Kama una changamoto au maoni, tafadhali andika kwenye sehemu ya maoni hapa chini.
-                    </p>
-                    
-                    <!-- Comment form -->
-                    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-color);">
-                        <p style="font-size:var(--font-size-xs);font-weight:700;color:var(--text-primary);margin:0 0 6px;">
-                            <i class="fas fa-comment-dots text-gold me-1"></i>
-                            Andika maoni / changamoto yako:
-                        </p>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <input type="text" id="updateCommentName" placeholder="Jina lako" 
-                                   style="flex:1;min-width:120px;padding:0.5rem 0.7rem;border:1px solid var(--border-color);border-radius:var(--radius-sm);font-size:var(--font-size-sm);background:var(--bg-card-solid);color:var(--text-primary);"
-                                   value="{% if tlm_teacher %}{{ tlm_teacher.full_name }}{% endif %}">
-                            <input type="text" id="updateCommentMsg" placeholder="Andika maoni yako hapa..." 
-                                   style="flex:3;min-width:200px;padding:0.5rem 0.7rem;border:1px solid var(--border-color);border-radius:var(--radius-sm);font-size:var(--font-size-sm);background:var(--bg-card-solid);color:var(--text-primary);">
-                            <button onclick="submitUpdateComment()" class="btn-tlm btn-primary-tlm btn-sm-tlm" id="updateCommentBtn" type="button">
-                                <i class="fas fa-paper-plane"></i> Tuma
-                            </button>
-                        </div>
-                        <div id="updateCommentFeedback" style="margin-top:6px;font-size:var(--font-size-xs);display:none;"></div>
-                    </div>
-                </div>
+                <div id="updateCommentFeedback" style="margin-top:4px;font-size:10px;display:none;"></div>
             </div>
         </div>
     </div>
@@ -1116,6 +1114,18 @@
             }
         }
     })();
+
+    function toggleUpdateDetails() {
+        const panel = document.getElementById('updateDetailsPanel');
+        const chevron = document.getElementById('updateDetailChevron');
+        if (panel.style.display === 'none' || !panel.style.display) {
+            panel.style.display = 'block';
+            chevron.className = 'fas fa-chevron-up';
+        } else {
+            panel.style.display = 'none';
+            chevron.className = 'fas fa-chevron-down';
+        }
+    }
 
     function dismissUpdateBanner() {
         const banner = document.getElementById('systemUpdateBanner');
