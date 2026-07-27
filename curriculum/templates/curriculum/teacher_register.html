@@ -115,6 +115,116 @@
     padding: 1rem;
     margin-bottom: 1.25rem;
   }
+
+  /* ── School search autocomplete ── */
+  .school-search-wrap {
+    position: relative;
+  }
+  .school-search-input {
+    width: 100%;
+    padding: 0.65rem 0.8rem;
+    padding-left: 2.2rem;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card-solid);
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    transition: all var(--duration-fast);
+  }
+  .school-search-input:focus {
+    border-color: var(--gold-400);
+    box-shadow: 0 0 0 3px rgba(217,164,65,0.15);
+    outline: none;
+  }
+  .school-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+    font-size: 0.85rem;
+  }
+  .school-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    display: none;
+    margin-top: 2px;
+  }
+  .school-results-dropdown.open {
+    display: block;
+  }
+  .school-result-item {
+    padding: 0.55rem 0.8rem;
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    transition: background var(--duration-fast);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .school-result-item:last-child {
+    border-bottom: none;
+  }
+  .school-result-item:hover {
+    background: rgba(31,122,61,0.06);
+  }
+  .school-result-item.active {
+    background: rgba(217,164,65,0.12);
+  }
+  .school-result-item .school-name {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .school-result-item .school-meta {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .school-search-noresults {
+    padding: 0.8rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+  }
+  .school-search-loading {
+    display: none;
+    padding: 0.8rem;
+    text-align: center;
+  }
+  .school-search-loading.active {
+    display: block;
+  }
+  .school-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(31,122,61,0.1);
+    border: 1px solid rgba(31,122,61,0.2);
+    border-radius: var(--radius-sm);
+    padding: 0.35rem 0.65rem;
+    font-size: var(--font-size-sm);
+    color: var(--green-500);
+    margin-top: 6px;
+  }
+  .school-tag i {
+    cursor: pointer;
+    transition: color var(--duration-fast);
+  }
+  .school-tag i:hover {
+    color: var(--error);
+  }
 </style>
 
 <div class="row justify-content-center" style="min-height:calc(100vh - 300px);">
@@ -196,9 +306,18 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
           <div class="form-field" style="margin-bottom:0;">
             <label><span data-lang-sw>Shule</span><span data-lang-en>School</span> <span style="color:var(--error);">*</span></label>
-            <select id="school" required>
-              <option value="" data-lang-sw="— Chagua kwanza Wilaya —" data-lang-en="— Select District first —"></option>
-            </select>
+            <div class="school-search-wrap">
+              <i class="fas fa-search school-search-icon"></i>
+              <input type="text" id="schoolSearch" class="school-search-input" 
+                     placeholder="Anza kuandika jina la shule..."
+                     autocomplete="off" required>
+              <input type="hidden" id="school" value="">
+              <div class="school-results-dropdown" id="schoolResults"></div>
+              <div class="school-search-loading" id="schoolSearchLoading">
+                <span class="spinner-tlm" style="width:14px;height:14px;"></span>
+              </div>
+            </div>
+            <div id="selectedSchoolTag"></div>
             <span id="schoolLoading" style="display:none;" class="cascade-loading"></span>
           </div>
           <div class="form-field" style="margin-bottom:0;">
@@ -303,6 +422,11 @@ document.addEventListener('DOMContentLoaded', function() {
   const regionSelect = document.getElementById('region');
   const districtSelect = document.getElementById('district');
   const schoolSelect = document.getElementById('school');
+  const schoolSearch = document.getElementById('schoolSearch');
+  const schoolHidden = document.getElementById('school');
+  const schoolResults = document.getElementById('schoolResults');
+  const selectedSchoolTag = document.getElementById('selectedSchoolTag');
+  const schoolSearchLoading = document.getElementById('schoolSearchLoading');
   const subjectSelect = document.getElementById('subject');
   const fullName = document.getElementById('fullName');
   const phoneNumber = document.getElementById('phoneNumber');
@@ -329,11 +453,139 @@ document.addEventListener('DOMContentLoaded', function() {
     sel.appendChild(opt);
   }
 
+  // ── SCHOOL SEARCH AUTOCOMPLETE ──
+  let searchTimeout = null;
+  let selectedSchoolData = null;
+  let activeResultIndex = -1;
+
+  function searchSchools(query, districtId) {
+    const params = new URLSearchParams();
+    if (query && query.length >= 2) params.set('q', query);
+    if (districtId) params.set('district_id', districtId);
+    
+    if (!params.has('q') && !params.has('district_id')) {
+      schoolResults.classList.remove('open');
+      return;
+    }
+    
+    schoolSearchLoading.classList.add('active');
+    fetch(`{% url 'curriculum:search_schools' %}?${params.toString()}`)
+      .then(r => r.json())
+      .then(data => {
+        schoolSearchLoading.classList.remove('active');
+        renderSchoolResults(data);
+      })
+      .catch(() => {
+        schoolSearchLoading.classList.remove('active');
+        schoolResults.innerHTML = '<div class="school-search-noresults"><i class="fas fa-exclamation-circle"></i> Hitilafu. Jaribu tena.</div>';
+        schoolResults.classList.add('open');
+      });
+  }
+
+  function renderSchoolResults(data) {
+    if (!data || data.length === 0) {
+      schoolResults.innerHTML = '<div class="school-search-noresults"><i class="fas fa-search me-1"></i> Hakuna shule inayolingana</div>';
+      schoolResults.classList.add('open');
+      return;
+    }
+    let html = '';
+    data.forEach(function(s) {
+      const levelLabel = s.level === 'Primary' ? 'Msingi' : 'Sekondari';
+      html += `<div class="school-result-item" data-id="${s.id}" data-name="${s.name}" data-level="${s.level}">
+        <span class="school-name">${s.name}</span>
+        <span class="school-meta">${levelLabel} &middot; ${s.district_name || ''}</span>
+      </div>`;
+    });
+    schoolResults.innerHTML = html;
+    schoolResults.classList.add('open');
+    activeResultIndex = -1;
+
+    schoolResults.querySelectorAll('.school-result-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        selectSchool(this.dataset.id, this.dataset.name, this.dataset.level);
+      });
+    });
+  }
+
+  function selectSchool(id, name, level) {
+    schoolHidden.value = id;
+    schoolSearch.value = name;
+    selectedSchoolData = { id, name, level };
+    schoolResults.classList.remove('open');
+    const levelLabel = level === 'Primary' ? 'Msingi' : 'Sekondari';
+    selectedSchoolTag.innerHTML = `<span class="school-tag">
+      <i class="fas fa-school"></i> ${name} <span style="color:var(--text-muted);font-size:0.65rem;">(${levelLabel})</span>
+      <i class="fas fa-times" onclick="clearSchool()"></i>
+    </span>`;
+  }
+
+  window.clearSchool = function() {
+    schoolHidden.value = '';
+    schoolSearch.value = '';
+    selectedSchoolData = null;
+    selectedSchoolTag.innerHTML = '';
+    schoolSearch.focus();
+  };
+
+  schoolSearch.addEventListener('input', function() {
+    const districtId = districtSelect.value;
+    const query = this.value.trim();
+    if (!query) {
+      schoolHidden.value = '';
+      selectedSchoolData = null;
+      selectedSchoolTag.innerHTML = '';
+      if (districtId) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => searchSchools('', districtId), 100);
+      } else {
+        schoolResults.classList.remove('open');
+      }
+      return;
+    }
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => searchSchools(query, districtId), 200);
+  });
+
+  schoolSearch.addEventListener('keydown', function(e) {
+    const items = schoolResults.querySelectorAll('.school-result-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeResultIndex = Math.min(activeResultIndex + 1, items.length - 1);
+      items.forEach((item, i) => item.classList.toggle('active', i === activeResultIndex));
+      if (items[activeResultIndex]) items[activeResultIndex].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeResultIndex = Math.max(activeResultIndex - 1, 0);
+      items.forEach((item, i) => item.classList.toggle('active', i === activeResultIndex));
+    } else if (e.key === 'Enter' && activeResultIndex >= 0 && items[activeResultIndex]) {
+      e.preventDefault();
+      items[activeResultIndex].click();
+    } else if (e.key === 'Escape') {
+      schoolResults.classList.remove('open');
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.school-search-wrap')) {
+      schoolResults.classList.remove('open');
+    }
+  });
+
+  schoolSearch.addEventListener('focus', function() {
+    if (schoolResults.children.length > 0) {
+      schoolResults.classList.add('open');
+    }
+  });
+
   // ── Cascading: Region → District ──
   regionSelect.addEventListener('change', function() {
     const regionId = this.value;
     districtSelect.innerHTML = makeOpt('', '— Chagua Wilaya —', '— Select District —');
-    schoolSelect.innerHTML = makeOpt('', '— Chagua Wilaya kwanza —', '— Select District first —');
+    schoolHidden.value = '';
+    selectedSchoolData = null;
+    selectedSchoolTag.innerHTML = '';
+    schoolSearch.value = '';
+    schoolResults.classList.remove('open');
     if (!regionId) { return; }
     districtLoading.style.display = 'inline-block';
     fetch(`{% url 'curriculum:get_districts' %}?region_id=${regionId}`)
@@ -351,32 +603,17 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   });
 
-  // ── Cascading: District → School ──
+  // ── Cascading: District → School (triggers search) ──
   districtSelect.addEventListener('change', function() {
     const districtId = this.value;
-    schoolSelect.innerHTML = makeOpt('', '— Chagua Shule —', '— Select School —');
-    if (!districtId) { return; }
-    schoolLoading.style.display = 'inline-block';
-    fetch(`{% url 'curriculum:get_schools' %}?district_id=${districtId}`)
-      .then(r => r.json())
-      .then(data => {
-        schoolLoading.style.display = 'none';
-        schoolSelect.innerHTML = makeOpt('', '— Chagua Shule —', '— Select School —');
-        if (data.length === 0) {
-          schoolSelect.innerHTML = makeOpt('', '— Hakuna shule —', '— No schools —');
-          showToast(langText('Hakuna shule katika wilaya hii', 'No schools in this district'), 'warning');
-        } else {
-          data.forEach(function(s) {
-            const level = s.level === 'Primary' ? langText('Msingi', 'Primary') : langText('Sekondari', 'Secondary');
-            showOpt(schoolSelect, s.id, `${s.name} (${level})`);
-          });
-        }
-      })
-      .catch(() => {
-        schoolLoading.style.display = 'none';
-        schoolSelect.innerHTML = makeOpt('', '— Hitilafu —', '— Error —');
-        showToast(langText('Hitilafu kupakia shule. Jaribu tena.', 'Error loading schools. Try again.'), 'error');
-      });
+    schoolHidden.value = '';
+    selectedSchoolData = null;
+    selectedSchoolTag.innerHTML = '';
+    schoolSearch.value = '';
+    schoolResults.classList.remove('open');
+    if (districtId) {
+      searchSchools('', districtId);
+    }
   });
 
   // ── Lookup returning teacher ──
@@ -422,7 +659,7 @@ document.addEventListener('DOMContentLoaded', function() {
       phone_number: phoneNumber.value.trim(),
       region_id: regionSelect.value,
       district_id: districtSelect.value,
-      school_id: schoolSelect.value,
+      school_id: schoolHidden.value,
       subject_id: subjectSelect.value,
     };
 

@@ -57,4 +57,6 @@ urlpatterns = [
     path('api/get-classes/', views.get_classes_by_level, name='get_classes'),
     path('api/get-subjects-by-level/', views.get_subjects_by_level, name='get_subjects_by_level'),
     path('api/get-textbooks/', views.get_textbooks_by_level, name='get_textbooks'),
+    path('api/search-schools/', views.ajax_search_schools, name='search_schools'),
+    path('api/submit-update-comment/', views.ajax_submit_update_comment, name='submit_update_comment'),
 ]

@@ -551,14 +551,12 @@ def generate_scheme_view(request):
     for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
         classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
 
-    primary_ids = list(
-        EducationLevel.objects.filter(name__icontains='primary').values_list('id', flat=True)
+    # Show ALL subjects for ALL education levels — no primary/secondary filtering
+    all_subjects = list(
+        Subject.objects.all().order_by('name').values('id', 'name')
     )
     subjects_by_level = {
-        lvl.id: list(
-            Subject.objects.filter(level='primary' if lvl.id in primary_ids else 'secondary')
-            .order_by('name').values('id', 'name')
-        )
+        lvl.id: all_subjects
         for lvl in education_levels
     }
 
@@ -1221,14 +1219,12 @@ def lesson_plan_view(request):
     for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
         classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
 
-    primary_ids = list(
-        EducationLevel.objects.filter(name__icontains='primary').values_list('id', flat=True)
+    # Show ALL subjects for ALL education levels — no primary/secondary filtering
+    all_subjects = list(
+        Subject.objects.all().order_by('name').values('id', 'name')
     )
     subjects_by_level = {
-        lvl.id: list(
-            Subject.objects.filter(level='primary' if lvl.id in primary_ids else 'secondary')
-            .order_by('name').values('id', 'name')
-        )
+        lvl.id: all_subjects
         for lvl in education_levels
     }
 
@@ -2619,3 +2615,65 @@ def get_textbooks_by_level(request):
             break
     textbooks = Textbook.objects.filter(education_level=mapped, is_active=True).order_by('title')
     return JsonResponse([{'id': t.id, 'title': t.title, 'publisher': t.publisher} for t in textbooks], safe=False)
+
+
+# =============================================================================
+# AJAX: Search schools (autocomplete)
+# =============================================================================
+
+def ajax_search_schools(request):
+    """
+    AJAX: Search schools by name (for autocomplete on registration).
+    Returns JSON array of matching schools with id, name, level, district__name.
+    """
+    q = request.GET.get('q', '').strip()
+    district_id = request.GET.get('district_id', '')
+    if len(q) < 2 and not district_id:
+        return JsonResponse([], safe=False)
+    
+    schools = School.objects.all()
+    if q and len(q) >= 2:
+        schools = schools.filter(name__icontains=q)
+    if district_id:
+        schools = schools.filter(district_id=district_id)
+    
+    schools = schools.select_related('district').order_by('name')[:30]
+    return JsonResponse([{
+        'id': s.id,
+        'name': s.name,
+        'level': s.level,
+        'district_name': s.district.name,
+    } for s in schools], safe=False)
+
+
+# =============================================================================
+# AJAX: Submit update comment/feedback
+# =============================================================================
+
+@require_POST
+def ajax_submit_update_comment(request):
+    """Submit a comment/feedback about system updates from teachers."""
+    try:
+        data = json.loads(request.body)
+        message = data.get('message', '').strip()
+        teacher_name = data.get('teacher_name', '').strip()
+        
+        if not message:
+            return JsonResponse({'success': False, 'error': 'Tafadhali andika maoni yako.'}, status=400)
+        if not teacher_name:
+            return JsonResponse({'success': False, 'error': 'Tafadhali ingiza jina lako.'}, status=400)
+        
+        teacher = get_tlm_teacher(request)
+        teacher_school_name = teacher.school.name if teacher and teacher.school else ''
+        
+        testimonial = Testimonial.objects.create(
+            teacher=teacher,
+            teacher_name=teacher_name,
+            school_name=teacher_school_name,
+            message=message,
+            is_approved=True,
+        )
+        
+        return JsonResponse({'success': True, 'id': testimonial.id})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
