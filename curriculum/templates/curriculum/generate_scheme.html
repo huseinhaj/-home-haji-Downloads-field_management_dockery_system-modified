@@ -265,6 +265,15 @@
                 <button type="button" class="preset-break-btn" data-preset="christmas" style="background:rgba(31,122,61,0.1);color:var(--green-500);border:1px solid rgba(31,122,61,0.2);border-radius:var(--radius-sm);padding:3px 8px;font-size:9px;font-weight:600;cursor:pointer;">
                   <i class="fas fa-tree"></i> Christmas
                 </button>
+                <button type="button" class="preset-break-btn" data-preset="eid_fitr" style="background:rgba(139,92,246,0.1);color:#8B5CF6;border:1px solid rgba(139,92,246,0.2);border-radius:var(--radius-sm);padding:3px 8px;font-size:9px;font-weight:600;cursor:pointer;">
+                  <i class="fas fa-moon"></i> Eid al-Fitr
+                </button>
+                <button type="button" class="preset-break-btn" data-preset="eid_adha" style="background:rgba(236,72,153,0.1);color:#EC4899;border:1px solid rgba(236,72,153,0.2);border-radius:var(--radius-sm);padding:3px 8px;font-size:9px;font-weight:600;cursor:pointer;">
+                  <i class="fas fa-kaaba"></i> Eid al-Adha
+                </button>
+                <button type="button" class="preset-break-btn" data-preset="maulid" style="background:rgba(16,185,129,0.1);color:#10B981;border:1px solid rgba(16,185,129,0.2);border-radius:var(--radius-sm);padding:3px 8px;font-size:9px;font-weight:600;cursor:pointer;">
+                  <i class="fas fa-star-and-crescent"></i> Maulid
+                </button>
                 <button type="button" class="preset-break-btn" data-preset="custom" style="background:rgba(100,116,139,0.08);color:var(--text-secondary);border:1px dashed var(--border-color);border-radius:var(--radius-sm);padding:3px 8px;font-size:9px;font-weight:600;cursor:pointer;">
                   <i class="fas fa-plus"></i> Custom
                 </button>
@@ -420,6 +429,9 @@ document.addEventListener('DOMContentLoaded', function() {
         terminal: { start: `${year}-06-01`, end: `${year}-06-12` },
         easter: { start: `${year}-04-14`, end: `${year}-04-21` },
         christmas: { start: `${year}-12-01`, end: `${year}-12-31` },
+        eid_fitr: { start: `${year}-03-30`, end: `${year}-04-01` },
+        eid_adha: { start: `${year}-06-16`, end: `${year}-06-18` },
+        maulid: { start: `${year}-09-04`, end: `${year}-09-05` },
       };
     } else if (term === 'I') {
       return {
@@ -427,6 +439,9 @@ document.addEventListener('DOMContentLoaded', function() {
         terminal: { start: `${year}-04-06`, end: `${year}-04-17` },
         easter: { start: `${year}-04-14`, end: `${year}-04-21` },
         christmas: { start: '', end: '' },
+        eid_fitr: { start: `${year}-03-30`, end: `${year}-04-01` },
+        eid_adha: { start: `${year}-06-16`, end: `${year}-06-18` },
+        maulid: { start: '', end: '' },
       };
     } else if (term === 'II') {
       return {
@@ -434,6 +449,9 @@ document.addEventListener('DOMContentLoaded', function() {
         terminal: { start: `${year}-08-03`, end: `${year}-08-14` },
         easter: { start: '', end: '' },
         christmas: { start: '', end: '' },
+        eid_fitr: { start: '', end: '' },
+        eid_adha: { start: `${year}-06-16`, end: `${year}-06-18` },
+        maulid: { start: '', end: '' },
       };
     } else {
       return {
@@ -441,6 +459,9 @@ document.addEventListener('DOMContentLoaded', function() {
         terminal: { start: `${year}-11-23`, end: `${year}-12-04` },
         easter: { start: '', end: '' },
         christmas: { start: `${year}-12-01`, end: `${year}-12-31` },
+        eid_fitr: { start: '', end: '' },
+        eid_adha: { start: '', end: '' },
+        maulid: { start: `${year}-09-04`, end: `${year}-09-05` },
       };
     }
   }
@@ -459,6 +480,12 @@ document.addEventListener('DOMContentLoaded', function() {
         addBreakItem('Easter Holiday', dates.easter.start, dates.easter.end);
       } else if (preset === 'christmas') {
         addBreakItem('Christmas Holiday', dates.christmas.start, dates.christmas.end);
+      } else if (preset === 'eid_fitr') {
+        addBreakItem('Eid al-Fitr (Idd-ul-Fitr)', dates.eid_fitr.start, dates.eid_fitr.end);
+      } else if (preset === 'eid_adha') {
+        addBreakItem('Eid al-Adha (Idd-ul-Haj)', dates.eid_adha.start, dates.eid_adha.end);
+      } else if (preset === 'maulid') {
+        addBreakItem('Maulid (Birth of Prophet Muhammad)', dates.maulid.start, dates.maulid.end);
       } else if (preset === 'custom') {
         addBreakItem('', '', '');
       }

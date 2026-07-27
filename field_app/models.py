@@ -869,6 +869,12 @@ class LessonPlan(models.Model):
     total_students = models.IntegerField(default=0, blank=True, null=True)
     present_students = models.IntegerField(default=0, blank=True, null=True)
     
+    # Student attendance breakdown (Boys/Girls)
+    total_boys = models.IntegerField(default=0, blank=True, null=True)
+    total_girls = models.IntegerField(default=0, blank=True, null=True)
+    present_boys = models.IntegerField(default=0, blank=True, null=True)
+    present_girls = models.IntegerField(default=0, blank=True, null=True)
+    
     # Reference source
     reference_source = models.CharField(max_length=500, blank=True, null=True)
     reference_file = models.FileField(upload_to='lesson_references/', blank=True, null=True)

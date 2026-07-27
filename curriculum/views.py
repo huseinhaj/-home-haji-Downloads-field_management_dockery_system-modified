@@ -1290,7 +1290,11 @@ def ajax_generate_lessonplan(request):
         term = data.get('term', 'I')
         year = data.get('year', 2026)
         duration = int(data.get('duration', 40))
+        total_boys = data.get('total_boys', '')
+        total_girls = data.get('total_girls', '')
         total_students = data.get('total_students', '')
+        present_boys = data.get('present_boys', '')
+        present_girls = data.get('present_girls', '')
         present_students = data.get('present_students', '')
         teacher_name = data.get('teacher_name', '')
         school_name = data.get('school_name', '')
@@ -1327,9 +1331,8 @@ Term: {term}, Year: {year}
 Duration: {duration} minutes
 
 -- STUDENT STATISTICS --
-Registered Girls: / Registered Boys: /
-Present Girls: / Present Boys: /
-Total Students: {total_students or 'N/A'}, Present: {present_students or 'N/A'}
+Registered Boys: {total_boys or 'N/A'}, Registered Girls: {total_girls or 'N/A'}, Total: {total_students or 'N/A'}
+Present Boys: {present_boys or 'N/A'}, Present Girls: {present_girls or 'N/A'}, Present Total: {present_students or 'N/A'}
 
 -- TEACHING PROCESS (IDDR Model) --
 
@@ -1451,7 +1454,11 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
                             education_level=edu_level, class_name=class_name,
                             term=term, year=int(year), topic=topic, subtopic=subtopic or '',
                             date=timezone.now().date(), duration=duration,
+                            total_boys=int(total_boys) if total_boys else 0,
+                            total_girls=int(total_girls) if total_girls else 0,
                             total_students=int(total_students) if total_students else 0,
+                            present_boys=int(present_boys) if present_boys else 0,
+                            present_girls=int(present_girls) if present_girls else 0,
                             present_students=int(present_students) if present_students else 0,
                             teacher_name=teacher_name or student.full_name,
                             main_competence=lesson_data.get('main_competence', ''),
@@ -1668,7 +1675,7 @@ def download_lesson_plan_pdf(request):
         [P('Duration', label_s), P(f"{form.get('duration','')} minutes"),
          P('Date', label_s), P(str(timezone.now().date()))],
         [P('Students', label_s),
-         P(f"{form.get('total_students','')} total / {form.get('present_students','')} present"),
+         P(f"Registered: B:{form.get('total_boys','')} G:{form.get('total_girls','')} T:{form.get('total_students','')} | Present: B:{form.get('present_boys','')} G:{form.get('present_girls','')} T:{form.get('present_students','')}"),
          P(''), P('')],
     ]
     meta_tbl = Table(meta_rows, colWidths=[72, 188, 72, 191])
@@ -1800,7 +1807,13 @@ def download_lesson_plan_word(request):
     _set(3, 2, 'Date:', True)
     _set(3, 3, str(timezone.now().date()))
     _set(4, 0, 'Students:', True)
-    _set(4, 1, f"{form.get('total_students','')} / {form.get('present_students','')}")
+    tb = form.get('total_boys', '')
+    tg = form.get('total_girls', '')
+    ts = form.get('total_students', '')
+    pb = form.get('present_boys', '')
+    pg = form.get('present_girls', '')
+    ps = form.get('present_students', '')
+    _set(4, 1, f"Reg: B:{tb} G:{tg} T:{ts} | Pres: B:{pb} G:{pg} T:{ps}")
 
     doc.add_paragraph()
 
@@ -1964,6 +1977,19 @@ def ajax_save_lesson_edits(request):
                 # Subtopic
                 if form_data.get('subtopic') is not None:
                     lp.subtopic = form_data['subtopic']
+                # Student statistics breakdown
+                if form_data.get('total_boys'):
+                    lp.total_boys = int(form_data['total_boys'])
+                if form_data.get('total_girls'):
+                    lp.total_girls = int(form_data['total_girls'])
+                if form_data.get('present_boys'):
+                    lp.present_boys = int(form_data['present_boys'])
+                if form_data.get('present_girls'):
+                    lp.present_girls = int(form_data['present_girls'])
+                if form_data.get('total_students'):
+                    lp.total_students = int(form_data['total_students'])
+                if form_data.get('present_students'):
+                    lp.present_students = int(form_data['present_students'])
                 lp.save()
             except LessonPlan.DoesNotExist:
                 pass

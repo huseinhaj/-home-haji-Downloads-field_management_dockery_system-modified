@@ -207,14 +207,42 @@
                 <input class="form-control" id="duration" value="40" type="number" min="5" max="180">
               </div>
             </div>
-            <div class="row g-1 mb-2">
-              <div class="col-6">
-                <label>Total Students</label>
-                <input class="form-control" id="total_students" type="number" min="0" max="200">
+            <!-- Student Statistics: Boys / Girls / Total Breakdown -->
+            <div class="mb-2" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:0.6rem;">
+              <label style="font-weight:700;font-size:var(--font-size-xs);color:var(--green-500);margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+                <i class="fas fa-user-graduate"></i> Student Statistics
+              </label>
+              <!-- Registered -->
+              <label style="font-size:10px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">Registered</label>
+              <div class="row g-1 mb-1">
+                <div class="col-4">
+                  <label style="font-size:9px;color:var(--text-muted);">Boys</label>
+                  <input class="form-control" id="total_boys" type="number" min="0" max="200" style="font-size:12px;">
+                </div>
+                <div class="col-4">
+                  <label style="font-size:9px;color:var(--text-muted);">Girls</label>
+                  <input class="form-control" id="total_girls" type="number" min="0" max="200" style="font-size:12px;">
+                </div>
+                <div class="col-4">
+                  <label style="font-size:9px;color:var(--text-muted);">Total</label>
+                  <input class="form-control" id="total_students" type="number" readonly style="font-size:12px;background:var(--bg-glass);cursor:default;">
+                </div>
               </div>
-              <div class="col-6">
-                <label>Present</label>
-                <input class="form-control" id="present_students" type="number" min="0" max="200">
+              <!-- Present -->
+              <label style="font-size:10px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">Present</label>
+              <div class="row g-1">
+                <div class="col-4">
+                  <label style="font-size:9px;color:var(--text-muted);">Boys</label>
+                  <input class="form-control" id="present_boys" type="number" min="0" max="200" style="font-size:12px;">
+                </div>
+                <div class="col-4">
+                  <label style="font-size:9px;color:var(--text-muted);">Girls</label>
+                  <input class="form-control" id="present_girls" type="number" min="0" max="200" style="font-size:12px;">
+                </div>
+                <div class="col-4">
+                  <label style="font-size:9px;color:var(--text-muted);">Total</label>
+                  <input class="form-control" id="present_students" type="number" readonly style="font-size:12px;background:var(--bg-glass);cursor:default;">
+                </div>
               </div>
             </div>
             <div class="mb-2">
@@ -324,6 +352,22 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentLessonData = null;
   let currentFormData = null;
   let currentSavedId = null;
+
+  // ── Auto-calculate Total Students = Boys + Girls ──
+  function calcTotals() {
+    const tb = parseInt(document.getElementById('total_boys').value) || 0;
+    const tg = parseInt(document.getElementById('total_girls').value) || 0;
+    const pb = parseInt(document.getElementById('present_boys').value) || 0;
+    const pg = parseInt(document.getElementById('present_girls').value) || 0;
+    const total = tb + tg;
+    const present = pb + pg;
+    document.getElementById('total_students').value = total > 0 ? total : (tb > 0 || tg > 0 ? total : '');
+    document.getElementById('present_students').value = present > 0 ? present : (pb > 0 || pg > 0 ? present : '');
+  }
+  document.getElementById('total_boys').addEventListener('input', calcTotals);
+  document.getElementById('total_girls').addEventListener('input', calcTotals);
+  document.getElementById('present_boys').addEventListener('input', calcTotals);
+  document.getElementById('present_girls').addEventListener('input', calcTotals);
 
   // Helper: get selected option text
   function getSelectedText(el) {
@@ -483,7 +527,11 @@ document.addEventListener('DOMContentLoaded', function() {
       term: document.getElementById('term').value,
       year: document.getElementById('year').value,
       duration: document.getElementById('duration').value,
+      total_boys: document.getElementById('total_boys').value,
+      total_girls: document.getElementById('total_girls').value,
       total_students: document.getElementById('total_students').value,
+      present_boys: document.getElementById('present_boys').value,
+      present_girls: document.getElementById('present_girls').value,
       present_students: document.getElementById('present_students').value,
       teacher_name: document.getElementById('teacher_name').value,
       school_name: document.getElementById('school_name').value,
