@@ -26,6 +26,12 @@ urlpatterns = [
     path('lesson-plan/download-pdf/', views.download_lesson_plan_pdf, name='download_lesson_plan_pdf'),
     path('lesson-plan/download-word/', views.download_lesson_plan_word, name='download_lesson_plan_word'),
 
+    # Lesson Notes
+    path('lesson-notes/', views.lesson_notes_view, name='lesson_notes'),
+    path('lesson-notes/ajax-save/', views.ajax_save_lesson_note, name='save_lesson_note'),
+    path('lesson-notes/ajax-get/<int:note_id>/', views.ajax_get_lesson_note, name='get_lesson_note'),
+    path('lesson-notes/ajax-delete/', views.ajax_delete_lesson_note, name='delete_lesson_note'),
+
     # Logbook
     path('logbook/', views.submit_logbook, name='submit_logbook'),
     path('logbook/history/', views.logbook_history, name='logbook_history'),

@@ -59,3 +59,40 @@ class Testimonial(models.Model):
 
     def __str__(self):
         return f"{self.teacher_name}: {self.message[:60]}"
+
+
+class LessonNote(models.Model):
+    """Standalone lesson notes — teachers write their own reflections, methods, challenges."""
+    EDUCATION_LEVEL_CHOICES = [
+        ('primary', 'Primary School'),
+        ('ordinary', 'Ordinary Level'),
+        ('advanced', 'Advanced Level'),
+    ]
+    
+    teacher = models.ForeignKey(
+        TLMTeacher, on_delete=models.CASCADE, null=True, blank=True,
+        verbose_name="Mwalimu"
+    )
+    teacher_name = models.CharField(max_length=200, verbose_name="Jina la Mwalimu")
+    school = models.ForeignKey(
+        School, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Shule"
+    )
+    school_name = models.CharField(max_length=300, verbose_name="Jina la Shule", blank=True)
+    education_level = models.CharField(
+        max_length=20, choices=EDUCATION_LEVEL_CHOICES, default='ordinary',
+        verbose_name="Ngazi ya Elimu"
+    )
+    class_name = models.CharField(max_length=50, verbose_name="Darasa", blank=True)
+    subject = models.CharField(max_length=200, verbose_name="Somo", blank=True)
+    topic = models.CharField(max_length=300, verbose_name="Mada / Topic", blank=True)
+    content = models.TextField(verbose_name="Maelezo ya Somo (Lesson Notes)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Lesson Note"
+        verbose_name_plural = "Lesson Notes"
+
+    def __str__(self):
+        return f"{self.teacher_name} — {self.subject or 'N/A'} ({self.created_at.strftime('%d %b %Y')})"

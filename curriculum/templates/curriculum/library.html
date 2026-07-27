@@ -134,7 +134,7 @@
         </div>
         <div class="lib-preview">
           {% if s.scheme_data %}
-            <strong>Teacher:</strong> {{ s.teacher_name|default:s.student.full_name|default:"Mwalimu" }}<br>
+            <strong>Teacher:</strong> {{ s.teacher_name|default:"Mwalimu" }}<br>
             <strong>School:</strong> {{ s.school.name|default:"—" }}<br>
             <strong>Weeks:</strong> {{ s.scheme_data|length }} weeks of content
           {% else %}
@@ -176,7 +176,7 @@
         </div>
         <div class="lib-preview">
           {% if lp.main_competence %}
-            <strong>Teacher:</strong> {{ lp.teacher_name|default:lp.student.full_name|default:"Mwalimu" }}<br>
+            <strong>Teacher:</strong> {{ lp.teacher_name|default:"Mwalimu" }}<br>
             <strong>Competence:</strong> {{ lp.main_competence|truncatechars:80 }}<br>
             <strong>Objectives:</strong> {{ lp.learning_objectives|length }} objectives
           {% else %}

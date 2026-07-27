@@ -50,7 +50,7 @@ from field_app.views.utils import (
     get_current_academic_year, invalidate_student_cache,
 )
 
-from .models import TLMTeacher, Testimonial
+from .models import TLMTeacher, Testimonial, LessonNote
 
 
 def _sanitize_json_control_chars(text):
@@ -2771,5 +2771,128 @@ def ajax_submit_update_comment(request):
         )
         
         return JsonResponse({'success': True, 'id': testimonial.id})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
+
+
+# =============================================================================
+# LESSON NOTES — standalone teacher notes
+# =============================================================================
+
+def lesson_notes_view(request):
+    """
+    Lesson Notes page — teachers write their own reflections, methods, challenges.
+    Notes are linked to the teacher's school level for language support.
+    """
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:lesson_notes')}")
+    
+    school_level = teacher.school.level if teacher and teacher.school else ''
+    
+    # Get all notes for this teacher
+    notes = LessonNote.objects.filter(teacher=teacher).order_by('-created_at')[:50]
+    
+    # Subjects for dropdown
+    subjects = Subject.objects.all().order_by('name')
+    education_levels = EducationLevel.objects.all().order_by('order')
+    
+    return render(request, 'curriculum/lesson_notes.html', {
+        'teacher': teacher,
+        'school_level': school_level,
+        'notes': notes,
+        'subjects': subjects,
+        'education_levels': education_levels,
+        'teacher_name': teacher.full_name if teacher else '',
+        'teacher_school_name': teacher.school.name if teacher and teacher.school else '',
+    })
+
+
+@require_POST
+def ajax_save_lesson_note(request):
+    """AJAX: Save a new lesson note or update existing one."""
+    try:
+        data = json.loads(request.body)
+        teacher = get_tlm_teacher(request)
+        if not teacher:
+            return JsonResponse({'success': False, 'error': 'Tafadhali jisajili kwanza.'}, status=401)
+        
+        note_id = data.get('note_id')
+        content = data.get('content', '').strip()
+        subject = data.get('subject', '').strip()
+        class_name = data.get('class_name', '').strip()
+        topic = data.get('topic', '').strip()
+        education_level = data.get('education_level', '').strip()
+        
+        if not content:
+            return JsonResponse({'success': False, 'error': 'Tafadhali andika maelezo ya somo.'}, status=400)
+        
+        school = teacher.school if teacher.school else None
+        
+        if note_id:
+            # Update existing note
+            note = get_object_or_404(LessonNote, id=note_id, teacher=teacher)
+            note.content = content
+            note.subject = subject
+            note.class_name = class_name
+            note.topic = topic
+            note.education_level = education_level
+            note.save()
+        else:
+            # Create new note
+            note = LessonNote.objects.create(
+                teacher=teacher,
+                teacher_name=teacher.full_name,
+                school=school,
+                school_name=school.name if school else '',
+                education_level=education_level or 'ordinary',
+                class_name=class_name,
+                subject=subject,
+                topic=topic,
+                content=content,
+            )
+        
+        return JsonResponse({'success': True, 'note_id': note.id, 'created': note.created_at.isoformat()})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
+
+
+def ajax_get_lesson_note(request, note_id):
+    """AJAX: Get a single lesson note for editing."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Una hitaji kujiandikisha.'}, status=401)
+    try:
+        note = LessonNote.objects.get(id=note_id, teacher=teacher)
+        return JsonResponse({
+            'success': True,
+            'note': {
+                'id': note.id,
+                'content': note.content,
+                'subject': note.subject,
+                'class_name': note.class_name,
+                'topic': note.topic,
+                'education_level': note.education_level,
+                'created_at': note.created_at.strftime('%d %b %Y, %H:%M'),
+            }
+        })
+    except LessonNote.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Note haipatikani.'}, status=404)
+
+
+@require_POST
+def ajax_delete_lesson_note(request):
+    """AJAX: Delete a lesson note."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False}, status=401)
+    try:
+        data = json.loads(request.body)
+        note_id = data.get('note_id')
+        note = LessonNote.objects.get(id=note_id, teacher=teacher)
+        note.delete()
+        return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)

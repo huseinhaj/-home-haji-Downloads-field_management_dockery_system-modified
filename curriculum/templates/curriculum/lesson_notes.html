@@ -1,0 +1,343 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}Lesson Notes{% endblock %}
+{% block extra_css %}
+<style>
+  .note-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    transition: all var(--duration-normal) var(--ease-out);
+    position: relative;
+  }
+  .note-card:hover {
+    border-color: var(--green-500);
+    box-shadow: var(--shadow-md);
+  }
+  .note-date {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+  }
+  .note-subject {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--green-500);
+    font-size: var(--font-size-sm);
+  }
+  .note-meta {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .note-content {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .note-actions {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    gap: 4px;
+  }
+  .lang-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .lang-sw {
+    background: rgba(31,122,61,0.1);
+    color: var(--green-500);
+    border: 1px solid rgba(31,122,61,0.2);
+  }
+  .lang-en {
+    background: rgba(37,99,235,0.1);
+    color: var(--info);
+    border: 1px solid rgba(37,99,235,0.2);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- Header -->
+  <div class="c-card p-3 mb-3" style="border-left:4px solid var(--gold-400);">
+    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+      <div class="stat-icon" style="background:var(--green-500);">
+        <i class="fas fa-sticky-note" style="color:#fff;font-size:1.1rem;"></i>
+      </div>
+      <div style="flex:1;">
+        <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:clamp(0.9rem,1.5vw,1.15rem);">
+          📝 Lesson Notes (Maelezo ya Somo)
+        </h4>
+        <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
+          Andika maelezo yako binafsi kuhusu masomo — mbinu maalum, changamoto, mafanikio, mawazo ya ziada
+        </p>
+      </div>
+      {% if school_level %}
+      <span class="chip {% if school_level == 'Primary' %}chip-green{% else %}chip-blue{% endif %}" style="font-size:9px;">
+        <i class="fas fa-school"></i> {{ school_level }} School
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- LEFT: Form -->
+    <div class="col-lg-5 col-xl-4">
+      <div class="c-card">
+        <div class="c-card-head">
+          <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;color:var(--text-primary);">
+            <i class="fas fa-pen text-gold me-1"></i> Andika / Hariri Note
+          </h5>
+          <button type="button" class="btn-tlm btn-sm-tlm" style="background:rgba(220,38,38,0.08);color:var(--error);" id="clearFormBtn">
+            <i class="fas fa-undo"></i>
+          </button>
+        </div>
+        <div class="c-card-body">
+          <form id="lessonNoteForm">
+            {% csrf_token %}
+            <input type="hidden" id="note_id" value="">
+            
+            <div class="mb-2">
+              <label class="form-label-tlm">Subject / Somo</label>
+              <select class="form-control form-select" id="subject">
+                <option value="">— Chagua Somo —</option>
+                {% for s in subjects %}
+                <option value="{{ s.name }}">{{ s.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="row g-1 mb-2">
+              <div class="col-6">
+                <label class="form-label-tlm">Class / Darasa</label>
+                <input class="form-control" id="class_name" placeholder="e.g. Form 2 / Std 5">
+              </div>
+              <div class="col-6">
+                <label class="form-label-tlm">Level</label>
+                <select class="form-control form-select" id="education_level">
+                  <option value="">— Chagua —</option>
+                  {% for el in education_levels %}
+                  <option value="{{ el.name }}">{{ el.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            
+            <div class="mb-2">
+              <label class="form-label-tlm">Topic / Mada</label>
+              <input class="form-control" id="topic" placeholder="Mada unayofundisha">
+            </div>
+            
+            <div class="mb-2">
+              <label class="form-label-tlm">
+                <i class="fas fa-sticky-note text-gold me-1"></i> Lesson Notes (Maelezo ya Somo)
+              </label>
+              <textarea class="form-control" id="note_content" rows="8" required
+                placeholder="Andika maelezo yako hapa...&#10;&#10;Mifano:&#10;• Mbinu maalum zilizotumika&#10;• Changamoto za wanafunzi&#10;• Mafanikio yaliyopatikana&#10;• Mawazo ya ziada / mapendekezo"
+                style="resize:vertical;font-size:var(--font-size-sm);"></textarea>
+              <small style="font-size:9px;color:var(--text-muted);">
+                <i class="fas fa-info-circle"></i> Maelezo haya yanajitegemea (si sehemu ya Lesson Plan). Unaweza kuyaandika wakati wowote.
+              </small>
+            </div>
+            
+            <button type="submit" class="btn-tlm btn-gold-tlm w-100 py-2 mt-2" id="saveNoteBtn">
+              <i class="fas fa-save me-1"></i> Hifadhi Note
+            </button>
+            <div id="saveFeedback" style="display:none;margin-top:6px;font-size:11px;"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Notes list -->
+    <div class="col-lg-7 col-xl-8">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;color:var(--text-primary);">
+          <i class="fas fa-list text-gold me-1"></i> Notes Zako ({{ notes|length }})
+        </h5>
+        <div style="display:flex;gap:6px;">
+          <span class="lang-badge lang-sw"><i class="fas fa-language"></i> Kiswahili (Primary)</span>
+          <span class="lang-badge lang-en"><i class="fas fa-language"></i> English (Secondary)</span>
+        </div>
+      </div>
+
+      {% if notes %}
+      <div style="display:flex;flex-direction:column;gap:0.75rem;">
+        {% for note in notes %}
+        <div class="note-card" data-id="{{ note.id }}">
+          <div class="note-actions">
+            <button class="btn-tlm btn-sm-tlm edit-note-btn" style="background:rgba(31,122,61,0.08);color:var(--green-500);padding:4px 8px;" title="Hariri">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn-tlm btn-sm-tlm delete-note-btn" style="background:rgba(220,38,38,0.08);color:var(--error);padding:4px 8px;" title="Futa">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+          <div class="note-subject">{{ note.subject|default:"—" }}</div>
+          <div class="note-meta">
+            <span><i class="fas fa-users"></i> {{ note.class_name|default:"—" }}</span>
+            <span><i class="fas fa-book"></i> {{ note.topic|default:"—"|truncatechars:30 }}</span>
+            <span><i class="fas fa-layer-group"></i> {{ note.education_level|default:"—" }}</span>
+          </div>
+          <div class="note-content">{{ note.content|linebreaksbr|truncatechars:200 }}</div>
+          <div class="note-date mt-2">
+            <i class="far fa-clock"></i> {{ note.created_at|date:"d M Y, H:i" }}
+            {% if note.updated_at != note.created_at %}
+            <span style="color:var(--text-muted);">(imehaririwa {{ note.updated_at|date:"d M Y, H:i" }})</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="c-card text-center py-5">
+        <div style="width:60px;height:60px;background:rgba(31,122,61,0.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+          <i class="fas fa-sticky-note" style="font-size:1.5rem;color:var(--text-muted);"></i>
+        </div>
+        <h5 style="color:var(--text-secondary);font-weight:700;">Hakuna notes bado</h5>
+        <p style="color:var(--text-muted);font-size:var(--font-size-sm);max-width:350px;margin:0 auto;">
+          Andika maelezo yako ya kwanza kwa kujaza fomu upande wa kushoto. Notes zako zitaonekana hapa.
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('lessonNoteForm');
+  const noteIdInput = document.getElementById('note_id');
+  const subjectInput = document.getElementById('subject');
+  const classNameInput = document.getElementById('class_name');
+  const topicInput = document.getElementById('topic');
+  const contentInput = document.getElementById('note_content');
+  const eduLevelInput = document.getElementById('education_level');
+  const saveBtn = document.getElementById('saveNoteBtn');
+  const feedback = document.getElementById('saveFeedback');
+
+  // ── Save note ──
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const content = contentInput.value.trim();
+    if (!content) {
+      feedback.style.display = 'block';
+      feedback.innerHTML = '<span style="color:var(--error);"><i class="fas fa-exclamation-circle"></i> Tafadhali andika maelezo ya somo</span>';
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<div class="spinner-tlm" style="width:16px;height:16px;border-width:2px;"></div> Inahifadhi...';
+    feedback.style.display = 'none';
+
+    fetch('{% url "curriculum:save_lesson_note" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({
+        note_id: noteIdInput.value || null,
+        content: content,
+        subject: subjectInput.value,
+        class_name: classNameInput.value,
+        topic: topicInput.value,
+        education_level: eduLevelInput.value,
+      }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Hifadhi Note';
+      if (data.success) {
+        feedback.style.display = 'block';
+        feedback.innerHTML = '<span style="color:var(--success);"><i class="fas fa-check-circle"></i> Note imehifadhiwa!</span>';
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        feedback.style.display = 'block';
+        feedback.innerHTML = '<span style="color:var(--error);"><i class="fas fa-exclamation-circle"></i> ' + (data.error || 'Hitilafu') + '</span>';
+      }
+    })
+    .catch(err => {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Hifadhi Note';
+      feedback.style.display = 'block';
+      feedback.innerHTML = '<span style="color:var(--error);"><i class="fas fa-exclamation-circle"></i> Network error</span>';
+    });
+  });
+
+  // ── Edit note ──
+  document.querySelectorAll('.edit-note-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const card = this.closest('.note-card');
+      const noteId = card.dataset.id;
+      const content = card.querySelector('.note-content').textContent.trim();
+      const subject = card.querySelector('.note-subject').textContent.trim();
+      const metaSpans = card.querySelectorAll('.note-meta span');
+      
+      noteIdInput.value = noteId;
+      contentInput.value = content;
+      subjectInput.value = subject !== '—' ? subject : '';
+      if (metaSpans.length >= 1) classNameInput.value = metaSpans[0].textContent.replace(/^.+\s/, '');
+      if (metaSpans.length >= 2) topicInput.value = metaSpans[1].textContent.replace(/^.+\s/, '');
+      if (metaSpans.length >= 3) eduLevelInput.value = metaSpans[2].textContent.replace(/^.+\s/, '');
+      
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      contentInput.focus();
+    });
+  });
+
+  // ── Delete note ──
+  document.querySelectorAll('.delete-note-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      if (!confirm('Una uhakika unataka kufuta note hii?')) return;
+      const card = this.closest('.note-card');
+      const noteId = card.dataset.id;
+      
+      fetch('{% url "curriculum:delete_lesson_note" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ note_id: noteId }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          card.style.transition = 'opacity 0.3s';
+          card.style.opacity = '0';
+          setTimeout(() => card.remove(), 300);
+          showToast('Note imefutwa!', 'info');
+        } else {
+          showToast('Hitilafu: ' + (data.error || 'Imeshindwa kufuta'), 'error');
+        }
+      });
+    });
+  });
+
+  // ── Clear form ──
+  document.getElementById('clearFormBtn').addEventListener('click', function() {
+    form.reset();
+    noteIdInput.value = '';
+    feedback.style.display = 'none';
+    saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Hifadhi Note';
+  });
+});
+</script>
+{% endblock %}
