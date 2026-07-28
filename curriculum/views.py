@@ -50,7 +50,7 @@ from field_app.views.utils import (
     get_current_academic_year, invalidate_student_cache,
 )
 
-from .models import TLMTeacher, Testimonial, LessonNote
+from .models import TLMTeacher, Testimonial, LessonNote, SubjectTopic, TopicSubtopic
 
 
 def _sanitize_json_control_chars(text):
@@ -3011,3 +3011,68 @@ def ajax_update_teacher_profile(request):
     except Exception as e:
         logger.error(f"[Profile Update Error] {e}")
         return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
+
+
+# =============================================================================
+# SYLLABUS TOPICS & SUBTOPICS — Database-powered (TIE Syllabus)
+# =============================================================================
+
+def ajax_get_topics_db(request):
+    """
+    AJAX: Get topics from DB for a given subject and class name.
+    Uses the TIE syllabus data seeded via the seed_tie_syllabus management command.
+    Returns a JSON array of topic objects with id and name.
+    """
+    subject_id = request.GET.get('subject_id')
+    class_name = request.GET.get('class_name', '').strip()
+    
+    if not subject_id or not class_name:
+        return JsonResponse({'success': False, 'error': 'subject_id na class_name vinahitajika'}, status=400)
+    
+    # Map common class names (e.g., "Form 1" matches "Form 1" in DB)
+    topics = SubjectTopic.objects.filter(
+        subject_id=subject_id,
+        class_name__iexact=class_name
+    ).order_by('order').values('id', 'name')
+    
+    # If no topics found, try with broader matching
+    if not topics.exists():
+        # Try just with the form number (e.g., "1" from "Form 1")
+        words = class_name.split()
+        for w in words:
+            if w.isdigit():
+                topics = SubjectTopic.objects.filter(
+                    subject_id=subject_id,
+                    class_name__icontains=w
+                ).order_by('order').values('id', 'name')
+                break
+    
+    return JsonResponse({
+        'success': True,
+        'topics': list(topics),
+        'count': topics.count(),
+        'source': 'database'
+    })
+
+
+def ajax_get_subtopics_db(request):
+    """
+    AJAX: Get subtopics from DB for a given topic.
+    Uses the TIE syllabus data seeded via the seed_tie_syllabus management command.
+    Returns a JSON array of subtopic strings.
+    """
+    topic_id = request.GET.get('topic_id')
+    
+    if not topic_id:
+        return JsonResponse({'success': False, 'error': 'topic_id inahitajika'}, status=400)
+    
+    subtopics = TopicSubtopic.objects.filter(
+        topic_id=topic_id
+    ).order_by('order').values('id', 'name')
+    
+    return JsonResponse({
+        'success': True,
+        'subtopics': list(subtopics),
+        'count': subtopics.count(),
+        'source': 'database'
+    })

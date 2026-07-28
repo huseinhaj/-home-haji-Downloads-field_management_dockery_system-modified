@@ -103,3 +103,53 @@ class LessonNote(models.Model):
 
     def __str__(self):
         return f"{self.teacher_name} — {self.subject or 'N/A'} ({self.created_at.strftime('%d %b %Y')})"
+
+
+class SubjectTopic(models.Model):
+    """
+    Official TIE syllabus topics for a subject and class level.
+    E.g., Mathematics Form 1 has topics like "Numbers", "Algebra", etc.
+    """
+    subject = models.ForeignKey(
+        Subject, on_delete=models.CASCADE, related_name='topics',
+        verbose_name="Somo"
+    )
+    class_name = models.CharField(
+        max_length=50, verbose_name="Darasa",
+        help_text="e.g. Form 1, Form 2, Standard 5"
+    )
+    name = models.CharField(max_length=300, verbose_name="Jina la Topic / Mada Kuu")
+    order = models.PositiveIntegerField(default=0, verbose_name="Mpangilio")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['subject', 'class_name', 'order']
+        unique_together = ['subject', 'class_name', 'name']
+        verbose_name = "Topic (Syllabus)"
+        verbose_name_plural = "Topics (Syllabus)"
+
+    def __str__(self):
+        return f"{self.subject.name} {self.class_name} — {self.name}"
+
+
+class TopicSubtopic(models.Model):
+    """
+    Subtopics under a main topic from the TIE syllabus.
+    E.g., under "Numbers" (Mathematics Form 1): "Rational numbers", "Irrational numbers", etc.
+    """
+    topic = models.ForeignKey(
+        SubjectTopic, on_delete=models.CASCADE, related_name='subtopics',
+        verbose_name="Mada Kuu (Topic)"
+    )
+    name = models.CharField(max_length=300, verbose_name="Jina la Subtopic / Mada Ndogo")
+    order = models.PositiveIntegerField(default=0, verbose_name="Mpangilio")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['topic', 'order']
+        unique_together = ['topic', 'name']
+        verbose_name = "Subtopic (Syllabus)"
+        verbose_name_plural = "Subtopics (Syllabus)"
+
+    def __str__(self):
+        return f"{self.topic.name} → {self.name}"

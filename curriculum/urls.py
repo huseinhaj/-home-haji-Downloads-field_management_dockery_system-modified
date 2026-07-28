@@ -60,7 +60,8 @@ urlpatterns = [
     path('api/update-teacher-profile/', views.ajax_update_teacher_profile, name='update_teacher_profile'),
 
     # API helpers
-    path('api/get-topics/', views.get_topics_by_subject, name='get_topics'),
+    path('api/get-topics/', views.ajax_get_topics_db, name='get_topics_db'),
+    path('api/get-subtopics/', views.ajax_get_subtopics_db, name='get_subtopics_db'),
     path('api/get-topics-ai/', views.get_topics_ai, name='get_topics_ai'),
     path('api/get-subtopics-ai/', views.get_subtopics_ai, name='get_subtopics_ai'),
     path('api/get-classes/', views.get_classes_by_level, name='get_classes'),

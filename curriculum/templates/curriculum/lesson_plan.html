@@ -568,54 +568,110 @@ document.addEventListener('DOMContentLoaded', function() {
     resetTopics();
     if (!subjectId || !className) return;
 
-    topicStatus.textContent = ' (AI inatafuta...)';
+    topicStatus.textContent = ' (inatafuta...)';
     topicLoading.style.display = 'block';
 
+    // Try database first, fall back to AI
+    fetch(`{% url 'curriculum:get_topics_db' %}?subject_id=${subjectId}&class_name=${encodeURIComponent(className)}`)
+      .then(r => r.json())
+      .then(data => {
+        topicLoading.style.display = 'none';
+        if (data.success && data.topics && data.topics.length > 0) {
+          topicStatus.textContent = ` (${data.topics.length} topics - TIE Syllabus)`;
+          data.topics.forEach(function(t) {
+            topicSelect.innerHTML += `<option value="${t.name}" data-topic-id="${t.id}">${t.name}</option>`;
+          });
+          const hint = document.createElement('div');
+          hint.className = 'topic-ai-hint';
+          hint.id = 'aiHint';
+          hint.innerHTML = '<i class="fas fa-book-open me-1"></i> Topics kutoka silabasi rasmi ya TIE. Unaweza pia kuandika topic yako mwenyewe hapa chini.';
+          topicSelect.parentNode.appendChild(hint);
+        } else {
+          // Fallback to AI
+          fallbackFetchTopicsAI(subjectId, className);
+        }
+      })
+      .catch(() => {
+        topicLoading.style.display = 'none';
+        // Fallback to AI
+        fallbackFetchTopicsAI(subjectId, className);
+      });
+  }
+  
+  function fallbackFetchTopicsAI(subjectId, className) {
+    topicStatus.textContent = ' (AI inatafuta...)';
+    topicLoading.style.display = 'block';
+    
     fetch(`{% url 'curriculum:get_topics_ai' %}?subject_id=${subjectId}&class_name=${encodeURIComponent(className)}&education_level=${encodeURIComponent(getEducationLevelName())}`)
       .then(r => r.json())
       .then(data => {
         topicLoading.style.display = 'none';
-        topicStatus.textContent = data.success && data.topics?.length ? ` (${data.topics.length} topics found)` : '';
+        topicStatus.textContent = data.success && data.topics?.length ? ` (${data.topics.length} topics - AI)` : '';
         if (data.success && data.topics && data.topics.length > 0) {
           data.topics.forEach(function(t) {
             topicSelect.innerHTML += `<option value="${t}">${t}</option>`;
           });
-          // Show hint
           const hint = document.createElement('div');
           hint.className = 'topic-ai-hint';
           hint.id = 'aiHint';
           hint.innerHTML = '<i class="fas fa-robot me-1"></i> Topics zimetolewa na AI. Unaweza pia kuandika topic yako mwenyewe hapa chini.';
           topicSelect.parentNode.appendChild(hint);
+        } else {
+          topicStatus.textContent = ' (Hakuna topics, andika mwenyewe)';
         }
       })
       .catch(() => {
         topicLoading.style.display = 'none';
-        topicStatus.textContent = ' (AI haipatikani, andika mwenyewe)';
+        topicStatus.textContent = ' (Haipatikani, andika mwenyewe)';
       });
   }
 
   function maybeFetchSubtopics() {
-    const topic = topicSelect.value;
-    const subjectId = subjectSelect.value;
-    const className = getSelectedClassName();
+    const selectedTopic = topicSelect.options[topicSelect.selectedIndex];
+    const topicValue = topicSelect.value;
+    const topicId = selectedTopic ? selectedTopic.getAttribute('data-topic-id') : null;
     subtopicSelect.innerHTML = '<option value="">— Chagua Subtopic —</option>';
     subtopicManual.value = '';
-    if (!topic || !subjectId || !className) return;
+    if (!topicValue) return;
 
-    subtopicLoading.style.display = 'block';
-    fetch(`{% url 'curriculum:get_subtopics_ai' %}?subject_id=${subjectId}&topic=${encodeURIComponent(topic)}&class_name=${encodeURIComponent(className)}&education_level=${encodeURIComponent(getEducationLevelName())}`)
-      .then(r => r.json())
-      .then(data => {
-        subtopicLoading.style.display = 'none';
-        if (data.success && data.subtopics && data.subtopics.length > 0) {
-          data.subtopics.forEach(function(s) {
-            subtopicSelect.innerHTML += `<option value="${s}">${s}</option>`;
-          });
-        } else {
-          subtopicSelect.innerHTML = '<option value="">— Hakuna subtopics, andika mwenyewe —</option>';
-        }
-      })
-      .catch(() => { subtopicLoading.style.display = 'none'; });
+    // If we have a topic ID from DB, use database
+    if (topicId) {
+      subtopicLoading.style.display = 'block';
+      fetch(`{% url 'curriculum:get_subtopics_db' %}?topic_id=${topicId}`)
+        .then(r => r.json())
+        .then(data => {
+          subtopicLoading.style.display = 'none';
+          if (data.success && data.subtopics && data.subtopics.length > 0) {
+            data.subtopics.forEach(function(s) {
+              subtopicSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+            });
+            subtopicSelect.innerHTML += '<option value="other">— Nyingine (andika mwenyewe) —</option>';
+          } else {
+            subtopicSelect.innerHTML = '<option value="">— Hakuna subtopics, andika mwenyewe —</option>';
+          }
+        })
+        .catch(() => { subtopicLoading.style.display = 'none'; });
+    } else {
+      // Fallback to AI subtopics
+      const subjectId = subjectSelect.value;
+      const className = getSelectedClassName();
+      if (!subjectId || !className) return;
+      
+      subtopicLoading.style.display = 'block';
+      fetch(`{% url 'curriculum:get_subtopics_ai' %}?subject_id=${subjectId}&topic=${encodeURIComponent(topicValue)}&class_name=${encodeURIComponent(className)}&education_level=${encodeURIComponent(getEducationLevelName())}`)
+        .then(r => r.json())
+        .then(data => {
+          subtopicLoading.style.display = 'none';
+          if (data.success && data.subtopics && data.subtopics.length > 0) {
+            data.subtopics.forEach(function(s) {
+              subtopicSelect.innerHTML += `<option value="${s}">${s}</option>`;
+            });
+          } else {
+            subtopicSelect.innerHTML = '<option value="">— Hakuna subtopics, andika mwenyewe —</option>';
+          }
+        })
+        .catch(() => { subtopicLoading.style.display = 'none'; });
+    }
   }
 
   // ── Get form data ──
@@ -630,7 +686,7 @@ document.addEventListener('DOMContentLoaded', function() {
       subject: selOpt ? selOpt.getAttribute('data-name') || selOpt.textContent : '',
       subject_id: subjectSelect.value,
       topic: topicValue,
-      subtopic: subtopicValue,
+      subtopic: subtopicValue === 'other' ? subtopicManual.value.trim() || '' : subtopicValue,
       term: document.getElementById('term').value,
       year: document.getElementById('year').value,
       duration: document.getElementById('duration').value,
