@@ -352,21 +352,35 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentFormData = null;
   let currentSavedId = null;
 
-  // ── Auto-calculate Total Students = Boys + Girls ──
-  function calcTotals() {
+  // ── Auto-calculate Total Students = Boys + Girls, with validation ──
+  function calcTotals(fieldId) {
     const tb = parseInt(document.getElementById('total_boys').value) || 0;
     const tg = parseInt(document.getElementById('total_girls').value) || 0;
-    const pb = parseInt(document.getElementById('present_boys').value) || 0;
-    const pg = parseInt(document.getElementById('present_girls').value) || 0;
+    let pb = parseInt(document.getElementById('present_boys').value) || 0;
+    let pg = parseInt(document.getElementById('present_girls').value) || 0;
+    
+    // Validate: present boys cannot exceed total boys
+    if (pb > tb && tb > 0) {
+      pb = tb;
+      document.getElementById('present_boys').value = tb;
+      showToast('Wavulana waliohudhuria hawawezi kuzidi waliojisajili (' + tb + ')', 'warning');
+    }
+    // Validate: present girls cannot exceed total girls
+    if (pg > tg && tg > 0) {
+      pg = tg;
+      document.getElementById('present_girls').value = tg;
+      showToast('Wasichana waliohudhuria hawawezi kuzidi waliojisajili (' + tg + ')', 'warning');
+    }
+    
     const total = tb + tg;
     const present = pb + pg;
     document.getElementById('total_students').value = total > 0 ? total : (tb > 0 || tg > 0 ? total : '');
     document.getElementById('present_students').value = present > 0 ? present : (pb > 0 || pg > 0 ? present : '');
   }
-  document.getElementById('total_boys').addEventListener('input', calcTotals);
-  document.getElementById('total_girls').addEventListener('input', calcTotals);
-  document.getElementById('present_boys').addEventListener('input', calcTotals);
-  document.getElementById('present_girls').addEventListener('input', calcTotals);
+  document.getElementById('total_boys').addEventListener('input', function() { calcTotals('total_boys'); });
+  document.getElementById('total_girls').addEventListener('input', function() { calcTotals('total_girls'); });
+  document.getElementById('present_boys').addEventListener('input', function() { calcTotals('present_boys'); });
+  document.getElementById('present_girls').addEventListener('input', function() { calcTotals('present_girls'); });
 
   // Helper: get selected option text
   function getSelectedText(el) {
