@@ -667,7 +667,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!data.phone_number || data.phone_number.length < 9) { showToast('Tafadhali weka namba sahihi ya simu', 'warning'); phoneNumber.focus(); return; }
     if (!data.region_id) { showToast('Chagua mkoa', 'warning'); regionSelect.focus(); return; }
     if (!data.district_id) { showToast('Chagua wilaya', 'warning'); districtSelect.focus(); return; }
-    if (!data.school_id) { showToast('Chagua shule', 'warning'); schoolSelect.focus(); return; }
+    if (!data.school_id) { showToast('Chagua shule', 'warning'); schoolSearch.focus(); return; }
     if (!data.subject_id) { showToast('Chagua somo', 'warning'); subjectSelect.focus(); return; }
 
     btn.disabled = true;
@@ -685,8 +685,7 @@ document.addEventListener('DOMContentLoaded', function() {
       btn.disabled = false;
       if (data.success) {
         document.getElementById('successName').textContent = fullName.value;
-        const sel = schoolSelect.options[schoolSelect.selectedIndex];
-        document.getElementById('successSchool').textContent = sel ? sel.textContent : '';
+        document.getElementById('successSchool').textContent = selectedSchoolData ? selectedSchoolData.name : schoolSearch.value || '';
         document.getElementById('registerForm').style.display = 'none';
         document.getElementById('stepSuccess').style.display = 'block';
         showToast(data.is_new ? 'Umefanikiwa kujisajili!' : 'Taarifa zimesasishwa!', 'success');

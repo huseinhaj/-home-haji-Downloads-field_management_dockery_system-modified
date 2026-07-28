@@ -430,18 +430,14 @@ def ajax_save_teacher(request):
     if not all([full_name, phone_number, region_id, district_id, school_id, subject_id]):
         return JsonResponse({'success': False, 'error': 'Tafadhali jaza sehemu zote.'}, status=400)
     
-    # Check if already exists by phone
+    # ENFORCE unique phone number: reject if already registered to another user
     existing = TLMTeacher.objects.filter(phone_number=phone_number).first()
     if existing:
-        # Update their info
-        existing.full_name = full_name
-        existing.region_id = region_id
-        existing.district_id = district_id
-        existing.school_id = school_id
-        existing.subject_id = subject_id
-        existing.save()
-        request.session['tlm_teacher_id'] = existing.id
-        return JsonResponse({'success': True, 'is_new': False})
+        return JsonResponse({
+            'success': False,
+            'error': 'Namba hii ya simu tayari imesajiliwa kwa mwalimu mwingine. Tafadhali tumia sehemu ya "Tayari umesajiliwa?" juu ya ukurasa au wasiliana na msimamizi.',
+            'phone_exists': True,
+        }, status=409)
     
     # Wrap in try-except for security: prevent duplicate phone numbers (race condition)
     try:
@@ -456,18 +452,12 @@ def ajax_save_teacher(request):
         request.session['tlm_teacher_id'] = teacher.id
         return JsonResponse({'success': True, 'is_new': True})
     except IntegrityError:
-        # Race condition: another request created this phone number between check and create
-        existing = TLMTeacher.objects.filter(phone_number=phone_number).first()
-        if existing:
-            existing.full_name = full_name
-            existing.region_id = region_id
-            existing.district_id = district_id
-            existing.school_id = school_id
-            existing.subject_id = subject_id
-            existing.save()
-            request.session['tlm_teacher_id'] = existing.id
-            return JsonResponse({'success': True, 'is_new': False})
-        return JsonResponse({'success': False, 'error': 'Hitilafu ya usajili. Jaribu tena.'}, status=400)
+        # Race condition: another request got there first
+        return JsonResponse({
+            'success': False,
+            'error': 'Namba hii ya simu tayari imesajiliwa. Tafadhali tumia sehemu ya utafutaji juu ya ukurasa.',
+            'phone_exists': True,
+        }, status=409)
 
 
 def ajax_lookup_teacher(request):
