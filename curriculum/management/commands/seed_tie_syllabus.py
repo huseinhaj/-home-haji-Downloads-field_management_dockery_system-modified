@@ -18,6 +18,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from field_app.models import Subject
 from curriculum.models import SubjectTopic, TopicSubtopic
+from curriculum.management.data.additional_subjects_data import get_additional_form_data
 
 # =============================================================================
 # FORM 1 TOPICS & SUBTOPICS — TIE Official Syllabus
@@ -1246,6 +1247,10 @@ class Command(BaseCommand):
             var_name, display_name = form_map[form]
             syllabus_data = globals()[var_name]
             
+            # Merge additional subjects data BEFORE filtering
+            additional_data = get_additional_form_data(int(form))
+            syllabus_data = {**syllabus_data, **additional_data}
+            
             if subject_name:
                 matched = {}
                 for name, data in syllabus_data.items():
@@ -1264,6 +1269,10 @@ class Command(BaseCommand):
             for f_num in ['1', '2', '3', '4']:
                 var_name, display_name = form_map[f_num]
                 all_data = globals()[var_name]
+                
+                # Merge additional subjects data BEFORE filtering
+                additional_data = get_additional_form_data(int(f_num))
+                all_data = {**all_data, **additional_data}
                 
                 if subject_name:
                     matched = {}
@@ -1285,11 +1294,14 @@ class Command(BaseCommand):
             ('4', 'Form 4', FORM_4_SYLLABUS),
         ]
         for f_num, f_name, syllabus_data in all_syllabi:
+            # Merge additional subjects
+            additional = get_additional_form_data(int(f_num))
+            merged = {**syllabus_data, **additional}
             self.stdout.write(f"\n📚 {f_name}:")
-            for name in syllabus_data.keys():
-                topics_count = len(syllabus_data[name]['topics'])
+            for name in merged.keys():
+                topics_count = len(merged[name]['topics'])
                 subtopics_count = sum(
-                    len(t.get('subtopics', [])) for t in syllabus_data[name]['topics']
+                    len(t.get('subtopics', [])) for t in merged[name]['topics']
                 )
                 self.stdout.write(f"  • {name}: {topics_count} topics, {subtopics_count} subtopics")
 
