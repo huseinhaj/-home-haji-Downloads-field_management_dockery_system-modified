@@ -1208,7 +1208,6 @@ def download_scheme_word(request):
     return response
 
 
-@login_required
 def ajax_load_saved_scheme(request):
     """Load most recent saved SchemeOfWork from DB (works for both Django users & TLM teachers)."""
     try:
@@ -2117,7 +2116,6 @@ def ajax_save_lesson_edits(request):
         return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
 
 
-@login_required
 def ajax_load_saved_lessonplan(request):
     """Load most recent saved LessonPlan from DB (works for both Django users & TLM teachers)."""
     try:
