@@ -541,12 +541,17 @@ def generate_scheme_view(request):
     for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
         classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
 
-    # Show ALL subjects for ALL education levels — no primary/secondary filtering
-    all_subjects = list(
-        Subject.objects.all().order_by('name').values('id', 'name')
-    )
+    # Filter subjects by education level (Primary → primary, Secondary/Advanced → secondary)
+    def _subjects_for_level(level_name):
+        name_lower = level_name.lower()
+        if 'primary' in name_lower:
+            return list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name'))
+        else:
+            # Ordinary Level & Advanced Level → secondary subjects
+            return list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name'))
+
     subjects_by_level = {
-        lvl.id: all_subjects
+        lvl.id: _subjects_for_level(lvl.name)
         for lvl in education_levels
     }
 
@@ -1261,12 +1266,17 @@ def lesson_plan_view(request):
     for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
         classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
 
-    # Show ALL subjects for ALL education levels — no primary/secondary filtering
-    all_subjects = list(
-        Subject.objects.all().order_by('name').values('id', 'name')
-    )
+    # Filter subjects by education level (Primary → primary, Secondary/Advanced → secondary)
+    def _subjects_for_level(level_name):
+        name_lower = level_name.lower()
+        if 'primary' in name_lower:
+            return list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name'))
+        else:
+            # Ordinary Level & Advanced Level → secondary subjects
+            return list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name'))
+
     subjects_by_level = {
-        lvl.id: all_subjects
+        lvl.id: _subjects_for_level(lvl.name)
         for lvl in education_levels
     }
 
@@ -2567,15 +2577,21 @@ def get_classes_by_level(request):
 
 
 def get_subjects_by_level(request):
-    """AJAX: Get subjects for a given education level."""
+    """AJAX: Get subjects for a given education level.
+    Primary School → primary subjects
+    Ordinary/Advanced Level → secondary subjects
+    """
     level_id = request.GET.get('level_id')
     if not level_id:
         return JsonResponse([], safe=False)
     level = EducationLevel.objects.filter(id=level_id).first()
     if not level:
         return JsonResponse([], safe=False)
-    is_primary = 'primary' in level.name.lower()
-    subjects = Subject.objects.filter(level='primary' if is_primary else 'secondary').order_by('name')
+    if 'primary' in level.name.lower():
+        subjects = Subject.objects.filter(level='primary').order_by('name')
+    else:
+        # Ordinary Level & Advanced Level → secondary subjects
+        subjects = Subject.objects.filter(level='secondary').order_by('name')
     return JsonResponse([{'id': s.id, 'name': s.name} for s in subjects], safe=False)
 
 
