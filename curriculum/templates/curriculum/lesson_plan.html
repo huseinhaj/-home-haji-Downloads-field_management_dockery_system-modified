@@ -420,15 +420,70 @@ document.addEventListener('DOMContentLoaded', function() {
     resetTopics();
   });
 
-  // ── Auto-fill subject from teacher registration ──
-  // (MUST be placed AFTER the event listener so dispatchEvent works!)
+  // ── Teacher registration data for auto-fill ──
+  // We use these to pre-fill the form for ALL teachers (new and old)
   const teacherSubjectName = '{{ teacher_subject_name|escapejs }}';
   const teacherSubjectId = '{{ teacher_subject_id|escapejs }}';
   const teacherSchoolLevel = '{{ teacher_school_level|escapejs }}';
   const teacherClassName = '{{ teacher_class_name|escapejs }}';
   const teacherStream = '{{ teacher_stream|escapejs }}';
   
-  // ── Auto-fill education level based on school level ──
+  // ── Helper: try to select a value in a select element once options exist ──
+  function selectOptionByValueOrText(selectEl, value, textMatcher) {
+    const opts = selectEl.querySelectorAll('option');
+    for (let opt of opts) {
+      if (!opt.value) continue;
+      const match = textMatcher(opt);
+      if (opt.value === value || match) {
+        selectEl.value = opt.value;
+        selectEl.dispatchEvent(new Event('change'));
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  // ── Auto-fill: (1) Set up observers BEFORE triggering level change ──
+  let classAutoFilled = false;
+  let subjectAutoFilled = false;
+  
+  // Class observer: fires when education level change populates class options
+  if (teacherClassName) {
+    const classObserver = new MutationObserver(function() {
+      if (classAutoFilled) return;
+      if (selectOptionByValueOrText(classSelect, teacherClassName, function(opt) {
+        return opt.textContent === teacherClassName;
+      })) {
+        classAutoFilled = true;
+        classObserver.disconnect();
+      }
+    });
+    classObserver.observe(classSelect, { childList: true, subtree: true });
+  }
+  
+  // Subject observer: fires when education level change populates subject options
+  if (teacherSubjectName) {
+    const tSubjLower = teacherSubjectName.toLowerCase();
+    const subjectObserver = new MutationObserver(function() {
+      if (subjectAutoFilled) return;
+      if (selectOptionByValueOrText(subjectSelect, '', function(opt) {
+        const optName = opt.getAttribute('data-name') || opt.textContent;
+        return optName.toLowerCase() === tSubjLower;
+      })) {
+        subjectAutoFilled = true;
+        subjectObserver.disconnect();
+      }
+    });
+    subjectObserver.observe(subjectSelect, { childList: true, subtree: true });
+  }
+  
+  // Stream (simple — no observer needed)
+  if (teacherStream) {
+    document.getElementById('stream').value = teacherStream;
+  }
+  
+  // ── Auto-fill: (2) Trigger education level change (populates class & subject synchronously) ──
+  let levelWasAutoSet = false;
   if (teacherSchoolLevel) {
     const levelName = teacherSchoolLevel.toLowerCase();
     for (let opt of levelSelect.options) {
@@ -437,67 +492,54 @@ document.addEventListener('DOMContentLoaded', function() {
         if (levelName === 'primary' && optName.includes('primary')) {
           levelSelect.value = opt.value;
           levelSelect.dispatchEvent(new Event('change'));
+          levelWasAutoSet = true;
           break;
         } else if (levelName === 'secondary' && (optName.includes('ordinary') || optName.includes('secondary'))) {
           levelSelect.value = opt.value;
           levelSelect.dispatchEvent(new Event('change'));
+          levelWasAutoSet = true;
           break;
         }
       }
     }
   }
   
-  // ── Auto-fill class and stream from registration ──
-  if (teacherClassName) {
-    const classObserver = new MutationObserver(function() {
-      const opts = classSelect.querySelectorAll('option');
-      for (let opt of opts) {
-        if (opt.value === teacherClassName || opt.textContent === teacherClassName) {
-          classSelect.value = teacherClassName;
-          classSelect.dispatchEvent(new Event('change'));
-          classObserver.disconnect();
-          break;
-        }
-      }
-    });
-    classObserver.observe(classSelect, { childList: true, subtree: true });
+  // ── Auto-fill: (3) Immediate fallback — options are already populated after dispatch ──
+  // Since dispatchEvent is synchronous, options exist NOW. Check immediately.
+  if (teacherClassName && !classAutoFilled) {
+    if (selectOptionByValueOrText(classSelect, teacherClassName, function(opt) {
+      return opt.textContent === teacherClassName;
+    })) {
+      classAutoFilled = true;
+    }
   }
   
-  if (teacherStream) {
-    document.getElementById('stream').value = teacherStream;
+  if (teacherSubjectName && !subjectAutoFilled) {
+    const tSubjLower = teacherSubjectName.toLowerCase();
+    if (selectOptionByValueOrText(subjectSelect, '', function(opt) {
+      const optName = opt.getAttribute('data-name') || opt.textContent;
+      return optName.toLowerCase() === tSubjLower;
+    })) {
+      subjectAutoFilled = true;
+    }
   }
   
-  // ── Auto-fill subject from teacher registration ──
-  if (teacherSubjectName) {
-    const observer = new MutationObserver(function() {
-      const opts = subjectSelect.querySelectorAll('option');
-      for (let opt of opts) {
-        const optName = opt.getAttribute('data-name') || opt.textContent;
-        if (optName.toLowerCase() === teacherSubjectName.toLowerCase()) {
-          subjectSelect.value = opt.value;
-          observer.disconnect();
-          break;
-        }
-      }
-    });
-    observer.observe(subjectSelect, { childList: true, subtree: true });
-    
-    // Pre-select education level that contains this subject (fallback)
-    if (!teacherSchoolLevel) {
-      const subjLevel = '{{ teacher_subject_level|escapejs }}';
-      if (subjLevel) {
-        for (let opt of levelSelect.options) {
-          if (opt.value) {
-            const levelId = opt.value;
-            if (SUBJECTS_BY_LEVEL[levelId]) {
-              const found = SUBJECTS_BY_LEVEL[levelId].some(s => 
-                s.name.toLowerCase() === teacherSubjectName.toLowerCase()
-              );
-              if (found) {
-                levelSelect.value = levelId;
-                levelSelect.dispatchEvent(new Event('change'));
-                break;
-              }
+  // ── Fallback: if no school level was found, try to find education level by subject ──
+  if (!levelWasAutoSet && teacherSubjectName) {
+    const subjLevel = '{{ teacher_subject_level|escapejs }}';
+    const tSubjLower = teacherSubjectName.toLowerCase();
+    if (subjLevel) {
+      for (let opt of levelSelect.options) {
+        if (opt.value) {
+          const levelId = opt.value;
+          if (SUBJECTS_BY_LEVEL[levelId]) {
+            const found = SUBJECTS_BY_LEVEL[levelId].some(s => 
+              s.name.toLowerCase() === tSubjLower
+            );
+            if (found) {
+              levelSelect.value = levelId;
+              levelSelect.dispatchEvent(new Event('change'));
+              break;
             }
           }
         }
