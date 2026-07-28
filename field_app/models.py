@@ -220,6 +220,7 @@ class Subject(models.Model):
     LEVEL_CHOICES = [
         ('primary', 'Primary'),
         ('secondary', 'Secondary'),
+        ('advanced', 'Advanced'),
     ]
 
     name = models.CharField(max_length=100)

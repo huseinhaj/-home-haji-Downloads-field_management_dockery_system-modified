@@ -541,13 +541,15 @@ def generate_scheme_view(request):
     for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
         classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
 
-    # Filter subjects by education level (Primary → primary, Secondary/Advanced → secondary)
+    # Filter subjects by education level (Primary → primary, Advanced → advanced, Ordinary → secondary)
     def _subjects_for_level(level_name):
         name_lower = level_name.lower()
         if 'primary' in name_lower:
             return list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name'))
+        elif 'advanced' in name_lower:
+            return list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name'))
         else:
-            # Ordinary Level & Advanced Level → secondary subjects
+            # Ordinary Level → secondary subjects
             return list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name'))
 
     subjects_by_level = {
@@ -1266,13 +1268,15 @@ def lesson_plan_view(request):
     for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
         classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
 
-    # Filter subjects by education level (Primary → primary, Secondary/Advanced → secondary)
+    # Filter subjects by education level (Primary → primary, Advanced → advanced, Ordinary → secondary)
     def _subjects_for_level(level_name):
         name_lower = level_name.lower()
         if 'primary' in name_lower:
             return list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name'))
+        elif 'advanced' in name_lower:
+            return list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name'))
         else:
-            # Ordinary Level & Advanced Level → secondary subjects
+            # Ordinary Level → secondary subjects
             return list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name'))
 
     subjects_by_level = {
@@ -2589,8 +2593,10 @@ def get_subjects_by_level(request):
         return JsonResponse([], safe=False)
     if 'primary' in level.name.lower():
         subjects = Subject.objects.filter(level='primary').order_by('name')
+    elif 'advanced' in level.name.lower():
+        subjects = Subject.objects.filter(level='advanced').order_by('name')
     else:
-        # Ordinary Level & Advanced Level → secondary subjects
+        # Ordinary Level → secondary subjects
         subjects = Subject.objects.filter(level='secondary').order_by('name')
     return JsonResponse([{'id': s.id, 'name': s.name} for s in subjects], safe=False)
 
