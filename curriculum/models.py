@@ -23,6 +23,13 @@ class TLMTeacher(models.Model):
     school = models.ForeignKey(
         School, on_delete=models.SET_NULL, null=True, verbose_name="Shule"
     )
+    
+    # New fields for auto-fill in lesson plan / scheme
+    class_name = models.CharField(max_length=50, blank=True, default='', verbose_name="Darasa")
+    stream = models.CharField(max_length=10, blank=True, default='', verbose_name="Stream/Section")
+    total_boys = models.PositiveIntegerField(default=0, verbose_name="Wavulana (Registered)")
+    total_girls = models.PositiveIntegerField(default=0, verbose_name="Wasichana (Registered)")
+    
     subject = models.ForeignKey(
         Subject, on_delete=models.SET_NULL, null=True, verbose_name="Somo"
     )

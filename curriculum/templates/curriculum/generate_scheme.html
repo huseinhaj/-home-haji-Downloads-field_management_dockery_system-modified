@@ -160,6 +160,18 @@
         <div class="c-card-body">
           <form id="schemeForm" class="form-compact">
             {% csrf_token %}
+
+            <!-- Teacher Name + School Name FIRST (auto-filled from registration) -->
+            <div class="mb-2">
+              <label>Teacher Name</label>
+              <input class="form-control" id="teacher_name" value="{{ teacher_name }}" required>
+            </div>
+            <div class="mb-2">
+              <label>School Name</label>
+              <input class="form-control" id="school_name" value="{{ teacher_school_name }}">
+            </div>
+
+            <!-- Education Level (auto-selected based on school) -->
             <div class="mb-2">
               <label>Education Level</label>
               <select class="form-control form-select" id="education_level" required>
@@ -222,14 +234,6 @@
                 <label>Syllabus</label>
                 <input class="form-control" id="syllabus" value="New Syllabus">
               </div>
-            </div>
-            <div class="mb-2">
-              <label>Teacher Name</label>
-              <input class="form-control" id="teacher_name" value="{{ teacher_name }}" required>
-            </div>
-            <div class="mb-2">
-              <label>School Name</label>
-              <input class="form-control" id="school_name" value="{{ teacher_school_name }}">
             </div>
 
             <div class="row g-1 mb-2 mt-2">
@@ -516,12 +520,54 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // ── Auto-fill education level based on school level ──
+  const teacherSchoolLevel = '{{ teacher_school_level|escapejs }}';
+  const teacherClassName = '{{ teacher_class_name|escapejs }}';
+  const teacherStream = '{{ teacher_stream|escapejs }}';
+  
+  if (teacherSchoolLevel) {
+    const levelName = teacherSchoolLevel.toLowerCase();
+    for (let opt of levelSelect.options) {
+      if (opt.value) {
+        const optName = (opt.textContent || '').toLowerCase();
+        if (levelName === 'primary' && optName.includes('primary')) {
+          levelSelect.value = opt.value;
+          levelSelect.dispatchEvent(new Event('change'));
+          break;
+        } else if (levelName === 'secondary' && (optName.includes('ordinary') || optName.includes('secondary'))) {
+          levelSelect.value = opt.value;
+          levelSelect.dispatchEvent(new Event('change'));
+          break;
+        }
+      }
+    }
+  }
+  
+  // ── Auto-fill class and stream from registration ──
+  if (teacherClassName) {
+    const classObserver = new MutationObserver(function() {
+      const opts = classSelect.querySelectorAll('option');
+      for (let opt of opts) {
+        if (opt.value === teacherClassName || opt.textContent === teacherClassName) {
+          classSelect.value = teacherClassName;
+          classSelect.dispatchEvent(new Event('change'));
+          classObserver.disconnect();
+          break;
+        }
+      }
+    });
+    classObserver.observe(classSelect, { childList: true, subtree: true });
+  }
+  
+  if (teacherStream) {
+    document.getElementById('stream').value = teacherStream;
+  }
+  
   // ── Auto-fill subject from teacher registration ──
   const teacherSubjectName = '{{ teacher_subject_name|escapejs }}';
   const teacherSubjectId = '{{ teacher_subject_id|escapejs }}';
   
   if (teacherSubjectName) {
-    // After cascade populates subjects, select the teacher's subject
     const observer = new MutationObserver(function() {
       const opts = subjectSelect.querySelectorAll('option');
       for (let opt of opts) {
@@ -534,22 +580,22 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     observer.observe(subjectSelect, { childList: true, subtree: true });
     
-    // Also trigger cascade by selecting the education level that matches the subject's level
-    // We'll pre-select based on the subject's primary/secondary level
-    const subjLevel = '{{ teacher_subject_level|escapejs }}';
-    if (subjLevel) {
-      for (let opt of levelSelect.options) {
-        if (opt.value) {
-          // Find which education level contains this subject
-          const levelId = opt.value;
-          if (SUBJECTS_BY_LEVEL[levelId]) {
-            const found = SUBJECTS_BY_LEVEL[levelId].some(s => 
-              s.name.toLowerCase() === teacherSubjectName.toLowerCase()
-            );
-            if (found) {
-              levelSelect.value = levelId;
-              levelSelect.dispatchEvent(new Event('change'));
-              break;
+    // Fallback: if no school level was provided, try to find education level by subject
+    if (!teacherSchoolLevel) {
+      const subjLevel = '{{ teacher_subject_level|escapejs }}';
+      if (subjLevel) {
+        for (let opt of levelSelect.options) {
+          if (opt.value) {
+            const levelId = opt.value;
+            if (SUBJECTS_BY_LEVEL[levelId]) {
+              const found = SUBJECTS_BY_LEVEL[levelId].some(s => 
+                s.name.toLowerCase() === teacherSubjectName.toLowerCase()
+              );
+              if (found) {
+                levelSelect.value = levelId;
+                levelSelect.dispatchEvent(new Event('change'));
+                break;
+              }
             }
           }
         }

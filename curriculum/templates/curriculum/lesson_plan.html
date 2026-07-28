@@ -129,6 +129,18 @@
         <div class="c-card-body form-lesson">
           <form id="lessonPlanForm">
             {% csrf_token %}
+
+            <!-- Teacher Name + School Name FIRST (auto-filled from registration) -->
+            <div class="mb-2">
+              <label>Teacher Name</label>
+              <input class="form-control" id="teacher_name" value="{{ teacher_name }}" required>
+            </div>
+            <div class="mb-2">
+              <label>School Name</label>
+              <input class="form-control" id="school_name" value="{{ teacher_school_name }}">
+            </div>
+
+            <!-- Education Level (auto-selected based on school) -->
             <div class="mb-2">
               <label>Education Level</label>
               <select class="form-control form-select" id="education_level" required>
@@ -205,29 +217,32 @@
                 <input class="form-control" id="duration" value="40" type="number" min="5" max="180">
               </div>
             </div>
-            <!-- Student Statistics: Boys / Girls / Total Breakdown -->
+
+            <!-- Student Statistics: Registered (pre-filled) + Present (fill here) -->
             <div class="mb-2" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:0.6rem;">
               <label style="font-weight:700;font-size:var(--font-size-xs);color:var(--green-500);margin-bottom:6px;display:flex;align-items:center;gap:5px;">
                 <i class="fas fa-user-graduate"></i> Student Statistics
               </label>
-              <!-- Registered -->
-              <label style="font-size:10px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">Registered</label>
+              <!-- Registered (pre-filled from registration) -->
+              <label style="font-size:10px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">
+                Registered <span style="font-weight:400;color:var(--text-muted);font-size:8px;">(imejazwa kutoka usajili)</span>
+              </label>
               <div class="row g-1 mb-1">
                 <div class="col-4">
                   <label style="font-size:9px;color:var(--text-muted);">Boys</label>
-                  <input class="form-control" id="total_boys" type="number" min="0" max="200" style="font-size:12px;">
+                  <input class="form-control" id="total_boys" type="number" min="0" max="200" style="font-size:12px;" value="{{ teacher_total_boys }}">
                 </div>
                 <div class="col-4">
                   <label style="font-size:9px;color:var(--text-muted);">Girls</label>
-                  <input class="form-control" id="total_girls" type="number" min="0" max="200" style="font-size:12px;">
+                  <input class="form-control" id="total_girls" type="number" min="0" max="200" style="font-size:12px;" value="{{ teacher_total_girls }}">
                 </div>
                 <div class="col-4">
                   <label style="font-size:9px;color:var(--text-muted);">Total</label>
-                  <input class="form-control" id="total_students" type="number" readonly style="font-size:12px;background:var(--bg-glass);cursor:default;">
+                  <input class="form-control" id="total_students" type="number" readonly style="font-size:12px;background:var(--bg-glass);cursor:default;" value="{{ teacher_total_boys|add:teacher_total_girls }}">
                 </div>
               </div>
-              <!-- Present -->
-              <label style="font-size:10px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">Present</label>
+              <!-- Present (teacher fills here) -->
+              <label style="font-size:10px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">Present <span style="font-weight:400;color:var(--text-muted);font-size:8px;">(jaza hapa)</span></label>
               <div class="row g-1">
                 <div class="col-4">
                   <label style="font-size:9px;color:var(--text-muted);">Boys</label>
@@ -243,15 +258,6 @@
                 </div>
               </div>
             </div>
-            <div class="mb-2">
-              <label>Teacher Name</label>
-              <input class="form-control" id="teacher_name" value="{{ teacher_name }}" required>
-            </div>
-            <div class="mb-2">
-              <label>School Name</label>
-              <input class="form-control" id="school_name" value="{{ teacher_school_name }}">
-            </div>
-
 
             <!-- Buttons -->
             <button type="submit" class="btn-tlm btn-gold-tlm w-100 py-2 mt-1" id="generateBtn">
@@ -418,7 +424,50 @@ document.addEventListener('DOMContentLoaded', function() {
   // (MUST be placed AFTER the event listener so dispatchEvent works!)
   const teacherSubjectName = '{{ teacher_subject_name|escapejs }}';
   const teacherSubjectId = '{{ teacher_subject_id|escapejs }}';
+  const teacherSchoolLevel = '{{ teacher_school_level|escapejs }}';
+  const teacherClassName = '{{ teacher_class_name|escapejs }}';
+  const teacherStream = '{{ teacher_stream|escapejs }}';
   
+  // ── Auto-fill education level based on school level ──
+  if (teacherSchoolLevel) {
+    const levelName = teacherSchoolLevel.toLowerCase();
+    for (let opt of levelSelect.options) {
+      if (opt.value) {
+        const optName = (opt.textContent || '').toLowerCase();
+        if (levelName === 'primary' && optName.includes('primary')) {
+          levelSelect.value = opt.value;
+          levelSelect.dispatchEvent(new Event('change'));
+          break;
+        } else if (levelName === 'secondary' && (optName.includes('ordinary') || optName.includes('secondary'))) {
+          levelSelect.value = opt.value;
+          levelSelect.dispatchEvent(new Event('change'));
+          break;
+        }
+      }
+    }
+  }
+  
+  // ── Auto-fill class and stream from registration ──
+  if (teacherClassName) {
+    const classObserver = new MutationObserver(function() {
+      const opts = classSelect.querySelectorAll('option');
+      for (let opt of opts) {
+        if (opt.value === teacherClassName || opt.textContent === teacherClassName) {
+          classSelect.value = teacherClassName;
+          classSelect.dispatchEvent(new Event('change'));
+          classObserver.disconnect();
+          break;
+        }
+      }
+    });
+    classObserver.observe(classSelect, { childList: true, subtree: true });
+  }
+  
+  if (teacherStream) {
+    document.getElementById('stream').value = teacherStream;
+  }
+  
+  // ── Auto-fill subject from teacher registration ──
   if (teacherSubjectName) {
     const observer = new MutationObserver(function() {
       const opts = subjectSelect.querySelectorAll('option');
@@ -433,20 +482,22 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     observer.observe(subjectSelect, { childList: true, subtree: true });
     
-    // Pre-select education level that contains this subject
-    const subjLevel = '{{ teacher_subject_level|escapejs }}';
-    if (subjLevel) {
-      for (let opt of levelSelect.options) {
-        if (opt.value) {
-          const levelId = opt.value;
-          if (SUBJECTS_BY_LEVEL[levelId]) {
-            const found = SUBJECTS_BY_LEVEL[levelId].some(s => 
-              s.name.toLowerCase() === teacherSubjectName.toLowerCase()
-            );
-            if (found) {
-              levelSelect.value = levelId;
-              levelSelect.dispatchEvent(new Event('change'));
-              break;
+    // Pre-select education level that contains this subject (fallback)
+    if (!teacherSchoolLevel) {
+      const subjLevel = '{{ teacher_subject_level|escapejs }}';
+      if (subjLevel) {
+        for (let opt of levelSelect.options) {
+          if (opt.value) {
+            const levelId = opt.value;
+            if (SUBJECTS_BY_LEVEL[levelId]) {
+              const found = SUBJECTS_BY_LEVEL[levelId].some(s => 
+                s.name.toLowerCase() === teacherSubjectName.toLowerCase()
+              );
+              if (found) {
+                levelSelect.value = levelId;
+                levelSelect.dispatchEvent(new Event('change'));
+                break;
+              }
             }
           }
         }

@@ -377,7 +377,8 @@ def ajax_submit_testimonial(request):
 
 def teacher_register(request):
     """
-    Registration page: teacher selects Region → District → School → Subject.
+    Registration page: teacher selects Region → District → School → 
+    (auto Education Level) → Class → Stream → Subject → Registered Students.
     If already registered (session), redirect to landing.
     """
     # Check if already registered
@@ -389,9 +390,18 @@ def teacher_register(request):
 
     regions = Region.objects.all().order_by('name')
     subjects = Subject.objects.all().order_by('name')
+    
+    import json as _json
+    education_levels = EducationLevel.objects.all().order_by('order')
+    classes_by_level = {}
+    for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
+        classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
+    
     return render(request, 'curriculum/teacher_register.html', {
         'regions': regions,
         'subjects': subjects,
+        'education_levels': education_levels,
+        'classes_by_level_json': _json.dumps(classes_by_level),
     })
 
 
@@ -425,7 +435,11 @@ def ajax_save_teacher(request):
     region_id = data.get('region_id')
     district_id = data.get('district_id')
     school_id = data.get('school_id')
+    class_name = data.get('class_name', '').strip()
+    stream = data.get('stream', '').strip()
     subject_id = data.get('subject_id')
+    total_boys = data.get('total_boys', 0)
+    total_girls = data.get('total_girls', 0)
     
     if not all([full_name, phone_number, region_id, district_id, school_id, subject_id]):
         return JsonResponse({'success': False, 'error': 'Tafadhali jaza sehemu zote.'}, status=400)
@@ -447,7 +461,11 @@ def ajax_save_teacher(request):
             region_id=region_id,
             district_id=district_id,
             school_id=school_id,
+            class_name=class_name,
+            stream=stream,
             subject_id=subject_id,
+            total_boys=int(total_boys) if total_boys else 0,
+            total_girls=int(total_girls) if total_girls else 0,
         )
         request.session['tlm_teacher_id'] = teacher.id
         return JsonResponse({'success': True, 'is_new': True})
@@ -575,9 +593,14 @@ def generate_scheme_view(request):
     # Get teacher info for auto-fill
     teacher_name = teacher.full_name if teacher else ''
     teacher_school_name = teacher.school.name if teacher and teacher.school else ''
+    teacher_school_level = teacher.school.level if teacher and teacher.school else ''
     teacher_subject_id = teacher.subject.id if teacher and teacher.subject else ''
     teacher_subject_name = teacher.subject.name if teacher and teacher.subject else ''
     teacher_subject_level = teacher.subject.level if teacher and teacher.subject else ''
+    teacher_class_name = teacher.class_name if teacher else ''
+    teacher_stream = teacher.stream if teacher else ''
+    teacher_total_boys = teacher.total_boys if teacher else 0
+    teacher_total_girls = teacher.total_girls if teacher else 0
 
     return render(request, 'curriculum/generate_scheme.html', {
         'form': form,
@@ -589,9 +612,14 @@ def generate_scheme_view(request):
         'teacher': teacher,
         'teacher_name': teacher_name,
         'teacher_school_name': teacher_school_name,
+        'teacher_school_level': teacher_school_level,
         'teacher_subject_id': teacher_subject_id,
         'teacher_subject_name': teacher_subject_name,
         'teacher_subject_level': teacher_subject_level,
+        'teacher_class_name': teacher_class_name,
+        'teacher_stream': teacher_stream,
+        'teacher_total_boys': teacher_total_boys,
+        'teacher_total_girls': teacher_total_girls,
     })
 
 
@@ -1302,9 +1330,14 @@ def lesson_plan_view(request):
     # Get teacher info for auto-fill
     teacher_name = teacher.full_name if teacher else ''
     teacher_school_name = teacher.school.name if teacher and teacher.school else ''
+    teacher_school_level = teacher.school.level if teacher and teacher.school else ''
     teacher_subject_id = teacher.subject.id if teacher and teacher.subject else ''
     teacher_subject_name = teacher.subject.name if teacher and teacher.subject else ''
     teacher_subject_level = teacher.subject.level if teacher and teacher.subject else ''
+    teacher_class_name = teacher.class_name if teacher else ''
+    teacher_stream = teacher.stream if teacher else ''
+    teacher_total_boys = teacher.total_boys if teacher else 0
+    teacher_total_girls = teacher.total_girls if teacher else 0
 
     return render(request, 'curriculum/lesson_plan.html', {
         'education_levels': education_levels,
@@ -1315,9 +1348,14 @@ def lesson_plan_view(request):
         'teacher': teacher,
         'teacher_name': teacher_name,
         'teacher_school_name': teacher_school_name,
+        'teacher_school_level': teacher_school_level,
         'teacher_subject_id': teacher_subject_id,
         'teacher_subject_name': teacher_subject_name,
         'teacher_subject_level': teacher_subject_level,
+        'teacher_class_name': teacher_class_name,
+        'teacher_stream': teacher_stream,
+        'teacher_total_boys': teacher_total_boys,
+        'teacher_total_girls': teacher_total_girls,
     })
 
 
