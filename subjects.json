@@ -201,7 +201,7 @@
   "model": "field_app.subject",
   "pk": 23,
   "fields": {
-    "name": "Computer Studies",
+    "name": "Computer Science",
     "code": "S13",
     "level": "secondary"
   }
