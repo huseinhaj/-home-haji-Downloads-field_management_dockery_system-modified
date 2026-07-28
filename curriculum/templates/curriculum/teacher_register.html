@@ -287,11 +287,14 @@
             </button>
           </div>
           <div id="lookupResult" style="display:none;margin-top:8px;font-size:var(--font-size-sm);"></div>
-          <div class="text-center mt-2" style="border-top:1px dashed var(--border-color);padding-top:10px;">
-            <span style="font-size:var(--font-size-xs);color:var(--text-muted);">
-              <span data-lang-sw>Hujasajiliwa? Jaza fomu hapa chini</span>
-              <span data-lang-en>Not registered? Fill the form below</span>
-            </span>
+          <div style="border-top:1px dashed var(--border-color);padding-top:12px;margin-top:8px;">
+            <button type="button" class="btn-tlm btn-primary-tlm w-100 py-2" 
+                    onclick="document.getElementById('registerForm').scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('fullName').focus();"
+                    style="border-radius:var(--radius-md);font-weight:700;font-size:var(--font-size-sm);">
+              <i class="fas fa-user-plus me-2"></i>
+              <span data-lang-sw>Jisajili Sasa</span>
+              <span data-lang-en>Register Now</span>
+            </button>
           </div>
         </div>
 
