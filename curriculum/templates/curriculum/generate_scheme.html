@@ -116,6 +116,17 @@
     font-size: var(--font-size-sm);
     padding: 0.45rem 0.65rem;
   }
+
+  .topic-ai-hint {
+    background: rgba(31,122,61,0.04);
+    border: 1px dashed var(--green-500);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 0.85rem;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    animation: fadeIn 300ms var(--ease-out);
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
 {% endblock %}
 
@@ -207,6 +218,30 @@
                 <option value="">— Chagua Somo —</option>
               </select>
             </div>
+
+            <!-- Topic & Subtopic (kutoka TIE Syllabus DB) -->
+            <div class="mb-2">
+              <label>Topic <span id="topicStatus" style="font-weight:400;font-size:9px;color:var(--text-muted);"></span></label>
+              <select class="form-control form-select" id="topic">
+                <option value="">— Chagua Topic —</option>
+              </select>
+              <div id="topicLoading" style="display:none;margin-top:3px;">
+                <span style="font-size:11px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Inatafuta topics...</span>
+              </div>
+              <input class="form-control mt-1" id="topicManual" placeholder="Andika topic mwenyewe (kama dropdown haitoshi)" style="font-size:12px;">
+            </div>
+
+            <div class="mb-2">
+              <label>Subtopic</label>
+              <select class="form-control form-select" id="subtopic">
+                <option value="">— Chagua Subtopic —</option>
+              </select>
+              <div id="subtopicLoading" style="display:none;margin-top:3px;">
+                <span style="font-size:11px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Inatafuta subtopics...</span>
+              </div>
+              <input class="form-control mt-1" id="subtopicManual" placeholder="Andika subtopic mwenyewe" style="font-size:12px;">
+            </div>
+
             <div class="row g-1 mb-2">
               <div class="col-5">
                 <label>Term</label>
@@ -515,9 +550,10 @@ document.addEventListener('DOMContentLoaded', function() {
     subjectSelect.innerHTML = '<option value="">— Chagua Somo —</option>';
     if (SUBJECTS_BY_LEVEL[levelId]) {
       SUBJECTS_BY_LEVEL[levelId].forEach(function(subj) {
-        subjectSelect.innerHTML += `<option value="${subj.name}">${subj.name}</option>`;
+        subjectSelect.innerHTML += `<option value="${subj.id}" data-name="${subj.name}">${subj.name}</option>`;
       });
     }
+    resetTopics();
   });
 
   // ── Teacher registration data for auto-fill ──
@@ -640,6 +676,147 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // ── Topic/Subtopic (DB-based with AI fallback) ──
+  const topicSelect = document.getElementById('topic');
+  const subtopicSelect = document.getElementById('subtopic');
+  const topicManual = document.getElementById('topicManual');
+  const subtopicManual = document.getElementById('subtopicManual');
+  const topicLoading = document.getElementById('topicLoading');
+  const subtopicLoading = document.getElementById('subtopicLoading');
+  const topicStatus = document.getElementById('topicStatus');
+
+  function getEducationLevelName() {
+    const opt = levelSelect.options[levelSelect.selectedIndex];
+    return opt ? opt.textContent : '';
+  }
+
+  function getSelectedClassName() {
+    return classSelect.value;
+  }
+
+  function resetTopics() {
+    topicSelect.innerHTML = '<option value="">— Chagua Topic —</option>';
+    subtopicSelect.innerHTML = '<option value="">— Chagua Subtopic —</option>';
+    topicManual.value = '';
+    subtopicManual.value = '';
+    topicStatus.textContent = '';
+    document.getElementById('aiHint')?.remove();
+  }
+
+  function maybeFetchTopics() {
+    const selOpt = subjectSelect.options[subjectSelect.selectedIndex];
+    const subjectId = selOpt ? selOpt.value : '';
+    const className = getSelectedClassName();
+    resetTopics();
+    if (!subjectId || !className) return;
+
+    topicStatus.textContent = ' (inatafuta...)';
+    topicLoading.style.display = 'block';
+
+    fetch(`{% url 'curriculum:get_topics_db' %}?subject_id=${subjectId}&class_name=${encodeURIComponent(className)}`)
+      .then(r => r.json())
+      .then(data => {
+        topicLoading.style.display = 'none';
+        if (data.success && data.topics && data.topics.length > 0) {
+          topicStatus.textContent = ` (${data.topics.length} topics - TIE Syllabus)`;
+          data.topics.forEach(function(t) {
+            topicSelect.innerHTML += `<option value="${t.name}" data-topic-id="${t.id}">${t.name}</option>`;
+          });
+          const hint = document.createElement('div');
+          hint.className = 'topic-ai-hint';
+          hint.id = 'aiHint';
+          hint.innerHTML = '<i class="fas fa-book-open me-1"></i> Topics kutoka silabasi rasmi ya TIE. Unaweza pia kuandika topic yako mwenyewe hapa chini.';
+          topicSelect.parentNode.appendChild(hint);
+        } else {
+          fallbackFetchTopicsAI(subjectId, className);
+        }
+      })
+      .catch(() => {
+        topicLoading.style.display = 'none';
+        fallbackFetchTopicsAI(subjectId, className);
+      });
+  }
+
+  function fallbackFetchTopicsAI(subjectId, className) {
+    topicStatus.textContent = ' (AI inatafuta...)';
+    topicLoading.style.display = 'block';
+
+    fetch(`{% url 'curriculum:get_topics_ai' %}?subject_id=${subjectId}&class_name=${encodeURIComponent(className)}&education_level=${encodeURIComponent(getEducationLevelName())}`)
+      .then(r => r.json())
+      .then(data => {
+        topicLoading.style.display = 'none';
+        topicStatus.textContent = data.success && data.topics?.length ? ` (${data.topics.length} topics - AI)` : '';
+        if (data.success && data.topics && data.topics.length > 0) {
+          data.topics.forEach(function(t) {
+            topicSelect.innerHTML += `<option value="${t}">${t}</option>`;
+          });
+          const hint = document.createElement('div');
+          hint.className = 'topic-ai-hint';
+          hint.id = 'aiHint';
+          hint.innerHTML = '<i class="fas fa-robot me-1"></i> Topics zimetolewa na AI. Unaweza pia kuandika topic yako mwenyewe hapa chini.';
+          topicSelect.parentNode.appendChild(hint);
+        } else {
+          topicStatus.textContent = ' (Hakuna topics, andika mwenyewe)';
+        }
+      })
+      .catch(() => {
+        topicLoading.style.display = 'none';
+        topicStatus.textContent = ' (Haipatikani, andika mwenyewe)';
+      });
+  }
+
+  function maybeFetchSubtopics() {
+    const selectedTopic = topicSelect.options[topicSelect.selectedIndex];
+    const topicValue = topicSelect.value;
+    const topicId = selectedTopic ? selectedTopic.getAttribute('data-topic-id') : null;
+    subtopicSelect.innerHTML = '<option value="">— Chagua Subtopic —</option>';
+    subtopicManual.value = '';
+    if (!topicValue) return;
+
+    if (topicId) {
+      subtopicLoading.style.display = 'block';
+      fetch(`{% url 'curriculum:get_subtopics_db' %}?topic_id=${topicId}`)
+        .then(r => r.json())
+        .then(data => {
+          subtopicLoading.style.display = 'none';
+          if (data.success && data.subtopics && data.subtopics.length > 0) {
+            data.subtopics.forEach(function(s) {
+              subtopicSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+            });
+            subtopicSelect.innerHTML += '<option value="other">— Nyingine (andika mwenyewe) —</option>';
+          } else {
+            subtopicSelect.innerHTML = '<option value="">— Hakuna subtopics, andika mwenyewe —</option>';
+          }
+        })
+        .catch(() => { subtopicLoading.style.display = 'none'; });
+    } else {
+      const selOpt = subjectSelect.options[subjectSelect.selectedIndex];
+      const subjectId = selOpt ? selOpt.value : '';
+      const className = getSelectedClassName();
+      if (!subjectId || !className) return;
+
+      subtopicLoading.style.display = 'block';
+      fetch(`{% url 'curriculum:get_subtopics_ai' %}?subject_id=${subjectId}&topic=${encodeURIComponent(topicValue)}&class_name=${encodeURIComponent(className)}&education_level=${encodeURIComponent(getEducationLevelName())}`)
+        .then(r => r.json())
+        .then(data => {
+          subtopicLoading.style.display = 'none';
+          if (data.success && data.subtopics && data.subtopics.length > 0) {
+            data.subtopics.forEach(function(s) {
+              subtopicSelect.innerHTML += `<option value="${s}">${s}</option>`;
+            });
+          } else {
+            subtopicSelect.innerHTML = '<option value="">— Hakuna subtopics, andika mwenyewe —</option>';
+          }
+        })
+        .catch(() => { subtopicLoading.style.display = 'none'; });
+    }
+  }
+
+  // ── Wire up topic/subtopic events ──
+  classSelect.addEventListener('change', maybeFetchTopics);
+  subjectSelect.addEventListener('change', maybeFetchTopics);
+  topicSelect.addEventListener('change', maybeFetchSubtopics);
+
   // ── Collect form data ──
   function getFormData() {
     const breaks = [];
@@ -651,11 +828,17 @@ document.addEventListener('DOMContentLoaded', function() {
         breaks.push({ name, start, end });
       }
     });
+    const selOpt = subjectSelect.options[subjectSelect.selectedIndex];
+    const topicValue = topicManual.value.trim() || topicSelect.value;
+    const subtopicValue = subtopicManual.value.trim() || subtopicSelect.value;
     return {
       education_level: document.querySelector('#education_level option:checked')?.textContent || levelSelect.value,
       class_name: classSelect.value,
       stream: document.getElementById('stream').value,
-      subject: subjectSelect.value,
+      subject_id: selOpt ? selOpt.value : '',
+      subject: selOpt ? selOpt.getAttribute('data-name') || selOpt.textContent : '',
+      topic: topicValue,
+      subtopic: subtopicValue === 'other' ? subtopicManual.value.trim() || '' : subtopicValue,
       term: document.getElementById('term').value,
       year: document.getElementById('year').value,
       syllabus: document.getElementById('syllabus').value,
