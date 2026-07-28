@@ -72394,5 +72394,41 @@
       "longitude": null,
       "address": ""
     }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 25488,
+    "fields": {
+      "name": "MAGUHA SECONDARY",
+      "school_code": "",
+      "district": 101,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": ""
+    }
+  },
+  {
+    "model": "field_app.school",
+    "pk": 25489,
+    "fields": {
+      "name": "MASHURE SECONDARY",
+      "school_code": "",
+      "district": 42,
+      "level": "Secondary",
+      "ownership": "government",
+      "capacity": 10,
+      "current_students": 0,
+      "head_name": "",
+      "head_phone": "",
+      "latitude": null,
+      "longitude": null,
+      "address": ""
+    }
   }
 ]

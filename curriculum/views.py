@@ -2944,3 +2944,70 @@ def ajax_delete_lesson_note(request):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
+
+# =============================================================================
+# TEACHER PROFILE UPDATE — auto-save teacher's class/stream/subject/students
+# =============================================================================
+
+@require_POST
+def ajax_update_teacher_profile(request):
+    """
+    Update the TLM teacher's profile with data from scheme/lesson plan forms.
+    Ensures OLD users who registered before auto-fill fields were added
+    get their class_name, stream, subject, total_boys, total_girls saved.
+    """
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Haujasajiliwa. Tafadhali jisajili kwanza.'}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        changed = False
+        
+        class_name = data.get('class_name', '').strip()
+        if class_name and teacher.class_name != class_name:
+            teacher.class_name = class_name
+            changed = True
+        
+        stream = data.get('stream', '').strip()
+        if stream and teacher.stream != stream:
+            teacher.stream = stream
+            changed = True
+        
+        subject_name = data.get('subject_name', '').strip()
+        if subject_name:
+            subj = Subject.objects.filter(name__iexact=subject_name).first()
+            if subj and teacher.subject != subj:
+                teacher.subject = subj
+                changed = True
+        
+        total_boys = data.get('total_boys')
+        if total_boys:
+            try:
+                val = int(total_boys)
+                if val > 0 and teacher.total_boys != val:
+                    teacher.total_boys = val
+                    changed = True
+            except (ValueError, TypeError):
+                pass
+        
+        total_girls = data.get('total_girls')
+        if total_girls:
+            try:
+                val = int(total_girls)
+                if val > 0 and teacher.total_girls != val:
+                    teacher.total_girls = val
+                    changed = True
+            except (ValueError, TypeError):
+                pass
+        
+        if changed:
+            teacher.save(update_fields=['class_name', 'stream', 'subject', 'total_boys', 'total_girls'])
+            logger.info(f"[Profile] Updated teacher {teacher.id} ({teacher.full_name})")
+            return JsonResponse({'success': True, 'updated': True, 'message': 'Profile imehifadhiwa!'})
+        
+        return JsonResponse({'success': True, 'updated': False, 'message': 'Hakuna mabadiliko.'})
+        
+    except Exception as e:
+        logger.error(f"[Profile Update Error] {e}")
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)

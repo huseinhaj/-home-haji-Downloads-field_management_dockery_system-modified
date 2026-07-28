@@ -687,6 +687,8 @@ document.addEventListener('DOMContentLoaded', function() {
           renderLesson(data.data);
           document.getElementById('resultsArea').style.display = 'block';
           showToast('✅ Lesson Plan imezalishwa!', 'success');
+          // ── Auto-save teacher profile (for old users with incomplete data) ──
+          autoSaveTeacherProfile(getFormData());
         } else {
           showToast(data.error || 'Hitilafu.', 'error');
           document.getElementById('emptyState').style.display = 'block';
@@ -980,6 +982,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       })
       .catch(() => showToast('Imeshindwa kupakia Lesson Plan', 'warning'));
+  }
+
+  // ── Auto-save teacher profile to DB (fills missing fields for old users) ──
+  const TEACHER_LOGGED_IN = {% if teacher %}true{% else %}false{% endif %};
+  function autoSaveTeacherProfile(fd) {
+    // Only save if teacher is logged in via session
+    if (!TEACHER_LOGGED_IN) return;
+    
+    fetch('{% url "curriculum:update_teacher_profile" %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+      body: JSON.stringify({
+        class_name: fd.class_name || '',
+        stream: fd.stream || '',
+        subject_name: fd.subject || '',
+        total_boys: fd.total_boys || '',
+        total_girls: fd.total_girls || '',
+      }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.updated) {
+        console.log('✅ Teacher profile auto-saved:', data.message);
+      }
+    })
+    .catch(err => console.warn('Profile auto-save failed:', err));
   }
 
   // ── Download Word ──

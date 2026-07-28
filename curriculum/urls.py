@@ -56,6 +56,9 @@ urlpatterns = [
     # Testimonials
     path('api/submit-testimonial/', views.ajax_submit_testimonial, name='submit_testimonial'),
 
+    # Profile auto-save (for old users)
+    path('api/update-teacher-profile/', views.ajax_update_teacher_profile, name='update_teacher_profile'),
+
     # API helpers
     path('api/get-topics/', views.get_topics_by_subject, name='get_topics'),
     path('api/get-topics-ai/', views.get_topics_ai, name='get_topics_ai'),
