@@ -9,7 +9,9 @@ load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # FREE tier — generous limits
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    GOOGLE_API_KEY = "AIzaSyCLfklrP_phMt3Yvm7CXuOXTDjc8isXuCQ"  # FREE tier fallback
 
 # Default model — cheap & capable via OpenRouter
 # You can change this to any OpenRouter model ID: https://openrouter.ai/models
@@ -131,7 +133,10 @@ class _UnifiedModels:
                         break
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
-                        'overloaded', 'capacity', 'insufficient_quota', 'credits'
+                        'overloaded', 'capacity', 'insufficient_quota', 'credits',
+                        'connection', 'connect', 'timeout', 'dns', 'resolve',
+                        'eof', 'reset', 'abort', 'refused', 'unreachable',
+                        'network', 'server error', '500', '502', '503'
                     )):
                         continue
                     logger.error(f"[AI] OpenRouter non-retryable error, raising: {str(e)[:200]}")
@@ -161,7 +166,10 @@ class _UnifiedModels:
                         raise last_error
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
-                        'overloaded', 'capacity'
+                        'overloaded', 'capacity',
+                        'connection', 'connect', 'timeout', 'dns', 'resolve',
+                        'eof', 'reset', 'abort', 'refused', 'unreachable',
+                        'network', 'server error', '500', '502', '503'
                     )):
                         continue
                     logger.error(f"[AI] Groq non-retryable error, raising: {str(e)[:200]}")
@@ -318,6 +326,8 @@ class UnifiedClient:
                 self._or = OpenAI(
                     base_url="https://openrouter.ai/api/v1",
                     api_key=openrouter_key,
+                    timeout=300.0,
+                    max_retries=3,
                 )
                 logger.info(f"[AI] OpenRouter client initialized successfully")
             except Exception as e:

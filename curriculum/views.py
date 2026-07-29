@@ -33,7 +33,7 @@ except ImportError:
     PILImage = None
 
 
-from .ai_utils import client, model_name
+from .ai_utils import client, model_name, OPENROUTER_API_KEY, GROQ_API_KEY, GOOGLE_API_KEY
 from .forms import SchemeOfWorkForm, LogbookForm
 
 logger = logging.getLogger(__name__)
@@ -1081,15 +1081,29 @@ Return ONLY the JSON array. No other text."""
         import traceback
         traceback.print_exc()
         raw = str(e)
-        logger.error(f"[Scheme Gen Error] {type(e).__name__}: {raw[:300]}")
+        err_type = type(e).__name__
+        logger.error(f"[Scheme Gen Error] {err_type}: {raw[:300]}")
+        
+        # Check which providers are configured
+        ai_status = []
+        if OPENROUTER_API_KEY:
+            ai_status.append("OpenRouter")
+        if GROQ_API_KEY:
+            ai_status.append("Groq")
+        if GOOGLE_API_KEY:
+            ai_status.append("Gemini")
+        providers_info = '+'.join(ai_status) if ai_status else 'Hakuna'
+        
         if 'PERMISSION_DENIED' in raw or 'suspended' in raw.lower() or '403' in raw:
             msg = "Huduma ya AI imesimamishwa. Wasiliana na msimamizi."
         elif 'quota' in raw.lower() or '429' in raw or 'rate' in raw.lower():
             msg = f"Kikomo cha matumizi: {raw[:200]}"
         elif '413' in raw or 'request too large' in raw.lower():
             msg = f"Ombi ni kubwa mno kwa AI. Jaribu kupunguza maelezo (wiki, vipindi) au kubadili somo. Hitilafu: {raw[:200]}"
-        elif 'API_KEY' in raw or 'api_key' in raw.lower():
-            msg = "Ufunguo wa API ya AI haujawekwa. Wasiliana na msimamizi."
+        elif 'API_KEY' in raw or 'api_key' in raw.lower() or 'auth' in raw.lower() or '401' in raw:
+            msg = f"Ufunguo wa API ya AI si sahihi. Angalia OPENROUTER_API_KEY kwenye mazingira (Railway)."
+        elif 'connection' in raw.lower() or 'connect' in raw.lower() or 'timeout' in raw.lower() or 'dns' in raw.lower():
+            msg = f"AI haijaunganishwa. Jaribu tena baada ya dakika 1-2. Ikiwa tatizo linaendelea, wasiliana na msimamizi. (AI: {providers_info})"
         else:
             msg = f"Hitilafu: {raw[:200]}"
         return JsonResponse({'success': False, 'error': msg}, status=500)
