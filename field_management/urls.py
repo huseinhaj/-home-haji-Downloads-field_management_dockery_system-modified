@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 from django.contrib.auth import views as auth_views
 from field_app import views  # Changed from ". import views" to import from your app
+from curriculum import views as curriculum_views  # PWA manifest & service worker
 from field_app.admin import custom_admin_site
 
 urlpatterns = [
@@ -41,4 +42,9 @@ urlpatterns = [
 
     # Muungano Curriculum — Scheme of Work, Lesson Plan & Logbook
     path('curriculum/', include('curriculum.urls')),
+
+    # PWA: Progressive Web App — root-level manifest & service worker
+    # (Must be at root for proper PWA scope / install behavior)
+    path('manifest.json', curriculum_views.pwa_manifest, name='root_pwa_manifest'),
+    path('sw.js', curriculum_views.pwa_service_worker, name='root_pwa_service_worker'),
 ]

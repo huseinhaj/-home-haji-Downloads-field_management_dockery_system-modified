@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Tanzania Flag Gradient (Green to Yellow) -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1EB53A"/>
+      <stop offset="100%" style="stop-color:#0D4F2B"/>
+    </linearGradient>
+    <!-- Gold/Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FCD116"/>
+      <stop offset="100%" style="stop-color:#D9A441"/>
+    </linearGradient>
+    <!-- Book Gradient -->
+    <linearGradient id="bookGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#F0F4F8"/>
+    </linearGradient>
+    <!-- Shadow -->
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#000000" flood-opacity="0.2"/>
+    </filter>
+    <!-- Soft Glow -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Circle with subtle border -->
+  <circle cx="256" cy="256" r="248" fill="url(#bgGrad)"/>
+  <circle cx="256" cy="256" r="240" fill="none" stroke="url(#goldGrad)" stroke-width="4" opacity="0.8"/>
+  
+  <!-- Inner decorative ring -->
+  <circle cx="256" cy="256" r="225" fill="none" stroke="url(#goldGrad)" stroke-width="1.5" opacity="0.3" stroke-dasharray="8,6"/>
+
+  <!-- Tanzania Flag hint - diagonal stripe (black with gold edges) -->
+  <path d="M449,80 L460,94 L270,300 L260,292 Z" fill="#000000" opacity="0.12"/>
+  <path d="M449,76 L460,90 L270,296 L260,288 Z" fill="#FCD116" opacity="0.08"/>
+
+  <!-- Open Book -->
+  <g filter="url(#shadow)">
+    <g transform="translate(256, 230)">
+      <!-- Book spine area -->
+      <rect x="-12" y="-100" width="24" height="200" rx="3" fill="url(#goldGrad)" opacity="0.6"/>
+      
+      <!-- Left page -->
+      <path d="M-12,-100 L-12,96 C-12,106 -22,110 -32,110 L-145,110 
+               C-158,110 -168,100 -168,86 L-168,-100 Z" 
+            fill="url(#bookGrad)" stroke="#D9A441" stroke-width="2.5"/>
+      
+      <!-- Right page -->
+      <path d="M12,-100 L12,96 C12,106 22,110 32,110 L145,110 
+               C158,110 168,100 168,86 L168,-100 Z" 
+            fill="url(#bookGrad)" stroke="#D9A441" stroke-width="2.5"/>
+
+      <!-- Book spine center line -->
+      <line x1="0" y1="-100" x2="0" y2="110" stroke="#D9A441" stroke-width="3" opacity="0.8"/>
+
+      <!-- Left page text lines -->
+      <g opacity="0.35">
+        <line x1="-140" y1="-65" x2="-25" y2="-65" stroke="#1F7A3D" stroke-width="5" stroke-linecap="round"/>
+        <line x1="-140" y1="-42" x2="-45" y2="-42" stroke="#1F7A3D" stroke-width="5" stroke-linecap="round"/>
+        <line x1="-140" y1="-19" x2="-30" y2="-19" stroke="#1F7A3D" stroke-width="5" stroke-linecap="round"/>
+        <line x1="-140" y1="4" x2="-55" y2="4" stroke="#1F7A3D" stroke-width="5" stroke-linecap="round"/>
+        <line x1="-140" y1="27" x2="-40" y2="27" stroke="#1F7A3D" stroke-width="5" stroke-linecap="round"/>
+      </g>
+
+      <!-- Right page text lines -->
+      <g opacity="0.35">
+        <line x1="25" y1="-65" x2="140" y2="-65" stroke="#1F7A3D" stroke-width="5" stroke-linecap="round"/>
+        <line x1="25" y1="-42" x2="120" y2="-42" stroke="#1F7A3D" stroke-width="5" stroke-linecap="round"/>
+        <line x1="25" y1="-19" x2="130" y2="-19" stroke="#1F7A3D" stroke-width="5" stroke-linecap="round"/>
+        <line x1="25" y1="4" x2="110" y2="4" stroke="#1F7A3D" stroke-width="5" stroke-linecap="round"/>
+        <line x1="25" y1="27" x2="125" y2="27" stroke="#1F7A3D" stroke-width="5" stroke-linecap="round"/>
+      </g>
+
+      <!-- Bookmark ribbon -->
+      <path d="M-8,-100 L-8,-130 L4,-115 L16,-130 L16,-100" 
+            fill="#FCD116" stroke="#D9A441" stroke-width="1.5" opacity="0.9"/>
+      
+      <!-- "TLM" label on book spine -->
+      <text x="0" y="-20" font-family="Arial Black, sans-serif" font-size="22" font-weight="900" 
+            fill="#FCD116" text-anchor="middle" opacity="0.8" letter-spacing="1">TLM</text>
+    </g>
+  </g>
+
+  <!-- Tanzania Map Silhouette (simplified) -->
+  <g transform="translate(256, 340)" opacity="0.15" filter="url(#glow)">
+    <path d="M-50,-20 Q-45,-35 -30,-40 Q-20,-42 -10,-38 Q0,-34 8,-36 
+             Q18,-40 25,-35 Q32,-28 38,-22 Q45,-15 48,-8 
+             Q52,0 50,8 Q48,16 42,20 Q35,25 28,22 Q20,18 15,15 
+             Q8,10 2,12 Q-5,14 -12,10 Q-20,6 -28,0 Q-38,-8 -45,-15 Z" 
+          fill="#FCD116"/>
+  </g>
+
+  <!-- "TLM TANZANIA" text at bottom -->
+  <g transform="translate(256, 430)">
+    <text x="0" y="0" font-family="Arial Black, sans-serif" font-size="42" font-weight="900" 
+          fill="url(#goldGrad)" text-anchor="middle" letter-spacing="6">TLM</text>
+    <text x="0" y="22" font-family="Arial, sans-serif" font-size="14" font-weight="700" 
+          fill="#FCD116" text-anchor="middle" letter-spacing="4" opacity="0.85">TANZANIA</text>
+  </g>
+
+  <!-- Small stars (representing education excellence) -->
+  <circle cx="80" cy="100" r="3" fill="#FCD116" opacity="0.4"/>
+  <circle cx="432" cy="120" r="2.5" fill="#FCD116" opacity="0.35"/>
+  <circle cx="100" cy="380" r="2" fill="#FCD116" opacity="0.3"/>
+  <circle cx="420" cy="370" r="2.5" fill="#FCD116" opacity="0.35"/>
+
+  <!-- Maskable safe zone indicator (invisible - ensures icon works on all platforms) -->
+  <rect x="73" y="73" width="366" height="366" fill="none" stroke="none"/>
+</svg>

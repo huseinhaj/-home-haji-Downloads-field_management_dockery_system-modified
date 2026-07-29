@@ -5,9 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0D4F2B">
+    <title>{% block title %}Teaching &amp; Learning Materials{% endblock %} — TLM Tanzania</title>
+    <!-- PWA: Web App Manifest (for install on mobile) -->
+    <link rel="manifest" href="/manifest.json">
+    <!-- PWA: iOS-specific meta tags -->
+    <meta name="apple-mobile-web-app-title" content="TLM Tanzania">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>{% block title %}Teaching &amp; Learning Materials{% endblock %} — TLM Tanzania</title>
+    <link rel="apple-touch-icon" href="/static/curriculum/pwa-icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/curriculum/pwa-icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/static/curriculum/pwa-icon-512.png">
+    <!-- PWA: Windows Tile -->
+    <meta name="msapplication-TileColor" content="#0D4F2B">
+    <meta name="msapplication-TileImage" content="/static/curriculum/pwa-icon-192.png">
+    <!-- PWA: Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/static/curriculum/pwa-icon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -825,6 +837,27 @@
         .glow-green { box-shadow: 0 0 20px rgba(31,122,61,0.12); }
 
         .text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+        /* ============================================================
+           PWA: Install prompt & standalone mode
+           ============================================================ */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* When running as installed PWA (standalone mode) */
+        .pwa-standalone .portal-masthead {
+            padding-top: max(0.7rem, env(safe-area-inset-top, 0px));
+        }
+        .pwa-standalone .app-header {
+            padding-top: env(safe-area-inset-top, 0px);
+        }
+        .pwa-standalone .bottom-nav {
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        .pwa-standalone .page-shell {
+            padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+        }
     </style>
 </head>
 <body>
@@ -1108,6 +1141,8 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+    <!-- PWA: Service Worker registration & install prompt -->
+    <script src="/static/curriculum/pwa-register.js" defer></script>
     <script>
     // ============================================================
     // GLOBAL UTILITIES

@@ -55,6 +55,137 @@ from field_app.views.utils import (
 from .models import TLMTeacher, Testimonial, LessonNote, SubjectTopic, TopicSubtopic
 
 
+# =============================================================================
+# PWA: Progressive Web App — manifest & service worker
+# =============================================================================
+
+def pwa_manifest(request):
+    """Serve Web App Manifest for PWA install on mobile devices."""
+    manifest = {
+        "name": "TLM Tanzania — Teaching & Learning Materials",
+        "short_name": "TLM Tanzania",
+        "description": "Mfumo wa Nyenzo za Kufundishia na Kujifunza — Scheme of Work, Lesson Plan & Logbook kwa Walimu wa Tanzania",
+        "start_url": "/curriculum/",
+        "scope": "/",
+        "display": "standalone",
+        "orientation": "portrait-primary",
+        "background_color": "#0D4F2B",
+        "theme_color": "#0D4F2B",
+        "categories": ["education", "productivity", "books"],
+        "lang": "sw",
+        "dir": "ltr",
+        "icons": [
+            {
+                "src": "/static/curriculum/pwa-icon-192.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
+                "src": "/static/curriculum/pwa-icon-512.png",
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable"
+            },
+            {
+                "src": "/static/curriculum/pwa-icon.svg",
+                "sizes": "any",
+                "type": "image/svg+xml",
+                "purpose": "any"
+            }
+        ],
+        "screenshots": [],
+        "shortcuts": [
+            {
+                "name": "Scheme of Work",
+                "short_name": "Scheme",
+                "description": "Tengeneza Scheme of Work",
+                "url": "/curriculum/scheme/",
+                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
+            },
+            {
+                "name": "Lesson Plan",
+                "short_name": "Lesson",
+                "description": "Tengeneza Lesson Plan",
+                "url": "/curriculum/lesson-plan/",
+                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
+            },
+            {
+                "name": "Library",
+                "short_name": "Library",
+                "description": "Tazama mifano ya walimu wengine",
+                "url": "/curriculum/library/",
+                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
+            }
+        ]
+    }
+    return JsonResponse(manifest)
+
+
+def pwa_service_worker(request):
+    """Serve the Service Worker JS for offline caching & PWA install."""
+    sw_code = '''const CACHE_NAME = "tlm-tanzania-v1";
+const STATIC_ASSETS = [
+  "/static/curriculum/pwa-icon-192.png",
+  "/static/curriculum/pwa-icon-512.png",
+  "/static/curriculum/pwa-icon.svg",
+];
+
+// ── Install: cache static assets ──
+self.addEventListener("install", function(event) {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.addAll(STATIC_ASSETS);
+    })
+  );
+  self.skipWaiting();
+});
+
+// ── Activate: clean old caches ──
+self.addEventListener("activate", function(event) {
+  event.waitUntil(
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(k) { return k !== CACHE_NAME; })
+            .map(function(k) { return caches.delete(k); })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// ── Fetch: network-first, fallback to cache ──
+self.addEventListener("fetch", function(event) {
+  // Only handle GET requests
+  if (event.request.method !== "GET") return;
+  
+  // Skip non-http(s) URLs
+  if (!event.request.url.startsWith("http")) return;
+  
+  event.respondWith(
+    fetch(event.request)
+      .then(function(response) {
+        // Cache successful responses
+        if (response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(event.request, clone);
+          });
+        }
+        return response;
+      })
+      .catch(function() {
+        // Offline: serve from cache
+        return caches.match(event.request).then(function(cached) {
+          return cached || new Response("Offline", { status: 503 });
+        });
+      })
+  );
+});
+'''
+    return HttpResponse(sw_code, content_type="application/javascript; charset=utf-8")
+
+
 def _sanitize_json_control_chars(text):
     """Replace control characters inside JSON strings with their escaped forms.
     This handles AI responses that include literal newlines/tabs in string values,
@@ -653,6 +784,70 @@ def _parse_periods(period_str):
 
 
 # =============================================================================
+# LANGUAGE HELPER — Used by both Scheme & Lesson Plan generation
+# =============================================================================
+
+def _get_language_instruction(language_param, subject, school_level):
+    """
+    Determine language instruction for AI prompt based on:
+    - language_param: 'auto' (auto-detect), 'english', or 'kiswahili'
+    - subject: The subject name (used for auto-detect)
+    - school_level: The school level string (used for auto-detect)
+    
+    Returns a string instruction to inject into the AI prompt.
+    """
+    subject_lower = subject.lower()
+    school_level_lower = (school_level or '').lower()
+
+    # ── Manual override ──
+    if language_param == 'english':
+        return "LANGUAGE: Write ALL content in ENGLISH."
+    elif language_param == 'kiswahili':
+        return "LANGUAGE: Write ALL content in KISWAHILI (Swahili). Only column headers can stay in English."
+
+    # ── Auto-detect (default) ──
+    if 'primary' in school_level_lower:
+        if subject_lower in ('english', 'english language'):
+            return "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
+        else:
+            return "LANGUAGE: Write ALL content in KISWAHILI (Swahili). Only column headers can stay in English."
+    elif 'secondary' in school_level_lower or 'ordinary' in school_level_lower or 'advanced' in school_level_lower:
+        if subject_lower in ('kiswahili', 'swahili'):
+            return "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject."
+        else:
+            return "LANGUAGE: Write ALL content in ENGLISH."
+    return ""
+
+
+def _get_lp_language_instruction(language_param, subject, school_level):
+    """
+    Lesson Plan-specific language instruction.
+    Has more detailed Swahili instructions for Primary school non-English subjects.
+    """
+    subject_lower = subject.lower()
+    school_level_lower = (school_level or '').lower()
+
+    # ── Manual override ──
+    if language_param == 'english':
+        return "LANGUAGE: Write ALL content in ENGLISH."
+    elif language_param == 'kiswahili':
+        return "LANGUAGE: Write ALL lesson content in KISWAHILI (Swahili). Only the headings/section titles can stay in English. ALL descriptions, activities, explanations, and assessment criteria MUST be in Swahili language."
+
+    # ── Auto-detect (default) ──
+    if 'primary' in school_level_lower:
+        if subject_lower in ('english', 'english language'):
+            return "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
+        else:
+            return "LANGUAGE: Write ALL lesson content in KISWAHILI (Swahili). Only the headings/section titles can stay in English. ALL descriptions, activities, explanations, and assessment criteria MUST be in Swahili language. This is a Primary school subject."
+    elif 'secondary' in school_level_lower or 'ordinary' in school_level_lower or 'advanced' in school_level_lower:
+        if subject_lower in ('kiswahili', 'swahili'):
+            return "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject for Secondary school."
+        else:
+            return "LANGUAGE: Write ALL content in ENGLISH. This is a Secondary school subject taught in English."
+    return ""
+
+
+# =============================================================================
 # SCHEME OF WORK
 # =============================================================================
 
@@ -770,27 +965,14 @@ def ajax_generate_scheme(request):
         school_name = data.get('school_name', '')
         reference_source = data.get('reference_source', '')
         breaks = data.get('breaks', [])
+        # ── Language: manual selection (english/kiswahili) or auto-detect ──
+        _lang_tlm = get_tlm_teacher(request)
+        _scheme_language = data.get('language', getattr(_lang_tlm, 'preferred_language', 'auto') if _lang_tlm else 'auto')
+        _school_level = _lang_tlm.school.level if _lang_tlm and _lang_tlm.school else ''
+        language_instruction = _get_language_instruction(_scheme_language, subject, _school_level)
 
         full_class_name = f"{class_name}{stream}" if stream else class_name
         ref_text = f"\nReference source: {reference_source}" if reference_source else ''
-
-        # ── Determine language instruction ──
-        _lang_tlm = get_tlm_teacher(request)
-        _school_level = _lang_tlm.school.level if _lang_tlm and _lang_tlm.school else ''
-        _subject_lower = subject.lower()
-        school_level_lower = (_school_level or '').lower()
-        if 'primary' in school_level_lower:
-            if _subject_lower in ('english', 'english language'):
-                language_instruction = "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
-            else:
-                language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili). Only column headers can stay in English."
-        elif 'secondary' in school_level_lower or 'ordinary' in school_level_lower or 'advanced' in school_level_lower:
-            if _subject_lower in ('kiswahili', 'swahili'):
-                language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject."
-            else:
-                language_instruction = "LANGUAGE: Write ALL content in ENGLISH."
-        else:
-            language_instruction = ""
 
         # ── school_id and user_id for saving ──
         school_id = None
@@ -1653,23 +1835,11 @@ def ajax_generate_lessonplan(request):
         design_time = max(8, int(duration * 0.30))
         real_time = max(5, int(duration * 0.15))
 
-        # ── Determine language for lesson plan (based on school level) ──
+        # ── Language: manual selection (english/kiswahili) or auto-detect ──
         _lp_tlm = get_tlm_teacher(request)
+        _lp_language = data.get('language', getattr(_lp_tlm, 'preferred_language', 'auto') if _lp_tlm else 'auto')
         _lp_school_level = _lp_tlm.school.level if _lp_tlm and _lp_tlm.school else ''
-        _lp_subject_lower = subject.lower()
-        _lp_school_level_lower = (_lp_school_level or '').lower()
-        if 'primary' in _lp_school_level_lower:
-            if _lp_subject_lower in ('english', 'english language'):
-                lp_language_instruction = "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
-            else:
-                lp_language_instruction = "LANGUAGE: Write ALL lesson content in KISWAHILI (Swahili). Only the headings/section titles can stay in English. ALL descriptions, activities, explanations, and assessment criteria MUST be in Swahili language. This is a Primary school subject."
-        elif 'secondary' in _lp_school_level_lower or 'ordinary' in _lp_school_level_lower or 'advanced' in _lp_school_level_lower:
-            if _lp_subject_lower in ('kiswahili', 'swahili'):
-                lp_language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject for Secondary school."
-            else:
-                lp_language_instruction = "LANGUAGE: Write ALL content in ENGLISH. This is a Secondary school subject taught in English."
-        else:
-            lp_language_instruction = ""
+        lp_language_instruction = _get_lp_language_instruction(_lp_language, subject, _lp_school_level)
 
         prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom following the OFFICIAL TAMISEMI (PRIME MINISTER'S OFFICE - REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT) format.
 
@@ -3658,8 +3828,14 @@ def ajax_update_teacher_profile(request):
             teacher.theme = theme
             changed = True
         
+        # ── Handle preferred_language ──
+        preferred_language = data.get('preferred_language', '').strip()
+        if preferred_language and preferred_language in ('auto', 'english', 'kiswahili') and teacher.preferred_language != preferred_language:
+            teacher.preferred_language = preferred_language
+            changed = True
+        
         if changed:
-            teacher.save(update_fields=['class_name', 'stream', 'subject', 'total_boys', 'total_girls', 'theme'])
+            teacher.save(update_fields=['class_name', 'stream', 'subject', 'total_boys', 'total_girls', 'theme', 'preferred_language'])
             logger.info(f"[Profile] Updated teacher {teacher.id} ({teacher.full_name})")
             return JsonResponse({'success': True, 'updated': True, 'message': 'Profile imehifadhiwa!'})
         
@@ -4106,6 +4282,12 @@ def ajax_generate_one_lesson(request):
         if not subj_obj:
             return JsonResponse({'success': False, 'error': f'Somo "{subject_name}" halipatikani'}, status=404)
 
+        # ── Language: manual selection or auto-detect ──
+        _lp_tlm = teacher  # Already fetched
+        _lp_language = data.get('language', getattr(_lp_tlm, 'preferred_language', 'auto') if _lp_tlm else 'auto')
+        _lp_school_level = _lp_tlm.school.level if _lp_tlm and _lp_tlm.school else ''
+        lp_language_instruction = _get_lp_language_instruction(_lp_language, subject_name, _lp_school_level)
+
         # Build prompt
         prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom.
 
@@ -4129,6 +4311,7 @@ Specific Competence: The specific competence for {topic_name}.
 
 Term: {term}, Year: {year}
 Duration: {duration} minutes
+{lp_language_instruction}
 
 Content MUST relate to Subject: {subject_name}, Class: {full_class}, Topic: \"{topic_name}\".
 

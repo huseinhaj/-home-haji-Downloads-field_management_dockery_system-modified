@@ -200,6 +200,16 @@
             {% if teacher %}
             <div class="mb-2" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:0.4rem 0.6rem;">
               <label style="font-size:10px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:4px;">
+                <i class="fas fa-globe text-gold" style="font-size:11px;"></i> Lugha / Language
+              </label>
+              <select id="langSelect" style="width:100%;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:4px 6px;font-size:11px;background:var(--bg-card-solid);color:var(--text-primary);cursor:pointer;" onchange="changeLanguage(this.value)">
+                <option value="auto" {% if teacher.preferred_language == 'auto' %}selected{% endif %}>🌐 Auto (Otomatiki — kulingana na somo)</option>
+                <option value="english" {% if teacher.preferred_language == 'english' %}selected{% endif %}>🇬🇧 English</option>
+                <option value="kiswahili" {% if teacher.preferred_language == 'kiswahili' %}selected{% endif %}>🇹🇿 Kiswahili</option>
+              </select>
+            </div>
+            <div class="mb-2" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:0.4rem 0.6rem;">
+              <label style="font-size:10px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:4px;">
                 <i class="fas fa-palette text-gold" style="font-size:11px;"></i> PDF Theme
               </label>
               <select id="themeSelect" style="width:100%;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:4px 6px;font-size:11px;background:var(--bg-card-solid);color:var(--text-primary);cursor:pointer;" onchange="changeTheme(this.value)">
@@ -711,6 +721,7 @@ document.addEventListener('DOMContentLoaded', function() {
       teacher_name: document.getElementById('teacher_name').value,
       school_name: document.getElementById('school_name').value,
       breaks: breaks,
+      language: document.getElementById('langSelect')?.value || 'auto',
     };
   }
 
@@ -1112,6 +1123,22 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // ── Change Language (auto/english/kiswahili) ──
+  function changeLanguage(lang) {
+    fetch('{% url "curriculum:update_teacher_profile" %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+      body: JSON.stringify({ preferred_language: lang }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        showToast('✅ Lugha imebadilishwa!', 'success');
+      }
+    })
+    .catch(() => showToast('❌ Hitilafu kubadilisha lugha', 'error'));
+  }
+
   // ── Change PDF Theme ──
   function changeTheme(theme) {
     fetch('{% url "curriculum:update_teacher_profile" %}', {
@@ -1143,6 +1170,7 @@ document.addEventListener('DOMContentLoaded', function() {
         subject_name: fd.subject || '',
         total_boys: fd.total_boys || '',
         total_girls: fd.total_girls || '',
+        preferred_language: document.getElementById('langSelect')?.value || '',
       }),
     })
     .then(({ data }) => {

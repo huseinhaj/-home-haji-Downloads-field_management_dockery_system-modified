@@ -30,6 +30,18 @@ class TLMTeacher(models.Model):
     total_boys = models.PositiveIntegerField(default=0, verbose_name="Wavulana (Registered)")
     total_girls = models.PositiveIntegerField(default=0, verbose_name="Wasichana (Registered)")
     
+    preferred_language = models.CharField(
+        max_length=10,
+        choices=[
+            ('auto', 'Auto (Otomatiki — kulingana na somo)'),
+            ('english', 'English'),
+            ('kiswahili', 'Kiswahili'),
+        ],
+        default='auto',
+        verbose_name="Lugha / Language",
+        help_text="Chagua lugha ya Scheme na Lesson Plan zako",
+    )
+
     theme = models.CharField(
         max_length=20,
         choices=[
