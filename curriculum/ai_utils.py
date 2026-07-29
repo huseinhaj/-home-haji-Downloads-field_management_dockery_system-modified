@@ -162,7 +162,7 @@ class _UnifiedModels:
             return None
 
     def _try_gemini_stream(self, contents):
-        """Try Gemini streaming. Generator that yields chunks or None."""
+        """Try Gemini streaming. Returns list of _Chunk objects on success, None on failure."""
         if not self._gemini_key:
             logger.warning("[AI] Gemini key not available, skipping")
             return None
@@ -175,12 +175,13 @@ class _UnifiedModels:
                     for item in contents
                 )
             logger.info("[AI] Streaming with Google Gemini (FREE — primary)")
+            chunks = []
             for chunk_text in _call_gemini_stream(prompt_text, self._gemini_key):
-                yield _Chunk(chunk_text)
-            return  # Success — stop iteration
+                chunks.append(_Chunk(chunk_text))
+            return chunks
         except Exception as e:
             logger.warning(f"[AI] Gemini stream failed: {type(e).__name__}: {str(e)[:200]}")
-            # Fall through by not yielding and not returning
+            return None
 
     def generate_content(self, model, contents, config=None):
         system_instruction = None
