@@ -3387,3 +3387,65 @@ def ajax_get_subtopics_db(request):
         'count': subtopics.count(),
         'source': 'database'
     })
+
+
+# =============================================================================
+# DIAGNOSTIC — test AI API keys directly on Railway
+# =============================================================================
+
+def ajax_ai_diagnostic(request):
+    """Test all configured AI API keys and return status. No auth required."""
+    import requests as _req
+    results = {}
+    
+    # 1. Test OpenRouter key
+    or_key = os.environ.get("OPENROUTER_API_KEY", "") or OPENROUTER_API_KEY or ""
+    if or_key:
+        try:
+            from openai import OpenAI
+            client_test = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=or_key, timeout=10)
+            resp = client_test.chat.completions.create(
+                model="deepseek/deepseek-chat",
+                messages=[{"role": "user", "content": "Say OK"}],
+                max_tokens=5,
+            )
+            results["openrouter"] = {"status": "✅ OK", "model": "deepseek/deepseek-chat", "response": resp.choices[0].message.content[:50]}
+        except Exception as e:
+            results["openrouter"] = {"status": "❌ FAILED", "error": str(e)[:200]}
+    else:
+        results["openrouter"] = {"status": "⚠️ NOT SET"}
+    
+    # 2. Test Groq key
+    groq_key = os.environ.get("GROQ_API_KEY", "") or GROQ_API_KEY or ""
+    if groq_key:
+        try:
+            from groq import Groq
+            client_test = Groq(api_key=groq_key)
+            resp = client_test.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": "Say OK"}],
+                max_tokens=5,
+            )
+            results["groq"] = {"status": "✅ OK", "response": resp.choices[0].message.content[:50]}
+        except Exception as e:
+            results["groq"] = {"status": "❌ FAILED", "error": str(e)[:200]}
+    else:
+        results["groq"] = {"status": "⚠️ NOT SET"}
+    
+    # 3. Test Gemini key
+    gem_key = os.environ.get("GOOGLE_API_KEY", "") or GOOGLE_API_KEY or ""
+    if gem_key:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gem_key}"
+            payload = {"contents": [{"parts": [{"text": "Say OK"}]}]}
+            resp = _req.post(url, json=payload, timeout=10)
+            if resp.status_code == 200:
+                results["gemini"] = {"status": "✅ OK"}
+            else:
+                results["gemini"] = {"status": "❌ FAILED", "http": resp.status_code, "error": resp.text[:200]}
+        except Exception as e:
+            results["gemini"] = {"status": "❌ FAILED", "error": str(e)[:200]}
+    else:
+        results["gemini"] = {"status": "⚠️ NOT SET"}
+    
+    return JsonResponse({"diagnostic": results})

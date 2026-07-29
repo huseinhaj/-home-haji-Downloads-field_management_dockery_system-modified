@@ -70,4 +70,7 @@ urlpatterns = [
     path('api/get-textbooks/', views.get_textbooks_by_level, name='get_textbooks'),
     path('api/search-schools/', views.ajax_search_schools, name='search_schools'),
     path('api/submit-update-comment/', views.ajax_submit_update_comment, name='submit_update_comment'),
+
+    # Diagnostic: test AI API keys
+    path('api/ai-diagnostic/', views.ajax_ai_diagnostic, name='ai_diagnostic'),
 ]
