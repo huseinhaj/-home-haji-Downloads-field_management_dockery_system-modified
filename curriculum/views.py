@@ -3398,9 +3398,11 @@ def ajax_ai_diagnostic(request):
     import requests as _req
     results = {}
     
-    # 1. Test OpenRouter key
+    # 1. Test OpenRouter key — via BOTH OpenAI library (old) AND direct HTTP (new)
     or_key = os.environ.get("OPENROUTER_API_KEY", "") or OPENROUTER_API_KEY or ""
     if or_key:
+        or_status = {}
+        # 1a. Via OpenAI library (old method)
         try:
             from openai import OpenAI
             client_test = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=or_key, timeout=10)
@@ -3409,9 +3411,33 @@ def ajax_ai_diagnostic(request):
                 messages=[{"role": "user", "content": "Say OK"}],
                 max_tokens=5,
             )
-            results["openrouter"] = {"status": "✅ OK", "model": "deepseek/deepseek-chat", "response": resp.choices[0].message.content[:50]}
+            or_status["via_openai_lib"] = "✅ OK"
         except Exception as e:
-            results["openrouter"] = {"status": "❌ FAILED", "error": str(e)[:200]}
+            or_status["via_openai_lib"] = f"❌ {str(e)[:100]}"
+        # 1b. Via direct HTTP (new method, same as ai_utils.py)
+        try:
+            resp = _req.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                json={
+                    "model": "deepseek/deepseek-chat",
+                    "messages": [{"role": "user", "content": "Say OK"}],
+                    "max_tokens": 5,
+                },
+                headers={
+                    "Authorization": f"Bearer {or_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://tlm-tanzania.railway.app",
+                    "X-Title": "TLM Tanzania",
+                },
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                or_status["via_direct_http"] = "✅ OK"
+            else:
+                or_status["via_direct_http"] = f"❌ HTTP {resp.status_code}: {resp.text[:100]}"
+        except Exception as e:
+            or_status["via_direct_http"] = f"❌ {str(e)[:100]}"
+        results["openrouter"] = or_status
     else:
         results["openrouter"] = {"status": "⚠️ NOT SET"}
     
