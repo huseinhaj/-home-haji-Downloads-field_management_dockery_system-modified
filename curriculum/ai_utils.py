@@ -178,6 +178,8 @@ class _UnifiedModels:
             chunks = []
             for chunk_text in _call_gemini_stream(prompt_text, self._gemini_key):
                 chunks.append(_Chunk(chunk_text))
+            if not chunks:
+                return None
             return chunks
         except Exception as e:
             logger.warning(f"[AI] Gemini stream failed: {type(e).__name__}: {str(e)[:200]}")
