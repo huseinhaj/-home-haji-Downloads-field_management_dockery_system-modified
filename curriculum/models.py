@@ -30,6 +30,20 @@ class TLMTeacher(models.Model):
     total_boys = models.PositiveIntegerField(default=0, verbose_name="Wavulana (Registered)")
     total_girls = models.PositiveIntegerField(default=0, verbose_name="Wasichana (Registered)")
     
+    theme = models.CharField(
+        max_length=20,
+        choices=[
+            ('classic', 'TIE Classic — Navy & Gold'),
+            ('tanzania', 'Tanzania — Green & Yellow'),
+            ('ocean', 'Ocean Blue — Blue & Teal'),
+            ('royal', 'Royal Purple — Purple & Pink'),
+            ('executive', 'Executive — Charcoal & Silver'),
+        ],
+        default='classic',
+        verbose_name="Rangi / Theme",
+        help_text="Chagua rangi za PDF zako (Scheme & Lesson Plan)",
+    )
+    
     subject = models.ForeignKey(
         Subject, on_delete=models.SET_NULL, null=True, verbose_name="Somo"
     )

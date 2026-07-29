@@ -1039,12 +1039,58 @@ def download_scheme_pdf(request):
     school_name = data.get('school_name', '')
     total_weeks = data.get('total_weeks', '')
 
-    NAVY = colors.HexColor('#0A2B5E')
-    GOLD = colors.HexColor('#C8900A')
-    DARK_GOLD = colors.HexColor('#A67B07')
-    STRIPE = colors.HexColor('#EBF0FB')
-    BORDER = colors.HexColor('#9BAAC4')
-
+    # ── Get teacher theme for PDF ──
+    teacher = get_tlm_teacher(request)
+    theme_name = getattr(teacher, 'theme', 'classic') if teacher else 'classic'
+    
+    THEMES = {
+        'classic': {
+            'primary': colors.HexColor('#0A2B5E'),
+            'accent': colors.HexColor('#C8900A'),
+            'accent_dark': colors.HexColor('#A67B07'),
+            'stripe': colors.HexColor('#EBF0FB'),
+            'border': colors.HexColor('#9BAAC4'),
+            'light_bg': colors.HexColor('#FAFBFD'),
+        },
+        'tanzania': {
+            'primary': colors.HexColor('#1E7A34'),
+            'accent': colors.HexColor('#F5C518'),
+            'accent_dark': colors.HexColor('#D4A000'),
+            'stripe': colors.HexColor('#EBF8F0'),
+            'border': colors.HexColor('#6BA87B'),
+            'light_bg': colors.HexColor('#F5FBF7'),
+        },
+        'ocean': {
+            'primary': colors.HexColor('#1A365D'),
+            'accent': colors.HexColor('#0EA5E9'),
+            'accent_dark': colors.HexColor('#0284C7'),
+            'stripe': colors.HexColor('#E8F4FD'),
+            'border': colors.HexColor('#7FB8D9'),
+            'light_bg': colors.HexColor('#F4F9FD'),
+        },
+        'royal': {
+            'primary': colors.HexColor('#4C1D95'),
+            'accent': colors.HexColor('#EC4899'),
+            'accent_dark': colors.HexColor('#DB2775'),
+            'stripe': colors.HexColor('#F3EEFB'),
+            'border': colors.HexColor('#B794D4'),
+            'light_bg': colors.HexColor('#FAF5FF'),
+        },
+        'executive': {
+            'primary': colors.HexColor('#1F2937'),
+            'accent': colors.HexColor('#9CA3AF'),
+            'accent_dark': colors.HexColor('#6B7280'),
+            'stripe': colors.HexColor('#F0F1F3'),
+            'border': colors.HexColor('#B0B5BD'),
+            'light_bg': colors.HexColor('#F8F9FA'),
+        },
+    }
+    T = THEMES.get(theme_name, THEMES['classic'])
+    NAVY = T['primary']
+    GOLD = T['accent']
+    DARK_GOLD = T['accent_dark']
+    STRIPE = T['stripe']
+    BORDER = T['border']
 
     # ── Create Tanzania flag watermark ──
     _tz_watermark = None
@@ -1843,12 +1889,64 @@ def download_lesson_plan_pdf(request):
         can.line(36, ph - 34, pw - 36, ph - 34)
         can.restoreState()
 
-    NAVY = colors.HexColor('#0A2B5E')
-    GOLD = colors.HexColor('#C8900A')
-    DARK_GOLD = colors.HexColor('#A67B07')
-    LIGHT = colors.HexColor('#EEF1F6')
-    STRIPE = colors.HexColor('#F4F7FF')
-    BORDER = colors.HexColor('#9BAAC4')
+    # ── Get teacher theme for PDF ──
+    teacher = get_tlm_teacher(request)
+    theme_name = getattr(teacher, 'theme', 'classic') if teacher else 'classic'
+    
+    THEMES = {
+        'classic': {
+            'primary': colors.HexColor('#0A2B5E'),
+            'accent': colors.HexColor('#C8900A'),
+            'accent_dark': colors.HexColor('#A67B07'),
+            'light': colors.HexColor('#EEF1F6'),
+            'stripe': colors.HexColor('#F4F7FF'),
+            'border': colors.HexColor('#9BAAC4'),
+            'light_bg': colors.HexColor('#FAFBFD'),
+        },
+        'tanzania': {
+            'primary': colors.HexColor('#1E7A34'),
+            'accent': colors.HexColor('#F5C518'),
+            'accent_dark': colors.HexColor('#D4A000'),
+            'light': colors.HexColor('#E8F5E9'),
+            'stripe': colors.HexColor('#EBF8F0'),
+            'border': colors.HexColor('#6BA87B'),
+            'light_bg': colors.HexColor('#F5FBF7'),
+        },
+        'ocean': {
+            'primary': colors.HexColor('#1A365D'),
+            'accent': colors.HexColor('#0EA5E9'),
+            'accent_dark': colors.HexColor('#0284C7'),
+            'light': colors.HexColor('#E0F2FE'),
+            'stripe': colors.HexColor('#E8F4FD'),
+            'border': colors.HexColor('#7FB8D9'),
+            'light_bg': colors.HexColor('#F4F9FD'),
+        },
+        'royal': {
+            'primary': colors.HexColor('#4C1D95'),
+            'accent': colors.HexColor('#EC4899'),
+            'accent_dark': colors.HexColor('#DB2775'),
+            'light': colors.HexColor('#EDE9FE'),
+            'stripe': colors.HexColor('#F3EEFB'),
+            'border': colors.HexColor('#B794D4'),
+            'light_bg': colors.HexColor('#FAF5FF'),
+        },
+        'executive': {
+            'primary': colors.HexColor('#1F2937'),
+            'accent': colors.HexColor('#9CA3AF'),
+            'accent_dark': colors.HexColor('#6B7280'),
+            'light': colors.HexColor('#E5E7EB'),
+            'stripe': colors.HexColor('#F0F1F3'),
+            'border': colors.HexColor('#B0B5BD'),
+            'light_bg': colors.HexColor('#F8F9FA'),
+        },
+    }
+    T = THEMES.get(theme_name, THEMES['classic'])
+    NAVY = T['primary']
+    GOLD = T['accent']
+    DARK_GOLD = T['accent_dark']
+    LIGHT = T['light']
+    STRIPE = T['stripe']
+    BORDER = T['border']
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
@@ -3218,7 +3316,7 @@ def ajax_update_teacher_profile(request):
                 pass
         
         if changed:
-            teacher.save(update_fields=['class_name', 'stream', 'subject', 'total_boys', 'total_girls'])
+            teacher.save(update_fields=['class_name', 'stream', 'subject', 'total_boys', 'total_girls', 'theme'])
             logger.info(f"[Profile] Updated teacher {teacher.id} ({teacher.full_name})")
             return JsonResponse({'success': True, 'updated': True, 'message': 'Profile imehifadhiwa!'})
         
