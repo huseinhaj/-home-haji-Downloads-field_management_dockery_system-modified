@@ -3512,14 +3512,58 @@ def ajax_generate_all_lessons(request):
             return JsonResponse({'success': False, 'error': f'Somo "{subject_name}" halipatikani'}, status=404)
         
         topics = SubjectTopic.objects.filter(subject=subj_obj, class_name=class_name).order_by('order')
+        
+        # ── Fallback: if no syllabus topics in DB, use AI to generate a topic list ──
+        topic_names = []
         if not topics:
-            return JsonResponse({'success': False, 'error': f'Hakuna topics za {subject_name} {class_name} kwenye silabasi'}, status=404)
+            try:
+                # Use AI to get topic names for this subject
+                ai_prompt = f"List 6-10 main topics for {subject_name} {class_name} (Tanzanian TIE syllabus). Return as a comma-separated list. No numbers. No extra text."
+                ai_resp = client.models.generate_content(model=model_name, contents=ai_prompt)
+                ai_text = ai_resp.text.strip()
+                # Parse comma-separated list
+                topic_names = [t.strip() for t in ai_text.replace('\n', ',').split(',') if t.strip() and len(t.strip()) > 3]
+            except Exception:
+                pass
+            
+            if not topic_names:
+                # Hardcoded fallback for common subjects
+                common_topics = {
+                    'mathematics': ['Numbers', 'Algebra', 'Geometry', 'Trigonometry', 'Statistics', 'Probability'],
+                    'biology': ['Cell Structure', 'Classification', 'Nutrition', 'Transport', 'Respiration', 'Reproduction'],
+                    'chemistry': ['Matter', 'Atomic Structure', 'Bonding', 'Chemical Reactions', 'Acids and Bases', 'Organic Chemistry'],
+                    'physics': ['Mechanics', 'Heat', 'Light', 'Sound', 'Electricity', 'Magnetism'],
+                    'english': ['Parts of Speech', 'Tenses', 'Comprehension', 'Composition', 'Literature', 'Vocabulary'],
+                    'kiswahili': ['Sarufi', 'Ufahamu', 'Insha', 'Fasihi', 'Msamiati', 'Matumizi ya Lugha'],
+                    'geography': ['Location', 'Climate', 'Population', 'Agriculture', 'Mining', 'Tourism'],
+                    'history': ['Early Man', 'Development of Agriculture', 'Trade', 'Colonialism', 'Independence', 'Modern Africa'],
+                }
+                subject_lower = subject_name.lower()
+                for key, topics_list in common_topics.items():
+                    if key in subject_lower or subject_lower in key:
+                        topic_names = topics_list
+                        break
+                if not topic_names:
+                    topic_names = [f"Topic {i+1}" for i in range(6)]
+            
+            # Create mock topic objects with .name attribute
+            class MockTopic:
+                def __init__(self, name):
+                    self.name = name
+            topics = [MockTopic(t) for t in topic_names]
         
         full_class = f"{class_name}{stream}" if stream else class_name
         intro_time = max(5, int(duration * 0.15))
         dev_time = max(10, int(duration * 0.40))
         design_time = max(8, int(duration * 0.30))
         real_time = max(5, int(duration * 0.15))
+
+        # Handle missing school
+        school_obj = teacher.school
+        if not school_obj and school_name:
+            school_obj = School.objects.filter(name__iexact=school_name).first()
+        if not school_obj:
+            return JsonResponse({'success': False, 'error': 'Shule yako haijapatiKANA kwenye mfumo. Sasisha wasifu wako.'}, status=400)
 
         results = []
         errors = []
@@ -3605,22 +3649,26 @@ Return ONLY the JSON object. ALL content must be specific to {topic.name}."""
                     # Save lesson plan to DB
                     lp = LessonPlan.objects.create(
                         student=None,
-                        school=teacher.school,
+                        school=school_obj,
                         subject=subj_obj,
                         class_name=class_name,
                         term=term,
                         year=int(year),
                         teacher_name=teacher_name or teacher.full_name,
                         topic=topic.name,
-                        subtopic=subtopic_name,
+                        subtopic=subtopic_name or '',
+                        date=timezone.now().date(),
+                        duration=duration,
                         education_level=({'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}).get((education_level or '').lower(), 'ordinary'),
                         main_competence=lesson_data.get('main_competence', ''),
                         specific_competence=lesson_data.get('specific_competence', ''),
                         previous_knowledge=lesson_data.get('main_activity', lesson_data.get('specific_activity', '')),
                         learning_objectives=[lesson_data.get('specific_activity', 'By the end students should be able to...')],
+                        teaching_methods=[],
                         teaching_resources=tr,
                         lesson_development=lesson_data.get('lesson_development', []),
                         remarks=lesson_data.get('remarks', ''),
+                        generated_by_ai=True,
                     )
                     results.append({
                         'id': lp.id,
