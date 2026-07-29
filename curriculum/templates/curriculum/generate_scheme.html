@@ -447,9 +447,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentSchemeData = null;
   let currentSavedId = null;
   let breakCount = 0;
-  let progressPollInterval = null;
   let progressStartTime = null;
-  let currentTaskId = null;
 
   // ── Helper: add a break item ──
   function addBreakItem(name, startDate, endDate) {
@@ -703,16 +701,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function generateScheme() {
     generateBtn.disabled = true;
-    generateBtn.innerHTML = '<div class="spinner-tlm" style="width:16px;height:16px;border-width:2px;"></div> Generating...';
+    generateBtn.innerHTML = '<div class="spinner-tlm" style="width:16px;height:16px;border-width:2px;"></div> Inazalisha...';
     spinner.style.display = 'block';
     resultsArea.style.display = 'none';
     emptyState.style.display = 'none';
-    currentTaskId = null;
 
-    // ── Initialise beautiful progress bar ──
+    // ── Show indeterminate progress animation ──
     progressStartTime = Date.now();
-    updateProgressDisplay(0, 0, 'Inaanza...', '');
-    buildProgressSteps(0, 0);
+    document.getElementById('progressTitle').textContent = '⏳ Inazalisha Scheme of Work...';
+    document.getElementById('progressSubtitle').textContent = 'Hii inaweza kuchukua sekunde 40-60. Subiri tafadhali...';
+    document.getElementById('progressStageLabel').textContent = 'Inazalisha kwa kasi...';
+    document.getElementById('progressPercent').textContent = '...';
+    document.getElementById('progressCurrentGroup').textContent = '...';
+    document.getElementById('progressTotalGroups').textContent = '...';
+    document.getElementById('progressElapsed').textContent = '0s';
+    progressBar.style.width = '60%';
+    document.getElementById('progressIcon').className = 'fas fa-spinner fa-pulse';
+
+    // ── Start elapsed time counter ──
+    const elapsedInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - progressStartTime) / 1000);
+      document.getElementById('progressElapsed').textContent = elapsed < 60 ? elapsed + 's' : Math.floor(elapsed/60) + 'm ' + (elapsed%60) + 's';
+    }, 1000);
 
     jsonFetch('{% url "curriculum:ajax_generate_scheme" %}', {
       method: 'POST',
@@ -720,6 +730,8 @@ document.addEventListener('DOMContentLoaded', function() {
       body: JSON.stringify(getFormData()),
     })
     .then(({ ok, status, data }) => {
+      clearInterval(elapsedInterval);
+
       if (!ok) {
         spinner.style.display = 'none';
         generateBtn.disabled = false;
@@ -729,71 +741,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      if (!data.task_id) {
-        spinner.style.display = 'none';
-        generateBtn.disabled = false;
-        generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate with AI';
-        showToast('Server error: no task_id', 'error');
-        emptyState.style.display = 'block';
-        return;
-      }
-
-      // Store task_id, set total groups, start polling
-      currentTaskId = data.task_id;
-      const totalGroups = data.total_groups || 1;
-      const groupsData = data.groups || null;
-      buildProgressSteps(0, totalGroups, groupsData);
-
-      // ── Start polling backend for real progress using task_id ──
-      if (progressPollInterval) clearInterval(progressPollInterval);
-      progressPollInterval = setInterval(pollSchemeProgress, 1500);
-    });
-  }
-
-  // ── Poll backend for real scheme generation progress from cache ──
-  function pollSchemeProgress() {
-    if (!currentTaskId) return;
-    jsonFetch('{% url "curriculum:ajax_scheme_progress" %}?task_id=' + currentTaskId, {
-      headers: {'X-CSRFToken': '{{ csrf_token }}'}
-    })
-    .then(({ ok, data: prog }) => {
-      if (!prog || !prog.total) return;
-      const current = prog.current || 0;
-      const total = prog.total || 0;
-      const label = prog.label || '';
-      const status = prog.status || 'generating';
-
-      const groupsData = prog.groups || null;
-      updateProgressDisplay(current, total, status === 'done' ? 'Imekamilika!' : `Kundi ${current} kati ya ${total}`, label);
-      buildProgressSteps(current, total, groupsData);
-
-      if (status === 'done') {
-        if (progressPollInterval) {
-          clearInterval(progressPollInterval);
-          progressPollInterval = null;
-        }
-        // Fetch the completed result
-        fetchSchemeResult();
-      } else if (status === 'error') {
-        if (progressPollInterval) {
-          clearInterval(progressPollInterval);
-          progressPollInterval = null;
-        }
-        spinner.style.display = 'none';
-        generateBtn.disabled = false;
-        generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate with AI';
-        showToast(prog.error || 'Hitilafu wakati wa kuzalisha.', 'error');
-        emptyState.style.display = 'block';
-      }
-    })
-    .catch(() => {});
-  }
-
-  // ── Fetch completed scheme result from cache ──
-  function fetchSchemeResult() {
-    if (!currentTaskId) return;
-    jsonFetch('{% url "curriculum:ajax_scheme_result" %}?task_id=' + currentTaskId)
-    .then(({ ok, data }) => {
+      // ── Success: show the generated data ──
       progressBar.style.width = '100%';
       document.getElementById('progressStageLabel').textContent = 'Imekamilika!';
       document.getElementById('progressPercent').textContent = '100%';
@@ -805,12 +753,6 @@ document.addEventListener('DOMContentLoaded', function() {
         spinner.style.display = 'none';
         generateBtn.disabled = false;
         generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate with AI';
-
-        // If result not ready yet (202), retry after 2s
-        if (!ok && data && data.error === 'Result bado haujakamilika') {
-          setTimeout(fetchSchemeResult, 2000);
-          return;
-        }
 
         if (data.success && data.data) {
           currentSchemeData = data.data;
@@ -827,6 +769,13 @@ document.addEventListener('DOMContentLoaded', function() {
           emptyState.style.display = 'block';
         }
       }, 600);
+    }).catch(err => {
+      clearInterval(elapsedInterval);
+      spinner.style.display = 'none';
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate with AI';
+      showToast('Network error: ' + err.message, 'error');
+      emptyState.style.display = 'block';
     });
   }
 
