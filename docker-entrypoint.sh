@@ -77,6 +77,6 @@ echo "Starting gunicorn on port ${PORT:-8000}..."
 exec gunicorn field_management.wsgi:application \
     --bind "0.0.0.0:${PORT:-8000}" \
     --workers "${WEB_CONCURRENCY:-2}" \
-    --timeout 120 \
+    --timeout 300 \
     --access-logfile - \
     --error-logfile -
