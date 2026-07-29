@@ -3570,9 +3570,11 @@ def ajax_generate_all_lessons(request):
 
         for idx, topic in enumerate(topics):
             try:
-                # Get first subtopic
-                subtopic = TopicSubtopic.objects.filter(topic=topic).order_by('order').first()
-                subtopic_name = subtopic.name if subtopic else ''
+                # Get first subtopic (only for real DB topics, skip for fallback MockTopic)
+                subtopic_name = ''
+                if hasattr(topic, '_meta'):
+                    subtopic = TopicSubtopic.objects.filter(topic=topic).order_by('order').first()
+                    subtopic_name = subtopic.name if subtopic else ''
 
                 prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom.
 
