@@ -1019,10 +1019,10 @@ def download_scheme_pdf(request):
     elements.append(HRFlowable(width="100%", thickness=3, color=GOLD, spaceAfter=2))
     elements.append(HRFlowable(width="100%", thickness=1.5, color=NAVY, spaceAfter=12))
 
-    cell_style = ParagraphStyle('SchCell', fontName='Helvetica', fontSize=7,
-                                leading=10, wordWrap='LTR')
-    hdr_style = ParagraphStyle('SchHdr', fontName='Helvetica-Bold', fontSize=7,
-                               leading=10, textColor=colors.white, wordWrap='LTR', alignment=1)
+    cell_style = ParagraphStyle('SchCell', fontName='Helvetica', fontSize=8.5,
+                                leading=12, wordWrap='LTR')
+    hdr_style = ParagraphStyle('SchHdr', fontName='Helvetica-Bold', fontSize=8.5,
+                               leading=12, textColor=colors.white, wordWrap='LTR', alignment=1)
 
     # ── TAMISEMI Header (centered, bold) ──
     elements.append(Paragraph(
@@ -1105,10 +1105,10 @@ def download_scheme_pdf(request):
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('GRID', (0, 0), (-1, -1), 0.35, BORDER),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            ('LEFTPADDING', (0, 0), (-1, -1), 4),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
             ('LINEBELOW', (0, 0), (-1, 0), 1.2, GOLD),
         ]
         for i in range(1, len(table_data)):
