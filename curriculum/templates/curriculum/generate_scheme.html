@@ -1137,7 +1137,7 @@ document.addEventListener('DOMContentLoaded', function() {
     .catch(() => {});
   }
 
-  // ── Change PDF Theme ──
+  // ── Change PDF Theme (silent save) ──
   function changeTheme(theme) {
     fetch('{% url "curriculum:update_teacher_profile" %}', {
       method: 'POST',
@@ -1145,12 +1145,7 @@ document.addEventListener('DOMContentLoaded', function() {
       body: JSON.stringify({ theme: theme }),
     })
     .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        showToast('✅ Theme imebadilishwa!', 'success');
-      }
-    })
-    .catch(() => showToast('❌ Hitilafu kubadilisha theme', 'error'));
+    .catch(() => {});
   }
 
   // ── Auto-save teacher profile to DB (fills missing fields for old users) ──

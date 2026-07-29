@@ -4632,12 +4632,11 @@ def ajax_generate_one_lesson(request):
         design_time = max(8, int(duration * 0.30))
         real_time = max(5, int(duration * 0.15))
 
-        # Handle missing school
+        # Handle missing school (match ajax_generate_lessonplan leniency)
         school_obj = teacher.school
         if not school_obj and school_name:
             school_obj = School.objects.filter(name__iexact=school_name).first()
-        if not school_obj:
-            return JsonResponse({'success': False, 'error': 'Shule yako haijapatikana kwenye mfumo. Sasisha wasifu wako.'}, status=400)
+        # Allow empty school - LP saves without school if not found
 
         # Get subject object
         subj_obj = Subject.objects.filter(id=subject_id).first() or Subject.objects.filter(name__iexact=subject_name).first()
