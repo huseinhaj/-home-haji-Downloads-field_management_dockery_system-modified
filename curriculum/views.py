@@ -3652,6 +3652,12 @@ def ajax_update_teacher_profile(request):
             except (ValueError, TypeError):
                 pass
         
+        # ── Handle theme ──
+        theme = data.get('theme', '').strip()
+        if theme and teacher.theme != theme:
+            teacher.theme = theme
+            changed = True
+        
         if changed:
             teacher.save(update_fields=['class_name', 'stream', 'subject', 'total_boys', 'total_girls', 'theme'])
             logger.info(f"[Profile] Updated teacher {teacher.id} ({teacher.full_name})")
