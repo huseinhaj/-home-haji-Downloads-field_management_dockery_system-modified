@@ -410,6 +410,8 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('total_girls').addEventListener('input', function() { calcTotals('total_girls'); });
   document.getElementById('present_boys').addEventListener('input', function() { calcTotals('present_boys'); });
   document.getElementById('present_girls').addEventListener('input', function() { calcTotals('present_girls'); });
+  // ── Initialize all calculated fields on page load ──
+  calcTotals('total_boys');
 
   // Helper: get selected option text
   function getSelectedText(el) {
