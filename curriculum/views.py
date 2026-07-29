@@ -269,35 +269,40 @@ def _scheme_worker(task_id, p):
     p is a dict with all input parameters.
     Progress is written to Django cache (Redis) so the polling view can read it.
     """
-    import django
-    django.db.close_old_connections()
+    try:
+        # Ensure Django is fully setup for this thread
+        import django
+        from django.conf import settings as dj_settings
+        # Force-load Django settings if not already
+        _ = dj_settings.INSTALLED_APPS
+        from django.db import close_old_connections
+        close_old_connections()
 
-    term = p.get('term', 'I')
-    total_weeks = int(p.get('total_weeks', 12))
-    periods_per_week = int(p.get('periods_per_week', 8))
-    education_level = p.get('education_level', '')
-    class_name = p.get('class_name', '')
-    stream = p.get('stream', '')
-    subject = p.get('subject', '')
-    year = p.get('year', '2026')
-    syllabus = p.get('syllabus', 'New Syllabus')
-    teacher_name = p.get('teacher_name', '')
-    school_name = p.get('school_name', '')
-    reference_source = p.get('reference_source', '')
-    breaks = p.get('breaks', [])
-    start_date = p.get('start_date', '')
-    end_date = p.get('end_date', '')
-    language_instruction = p.get('language_instruction', '')
-    school_id = p.get('school_id')
-    teacher_tlm_id = p.get('teacher_tlm_id')
-    user_id = p.get('user_id')
+        term = p.get('term', 'I')
+        total_weeks = int(p.get('total_weeks', 12))
+        periods_per_week = int(p.get('periods_per_week', 8))
+        education_level = p.get('education_level', '')
+        class_name = p.get('class_name', '')
+        stream = p.get('stream', '')
+        subject = p.get('subject', '')
+        year = p.get('year', '2026')
+        syllabus = p.get('syllabus', 'New Syllabus')
+        teacher_name = p.get('teacher_name', '')
+        school_name = p.get('school_name', '')
+        reference_source = p.get('reference_source', '')
+        breaks = p.get('breaks', [])
+        start_date = p.get('start_date', '')
+        end_date = p.get('end_date', '')
+        language_instruction = p.get('language_instruction', '')
+        school_id = p.get('school_id')
+        user_id = p.get('user_id')
 
-    full_class_name = f"{class_name}{stream}" if stream else class_name
-    ref_text = f"\nReference source: {reference_source}" if reference_source else ''
+        full_class_name = f"{class_name}{stream}" if stream else class_name
+        ref_text = f"\nReference source: {reference_source}" if reference_source else ''
 
-    # Helper: build AI prompt
-    def _make_prompt(scope_text, weeks_count):
-        return f"""You are a Tanzanian curriculum expert (TIE/SEQUIP). Generate a REAL, AUTHENTIC Scheme of Work for a Tanzanian {education_level} class following the OFFICIAL TAMISEMI (Prime Minister's Office - Regional Administration and Local Government) format EXACTLY.
+        # Helper: build AI prompt
+        def _make_prompt(scope_text, weeks_count):
+            return f"""You are a Tanzanian curriculum expert (TIE/SEQUIP). Generate a REAL, AUTHENTIC Scheme of Work for a Tanzanian {education_level} class following the OFFICIAL TAMISEMI (Prime Minister's Office - Regional Administration and Local Government) format EXACTLY.
 
 ============================================
 PRIME MINISTER'S OFFICE
@@ -365,7 +370,6 @@ CRITICAL:
 - VARY the "Number of Periods" across rows
 - Return ONLY the JSON array. No other text."""
 
-    try:
         all_scheme_data = []
         all_response_texts = []
 
@@ -605,17 +609,21 @@ CRITICAL:
     except Exception as e:
         import traceback
         traceback.print_exc()
-        logger.error(f"[Scheme Worker] Error: {type(e).__name__}: {str(e)[:300]}")
-        cache.set(f'{CACHE_RESULT_PREFIX}{task_id}', {
-            'success': False,
-            'error': str(e)[:500],
-        }, timeout=1800)
-        cache.set(f'{CACHE_PROGRESS_PREFIX}{task_id}', {
-            'current': 0,
-            'total': 0,
-            'status': 'error',
-            'error': str(e)[:200],
-        }, timeout=1800)
+        err_msg = f"{type(e).__name__}: {str(e)[:300]}"
+        logger.error(f"[Scheme Worker] Error: {err_msg}")
+        try:
+            cache.set(f'{CACHE_RESULT_PREFIX}{task_id}', {
+                'success': False,
+                'error': err_msg[:500],
+            }, timeout=1800)
+            cache.set(f'{CACHE_PROGRESS_PREFIX}{task_id}', {
+                'current': 0,
+                'total': 0,
+                'status': 'error',
+                'error': err_msg[:200],
+            }, timeout=1800)
+        except Exception:
+            pass  # Cache may not be available
 
 
 # =============================================================================
