@@ -61,7 +61,7 @@ RUN GDAL_PATH=$(find /usr/lib/x86_64-linux-gnu -maxdepth 1 -name 'libgdal.so.*' 
     printf "GDAL_LIBRARY_PATH=%s\nGEOS_LIBRARY_PATH=%s\n" "$GDAL_PATH" "$GEOS_PATH" > /app/.geoenv
 
 # ── Cache bust: 2026-07-29 ─────────────────────────────────────────────────────
-ENV BUILD_DATE=2026-07-29
+ENV BUILD_DATE=2026-07-29-v2
 # ── Model/browser cache dirs ──────────────────────────────────────────────────
 ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright
 ENV HF_HOME=/app/.cache/huggingface
