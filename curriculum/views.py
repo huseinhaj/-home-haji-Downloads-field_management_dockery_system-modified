@@ -728,7 +728,7 @@ def ajax_generate_scheme(request):
         for grp in month_groups:
             all_months_flat.extend(grp)
         all_months_str = ', '.join(all_months_flat)
-        rows_per_month = max(2, 10 // max(1, len(all_months_flat)))
+        rows_per_month = max(6, 30 // max(1, len(all_months_flat)))
 
         scope_lines = [
             f"MONTHS TO COVER: {all_months_str}",
@@ -1815,7 +1815,7 @@ def download_lesson_plan_pdf(request):
         [P('Duration', label_s), P(f"{form.get('duration','')} minutes"),
          P('Date', label_s), P(str(timezone.now().date()))],
         [P('Students', label_s),
-         P(f"Registered: B:{form.get('total_boys','')} G:{form.get('total_girls','')} T:{form.get('total_students','')} | Present: B:{form.get('present_boys','')} G:{form.get('present_girls','')} T:{form.get('present_students','')}"),
+         P(f"Registered: B:{form.get('total_boys','')} G:{form.get('total_girls','')} T:{form.get('total_students','')} | Present: B:{form.get('present_boys','')} G:{form.get('present_girls','')} T:{form.get('present_students','')} | Absent: B:{form.get('absent_boys','')} G:{form.get('absent_girls','')} T:{form.get('absent_students','')}"),
          P(''), P('')],
     ]
     meta_tbl = Table(meta_rows, colWidths=[72, 188, 72, 191])
