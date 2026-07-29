@@ -14,8 +14,8 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # Gemini FREE — set this for fallback
 
-# OpenRouter model — uses DeepSeek with $5 credits
-PRIMARY_MODEL = "deepseek/deepseek-chat"
+# Groq model — Works! OpenRouter has auth issues on Railway, Gemini key expired
+PRIMARY_MODEL = "llama-3.3-70b-versatile"
 
 FALLBACK_MODELS_OPENROUTER = [
     "deepseek/deepseek-chat",
@@ -195,7 +195,39 @@ class _UnifiedModels:
 
         messages = _contents_to_messages(contents, system_instruction)
 
-        # ── 1st TRY OPENROUTER ($5 credits) ──
+        # ── 1st TRY GROQ (WORKS!) ──
+        _groq_error = None
+        if self._groq:
+            models_to_try = [model] + [m for m in FALLBACK_MODELS_OPENROUTER if m != model]
+            for attempt_model in models_to_try:
+                try:
+                    logger.info(f"[AI] Trying Groq model: {attempt_model}")
+                    response = self._groq.chat.completions.create(
+                        model=attempt_model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=8192,
+                    )
+                    logger.info(f"[AI] Groq success with model: {attempt_model}")
+                    return _Response(response.choices[0].message.content)
+                except Exception as e:
+                    _groq_error = e
+                    err_str = str(e).lower()
+                    logger.warning(f"[AI] Groq model {attempt_model} error: {type(e).__name__}: {str(e)[:150]}")
+                    if '413' in err_str or 'request too large' in err_str:
+                        break
+                    if any(k in err_str for k in (
+                        'rate', '429', 'quota', 'limit', 'model', 'unavailable',
+                        'overloaded', 'capacity',
+                        'connection', 'connect', 'timeout', 'dns', 'resolve',
+                        'eof', 'reset', 'abort', 'refused', 'unreachable',
+                        'network', 'server error', '500', '502', '503',
+                    )):
+                        continue
+                    logger.error(f"[AI] Groq non-retryable error: {str(e)[:200]}")
+                    raise
+
+        # ── 2nd TRY OPENROUTER ──
         _or_error = None
         if self._or:
             models_to_try = [model] + [m for m in FALLBACK_MODELS_OPENROUTER if m != model]
@@ -218,12 +250,10 @@ class _UnifiedModels:
                     _or_error = e
                     err_str = str(e).lower()
                     logger.warning(f"[AI] OpenRouter model {attempt_model} error: {type(e).__name__}: {str(e)[:150]}")
-                    # Auth/401 errors → don't retry on OpenRouter (same key), break to fallback
                     if any(k in err_str for k in ('auth', '401', '403', 'api_key', 'unauthorized', 'forbidden')):
-                        logger.error(f"[AI] OpenRouter auth error — not retrying, falling through: {str(e)[:200]}")
+                        logger.error(f"[AI] OpenRouter auth error — falling through: {str(e)[:200]}")
                         break
                     if '413' in err_str or 'request too large' in err_str:
-                        logger.error(f"[AI] OpenRouter request too large, skipping all OpenRouter models")
                         break
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
@@ -233,52 +263,19 @@ class _UnifiedModels:
                         'network', 'server error', '500', '502', '503',
                     )):
                         continue
-                    logger.error(f"[AI] OpenRouter non-retryable error, falling through: {str(e)[:200]}")
                     break
 
-        # ── 2nd TRY GROQ ──
-        _groq_error = None
-        if self._groq:
-            models_to_try = [model] + [m for m in FALLBACK_MODELS_GROQ if m != model]
-            for attempt_model in models_to_try:
-                try:
-                    logger.info(f"[AI] Trying Groq model: {attempt_model}")
-                    response = self._groq.chat.completions.create(
-                        model=attempt_model,
-                        messages=messages,
-                        temperature=temperature,
-                        max_tokens=2048,
-                    )
-                    logger.info(f"[AI] Groq success with model: {attempt_model}")
-                    return _Response(response.choices[0].message.content)
-                except Exception as e:
-                    _groq_error = e
-                    err_str = str(e).lower()
-                    logger.warning(f"[AI] Groq model {attempt_model} error: {type(e).__name__}: {str(e)[:150]}")
-                    if '413' in err_str or 'request too large' in err_str:
-                        break
-                    if any(k in err_str for k in (
-                        'rate', '429', 'quota', 'limit', 'model', 'unavailable',
-                        'overloaded', 'capacity',
-                        'connection', 'connect', 'timeout', 'dns', 'resolve',
-                        'eof', 'reset', 'abort', 'refused', 'unreachable',
-                        'network', 'server error', '500', '502', '503',
-                    )):
-                        continue
-                    logger.error(f"[AI] Groq non-retryable error: {str(e)[:200]}")
-                    raise
-
-        # ── 3rd TRY GEMINI (FREE, if key is set) ──
+        # ── 3rd TRY GEMINI (if key is set and valid) ──
         gemini_result = self._try_gemini(contents)
         if gemini_result is not None:
             return gemini_result
 
-        # All providers failed — raise the most useful error
+        # All providers failed
         if _groq_error:
             raise _groq_error
         if _or_error:
             raise _or_error
-        raise RuntimeError("Hakuna AI provider iliyofanya kazi. Angalia OPENROUTER_API_KEY kwenye mazingira.")
+        raise RuntimeError("Hakuna AI provider iliyofanya kazi. Angalia GROQ_API_KEY kwenye mazingira.")
 
     def generate_content_stream(self, model, contents, config=None):
         system_instruction = None
@@ -291,7 +288,41 @@ class _UnifiedModels:
 
         messages = _contents_to_messages(contents, system_instruction)
 
-        # ── 1st TRY OPENROUTER ($5 credits) ──
+        # ── 1st TRY GROQ (WORKS!) ──
+        if self._groq:
+            models_to_try = [model] + [m for m in FALLBACK_MODELS_GROQ if m != model]
+            for attempt_model in models_to_try:
+                try:
+                    logger.info(f"[AI] Streaming with Groq model: {attempt_model}")
+                    stream = self._groq.chat.completions.create(
+                        model=attempt_model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        stream=True,
+                    )
+                    logger.info(f"[AI] Groq stream started with {attempt_model}")
+                    for chunk in stream:
+                        content = chunk.choices[0].delta.content
+                        if content:
+                            yield _Chunk(content)
+                    return
+                except Exception as e:
+                    err_str = str(e).lower()
+                    logger.warning(f"[AI] Groq stream {attempt_model}: {type(e).__name__}: {str(e)[:150]}")
+                    if '413' in err_str or 'request too large' in err_str:
+                        break
+                    if any(k in err_str for k in (
+                        'rate', '429', 'quota', 'limit', 'model', 'unavailable',
+                        'overloaded', 'capacity',
+                        'connection', 'connect', 'timeout', 'dns', 'resolve',
+                        'eof', 'reset', 'abort', 'refused', 'unreachable',
+                        'network', 'server error', '500', '502', '503',
+                    )):
+                        continue
+                    raise
+
+        # ── 2nd TRY OPENROUTER ──
         if self._or:
             models_to_try = [model] + [m for m in FALLBACK_MODELS_OPENROUTER if m != model]
             for attempt_model in models_to_try:
@@ -328,41 +359,7 @@ class _UnifiedModels:
                         continue
                     break
 
-        # ── 2nd TRY GROQ ──
-        if self._groq:
-            models_to_try = [model] + [m for m in FALLBACK_MODELS_GROQ if m != model]
-            for attempt_model in models_to_try:
-                try:
-                    logger.info(f"[AI] Streaming with Groq model: {attempt_model}")
-                    stream = self._groq.chat.completions.create(
-                        model=attempt_model,
-                        messages=messages,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        stream=True,
-                    )
-                    logger.info(f"[AI] Groq stream started with {attempt_model}")
-                    for chunk in stream:
-                        content = chunk.choices[0].delta.content
-                        if content:
-                            yield _Chunk(content)
-                    return
-                except Exception as e:
-                    err_str = str(e).lower()
-                    logger.warning(f"[AI] Groq stream {attempt_model}: {type(e).__name__}: {str(e)[:150]}")
-                    if '413' in err_str or 'request too large' in err_str:
-                        break
-                    if any(k in err_str for k in (
-                        'rate', '429', 'quota', 'limit', 'model', 'unavailable',
-                        'overloaded', 'capacity',
-                        'connection', 'connect', 'timeout', 'dns', 'resolve',
-                        'eof', 'reset', 'abort', 'refused', 'unreachable',
-                        'network', 'server error', '500', '502', '503',
-                    )):
-                        continue
-                    raise
-
-        # ── 3rd TRY GEMINI (FREE, if key set) ──
+        # ── 3rd TRY GEMINI (if key set) ──
         gemini_chunks = self._try_gemini_stream(contents)
         if gemini_chunks is not None:
             for chunk in gemini_chunks:
