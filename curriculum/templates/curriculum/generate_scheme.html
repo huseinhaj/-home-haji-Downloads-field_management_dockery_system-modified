@@ -307,13 +307,57 @@
 
     <!-- ─── RIGHT: Results ─── -->
     <div class="col-lg-8 col-xl-9">
-      <!-- Loading -->
-      <div id="loadingSpinner" class="c-card text-center py-5" style="display:none;">
-        <div class="spinner-tlm" style="width:3rem;height:3rem;border-width:3px;"></div>
-        <p class="mt-3 fw-bold" style="color:var(--green-500);">AI inazalisha Scheme of Work...</p>
-        <p style="font-size:var(--font-size-sm);color:var(--text-muted);">Inachukua sekunde 15–30, tafadhali subiri.</p>
-        <div class="progress-tlm mt-3" style="max-width:300px;margin:0 auto;">
-          <div class="progress-tlm-bar" id="progressBar" style="width:0%;"></div>
+      <!-- Loading: Modern Progress Bar -->
+      <div id="loadingSpinner" class="c-card" style="display:none;overflow:hidden;">
+        <div style="padding:2rem 1.5rem 1.5rem;">
+          <!-- Animated header -->
+          <div style="text-align:center;margin-bottom:1.5rem;">
+            <div id="progressIconContainer" style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--green-500),#166534);margin-bottom:0.75rem;box-shadow:0 4px 15px rgba(31,122,61,0.3);">
+              <i class="fas fa-magic" id="progressIcon" style="color:#fff;font-size:1.4rem;"></i>
+            </div>
+            <h4 id="progressTitle" style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:1.05rem;">
+              Inazalisha Scheme of Work...
+            </h4>
+            <p id="progressSubtitle" style="font-size:var(--font-size-sm);color:var(--text-muted);margin:4px 0 0;">
+              AI inatayarisha mtaala kwa hatua mbalimbali
+            </p>
+          </div>
+
+          <!-- Main progress bar -->
+          <div style="max-width:480px;margin:0 auto 1.25rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span id="progressStageLabel" style="font-size:var(--font-size-xs);font-weight:700;color:var(--green-500);">
+                Inaanza...
+              </span>
+              <span id="progressPercent" style="font-size:var(--font-size-xs);font-weight:700;color:var(--gold-400);">0%</span>
+            </div>
+            <div style="position:relative;height:10px;background:var(--bg-glass);border-radius:var(--radius-full);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.08);">
+              <div id="progressBar" style="position:absolute;top:0;left:0;height:100%;width:0%;background:linear-gradient(90deg,var(--green-500),var(--gold-400),var(--green-500));background-size:200% 100%;border-radius:var(--radius-full);transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1);"></div>
+            </div>
+          </div>
+
+          <!-- Step indicators / Group cards -->
+          <div id="progressStepsContainer" style="max-width:500px;margin:0 auto;">
+            <div id="progressSteps" style="display:flex;flex-direction:column;gap:6px;">
+              <!-- Steps will be dynamically inserted by JS -->
+            </div>
+          </div>
+
+          <!-- Generation stats -->
+          <div id="progressStats" style="display:flex;justify-content:center;gap:1.5rem;margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border-color);">
+            <div style="text-align:center;">
+              <div id="progressCurrentGroup" style="font-size:1.25rem;font-weight:800;color:var(--green-500);">0</div>
+              <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Group</div>
+            </div>
+            <div style="text-align:center;">
+              <div id="progressTotalGroups" style="font-size:1.25rem;font-weight:800;color:var(--gold-400);">0</div>
+              <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Jumla</div>
+            </div>
+            <div style="text-align:center;">
+              <div id="progressElapsed" style="font-size:1.25rem;font-weight:800;color:var(--text-secondary);">0s</div>
+              <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Muda</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -403,6 +447,8 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentSchemeData = null;
   let currentSavedId = null;
   let breakCount = 0;
+  let progressPollInterval = null;
+  let progressStartTime = null;
 
   // ── Helper: add a break item ──
   function addBreakItem(name, startDate, endDate) {
@@ -690,13 +736,14 @@ document.addEventListener('DOMContentLoaded', function() {
     resultsArea.style.display = 'none';
     emptyState.style.display = 'none';
 
-    // Animate progress bar
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 15;
-      if (progress > 85) progress = 85;
-      progressBar.style.width = progress + '%';
-    }, 800);
+    // ── Initialise beautiful progress bar ──
+    progressStartTime = Date.now();
+    updateProgressDisplay(0, 0, 'Inaanza...', '');
+    buildProgressSteps(0, 0);
+
+    // ── Start polling backend for real progress ──
+    if (progressPollInterval) clearInterval(progressPollInterval);
+    progressPollInterval = setInterval(pollSchemeProgress, 1500);
 
     fetch('{% url "curriculum:ajax_generate_scheme" %}', {
       method: 'POST',
@@ -705,8 +752,17 @@ document.addEventListener('DOMContentLoaded', function() {
     })
     .then(r => r.json())
     .then(data => {
-      clearInterval(interval);
+      if (progressPollInterval) {
+        clearInterval(progressPollInterval);
+        progressPollInterval = null;
+      }
       progressBar.style.width = '100%';
+      document.getElementById('progressStageLabel').textContent = 'Imekamilika!';
+      document.getElementById('progressPercent').textContent = '100%';
+      document.getElementById('progressTitle').textContent = '✅ Scheme of Work Imekamilika!';
+      document.getElementById('progressSubtitle').textContent = 'Unaweza kuangalia na kupakua matokeo.';
+      document.getElementById('progressIcon').className = 'fas fa-check-circle';
+
       setTimeout(() => {
         spinner.style.display = 'none';
         generateBtn.disabled = false;
@@ -717,27 +773,140 @@ document.addEventListener('DOMContentLoaded', function() {
           currentSavedId = data.saved_id;
           renderTable(data.data);
           resultsArea.style.display = 'block';
-          // Update result metadata
           const fd = getFormData();
           document.getElementById('resultMetaInfo').textContent = fd.teacher_name ?
             `${fd.teacher_name} — ${fd.class_name}${fd.stream ? fd.stream : ''} — Term ${fd.term} ${fd.year}` : '';
           showToast('✅ Scheme of Work imezalishwa!', 'success');
-          // ── Auto-save teacher profile (for old users with incomplete data) ──
           autoSaveTeacherProfile(fd);
         } else {
           showToast(data.error || 'Hitilafu wakati wa kuzalisha.', 'error');
           emptyState.style.display = 'block';
         }
-      }, 400);
+      }, 600);
     })
     .catch(err => {
-      clearInterval(interval);
+      if (progressPollInterval) {
+        clearInterval(progressPollInterval);
+        progressPollInterval = null;
+      }
       spinner.style.display = 'none';
       generateBtn.disabled = false;
       generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate with AI';
       showToast('Network error: ' + err.message, 'error');
       emptyState.style.display = 'block';
     });
+  }
+
+  // ── Poll backend for real scheme generation progress ──
+  function pollSchemeProgress() {
+    fetch('{% url "curriculum:ajax_scheme_progress" %}', {
+      headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    })
+    .then(r => r.json())
+    .then(prog => {
+      if (!prog || !prog.total) return;
+      const current = prog.current || 0;
+      const total = prog.total || 0;
+      const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+      const label = prog.label || '';
+      const status = prog.status || 'generating';
+
+      updateProgressDisplay(current, total, status === 'done' ? 'Imekamilika!' : `Kundi ${current} kati ya ${total}`, label);
+      buildProgressSteps(current, total);
+
+      if (status === 'done') {
+        if (progressPollInterval) {
+          clearInterval(progressPollInterval);
+          progressPollInterval = null;
+        }
+      }
+    })
+    .catch(() => {});
+  }
+
+  // ── Update the beautiful progress bar UI ──
+  function updateProgressDisplay(current, total, stageLabel, groupLabel) {
+    const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+    const elapsed = Math.floor((Date.now() - progressStartTime) / 1000);
+    const elapsedStr = elapsed < 60 ? elapsed + 's' : Math.floor(elapsed/60) + 'm ' + (elapsed%60) + 's';
+
+    progressBar.style.width = pct + '%';
+    document.getElementById('progressPercent').textContent = pct + '%';
+    document.getElementById('progressStageLabel').textContent = stageLabel;
+    document.getElementById('progressCurrentGroup').textContent = current;
+    document.getElementById('progressTotalGroups').textContent = total;
+    document.getElementById('progressElapsed').textContent = elapsedStr;
+
+    if (groupLabel && current > 0) {
+      document.getElementById('progressSubtitle').textContent = `Inazalisha: ${groupLabel}`;
+    }
+  }
+
+  // ── Build the step indicator cards ──
+  function buildProgressSteps(current, total) {
+    if (total === 0) return;
+    const container = document.getElementById('progressSteps');
+    let html = '';
+    const groupNames = {
+      1: { label: 'Mada za Mwanzo', months: 'Januari - Machi', icon: 'fa-seedling' },
+      2: { label: 'Mada za Kati', months: 'Aprili - Juni', icon: 'fa-leaf' },
+      3: { label: 'Mada za Juu', months: 'Julai - Septemba', icon: 'fa-tree' },
+      4: { label: 'Mada za Mwisho', months: 'Oktoba - Novemba', icon: 'fa-star' },
+    };
+
+    for (let i = 1; i <= total; i++) {
+      const info = groupNames[i] || { label: `Kundi ${i}`, months: '', icon: 'fa-layer-group' };
+      const isDone = i < current;
+      const isActive = i === current;
+      const isFuture = i > current;
+
+      let bgColor, borderColor, textColor, iconColor, statusIcon;
+      if (isDone) {
+        bgColor = 'rgba(31,122,61,0.08)';
+        borderColor = 'var(--green-500)';
+        textColor = 'var(--green-500)';
+        iconColor = 'var(--green-500)';
+        statusIcon = 'fa-check-circle';
+      } else if (isActive) {
+        bgColor = 'rgba(217,164,65,0.08)';
+        borderColor = 'var(--gold-400)';
+        textColor = 'var(--gold-400)';
+        iconColor = 'var(--gold-400)';
+        statusIcon = 'fa-spinner fa-pulse';
+      } else {
+        bgColor = 'var(--bg-glass)';
+        borderColor = 'var(--border-color)';
+        textColor = 'var(--text-muted)';
+        iconColor = 'var(--text-muted)';
+        statusIcon = 'fa-circle';
+      }
+
+      html += `
+        <div style="
+          display:flex;align-items:center;gap:10px;
+          padding:0.55rem 0.75rem;
+          border-radius:var(--radius-sm);
+          background:${bgColor};
+          border:1.5px solid ${borderColor};
+          transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+          ${isActive ? 'box-shadow:0 2px 10px rgba(217,164,65,0.15);transform:scale(1.02);' : ''}
+        ">
+          <div style="
+            width:32px;height:32px;border-radius:50%;
+            display:flex;align-items:center;justify-content:center;
+            background:${isDone ? 'var(--green-500)' : isActive ? 'var(--gold-400)' : 'var(--bg-glass)'};
+            color:#fff;font-size:12px;font-weight:800;
+            flex-shrink:0;
+          ">${isDone ? '<i class="fas fa-check" style="color:#fff;font-size:11px;"></i>' : i}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:var(--font-size-xs);font-weight:700;color:${textColor};">${info.label}</div>
+            <div style="font-size:9px;color:var(--text-muted);">${info.months}</div>
+          </div>
+          <i class="fas ${statusIcon}" style="color:${iconColor};font-size:${isActive ? '14px' : '10px'};${isActive ? '' : 'opacity:0.3'}"></i>
+        </div>
+      `;
+    }
+    container.innerHTML = html;
   }
 
   // ── Load saved ──

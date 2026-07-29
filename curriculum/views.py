@@ -898,6 +898,16 @@ Return ONLY the JSON array. No other text."""
 
             group_scope = '\n'.join(group_scope_lines)
 
+            # Store progress BEFORE generating this group
+            request.session['scheme_progress'] = {
+                'current': group_number,
+                'total': total_groups,
+                'label': group_label,
+                'months': len(month_list),
+                'status': 'generating',
+            }
+            request.session.modified = True
+
             # Generate this group
             group_prompt = _make_prompt(group_scope, group_weeks)
             group_data, group_resp = _generate_scheme_batch(group_prompt)
@@ -923,6 +933,16 @@ Return ONLY the JSON array. No other text."""
                         "References": "TIE textbooks",
                         "Remarks": "Continue as planned"
                     })
+
+        # Mark progress as done
+        request.session['scheme_progress'] = {
+            'current': total_groups,
+            'total': total_groups,
+            'label': 'Complete',
+            'months': 0,
+            'status': 'done',
+        }
+        request.session.modified = True
 
         logger.info(f"[Scheme] TOTAL: {len(all_scheme_data)} rows across {total_groups} groups")
 
@@ -1033,6 +1053,16 @@ Return ONLY the JSON array. No other text."""
         else:
             msg = f"Hitilafu: {raw[:200]}"
         return JsonResponse({'success': False, 'error': msg}, status=500)
+
+
+# =============================================================================
+# AJAX: Get Scheme generation progress (polled by frontend)
+# =============================================================================
+
+def ajax_get_scheme_progress(request):
+    """Return current progress of scheme generation from session."""
+    progress = request.session.get('scheme_progress', {})
+    return JsonResponse(progress)
 
 
 def download_scheme_pdf(request):
