@@ -912,6 +912,111 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // ── Helper: restore form fields from saved form_data & fetch topics automatically ──
+  function restoreFormFromSavedData(fd) {
+    if (!fd) return;
+    
+    // 1. Simple text/number fields
+    ['teacher_name','school_name','stream','term','year','duration',
+     'total_boys','total_girls','present_boys','present_girls'].forEach(function(id) {
+      if (fd[id]) document.getElementById(id).value = fd[id];
+    });
+    calcTotals('total_boys');
+    
+    // 2. Education level → dispatch change (synchronous — populates class + subject options)
+    if (fd.education_level) {
+      const levelLower = fd.education_level.toLowerCase();
+      for (let opt of levelSelect.options) {
+        if (opt.value && (opt.textContent || '').toLowerCase() === levelLower) {
+          levelSelect.value = opt.value;
+          levelSelect.dispatchEvent(new Event('change'));
+          break;
+        }
+      }
+    }
+    
+    // 3. Class (options now exist from level change)
+    if (fd.class_name) {
+      for (let opt of classSelect.options) {
+        if (opt.value && opt.value === fd.class_name) {
+          classSelect.value = opt.value;
+          break;
+        }
+      }
+    }
+    
+    // 4. Subject (options now exist from level change)
+    if (fd.subject_id) {
+      for (let opt of subjectSelect.options) {
+        if (opt.value && opt.value === fd.subject_id) {
+          subjectSelect.value = opt.value;
+          break;
+        }
+      }
+    } else if (fd.subject) {
+      const subjLower = fd.subject.toLowerCase();
+      for (let opt of subjectSelect.options) {
+        if (opt.value) {
+          const optName = (opt.getAttribute('data-name') || opt.textContent || '').toLowerCase();
+          if (optName === subjLower) {
+            subjectSelect.value = opt.value;
+            break;
+          }
+        }
+      }
+    }
+    
+    // 5. Fetch topics for selected subject + class
+    if (subjectSelect.value && getSelectedClassName()) {
+      maybeFetchTopics();
+    }
+    
+    // 6. After topic AJAX completes, set topic + subtopic values
+    if (fd.topic || fd.subtopic) {
+      const topicObserver = new MutationObserver(function() {
+        // Options (beyond the default placeholder) have been added
+        if (topicSelect.options.length > 1) {
+          if (fd.topic) {
+            let found = false;
+            for (let opt of topicSelect.options) {
+              if (opt.value === fd.topic) {
+                topicSelect.value = fd.topic;
+                found = true;
+                break;
+              }
+            }
+            if (found) {
+              topicSelect.dispatchEvent(new Event('change'));
+              // Now wait for subtopics to load
+              if (fd.subtopic) {
+                const subObserver = new MutationObserver(function() {
+                  if (subtopicSelect.options.length > 1) {
+                    for (let opt of subtopicSelect.options) {
+                      if (opt.value === fd.subtopic) {
+                        subtopicSelect.value = fd.subtopic;
+                        break;
+                      }
+                    }
+                    subObserver.disconnect();
+                  }
+                });
+                subObserver.observe(subtopicSelect, { childList: true, subtree: true });
+                setTimeout(function() { subObserver.disconnect(); }, 8000);
+              }
+            } else {
+              // Topic not in dropdown, use manual input
+              topicManual.value = fd.topic;
+            }
+          }
+          topicObserver.disconnect();
+        }
+      });
+      topicObserver.observe(topicSelect, { childList: true, subtree: true });
+      // Safety timeout
+      setTimeout(function() { topicObserver.disconnect(); }, 10000);
+    }
+  }
+
   // ── Load saved ──
   document.getElementById('loadSavedBtn').addEventListener('click', function() {
     jsonFetch('{% url "curriculum:ajax_load_saved_lessonplan" %}', {
@@ -923,6 +1028,10 @@ document.addEventListener('DOMContentLoaded', function() {
         currentFormData = data.form_data;
         currentSavedId = data.saved_id;
         renderLesson(data.data);
+        // ── Restore form fields AND load topics automatically ──
+        if (data.form_data) {
+          restoreFormFromSavedData(data.form_data);
+        }
         document.getElementById('resultsArea').style.display = 'block';
         document.getElementById('emptyState').style.display = 'none';
         showToast('📂 Lesson Plan imepakiwa!', 'success');
@@ -1153,12 +1262,12 @@ document.addEventListener('DOMContentLoaded', function() {
           currentFormData = data.form_data;
           currentSavedId = data.saved_id;
           renderLesson(data.data);
+          // ── Restore form fields AND load topics automatically ──
+          if (data.form_data) {
+            restoreFormFromSavedData(data.form_data);
+          }
           document.getElementById('resultsArea').style.display = 'block';
           document.getElementById('emptyState').style.display = 'none';
-          // Auto-fill teacher name
-          if (data.form_data && data.form_data.teacher_name) {
-            document.getElementById('teacher_name').value = data.form_data.teacher_name;
-          }
           showToast('📂 Lesson Plan imepakiwa kutoka maktaba!', 'success');
         }
       })
