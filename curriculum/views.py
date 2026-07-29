@@ -19,6 +19,10 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import logout as django_logout
+from django.core.cache import cache
+
+import uuid
+import threading
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
@@ -251,6 +255,367 @@ def _generate_scheme_batch(prompt_text):
 
     return scheme_data, response_text
 
+
+# =============================================================================
+# BACKGROUND WORKER: Generate Scheme of Work (runs in separate thread)
+# =============================================================================
+
+CACHE_PROGRESS_PREFIX = 'sw_progress_'
+CACHE_RESULT_PREFIX = 'sw_result_'
+
+def _scheme_worker(task_id, p):
+    """
+    Background thread that generates the Scheme of Work.
+    p is a dict with all input parameters.
+    Progress is written to Django cache (Redis) so the polling view can read it.
+    """
+    import django
+    django.db.close_old_connections()
+
+    term = p.get('term', 'I')
+    total_weeks = int(p.get('total_weeks', 12))
+    periods_per_week = int(p.get('periods_per_week', 8))
+    education_level = p.get('education_level', '')
+    class_name = p.get('class_name', '')
+    stream = p.get('stream', '')
+    subject = p.get('subject', '')
+    year = p.get('year', '2026')
+    syllabus = p.get('syllabus', 'New Syllabus')
+    teacher_name = p.get('teacher_name', '')
+    school_name = p.get('school_name', '')
+    reference_source = p.get('reference_source', '')
+    breaks = p.get('breaks', [])
+    start_date = p.get('start_date', '')
+    end_date = p.get('end_date', '')
+    language_instruction = p.get('language_instruction', '')
+    school_id = p.get('school_id')
+    teacher_tlm_id = p.get('teacher_tlm_id')
+    user_id = p.get('user_id')
+
+    full_class_name = f"{class_name}{stream}" if stream else class_name
+    ref_text = f"\nReference source: {reference_source}" if reference_source else ''
+
+    # Helper: build AI prompt
+    def _make_prompt(scope_text, weeks_count):
+        return f"""You are a Tanzanian curriculum expert (TIE/SEQUIP). Generate a REAL, AUTHENTIC Scheme of Work for a Tanzanian {education_level} class following the OFFICIAL TAMISEMI (Prime Minister's Office - Regional Administration and Local Government) format EXACTLY.
+
+============================================
+PRIME MINISTER'S OFFICE
+REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
+SCHEME OF WORK
+============================================
+
+TEACHER'S NAME: {teacher_name or '____________________'}
+SCHOOL NAME: {school_name or '____________________'}
+SUBJECT: {subject}
+CLASS: {full_class_name}
+TERM: {term}
+YEAR: {year}
+SYLLABUS: {syllabus}
+TOTAL WEEKS: {weeks_count}
+PERIODS/WEEK: {periods_per_week}{ref_text}
+
+{language_instruction}
+
+OUTPUT FORMAT:
+Return a JSON array of objects. Each object MUST have EXACTLY these 12 keys with these EXACT spellings:
+"Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
+
+{scope_text}
+
+STRICT RULES — FOLLOW EXACTLY:
+
+1. MAIN COMPETENCE (Mada Kuu):
+   - Format: "1.0 [Competence Statement]" e.g., "1.0 Demonstrate mastery of the concepts, principles and procedures of nutrition and transportation"
+   - Use REAL numbered competences from the TIE syllabus for {subject} {full_class_name}
+   - ONE Main Competence can span MANY months
+
+2. SPECIFIC COMPETENCES (Mada Ndogo):
+   - Format: "2.1 [Subtopic Description]"
+   - Each Specific Competence falls under a Main Competence (e.g., 1.1, 1.2)
+
+3. MAIN LEARNING ACTIVITIES:
+   - Use lettered format: "(a) Describe nutrition..."
+   - Each letter (a), (b), (c) MUST be its OWN SEPARATE ROW
+
+4. SPECIFIC LEARNING ACTIVITIES:
+   - Start with "To..." format: "To describe the meaning of..."
+   - Each row MUST have a DIFFERENT specific learning activity
+
+5. MONTH: Uppercase: JANUARY, FEBRUARY, ... (only months listed in scope)
+
+6. WEEK: "1st", "2nd", "3rd", "4th" or ranges like "2nd & 3rd"
+
+7. NUMBER OF PERIODS: Realistic values like 3, 6, 9, 12 (NOT the same for every row)
+
+8. TEACHING AND LEARNING METHODS: CBC-aligned: "Brainstorming", "Group discussion", "ICT-Based learning", "Jigsaw", "Guided inquiry", "Question and answer", "Demonstration", "Experimentation", "Field trip", "Guest speaker", "Project", "Problem solving"
+
+9. TEACHING AND LEARNING RESOURCES: Specific: "TIE textbook, Charts/model/photographs, Real specimens, Manila sheets, Markers"
+
+10. ASSESSMENT TOOLS: "Quizzes", "Tests", "Exercises", "Assignment", "Questions and answers", "Practical work", "Project"
+
+11. REFERENCES: APA v7 format using LATEST TIE textbooks
+
+12. REMARKS: Meaningful teacher reflection
+
+CRITICAL:
+- Use REAL TIE syllabus topics, do NOT fabricate fake topics
+- All values MUST be plain strings, NEVER arrays
+- Cover ALL months listed — do not skip any month
+- VARY the "Number of Periods" across rows
+- Return ONLY the JSON array. No other text."""
+
+    try:
+        all_scheme_data = []
+        all_response_texts = []
+
+        import calendar as _cal
+
+        term_groups_map = {
+            'Full Year': [
+                ['JANUARY', 'FEBRUARY', 'MARCH'],
+                ['APRIL', 'MAY', 'JUNE'],
+                ['JULY', 'AUGUST', 'SEPTEMBER'],
+                ['OCTOBER'],
+            ],
+            'I': [['JANUARY', 'FEBRUARY', 'MARCH'], ['APRIL', 'MAY', 'JUNE']],
+            'II': [['JULY', 'AUGUST', 'SEPTEMBER'], ['OCTOBER']],
+            'III': [['AUGUST', 'SEPTEMBER'], ['OCTOBER', 'NOVEMBER']],
+        }
+        month_groups = term_groups_map.get(term, [['JANUARY', 'FEBRUARY', 'MARCH']])
+        total_groups = len(month_groups)
+
+        weeks_per_group = max(4, total_weeks // max(1, total_groups))
+        remaining_weeks_global = total_weeks
+
+        _all_month_names = []
+        for grp in month_groups:
+            _all_month_names.extend(grp)
+        breaks_by_month = {m: [] for m in _all_month_names}
+        if breaks:
+            for b in breaks:
+                start_str = b.get('start', '')
+                if start_str:
+                    try:
+                        from datetime import datetime as _dt_b
+                        start_dt_brk = _dt_b.strptime(start_str, '%Y-%m-%d')
+                        brk_month_name = _cal.month_name[start_dt_brk.month].upper()
+                        if brk_month_name in _all_month_names:
+                            breaks_by_month[brk_month_name].append(b)
+                    except (ValueError, IndexError):
+                        pass
+
+        for group_idx, month_list in enumerate(month_groups):
+            group_number = group_idx + 1
+            group_label = ', '.join(month_list)
+            group_weeks = min(weeks_per_group + (1 if group_idx < total_weeks % max(1, total_groups) else 0), remaining_weeks_global)
+            remaining_weeks_global -= group_weeks
+
+            months_str = ', '.join(month_list)
+            rows_per_month = max(6, 12 // len(month_list))
+
+            if group_idx == 0:
+                topic_range = "Cover the FIRST topics from the syllabus. Start from the very beginning."
+            elif group_idx == total_groups - 1:
+                topic_range = "Cover the FINAL topics from the syllabus. Complete ALL remaining topics."
+            else:
+                topic_range = "Cover MIDDLE topics from the syllabus. Continue from where previous group ended."
+
+            group_scope_lines = [
+                f"MONTHS: {months_str} ({group_number} of {total_groups})",
+                f"TOPIC COVERAGE: {topic_range}",
+                f"WEEKS: Approximately {group_weeks} weeks",
+                f"ROWS: Generate {rows_per_month}+ rows total across these months.",
+                f"",
+                f"Each month MUST have its own rows. Do NOT skip any month.",
+                f"DISTRIBUTE: " + ' '.join([f"{m}: {rows_per_month}+ rows" for m in month_list]),
+            ]
+
+            has_any_break = False
+            for m in month_list:
+                month_breaks = breaks_by_month.get(m, [])
+                if month_breaks:
+                    has_any_break = True
+                    for b in month_breaks:
+                        b_name = b.get('name', 'Break')
+                        b_start = b.get('start', '')
+                        b_end = b.get('end', '')
+                        group_scope_lines.append(
+                            f"  INCLUDE a BREAK ROW for \"{b_name.upper()} ({b_start} – {b_end})\" in {m}."
+                        )
+
+            # Write progress to cache BEFORE generating this group
+            cache.set(f'{CACHE_PROGRESS_PREFIX}{task_id}', {
+                'current': group_number,
+                'total': total_groups,
+                'label': group_label,
+                'status': 'generating',
+                'groups': [','.join(grp) for grp in month_groups],
+            }, timeout=1800)
+
+            group_scope = '\n'.join(group_scope_lines)
+            group_prompt = _make_prompt(group_scope, group_weeks)
+            group_data, group_resp = _generate_scheme_batch(group_prompt)
+
+            if group_data:
+                all_scheme_data.extend(group_data)
+                all_response_texts.append(group_resp)
+            else:
+                for m in month_list:
+                    all_scheme_data.append({
+                        "Main Competence": f"Continue with syllabus topics for {m}",
+                        "Specific Competences": f"Continue with subtopics for {m}",
+                        "Main Learning Activities": f"Activities for {m}",
+                        "Specific Learning Activities": f"Continue with learning for {m}",
+                        "Month": m,
+                        "Week": "1st - 4th",
+                        "Number of Periods": str(max(3, periods_per_week // 2)),
+                        "Teaching and Learning Methods": "Various methods",
+                        "Teaching and Learning Resources": "TIE textbook, Charts",
+                        "Assessment Tools": "Exercises",
+                        "References": "TIE textbooks",
+                        "Remarks": "Continue as planned"
+                    })
+
+        # Validate: ensure every expected month has at least one row
+        expected_months = set()
+        for grp in month_groups:
+            for m in grp:
+                expected_months.add(m)
+        present_months = set()
+        for row in all_scheme_data:
+            mth = (row.get('Month') or '').strip().upper()
+            if mth:
+                present_months.add(mth)
+        missing_months = expected_months - present_months
+        if missing_months:
+            for mm in sorted(missing_months):
+                all_scheme_data.append({
+                    "Main Competence": f"Continue with syllabus topics",
+                    "Specific Competences": f"Continue with subtopics",
+                    "Main Learning Activities": f"Learning activities for {mm}",
+                    "Specific Learning Activities": f"Continue with learning",
+                    "Month": mm,
+                    "Week": "1st - 4th",
+                    "Number of Periods": str(max(3, periods_per_week // 2)),
+                    "Teaching and Learning Methods": "Various CBC methods",
+                    "Teaching and Learning Resources": "TIE textbook, Charts",
+                    "Assessment Tools": "Exercises, Questions",
+                    "References": "TIE textbooks",
+                    "Remarks": "Proceed with syllabus"
+                })
+
+        response_text = '\n'.join(all_response_texts)
+
+        if not all_scheme_data:
+            raise RuntimeError("AI failed to generate any data")
+
+        # Save to DB
+        saved_id = None
+        try:
+            from field_app.models import School, StudentTeacher, Subject, SchemeOfWork
+            school = None
+            student = None
+
+            if school_id:
+                try:
+                    school = School.objects.get(id=school_id)
+                except School.DoesNotExist:
+                    pass
+
+            if user_id:
+                try:
+                    student = StudentTeacher.objects.get(user_id=user_id)
+                    if student.selected_school:
+                        school = student.selected_school
+                except StudentTeacher.DoesNotExist:
+                    pass
+
+            if school:
+                level_map = {'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}
+                edu_level = level_map.get((education_level or '').lower(), 'ordinary')
+                subj_obj = Subject.objects.filter(name__iexact=subject).first()
+                if subj_obj:
+                    start_dt = None
+                    end_dt_obj = None
+                    if start_date:
+                        try:
+                            from datetime import date as _dt
+                            start_dt = _dt.fromisoformat(start_date)
+                        except Exception:
+                            pass
+                    if end_date:
+                        try:
+                            from datetime import date as _dt
+                            end_dt_obj = _dt.fromisoformat(end_date)
+                        except Exception:
+                            pass
+
+                    defaults = {
+                        'school': school,
+                        'education_level': edu_level,
+                        'class_name': class_name,
+                        'syllabus': syllabus,
+                        'total_weeks': int(total_weeks),
+                        'periods_per_week': int(periods_per_week),
+                        'start_date': start_dt,
+                        'end_date': end_dt_obj,
+                        'teacher_name': teacher_name,
+                        'reference_source': reference_source,
+                        'breaks': breaks,
+                        'scheme_data': all_scheme_data,
+                        'generated_by_ai': True,
+                    }
+
+                    if student:
+                        scheme_obj, _ = SchemeOfWork.objects.update_or_create(
+                            student=student,
+                            subject=subj_obj,
+                            term=term,
+                            year=int(year),
+                            defaults=defaults,
+                        )
+                    else:
+                        scheme_obj = SchemeOfWork.objects.create(
+                            student=None,
+                            **defaults,
+                        )
+                    saved_id = scheme_obj.id
+        except Exception as save_err:
+            logger.warning(f"[Scheme Worker] Save error (non-fatal): {save_err}")
+
+        # Store result in cache
+        cache.set(f'{CACHE_RESULT_PREFIX}{task_id}', {
+            'success': True,
+            'data': all_scheme_data,
+            'saved_id': saved_id,
+        }, timeout=1800)
+
+        # Mark progress as done
+        cache.set(f'{CACHE_PROGRESS_PREFIX}{task_id}', {
+            'current': total_groups,
+            'total': total_groups,
+            'label': 'Complete',
+            'status': 'done',
+            'groups': [','.join(grp) for grp in month_groups],
+        }, timeout=1800)
+
+        logger.info(f"[Scheme Worker] DONE: task={task_id}, rows={len(all_scheme_data)}, saved_id={saved_id}")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(f"[Scheme Worker] Error: {type(e).__name__}: {str(e)[:300]}")
+        cache.set(f'{CACHE_RESULT_PREFIX}{task_id}', {
+            'success': False,
+            'error': str(e)[:500],
+        }, timeout=1800)
+        cache.set(f'{CACHE_PROGRESS_PREFIX}{task_id}', {
+            'current': 0,
+            'total': 0,
+            'status': 'error',
+            'error': str(e)[:200],
+        }, timeout=1800)
 
 
 # =============================================================================
@@ -626,11 +991,14 @@ def generate_scheme_view(request):
 
 @csrf_exempt
 def ajax_generate_scheme(request):
-    """AI generates a Scheme of Work."""
+    """
+    Start generating a Scheme of Work in a background thread.
+    Returns a task_id immediately. Frontend polls progress using task_id.
+    """
     if client is None:
         return JsonResponse({
             'success': False,
-            'error': 'Huduma ya AI haitumiki. Ufunguo wa API haujawekwa. Wasiliana na msimamizi.'
+            'error': 'Huduma ya AI haitumiki. Ufunguo wa API haujawekwa.'
         }, status=503)
 
     if request.method != 'POST':
@@ -639,26 +1007,21 @@ def ajax_generate_scheme(request):
     try:
         data = json.loads(request.body)
 
-        education_level = data.get('education_level')
-        class_name = data.get('class_name')
+        education_level = data.get('education_level', '')
+        class_name = data.get('class_name', '')
         stream = data.get('stream', '')
-        subject = data.get('subject')
-        term = data.get('term')
-        year = data.get('year')
+        subject = data.get('subject', '')
+        term = data.get('term', 'I')
+        year = data.get('year', '2026')
         syllabus = data.get('syllabus', 'New Syllabus')
         total_weeks = int(data.get('total_weeks', 12))
         periods_per_week = int(data.get('periods_per_week', 8))
-        start_date = data.get('start_date')
-        end_date = data.get('end_date')
-        teacher_name = data.get('teacher_name')
-        school_name = data.get('school_name')
+        start_date = data.get('start_date', '')
+        end_date = data.get('end_date', '')
+        teacher_name = data.get('teacher_name', '')
+        school_name = data.get('school_name', '')
         reference_source = data.get('reference_source', '')
         breaks = data.get('breaks', [])
-
-        full_class_name = f"{class_name}{stream}" if stream else class_name
-
-        # ── Reference source ──
-        ref_text = f"\nReference source: {reference_source}" if reference_source else ''
 
         # ── Determine language instruction based on school level ──
         _lang_tlm = get_tlm_teacher(request)
@@ -668,457 +1031,110 @@ def ajax_generate_scheme(request):
             if _subject_lower in ('english', 'english language'):
                 language_instruction = "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
             else:
-                language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili). Only column headers can stay in English. All explanations, activities, and descriptions MUST be in Swahili language. This is a Primary school subject."
+                language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili). Only column headers can stay in English."
         elif _school_level == 'Secondary':
             if _subject_lower in ('kiswahili', 'swahili'):
-                language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject for Secondary school."
+                language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject."
             else:
-                language_instruction = "LANGUAGE: Write ALL content in ENGLISH. This is a Secondary school subject taught in English."
+                language_instruction = "LANGUAGE: Write ALL content in ENGLISH."
         else:
             language_instruction = ""
 
-        # ── Build base prompt template (shared between months) ──
-        def _make_prompt(scope_text, weeks_count):
-            return f"""You are a Tanzanian curriculum expert (TIE/SEQUIP). Generate a REAL, AUTHENTIC Scheme of Work for a Tanzanian {education_level} class following the OFFICIAL TAMISEMI (Prime Minister's Office - Regional Administration and Local Government) format EXACTLY.
+        # ── Determine school_id and user_id for background worker ──
+        school_id = None
+        user_id = None
+        teacher_tlm_id = None
+        if request.user.is_authenticated:
+            user_id = request.user.id
+            try:
+                student = StudentTeacher.objects.get(user=request.user)
+                if student.selected_school:
+                    school_id = student.selected_school.id
+            except StudentTeacher.DoesNotExist:
+                pass
+        elif _lang_tlm:
+            teacher_tlm_id = _lang_tlm.id
+            if _lang_tlm.school:
+                school_id = _lang_tlm.school.id
 
-============================================
-PRIME MINISTER'S OFFICE
-REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
-SCHEME OF WORK
-============================================
-
-TEACHER'S NAME: {teacher_name or '____________________'}
-SCHOOL NAME: {school_name or '____________________'}
-SUBJECT: {subject}
-CLASS: {full_class_name}
-TERM: {term}
-YEAR: {year}
-SYLLABUS: {syllabus}
-TOTAL WEEKS: {weeks_count}
-PERIODS/WEEK: {periods_per_week}{ref_text}
-
-{language_instruction}
-
-OUTPUT FORMAT:
-Return a JSON array of objects. Each object MUST have EXACTLY these 12 keys with these EXACT spellings:
-"Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
-
-{scope_text}
-
-═══════════════════════════════════════════════════
-STRICT RULES — FOLLOW EXACTLY:
-═══════════════════════════════════════════════════
-
-📌 1. MAIN COMPETENCE (Mada Kuu):
-   - Format: "1.0 [Competence Statement]" e.g., "1.0 Demonstrate mastery of the concepts, principles and procedures of nutrition and transportation"
-   - Use REAL numbered competences from the TIE syllabus for {subject} {full_class_name}
-   - ONE Main Competence can span MANY months (January through October with different subtopics)
-   - Example from real scheme: "1.0 Demonstrate mastery of the concepts, principles and procedures of nutrition and transportation"
-
-📌 2. SPECIFIC COMPETENCES (Mada Ndogo):
-   - Format: "2.1 [Subtopic Description]" e.g., "2.1 Describe the physiological, anatomical and ecological principles used in nutrition and transportation"
-   - Each Specific Competence falls under a Main Competence (e.g., 1.1, 1.2, 2.1, 2.2)
-   - Multiple rows can have the SAME Specific Competence number if covering different aspects
-
-📌 3. MAIN LEARNING ACTIVITIES (Shughuli Kuu):
-   - Use lettered format: "(a) Describe nutrition in human and ruminants (nutrients, digestion, absorption, assimilation)"
-   - "(b) Describe the mechanism of transportation of materials in plants and animals"
-   - "(c) Describe the mechanisms of gaseous exchange and respiration in living organisms"
-   - Each letter (a), (b), (c), (d), (e), (f), etc. MUST be its OWN SEPARATE ROW
-   - Do NOT combine multiple letters in one row
-
-📌 4. SPECIFIC LEARNING ACTIVITIES (Shughuli Maalum):
-   - Start with "To..." format: "To describe the meaning of human nutrition" or "To explain the concept of transportation of materials in plants"
-   - Each row has ONE focused specific learning activity
-   - VERY IMPORTANT: Each row MUST have a DIFFERENT specific learning activity
-
-📌 5. MONTH:
-   - Uppercase: JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER
-   - The value MUST be one of the months listed in the scope above — do NOT use a different month
-
-📌 6. WEEK:
-   - Format: "1st", "2nd", "3rd", "4th" or ranges like "2nd & 3rd", "3rd & 4th"
-   - EXAM weeks: fewer periods (2-3)
-   - Normal weeks: 6-12 periods depending on subject
-
-📌 7. NUMBER OF PERIODS:
-   - Realistic values: 3, 6, 9, 12 (NOT "{periods_per_week}" for every row)
-   - Each row gets a portion of the weekly periods
-   - Exam/break rows: "2" for exams, "0" for holidays
-
-📌 8. TEACHING AND LEARNING METHODS:
-   - CBC-aligned methods: "Brainstorming", "Group discussion", "ICT-Based learning", "Jigsaw", "Guided inquiry", "Question and answer", "Demonstration", "Experimentation", "Field trip", "Guest speaker", "Project", "Problem solving"
-   - Include 3-5 methods per row
-   - EXAMPLES: "Brainstorming, ICT-Based learning, Jigsaw, Group discussion, Gallery walk"
-
-📌 9. TEACHING AND LEARNING RESOURCES:
-   - Specific to the topic: "TIE textbook, Charts/model/photographs, Real specimens, Manila sheets, Markers, Online resources"
-   - Example: "Mammalian heart models, charts of blood circulatory system, photographs of blood components"
-
-📌 10. ASSESSMENT TOOLS:
-   - Variety: "Quizzes", "Tests", "Exercises", "Assignment", "Questions and answers", "Practical work", "Project", "Portfolio"
-   - Use 2-4 per row
-
-📌 11. REFERENCES:
-   - APA v7 format using LATEST TIE textbooks
-   - Example: "Tanzania Institute of Education. (2024). BIOLOGY for Ordinary Secondary Schools Student's Book Form Two. Tanzania Institute of Education."
-   - For Primary: "Tanzania Institute of Education. (2024). {subject} for Primary Schools Pupil's Book. Tanzania Institute of Education."
-
-📌 12. REMARKS:
-   - Meaningful teacher reflection: "Students participated well" or "More practice needed on calculations" or "Use more real specimens next time"
-
-═══════════════════════════════════════════════════
-CRITICAL REQUIREMENTS:
-═══════════════════════════════════════════════════
-
-🔴 ROWS: Follow the number of rows specified in the scope above for each month — generate that many.
-🔴 REAL SYLLABUS: Use REAL TIE syllabus topics for {subject} {full_class_name}. Do NOT fabricate fake topics.
-🔴 PROPER NUMBERING: Main Competence numbered 1.0, 2.0, 3.0... Specific Competence numbered 1.1, 1.2, 2.1, 2.2...
-🔴 MONTH ORDER: Month values MUST match ONLY the months listed in the scope above — do NOT use other months
-🔴 BREAKS: Include ALL breaks specified in the scope above as FULL rows where all 12 columns have the SAME break text
-🔴 EACH LETTERED ACTIVITY = SEPARATE ROW: Each (a), (b), (c), (d), (e), (f) etc. MUST be its own row, NOT combined
-🔴 CONTENT QUALITY: Rich, detailed, specific to the subject. NOT generic.
-🔴 All values MUST be plain strings, NEVER arrays.
-🔴 VARY the "Number of Periods" across rows — do NOT use the same number for every row
-🔴 COVER ALL MONTHS LISTED in the scope — do NOT skip any month
-
-Return ONLY the JSON array. No other text."""
-
-        all_scheme_data = []
-        all_response_texts = []
-
-        # ── Grouped-month generation strategy ──
-        # Groups months into 2-4 batches (max 4 AI calls) to balance:
-        #   - Comprehensiveness (all months covered, each with 6-12 rows)
-        #   - Performance (avoid server timeouts from too many sequential calls)
-        # ─────────────────────────────────────────────
-
-        import calendar as _cal
-
-        # Define month groups based on term
+        # ── Compute month groups (for immediate return) ──
         term_groups_map = {
-            'Full Year': [
-                ['JANUARY', 'FEBRUARY', 'MARCH'],       # Group 1: Early Term I
-                ['APRIL', 'MAY', 'JUNE'],               # Group 2: Late Term I
-                ['JULY', 'AUGUST', 'SEPTEMBER'],        # Group 3: Term II
-                ['OCTOBER'],                             # Group 4: Term III
-            ],
-            'I': [
-                ['JANUARY', 'FEBRUARY', 'MARCH'],       # Group 1
-                ['APRIL', 'MAY', 'JUNE'],               # Group 2
-            ],
-            'II': [
-                ['JULY', 'AUGUST', 'SEPTEMBER'],        # Group 1
-                ['OCTOBER'],                             # Group 2
-            ],
-            'III': [
-                ['AUGUST', 'SEPTEMBER'],                # Group 1
-                ['OCTOBER', 'NOVEMBER'],                # Group 2
-            ],
+            'Full Year': [['JANUARY', 'FEBRUARY', 'MARCH'], ['APRIL', 'MAY', 'JUNE'], ['JULY', 'AUGUST', 'SEPTEMBER'], ['OCTOBER']],
+            'I': [['JANUARY', 'FEBRUARY', 'MARCH'], ['APRIL', 'MAY', 'JUNE']],
+            'II': [['JULY', 'AUGUST', 'SEPTEMBER'], ['OCTOBER']],
+            'III': [['AUGUST', 'SEPTEMBER'], ['OCTOBER', 'NOVEMBER']],
         }
         month_groups = term_groups_map.get(term, [['JANUARY', 'FEBRUARY', 'MARCH']])
         total_groups = len(month_groups)
 
-        weeks_per_group = max(4, total_weeks // max(1, total_groups))
-        remaining_weeks_global = total_weeks
+        # ── Create task_id and start background thread ──
+        task_id = str(uuid.uuid4())[:8]
 
-        # Group breaks by month (parse start date to determine which month)
-        _all_month_names = []
-        for grp in month_groups:
-            _all_month_names.extend(grp)
-        breaks_by_month = {m: [] for m in _all_month_names}
-        if breaks:
-            for b in breaks:
-                start_str = b.get('start', '')
-                if start_str:
-                    try:
-                        from datetime import datetime as _dt_b
-                        start_dt_brk = _dt_b.strptime(start_str, '%Y-%m-%d')
-                        brk_month_name = _cal.month_name[start_dt_brk.month].upper()
-                        if brk_month_name in _all_month_names:
-                            breaks_by_month[brk_month_name].append(b)
-                    except (ValueError, IndexError):
-                        pass
-
-        logger.info(f"[Scheme] GROUPED: {total_weeks} weeks across {total_groups} groups")
-
-        for group_idx, month_list in enumerate(month_groups):
-            group_number = group_idx + 1
-            group_label = ', '.join(month_list)
-            group_weeks = min(weeks_per_group + (1 if group_idx < total_weeks % max(1, total_groups) else 0), remaining_weeks_global)
-            remaining_weeks_global -= group_weeks
-
-            # Build group scope
-            months_str = ', '.join(month_list)
-            rows_per_month = max(6, 12 // len(month_list))
-            total_rows_target = rows_per_month * len(month_list)
-
-            if group_idx == 0:
-                topic_range = "Cover the FIRST topics from the syllabus. Start from the very beginning (Topic 1). Introduce the first competences with detailed breakdown."
-            elif group_idx == total_groups - 1:
-                topic_range = "Cover the FINAL topics from the syllabus. This is the LAST group. Complete ALL remaining topics. Do NOT leave any topics uncovered."
-            else:
-                topic_range = "Cover MIDDLE topics from the syllabus. Continue from where the previous group ended. Introduce NEW competences. Do NOT repeat topics from earlier groups."
-
-            # Build scope with breaks embedded
-            group_scope_lines = [
-                f"MONTHS: {months_str} ({group_number} of {total_groups})",
-                f"TOPIC COVERAGE: {topic_range}",
-                f"WEEKS: Approximately {group_weeks} weeks of content",
-                f"ROWS: Generate {total_rows_target}+ rows total across these months.",
-                f"",
-                f"⚠️ CRITICAL — YOU MUST COVER EVERY MONTH LISTED BELOW:",
-                f"   Each month MUST have its own rows. Do NOT skip any month.",
-                f"   If a month is listed below, you MUST include rows with that month name.",
-                f"",
-                f"DISTRIBUTE THE ROWS AS:",
-            ]
-            for m in month_list:
-                idx_in_group = month_list.index(m) + 1
-                group_scope_lines.append(f"  ✅ {m}: {rows_per_month}+ rows (each lettered activity = separate row)")
-
-            group_scope_lines.extend([
-                f"",
-                f"⚠️ REMINDER: You have {len(month_list)} months to cover in this group.",
-                f"""  {', '.join([f"{m}: {rows_per_month}+ rows" for m in month_list])}.""",
-                f"",
-                f"ROW STRUCTURE: Each lettered activity like (a), (b), (c), (d), (e), (f), (g) MUST be its OWN SEPARATE row.",
-                f"Do NOT combine multiple letters into one row.",
-                f"",
-                f"MONTHLY BREAKS/HOLIDAYS:",
-            ])
-
-            # Add break instructions for each month in this group
-            has_any_break = False
-            for m in month_list:
-                month_breaks = breaks_by_month.get(m, [])
-                if month_breaks:
-                    has_any_break = True
-                    for b in month_breaks:
-                        b_name = b.get('name', 'Break')
-                        b_start = b.get('start', '')
-                        b_end = b.get('end', '')
-                        group_scope_lines.append(
-                            f"  🔴 INCLUDE a BREAK ROW for \"{b_name.upper()} ({b_start} – {b_end})\""
-                            f"  during {m}. ALL 12 columns set to \"{b_name.upper()}\""
-                        )
-
-            if not has_any_break:
-                group_scope_lines.append(f"  No breaks these months — generate only regular teaching rows.")
-
-            group_scope = '\n'.join(group_scope_lines)
-
-            # Store progress BEFORE generating this group
-            request.session['scheme_progress'] = {
-                'current': group_number,
-                'total': total_groups,
-                'label': group_label,
-                'months': len(month_list),
-                'status': 'generating',
-            }
-            request.session.modified = True
-
-            # Generate this group
-            group_prompt = _make_prompt(group_scope, group_weeks)
-            group_data, group_resp = _generate_scheme_batch(group_prompt)
-
-            if group_data:
-                all_scheme_data.extend(group_data)
-                all_response_texts.append(group_resp)
-                logger.info(f"[Scheme] Group {group_number} ({group_label}): {len(group_data)} rows ✓")
-            else:
-                logger.warning(f"[Scheme] Group {group_number} ({group_label}): FAILED — adding placeholders")
-                for m in month_list:
-                    all_scheme_data.append({
-                        "Main Competence": f"Continue with syllabus topics for {m}",
-                        "Specific Competences": f"Continue with subtopics for {m}",
-                        "Main Learning Activities": f"Activities for {m}",
-                        "Specific Learning Activities": f"Continue with learning for {m}",
-                        "Month": m,
-                        "Week": "1st - 4th",
-                        "Number of Periods": str(max(3, periods_per_week // 2)),
-                        "Teaching and Learning Methods": "Various methods",
-                        "Teaching and Learning Resources": "TIE textbook, Charts",
-                        "Assessment Tools": "Exercises",
-                        "References": "TIE textbooks",
-                        "Remarks": "Continue as planned"
-                    })
-
-        # ── Validate: ensure EVERY expected month has at least one row ──
-        expected_months = set()
-        for grp in month_groups:
-            for m in grp:
-                expected_months.add(m)
-        present_months = set()
-        for row in all_scheme_data:
-            mth = (row.get('Month') or '').strip().upper()
-            if mth:
-                present_months.add(mth)
-        missing_months = expected_months - present_months
-        if missing_months:
-            logger.warning(f"[Scheme] Missing months: {missing_months} — injecting placeholder rows")
-            for mm in sorted(missing_months):
-                all_scheme_data.append({
-                    "Main Competence": f"Continue with syllabus topics",
-                    "Specific Competences": f"Continue with subtopics",
-                    "Main Learning Activities": f"Learning activities for {mm}",
-                    "Specific Learning Activities": f"Continue with learning",
-                    "Month": mm,
-                    "Week": "1st - 4th",
-                    "Number of Periods": str(max(3, periods_per_week // 2)),
-                    "Teaching and Learning Methods": "Various CBC methods",
-                    "Teaching and Learning Resources": "TIE textbook, Charts",
-                    "Assessment Tools": "Exercises, Questions",
-                    "References": "TIE textbooks",
-                    "Remarks": "Proceed with syllabus"
-                })
-
-        # Mark progress as done (include month groups for frontend labels)
-        request.session['scheme_progress'] = {
-            'current': total_groups,
-            'total': total_groups,
-            'label': 'Complete',
-            'months': 0,
-            'status': 'done',
-            'groups': [','.join(grp) for grp in month_groups],
+        params = {
+            'term': term, 'total_weeks': total_weeks, 'periods_per_week': periods_per_week,
+            'education_level': education_level, 'class_name': class_name, 'stream': stream,
+            'subject': subject, 'year': year, 'syllabus': syllabus,
+            'teacher_name': teacher_name, 'school_name': school_name,
+            'reference_source': reference_source, 'breaks': breaks,
+            'start_date': start_date, 'end_date': end_date,
+            'language_instruction': language_instruction,
+            'school_id': school_id, 'user_id': user_id, 'teacher_tlm_id': teacher_tlm_id,
         }
-        request.session.modified = True
 
-        logger.info(f"[Scheme] TOTAL: {len(all_scheme_data)} rows across {total_groups} groups")
-        if missing_months:
-            logger.info(f"[Scheme] Injected placeholders for: {missing_months}")
+        # Initialize progress in cache
+        cache.set(f'{CACHE_PROGRESS_PREFIX}{task_id}', {
+            'current': 0,
+            'total': total_groups,
+            'label': 'Inaanza...',
+            'status': 'starting',
+            'groups': [','.join(grp) for grp in month_groups],
+        }, timeout=1800)
 
-        if not all_scheme_data:
-            preview = (all_response_texts[0] if all_response_texts else '')[:600]
-            logger.error(f"[Scheme] ALL groups failed! Raw: {preview}")
-            return JsonResponse({
-                'success': False,
-                'error': f"AI haikurudisha data sahihi. Sehemu ya majibu: {preview}",
-            }, status=422)
-
-        scheme_data = all_scheme_data
-        response_text = '\n'.join(all_response_texts)
-
-        # Save to DB (works for both Django users AND TLM teachers)
-        saved_id = None
-        try:
-            tlm_teacher = get_tlm_teacher(request)
-            student = None
-            school = None
-            if request.user.is_authenticated:
-                try:
-                    student = StudentTeacher.objects.get(user=request.user)
-                    school = student.selected_school
-                except StudentTeacher.DoesNotExist:
-                    pass
-            elif tlm_teacher and tlm_teacher.school:
-                school = tlm_teacher.school
-            
-            if school:
-                level_map = {'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}
-                edu_level = level_map.get((education_level or '').lower(), 'ordinary')
-                subj_obj = Subject.objects.filter(name__iexact=subject).first()
-                if subj_obj:
-                    start_dt = None
-                    end_dt = None
-                    if start_date:
-                        try:
-                            from datetime import date as _dt
-                            start_dt = _dt.fromisoformat(start_date)
-                        except Exception:
-                            pass
-                    if end_date:
-                        try:
-                            from datetime import date as _dt
-                            end_dt = _dt.fromisoformat(end_date)
-                        except Exception:
-                            pass
-                    
-                    defaults = {
-                        'school': school,
-                        'education_level': edu_level,
-                        'class_name': class_name,
-                        'syllabus': syllabus,
-                        'total_weeks': int(total_weeks),
-                        'periods_per_week': int(periods_per_week),
-                        'start_date': start_dt,
-                        'end_date': end_dt,
-                        'teacher_name': teacher_name,
-                        'reference_source': reference_source,
-                        'breaks': breaks,
-                        'scheme_data': scheme_data,
-                        'generated_by_ai': True,
-                    }
-                    
-                    if student:
-                        # Authenticated user: update existing or create new
-                        scheme_obj, _ = SchemeOfWork.objects.update_or_create(
-                            student=student,
-                            subject=subj_obj,
-                            term=term,
-                            year=int(year),
-                            defaults=defaults,
-                        )
-                    else:
-                        # TLM teacher: always create new record
-                        scheme_obj = SchemeOfWork.objects.create(
-                            student=None,
-                            **defaults,
-                        )
-                    saved_id = scheme_obj.id
-        except Exception as save_err:
-            logger.warning(f"[Curriculum] Scheme save error (non-fatal): {save_err}")
+        # Start background thread
+        thread = threading.Thread(target=_scheme_worker, args=(task_id, params), daemon=True)
+        thread.start()
 
         return JsonResponse({
             'success': True,
-            'data': scheme_data,
-            'saved_id': saved_id,
-            'debug': {
-                'response_length': len(response_text),
-                'rows_found': len(scheme_data),
-            }
+            'task_id': task_id,
+            'total_groups': total_groups,
+            'groups': [','.join(grp) for grp in month_groups],
         })
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raw = str(e)
-        err_type = type(e).__name__
-        logger.error(f"[Scheme Gen Error] {err_type}: {raw[:300]}")
-        
-        # Check which providers are configured
-        ai_status = []
-        if OPENROUTER_API_KEY:
-            ai_status.append("OpenRouter")
-        if GROQ_API_KEY:
-            ai_status.append("Groq")
-        if GOOGLE_API_KEY:
-            ai_status.append("Gemini")
-        providers_info = '+'.join(ai_status) if ai_status else 'Hakuna'
-        
-        if 'PERMISSION_DENIED' in raw or 'suspended' in raw.lower() or '403' in raw:
-            msg = "Huduma ya AI imesimamishwa. Wasiliana na msimamizi."
-        elif 'quota' in raw.lower() or '429' in raw or 'rate' in raw.lower():
-            msg = f"Kikomo cha matumizi: {raw[:200]}"
-        elif '413' in raw or 'request too large' in raw.lower():
-            msg = f"Ombi ni kubwa mno kwa AI. Jaribu kupunguza maelezo (wiki, vipindi) au kubadili somo. Hitilafu: {raw[:200]}"
-        elif 'API_KEY' in raw or 'api_key' in raw.lower() or 'auth' in raw.lower() or '401' in raw:
-            msg = f"Ufunguo wa API ya AI si sahihi. Angalia OPENROUTER_API_KEY kwenye mazingira (Railway)."
-        elif 'connection' in raw.lower() or 'connect' in raw.lower() or 'timeout' in raw.lower() or 'dns' in raw.lower():
-            msg = f"AI haijaunganishwa. Jaribu tena baada ya dakika 1-2. Ikiwa tatizo linaendelea, wasiliana na msimamizi. (AI: {providers_info})"
-        else:
-            msg = f"Hitilafu: {raw[:200]}"
-        return JsonResponse({'success': False, 'error': msg}, status=500)
-
+        logger.error(f"[Scheme Start Error] {type(e).__name__}: {str(e)[:300]}")
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
 
 # =============================================================================
-# AJAX: Get Scheme generation progress (polled by frontend)
+# AJAX: Get Scheme generation progress (polled by frontend from cache)
 # =============================================================================
 
 def ajax_get_scheme_progress(request):
-    """Return current progress of scheme generation from session."""
-    progress = request.session.get('scheme_progress', {})
+    """Return current progress of scheme generation from cache (background thread)."""
+    task_id = request.GET.get('task_id')
+    if not task_id:
+        return JsonResponse({'status': 'no_task', 'current': 0, 'total': 0})
+    progress = cache.get(f'{CACHE_PROGRESS_PREFIX}{task_id}', {})
+    if not progress:
+        return JsonResponse({'status': 'unknown', 'current': 0, 'total': 0})
     return JsonResponse(progress)
+
+
+# =============================================================================
+# AJAX: Get completed Scheme of Work result from cache
+# =============================================================================
+
+def ajax_get_scheme_result(request):
+    """Fetch completed scheme generation result from cache."""
+    task_id = request.GET.get('task_id')
+    if not task_id:
+        return JsonResponse({'success': False, 'error': 'No task_id'}, status=400)
+    result = cache.get(f'{CACHE_RESULT_PREFIX}{task_id}', {})
+    if not result:
+        return JsonResponse({'success': False, 'error': 'Result bado haujakamilika'}, status=404)
+    return JsonResponse(result)
 
 
 def download_scheme_pdf(request):

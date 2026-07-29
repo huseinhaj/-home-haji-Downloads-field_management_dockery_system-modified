@@ -15,6 +15,7 @@ urlpatterns = [
     path('scheme/ajax-generate/', views.ajax_generate_scheme, name='ajax_generate_scheme'),
     path('scheme/ajax-load-saved/', views.ajax_load_saved_scheme, name='ajax_load_saved_scheme'),
     path('scheme/ajax-progress/', views.ajax_get_scheme_progress, name='ajax_scheme_progress'),
+    path('scheme/ajax-result/', views.ajax_get_scheme_result, name='ajax_scheme_result'),
     path('scheme/ajax-load-by-id/<int:scheme_id>/', views.ajax_load_scheme_by_id, name='ajax_load_scheme_by_id'),
     path('scheme/download-pdf/', views.download_scheme_pdf, name='download_scheme_pdf'),
     path('scheme/download-word/', views.download_scheme_word, name='download_scheme_word'),
