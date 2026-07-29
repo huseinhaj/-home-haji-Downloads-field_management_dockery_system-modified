@@ -143,9 +143,9 @@ class _UnifiedModels:
                     raise
 
         # ── 2nd FALLBACK TO GROQ ──
+        _groq_error = None
         if self._groq:
             models_to_try = [model] + [m for m in FALLBACK_MODELS_GROQ if m != model]
-            last_error = None
             for attempt_model in models_to_try:
                 try:
                     logger.info(f"[AI] Trying Groq model: {attempt_model}")
@@ -158,12 +158,12 @@ class _UnifiedModels:
                     logger.info(f"[AI] Groq success with model: {attempt_model}")
                     return _Response(response.choices[0].message.content)
                 except Exception as e:
-                    last_error = e
+                    _groq_error = e
                     err_str = str(e).lower()
                     logger.warning(f"[AI] Groq model {attempt_model} error: {type(e).__name__}: {str(e)[:150]}")
                     if '413' in err_str or 'request too large' in err_str:
                         logger.error(f"[AI] Groq request too large for {attempt_model}, not retrying further Groq models")
-                        raise last_error
+                        break
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
                         'overloaded', 'capacity',
@@ -174,8 +174,7 @@ class _UnifiedModels:
                         continue
                     logger.error(f"[AI] Groq non-retryable error, raising: {str(e)[:200]}")
                     raise
-            if last_error:
-                raise last_error
+            # Don't raise here — let Gemini try first
 
         # ── 3rd FALLBACK TO GOOGLE GEMINI (FREE!) ──
         if self._gemini:
@@ -198,7 +197,10 @@ class _UnifiedModels:
                 logger.error(f"[AI] Gemini also failed: {type(e).__name__}: {str(e)[:200]}")
                 # Fall through to error below
 
-        raise RuntimeError("Hakuna AI provider iliyosanidiwa. Weka OPENROUTER_API_KEY au GROQ_API_KEY kwenye .env")
+        # All three providers failed — raise the most useful error
+        if _groq_error:
+            raise _groq_error
+        raise RuntimeError("Hakuna AI provider iliyofanya kazi. Angalia OPENROUTER_API_KEY kwenye mazingira.")
 
     def generate_content_stream(self, model, contents, config=None):
         system_instruction = None
@@ -250,9 +252,9 @@ class _UnifiedModels:
                     raise
 
         # Fallback to Groq
+        _groq_error = None
         if self._groq:
             models_to_try = [model] + [m for m in FALLBACK_MODELS_GROQ if m != model]
-            last_error = None
             for attempt_model in models_to_try:
                 try:
                     logger.info(f"[AI] Streaming with Groq model: {attempt_model}")
@@ -270,19 +272,21 @@ class _UnifiedModels:
                             yield _Chunk(content)
                     return
                 except Exception as e:
-                    last_error = e
+                    _groq_error = e
                     err_str = str(e).lower()
                     logger.warning(f"[AI] Groq stream {attempt_model}: {type(e).__name__}: {str(e)[:150]}")
                     if '413' in err_str or 'request too large' in err_str:
-                        raise
+                        break
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
-                        'overloaded', 'capacity'
+                        'overloaded', 'capacity',
+                        'connection', 'connect', 'timeout', 'dns', 'resolve',
+                        'eof', 'reset', 'abort', 'refused', 'unreachable',
+                        'network', 'server error', '500', '502', '503'
                     )):
                         continue
                     raise
-            if last_error:
-                raise last_error
+            # Don't raise here — let Gemini try
 
         # Gemini streaming fallback
         if self._gemini:
@@ -306,7 +310,10 @@ class _UnifiedModels:
             except Exception as e:
                 logger.error(f"[AI] Gemini stream also failed: {type(e).__name__}: {str(e)[:200]}")
 
-        raise RuntimeError("Hakuna AI provider iliyosanidiwa.")
+        # All providers failed — raise Groq error (most relevant)
+        if _groq_error:
+            raise _groq_error
+        raise RuntimeError("Hakuna AI provider iliyofanya kazi.")
 
 
 class UnifiedClient:
