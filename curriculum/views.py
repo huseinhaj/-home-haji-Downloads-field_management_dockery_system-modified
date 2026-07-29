@@ -1078,30 +1078,37 @@ def _get_lp_language_instruction(language_param, subject, school_level):
             "===============================================================\n")
         )
 
-    # ── KISWAHILI: force EVERY field to Kiswahili ──
+    # ── KISWAHILI: ULTRA-STRONG - EVERY JSON field in Kiswahili ──
     elif language_param == 'kiswahili':
         return (
-("\n"
-            "===============================================================\n"
-            "🚨 KANUNI YA LUGHA — JSON FIELDS ZOTE KWA KISWAHILI 🚨\n"
-            "===============================================================\n"
-            "FIELDS ZOTE kwenye JSON output hapa chini → KISWAHILI TU:\n"
-            "  main_competence → KISWAHILI (tafsiri kompetensia kuu)\n"
-            "  specific_competence → KISWAHILI (tafsiri kompetensia maalum)\n"
-            "  main_activity → KISWAHILI (shughuli kuu)\n"
-            "  specific_activity → KISWAHILI (shughuli maalum)\n"
-            "  teaching_resources → KISWAHILI (nyenzo za kufundishia)\n"
-            "  references → KISWAHILI (vitabu vya TIE)\n"
-            "  lesson_development → STAGES ZOTE kwa KISWAHILI:\n"
-            "    stage names: Utangulizi | Ukuzaji Kompetensia | Muundo | Utekelezaji\n"
-            "    teaching_activities → KISWAHILI\n"
-            "    learning_activities → KISWAHILI\n"
-            "    assessment_criteria → KISWAHILI\n"
-            "  remarks → KISWAHILI (tafakari na mapendekezo)\n"
-            "  student_statistics → KISWAHILI\n"
-            "KOSA: Field yoyote iko Kiingereza → MAKOSA. JSON keys zinaweza kubaki English.\n"
-            "VALUES LAZIMA ziwe KISWAHILI.\n"
-            "===============================================================\n")
+"\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"🚨 KANUNI KAKAWA YA LUGHA - LESSON PLAN JSON FIELDS ZOTE KWA KISWAHILI 🚨\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"Unazalisha LESSON PLAN kwa KISWAHILI - KILA field VALUE LAZIMA iwe KISWAHILI TU:\n" +
+"\n" +
+"JSON field names (keys) zinaweza kubaki English, lakini VALUES zote LAZIMA ziwe KISWAHILI:\n" +
+"\n" +
+"  main_competence -> KISWAHILI (mf. 1.0 Mada Kuu - Maelezo ya kompetensia)\n" +
+"  specific_competence -> KISWAHILI (mf. Kufikia mwisho wa mada, mwanafunzi aweze...)\n" +
+"  main_activity -> KISWAHILI (mf. Kwa muda wa kipindi kimoja mwanafunzi aweze...)\n" +
+"  specific_activity -> KISWAHILI (mf. Kufikia mwisho wa somo, mwanafunzi aweze...)\n" +
+"  teaching_resources -> KISWAHILI (mf. Vitabu vya TIE, Chati, Kadi)\n" +
+"  references -> KISWAHILI (mf. TET (2023). Hisabati darasa la nne. Tanzania: TET.)\n" +
+"\n" +
+"  lesson_development array -> STAGES ZOTE kwa KISWAHILI:\n" +
+"    stage names: Utangulizi | Ukuzaji Kompetensia | Muundo | Utekelezaji\n" +
+"      (sio 'Introduction', 'Competence Development', 'Design', 'Realisation')\n" +
+"    teaching_activities -> KISWAHILI (shughuli za mwalimu)\n" +
+"    learning_activities -> KISWAHILI (shughuli za wanafunzi)\n" +
+"    assessment_criteria -> KISWAHILI (vigezo vya tathmini)\n" +
+"\n" +
+"  student_statistics -> VALUES KISWAHILI\n" +
+"  remarks -> KISWAHILI (tafakari na mapendekezo kwa somo lijalo)\n" +
+"\n" +
+"KOSA KUBWA: Field VALUE yoyote iko Kiingereza -> MAKOSA MAKUBWA!\n" +
+"JSON keys zinaweza kubaki English, lakini VALUES zote LAZIMA ziwe KISWAHILI KAMILI.\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
         )
 
     # ── AUTO-DETECT ──
@@ -1110,30 +1117,43 @@ def _get_lp_language_instruction(language_param, subject, school_level):
             return "LANGUAGE: Write ALL fields in ENGLISH — this is an English subject for Primary school."
         else:
             return (
-                "\n"
-                "████████████████████████████████████████████████████████████████████████████████████\n"
-                "🚨 KANUNI KAKAWA YA LUGHA — FIELDS ZOTE KWA KISWAHILI 🚨\n"
-                "████████████████████████████████████████████████████████████████████████████████████\n"
-                "Kila shamba (field) LAZIMA iwe kwa KISWAHILI TU.\n"
-                "Hii ni shule ya MSINGI (Primary) na somo si English.\n"
-                "Values zote → KISWAHILI. JSON keys → zinaweza kubaki English.\n"
-                "Lesson development stages zote 4 → ziwe translated kwa Kiswahili.\n"
-                "Remarks → kwa Kiswahili.\n"
-                "████████████████████████████████████████████████████████████████████████████████████\n"
+"\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"🚨 KANUNI KAKAWA YA LUGHA - LESSON PLAN KWA KISWAHILI KAMILI 🚨\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"Hii ni shule ya MSINGI (Primary) na somo si English -> LESSON PLAN kwa KISWAHILI KAMILI:\n" +
+"\n" +
+"JSON field VALUES zote LAZIMA ziwe KISWAHILI TU:\n" +
+"  main_competence, specific_competence -> KISWAHILI\n" +
+"  main_activity, specific_activity -> KISWAHILI\n" +
+"  teaching_resources, references -> KISWAHILI\n" +
+"  lesson_development[].stage -> Utangulizi | Ukuzaji Kompetensia | Muundo | Utekelezaji\n" +
+"    teaching_activities -> KISWAHILI\n" +
+"    learning_activities -> KISWAHILI\n" +
+"    assessment_criteria -> KISWAHILI\n" +
+"  remarks -> KISWAHILI\n" +
+"\n" +
+"KOSA: Field value yoyote iko Kiingereza -> MAKOSA!\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
             )
     elif 'secondary' in school_level_lower or 'ordinary' in school_level_lower or 'advanced' in school_level_lower:
         if subject_lower in ('kiswahili', 'swahili'):
             return (
                 "\n"
-                "████████████████████████████████████████████████████████████████████████████████████\n"
-                "🚨 KANUNI KAKAWA YA LUGHA — FIELDS ZOTE KWA KISWAHILI 🚨\n"
-                "████████████████████████████████████████████████████████████████████████████████████\n"
-                "Kila shamba (field) LAZIMA iwe kwa KISWAHILI TU.\n"
-                "Hili ni somo la Kiswahili kwa shule ya SECONDARY.\n"
-                "Values zote → KISWAHILI. JSON keys → zinaweza kubaki English.\n"
-                "Lesson development stages zote 4 → ziwe translated kwa Kiswahili.\n"
-                "Remarks → kwa Kiswahili.\n"
-                "████████████████████████████████████████████████████████████████████████████████████\n"
+                "\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"🚨 KANUNI KAKAWA YA LUGHA - LESSON PLAN KWA KISWAHILI KAMILI 🚨\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"Hili ni somo la Kiswahili kwa shule ya SECONDARY -> LESSON PLAN values zote KISWAHILI:\n" +
+"\n" +
+"JSON field VALUES zote LAZIMA ziwe KISWAHILI TU (keys zinaweza kubaki English):\n" +
+"  main_competence, specific_competence -> KISWAHILI\n" +
+"  lesson_development[].stage -> Utangulizi | Ukuzaji Kompetensia | Muundo | Utekelezaji\n" +
+"  teaching_activities, learning_activities, assessment_criteria -> KISWAHILI\n" +
+"  remarks -> KISWAHILI\n" +
+"\n" +
+"KOSA: Value yoyote iko Kiingereza -> MAKOSA!\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
             )
         else:
             return "LANGUAGE: Write ALL fields in ENGLISH — this is a Secondary school subject taught in English."
@@ -2238,22 +2258,22 @@ CRITICAL REQUIREMENTS - MUST FOLLOW EXACTLY:
 Lesson Development uses the IDDR Model with these 5 columns per stage: stage, time, teaching_activities, learning_activities, assessment_criteria. Each stage MUST have detailed, Tanzania-specific content using CBC methodologies.
 
 Output ONLY valid JSON with this EXACT structure.
-⚠️ LANGUAGE REMINDER: ALL text values MUST follow the LANGUAGE instruction above.
+⚠️ LANGUAGE REMINDER: ALL text values MUST be in the language specified by the LANGUAGE instruction above. If Kiswahili -> ALL values KISWAHILI. If English -> ALL values ENGLISH. CHECK every field before outputting!
 {{
-    "main_competence": "1.0 Topic Name - Overall competence statement",
-    "specific_competence": "By the end of this topic, students should be able to...",
-    "main_activity": "Within 1 period students should be able to...",
-    "specific_activity": "By the end of this lesson, students should be able to:\n- (list 2-3 specific measurable outcomes)",
-    "teaching_resources": "List specific resources for THIS lesson",
-    "references": "Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education.",
+    "main_competence": "1.0 [Competence description in the language specified above]",
+    "specific_competence": "[Specific competence in the language specified above]",
+    "main_activity": "[Main learning activity in the language specified above]",
+    "specific_activity": "[Specific learning activity in the language specified above]",
+    "teaching_resources": "[Teaching resources in the language specified above]",
+    "references": "[References in the language specified above]",
     "student_statistics": {{"registered_girls": "", "registered_boys": "", "present_girls": "", "present_boys": ""}},
     "lesson_development": [
-        {{"stage": "Introduction", "time": "{intro_time:02d}", "teaching_activities": "what the teacher does to activate prior knowledge (e.g. display pictures, ask questions)", "learning_activities": "what students do (e.g. observe images, respond to questions)", "assessment_criteria": "how to assess readiness (e.g. questions answered correctly)"}},
-        {{"stage": "Competence Development", "time": "{dev_time:02d}", "teaching_activities": "guide students to explore the topic through group work and discussions", "learning_activities": "investigate, discuss in groups, and share findings", "assessment_criteria": "mastery of the competence (e.g. concepts clearly explained)"}},
-        {{"stage": "Design", "time": "{design_time:02d}", "teaching_activities": "guide students to apply knowledge in real-life contexts through exercises or projects", "learning_activities": "complete exercises, create models, solve problems, present work", "assessment_criteria": "correct application of concepts in practical tasks"}},
-        {{"stage": "Realisation", "time": "{real_time:02d}", "teaching_activities": "assess learning through formative assessment (oral questions, quiz) and provide feedback", "learning_activities": "respond to assessment questions, reflect on learning", "assessment_criteria": "achievement of lesson objectives"}}
+        {{"stage": "[Stage 1 name in the language specified]", "time": "{intro_time:02d}", "teaching_activities": "[Description in the language specified]", "learning_activities": "[Description in the language specified]", "assessment_criteria": "[Criteria in the language specified]"}},
+        {{"stage": "[Stage 2 name in the language specified]", "time": "{dev_time:02d}", "teaching_activities": "[Description in the language specified]", "learning_activities": "[Description in the language specified]", "assessment_criteria": "[Criteria in the language specified]"}},
+        {{"stage": "[Stage 3 name in the language specified]", "time": "{design_time:02d}", "teaching_activities": "[Description in the language specified]", "learning_activities": "[Description in the language specified]", "assessment_criteria": "[Criteria in the language specified]"}},
+        {{"stage": "[Stage 4 name in the language specified]", "time": "{real_time:02d}", "teaching_activities": "[Description in the language specified]", "learning_activities": "[Description in the language specified]", "assessment_criteria": "[Criteria in the language specified]"}}
     ],
-    "remarks": "Detailed evaluation: strengths observed, specific challenges faced by students, and concrete way forward for the next lesson."
+    "remarks": "[Remarks in the language specified above]"
 }}
 
 All text values must be plain strings. Use REAL Tanzanian content. Return ONLY the JSON object, no extra text."""
@@ -4465,21 +4485,21 @@ Lesson Development uses the IDDR Model (Introduction, Competence Development, De
 Use CBC methodologies: Brainstorming, Group discussion, Jigsaw, Q&A, Demonstration.
 
 Output ONLY valid JSON with this EXACT structure.
-⚠️ LANGUAGE REMINDER: ALL text values MUST follow the LANGUAGE instruction above.
+⚠️ LANGUAGE REMINDER: ALL text values MUST be in the language specified by the LANGUAGE instruction above. If Kiswahili -> ALL values KISWAHILI. If English -> ALL values ENGLISH. CHECK every field before outputting!
 {{
-    "main_competence": "Numbered competence for {topic.name}",
-    "specific_competence": "Specific competence for {topic.name}",
-    "main_activity": "Within 1 period students should be able to...",
-    "specific_activity": "By the end of this lesson, students should be able to...",
-    "teaching_resources": "TIE textbook, Charts, Manila sheets",
-    "references": "Tanzania Institute of Education. (2024). {subject_name} for Secondary Schools Student's Book. Tanzania Institute of Education.",
+    "main_competence": "[Competence in the language specified above]",
+    "specific_competence": "[Specific competence in the language specified above]",
+    "main_activity": "[Main activity in the language specified above]",
+    "specific_activity": "[Specific activity in the language specified above]",
+    "teaching_resources": "[Resources in the language specified above]",
+    "references": "[References in the language specified above]",
     "lesson_development": [
-        {{"stage": "Introduction", "time": "{intro_time:02d}", "teaching_activities": "activities", "learning_activities": "activities", "assessment_criteria": "criteria"}},
-        {{"stage": "Competence Development", "time": "{dev_time:02d}", "teaching_activities": "activities", "learning_activities": "activities", "assessment_criteria": "criteria"}},
-        {{"stage": "Design", "time": "{design_time:02d}", "teaching_activities": "activities", "learning_activities": "activities", "assessment_criteria": "criteria"}},
-        {{"stage": "Realisation", "time": "{real_time:02d}", "teaching_activities": "activities", "learning_activities": "activities", "assessment_criteria": "criteria"}}
+        {{"stage": "[Stage 1 - language specified]", "time": "{intro_time:02d}", "teaching_activities": "[language specified]", "learning_activities": "[language specified]", "assessment_criteria": "[language specified]"}},
+        {{"stage": "[Stage 2 - language specified]", "time": "{dev_time:02d}", "teaching_activities": "[language specified]", "learning_activities": "[language specified]", "assessment_criteria": "[language specified]"}},
+        {{"stage": "[Stage 3 - language specified]", "time": "{design_time:02d}", "teaching_activities": "[language specified]", "learning_activities": "[language specified]", "assessment_criteria": "[language specified]"}},
+        {{"stage": "[Stage 4 - language specified]", "time": "{real_time:02d}", "teaching_activities": "[language specified]", "learning_activities": "[language specified]", "assessment_criteria": "[language specified]"}}
     ],
-    "remarks": "Evaluation of student achievement and way forward."
+    "remarks": "[Remarks in the language specified above]"
 }}
 
 Return ONLY the JSON object. ALL content must be specific to {topic.name}."""
@@ -4661,21 +4681,21 @@ Lesson Development uses the IDDR Model (Introduction, Competence Development, De
 Use CBC methodologies: Brainstorming, Group discussion, Jigsaw, Q&A, Demonstration.
 
 Output ONLY valid JSON with this EXACT structure.
-⚠️ LANGUAGE REMINDER: ALL text values MUST follow the LANGUAGE instruction above.
+⚠️ LANGUAGE REMINDER: ALL text values MUST be in the language specified by the LANGUAGE instruction above. If Kiswahili -> ALL values KISWAHILI. If English -> ALL values ENGLISH. CHECK every field before outputting!
 {{
-    \"main_competence\": \"Numbered competence for {topic_name}\",
-    \"specific_competence\": \"Specific competence for {topic_name}\",
-    \"main_activity\": \"Within 1 period students should be able to...\",
-    \"specific_activity\": \"By the end of this lesson, students should be able to...\",
-    \"teaching_resources\": \"TIE textbook, Charts, Manila sheets\",
-    \"references\": \"Tanzania Institute of Education. (2024). {subject_name} for Secondary Schools Student's Book. Tanzania Institute of Education.\",
+    \"main_competence\": \"[Competence in the language specified above]\",
+    \"specific_competence\": \"[Specific competence in the language specified above]\",
+    \"main_activity\": \"[Main activity in the language specified above]\",
+    \"specific_activity\": \"[Specific activity in the language specified above]\",
+    \"teaching_resources\": \"[Resources in the language specified above]\",
+    \"references\": \"[References in the language specified above]\",
     \"lesson_development\": [
-        {{\"stage\": \"Introduction\", \"time\": \"{intro_time:02d}\", \"teaching_activities\": \"activities\", \"learning_activities\": \"activities\", \"assessment_criteria\": \"criteria\"}},
-        {{\"stage\": \"Competence Development\", \"time\": \"{dev_time:02d}\", \"teaching_activities\": \"activities\", \"learning_activities\": \"activities\", \"assessment_criteria\": \"criteria\"}},
-        {{\"stage\": \"Design\", \"time\": \"{design_time:02d}\", \"teaching_activities\": \"activities\", \"learning_activities\": \"activities\", \"assessment_criteria\": \"criteria\"}},
-        {{\"stage\": \"Realisation\", \"time\": \"{real_time:02d}\", \"teaching_activities\": \"activities\", \"learning_activities\": \"activities\", \"assessment_criteria\": \"criteria\"}}
+        {{\"stage\": \"[Stage 1 - language specified]\", \"time\": \"{intro_time:02d}\", \"teaching_activities\": \"[language specified]\", \"learning_activities\": \"[language specified]\", \"assessment_criteria\": \"[language specified]\"}},
+        {{\"stage\": \"[Stage 2 - language specified]\", \"time\": \"{dev_time:02d}\", \"teaching_activities\": \"[language specified]\", \"learning_activities\": \"[language specified]\", \"assessment_criteria\": \"[language specified]\"}},
+        {{\"stage\": \"[Stage 3 - language specified]\", \"time\": \"{design_time:02d}\", \"teaching_activities\": \"[language specified]\", \"learning_activities\": \"[language specified]\", \"assessment_criteria\": \"[language specified]\"}},
+        {{\"stage\": \"[Stage 4 - language specified]\", \"time\": \"{real_time:02d}\", \"teaching_activities\": \"[language specified]\", \"learning_activities\": \"[language specified]\", \"assessment_criteria\": \"[language specified]\"}}
     ],
-    \"remarks\": \"Evaluation of student achievement and way forward.\"
+    \"remarks\": \"[Remarks in the language specified above]\"
 }}
 
 Return ONLY the JSON object. ALL content must be specific to {topic_name}."""
