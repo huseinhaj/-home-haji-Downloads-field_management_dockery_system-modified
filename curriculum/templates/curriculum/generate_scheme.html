@@ -1123,7 +1123,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ── Change Language (auto/english/kiswahili) ──
+  // ── Change Language (auto/english/kiswahili) — hush! silent save ──
   function changeLanguage(lang) {
     fetch('{% url "curriculum:update_teacher_profile" %}', {
       method: 'POST',
@@ -1131,12 +1131,7 @@ document.addEventListener('DOMContentLoaded', function() {
       body: JSON.stringify({ preferred_language: lang }),
     })
     .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        showToast('✅ Lugha imebadilishwa!', 'success');
-      }
-    })
-    .catch(() => showToast('❌ Hitilafu kubadilisha lugha', 'error'));
+    .catch(() => {});
   }
 
   // ── Change PDF Theme ──
