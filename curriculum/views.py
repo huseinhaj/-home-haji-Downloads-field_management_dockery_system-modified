@@ -3883,6 +3883,8 @@ def lesson_notes_view(request):
         'saved_lessons': saved_lessons,
         'teacher_name': teacher.full_name if teacher else '',
         'teacher_school_name': teacher.school.name if teacher and teacher.school else '',
+        'teacher_subject_name': teacher.subject.name if teacher and teacher.subject else '',
+        'teacher_class_name': teacher.class_name if teacher else '',
     })
 
 
@@ -4003,9 +4005,10 @@ def ajax_generate_lesson_note_from_lp(request):
             else:
                 lang_instruction = "Write ALL content in ENGLISH."
         
-        prompt = f"""You are a Tanzanian teacher creating LESSON NOTES from a completed lesson plan.
+        prompt = f"""You are an expert Tanzanian teacher writing DETAILED LESSON NOTES in NOTEBOOK format.
+Your notes must be EXCEPTIONALLY THOROUGH — like a teacher's personal notebook that another teacher could use to teach the same lesson.
 
-LESSON PLAN DETAILS:
+IMPORTANT LESSON PLAN DETAILS:
 Subject: {subject_name}
 Class: {lp.class_name}
 Topic: {lp.topic}
@@ -4018,29 +4021,92 @@ Specific Competence: {lp.specific_competence or 'N/A'}
 
 {lang_instruction}
 
-Based on the above lesson plan, create:
+Based on the above lesson plan, create EXTREMELY DETAILED lesson notes in NOTEBOOK FORMAT.
+These notes should be so complete that another teacher could pick them up and teach the lesson confidently.
 
-1. LESSON NOTES SUMMARY: A concise summary (2-3 paragraphs) of what was taught, key points covered, and the main learning outcomes.
+Write in the following STRUCTURE - every section is required:
 
-2. TEACHER'S REFLECTION: Brief reflection on:
-   - What went well
-   - Challenges faced
-   - How to improve next time
+---
 
-3. QUIZ QUESTIONS: Generate 5 quick review questions (with answers) that the teacher can use in class to assess understanding.
+📖 [TOPIC NAME] — LESSON NOTES
+═══════════════════════════════════════
 
-Output as JSON with this structure:
+1. MUHTASARI / SUMMARY (3-5 long paragraphs)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Write a VERY DETAILED summary covering:
+- Ufafanuzi kamili wa dhana kuu (comprehensive definition of main concepts)
+- Misingi ya kinadharia (theoretical foundations)
+- Maelezo ya kina kwa kila hatua (detailed step-by-step explanations)
+- Mifano halisi kutoka kwenye mada (real examples from the topic)
+- Viungo na mada nyingine (connections to other topics)
+- Matumizi ya kivitendo (practical applications)
+- Maneno muhimu na istilahi (key vocabulary and terminology)
+
+Each paragraph should be 5-8 SENTENCES long. Be thorough and educational.
+
+2. NUKTA MUHIMU / KEY POINTS (at least 10 bullet points)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+List the MOST important concepts the student must remember, ordered from basic to advanced.
+Each point should include a SHORT EXPLANATION, not just a heading.
+
+3. MBINU ZA UFUNDISHAJI / TEACHING METHODS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Describe the methods that worked BEST for this topic
+- Nyimbo / Songs that can help students remember
+- Michezo / Games for concept reinforcement
+- Maswali ya haraka / Quick oral questions to ask during class
+- Kazi za vikundi / Group work ideas
+- Kazi za nyumbani / Homework assignments
+
+4. TATHMINI / ASSESSMENT (5 MAJIBU SWALI / Q&A)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Generate 5 CHALLENGING questions with COMPLETE answers.
+Questions should test: understanding, application, analysis and evaluation (not just recall).
+Each answer should be 2-4 sentences explaining the concept clearly.
+
+Question 1: [Question]
+Jibu / Answer: [Detailed answer]
+
+Question 2: [Question]
+Jibu / Answer: [Detailed answer]
+
+Question 3: [Question]
+Jibu / Answer: [Detailed answer]
+
+Question 4: [Question]
+Jibu / Answer: [Detailed answer]
+
+Question 5: [Question]
+Jibu / Answer: [Detailed answer]
+
+5. MWONGOZO / CONCLUSION
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Things that went well during the lesson
+- Challenges faced
+- Recommendations for next lesson
+
+OUTPUT as JSON with this exact structure:
 {{
-    "summary": "2-3 paragraph summary...",
-    "reflection": "Teacher's reflection...",
+    "title": "Topic name - Lesson Notes",
+    "summary_paragraphs": ["Long paragraph 1...", "Long paragraph 2...", "Long paragraph 3...", "Long paragraph 4...", "Long paragraph 5..."],
+    "key_points": ["1. Concept - Explanation", "2. Concept - Explanation", ...],
+    "teaching_methods": "Detailed description of teaching methods, songs, games, activities...",
     "quiz": [
-        {{"question": "Question 1?", "answer": "Answer 1"}},
-        {{"question": "Question 2?", "answer": "Answer 2"}},
-        {{"question": "Question 3?", "answer": "Answer 3"}},
-        {{"question": "Question 4?", "answer": "Answer 4"}},
-        {{"question": "Question 5?", "answer": "Answer 5"}}
-    ]
+        {{"question": "Question 1?", "answer": "Detailed answer 1..."}},
+        {{"question": "Question 2?", "answer": "Detailed answer 2..."}},
+        {{"question": "Question 3?", "answer": "Detailed answer 3..."}},
+        {{"question": "Question 4?", "answer": "Detailed answer 4..."}},
+        {{"question": "Question 5?", "answer": "Detailed answer 5..."}}
+    ],
+    "conclusion": "What went well, challenges, recommendations..."
 }}
+
+LENGTH REQUIREMENTS:
+- summary_paragraphs: 5 paragraphs, each 5-8 sentences long (VERY DETAILED)
+- key_points: at least 10 items
+- quiz: exactly 5 questions with detailed answers (2-4 sentences each)
+- teaching_methods: at least 3-4 sentences
+- conclusion: 3-5 sentences
 
 Return ONLY valid JSON. No other text."""
 
@@ -4068,18 +4134,63 @@ Return ONLY valid JSON. No other text."""
             ed_level = ({'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}).get(
                 (lp.education_level or '').lower(), 'ordinary')
             
-            # Format the note content
+            # Format the note content - NOTEBOOK STYLE with proper formatting
             content_parts = []
-            content_parts.append("=== LESSON NOTES ===")
-            content_parts.append(note_data.get('summary', ''))
+            
+            # Title
+            title = note_data.get('title', f"Lesson Notes - {lp.topic}")
+            content_parts.append(f"📖 {title}")
             content_parts.append("")
-            content_parts.append("=== TEACHER'S REFLECTION ===")
-            content_parts.append(note_data.get('reflection', ''))
-            content_parts.append("")
-            content_parts.append("=== QUIZ QUESTIONS ===")
-            for i, q in enumerate(note_data.get('quiz', []), 1):
-                content_parts.append(f"{i}. {q.get('question', '')}")
-                content_parts.append(f"   Jibu: {q.get('answer', '')}")
+            
+            # Summary paragraphs
+            content_parts.append("=" * 60)
+            content_parts.append("1. MUHTASARI / SUMMARY")
+            content_parts.append("=" * 60)
+            paragraphs = note_data.get('summary_paragraphs', [])
+            if not paragraphs and note_data.get('summary'):
+                paragraphs = [note_data['summary']]
+            for para in paragraphs:
+                content_parts.append(para)
+                content_parts.append("")
+            
+            # Key points
+            key_points = note_data.get('key_points', [])
+            if key_points:
+                content_parts.append("=" * 60)
+                content_parts.append("2. NUKTA MUHIMU / KEY POINTS")
+                content_parts.append("=" * 60)
+                for kp in key_points:
+                    content_parts.append(f"  • {kp}")
+                content_parts.append("")
+            
+            # Teaching methods
+            tm = note_data.get('teaching_methods', '')
+            if tm:
+                content_parts.append("=" * 60)
+                content_parts.append("3. MBINU ZA UFUNDISHAJI / TEACHING METHODS")
+                content_parts.append("=" * 60)
+                content_parts.append(tm)
+                content_parts.append("")
+            
+            # Quiz
+            quiz = note_data.get('quiz', [])
+            if quiz:
+                content_parts.append("=" * 60)
+                content_parts.append("4. TATHMINI / ASSESSMENT — MASWALI NA MAJIBU")
+                content_parts.append("=" * 60)
+                for i, q in enumerate(quiz, 1):
+                    content_parts.append(f"\nSwali {i}: {q.get('question', '')}")
+                    content_parts.append(f"\nJibu: {q.get('answer', '')}")
+                content_parts.append("")
+            
+            # Conclusion
+            conclusion = note_data.get('conclusion', '')
+            if conclusion:
+                content_parts.append("=" * 60)
+                content_parts.append("5. MWONGOZO / CONCLUSION & RECOMMENDATIONS")
+                content_parts.append("=" * 60)
+                content_parts.append(conclusion)
+                content_parts.append("")
             
             note_content = '\n'.join(content_parts)
             
@@ -4099,6 +4210,7 @@ Return ONLY valid JSON. No other text."""
                 'success': True,
                 'note_id': note.id,
                 'note_data': note_data,
+                'note_html': note_content,
                 'created': note.created_at.isoformat(),
             })
         else:
