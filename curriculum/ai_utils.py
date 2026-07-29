@@ -1,6 +1,5 @@
 """
-AI utilities for the Curriculum app — supports OpenRouter (primary) + Groq (fallback) + Google Gemini (last resort FREE).
-OpenRouter gives access to DeepSeek, Gemini, Llama, and many more models.
+AI utilities for the Curriculum app — supports Google Gemini (primary, FREE) + OpenRouter (fallback) + Groq (last resort).
 """
 import os
 from dotenv import load_dotenv
@@ -15,7 +14,7 @@ if not GOOGLE_API_KEY:
 
 # Default model — cheap & capable via OpenRouter
 # You can change this to any OpenRouter model ID: https://openrouter.ai/models
-PRIMARY_MODEL = "deepseek/deepseek-chat"
+PRIMARY_MODEL = "gemini-2.0-flash"  # FREE — generous limits (1,500 req/day)
 # Alternative good & cheap models:
 # "google/gemini-2.0-flash" (very cheap, fast)
 # "meta-llama/llama-3.3-70b-instruct" (same as current Groq model)
@@ -87,7 +86,7 @@ def _contents_to_messages(contents, system_instruction=None):
 # =============================================================================
 
 class _UnifiedModels:
-    """Mimics models.generate_content() interface but with OpenRouter → Groq → Gemini fallback chain."""
+    """Mimics models.generate_content() interface but with Gemini (FREE) → OpenRouter → Groq fallback chain."""
 
     def __init__(self, openrouter_client=None, groq_client=None, gemini_client=None):
         self._or = openrouter_client
@@ -139,8 +138,8 @@ class _UnifiedModels:
                         'network', 'server error', '500', '502', '503'
                     )):
                         continue
-                    logger.error(f"[AI] OpenRouter non-retryable error, raising: {str(e)[:200]}")
-                    raise
+                    logger.error(f"[AI] OpenRouter non-retryable error, falling through to next provider: {str(e)[:200]}")
+                    break  # Fall through to Groq/Gemini instead of raising
 
         # ── 2nd FALLBACK TO GROQ ──
         _groq_error = None
@@ -249,7 +248,8 @@ class _UnifiedModels:
                         'overloaded', 'capacity', 'insufficient_quota', 'credits'
                     )):
                         continue
-                    raise
+                    logger.error(f"[AI] OpenRouter stream non-retryable, falling through: {str(e)[:200]}")
+                    break  # Fall through to Groq/Gemini
 
         # Fallback to Groq
         _groq_error = None
