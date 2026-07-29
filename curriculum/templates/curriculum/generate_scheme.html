@@ -676,6 +676,30 @@ document.addEventListener('DOMContentLoaded', function() {
     generateScheme();
   });
 
+  // ── Helper: robust JSON fetch — handles non-JSON / error responses ──
+  function jsonFetch(url, options) {
+    return fetch(url, options).then(r => {
+      const ct = (r.headers.get('content-type') || '').toLowerCase();
+      if (ct.includes('application/json') || ct.includes('text/json')) {
+        return r.json().then(data => ({ ok: r.ok, status: r.status, data }));
+      }
+      // Not JSON — try to read as text and wrap in a descriptive error
+      return r.text().then(body => {
+        const snippet = body.substring(0, 300).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const statusText = r.statusText || httpStatusText(r.status);
+        const errMsg = `Server returned HTTP ${r.status} ${statusText} (not JSON). Response starts with: "${snippet}"`;
+        return { ok: false, status: r.status, data: { success: false, error: errMsg } };
+      });
+    }).catch(netErr => {
+      // Network / connection error (no response at all)
+      return { ok: false, status: 0, data: { success: false, error: `Network error: ${netErr.message}. Angalia muunganisho wako.` } };
+    });
+  }
+  function httpStatusText(code) {
+    const m = { 400:'Bad Request', 403:'Forbidden (CSRF?)', 404:'Not Found', 500:'Server Error', 502:'Bad Gateway (timeout?)', 503:'Service Unavailable', 504:'Gateway Timeout' };
+    return m[code] || '';
+  }
+
   function generateScheme() {
     generateBtn.disabled = true;
     generateBtn.innerHTML = '<div class="spinner-tlm" style="width:16px;height:16px;border-width:2px;"></div> Generating...';
@@ -692,17 +716,26 @@ document.addEventListener('DOMContentLoaded', function() {
     if (progressPollInterval) clearInterval(progressPollInterval);
     progressPollInterval = setInterval(pollSchemeProgress, 1500);
 
-    fetch('{% url "curriculum:ajax_generate_scheme" %}', {
+    jsonFetch('{% url "curriculum:ajax_generate_scheme" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
       body: JSON.stringify(getFormData()),
     })
-    .then(r => r.json())
-    .then(data => {
+    .then(({ ok, status, data }) => {
       if (progressPollInterval) {
         clearInterval(progressPollInterval);
         progressPollInterval = null;
       }
+
+      if (!ok) {
+        spinner.style.display = 'none';
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate with AI';
+        showToast(data.error || 'Server error: ' + status, 'error');
+        emptyState.style.display = 'block';
+        return;
+      }
+
       progressBar.style.width = '100%';
       document.getElementById('progressStageLabel').textContent = 'Imekamilika!';
       document.getElementById('progressPercent').textContent = '100%';
@@ -730,27 +763,15 @@ document.addEventListener('DOMContentLoaded', function() {
           emptyState.style.display = 'block';
         }
       }, 600);
-    })
-    .catch(err => {
-      if (progressPollInterval) {
-        clearInterval(progressPollInterval);
-        progressPollInterval = null;
-      }
-      spinner.style.display = 'none';
-      generateBtn.disabled = false;
-      generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate with AI';
-      showToast('Network error: ' + err.message, 'error');
-      emptyState.style.display = 'block';
     });
   }
 
   // ── Poll backend for real scheme generation progress ──
   function pollSchemeProgress() {
-    fetch('{% url "curriculum:ajax_scheme_progress" %}', {
+    jsonFetch('{% url "curriculum:ajax_scheme_progress" %}', {
       headers: {'X-CSRFToken': '{{ csrf_token }}'}
     })
-    .then(r => r.json())
-    .then(prog => {
+    .then(({ ok, data: prog }) => {
       if (!prog || !prog.total) return;
       const current = prog.current || 0;
       const total = prog.total || 0;
@@ -866,8 +887,8 @@ document.addEventListener('DOMContentLoaded', function() {
             flex-shrink:0;
           ">${isDone ? '<i class="fas fa-check" style="color:#fff;font-size:11px;"></i>' : i}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:var(--font-size-xs);font-weight:700;color:${textColor};">${info.label}</div>
-            <div style="font-size:9px;color:var(--text-muted);">${info.months}</div>
+            <div style="font-size:var(--font-size-xs);font-weight:700;color:${textColor};">${label}</div>
+            <div style="font-size:9px;color:var(--text-muted);">${months || ''}</div>
           </div>
           <i class="fas ${statusIcon}" style="color:${iconColor};font-size:${isActive ? '14px' : '10px'};${isActive ? '' : 'opacity:0.3'}"></i>
         </div>
@@ -878,12 +899,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── Load saved ──
   document.getElementById('loadSavedBtn').addEventListener('click', function() {
-    fetch('{% url "curriculum:ajax_load_saved_scheme" %}', {
+    jsonFetch('{% url "curriculum:ajax_load_saved_scheme" %}', {
       headers: {'X-CSRFToken': '{{ csrf_token }}'}
     })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success && data.data) {
+    .then(({ ok, data }) => {
+      if (ok && data.success && data.data) {
         currentSchemeData = data.data;
         currentSavedId = data.saved_id;
         if (data.meta) {
@@ -897,8 +917,7 @@ document.addEventListener('DOMContentLoaded', function() {
       } else {
         showToast(data.error || 'Hakuna scheme iliyohifadhiwa.', 'warning');
       }
-    })
-    .catch(err => showToast('Error: ' + err.message, 'error'));
+    });
   });
 
   // ── Render table (with contenteditable for editing) ──
@@ -959,26 +978,20 @@ document.addEventListener('DOMContentLoaded', function() {
     btn.disabled = true;
     btn.innerHTML = '<div class="spinner-tlm" style="width:14px;height:14px;border-width:2px;"></div> Inahifadhi...';
     
-    fetch('{% url "curriculum:save_scheme_edits" %}', {
+    jsonFetch('{% url "curriculum:save_scheme_edits" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
       body: JSON.stringify({ saved_id: currentSavedId, scheme_data: updatedData }),
     })
-    .then(r => r.json())
-    .then(data => {
+    .then(({ ok, data }) => {
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-save me-1"></i> Hifadhi Mabadiliko';
-      if (data.success) {
+      if (ok && data.success) {
         document.getElementById('editSavedBadge').style.display = 'inline-flex';
         showToast('✅ Mabadiliko yamehifadhiwa!', 'success');
       } else {
         showToast(data.error || 'Hitilafu wakati wa kuhifadhi', 'error');
       }
-    })
-    .catch(err => {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-save me-1"></i> Hifadhi Mabadiliko';
-      showToast('Network error: ' + err.message, 'error');
     });
   });
 
@@ -986,21 +999,32 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('downloadPdfAfterEditBtn').addEventListener('click', function() {
     if (!currentSchemeData) return;
     const fd = { ...getFormData(), scheme_data: currentSchemeData };
-    fetch('{% url "curriculum:download_scheme_pdf" %}', {
+    fetchForBlob('{% url "curriculum:download_scheme_pdf" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
       body: JSON.stringify(fd),
-    })
-    .then(r => r.blob())
-    .then(blob => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `Scheme_of_Work_${fd.subject || 'document'}.pdf`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      showToast('PDF imepakuliwa!', 'success');
-    });
+    }, fd, 'pdf');
   });
+
+  // ── Blob fetch helper for PDF/Word downloads ──
+  function fetchForBlob(url, options, formData, ext) {
+    const subject = (formData && formData.subject) || 'document';
+    const fileType = ext || (url.includes('word') ? 'docx' : 'pdf');
+    return fetch(url, options)
+      .then(r => {
+        if (!r.ok) return r.text().then(t => { throw new Error(`HTTP ${r.status}: ${t.substring(0,150)}`); });
+        return r.blob();
+      })
+      .then(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `Scheme_of_Work_${subject}.${fileType}`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast(`${fileType.toUpperCase()} imepakuliwa!`, 'success');
+      })
+      .catch(err => showToast('Download error: ' + err.message, 'error'));
+  }
 
   // ── Copy table ──
   document.getElementById('copyTableBtn').addEventListener('click', function() {
@@ -1021,46 +1045,37 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('resultMetaInfo').textContent = fd.teacher_name ?
       `${fd.teacher_name} — ${fd.class_name}${fd.stream ? fd.stream : ''} — Term ${fd.term} ${fd.year}` : '';
     const bodyData = { ...fd, scheme_data: currentSchemeData };
-    fetch('{% url "curriculum:download_scheme_pdf" %}', {
+    fetchForBlob('{% url "curriculum:download_scheme_pdf" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
       body: JSON.stringify(bodyData),
-    })
-    .then(r => r.blob())
-    .then(blob => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `Scheme_of_Work_${fd.subject || 'document'}.pdf`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      showToast('PDF imepakuliwa!', 'success');
-    });
+    }, bodyData, 'pdf');
   });
 
   // ── Auto-load saved scheme from URL param ?load=123 ──
   const urlParams = new URLSearchParams(window.location.search);
   const loadId = urlParams.get('load');
   if (loadId) {
-    fetch('{% url 'curriculum:generate_scheme' %}ajax-load-by-id/' + loadId + '/')
-      .then(r => r.json())
-      .then(data => {
-        if (data.success && data.data) {
-          currentSchemeData = data.data;
-          currentSavedId = data.saved_id;
-          renderTable(data.data);
-          resultsArea.style.display = 'block';
-          emptyState.style.display = 'none';
-          // Auto-fill form meta from the loaded scheme
-          if (data.meta) {
-            if (data.meta.teacher_name) document.getElementById('teacher_name').value = data.meta.teacher_name;
-            if (data.meta.school_name) document.getElementById('school_name').value = data.meta.school_name;
-            document.getElementById('total_weeks').value = data.meta.total_weeks || 36;
-            if (data.meta.syllabus) document.getElementById('syllabus').value = data.meta.syllabus;
-          }
-          showToast('📂 Scheme imepakiwa kutoka maktaba!', 'success');
+    jsonFetch('{% url 'curriculum:generate_scheme' %}ajax-load-by-id/' + loadId + '/')
+    .then(({ ok, data }) => {
+      if (ok && data.success && data.data) {
+        currentSchemeData = data.data;
+        currentSavedId = data.saved_id;
+        renderTable(data.data);
+        resultsArea.style.display = 'block';
+        emptyState.style.display = 'none';
+        // Auto-fill form meta from the loaded scheme
+        if (data.meta) {
+          if (data.meta.teacher_name) document.getElementById('teacher_name').value = data.meta.teacher_name;
+          if (data.meta.school_name) document.getElementById('school_name').value = data.meta.school_name;
+          document.getElementById('total_weeks').value = data.meta.total_weeks || 36;
+          if (data.meta.syllabus) document.getElementById('syllabus').value = data.meta.syllabus;
         }
-      })
-      .catch(() => showToast('Imeshindwa kupakia scheme kutoka maktaba', 'warning'));
+        showToast('📂 Scheme imepakiwa kutoka maktaba!', 'success');
+      } else {
+        showToast(data.error || 'Imeshindwa kupakia scheme kutoka maktaba', 'warning');
+      }
+    });
   }
 
   // ── Auto-save teacher profile to DB (fills missing fields for old users) ──
@@ -1069,7 +1084,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Only save if teacher is logged in via session
     if (!TEACHER_LOGGED_IN) return;
     
-    fetch('{% url "curriculum:update_teacher_profile" %}', {
+    jsonFetch('{% url "curriculum:update_teacher_profile" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
       body: JSON.stringify({
@@ -1080,33 +1095,22 @@ document.addEventListener('DOMContentLoaded', function() {
         total_girls: fd.total_girls || '',
       }),
     })
-    .then(r => r.json())
-    .then(data => {
+    .then(({ data }) => {
       if (data.success && data.updated) {
         console.log('✅ Teacher profile auto-saved:', data.message);
       }
-    })
-    .catch(err => console.warn('Profile auto-save failed:', err));
+    });
   }
 
   // ── Download Word ──
   document.getElementById('downloadWordBtn').addEventListener('click', function() {
     if (!currentSchemeData) return;
     const fd = { ...getFormData(), scheme_data: currentSchemeData };
-    fetch('{% url "curriculum:download_scheme_word" %}', {
+    fetchForBlob('{% url "curriculum:download_scheme_word" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
       body: JSON.stringify(fd),
-    })
-    .then(r => r.blob())
-    .then(blob => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `Scheme_of_Work_${fd.subject || 'document'}.docx`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      showToast('Word document imepakuliwa!', 'success');
-    });
+    }, fd, 'docx');
   });
 });
 </script>

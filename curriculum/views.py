@@ -17,6 +17,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import logout as django_logout
 
 from reportlab.lib import colors
@@ -623,6 +624,7 @@ def generate_scheme_view(request):
     })
 
 
+@csrf_exempt
 def ajax_generate_scheme(request):
     """AI generates a Scheme of Work."""
     if client is None:
@@ -1592,6 +1594,7 @@ def lesson_plan_view(request):
     })
 
 
+@csrf_exempt
 def ajax_generate_lessonplan(request):
     """Generate lesson plan using AI — follows Tanzanian Teacher's Lesson Plan format."""
     if client is None:
