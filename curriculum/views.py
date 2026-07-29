@@ -705,8 +705,6 @@ def ajax_generate_scheme(request):
         }
         month_groups = term_groups_map.get(term, [['JANUARY', 'FEBRUARY', 'MARCH']])
         total_groups = len(month_groups)
-        weeks_per_group = max(4, total_weeks // max(1, total_groups))
-        remaining_weeks_global = total_weeks
 
         # ── Breaks by month ──
         _all_month_names = []
@@ -880,7 +878,7 @@ RULES:
         except Exception as save_err:
             logger.warning(f"[Scheme] Save error (non-fatal): {save_err}")
 
-        logger.info(f"[Scheme] DONE: {len(all_scheme_data)} rows from {len(group_prompts)} groups ({len(failed_groups)} failed)")
+        logger.info(f"[Scheme] DONE: {len(all_scheme_data)} rows from single AI call")
 
         return JsonResponse({
             'success': True,
