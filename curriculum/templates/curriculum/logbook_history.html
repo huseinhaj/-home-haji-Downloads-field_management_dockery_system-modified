@@ -66,11 +66,40 @@
       {% if entry.lessons_data %}
       <div class="mt-2">
         {% for lesson in entry.lessons_data %}
-        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap" style="font-size:var(--font-size-sm);color:var(--text-secondary);">
-          <span class="chip chip-blue" style="font-size:9px;width:50px;">Kip.{{ lesson.period }}</span>
-          <strong style="color:var(--text-primary);">{{ lesson.subject }}</strong>
-          <span>Darasa {{ lesson.class }}</span>
-          <span class="text-truncate" style="max-width:180px;">{{ lesson.main_topic|truncatechars:25 }}</span>
+        <div class="p-2 mb-1" style="background:rgba(15,23,42,0.02);border-radius:var(--radius-sm);border-left:3px solid var(--green-500);">
+          <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size:var(--font-size-sm);color:var(--text-secondary);">
+            <span class="chip chip-blue" style="font-size:9px;width:45px;">Kip.{{ lesson.period }}</span>
+            <strong style="color:var(--text-primary);">{{ lesson.subject|default:"—" }}</strong>
+            <span>Darasa {{ lesson.class|default:"—" }}</span>
+            <span class="chip chip-green" style="font-size:8px;">{{ lesson.activity_type|default:"—" }}</span>
+          </div>
+          <div style="font-size:var(--font-size-xs);color:var(--text-primary);margin:3px 0 2px;font-weight:600;">
+            {{ lesson.main_topic|default:"—" }}{% if lesson.subtopic %} → {{ lesson.subtopic }}{% endif %}
+          </div>
+          <div class="d-flex gap-3 flex-wrap" style="font-size:10px;color:var(--text-muted);">
+            {% if lesson.enrolled_boys or lesson.enrolled_girls %}
+            <span><i class="fas fa-user-graduate me-1"></i>W:{{ lesson.enrolled_boys|default:"0" }}/D:{{ lesson.enrolled_girls|default:"0" }}</span>
+            {% endif %}
+            {% if lesson.present_boys or lesson.present_girls %}
+            <span><i class="fas fa-user-check me-1" style="color:var(--success);"></i>W:{{ lesson.present_boys|default:"0" }}/D:{{ lesson.present_girls|default:"0" }}</span>
+            {% endif %}
+            {% if lesson.methods %}
+            <span><i class="fas fa-chalkboard me-1 text-gold"></i>{{ lesson.methods|truncatechars:20 }}</span>
+            {% endif %}
+            {% if lesson.teaching_aids %}
+            <span><i class="fas fa-tools me-1"></i>{{ lesson.teaching_aids|truncatechars:20 }}</span>
+            {% endif %}
+          </div>
+          {% if lesson.achievements or lesson.challenges %}
+          <div class="d-flex gap-3 flex-wrap mt-1" style="font-size:10px;">
+            {% if lesson.achievements %}
+            <span style="color:var(--success);"><i class="fas fa-check-circle me-1"></i>{{ lesson.achievements|truncatechars:50 }}</span>
+            {% endif %}
+            {% if lesson.challenges %}
+            <span style="color:var(--warning);"><i class="fas fa-exclamation-triangle me-1"></i>{{ lesson.challenges|truncatechars:50 }}</span>
+            {% endif %}
+          </div>
+          {% endif %}
         </div>
         {% endfor %}
       </div>

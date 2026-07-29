@@ -3173,7 +3173,10 @@ def submit_logbook(request):
             return render(request, 'curriculum/logbook.html', {
                 'form': form, 'student': student, 'logbook_entry': logbook_entry,
                 'today': today, 'today_name': days_swahili.get(today.weekday(), 'Leo'),
+                'today_name_en': days_english.get(today.weekday(), 'Today'),
                 'school': school, 'subjects': _cached_subjects(student),
+                'teacher': tlm_teacher,
+                'preferred_language': preferred_language,
                 'location_error': True,
             })
 
@@ -3182,7 +3185,10 @@ def submit_logbook(request):
             return render(request, 'curriculum/logbook.html', {
                 'form': form, 'student': student, 'logbook_entry': logbook_entry,
                 'today': today, 'today_name': days_swahili.get(today.weekday(), 'Leo'),
+                'today_name_en': days_english.get(today.weekday(), 'Today'),
                 'school': school, 'subjects': _cached_subjects(student),
+                'teacher': tlm_teacher,
+                'preferred_language': preferred_language,
                 'location_error': True,
             })
 
@@ -3238,11 +3244,26 @@ def submit_logbook(request):
 
     subjects = _cached_subjects(student)
     days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
+    days_english = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday'}
+    
+    # Language preference for logbook (from TLM teacher)
+    from .models import TLMTeacher
+    tlm_teacher = None
+    teacher_id = request.session.get('tlm_teacher_id')
+    if teacher_id:
+        try:
+            tlm_teacher = TLMTeacher.objects.get(id=teacher_id)
+        except TLMTeacher.DoesNotExist:
+            pass
+    preferred_language = getattr(tlm_teacher, 'preferred_language', 'auto') if tlm_teacher else 'auto'
 
     return render(request, 'curriculum/logbook.html', {
         'form': form, 'student': student, 'logbook_entry': logbook_entry,
         'today': today, 'today_name': days_swahili.get(today.weekday(), 'Leo'),
+        'today_name_en': days_english.get(today.weekday(), 'Today'),
         'school': school, 'subjects': subjects,
+        'teacher': tlm_teacher,
+        'preferred_language': preferred_language,
     })
 
 

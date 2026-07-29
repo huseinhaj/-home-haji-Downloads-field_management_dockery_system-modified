@@ -16,7 +16,21 @@
     padding: 1rem;
     margin-bottom: 0.75rem;
     animation: fadeUp 250ms var(--ease-out);
+    transition: box-shadow 0.2s;
   }
+  .period-card:hover { box-shadow: var(--shadow-sm); border-color: rgba(31,122,61,0.2); }
+  .period-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.6rem; padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .lang-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 2px; }
+  .lang-label-sw { color: var(--green-500); }
+  .lang-label-en { color: var(--info); display: none; }
+  body.lang-en .lang-label-sw { display: none; }
+  body.lang-en .lang-label-en { display: block; }
+  .lang-label-en { color: var(--info); }
+  .field-tip { font-size: 8px; color: var(--text-muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
 </style>
 
 <div class="container-fluid px-0">
@@ -28,12 +42,22 @@
       </div>
       <div style="flex:1;">
         <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:clamp(0.9rem,1.5vw,1.15rem);">
-          📖 Logbook — {{ today_name }}, {{ today|date:"d F Y" }}
+          📖 <span class="lang-label-sw">Logbook</span><span class="lang-label-en">Teacher's Logbook</span>
+          — {{ today_name }}, {{ today|date:"d F Y" }}
         </h4>
         <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
           {% if school %}{{ school.name }}{% endif %}
           {% if student.selected_school.district %} &bull; {{ student.selected_school.district.name }}{% endif %}
         </p>
+      </div>
+      <!-- Language toggle -->
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('sw')" id="langSwBtn" style="{% if preferred_language != 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:10px;padding:3px 10px;">
+          🇹🇿 Kiswahili
+        </button>
+        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('en')" id="langEnBtn" style="{% if preferred_language == 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:10px;padding:3px 10px;">
+          🇬🇧 English
+        </button>
       </div>
     </div>
   </div>
@@ -44,8 +68,8 @@
         <div class="c-card-body">
           {% if location_error %}
           <div class="alert-tlm mb-3" style="border-left-color:var(--warning);">
-            <strong><i class="fas fa-map-marker-alt me-2"></i>Eneo halijathibitishwa!</strong>
-            <p class="mb-0 mt-1" style="font-size:var(--font-size-sm);">Bonyeza "Thibitisha Eneo" ili kuwasilisha logbook.</p>
+            <strong><i class="fas fa-map-marker-alt me-2"></i><span class="lang-label-sw">Eneo halijathibitishwa!</span><span class="lang-label-en">Location not verified!</span></strong>
+            <p class="mb-0 mt-1" style="font-size:var(--font-size-sm);"><span class="lang-label-sw">Bonyeza "Thibitisha Eneo" ili kuwasilisha logbook.</span><span class="lang-label-en">Click "Verify Location" to submit the logbook.</span></p>
           </div>
           {% endif %}
 
@@ -56,14 +80,15 @@
             <div class="gps-status mb-3">
               <div style="flex:1;">
                 <strong style="font-size:var(--font-size-sm);color:var(--text-primary);">
-                  <i class="fas fa-map-marker-alt me-1" style="color:var(--gold-400);"></i>Uthibitisho wa Eneo
+                  <i class="fas fa-map-marker-alt me-1" style="color:var(--gold-400);"></i>
+                  <span class="lang-label-sw">Uthibitisho wa Eneo</span><span class="lang-label-en">Location Verification</span>
                 </strong>
                 <div style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:2px;">
-                  <span id="locationStatus">Bado haujathibitishwa</span>
+                  <span id="locationStatus"><span class="lang-label-sw">Bado haujathibitishwa</span><span class="lang-label-en">Not yet verified</span></span>
                 </div>
               </div>
               <button type="button" class="btn-tlm btn-primary-tlm btn-sm-tlm" id="verifyLocationBtn">
-                <i class="fas fa-location-dot me-1"></i> Thibitisha
+                <i class="fas fa-location-dot me-1"></i> <span class="lang-label-sw">Thibitisha</span><span class="lang-label-en">Verify</span>
               </button>
             </div>
             <input type="hidden" name="latitude" id="latitude" value="">
@@ -74,29 +99,29 @@
 
             <!-- Lesson Periods -->
             <div class="sec-hd mb-2">
-              <h3><i class="fas fa-chalkboard"></i>Vipindi vya Masomo</h3>
+              <h3><i class="fas fa-chalkboard"></i> <span class="lang-label-sw">Vipindi vya Masomo</span><span class="lang-label-en">Lesson Periods</span></h3>
               <button type="button" class="btn-tlm btn-primary-tlm btn-sm-tlm" id="addPeriodBtn">
-                <i class="fas fa-plus me-1"></i>Ongeza Kipindi
+                <i class="fas fa-plus me-1"></i> <span class="lang-label-sw">Ongeza Kipindi</span><span class="lang-label-en">Add Period</span>
               </button>
             </div>
             <div id="periodsContainer"></div>
 
             <!-- Other Activities -->
             <div class="mb-2">
-              <label class="form-label-tlm">{{ form.other_activities.label }}</label>
+              <label class="form-label-tlm"><span class="lang-label-sw">Shughuli Nyingine</span><span class="lang-label-en">Other Activities</span></label>
               {{ form.other_activities }}
             </div>
             <div class="mb-2">
-              <label class="form-label-tlm">{{ form.challenges_faced.label }}</label>
+              <label class="form-label-tlm"><span class="lang-label-sw">Changamoto / Vikwazo</span><span class="lang-label-en">Challenges</span></label>
               {{ form.challenges_faced }}
             </div>
             <div class="mb-3">
-              <label class="form-label-tlm">{{ form.lessons_learned.label }}</label>
+              <label class="form-label-tlm"><span class="lang-label-sw">Tafakari ya Kibinafsi</span><span class="lang-label-en">Personal Reflection</span></label>
               {{ form.lessons_learned }}
             </div>
 
             <button type="submit" class="btn-tlm btn-gold-tlm w-100 py-2" id="submitBtn" style="border-radius:var(--radius-md);">
-              <i class="fas fa-save me-2"></i>Wasilisha Logbook
+              <i class="fas fa-save me-2"></i> <span class="lang-label-sw">Wasilisha Logbook</span><span class="lang-label-en">Submit Logbook</span>
             </button>
           </form>
         </div>
@@ -105,30 +130,32 @@
 
     <!-- Side info -->
     <div class="col-lg-4">
-      <div class="c-card p-3 mb-3">
-        <div class="sec-hd"><h3><i class="fas fa-info-circle"></i>Maelekezo</h3></div>
-        <ul style="font-size:var(--font-size-sm);color:var(--text-secondary);padding-left:1rem;margin:0;">
-          <li class="mb-2">Thibitisha eneo lako kwa GPS kabla ya kuwasilisha</li>
-          <li class="mb-2">Jaza kila kipindi ulichofundisha</li>
-          <li class="mb-2">Andika changamoto na tafakari zako</li>
-          <li>Logbook inatumwa kwa siku za Jumatatu hadi Ijumaa tu</li>
-        </ul>
-      </div>
-
       {% if logbook_entry and logbook_entry.lessons_data %}
-      <div class="c-card p-3">
-        <div class="sec-hd"><h3><i class="fas fa-history"></i>Leo Umeshajaza</h3></div>
+      <div class="c-card p-3 mb-3">
+        <div class="sec-hd"><h3><i class="fas fa-history"></i> <span class="lang-label-sw">Leo Umeshajaza</span><span class="lang-label-en">Today's Submissions</span></h3></div>
         {% for lesson in logbook_entry.lessons_data %}
         <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background:rgba(15,23,42,0.02);border-radius:var(--radius-sm);">
           <div>
             <strong style="font-size:var(--font-size-sm);">{{ lesson.subject }}</strong>
-            <div style="font-size:var(--font-size-xs);color:var(--text-muted);">Darasa {{ lesson.class }} &bull; Kipindi {{ lesson.period }}</div>
+            <div style="font-size:var(--font-size-xs);color:var(--text-muted);">
+              <span class="lang-label-sw">Darasa</span><span class="lang-label-en">Class</span> {{ lesson.class }} &bull;
+              <span class="lang-label-sw">Kipindi</span><span class="lang-label-en">Period</span> {{ lesson.period }}</div>
           </div>
-          <span class="chip chip-green" style="font-size:9px;">Imehifadhiwa</span>
+          <span class="chip chip-green" style="font-size:9px;"><span class="lang-label-sw">Imehifadhiwa</span><span class="lang-label-en">Saved</span></span>
         </div>
         {% endfor %}
       </div>
       {% endif %}
+
+      <div class="c-card p-3">
+        <div class="sec-hd"><h3><i class="fas fa-info-circle"></i> <span class="lang-label-sw">Maelekezo</span><span class="lang-label-en">Instructions</span></h3></div>
+        <ul style="font-size:var(--font-size-sm);color:var(--text-secondary);padding-left:1rem;margin:0;">
+          <li class="mb-2"><span class="lang-label-sw">Thibitisha eneo lako kwa GPS kabla ya kuwasilisha</span><span class="lang-label-en">Verify your location with GPS before submitting</span></li>
+          <li class="mb-2"><span class="lang-label-sw">Jaza kila kipindi ulichofundisha</span><span class="lang-label-en">Fill in each lesson period you taught</span></li>
+          <li class="mb-2"><span class="lang-label-sw">Andika changamoto na tafakari zako</span><span class="lang-label-en">Write challenges and personal reflection</span></li>
+          <li><span class="lang-label-sw">Logbook inatumwa kwa siku za Jumatatu hadi Ijumaa tu</span><span class="lang-label-en">Logbook is submitted Monday to Friday only</span></li>
+        </ul>
+      </div>
     </div>
   </div>
 </div>
@@ -136,72 +163,153 @@
 
 {% block extra_js %}
 <script>
+// ── Bilingual labels for period card ──
+const L = {
+  period: { sw: 'Kipindi', en: 'Period' },
+  subject: { sw: 'Somo', en: 'Subject' },
+  class: { sw: 'Darasa', en: 'Class' },
+  periodNo: { sw: 'Kipindi #', en: 'Period #' },
+  remove: { sw: 'Ondoa', en: 'Remove' },
+  type: { sw: 'Aina ya Somo', en: 'Activity Type' },
+  theory: { sw: 'Nadharia', en: 'Theory' },
+  practical: { sw: 'Vitendo', en: 'Practical' },
+  revision: { sw: 'Mapitio', en: 'Revision' },
+  assessment: { sw: 'Tathmini', en: 'Assessment' },
+  topic: { sw: 'Mada Kuu', en: 'Main Topic' },
+  subtopic: { sw: 'Mada Ndogo', en: 'Subtopic' },
+  enrolledBoys: { sw: 'Wavulana (Waliojisajili)', en: 'Enrolled Boys' },
+  enrolledGirls: { sw: 'Wasichana (Waliojisajili)', en: 'Enrolled Girls' },
+  presentBoys: { sw: 'Wavulana (Waliohudhuria)', en: 'Present Boys' },
+  presentGirls: { sw: 'Wasichana (Waliohudhuria)', en: 'Present Girls' },
+  methods: { sw: 'Mbinu za Ufundishaji', en: 'Teaching Methods' },
+  aids: { sw: 'Vifaa vya Kufundishia', en: 'Teaching Aids' },
+  achievements: { sw: 'Mafanikio', en: 'Achievements' },
+  challenges: { sw: 'Changamoto', en: 'Challenges' },
+  select: { sw: '— Chagua —', en: '— Select —' },
+  selectSubj: { sw: '— Chagua Somo —', en: '— Select Subject —' },
+};
+
 document.addEventListener('DOMContentLoaded', function() {
   let periodCount = 0;
   const subjects = [{% for subj in subjects %}'{{ subj.name }}',{% endfor %}];
+  const prefersEnglish = '{{ preferred_language }}' === 'english';
+  
+  function tSw(key) { return L[key] ? L[key].sw : key; }
+  function tEn(key) { return L[key] ? L[key].en : key; }
+  // Alias for backward compatibility
+  function t(key) { return document.body.classList.contains('lang-en') ? tEn(key) : tSw(key); }
+  
+{% if preferred_language == 'english' %}
+  document.body.classList.add('lang-en');
+{% endif %}
 
   const periodTemplate = function(index) {
+    const currentLang = document.body.classList.contains('lang-en') ? 'en' : 'sw';
     return `<div class="period-card" data-index="${index}">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <strong style="color:var(--text-primary);font-size:var(--font-size-sm);">Kipindi #${index + 1}</strong>
+      <div class="period-header">
+        <strong style="color:var(--text-primary);font-size:var(--font-size-sm);">
+          <span class="lang-label-sw">${t('periodNo')}</span><span class="lang-label-en">${t('periodNo')}</span> ${index + 1}
+        </strong>
         <button type="button" class="btn-tlm btn-sm-tlm remove-period" style="background:rgba(220,38,38,0.08);color:var(--error);border:none;padding:3px 8px;">
-          <i class="fas fa-times"></i> Ondoa
+          <i class="fas fa-times"></i> <span class="lang-label-sw">Ondoa</span><span class="lang-label-en">Remove</span>
         </button>
       </div>
-      <div class="row g-2">
+      
+      <!-- Row 1: Subject, Class, Period, Activity Type -->
+      <div class="row g-2 mb-2">
         <div class="col-12 col-sm-4">
-          <label class="form-label-tlm" style="font-size:9px;">Subject</label>
+          <label class="lang-label lang-label-sw">${tSw('subject')}</label>
+          <label class="lang-label lang-label-en">${tEn('subject')}</label>
           <select class="form-control form-control-sm period-subject" style="font-size:12px;">
-            <option value="">Select</option>
+            <option value="">${t('selectSubj')}</option>
             ${subjects.map(s => `<option value="${s}">${s}</option>`).join('')}
           </select>
         </div>
-        <div class="col-6 col-sm-3">
-          <label class="form-label-tlm" style="font-size:9px;">Class</label>
+        <div class="col-6 col-sm-2">
+          <label class="lang-label lang-label-sw">${tSw('class')}</label>
+          <label class="lang-label lang-label-en">${tEn('class')}</label>
           <input class="form-control form-control-sm period-class" placeholder="e.g. Form 2A" style="font-size:12px;">
         </div>
         <div class="col-3 col-sm-2">
-          <label class="form-label-tlm" style="font-size:9px;">Period</label>
+          <label class="lang-label lang-label-sw">${tSw('periodNo')}</label>
+          <label class="lang-label lang-label-en">${tEn('periodNo')}</label>
           <input class="form-control form-control-sm period-num" type="number" min="1" value="${index + 1}" style="font-size:12px;">
         </div>
-        <div class="col-3 col-sm-3">
-          <label class="form-label-tlm" style="font-size:9px;">Type</label>
+        <div class="col-3 col-sm-4">
+          <label class="lang-label lang-label-sw">${tSw('type')}</label>
+          <label class="lang-label lang-label-en">${tEn('type')}</label>
           <select class="form-control form-control-sm period-activity" style="font-size:12px;">
-            <option value="theory">Theory</option>
-            <option value="practical">Practical</option>
-            <option value="revision">Revision</option>
-            <option value="assessment">Assessment</option>
+            <option value="theory">${t('theory')}</option>
+            <option value="practical">${t('practical')}</option>
+            <option value="revision">${t('revision')}</option>
+            <option value="assessment">${t('assessment')}</option>
           </select>
         </div>
       </div>
-      <div class="row g-2 mt-1">
+      
+      <!-- Row 2: Topic & Subtopic -->
+      <div class="row g-2 mb-2">
         <div class="col-6">
-          <label class="form-label-tlm" style="font-size:9px;">Main Topic</label>
-          <input class="form-control form-control-sm period-topic" placeholder="Mada kuu" style="font-size:12px;">
+          <label class="lang-label lang-label-sw">${tSw('topic')}</label>
+          <label class="lang-label lang-label-en">${tEn('topic')}</label>
+          <input class="form-control form-control-sm period-topic" placeholder="${t('topic')}" style="font-size:12px;">
         </div>
         <div class="col-6">
-          <label class="form-label-tlm" style="font-size:9px;">Subtopic</label>
-          <input class="form-control form-control-sm period-subtopic" placeholder="Mada ndogo" style="font-size:12px;">
+          <label class="lang-label lang-label-sw">${tSw('subtopic')}</label>
+          <label class="lang-label lang-label-en">${tEn('subtopic')}</label>
+          <input class="form-control form-control-sm period-subtopic" placeholder="${t('subtopic')}" style="font-size:12px;">
         </div>
       </div>
-      <div class="row g-2 mt-1">
-        <div class="col-4">
-          <label class="form-label-tlm" style="font-size:9px;">Enrolled</label>
-          <input class="form-control form-control-sm period-enrolled" type="number" placeholder="Total" style="font-size:12px;">
+      
+      <!-- Row 3: Enrolled & Present (Boys/Girls) -->
+      <div class="row g-2 mb-2">
+        <div class="col-3">
+          <label class="lang-label lang-label-sw">${tSw('enrolledBoys')}</label>
+          <label class="lang-label lang-label-en">${tEn('enrolledBoys')}</label>
+          <input class="form-control form-control-sm period-enrolled-boys" type="number" min="0" style="font-size:12px;">
         </div>
-        <div class="col-4">
-          <label class="form-label-tlm" style="font-size:9px;">Present</label>
-          <input class="form-control form-control-sm period-present" type="number" placeholder="Present" style="font-size:12px;">
+        <div class="col-3">
+          <label class="lang-label lang-label-sw">${tSw('enrolledGirls')}</label>
+          <label class="lang-label lang-label-en">${tEn('enrolledGirls')}</label>
+          <input class="form-control form-control-sm period-enrolled-girls" type="number" min="0" style="font-size:12px;">
         </div>
-        <div class="col-4">
-          <label class="form-label-tlm" style="font-size:9px;">Aids</label>
-          <input class="form-control form-control-sm period-aids" placeholder="Vifaa" style="font-size:12px;">
+        <div class="col-3">
+          <label class="lang-label lang-label-sw">${tSw('presentBoys')}</label>
+          <label class="lang-label lang-label-en">${tEn('presentBoys')}</label>
+          <input class="form-control form-control-sm period-present-boys" type="number" min="0" style="font-size:12px;">
+        </div>
+        <div class="col-3">
+          <label class="lang-label lang-label-sw">${tSw('presentGirls')}</label>
+          <label class="lang-label lang-label-en">${tEn('presentGirls')}</label>
+          <input class="form-control form-control-sm period-present-girls" type="number" min="0" style="font-size:12px;">
         </div>
       </div>
-      <div class="row g-2 mt-1">
-        <div class="col-12">
-          <label class="form-label-tlm" style="font-size:9px;">Methods</label>
-          <input class="form-control form-control-sm period-methods" placeholder="e.g. Discussion, Q&A" style="font-size:12px;">
+      
+      <!-- Row 4: Methods & Aids -->
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <label class="lang-label lang-label-sw">${tSw('methods')}</label>
+          <label class="lang-label lang-label-en">${tEn('methods')}</label>
+          <input class="form-control form-control-sm period-methods" placeholder="e.g. Discussion, Q&A, Demonstration" style="font-size:12px;">
+        </div>
+        <div class="col-6">
+          <label class="lang-label lang-label-sw">${tSw('aids')}</label>
+          <label class="lang-label lang-label-en">${tEn('aids')}</label>
+          <input class="form-control form-control-sm period-aids" placeholder="e.g. Charts, Textbooks, Cards" style="font-size:12px;">
+        </div>
+      </div>
+      
+      <!-- Row 5: Achievements & Challenges -->
+      <div class="row g-2">
+        <div class="col-6">
+          <label class="lang-label lang-label-sw">${tSw('achievements')}</label>
+          <label class="lang-label lang-label-en">${tEn('achievements')}</label>
+          <textarea class="form-control form-control-sm period-achievements" rows="2" style="font-size:11px;resize:vertical;" placeholder="${t('achievements')}"></textarea>
+        </div>
+        <div class="col-6">
+          <label class="lang-label lang-label-sw">${tSw('challenges')}</label>
+          <label class="lang-label lang-label-en">${tEn('challenges')}</label>
+          <textarea class="form-control form-control-sm period-challenges" rows="2" style="font-size:11px;resize:vertical;" placeholder="${t('challenges')}"></textarea>
         </div>
       </div>
     </div>`;
@@ -234,25 +342,77 @@ document.addEventListener('DOMContentLoaded', function() {
         activity_type: card.querySelector('.period-activity')?.value || '',
         main_topic: card.querySelector('.period-topic')?.value || '',
         subtopic: card.querySelector('.period-subtopic')?.value || '',
-        enrolled: card.querySelector('.period-enrolled')?.value || '',
-        present: card.querySelector('.period-present')?.value || '',
-        teaching_aids: card.querySelector('.period-aids')?.value || '',
+        enrolled_boys: card.querySelector('.period-enrolled-boys')?.value || '',
+        enrolled_girls: card.querySelector('.period-enrolled-girls')?.value || '',
+        present_boys: card.querySelector('.period-present-boys')?.value || '',
+        present_girls: card.querySelector('.period-present-girls')?.value || '',
         methods: card.querySelector('.period-methods')?.value || '',
+        teaching_aids: card.querySelector('.period-aids')?.value || '',
+        achievements: card.querySelector('.period-achievements')?.value || '',
+        challenges: card.querySelector('.period-challenges')?.value || '',
       });
     });
     document.getElementById('lessons_data').value = JSON.stringify(data);
   }
 
+  // ── Language Toggle ──
+  window.toggleLogbookLang = function(lang) {
+    const body = document.body;
+    const swBtn = document.getElementById('langSwBtn');
+    const enBtn = document.getElementById('langEnBtn');
+    
+    if (lang === 'en') {
+      body.classList.add('lang-en');
+      swBtn.style.background = 'rgba(31,122,61,0.08)';
+      swBtn.style.color = 'var(--green-500)';
+      enBtn.style.background = 'var(--green-500)';
+      enBtn.style.color = 'white';
+    } else {
+      body.classList.remove('lang-en');
+      swBtn.style.background = 'var(--green-500)';
+      swBtn.style.color = 'white';
+      enBtn.style.background = 'rgba(31,122,61,0.08)';
+      enBtn.style.color = 'var(--green-500)';
+    }
+    
+    // Save preference to localStorage (works for all user types)
+    localStorage.setItem('logbook-lang', lang);
+    
+    // Also try to save to server (silent fail if not TLM user)
+    fetch('{% url "curriculum:update_teacher_profile" %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+      body: JSON.stringify({ preferred_language: lang === 'en' ? 'english' : 'auto' }),
+    }).catch(() => {});
+  };
+  
+  // Restore language preference from localStorage
+  (function() {
+    const savedLang = localStorage.getItem('logbook-lang');
+    if (savedLang === 'en') {
+      document.body.classList.add('lang-en');
+      const swBtn = document.getElementById('langSwBtn');
+      const enBtn = document.getElementById('langEnBtn');
+      if (swBtn && enBtn) {
+        swBtn.style.background = 'rgba(31,122,61,0.08)';
+        swBtn.style.color = 'var(--green-500)';
+        enBtn.style.background = 'var(--green-500)';
+        enBtn.style.color = 'white';
+      }
+    }
+  })();
+
   // ── Location verification ──
   document.getElementById('verifyLocationBtn').addEventListener('click', function() {
     const btn = this;
+    const isEn = document.body.classList.contains('lang-en');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Inathibitisha...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>' + (isEn ? 'Verifying...' : 'Inathibitisha...');
 
     if (!navigator.geolocation) {
-      showToast('GPS haitumiki kwenye browser yako.', 'error');
+      showToast(isEn ? 'GPS not supported on your browser.' : 'GPS haitumiki kwenye browser yako.', 'error');
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-location-dot me-1"></i> Thibitisha';
+      btn.innerHTML = '<i class="fas fa-location-dot me-1"></i> ' + (isEn ? 'Verify' : 'Thibitisha');
       return;
     }
 
@@ -261,13 +421,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('latitude').value = pos.coords.latitude;
         document.getElementById('longitude').value = pos.coords.longitude;
         document.getElementById('is_location_verified').value = 'true';
-        document.getElementById('locationStatus').innerHTML = '<span style="color:var(--success);font-weight:700;"><i class="fas fa-check-circle me-1"></i>Eneo limethibitishwa!</span>';
-        btn.innerHTML = '<i class="fas fa-check me-1"></i> Imehakikiwa';
+        document.getElementById('locationStatus').innerHTML = '<span style="color:var(--success);font-weight:700;"><i class="fas fa-check-circle me-1"></i>' + (isEn ? 'Location verified!' : 'Eneo limethibitishwa!') + '</span>';
+        btn.innerHTML = '<i class="fas fa-check me-1"></i> ' + (isEn ? 'Verified' : 'Imehakikiwa');
         btn.style.background = 'var(--success)';
         btn.disabled = true;
-        showToast('Eneo lako limehakikiwa kwa mafanikio!', 'success');
+        showToast(isEn ? 'Location verified!' : 'Eneo lako limehakikiwa!', 'success');
 
-        // Reverse geocode
         fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`)
           .then(r => r.json())
           .then(data => {
@@ -277,10 +436,10 @@ document.addEventListener('DOMContentLoaded', function() {
       },
       function(err) {
         document.getElementById('is_location_verified').value = 'false';
-        document.getElementById('locationStatus').innerHTML = '<span style="color:var(--error);"><i class="fas fa-exclamation-circle me-1"></i>Imeshindwa: ' + err.message + '</span>';
+        document.getElementById('locationStatus').innerHTML = '<span style="color:var(--error);"><i class="fas fa-exclamation-circle me-1"></i>' + (isEn ? 'Failed: ' : 'Imeshindwa: ') + err.message + '</span>';
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-location-dot me-1"></i> Jaribu Tena';
-        showToast('GPS error: ' + err.message, 'error');
+        btn.innerHTML = '<i class="fas fa-location-dot me-1"></i> ' + (isEn ? 'Retry' : 'Jaribu Tena');
+        showToast('GPS: ' + err.message, 'error');
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
