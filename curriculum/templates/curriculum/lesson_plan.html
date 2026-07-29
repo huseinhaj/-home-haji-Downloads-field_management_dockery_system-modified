@@ -561,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const classObserver = new MutationObserver(function() {
       if (classAutoFilled) return;
       if (selectOptionByValueOrText(classSelect, teacherClassName, function(opt) {
-        return opt.textContent === teacherClassName;
+        return opt.textContent.trim().toLowerCase() === teacherClassName.trim().toLowerCase();
       })) {
         classAutoFilled = true;
         classObserver.disconnect();
@@ -632,6 +632,14 @@ document.addEventListener('DOMContentLoaded', function() {
       subjectAutoFilled = true;
     }
   }
+  
+  // ── Auto-fill: (4) Deferred topic fetch — ensures topics load even if observer
+  // race-condition prevented the initial fetch. Runs after all auto-fill settles.
+  setTimeout(function() {
+    if (subjectSelect.value && getSelectedClassName()) {
+      maybeFetchTopics();
+    }
+  }, 350);
   
   // ── Fallback: if no school level was found, try to find education level by subject ──
   if (!levelWasAutoSet && teacherSubjectName) {
@@ -995,6 +1003,7 @@ document.addEventListener('DOMContentLoaded', function() {
       for (let opt of classSelect.options) {
         if (opt.value && opt.value === fd.class_name) {
           classSelect.value = opt.value;
+          classSelect.dispatchEvent(new Event('change'));
           break;
         }
       }
@@ -1005,6 +1014,7 @@ document.addEventListener('DOMContentLoaded', function() {
       for (let opt of subjectSelect.options) {
         if (opt.value && opt.value === fd.subject_id) {
           subjectSelect.value = opt.value;
+          subjectSelect.dispatchEvent(new Event('change'));
           break;
         }
       }
@@ -1015,16 +1025,23 @@ document.addEventListener('DOMContentLoaded', function() {
           const optName = (opt.getAttribute('data-name') || opt.textContent || '').toLowerCase();
           if (optName === subjLower) {
             subjectSelect.value = opt.value;
+            subjectSelect.dispatchEvent(new Event('change'));
             break;
           }
         }
       }
     }
     
-    // 5. Fetch topics for selected subject + class
+    // 5. Fetch topics for selected subject + class (immediate + deferred fallback)
     if (subjectSelect.value && getSelectedClassName()) {
       maybeFetchTopics();
     }
+    // Deferred fallback: if topic options aren't populated within 500ms, retry
+    setTimeout(function() {
+      if (subjectSelect.value && getSelectedClassName() && topicSelect.options.length <= 1) {
+        maybeFetchTopics();
+      }
+    }, 500);
     
     // 6. After topic AJAX completes, set topic + subtopic values
     if (fd.topic || fd.subtopic) {
