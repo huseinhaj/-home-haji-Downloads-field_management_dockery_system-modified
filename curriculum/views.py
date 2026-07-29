@@ -1052,6 +1052,8 @@ def download_scheme_pdf(request):
             'stripe': colors.HexColor('#EBF0FB'),
             'border': colors.HexColor('#9BAAC4'),
             'light_bg': colors.HexColor('#FAFBFD'),
+            'font_size': 8.5,
+            'border_width': 2.5,
         },
         'tanzania': {
             'primary': colors.HexColor('#1E7A34'),
@@ -1060,6 +1062,8 @@ def download_scheme_pdf(request):
             'stripe': colors.HexColor('#EBF8F0'),
             'border': colors.HexColor('#6BA87B'),
             'light_bg': colors.HexColor('#F5FBF7'),
+            'font_size': 8.5,
+            'border_width': 2.5,
         },
         'ocean': {
             'primary': colors.HexColor('#1A365D'),
@@ -1068,6 +1072,8 @@ def download_scheme_pdf(request):
             'stripe': colors.HexColor('#E8F4FD'),
             'border': colors.HexColor('#7FB8D9'),
             'light_bg': colors.HexColor('#F4F9FD'),
+            'font_size': 8.0,
+            'border_width': 2.5,
         },
         'royal': {
             'primary': colors.HexColor('#4C1D95'),
@@ -1076,6 +1082,8 @@ def download_scheme_pdf(request):
             'stripe': colors.HexColor('#F3EEFB'),
             'border': colors.HexColor('#B794D4'),
             'light_bg': colors.HexColor('#FAF5FF'),
+            'font_size': 8.5,
+            'border_width': 2.5,
         },
         'executive': {
             'primary': colors.HexColor('#1F2937'),
@@ -1084,6 +1092,68 @@ def download_scheme_pdf(request):
             'stripe': colors.HexColor('#F0F1F3'),
             'border': colors.HexColor('#B0B5BD'),
             'light_bg': colors.HexColor('#F8F9FA'),
+            'font_size': 8.5,
+            'border_width': 2.0,
+        },
+        'sunset': {
+            'primary': colors.HexColor('#C2410C'),
+            'accent': colors.HexColor('#FB923C'),
+            'accent_dark': colors.HexColor('#EA580C'),
+            'stripe': colors.HexColor('#FFF7ED'),
+            'border': colors.HexColor('#FDBA74'),
+            'light_bg': colors.HexColor('#FFF7ED'),
+            'font_size': 8.5,
+            'border_width': 2.5,
+        },
+        'forest': {
+            'primary': colors.HexColor('#065F46'),
+            'accent': colors.HexColor('#34D399'),
+            'accent_dark': colors.HexColor('#059669'),
+            'stripe': colors.HexColor('#ECFDF5'),
+            'border': colors.HexColor('#6EE7B7'),
+            'light_bg': colors.HexColor('#F0FDF4'),
+            'font_size': 8.5,
+            'border_width': 2.5,
+        },
+        'midnight': {
+            'primary': colors.HexColor('#1E1B4B'),
+            'accent': colors.HexColor('#6366F1'),
+            'accent_dark': colors.HexColor('#4F46E5'),
+            'stripe': colors.HexColor('#EEF2FF'),
+            'border': colors.HexColor('#A5B4FC'),
+            'light_bg': colors.HexColor('#F8FAFC'),
+            'font_size': 8.0,
+            'border_width': 2.5,
+        },
+        'cherry': {
+            'primary': colors.HexColor('#9B1C1C'),
+            'accent': colors.HexColor('#F43F5E'),
+            'accent_dark': colors.HexColor('#E11D48'),
+            'stripe': colors.HexColor('#FFF1F2'),
+            'border': colors.HexColor('#FDA4AF'),
+            'light_bg': colors.HexColor('#FFF5F6'),
+            'font_size': 8.5,
+            'border_width': 2.5,
+        },
+        'safari': {
+            'primary': colors.HexColor('#78350F'),
+            'accent': colors.HexColor('#D97706'),
+            'accent_dark': colors.HexColor('#B45309'),
+            'stripe': colors.HexColor('#FFFBEB'),
+            'border': colors.HexColor('#FCD34D'),
+            'light_bg': colors.HexColor('#FFFBEB'),
+            'font_size': 8.5,
+            'border_width': 2.5,
+        },
+        'dawn': {
+            'primary': colors.HexColor('#7E22CE'),
+            'accent': colors.HexColor('#D946EF'),
+            'accent_dark': colors.HexColor('#C026D3'),
+            'stripe': colors.HexColor('#FAF5FF'),
+            'border': colors.HexColor('#D8B4FE'),
+            'light_bg': colors.HexColor('#FDF4FF'),
+            'font_size': 8.5,
+            'border_width': 2.5,
         },
     }
     T = THEMES.get(theme_name, THEMES['classic'])
@@ -1092,6 +1162,7 @@ def download_scheme_pdf(request):
     DARK_GOLD = T['accent_dark']
     STRIPE = T['stripe']
     BORDER = T['border']
+    _fs = T.get('font_size', 8.5)
 
     # ── Create Tanzania flag watermark ──
     _tz_watermark = None
@@ -1182,10 +1253,10 @@ def download_scheme_pdf(request):
     elements.append(HRFlowable(width="100%", thickness=3, color=GOLD, spaceAfter=2))
     elements.append(HRFlowable(width="100%", thickness=1.5, color=NAVY, spaceAfter=12))
 
-    cell_style = ParagraphStyle('SchCell', fontName='Helvetica', fontSize=8.5,
-                                leading=12, wordWrap='LTR')
-    hdr_style = ParagraphStyle('SchHdr', fontName='Helvetica-Bold', fontSize=8.5,
-                               leading=12, textColor=colors.white, wordWrap='LTR', alignment=1)
+    cell_style = ParagraphStyle('SchCell', fontName='Helvetica', fontSize=_fs,
+                                leading=_fs + 3.5, wordWrap='LTR')
+    hdr_style = ParagraphStyle('SchHdr', fontName='Helvetica-Bold', fontSize=_fs,
+                               leading=_fs + 3.5, textColor=colors.white, wordWrap='LTR', alignment=1)
 
     # ── TAMISEMI Header (centered, bold) ──
     elements.append(Paragraph(
@@ -1904,6 +1975,8 @@ def download_lesson_plan_pdf(request):
             'stripe': colors.HexColor('#F4F7FF'),
             'border': colors.HexColor('#9BAAC4'),
             'light_bg': colors.HexColor('#FAFBFD'),
+            'font_size': 8.5,
+            'border_width': 2.5,
         },
         'tanzania': {
             'primary': colors.HexColor('#1E7A34'),
@@ -1913,6 +1986,8 @@ def download_lesson_plan_pdf(request):
             'stripe': colors.HexColor('#EBF8F0'),
             'border': colors.HexColor('#6BA87B'),
             'light_bg': colors.HexColor('#F5FBF7'),
+            'font_size': 8.5,
+            'border_width': 2.5,
         },
         'ocean': {
             'primary': colors.HexColor('#1A365D'),
@@ -1922,6 +1997,8 @@ def download_lesson_plan_pdf(request):
             'stripe': colors.HexColor('#E8F4FD'),
             'border': colors.HexColor('#7FB8D9'),
             'light_bg': colors.HexColor('#F4F9FD'),
+            'font_size': 8.0,
+            'border_width': 2.5,
         },
         'royal': {
             'primary': colors.HexColor('#4C1D95'),
@@ -1931,6 +2008,8 @@ def download_lesson_plan_pdf(request):
             'stripe': colors.HexColor('#F3EEFB'),
             'border': colors.HexColor('#B794D4'),
             'light_bg': colors.HexColor('#FAF5FF'),
+            'font_size': 8.5,
+            'border_width': 2.5,
         },
         'executive': {
             'primary': colors.HexColor('#1F2937'),
@@ -1940,6 +2019,74 @@ def download_lesson_plan_pdf(request):
             'stripe': colors.HexColor('#F0F1F3'),
             'border': colors.HexColor('#B0B5BD'),
             'light_bg': colors.HexColor('#F8F9FA'),
+            'font_size': 8.5,
+            'border_width': 2.0,
+        },
+        'sunset': {
+            'primary': colors.HexColor('#C2410C'),
+            'accent': colors.HexColor('#FB923C'),
+            'accent_dark': colors.HexColor('#EA580C'),
+            'light': colors.HexColor('#FFEDD5'),
+            'stripe': colors.HexColor('#FFF7ED'),
+            'border': colors.HexColor('#FDBA74'),
+            'light_bg': colors.HexColor('#FFF7ED'),
+            'font_size': 8.5,
+            'border_width': 2.5,
+        },
+        'forest': {
+            'primary': colors.HexColor('#065F46'),
+            'accent': colors.HexColor('#34D399'),
+            'accent_dark': colors.HexColor('#059669'),
+            'light': colors.HexColor('#D1FAE5'),
+            'stripe': colors.HexColor('#ECFDF5'),
+            'border': colors.HexColor('#6EE7B7'),
+            'light_bg': colors.HexColor('#F0FDF4'),
+            'font_size': 8.5,
+            'border_width': 2.5,
+        },
+        'midnight': {
+            'primary': colors.HexColor('#1E1B4B'),
+            'accent': colors.HexColor('#6366F1'),
+            'accent_dark': colors.HexColor('#4F46E5'),
+            'light': colors.HexColor('#E0E7FF'),
+            'stripe': colors.HexColor('#EEF2FF'),
+            'border': colors.HexColor('#A5B4FC'),
+            'light_bg': colors.HexColor('#F8FAFC'),
+            'font_size': 8.0,
+            'border_width': 2.5,
+        },
+        'cherry': {
+            'primary': colors.HexColor('#9B1C1C'),
+            'accent': colors.HexColor('#F43F5E'),
+            'accent_dark': colors.HexColor('#E11D48'),
+            'light': colors.HexColor('#FFE4E6'),
+            'stripe': colors.HexColor('#FFF1F2'),
+            'border': colors.HexColor('#FDA4AF'),
+            'light_bg': colors.HexColor('#FFF5F6'),
+            'font_size': 8.5,
+            'border_width': 2.5,
+        },
+        'safari': {
+            'primary': colors.HexColor('#78350F'),
+            'accent': colors.HexColor('#D97706'),
+            'accent_dark': colors.HexColor('#B45309'),
+            'light': colors.HexColor('#FEF3C7'),
+            'stripe': colors.HexColor('#FFFBEB'),
+            'border': colors.HexColor('#FCD34D'),
+            'light_bg': colors.HexColor('#FFFBEB'),
+            'font_size': 8.5,
+            'border_width': 2.5,
+        },
+        'dawn': {
+            'primary': colors.HexColor('#7E22CE'),
+            'accent': colors.HexColor('#D946EF'),
+            'accent_dark': colors.HexColor('#C026D3'),
+            'light': colors.HexColor('#F3E8FF'),
+            'stripe': colors.HexColor('#FAF5FF'),
+            'border': colors.HexColor('#D8B4FE'),
+            'light_bg': colors.HexColor('#FDF4FF'),
+            'font_size': 8.5,
+            'border_width': 2.5,
         },
     }
     T = THEMES.get(theme_name, THEMES['classic'])
@@ -1949,19 +2096,20 @@ def download_lesson_plan_pdf(request):
     LIGHT = T['light']
     STRIPE = T['stripe']
     BORDER = T['border']
+    _lp_fs = T.get('font_size', 8.5)
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
                             rightMargin=36, leftMargin=36, topMargin=40, bottomMargin=30)
     elements = []
 
-    normal = ParagraphStyle('LP_N', fontName='Helvetica', fontSize=9, leading=13, wordWrap='LTR', spaceAfter=3)
-    section_hdr = ParagraphStyle('LP_H', fontName='Helvetica-Bold', fontSize=10, textColor=NAVY, spaceBefore=10, spaceAfter=4)
-    cell_s = ParagraphStyle('LP_C', fontName='Helvetica', fontSize=8, leading=11, wordWrap='LTR')
-    hdr_s = ParagraphStyle('LP_CH', fontName='Helvetica-Bold', fontSize=8, leading=11, textColor=colors.white, wordWrap='LTR', alignment=1)
-    label_s = ParagraphStyle('LP_L', fontName='Helvetica-Bold', fontSize=8, leading=11, textColor=NAVY)
+    normal = ParagraphStyle('LP_N', fontName='Helvetica', fontSize=_lp_fs + 0.5, leading=_lp_fs + 4.5, wordWrap='LTR', spaceAfter=3)
+    section_hdr = ParagraphStyle('LP_H', fontName='Helvetica-Bold', fontSize=_lp_fs + 1.5, textColor=NAVY, spaceBefore=10, spaceAfter=4)
+    cell_s = ParagraphStyle('LP_C', fontName='Helvetica', fontSize=_lp_fs, leading=_lp_fs + 3, wordWrap='LTR')
+    hdr_s = ParagraphStyle('LP_CH', fontName='Helvetica-Bold', fontSize=_lp_fs, leading=_lp_fs + 3, textColor=colors.white, wordWrap='LTR', alignment=1)
+    label_s = ParagraphStyle('LP_L', fontName='Helvetica-Bold', fontSize=_lp_fs, leading=_lp_fs + 3, textColor=NAVY)
     title_s = ParagraphStyle('LP_TITLE', fontName='Helvetica-Bold', fontSize=16, alignment=1, textColor=NAVY, spaceAfter=1)
-    subtitle_s = ParagraphStyle('LP_SUBTITLE', fontName='Helvetica-Bold', fontSize=8, alignment=1, textColor=DARK_GOLD, spaceAfter=1)
+    subtitle_s = ParagraphStyle('LP_SUBTITLE', fontName='Helvetica-Bold', fontSize=_lp_fs - 0.5, alignment=1, textColor=DARK_GOLD, spaceAfter=1)
 
     # ── Cover page: decorative top lines ──
     elements.append(HRFlowable(width="100%", thickness=2.5, color=GOLD, spaceAfter=2))
@@ -3156,7 +3304,8 @@ def ajax_submit_update_comment(request):
 def lesson_notes_view(request):
     """
     Lesson Notes page — teachers write their own reflections, methods, challenges.
-    Notes are linked to the teacher's school level for language support.
+    Notes are filtered by the teacher's school education level.
+    Teachers only see notes from their own level (primary/ordinary/advanced).
     """
     teacher = get_tlm_teacher(request)
     if not teacher:
@@ -3164,19 +3313,43 @@ def lesson_notes_view(request):
     
     school_level = teacher.school.level if teacher and teacher.school else ''
     
-    # Get all notes for this teacher
-    notes = LessonNote.objects.filter(teacher=teacher).order_by('-created_at')[:50]
+    # Determine the teacher's education level for filtering
+    teacher_edu_level = 'ordinary'
+    if school_level:
+        sl = school_level.lower()
+        if 'primary' in sl:
+            teacher_edu_level = 'primary'
+        elif 'advanced' in sl or 'a level' in sl or 'secondary' in sl:
+            # For advanced level, we still show both ordinary and advanced
+            # But check if specifically advanced
+            if 'advanced' in sl or 'a level' in sl:
+                teacher_edu_level = 'advanced'
+        # Default stays 'ordinary'
+    
+    # Get notes for this teacher, filtered by education level
+    notes = LessonNote.objects.filter(
+        teacher=teacher,
+        education_level=teacher_edu_level,
+    ).order_by('-created_at')[:50]
     
     # Subjects for dropdown
     subjects = Subject.objects.all().order_by('name')
     education_levels = EducationLevel.objects.all().order_by('order')
     
+    # Get saved lesson plans for quick reference
+    saved_lessons = LessonPlan.objects.filter(
+        teacher_name=teacher.full_name,
+        school=teacher.school,
+    ).order_by('-created_at')[:10]
+    
     return render(request, 'curriculum/lesson_notes.html', {
         'teacher': teacher,
         'school_level': school_level,
+        'teacher_edu_level': teacher_edu_level,
         'notes': notes,
         'subjects': subjects,
         'education_levels': education_levels,
+        'saved_lessons': saved_lessons,
         'teacher_name': teacher.full_name if teacher else '',
         'teacher_school_name': teacher.school.name if teacher and teacher.school else '',
     })
@@ -3254,6 +3427,158 @@ def ajax_get_lesson_note(request, note_id):
         })
     except LessonNote.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Note haipatikani.'}, status=404)
+
+
+# =============================================================================
+# AJAX: Generate Lesson Notes from a saved Lesson Plan (AI-powered)
+# =============================================================================
+
+@require_POST
+def ajax_generate_lesson_note_from_lp(request):
+    """Generate lesson notes (reflection + quiz) from a saved lesson plan."""
+    if client is None:
+        return JsonResponse({'success': False, 'error': 'AI haitumiki'}, status=503)
+    
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Jisajili kwanza'}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        lp_id = data.get('lesson_plan_id')
+        
+        if not lp_id:
+            return JsonResponse({'success': False, 'error': 'Lesson Plan ID inahitajika'}, status=400)
+        
+        lp = LessonPlan.objects.get(id=lp_id)
+        
+        # Determine language based on school level + subject
+        school_name = teacher.school.name if teacher.school else ''
+        school_level = teacher.school.level if teacher.school else ''
+        subject_name = lp.subject.name if lp.subject else lp.topic
+        
+        # Build appropriate language instruction
+        school_level_lower = (school_level or '').lower()
+        subject_lower = subject_name.lower()
+        
+        if 'primary' in school_level_lower:
+            if subject_lower in ('english', 'english language'):
+                lang_instruction = "Write ALL content in ENGLISH."
+            else:
+                lang_instruction = "Write ALL content in KISWAHILI (Swahili) except column headers."
+        else:
+            if subject_lower in ('kiswahili', 'swahili'):
+                lang_instruction = "Write ALL content in KISWAHILI (Swahili)."
+            else:
+                lang_instruction = "Write ALL content in ENGLISH."
+        
+        prompt = f"""You are a Tanzanian teacher creating LESSON NOTES from a completed lesson plan.
+
+LESSON PLAN DETAILS:
+Subject: {subject_name}
+Class: {lp.class_name}
+Topic: {lp.topic}
+Subtopic: {lp.subtopic or 'N/A'}
+Date: {lp.date}
+Duration: {lp.duration} minutes
+
+Main Competence: {lp.main_competence or 'N/A'}
+Specific Competence: {lp.specific_competence or 'N/A'}
+
+{lang_instruction}
+
+Based on the above lesson plan, create:
+
+1. LESSON NOTES SUMMARY: A concise summary (2-3 paragraphs) of what was taught, key points covered, and the main learning outcomes.
+
+2. TEACHER'S REFLECTION: Brief reflection on:
+   - What went well
+   - Challenges faced
+   - How to improve next time
+
+3. QUIZ QUESTIONS: Generate 5 quick review questions (with answers) that the teacher can use in class to assess understanding.
+
+Output as JSON with this structure:
+{{
+    "summary": "2-3 paragraph summary...",
+    "reflection": "Teacher's reflection...",
+    "quiz": [
+        {{"question": "Question 1?", "answer": "Answer 1"}},
+        {{"question": "Question 2?", "answer": "Answer 2"}},
+        {{"question": "Question 3?", "answer": "Answer 3"}},
+        {{"question": "Question 4?", "answer": "Answer 4"}},
+        {{"question": "Question 5?", "answer": "Answer 5"}}
+    ]
+}}
+
+Return ONLY valid JSON. No other text."""
+
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        response_text = response.text
+        
+        cleaned = re.sub(r'```json\\s*', '', response_text)
+        cleaned = re.sub(r'```\\s*', '', cleaned).strip()
+        
+        start_idx = cleaned.find('{')
+        end_idx = cleaned.rfind('}')
+        note_data = None
+        if start_idx != -1 and end_idx != -1:
+            json_str = cleaned[start_idx:end_idx + 1]
+            try:
+                note_data = json.loads(json_str)
+            except json.JSONDecodeError:
+                try:
+                    note_data = json.loads(_sanitize_json_control_chars(json_str))
+                except json.JSONDecodeError:
+                    pass
+        
+        if note_data:
+            # Save the generated content as a LessonNote
+            ed_level = ({'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}).get(
+                (lp.education_level or '').lower(), 'ordinary')
+            
+            # Format the note content
+            content_parts = []
+            content_parts.append("=== LESSON NOTES ===")
+            content_parts.append(note_data.get('summary', ''))
+            content_parts.append("")
+            content_parts.append("=== TEACHER'S REFLECTION ===")
+            content_parts.append(note_data.get('reflection', ''))
+            content_parts.append("")
+            content_parts.append("=== QUIZ QUESTIONS ===")
+            for i, q in enumerate(note_data.get('quiz', []), 1):
+                content_parts.append(f"{i}. {q.get('question', '')}")
+                content_parts.append(f"   Jibu: {q.get('answer', '')}")
+            
+            note_content = '\n'.join(content_parts)
+            
+            note = LessonNote.objects.create(
+                teacher=teacher,
+                teacher_name=teacher.full_name,
+                school=teacher.school if teacher.school else None,
+                school_name=school_name,
+                education_level=ed_level,
+                class_name=lp.class_name,
+                subject=subject_name,
+                topic=lp.topic,
+                content=note_content,
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'note_id': note.id,
+                'note_data': note_data,
+                'created': note.created_at.isoformat(),
+            })
+        else:
+            return JsonResponse({'success': False, 'error': 'AI ilishindwa kuzalisha notes. Jaribu tena.'}, status=422)
+            
+    except LessonPlan.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Lesson Plan haipatikani'}, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
 
 
 @require_POST
@@ -3716,6 +4041,188 @@ Return ONLY the JSON object. ALL content must be specific to {topic.name}."""
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
+
+
+# =============================================================================
+# AJAX: Generate ONE lesson plan (for topic-by-topic progress bar)
+# =============================================================================
+
+@require_POST
+def ajax_generate_one_lesson(request):
+    """Generate a single lesson plan for a given topic. Used by the frontend
+    to iterate topic-by-topic with real-time progress."""
+    if client is None:
+        return JsonResponse({'success': False, 'error': 'AI haitumiki'}, status=503)
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=400)
+
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Jisajili kwanza'}, status=401)
+
+    try:
+        data = json.loads(request.body)
+        subject_id = data.get('subject_id', '')
+        subject_name = data.get('subject', '').strip()
+        class_name = data.get('class_name', '').strip()
+        education_level = data.get('education_level', '')
+        stream = data.get('stream', '')
+        term = data.get('term', 'I')
+        year = data.get('year', 2026)
+        duration = int(data.get('duration', 40))
+        total_boys = data.get('total_boys', '')
+        total_girls = data.get('total_girls', '')
+        teacher_name = data.get('teacher_name', '')
+        school_name = data.get('school_name', '')
+        topic_name = data.get('topic', '').strip()
+        subtopic_name = data.get('subtopic', '').strip()
+        topic_index = int(data.get('topic_index', 0))
+        total_topics = int(data.get('total_topics', 1))
+
+        if not topic_name:
+            return JsonResponse({'success': False, 'error': 'Topic inahitajika'}, status=400)
+
+        full_class = f"{class_name}{stream}" if stream else class_name
+        intro_time = max(5, int(duration * 0.15))
+        dev_time = max(10, int(duration * 0.40))
+        design_time = max(8, int(duration * 0.30))
+        real_time = max(5, int(duration * 0.15))
+
+        # Handle missing school
+        school_obj = teacher.school
+        if not school_obj and school_name:
+            school_obj = School.objects.filter(name__iexact=school_name).first()
+        if not school_obj:
+            return JsonResponse({'success': False, 'error': 'Shule yako haijapatikana kwenye mfumo. Sasisha wasifu wako.'}, status=400)
+
+        # Get subject object
+        subj_obj = Subject.objects.filter(id=subject_id).first() or Subject.objects.filter(name__iexact=subject_name).first()
+        if not subj_obj:
+            return JsonResponse({'success': False, 'error': f'Somo "{subject_name}" halipatikani'}, status=404)
+
+        # Build prompt
+        prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom.
+
+============================================
+PRIME MINISTER'S OFFICE
+REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
+TEACHER'S LESSON PLAN
+============================================
+
+School: {school_name or '[School Name]'}
+Teacher's Name: {teacher_name}
+Subject: {subject_name}
+Form/Class: {full_class}
+Date: {datetime.now().strftime('%d/%m/%Y')}
+
+Main Topic: {topic_name}
+Sub-topic: {subtopic_name or 'N/A'}
+
+Main Competence: Numbered format from Tanzanian syllabus for {subject_name} {full_class}.
+Specific Competence: The specific competence for {topic_name}.
+
+Term: {term}, Year: {year}
+Duration: {duration} minutes
+
+Content MUST relate to Subject: {subject_name}, Class: {full_class}, Topic: \"{topic_name}\".
+
+Lesson Development uses the IDDR Model (Introduction, Competence Development, Design, Realisation).
+Use CBC methodologies: Brainstorming, Group discussion, Jigsaw, Q&A, Demonstration.
+
+Output ONLY valid JSON with this EXACT structure:
+{{
+    \"main_competence\": \"Numbered competence for {topic_name}\",
+    \"specific_competence\": \"Specific competence for {topic_name}\",
+    \"main_activity\": \"Within 1 period students should be able to...\",
+    \"specific_activity\": \"By the end of this lesson, students should be able to...\",
+    \"teaching_resources\": \"TIE textbook, Charts, Manila sheets\",
+    \"references\": \"Tanzania Institute of Education. (2024). {subject_name} for Secondary Schools Student's Book. Tanzania Institute of Education.\",
+    \"lesson_development\": [
+        {{\"stage\": \"Introduction\", \"time\": \"{intro_time:02d}\", \"teaching_activities\": \"activities\", \"learning_activities\": \"activities\", \"assessment_criteria\": \"criteria\"}},
+        {{\"stage\": \"Competence Development\", \"time\": \"{dev_time:02d}\", \"teaching_activities\": \"activities\", \"learning_activities\": \"activities\", \"assessment_criteria\": \"criteria\"}},
+        {{\"stage\": \"Design\", \"time\": \"{design_time:02d}\", \"teaching_activities\": \"activities\", \"learning_activities\": \"activities\", \"assessment_criteria\": \"criteria\"}},
+        {{\"stage\": \"Realisation\", \"time\": \"{real_time:02d}\", \"teaching_activities\": \"activities\", \"learning_activities\": \"activities\", \"assessment_criteria\": \"criteria\"}}
+    ],
+    \"remarks\": \"Evaluation of student achievement and way forward.\"
+}}
+
+Return ONLY the JSON object. ALL content must be specific to {topic_name}."""
+
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        response_text = response.text
+
+        cleaned = re.sub(r'```json\\s*', '', response_text)
+        cleaned = re.sub(r'```\\s*', '', cleaned).strip()
+
+        start_idx = cleaned.find('{')
+        end_idx = cleaned.rfind('}')
+        lesson_data = None
+        if start_idx != -1 and end_idx != -1:
+            json_str = cleaned[start_idx:end_idx + 1]
+            try:
+                lesson_data = json.loads(json_str)
+            except json.JSONDecodeError:
+                try:
+                    lesson_data = json.loads(_sanitize_json_control_chars(json_str))
+                except json.JSONDecodeError:
+                    pass
+
+        if lesson_data:
+            tr = lesson_data.get('teaching_resources', '')
+            if isinstance(tr, str):
+                tr = [x.strip() for x in tr.split(',') if x.strip()] or ['TIE textbook']
+
+            ed_level = ({'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}).get((education_level or '').lower(), 'ordinary')
+
+            lp = LessonPlan.objects.create(
+                student=None,
+                school=school_obj,
+                subject=subj_obj,
+                class_name=class_name,
+                term=term,
+                year=int(year),
+                teacher_name=teacher_name or teacher.full_name,
+                topic=topic_name,
+                subtopic=subtopic_name or '',
+                date=timezone.now().date(),
+                duration=duration,
+                education_level=ed_level,
+                main_competence=lesson_data.get('main_competence', ''),
+                specific_competence=lesson_data.get('specific_competence', ''),
+                previous_knowledge=lesson_data.get('main_activity', lesson_data.get('specific_activity', '')),
+                learning_objectives=[lesson_data.get('specific_activity', 'By the end students should be able to...')],
+                teaching_methods=[],
+                teaching_resources=tr,
+                lesson_development=lesson_data.get('lesson_development', []),
+                remarks=lesson_data.get('remarks', ''),
+                generated_by_ai=True,
+            )
+
+            return JsonResponse({
+                'success': True,
+                'lp_id': lp.id,
+                'topic': topic_name,
+                'topic_index': topic_index,
+                'total_topics': total_topics,
+                'data': lesson_data,
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'AI ilishindwa kuchakata response',
+                'topic': topic_name,
+                'topic_index': topic_index,
+                'total_topics': total_topics,
+            }, status=422)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': str(e)[:200],
+            'topic': data.get('topic', '') if 'data' in dir() else '',
+        }, status=500)
 
 
 def my_lessons(request):

@@ -75,6 +75,10 @@ urlpatterns = [
 
     # Full Subject Lesson Generation
     path('lesson-plan/ajax-generate-all/', views.ajax_generate_all_lessons, name='ajax_generate_all_lessons'),
+    path('lesson-plan/ajax-generate-one/', views.ajax_generate_one_lesson, name='ajax_generate_one_lesson'),
+
+    # AI Lesson Notes generation from Lesson Plan
+    path('lesson-notes/ajax-generate-from-lp/', views.ajax_generate_lesson_note_from_lp, name='generate_lesson_note_from_lp'),
 
     # Diagnostic: test AI API keys
     path('api/ai-diagnostic/', views.ajax_ai_diagnostic, name='ai_diagnostic'),

@@ -88,6 +88,9 @@
       <span class="chip {% if school_level == 'Primary' %}chip-green{% else %}chip-blue{% endif %}" style="font-size:9px;">
         <i class="fas fa-school"></i> {{ school_level }} School
       </span>
+      <span class="chip chip-purple" style="font-size:9px;background:rgba(124,58,237,0.1);color:#7C3AED;border:1px solid rgba(124,58,237,0.2);">
+        <i class="fas fa-filter"></i> {{ teacher_edu_level|title }} Notes pekee
+      </span>
       {% endif %}
     </div>
   </div>
@@ -167,9 +170,41 @@
         <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;color:var(--text-primary);">
           <i class="fas fa-list text-gold me-1"></i> Notes Zako ({{ notes|length }})
         </h5>
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          {% if saved_lessons %}
+          <button class="btn-tlm btn-sm-tlm" style="background:rgba(31,122,61,0.08);color:var(--green-500);font-size:10px;" onclick="document.getElementById('generateFromLPModal').style.display='block'">
+            <i class="fas fa-robot me-1"></i> Generate from Lesson Plan
+          </button>
+          {% endif %}
           <span class="lang-badge lang-sw"><i class="fas fa-language"></i> Kiswahili (Primary)</span>
           <span class="lang-badge lang-en"><i class="fas fa-language"></i> English (Secondary)</span>
+        </div>
+      </div>
+      
+      <!-- Generate from Lesson Plan Modal -->
+      <div id="generateFromLPModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+        <div style="background:var(--bg-card-solid);border-radius:var(--radius-md);padding:1.5rem;max-width:450px;width:90%;margin:auto;position:relative;top:50%;transform:translateY(-50%);box-shadow:var(--shadow-lg);">
+          <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0 0 0.75rem;color:var(--text-primary);">
+            <i class="fas fa-robot text-gold me-1"></i> Generate Notes from Lesson Plan
+          </h5>
+          <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-bottom:0.75rem;">
+            Chagua lesson plan ili kuzalisha lesson notes + maswali ya haraka (quiz) kwa AI.
+          </p>
+          <select id="lpSelect" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:var(--radius-sm);font-size:var(--font-size-sm);background:var(--bg-card-solid);color:var(--text-primary);margin-bottom:0.75rem;">
+            <option value="">— Chagua Lesson Plan —</option>
+            {% for lp in saved_lessons %}
+            <option value="{{ lp.id }}">{{ lp.topic|truncatechars:40 }} — {{ lp.subject.name }}</option>
+            {% endfor %}
+          </select>
+          <div id="generateFromLPStatus" style="font-size:var(--font-size-xs);margin-bottom:0.5rem;"></div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-tlm btn-gold-tlm w-100 py-2" id="generateFromLPBtn">
+              <i class="fas fa-wand-magic-sparkles me-1"></i> Generate Notes
+            </button>
+            <button class="btn-tlm btn-ghost-tlm" onclick="document.getElementById('generateFromLPModal').style.display='none'" style="padding:0.5rem 1rem;">
+              Close
+            </button>
+          </div>
         </div>
       </div>
 
@@ -337,6 +372,49 @@ document.addEventListener('DOMContentLoaded', function() {
     noteIdInput.value = '';
     feedback.style.display = 'none';
     saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Hifadhi Note';
+  });
+
+  // ── Generate Notes from Lesson Plan ──
+  document.getElementById('generateFromLPBtn').addEventListener('click', function() {
+    const btn = this;
+    const lpSelect = document.getElementById('lpSelect');
+    const status = document.getElementById('generateFromLPStatus');
+    const lpId = lpSelect.value;
+    
+    if (!lpId) {
+      status.innerHTML = '<span style="color:var(--error);">Tafadhali chagua Lesson Plan kwanza</span>';
+      return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-tlm" style="width:16px;height:16px;border-width:2px;"></div> Inazalisha...';
+    status.innerHTML = '<span style="color:var(--text-muted);">⏳ AI inatayarisha notes na quiz...</span>';
+    
+    fetch('{% url "curriculum:generate_lesson_note_from_lp" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ lesson_plan_id: lpId }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles me-1"></i> Generate Notes';
+      
+      if (data.success) {
+        status.innerHTML = '<span style="color:var(--success);">✅ Notes zimezalishwa! Inapakia upya...</span>';
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        status.innerHTML = '<span style="color:var(--error);">❌ ' + (data.error || 'Hitilafu') + '</span>';
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles me-1"></i> Generate Notes';
+      status.innerHTML = '<span style="color:var(--error);">❌ Network error: ' + err.message + '</span>';
+    });
   });
 });
 </script>

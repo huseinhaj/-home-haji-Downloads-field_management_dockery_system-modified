@@ -169,6 +169,12 @@
                 <option value="ocean" {% if teacher.theme == 'ocean' %}selected{% endif %}>🌊 Ocean Blue</option>
                 <option value="royal" {% if teacher.theme == 'royal' %}selected{% endif %}>👑 Royal Purple</option>
                 <option value="executive" {% if teacher.theme == 'executive' %}selected{% endif %}>⚫ Executive</option>
+                <option value="sunset" {% if teacher.theme == 'sunset' %}selected{% endif %}>🌅 Sunset</option>
+                <option value="forest" {% if teacher.theme == 'forest' %}selected{% endif %}>🌲 Forest</option>
+                <option value="midnight" {% if teacher.theme == 'midnight' %}selected{% endif %}>🌙 Midnight</option>
+                <option value="cherry" {% if teacher.theme == 'cherry' %}selected{% endif %}>🌸 Cherry</option>
+                <option value="safari" {% if teacher.theme == 'safari' %}selected{% endif %}>🦁 Safari</option>
+                <option value="dawn" {% if teacher.theme == 'dawn' %}selected{% endif %}>🌄 Dawn</option>
               </select>
             </div>
             {% endif %}
@@ -1038,7 +1044,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // ── Generate Full Subject ──
-  document.getElementById('generateAllBtn').addEventListener('click', function() {
+  // ── Generate Full Subject (topic-by-topic with real-time progress) ──
+  document.getElementById('generateAllBtn').addEventListener('click', async function() {
     const btn = this;
     const fd = getFormData();
     
@@ -1047,37 +1054,129 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     
-    if (!confirm(`Je, una hakika unataka kuzalisha lesson plans za TOPIC ZOTE za ${fd.subject} ${fd.class_name}?\n\nHii inaweza kuchukua sekunde 30-120.`)) {
+    if (!confirm(`Je, una hakika unataka kuzalisha lesson plans za TOPIC ZOTE za ${fd.subject} ${fd.class_name}?\n\nHii itachukua sekunde 15-30 kwa kila topic.`)) {
       return;
     }
     
-    btn.disabled = true;
-    btn.innerHTML = '<div class="spinner-tlm" style="width:14px;height:14px;border-width:2px;"></div> Inazalisha...';
-    showToast('⏳ Inazalisha lessons zote... subiri tafadhali', 'info');
+    // ── Show progress bar ──
+    const spinner = document.getElementById('loadingSpinner');
+    const progressBar = document.getElementById('progressBar');
+    const resultsArea = document.getElementById('resultsArea');
+    const emptyState = document.getElementById('emptyState');
     
-    jsonFetch('{% url "curriculum:ajax_generate_all_lessons" %}', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-      body: JSON.stringify(fd),
-    })
-    .then(({ ok, data }) => {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-layer-group"></i> Generate Full Subject';
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-tlm" style="width:14px;height:14px;border-width:2px;"></div> Inatafuta topics...';
+    spinner.classList.add('show');
+    resultsArea.style.display = 'none';
+    emptyState.style.display = 'none';
+    
+    const progressStartTime = Date.now();
+    document.getElementById('progressTitle').textContent = '⏳ Inazalisha Lesson Plans Zote...';
+    document.getElementById('progressSubtitle').textContent = 'Inatafuta topics za silabasi...';
+    document.getElementById('progressStageLabel').textContent = 'Inatafuta topics...';
+    document.getElementById('progressPercent').textContent = '0%';
+    document.getElementById('progressElapsed').textContent = '0s';
+    progressBar.style.width = '5%';
+    progressBar.classList.add('pulsing');
+    document.getElementById('progressIcon').className = 'fas fa-layer-group progress-icon-spin';
+    
+    const elapsedInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - progressStartTime) / 1000);
+      document.getElementById('progressElapsed').textContent = elapsed < 60 ? elapsed + 's' : Math.floor(elapsed/60) + 'm ' + (elapsed%60) + 's';
+    }, 1000);
+    
+    try {
+      // ── Step 1: Get all topics for this subject ──
+      const subjectId = document.getElementById('subject').value;
+      const className = document.getElementById('class_level').value;
       
-      if (ok && data.success) {
-        const msg = `✅ ${data.generated}/${data.total} lessons zimezalishwa! ${data.failed > 0 ? data.failed + ' zimeshindwa.' : ''}`;
-        showToast(msg, data.failed > 0 ? 'warning' : 'success');
-        // Reload saved lessons to show the latest
-        document.getElementById('loadSavedBtn').click();
+      // First try DB
+      let topics = [];
+      let topicResp = await fetch(`{% url 'curriculum:get_topics_db' %}?subject_id=${subjectId}&class_name=${encodeURIComponent(className)}`).then(r => r.json());
+      
+      if (topicResp.success && topicResp.topics && topicResp.topics.length > 0) {
+        topics = topicResp.topics;
       } else {
-        showToast(data.error || 'Hitilafu wakati wa kuzalisha.', 'error');
+        // Fallback to AI
+        document.getElementById('progressSubtitle').textContent = 'Silabasi haipatikani kwenye DB, inaomba AI...';
+        const eduLevel = getEducationLevelName();
+        topicResp = await fetch(`{% url 'curriculum:get_topics_ai' %}?subject_id=${subjectId}&class_name=${encodeURIComponent(className)}&education_level=${encodeURIComponent(eduLevel)}`).then(r => r.json());
+        if (topicResp.success && topicResp.topics && topicResp.topics.length > 0) {
+          topics = topicResp.topics.map(t => ({ name: t }));
+        }
       }
-    })
-    .catch(err => {
+      
+      if (!topics || topics.length === 0) {
+        throw new Error('Hakuna topics zilizopatikana kwa somo hili na darasa hili.');
+      }
+      
+      const totalTopics = topics.length;
+      document.getElementById('progressSubtitle').textContent = `Topics ${totalTopics} zimepatikana. Inazalisha...`;
+      progressBar.style.width = '10%';
+      
+      // ── Step 2: Generate one topic at a time ──
+      let generated = 0;
+      let failed = 0;
+      const results = [];
+      
+      for (let i = 0; i < totalTopics; i++) {
+        const topic = topics[i];
+        const topicName = topic.name || topic;
+        const percent = 10 + Math.round(((i + 1) / totalTopics) * 85);
+        
+        document.getElementById('progressStageLabel').textContent = `Topic ${i + 1}/${totalTopics}: ${topicName.substring(0, 30)}`;
+        document.getElementById('progressPercent').textContent = `${percent}%`;
+        document.getElementById('progressSubtitle').textContent = `Inazalisha ${topicName}... (${i + 1}/${totalTopics})`;
+        progressBar.style.width = `${percent}%`;
+        
+        // Prepare request data for this single topic
+        const topicData = { ...fd, topic: topicName, subtopic: '', topic_index: i, total_topics: totalTopics };
+        
+        const resp = await jsonFetch('{% url "curriculum:ajax_generate_one_lesson" %}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+          body: JSON.stringify(topicData),
+        });
+        
+        if (resp.ok && resp.data.success) {
+          generated++;
+          results.push({ topic: topicName, id: resp.data.lp_id, success: true });
+        } else {
+          failed++;
+          results.push({ topic: topicName, success: false, error: resp.data.error || 'Failed' });
+        }
+      }
+      
+      // ── Complete ──
+      clearInterval(elapsedInterval);
+      progressBar.classList.remove('pulsing');
+      progressBar.style.width = '100%';
+      document.getElementById('progressStageLabel').textContent = 'Imekamilika!';
+      document.getElementById('progressPercent').textContent = '100%';
+      document.getElementById('progressTitle').textContent = '✅ Lesson Plans Zimekamilika!';
+      document.getElementById('progressSubtitle').textContent = `${generated}/${totalTopics} zimezalishwa. ${failed > 0 ? failed + ' zimeshindwa.' : ''}`;
+      document.getElementById('progressIcon').className = 'fas fa-check-circle';
+      document.getElementById('progressIconContainer').style.background = 'linear-gradient(135deg,var(--green-500),#166534)';
+      
+      const msg = `✅ ${generated}/${totalTopics} lessons zimezalishwa! ${failed > 0 ? failed + ' zimeshindwa.' : ''}`;
+      showToast(msg, failed > 0 ? 'warning' : 'success');
+      
+      setTimeout(() => {
+        spinner.classList.remove('show');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-layer-group"></i> Generate Full Subject';
+        // Reload saved
+        document.getElementById('loadSavedBtn').click();
+      }, 1500);
+      
+    } catch (err) {
+      clearInterval(elapsedInterval);
+      spinner.classList.remove('show');
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-layer-group"></i> Generate Full Subject';
-      showToast('Network error: ' + err.message, 'error');
-    });
+      showToast('Hitilafu: ' + (err.message || 'Tafadhali jaribu tena'), 'error');
+      emptyState.style.display = 'block';
+    }
   });
 
   // ── Load saved ──
