@@ -70,6 +70,12 @@ urlpatterns = [
     path('api/search-schools/', views.ajax_search_schools, name='search_schools'),
     path('api/submit-update-comment/', views.ajax_submit_update_comment, name='submit_update_comment'),
 
+    # My Lessons Library
+    path('my-lessons/', views.my_lessons, name='my_lessons'),
+
+    # Full Subject Lesson Generation
+    path('lesson-plan/ajax-generate-all/', views.ajax_generate_all_lessons, name='ajax_generate_all_lessons'),
+
     # Diagnostic: test AI API keys
     path('api/ai-diagnostic/', views.ajax_ai_diagnostic, name='ai_diagnostic'),
 ]

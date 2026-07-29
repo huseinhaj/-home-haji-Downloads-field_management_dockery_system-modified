@@ -298,9 +298,15 @@
             <button type="submit" class="btn-tlm btn-gold-tlm w-100 py-2 mt-1" id="generateBtn">
               <i class="fas fa-magic me-1"></i> Generate Lesson Plan
             </button>
+            <button type="button" class="btn-tlm btn-primary-tlm w-100 py-2 mt-1" id="generateAllBtn">
+              <i class="fas fa-layer-group"></i> Generate Full Subject
+            </button>
             <button type="button" class="btn-tlm btn-primary-tlm w-100 py-2 mt-1" id="loadSavedBtn">
               <i class="fas fa-folder-open me-1"></i> Load Saved
             </button>
+            <a href="{% url 'curriculum:my_lessons' %}" class="btn-tlm btn-ghost-tlm w-100 py-2 mt-1 text-center d-block" style="text-decoration:none;font-size:var(--font-size-sm);">
+              <i class="fas fa-book me-1"></i> My Lessons Library
+            </a>
           </form>
         </div>
       </div>
@@ -1016,6 +1022,49 @@ document.addEventListener('DOMContentLoaded', function() {
       setTimeout(function() { topicObserver.disconnect(); }, 10000);
     }
   }
+
+  // ── Generate Full Subject ──
+  document.getElementById('generateAllBtn').addEventListener('click', function() {
+    const btn = this;
+    const fd = getFormData();
+    
+    if (!fd.subject || !fd.class_name) {
+      showToast('Tafadhali chagua somo na darasa kwanza', 'warning');
+      return;
+    }
+    
+    if (!confirm(`Je, una hakika unataka kuzalisha lesson plans za TOPIC ZOTE za ${fd.subject} ${fd.class_name}?\n\nHii inaweza kuchukua sekunde 30-120.`)) {
+      return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-tlm" style="width:14px;height:14px;border-width:2px;"></div> Inazalisha...';
+    showToast('⏳ Inazalisha lessons zote... subiri tafadhali', 'info');
+    
+    jsonFetch('{% url "curriculum:ajax_generate_all_lessons" %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+      body: JSON.stringify(fd),
+    })
+    .then(({ ok, data }) => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-layer-group"></i> Generate Full Subject';
+      
+      if (ok && data.success) {
+        const msg = `✅ ${data.generated}/${data.total} lessons zimezalishwa! ${data.failed > 0 ? data.failed + ' zimeshindwa.' : ''}`;
+        showToast(msg, data.failed > 0 ? 'warning' : 'success');
+        // Reload saved lessons to show the latest
+        document.getElementById('loadSavedBtn').click();
+      } else {
+        showToast(data.error || 'Hitilafu wakati wa kuzalisha.', 'error');
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-layer-group"></i> Generate Full Subject';
+      showToast('Network error: ' + err.message, 'error');
+    });
+  });
 
   // ── Load saved ──
   document.getElementById('loadSavedBtn').addEventListener('click', function() {

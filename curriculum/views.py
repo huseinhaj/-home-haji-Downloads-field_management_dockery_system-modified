@@ -3478,3 +3478,205 @@ def ajax_ai_diagnostic(request):
         results["gemini"] = {"status": "⚠️ NOT SET"}
     
     return JsonResponse({"diagnostic": results})
+
+
+@csrf_exempt
+def ajax_generate_all_lessons(request):
+    """Generate lesson plans for ALL topics of a subject in one batch."""
+    if client is None:
+        return JsonResponse({'success': False, 'error': 'AI haitumiki'}, status=503)
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=400)
+
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Jisajili kwanza'}, status=401)
+
+    try:
+        data = json.loads(request.body)
+        subject_name = data.get('subject', '').strip()
+        class_name = data.get('class_name', '').strip()
+        education_level = data.get('education_level', '')
+        stream = data.get('stream', '')
+        term = data.get('term', 'I')
+        year = data.get('year', 2026)
+        duration = int(data.get('duration', 40))
+        total_boys = data.get('total_boys', '')
+        total_girls = data.get('total_girls', '')
+        teacher_name = data.get('teacher_name', '')
+        school_name = data.get('school_name', '')
+
+        # Get all topics for this subject from syllabus
+        subj_obj = Subject.objects.filter(name__iexact=subject_name).first()
+        if not subj_obj:
+            return JsonResponse({'success': False, 'error': f'Somo "{subject_name}" halipatikani'}, status=404)
+        
+        topics = SubjectTopic.objects.filter(subject=subj_obj, class_name=class_name).order_by('order')
+        if not topics:
+            return JsonResponse({'success': False, 'error': f'Hakuna topics za {subject_name} {class_name} kwenye silabasi'}, status=404)
+        
+        full_class = f"{class_name}{stream}" if stream else class_name
+        intro_time = max(5, int(duration * 0.15))
+        dev_time = max(10, int(duration * 0.40))
+        design_time = max(8, int(duration * 0.30))
+        real_time = max(5, int(duration * 0.15))
+
+        results = []
+        errors = []
+
+        for idx, topic in enumerate(topics):
+            try:
+                # Get first subtopic
+                subtopic = TopicSubtopic.objects.filter(topic=topic).order_by('order').first()
+                subtopic_name = subtopic.name if subtopic else ''
+
+                prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom.
+
+============================================
+PRIME MINISTER'S OFFICE
+REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
+TEACHER'S LESSON PLAN
+============================================
+
+School: {school_name or '[School Name]'}
+Teacher's Name: {teacher_name}
+Subject: {subject_name}
+Form/Class: {full_class}
+Date: {datetime.now().strftime("%d/%m/%Y")}
+
+Main Topic: {topic.name}
+Sub-topic: {subtopic_name or 'N/A'}
+
+Main Competence: Numbered format from Tanzanian syllabus for {subject_name} {full_class}.
+Specific Competence: The specific competence for {topic.name}.
+
+Term: {term}, Year: {year}
+Duration: {duration} minutes
+
+Content MUST relate to Subject: {subject_name}, Class: {full_class}, Topic: "{topic.name}".
+
+Lesson Development uses the IDDR Model (Introduction, Competence Development, Design, Realisation).
+Use CBC methodologies: Brainstorming, Group discussion, Jigsaw, Q&A, Demonstration.
+
+Output ONLY valid JSON with this EXACT structure:
+{{
+    "main_competence": "Numbered competence for {topic.name}",
+    "specific_competence": "Specific competence for {topic.name}",
+    "main_activity": "Within 1 period students should be able to...",
+    "specific_activity": "By the end of this lesson, students should be able to...",
+    "teaching_resources": "TIE textbook, Charts, Manila sheets",
+    "references": "Tanzania Institute of Education. (2024). {subject_name} for Secondary Schools Student's Book. Tanzania Institute of Education.",
+    "lesson_development": [
+        {{"stage": "Introduction", "time": "{intro_time:02d}", "teaching_activities": "activities", "learning_activities": "activities", "assessment_criteria": "criteria"}},
+        {{"stage": "Competence Development", "time": "{dev_time:02d}", "teaching_activities": "activities", "learning_activities": "activities", "assessment_criteria": "criteria"}},
+        {{"stage": "Design", "time": "{design_time:02d}", "teaching_activities": "activities", "learning_activities": "activities", "assessment_criteria": "criteria"}},
+        {{"stage": "Realisation", "time": "{real_time:02d}", "teaching_activities": "activities", "learning_activities": "activities", "assessment_criteria": "criteria"}}
+    ],
+    "remarks": "Evaluation of student achievement and way forward."
+}}
+
+Return ONLY the JSON object. ALL content must be specific to {topic.name}."""
+
+                response = client.models.generate_content(model=model_name, contents=prompt)
+                response_text = response.text
+
+                cleaned = re.sub(r'```json\\s*', '', response_text)
+                cleaned = re.sub(r'```\\s*', '', cleaned).strip()
+
+                start_idx = cleaned.find('{')
+                end_idx = cleaned.rfind('}')
+                lesson_data = None
+                if start_idx != -1 and end_idx != -1:
+                    json_str = cleaned[start_idx:end_idx + 1]
+                    try:
+                        lesson_data = json.loads(json_str)
+                    except json.JSONDecodeError:
+                        try:
+                            lesson_data = json.loads(_sanitize_json_control_chars(json_str))
+                        except json.JSONDecodeError:
+                            pass
+
+                if lesson_data:
+                    # Convert teaching_resources to list if it's a string
+                    tr = lesson_data.get('teaching_resources', '')
+                    if isinstance(tr, str):
+                        tr = [x.strip() for x in tr.split(',') if x.strip()] or ['TIE textbook']
+                    
+                    # Save lesson plan to DB
+                    lp = LessonPlan.objects.create(
+                        student=None,
+                        school=teacher.school,
+                        subject=subj_obj,
+                        class_name=class_name,
+                        term=term,
+                        year=int(year),
+                        teacher_name=teacher_name or teacher.full_name,
+                        topic=topic.name,
+                        subtopic=subtopic_name,
+                        education_level=({'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}).get((education_level or '').lower(), 'ordinary'),
+                        main_competence=lesson_data.get('main_competence', ''),
+                        specific_competence=lesson_data.get('specific_competence', ''),
+                        previous_knowledge=lesson_data.get('main_activity', lesson_data.get('specific_activity', '')),
+                        learning_objectives=[lesson_data.get('specific_activity', 'By the end students should be able to...')],
+                        teaching_resources=tr,
+                        lesson_development=lesson_data.get('lesson_development', []),
+                        remarks=lesson_data.get('remarks', ''),
+                    )
+                    results.append({
+                        'id': lp.id,
+                        'topic': topic.name,
+                        'subtopic': subtopic_name,
+                        'success': True,
+                    })
+                else:
+                    errors.append(f"{topic.name}: AI parsing failed")
+                    results.append({
+                        'topic': topic.name,
+                        'success': False,
+                        'error': 'AI parsing failed',
+                    })
+            except Exception as topic_err:
+                errors.append(f"{topic.name}: {str(topic_err)[:100]}")
+                results.append({
+                    'topic': topic.name,
+                    'success': False,
+                    'error': str(topic_err)[:100],
+                })
+
+        return JsonResponse({
+            'success': True,
+            'results': results,
+            'total': len(topics),
+            'generated': sum(1 for r in results if r.get('success')),
+            'failed': sum(1 for r in results if not r.get('success')),
+            'errors': errors[:5],
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
+
+
+def my_lessons(request):
+    """Show all lesson plans generated by this teacher, grouped by subject."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:my_lessons')}")
+    
+    # Get all lesson plans for this teacher (by teacher_name + school)
+    lessons = LessonPlan.objects.filter(
+        teacher_name=teacher.full_name,
+        school=teacher.school,
+    ).select_related('subject').order_by('-created_at')[:100]
+    
+    # Group by subject
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for lp in lessons:
+        subj_name = lp.subject.name if lp.subject else 'General'
+        grouped[subj_name].append(lp)
+    
+    return render(request, 'curriculum/my_lessons.html', {
+        'teacher': teacher,
+        'grouped_lessons': dict(grouped),
+        'total_lessons': lessons.count(),
+    })
