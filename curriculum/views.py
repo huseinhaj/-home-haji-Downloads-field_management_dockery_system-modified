@@ -3433,12 +3433,21 @@ def download_logbook_pdf(request, period_type=None):
                 cls = lesson.get('class', '—')
                 main_topic = lesson.get('main_topic', '—')
                 activity = lesson.get('activity_type', '—')
-                enrolled = lesson.get('enrolled', '—')
-                present = lesson.get('present', '—')
+                
+                # Boys/Girls breakdown
+                enrolled_b = lesson.get('enrolled_boys', lesson.get('enrolled', '—'))
+                enrolled_g = lesson.get('enrolled_girls', '—')
+                present_b = lesson.get('present_boys', lesson.get('present', '—'))
+                present_g = lesson.get('present_girls', '—')
+                methods = lesson.get('methods', '—')
+                aids = lesson.get('teaching_aids', '—')
+                achievements = lesson.get('achievements', '')
+                challenges_p = lesson.get('challenges', '')
+                subtopic = lesson.get('subtopic', '—')
 
                 period_hdr = Table(
                     [[Paragraph(
-                        f"Kipindi {period_num}  |  {subj}  |  Darasa: {cls}  |  Waliojumuishwa: {enrolled}  |  Waliopo: {present}  |  Aina: {activity}",
+                        f"Kipindi {period_num}  |  {subj}  |  Darasa: {cls}  |  Aina: {activity}",
                         ParagraphStyle('ph', fontName='Helvetica-Bold', fontSize=8, textColor=WHITE))]],
                     colWidths=[18 * cm]
                 )
@@ -3450,10 +3459,33 @@ def download_logbook_pdf(request, period_type=None):
 
                 lesson_rows = [
                     [Paragraph('<b>Mada Kuu</b>', s_label), Paragraph(main_topic, s_body),
-                     Paragraph('<b>Mada Ndogo</b>', s_label), Paragraph(lesson.get('subtopic', '—'), s_body)],
-                    [Paragraph('<b>Mbinu</b>', s_label), Paragraph(lesson.get('methods', '—'), s_body),
-                     Paragraph('<b>Vifaa</b>', s_label), Paragraph(lesson.get('teaching_aids', '—'), s_body)],
+                     Paragraph('<b>Mada Ndogo</b>', s_label), Paragraph(subtopic, s_body)],
+                    [Paragraph('<b>Mbinu</b>', s_label), Paragraph(methods, s_body),
+                     Paragraph('<b>Vifaa</b>', s_label), Paragraph(aids, s_body)],
                 ]
+                
+                # Add Boys/Girls row
+                enroll_boys_str = str(enrolled_b) if enrolled_b and enrolled_b != '—' else '0'
+                enroll_girls_str = str(enrolled_g) if enrolled_g and enrolled_g != '—' else '0'
+                pres_boys_str = str(present_b) if present_b and present_b != '—' else '0'
+                pres_girls_str = str(present_g) if present_g and present_g != '—' else '0'
+                
+                lesson_rows.append([
+                    Paragraph('<b>Waliojisajili</b>', s_label),
+                    Paragraph(f"Wavulana: {enroll_boys_str}  |  Wasichana: {enroll_girls_str}", s_body),
+                    Paragraph('<b>Waliohudhuria</b>', s_label),
+                    Paragraph(f"Wavulana: {pres_boys_str}  |  Wasichana: {pres_girls_str}", s_body),
+                ])
+                
+                # Add Achievements & Challenges row if present
+                if achievements or challenges_p:
+                    ach_text = achievements if achievements else '—'
+                    ch_text = challenges_p if challenges_p else '—'
+                    lesson_rows.append([
+                        Paragraph('<b>Mafanikio</b>', s_label), Paragraph(ach_text, s_body),
+                        Paragraph('<b>Changamoto</b>', s_label), Paragraph(ch_text, s_body),
+                    ])
+                
                 lesson_tbl = Table(lesson_rows, colWidths=[3.5 * cm, 5.5 * cm, 3.5 * cm, 5.5 * cm])
                 lesson_tbl.setStyle(TableStyle([
                     ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E0')),
