@@ -2394,9 +2394,14 @@ def ajax_load_saved_lessonplan(request):
         form_data = {
             'subject': lp.subject.name, 'class_name': lp.class_name,
             'term': lp.term, 'year': lp.year, 'topic': lp.topic,
-            'subtopic': lp.subtopic, 'teacher_name': lp.teacher_name,
-            'duration': lp.duration, 'total_students': lp.total_students,
-            'present_students': lp.present_students,
+            'subtopic': lp.subtopic or '', 'teacher_name': lp.teacher_name,
+            'duration': str(lp.duration),  # Must be string for PDF generator
+            'total_students': lp.total_students or '',
+            'present_students': lp.present_students or '',
+            'total_boys': lp.total_boys or '',
+            'total_girls': lp.total_girls or '',
+            'present_boys': lp.present_boys or '',
+            'present_girls': lp.present_girls or '',
         }
         return JsonResponse({'success': True, 'data': lesson_data, 'form_data': form_data, 'saved_id': lp.id})
     except StudentTeacher.DoesNotExist:
@@ -2431,9 +2436,14 @@ def ajax_load_lesson_by_id(request, lesson_id):
         form_data = {
             'subject': lp.subject.name, 'class_name': lp.class_name,
             'term': lp.term, 'year': lp.year, 'topic': lp.topic,
-            'subtopic': lp.subtopic, 'teacher_name': lp.teacher_name,
-            'duration': lp.duration, 'total_students': lp.total_students,
-            'present_students': lp.present_students,
+            'subtopic': lp.subtopic or '', 'teacher_name': lp.teacher_name,
+            'duration': str(lp.duration),  # Must be string for PDF generator
+            'total_students': lp.total_students or '',
+            'present_students': lp.present_students or '',
+            'total_boys': lp.total_boys or '',
+            'total_girls': lp.total_girls or '',
+            'present_boys': lp.present_boys or '',
+            'present_girls': lp.present_girls or '',
         }
         return JsonResponse({'success': True, 'data': lesson_data, 'form_data': form_data, 'saved_id': lp.id})
     except LessonPlan.DoesNotExist:
