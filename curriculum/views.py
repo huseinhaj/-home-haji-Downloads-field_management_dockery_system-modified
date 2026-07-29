@@ -778,12 +778,13 @@ def ajax_generate_scheme(request):
         _lang_tlm = get_tlm_teacher(request)
         _school_level = _lang_tlm.school.level if _lang_tlm and _lang_tlm.school else ''
         _subject_lower = subject.lower()
-        if _school_level == 'Primary':
+        school_level_lower = (_school_level or '').lower()
+        if 'primary' in school_level_lower:
             if _subject_lower in ('english', 'english language'):
                 language_instruction = "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
             else:
                 language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili). Only column headers can stay in English."
-        elif _school_level == 'Secondary':
+        elif 'secondary' in school_level_lower or 'ordinary' in school_level_lower or 'advanced' in school_level_lower:
             if _subject_lower in ('kiswahili', 'swahili'):
                 language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject."
             else:
@@ -1585,12 +1586,13 @@ def ajax_generate_lessonplan(request):
         _lp_tlm = get_tlm_teacher(request)
         _lp_school_level = _lp_tlm.school.level if _lp_tlm and _lp_tlm.school else ''
         _lp_subject_lower = subject.lower()
-        if _lp_school_level == 'Primary':
+        _lp_school_level_lower = (_lp_school_level or '').lower()
+        if 'primary' in _lp_school_level_lower:
             if _lp_subject_lower in ('english', 'english language'):
                 lp_language_instruction = "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
             else:
                 lp_language_instruction = "LANGUAGE: Write ALL lesson content in KISWAHILI (Swahili). Only the headings/section titles can stay in English. ALL descriptions, activities, explanations, and assessment criteria MUST be in Swahili language. This is a Primary school subject."
-        elif _lp_school_level == 'Secondary':
+        elif 'secondary' in _lp_school_level_lower or 'ordinary' in _lp_school_level_lower or 'advanced' in _lp_school_level_lower:
             if _lp_subject_lower in ('kiswahili', 'swahili'):
                 lp_language_instruction = "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject for Secondary school."
             else:
