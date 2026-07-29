@@ -2656,6 +2656,47 @@ def get_topics_ai(request):
     if not subject:
         return JsonResponse({'success': False, 'error': 'Somo halipatikani'}, status=404)
 
+    # ── Determine language based on school level (Primary vs Secondary) ──
+    _is_primary = ('primary' in education_level.lower())
+    _subject_lower = subject.name.lower()
+
+    if _is_primary:
+        if _subject_lower in ('english', 'english language'):
+            language_rule = (
+                f"LUGHA: Hii ni SHULE YA MSINGI na somo ni ENGLISH. "
+                f"Topics ZOTE zirejeshwe kwa KIINGEREZA (English). "
+                f"Kwa mfano: 'Parts of Speech', 'Tenses', 'Comprehension', 'Nouns', 'Verbs', 'Reading', 'Writing' n.k."
+            )
+        else:
+            language_rule = (
+                f"LUGHA: Hii ni SHULE YA MSINGI. Somo la {subject.name} linafundishwa kwa KISWAHILI. "
+                f"Topics ZOTE lazima zirejeshwe kwa KISWAHILI. "
+                f"Hata kama jina la somo ni Kiingereza (kama Science, Geography, civics), "
+                f"topics zake kwa shule ya msingi lazima ziwe kwa KISWAHILI. "
+                f"Kwa mfano: "
+                f"- Sayansi (Science) → 'Viumbe Hai', 'Mwili na Afya', 'Mimea', 'Wanyama', 'Hali ya Hewa' n.k. "
+                f"- Hisabati → 'Namba', 'Jiometri', 'Aljebra', 'Vipimo', 'Takwimu' n.k. "
+                f"- Maarifa ya Jamii → 'Familia', 'Jamii', 'Uchumi', 'Utamaduni' n.k. "
+                f"- Uraia na Maadili → 'Haki za Binadamu', 'Majukumu', 'Maadili' n.k. "
+                f"- Mwili na Afya → 'Mwili wa Binadamu', 'Lishe', 'Afya na Usafi' n.k. "
+                f"USIANDIKE topics kwa Kiingereza isipokuwa kwa somo la English pekee."
+            )
+    else:
+        # Secondary / Advanced level
+        if _subject_lower in ('kiswahili', 'swahili'):
+            language_rule = (
+                f"LUGHA: Hii ni SHULE YA SEKONDARI na somo ni Kiswahili. "
+                f"Topics ZOTE zirejeshwe kwa KISWAHILI. "
+                f"Kwa mfano: 'Fasihi Simulizi', 'Uchambuzi wa Riwaya', 'Matumizi ya Lugha' n.k."
+            )
+        else:
+            language_rule = (
+                f"LUGHA: Hii ni SHULE YA SEKONDARI. "
+                f"Somo la {subject.name} linafundishwa kwa KIINGEREZA (isipokuwa Kiswahili). "
+                f"Topics ZOTE zirejeshwe kwa KIINGEREZA. "
+                f"Kwa mfano: 'Living Things', 'Matter', 'Energy', 'Algebra', 'Trigonometry', 'Cell Biology' n.k."
+            )
+
     prompt = (
             f"Wewe ni mtaalamu wa mtaala wa Tanzania (TIE/SEQUIP). "
             f"Orodhesha mada kuu (topics) za somo la {subject.name} kwa darasa la {class_name} "
@@ -2670,11 +2711,7 @@ def get_topics_ai(request):
             f"MAKOSI: Topics lazima zilingane hasa na zile za vitabu vya TIE kwa darasa la {class_name}. "
             f"KAGUA: Hakikisha kila topic uliyoorodhesha ni ya {class_name} kulingana na silabasi ya TIE. "
             f"USIORODHESHE topic zozote za Form 1, Form 3, au Form 4 kama unataka topics za Form 2. \n"
-            f"LUGHA: Topics zirejeshwe kwa lugha ya somo lenyewe. Kwa mfano: "
-            f"- Somo la English → topics kwa Kiingereza (e.g. 'Parts of Speech', 'Tenses', 'Comprehension') \n"
-            f"- Somo la Hisabati → topics kwa Kiswahili (e.g. 'Namba', 'Jiometri', 'Aljebra') \n"
-            f"- Somo la Science/Biology/Physics/Chemistry → topics kwa Kiingereza (e.g. 'Living Things', 'Matter', 'Energy') \n"
-            f"- Somo la Historia → topics kwa Kiswahili (e.g. 'Enzi za Mawe', 'Ukoloni', 'Uhuru') \n"
+            f"{language_rule}"
             f"\n"
             f"Rudisha TU JSON array ya string: [\"Topic 1\", \"Topic 2\", ...]. "
             f"USIANDIKE chochote kingine — JSON pekee."
@@ -2713,6 +2750,46 @@ def get_subtopics_ai(request):
     if not subject:
         return JsonResponse({'success': False, 'error': 'Somo halipatikani'}, status=404)
 
+    # ── Determine language based on school level (Primary vs Secondary) ──
+    _is_primary = ('primary' in education_level.lower())
+    _subject_lower = subject.name.lower()
+
+    if _is_primary:
+        if _subject_lower in ('english', 'english language'):
+            language_rule = (
+                f"LUGHA: Hii ni SHULE YA MSINGI na somo ni ENGLISH. "
+                f"Subtopics ZOTE zirejeshwe kwa KIINGEREZA (English). "
+                f"Kwa mfano: 'Nouns', 'Verbs', 'Pronouns', 'Present Tense', 'Past Tense', 'Comprehension' n.k."
+            )
+        else:
+            language_rule = (
+                f"LUGHA: Hii ni SHULE YA MSINGI. Somo la {subject.name} linafundishwa kwa KISWAHILI. "
+                f"Subtopics ZOTE lazima zirejeshwe kwa KISWAHILI. "
+                f"Hata kama jina la somo ni Kiingereza (kama Science, Geography, Civics), "
+                f"subtopics zake kwa shule ya msingi lazima ziwe kwa KISWAHILI. "
+                f"Kwa mfano: "
+                f"- Sayansi (Science) → 'Viumbe Hai', 'Mimea', 'Wanyama', 'Mfumo wa Mwili' n.k. "
+                f"- Hisabati → 'Namba Asilia', 'Sehemu', 'Desimali', 'Mizani', 'Ulinganifu' n.k. "
+                f"- Maarifa ya Jamii → 'Familia yangu', 'Jamii yetu', 'Shughuli za Kiuchumi' n.k. "
+                f"- Uraia na Maadili → 'Haki na Wajibu', 'Maadili ya Kiislamu/Kikristo', 'Usalama Barabarani' n.k. "
+                f"USIANDIKE subtopics kwa Kiingereza isipokuwa kwa somo la English pekee."
+            )
+    else:
+        # Secondary / Advanced level
+        if _subject_lower in ('kiswahili', 'swahili'):
+            language_rule = (
+                f"LUGHA: Hii ni SHULE YA SEKONDARI na somo ni Kiswahili. "
+                f"Subtopics ZOTE zirejeshwe kwa KISWAHILI. "
+                f"Kwa mfano: 'Tamthilia', 'Ushairi', 'Insha', 'Sarufi', 'Matumizi ya Lugha' n.k."
+            )
+        else:
+            language_rule = (
+                f"LUGHA: Hii ni SHULE YA SEKONDARI. "
+                f"Somo la {subject.name} linafundishwa kwa KIINGEREZA (isipokuwa Kiswahili). "
+                f"Subtopics ZOTE zirejeshwe kwa KIINGEREZA. "
+                f"Kwa mfano: 'Cell Division', 'Quadratic Equations', 'Chemical Bonding', 'Market Structure' n.k."
+            )
+
     prompt = (
             f"Wewe ni mtaalamu wa mtaala wa Tanzania (TIE/SEQUIP). "
             f"Orodhesha mada ndogo (subtopics) za somo la {subject.name}, kwa mada kuu '{topic}', "
@@ -2723,7 +2800,7 @@ def get_subtopics_ai(request):
             f"chagua subtopics za {class_name} PEKEE, sio za darasa lingine. \n\n"
             f"MAKOSI: Subtopics lazima zilingane na zile za vitabu vya TIE kwa darasa la {class_name}. "
             f"KAGUA mara mbili: Hakikisha subtopics zote ni za {class_name} kulingana na silabasi ya TIE. "
-            f"LUGHA: Subtopics zirejeshwe kwa lugha ya somo lenyewe (English → Kiingereza, Hisabati → Kiswahili, Science/Biology/Physics/Chemistry → Kiingereza, Historia → Kiswahili, n.k.). "
+            f"{language_rule}"
             f"\n"
             f"Rudisha TU JSON array ya string: [\"Subtopic 1\", \"Subtopic 2\", ...]. "
             f"Kama hakuna subtopics, rudisha [] (array tupu). "
