@@ -655,33 +655,6 @@ def ajax_generate_scheme(request):
 
         full_class_name = f"{class_name}{stream}" if stream else class_name
 
-        # ── Build comprehensive term scope with MONTH RANGES ──
-        term_scope_map = {
-            'Full Year': f'FULL YEAR: Cover ALL topics in the syllabus from start to finish. Distribute across ALL months: JANUARY to NOVEMBER ({total_weeks} weeks total). Each month gets different topics. Do NOT concentrate everything in January only.',
-            'I': f'TERM I only: Cover topics from the FIRST HALF of the syllabus. Months: JANUARY to JUNE ({total_weeks} weeks). Start from Topic 1. Do NOT include Term II or III topics.',
-            'II': f'TERM II only: Cover topics from the SECOND HALF of the syllabus. Months: JULY to NOVEMBER/DECEMBER ({total_weeks} weeks). Continue from where Term I ends. Do NOT include Term I or III topics.',
-            'III': f'TERM III only: Cover the FINAL PART of the syllabus. Months: SEPTEMBER to NOVEMBER/DECEMBER ({total_weeks} weeks). Complete remaining topics. Do NOT include Term I or II topics.',
-        }
-        term_scope = term_scope_map.get(term, f'Cover content for {total_weeks} weeks.')
-
-        # ── Breaks & Holidays — FULL ROWS with merged break text ──
-        breaks_text = ''
-        if breaks:
-            for b in breaks:
-                name = b.get('name', 'Break')
-                start = b.get('start', '')
-                end = b.get('end', '')
-                full_label = f"{name.upper()}\n({start} – {end})"
-                if 'exam' in name.lower() or 'test' in name.lower() or 'midterm' in name.lower() or 'terminal' in name.lower():
-                    breaks_text += f"""
-- BREAK ROW: ALL 12 columns MUST contain this exact text: "{full_label}"
-  Month: Based on start date ({start}), Week: Based on calendar position, No. of Periods: "2" for exams, "0" for holidays"""
-                else:
-                    breaks_text += f"""
-- BREAK ROW: ALL 12 columns MUST contain this exact text: "{full_label}"
-  Month: Based on start date ({start}), Week: Based on calendar position, No. of Periods: "0" for holidays"""
-            breaks_text = f"\n\n🎯 CRITICAL — YOU MUST INCLUDE EACH OF THESE BREAKS/HOLIDAYS AS A FULL ROW IN YOUR OUTPUT:\n{breaks_text}\n\nEACH BREAK ROW: ALL 12 columns must have the SAME text — the break name with dates.\nFAILURE TO INCLUDE THESE BREAK ROWS = INCOMPLETE SCHEME."
-
         # ── Reference source ──
         ref_text = f"\nReference source: {reference_source}" if reference_source else ''
 
@@ -702,7 +675,7 @@ def ajax_generate_scheme(request):
         else:
             language_instruction = ""
 
-        # ── Build base prompt template (shared between batches) ──
+        # ── Build base prompt template (shared between months) ──
         def _make_prompt(scope_text, weeks_count):
             return f"""You are a Tanzanian curriculum expert (TIE/SEQUIP). Generate a REAL, AUTHENTIC Scheme of Work for a Tanzanian {education_level} class following the OFFICIAL TAMISEMI (Prime Minister's Office - Regional Administration and Local Government) format EXACTLY.
 
@@ -723,8 +696,6 @@ TOTAL WEEKS: {weeks_count}
 PERIODS/WEEK: {periods_per_week}{ref_text}
 
 {language_instruction}
-
-{breaks_text}
 
 OUTPUT FORMAT:
 Return a JSON array of objects. Each object MUST have EXACTLY these 12 keys with these EXACT spellings:
@@ -751,7 +722,8 @@ STRICT RULES — FOLLOW EXACTLY:
    - Use lettered format: "(a) Describe nutrition in human and ruminants (nutrients, digestion, absorption, assimilation)"
    - "(b) Describe the mechanism of transportation of materials in plants and animals"
    - "(c) Describe the mechanisms of gaseous exchange and respiration in living organisms"
-   - Each letter groups a major topic area
+   - Each letter (a), (b), (c), (d), (e), (f), etc. MUST be its OWN SEPARATE ROW
+   - Do NOT combine multiple letters in one row
 
 📌 4. SPECIFIC LEARNING ACTIVITIES (Shughuli Maalum):
    - Start with "To..." format: "To describe the meaning of human nutrition" or "To explain the concept of transportation of materials in plants"
@@ -760,9 +732,9 @@ STRICT RULES — FOLLOW EXACTLY:
 
 📌 5. MONTH:
    - Uppercase: JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER
-   - Months MUST appear in CHRONOLOGICAL ORDER
-   - EACH month MUST have 3-8 rows (comprehensive coverage)
-   - If a break falls in a month, still include real topic rows before and after
+   - The value MUST be the month specified in the scope above — do NOT use a different month
+   - EACH month MUST have 8-15 rows (comprehensive coverage - generated per-month above)
+   - A month with 4 weeks should have ~10-15 rows (each week ~2-4 rows)
 
 📌 6. WEEK:
    - Format: "1st", "2nd", "3rd", "4th" or ranges like "2nd & 3rd", "3rd & 4th"
@@ -799,52 +771,153 @@ STRICT RULES — FOLLOW EXACTLY:
 CRITICAL REQUIREMENTS:
 ═══════════════════════════════════════════════════
 
-🔴 ROWS PER MONTH: Each month MUST have 3-8 rows. A comprehensive scheme for a full year should have 40-80+ total rows.
+🔴 ROWS PER MONTH: Generate 8-15 rows for this month. A comprehensive full-year scheme needs at least 80-150+ total rows across all months.
 🔴 REAL SYLLABUS: Use REAL TIE syllabus topics for {subject} {full_class_name}. Do NOT fabricate fake topics.
 🔴 PROPER NUMBERING: Main Competence numbered 1.0, 2.0, 3.0... Specific Competence numbered 1.1, 1.2, 2.1, 2.2...
-🔴 MONTH ORDER: JANUARY → FEBRUARY → MARCH → APRIL → MAY → JUNE → JULY → AUGUST → SEPTEMBER → OCTOBER → NOVEMBER (strict chronological)
-🔴 BREAKS: Include ALL listed breaks as FULL rows where all 12 columns have the SAME break text
+🔴 MONTH ORDER: The Month field MUST match the month specified in the scope above (e.g., if scope says JANUARY, all rows must be JANUARY)
+🔴 BREAKS: Include ALL breaks specified in the scope above as FULL rows where all 12 columns have the SAME break text
+🔴 EACH LETTERED ACTIVITY = SEPARATE ROW: Each (a), (b), (c), (d), (e), (f) etc. MUST be its own row, NOT combined
 🔴 CONTENT QUALITY: Rich, detailed, specific to the subject. NOT generic.
 🔴 All values MUST be plain strings, NEVER arrays.
+🔴 VARY the "Number of Periods" across rows — do NOT use the same number for every row
 
 Return ONLY the JSON array. No other text."""
 
         all_scheme_data = []
         all_response_texts = []
 
-        # ── Batch logic: For Full Year with >= 24 weeks, split into 2 batches ──
-        if term == 'Full Year' and total_weeks >= 24:
-            half_weeks = total_weeks // 2
-            remaining_weeks = total_weeks - half_weeks
-            logger.info(f"[Scheme] BATCHING: {total_weeks} weeks -> {half_weeks}+{remaining_weeks}")
+        # ── Month-by-month generation strategy ──
+        # Each month gets its OWN AI call to ensure:
+        #   - Every month from JANUARY to OCTOBER is covered (no skipping)
+        #   - Each month has 8-20+ rows (comprehensive)
+        #   - Breaks appear in their correct months
+        #   - Total output reaches 80-200+ rows = 8-20+ pages (up to 30+)
+        # ─────────────────────────────────────────────
 
-            # Batch 1: First half (January to June, first topics)
-            scope1 = f'FIRST HALF of the full year. Cover the FIRST topics from the syllabus (January to June, {half_weeks} weeks). Start from the very beginning. Cover JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE. Do NOT include topics from Term II.'
-            prompt1 = _make_prompt(scope1, half_weeks)
-            data1, resp1 = _generate_scheme_batch(prompt1)
-            if data1:
-                all_scheme_data.extend(data1)
-                all_response_texts.append(resp1)
-                logger.info(f"[Scheme] Batch 1 done: {len(data1)} rows")
+        import calendar as _cal
 
-            # Batch 2: Second half (July to November, remaining topics)
-            scope2 = f'SECOND HALF of the full year. Cover the REMAINING topics from the syllabus (July to November, {remaining_weeks} weeks). Continue from where the first half ended. Cover JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER. You MUST include content for NOVEMBER - do NOT end in October. Do NOT repeat topics from the first half.'
-            prompt2 = _make_prompt(scope2, remaining_weeks)
-            data2, resp2 = _generate_scheme_batch(prompt2)
-            if data2:
-                all_scheme_data.extend(data2)
-                all_response_texts.append(resp2)
-                logger.info(f"[Scheme] Batch 2 done: {len(data2)} rows")
+        # Define months to generate based on term
+        term_months_map = {
+            'Full Year': ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+                          'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER'],
+            'I':    ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE'],
+            'II':   ['JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER'],
+            'III':  ['AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER'],
+        }
+        months_to_generate = term_months_map.get(term, ['JANUARY', 'FEBRUARY', 'MARCH'])
+        total_months_to_gen = len(months_to_generate)
 
-        else:
-            # Single generation (Term I/II/III or small Full Year)
-            logger.info(f"[Scheme] Single generation: {total_weeks} weeks")
-            data, resp = _generate_scheme_batch(_make_prompt(term_scope, total_weeks))
-            if data:
-                all_scheme_data.extend(data)
-            all_response_texts.append(resp)
+        # Group breaks by month (parse start date to determine which month)
+        breaks_by_month = {m: [] for m in months_to_generate}
+        if breaks:
+            for b in breaks:
+                start_str = b.get('start', '')
+                if start_str:
+                    try:
+                        from datetime import datetime as _dt_b
+                        start_dt_brk = _dt_b.strptime(start_str, '%Y-%m-%d')
+                        brk_month_name = _cal.month_name[start_dt_brk.month].upper()
+                        if brk_month_name in months_to_generate:
+                            breaks_by_month[brk_month_name].append(b)
+                    except (ValueError, IndexError):
+                        pass
+
+        # Calculate weeks per month (distribute total weeks across months)
+        weeks_per_month = max(3, total_weeks // max(1, total_months_to_gen))
+        remaining_weeks_global = total_weeks
+
+        logger.info(f"[Scheme] MONTH-BY-MONTH: {total_weeks} weeks across {total_months_to_gen} months = ~{weeks_per_month} weeks/month")
+
+        for month_idx, month_name in enumerate(months_to_generate):
+            month_number = month_idx + 1
+            month_weeks = min(weeks_per_month + (1 if month_idx < total_weeks % max(1, total_months_to_gen) else 0), remaining_weeks_global)
+            remaining_weeks_global -= month_weeks
+
+            # Determine topic coverage for this month
+            if total_months_to_gen <= 1:
+                topic_range = "Cover ALL remaining topics from the syllabus. Complete the entire syllabus."
+            elif month_idx == 0:
+                topic_range = "Cover the FIRST topics from the syllabus. Start from the very beginning (Topic 1). Introduce the first competences with detailed breakdown."
+            elif month_idx == total_months_to_gen - 1:
+                topic_range = "Cover the FINAL topics from the syllabus. This is the LAST month. Complete ALL remaining topics. Do NOT leave any topics uncovered."
+            else:
+                topic_range = "Cover MIDDLE topics from the syllabus. Continue from where the previous month ended. Introduce NEW competences. Do NOT repeat topics from earlier months."
+
+            # Build month-specific scope with breaks
+            month_scope_lines = [
+                f"MONTH: {month_name} (Month {month_number} of {total_months_to_gen})",
+                f"TOPIC COVERAGE: {topic_range}",
+                f"WEEKS: Approximately {month_weeks} weeks of content",
+                f"ROWS: Generate 8-15 rows for {month_name}.",
+                f"",
+                f"ROW STRUCTURE: Each lettered activity like (a), (b), (c), (d), (e), (f), (g) MUST be its OWN SEPARATE row.",
+                f"Do NOT combine multiple activities into one row.",
+                f"",
+                f"MONTHLY BREAKS/HOLIDAYS:",
+            ]
+
+            month_breaks_list = breaks_by_month.get(month_name, [])
+            if month_breaks_list:
+                for b in month_breaks_list:
+                    b_name = b.get('name', 'Break')
+                    b_start = b.get('start', '')
+                    b_end = b.get('end', '')
+                    month_scope_lines.append(
+                        f"  🔴 YOU MUST INCLUDE A BREAK ROW for \"{b_name.upper()} ({b_start} – {b_end})\""
+                        f"  This break row has ALL 12 columns set to: \"{b_name.upper()}\""
+                        f"  Place it at the correct week during {month_name}"
+                    )
+            else:
+                month_scope_lines.append(f"  No breaks this month — generate only regular teaching rows.")
+
+            month_scope = '\n'.join(month_scope_lines)
+
+            # Build month-specific breaks text (only this month's breaks)
+            month_breaks_text = ''
+            if month_breaks_list:
+                month_breaks_text = '\n🎯 BREAKS FOR THIS MONTH — YOU MUST INCLUDE THESE AS FULL ROWS:\n'
+                for b in month_breaks_list:
+                    b_name = b.get('name', 'Break')
+                    b_start = b.get('start', '')
+                    b_end = b.get('end', '')
+                    label = f"{b_name.upper()} ({b_start} – {b_end})"
+                    month_breaks_text += f"   - Row with ALL 12 columns = \"{label}\", Month = {month_name}, No. of Periods = {'2' if any(w in b_name.lower() for w in ['exam','test','midterm','terminal']) else '0'}\n"
+
+            # Generate this month
+            month_prompt = _make_prompt(month_scope + month_breaks_text, month_weeks)
+            month_data, month_resp = _generate_scheme_batch(month_prompt)
+
+            if month_data:
+                all_scheme_data.extend(month_data)
+                all_response_texts.append(month_resp)
+                logger.info(f"[Scheme] {month_name}: {len(month_data)} rows generated ✓")
+            else:
+                logger.warning(f"[Scheme] {month_name}: FAILED — adding placeholder")
+                # Placeholder row so month is not missing
+                all_scheme_data.append({
+                    "Main Competence": f"Continue with syllabus topics for {month_name}",
+                    "Specific Competences": f"Continue with subtopics for {month_name}",
+                    "Main Learning Activities": f"Continue learning activities for {month_name}",
+                    "Specific Learning Activities": f"Continue with learning for {month_name}",
+                    "Month": month_name,
+                    "Week": "1st - 4th",
+                    "Number of Periods": str(max(3, periods_per_week // 2)),
+                    "Teaching and Learning Methods": "Various methods",
+                    "Teaching and Learning Resources": "TIE textbook, Charts",
+                    "Assessment Tools": "Exercises",
+                    "References": "TIE textbooks",
+                    "Remarks": "Continue as planned"
+                })
+
+        logger.info(f"[Scheme] TOTAL: {len(all_scheme_data)} rows across {total_months_to_gen} months")
 
         if not all_scheme_data:
+            preview = (all_response_texts[0] if all_response_texts else '')[:600]
+            logger.error(f"[Scheme] ALL months failed! Raw: {preview}")
+            return JsonResponse({
+                'success': False,
+                'error': f"AI haikurudisha data sahihi. Sehemu ya majibu: {preview}",
+            }, status=422)
             preview = (all_response_texts[0] if all_response_texts else '')[:600]
             logger.error(f"[Scheme] ALL batches failed! Raw: {preview}")
             return JsonResponse({
