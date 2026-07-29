@@ -1,6 +1,6 @@
 """
-AI utilities for the Curriculum app — supports Google Gemini (primary, FREE) + OpenRouter (fallback) + Groq (last resort).
-Gemini uses direct HTTP calls (no SDK needed) — robust and dependency-free.
+AI utilities for the Curriculum app.
+Provider chain: OpenRouter (paid $5) → Groq (free) → Gemini (FREE, if API key set).
 """
 import os
 import json
@@ -12,11 +12,10 @@ load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    GOOGLE_API_KEY = "AIzaSyCLfklrP_phMt3Yvm7CXuOXTDjc8isXuCQ"  # FREE tier fallback
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # Gemini FREE — set this for fallback
 
-PRIMARY_MODEL = "gemini-2.0-flash"  # FREE — generous limits (1,500 req/day)
+# OpenRouter model — uses DeepSeek with $5 credits
+PRIMARY_MODEL = "deepseek/deepseek-chat"
 
 FALLBACK_MODELS_OPENROUTER = [
     "deepseek/deepseek-chat",
@@ -133,7 +132,7 @@ def _contents_to_messages(contents, system_instruction=None):
 # =============================================================================
 
 class _UnifiedModels:
-    """Mimics models.generate_content() with Gemini (FREE) → OpenRouter → Groq fallback chain."""
+    """Mimics models.generate_content() with OpenRouter ($5 credits) → Groq → Gemini (FREE) fallback chain."""
 
     def __init__(self, openrouter_client=None, groq_client=None, gemini_key=None):
         self._or = openrouter_client
@@ -196,12 +195,7 @@ class _UnifiedModels:
 
         messages = _contents_to_messages(contents, system_instruction)
 
-        # ── 1st TRY GEMINI (FREE, primary) ──
-        gemini_result = self._try_gemini(contents)
-        if gemini_result is not None:
-            return gemini_result
-
-        # ── 2nd TRY OPENROUTER ──
+        # ── 1st TRY OPENROUTER ($5 credits) ──
         _or_error = None
         if self._or:
             models_to_try = [model] + [m for m in FALLBACK_MODELS_OPENROUTER if m != model]
@@ -224,6 +218,10 @@ class _UnifiedModels:
                     _or_error = e
                     err_str = str(e).lower()
                     logger.warning(f"[AI] OpenRouter model {attempt_model} error: {type(e).__name__}: {str(e)[:150]}")
+                    # Auth/401 errors → don't retry on OpenRouter (same key), break to fallback
+                    if any(k in err_str for k in ('auth', '401', '403', 'api_key', 'unauthorized', 'forbidden')):
+                        logger.error(f"[AI] OpenRouter auth error — not retrying, falling through: {str(e)[:200]}")
+                        break
                     if '413' in err_str or 'request too large' in err_str:
                         logger.error(f"[AI] OpenRouter request too large, skipping all OpenRouter models")
                         break
@@ -233,13 +231,12 @@ class _UnifiedModels:
                         'connection', 'connect', 'timeout', 'dns', 'resolve',
                         'eof', 'reset', 'abort', 'refused', 'unreachable',
                         'network', 'server error', '500', '502', '503',
-                        'auth', '401', '403', 'api_key', 'unauthorized', 'forbidden',
                     )):
                         continue
                     logger.error(f"[AI] OpenRouter non-retryable error, falling through: {str(e)[:200]}")
                     break
 
-        # ── 3rd TRY GROQ ──
+        # ── 2nd TRY GROQ ──
         _groq_error = None
         if self._groq:
             models_to_try = [model] + [m for m in FALLBACK_MODELS_GROQ if m != model]
@@ -271,14 +268,17 @@ class _UnifiedModels:
                     logger.error(f"[AI] Groq non-retryable error: {str(e)[:200]}")
                     raise
 
+        # ── 3rd TRY GEMINI (FREE, if key is set) ──
+        gemini_result = self._try_gemini(contents)
+        if gemini_result is not None:
+            return gemini_result
+
         # All providers failed — raise the most useful error
         if _groq_error:
             raise _groq_error
         if _or_error:
             raise _or_error
-        if not self._gemini_key:
-            raise RuntimeError("Hakuna AI provider iliyofanya kazi. Hakikisha GOOGLE_API_KEY ipo kwenye mazingira.")
-        raise RuntimeError("Hakuna AI provider iliyofanya kazi. Angalia GOOGLE_API_KEY kwenye mazingira.")
+        raise RuntimeError("Hakuna AI provider iliyofanya kazi. Angalia OPENROUTER_API_KEY kwenye mazingira.")
 
     def generate_content_stream(self, model, contents, config=None):
         system_instruction = None
@@ -291,14 +291,7 @@ class _UnifiedModels:
 
         messages = _contents_to_messages(contents, system_instruction)
 
-        # ── 1st TRY GEMINI (FREE, primary) ──
-        gemini_gen = self._try_gemini_stream(contents)
-        if gemini_gen is not None:
-            for chunk in gemini_gen:
-                yield chunk
-            return  # Success!
-
-        # ── 2nd TRY OPENROUTER ──
+        # ── 1st TRY OPENROUTER ($5 credits) ──
         if self._or:
             models_to_try = [model] + [m for m in FALLBACK_MODELS_OPENROUTER if m != model]
             for attempt_model in models_to_try:
@@ -324,6 +317,8 @@ class _UnifiedModels:
                 except Exception as e:
                     err_str = str(e).lower()
                     logger.warning(f"[AI] OpenRouter stream {attempt_model}: {type(e).__name__}: {str(e)[:150]}")
+                    if any(k in err_str for k in ('auth', '401', '403', 'api_key', 'unauthorized', 'forbidden')):
+                        break
                     if '413' in err_str or 'request too large' in err_str:
                         break
                     if any(k in err_str for k in (
@@ -333,7 +328,7 @@ class _UnifiedModels:
                         continue
                     break
 
-        # ── 3rd TRY GROQ ──
+        # ── 2nd TRY GROQ ──
         if self._groq:
             models_to_try = [model] + [m for m in FALLBACK_MODELS_GROQ if m != model]
             for attempt_model in models_to_try:
@@ -366,6 +361,13 @@ class _UnifiedModels:
                     )):
                         continue
                     raise
+
+        # ── 3rd TRY GEMINI (FREE, if key set) ──
+        gemini_chunks = self._try_gemini_stream(contents)
+        if gemini_chunks is not None:
+            for chunk in gemini_chunks:
+                yield chunk
+            return
 
         raise RuntimeError("Hakuna AI provider iliyofanya kazi kwa streaming.")
 
