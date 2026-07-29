@@ -542,6 +542,117 @@ def dashboard(request):
 
 
 # =============================================================================
+# HELPER: Expand compact AI rows into a bigger document
+# =============================================================================
+
+def _expand_scheme_rows(rows, target_multiplier=3):
+    """
+    Take compact AI rows and expand them by splitting multi-week rows
+    into individual week rows. This creates a bigger document without
+    requiring the AI to generate more tokens.
+    
+    Example: "Week: 1st-4th" becomes 4 rows: "1st", "2nd", "3rd", "4th"
+    Each expanded row keeps all other fields from the original.
+    """
+    import re as _re
+    expanded = []
+    
+    for row in rows:
+        week = (row.get('Week') or '').strip()
+        
+        # Try to split week ranges like "1st-4th", "1st & 2nd", "1st - 4th"
+        weeks = _parse_week_range(week) if week else None
+        
+        if weeks and len(weeks) > 1:
+            # Split into individual weeks, adjust periods proportionally
+            total_periods = _parse_periods(row.get('Number of Periods', ''))
+            periods_per = max(1, total_periods // len(weeks)) if total_periods > 0 else 0
+            
+            for w in weeks:
+                new_row = dict(row)
+                new_row['Week'] = w
+                if periods_per > 0:
+                    new_row['Number of Periods'] = str(periods_per)
+                expanded.append(new_row)
+        else:
+            expanded.append(row)
+    
+    # If still too small, duplicate with varied weeks
+    if len(expanded) < 30 and target_multiplier > 1:
+        extra_rows = []
+        for i, row in enumerate(expanded):
+            if len(expanded) + len(extra_rows) >= 30 * target_multiplier:
+                break
+            if i % 2 == 0:  # Duplicate every other row with "2nd & 3rd" style
+                new_row = dict(row)
+                w = row.get('Week', '')
+                if w and w in ('1st', '2nd', '3rd', '4th'):
+                    next_w = {'1st': '2nd', '2nd': '3rd', '3rd': '4th', '4th': '5th'}.get(w, w)
+                    new_row['Week'] = f"{w} & {next_w}"
+                    extra_rows.append(new_row)
+        expanded.extend(extra_rows)
+    
+    # Sort by month order for proper presentation
+    month_order = {
+        'JANUARY': 1, 'FEBRUARY': 2, 'MARCH': 3, 'APRIL': 4,
+        'MAY': 5, 'JUNE': 6, 'JULY': 7, 'AUGUST': 8,
+        'SEPTEMBER': 9, 'OCTOBER': 10, 'NOVEMBER': 11, 'DECEMBER': 12
+    }
+    expanded.sort(key=lambda r: (
+        month_order.get((r.get('Month') or '').strip().upper(), 99),
+        r.get('Week', '')
+    ))
+    
+    return expanded
+
+
+def _parse_week_range(week_str):
+    """Parse week string like '1st-4th', '1st & 2nd', '1st,2nd,3rd' into list.
+    Handles ranges (1st-4th → all 4 weeks) and comma/ampersand lists."""
+    import re as _re
+    original = week_str.strip()
+    # Detect range: Nst-Mth or Nst - Mth
+    range_m = _re.match(r'(\d+)(?:st|nd|rd|th)\s*[-–]\s*(\d+)(?:st|nd|rd|th)', original, _re.IGNORECASE)
+    if range_m:
+        start = int(range_m.group(1))
+        end = int(range_m.group(2))
+        if 1 <= start <= end <= 52:
+            result = []
+            for num in range(start, end + 1):
+                suffix = 'st' if num == 1 else 'nd' if num == 2 else 'rd' if num == 3 else 'th'
+                result.append(f"{num}{suffix}")
+            return result
+    # Fallback: comma/ampersand separated list
+    cleaned = original.lower()
+    cleaned = cleaned.replace('&', ',').replace('-', ',').replace('to', ',')
+    cleaned = _re.sub(r'\s+', '', cleaned)
+    parts = cleaned.split(',')
+    result = []
+    for p in parts:
+        p = p.strip()
+        if not p:
+            continue
+        m = _re.match(r'(\d+)(?:st|nd|rd|th)?', p)
+        if m:
+            num = int(m.group(1))
+            if 1 <= num <= 52:
+                suffix = 'st' if num == 1 else 'nd' if num == 2 else 'rd' if num == 3 else 'th'
+                result.append(f"{num}{suffix}")
+    return result if len(result) > 1 else None
+
+
+def _parse_periods(period_str):
+    """Parse period string like '6' or '3-6' into total number."""
+    import re as _re
+    if not period_str:
+        return 0
+    m = _re.match(r'(\d+)', str(period_str).strip())
+    if m:
+        return int(m.group(1))
+    return 0
+
+
+# =============================================================================
 # SCHEME OF WORK
 # =============================================================================
 
@@ -728,7 +839,7 @@ def ajax_generate_scheme(request):
         for grp in month_groups:
             all_months_flat.extend(grp)
         all_months_str = ', '.join(all_months_flat)
-        rows_per_month = max(6, 30 // max(1, len(all_months_flat)))
+        rows_per_month = max(2, 10 // max(1, len(all_months_flat)))  # Compact AI output, expanded by Python
 
         scope_lines = [
             f"MONTHS TO COVER: {all_months_str}",
@@ -789,6 +900,11 @@ RULES:
             raise RuntimeError("AI failed to generate scheme data")
 
         logger.info(f"[Scheme] AI returned {len(all_scheme_data)} rows")
+
+        # ── Expand rows: AI generates compact, Python expands for big document ──
+        expanded_count = len(all_scheme_data)
+        all_scheme_data = _expand_scheme_rows(all_scheme_data)
+        logger.info(f"[Scheme] Expanded from {expanded_count} to {len(all_scheme_data)} rows")
 
         # ── Validate months ──
         expected_months = set(all_months_flat)
