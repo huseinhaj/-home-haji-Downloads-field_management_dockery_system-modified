@@ -1994,7 +1994,7 @@ def download_lesson_plan_pdf(request):
         [Paragraph('Class', lbl), Paragraph(form.get('class_name',''), val)],
         [Paragraph('Term', lbl), Paragraph(form.get('term',''), val)],
         [Paragraph('Year', lbl), Paragraph(str(form.get('year','')), val)],
-        [Paragraph('Duration', lbl), Paragraph(form.get('duration','') + ' min', val)],
+        [Paragraph('Duration', lbl), Paragraph(str(form.get('duration', '')) + ' min', val)],
         [Paragraph('Topic', lbl), Paragraph(form.get('topic',''), val)],
     ]
     info_table = Table(info_rows, colWidths=[180, 220])
