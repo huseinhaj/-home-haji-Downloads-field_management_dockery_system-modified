@@ -725,9 +725,36 @@ def ajax_generate_scheme(request):
                     except (ValueError, IndexError):
                         pass
 
-        # ── Build AI prompts for ALL groups ──
-        def _make_prompt(scope_text, weeks_count):
-            return f"""You are a Tanzanian curriculum expert (TIE/SEQUIP). Generate a REAL, AUTHENTIC Scheme of Work for a Tanzanian {education_level} class following the OFFICIAL TAMISEMI (Prime Minister's Office - Regional Administration and Local Government) format EXACTLY.
+        # ── Build a SINGLE prompt covering ALL months ──
+        all_months_flat = []
+        for grp in month_groups:
+            all_months_flat.extend(grp)
+        all_months_str = ', '.join(all_months_flat)
+        rows_per_month = max(4, 20 // max(1, len(all_months_flat)))
+
+        scope_lines = [
+            f"MONTHS TO COVER: {all_months_str}",
+            f"TOTAL WEEKS: {total_weeks}",
+            f"START FROM the FIRST topics in the syllabus for {subject} {full_class_name}",
+            f"Progress through the syllabus TOPIC BY TOPIC across all months.",
+            f"Generate {rows_per_month}+ rows for EACH month listed above.",
+            f"Do NOT skip any month.",
+        ]
+
+        # Add breaks
+        for m in all_months_flat:
+            month_breaks = breaks_by_month.get(m, [])
+            for b in month_breaks:
+                b_name = b.get('name', 'Break')
+                b_start = b.get('start', '')
+                b_end = b.get('end', '')
+                scope_lines.append(
+                    f"  INCLUDE a BREAK ROW for '{b_name.upper()} ({b_start} - {b_end})' in {m}."
+                )
+
+        scope_text = '\n'.join(scope_lines)
+
+        prompt = f"""You are a Tanzanian curriculum expert (TIE/SEQUIP). Generate a COMPLETE Scheme of Work for a Tanzanian {education_level} class following the OFFICIAL TAMISEMI format.
 
 ============================================
 PRIME MINISTER'S OFFICE
@@ -742,10 +769,14 @@ CLASS: {full_class_name}
 TERM: {term}
 YEAR: {year}
 SYLLABUS: {syllabus}
-TOTAL WEEKS: {weeks_count}
+TOTAL WEEKS: {total_weeks}
 PERIODS/WEEK: {periods_per_week}{ref_text}
 
 {language_instruction}
+
+COVER ALL THESE MONTHS IN ONE RESPONSE: {all_months_str}
+
+Generate {rows_per_month}+ rows of data for EACH month. Include topics from beginning to end of the syllabus.
 
 OUTPUT FORMAT:
 Return a JSON array of objects. Each object MUST have EXACTLY these 12 keys with these EXACT spellings:
@@ -753,138 +784,38 @@ Return a JSON array of objects. Each object MUST have EXACTLY these 12 keys with
 
 {scope_text}
 
-STRICT RULES — FOLLOW EXACTLY:
-
-1. MAIN COMPETENCE (Mada Kuu):
-   - Format: "1.0 [Competence Statement]" e.g., "1.0 Demonstrate mastery of the concepts, principles and procedures of nutrition and transportation"
-   - Use REAL numbered competences from the TIE syllabus for {subject} {full_class_name}
-   - ONE Main Competence can span MANY months
-
-2. SPECIFIC COMPETENCES (Mada Ndogo):
-   - Format: "2.1 [Subtopic Description]"
-   - Each Specific Competence falls under a Main Competence (e.g., 1.1, 1.2)
-
-3. MAIN LEARNING ACTIVITIES:
-   - Use lettered format: "(a) Describe nutrition..."
-   - Each letter (a), (b), (c) MUST be its OWN SEPARATE ROW
-
-4. SPECIFIC LEARNING ACTIVITIES:
-   - Start with "To..." format: "To describe the meaning of..."
-   - Each row MUST have a DIFFERENT specific learning activity
-
-5. MONTH: Uppercase: JANUARY, FEBRUARY, ... (only months listed in scope)
-
-6. WEEK: "1st", "2nd", "3rd", "4th" or ranges like "2nd & 3rd"
-
-7. NUMBER OF PERIODS: Realistic values like 3, 6, 9, 12 (NOT the same for every row)
-
-8. TEACHING AND LEARNING METHODS: CBC-aligned: "Brainstorming", "Group discussion", "ICT-Based learning", "Jigsaw", "Guided inquiry", "Question and answer", "Demonstration", "Experimentation", "Field trip", "Guest speaker", "Project", "Problem solving"
-
-9. TEACHING AND LEARNING RESOURCES: Specific: "TIE textbook, Charts/model/photographs, Real specimens, Manila sheets, Markers"
-
-10. ASSESSMENT TOOLS: "Quizzes", "Tests", "Exercises", "Assignment", "Questions and answers", "Practical work", "Project"
-
-11. REFERENCES: APA v7 format using LATEST TIE textbooks
-
-12. REMARKS: Meaningful teacher reflection
+STRICT RULES:
+1. MAIN COMPETENCE: Format "1.0 [Competence Statement]". Use REAL numbered TIE competences for {subject} {full_class_name}.
+2. SPECIFIC COMPETENCES: Format "2.1 [Subtopic Description]" under each Main Competence.
+3. MAIN LEARNING ACTIVITIES: Lettered format (a), (b), (c) — each as its OWN row.
+4. SPECIFIC LEARNING ACTIVITIES: Start with "To...". Each row must be DIFFERENT.
+5. MONTH: Uppercase: JANUARY, FEBRUARY, etc.
+6. WEEK: "1st", "2nd", "3rd", "4th" or ranges like "2nd & 3rd".
+7. NUMBER OF PERIODS: Realistic (3, 6, 9, 12) — VARY them, NOT the same for every row.
+8. TEACHING AND LEARNING METHODS: CBC-aligned: Brainstorming, Group discussion, ICT-Based learning, Jigsaw, Guided inquiry, Q&A, Demonstration, Experimentation, Field trip, Project, Problem solving.
+9. TEACHING AND LEARNING RESOURCES: Specific items like "TIE textbook, Charts, Real specimens, Manila sheets, Markers".
+10. ASSESSMENT TOOLS: Quizzes, Tests, Exercises, Assignment, Q&A, Practical work, Project.
+11. REFERENCES: APA v7 format using the LATEST TIE textbooks.
+12. REMARKS: Meaningful teacher reflection.
 
 CRITICAL:
-- Use REAL TIE syllabus topics, do NOT fabricate fake topics
+- ALL months listed MUST have their own rows — do NOT skip any month
 - All values MUST be plain strings, NEVER arrays
-- Cover ALL months listed — do not skip any month
+- Use REAL TIE syllabus topics, do NOT fabricate
 - VARY the "Number of Periods" across rows
 - Return ONLY the JSON array. No other text."""
 
-        # ── Build ALL prompts (one per month group) ──
-        group_prompts = []
-        group_metas = []
-        for group_idx, month_list in enumerate(month_groups):
-            group_number = group_idx + 1
-            group_weeks = min(weeks_per_group + (1 if group_idx < total_weeks % max(1, total_groups) else 0), remaining_weeks_global)
-            remaining_weeks_global -= group_weeks
+        # ── Make a SINGLE AI call (no parallelism) ──
+        logger.info(f"[Scheme] Starting single AI call for {len(all_months_flat)} months...")
+        all_scheme_data, response_text = _generate_scheme_batch(prompt)
 
-            months_str = ', '.join(month_list)
-            rows_per_month = max(6, 12 // len(month_list))
+        if not all_scheme_data:
+            raise RuntimeError("AI failed to generate scheme data")
 
-            if group_idx == 0:
-                topic_range = "Cover the FIRST topics from the syllabus. Start from the very beginning."
-            elif group_idx == total_groups - 1:
-                topic_range = "Cover the FINAL topics from the syllabus. Complete ALL remaining topics."
-            else:
-                topic_range = "Cover MIDDLE topics from the syllabus. Continue from where previous group ended."
-
-            group_scope_lines = [
-                f"MONTHS: {months_str} ({group_number} of {total_groups})",
-                f"TOPIC COVERAGE: {topic_range}",
-                f"WEEKS: Approximately {group_weeks} weeks",
-                f"ROWS: Generate {rows_per_month}+ rows total across these months.",
-                f"",
-                f"Each month MUST have its own rows. Do NOT skip any month.",
-                f"DISTRIBUTE: " + ' '.join([f"{m}: {rows_per_month}+ rows" for m in month_list]),
-            ]
-
-            for m in month_list:
-                month_breaks = breaks_by_month.get(m, [])
-                for b in month_breaks:
-                    b_name = b.get('name', 'Break')
-                    b_start = b.get('start', '')
-                    b_end = b.get('end', '')
-                    group_scope_lines.append(
-                        f"  INCLUDE a BREAK ROW for '{b_name.upper()} ({b_start} - {b_end})' in {m}."
-                    )
-
-            group_scope = '\n'.join(group_scope_lines)
-            group_prompts.append(_make_prompt(group_scope, group_weeks))
-            group_metas.append(month_list)
-
-        # ── Run ALL groups in PARALLEL via ThreadPoolExecutor ──
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-
-        logger.info(f"[Scheme] Starting {len(group_prompts)} parallel AI calls...")
-        all_scheme_data = []
-        all_response_texts = []
-        failed_groups = []
-
-        with ThreadPoolExecutor(max_workers=len(group_prompts)) as executor:
-            future_to_idx = {
-                executor.submit(_generate_scheme_batch, prompt): idx
-                for idx, prompt in enumerate(group_prompts)
-            }
-            for future in as_completed(future_to_idx):
-                idx = future_to_idx[future]
-                month_list = group_metas[idx]
-                try:
-                    group_data, group_resp = future.result(timeout=180)
-                    if group_data:
-                        all_scheme_data.extend(group_data)
-                        all_response_texts.append(group_resp)
-                        logger.info(f"[Scheme] Group {idx+1}/{len(group_prompts)} SUCCESS: {len(group_data)} rows")
-                    else:
-                        raise RuntimeError("No data returned from AI")
-                except Exception as e:
-                    failed_groups.append(idx)
-                    logger.error(f"[Scheme] Group {idx+1}/{len(group_prompts)} FAILED: {type(e).__name__}: {str(e)[:200]}")
-                    for m in month_list:
-                        all_scheme_data.append({
-                            "Main Competence": f"Continue with syllabus topics for {m}",
-                            "Specific Competences": f"Continue with subtopics for {m}",
-                            "Main Learning Activities": f"Activities for {m}",
-                            "Specific Learning Activities": f"Continue with learning for {m}",
-                            "Month": m,
-                            "Week": "1st - 4th",
-                            "Number of Periods": str(max(3, periods_per_week // 2)),
-                            "Teaching and Learning Methods": "Various methods",
-                            "Teaching and Learning Resources": "TIE textbook, Charts",
-                            "Assessment Tools": "Exercises",
-                            "References": "TIE textbooks",
-                            "Remarks": "Continue as planned"
-                        })
+        logger.info(f"[Scheme] AI returned {len(all_scheme_data)} rows")
 
         # ── Validate months ──
-        expected_months = set()
-        for grp in month_groups:
-            for m in grp:
-                expected_months.add(m)
+        expected_months = set(all_months_flat)
         present_months = set()
         for row in all_scheme_data:
             mth = (row.get('Month') or '').strip().upper()
@@ -907,9 +838,6 @@ CRITICAL:
                     "References": "TIE textbooks",
                     "Remarks": "Proceed with syllabus"
                 })
-
-        if not all_scheme_data:
-            raise RuntimeError("AI failed to generate any data for any group")
 
         # ── Save to DB ──
         saved_id = None
