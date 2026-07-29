@@ -664,18 +664,23 @@ def ajax_generate_scheme(request):
         }
         term_scope = term_scope_map.get(term, f'Cover content for {total_weeks} weeks.')
 
-        # ── Breaks & Holidays (add rows to scheme output) ──
+        # ── Breaks & Holidays — FULL ROWS with merged break text ──
         breaks_text = ''
         if breaks:
             for b in breaks:
                 name = b.get('name', 'Break')
                 start = b.get('start', '')
                 end = b.get('end', '')
+                full_label = f"{name.upper()}\n({start} – {end})"
                 if 'exam' in name.lower() or 'test' in name.lower() or 'midterm' in name.lower() or 'terminal' in name.lower():
-                    breaks_text += f"- {name}: {start} - {end} (EXAM ROW: \"Main Competence\": \"{name}\", \"Specific Competences\": \"Examination\", \"Specific Learning Activities\": \"Revision and sitting for examinations\", \"Number of Periods\": \"2\", \"Remarks\": \"Examination week\". Set Month based on start date, Week based on term week)\n"
+                    breaks_text += f"""
+- BREAK ROW: ALL 12 columns MUST contain this exact text: "{full_label}"
+  Month: Based on start date ({start}), Week: Based on calendar position, No. of Periods: "2" for exams, "0" for holidays"""
                 else:
-                    breaks_text += f"- {name}: {start} - {end} (HOLIDAY ROW: \"Main Competence\": \"{name}\", \"Specific Competences\": \"Holiday\", \"Specific Learning Activities\": \"School holiday break\", \"Number of Periods\": \"0\", \"Remarks\": \"School holiday\". Set Month based on start date, Week based on term week)\n"
-            breaks_text = f"\nCRITICAL - YOU MUST INCLUDE these school calendar breaks/holidays AS ROWS in your output:\n{breaks_text}\nYou MUST add a row for EACH break listed above. Include them in the correct Month and Week position (exam weeks = fewer periods, holiday weeks = 0 periods). FAILURE TO INCLUDE THESE BREAK ROWS WILL MAKE THE SCHEME INCOMPLETE."
+                    breaks_text += f"""
+- BREAK ROW: ALL 12 columns MUST contain this exact text: "{full_label}"
+  Month: Based on start date ({start}), Week: Based on calendar position, No. of Periods: "0" for holidays"""
+            breaks_text = f"\n\n🎯 CRITICAL — YOU MUST INCLUDE EACH OF THESE BREAKS/HOLIDAYS AS A FULL ROW IN YOUR OUTPUT:\n{breaks_text}\n\nEACH BREAK ROW: ALL 12 columns must have the SAME text — the break name with dates.\nFAILURE TO INCLUDE THESE BREAK ROWS = INCOMPLETE SCHEME."
 
         # ── Reference source ──
         ref_text = f"\nReference source: {reference_source}" if reference_source else ''
@@ -699,47 +704,110 @@ def ajax_generate_scheme(request):
 
         # ── Build base prompt template (shared between batches) ──
         def _make_prompt(scope_text, weeks_count):
-            return f"""Generate a Scheme of Work for a Tanzanian {education_level} class.
+            return f"""You are a Tanzanian curriculum expert (TIE/SEQUIP). Generate a REAL, AUTHENTIC Scheme of Work for a Tanzanian {education_level} class following the OFFICIAL TAMISEMI (Prime Minister's Office - Regional Administration and Local Government) format EXACTLY.
 
-Class: {full_class_name}
-Subject: {subject}
-Term: {term} {year}
-Syllabus: {syllabus}
-Total weeks: {weeks_count}
-Periods/week: {periods_per_week}
-Teacher: {teacher_name}
-School: {school_name}{ref_text}{breaks_text}
+============================================
+PRIME MINISTER'S OFFICE
+REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
+SCHEME OF WORK
+============================================
 
-Scope: {scope_text}
+TEACHER'S NAME: {teacher_name or '____________________'}
+SCHOOL NAME: {school_name or '____________________'}
+SUBJECT: {subject}
+CLASS: {full_class_name}
+TERM: {term}
+YEAR: {year}
+SYLLABUS: {syllabus}
+TOTAL WEEKS: {weeks_count}
+PERIODS/WEEK: {periods_per_week}{ref_text}
 
 {language_instruction}
 
-Output a JSON array of objects. Each object has these 12 keys:
+{breaks_text}
+
+OUTPUT FORMAT:
+Return a JSON array of objects. Each object MUST have EXACTLY these 12 keys with these EXACT spellings:
 "Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
 
-IMPORTANT: Write RICH, DETAILED content following the Tanzania TIE/SEQUIP syllabus format. Do NOT use abbreviations.
+{scope_text}
 
-Rules:
-- All values MUST be plain strings, NOT arrays
-- Main Competence: Numbered format "1.0 Topic Name", "2.0 Topic Name" etc. ONE Main Competence can span MULTIPLE months (e.g. "1.0 Demonstrate mastery of biology concepts" can cover January through October with different subtopics). Use REAL Tanzanian syllabus competences.
-- Specific Competences: Format "1.1 Subtopic Name" - the REAL specific competence from the Tanzanian syllabus. Multiple rows can share the same Specific Competence number if they are under the same Main Competence.
-- Main Learning Activities: Use sub-lettering format like "(a) Describe nutrition in humans", "(b) Describe transport in plants", "(c) Describe transport in human body", etc. to group related subtopics under the same Specific Competence.
-- Week format: "1st", "2nd", "3rd", "4th" or ranges like "1st & 2nd", "2nd & 3rd".
-- Month: JANUARY, FEBRUARY, etc. (One month can have MULTIPLE topics across different weeks. One Main Competence can span MANY months.)
-- Periods per week: {periods_per_week} for normal weeks, fewer for exam/midterm weeks
-- References: Full APA v7 style using LATEST TIE textbooks (e.g. "Tanzania Institute of Education. (2024). {subject} for Secondary Schools Student's Book. Tanzania Institute of Education.")
-- Methods: CBC-aligned, comma-separated list of specific methods (e.g. "Brainstorming, Group discussion, Discovery, Guided inquiry, Question and answer, Demonstration, Experimentation")
-- Teaching Resources: List specific resources for each topic (e.g. "TIE textbook, Charts/model/photographs, Real specimens, Manila sheets, Markers")
-- Remarks: Meaningful note on student achievement, challenges, or way forward for that week
-- One row per distinct topic/subtopic per week. A month can have 2-4 different topics across its weeks. Include midterm/exam weeks as separate rows.
-- CRITICAL: Use REAL Tanzanian syllabus topics and subtopics for {subject} {full_class_name}. Do NOT make up fake topics.
-- MONTH SEQUENCE: Months MUST appear in correct chronological order: JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER. Do NOT jump months or put them out of order.
-- EXAM TIMING (Tanzanian schools): Midterm examinations typically fall in MARCH, Terminal examinations in JUNE, Annual/National examinations in OCTOBER/NOVEMBER. Include these as break rows at the correct months.
-- CRITICAL: You MUST cover ALL months in the range. For Full Year: JANUARY through NOVEMBER each MUST have content. Do NOT skip any month. Do NOT end in October - go through November.
-- DO NOT include 'MATCH', 'REVISION', 'EXAMINATION' as the only entry for a month. Each month must have REAL topic content with actual teaching/learning activities.
-- CRITICAL: DISTRIBUTE content across ALL months in the specified range. EACH month must have its own distinct topics.{breaks_text}
+═══════════════════════════════════════════════════
+STRICT RULES — FOLLOW EXACTLY:
+═══════════════════════════════════════════════════
 
-CRITICAL: Return ONLY the JSON array. No other text. Write rich, detailed content that follows the TIE syllabus structure exactly."""
+📌 1. MAIN COMPETENCE (Mada Kuu):
+   - Format: "1.0 [Competence Statement]" e.g., "1.0 Demonstrate mastery of the concepts, principles and procedures of nutrition and transportation"
+   - Use REAL numbered competences from the TIE syllabus for {subject} {full_class_name}
+   - ONE Main Competence can span MANY months (January through October with different subtopics)
+   - Example from real scheme: "1.0 Demonstrate mastery of the concepts, principles and procedures of nutrition and transportation"
+
+📌 2. SPECIFIC COMPETENCES (Mada Ndogo):
+   - Format: "2.1 [Subtopic Description]" e.g., "2.1 Describe the physiological, anatomical and ecological principles used in nutrition and transportation"
+   - Each Specific Competence falls under a Main Competence (e.g., 1.1, 1.2, 2.1, 2.2)
+   - Multiple rows can have the SAME Specific Competence number if covering different aspects
+
+📌 3. MAIN LEARNING ACTIVITIES (Shughuli Kuu):
+   - Use lettered format: "(a) Describe nutrition in human and ruminants (nutrients, digestion, absorption, assimilation)"
+   - "(b) Describe the mechanism of transportation of materials in plants and animals"
+   - "(c) Describe the mechanisms of gaseous exchange and respiration in living organisms"
+   - Each letter groups a major topic area
+
+📌 4. SPECIFIC LEARNING ACTIVITIES (Shughuli Maalum):
+   - Start with "To..." format: "To describe the meaning of human nutrition" or "To explain the concept of transportation of materials in plants"
+   - Each row has ONE focused specific learning activity
+   - VERY IMPORTANT: Each row MUST have a DIFFERENT specific learning activity
+
+📌 5. MONTH:
+   - Uppercase: JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER
+   - Months MUST appear in CHRONOLOGICAL ORDER
+   - EACH month MUST have 3-8 rows (comprehensive coverage)
+   - If a break falls in a month, still include real topic rows before and after
+
+📌 6. WEEK:
+   - Format: "1st", "2nd", "3rd", "4th" or ranges like "2nd & 3rd", "3rd & 4th"
+   - EXAM weeks: fewer periods (2-3)
+   - Normal weeks: 6-12 periods depending on subject
+
+📌 7. NUMBER OF PERIODS:
+   - Realistic values: 3, 6, 9, 12 (NOT "{periods_per_week}" for every row)
+   - Each row gets a portion of the weekly periods
+   - Exam/break rows: "2" for exams, "0" for holidays
+
+📌 8. TEACHING AND LEARNING METHODS:
+   - CBC-aligned methods: "Brainstorming", "Group discussion", "ICT-Based learning", "Jigsaw", "Guided inquiry", "Question and answer", "Demonstration", "Experimentation", "Field trip", "Guest speaker", "Project", "Problem solving"
+   - Include 3-5 methods per row
+   - EXAMPLES: "Brainstorming, ICT-Based learning, Jigsaw, Group discussion, Gallery walk"
+
+📌 9. TEACHING AND LEARNING RESOURCES:
+   - Specific to the topic: "TIE textbook, Charts/model/photographs, Real specimens, Manila sheets, Markers, Online resources"
+   - Example: "Mammalian heart models, charts of blood circulatory system, photographs of blood components"
+
+📌 10. ASSESSMENT TOOLS:
+   - Variety: "Quizzes", "Tests", "Exercises", "Assignment", "Questions and answers", "Practical work", "Project", "Portfolio"
+   - Use 2-4 per row
+
+📌 11. REFERENCES:
+   - APA v7 format using LATEST TIE textbooks
+   - Example: "Tanzania Institute of Education. (2024). BIOLOGY for Ordinary Secondary Schools Student's Book Form Two. Tanzania Institute of Education."
+   - For Primary: "Tanzania Institute of Education. (2024). {subject} for Primary Schools Pupil's Book. Tanzania Institute of Education."
+
+📌 12. REMARKS:
+   - Meaningful teacher reflection: "Students participated well" or "More practice needed on calculations" or "Use more real specimens next time"
+
+═══════════════════════════════════════════════════
+CRITICAL REQUIREMENTS:
+═══════════════════════════════════════════════════
+
+🔴 ROWS PER MONTH: Each month MUST have 3-8 rows. A comprehensive scheme for a full year should have 40-80+ total rows.
+🔴 REAL SYLLABUS: Use REAL TIE syllabus topics for {subject} {full_class_name}. Do NOT fabricate fake topics.
+🔴 PROPER NUMBERING: Main Competence numbered 1.0, 2.0, 3.0... Specific Competence numbered 1.1, 1.2, 2.1, 2.2...
+🔴 MONTH ORDER: JANUARY → FEBRUARY → MARCH → APRIL → MAY → JUNE → JULY → AUGUST → SEPTEMBER → OCTOBER → NOVEMBER (strict chronological)
+🔴 BREAKS: Include ALL listed breaks as FULL rows where all 12 columns have the SAME break text
+🔴 CONTENT QUALITY: Rich, detailed, specific to the subject. NOT generic.
+🔴 All values MUST be plain strings, NEVER arrays.
+
+Return ONLY the JSON array. No other text."""
 
         all_scheme_data = []
         all_response_texts = []
