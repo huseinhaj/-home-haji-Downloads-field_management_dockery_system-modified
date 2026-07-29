@@ -811,61 +811,192 @@ def _parse_periods(period_str):
 
 def _get_language_instruction(language_param, subject, school_level):
     """
-    Determine language instruction for AI prompt based on:
-    - language_param: 'auto' (auto-detect), 'english', or 'kiswahili'
-    - subject: The subject name (used for auto-detect)
-    - school_level: The school level string (used for auto-detect)
-    
-    Returns a string instruction to inject into the AI prompt.
+    STRONG language instruction for Scheme of Work generation.
+    Lists EVERY field explicitly so the AI follows it 100%.
     """
     subject_lower = subject.lower()
     school_level_lower = (school_level or '').lower()
 
-    # ── Manual override ──
+    # ── ENGLISH: force everything to English ──
     if language_param == 'english':
-        return "LANGUAGE: Write ALL content in ENGLISH."
-    elif language_param == 'kiswahili':
-        return "LANGUAGE: Write ALL content in KISWAHILI (Swahili). Only column headers can stay in English."
+        return (
+            "\n"
+            "███████████████████████████████████████████████████████████████████████████\n"
+            "⚠️  CRITICAL LANGUAGE RULE — FOLLOW EXACTLY ⚠️\n"
+            "███████████████████████████████████████████████████████████████████████████\n"
+            "ALL 12 fields below MUST be written 100% in ENGLISH language ONLY:\n"
+            "  1. Main Competence → ENGLISH\n"
+            "  2. Specific Competences → ENGLISH\n"
+            "  3. Main Learning Activities → ENGLISH\n"
+            "  4. Specific Learning Activities → ENGLISH\n"
+            "  5. Month → ENGLISH (e.g. JANUARY, FEBRUARY)\n"
+            "  6. Week → ENGLISH (e.g. 1st, 2nd)\n"
+            "  7. Number of Periods → numbers\n"
+            "  8. Teaching and Learning Methods → ENGLISH\n"
+            "  9. Teaching and Learning Resources → ENGLISH\n"
+            " 10. Assessment Tools → ENGLISH\n"
+            " 11. References → ENGLISH (APA v7 format)\n"
+            " 12. Remarks → ENGLISH\n"
+            "FAILURE: If ANY field is in Swahili, the output is WRONG and must be regenerated.\n"
+            "███████████████████████████████████████████████████████████████████████████\n"
+        )
 
-    # ── Auto-detect (default) ──
+    # ── KISWAHILI: force everything to Kiswahili ──
+    elif language_param == 'kiswahili':
+        return (
+            "\n"
+            "███████████████████████████████████████████████████████████████████████████\n"
+            "⚠️  KANUNI YA LUGHA — FUATA KAMILI ⚠️\n"
+            "███████████████████████████████████████████████████████████████████████████\n"
+            "Mashamba YOTE 12 hapa chini LAZIMA yaandikwe kwa KISWAHILI TU (SWAHILI ONLY):\n"
+            "  1. Main Competence → ANDIKA KWA KISWAHILI (tafsiri mada kuu kwa Kiswahili)\n"
+            "  2. Specific Competences → ANDIKA KWA KISWAHILI\n"
+            "  3. Main Learning Activities → ANDIKA KWA KISWAHILI\n"
+            "  4. Specific Learning Activities → ANDIKA KWA KISWAHILI\n"
+            "  5. Month → ANDIKA KWA KISWAHILI (Januari, Februari, Machi...)\n"
+            "  6. Week → ANDIKA KWA KISWAHILI (Wiki ya 1, Wiki ya 2...)\n"
+            "  7. Number of Periods → namba tu\n"
+            "  8. Teaching and Learning Methods → ANDIKA KWA KISWAHILI\n"
+            "  9. Teaching and Learning Resources → ANDIKA KWA KISWAHILI\n"
+            " 10. Assessment Tools → ANDIKA KWA KISWAHILI\n"
+            " 11. References → ANDIKA KWA KISWAHILI (rejea TIE kwa Kiswahili)\n"
+            " 12. Remarks → ANDIKA KWA KISWAHILI\n"
+            "KOSA: Kama shamba lolote liko kwa Kiingereza, matokeo ni MAKOSA na yanahitaji kufanywa upya.\n"
+            "Column headers/field names zinaweza kubaki kwa ENGLISH (Main Competence, Specific Competences, nk).\n"
+            "LAKINI VALUE zote LAZIMA ziwe KISWAHILI.\n"
+            "███████████████████████████████████████████████████████████████████████████\n"
+        )
+
+    # ── AUTO-DETECT ──
     if 'primary' in school_level_lower:
         if subject_lower in ('english', 'english language'):
-            return "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
+            return "LANGUAGE: Write ALL 12 fields in ENGLISH — this is an English subject for Primary school."
         else:
-            return "LANGUAGE: Write ALL content in KISWAHILI (Swahili). Only column headers can stay in English."
+            return (
+                "\n"
+                "███████████████████████████████████████████████████████████████████████████\n"
+                "⚠️  KANUNI YA LUGHA — FUATA KAMILI ⚠️\n"
+                "███████████████████████████████████████████████████████████████████████████\n"
+                "Mashamba YOTE 12 LAZIMA yaandikwe kwa KISWAHILI TU.\n"
+                "Hii ni shule ya MSINGI (Primary) na somo si English.\n"
+                "Values zote → KISWAHILI. Column headers → zinaweza kubaki English.\n"
+                "███████████████████████████████████████████████████████████████████████████\n"
+            )
     elif 'secondary' in school_level_lower or 'ordinary' in school_level_lower or 'advanced' in school_level_lower:
         if subject_lower in ('kiswahili', 'swahili'):
-            return "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject."
+            return (
+                "\n"
+                "███████████████████████████████████████████████████████████████████████████\n"
+                "⚠️  KANUNI YA LUGHA — FUATA KAMILI ⚠️\n"
+                "███████████████████████████████████████████████████████████████████████████\n"
+                "Mashamba YOTE 12 LAZIMA yaandikwe kwa KISWAHILI TU.\n"
+                "Hili ni somo la Kiswahili kwa shule ya SECONDARY.\n"
+                "Values zote → KISWAHILI. Column headers → zinaweza kubaki English.\n"
+                "███████████████████████████████████████████████████████████████████████████\n"
+            )
         else:
-            return "LANGUAGE: Write ALL content in ENGLISH."
+            return "LANGUAGE: Write ALL 12 fields in ENGLISH — this is a Secondary school subject taught in English."
     return ""
 
 
 def _get_lp_language_instruction(language_param, subject, school_level):
     """
-    Lesson Plan-specific language instruction.
-    Has more detailed Swahili instructions for Primary school non-English subjects.
+    ULTRA-STRONG language instruction for Lesson Plan generation.
+    Lists EVERY JSON field explicitly so the AI follows it 100%.
     """
     subject_lower = subject.lower()
     school_level_lower = (school_level or '').lower()
 
-    # ── Manual override ──
+    # ── ENGLISH: force EVERY field to English ──
     if language_param == 'english':
-        return "LANGUAGE: Write ALL content in ENGLISH."
-    elif language_param == 'kiswahili':
-        return "LANGUAGE: Write ALL lesson content in KISWAHILI (Swahili). Only the headings/section titles can stay in English. ALL descriptions, activities, explanations, and assessment criteria MUST be in Swahili language."
+        return (
+            "\n"
+            "████████████████████████████████████████████████████████████████████████████████████\n"
+            "🚨 CRITICAL LANGUAGE RULE — ALL FIELDS IN ENGLISH 🚨\n"
+            "████████████████████████████████████████████████████████████████████████████████████\n"
+            "Every single field in the JSON output below MUST be 100% in ENGLISH:\n"
+            "  ✅ main_competence → ENGLISH\n"
+            "  ✅ specific_competence → ENGLISH\n"
+            "  ✅ main_activity → ENGLISH\n"
+            "  ✅ specific_activity → ENGLISH\n"
+            "  ✅ teaching_resources → ENGLISH\n"
+            "  ✅ references → ENGLISH\n"
+            "  ✅ lesson_development → ALL 4 stages (Introduction, Competence Development, Design, Realisation)\n"
+            "     → teaching_activities in ENGLISH\n"
+            "     → learning_activities in ENGLISH\n"
+            "     → assessment_criteria in ENGLISH\n"
+            "     → stage names in ENGLISH\n"
+            "     → time in numbers\n"
+            "  ✅ remarks → ENGLISH (detailed evaluation paragraph)\n"
+            "  ✅ student_statistics → ENGLISH labels\n"
+            "FAILURE: If ANY field contains Swahili, the output is INCORRECT.\n"
+            "████████████████████████████████████████████████████████████████████████████████████\n"
+        )
 
-    # ── Auto-detect (default) ──
+    # ── KISWAHILI: force EVERY field to Kiswahili ──
+    elif language_param == 'kiswahili':
+        return (
+            "\n"
+            "████████████████████████████████████████████████████████████████████████████████████\n"
+            "🚨 KANUNI KAKAWA YA LUGHA — FIELDS ZOTE KWA KISWAHILI 🚨\n"
+            "████████████████████████████████████████████████████████████████████████████████████\n"
+            "Kila shamba (field) kwenye JSON output hapa chini LAZIMA iwe kwa KISWAHILI TU:\n"
+            "  ✅ main_competence → ANDIKA KWA KISWAHILI (tafsiri kompetensia kuu)\n"
+            "  ✅ specific_competence → ANDIKA KWA KISWAHILI (tafsiri kompetensia maalum)\n"
+            "  ✅ main_activity → ANDIKA KWA KISWAHILI (shughuli kuu)\n"
+            "  ✅ specific_activity → ANDIKA KWA KISWAHILI (shughuli maalum)\n"
+            "  ✅ teaching_resources → ANDIKA KWA KISWAHILI (nyenzo za kufundishia)\n"
+            "  ✅ references → ANDIKA KWA KISWAHILI (vitabu vya TIE vya Kiswahili)\n"
+            "  ✅ lesson_development → STAGES ZOTE 4 kwa KISWAHILI:\n"
+            "     → Introduction (Utangulizi) → kwa KISWAHILI\n"
+            "     → Competence Development (Ukuzaji wa Kompetensia) → kwa KISWAHILI\n"
+            "     → Design (Muundo) → kwa KISWAHILI\n"
+            "     → Realisation (Utekelezaji) → kwa KISWAHILI\n"
+            "     → teaching_activities → kwa KISWAHILI\n"
+            "     → learning_activities → kwa KISWAHILI\n"
+            "     → assessment_criteria → kwa KISWAHILI\n"
+            "     → time → namba tu (hazibadiliki)\n"
+            "  ✅ remarks → ANDIKA KWA KISWAHILI (tafakari na mapendekezo)\n"
+            "  ✅ student_statistics → ANDIKA KWA KISWAHILI\n"
+            "KOSA: Kama shamba lolote liko kwa Kiingereza, matokeo ni MAKOSA.\n"
+            "Field names/JSON keys zinaweza kubaki English (main_competence, specific_competence, nk).\n"
+            "LAKINI VALUE za field zote LAZIMA ziwe KISWAHILI.\n"
+            "████████████████████████████████████████████████████████████████████████████████████\n"
+        )
+
+    # ── AUTO-DETECT ──
     if 'primary' in school_level_lower:
         if subject_lower in ('english', 'english language'):
-            return "LANGUAGE: Write ALL content in ENGLISH because this is an English subject for Primary school."
+            return "LANGUAGE: Write ALL fields in ENGLISH — this is an English subject for Primary school."
         else:
-            return "LANGUAGE: Write ALL lesson content in KISWAHILI (Swahili). Only the headings/section titles can stay in English. ALL descriptions, activities, explanations, and assessment criteria MUST be in Swahili language. This is a Primary school subject."
+            return (
+                "\n"
+                "████████████████████████████████████████████████████████████████████████████████████\n"
+                "🚨 KANUNI KAKAWA YA LUGHA — FIELDS ZOTE KWA KISWAHILI 🚨\n"
+                "████████████████████████████████████████████████████████████████████████████████████\n"
+                "Kila shamba (field) LAZIMA iwe kwa KISWAHILI TU.\n"
+                "Hii ni shule ya MSINGI (Primary) na somo si English.\n"
+                "Values zote → KISWAHILI. JSON keys → zinaweza kubaki English.\n"
+                "Lesson development stages zote 4 → ziwe translated kwa Kiswahili.\n"
+                "Remarks → kwa Kiswahili.\n"
+                "████████████████████████████████████████████████████████████████████████████████████\n"
+            )
     elif 'secondary' in school_level_lower or 'ordinary' in school_level_lower or 'advanced' in school_level_lower:
         if subject_lower in ('kiswahili', 'swahili'):
-            return "LANGUAGE: Write ALL content in KISWAHILI (Swahili) because this is a Kiswahili subject for Secondary school."
+            return (
+                "\n"
+                "████████████████████████████████████████████████████████████████████████████████████\n"
+                "🚨 KANUNI KAKAWA YA LUGHA — FIELDS ZOTE KWA KISWAHILI 🚨\n"
+                "████████████████████████████████████████████████████████████████████████████████████\n"
+                "Kila shamba (field) LAZIMA iwe kwa KISWAHILI TU.\n"
+                "Hili ni somo la Kiswahili kwa shule ya SECONDARY.\n"
+                "Values zote → KISWAHILI. JSON keys → zinaweza kubaki English.\n"
+                "Lesson development stages zote 4 → ziwe translated kwa Kiswahili.\n"
+                "Remarks → kwa Kiswahili.\n"
+                "████████████████████████████████████████████████████████████████████████████████████\n"
+            )
         else:
-            return "LANGUAGE: Write ALL content in ENGLISH. This is a Secondary school subject taught in English."
+            return "LANGUAGE: Write ALL fields in ENGLISH — this is a Secondary school subject taught in English."
     return ""
 
 
@@ -1087,13 +1218,8 @@ OUTPUT: JSON array only. Each object: "Main Competence","Specific Competences","
 RULES:
 - Real TIE competences, numbered (1.0, 2.1 etc)
 - (a)/(b)/(c) each on its OWN separate row (do NOT combine)
-- Month = UPPERCASE (JANUARY etc)
-- Week = "1st","2nd","3rd","4th" or "1st & 2nd"
-- Periods = 3,6,9,12 — VARY them
-- Methods: CBC (Brainstorming, Group discussion, Jigsaw, Q&A, Demonstration, Project)
-- Resources: TIE textbook, Charts, Specimens, Manila sheets
-- References: APA v7 latest TIE textbooks
-- ALL months MUST have rows
+- ALL 12 field values MUST follow the LANGUAGE instruction above
+- ALL text values → MUST be in the language specified above by LANGUAGE instruction
 - NO arrays inside values, only strings
 - Return ONLY the JSON array. No other text."""
 
@@ -1919,7 +2045,8 @@ CRITICAL REQUIREMENTS - MUST FOLLOW EXACTLY:
 
 Lesson Development uses the IDDR Model with these 5 columns per stage: stage, time, teaching_activities, learning_activities, assessment_criteria. Each stage MUST have detailed, Tanzania-specific content using CBC methodologies.
 
-Output ONLY valid JSON with this EXACT structure:
+Output ONLY valid JSON with this EXACT structure.
+⚠️ LANGUAGE REMINDER: ALL text values MUST follow the LANGUAGE instruction above.
 {{
     "main_competence": "1.0 Topic Name - Overall competence statement",
     "specific_competence": "By the end of this topic, students should be able to...",
@@ -4145,7 +4272,8 @@ Content MUST relate to Subject: {subject_name}, Class: {full_class}, Topic: "{to
 Lesson Development uses the IDDR Model (Introduction, Competence Development, Design, Realisation).
 Use CBC methodologies: Brainstorming, Group discussion, Jigsaw, Q&A, Demonstration.
 
-Output ONLY valid JSON with this EXACT structure:
+Output ONLY valid JSON with this EXACT structure.
+⚠️ LANGUAGE REMINDER: ALL text values MUST follow the LANGUAGE instruction above.
 {{
     "main_competence": "Numbered competence for {topic.name}",
     "specific_competence": "Specific competence for {topic.name}",
@@ -4340,7 +4468,8 @@ Content MUST relate to Subject: {subject_name}, Class: {full_class}, Topic: \"{t
 Lesson Development uses the IDDR Model (Introduction, Competence Development, Design, Realisation).
 Use CBC methodologies: Brainstorming, Group discussion, Jigsaw, Q&A, Demonstration.
 
-Output ONLY valid JSON with this EXACT structure:
+Output ONLY valid JSON with this EXACT structure.
+⚠️ LANGUAGE REMINDER: ALL text values MUST follow the LANGUAGE instruction above.
 {{
     \"main_competence\": \"Numbered competence for {topic_name}\",
     \"specific_competence\": \"Specific competence for {topic_name}\",
