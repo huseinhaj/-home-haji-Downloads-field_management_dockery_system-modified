@@ -695,6 +695,97 @@ def dashboard(request):
 
 
 # =============================================================================
+# AZIMIO LA KAZI (KISWAHILI) — Column name mappings & helpers
+# =============================================================================
+
+# English → Swahili column names for Scheme of Work / Azimio la Kazi
+SWAHILI_SCHEME_KEYS = {
+    'Main Competence': 'UMAHIRI MKUU',
+    'Specific Competences': 'UMAHIRI MAHUSUSI',
+    'Main Learning Activities': 'SHUGHULI KUU ZA UJIFUNZAJI',
+    'Specific Learning Activities': 'SHUGHULI NDOGO ZA UJIFUNZAJI',
+    'Month': 'MWEZI',
+    'Week': 'WIKI',
+    'Number of Periods': 'VIPINDI',
+    'Teaching and Learning Methods': 'MBINU ZA UJIFUNZAJI NA UFUNDISHAJI',
+    'Teaching and Learning Resources': 'ZANA ZA UJIFUNZAJI NA UFUNDISHAJI',
+    'Assessment Tools': 'ZANA ZA UPIMAJI',
+    'References': 'REJEA',
+    'Remarks': 'MAONI',
+}
+
+# Reverse map: Swahili → English
+ENGLISH_SCHEME_KEYS = {v: k for k, v in SWAHILI_SCHEME_KEYS.items()}
+
+# English → Swahili month names
+SWAHILI_MONTHS = {
+    'JANUARY': 'JANUARI', 'FEBRUARY': 'FEBRUARI', 'MARCH': 'MACHI',
+    'APRIL': 'APRILI', 'MAY': 'MEI', 'JUNE': 'JUNI',
+    'JULY': 'JULAI', 'AUGUST': 'AGOSTI', 'SEPTEMBER': 'SEPTEMBA',
+    'OCTOBER': 'OKTOBA', 'NOVEMBER': 'NOVEMBA', 'DECEMBER': 'DESEMBA',
+}
+
+
+def _has_swahili_keys(rows):
+    """Check if scheme data uses Swahili column keys."""
+    if not rows:
+        return False
+    first = rows[0] if isinstance(rows, list) else rows
+    if not isinstance(first, dict):
+        return False
+    sw_keys = set(SWAHILI_SCHEME_KEYS.values())
+    return bool(sw_keys & set(first.keys()))
+
+
+def _normalize_scheme_keys(rows):
+    """Convert Swahili keys to English keys for internal processing."""
+    if not rows or not _has_swahili_keys(rows):
+        return rows
+    result = []
+    for row in rows:
+        new_row = {}
+        for k, v in row.items():
+            en_k = ENGLISH_SCHEME_KEYS.get(k, k)
+            new_row[en_k] = v
+        result.append(new_row)
+    return result
+
+
+def _to_swahili_keys(rows):
+    """Convert English keys to Swahili keys for Azimio la Kazi output."""
+    if not rows:
+        return rows
+    result = []
+    for row in rows:
+        new_row = {}
+        for k, v in row.items():
+            sw_k = SWAHILI_SCHEME_KEYS.get(k, k)
+            new_row[sw_k] = v
+        result.append(new_row)
+    return result
+
+
+def _is_kiswahili_mode(language_param, subject, school_level):
+    """
+    Return True if the output should be in Kiswahili (Azimio la Kazi format).
+    # NOTE: Keep sync'ed with _get_language_instruction() — same detection logic.
+    """
+    if language_param == 'kiswahili':
+        return True
+    subj_lower = subject.lower()
+    lvl_lower = (school_level or '').lower()
+    if 'primary' in lvl_lower:
+        if subj_lower in ('english', 'english language'):
+            return False
+        return True
+    if 'secondary' in lvl_lower or 'ordinary' in lvl_lower or 'advanced' in lvl_lower:
+        if subj_lower in ('kiswahili', 'swahili'):
+            return True
+        return False
+    return False
+
+
+# =============================================================================
 # HELPER: Expand compact AI rows into a bigger document
 # =============================================================================
 
@@ -706,8 +797,21 @@ def _expand_scheme_rows(rows, target_multiplier=3):
     
     Example: "Week: 1st-4th" becomes 4 rows: "1st", "2nd", "3rd", "4th"
     Each expanded row keeps all other fields from the original.
+    Handles both English and Swahili (Azimio la Kazi) column keys.
     """
     import re as _re
+    
+    # Normalize Swahili keys to English for internal processing
+    was_swahili = _has_swahili_keys(rows)
+    if was_swahili:
+        rows = _normalize_scheme_keys(rows)
+        # Swahili months -> English months for month_order sorting
+        reverse_sw_months = {v: k for k, v in SWAHILI_MONTHS.items()}
+        for row in rows:
+            mth = (row.get('Month') or '').strip().upper()
+            if mth in reverse_sw_months:
+                row['Month'] = reverse_sw_months[mth]
+    
     expanded = []
     
     for row in rows:
@@ -861,26 +965,38 @@ def _get_language_instruction(language_param, subject, school_level):
             return "LANGUAGE: Write ALL 12 fields in ENGLISH — this is an English subject for Primary school."
         else:
             return (
-                "\n"
-                "███████████████████████████████████████████████████████████████████████████\n"
-                "⚠️  KANUNI YA LUGHA — FUATA KAMILI ⚠️\n"
-                "███████████████████████████████████████████████████████████████████████████\n"
-                "Mashamba YOTE 12 LAZIMA yaandikwe kwa KISWAHILI TU.\n"
-                "Hii ni shule ya MSINGI (Primary) na somo si English.\n"
-                "Values zote → KISWAHILI. Column headers → zinaweza kubaki English.\n"
-                "███████████████████████████████████████████████████████████████████████████\n"
+"\n" +
+"=======================================================\n" +
+"⚠️  KANUNI YA LUGHA - AZIMIO LA KAZI KWA KISWAHILI ⚠️\n" +
+"=======================================================\n" +
+"Hii ni shule ya MSINGI (Primary) na somo si English -> AZIMIO LA KAZI kwa KISWAHILI:\n" +
+"\n" +
+"COLUMN NAMES LAZIMA ziwe KISWAHILI: UMAHIRI MKUU | UMAHIRI MAHUSUSI |\n" +
+"SHUGHULI KUU ZA UJIFUNZAJI | SHUGHULI NDOGO ZA UJIFUNZAJI |\n" +
+"MWEZI | WIKI | VIPINDI | MBINU ZA UJIFUNZAJI NA UFUNDISHAJI |\n" +
+"ZANA ZA UJIFUNZAJI NA UFUNDISHAJI | ZANA ZA UPIMAJI | REJEA | MAONI\n" +
+"\n" +
+"VALUES zote -> KISWAHILI TU.\n" +
+"MWEZI -> JANUARI, FEBRUARI, MACHI, APRILI, MEI, JUNI, JULAI, AGOSTI, SEPTEMBA, OKTOBA, NOVEMBA, DESEMBA\n" +
+"WIKI -> namba tu (1, 2, 3...)\n" +
+"VIPINDI -> namba tu\n" +
+"=======================================================\n"
             )
     elif 'secondary' in school_level_lower or 'ordinary' in school_level_lower or 'advanced' in school_level_lower:
         if subject_lower in ('kiswahili', 'swahili'):
             return (
-                "\n"
-                "███████████████████████████████████████████████████████████████████████████\n"
-                "⚠️  KANUNI YA LUGHA — FUATA KAMILI ⚠️\n"
-                "███████████████████████████████████████████████████████████████████████████\n"
-                "Mashamba YOTE 12 LAZIMA yaandikwe kwa KISWAHILI TU.\n"
-                "Hili ni somo la Kiswahili kwa shule ya SECONDARY.\n"
-                "Values zote → KISWAHILI. Column headers → zinaweza kubaki English.\n"
-                "███████████████████████████████████████████████████████████████████████████\n"
+"\n" +
+"=======================================================\n" +
+"⚠️  KANUNI YA LUGHA - AZIMIO LA KAZI KWA KISWAHILI ⚠️\n" +
+"=======================================================\n" +
+"Hili ni somo la Kiswahili -> COLUMN NAMES na VALUES zote kwa KISWAHILI:\n" +
+"\n" +
+"COLUMN NAMES: UMAHIRI MKUU | UMAHIRI MAHUSUSI | SHUGHULI KUU ZA UJIFUNZAJI |\n" +
+"SHUGHULI NDOGO ZA UJIFUNZAJI | MWEZI | WIKI | VIPINDI |\n" +
+"MBINU ZA UJIFUNZAJI NA UFUNDISHAJI | ZANA ZA UJIFUNZAJI NA UFUNDISHAJI |\n" +
+"ZANA ZA UPIMAJI | REJEA | MAONI\n" +
+"VALUES zote -> KISWAHILI TU.\n" +
+"=======================================================\n"
             )
         else:
             return "LANGUAGE: Write ALL 12 fields in ENGLISH — this is a Secondary school subject taught in English."
@@ -1151,10 +1267,15 @@ def ajax_generate_scheme(request):
         for grp in month_groups:
             all_months_flat.extend(grp)
         all_months_str = ', '.join(all_months_flat)
+        # If Kiswahili mode, use Swahili month names
+        if _is_kiswahili_mode(_scheme_language, subject, _school_level):
+            all_months_str_sw = ', '.join(SWAHILI_MONTHS.get(m, m) for m in all_months_flat)
+        else:
+            all_months_str_sw = all_months_str
         rows_per_month = max(2, 10 // max(1, len(all_months_flat)))  # Compact AI output, expanded by Python
 
         scope_lines = [
-            f"MONTHS TO COVER: {all_months_str}",
+            f"MONTHS TO COVER: {all_months_str_sw}",
             f"TOTAL WEEKS: {total_weeks}",
             f"START FROM the FIRST topics in the syllabus for {subject} {full_class_name}",
             f"Progress through the syllabus TOPIC BY TOPIC across all months.",
@@ -1185,11 +1306,11 @@ TERM: {term} | YEAR: {year}
 SYLLABUS: {syllabus} | WEEKS: {total_weeks} | PERIODS/WEEK: {periods_per_week}{ref_text}
 {language_instruction}
 
-MONTHS: {all_months_str}
+MONTHS: {all_months_str_sw}
 Generate {rows_per_month}+ rows PER month covering the full syllabus from start to end.
 {scope_text}
 
-OUTPUT: JSON array only. Each object: "Main Competence","Specific Competences","Main Learning Activities","Specific Learning Activities","Month","Week","Number of Periods","Teaching and Learning Methods","Teaching and Learning Resources","Assessment Tools","References","Remarks"
+OUTPUT: JSON array only. Each object must use the EXACT column names specified by the LANGUAGE instruction above. If Kiswahili -> use KISWAHILI column names. If English -> use English column names.
 
 RULES:
 - Real TIE competences, numbered (1.0, 2.1 etc)
@@ -1213,6 +1334,10 @@ RULES:
         all_scheme_data = _expand_scheme_rows(all_scheme_data)
         logger.info(f"[Scheme] Expanded from {expanded_count} to {len(all_scheme_data)} rows")
 
+        # ── If Kiswahili mode, convert keys back to Swahili ──
+        if _is_kiswahili_mode(_scheme_language, subject, _school_level):
+            all_scheme_data = _to_swahili_keys(all_scheme_data)
+
         # ── Validate months ──
         expected_months = set(all_months_flat)
         present_months = set()
@@ -1222,21 +1347,39 @@ RULES:
                 present_months.add(mth)
         missing_months = expected_months - present_months
         if missing_months:
+            _is_sw = _is_kiswahili_mode(_scheme_language, subject, _school_level)
             for mm in sorted(missing_months):
-                all_scheme_data.append({
-                    "Main Competence": "Continue with syllabus topics",
-                    "Specific Competences": "Continue with subtopics",
-                    "Main Learning Activities": f"Learning activities for {mm}",
-                    "Specific Learning Activities": "Continue with learning",
-                    "Month": mm,
-                    "Week": "1st - 4th",
-                    "Number of Periods": str(max(3, periods_per_week // 2)),
-                    "Teaching and Learning Methods": "Various CBC methods",
-                    "Teaching and Learning Resources": "TIE textbook, Charts",
-                    "Assessment Tools": "Exercises, Questions",
-                    "References": "TIE textbooks",
-                    "Remarks": "Proceed with syllabus"
-                })
+                mth_sw = SWAHILI_MONTHS.get(mm, mm) if _is_sw else mm
+                if _is_sw:
+                    all_scheme_data.append({
+                        "UMAHIRI MKUU": "Endelea na mada ya silabasi",
+                        "UMAHIRI MAHUSUSI": "Endelea na mada ndogo",
+                        "SHUGHULI KUU ZA UJIFUNZAJI": f"Shughuli za {mth_sw}",
+                        "SHUGHULI NDOGO ZA UJIFUNZAJI": "Endelea na ujifunzaji",
+                        "MWEZI": mth_sw,
+                        "WIKI": "1-4",
+                        "VIPINDI": str(max(3, periods_per_week // 2)),
+                        "MBINU ZA UJIFUNZAJI NA UFUNDISHAJI": "Mbinu mbalimbali za CBC",
+                        "ZANA ZA UJIFUNZAJI NA UFUNDISHAJI": "Vitabu vya TIE, Chati",
+                        "ZANA ZA UPIMAJI": "Mazoezi, Maswali",
+                        "REJEA": "Vitabu vya TIE",
+                        "MAONI": "Endelea na silabasi"
+                    })
+                else:
+                    all_scheme_data.append({
+                        "Main Competence": "Continue with syllabus topics",
+                        "Specific Competences": "Continue with subtopics",
+                        "Main Learning Activities": f"Learning activities for {mm}",
+                        "Specific Learning Activities": "Continue with learning",
+                        "Month": mm,
+                        "Week": "1st - 4th",
+                        "Number of Periods": str(max(3, periods_per_week // 2)),
+                        "Teaching and Learning Methods": "Various CBC methods",
+                        "Teaching and Learning Resources": "TIE textbook, Charts",
+                        "Assessment Tools": "Exercises, Questions",
+                        "References": "TIE textbooks",
+                        "Remarks": "Proceed with syllabus"
+                    })
 
         # ── Save to DB ──
         saved_id = None
@@ -1345,6 +1488,11 @@ def download_scheme_pdf(request):
     teacher_name = data.get('teacher_name', '')
     school_name = data.get('school_name', '')
     total_weeks = data.get('total_weeks', '')
+
+    # Normalize Swahili keys to English for PDF processing
+    was_swahili = _has_swahili_keys(scheme_data)
+    if was_swahili:
+        scheme_data = _normalize_scheme_keys(scheme_data)
 
     # ── Get teacher theme for PDF ──
     teacher = get_tlm_teacher(request)
@@ -1576,7 +1724,7 @@ def download_scheme_pdf(request):
     elements.append(HRFlowable(width="50%", thickness=1, color=GOLD, spaceAfter=8))
 
     # ── Title ──
-    elements.append(Paragraph("SCHEME OF WORK",
+    elements.append(Paragraph("AZIMIO LA KAZI" if was_swahili else "SCHEME OF WORK",
         ParagraphStyle('ST', fontName='Helvetica-Bold', fontSize=18, alignment=1,
                        textColor=NAVY, spaceAfter=10)))
 
@@ -1684,13 +1832,24 @@ def download_scheme_word(request):
     teacher_name = data.get('teacher_name', '')
     school_name = data.get('school_name', '')
 
+    # Normalize Swahili keys to English for Word processing
+    was_swahili = _has_swahili_keys(scheme_data)
+    if was_swahili:
+        scheme_data = _normalize_scheme_keys(scheme_data)
+
     doc = Document()
-    doc.core_properties.title = f"Scheme of Work — {subject}"
-
-    title = doc.add_heading(f"{subject} — {class_name} — Term {term} {year}", level=1)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-    info = doc.add_paragraph(f"Teacher: {teacher_name}    School: {school_name}")
+    # Kiswahili Azimio la Kazi title
+    if was_swahili:
+        doc.core_properties.title = f"AZIMIO LA KAZI — {subject}"
+        title = doc.add_heading(f"AZIMIO LA SOMO LA {subject.upper()} — MUHULA WA {term} {year}", level=1)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        info = doc.add_paragraph(f"JINA LA MWALIMU: {teacher_name}    SHULE: {school_name}    DARASA: {class_name}")
+        info.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    else:
+        doc.core_properties.title = f"Scheme of Work — {subject}"
+        title = doc.add_heading(f"{subject} — {class_name} — Term {term} {year}", level=1)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        info = doc.add_paragraph(f"Teacher: {teacher_name}    School: {school_name}")
     info.alignment = WD_ALIGN_PARAGRAPH.CENTER
     doc.add_paragraph()
 

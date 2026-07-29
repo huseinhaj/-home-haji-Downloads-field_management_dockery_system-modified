@@ -970,19 +970,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!data || data.length === 0) return;
     const headers = Object.keys(data[0]);
 
-    // Calculate column widths
+    // Calculate column widths (supports both English & Swahili Azimio la Kazi keys)
     const widthMap = {
-      'Main Competence': 140, 'Specific Competences': 140,
-      'Main Learning Activities': 130, 'Specific Learning Activities': 150,
-      'Month': 60, 'Week': 55, 'Number of Periods': 50,
-      'Teaching and Learning Methods': 120,
-      'Teaching and Learning Resources': 120,
-      'Assessment Tools': 100, 'References': 120, 'Remarks': 130,
+      'Main Competence': 140, 'UMAHIRI MKUU': 140,
+      'Specific Competences': 140, 'UMAHIRI MAHUSUSI': 140,
+      'Main Learning Activities': 130, 'SHUGHULI KUU ZA UJIFUNZAJI': 130,
+      'Specific Learning Activities': 150, 'SHUGHULI NDOGO ZA UJIFUNZAJI': 150,
+      'Month': 60, 'MWEZI': 60,
+      'Week': 55, 'WIKI': 55,
+      'Number of Periods': 50, 'VIPINDI': 50,
+      'Teaching and Learning Methods': 120, 'MBINU ZA UJIFUNZAJI NA UFUNDISHAJI': 120,
+      'Teaching and Learning Resources': 120, 'ZANA ZA UJIFUNZAJI NA UFUNDISHAJI': 120,
+      'Assessment Tools': 100, 'ZANA ZA UPIMAJI': 100,
+      'References': 120, 'REJEA': 120,
+      'Remarks': 130, 'MAONI': 130,
     };
-    const colStyles = headers.map(h => {
-      const w = Object.keys(widthMap).find(k => k.toLowerCase().includes(h.toLowerCase()) || h.toLowerCase().includes(k.toLowerCase()));
-      return w ? widthMap[w] : 120;
-    });
+    const colStyles = headers.map(h => widthMap[h] || 120);
 
     let html = '<table class="tbl-tlm" style="font-size:10px;min-width:1200px;"><thead><tr>';
     html += headers.map((h, i) => `<th style="min-width:${colStyles[i]}px;">${h}</th>`).join('');
