@@ -730,7 +730,7 @@ def ajax_generate_scheme(request):
         for grp in month_groups:
             all_months_flat.extend(grp)
         all_months_str = ', '.join(all_months_flat)
-        rows_per_month = max(4, 20 // max(1, len(all_months_flat)))
+        rows_per_month = max(2, 10 // max(1, len(all_months_flat)))
 
         scope_lines = [
             f"MONTHS TO COVER: {all_months_str}",
@@ -754,55 +754,33 @@ def ajax_generate_scheme(request):
 
         scope_text = '\n'.join(scope_lines)
 
-        prompt = f"""You are a Tanzanian curriculum expert (TIE/SEQUIP). Generate a COMPLETE Scheme of Work for a Tanzanian {education_level} class following the OFFICIAL TAMISEMI format.
+        prompt = f"""You are a Tanzanian TIE/SEQUIP curriculum expert. Generate a Scheme of Work in TAMISEMI format.
 
-============================================
-PRIME MINISTER'S OFFICE
-REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
-SCHEME OF WORK
-============================================
-
-TEACHER'S NAME: {teacher_name or '____________________'}
-SCHOOL NAME: {school_name or '____________________'}
+TEACHER: {teacher_name or '____________________'}
+SCHOOL: {school_name or '____________________'}
 SUBJECT: {subject}
 CLASS: {full_class_name}
-TERM: {term}
-YEAR: {year}
-SYLLABUS: {syllabus}
-TOTAL WEEKS: {total_weeks}
-PERIODS/WEEK: {periods_per_week}{ref_text}
-
+TERM: {term} | YEAR: {year}
+SYLLABUS: {syllabus} | WEEKS: {total_weeks} | PERIODS/WEEK: {periods_per_week}{ref_text}
 {language_instruction}
 
-COVER ALL THESE MONTHS IN ONE RESPONSE: {all_months_str}
-
-Generate {rows_per_month}+ rows of data for EACH month. Include topics from beginning to end of the syllabus.
-
-OUTPUT FORMAT:
-Return a JSON array of objects. Each object MUST have EXACTLY these 12 keys with these EXACT spellings:
-"Main Competence", "Specific Competences", "Main Learning Activities", "Specific Learning Activities", "Month", "Week", "Number of Periods", "Teaching and Learning Methods", "Teaching and Learning Resources", "Assessment Tools", "References", "Remarks"
-
+MONTHS: {all_months_str}
+Generate {rows_per_month}+ rows PER month covering the full syllabus from start to end.
 {scope_text}
 
-STRICT RULES:
-1. MAIN COMPETENCE: Format "1.0 [Competence Statement]". Use REAL numbered TIE competences for {subject} {full_class_name}.
-2. SPECIFIC COMPETENCES: Format "2.1 [Subtopic Description]" under each Main Competence.
-3. MAIN LEARNING ACTIVITIES: Lettered format (a), (b), (c) — each as its OWN row.
-4. SPECIFIC LEARNING ACTIVITIES: Start with "To...". Each row must be DIFFERENT.
-5. MONTH: Uppercase: JANUARY, FEBRUARY, etc.
-6. WEEK: "1st", "2nd", "3rd", "4th" or ranges like "2nd & 3rd".
-7. NUMBER OF PERIODS: Realistic (3, 6, 9, 12) — VARY them, NOT the same for every row.
-8. TEACHING AND LEARNING METHODS: CBC-aligned: Brainstorming, Group discussion, ICT-Based learning, Jigsaw, Guided inquiry, Q&A, Demonstration, Experimentation, Field trip, Project, Problem solving.
-9. TEACHING AND LEARNING RESOURCES: Specific items like "TIE textbook, Charts, Real specimens, Manila sheets, Markers".
-10. ASSESSMENT TOOLS: Quizzes, Tests, Exercises, Assignment, Q&A, Practical work, Project.
-11. REFERENCES: APA v7 format using the LATEST TIE textbooks.
-12. REMARKS: Meaningful teacher reflection.
+OUTPUT: JSON array only. Each object: "Main Competence","Specific Competences","Main Learning Activities","Specific Learning Activities","Month","Week","Number of Periods","Teaching and Learning Methods","Teaching and Learning Resources","Assessment Tools","References","Remarks"
 
-CRITICAL:
-- ALL months listed MUST have their own rows — do NOT skip any month
-- All values MUST be plain strings, NEVER arrays
-- Use REAL TIE syllabus topics, do NOT fabricate
-- VARY the "Number of Periods" across rows
+RULES:
+- Real TIE competences, numbered (1.0, 2.1 etc)
+- (a)/(b)/(c) each on its OWN separate row (do NOT combine)
+- Month = UPPERCASE (JANUARY etc)
+- Week = "1st","2nd","3rd","4th" or "1st & 2nd"
+- Periods = 3,6,9,12 — VARY them
+- Methods: CBC (Brainstorming, Group discussion, Jigsaw, Q&A, Demonstration, Project)
+- Resources: TIE textbook, Charts, Specimens, Manila sheets
+- References: APA v7 latest TIE textbooks
+- ALL months MUST have rows
+- NO arrays inside values, only strings
 - Return ONLY the JSON array. No other text."""
 
         # ── Make a SINGLE AI call (no parallelism) ──

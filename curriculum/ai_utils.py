@@ -15,7 +15,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-PRIMARY_MODEL = "deepseek/deepseek-chat"  # OpenRouter — has $5 credits
+PRIMARY_MODEL = "google/gemini-2.0-flash"  # Fast & cheap via OpenRouter
 
 FALLBACK_MODELS_OPENROUTER = [
     "deepseek/deepseek-chat",
