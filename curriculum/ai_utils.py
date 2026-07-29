@@ -298,7 +298,7 @@ class _UnifiedModels:
                         model=attempt_model,
                         messages=messages,
                         temperature=temperature,
-                        max_tokens=max_tokens,
+                        max_tokens=8192,
                         stream=True,
                     )
                     logger.info(f"[AI] Groq stream started with {attempt_model}")
