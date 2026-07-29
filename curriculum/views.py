@@ -760,7 +760,20 @@ def _to_swahili_keys(rows):
         new_row = {}
         for k, v in row.items():
             sw_k = SWAHILI_SCHEME_KEYS.get(k, k)
-            new_row[sw_k] = v
+            sw_v = v
+            # Convert month values to Swahili too
+            if k in ('Month', 'MWEZI') and v:
+                mth_upper = v.strip().upper()
+                sw_v = SWAHILI_MONTHS.get(mth_upper, v)
+            # Convert week format: keep as numbers for Kiswahili
+            elif k in ('Week', 'WIKI') and v:
+                week_str = str(v).strip()
+                # Remove 'st', 'nd', 'rd', 'th' suffixes for Kiswahili format
+                week_str = re.sub(r'(\d+)(st|nd|rd|th)', r'\1', week_str)
+                sw_v = week_str
+            else:
+                sw_v = v
+            new_row[sw_k] = sw_v
         result.append(new_row)
     return result
 
@@ -843,9 +856,14 @@ def _expand_scheme_rows(rows, target_multiplier=3):
             if i % 2 == 0:  # Duplicate every other row with "2nd & 3rd" style
                 new_row = dict(row)
                 w = row.get('Week', '')
-                if w and w in ('1st', '2nd', '3rd', '4th'):
-                    next_w = {'1st': '2nd', '2nd': '3rd', '3rd': '4th', '4th': '5th'}.get(w, w)
-                    new_row['Week'] = f"{w} & {next_w}"
+                if w and (w in ('1st', '2nd', '3rd', '4th') or w.isdigit()):
+                    # For Kiswahili week format (just numbers), use "1&2" style
+                    if w.isdigit():
+                        next_w = str(int(w) + 1)
+                        new_row['Week'] = f"{w}&{next_w}"
+                    else:
+                        next_w = {'1st': '2nd', '2nd': '3rd', '3rd': '4th', '4th': '5th'}.get(w, w)
+                        new_row['Week'] = f"{w} & {next_w}"
                     extra_rows.append(new_row)
         expanded.extend(extra_rows)
     
@@ -938,25 +956,46 @@ def _get_language_instruction(language_param, subject, school_level):
             "============================================\n")
         )
 
-    # ── KISWAHILI: force everything to Kiswahili ──
+    # ── KISWAHILI: AZIMIO LA KAZI format - ULTRA-STRONG ----
     elif language_param == 'kiswahili':
         return (
-("\n"
-            "============================================\n"
-            "⚠️  KANUNI YA LUGHA — FIELDS ZOTE KWA KISWAHILI ⚠️\n"
-            "============================================\n"
-            "KILA value ya field hapa chini LAZIMA iwe KISWAHILI TU:\n"
-            "  - Main Competence → KISWAHILI (tafsiri kompetensia)\n"
-            "  - Specific Competences → KISWAHILI\n"
-            "  - Main/Specific Learning Activities → KISWAHILI\n"
-            "  - Month → KISWAHILI (Januari, Februari, Machi...)\n"
-            "  - Week → KISWAHILI (Wiki ya 1, Wiki ya 2...)\n"
-            "  - Methods, Resources, Assessment → KISWAHILI\n"
-            "  - References → KISWAHILI (vitabu vya TIE)\n"
-            "  - Remarks → KISWAHILI\n"
-            "KOSA: Kama field yoyote iko Kiingereza → MAKOSA. Field NAMES (headers) zinaweza kubaki English.\n"
-            "VALUES zote LAZIMA ziwe KISWAHILI.\n"
-            "============================================\n")
+"\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"⚠️  KANUNI KAKAWA YA LUGHA - LAZIMA UFUATE KAMILI KAMILI ⚠️\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"Unazalisha AZIMIO LA KAZI kwa KISWAHILI - KILA KITU (column names na values) LAZIMA kiwe KISWAHILI TU:\n" +
+"\n" +
+"COLUMN NAMES za JSON LAZIMA ziwe hizi kwa KISWAHILI (sio Kiingereza):\n" +
+"  UMAHIRI MKUU      (sio 'Main Competence')\n" +
+"  UMAHIRI MAHUSUSI   (sio 'Specific Competences')\n" +
+"  SHUGHULI KUU ZA UJIFUNZAJI  (sio 'Main Learning Activities')\n" +
+"  SHUGHULI NDOGO ZA UJIFUNZAJI  (sio 'Specific Learning Activities')\n" +
+"  MWEZI              (sio 'Month' - tumia JANUARI, FEBRUARI, MACHI, APRILI, MEI, JUNI, JULAI, AGOSTI, SEPTEMBA, OKTOBA, NOVEMBA, DESEMBA)\n" +
+"  WIKI               (sio 'Week' - tumia namba tu: 1, 2, 3, 4... au 1&2, 2&3)\n" +
+"  VIPINDI            (sio 'Number of Periods' - tumia namba tu)\n" +
+"  MBINU ZA UJIFUNZAJI NA UFUNDISHAJI  (sio 'Teaching and Learning Methods')\n" +
+"  ZANA ZA UJIFUNZAJI NA UFUNDISHAJI  (sio 'Teaching and Learning Resources')\n" +
+"  ZANA ZA UPIMAJI    (sio 'Assessment Tools')\n" +
+"  REJEA              (sio 'References')\n" +
+"  MAONI              (sio 'Remarks')\n" +
+"\n" +
+"VALUES zote LAZIMA ziwe KISWAHILI TU:\n" +
+"  UMAHIRI MKUU -> Mfano: Kumudu misingi ya awali ya kihisabati\n" +
+"  UMAHIRI MAHUSUSI -> Mfano: Kuonesha uelewa wa dhana ya namba\n" +
+"  SHUGHULI KUU -> Mfano: Kutambua namba za kirumi (hadi M)\n" +
+"  SHUGHULI NDOGO -> Mfano: Mwanafunzi kutambua namba za kirumi (hadi M)\n" +
+"  MWEZI -> JANUARI, FEBRUARI, MACHI, APRILI, MEI, JUNI, JULAI, AGOSTI, SEPTEMBA, OKTOBA, NOVEMBA, DESEMBA\n" +
+"  WIKI -> namba tu: 1, 2, 3, 4, 1&2, 3&4\n" +
+"  VIPINDI -> namba tu: 6, 4, 8\n" +
+"  MBINU -> KISWAHILI: Nyimbo, Michezo, Maswali na majibu, Onesho mbinu\n" +
+"  ZANA -> KISWAHILI: Kadi, Picha, Chati\n" +
+"  ZANA ZA UPIMAJI -> KISWAHILI: Orodha hakiki, Dodoso, Hojaji\n" +
+"  REJEA -> KISWAHILI: TIE (2023), Somo, darasa...\n" +
+"  MAONI -> KISWAHILI\n" +
+"\n" +
+"KOSA KUBWA: Kama COLUMN NAME au VALUE yoyote iko kwa Kiingereza -> MAKOSA MAKUBWA!\n" +
+"JSON NAMES na VALUES zote LAZIMA ziwe KISWAHILI KAMILI.\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
         )
 
     # ── AUTO-DETECT ──
@@ -966,37 +1005,46 @@ def _get_language_instruction(language_param, subject, school_level):
         else:
             return (
 "\n" +
-"=======================================================\n" +
-"⚠️  KANUNI YA LUGHA - AZIMIO LA KAZI KWA KISWAHILI ⚠️\n" +
-"=======================================================\n" +
-"Hii ni shule ya MSINGI (Primary) na somo si English -> AZIMIO LA KAZI kwa KISWAHILI:\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"⚠️  KANUNI KAKAWA - AZIMIO LA KAZI KISWAHILI KAMILI ⚠️\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"Hii ni shule ya MSINGI (Primary) - OUTPUT LAZIMA iwe AZIMIO LA KAZI kwa KISWAHILI KAMILI:\n" +
 "\n" +
-"COLUMN NAMES LAZIMA ziwe KISWAHILI: UMAHIRI MKUU | UMAHIRI MAHUSUSI |\n" +
-"SHUGHULI KUU ZA UJIFUNZAJI | SHUGHULI NDOGO ZA UJIFUNZAJI |\n" +
-"MWEZI | WIKI | VIPINDI | MBINU ZA UJIFUNZAJI NA UFUNDISHAJI |\n" +
-"ZANA ZA UJIFUNZAJI NA UFUNDISHAJI | ZANA ZA UPIMAJI | REJEA | MAONI\n" +
+"COLUMN NAMES LAZIMA ziwe KISWAHILI (sio Kiingereza):\n" +
+"  UMAHIRI MKUU | UMAHIRI MAHUSUSI |\n" +
+"  SHUGHULI KUU ZA UJIFUNZAJI | SHUGHULI NDOGO ZA UJIFUNZAJI |\n" +
+"  MWEZI | WIKI | VIPINDI |\n" +
+"  MBINU ZA UJIFUNZAJI NA UFUNDISHAJI | ZANA ZA UJIFUNZAJI NA UFUNDISHAJI |\n" +
+"  ZANA ZA UPIMAJI | REJEA | MAONI\n" +
 "\n" +
-"VALUES zote -> KISWAHILI TU.\n" +
-"MWEZI -> JANUARI, FEBRUARI, MACHI, APRILI, MEI, JUNI, JULAI, AGOSTI, SEPTEMBA, OKTOBA, NOVEMBA, DESEMBA\n" +
-"WIKI -> namba tu (1, 2, 3...)\n" +
-"VIPINDI -> namba tu\n" +
-"=======================================================\n"
+"VALUES zote LAZIMA ziwe KISWAHILI TU:\n" +
+"  MWEZI -> JANUARI, FEBRUARI, MACHI, APRILI, MEI, JUNI, JULAI, AGOSTI, SEPTEMBA, OKTOBA, NOVEMBA, DESEMBA\n" +
+"  WIKI -> namba tu: 1, 2, 3, 4, 1&2 (sio 1st, 2nd, 3rd)\n" +
+"  VIPINDI -> namba tu: 6, 4, 8\n" +
+"  MBINU -> KISWAHILI: Nyimbo, Michezo, Maswali na majibu\n" +
+"  ZANA -> KISWAHILI: Kadi, Picha, Chati\n" +
+"KOSA: Kama COLUMN NAME au VALUE yoyote iko Kiingereza -> MAKOSA!\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
             )
     elif 'secondary' in school_level_lower or 'ordinary' in school_level_lower or 'advanced' in school_level_lower:
         if subject_lower in ('kiswahili', 'swahili'):
             return (
 "\n" +
-"=======================================================\n" +
-"⚠️  KANUNI YA LUGHA - AZIMIO LA KAZI KWA KISWAHILI ⚠️\n" +
-"=======================================================\n" +
-"Hili ni somo la Kiswahili -> COLUMN NAMES na VALUES zote kwa KISWAHILI:\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"⚠️  KANUNI KAKAWA - AZIMIO LA KAZI KISWAHILI KAMILI ⚠️\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+"Hili ni somo la Kiswahili -> COLUMN NAMES na VALUES zote LAZIMA ziwe KISWAHILI KAMILI:\n" +
 "\n" +
-"COLUMN NAMES: UMAHIRI MKUU | UMAHIRI MAHUSUSI | SHUGHULI KUU ZA UJIFUNZAJI |\n" +
-"SHUGHULI NDOGO ZA UJIFUNZAJI | MWEZI | WIKI | VIPINDI |\n" +
-"MBINU ZA UJIFUNZAJI NA UFUNDISHAJI | ZANA ZA UJIFUNZAJI NA UFUNDISHAJI |\n" +
-"ZANA ZA UPIMAJI | REJEA | MAONI\n" +
-"VALUES zote -> KISWAHILI TU.\n" +
-"=======================================================\n"
+"COLUMN NAMES (sio Kiingereza):\n" +
+"  UMAHIRI MKUU | UMAHIRI MAHUSUSI | SHUGHULI KUU ZA UJIFUNZAJI |\n" +
+"  SHUGHULI NDOGO ZA UJIFUNZAJI | MWEZI | WIKI | VIPINDI |\n" +
+"  MBINU ZA UJIFUNZAJI NA UFUNDISHAJI | ZANA ZA UJIFUNZAJI NA UFUNDISHAJI |\n" +
+"  ZANA ZA UPIMAJI | REJEA | MAONI\n" +
+"\n" +
+"VALUES zote LAZIMA ziwe KISWAHILI TU - hakuna Kiingereza kinachokubalika.\n" +
+"MWEZI -> JANUARI, FEBRUARI, MACHI, APRILI, MEI, JUNI, JULAI, AGOSTI, SEPTEMBA, OKTOBA, NOVEMBA, DESEMBA\n" +
+"WIKI -> namba tu (1, 2, 3 au 1&2)\n" +
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
             )
         else:
             return "LANGUAGE: Write ALL 12 fields in ENGLISH — this is a Secondary school subject taught in English."
@@ -1317,8 +1365,17 @@ RULES:
 - (a)/(b)/(c) each on its OWN separate row (do NOT combine)
 - ALL 12 field values MUST follow the LANGUAGE instruction above
 - ALL text values → MUST be in the language specified above by LANGUAGE instruction
+- ALL 12 column names MUST be in the LANGUAGE specified above
+- ALL 12 field values MUST be in the LANGUAGE specified above
 - NO arrays inside values, only strings
-- Return ONLY the JSON array. No other text."""
+- Return ONLY the JSON array. No other text.
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+⚠️  LANGUAGE CHECK: EVERY field above must be in the language specified by LANGUAGE instruction.
+    If Kiswahili -> ALL column names AND values = KISWAHILI
+    If English -> ALL column names AND values = ENGLISH
+    If ANY field is in the wrong language -> WRONG OUTPUT!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
 
         # ── Make a SINGLE AI call (no parallelism) ──
         logger.info(f"[Scheme] Starting single AI call for {len(all_months_flat)} months...")
