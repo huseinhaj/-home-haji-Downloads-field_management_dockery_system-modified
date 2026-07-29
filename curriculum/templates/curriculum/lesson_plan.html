@@ -243,7 +243,7 @@
               </div>
               <!-- Present (teacher fills here) -->
               <label style="font-size:10px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">Present <span style="font-weight:400;color:var(--text-muted);font-size:8px;">(jaza hapa)</span></label>
-              <div class="row g-1">
+              <div class="row g-1 mb-1">
                 <div class="col-4">
                   <label style="font-size:9px;color:var(--text-muted);">Boys</label>
                   <input class="form-control" id="present_boys" type="number" min="0" max="200" style="font-size:12px;">
@@ -255,6 +255,22 @@
                 <div class="col-4">
                   <label style="font-size:9px;color:var(--text-muted);">Total</label>
                   <input class="form-control" id="present_students" type="number" readonly style="font-size:12px;background:var(--bg-glass);cursor:default;">
+                </div>
+              </div>
+              <!-- Absent (auto-calculated = Registered - Present) -->
+              <label style="font-size:10px;font-weight:700;color:var(--error);display:block;margin-bottom:3px;">Absent <span style="font-weight:400;color:var(--text-muted);font-size:8px;">(auto-calculated: waliojisajili - waliohudhuria)</span></label>
+              <div class="row g-1">
+                <div class="col-4">
+                  <label style="font-size:9px;color:var(--text-muted);">Boys</label>
+                  <input class="form-control" id="absent_boys" type="number" readonly style="font-size:12px;background:rgba(220,38,38,0.05);cursor:default;color:var(--error);">
+                </div>
+                <div class="col-4">
+                  <label style="font-size:9px;color:var(--text-muted);">Girls</label>
+                  <input class="form-control" id="absent_girls" type="number" readonly style="font-size:12px;background:rgba(220,38,38,0.05);cursor:default;color:var(--error);">
+                </div>
+                <div class="col-4">
+                  <label style="font-size:9px;color:var(--text-muted);">Total</label>
+                  <input class="form-control" id="absent_students" type="number" readonly style="font-size:12px;background:rgba(220,38,38,0.08);cursor:default;color:var(--error);font-weight:700;">
                 </div>
               </div>
             </div>
@@ -380,8 +396,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const total = tb + tg;
     const present = pb + pg;
+    const absent_boys = Math.max(0, tb - pb);
+    const absent_girls = Math.max(0, tg - pg);
+    const absent_total = absent_boys + absent_girls;
+    
     document.getElementById('total_students').value = total > 0 ? total : (tb > 0 || tg > 0 ? total : '');
     document.getElementById('present_students').value = present > 0 ? present : (pb > 0 || pg > 0 ? present : '');
+    document.getElementById('absent_boys').value = tb > 0 ? absent_boys : '';
+    document.getElementById('absent_girls').value = tg > 0 ? absent_girls : '';
+    document.getElementById('absent_students').value = total > 0 ? absent_total : '';
   }
   document.getElementById('total_boys').addEventListener('input', function() { calcTotals('total_boys'); });
   document.getElementById('total_girls').addEventListener('input', function() { calcTotals('total_girls'); });
