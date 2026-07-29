@@ -318,63 +318,6 @@
               </p>
             </div>
 
-            <!-- Student Statistics -->
-            <div class="mb-2" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:0.6rem;">
-              <label style="font-weight:700;font-size:var(--font-size-xs);color:var(--green-500);margin-bottom:6px;display:flex;align-items:center;gap:5px;">
-                <i class="fas fa-user-graduate"></i> Student Statistics
-              </label>
-              <!-- Registered (pre-filled from registration) -->
-              <label style="font-size:10px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">
-                Registered <span style="font-weight:400;color:var(--text-muted);font-size:8px;">(imejazwa kutoka usajili)</span>
-              </label>
-              <div class="row g-1 mb-1">
-                <div class="col-4">
-                  <label style="font-size:9px;color:var(--text-muted);">Boys</label>
-                  <input class="form-control" id="total_boys" type="number" min="0" max="200" style="font-size:12px;" value="{{ teacher_total_boys }}">
-                </div>
-                <div class="col-4">
-                  <label style="font-size:9px;color:var(--text-muted);">Girls</label>
-                  <input class="form-control" id="total_girls" type="number" min="0" max="200" style="font-size:12px;" value="{{ teacher_total_girls }}">
-                </div>
-                <div class="col-4">
-                  <label style="font-size:9px;color:var(--text-muted);">Total</label>
-                  <input class="form-control" id="total_students" type="number" readonly style="font-size:12px;background:var(--bg-glass);cursor:default;" value="{{ teacher_total_boys|add:teacher_total_girls }}">
-                </div>
-              </div>
-              <!-- Present (teacher fills here) -->
-              <label style="font-size:10px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:3px;">Present <span style="font-weight:400;color:var(--text-muted);font-size:8px;">(jaza hapa)</span></label>
-              <div class="row g-1 mb-1">
-                <div class="col-4">
-                  <label style="font-size:9px;color:var(--text-muted);">Boys</label>
-                  <input class="form-control" id="present_boys" type="number" min="0" max="200" style="font-size:12px;">
-                </div>
-                <div class="col-4">
-                  <label style="font-size:9px;color:var(--text-muted);">Girls</label>
-                  <input class="form-control" id="present_girls" type="number" min="0" max="200" style="font-size:12px;">
-                </div>
-                <div class="col-4">
-                  <label style="font-size:9px;color:var(--text-muted);">Total</label>
-                  <input class="form-control" id="present_students" type="number" readonly style="font-size:12px;background:var(--bg-glass);cursor:default;">
-                </div>
-              </div>
-              <!-- Absent (auto-calculated = Registered - Present) -->
-              <label style="font-size:10px;font-weight:700;color:var(--error);display:block;margin-bottom:3px;">Absent <span style="font-weight:400;color:var(--text-muted);font-size:8px;">(auto-calculated: waliojisajili - waliohudhuria)</span></label>
-              <div class="row g-1">
-                <div class="col-4">
-                  <label style="font-size:9px;color:var(--text-muted);">Boys</label>
-                  <input class="form-control" id="absent_boys" type="number" readonly style="font-size:12px;background:rgba(220,38,38,0.05);cursor:default;color:var(--error);">
-                </div>
-                <div class="col-4">
-                  <label style="font-size:9px;color:var(--text-muted);">Girls</label>
-                  <input class="form-control" id="absent_girls" type="number" readonly style="font-size:12px;background:rgba(220,38,38,0.05);cursor:default;color:var(--error);">
-                </div>
-                <div class="col-4">
-                  <label style="font-size:9px;color:var(--text-muted);">Total</label>
-                  <input class="form-control" id="absent_students" type="number" readonly style="font-size:12px;background:rgba(220,38,38,0.08);cursor:default;color:var(--error);font-weight:700;">
-                </div>
-              </div>
-            </div>
-
             <!-- Buttons -->
             <button type="submit" class="btn-tlm btn-gold-tlm w-100 py-2 mt-2" id="generateBtn">
               <i class="fas fa-magic me-1"></i> Generate with AI
@@ -718,45 +661,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(autoFillClassSubject, 100);
   }
 
-  // ── Auto-calculate Student Statistics ──
-  function calcTotals() {
-    const tb = parseInt(document.getElementById('total_boys').value) || 0;
-    const tg = parseInt(document.getElementById('total_girls').value) || 0;
-    let pb = parseInt(document.getElementById('present_boys').value) || 0;
-    let pg = parseInt(document.getElementById('present_girls').value) || 0;
-    
-    // Validate: present cannot exceed registered
-    if (pb > tb && tb > 0) {
-      pb = tb;
-      document.getElementById('present_boys').value = tb;
-      showToast('Wavulana waliohudhuria hawawezi kuzidi waliojisajili (' + tb + ')', 'warning');
-    }
-    if (pg > tg && tg > 0) {
-      pg = tg;
-      document.getElementById('present_girls').value = tg;
-      showToast('Wasichana waliohudhuria hawawezi kuzidi waliojisajili (' + tg + ')', 'warning');
-    }
-    
-    const total = tb + tg;
-    const present = pb + pg;
-    const absent_boys = Math.max(0, tb - pb);
-    const absent_girls = Math.max(0, tg - pg);
-    const absent_total = absent_boys + absent_girls;
-    
-    document.getElementById('total_students').value = total > 0 ? total : (tb > 0 || tg > 0 ? total : '');
-    document.getElementById('present_students').value = present > 0 ? present : (pb > 0 || pg > 0 ? present : '');
-    document.getElementById('absent_boys').value = tb > 0 ? absent_boys : '';
-    document.getElementById('absent_girls').value = tg > 0 ? absent_girls : '';
-    document.getElementById('absent_students').value = total > 0 ? absent_total : '';
-  }
-  // Event listeners for statistics fields
-  document.getElementById('total_boys').addEventListener('input', calcTotals);
-  document.getElementById('total_girls').addEventListener('input', calcTotals);
-  document.getElementById('present_boys').addEventListener('input', calcTotals);
-  document.getElementById('present_girls').addEventListener('input', calcTotals);
-  // Initialize on page load
-  calcTotals();
-
   // ── Collect form data ──
   function getFormData() {
     const breaks = [];
@@ -786,15 +690,6 @@ document.addEventListener('DOMContentLoaded', function() {
       end_date: document.getElementById('end_date').value,
       teacher_name: document.getElementById('teacher_name').value,
       school_name: document.getElementById('school_name').value,
-      total_boys: document.getElementById('total_boys').value,
-      total_girls: document.getElementById('total_girls').value,
-      total_students: document.getElementById('total_students').value,
-      present_boys: document.getElementById('present_boys').value,
-      present_girls: document.getElementById('present_girls').value,
-      present_students: document.getElementById('present_students').value,
-      absent_boys: document.getElementById('absent_boys').value,
-      absent_girls: document.getElementById('absent_girls').value,
-      absent_students: document.getElementById('absent_students').value,
       breaks: breaks,
     };
   }
