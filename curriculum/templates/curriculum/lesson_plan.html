@@ -165,8 +165,8 @@
               </label>
               <select id="langSelect" style="width:100%;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:4px 6px;font-size:11px;background:var(--bg-card-solid);color:var(--text-primary);cursor:pointer;" onchange="changeLanguage(this.value)">
                 <option value="auto" {% if teacher.preferred_language == 'auto' %}selected{% endif %}>🌐 Auto (Otomatiki — kulingana na somo)</option>
-                <option value="english" {% if teacher.preferred_language == 'english' %}selected{% endif %}>🇬🇧 English</option>
-                <option value="kiswahili" {% if teacher.preferred_language == 'kiswahili' %}selected{% endif %}>🇹🇿 Kiswahili</option>
+                <option value="english" {% if teacher.preferred_language == 'english' %}selected{% endif %}>🇬🇧 English (Tafsiri kwa Kiingereza tu)</option>
+                <option value="kiswahili" {% if teacher.preferred_language == 'kiswahili' %}selected{% endif %}>🇹🇿 Kiswahili (Andika kwa Kiswahili tu)</option>
               </select>
             </div>
             <div class="mb-2" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:0.4rem 0.6rem;">

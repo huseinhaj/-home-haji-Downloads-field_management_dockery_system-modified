@@ -94,19 +94,34 @@ def pwa_manifest(request):
                 "purpose": "any"
             }
         ],
-        "screenshots": [],
+        "screenshots": [
+            {
+                "src": "/static/curriculum/pwa-splash.png",
+                "sizes": "1280x640",
+                "type": "image/png",
+                "form_factor": "wide",
+                "label": "TLM Tanzania — Scheme of Work, Lesson Plan & Logbook"
+            },
+            {
+                "src": "/static/curriculum/pwa-splash.png",
+                "sizes": "1280x640",
+                "type": "image/png",
+                "form_factor": "narrow",
+                "label": "TLM Tanzania — Nyenzo za Kufundishia"
+            }
+        ],
         "shortcuts": [
             {
                 "name": "Scheme of Work",
                 "short_name": "Scheme",
-                "description": "Tengeneza Scheme of Work",
+                "description": "Tengeneza Scheme of Work kwa AI",
                 "url": "/curriculum/scheme/",
                 "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
             },
             {
                 "name": "Lesson Plan",
                 "short_name": "Lesson",
-                "description": "Tengeneza Lesson Plan",
+                "description": "Tengeneza Lesson Plan kwa AI",
                 "url": "/curriculum/lesson-plan/",
                 "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
             },
@@ -115,6 +130,13 @@ def pwa_manifest(request):
                 "short_name": "Library",
                 "description": "Tazama mifano ya walimu wengine",
                 "url": "/curriculum/library/",
+                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
+            },
+            {
+                "name": "Lesson Notes",
+                "short_name": "Notes",
+                "description": "Andika na hifadhi maelezo ya somo",
+                "url": "/curriculum/lesson-notes/",
                 "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
             }
         ]

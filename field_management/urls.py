@@ -25,6 +25,10 @@ urlpatterns = [
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain')),
     
     
+    # PWA: Progressive Web App — MUST be before catch-all routes
+    path('manifest.json', curriculum_views.pwa_manifest, name='root_pwa_manifest'),
+    path('sw.js', curriculum_views.pwa_service_worker, name='root_pwa_service_worker'),
+
     # REST API
     path('api/v1/', include('field_app.api_urls')),
 
@@ -43,8 +47,4 @@ urlpatterns = [
     # Muungano Curriculum — Scheme of Work, Lesson Plan & Logbook
     path('curriculum/', include('curriculum.urls')),
 
-    # PWA: Progressive Web App — root-level manifest & service worker
-    # (Must be at root for proper PWA scope / install behavior)
-    path('manifest.json', curriculum_views.pwa_manifest, name='root_pwa_manifest'),
-    path('sw.js', curriculum_views.pwa_service_worker, name='root_pwa_service_worker'),
 ]
