@@ -570,124 +570,69 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // ── Teacher registration data for auto-fill ──
+  // ── Simple ONE-TIME auto-fill from teacher registration ──
+  // Auto-fills ONLY on initial page load. After that, user is free to change anything.
   const teacherSchoolLevel = '{{ teacher_school_level|escapejs }}';
   const teacherClassName = '{{ teacher_class_name|escapejs }}';
   const teacherStream = '{{ teacher_stream|escapejs }}';
   const teacherSubjectName = '{{ teacher_subject_name|escapejs }}';
   const teacherSubjectId = '{{ teacher_subject_id|escapejs }}';
-  
-  // ── Helper: try to select a value in a select element once options exist ──
-  function selectOptionByValueOrText(selectEl, value, textMatcher) {
-    const opts = selectEl.querySelectorAll('option');
-    for (let opt of opts) {
+
+  // Helper: select an option in a dropdown by value or text match
+  function _selectOption(el, val) {
+    if (!val) return false;
+    for (let opt of el.options) {
       if (!opt.value) continue;
-      const match = textMatcher(opt);
-      if (opt.value === value || match) {
-        selectEl.value = opt.value;
-        selectEl.dispatchEvent(new Event('change'));
+      if (opt.value === val || opt.textContent === val || opt.value.toLowerCase() === val.toLowerCase()) {
+        el.value = opt.value;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Set stream on load (always same options, no need to wait)
+  if (teacherStream) {
+    document.getElementById('stream').value = teacherStream;
+  }
+
+  // Auto-set education level first (this populates class & subject dropdowns)
+  function autoSetLevel() {
+    if (!teacherSchoolLevel) return false;
+    const levelName = teacherSchoolLevel.toLowerCase();
+    for (let opt of levelSelect.options) {
+      if (!opt.value) continue;
+      const optName = (opt.textContent || '').toLowerCase();
+      if ((levelName === 'primary' && optName.includes('primary')) ||
+          (levelName === 'secondary' && (optName.includes('ordinary') || optName.includes('secondary')))) {
+        levelSelect.value = opt.value;
+        levelSelect.dispatchEvent(new Event('change'));
         return true;
       }
     }
     return false;
   }
   
-  // ── (1) Set up observers BEFORE triggering level change ──
-  let classAutoFilled = false;
-  let subjectAutoFilled = false;
-  
-  if (teacherClassName) {
-    const classObserver = new MutationObserver(function() {
-      if (classAutoFilled) return;
-      if (selectOptionByValueOrText(classSelect, teacherClassName, function(opt) {
-        return opt.textContent === teacherClassName;
-      })) {
-        classAutoFilled = true;
-        classObserver.disconnect();
-      }
-    });
-    classObserver.observe(classSelect, { childList: true, subtree: true });
-  }
-  
-  if (teacherSubjectName) {
-    const tSubjLower = teacherSubjectName.toLowerCase();
-    const subjectObserver = new MutationObserver(function() {
-      if (subjectAutoFilled) return;
-      if (selectOptionByValueOrText(subjectSelect, '', function(opt) {
-        return opt.value.toLowerCase() === tSubjLower;
-      })) {
-        subjectAutoFilled = true;
-        subjectObserver.disconnect();
-      }
-    });
-    subjectObserver.observe(subjectSelect, { childList: true, subtree: true });
-  }
-  
-  if (teacherStream) {
-    document.getElementById('stream').value = teacherStream;
-  }
-  
-  // ── (2) Trigger education level change (populates class & subject synchronously) ──
-  let levelWasAutoSet = false;
-  if (teacherSchoolLevel) {
-    const levelName = teacherSchoolLevel.toLowerCase();
-    for (let opt of levelSelect.options) {
-      if (opt.value) {
-        const optName = (opt.textContent || '').toLowerCase();
-        if (levelName === 'primary' && optName.includes('primary')) {
-          levelSelect.value = opt.value;
-          levelSelect.dispatchEvent(new Event('change'));
-          levelWasAutoSet = true;
-          break;
-        } else if (levelName === 'secondary' && (optName.includes('ordinary') || optName.includes('secondary'))) {
-          levelSelect.value = opt.value;
-          levelSelect.dispatchEvent(new Event('change'));
-          levelWasAutoSet = true;
-          break;
-        }
-      }
+  // Auto-fill class and subject AFTER level options are populated
+  function autoFillClassSubject() {
+    // Try class
+    if (teacherClassName) {
+      _selectOption(classSelect, teacherClassName);
+    }
+    // Try subject
+    if (teacherSubjectName) {
+      _selectOption(subjectSelect, teacherSubjectName);
     }
   }
-  
-  // ── (3) Immediate fallback — options are already populated after synchronous dispatch ──
-  if (teacherClassName && !classAutoFilled) {
-    if (selectOptionByValueOrText(classSelect, teacherClassName, function(opt) {
-      return opt.textContent === teacherClassName;
-    })) {
-      classAutoFilled = true;
-    }
-  }
-  
-  if (teacherSubjectName && !subjectAutoFilled) {
-    const tSubjLower = teacherSubjectName.toLowerCase();
-    if (selectOptionByValueOrText(subjectSelect, '', function(opt) {
-      return opt.value.toLowerCase() === tSubjLower;
-    })) {
-      subjectAutoFilled = true;
-    }
-  }
-  
-  // ── Fallback: if no school level found, try level by subject ──
-  if (!levelWasAutoSet && teacherSubjectName) {
-    const subjLevel = '{{ teacher_subject_level|escapejs }}';
-    const tSubjLower = teacherSubjectName.toLowerCase();
-    if (subjLevel) {
-      for (let opt of levelSelect.options) {
-        if (opt.value) {
-          const levelId = opt.value;
-          if (SUBJECTS_BY_LEVEL[levelId]) {
-            const found = SUBJECTS_BY_LEVEL[levelId].some(s => 
-              s.name.toLowerCase() === tSubjLower
-            );
-            if (found) {
-              levelSelect.value = levelId;
-              levelSelect.dispatchEvent(new Event('change'));
-              break;
-            }
-          }
-        }
-      }
-    }
+
+  // Run auto-fill: first set level, then fill class/subject
+  const levelSet = autoSetLevel();
+  // If level was set, options are now populated — fill immediately
+  if (levelSet) {
+    autoFillClassSubject();
+  } else {
+    // Otherwise wait a tick for options to populate
+    setTimeout(autoFillClassSubject, 100);
   }
 
   // ── Collect form data ──

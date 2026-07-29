@@ -865,12 +865,20 @@ Return ONLY the JSON array. No other text."""
                 f"WEEKS: Approximately {group_weeks} weeks of content",
                 f"ROWS: Generate {total_rows_target}+ rows total across these months.",
                 f"",
+                f"⚠️ CRITICAL — YOU MUST COVER EVERY MONTH LISTED BELOW:",
+                f"   Each month MUST have its own rows. Do NOT skip any month.",
+                f"   If a month is listed below, you MUST include rows with that month name.",
+                f"",
                 f"DISTRIBUTE THE ROWS AS:",
             ]
             for m in month_list:
-                group_scope_lines.append(f"  - {m}: {rows_per_month} rows (each lettered activity = separate row)")
+                idx_in_group = month_list.index(m) + 1
+                group_scope_lines.append(f"  ✅ {m}: {rows_per_month}+ rows (each lettered activity = separate row)")
 
             group_scope_lines.extend([
+                f"",
+                f"⚠️ REMINDER: You have {len(month_list)} months to cover in this group.",
+                f"""  {', '.join([f"{m}: {rows_per_month}+ rows" for m in month_list])}.""",
                 f"",
                 f"ROW STRUCTURE: Each lettered activity like (a), (b), (c), (d), (e), (f), (g) MUST be its OWN SEPARATE row.",
                 f"Do NOT combine multiple letters into one row.",
