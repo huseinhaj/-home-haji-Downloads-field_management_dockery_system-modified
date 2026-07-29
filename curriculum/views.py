@@ -732,9 +732,7 @@ STRICT RULES — FOLLOW EXACTLY:
 
 📌 5. MONTH:
    - Uppercase: JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER
-   - The value MUST be the month specified in the scope above — do NOT use a different month
-   - EACH month MUST have 8-15 rows (comprehensive coverage - generated per-month above)
-   - A month with 4 weeks should have ~10-15 rows (each week ~2-4 rows)
+   - The value MUST be one of the months listed in the scope above — do NOT use a different month
 
 📌 6. WEEK:
    - Format: "1st", "2nd", "3rd", "4th" or ranges like "2nd & 3rd", "3rd & 4th"
@@ -771,44 +769,62 @@ STRICT RULES — FOLLOW EXACTLY:
 CRITICAL REQUIREMENTS:
 ═══════════════════════════════════════════════════
 
-🔴 ROWS PER MONTH: Generate 8-15 rows for this month. A comprehensive full-year scheme needs at least 80-150+ total rows across all months.
+🔴 ROWS: Follow the number of rows specified in the scope above for each month — generate that many.
 🔴 REAL SYLLABUS: Use REAL TIE syllabus topics for {subject} {full_class_name}. Do NOT fabricate fake topics.
 🔴 PROPER NUMBERING: Main Competence numbered 1.0, 2.0, 3.0... Specific Competence numbered 1.1, 1.2, 2.1, 2.2...
-🔴 MONTH ORDER: The Month field MUST match the month specified in the scope above (e.g., if scope says JANUARY, all rows must be JANUARY)
+🔴 MONTH ORDER: Month values MUST match ONLY the months listed in the scope above — do NOT use other months
 🔴 BREAKS: Include ALL breaks specified in the scope above as FULL rows where all 12 columns have the SAME break text
 🔴 EACH LETTERED ACTIVITY = SEPARATE ROW: Each (a), (b), (c), (d), (e), (f) etc. MUST be its own row, NOT combined
 🔴 CONTENT QUALITY: Rich, detailed, specific to the subject. NOT generic.
 🔴 All values MUST be plain strings, NEVER arrays.
 🔴 VARY the "Number of Periods" across rows — do NOT use the same number for every row
+🔴 COVER ALL MONTHS LISTED in the scope — do NOT skip any month
 
 Return ONLY the JSON array. No other text."""
 
         all_scheme_data = []
         all_response_texts = []
 
-        # ── Month-by-month generation strategy ──
-        # Each month gets its OWN AI call to ensure:
-        #   - Every month from JANUARY to OCTOBER is covered (no skipping)
-        #   - Each month has 8-20+ rows (comprehensive)
-        #   - Breaks appear in their correct months
-        #   - Total output reaches 80-200+ rows = 8-20+ pages (up to 30+)
+        # ── Grouped-month generation strategy ──
+        # Groups months into 2-4 batches (max 4 AI calls) to balance:
+        #   - Comprehensiveness (all months covered, each with 6-12 rows)
+        #   - Performance (avoid server timeouts from too many sequential calls)
         # ─────────────────────────────────────────────
 
         import calendar as _cal
 
-        # Define months to generate based on term
-        term_months_map = {
-            'Full Year': ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
-                          'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER'],
-            'I':    ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE'],
-            'II':   ['JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER'],
-            'III':  ['AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER'],
+        # Define month groups based on term
+        term_groups_map = {
+            'Full Year': [
+                ['JANUARY', 'FEBRUARY', 'MARCH'],       # Group 1: Early Term I
+                ['APRIL', 'MAY', 'JUNE'],               # Group 2: Late Term I
+                ['JULY', 'AUGUST', 'SEPTEMBER'],        # Group 3: Term II
+                ['OCTOBER'],                             # Group 4: Term III
+            ],
+            'I': [
+                ['JANUARY', 'FEBRUARY', 'MARCH'],       # Group 1
+                ['APRIL', 'MAY', 'JUNE'],               # Group 2
+            ],
+            'II': [
+                ['JULY', 'AUGUST', 'SEPTEMBER'],        # Group 1
+                ['OCTOBER'],                             # Group 2
+            ],
+            'III': [
+                ['AUGUST', 'SEPTEMBER'],                # Group 1
+                ['OCTOBER', 'NOVEMBER'],                # Group 2
+            ],
         }
-        months_to_generate = term_months_map.get(term, ['JANUARY', 'FEBRUARY', 'MARCH'])
-        total_months_to_gen = len(months_to_generate)
+        month_groups = term_groups_map.get(term, [['JANUARY', 'FEBRUARY', 'MARCH']])
+        total_groups = len(month_groups)
+
+        weeks_per_group = max(4, total_weeks // max(1, total_groups))
+        remaining_weeks_global = total_weeks
 
         # Group breaks by month (parse start date to determine which month)
-        breaks_by_month = {m: [] for m in months_to_generate}
+        _all_month_names = []
+        for grp in month_groups:
+            _all_month_names.extend(grp)
+        breaks_by_month = {m: [] for m in _all_month_names}
         if breaks:
             for b in breaks:
                 start_str = b.get('start', '')
@@ -817,109 +833,102 @@ Return ONLY the JSON array. No other text."""
                         from datetime import datetime as _dt_b
                         start_dt_brk = _dt_b.strptime(start_str, '%Y-%m-%d')
                         brk_month_name = _cal.month_name[start_dt_brk.month].upper()
-                        if brk_month_name in months_to_generate:
+                        if brk_month_name in _all_month_names:
                             breaks_by_month[brk_month_name].append(b)
                     except (ValueError, IndexError):
                         pass
 
-        # Calculate weeks per month (distribute total weeks across months)
-        weeks_per_month = max(3, total_weeks // max(1, total_months_to_gen))
-        remaining_weeks_global = total_weeks
+        logger.info(f"[Scheme] GROUPED: {total_weeks} weeks across {total_groups} groups")
 
-        logger.info(f"[Scheme] MONTH-BY-MONTH: {total_weeks} weeks across {total_months_to_gen} months = ~{weeks_per_month} weeks/month")
+        for group_idx, month_list in enumerate(month_groups):
+            group_number = group_idx + 1
+            group_label = ', '.join(month_list)
+            group_weeks = min(weeks_per_group + (1 if group_idx < total_weeks % max(1, total_groups) else 0), remaining_weeks_global)
+            remaining_weeks_global -= group_weeks
 
-        for month_idx, month_name in enumerate(months_to_generate):
-            month_number = month_idx + 1
-            month_weeks = min(weeks_per_month + (1 if month_idx < total_weeks % max(1, total_months_to_gen) else 0), remaining_weeks_global)
-            remaining_weeks_global -= month_weeks
+            # Build group scope
+            months_str = ', '.join(month_list)
+            rows_per_month = max(6, 12 // len(month_list))
+            total_rows_target = rows_per_month * len(month_list)
 
-            # Determine topic coverage for this month
-            if total_months_to_gen <= 1:
-                topic_range = "Cover ALL remaining topics from the syllabus. Complete the entire syllabus."
-            elif month_idx == 0:
+            if group_idx == 0:
                 topic_range = "Cover the FIRST topics from the syllabus. Start from the very beginning (Topic 1). Introduce the first competences with detailed breakdown."
-            elif month_idx == total_months_to_gen - 1:
-                topic_range = "Cover the FINAL topics from the syllabus. This is the LAST month. Complete ALL remaining topics. Do NOT leave any topics uncovered."
+            elif group_idx == total_groups - 1:
+                topic_range = "Cover the FINAL topics from the syllabus. This is the LAST group. Complete ALL remaining topics. Do NOT leave any topics uncovered."
             else:
-                topic_range = "Cover MIDDLE topics from the syllabus. Continue from where the previous month ended. Introduce NEW competences. Do NOT repeat topics from earlier months."
+                topic_range = "Cover MIDDLE topics from the syllabus. Continue from where the previous group ended. Introduce NEW competences. Do NOT repeat topics from earlier groups."
 
-            # Build month-specific scope with breaks
-            month_scope_lines = [
-                f"MONTH: {month_name} (Month {month_number} of {total_months_to_gen})",
+            # Build scope with breaks embedded
+            group_scope_lines = [
+                f"MONTHS: {months_str} ({group_number} of {total_groups})",
                 f"TOPIC COVERAGE: {topic_range}",
-                f"WEEKS: Approximately {month_weeks} weeks of content",
-                f"ROWS: Generate 8-15 rows for {month_name}.",
+                f"WEEKS: Approximately {group_weeks} weeks of content",
+                f"ROWS: Generate {total_rows_target}+ rows total across these months.",
+                f"",
+                f"DISTRIBUTE THE ROWS AS:",
+            ]
+            for m in month_list:
+                group_scope_lines.append(f"  - {m}: {rows_per_month} rows (each lettered activity = separate row)")
+
+            group_scope_lines.extend([
                 f"",
                 f"ROW STRUCTURE: Each lettered activity like (a), (b), (c), (d), (e), (f), (g) MUST be its OWN SEPARATE row.",
-                f"Do NOT combine multiple activities into one row.",
+                f"Do NOT combine multiple letters into one row.",
                 f"",
                 f"MONTHLY BREAKS/HOLIDAYS:",
-            ]
+            ])
 
-            month_breaks_list = breaks_by_month.get(month_name, [])
-            if month_breaks_list:
-                for b in month_breaks_list:
-                    b_name = b.get('name', 'Break')
-                    b_start = b.get('start', '')
-                    b_end = b.get('end', '')
-                    month_scope_lines.append(
-                        f"  🔴 YOU MUST INCLUDE A BREAK ROW for \"{b_name.upper()} ({b_start} – {b_end})\""
-                        f"  This break row has ALL 12 columns set to: \"{b_name.upper()}\""
-                        f"  Place it at the correct week during {month_name}"
-                    )
+            # Add break instructions for each month in this group
+            has_any_break = False
+            for m in month_list:
+                month_breaks = breaks_by_month.get(m, [])
+                if month_breaks:
+                    has_any_break = True
+                    for b in month_breaks:
+                        b_name = b.get('name', 'Break')
+                        b_start = b.get('start', '')
+                        b_end = b.get('end', '')
+                        group_scope_lines.append(
+                            f"  🔴 INCLUDE a BREAK ROW for \"{b_name.upper()} ({b_start} – {b_end})\""
+                            f"  during {m}. ALL 12 columns set to \"{b_name.upper()}\""
+                        )
+
+            if not has_any_break:
+                group_scope_lines.append(f"  No breaks these months — generate only regular teaching rows.")
+
+            group_scope = '\n'.join(group_scope_lines)
+
+            # Generate this group
+            group_prompt = _make_prompt(group_scope, group_weeks)
+            group_data, group_resp = _generate_scheme_batch(group_prompt)
+
+            if group_data:
+                all_scheme_data.extend(group_data)
+                all_response_texts.append(group_resp)
+                logger.info(f"[Scheme] Group {group_number} ({group_label}): {len(group_data)} rows ✓")
             else:
-                month_scope_lines.append(f"  No breaks this month — generate only regular teaching rows.")
+                logger.warning(f"[Scheme] Group {group_number} ({group_label}): FAILED — adding placeholders")
+                for m in month_list:
+                    all_scheme_data.append({
+                        "Main Competence": f"Continue with syllabus topics for {m}",
+                        "Specific Competences": f"Continue with subtopics for {m}",
+                        "Main Learning Activities": f"Activities for {m}",
+                        "Specific Learning Activities": f"Continue with learning for {m}",
+                        "Month": m,
+                        "Week": "1st - 4th",
+                        "Number of Periods": str(max(3, periods_per_week // 2)),
+                        "Teaching and Learning Methods": "Various methods",
+                        "Teaching and Learning Resources": "TIE textbook, Charts",
+                        "Assessment Tools": "Exercises",
+                        "References": "TIE textbooks",
+                        "Remarks": "Continue as planned"
+                    })
 
-            month_scope = '\n'.join(month_scope_lines)
-
-            # Build month-specific breaks text (only this month's breaks)
-            month_breaks_text = ''
-            if month_breaks_list:
-                month_breaks_text = '\n🎯 BREAKS FOR THIS MONTH — YOU MUST INCLUDE THESE AS FULL ROWS:\n'
-                for b in month_breaks_list:
-                    b_name = b.get('name', 'Break')
-                    b_start = b.get('start', '')
-                    b_end = b.get('end', '')
-                    label = f"{b_name.upper()} ({b_start} – {b_end})"
-                    month_breaks_text += f"   - Row with ALL 12 columns = \"{label}\", Month = {month_name}, No. of Periods = {'2' if any(w in b_name.lower() for w in ['exam','test','midterm','terminal']) else '0'}\n"
-
-            # Generate this month
-            month_prompt = _make_prompt(month_scope + month_breaks_text, month_weeks)
-            month_data, month_resp = _generate_scheme_batch(month_prompt)
-
-            if month_data:
-                all_scheme_data.extend(month_data)
-                all_response_texts.append(month_resp)
-                logger.info(f"[Scheme] {month_name}: {len(month_data)} rows generated ✓")
-            else:
-                logger.warning(f"[Scheme] {month_name}: FAILED — adding placeholder")
-                # Placeholder row so month is not missing
-                all_scheme_data.append({
-                    "Main Competence": f"Continue with syllabus topics for {month_name}",
-                    "Specific Competences": f"Continue with subtopics for {month_name}",
-                    "Main Learning Activities": f"Continue learning activities for {month_name}",
-                    "Specific Learning Activities": f"Continue with learning for {month_name}",
-                    "Month": month_name,
-                    "Week": "1st - 4th",
-                    "Number of Periods": str(max(3, periods_per_week // 2)),
-                    "Teaching and Learning Methods": "Various methods",
-                    "Teaching and Learning Resources": "TIE textbook, Charts",
-                    "Assessment Tools": "Exercises",
-                    "References": "TIE textbooks",
-                    "Remarks": "Continue as planned"
-                })
-
-        logger.info(f"[Scheme] TOTAL: {len(all_scheme_data)} rows across {total_months_to_gen} months")
+        logger.info(f"[Scheme] TOTAL: {len(all_scheme_data)} rows across {total_groups} groups")
 
         if not all_scheme_data:
             preview = (all_response_texts[0] if all_response_texts else '')[:600]
-            logger.error(f"[Scheme] ALL months failed! Raw: {preview}")
-            return JsonResponse({
-                'success': False,
-                'error': f"AI haikurudisha data sahihi. Sehemu ya majibu: {preview}",
-            }, status=422)
-            preview = (all_response_texts[0] if all_response_texts else '')[:600]
-            logger.error(f"[Scheme] ALL batches failed! Raw: {preview}")
+            logger.error(f"[Scheme] ALL groups failed! Raw: {preview}")
             return JsonResponse({
                 'success': False,
                 'error': f"AI haikurudisha data sahihi. Sehemu ya majibu: {preview}",
