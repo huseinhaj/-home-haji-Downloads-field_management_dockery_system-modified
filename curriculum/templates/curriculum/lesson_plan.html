@@ -51,6 +51,25 @@
   }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+  /* ── Loading spinner visibility (use class, not inline style) ── */
+  #loadingSpinner { display: none !important; }
+  #loadingSpinner.show { display: block !important; }
+
+  /* ── Progress bar pulse animation ── */
+  #progressBar { transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1); }
+  #progressBar.pulsing { animation: progressPulse 2s ease-in-out infinite; }
+  @keyframes progressPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  /* ── Icon spin animation ── */
+  @keyframes iconSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .progress-icon-spin { animation: iconSpin 1.5s linear infinite; }
+
   .stage-card {
     background: var(--bg-card-solid);
     border: 1px solid var(--border-color);
@@ -289,13 +308,42 @@
 
     <!-- ─── RIGHT: Results ─── -->
     <div class="col-lg-8 col-xl-9">
-      <!-- Loading -->
-      <div id="loadingSpinner" class="c-card text-center py-5" style="display:none;">
-        <div class="spinner-tlm" style="width:3rem;height:3rem;border-width:3px;"></div>
-        <p class="mt-3 fw-bold" style="color:var(--green-500);">AI inazalisha Lesson Plan...</p>
-        <p style="font-size:var(--font-size-sm);color:var(--text-muted);">Inachukua sekunde 15–30, tafadhali subiri.</p>
-        <div class="progress-tlm mt-3" style="max-width:300px;margin:0 auto;">
-          <div class="progress-tlm-bar" id="progressBar" style="width:0%;"></div>
+      <!-- Loading: Modern Progress Bar (same design as Scheme) -->
+      <div id="loadingSpinner" class="c-card" style="overflow:hidden;">
+        <div style="padding:2rem 1.5rem 1.5rem;">
+          <!-- Animated header -->
+          <div style="text-align:center;margin-bottom:1.5rem;">
+            <div id="progressIconContainer" style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--green-500),#166534);margin-bottom:0.75rem;box-shadow:0 4px 15px rgba(31,122,61,0.3);">
+              <i class="fas fa-chalkboard" id="progressIcon" style="color:#fff;font-size:1.4rem;"></i>
+            </div>
+            <h4 id="progressTitle" style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:1.05rem;">
+              Inazalisha Lesson Plan...
+            </h4>
+            <p id="progressSubtitle" style="font-size:var(--font-size-sm);color:var(--text-muted);margin:4px 0 0;">
+              AI inatayarisha mtaala kwa IDDR model
+            </p>
+          </div>
+
+          <!-- Main progress bar -->
+          <div style="max-width:480px;margin:0 auto 1.25rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span id="progressStageLabel" style="font-size:var(--font-size-xs);font-weight:700;color:var(--green-500);">
+                Inaanza...
+              </span>
+              <span id="progressPercent" style="font-size:var(--font-size-xs);font-weight:700;color:var(--gold-400);">0%</span>
+            </div>
+            <div style="position:relative;height:10px;background:var(--bg-glass);border-radius:var(--radius-full);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.08);">
+              <div id="progressBar" style="position:absolute;top:0;left:0;height:100%;width:0%;background:linear-gradient(90deg,var(--green-500),var(--gold-400),var(--green-500));background-size:200% 100%;border-radius:var(--radius-full);"></div>
+            </div>
+          </div>
+
+          <!-- Generation stats -->
+          <div id="progressStats" style="display:flex;justify-content:center;gap:1.5rem;margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border-color);">
+            <div style="text-align:center;">
+              <div id="progressElapsed" style="font-size:1.25rem;font-weight:800;color:var(--text-secondary);">0s</div>
+              <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Muda</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -776,19 +824,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function generateLessonPlan() {
     const btn = document.getElementById('generateBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<div class="spinner-tlm" style="width:16px;height:16px;border-width:2px;"></div> Generating...';
-    document.getElementById('loadingSpinner').style.display = 'block';
-    document.getElementById('resultsArea').style.display = 'none';
-    document.getElementById('emptyState').style.display = 'none';
-
+    const spinner = document.getElementById('loadingSpinner');
     const progressBar = document.getElementById('progressBar');
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 15;
-      if (progress > 85) progress = 85;
-      progressBar.style.width = progress + '%';
-    }, 800);
+    const resultsArea = document.getElementById('resultsArea');
+    const emptyState = document.getElementById('emptyState');
+
+    // ── Show progress bar IMMEDIATELY ──
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-tlm" style="width:16px;height:16px;border-width:2px;border-color:rgba(255,255,255,0.3) transparent rgba(255,255,255,0.3) rgba(255,255,255,0.3);"></div> Inazalisha...';
+    spinner.classList.add('show');
+    resultsArea.style.display = 'none';
+    emptyState.style.display = 'none';
+
+    // ── Show indeterminate progress ──
+    const progressStartTime = Date.now();
+    document.getElementById('progressTitle').textContent = '⏳ Inazalisha Lesson Plan...';
+    document.getElementById('progressSubtitle').textContent = 'Hii inaweza kuchukua sekunde 15-40. Subiri tafadhali...';
+    document.getElementById('progressStageLabel').textContent = 'Inazalisha...';
+    document.getElementById('progressPercent').textContent = '...';
+    document.getElementById('progressElapsed').textContent = '0s';
+    progressBar.style.width = '60%';
+    progressBar.classList.add('pulsing');
+    document.getElementById('progressIcon').className = 'fas fa-spinner progress-icon-spin';
+    document.getElementById('progressIconContainer').style.background = 'linear-gradient(135deg,var(--green-500),#166534)';
+
+    // ── Start elapsed time counter ──
+    const elapsedInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - progressStartTime) / 1000);
+      document.getElementById('progressElapsed').textContent = elapsed < 60 ? elapsed + 's' : Math.floor(elapsed/60) + 'm ' + (elapsed%60) + 's';
+    }, 1000);
 
     jsonFetch('{% url "curriculum:ajax_generate_lessonplan" %}', {
       method: 'POST',
@@ -796,21 +860,29 @@ document.addEventListener('DOMContentLoaded', function() {
       body: JSON.stringify(getFormData()),
     })
     .then(({ ok, status, data }) => {
-      clearInterval(interval);
+      clearInterval(elapsedInterval);
       
       if (!ok) {
-        progressBar.style.width = '0%';
-        document.getElementById('loadingSpinner').style.display = 'none';
+        spinner.classList.remove('show');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate Lesson Plan';
         showToast(data.error || 'Server error: ' + status, 'error');
-        document.getElementById('emptyState').style.display = 'block';
+        emptyState.style.display = 'block';
         return;
       }
 
+      // ── Success: show the generated data ──
+      progressBar.classList.remove('pulsing');
       progressBar.style.width = '100%';
+      document.getElementById('progressStageLabel').textContent = 'Imekamilika!';
+      document.getElementById('progressPercent').textContent = '100%';
+      document.getElementById('progressTitle').textContent = '✅ Lesson Plan Imekamilika!';
+      document.getElementById('progressSubtitle').textContent = 'Unaweza kuangalia na kupakua matokeo.';
+      document.getElementById('progressIcon').className = 'fas fa-check-circle';
+      document.getElementById('progressIconContainer').style.background = 'linear-gradient(135deg,var(--green-500),#166534)';
+
       setTimeout(() => {
-        document.getElementById('loadingSpinner').style.display = 'none';
+        spinner.classList.remove('show');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate Lesson Plan';
         if (data.success && data.data) {
@@ -818,15 +890,22 @@ document.addEventListener('DOMContentLoaded', function() {
           currentFormData = getFormData();
           currentSavedId = data.saved_id;
           renderLesson(data.data);
-          document.getElementById('resultsArea').style.display = 'block';
+          resultsArea.style.display = 'block';
           showToast('✅ Lesson Plan imezalishwa!', 'success');
           // ── Auto-save teacher profile (for old users with incomplete data) ──
           autoSaveTeacherProfile(getFormData());
         } else {
           showToast(data.error || 'Hitilafu.', 'error');
-          document.getElementById('emptyState').style.display = 'block';
+          emptyState.style.display = 'block';
         }
-      }, 400);
+      }, 600);
+    }).catch(err => {
+      clearInterval(elapsedInterval);
+      spinner.classList.remove('show');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate Lesson Plan';
+      showToast('Network error: ' + err.message, 'error');
+      emptyState.style.display = 'block';
     });
   }
 
