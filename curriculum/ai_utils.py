@@ -21,7 +21,7 @@ FALLBACK_MODELS_OPENROUTER = [
     "deepseek/deepseek-chat",
     "google/gemini-2.0-flash",
     "meta-llama/llama-3.3-70b-instruct",
-    "qwen/qwen-2.5-72b-instruct",
+    "mistralai/mistral-7b-instruct",
 ]
 
 FALLBACK_MODELS_GROQ = [
@@ -198,7 +198,7 @@ class _UnifiedModels:
         # ── 1st TRY GROQ (WORKS!) ──
         _groq_error = None
         if self._groq:
-            models_to_try = [model] + [m for m in FALLBACK_MODELS_OPENROUTER if m != model]
+            models_to_try = [model] + [m for m in FALLBACK_MODELS_GROQ if m != model]
             for attempt_model in models_to_try:
                 try:
                     logger.info(f"[AI] Trying Groq model: {attempt_model}")
