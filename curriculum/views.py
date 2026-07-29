@@ -942,17 +942,49 @@ Return ONLY the JSON array. No other text."""
                         "Remarks": "Continue as planned"
                     })
 
-        # Mark progress as done
+        # ── Validate: ensure EVERY expected month has at least one row ──
+        expected_months = set()
+        for grp in month_groups:
+            for m in grp:
+                expected_months.add(m)
+        present_months = set()
+        for row in all_scheme_data:
+            mth = (row.get('Month') or '').strip().upper()
+            if mth:
+                present_months.add(mth)
+        missing_months = expected_months - present_months
+        if missing_months:
+            logger.warning(f"[Scheme] Missing months: {missing_months} — injecting placeholder rows")
+            for mm in sorted(missing_months):
+                all_scheme_data.append({
+                    "Main Competence": f"Continue with syllabus topics",
+                    "Specific Competences": f"Continue with subtopics",
+                    "Main Learning Activities": f"Learning activities for {mm}",
+                    "Specific Learning Activities": f"Continue with learning",
+                    "Month": mm,
+                    "Week": "1st - 4th",
+                    "Number of Periods": str(max(3, periods_per_week // 2)),
+                    "Teaching and Learning Methods": "Various CBC methods",
+                    "Teaching and Learning Resources": "TIE textbook, Charts",
+                    "Assessment Tools": "Exercises, Questions",
+                    "References": "TIE textbooks",
+                    "Remarks": "Proceed with syllabus"
+                })
+
+        # Mark progress as done (include month groups for frontend labels)
         request.session['scheme_progress'] = {
             'current': total_groups,
             'total': total_groups,
             'label': 'Complete',
             'months': 0,
             'status': 'done',
+            'groups': [','.join(grp) for grp in month_groups],
         }
         request.session.modified = True
 
         logger.info(f"[Scheme] TOTAL: {len(all_scheme_data)} rows across {total_groups} groups")
+        if missing_months:
+            logger.info(f"[Scheme] Injected placeholders for: {missing_months}")
 
         if not all_scheme_data:
             preview = (all_response_texts[0] if all_response_texts else '')[:600]

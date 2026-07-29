@@ -581,9 +581,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Helper: select an option in a dropdown by value or text match
   function _selectOption(el, val) {
     if (!val) return false;
+    const vLower = val.toLowerCase();
     for (let opt of el.options) {
       if (!opt.value) continue;
-      if (opt.value === val || opt.textContent === val || opt.value.toLowerCase() === val.toLowerCase()) {
+      if (opt.value === val || opt.value.toLowerCase() === vLower ||
+          opt.textContent === val || opt.textContent.toLowerCase() === vLower) {
         el.value = opt.value;
         return true;
       }
@@ -756,8 +758,9 @@ document.addEventListener('DOMContentLoaded', function() {
       const label = prog.label || '';
       const status = prog.status || 'generating';
 
+      const groupsData = prog.groups || null;
       updateProgressDisplay(current, total, status === 'done' ? 'Imekamilika!' : `Kundi ${current} kati ya ${total}`, label);
-      buildProgressSteps(current, total);
+      buildProgressSteps(current, total, groupsData);
 
       if (status === 'done') {
         if (progressPollInterval) {
@@ -788,19 +791,38 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // ── Build the step indicator cards ──
-  function buildProgressSteps(current, total) {
+  let _cachedGroups = null;
+  function buildProgressSteps(current, total, groupsArr) {
     if (total === 0) return;
+    if (groupsArr) _cachedGroups = groupsArr;
     const container = document.getElementById('progressSteps');
     let html = '';
-    const groupNames = {
-      1: { label: 'Mada za Mwanzo', months: 'Januari - Machi', icon: 'fa-seedling' },
-      2: { label: 'Mada za Kati', months: 'Aprili - Juni', icon: 'fa-leaf' },
-      3: { label: 'Mada za Juu', months: 'Julai - Septemba', icon: 'fa-tree' },
-      4: { label: 'Mada za Mwisho', months: 'Oktoba - Novemba', icon: 'fa-star' },
-    };
+
+    // Default labels if no group names from backend
+    const defaultLabels = [
+      'Mada za Mwanzo', 'Mada za Kati', 'Mada za Juu', 'Mada za Mwisho'
+    ];
 
     for (let i = 1; i <= total; i++) {
-      const info = groupNames[i] || { label: `Kundi ${i}`, months: '', icon: 'fa-layer-group' };
+      let label = defaultLabels[i-1] || `Kundi ${i}`;
+      let months = '';
+      let icon = 'fa-layer-group';
+
+      // Use actual month names from backend if available
+      if (_cachedGroups && _cachedGroups[i-1]) {
+        const raw = _cachedGroups[i-1];
+        const parts = raw.split(',');
+        months = parts.map(m => {
+          const sw = {'JANUARY':'Januari','FEBRUARY':'Februari','MARCH':'Machi','APRIL':'Aprili','MAY':'Mei','JUNE':'Juni','JULY':'Julai','AUGUST':'Agosti','SEPTEMBER':'Septemba','OCTOBER':'Oktoba','NOVEMBER':'Novemba','DECEMBER':'Desemba'};
+          return sw[m] || m;
+        }).join(' - ');
+        icon = ['fa-seedling','fa-leaf','fa-tree','fa-star'][i-1] || 'fa-layer-group';
+      }
+
+      if (i === 1) label = 'Mada za Mwanzo';
+      else if (i === total) label = 'Mada za Mwisho';
+      else label = 'Mada za Kati';
+
       const isDone = i < current;
       const isActive = i === current;
       const isFuture = i > current;
