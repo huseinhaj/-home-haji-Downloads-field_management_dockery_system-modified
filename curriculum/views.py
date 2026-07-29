@@ -661,8 +661,7 @@ def ajax_generate_scheme(request):
         breaks = data.get('breaks', [])
 
         full_class_name = f"{class_name}{stream}" if stream else class_name
-        ref_text = f"
-Reference source: {reference_source}" if reference_source else ''
+        ref_text = f"\nReference source: {reference_source}" if reference_source else ''
 
         # ── Determine language instruction ──
         _lang_tlm = get_tlm_teacher(request)
@@ -831,11 +830,10 @@ CRITICAL:
                     b_start = b.get('start', '')
                     b_end = b.get('end', '')
                     group_scope_lines.append(
-                        f"  INCLUDE a BREAK ROW for "{b_name.upper()} ({b_start} – {b_end})" in {m}."
+                        f"  INCLUDE a BREAK ROW for '{b_name.upper()} ({b_start} - {b_end})' in {m}."
                     )
 
-            group_scope = '
-'.join(group_scope_lines)
+            group_scope = '\n'.join(group_scope_lines)
             group_prompts.append(_make_prompt(group_scope, group_weeks))
             group_metas.append(month_list)
 
