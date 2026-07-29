@@ -950,13 +950,31 @@ document.addEventListener('DOMContentLoaded', function() {
     calcTotals('total_boys');
     
     // 2. Education level → dispatch change (synchronous — populates class + subject options)
+    // NOTE: saved education_level is a choice value ('ordinary','primary','advanced')
+    // but the <option> display text is like 'Ordinary Level'. Use includes(), not ===
     if (fd.education_level) {
       const levelLower = fd.education_level.toLowerCase();
+      let levelFound = false;
       for (let opt of levelSelect.options) {
-        if (opt.value && (opt.textContent || '').toLowerCase() === levelLower) {
-          levelSelect.value = opt.value;
-          levelSelect.dispatchEvent(new Event('change'));
-          break;
+        if (opt.value) {
+          const optText = (opt.textContent || '').toLowerCase();
+          // Match: 'ordinary' → 'Ordinary Level' ✓ (includes), 'primary' → 'Primary School' ✓
+          if (optText.includes(levelLower) || levelLower.includes(optText)) {
+            levelSelect.value = opt.value;
+            levelSelect.dispatchEvent(new Event('change'));
+            levelFound = true;
+            break;
+          }
+        }
+      }
+      // Fallback: try exact match on value (in case saved data has level id)
+      if (!levelFound) {
+        for (let opt of levelSelect.options) {
+          if (opt.value && opt.value === fd.education_level) {
+            levelSelect.value = opt.value;
+            levelSelect.dispatchEvent(new Event('change'));
+            break;
+          }
         }
       }
     }
