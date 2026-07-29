@@ -719,7 +719,7 @@ Reference source: {reference_source}" if reference_source else ''
                 start_str = b.get('start', '')
                 if start_str:
                     try:
-                        start_dt_brk = _cal.datetime.strptime(start_str, '%Y-%m-%d')
+                        start_dt_brk = datetime.strptime(start_str, '%Y-%m-%d')
                         brk_month_name = _cal.month_name[start_dt_brk.month].upper()
                         if brk_month_name in _all_month_names:
                             breaks_by_month[brk_month_name].append(b)
