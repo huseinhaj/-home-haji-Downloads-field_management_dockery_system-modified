@@ -132,6 +132,32 @@ def _call_gemini(prompt_text, api_key):
     return text
 
 
+def _call_gemini_stream(prompt_text, api_key):
+    """Call Gemini API streaming via direct HTTP. Yields text chunks."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt_text}]}],
+        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 16384},
+    }
+    with requests.post(url, json=payload, stream=True, timeout=300) as resp:
+        if resp.status_code != 200:
+            raise RuntimeError(f"Gemini stream error {resp.status_code}: {resp.text[:200]}")
+        for line in resp.iter_lines(decode_unicode=True):
+            if line and line.startswith("data: "):
+                chunk_data = line[6:]
+                if chunk_data == "[DONE]":
+                    break
+                try:
+                    chunk_json = json.loads(chunk_data)
+                    candidates = chunk_json.get("candidates", [])
+                    if candidates:
+                        text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        if text:
+                            yield text
+                except json.JSONDecodeError:
+                    continue
+
+
 def _call_groq(messages, model, api_key, temperature=0.7, max_tokens=8192):
     """Call Groq API via direct HTTP. Returns response text."""
     url = "https://api.groq.com/openai/v1/chat/completions"
