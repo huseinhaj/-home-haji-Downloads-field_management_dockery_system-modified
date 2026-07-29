@@ -118,6 +118,31 @@
   }
 
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ── Loading spinner visibility (use class, not inline style) ── */
+  #loadingSpinner { display: none !important; }
+  #loadingSpinner.show { display: block !important; }
+
+  /* ── Progress bar animation (pulse even when stuck) ── */
+  #progressBar {
+    transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  #progressBar.pulsing {
+    animation: progressPulse 2s ease-in-out infinite;
+  }
+  @keyframes progressPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  /* ── Spinning icon animation ── */
+  @keyframes iconSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .progress-icon-spin {
+    animation: iconSpin 1.5s linear infinite;
+  }
 </style>
 {% endblock %}
 
@@ -308,7 +333,7 @@
     <!-- ─── RIGHT: Results ─── -->
     <div class="col-lg-8 col-xl-9">
       <!-- Loading: Modern Progress Bar -->
-      <div id="loadingSpinner" class="c-card" style="display:none;overflow:hidden;">
+      <div id="loadingSpinner" class="c-card" style="overflow:hidden;">
         <div style="padding:2rem 1.5rem 1.5rem;">
           <!-- Animated header -->
           <div style="text-align:center;margin-bottom:1.5rem;">
@@ -700,23 +725,26 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function generateScheme() {
+    // ── Show progress bar IMMEDIATELY (use classList for reliable CSS) ──
     generateBtn.disabled = true;
-    generateBtn.innerHTML = '<div class="spinner-tlm" style="width:16px;height:16px;border-width:2px;"></div> Inazalisha...';
-    spinner.style.display = 'block';
+    generateBtn.innerHTML = '<div class="spinner-tlm" style="width:16px;height:16px;border-width:2px;border-color:rgba(255,255,255,0.3) transparent rgba(255,255,255,0.3) rgba(255,255,255,0.3);"></div> Inazalisha...';
+    spinner.classList.add('show');
     resultsArea.style.display = 'none';
     emptyState.style.display = 'none';
 
-    // ── Show indeterminate progress animation ──
+    // ── Show indeterminate progress ──
     progressStartTime = Date.now();
     document.getElementById('progressTitle').textContent = '⏳ Inazalisha Scheme of Work...';
-    document.getElementById('progressSubtitle').textContent = 'Hii inaweza kuchukua sekunde 40-60. Subiri tafadhali...';
-    document.getElementById('progressStageLabel').textContent = 'Inazalisha kwa kasi...';
+    document.getElementById('progressSubtitle').textContent = 'Hii inaweza kuchukua sekunde 1-3. Subiri tafadhali...';
+    document.getElementById('progressStageLabel').textContent = 'Inazalisha...';
     document.getElementById('progressPercent').textContent = '...';
     document.getElementById('progressCurrentGroup').textContent = '...';
     document.getElementById('progressTotalGroups').textContent = '...';
     document.getElementById('progressElapsed').textContent = '0s';
     progressBar.style.width = '60%';
-    document.getElementById('progressIcon').className = 'fas fa-spinner fa-pulse';
+    progressBar.classList.add('pulsing');
+    document.getElementById('progressIcon').className = 'fas fa-spinner progress-icon-spin';
+    document.getElementById('progressIconContainer').style.background = 'linear-gradient(135deg,var(--green-500),#166534)';
 
     // ── Start elapsed time counter ──
     const elapsedInterval = setInterval(() => {
@@ -733,7 +761,7 @@ document.addEventListener('DOMContentLoaded', function() {
       clearInterval(elapsedInterval);
 
       if (!ok) {
-        spinner.style.display = 'none';
+        spinner.classList.remove('show');
         generateBtn.disabled = false;
         generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate with AI';
         showToast(data.error || 'Server error: ' + status, 'error');
@@ -742,15 +770,15 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       // ── Success: show the generated data ──
+      progressBar.classList.remove('pulsing');
       progressBar.style.width = '100%';
       document.getElementById('progressStageLabel').textContent = 'Imekamilika!';
       document.getElementById('progressPercent').textContent = '100%';
       document.getElementById('progressTitle').textContent = '✅ Scheme of Work Imekamilika!';
       document.getElementById('progressSubtitle').textContent = 'Unaweza kuangalia na kupakua matokeo.';
       document.getElementById('progressIcon').className = 'fas fa-check-circle';
-
-      setTimeout(() => {
-        spinner.style.display = 'none';
+      document.getElementById('progressIconContainer').style.background = 'linear-gradient(135deg,var(--green-500),#166534)';        setTimeout(() => {
+        spinner.classList.remove('show');
         generateBtn.disabled = false;
         generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate with AI';
 
@@ -771,7 +799,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 600);
     }).catch(err => {
       clearInterval(elapsedInterval);
-      spinner.style.display = 'none';
+      spinner.classList.remove('show');
       generateBtn.disabled = false;
       generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate with AI';
       showToast('Network error: ' + err.message, 'error');
