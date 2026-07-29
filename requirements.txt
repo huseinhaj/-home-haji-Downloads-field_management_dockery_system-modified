@@ -49,6 +49,8 @@ celery==5.4.0
 google-auth==2.38.0
 google-auth-oauthlib==1.2.1
 google-api-python-client==2.166.0
+# Google Gemini AI (FREE fallback for curriculum)
+google-genai>=1.14.0
 django-celery-results==2.5.1
 djangorestframework==3.15.2
 django-filter==24.3
