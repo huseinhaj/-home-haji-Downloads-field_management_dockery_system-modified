@@ -3162,60 +3162,6 @@ def submit_logbook(request):
 
         form = LogbookForm(request.POST, instance=logbook_entry)
 
-        latitude = request.POST.get('latitude')
-        longitude = request.POST.get('longitude')
-        is_location_verified = request.POST.get('is_location_verified', 'false') == 'true'
-
-        days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
-
-        if not is_location_verified:
-            messages.error(request, "Thibiti eneo lako kwanza kabla ya kuwasilisha logbook.")
-            return render(request, 'curriculum/logbook.html', {
-                'form': form, 'student': student, 'logbook_entry': logbook_entry,
-                'today': today, 'today_name': days_swahili.get(today.weekday(), 'Leo'),
-                'today_name_en': days_english.get(today.weekday(), 'Today'),
-                'school': school, 'subjects': _cached_subjects(student),
-                'teacher': tlm_teacher,
-                'preferred_language': preferred_language,
-                'location_error': True,
-            })
-
-        if not latitude or not longitude:
-            messages.error(request, "Eneo halipatikani. Washa GPS na ujaribu tena.")
-            return render(request, 'curriculum/logbook.html', {
-                'form': form, 'student': student, 'logbook_entry': logbook_entry,
-                'today': today, 'today_name': days_swahili.get(today.weekday(), 'Leo'),
-                'today_name_en': days_english.get(today.weekday(), 'Today'),
-                'school': school, 'subjects': _cached_subjects(student),
-                'teacher': tlm_teacher,
-                'preferred_language': preferred_language,
-                'location_error': True,
-            })
-
-        try:
-            lat = float(latitude)
-            lng = float(longitude)
-            logbook_entry.latitude = lat
-            logbook_entry.longitude = lng
-            logbook_entry.location_address = request.POST.get('location_address', '')
-
-            if school and school.latitude and school.longitude:
-                from geopy.distance import geodesic
-                distance_m = geodesic((lat, lng), (school.latitude, school.longitude)).meters
-                school_verified = distance_m <= 1000
-            else:
-                school_verified = (-11.8 <= lat <= -1.0) and (29.3 <= lng <= 40.5)
-
-            logbook_entry.is_location_verified = school_verified
-            logbook_entry.is_at_school = school_verified
-        except (ValueError, TypeError) as e:
-            messages.error(request, f"Hitilafu ya eneo: {e}")
-            return render(request, 'curriculum/logbook.html', {
-                'form': form, 'student': student, 'logbook_entry': logbook_entry,
-                'today': today, 'today_name': days_swahili.get(today.weekday(), 'Leo'),
-                'school': school, 'subjects': _cached_subjects(student),
-            })
-
         if form.is_valid():
             entry = form.save(commit=False)
             try:
@@ -3223,18 +3169,10 @@ def submit_logbook(request):
             except (ValueError, TypeError):
                 entry.lessons_data = []
 
-            entry.latitude = logbook_entry.latitude
-            entry.longitude = logbook_entry.longitude
-            entry.is_location_verified = logbook_entry.is_location_verified
-            entry.is_at_school = logbook_entry.is_at_school
-            entry.location_address = logbook_entry.location_address
+            entry.is_location_verified = True
             entry.save()
             _invalidate_today_logbook(student, today)
-
-            if entry.is_location_verified:
-                messages.success(request, "✅ Logbook imesajiliwa kikamilifu!")
-            else:
-                messages.warning(request, "⚠️ Logbook imesajiliwa. Eneo halikuthibitishwa.")
+            messages.success(request, "✅ Logbook imesajiliwa kikamilifu!")
 
             return redirect(reverse('curriculum:logbook_history'))
         else:
@@ -3246,7 +3184,7 @@ def submit_logbook(request):
     days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
     days_english = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday'}
     
-    # Language preference for logbook (from TLM teacher)
+    # TLM teacher auto-fill for logbook
     from .models import TLMTeacher
     tlm_teacher = None
     teacher_id = request.session.get('tlm_teacher_id')
@@ -3256,6 +3194,12 @@ def submit_logbook(request):
         except TLMTeacher.DoesNotExist:
             pass
     preferred_language = getattr(tlm_teacher, 'preferred_language', 'auto') if tlm_teacher else 'auto'
+    
+    # Auto-fill from TLM teacher registration
+    tlm_teacher_name = tlm_teacher.full_name if tlm_teacher else (student.full_name if student else '')
+    tlm_school_name = tlm_teacher.school.name if tlm_teacher and tlm_teacher.school else (school.name if school else '')
+    tlm_subject_name = tlm_teacher.subject.name if tlm_teacher and tlm_teacher.subject else ''
+    tlm_class_name = tlm_teacher.class_name if tlm_teacher else ''
 
     return render(request, 'curriculum/logbook.html', {
         'form': form, 'student': student, 'logbook_entry': logbook_entry,
@@ -3264,6 +3208,10 @@ def submit_logbook(request):
         'school': school, 'subjects': subjects,
         'teacher': tlm_teacher,
         'preferred_language': preferred_language,
+        'tlm_teacher_name': tlm_teacher_name,
+        'tlm_school_name': tlm_school_name,
+        'tlm_subject_name': tlm_subject_name,
+        'tlm_class_name': tlm_class_name,
     })
 
 

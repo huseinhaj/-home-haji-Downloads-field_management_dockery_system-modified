@@ -2,13 +2,6 @@
 {% block title %}Andika Logbook{% endblock %}
 {% block content %}
 <style>
-  .gps-status {
-    display: flex; align-items: center; gap: 0.75rem;
-    padding: 0.85rem;
-    border-radius: var(--radius-md);
-    background: rgba(15,23,42,0.02);
-    border: 1px solid var(--border-color);
-  }
   .period-card {
     background: var(--bg-card-solid);
     border: 1px solid var(--border-color);
@@ -35,66 +28,44 @@
 
 <div class="container-fluid px-0">
   <!-- Header -->
-  <div class="c-card p-3 mb-3" style="border-left:4px solid var(--green-500);">
-    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-      <div class="stat-icon" style="background:var(--green-500);">
-        <i class="fas fa-book-open" style="color:#fff;font-size:1.1rem;"></i>
-      </div>
+  <div class="c-card p-2 mb-2" style="border-left:3px solid var(--green-500);">
+    <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
       <div style="flex:1;">
-        <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:clamp(0.9rem,1.5vw,1.15rem);">
+        <h4 style="font-family:var(--font-display);font-weight:700;color:var(--text-primary);margin:0;font-size:clamp(0.85rem,1.5vw,1.05rem);">
           📖 <span class="lang-label-sw">Logbook</span><span class="lang-label-en">Teacher's Logbook</span>
-          — {{ today_name }}, {{ today|date:"d F Y" }}
+          — {{ today_name }}, {{ today|date:"d/m/Y" }}
         </h4>
-        <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
-          {% if school %}{{ school.name }}{% endif %}
-          {% if student.selected_school.district %} &bull; {{ student.selected_school.district.name }}{% endif %}
-        </p>
+        <div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:1px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+          <span><i class="fas fa-school me-1 text-gold" style="font-size:9px;"></i>{{ tlm_school_name|default:school.name }}</span>
+          <span style="color:var(--text-muted);font-size:8px;">|</span>
+          <span><i class="fas fa-user me-1" style="font-size:9px;color:var(--primary);"></i>{{ tlm_teacher_name|default:student.full_name }}</span>
+          {% if tlm_subject_name %}
+          <span class="chip chip-green" style="font-size:8px;padding:0 6px;line-height:16px;">{{ tlm_subject_name }}</span>
+          {% endif %}
+        </div>
       </div>
       <!-- Language toggle -->
-      <div style="display:flex;align-items:center;gap:6px;">
-        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('sw')" id="langSwBtn" style="{% if preferred_language != 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:10px;padding:3px 10px;">
-          🇹🇿 Kiswahili
+      <div style="display:flex;align-items:center;gap:4px;">
+        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('sw')" id="langSwBtn" style="{% if preferred_language != 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:9px;padding:2px 8px;border-radius:4px;">
+          🇹🇿 SW
         </button>
-        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('en')" id="langEnBtn" style="{% if preferred_language == 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:10px;padding:3px 10px;">
-          🇬🇧 English
+        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('en')" id="langEnBtn" style="{% if preferred_language == 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:9px;padding:2px 8px;border-radius:4px;">
+          🇬🇧 EN
         </button>
       </div>
     </div>
   </div>
 
-  <div class="row g-3">
+  <div class="row g-2">
     <div class="col-lg-8">
       <div class="c-card">
         <div class="c-card-body">
-          {% if location_error %}
-          <div class="alert-tlm mb-3" style="border-left-color:var(--warning);">
-            <strong><i class="fas fa-map-marker-alt me-2"></i><span class="lang-label-sw">Eneo halijathibitishwa!</span><span class="lang-label-en">Location not verified!</span></strong>
-            <p class="mb-0 mt-1" style="font-size:var(--font-size-sm);"><span class="lang-label-sw">Bonyeza "Thibitisha Eneo" ili kuwasilisha logbook.</span><span class="lang-label-en">Click "Verify Location" to submit the logbook.</span></p>
-          </div>
-          {% endif %}
 
           <form method="post" id="logbookForm">
             {% csrf_token %}
-
-            <!-- Location Verification -->
-            <div class="gps-status mb-3">
-              <div style="flex:1;">
-                <strong style="font-size:var(--font-size-sm);color:var(--text-primary);">
-                  <i class="fas fa-map-marker-alt me-1" style="color:var(--gold-400);"></i>
-                  <span class="lang-label-sw">Uthibitisho wa Eneo</span><span class="lang-label-en">Location Verification</span>
-                </strong>
-                <div style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:2px;">
-                  <span id="locationStatus"><span class="lang-label-sw">Bado haujathibitishwa</span><span class="lang-label-en">Not yet verified</span></span>
-                </div>
-              </div>
-              <button type="button" class="btn-tlm btn-primary-tlm btn-sm-tlm" id="verifyLocationBtn">
-                <i class="fas fa-location-dot me-1"></i> <span class="lang-label-sw">Thibitisha</span><span class="lang-label-en">Verify</span>
-              </button>
-            </div>
             <input type="hidden" name="latitude" id="latitude" value="">
             <input type="hidden" name="longitude" id="longitude" value="">
-            <input type="hidden" name="location_address" id="location_address" value="">
-            <input type="hidden" name="is_location_verified" id="is_location_verified" value="false">
+            <input type="hidden" name="is_location_verified" id="is_location_verified" value="true">
             <input type="hidden" name="lessons_data" id="lessons_data" value="[]">
 
             <!-- Lesson Periods -->
@@ -150,7 +121,7 @@
       <div class="c-card p-3">
         <div class="sec-hd"><h3><i class="fas fa-info-circle"></i> <span class="lang-label-sw">Maelekezo</span><span class="lang-label-en">Instructions</span></h3></div>
         <ul style="font-size:var(--font-size-sm);color:var(--text-secondary);padding-left:1rem;margin:0;">
-          <li class="mb-2"><span class="lang-label-sw">Thibitisha eneo lako kwa GPS kabla ya kuwasilisha</span><span class="lang-label-en">Verify your location with GPS before submitting</span></li>
+          <li class="mb-2"><span class="lang-label-sw">Jaza kila kipindi ulichofundisha kwa ukamilifu</span><span class="lang-label-en">Fill in each lesson period you taught completely</span></li>
           <li class="mb-2"><span class="lang-label-sw">Jaza kila kipindi ulichofundisha</span><span class="lang-label-en">Fill in each lesson period you taught</span></li>
           <li class="mb-2"><span class="lang-label-sw">Andika changamoto na tafakari zako</span><span class="lang-label-en">Write challenges and personal reflection</span></li>
           <li><span class="lang-label-sw">Logbook inatumwa kwa siku za Jumatatu hadi Ijumaa tu</span><span class="lang-label-en">Logbook is submitted Monday to Friday only</span></li>
@@ -192,6 +163,7 @@ const L = {
 document.addEventListener('DOMContentLoaded', function() {
   let periodCount = 0;
   const subjects = [{% for subj in subjects %}'{{ subj.name }}',{% endfor %}];
+  const autoSubject = '{{ tlm_subject_name|escapejs }}';
   const prefersEnglish = '{{ preferred_language }}' === 'english';
   
   function tSw(key) { return L[key] ? L[key].sw : key; }
@@ -222,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <label class="lang-label lang-label-en">${tEn('subject')}</label>
           <select class="form-control form-control-sm period-subject" style="font-size:12px;">
             <option value="">${t('selectSubj')}</option>
-            ${subjects.map(s => `<option value="${s}">${s}</option>`).join('')}
+            ${subjects.map(s => `<option value="${s}"${autoSubject && s === autoSubject ? ' selected' : ''}>${s}</option>`).join('')}
           </select>
         </div>
         <div class="col-6 col-sm-2">
@@ -402,48 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   })();
 
-  // ── Location verification ──
-  document.getElementById('verifyLocationBtn').addEventListener('click', function() {
-    const btn = this;
-    const isEn = document.body.classList.contains('lang-en');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>' + (isEn ? 'Verifying...' : 'Inathibitisha...');
-
-    if (!navigator.geolocation) {
-      showToast(isEn ? 'GPS not supported on your browser.' : 'GPS haitumiki kwenye browser yako.', 'error');
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-location-dot me-1"></i> ' + (isEn ? 'Verify' : 'Thibitisha');
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        document.getElementById('latitude').value = pos.coords.latitude;
-        document.getElementById('longitude').value = pos.coords.longitude;
-        document.getElementById('is_location_verified').value = 'true';
-        document.getElementById('locationStatus').innerHTML = '<span style="color:var(--success);font-weight:700;"><i class="fas fa-check-circle me-1"></i>' + (isEn ? 'Location verified!' : 'Eneo limethibitishwa!') + '</span>';
-        btn.innerHTML = '<i class="fas fa-check me-1"></i> ' + (isEn ? 'Verified' : 'Imehakikiwa');
-        btn.style.background = 'var(--success)';
-        btn.disabled = true;
-        showToast(isEn ? 'Location verified!' : 'Eneo lako limehakikiwa!', 'success');
-
-        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`)
-          .then(r => r.json())
-          .then(data => {
-            document.getElementById('location_address').value = data.display_name || '';
-          })
-          .catch(() => {});
-      },
-      function(err) {
-        document.getElementById('is_location_verified').value = 'false';
-        document.getElementById('locationStatus').innerHTML = '<span style="color:var(--error);"><i class="fas fa-exclamation-circle me-1"></i>' + (isEn ? 'Failed: ' : 'Imeshindwa: ') + err.message + '</span>';
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-location-dot me-1"></i> ' + (isEn ? 'Retry' : 'Jaribu Tena');
-        showToast('GPS: ' + err.message, 'error');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  });
+  // Location is auto-verified (GPS removed per user request)
 });
 </script>
 {% endblock %}
