@@ -2,6 +2,75 @@
 
 {% block title %}Ingia — Kubadilishana Walimu{% endblock %}
 
+{% block extra_css %}
+<style>
+/* ── Searchable combobox ── */
+.combo-wrap {
+    position: relative;
+}
+.combo-input {
+    border: 1.5px solid var(--br); border-radius: var(--r1);
+    padding: clamp(.6rem, 1.5vw, .72rem) clamp(.75rem, 1.8vw, 1rem);
+    padding-left: 2.3rem;
+    font-size: clamp(.82rem, 1.8vw, .88rem);
+    font-family: 'Inter', sans-serif; color: var(--tx);
+    background: #fff; transition: all .18s; width: 100%; outline: none;
+}
+.combo-input:focus { border-color: var(--p3); box-shadow: 0 0 0 3px rgba(16,185,129,.12); }
+.combo-input.is-invalid { border-color: var(--red); }
+.combo-input::placeholder { color: var(--mu2); font-size: clamp(.75rem, 1.4vw, .82rem); }
+
+.compo-icon {
+    position: absolute; left: .85rem; top: 50%;
+    transform: translateY(-50%); color: var(--mu2); font-size: .78rem; pointer-events: none;
+    z-index: 2;
+}
+.compo-clear {
+    position: absolute; right: .75rem; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; color: var(--mu2); font-size: .85rem;
+    cursor: pointer; padding: .2rem; display: none; z-index: 2;
+}
+.compo-clear:hover { color: var(--red); }
+
+.combo-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: #fff; border: 1.5px solid var(--br2); border-radius: var(--r1);
+    box-shadow: var(--s3); max-height: min(300px, 50vh);
+    overflow-y: auto; z-index: 100; display: none;
+}
+.combo-dropdown.open { display: block; }
+
+.combo-option {
+    padding: .55rem .85rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+    transition: background .08s; border-bottom: 1px solid var(--bg);
+}
+.combo-option:last-child { border-bottom: none; }
+.combo-option:hover, .combo-option.highlighted { background: rgba(16,185,129,.08); }
+.combo-option .dname {
+    font-weight: 600; font-size: clamp(.8rem, 1.4vw, .86rem); color: var(--drk);
+}
+.combo-option .rname {
+    font-size: clamp(.62rem, 1vw, .68rem); color: var(--mu2);
+    background: var(--bg); border-radius: 50px; padding: .15rem .55rem;
+    white-space: nowrap; flex-shrink: 0;
+    border: 1px solid var(--br);
+}
+.combo-option .match {
+    background: rgba(245,158,11,.2); color: #92400e;
+    border-radius: 2px; padding: 0 2px; font-weight: 700;
+}
+.combo-noresult {
+    padding: .8rem .85rem; text-align: center;
+    font-size: clamp(.78rem, 1.3vw, .82rem); color: var(--mu2);
+}
+.combo-count {
+    font-size: .62rem; color: var(--mu2); margin-top: .3rem;
+}
+</style>
+{% endblock %}
+
 {% block hero %}
 <div class="t-hero">
     <div class="t-hero-content">
@@ -10,7 +79,7 @@
             Mwalimu Aliyekwisha Jaza
         </div>
         <h1>Ingia Mfumo</h1>
-        <p>Tumia namba yako ya simu na wilaya uliyoandika wakati wa kujisajili</p>
+        <p>Tumia namba yako ya simu + wilaya uliyoandika wakati wa kujisajili</p>
     </div>
 </div>
 {% endblock %}
@@ -38,7 +107,7 @@
                 </div>
                 {% endif %}
 
-                <form method="post">
+                <form method="post" id="loginForm">
                     {% csrf_token %}
 
                     <div style="margin-bottom:1rem;">
@@ -55,21 +124,23 @@
 
                     <div style="margin-bottom:1.2rem;">
                         <label class="form-label-t">Wilaya Unayofundisha *</label>
-                        <div class="input-icon-wrap">
-                            <i class="icon fas fa-map-marker-alt"></i>
-                            <select name="district"
-                                    class="form-control-t {% if errors.district %}is-invalid{% endif %}"
-                                    required>
-                                <option value="">— Chagua wilaya —</option>
-                                {% for d in all_districts %}
-                                <option value="{{ d }}" {% if form_data.district == d %}selected{% endif %}>{{ d }}</option>
-                                {% endfor %}
-                            </select>
+                        <div class="combo-wrap" id="districtCombo">
+                            <i class="fas fa-search compo-icon"></i>
+                            <input type="text"
+                                   class="combo-input {% if errors.district %}is-invalid{% endif %}"
+                                   id="districtSearch"
+                                   placeholder="Tafuta wilaya yako... — mfano: Dodoma CC"
+                                   value="{{ form_data.district|default:'' }}"
+                                   autocomplete="off">
+                            <button type="button" class="compo-clear" id="comboClear">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
+                            <input type="hidden" name="district" id="districtHidden"
+                                   value="{{ form_data.district|default:'' }}">
+                            <div class="combo-dropdown" id="comboDropdown"></div>
                         </div>
                         {% if errors.district %}<div class="invalid-msg"><i class="fas fa-exclamation-circle me-1"></i>{{ errors.district }}</div>{% endif %}
-                        <div style="font-size:clamp(.65rem,1.1vw,.72rem);color:var(--muted);margin-top:.25rem;">
-                            <i class="fas fa-info-circle me-1"></i>Chagua wilaya uliyoichagua wakati wa kujisajili
-                        </div>
+                        <div class="combo-count" id="districtCount"></div>
                     </div>
 
                     <button type="submit" class="btn-t-primary w-100 justify-content-center" style="font-size:clamp(.85rem,1.6vw,.92rem);padding:clamp(.7rem,1.5vw,.85rem);">
@@ -90,4 +161,195 @@
 
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ all_districts|json_script:"districts-data" }}
+<script>
+// ── Data: Wilaya zote za Tanzania ──
+const districts = JSON.parse(document.getElementById('districts-data').textContent);
+
+const searchInput   = document.getElementById('districtSearch');
+const hiddenInput   = document.getElementById('districtHidden');
+const dropdown      = document.getElementById('comboDropdown');
+const clearBtn      = document.getElementById('comboClear');
+const countEl       = document.getElementById('districtCount');
+
+let selectedDistrict = hiddenInput.value || '';
+let highlightedIndex = -1;
+let currentResults   = [];
+
+// ── Filter & render ──
+function filterDistricts(query) {
+    const q = query.toLowerCase().trim();
+    if (!q) {
+        // Show all districts (up to 50 for perf, with count)
+        currentResults = districts.slice(0, 50);
+        const total = districts.length;
+        renderDropdown(currentResults, q);
+        countEl.textContent = total + ' wilaya zote Tanzania — andika kutafuta';
+        return;
+    }
+
+    // Search by district name or region name
+    currentResults = districts.filter(d =>
+        d.name.toLowerCase().includes(q) ||
+        d.region.toLowerCase().includes(q)
+    );
+
+    const limit = 80;
+    const showing = currentResults.slice(0, limit);
+    renderDropdown(showing, q);
+
+    if (currentResults.length > limit) {
+        countEl.textContent = showing.length + '/' + currentResults.length + ' wilaya zinalingana — endelea kuandika';
+    } else {
+        countEl.textContent = currentResults.length + ' wilaya zinalingana';
+    }
+}
+
+function renderDropdown(items, query) {
+    if (items.length === 0) {
+        dropdown.innerHTML = '<div class="combo-noresult">😕 Hakuna wilaya inayolingana. Jaribu neno lingine.</div>';
+        dropdown.classList.add('open');
+        highlightedIndex = -1;
+        return;
+    }
+
+    highlightedIndex = -1;
+    let html = '';
+    items.forEach((d, i) => {
+        const dname = highlightMatch(d.name, query);
+        const rname = highlightMatch(d.region, query);
+        html += `<div class="combo-option" data-index="${i}" onclick="selectDistrict(${i})">`;
+        html += `<span class="dname">${dname}</span>`;
+        html += `<span class="rname">${rname}</span>`;
+        html += `</div>`;
+    });
+    dropdown.innerHTML = html;
+    dropdown.classList.add('open');
+}
+
+function highlightMatch(text, query) {
+    if (!query) return text;
+    const idx = text.toLowerCase().indexOf(query);
+    if (idx === -1) return text;
+    return text.slice(0, idx) +
+           '<span class="match">' + text.slice(idx, idx + query.length) + '</span>' +
+           text.slice(idx + query.length);
+}
+
+// ── Select a district ──
+function selectDistrict(index) {
+    const d = currentResults[index];
+    if (!d) return;
+    selectedDistrict = d.name;
+    searchInput.value = d.name + ' (' + d.region + ')';
+    hiddenInput.value = d.name;
+    dropdown.classList.remove('open');
+    clearBtn.style.display = 'flex';
+    countEl.textContent = '';
+}
+
+// ── Clear ──
+function clearDistrict() {
+    selectedDistrict = '';
+    searchInput.value = '';
+    hiddenInput.value = '';
+    dropdown.classList.remove('open');
+    clearBtn.style.display = 'none';
+    countEl.textContent = '';
+    searchInput.focus();
+}
+clearBtn.addEventListener('click', clearDistrict);
+
+// ── Input events ──
+searchInput.addEventListener('input', function() {
+    const val = this.value;
+    if (val !== selectedDistrict && val !== hiddenInput.value + ' (' + ')') {
+        // User is typing something new
+        hiddenInput.value = '';
+        selectedDistrict = '';
+    }
+    if (val.trim()) {
+        filterDistricts(val);
+        clearBtn.style.display = 'flex';
+    } else {
+        dropdown.classList.remove('open');
+        clearBtn.style.display = 'none';
+        countEl.textContent = '';
+    }
+});
+
+searchInput.addEventListener('focus', function() {
+    if (this.value.trim()) {
+        filterDistricts(this.value);
+    } else {
+        // Show all districts on focus if empty
+        filterDistricts('');
+    }
+});
+
+searchInput.addEventListener('keydown', function(e) {
+    const items = dropdown.querySelectorAll('.combo-option');
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        highlightedIndex = Math.min(highlightedIndex + 1, items.length - 1);
+        updateHighlight(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        highlightedIndex = Math.max(highlightedIndex - 1, 0);
+        updateHighlight(items);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (highlightedIndex >= 0 && items[highlightedIndex]) {
+            items[highlightedIndex].click();
+        } else if (currentResults.length === 1) {
+            selectDistrict(0);
+        }
+    } else if (e.key === 'Escape') {
+        dropdown.classList.remove('open');
+    }
+});
+
+function updateHighlight(items) {
+    items.forEach((item, i) => {
+        item.classList.toggle('highlighted', i === highlightedIndex);
+    });
+    if (highlightedIndex >= 0 && items[highlightedIndex]) {
+        items[highlightedIndex].scrollIntoView({ block: 'nearest' });
+    }
+}
+
+// ── Click outside closes dropdown ──
+document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('districtCombo');
+    if (!wrap.contains(e.target)) {
+        dropdown.classList.remove('open');
+    }
+});
+
+// ── Form submit: make sure hidden input has the value ──
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    if (!hiddenInput.value.trim()) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.classList.add('is-invalid');
+        setTimeout(() => searchInput.classList.remove('is-invalid'), 2000);
+        return;
+    }
+});
+
+// ── Init: if there's a pre-filled value, show it nicely ──
+(function init() {
+    if (hiddenInput.value) {
+        // Find the district in data to show region context
+        const found = districts.find(d => d.name === hiddenInput.value);
+        if (found) {
+            searchInput.value = found.name + ' (' + found.region + ')';
+            clearBtn.style.display = 'flex';
+        }
+    }
+})();
+</script>
 {% endblock %}

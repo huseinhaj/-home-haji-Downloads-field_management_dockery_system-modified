@@ -171,14 +171,18 @@ def donate(request):
 
 def login_returning(request):
     """Mwalimu aliyekwisha jaza taarifa aingie kwa namba ya simu + wilaya.
-    Tumia dropdown badala ya text input ili kuepuka makosa ya tahajia."""
+    Wilaya zote za Tanzania zinaonyeshwa kwenye dropdown inayoweza kusearch."""
     errors = {}
     form_data = {}
 
-    # Pata wilaya zote kwa dropdown — hakuna haja ya kukisia jina
+    # Pata wilaya zote za Tanzania pamoja na mikoa yake — kwa searchable dropdown
     try:
         from field_app.models import District
-        all_districts = list(District.objects.using('default').order_by('name').values_list('name', flat=True).distinct())
+        districts_qs = District.objects.using('default').select_related('region').order_by('region__name', 'name')
+        all_districts = [
+            {'name': d.name, 'region': d.region.name}
+            for d in districts_qs
+        ]
     except Exception:
         all_districts = []
 
