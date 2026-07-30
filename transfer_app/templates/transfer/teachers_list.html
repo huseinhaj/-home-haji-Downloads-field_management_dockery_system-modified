@@ -4,56 +4,261 @@
 
 {% block extra_css %}
 <style>
-/* ── Page-specific styles ── */
+/* ── Filter bar ── */
 .filter-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.6rem;}
-.credits-pill{display:inline-flex;align-items:center;gap:.5rem;padding:.42rem 1.1rem;border-radius:50px;font-size:.78rem;font-weight:700;cursor:pointer;text-decoration:none;transition:all .18s;}
-.credits-pill.has-credits{background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(10,92,68,.08));border:1.5px solid rgba(16,185,129,.3);color:var(--p1);}
-.credits-pill.no-credits{background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(239,68,68,.04));border:1.5px solid rgba(239,68,68,.25);color:#b91c1c;}
-.credits-pill .num{font-size:.95rem;font-weight:900;}
 .filter-select{border:1.5px solid var(--br);border-radius:50px;padding:.42rem 1.1rem;font-size:.78rem;font-weight:600;color:var(--p1);background:#fff;outline:none;cursor:pointer;appearance:none;padding-right:1.8rem;background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230a5c44' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right .6rem center;background-size:10px;}
 .filter-select:focus{border-color:var(--p3);box-shadow:0 0 0 3px rgba(16,185,129,.12);}
 
-/* Teacher cards */
-.tcard{background:#fff;border:1.5px solid var(--br);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;height:100%;transition:box-shadow .22s,transform .22s,border-color .22s;}
-.tcard:hover{border-color:var(--p3);box-shadow:0 8px 32px rgba(10,92,68,.13);transform:translateY(-3px);}
-.tcard-top{height:5px;background:linear-gradient(90deg,var(--p1) 0%,var(--p3) 60%,var(--gld) 100%);}
-.tcard-head{padding:1rem 1.15rem .75rem;display:flex;align-items:center;gap:.85rem;}
-.tcard-av{width:48px;height:48px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;color:#fff;border:3px solid var(--bg2);}
-.tcard-av.av-primary{background:linear-gradient(135deg,#0a5c44,#10b981);}
-.tcard-av.av-secondary{background:linear-gradient(135deg,#92400e,#f59e0b);}
-.tcard-nm{font-weight:800;font-size:.88rem;color:var(--drk);line-height:1.2;}
-.tcard-sc{font-size:.7rem;color:var(--mu);margin-top:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
-.tcard-body{padding:.6rem 1.15rem .9rem;flex:1;display:flex;flex-direction:column;gap:.55rem;}
-.tcard-row{display:flex;align-items:center;gap:.4rem;font-size:.74rem;color:var(--tx2);}
-.tcard-row i{color:var(--p1);width:13px;flex-shrink:0;font-size:.7rem;}
-.tcard-subj{background:linear-gradient(135deg,rgba(16,185,129,.06),rgba(10,92,68,.03));border:1px solid rgba(16,185,129,.18);border-radius:8px;padding:.4rem .7rem;font-size:.72rem;color:var(--tx2);margin-top:.1rem;}
-.tcard-foot{margin-top:auto;padding:.75rem 1.15rem 1rem;}
+/* ── ⭐ MODERN TEACHER CARD ⭐ ── */
+.tc {
+    background: var(--sf);
+    border: 1.5px solid var(--br);
+    border-radius: var(--r3);
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: all .25s cubic-bezier(.4,0,.2,1);
+    position: relative;
+}
+.tc:hover {
+    border-color: var(--p3);
+    box-shadow: var(--s3);
+    transform: translateY(-4px);
+}
+/* Top gradient bar with shimmer */
+.tc-top {
+    height: 5px;
+    background: linear-gradient(90deg, var(--p1) 0%, var(--p3) 50%, var(--gld) 100%);
+    position: relative;
+    overflow: hidden;
+}
+.tc-top::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.35) 50%, transparent 100%);
+    animation: shimmer 2.5s infinite;
+}
+@keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
 
-/* Badge variants */
-.lv{display:inline-flex;align-items:center;gap:.3rem;font-size:.63rem;font-weight:800;border-radius:50px;padding:.2rem .6rem;letter-spacing:.3px;}
-.lv-pri{background:rgba(10,92,68,.1);color:var(--p1);border:1px solid rgba(10,92,68,.2);}
-.lv-sec{background:rgba(245,158,11,.1);color:#92400e;border:1px solid rgba(245,158,11,.25);}
-.lv-vil{background:rgba(34,197,94,.08);color:#166534;border:1px solid rgba(34,197,94,.2);}
-.lv-urb{background:rgba(99,102,241,.08);color:#4338ca;border:1px solid rgba(99,102,241,.2);}
-.lv-mid{background:rgba(14,165,233,.08);color:#0369a1;border:1px solid rgba(14,165,233,.2);}
+/* Avatar — large, beautiful */
+.tc-av-wrap {
+    padding: 1.15rem 1.15rem 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+}
+.tc-av {
+    width: 56px; height: 56px; flex-shrink: 0;
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: 900; color: #fff;
+    position: relative;
+    box-shadow: 0 4px 14px rgba(10,92,68,.25);
+}
+.tc-av.primary { background: linear-gradient(135deg, #0a5c44, #10b981); }
+.tc-av.secondary { background: linear-gradient(135deg, #92400e, #f59e0b); }
+.tc-av .status-dot {
+    position: absolute; bottom: -2px; right: -2px;
+    width: 14px; height: 14px;
+    border: 2.5px solid #fff;
+    border-radius: 50%;
+    background: #22c55e;
+}
+.tc-name-area { flex: 1; min-width: 0; padding-top: .2rem; }
+.tc-name {
+    font-weight: 800; font-size: .95rem; color: var(--drk);
+    line-height: 1.2; letter-spacing: -.2px;
+}
+.tc-school {
+    font-size: .7rem; color: var(--mu);
+    margin-top: .2rem; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+    display: flex; align-items: center; gap: .35rem;
+}
+.tc-school i { color: var(--mu2); font-size: .62rem; }
 
-/* Phone reveal */
-.phone-locked{display:flex;align-items:center;justify-content:center;gap:.6rem;padding:.6rem;background:var(--bg);border:1.5px dashed var(--br2);border-radius:50px;font-size:.82rem;color:var(--mu);margin-bottom:.5rem;font-family:monospace;letter-spacing:2px;}
-.btn-unlock{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.62rem 1rem;border:none;border-radius:50px;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .18s;background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;box-shadow:0 3px 12px rgba(10,92,68,.25);}
-.btn-unlock:hover{background:linear-gradient(135deg,var(--p2),var(--p3));box-shadow:0 5px 18px rgba(10,92,68,.35);transform:translateY(-1px);}
-.btn-buy-cred{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.6rem 1rem;border:1.5px solid var(--gld);border-radius:50px;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .18s;background:rgba(245,158,11,.07);color:#92400e;text-decoration:none;}
-.btn-buy-cred:hover{background:rgba(245,158,11,.15);box-shadow:0 3px 12px rgba(245,158,11,.2);}
-.btn-call{display:flex;align-items:center;justify-content:center;gap:.6rem;width:100%;padding:.65rem 1rem;border:none;border-radius:50px;font-size:.85rem;font-weight:800;background:linear-gradient(135deg,#059669,#10b981);color:#fff;text-decoration:none;box-shadow:0 3px 14px rgba(5,150,105,.3);transition:all .18s;}
-.btn-call:hover{box-shadow:0 5px 20px rgba(5,150,105,.4);transform:translateY(-1px);}
+/* Level badge */
+.lv-badge {
+    display: inline-flex; align-items: center; gap: .25rem;
+    font-size: .6rem; font-weight: 800;
+    border-radius: 50px; padding: .22rem .55rem;
+    letter-spacing: .3px; white-space: nowrap;
+    flex-shrink: 0; margin-top: .3rem;
+}
+.lv-pri { background: rgba(16,185,129,.1); color: #0a5c44; border: 1px solid rgba(16,185,129,.25); }
+.lv-sec { background: rgba(245,158,11,.1); color: #92400e; border: 1px solid rgba(245,158,11,.25); }
 
-/* No-credits banner */
-.no-cred-banner{display:flex;align-items:center;flex-wrap:wrap;gap:.9rem;padding:1rem 1.3rem;background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(245,158,11,.03));border:1.5px solid rgba(245,158,11,.28);border-radius:14px;margin-bottom:1.5rem;}
-.no-cred-banner .label{font-weight:800;font-size:.88rem;color:#92400e;}
-.no-cred-banner .sub{font-size:.76rem;color:#a16207;margin-top:.1rem;}
+/* Body */
+.tc-body { padding: .85rem 1.15rem .5rem; flex: 1; display: flex; flex-direction: column; gap: .5rem; }
 
-/* Come-back strip */
-.comeback-strip{display:flex;align-items:flex-start;gap:.9rem;padding:1.1rem 1.4rem;background:linear-gradient(135deg,rgba(245,158,11,.07),rgba(245,158,11,.03));border:1.5px solid rgba(245,158,11,.22);border-radius:14px;margin-top:2.5rem;}
-.comeback-strip i{color:var(--gld);font-size:1.1rem;flex-shrink:0;margin-top:.1rem;}
+.tc-info-row {
+    display: flex; align-items: center; gap: .45rem;
+    font-size: .74rem; color: var(--tx2);
+}
+.tc-info-row .ico {
+    width: 18px; flex-shrink: 0;
+    color: var(--p1); font-size: .66rem;
+    text-align: center;
+}
+.tc-info-row strong { font-weight: 700; color: var(--drk); }
+
+/* Location chip */
+.loc-chip {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .65rem; font-weight: 700;
+    border-radius: 50px; padding: .18rem .5rem;
+}
+.loc-chip.village { background: rgba(34,197,94,.08); color: #166534; border: 1px solid rgba(34,197,94,.2); }
+.loc-chip.urban { background: rgba(99,102,241,.08); color: #4338ca; border: 1px solid rgba(99,102,241,.2); }
+.loc-chip.middle { background: rgba(14,165,233,.08); color: #0369a1; border: 1px solid rgba(14,165,233,.2); }
+
+/* Subjects tag */
+.subj-tags {
+    display: flex; flex-wrap: wrap; gap: .3rem;
+    margin-top: .15rem;
+}
+.subj-tag {
+    font-size: .65rem; font-weight: 600;
+    background: linear-gradient(135deg, rgba(16,185,129,.08), rgba(10,92,68,.04));
+    border: 1px solid rgba(16,185,129,.18);
+    border-radius: 6px; padding: .2rem .5rem;
+    color: var(--tx2);
+}
+
+/* Willing to go */
+.will-go {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .68rem; font-weight: 600;
+    color: #92400e;
+    background: rgba(245,158,11,.08);
+    border: 1px solid rgba(245,158,11,.2);
+    border-radius: 8px;
+    padding: .35rem .6rem;
+    margin-top: .2rem;
+}
+.will-go i { color: var(--gld); font-size: .65rem; }
+
+/* Date */
+.tc-date {
+    font-size: .65rem; color: var(--mu2);
+    display: flex; align-items: center; gap: .35rem;
+    margin-top: .25rem;
+}
+.tc-date i { font-size: .6rem; }
+
+/* Footer — phone call button */
+.tc-foot {
+    padding: .6rem 1.15rem 1rem;
+    margin-top: auto;
+}
+.tc-phone {
+    display: flex; align-items: center; justify-content: center; gap: .6rem;
+    width: 100%;
+    padding: .72rem 1rem;
+    border: none;
+    border-radius: 50px;
+    font-size: .88rem; font-weight: 800;
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: #fff;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(5,150,105,.3);
+    transition: all .22s;
+    letter-spacing: .3px;
+}
+.tc-phone:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(5,150,105,.45);
+    color: #fff;
+}
+.tc-phone i {
+    font-size: .85rem;
+    animation: pulse-phone 2s ease infinite;
+}
+@keyframes pulse-phone {
+    0%,100%{transform:scale(1)} 50%{transform:scale(1.15)}
+}
+
+/* ── Donation banner ── */
+.donate-banner {
+    background: linear-gradient(135deg, #0a5c44 0%, #0d7a5c 50%, #10b981 100%);
+    border-radius: var(--r3);
+    padding: 2rem 2rem 1.8rem;
+    margin-top: 2.5rem;
+    position: relative;
+    overflow: hidden;
+    color: #fff;
+}
+.donate-banner::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+.donate-banner::after {
+    content: '❤';
+    position: absolute; bottom: -.4rem; right: -.2rem;
+    font-size: 8rem; opacity: .06; line-height: 1;
+}
+.donate-content { position: relative; z-index: 2; }
+.donate-title {
+    font-size: 1.1rem; font-weight: 900; margin-bottom: .3rem;
+    display: flex; align-items: center; gap: .6rem;
+}
+.donate-title .heart { color: #f87171; animation: heart-beat 1.2s ease infinite; display: inline-block; }
+@keyframes heart-beat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
+.donate-sub { font-size: .85rem; color: rgba(255,255,255,.75); margin-bottom: 1.2rem; }
+.donate-row {
+    display: flex; align-items: center; flex-wrap: wrap; gap: .75rem;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: var(--r2);
+    padding: 1rem 1.3rem;
+    margin-bottom: .5rem;
+}
+.donate-number {
+    font-size: 1.5rem; font-weight: 900; letter-spacing: 1.5px;
+    display: flex; align-items: center; gap: .75rem;
+}
+.donate-number .label {
+    font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: rgba(255,255,255,.6);
+}
+.donate-name { font-size: .82rem; font-weight: 600; color: rgba(255,255,255,.7); }
+.donate-amount {
+    display: inline-flex; align-items: center; gap: .35rem;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 50px;
+    padding: .35rem 1rem;
+    font-size: .8rem; font-weight: 800;
+    margin-left: auto;
+}
+.donate-note {
+    font-size: .72rem; color: rgba(255,255,255,.55);
+    margin-top: .6rem;
+    display: flex; align-items: flex-start; gap: .4rem;
+}
+
+/* ── Empty state ── */
+.empty-state-modern {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--sf);
+    border: 1.5px dashed var(--br2);
+    border-radius: var(--r3);
+    margin: 1.5rem 0;
+}
+.empty-state-modern .icon {
+    width: 64px; height: 64px; margin: 0 auto 1rem;
+    background: var(--bg2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; color: var(--p1);
+}
+.empty-state-modern h5 { font-weight: 800; color: var(--drk); margin-bottom: .5rem; }
+.empty-state-modern p { font-size: .85rem; color: var(--mu); max-width: 360px; margin: 0 auto 1.2rem; }
 </style>
 {% endblock %}
 
@@ -65,7 +270,7 @@
             {{ region.name }} › {{ district.name }}
         </div>
         <h1>Walimu Wanaotaka<br><span>Kubadilishana</span></h1>
-        <p>Fungua namba ya simu kwa credit moja — wasiliana moja kwa moja</p>
+        <p>Pata mwenzako wa kubadilishana — piga simu moja kwa moja, hakuna kizuizi!</p>
     </div>
 </div>
 {% endblock %}
@@ -73,33 +278,25 @@
 {% block content %}
 
 <!-- Breadcrumb -->
-<div class="t-breadcrumb" style="margin-bottom:1.4rem;">
+<div class="t-bc">
     <a href="{% url 'transfer:home' %}"><i class="fas fa-home me-1"></i>Nyumbani</a>
     <span class="sep">›</span>
     <a href="{% url 'transfer:browse_regions' %}">Mikoa</a>
     <span class="sep">›</span>
     <a href="{% url 'transfer:browse_districts' region.id %}">{{ region.name }}</a>
     <span class="sep">›</span>
-    <span class="current">{{ district.name }}</span>
+    <span class="cur">{{ district.name }}</span>
 </div>
 
 <!-- Filter row -->
 <div class="filter-row">
     <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
-        <!-- Total count -->
-        <div class="credits-pill has-credits" style="background:rgba(10,92,68,.07);border-color:rgba(10,92,68,.2);">
+        <div style="display:inline-flex;align-items:center;gap:.5rem;padding:.42rem 1.1rem;border-radius:50px;font-size:.78rem;font-weight:700;background:rgba(10,92,68,.07);border:1.5px solid rgba(10,92,68,.2);color:var(--p1);">
             <i class="fas fa-users" style="font-size:.75rem;"></i>
-            <span class="num">{{ total }}</span>
+            <span style="font-size:.95rem;font-weight:900;">{{ total }}</span>
             <span>walimu</span>
         </div>
-        <!-- Credits -->
-        <a href="{% url 'transfer:buy_credits' %}" class="credits-pill {% if credits > 0 %}has-credits{% else %}no-credits{% endif %}">
-            <i class="fas fa-coins" style="font-size:.78rem;"></i>
-            <span class="num">{{ credits }}</span>
-            <span>credit{% if credits != 1 %}s{% endif %}{% if credits == 0 %} — Nunua ↗{% endif %}</span>
-        </a>
     </div>
-    <!-- Level filter -->
     <form method="get">
         <select name="level" class="filter-select" onchange="this.form.submit()">
             <option value="">Kiwango Chote</option>
@@ -109,129 +306,147 @@
     </form>
 </div>
 
-{% if credits == 0 %}
-<!-- No-credits banner -->
-<div class="no-cred-banner">
-    <i class="fas fa-lock" style="color:var(--gld);font-size:1.2rem;flex-shrink:0;"></i>
-    <div class="flex-grow-1">
-        <div class="label">Huna Credits</div>
-        <div class="sub">Nunua credits (kuanzia TZS 1,000) ili uone namba za simu za walimu</div>
-    </div>
-    <a href="{% url 'transfer:buy_credits' %}" class="btn-t-primary" style="font-size:.8rem;padding:.56rem 1.3rem;white-space:nowrap;">
-        <i class="fas fa-coins"></i>Nunua Credits
-    </a>
-</div>
-{% endif %}
-
 {% if teachers %}
-<!-- Teacher cards -->
+<!-- ⭐ Teacher Cards Grid -->
 <div class="row g-3">
     {% for t in teachers %}
     <div class="col-xl-4 col-md-6 fade-up" style="animation-delay:{{ forloop.counter0 }}0ms;">
-        <div class="tcard">
-            <div class="tcard-top"></div>
-            <div class="tcard-head">
-                <div class="tcard-av {% if t.level == 'primary' %}av-primary{% else %}av-secondary{% endif %}">
+        <div class="tc">
+            <!-- Top bar with shimmer -->
+            <div class="tc-top"></div>
+
+            <!-- Avatar + Name -->
+            <div class="tc-av-wrap">
+                <div class="tc-av {% if t.level == 'primary' %}primary{% else %}secondary{% endif %}">
                     {{ t.name|slice:":1"|upper }}
+                    <span class="status-dot"></span>
                 </div>
-                <div class="flex-grow-1 min-w-0">
-                    <div class="tcard-nm">{{ t.name|title }}</div>
-                    <div class="tcard-sc" title="{{ t.current_school }}">
-                        <i class="fas fa-school me-1" style="color:var(--mu2);font-size:.65rem;"></i>{{ t.current_school }}
+                <div class="tc-name-area">
+                    <div class="tc-name">{{ t.name|title }}</div>
+                    <div class="tc-school">
+                        <i class="fas fa-school"></i>
+                        {{ t.current_school|truncatechars:35 }}
                     </div>
                 </div>
-                <!-- Level badge -->
                 {% if t.level == 'primary' %}
-                <span class="lv lv-pri"><i class="fas fa-graduation-cap"></i>Msingi</span>
+                <span class="lv-badge lv-pri"><i class="fas fa-graduation-cap"></i>Msingi</span>
                 {% else %}
-                <span class="lv lv-sec"><i class="fas fa-university"></i>Sekondari</span>
+                <span class="lv-badge lv-sec"><i class="fas fa-university"></i>Sekondari</span>
                 {% endif %}
             </div>
 
-            <div class="tcard-body">
-                <!-- Location -->
-                <div class="tcard-row">
-                    <i class="fas fa-map-pin"></i>
+            <!-- Details -->
+            <div class="tc-body">
+                <!-- Location type chip -->
+                <div class="tc-info-row">
+                    <span class="ico"><i class="fas fa-map-pin"></i></span>
                     {% if t.location_type == 'village' %}
-                    <span class="lv lv-vil">🌿 Kijijini</span>
+                    <span class="loc-chip village">🌿 Kijijini</span>
                     {% elif t.location_type == 'urban' %}
-                    <span class="lv lv-urb">🏙️ Mjini</span>
+                    <span class="loc-chip urban">🏙️ Mjini</span>
                     {% else %}
-                    <span class="lv lv-mid">🏘️ Mji Mdogo</span>
+                    <span class="loc-chip middle">🏘️ Mji Mdogo</span>
                     {% endif %}
                 </div>
-                <!-- Willing to go -->
-                {% if t.willing_to_go %}
-                <div class="tcard-row">
-                    <i class="fas fa-arrow-right" style="color:var(--gld);"></i>
-                    <span>Anataka kwenda: <strong>{{ t.get_willing_to_go_display }}</strong></span>
-                </div>
-                {% endif %}
+
                 <!-- Subjects -->
                 {% if t.subjects %}
-                <div class="tcard-subj">
-                    <i class="fas fa-book me-1" style="color:var(--p1);font-size:.68rem;"></i>{{ t.subjects }}
+                <div class="tc-info-row" style="align-items:flex-start;">
+                    <span class="ico" style="margin-top:.1rem;"><i class="fas fa-book"></i></span>
+                    <div class="subj-tags">
+                        {% with subs=t.subjects|cut:'"' %}
+                        {% for subj in subs.split %}
+                            <span class="subj-tag">{{ subj|cut:',' }}</span>
+                        {% endfor %}
+                        {% endwith %}
+                    </div>
                 </div>
                 {% endif %}
-                <!-- Date -->
-                <div class="tcard-row" style="color:var(--mu2);font-size:.7rem;">
-                    <i class="fas fa-clock" style="color:var(--mu2);"></i>
-                    {{ t.created_at|date:"d M Y" }}
+
+                <!-- Willing to go -->
+                {% if t.willing_to_go %}
+                <div class="tc-info-row">
+                    <span class="ico" style="color:var(--gld);"><i class="fas fa-arrow-right"></i></span>
+                    <span class="will-go">
+                        <i class="fas fa-flag"></i>
+                        Anataka kwenda: <strong>{{ t.get_willing_to_go_display }}</strong>
+                    </span>
+                </div>
+                {% endif %}
+
+                <!-- Registration date -->
+                <div class="tc-date">
+                    <i class="fas fa-clock"></i>
+                    Amejiunga: {{ t.created_at|date:"d M Y" }}
                 </div>
             </div>
 
-            <!-- Phone section -->
-            <div class="tcard-foot">
-                {% if t.id in unlocked_ids %}
-                <a href="tel:{{ t.phone }}" class="btn-call">
-                    <i class="fas fa-phone"></i>{{ t.phone }}
+            <!-- Phone call button — always visible! -->
+            <div class="tc-foot">
+                <a href="tel:{{ t.phone }}" class="tc-phone">
+                    <i class="fas fa-phone-alt"></i>
+                    {{ t.phone }}
                 </a>
-                {% else %}
-                <div class="phone-locked">
-                    <i class="fas fa-lock" style="font-size:.7rem;letter-spacing:0;"></i>
-                    {{ t.phone|slice:":4" }} *** ***
-                </div>
-                {% if credits > 0 %}
-                <form method="post" action="{% url 'transfer:unlock_contact' t.id %}" class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-unlock">
-                        <i class="fas fa-unlock-alt"></i>Fungua Namba — Credit 1
-                    </button>
-                </form>
-                {% else %}
-                <a href="{% url 'transfer:buy_credits' %}" class="btn-buy-cred">
-                    <i class="fas fa-coins"></i>Nunua Credits — TZS 1,000
-                </a>
-                {% endif %}
-                {% endif %}
             </div>
         </div>
     </div>
     {% endfor %}
 </div>
 
+<!-- ── Donation Banner ── -->
+<div class="donate-banner fade-up">
+    <div class="donate-content">
+        <div class="donate-title">
+            <span class="heart">❤</span>
+            Saidia Uendeshaji wa Mfumo
+        </div>
+        <div class="donate-sub">
+            Mfumo huu ni bure kabisa — namba za simu zinaonekana wazi. Ikiwa umepata msaada,
+            unaweza kuchangia TZS 1,000+ kwa hiari yako kusaidia uendeshaji na uhifadhi wa mfumo.
+        </div>
+        <div class="donate-row">
+            <div class="donate-number">
+                <div>
+                    <div class="label">❖ Namba ya Kupokea ❖</div>
+                    <div>{{ mpesa_number }}</div>
+                </div>
+            </div>
+            <div class="donate-name">{{ mpesa_name }}</div>
+            <div class="donate-amount">
+                <i class="fas fa-coins"></i>
+                TZS 1,000+
+            </div>
+        </div>
+        <div class="donate-note">
+            <i class="fas fa-info-circle" style="margin-top:.08rem;flex-shrink:0;"></i>
+            <span>Malipo yanaenda kwa uendeshaji wa mfumo — uhifadhi wa namba za simu, kodi ya mfumo, na huduma kwa walimu. Asante kwa msaada wako! 🙏</span>
+        </div>
+    </div>
+</div>
+
 <!-- Come-back reminder -->
-<div class="comeback-strip">
-    <i class="fas fa-clock"></i>
+<div style="display:flex;align-items:flex-start;gap:.9rem;padding:1.1rem 1.4rem;background:linear-gradient(135deg,rgba(245,158,11,.07),rgba(245,158,11,.03));border:1.5px solid rgba(245,158,11,.22);border-radius:var(--r2);margin-top:1.8rem;">
+    <i class="fas fa-clock" style="color:var(--gld);font-size:1.1rem;flex-shrink:0;margin-top:.1rem;"></i>
     <div>
         <div style="font-weight:800;font-size:.88rem;color:#92400e;margin-bottom:.25rem;">Haukupata unayemtafuta?</div>
         <div style="font-size:.78rem;color:#a16207;line-height:1.6;">
             Subiri — walimu wengine wanajisajili kila siku. Rudi mfumo kuangalia mara kwa mara.
+            Au <a href="{% url 'transfer:browse_districts' region.id %}" style="color:var(--p1);font-weight:700;">jaribu wilaya nyingine</a>.
         </div>
     </div>
 </div>
 
 {% else %}
 <!-- Empty state -->
-<div class="empty-state">
-    <div class="empty-icon"><i class="fas fa-user-slash"></i></div>
-    <h5>Hakuna Mwalimu Anayepatikana Sasa Hivi</h5>
-    <p style="max-width:380px;margin:0 auto;">
+<div class="empty-state-modern">
+    <div class="icon"><i class="fas fa-user-slash"></i></div>
+    <h5>Hakuna Mwalimu Kwa Sasa</h5>
+    <p>
         Hakuna mwalimu aliyejisajili katika wilaya ya <strong>{{ district.name }}</strong> kwa wakati huu.
         <br><br>
-        <strong>Subiri na urudi kuangalia</strong> — walimu wengine wanajisajili kila siku.
+        <strong>Rudi kuangalia baadaye</strong> — walimu wengine wanajisajili kila siku.
     </p>
-    <div style="display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-top:1.2rem;">
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;">
         <a href="{% url 'transfer:browse_districts' region.id %}" class="btn-t-outline">
             <i class="fas fa-arrow-left"></i>Jaribu Wilaya Nyingine
         </a>

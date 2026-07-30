@@ -1,0 +1,145 @@
+{% extends 'transfer/base.html' %}
+
+{% block title %}Changia — Mfumo wa Kubadilishana{% endblock %}
+
+{% block hero %}
+<div class="t-hero">
+    <div class="t-hero-content">
+        <div class="t-badge">
+            <i class="fas fa-heart" style="font-size:.7rem;color:#f87171;"></i>
+            Msaada wa Hiari
+        </div>
+        <h1>Changia Uendeshaji<br><span>wa Mfumo</span></h1>
+        <p>Mfumo huu ni bure kabisa — lakini una gharama za uendeshaji. Changia kwa hiari yako.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-7 col-lg-8 col-md-10">
+
+        <!-- Why donate -->
+        <div class="t-card fade-up mb-4">
+            <div class="t-card-header">
+                <div class="t-card-header-icon">
+                    <i class="fas fa-heart" style="color:#f87171;"></i>
+                </div>
+                <div>
+                    <h4>Kwa Nini Tunaomba Msaada?</h4>
+                    <p>Mfumo unatumika na mamia ya walimu Tanzania — bure kabisa!</p>
+                </div>
+            </div>
+            <div class="t-card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div style="background:var(--bg);border-radius:var(--radius-md);padding:1rem 1.1rem;border:1px solid var(--border);height:100%;">
+                            <div style="width:38px;height:38px;background:rgba(16,185,129,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:.6rem;">
+                                <i class="fas fa-server" style="color:var(--p1);font-size:.85rem;"></i>
+                            </div>
+                            <div style="font-weight:700;font-size:.85rem;margin-bottom:.2rem;">Uhifadhi wa Data</div>
+                            <div style="font-size:.74rem;color:var(--mu);line-height:1.5;">Namba za simu na taarifa za walimu zinahifadhiwa salama mtandaoni</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div style="background:var(--bg);border-radius:var(--radius-md);padding:1rem 1.1rem;border:1px solid var(--border);height:100%;">
+                            <div style="width:38px;height:38px;background:rgba(16,185,129,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:.6rem;">
+                                <i class="fas fa-globe" style="color:var(--p1);font-size:.85rem;"></i>
+                            </div>
+                            <div style="font-weight:700;font-size:.85rem;margin-bottom:.2rem;">Kodi za Mfumo</div>
+                            <div style="font-size:.74rem;color:var(--mu);line-height:1.5;">Mfumo unaendeshwa kwenye server za kulipiwa ili uwe salama na haraka kila wakati</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div style="background:var(--bg);border-radius:var(--radius-md);padding:1rem 1.1rem;border:1px solid var(--border);height:100%;">
+                            <div style="width:38px;height:38px;background:rgba(16,185,129,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:.6rem;">
+                                <i class="fas fa-headset" style="color:var(--p1);font-size:.85rem;"></i>
+                            </div>
+                            <div style="font-weight:700;font-size:.85rem;margin-bottom:.2rem;">Huduma kwa Walimu</div>
+                            <div style="font-size:.74rem;color:var(--mu);line-height:1.5;">Msaada wa kiufundi na uboreshaji wa mfumo ili kukidhi mahitaji yenu</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div style="background:var(--bg);border-radius:var(--radius-md);padding:1rem 1.1rem;border:1px solid var(--border);height:100%;">
+                            <div style="width:38px;height:38px;background:rgba(16,185,129,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:.6rem;">
+                                <i class="fas fa-mobile-alt" style="color:var(--p1);font-size:.85rem;"></i>
+                            </div>
+                            <div style="font-weight:700;font-size:.85rem;margin-bottom:.2rem;">Namba Za Simu Bure</div>
+                            <div style="font-size:.74rem;color:var(--mu);line-height:1.5;">Hakuna malipo ya kuona namba za simu — zote zinaonekana wazi kwa walimu wote!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background:linear-gradient(135deg,rgba(245,158,11,.06),rgba(245,158,11,.03));border:1.5px solid rgba(245,158,11,.2);border-radius:var(--radius-md);padding:1.2rem 1.3rem;">
+                    <div style="display:flex;align-items:flex-start;gap:.7rem;">
+                        <i class="fas fa-heart" style="color:#f87171;font-size:1.1rem;flex-shrink:0;margin-top:.08rem;"></i>
+                        <div>
+                            <div style="font-weight:800;font-size:.88rem;color:#92400e;margin-bottom:.2rem;">Hakuna Shuruti!</div>
+                            <div style="font-size:.78rem;color:#a16207;line-height:1.6;">
+                                Mchango wako ni <strong>wa hiari kabisa</strong>. Unaweza kuendelea kutumia mfumo
+                                bila kuchangia senti. Lakini kama umepata msaada kupitia mfumo huu,
+                                tafadhali fikiria kuchangia ili kusaidia walimu wengine.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment details card -->
+        <div class="t-card fade-up fade-up-1 mb-4">
+            <div class="t-card-body" style="padding:1.8rem;">
+                <div style="text-align:center;margin-bottom:1.5rem;">
+                    <div style="width:64px;height:64px;background:linear-gradient(135deg,var(--p1),var(--p3));border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto .9rem;box-shadow:0 6px 20px rgba(10,92,68,.25);">
+                        <i class="fas fa-mobile-alt" style="color:#fff;font-size:1.5rem;"></i>
+                    </div>
+                    <h4 style="font-weight:900;color:var(--drk);margin-bottom:.2rem;">Tuma Changia Yako</h4>
+                    <p style="font-size:.84rem;color:var(--mu);">Tuma kiasi chochote (TZS 1,000+) kwa namba hii:</p>
+                </div>
+
+                <div style="background:linear-gradient(135deg,rgba(6,95,70,.04),rgba(16,185,129,.03));border:2px solid var(--br2);border-radius:var(--radius-lg);padding:1.5rem 1.8rem;text-align:center;margin-bottom:1.5rem;">
+                    <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--mu);margin-bottom:.5rem;">❖ Namba ya Kupokea ❖</div>
+                    <div style="font-size:2.2rem;font-weight:900;color:var(--p1);letter-spacing:2px;margin-bottom:.2rem;">{{ mpesa_number }}</div>
+                    <div style="font-size:.9rem;font-weight:700;color:var(--tx2);">{{ mpesa_name }}</div>
+                </div>
+
+                <div style="text-align:left;">
+                    <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--p1);margin-bottom:.7rem;">Jinsi ya Kutuma</div>
+                    <ol style="padding-left:1.2rem;font-size:.85rem;color:var(--tx2);line-height:2.2;">
+                        <li>Fungua <strong>Halopesa / M-Pesa / Tigo Pesa / Airtel Money</strong></li>
+                        <li>Chagua <strong>Tuma Pesa</strong> (Send Money)</li>
+                        <li>Weka namba: <strong>{{ mpesa_number }}</strong></li>
+                        <li>Jina: <strong>{{ mpesa_name }}</strong></li>
+                        <li>Tuma <strong>TZS 1,000</strong> au zaidi — kwa hiari yako</li>
+                    </ol>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:.6rem;padding:.8rem 1rem;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.18);border-radius:var(--radius-sm);font-size:.78rem;color:#92400e;margin-top:1.2rem;">
+                    <i class="fas fa-clock" style="margin-top:.1rem;flex-shrink:0;"></i>
+                    <span><strong>Hakuna uthibitisho unaohitajika!</strong> Mchango wako unakwenda moja kwa moja kwa uendeshaji wa mfumo. Asante kwa msaada wako! 🙏</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thank you note -->
+        <div class="t-card fade-up fade-up-2" style="text-align:center;">
+            <div class="t-card-body" style="padding:1.5rem;">
+                <div style="font-size:2rem;margin-bottom:.5rem;">🙏</div>
+                <h5 style="font-weight:800;color:var(--drk);">Asante Sana!</h5>
+                <p style="font-size:.82rem;color:var(--mu);max-width:380px;margin:0 auto;">
+                    Kila mchango unatusaidia kuendelea kutoa huduma hii bure kwa walimu wote Tanzania.
+                    Pamoja tunaweza kuboresha elimu yetu!
+                </p>
+            </div>
+        </div>
+
+        <!-- Back link -->
+        <div style="text-align:center;margin-top:1.5rem;">
+            <a href="{% url 'transfer:browse_regions' %}" class="btn-t-ghost">
+                <i class="fas fa-arrow-left"></i>Rudi kwenye Orodha ya Walimu
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

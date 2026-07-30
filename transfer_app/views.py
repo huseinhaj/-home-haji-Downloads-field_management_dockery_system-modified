@@ -2,11 +2,9 @@ import os
 import uuid
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import TeacherTransfer, CreditBalance, UnlockedContact, PaymentRequest, CREDIT_PACKAGES
+from .models import TeacherTransfer
 
-# ── Badilisha namba hii na namba yako halisi ya Lipa Namba ──
 MPESA_NUMBER = os.environ.get('TRANSFER_MPESA_NUMBER', '0625607088')
 MPESA_NAME   = os.environ.get('TRANSFER_MPESA_NAME',   'Haji Hamisi Huseni')
 
@@ -36,21 +34,6 @@ def _get_teacher(request):
     return TeacherTransfer.objects.using('transfer').filter(
         session_key=session_key, is_active=True
     ).first()
-
-
-def _get_credits(session_key):
-    try:
-        return CreditBalance.objects.using('transfer').get(session_key=session_key).credits
-    except CreditBalance.DoesNotExist:
-        return 0
-
-
-def _get_unlocked_ids(session_key):
-    return set(
-        UnlockedContact.objects.using('transfer')
-        .filter(session_key=session_key)
-        .values_list('unlocked_teacher_id', flat=True)
-    )
 
 
 def home(request):
@@ -119,11 +102,9 @@ def browse_regions(request):
     if not teacher:
         return redirect('transfer:home')
     regions = _get_regions()
-    session_key = request.session.get('transfer_session_key', '')
     return render(request, 'transfer/browse_regions.html', {
         'teacher': teacher,
         'regions': regions,
-        'credits': _get_credits(session_key),
     })
 
 
@@ -137,10 +118,8 @@ def browse_districts(request, region_id):
     except Exception:
         return redirect('transfer:browse_regions')
     districts = _get_districts(region_id)
-    session_key = request.session.get('transfer_session_key', '')
     return render(request, 'transfer/browse_districts.html', {
         'teacher': teacher, 'region': region, 'districts': districts,
-        'credits': _get_credits(session_key),
     })
 
 
@@ -156,22 +135,14 @@ def teachers_in_district(request, region_id, district_id):
     except Exception:
         return redirect('transfer:browse_regions')
 
-    session_key = request.session.get('transfer_session_key', '')
-
     teachers = TeacherTransfer.objects.using('transfer').filter(
         district_name__iexact=district.name,
         is_active=True,
-    ).exclude(session_key=session_key)
+    ).exclude(session_key=request.session.get('transfer_session_key', ''))
 
     level_filter = request.GET.get('level', '')
     if level_filter:
         teachers = teachers.filter(level=level_filter)
-
-    # ── WALIMU WOTE: namba za simu zinaonekana bure (hakuna credit required) ──
-    # Hii inaweza kurejeshwa baadaye kwa kuondoa comment line ifuatayo na kufuta line ya chini:
-    # unlocked_ids = _get_unlocked_ids(session_key)
-    unlocked_ids = set(t.id for t in teachers)  # Fungua namba zote bure
-    credits      = _get_credits(session_key)
 
     return render(request, 'transfer/teachers_list.html', {
         'teacher':      teacher,
@@ -180,96 +151,22 @@ def teachers_in_district(request, region_id, district_id):
         'teachers':     teachers,
         'level_filter': level_filter,
         'total':        teachers.count(),
-        'unlocked_ids': unlocked_ids,
-        'credits':      credits,
-    })
-
-
-@require_POST
-def unlock_contact(request, teacher_id):
-    teacher = _get_teacher(request)
-    if not teacher:
-        return redirect('transfer:home')
-
-    session_key = request.session.get('transfer_session_key', '')
-
-    # Already unlocked → free
-    if UnlockedContact.objects.using('transfer').filter(
-        session_key=session_key, unlocked_teacher_id=teacher_id
-    ).exists():
-        return redirect(request.META.get('HTTP_REFERER', 'transfer:browse_regions'))
-
-    balance, _ = CreditBalance.objects.using('transfer').get_or_create(
-        session_key=session_key, defaults={'credits': 0}
-    )
-
-    if balance.credits < 1:
-        messages.warning(request, 'Huna credits. Nunua credits ili uone namba za simu.')
-        return redirect('transfer:buy_credits')
-
-    balance.credits -= 1
-    balance.save(using='transfer')
-    UnlockedContact.objects.using('transfer').create(
-        session_key=session_key,
-        unlocked_teacher_id=teacher_id,
-    )
-    return redirect(request.META.get('HTTP_REFERER', 'transfer:browse_regions'))
-
-
-def buy_credits(request):
-    teacher = _get_teacher(request)
-    if not teacher:
-        return redirect('transfer:home')
-
-    session_key = request.session.get('transfer_session_key', '')
-    credits     = _get_credits(session_key)
-
-    return render(request, 'transfer/buy_credits.html', {
-        'teacher':      teacher,
-        'credits':      credits,
-        'packages':     CREDIT_PACKAGES,
         'mpesa_number': MPESA_NUMBER,
         'mpesa_name':   MPESA_NAME,
     })
 
 
-def submit_payment(request):
+def donate(request):
+    """Msaada wa hiari — TZS 1,000 kwa uendeshaji wa mfumo."""
     teacher = _get_teacher(request)
     if not teacher:
         return redirect('transfer:home')
 
-    if request.method != 'POST':
-        return redirect('transfer:buy_credits')
-
-    session_key = request.session.get('transfer_session_key', '')
-    package_key = request.POST.get('package', '').strip()
-    mpesa_ref   = request.POST.get('mpesa_ref', '').strip().upper()
-
-    if package_key not in CREDIT_PACKAGES:
-        messages.error(request, 'Chagua kifurushi sahihi.')
-        return redirect('transfer:buy_credits')
-
-    if not mpesa_ref or len(mpesa_ref) < 6:
-        messages.error(request, 'Weka kumbukumbu nzuri ya malipo (angalau herufi 6).')
-        return redirect('transfer:buy_credits')
-
-    pkg = CREDIT_PACKAGES[package_key]
-
-    PaymentRequest.objects.using('transfer').create(
-        session_key=session_key,
-        teacher_name=teacher.name,
-        contact_phone=teacher.phone,
-        package=package_key,
-        mpesa_ref=mpesa_ref,
-        amount=pkg['price'],
-    )
-
-    messages.success(
-        request,
-        f"Ombi lako la {pkg['label']} limepokelewa! "
-        f"Credits zitaongezwa ndani ya saa 1-2 baada ya kuthibitisha malipo yako."
-    )
-    return redirect('transfer:buy_credits')
+    return render(request, 'transfer/donate.html', {
+        'teacher':      teacher,
+        'mpesa_number': MPESA_NUMBER,
+        'mpesa_name':   MPESA_NAME,
+    })
 
 
 def login_returning(request):
@@ -317,7 +214,6 @@ def login_returning(request):
 
 
 def logout_transfer(request):
-    """Toka tu — session inafutwa lakini taarifa zinabaki kwenye orodha."""
     if request.method == 'POST':
         request.session.pop('transfer_session_key', None)
     return redirect('transfer:home')
