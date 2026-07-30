@@ -167,7 +167,10 @@ def teachers_in_district(request, region_id, district_id):
     if level_filter:
         teachers = teachers.filter(level=level_filter)
 
-    unlocked_ids = _get_unlocked_ids(session_key)
+    # ── WALIMU WOTE: namba za simu zinaonekana bure (hakuna credit required) ──
+    # Hii inaweza kurejeshwa baadaye kwa kuondoa comment line ifuatayo na kufuta line ya chini:
+    # unlocked_ids = _get_unlocked_ids(session_key)
+    unlocked_ids = set(t.id for t in teachers)  # Fungua namba zote bure
     credits      = _get_credits(session_key)
 
     return render(request, 'transfer/teachers_list.html', {
