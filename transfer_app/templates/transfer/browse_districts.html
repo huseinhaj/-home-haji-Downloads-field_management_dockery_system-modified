@@ -40,7 +40,7 @@
 <!-- Grid -->
 <div class="row g-2 g-md-3" id="districtsGrid">
     {% for district in districts %}
-    <div class="col-xl-3 col-lg-4 col-md-4 col-6 district-item fade-up" style="animation-delay:{{ forloop.counter|add:'-1'|stringformat:'d'|slice:':1' }}0ms;">
+    <div class="col-xl-3 col-lg-4 col-md-4 col-6 district-item fade-up" style="animation-delay:{{ forloop.counter0 }}0ms;">
         <a href="{% url 'transfer:teachers_in_district' region.id district.id %}" class="loc-card">
             <div class="d-flex align-items-center gap-2 gap-md-3">
                 <div class="loc-icon" style="width:clamp(36px,5vw,42px);height:clamp(36px,5vw,42px);">
