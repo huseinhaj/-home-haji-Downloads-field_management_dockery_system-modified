@@ -66,10 +66,10 @@
           </div>
           <div style="flex:1;min-width:0;">
             <strong style="font-size:var(--font-size-sm,0.78rem);color:var(--text-primary,#0f172a);display:block;">
-              📱 Sakinisha TLM Tanzania
+              📱 Sakinisha App — Kubadilishana Walimu
             </strong>
             <p style="font-size:var(--font-size-xs,0.7rem);color:var(--text-secondary,#475569);margin:2px 0 0;line-height:1.3;">
-      Weka app hii kwenye skrini yako ya nyumbani kwa urahisi zaidi!
+              App hii inawasaidia walimu wanaotaka kuhama (transfer) kupata taarifa na namba za simu za walimu wenzao Tanzania.
             </p>
           </div>
         </div>
