@@ -2869,33 +2869,7 @@ def download_lesson_plan_pdf(request):
     def P(txt, st=normal):
         return Paragraph(str(txt or ''), st)
 
-    meta_rows = [
-        [P(_tl('Teacher', _lp_sw), label_s), P(form.get('teacher_name', '')),
-         P(_tl('Subject', _lp_sw), label_s), P(form.get('subject', ''))],
-        [P(_tl('Class', _lp_sw), label_s), P(form.get('class_name', '')),
-         P(_tl('Term/Year', _lp_sw), label_s), P(f"{_tl('Term', _lp_sw)} {form.get('term','')} {form.get('year','')}")],
-        [P(_tl('Topic', _lp_sw), label_s), P(form.get('topic', '')),
-         P(_tl('Subtopic', _lp_sw), label_s), P(form.get('subtopic', ''))],
-        [P(_tl('Duration', _lp_sw), label_s), P(f"{form.get('duration','')} min"),
-         P(_tl('Date', _lp_sw), label_s), P(str(timezone.now().date()))],
-        [P(_tl('Students', _lp_sw), label_s),
-         P(''), P(''), P('')],
-    ]
-    meta_tbl = Table(meta_rows, colWidths=[72, 188, 72, 191])
-    meta_tbl.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), LIGHT),
-        ('BACKGROUND', (2, 0), (2, -1), LIGHT),
-        ('GRID', (0, 0), (-1, -1), 0.4, BORDER),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('LEFTPADDING', (0, 0), (-1, -1), 5),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
-        ('LINEBELOW', (0, -1), (-1, -1), 1.2, GOLD),
-    ]))
-    elements.append(meta_tbl)
-    
-    # ── Student Statistics Table (Registered | Present | Absent) ──
+    # ── Student statistics data (embedded inside the Students cell) ──
     tb = str(form.get('total_boys', '') or '—')
     tg = str(form.get('total_girls', '') or '—')
     ts = str(form.get('total_students', '') or '—')
@@ -2924,30 +2898,55 @@ def download_lesson_plan_pdf(request):
     girls_label = _tl('Girls', _lp_sw)
     total_label = _tl('Total', _lp_sw)
     
-    stat_header = ParagraphStyle('LPSH', fontName='Helvetica-Bold', fontSize=8, textColor=colors.white, alignment=1, leading=11)
-    stat_cell = ParagraphStyle('LPSC', fontName='Helvetica', fontSize=8, alignment=1, leading=11)
-    stat_label = ParagraphStyle('LPSL', fontName='Helvetica-Bold', fontSize=8, textColor=NAVY, leading=11)
+    # Styles for embedded students stats table
+    _s_hdr = ParagraphStyle('_sh', fontName='Helvetica-Bold', fontSize=7.5, textColor=colors.white, alignment=1, leading=10)
+    _s_cel = ParagraphStyle('_sc', fontName='Helvetica', fontSize=7.5, alignment=1, leading=10)
+    _s_lbl = ParagraphStyle('_sl', fontName='Helvetica-Bold', fontSize=7.5, textColor=NAVY, leading=10)
+    _s_cb  = ParagraphStyle('_cb', fontName='Helvetica-Bold', fontSize=7.5, alignment=1, leading=10, textColor=NAVY)
     
-    stat_data = [
-        [Paragraph('', stat_label), Paragraph(f'<b>{reg_label}</b>', stat_header),
-         Paragraph(f'<b>{pres_label}</b>', stat_header), Paragraph(f'<b>{abs_label}</b>', stat_header)],
-        [Paragraph(f'{boys_label}', stat_label), Paragraph(tb, stat_cell), Paragraph(pb, stat_cell), Paragraph(ab, stat_cell)],
-        [Paragraph(f'{girls_label}', stat_label), Paragraph(tg, stat_cell), Paragraph(pg, stat_cell), Paragraph(ag, stat_cell)],
-        [Paragraph(f'{total_label}', stat_label), Paragraph(ts, stat_cell), Paragraph(ps, stat_cell), Paragraph(a_stud, stat_cell)],
+    stat_rows = [
+        [Paragraph('', _s_hdr), Paragraph(f'<b>{reg_label}</b>', _s_hdr), Paragraph(f'<b>{pres_label}</b>', _s_hdr), Paragraph(f'<b>{abs_label}</b>', _s_hdr)],
+        [Paragraph(f'{boys_label}', _s_lbl),        Paragraph(tb, _s_cel),                 Paragraph(pb, _s_cel),                 Paragraph(ab, _s_cel)],
+        [Paragraph(f'{girls_label}', _s_lbl),       Paragraph(tg, _s_cel),                 Paragraph(pg, _s_cel),                 Paragraph(ag, _s_cel)],
+        [Paragraph(f'{total_label}', _s_cb),         Paragraph(ts, _s_cb),                  Paragraph(ps, _s_cb),                  Paragraph(a_stud, _s_cb)],
     ]
-    stat_tbl = Table(stat_data, colWidths=[72, 75, 75, 75])
-    stat_tbl.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), LIGHT),
-        ('BACKGROUND', (1, 0), (-1, 0), NAVY),
-        ('GRID', (0, 0), (-1, -1), 0.4, BORDER),
-        ('BOX', (0, 0), (-1, -1), 0.8, GOLD),
+    stat_inner = Table(stat_rows, colWidths=[48, 48, 48, 44])
+    stat_inner.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('BACKGROUND', (0, 1), (0, -1), LIGHT),
+        ('GRID', (0, 0), (-1, -1), 0.3, BORDER),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('LINEBELOW', (1, 0), (-1, -1), 0.4, BORDER),
-        ('LINEABOVE', (0, 2), (-1, 2), 0.8, GOLD),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 3),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
     ]))
-    elements.append(stat_tbl)
+
+    meta_rows = [
+        [P(_tl('Teacher', _lp_sw), label_s), P(form.get('teacher_name', '')),
+         P(_tl('Subject', _lp_sw), label_s), P(form.get('subject', ''))],
+        [P(_tl('Class', _lp_sw), label_s), P(form.get('class_name', '')),
+         P(_tl('Term/Year', _lp_sw), label_s), P(f"{_tl('Term', _lp_sw)} {form.get('term','')} {form.get('year','')}")],
+        [P(_tl('Topic', _lp_sw), label_s), P(form.get('topic', '')),
+         P(_tl('Subtopic', _lp_sw), label_s), P(form.get('subtopic', ''))],
+        [P(_tl('Duration', _lp_sw), label_s), P(f"{form.get('duration','')} min"),
+         P(_tl('Date', _lp_sw), label_s), P(str(timezone.now().date()))],
+        [P(_tl('Students', _lp_sw), label_s),
+         stat_inner, P(''), P('')],
+    ]
+    meta_tbl = Table(meta_rows, colWidths=[72, 188, 72, 191])
+    meta_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), LIGHT),
+        ('BACKGROUND', (2, 0), (2, -1), LIGHT),
+        ('GRID', (0, 0), (-1, -1), 0.4, BORDER),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('LINEBELOW', (0, -1), (-1, -1), 1.2, GOLD),
+    ]))
+    elements.append(meta_tbl)
     elements.append(Spacer(1, 10))
 
     for label, key, fallback in [('Main Competence', 'main_competence', ''),
