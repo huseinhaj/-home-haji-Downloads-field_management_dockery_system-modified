@@ -776,6 +776,13 @@ SWAHILI_ALL_LABELS = {
     'Learning Activities': 'Shughuli za Ujifunzaji',
     'Assessment Criteria': 'Vigezo vya Upimaji',
     'Remarks': 'Maoni',
+    # Student statistics
+    'Registered': 'Waliojiandikisha',
+    'Present': 'Waliohudhuria',
+    'Absent': 'Wasiohudhuria',
+    'Boys': 'Wavulana',
+    'Girls': 'Wasichana',
+    'Total': 'Jumla',
     # Remarks sub-labels
     '1. Strength': '1. Nguvu',
     '2. Weakness': '2. Udhaifu',
@@ -2872,8 +2879,7 @@ def download_lesson_plan_pdf(request):
         [P(_tl('Duration', _lp_sw), label_s), P(f"{form.get('duration','')} min"),
          P(_tl('Date', _lp_sw), label_s), P(str(timezone.now().date()))],
         [P(_tl('Students', _lp_sw), label_s),
-         P(f"{_tl('Students', _lp_sw)} — B:{form.get('total_boys','')} G:{form.get('total_girls','')} T:{form.get('total_students','')}"),
-         P(''), P('')],
+         P(''), P(''), P('')],
     ]
     meta_tbl = Table(meta_rows, colWidths=[72, 188, 72, 191])
     meta_tbl.setStyle(TableStyle([
@@ -2888,6 +2894,60 @@ def download_lesson_plan_pdf(request):
         ('LINEBELOW', (0, -1), (-1, -1), 1.2, GOLD),
     ]))
     elements.append(meta_tbl)
+    
+    # ── Student Statistics Table (Registered | Present | Absent) ──
+    tb = str(form.get('total_boys', '') or '—')
+    tg = str(form.get('total_girls', '') or '—')
+    ts = str(form.get('total_students', '') or '—')
+    pb = str(form.get('present_boys', '') or '—')
+    pg = str(form.get('present_girls', '') or '—')
+    ps = str(form.get('present_students', '') or '—')
+    ab = str(form.get('absent_boys', '') or '—')
+    ag = str(form.get('absent_girls', '') or '—')
+    a_stud = str(form.get('absent_students', '') or '—')
+    
+    # Calculate absent if not provided
+    if ab == '—' and tb != '—' and pb != '—':
+        try: ab = str(int(float(tb)) - int(float(pb)))
+        except: pass
+    if ag == '—' and tg != '—' and pg != '—':
+        try: ag = str(int(float(tg)) - int(float(pg)))
+        except: pass
+    if a_stud == '—' and ts != '—' and ps != '—':
+        try: a_stud = str(int(float(ts)) - int(float(ps)))
+        except: pass
+    
+    reg_label = _tl('Registered', _lp_sw)
+    pres_label = _tl('Present', _lp_sw)
+    abs_label = _tl('Absent', _lp_sw)
+    boys_label = _tl('Boys', _lp_sw)
+    girls_label = _tl('Girls', _lp_sw)
+    total_label = _tl('Total', _lp_sw)
+    
+    stat_header = ParagraphStyle('LPSH', fontName='Helvetica-Bold', fontSize=8, textColor=colors.white, alignment=1, leading=11)
+    stat_cell = ParagraphStyle('LPSC', fontName='Helvetica', fontSize=8, alignment=1, leading=11)
+    stat_label = ParagraphStyle('LPSL', fontName='Helvetica-Bold', fontSize=8, textColor=NAVY, leading=11)
+    
+    stat_data = [
+        [Paragraph('', stat_label), Paragraph(f'<b>{reg_label}</b>', stat_header),
+         Paragraph(f'<b>{pres_label}</b>', stat_header), Paragraph(f'<b>{abs_label}</b>', stat_header)],
+        [Paragraph(f'{boys_label}', stat_label), Paragraph(tb, stat_cell), Paragraph(pb, stat_cell), Paragraph(ab, stat_cell)],
+        [Paragraph(f'{girls_label}', stat_label), Paragraph(tg, stat_cell), Paragraph(pg, stat_cell), Paragraph(ag, stat_cell)],
+        [Paragraph(f'{total_label}', stat_label), Paragraph(ts, stat_cell), Paragraph(ps, stat_cell), Paragraph(a_stud, stat_cell)],
+    ]
+    stat_tbl = Table(stat_data, colWidths=[72, 75, 75, 75])
+    stat_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), LIGHT),
+        ('BACKGROUND', (1, 0), (-1, 0), NAVY),
+        ('GRID', (0, 0), (-1, -1), 0.4, BORDER),
+        ('BOX', (0, 0), (-1, -1), 0.8, GOLD),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LINEBELOW', (1, 0), (-1, -1), 0.4, BORDER),
+        ('LINEABOVE', (0, 2), (-1, 2), 0.8, GOLD),
+    ]))
+    elements.append(stat_tbl)
     elements.append(Spacer(1, 10))
 
     for label, key, fallback in [('Main Competence', 'main_competence', ''),
