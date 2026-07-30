@@ -7,6 +7,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+    <!-- ═══ PWA: Manifest & Meta Tags (Web App Install) ═══ -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Kubadilishana">
+    <link rel="apple-touch-icon" href="/static/curriculum/pwa-icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/curriculum/pwa-icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/static/curriculum/pwa-icon-512.png">
+    <meta name="msapplication-TileImage" content="/static/curriculum/pwa-icon-192.png">
+    <meta name="msapplication-TileColor" content="#0f172a">
+    <link rel="icon" type="image/svg+xml" href="/static/curriculum/pwa-icon.svg">
+
     <style>
         /* ═══════════════════════════════════════════════
            🎨 MODERN DESIGN TOKENS — 3-Color Scheme
@@ -784,6 +798,143 @@ function closeDrawer() {
     btn.classList.remove('active');
     document.body.style.overflow = '';
 }
+
+/* ============================================================
+   📱 PWA: Web App Install — Service Worker + Install Prompt
+   ============================================================ */
+(function() {
+  'use strict';
+
+  // ── Register Service Worker ──
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then(function(reg) {
+        console.log('[PWA] ✅ SW registered: ', reg.scope);
+      })
+      .catch(function(err) {
+        console.warn('[PWA] ❌ SW registration failed: ', err);
+      });
+  }
+
+  // ── Install Prompt ──
+  let deferredPrompt = null;
+  const STORAGE_KEY = 'transfer-pwa-dismissed';
+
+  window.addEventListener('beforeinstallprompt', function(event) {
+    event.preventDefault();
+    deferredPrompt = event;
+    if (!localStorage.getItem(STORAGE_KEY)) {
+      showInstallPrompt();
+    }
+  });
+
+  function showInstallPrompt() {
+    const existing = document.getElementById('pwaPrompt');
+    if (existing) existing.remove();
+
+    const prompt = document.createElement('div');
+    prompt.id = 'pwaPrompt';
+    prompt.innerHTML = `
+      <div id="pwaInner" style="
+        position: fixed; bottom: calc(var(--bottom-nav-h, 64px) + 12px);
+        right: 12px; left: 12px; z-index: 999;
+        max-width: 360px; margin-left: auto;
+        background: #fff; border-radius: 18px;
+        box-shadow: 0 8px 40px rgba(15,23,42,.25);
+        border: 1.5px solid #e2e8f0;
+        padding: 1rem 1.1rem;
+        animation: pwaSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      ">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <!-- App Icon -->
+          <div style="
+            width: 44px; height: 44px; flex-shrink: 0;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0f172a, #059669);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.15rem;
+            box-shadow: 0 3px 12px rgba(5,150,105,.3);
+          ">
+            <i class="fas fa-exchange-alt"></i>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:.82rem;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:4px;">
+              <span>📱 Sakinisha App</span>
+            </div>
+            <div style="font-size:.7rem;color:#64748b;margin:2px 0 0;line-height:1.3;">
+              Weka mfumo huu kwenye skrini yako ya nyumbani kwa urahisi zaidi!
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px;">
+          <button id="pwaLater" style="
+            background: none; border: none;
+            color: #94a3b8; font-size:.7rem; font-weight:600;
+            cursor: pointer; padding: 6px 12px; border-radius: 8px;
+            transition: background .15s;
+          ">Baadaye</button>
+          <button id="pwaDismiss" style="
+            background: none; border: none;
+            color: #ef4444; font-size:.7rem; font-weight:600;
+            cursor: pointer; padding: 6px 12px; border-radius: 8px;
+            transition: background .15s;
+          ">Usionyeshe tena</button>
+          <button id="pwaInstallBtn" style="
+            background: linear-gradient(135deg, #059669, #10b981);
+            border: none; color: #fff;
+            font-size:.72rem; font-weight:700;
+            cursor: pointer; padding: 7px 16px;
+            border-radius: 50px;
+            box-shadow: 0 3px 10px rgba(5,150,105,.3);
+            transition: transform .15s;
+          ">Sakinisha</button>
+        </div>
+      </div>
+      <style>
+        @keyframes pwaSlideUp {
+          from{opacity:0;transform:translateY(20px) scale(.95)}
+          to{opacity:1;transform:translateY(0) scale(1)}
+        }
+        #pwaInstallBtn:hover { transform: scale(1.04); }
+        #pwaLater:hover { background: #f1f5f9; }
+        #pwaDismiss:hover { background: rgba(239,68,68,.08); }
+        @media (min-width:768px) {
+          #pwaInner { bottom: 20px !important; right: 24px !important; left: auto !important; }
+        }
+      </style>
+    `;
+    document.body.appendChild(prompt);
+
+    document.getElementById('pwaInstallBtn').addEventListener('click', function() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(result) {
+        console.log('[PWA] User choice:', result.outcome);
+        deferredPrompt = null;
+        prompt.remove();
+      });
+    });
+    document.getElementById('pwaLater').addEventListener('click', function() {
+      prompt.remove();
+    });
+    document.getElementById('pwaDismiss').addEventListener('click', function() {
+      localStorage.setItem(STORAGE_KEY, 'true');
+      prompt.remove();
+    });
+  }
+
+  window.addEventListener('appinstalled', function() {
+    console.log('[PWA] ✅ App installed!');
+    const p = document.getElementById('pwaPrompt');
+    if (p) p.remove();
+  });
+
+  if (window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true) {
+    console.log('[PWA] ✅ Running as installed app');
+    document.documentElement.classList.add('pwa-standalone');
+  }
+})();
 </script>
 {% block extra_js %}{% endblock %}
 </body>
