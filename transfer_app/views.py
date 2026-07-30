@@ -273,9 +273,17 @@ def submit_payment(request):
 
 
 def login_returning(request):
-    """Mwalimu aliyekwisha jaza taarifa aingie kwa namba ya simu + wilaya."""
+    """Mwalimu aliyekwisha jaza taarifa aingie kwa namba ya simu + wilaya.
+    Tumia dropdown badala ya text input ili kuepuka makosa ya tahajia."""
     errors = {}
     form_data = {}
+
+    # Pata wilaya zote kwa dropdown — hakuna haja ya kukisia jina
+    try:
+        from field_app.models import District
+        all_districts = list(District.objects.using('default').order_by('name').values_list('name', flat=True).distinct())
+    except Exception:
+        all_districts = []
 
     if request.method == 'POST':
         form_data = request.POST.dict()
@@ -285,12 +293,12 @@ def login_returning(request):
         if not phone:
             errors['phone'] = 'Weka namba yako ya simu'
         if not district:
-            errors['district'] = 'Weka wilaya unayofundisha'
+            errors['district'] = 'Chagua wilaya unayofundisha'
 
         if not errors:
             teacher = TeacherTransfer.objects.using('transfer').filter(
                 phone=phone,
-                district_name__iexact=district,
+                district_name=district,
                 is_active=True,
             ).first()
 
@@ -299,11 +307,12 @@ def login_returning(request):
                 messages.success(request, f'Karibu tena, {teacher.name}! Umeingia mfumo.')
                 return redirect('transfer:home')
             else:
-                errors['general'] = 'Namba ya simu au wilaya si sahihi. Hakikisha umeandika vizuri kama ulivyojaza kwanza.'
+                errors['general'] = 'Namba ya simu au wilaya si sahihi. Hakikisha umechagua wilaya sahihi.'
 
     return render(request, 'transfer/login.html', {
         'errors': errors,
         'form_data': form_data,
+        'all_districts': all_districts,
     })
 
 

@@ -58,15 +58,18 @@
                         <label class="form-label-t">Wilaya Unayofundisha *</label>
                         <div class="input-icon-wrap">
                             <i class="icon fas fa-map-marker-alt"></i>
-                            <input type="text" name="district"
-                                   class="form-control-t {% if errors.district %}is-invalid{% endif %}"
-                                   value="{{ form_data.district|default:'' }}"
-                                   placeholder="mfano: Kinondoni"
-                                   required>
+                            <select name="district"
+                                    class="form-control-t {% if errors.district %}is-invalid{% endif %}"
+                                    required>
+                                <option value="">— Chagua wilaya —</option>
+                                {% for d in all_districts %}
+                                <option value="{{ d }}" {% if form_data.district == d %}selected{% endif %}>{{ d }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         {% if errors.district %}<div class="invalid-msg"><i class="fas fa-exclamation-circle me-1"></i>{{ errors.district }}</div>{% endif %}
                         <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">
-                            <i class="fas fa-info-circle me-1"></i>Andika jina la wilaya kama ulivyoandika wakati wa kujisajili
+                            <i class="fas fa-info-circle me-1"></i>Chagua wilaya uliyoichagua wakati wa kujisajili
                         </div>
                     </div>
 
