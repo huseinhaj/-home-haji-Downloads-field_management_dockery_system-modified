@@ -5,7 +5,7 @@
 {% block hero %}
 <div class="t-hero">
     <div class="t-hero-content">
-        <div class="t-hero-badge">
+        <div class="t-badge">
             <i class="fas fa-sign-in-alt" style="font-size:.7rem;"></i>
             Mwalimu Aliyekwisha Jaza
         </div>
@@ -32,8 +32,8 @@
             <div class="t-card-body">
 
                 {% if errors.general %}
-                <div style="display:flex;align-items:flex-start;gap:.75rem;padding:.9rem 1.2rem;border-radius:var(--r1);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#b91c1c;font-size:.85rem;margin-bottom:1.2rem;">
-                    <i class="fas fa-times-circle" style="margin-top:.1rem;flex-shrink:0;"></i>
+                <div style="display:flex;align-items:flex-start;gap:.6rem;padding:.8rem 1rem;border-radius:var(--r1);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#b91c1c;font-size:clamp(.78rem,1.4vw,.85rem);margin-bottom:1rem;">
+                    <i class="fas fa-times-circle" style="margin-top:.08rem;flex-shrink:0;"></i>
                     <span>{{ errors.general }}</span>
                 </div>
                 {% endif %}
@@ -41,20 +41,19 @@
                 <form method="post">
                     {% csrf_token %}
 
-                    <div style="margin-bottom:1.1rem;">
-                        <label class="form-label-t">Namba ya Simu Uliyosajilisha *</label>
+                    <div style="margin-bottom:1rem;">
+                        <label class="form-label-t">Namba ya Simu *</label>
                         <div class="input-icon-wrap">
                             <i class="icon fas fa-phone"></i>
                             <input type="tel" name="phone"
                                    class="form-control-t {% if errors.phone %}is-invalid{% endif %}"
                                    value="{{ form_data.phone|default:'' }}"
-                                   placeholder="0712 345 678"
-                                   required autofocus>
+                                   placeholder="0712 345 678" required autofocus>
                         </div>
                         {% if errors.phone %}<div class="invalid-msg"><i class="fas fa-exclamation-circle me-1"></i>{{ errors.phone }}</div>{% endif %}
                     </div>
 
-                    <div style="margin-bottom:1.5rem;">
+                    <div style="margin-bottom:1.2rem;">
                         <label class="form-label-t">Wilaya Unayofundisha *</label>
                         <div class="input-icon-wrap">
                             <i class="icon fas fa-map-marker-alt"></i>
@@ -68,21 +67,21 @@
                             </select>
                         </div>
                         {% if errors.district %}<div class="invalid-msg"><i class="fas fa-exclamation-circle me-1"></i>{{ errors.district }}</div>{% endif %}
-                        <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">
+                        <div style="font-size:clamp(.65rem,1.1vw,.72rem);color:var(--muted);margin-top:.25rem;">
                             <i class="fas fa-info-circle me-1"></i>Chagua wilaya uliyoichagua wakati wa kujisajili
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-t-primary w-100 justify-content-center" style="font-size:.92rem;padding:.85rem;">
+                    <button type="submit" class="btn-t-primary w-100 justify-content-center" style="font-size:clamp(.85rem,1.6vw,.92rem);padding:clamp(.7rem,1.5vw,.85rem);">
                         <i class="fas fa-sign-in-alt"></i>
                         Ingia Mfumo
                     </button>
                 </form>
 
-                <div style="text-align:center;margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid var(--border);">
-                    <div style="font-size:.8rem;color:var(--muted);margin-bottom:.75rem;">Bado hujajisajili?</div>
-                    <a href="{% url 'transfer:register' %}" class="btn-t-outline" style="font-size:.85rem;">
-                        <i class="fas fa-user-plus"></i>Jaza Taarifa Zangu — Anza Sasa
+                <div style="text-align:center;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border);">
+                    <div style="font-size:clamp(.75rem,1.3vw,.8rem);color:var(--muted);margin-bottom:.6rem;">Bado hujajisajili?</div>
+                    <a href="{% url 'transfer:register' %}" class="btn-t-outline" style="font-size:clamp(.8rem,1.5vw,.85rem);">
+                        <i class="fas fa-user-plus"></i>Jaza Taarifa Zangu
                     </a>
                 </div>
 

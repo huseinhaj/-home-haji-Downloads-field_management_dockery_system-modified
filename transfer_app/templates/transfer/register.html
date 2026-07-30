@@ -5,7 +5,7 @@
 {% block hero %}
 <div class="t-hero">
     <div class="t-hero-content">
-        <div class="t-hero-badge">
+        <div class="t-badge">
             <i class="fas fa-id-card" style="font-size:.7rem;"></i>
             Fomu ya Kusajiliwa
         </div>
@@ -33,12 +33,12 @@
                 <form method="post" id="registerForm" autocomplete="off">
                     {% csrf_token %}
 
-                    <!-- ── Section 1: Mwalimu ── -->
+                    <!-- Section 1: Mwalimu -->
                     <div class="section-divider">
                         <span><i class="fas fa-user me-1"></i>Taarifa za Mwalimu</span>
                     </div>
 
-                    <div class="row g-3">
+                    <div class="row g-2 g-md-3">
                         <div class="col-md-6">
                             <label class="form-label-t">Jina Kamili *</label>
                             <div class="input-icon-wrap">
@@ -59,8 +59,7 @@
                                 <input type="tel" name="phone"
                                        class="form-control-t {% if errors.phone %}is-invalid{% endif %}"
                                        value="{{ form_data.phone|default:'' }}"
-                                       placeholder="0712 345 678"
-                                       required>
+                                       placeholder="0712 345 678" required>
                             </div>
                             {% if errors.phone %}<div class="invalid-msg"><i class="fas fa-exclamation-circle me-1"></i>{{ errors.phone }}</div>{% endif %}
                         </div>
@@ -72,18 +71,17 @@
                                 <input type="text" name="current_school"
                                        class="form-control-t {% if errors.current_school %}is-invalid{% endif %}"
                                        value="{{ form_data.current_school|default:'' }}"
-                                       placeholder="mfano: Dodoma Secondary School"
-                                       required>
+                                       placeholder="mfano: Dodoma Secondary School" required>
                             </div>
                             {% if errors.current_school %}<div class="invalid-msg"><i class="fas fa-exclamation-circle me-1"></i>{{ errors.current_school }}</div>{% endif %}
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label-t">Kiwango cha Shule *</label>
+                            <label class="form-label-t">Kiwango *</label>
                             <select name="level" class="form-select-t {% if errors.level %}is-invalid{% endif %}" required>
                                 <option value="">Chagua...</option>
-                                <option value="primary" {% if form_data.level == 'primary' %}selected{% endif %}>Shule ya Msingi</option>
-                                <option value="secondary" {% if form_data.level == 'secondary' %}selected{% endif %}>Shule ya Sekondari</option>
+                                <option value="primary" {% if form_data.level == 'primary' %}selected{% endif %}>🏫 Shule ya Msingi</option>
+                                <option value="secondary" {% if form_data.level == 'secondary' %}selected{% endif %}>🏛️ Sekondari</option>
                             </select>
                             {% if errors.level %}<div class="invalid-msg"><i class="fas fa-exclamation-circle me-1"></i>{{ errors.level }}</div>{% endif %}
                         </div>
@@ -97,18 +95,18 @@
                                        value="{{ form_data.subjects|default:'' }}"
                                        placeholder="mfano: Hisabati, Fizikia, Kemia">
                             </div>
-                            <div style="font-size:.72rem;color:var(--muted);margin-top:.35rem;">
+                            <div style="font-size:clamp(.65rem,1.1vw,.72rem);color:var(--muted);margin-top:.3rem;">
                                 <i class="fas fa-info-circle me-1"></i>Tenganisha kwa koma kama una masomo mengi
                             </div>
                         </div>
                     </div>
 
-                    <!-- ── Section 2: Eneo ── -->
+                    <!-- Section 2: Eneo -->
                     <div class="section-divider">
                         <span><i class="fas fa-map-marker-alt me-1"></i>Eneo la Shule ya Sasa</span>
                     </div>
 
-                    <div class="row g-3">
+                    <div class="row g-2 g-md-3">
                         <div class="col-md-6">
                             <label class="form-label-t">Mkoa *</label>
                             <select name="region_name" id="region_select"
@@ -137,7 +135,7 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label-t">Aina ya Eneo Unapofundisha *</label>
+                            <label class="form-label-t">Aina ya Eneo *</label>
                             <select name="location_type" class="form-select-t {% if errors.location_type %}is-invalid{% endif %}" required>
                                 <option value="">Chagua Eneo...</option>
                                 <option value="village" {% if form_data.location_type == 'village' %}selected{% endif %}>🌿 Kijijini</option>
@@ -148,7 +146,7 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label-t">Unataka Kwenda Eneo Gani?</label>
+                            <label class="form-label-t">Unataka Kwenda?</label>
                             <select name="willing_to_go" class="form-select-t">
                                 <option value="">Yoyote (Sina Kikwazo)</option>
                                 <option value="village" {% if form_data.willing_to_go == 'village' %}selected{% endif %}>🌿 Kijijini</option>
@@ -158,18 +156,18 @@
                         </div>
                     </div>
 
-                    <!-- ── Privacy note ── -->
+                    <!-- Privacy note -->
                     <div class="info-box mt-4">
                         <i class="fas fa-shield-alt"></i>
                         <span>Namba yako ya simu itaonekana tu kwa walimu wengine waliojisajili kwenye mfumo huu. Taarifa zako hazitashirikiwa na mtu yeyote nje ya mfumo.</span>
                     </div>
 
-                    <!-- ── Actions ── -->
-                    <div class="d-flex justify-content-between align-items-center mt-4 pt-2" style="border-top:1px solid var(--border);">
+                    <!-- Actions -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.6rem;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border);">
                         <a href="{% url 'transfer:home' %}" class="btn-t-ghost">
                             <i class="fas fa-arrow-left"></i>Rudi
                         </a>
-                        <button type="submit" class="btn-t-primary" style="font-size:.92rem;padding:.8rem 2.5rem;">
+                        <button type="submit" class="btn-t-primary" style="font-size:clamp(.85rem,1.6vw,.92rem);padding:clamp(.7rem,1.5vw,.8rem) clamp(1.5rem,3vw,2.5rem);">
                             <i class="fas fa-paper-plane"></i>
                             Hifadhi na Endelea
                         </button>

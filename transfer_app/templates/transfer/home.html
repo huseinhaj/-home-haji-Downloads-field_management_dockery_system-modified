@@ -20,7 +20,7 @@
     <div class="col-xl-7 col-lg-8 col-md-10">
 
         {% if teacher %}
-        <!-- ── Mwalimu ameshasajiliwa ── -->
+        <!-- Registered user -->
         <div class="t-card fade-up mb-4">
             <div class="t-card-header">
                 <div class="t-card-header-icon">
@@ -32,32 +32,32 @@
                 </div>
             </div>
             <div class="t-card-body">
-                <!-- Profile summary grid -->
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.5rem;">
-                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:.85rem 1rem;border:1px solid var(--border);">
-                        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.3rem;">Shule</div>
-                        <div style="font-size:.88rem;font-weight:600;color:var(--text);">{{ teacher.current_school|truncatechars:35 }}</div>
+                <!-- Profile summary - responsive grid -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;margin-bottom:1.2rem;">
+                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:.7rem .8rem;border:1px solid var(--border);">
+                        <div style="font-size:clamp(.6rem,1.2vw,.68rem);font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:.25rem;">Shule</div>
+                        <div style="font-size:clamp(.8rem,1.5vw,.88rem);font-weight:600;color:var(--text);">{{ teacher.current_school|truncatechars:30 }}</div>
                     </div>
-                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:.85rem 1rem;border:1px solid var(--border);">
-                        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.3rem;">Wilaya</div>
-                        <div style="font-size:.88rem;font-weight:600;color:var(--text);">{{ teacher.district_name }}, {{ teacher.region_name }}</div>
+                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:.7rem .8rem;border:1px solid var(--border);">
+                        <div style="font-size:clamp(.6rem,1.2vw,.68rem);font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:.25rem;">Wilaya</div>
+                        <div style="font-size:clamp(.8rem,1.5vw,.88rem);font-weight:600;color:var(--text);">{{ teacher.district_name }}, {{ teacher.region_name }}</div>
                     </div>
-                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:.85rem 1rem;border:1px solid var(--border);">
-                        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.3rem;">Kiwango</div>
-                        <div style="font-size:.88rem;font-weight:600;color:var(--text);">{{ teacher.get_level_display }}</div>
+                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:.7rem .8rem;border:1px solid var(--border);">
+                        <div style="font-size:clamp(.6rem,1.2vw,.68rem);font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:.25rem;">Kiwango</div>
+                        <div style="font-size:clamp(.8rem,1.5vw,.88rem);font-weight:600;color:var(--text);">{{ teacher.get_level_display }}</div>
                     </div>
-                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:.85rem 1rem;border:1px solid var(--border);">
-                        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.3rem;">Eneo</div>
-                        <div style="font-size:.88rem;font-weight:600;color:var(--text);">{{ teacher.get_location_type_display }}</div>
+                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:.7rem .8rem;border:1px solid var(--border);">
+                        <div style="font-size:clamp(.6rem,1.2vw,.68rem);font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:.25rem;">Eneo</div>
+                        <div style="font-size:clamp(.8rem,1.5vw,.88rem);font-weight:600;color:var(--text);">{{ teacher.get_location_type_display }}</div>
                     </div>
                 </div>
 
-                <div class="d-flex gap-3 flex-wrap">
-                    <a href="{% url 'transfer:browse_regions' %}" class="btn-t-primary">
+                <div class="d-flex gap-2 gap-md-3 flex-wrap">
+                    <a href="{% url 'transfer:browse_regions' %}" class="btn-t-primary flex-fill" style="justify-content:center;">
                         <i class="fas fa-search-location"></i>
-                        Tafuta Mwalimu wa Kubadilishana
+                        Tafuta Mwalimu
                     </a>
-                    <a href="{% url 'transfer:register' %}" class="btn-t-ghost">
+                    <a href="{% url 'transfer:register' %}" class="btn-t-ghost flex-fill" style="justify-content:center;">
                         <i class="fas fa-pen"></i>
                         Hariri Taarifa
                     </a>
@@ -66,7 +66,7 @@
         </div>
 
         {% else %}
-        <!-- ── Mwalimu hajasajiliwa ── -->
+        <!-- New user -->
         <div class="t-card fade-up mb-4">
             <div class="t-card-header">
                 <div class="t-card-header-icon">
@@ -78,36 +78,34 @@
                 </div>
             </div>
             <div class="t-card-body">
-                <p style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem;line-height:1.7;">
+                <p style="color:var(--muted);font-size:clamp(.82rem,1.5vw,.9rem);margin-bottom:1.2rem;line-height:1.6;">
                     Mfumo huu unakusaidia kupata mwalimu mwingine ambaye ana masomo yanayofanana nawe
                     na anataka kubadilishana kituo. Jaza taarifa zako mara moja — pata mawasiliano ya mwenzako ndani ya dakika.
                 </p>
 
-                <!-- Option 1: New registration -->
-                <a href="{% url 'transfer:register' %}" style="display:block;border:2px solid var(--primary);border-radius:var(--radius-md);padding:1.1rem 1.3rem;background:linear-gradient(135deg,rgba(6,95,70,.04),rgba(16,185,129,.03));text-decoration:none;margin-bottom:.75rem;">
-                    <div style="display:flex;align-items:center;gap:1rem;">
-                        <div style="width:46px;height:46px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fas fa-user-plus" style="color:#fff;font-size:.95rem;"></i>
+                <a href="{% url 'transfer:register' %}" style="display:block;border:2px solid var(--primary);border-radius:var(--radius-md);padding:clamp(.8rem,1.8vw,1.1rem) clamp(1rem,2vw,1.3rem);background:linear-gradient(135deg,rgba(6,95,70,.04),rgba(16,185,129,.03));text-decoration:none;margin-bottom:.65rem;">
+                    <div style="display:flex;align-items:center;gap:.75rem;">
+                        <div style="width:clamp(38px,5vw,46px);height:clamp(38px,5vw,46px);background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-user-plus" style="color:#fff;font-size:clamp(.8rem,1.5vw,.95rem);"></i>
                         </div>
-                        <div class="flex-grow-1">
-                            <div style="font-weight:800;color:var(--primary);font-size:.92rem;">Bado Sijajaza — Jisajili Sasa</div>
-                            <div style="font-size:.78rem;color:var(--muted);margin-top:.15rem;">Jaza taarifa zako ili uonekane kwenye orodha ya walimu</div>
+                        <div class="flex-grow-1 min-w-0">
+                            <div style="font-weight:800;color:var(--primary);font-size:clamp(.82rem,1.6vw,.92rem);">Bado Sijajaza — Jisajili Sasa</div>
+                            <div style="font-size:clamp(.72rem,1.2vw,.78rem);color:var(--muted);margin-top:.1rem;">Jaza taarifa zako ili uonekane kwenye orodha ya walimu</div>
                         </div>
-                        <i class="fas fa-chevron-right" style="color:var(--border-2);"></i>
+                        <i class="fas fa-chevron-right" style="color:var(--br2);flex-shrink:0;"></i>
                     </div>
                 </a>
 
-                <!-- Option 2: Returning user login -->
-                <a href="{% url 'transfer:login' %}" style="display:block;border:1.5px solid var(--border-2);border-radius:var(--radius-md);padding:1.1rem 1.3rem;background:var(--surface);text-decoration:none;margin-bottom:1rem;">
-                    <div style="display:flex;align-items:center;gap:1rem;">
-                        <div style="width:46px;height:46px;background:rgba(6,95,70,.08);border:1.5px solid var(--border-2);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fas fa-sign-in-alt" style="color:var(--primary);font-size:.95rem;"></i>
+                <a href="{% url 'transfer:login' %}" style="display:block;border:1.5px solid var(--br2);border-radius:var(--radius-md);padding:clamp(.8rem,1.8vw,1.1rem) clamp(1rem,2vw,1.3rem);background:var(--surface);text-decoration:none;margin-bottom:.8rem;">
+                    <div style="display:flex;align-items:center;gap:.75rem;">
+                        <div style="width:clamp(38px,5vw,46px);height:clamp(38px,5vw,46px);background:rgba(6,95,70,.08);border:1.5px solid var(--br2);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-sign-in-alt" style="color:var(--primary);font-size:clamp(.8rem,1.5vw,.95rem);"></i>
                         </div>
-                        <div class="flex-grow-1">
-                            <div style="font-weight:800;color:var(--text);font-size:.92rem;">Nimekwisha Jaza — Ingia</div>
-                            <div style="font-size:.78rem;color:var(--muted);margin-top:.15rem;">Tumia namba ya simu + wilaya kuingia upya</div>
+                        <div class="flex-grow-1 min-w-0">
+                            <div style="font-weight:800;color:var(--text);font-size:clamp(.82rem,1.6vw,.92rem);">Nimekwisha Jaza — Ingia</div>
+                            <div style="font-size:clamp(.72rem,1.2vw,.78rem);color:var(--muted);margin-top:.1rem;">Tumia namba ya simu + wilaya kuingia upya</div>
                         </div>
-                        <i class="fas fa-chevron-right" style="color:var(--border-2);"></i>
+                        <i class="fas fa-chevron-right" style="color:var(--br2);flex-shrink:0;"></i>
                     </div>
                 </a>
 
@@ -118,33 +116,33 @@
             </div>
         </div>
 
-        <!-- ── Jinsi inavyofanya kazi ── -->
-        <div class="t-card fade-up fade-up-1">
+        <!-- How it works -->
+        <div class="t-card fade-up fu1">
             <div class="t-card-body">
-                <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--primary);margin-bottom:1.5rem;">
+                <div style="font-size:clamp(.65rem,1.3vw,.72rem);font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--primary);margin-bottom:1.2rem;text-align:center;">
                     Jinsi Inavyofanya Kazi
                 </div>
-                <div class="row g-4 text-center">
-                    <div class="col-md-4 fade-up fade-up-1">
-                        <div style="width:56px;height:56px;background:linear-gradient(135deg,var(--bg-2),var(--border));border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto .9rem;border:1px solid var(--border-2);">
-                            <i class="fas fa-user-edit fa-lg" style="color:var(--primary);"></i>
+                <div class="row g-3 text-center">
+                    <div class="col-md-4 fade-up fu1">
+                        <div style="width:clamp(44px,6vw,56px);height:clamp(44px,6vw,56px);background:linear-gradient(135deg,var(--bg2),var(--br));border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .7rem;border:1px solid var(--br2);">
+                            <i class="fas fa-user-edit fa-lg" style="color:var(--primary);font-size:clamp(.9rem,1.8vw,1.1rem);"></i>
                         </div>
-                        <div style="font-weight:800;font-size:.9rem;margin-bottom:.3rem;">1. Jaza Taarifa</div>
-                        <div style="font-size:.78rem;color:var(--muted);">Jina, simu, shule, mkoa, wilaya na masomo yako</div>
+                        <div style="font-weight:800;font-size:clamp(.8rem,1.5vw,.9rem);margin-bottom:.2rem;">1. Jaza Taarifa</div>
+                        <div style="font-size:clamp(.72rem,1.2vw,.78rem);color:var(--muted);">Jina, simu, shule, mkoa, wilaya na masomo yako</div>
                     </div>
-                    <div class="col-md-4 fade-up fade-up-2">
-                        <div style="width:56px;height:56px;background:linear-gradient(135deg,var(--bg-2),var(--border));border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto .9rem;border:1px solid var(--border-2);">
-                            <i class="fas fa-search-location fa-lg" style="color:var(--primary);"></i>
+                    <div class="col-md-4 fade-up fu2">
+                        <div style="width:clamp(44px,6vw,56px);height:clamp(44px,6vw,56px);background:linear-gradient(135deg,var(--bg2),var(--br));border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .7rem;border:1px solid var(--br2);">
+                            <i class="fas fa-search-location fa-lg" style="color:var(--primary);font-size:clamp(.9rem,1.8vw,1.1rem);"></i>
                         </div>
-                        <div style="font-weight:800;font-size:.9rem;margin-bottom:.3rem;">2. Tafuta Mkoa/Wilaya</div>
-                        <div style="font-size:.78rem;color:var(--muted);">Chagua mkoa na wilaya unayotaka kwenda</div>
+                        <div style="font-weight:800;font-size:clamp(.8rem,1.5vw,.9rem);margin-bottom:.2rem;">2. Tafuta Mkoa/Wilaya</div>
+                        <div style="font-size:clamp(.72rem,1.2vw,.78rem);color:var(--muted);">Chagua mkoa na wilaya unayotaka kwenda</div>
                     </div>
-                    <div class="col-md-4 fade-up fade-up-3">
-                        <div style="width:56px;height:56px;background:linear-gradient(135deg,var(--bg-2),var(--border));border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto .9rem;border:1px solid var(--border-2);">
-                            <i class="fas fa-phone-alt fa-lg" style="color:var(--primary);"></i>
+                    <div class="col-md-4 fade-up fu3">
+                        <div style="width:clamp(44px,6vw,56px);height:clamp(44px,6vw,56px);background:linear-gradient(135deg,var(--bg2),var(--br));border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .7rem;border:1px solid var(--br2);">
+                            <i class="fas fa-phone-alt fa-lg" style="color:var(--primary);font-size:clamp(.9rem,1.8vw,1.1rem);"></i>
                         </div>
-                        <div style="font-weight:800;font-size:.9rem;margin-bottom:.3rem;">3. Piga Simu</div>
-                        <div style="font-size:.78rem;color:var(--muted);">Wasiliana moja kwa moja bila wasuluhishi</div>
+                        <div style="font-weight:800;font-size:clamp(.8rem,1.5vw,.9rem);margin-bottom:.2rem;">3. Piga Simu</div>
+                        <div style="font-size:clamp(.72rem,1.2vw,.78rem);color:var(--muted);">Wasiliana moja kwa moja bila wasuluhishi</div>
                     </div>
                 </div>
             </div>
