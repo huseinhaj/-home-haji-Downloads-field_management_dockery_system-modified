@@ -633,14 +633,20 @@ def ajax_save_teacher(request):
 
 
 def ajax_lookup_teacher(request):
-    """AJAX: Lookup returning teacher by phone number."""
+    """AJAX: Lookup returning teacher by phone number. Accepts ?remember=1 for 30-day session."""
     phone = request.GET.get('phone', '').strip()
+    remember = request.GET.get('remember', '0') == '1'
     if not phone:
         return JsonResponse({'found': False})
     
     teacher = TLMTeacher.objects.filter(phone_number=phone).first()
     if teacher:
         request.session['tlm_teacher_id'] = teacher.id
+        # Set session to expire in 30 days if remember me is checked
+        if remember:
+            request.session.set_expiry(60 * 60 * 24 * 30)  # 30 days
+        else:
+            request.session.set_expiry(0)  # Browser session
         return JsonResponse({
             'found': True,
             'full_name': teacher.full_name,

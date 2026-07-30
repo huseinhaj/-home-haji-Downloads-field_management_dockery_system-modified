@@ -286,6 +286,10 @@
               <i class="fas fa-search"></i>
             </button>
           </div>
+          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;cursor:pointer;color:var(--text-secondary);">
+            <input type="checkbox" id="rememberMe" checked style="accent-color:var(--green-500);width:16px;height:16px;">
+            <span data-lang-sw="Nikumbuke kwenye kifaa hiki (siku 30)" data-lang-en="Remember me on this device (30 days)"></span>
+          </label>
           <div id="lookupResult" style="display:none;margin-top:8px;font-size:var(--font-size-sm);"></div>
           <div style="border-top:1px dashed var(--border-color);padding-top:12px;margin-top:8px;">
             <button type="button" class="btn-tlm btn-primary-tlm w-100 py-2" 
@@ -531,6 +535,16 @@ function setLang(lang) {
 })();
 
 document.addEventListener('DOMContentLoaded', function() {
+  // ── Auto-check saved phone from localStorage ──
+  const savedPhone = localStorage.getItem('tlm-phone');
+  if (savedPhone) {
+    document.getElementById('lookupPhone').value = savedPhone;
+    // Auto-lookup saving phone
+    setTimeout(function() {
+      document.getElementById('lookupBtn').click();
+    }, 300);
+  }
+
   // ── DOM refs ──
   const regionSelect = document.getElementById('region');
   const districtSelect = document.getElementById('district');
@@ -803,17 +817,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     resultDiv.style.display = 'block';
     resultDiv.innerHTML = '<span><span class="spinner-tlm" style="width:14px;height:14px;"></span> Inatafuta...</span>';
-    fetch(`{% url 'curriculum:lookup_teacher' %}?phone=${encodeURIComponent(phone)}`)
+    const remember = document.getElementById('rememberMe').checked ? '1' : '0';
+    fetch(`{% url 'curriculum:lookup_teacher' %}?phone=${encodeURIComponent(phone)}&remember=${remember}`)
       .then(r => r.json())
       .then(data => {
         if (data.found) {
-          resultDiv.innerHTML = `
+          // Auto-redirect after successful lookup!
+            localStorage.setItem('tlm-phone', phone);
+            setTimeout(function() {
+              window.location.href = '{% url "curriculum:landing" %}';
+            }, 800);
+            resultDiv.innerHTML = `
             <div style="background:rgba(31,122,61,0.08);padding:12px;border-radius:var(--radius-sm);">
-              <span style="color:var(--green-500);font-weight:700;"><i class="fas fa-check-circle"></i> Umepatikana!</span><br>
+              <span style="color:var(--green-500);font-weight:700;"><i class="fas fa-check-circle"></i> Umepatikana! Unaelekezwa...</span><br>
               <span style="font-size:var(--font-size-sm);"><b>${data.full_name}</b> — ${data.school_name || ''}</span>
-              <br><a href="{% url 'curriculum:landing' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm mt-2">
-                <i class="fas fa-arrow-right"></i> Endelea
-              </a>
             </div>`;
         } else {
           resultDiv.innerHTML = `
