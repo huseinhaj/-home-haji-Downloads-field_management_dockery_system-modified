@@ -9,12 +9,12 @@
 .filter-select{
     border:1.5px solid var(--br);border-radius:50px;
     padding:.38rem .9rem;font-size:clamp(.7rem,1.5vw,.78rem);
-    font-weight:600;color:var(--p1);background:#fff;outline:none;
+    font-weight:600;color:var(--em);background:#fff;outline:none;
     cursor:pointer;appearance:none;padding-right:1.8rem;
-    background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230a5c44' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23059669' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
     background-repeat:no-repeat;background-position:right .6rem center;background-size:9px;
 }
-.filter-select:focus{border-color:var(--p3);box-shadow:0 0 0 3px rgba(16,185,129,.12);}
+.filter-select:focus{border-color:var(--em2);box-shadow:0 0 0 3px rgba(16,185,129,.12);}
 
 /* ── MODERN TEACHER CARD ── */
 .tc {
@@ -29,8 +29,8 @@
     position: relative;
 }
 .tc:hover {
-    border-color: var(--p3);
-    box-shadow: var(--s3);
+    border-color: var(--em2);
+    box-shadow: var(--s4);
     transform: translateY(-4px);
 }
 .tc:active { transform: translateY(-2px); }
@@ -38,7 +38,7 @@
 /* Top gradient bar with shimmer */
 .tc-top {
     height: 5px;
-    background: linear-gradient(90deg, var(--p1) 0%, var(--p3) 50%, var(--gld) 100%);
+    background: linear-gradient(90deg, var(--nv) 0%, var(--em) 50%, var(--gld) 100%);
     position: relative;
     overflow: hidden;
 }
@@ -60,19 +60,19 @@
     flex-shrink: 0; border-radius: 14px;
     display: flex; align-items: center; justify-content: center;
     font-size: clamp(1rem, 2.5vw, 1.3rem); font-weight: 900; color: #fff;
-    position: relative; box-shadow: 0 4px 14px rgba(10,92,68,.25);
+    position: relative; box-shadow: 0 4px 14px rgba(5,150,105,.3);
 }
-.tc-av.primary { background: linear-gradient(135deg, #0a5c44, #10b981); }
-.tc-av.secondary { background: linear-gradient(135deg, #92400e, #f59e0b); }
+.tc-av.primary { background: linear-gradient(135deg, var(--nv), var(--em)); }
+.tc-av.secondary { background: linear-gradient(135deg, #78350f, var(--gld)); }
 .tc-av .status-dot {
     position: absolute; bottom: -2px; right: -2px;
     width: 12px; height: 12px;
-    border: 2.5px solid #fff; border-radius: 50%; background: #22c55e;
+    border: 2.5px solid #fff; border-radius: 50%; background: var(--em3);
 }
 .tc-name-area { flex: 1; min-width: 0; padding-top: .15rem; }
 .tc-name {
     font-weight: 800; font-size: clamp(.82rem, 1.8vw, .95rem);
-    color: var(--drk); line-height: 1.2; letter-spacing: -.2px;
+    color: var(--tx); line-height: 1.2; letter-spacing: -.2px;
 }
 .tc-school {
     font-size: clamp(.62rem, 1.2vw, .7rem); color: var(--mu);
@@ -90,7 +90,7 @@
     letter-spacing: .2px; white-space: nowrap;
     flex-shrink: 0; margin-top: .25rem;
 }
-.lv-pri { background: rgba(16,185,129,.1); color: #0a5c44; border: 1px solid rgba(16,185,129,.25); }
+.lv-pri { background: rgba(5,150,105,.1); color: var(--em); border: 1px solid rgba(5,150,105,.25); }
 .lv-sec { background: rgba(245,158,11,.1); color: #92400e; border: 1px solid rgba(245,158,11,.25); }
 
 /* Body */
@@ -104,9 +104,9 @@
 }
 .tc-info-row .ico {
     width: 16px; flex-shrink: 0;
-    color: var(--p1); font-size: .6rem; text-align: center;
+    color: var(--em); font-size: .6rem; text-align: center;
 }
-.tc-info-row strong { font-weight: 700; color: var(--drk); }
+.tc-info-row strong { font-weight: 700; color: var(--tx); }
 
 /* Location chip */
 .loc-chip {
@@ -122,8 +122,8 @@
 .subj-tags { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .1rem; }
 .subj-tag {
     font-size: clamp(.6rem, 1.1vw, .65rem); font-weight: 600;
-    background: linear-gradient(135deg, rgba(16,185,129,.08), rgba(10,92,68,.04));
-    border: 1px solid rgba(16,185,129,.18);
+    background: linear-gradient(135deg, rgba(5,150,105,.06), rgba(5,150,105,.03));
+    border: 1px solid rgba(5,150,105,.15);
     border-radius: 6px; padding: .18rem .45rem; color: var(--tx2);
 }
 
@@ -155,19 +155,20 @@
     width: 100%; padding: clamp(.6rem, 1.2vw, .72rem) 1rem;
     border: none; border-radius: 50px;
     font-size: clamp(.8rem, 1.6vw, .88rem); font-weight: 800;
-    background: linear-gradient(135deg, #059669, #10b981);
+    background: linear-gradient(135deg, var(--em), var(--em3));
     color: #fff; text-decoration: none;
     box-shadow: 0 4px 16px rgba(5,150,105,.3);
     transition: all .22s; letter-spacing: .2px;
+    animation: glow-pulse 3s ease infinite;
 }
-.tc-phone:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(5,150,105,.45); color: #fff; }
+.tc-phone:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(5,150,105,.5); color: #fff; }
 .tc-phone:active { transform: translateY(0); }
 .tc-phone i { font-size: clamp(.75rem, 1.4vw, .85rem); animation: pulse-phone 2s ease infinite; }
 @keyframes pulse-phone { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
 
 /* ── Donation banner (responsive) ── */
 .donate-banner {
-    background: linear-gradient(135deg, #0a5c44 0%, #0d7a5c 50%, #10b981 100%);
+    background: linear-gradient(135deg, var(--nv) 0%, #1a1a3e 40%, var(--nv2) 70%, #0f2937 100%);
     border-radius: var(--r3);
     padding: clamp(1.2rem, 3vw, 2rem) clamp(1.2rem, 3vw, 2rem) clamp(1rem, 2.5vw, 1.8rem);
     margin-top: 2rem; position: relative; overflow: hidden; color: #fff;
@@ -205,10 +206,11 @@
 .donate-name { font-size: clamp(.75rem, 1.5vw, .82rem); font-weight: 600; color: rgba(255,255,255,.65); }
 .donate-amount {
     display: inline-flex; align-items: center; gap: .3rem;
-    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+    background: linear-gradient(135deg, var(--gld), #fbbf24);
+    border: none;
     border-radius: 50px; padding: .3rem .8rem;
     font-size: clamp(.72rem, 1.4vw, .8rem); font-weight: 800;
-    margin-left: auto;
+    color: #78350f; margin-left: auto;
 }
 .donate-note {
     font-size: clamp(.65rem, 1.2vw, .72rem); color: rgba(255,255,255,.5);
@@ -225,9 +227,9 @@
     width: clamp(52px, 7vw, 64px); height: clamp(52px, 7vw, 64px);
     margin: 0 auto .8rem; background: var(--bg2);
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: clamp(1.1rem, 2.5vw, 1.3rem); color: var(--p1);
+    font-size: clamp(1.1rem, 2.5vw, 1.3rem); color: var(--em);
 }
-.empty-state-modern h5 { font-weight: 800; color: var(--drk); font-size: clamp(.88rem, 1.8vw, 1rem); margin-bottom: .4rem; }
+.empty-state-modern h5 { font-weight: 800; color: var(--tx); font-size: clamp(.88rem, 1.8vw, 1rem); margin-bottom: .4rem; }
 .empty-state-modern p { font-size: clamp(.78rem, 1.4vw, .85rem); color: var(--mu); max-width: 360px; margin: 0 auto 1rem; }
 
 /* ── Responsive card columns ── */
@@ -271,7 +273,7 @@
 <!-- Filter row -->
 <div class="filter-row">
     <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-        <div style="display:inline-flex;align-items:center;gap:.4rem;padding:.38rem .9rem;border-radius:50px;font-size:clamp(.7rem,1.5vw,.78rem);font-weight:700;background:rgba(10,92,68,.07);border:1.5px solid rgba(10,92,68,.2);color:var(--p1);">
+        <div style="display:inline-flex;align-items:center;gap:.4rem;padding:.38rem .9rem;border-radius:50px;font-size:clamp(.7rem,1.5vw,.78rem);font-weight:700;background:rgba(5,150,105,.07);border:1.5px solid rgba(5,150,105,.2);color:var(--em);">
             <i class="fas fa-users" style="font-size:.7rem;"></i>
             <span style="font-size:clamp(.82rem,1.8vw,.95rem);font-weight:900;">{{ total }}</span>
             <span>walimu</span>
@@ -405,7 +407,7 @@
         <div style="font-weight:800;font-size:clamp(.8rem,1.6vw,.88rem);color:#92400e;margin-bottom:.2rem;">Haukupata unayemtafuta?</div>
         <div style="font-size:clamp(.72rem,1.3vw,.78rem);color:#a16207;line-height:1.5;">
             Subiri — walimu wengine wanajisajili kila siku.
-            Au <a href="{% url 'transfer:browse_districts' region.id %}" style="color:var(--p1);font-weight:700;">jaribu wilaya nyingine</a>.
+            Au <a href="{% url 'transfer:browse_districts' region.id %}" style="color:var(--em);font-weight:700;">jaribu wilaya nyingine</a>.
         </div>
     </div>
 </div>
