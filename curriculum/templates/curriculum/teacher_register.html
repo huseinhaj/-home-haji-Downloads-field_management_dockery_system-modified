@@ -880,6 +880,8 @@ document.addEventListener('DOMContentLoaded', function() {
       loading.style.display = 'none';
       btn.disabled = false;
       if (data.success) {
+        // Save phone to localStorage so they're remembered next visit
+        localStorage.setItem('tlm-phone', phoneNumber.value.trim());
         document.getElementById('successName').textContent = fullName.value;
         document.getElementById('successSchool').textContent = selectedSchoolData ? selectedSchoolData.name : schoolSearch.value || '';
         document.getElementById('successClass').textContent = (classSelect.value || '') + (streamSelect.value ? ' ' + streamSelect.value : '');
