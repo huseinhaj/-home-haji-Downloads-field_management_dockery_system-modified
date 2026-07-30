@@ -725,6 +725,61 @@ SWAHILI_MONTHS = {
     'OCTOBER': 'OKTOBA', 'NOVEMBER': 'NOVEMBA', 'DECEMBER': 'DESEMBA',
 }
 
+# =============================================================================
+# SWAHILI PDF LABELS — English → Kiswahili translations for ALL PDF headers
+# =============================================================================
+
+# Comprehensive translation dictionary for ALL PDF labels
+SWAHILI_ALL_LABELS = {
+    # Ministry headers
+    "PRIME MINISTER'S OFFICE": "OFISI YA WAZIRI MKUU",
+    "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT": "TAWALA ZA MIKOA NA SERIKALI ZA MITAA",
+    "TEACHER'S LESSON PLAN": "MPANGO WA SOMO LA MWALIMU",
+    "SCHEME OF WORK": "AZIMIO LA KAZI",
+    # Info table labels (SOW & LP)
+    "Teacher's Name": 'Jina la Mwalimu',
+    'School Name': 'Jina la Shule',
+    'Subject': 'Somo',
+    'Class': 'Darasa',
+    'Term': 'Muhula',
+    'Year': 'Mwaka',
+    'Total Weeks': 'Jumla ya Wiki',
+    'Syllabus': 'Silabasi',
+    'Duration': 'Muda',
+    'Topic': 'Mada',
+    'Subtopic': 'Mada Ndogo',
+    'Date': 'Tarehe',
+    'Students': 'Wanafunzi',
+    'Teacher': 'Mwalimu',
+    'Term/Year': 'Muhula/Mwaka',
+    # Lesson Development
+    'Main Competence': 'Umahiri Mkuu',
+    'Specific Competence': 'Umahiri Mahususi',
+    'Main Activity': 'Shughuli Kuu',
+    'Specific Activity': 'Shughuli Mahususi',
+    'Teaching & Learning Resources': 'Zana za Ufundishaji na Ujifunzaji',
+    'References': 'Marejeo',
+    'Lesson Development (IDDR Model)': 'Ukuzaji wa Somo (Muundo wa IDDR)',
+    # IDDR Table headers
+    'Stage': 'Hatua',
+    'Time': 'Muda',
+    'Teaching Activities': 'Shughuli za Ufundishaji',
+    'Learning Activities': 'Shughuli za Ujifunzaji',
+    'Assessment Criteria': 'Vigezo vya Upimaji',
+    'Remarks': 'Maoni',
+    # Remarks sub-labels
+    '1. Strength': '1. Nguvu',
+    '2. Weakness': '2. Udhaifu',
+    '3. Way Forward': '3. Hatua Zifuatazo',
+}
+
+
+def _tl(label, mode):
+    """Get translated label. If mode is Swahili (truthy), return Kiswahili translation."""
+    if mode:
+        return SWAHILI_ALL_LABELS.get(label, label)
+    return label
+
 
 def _has_swahili_keys(rows):
     """Check if scheme data uses Swahili column keys."""
@@ -1789,34 +1844,77 @@ def download_scheme_pdf(request):
     hdr_style = ParagraphStyle('SchHdr', fontName='Helvetica-Bold', fontSize=_fs,
                                leading=_fs + 3.5, textColor=colors.white, wordWrap='LTR', alignment=1)
 
-    # ── TAMISEMI Header (centered, bold) ──
-    elements.append(Paragraph(
-        "PRIME MINISTER'S OFFICE",
-        ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=13, alignment=1,
-                       textColor=NAVY, spaceAfter=2)))
-    elements.append(Paragraph(
-        "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT",
-        ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=10, alignment=1,
-                       textColor=NAVY, spaceAfter=2)))
-    elements.append(HRFlowable(width="50%", thickness=1, color=GOLD, spaceAfter=8))
+    # ── TAMISEMI Header (centered, bold) — bilingual ──
+    _pm = _tl("PRIME MINISTER'S OFFICE", was_swahili)
+    _ralg = _tl("REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT", was_swahili)
+    _sow_title = _tl("SCHEME OF WORK", was_swahili)
+    
+    # Visual style: alternate between styles for variety based on hash of subject
+    _style_seed = sum(ord(c) for c in subject + (class_name or '')) % 5
+    if _style_seed == 0:
+        # Classic centered
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=13, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=10, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+        elements.append(HRFlowable(width="50%", thickness=1, color=GOLD, spaceAfter=8))
+    elif _style_seed == 1:
+        # Gold background bar style
+        elements.append(Spacer(1, 2))
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1b', fontName='Helvetica-Bold', fontSize=14, alignment=1,
+                           textColor=GOLD, spaceAfter=1)))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2b', fontName='Helvetica-Bold', fontSize=11, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+        elements.append(HRFlowable(width="100%", thickness=3, color=NAVY, spaceAfter=6))
+    elif _style_seed == 2:
+        # Modern compact
+        elements.append(HRFlowable(width="100%", thickness=2, color=GOLD, spaceAfter=2))
+        elements.append(Paragraph(f"{_pm}  |  {_ralg}",
+            ParagraphStyle('MH1c', fontName='Helvetica-Bold', fontSize=9, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+        elements.append(HRFlowable(width="100%", thickness=1, color=NAVY, spaceAfter=6))
+    elif _style_seed == 3:
+        # Navy bg with gold text
+        elements.append(Spacer(1, 4))
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1d', fontName='Helvetica-Bold', fontSize=13, alignment=1,
+                           textColor=NAVY, spaceAfter=0, backColor=colors.HexColor('#F0F4FF'))))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2d', fontName='Helvetica-Bold', fontSize=10, alignment=1,
+                           textColor=GOLD, spaceAfter=2)))
+        elements.append(HRFlowable(width="40%", thickness=0.5, color=GOLD, spaceAfter=6))
+    else:
+        # Gold underline style
+        elements.append(Spacer(1, 2))
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1e', fontName='Helvetica-Bold', fontSize=12, alignment=1,
+                           textColor=NAVY, spaceAfter=1,
+                           borderWidth=0, borderPadding=2)))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2e', fontName='Helvetica-Bold', fontSize=9, alignment=1,
+                           textColor=colors.HexColor('#555555'), spaceAfter=4)))
 
     # ── Title ──
-    elements.append(Paragraph("AZIMIO LA KAZI" if was_swahili else "SCHEME OF WORK",
+    elements.append(Paragraph(_sow_title,
         ParagraphStyle('ST', fontName='Helvetica-Bold', fontSize=18, alignment=1,
                        textColor=NAVY, spaceAfter=10)))
 
-    # ── Cover info: styled table ──
+    # ── Cover info: styled table (bilingual labels) ──
     lbl = ParagraphStyle('lbl', fontName='Helvetica-Bold', fontSize=10, textColor=colors.white, leading=14)
     val = ParagraphStyle('val', fontName='Helvetica', fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
     info_rows = [
-        [Paragraph("Teacher's Name", lbl), Paragraph(teacher_name, val)],
-        [Paragraph('School Name', lbl), Paragraph(school_name or '____________________', val)],
-        [Paragraph('Subject', lbl), Paragraph(subject, val)],
-        [Paragraph('Class', lbl), Paragraph(class_name, val)],
-        [Paragraph('Term', lbl), Paragraph(term, val)],
-        [Paragraph('Year', lbl), Paragraph(str(year), val)],
-        [Paragraph('Total Weeks', lbl), Paragraph(str(total_weeks), val)],
-        [Paragraph('Syllabus', lbl), Paragraph(syllabus, val)],
+        [Paragraph(_tl("Teacher's Name", was_swahili), lbl), Paragraph(teacher_name, val)],
+        [Paragraph(_tl('School Name', was_swahili), lbl), Paragraph(school_name or '____________________', val)],
+        [Paragraph(_tl('Subject', was_swahili), lbl), Paragraph(subject, val)],
+        [Paragraph(_tl('Class', was_swahili), lbl), Paragraph(class_name, val)],
+        [Paragraph(_tl('Term', was_swahili), lbl), Paragraph(term, val)],
+        [Paragraph(_tl('Year', was_swahili), lbl), Paragraph(str(year), val)],
+        [Paragraph(_tl('Total Weeks', was_swahili), lbl), Paragraph(str(total_weeks), val)],
+        [Paragraph(_tl('Syllabus', was_swahili), lbl), Paragraph(syllabus, val)],
     ]
     info_table = Table(info_rows, colWidths=[180, 280])
     info_table.setStyle(TableStyle([
@@ -2646,37 +2744,85 @@ def download_lesson_plan_pdf(request):
     elements.append(HRFlowable(width="100%", thickness=2.5, color=GOLD, spaceAfter=2))
     elements.append(HRFlowable(width="100%", thickness=1.2, color=NAVY, spaceAfter=10))
 
-    # ── TAMISEMI Header (centered, bold) ──
-    elements.append(Paragraph(
-        "PRIME MINISTER'S OFFICE",
-        ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=13, alignment=1,
-                       textColor=NAVY, spaceAfter=2)))
-    elements.append(Paragraph(
-        "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT",
-        ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=10, alignment=1,
-                       textColor=NAVY, spaceAfter=2)))
+    # ── Determine language mode for LP (check form data for language hint) ──
+    _lp_sw = form.get('language', '') == 'kiswahili' or form.get('subject', '').lower() in ('kiswahili', 'swahili')
+    if not _lp_sw:
+        # Also check via teacher's school level
+        _lp_teacher_lp = get_tlm_teacher(request)
+        if _lp_teacher_lp and _lp_teacher_lp.school:
+            _lp_sw = _is_kiswahili_mode(
+                form.get('language', getattr(_lp_teacher_lp, 'preferred_language', 'auto')),
+                form.get('subject', ''),
+                _lp_teacher_lp.school.level
+            )
+
+    # ── TAMISEMI Header (centered, bold) — bilingual ──
+    _pm = _tl("PRIME MINISTER'S OFFICE", _lp_sw)
+    _ralg = _tl("REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT", _lp_sw)
+    _lp_title = _tl("TEACHER'S LESSON PLAN", _lp_sw)
+
+    # Visual style based on subject hash for variety
+    _lp_style_seed = sum(ord(c) for c in form.get('subject','') + (form.get('class_name','') or '')) % 5
+    if _lp_style_seed == 0:
+        # Classic centered navy
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=13, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=10, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+    elif _lp_style_seed == 1:
+        # Gold text on light background
+        elements.append(Spacer(1, 3))
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1b', fontName='Helvetica-Bold', fontSize=14, alignment=1,
+                           textColor=GOLD, spaceAfter=0)))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2b', fontName='Helvetica-Bold', fontSize=11, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+    elif _lp_style_seed == 2:
+        # Single line combined
+        elements.append(Paragraph(f"{_pm} ❖ {_ralg}",
+            ParagraphStyle('MH1c', fontName='Helvetica-Bold', fontSize=9, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+    elif _lp_style_seed == 3:
+        # Navy with decorative border
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1d', fontName='Helvetica-Bold', fontSize=13, alignment=1,
+                           textColor=NAVY, spaceAfter=0, backColor=colors.HexColor('#F0F4FF'))))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2d', fontName='Helvetica-Bold', fontSize=10, alignment=1,
+                           textColor=GOLD, spaceAfter=2)))
+    else:
+        # Inline style
+        elements.append(Paragraph(f"{_pm}  |  {_ralg}",
+            ParagraphStyle('MH1e', fontName='Helvetica-Bold', fontSize=8, alignment=1,
+                           textColor=colors.HexColor('#555555'), spaceAfter=2)))
+
     elements.append(HRFlowable(width="50%", thickness=1, color=GOLD, spaceAfter=6))
 
     # ── Title ──
-    elements.append(Paragraph("TEACHER'S LESSON PLAN",
+    elements.append(Paragraph(_lp_title,
         ParagraphStyle('LP_T', fontName='Helvetica-Bold', fontSize=14, alignment=1,
                        textColor=NAVY, spaceAfter=2)))
+    _term_label = _tl('Term', _lp_sw)
+    _year_label = _tl('Year', _lp_sw)
     elements.append(Paragraph(
-        f"{form.get('subject','')}  |  {form.get('class_name','')}  |  Term {form.get('term','')} {form.get('year','')}",
+        f"{form.get('subject','')}  |  {form.get('class_name','')}  |  {_term_label} {form.get('term','')} {_year_label} {form.get('year','')}",
         ParagraphStyle('LP_S', fontSize=9, alignment=1, textColor=colors.grey, spaceAfter=6)))
 
-    # ── Cover info: styled table ──
+    # ── Cover info: styled table (bilingual labels) ──
     lbl = ParagraphStyle('lbl', fontName='Helvetica-Bold', fontSize=10, textColor=colors.white, leading=14)
     val = ParagraphStyle('val', fontName='Helvetica', fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
     info_rows = [
-        [Paragraph("Teacher's Name", lbl), Paragraph(form.get('teacher_name',''), val)],
-        [Paragraph('School Name', lbl), Paragraph(form.get('school_name','____________________'), val)],
-        [Paragraph('Subject', lbl), Paragraph(form.get('subject',''), val)],
-        [Paragraph('Class', lbl), Paragraph(form.get('class_name',''), val)],
-        [Paragraph('Term', lbl), Paragraph(form.get('term',''), val)],
-        [Paragraph('Year', lbl), Paragraph(str(form.get('year','')), val)],
-        [Paragraph('Duration', lbl), Paragraph(str(form.get('duration', '')) + ' min', val)],
-        [Paragraph('Topic', lbl), Paragraph(form.get('topic',''), val)],
+        [Paragraph(_tl("Teacher's Name", _lp_sw), lbl), Paragraph(form.get('teacher_name',''), val)],
+        [Paragraph(_tl('School Name', _lp_sw), lbl), Paragraph(form.get('school_name','____________________'), val)],
+        [Paragraph(_tl('Subject', _lp_sw), lbl), Paragraph(form.get('subject',''), val)],
+        [Paragraph(_tl('Class', _lp_sw), lbl), Paragraph(form.get('class_name',''), val)],
+        [Paragraph(_tl('Term', _lp_sw), lbl), Paragraph(form.get('term',''), val)],
+        [Paragraph(_tl('Year', _lp_sw), lbl), Paragraph(str(form.get('year','')), val)],
+        [Paragraph(_tl('Duration', _lp_sw), lbl), Paragraph(str(form.get('duration', '')) + ' min', val)],
+        [Paragraph(_tl('Topic', _lp_sw), lbl), Paragraph(form.get('topic',''), val)],
     ]
     info_table = Table(info_rows, colWidths=[180, 220])
     info_table.setStyle(TableStyle([
@@ -2701,16 +2847,16 @@ def download_lesson_plan_pdf(request):
         return Paragraph(str(txt or ''), st)
 
     meta_rows = [
-        [P('Teacher', label_s), P(form.get('teacher_name', '')),
-         P('Subject', label_s), P(form.get('subject', ''))],
-        [P('Class', label_s), P(form.get('class_name', '')),
-         P('Term/Year', label_s), P(f"Term {form.get('term','')} {form.get('year','')}")],
-        [P('Topic', label_s), P(form.get('topic', '')),
-         P('Subtopic', label_s), P(form.get('subtopic', ''))],
-        [P('Duration', label_s), P(f"{form.get('duration','')} minutes"),
-         P('Date', label_s), P(str(timezone.now().date()))],
-        [P('Students', label_s),
-         P(f"Registered: B:{form.get('total_boys','')} G:{form.get('total_girls','')} T:{form.get('total_students','')} | Present: B:{form.get('present_boys','')} G:{form.get('present_girls','')} T:{form.get('present_students','')} | Absent: B:{form.get('absent_boys','')} G:{form.get('absent_girls','')} T:{form.get('absent_students','')}"),
+        [P(_tl('Teacher', _lp_sw), label_s), P(form.get('teacher_name', '')),
+         P(_tl('Subject', _lp_sw), label_s), P(form.get('subject', ''))],
+        [P(_tl('Class', _lp_sw), label_s), P(form.get('class_name', '')),
+         P(_tl('Term/Year', _lp_sw), label_s), P(f"{_tl('Term', _lp_sw)} {form.get('term','')} {form.get('year','')}")],
+        [P(_tl('Topic', _lp_sw), label_s), P(form.get('topic', '')),
+         P(_tl('Subtopic', _lp_sw), label_s), P(form.get('subtopic', ''))],
+        [P(_tl('Duration', _lp_sw), label_s), P(f"{form.get('duration','')} min"),
+         P(_tl('Date', _lp_sw), label_s), P(str(timezone.now().date()))],
+        [P(_tl('Students', _lp_sw), label_s),
+         P(f"{_tl('Students', _lp_sw)} — B:{form.get('total_boys','')} G:{form.get('total_girls','')} T:{form.get('total_students','')}"),
          P(''), P('')],
     ]
     meta_tbl = Table(meta_rows, colWidths=[72, 188, 72, 191])
@@ -2734,12 +2880,12 @@ def download_lesson_plan_pdf(request):
                        ('Specific Activity', 'specific_activity', 'previous_knowledge')]:
         val = lesson.get(key, lesson.get(fallback, '')) if fallback else lesson.get(key, '')
         if val:
-            elements.append(Paragraph(f"<b>{label}:</b>  {val}", normal))
+            elements.append(Paragraph(f"<b>{_tl(label, _lp_sw)}:</b>  {val}", normal))
 
-    # Teaching & Learning Resources (string in new format, array in old)
+    # Teaching & Learning Resources
     tlr = lesson.get('teaching_resources', '')
     if tlr:
-        elements.append(Paragraph("Teaching & Learning Resources", section_hdr))
+        elements.append(Paragraph(_tl('Teaching & Learning Resources', _lp_sw), section_hdr))
         if isinstance(tlr, list):
             for item in tlr:
                 elements.append(Paragraph(f"<bullet>•</bullet> {item}",
@@ -2750,13 +2896,13 @@ def download_lesson_plan_pdf(request):
     # References
     ref = lesson.get('references', '')
     if ref:
-        elements.append(Paragraph("References", section_hdr))
+        elements.append(Paragraph(_tl('References', _lp_sw), section_hdr))
         elements.append(Paragraph(f"{ref}", normal))
 
     ld = lesson.get('lesson_development', [])
     if ld:
-        elements.append(Paragraph("Lesson Development (IDDR Model)", section_hdr))
-        ld_headers = ['Stage', 'Time', 'Teaching Activities', 'Learning Activities', 'Assessment Criteria']
+        elements.append(Paragraph(_tl('Lesson Development (IDDR Model)', _lp_sw), section_hdr))
+        ld_headers = [_tl('Stage', _lp_sw), _tl('Time', _lp_sw), _tl('Teaching Activities', _lp_sw), _tl('Learning Activities', _lp_sw), _tl('Assessment Criteria', _lp_sw)]
         ld_data = [[Paragraph(h, hdr_s) for h in ld_headers]]
         for i, stage in enumerate(ld):
             bg = colors.white if i % 2 == 0 else STRIPE
@@ -2784,11 +2930,11 @@ def download_lesson_plan_pdf(request):
     remarks = lesson.get('remarks', '')
     if remarks:
         elements.append(Spacer(1, 8))
-        elements.append(Paragraph("Remarks", section_hdr))
+        elements.append(Paragraph(_tl('Remarks', _lp_sw), section_hdr))
         if isinstance(remarks, dict):
             for label, key in [('1. Strength', 'strength'), ('2. Weakness', 'weakness'), ('3. Way Forward', 'way_forward')]:
                 val = remarks.get(key, '') or '...............................................'
-                elements.append(Paragraph(f"<b>{label}:</b>  {val}", normal))
+                elements.append(Paragraph(f"<b>{_tl(label, _lp_sw)}:</b>  {val}", normal))
         else:
             elements.append(Paragraph(str(remarks), normal))
 
@@ -2825,30 +2971,33 @@ def download_lesson_plan_word(request):
         if bold and cell.paragraphs[0].runs:
             cell.paragraphs[0].runs[0].bold = True
 
-    _set(0, 0, 'Teacher:', True)
+    # Determine language mode
+    _lp_sw_word = form.get('language', '') == 'kiswahili' or form.get('subject', '').lower() in ('kiswahili', 'swahili')
+
+    _set(0, 0, _tl('Teacher', _lp_sw_word) + ':', True)
     _set(0, 1, form.get('teacher_name', ''))
-    _set(0, 2, 'Subject:', True)
+    _set(0, 2, _tl('Subject', _lp_sw_word) + ':', True)
     _set(0, 3, form.get('subject', ''))
-    _set(1, 0, 'Class:', True)
+    _set(1, 0, _tl('Class', _lp_sw_word) + ':', True)
     _set(1, 1, form.get('class_name', ''))
-    _set(1, 2, 'Term/Year:', True)
-    _set(1, 3, f"Term {form.get('term','')} {form.get('year','')}")
-    _set(2, 0, 'Topic:', True)
+    _set(1, 2, _tl('Term/Year', _lp_sw_word) + ':', True)
+    _set(1, 3, f"{_tl('Term', _lp_sw_word)} {form.get('term','')} {form.get('year','')}")
+    _set(2, 0, _tl('Topic', _lp_sw_word) + ':', True)
     _set(2, 1, form.get('topic', ''))
-    _set(2, 2, 'Subtopic:', True)
+    _set(2, 2, _tl('Subtopic', _lp_sw_word) + ':', True)
     _set(2, 3, form.get('subtopic', ''))
-    _set(3, 0, 'Duration:', True)
+    _set(3, 0, _tl('Duration', _lp_sw_word) + ':', True)
     _set(3, 1, f"{form.get('duration','')} min")
-    _set(3, 2, 'Date:', True)
+    _set(3, 2, _tl('Date', _lp_sw_word) + ':', True)
     _set(3, 3, str(timezone.now().date()))
-    _set(4, 0, 'Students:', True)
+    _set(4, 0, _tl('Students', _lp_sw_word) + ':', True)
     tb = form.get('total_boys', '')
     tg = form.get('total_girls', '')
     ts = form.get('total_students', '')
     pb = form.get('present_boys', '')
     pg = form.get('present_girls', '')
     ps = form.get('present_students', '')
-    _set(4, 1, f"Reg: B:{tb} G:{tg} T:{ts} | Pres: B:{pb} G:{pg} T:{ps}")
+    _set(4, 1, f"{_tl('Students', _lp_sw_word)} — B:{tb} G:{tg} T:{ts}")
 
     doc.add_paragraph()
 
