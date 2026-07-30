@@ -843,9 +843,16 @@ def _is_kiswahili_mode(language_param, subject, school_level):
     """
     Return True if the output should be in Kiswahili (Azimio la Kazi format).
     # NOTE: Keep sync'ed with _get_language_instruction() — same detection logic.
+    
+    Rules:
+    - If user explicitly chose 'english' → False (English)
+    - If user explicitly chose 'kiswahili' → True (Kiswahili)
+    - Otherwise (auto) → auto-detect based on subject & school level
     """
     if language_param == 'kiswahili':
         return True
+    if language_param == 'english':
+        return False
     subj_lower = subject.lower()
     lvl_lower = (school_level or '').lower()
     if 'primary' in lvl_lower:
