@@ -18,6 +18,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.cache import never_cache
 from django.contrib.auth import logout as django_logout
 
 
@@ -422,9 +423,10 @@ def get_tlm_teacher(request):
 
 
 # =============================================================================
-# LANDING PAGE (public)
+# LANDING PAGE (public) — never_cache to show LIVE statistics
 # =============================================================================
 
+@never_cache
 def landing(request):
     """Public landing page — shows tools. If teacher is registered, greet them."""
     teacher = get_tlm_teacher(request)
@@ -453,6 +455,7 @@ def landing(request):
 # TEMPLATE LIBRARY — browse saved schemes & lesson plans
 # =============================================================================
 
+@never_cache
 def template_library(request):
     """Browse ALL saved schemes and lesson plans from all teachers."""
     teacher = get_tlm_teacher(request)
