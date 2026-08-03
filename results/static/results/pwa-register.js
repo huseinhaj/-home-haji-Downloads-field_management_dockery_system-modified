@@ -1,6 +1,6 @@
 /* ============================================================
    PWA: Service Worker Registration + Install Prompt
-   School Results — Matokeo ya Shule Tanzania
+   School Results System (SRS V1) — Tanzania
    ============================================================ */
 
 (function() {
@@ -73,7 +73,7 @@
           </div>
           <div style="flex:1;min-width:0;">
             <strong style="font-size:0.8rem;color:#0f172a;display:block;">
-              📱 Sakinisha App — Matokeo ya Shule
+              📱 Sakinisha App — SRS V1
             </strong>
             <p style="font-size:0.72rem;color:#475569;margin:2px 0 0;line-height:1.35;">
               Pakia alama za mitihani, tengeneza PDF na ugawie wanafunzi matokeo —

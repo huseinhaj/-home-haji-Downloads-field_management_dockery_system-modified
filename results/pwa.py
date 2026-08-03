@@ -11,8 +11,8 @@ def pwa_manifest(request):
     """Serve Web App Manifest so the School Results portal can be installed
     as an app on phones and desktops (like the TLM curriculum app)."""
     manifest = {
-        "name": "School Results System Tanzania",
-        "short_name": "Matokeo",
+        "name": "School Results System Tanzania (SRS V1)",
+        "short_name": "SRS V1",
         "description": "Mfumo wa Matokeo ya Shule Tanzania — walimu wanapakia alama za mitihani, kuzalisha PDF, na kugawa matokeo kwa wanafunzi.",
         "start_url": "/shule/",
         "scope": "/shule/",
@@ -25,25 +25,25 @@ def pwa_manifest(request):
         "dir": "ltr",
         "icons": [
             {
-                "src": "/static/curriculum/pwa-icon-192.png",
+                "src": "/static/results/img/srs-icon-192.png",
                 "sizes": "192x192",
                 "type": "image/png",
                 "purpose": "any",
             },
             {
-                "src": "/static/curriculum/pwa-icon-512.png",
+                "src": "/static/results/img/srs-icon-512.png",
                 "sizes": "512x512",
                 "type": "image/png",
                 "purpose": "any",
             },
             {
-                "src": "/static/curriculum/pwa-icon-1024.png",
+                "src": "/static/results/img/srs-icon-1024.png",
                 "sizes": "1024x1024",
                 "type": "image/png",
                 "purpose": "any maskable",
             },
             {
-                "src": "/static/curriculum/pwa-icon.svg",
+                "src": "/static/results/img/srs-icon.svg",
                 "sizes": "any",
                 "type": "image/svg+xml",
                 "purpose": "any",
@@ -51,18 +51,18 @@ def pwa_manifest(request):
         ],
         "screenshots": [
             {
-                "src": "/static/curriculum/pwa-splash.png",
+                "src": "/static/results/img/srs-splash.png",
                 "sizes": "1280x640",
                 "type": "image/png",
                 "form_factor": "wide",
-                "label": "School Results — Matokeo ya Shule"
+                "label": "SRS V1 — School Results System Tanzania"
             },
             {
-                "src": "/static/curriculum/pwa-splash.png",
+                "src": "/static/results/img/srs-splash.png",
                 "sizes": "1280x640",
                 "type": "image/png",
                 "form_factor": "narrow",
-                "label": "School Results — Matokeo ya Shule"
+                "label": "SRS V1 — School Results System Tanzania"
             },
         ],
         "shortcuts": [
@@ -71,21 +71,21 @@ def pwa_manifest(request):
                 "short_name": "Mitihani",
                 "description": "Angalia mitihani na maendeleo ya uwasilishaji",
                 "url": "/shule/",
-                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}],
+                "icons": [{"src": "/static/results/img/srs-icon-192.png", "sizes": "192x192"}],
             },
             {
                 "name": "Tafuta Matokeo",
                 "short_name": "Matokeo",
                 "description": "Wanafunzi na wazazi watafute matokeo kwa jina",
                 "url": "/shule/matokeo/",
-                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}],
+                "icons": [{"src": "/static/results/img/srs-icon-192.png", "sizes": "192x192"}],
             },
             {
                 "name": "Binafsi",
                 "short_name": "Binafsi",
                 "description": "Pakia alama za somo lako binafsi",
                 "url": "/shule/binafsi/",
-                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}],
+                "icons": [{"src": "/static/results/img/srs-icon-192.png", "sizes": "192x192"}],
             },
         ],
     }
@@ -94,11 +94,11 @@ def pwa_manifest(request):
 
 def pwa_service_worker(request):
     """Serve the Service Worker for offline caching & PWA install."""
-    sw_code = '''const CACHE_NAME = "school-results-v1";
+    sw_code = '''const CACHE_NAME = "school-results-v2";
 const STATIC_ASSETS = [
-  "/static/curriculum/pwa-icon-192.png",
-  "/static/curriculum/pwa-icon-512.png",
-  "/static/curriculum/pwa-icon.svg",
+  "/static/results/img/srs-icon-192.png",
+  "/static/results/img/srs-icon-512.png",
+  "/static/results/img/srs-icon.svg",
 ];
 
 // ── Install: cache static assets ──

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#28A745"/>
+      <stop offset="100%" stop-color="#0D4F2B"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD116"/>
+      <stop offset="100%" stop-color="#D9A441"/>
+    </linearGradient>
+    <linearGradient id="seaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1277B8"/>
+      <stop offset="100%" stop-color="#0A4D8C"/>
+    </linearGradient>
+    <linearGradient id="flameGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FFF3B0"/>
+      <stop offset="55%" stop-color="#FCD116"/>
+      <stop offset="100%" stop-color="#E63946"/>
+    </linearGradient>
+    <clipPath id="shieldClip">
+      <path d="M150,126 L362,126 C384,198 362,288 256,344 C150,288 128,198 150,126 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#bgGrad)"/>
+  <rect x="18" y="18" width="1244" height="604" rx="16" fill="none" stroke="url(#goldGrad)" stroke-width="4" opacity="0.9"/>
+  <circle cx="120" cy="120" r="5" fill="#FCD116" opacity="0.35"/>
+  <circle cx="1180" cy="110" r="4" fill="#FCD116" opacity="0.3"/>
+  <circle cx="1100" cy="540" r="5" fill="#FCD116" opacity="0.3"/>
+  <circle cx="140" cy="520" r="4" fill="#FCD116" opacity="0.3"/>
+
+  <!-- Coat of arms emblem (left panel) -->
+  <g transform="translate(130, 60) scale(1.3)">
+    <!-- Tusks -->
+    <path d="M84,332 C116,272 152,218 178,168 C186,153 197,162 190,177 C165,228 136,282 112,326 C106,337 93,343 84,332 Z" fill="#F5F0E1" stroke="url(#goldGrad)" stroke-width="2"/>
+    <path d="M428,332 C396,272 360,218 334,168 C326,153 315,162 322,177 C347,228 376,282 400,326 C406,337 419,343 428,332 Z" fill="#F5F0E1" stroke="url(#goldGrad)" stroke-width="2"/>
+    <!-- Shield -->
+    <path d="M150,126 L362,126 C384,198 362,288 256,344 C150,288 128,198 150,126 Z" fill="#0A3D1F" stroke="url(#goldGrad)" stroke-width="6"/>
+    <g clip-path="url(#shieldClip)">
+      <rect x="140" y="126" width="246" height="74" fill="url(#goldGrad)"/>
+      <rect x="140" y="200" width="246" height="70" fill="url(#seaGrad)"/>
+      <rect x="140" y="270" width="246" height="82" fill="#D63A2F"/>
+      <path d="M140,216 Q176,206 212,216 T284,216 T356,216" stroke="#FFFFFF" stroke-width="5" fill="none" opacity="0.95"/>
+      <path d="M140,232 Q176,222 212,232 T284,232 T356,232" stroke="#FFFFFF" stroke-width="5" fill="none" opacity="0.8"/>
+      <path d="M140,248 Q176,238 212,248 T284,248 T356,248" stroke="#FFFFFF" stroke-width="5" fill="none" opacity="0.6"/>
+    </g>
+    <path d="M150,126 L362,126 C384,198 362,288 256,344 C150,288 128,198 150,126 Z" fill="none" stroke="url(#goldGrad)" stroke-width="5"/>
+    <!-- Torch -->
+    <path d="M256,34 C292,64 302,96 256,112 C210,96 220,64 256,34 Z" fill="url(#flameGrad)"/>
+    <path d="M256,50 C278,73 284,96 256,109 C228,96 234,73 256,50 Z" fill="#E63946"/>
+    <rect x="247" y="106" width="18" height="32" rx="3" fill="url(#goldGrad)" stroke="#B8860B" stroke-width="1.5"/>
+    <!-- Axe & hoe -->
+    <line x1="212" y1="350" x2="258" y2="392" stroke="url(#goldGrad)" stroke-width="9" stroke-linecap="round"/>
+    <line x1="258" y1="392" x2="302" y2="350" stroke="url(#goldGrad)" stroke-width="9" stroke-linecap="round"/>
+    <path d="M244,388 Q266,372 276,396 Q254,404 244,388 Z" fill="url(#goldGrad)" stroke="#B8860B" stroke-width="1.5"/>
+    <path d="M288,343 Q310,350 307,372 Q286,375 288,343 Z" fill="#E9ECEF" stroke="url(#goldGrad)" stroke-width="2"/>
+  </g>
+
+  <!-- Text (right panel) -->
+  <text x="700" y="290" font-family="Arial, Helvetica, sans-serif" font-size="100" font-weight="900"
+        fill="url(#goldGrad)" text-anchor="middle" stroke="#0D4F2B" stroke-width="5" paint-order="stroke">SRS V1</text>
+  <text x="700" y="350" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700"
+        fill="#FFFFFF" text-anchor="middle" letter-spacing="2" opacity="0.97">School Results System — Tanzania</text>
+  <text x="700" y="405" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="500"
+        fill="#FCD116" text-anchor="middle" letter-spacing="1" opacity="0.92">Mfumo wa Matokeo ya Shule • Walimu • Mitihani • Matokeo</text>
+</svg>
