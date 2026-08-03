@@ -1,4 +1,5 @@
 from django.urls import path
+from .pwa import pwa_manifest, pwa_service_worker
 from .auth_views import results_login, results_logout, manage_teachers
 from .billing_views import (
     choose_plan,
@@ -52,6 +53,9 @@ from .speech_views import (
 )
 
 urlpatterns = [
+    # PWA: Progressive Web App — manifest & service worker (scoped to /shule/)
+    path('manifest.json', pwa_manifest, name='pwa_manifest'),
+    path('sw.js', pwa_service_worker, name='pwa_service_worker'),
     # Results-app-only authentication (separate from field_app student login)
     path('ingia/', results_login, name='results_login'),
     path('toka/', results_logout, name='results_logout'),

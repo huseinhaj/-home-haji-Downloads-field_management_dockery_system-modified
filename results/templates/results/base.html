@@ -1,19 +1,36 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light" translate="no" class="notranslate">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#124D22">
+  <meta name="google" content="notranslate">
   <title>{% block title %}School Results{% endblock %}</title>
+  <!-- PWA: Web App Manifest (installable app) -->
+  <link rel="manifest" href="/shule/manifest.json">
+  <!-- PWA: iOS-specific meta tags -->
+  <meta name="apple-mobile-web-app-title" content="Matokeo">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/static/curriculum/pwa-icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/static/curriculum/pwa-icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="/static/curriculum/pwa-icon-512.png">
+  <!-- PWA: Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/static/curriculum/pwa-icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="{% static 'results/styles.css' %}">
-  <link rel="icon" href="{% if IS_KYERWA %}{% static 'results/img/kyerwa_logo.jpg' %}{% else %}{{ TZ_EMBLEM_URL }}{% endif %}">
+  {% block extra_css %}{% endblock %}
 </head>
 <body>
   <div class="site-bg"></div>
+
+  <!-- Drawer overlay -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 
   <div class="masthead">
     {% if IS_KYERWA %}
@@ -48,7 +65,9 @@
           <small>{% if LANG == 'sw' %}Mfumo wa Matokeo{% else %}Results System{% endif %}</small>
         </span>
       </a>
-      <nav class="app-nav">
+
+      <!-- Desktop nav -->
+      <nav class="app-nav app-nav-desktop">
         {% if user.is_authenticated %}
           <a href="{% url 'home' %}">{% if LANG == 'sw' %}Mitihani{% else %}Exams{% endif %}</a>
           {% if user.is_academic %}
@@ -72,9 +91,93 @@
           <a href="{% url 'set_language' %}?lang=en&next={{ request.path|urlencode }}" class="{% if LANG == 'en' %}active{% endif %}">EN</a>
           <a href="{% url 'set_language' %}?lang=sw&next={{ request.path|urlencode }}" class="{% if LANG == 'sw' %}active{% endif %}">SW</a>
         </span>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Badilisha muonekano">
+          <i class="fas fa-moon"></i>
+        </button>
       </nav>
+
+      <!-- Mobile controls -->
+      <div class="app-nav-mobile-controls">
+        <button class="theme-toggle" id="themeToggleMobile" aria-label="Toggle dark mode" title="Badilisha muonekano">
+          <i class="fas fa-moon"></i>
+        </button>
+        <button class="hamburger" id="hamburgerBtn" aria-label="Fungua menyu" aria-expanded="false" onclick="toggleDrawer()">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
     </div>
   </header>
+
+  <!-- Mobile drawer -->
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <strong style="font-family:'Sora',sans-serif;color:var(--accent-500);">📊 Menyu</strong>
+      <button class="drawer-close" onclick="closeDrawer()" aria-label="Funga"><i class="fas fa-times"></i></button>
+    </div>
+    <nav class="drawer-nav">
+      <a href="{% url 'home' %}"><i class="fas fa-home"></i> {% if LANG == 'sw' %}Nyumbani{% else %}Home{% endif %}</a>
+      {% if user.is_authenticated %}
+        {% if user.is_academic %}
+          <a href="{% url 'upload_results' %}"><i class="fas fa-plus-circle"></i> {% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}</a>
+          <a href="{% url 'school_setup' %}"><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule Yangu{% else %}My School{% endif %}</a>
+          <a href="{% url 'academic_dashboard' %}"><i class="fas fa-chart-bar"></i> Academic</a>
+          <a href="{% url 'manage_teachers' %}"><i class="fas fa-users"></i> {% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</a>
+          <a href="{% url 'choose_plan' %}"><i class="fas fa-coins"></i> {% if LANG == 'sw' %}Malipo{% else %}Billing{% endif %}</a>
+        {% elif user.is_teacher %}
+          <a href="{% url 'teacher_dashboard' %}"><i class="fas fa-chalkboard-teacher"></i> {% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}</a>
+          <a href="{% url 'personal_upload' %}"><i class="fas fa-file-upload"></i> {% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
+        {% endif %}
+        <a href="{% url 'select_my_subjects' %}"><i class="fas fa-book"></i> {% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
+        <a href="{% url 'speech_entry_page' %}"><i class="fas fa-microphone"></i> Speech Entry</a>
+        <div class="nav-sep"></div>
+        <a href="{% url 'student_results_search' %}"><i class="fas fa-search"></i> {% if LANG == 'sw' %}Tafuta Matokeo{% else %}Search Results{% endif %}</a>
+        <a href="{% url 'results_logout' %}" style="color:var(--danger-500);"><i class="fas fa-sign-out-alt"></i> {% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}</a>
+      {% else %}
+        <a href="{% url 'results_login' %}"><i class="fas fa-sign-in-alt"></i> {% if LANG == 'sw' %}Ingia{% else %}Login{% endif %}</a>
+        <a href="{% url 'register_school_start' %}"><i class="fas fa-user-plus"></i> {% if LANG == 'sw' %}Jiunge na Mfumo{% else %}Join the System{% endif %}</a>
+        <a href="{% url 'student_results_search' %}"><i class="fas fa-search"></i> {% if LANG == 'sw' %}Tafuta Matokeo{% else %}Search Results{% endif %}</a>
+      {% endif %}
+      <div class="nav-sep"></div>
+      <div style="display:flex;align-items:center;gap:8px;padding:0.5rem 0.85rem;font-size:0.8rem;color:var(--ink-500);">
+        <i class="fas fa-globe"></i> <span>Lugha / Language:</span>
+        <span class="lang-switch" style="margin-left:auto;">
+          <a href="{% url 'set_language' %}?lang=en&next={{ request.path|urlencode }}" class="{% if LANG == 'en' %}active{% endif %}">EN</a>
+          <a href="{% url 'set_language' %}?lang=sw&next={{ request.path|urlencode }}" class="{% if LANG == 'sw' %}active{% endif %}">SW</a>
+        </span>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Bottom navigation (mobile) -->
+  <nav class="bottom-nav" aria-label="Bottom navigation">
+    <a href="{% url 'home' %}">
+      <i class="fas fa-home"></i> {% if LANG == 'sw' %}Nyumbani{% else %}Home{% endif %}
+    </a>
+    {% if user.is_academic %}
+    <a href="{% url 'upload_results' %}">
+      <i class="fas fa-plus-circle"></i> {% if LANG == 'sw' %}Mtihani{% else %}Exam{% endif %}
+    </a>
+    {% elif user.is_teacher %}
+    <a href="{% url 'teacher_dashboard' %}">
+      <i class="fas fa-chalkboard-teacher"></i> {% if LANG == 'sw' %}Dashibodi{% else %}Board{% endif %}
+    </a>
+    {% else %}
+    <a href="{% url 'results_login' %}">
+      <i class="fas fa-sign-in-alt"></i> {% if LANG == 'sw' %}Ingia{% else %}Login{% endif %}
+    </a>
+    {% endif %}
+    <a href="{% url 'speech_entry_page' %}">
+      <i class="fas fa-microphone"></i> Speech
+    </a>
+    <a href="{% url 'student_results_search' %}">
+      <i class="fas fa-search"></i> {% if LANG == 'sw' %}Matokeo{% else %}Results{% endif %}
+    </a>
+    {% if user.is_authenticated %}
+    <a href="{% url 'results_logout' %}">
+      <i class="fas fa-sign-out-alt"></i> {% if LANG == 'sw' %}Toka{% else %}Exit{% endif %}
+    </a>
+    {% endif %}
+  </nav>
 
   <main class="container page-shell">
     {% if messages %}
@@ -115,6 +218,77 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- PWA: Service Worker registration & Sakinisha install prompt -->
+  <script src="{% static 'results/pwa-register.js' %}" defer></script>
+  <script>
+    // ============================================================
+    // DARK MODE TOGGLE
+    // ============================================================
+    (function() {
+      const STORAGE_KEY = 'results-theme';
+      const root = document.documentElement;
+
+      // Apply saved theme (or respect system preference on first visit)
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        root.setAttribute('data-theme', saved);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        root.setAttribute('data-theme', 'dark');
+      }
+
+      function applyTheme(theme) {
+        root.setAttribute('data-theme', theme);
+        localStorage.setItem(STORAGE_KEY, theme);
+        const dark = theme === 'dark';
+        document.querySelectorAll('#themeToggle, #themeToggleMobile').forEach(function(btn) {
+          const icon = btn.querySelector('i');
+          if (icon) icon.className = dark ? 'fas fa-sun' : 'fas fa-moon';
+        });
+      }
+
+      function toggleTheme() {
+        const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+      }
+
+      // Initial icon state
+      applyTheme(root.getAttribute('data-theme') || 'light');
+
+      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+      document.getElementById('themeToggleMobile').addEventListener('click', toggleTheme);
+    })();
+
+    // ============================================================
+    // MOBILE DRAWER
+    // ============================================================
+    function toggleDrawer() {
+      const drawer = document.getElementById('drawer');
+      const overlay = document.getElementById('drawerOverlay');
+      const btn = document.getElementById('hamburgerBtn');
+      const isOpen = drawer.classList.contains('open');
+      drawer.classList.toggle('open', !isOpen);
+      overlay.classList.toggle('open', !isOpen);
+      btn.classList.toggle('active', !isOpen);
+      btn.setAttribute('aria-expanded', String(!isOpen));
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawer').classList.remove('open');
+      document.getElementById('drawerOverlay').classList.remove('open');
+      document.getElementById('hamburgerBtn').classList.remove('active');
+      document.getElementById('hamburgerBtn').setAttribute('aria-expanded', 'false');
+    }
+
+    // Close drawer when a link inside it is tapped
+    document.querySelectorAll('.drawer-nav a').forEach(function(link) {
+      link.addEventListener('click', closeDrawer);
+    });
+
+    // Close drawer with Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeDrawer();
+    });
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
