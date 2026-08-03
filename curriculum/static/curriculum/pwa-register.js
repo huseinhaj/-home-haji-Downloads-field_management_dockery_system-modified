@@ -66,10 +66,10 @@
           </div>
           <div style="flex:1;min-width:0;">
             <strong style="font-size:var(--font-size-sm,0.78rem);color:var(--text-primary,#0f172a);display:block;">
-              📱 Sakinisha App — Kubadilishana Walimu
+              📱 Sakinisha App — Matokeo ya Shule
             </strong>
             <p style="font-size:var(--font-size-xs,0.7rem);color:var(--text-secondary,#475569);margin:2px 0 0;line-height:1.3;">
-              App hii inawasaidia walimu wanaotaka kuhama (transfer) kupata taarifa na namba za simu za walimu wenzao Tanzania.
+              Pakia alama za mitihani, tengeneza PDF na ugawie wanafunzi matokeo — moja kwa moja kutoka simu yako.
             </p>
           </div>
         </div>

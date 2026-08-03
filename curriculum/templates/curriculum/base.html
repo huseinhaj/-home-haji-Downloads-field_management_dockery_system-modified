@@ -1060,11 +1060,11 @@
             <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                 <strong style="background:var(--gold-400);color:#0D4F2B;padding:1px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;">Muhimu</strong>
                 <span>
-                    <strong>📲 Sakinisha App ya Kubadilishana Walimu!</strong>
-                    Pata taarifa na namba za simu za walimu wenzako wanaotaka kuhama (transfer) Tanzania nzima.
+                    <strong>📱 Sakinisha App — Matokeo ya Shule</strong>
+                    Pakia alama za mitihani, tengeneza PDF na ugawie wanafunzi matokeo — moja kwa moja kutoka simu yako.
                 </span>
             </span>
-            <a href="/transfer/" style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.15);padding:3px 10px;border-radius:var(--radius-full);font-size:10px;text-decoration:none;color:white;">
+            <a href="/shule/" style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.15);padding:3px 10px;border-radius:var(--radius-full);font-size:10px;text-decoration:none;color:white;">
                 <i class="fas fa-download"></i> Fungua App
             </a>
             <button onclick="dismissUpdateBanner()" style="
@@ -1125,12 +1125,12 @@
     // GLOBAL UTILITIES
     // ============================================================
 
-    // ── System Update Notification Banner (Teacher Exchange promo) ──
+    // ── System Update Notification Banner (School Results promo) ──
     (function() {
         const banner = document.getElementById('systemUpdateBanner');
         if (banner) {
-            // New key 'tlm-teacher-exchange-dismissed' so even old dismissers see it
-            const dismissed = localStorage.getItem('tlm-teacher-exchange-dismissed');
+            // New key 'tlm-results-promo-dismissed' so even old dismissers see the new banner
+            const dismissed = localStorage.getItem('tlm-results-promo-dismissed');
             if (!dismissed) {
                 banner.style.display = 'block';
             } else {
@@ -1141,7 +1141,7 @@
                     const elapsed = Date.now() - dismissedTime;
                     if (elapsed > twoDays) {
                         // More than 2 days - show again and clear the flag
-                        localStorage.removeItem('tlm-teacher-exchange-dismissed');
+                        localStorage.removeItem('tlm-results-promo-dismissed');
                         banner.style.display = 'block';
                     }
                 }
@@ -1166,7 +1166,7 @@
         if (banner) {
             banner.style.display = 'none';
             // Store the current timestamp - banner will show again after 2 days
-            localStorage.setItem('tlm-teacher-exchange-dismissed', Date.now().toString());
+            localStorage.setItem('tlm-results-promo-dismissed', Date.now().toString());
         }
     }
 
