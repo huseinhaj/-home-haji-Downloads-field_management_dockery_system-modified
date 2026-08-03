@@ -437,6 +437,7 @@ def landing(request):
     total_schemes = SchemeOfWork.objects.count()
     total_lesson_plans = LessonPlan.objects.count()
     total_logbooks = LogbookEntry.objects.count()
+    total_notes = LessonNote.objects.count()
     
     # Real testimonials from teachers
     testimonials = Testimonial.objects.filter(is_approved=True).select_related('teacher__school')[:6]
@@ -447,6 +448,7 @@ def landing(request):
         'total_schemes': total_schemes,
         'total_lesson_plans': total_lesson_plans,
         'total_logbooks': total_logbooks,
+        'total_notes': total_notes,
         'testimonials': testimonials,
     })
 
@@ -682,6 +684,8 @@ def dashboard(request):
     this_month_logbooks = LogbookEntry.objects.filter(
         student=student, date__year=today.year, date__month=today.month
     ).count()
+    # Lesson Notes — scoped to the student's school (LessonNote links to TLM teachers at a school)
+    notes_count = LessonNote.objects.filter(school=school).count() if school else 0
 
     # Recent items
     recent_schemes = SchemeOfWork.objects.filter(student=student).select_related('subject').order_by('-updated_at')[:3]
@@ -696,6 +700,7 @@ def dashboard(request):
         'logbook_today': logbook_today,
         'logbook_count': logbook_count,
         'this_month_logbooks': this_month_logbooks,
+        'notes_count': notes_count,
         'recent_schemes': recent_schemes,
         'recent_lessons': recent_lessons,
         'recent_logbooks': recent_logbooks,

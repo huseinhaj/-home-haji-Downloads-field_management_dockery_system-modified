@@ -43,7 +43,7 @@
     gap: 1rem;
     margin: 1.5rem 0;
   }
-  @media (min-width: 640px) { .stats-bar { grid-template-columns: repeat(4, 1fr); } }
+  @media (min-width: 640px) { .stats-bar { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); } }
   .stat-item {
     text-align: center;
     padding: 0.75rem;
@@ -184,6 +184,10 @@
       <div class="stat-item">
         <div class="stat-num counter" data-target="{{ total_logbooks|default:0 }}">0</div>
         <div class="stat-item-label">Logbook Entries</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num counter" data-target="{{ total_notes|default:0 }}">0</div>
+        <div class="stat-item-label">Lesson Notes</div>
       </div>
     </div>
 
@@ -496,10 +500,24 @@ document.addEventListener('DOMContentLoaded', function() {
       const progress = Math.min(elapsed / duration, 1);
       const easeOut = 1 - Math.pow(1 - progress, 3);
       const current = Math.round(easeOut * target);
-      el.textContent = current.toLocaleString();
+      el.textContent = compactNumber(current);
       if (progress < 1) requestAnimationFrame(update);
     }
     requestAnimationFrame(update);
+  }
+
+  // Format 1000+ as compact: 1000 -> 1K, 1100 -> 1.1K, 10500 -> 10.5K, 1M+
+  // (same rounding as the compact_number Django filter used on the dashboard)
+  function compactNumber(n) {
+    if (n >= 1000000) {
+      const v = Math.round(n / 100000) / 10;
+      return (v % 1 === 0 ? v : v.toFixed(1)) + 'M';
+    }
+    if (n >= 1000) {
+      const v = Math.round(n / 100) / 10;
+      return (v % 1 === 0 ? v : v.toFixed(1)) + 'K';
+    }
+    return String(n);
   }
 });
 
