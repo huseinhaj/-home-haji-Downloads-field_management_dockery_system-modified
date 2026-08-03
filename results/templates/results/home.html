@@ -9,9 +9,9 @@
       <h1 class="mb-1">{% if LANG == 'sw' %}Mfumo wa Matokeo{% else %}Results System{% endif %}</h1>
       <p class="mb-0 text-secondary">
         {% if LANG == 'sw' %}
-        Walimu wanapakia alama za masomo yao (au kuingiza kwa sauti) na kupata matokeo ya somo lao papo hapo. Mtaaluma anazalisha matokeo ya jumla ya shule pale masomo yote yatakapowasilishwa.
+        Walimu wanapakia alama za masomo yao (au kuzijaza moja kwa moja — Marks Entry) na kupata matokeo ya somo lao papo hapo. Mtaaluma anazalisha matokeo ya jumla ya shule pale masomo yote yatakapowasilishwa.
         {% else %}
-        Teachers upload their subject scores (or use voice entry) and get their subject results instantly. The academic officer generates the school's overall results once every subject has been submitted.
+        Teachers upload their subject scores (or enter them manually via Marks Entry) and get their subject results instantly. The academic officer generates the school's overall results once every subject has been submitted.
         {% endif %}
       </p>
     </div>
@@ -28,8 +28,8 @@
   <div style="font-size:2.5rem;margin-bottom:0.5rem;">📋</div>
   <h3 style="color:#1F7A3D;font-weight:800;">{% if LANG == 'sw' %}Hakuna Mtihani Bado{% else %}No Exams Yet{% endif %}</h3>
   <p class="text-secondary mb-3">
-    {% if LANG == 'sw' %}Mtaaluma anaunda mtihani kwanza, kisha kila mwalimu anapakia alama za somo lake (au kuingiza kwa sauti).
-    {% else %}The academic officer creates an exam first, then each teacher uploads their subject's scores (or uses voice entry).{% endif %}
+    {% if LANG == 'sw' %}Mtaaluma anaunda mtihani kwanza, kisha kila mwalimu anapakia alama za somo lake (au kuzijaza moja kwa moja — Marks Entry).
+    {% else %}The academic officer creates an exam first, then each teacher uploads their subject's scores (or enters them manually via Marks Entry).{% endif %}
   </p>
   {% if user.is_academic %}
   <a href="{% url 'upload_results' %}" class="btn btn-brand">{% if LANG == 'sw' %}Unda Mtihani wa Kwanza{% else %}Create the First Exam{% endif %}</a>
@@ -71,7 +71,9 @@
 
         <div class="d-flex gap-2 flex-wrap mt-auto">
           <a href="{% url 'exam_overview' exam.id %}" class="btn btn-brand btn-sm" style="font-size:0.78rem;">{% if LANG == 'sw' %}Muhtasari wa Mtihani{% else %}Exam Overview{% endif %}</a>
-          <a href="{% url 'speech_entry_page' %}?exam={{ exam.id }}" class="btn btn-sm" style="font-size:0.78rem;border:1.5px solid #1F7A3D;color:#1F7A3D;">Speech Entry</a>
+          {% if user.is_teacher %}
+          <a href="{% url 'marks_entry' %}?exam={{ exam.id }}" class="btn btn-sm" style="font-size:0.78rem;border:1.5px solid #1F7A3D;color:#1F7A3D;">✏️ {% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</a>
+          {% endif %}
         </div>
       </div>
     </div>

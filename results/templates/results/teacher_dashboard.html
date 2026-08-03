@@ -19,10 +19,10 @@
       <h3>{% if LANG == 'sw' %}Matokeo Binafsi{% else %}Personal Results{% endif %}</h3>
       <p>{% if LANG == 'sw' %}Pakia alama zako mwenyewe (mf. mtihani wa mwezi) na upate PDF ya matokeo papo hapo — hauitaji mtihani rasmi.{% else %}Upload your own scores (e.g. a monthly test) and get a results PDF instantly — no official exam needed.{% endif %}</p>
     </a>
-    <a href="{% url 'speech_entry_page' %}" class="action-card">
-      <span class="icon">&#127908;</span>
-      <h3>Speech Entry</h3>
-      <p>{% if LANG == 'sw' %}Ingiza alama za somo lako kwa sauti badala ya kupakia faili.{% else %}Enter your subject's scores by voice instead of uploading a file.{% endif %}</p>
+    <a href="{% url 'marks_entry' %}" class="action-card">
+      <span class="icon">&#9997;</span>
+      <h3>{% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</h3>
+      <p>{% if LANG == 'sw' %}Pakia orodha ya wanafunzi, jaza alama zao moja kwa moja, kagua na uwasilishe kwa Mtaaluma.{% else %}Upload the student list, enter their marks directly, review and submit to the academic officer.{% endif %}</p>
     </a>
   </div>
 </section>
@@ -65,7 +65,7 @@
             <div class="s-status pending">&#9203; {% if LANG == 'sw' %}BADO &mdash; Inasubiri mwalimu{% else %}PENDING &mdash; waiting on teacher{% endif %}</div>
             <div class="d-flex gap-1 flex-wrap">
               <a href="{% url 'subject_upload' ec.exam.id sub.subject.id %}" class="btn-tile primary">&#8679; {% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
-              <a href="{% url 'speech_entry_page' %}?exam={{ ec.exam.id }}&subject={{ sub.subject.id }}" class="btn-tile ghost">&#127908; {% if LANG == 'sw' %}Sauti{% else %}Voice{% endif %}</a>
+              <a href="{% url 'marks_entry' %}?exam={{ ec.exam.id }}&subject={{ sub.subject.id }}" class="btn-tile ghost">&#9997; {% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</a>
             </div>
           </div>
           {% endfor %}

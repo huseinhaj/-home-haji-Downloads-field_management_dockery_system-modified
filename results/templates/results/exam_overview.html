@@ -183,7 +183,7 @@
 
     <div class="subject-actions">
       {% if not ctx.is_approved and not is_academic %}
-      <a href="{{ ctx.speech_url }}" class="btn btn-speech">Speech</a>
+      <a href="{{ ctx.marks_url }}" class="btn btn-speech">✏️ {% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</a>
       <a href="{{ ctx.upload_url }}" class="btn btn-upload-sm">{% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
       {% endif %}
       {% if ctx.pdf_url %}
@@ -203,8 +203,8 @@
 </div>
 {% else %}
 <div class="support-box">
-  {% if LANG == 'sw' %}Hakuna masomo yaliyosajiliwa kwa mtihani huu bado. Anza na Speech Entry au Pakia Faili.
-  {% else %}No subjects registered for this exam yet. Start with Speech Entry or Upload File.{% endif %}
+  {% if LANG == 'sw' %}Hakuna masomo yaliyosajiliwa kwa mtihani huu bado. Mwalimu anaanza kwa Kujaza Alama (Marks Entry) au Pakia Faili.
+  {% else %}No subjects registered for this exam yet. The teacher starts with Marks Entry or Upload File.{% endif %}
 </div>
 {% endif %}
 

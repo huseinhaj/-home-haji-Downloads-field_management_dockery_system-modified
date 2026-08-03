@@ -104,18 +104,18 @@
         {% if LANG == 'sw' %}
         <ol style="padding-left:1.2rem;line-height:2;">
           <li><strong>Academic</strong> anaunda mtihani na kuweka masomo (hapa)</li>
-          <li><strong>Mwalimu wa kila somo</strong> anaingia Speech Entry → anasema majina na alama → anasema <em>"Nimemaliza"</em></li>
+          <li><strong>Mwalimu wa kila somo</strong> anaingia <strong>Marks Entry</strong> → anapakia orodha ya wanafunzi, anajaza alama → <em>"Hifadhi &amp; Kagua"</em></li>
           <li>Mfumo unazalisha <strong>PDF ya somo lake</strong> moja kwa moja</li>
-          <li><em>Mbadala:</em> Mwalimu anaweza <strong>upload file</strong> badala ya speech</li>
+          <li><em>Mbadala:</em> Mwalimu anaweza <strong>upload file</strong> badala ya kujaza moja kwa moja</li>
           <li><strong>Academic</strong> anaona masomo yaliyokamilika → anabonyeza <em>"Zalisha Matokeo ya Mwisho"</em></li>
           <li>Mfumo unazalisha <strong>Excel ya kitaalamu</strong> na wanafunzi wote, masomo yote, position, division</li>
         </ol>
         {% else %}
         <ol style="padding-left:1.2rem;line-height:2;">
           <li><strong>Academic officer</strong> creates the exam and sets up its subjects (here)</li>
-          <li><strong>Each subject's teacher</strong> opens Speech Entry → says names and scores → says <em>"Done"</em></li>
+          <li><strong>Each subject's teacher</strong> opens Marks Entry → uploads the student list, enters scores → <em>"Save &amp; Review"</em></li>
           <li>The system generates that <strong>subject's PDF</strong> instantly</li>
-          <li><em>Alternative:</em> a teacher can <strong>upload a file</strong> instead of speech</li>
+          <li><em>Alternative:</em> a teacher can <strong>upload a file</strong> instead of entering manually</li>
           <li><strong>Academic officer</strong> sees which subjects are complete → clicks <em>"Generate Final Results"</em></li>
           <li>The system generates a <strong>professional Excel</strong> with all students, subjects, position, and division</li>
         </ol>
@@ -123,15 +123,15 @@
 
         <div class="support-box mt-3" style="border-left:4px solid #D9A441;background:#fffbf0;">
           {% if LANG == 'sw' %}
-          <strong>Format ya faili ya Speech Entry:</strong><br>
-          Mwalimu anasema kwa Kiswahili au Kiingereza:<br>
-          <em>"Halima Ally kapata sabini na tano. Peter Mushi themanini. Fatuma Ali tisini."</em><br>
-          Kisha: <strong>"Nimemaliza"</strong>
+          <strong>Marks Entry — jinsi inavyofanya kazi:</strong><br>
+          Mwalimu anapakia orodha ya wanafunzi (PDF/Excel/CSV) →<br>
+          kila mwanafunzi anaonekana → anajaza alama (0–100) →<br>
+          <strong>"Hifadhi &amp; Kagua"</strong> → mfumo unapanga wa kwanza hadi wa mwisho → <strong>"Submit kwa Mtaaluma"</strong>
           {% else %}
-          <strong>Speech Entry format:</strong><br>
-          The teacher speaks in Swahili or English:<br>
-          <em>"Halima Ally got seventy five. Peter Mushi eighty. Fatuma Ali ninety."</em><br>
-          Then: <strong>"Done"</strong>
+          <strong>Marks Entry — how it works:</strong><br>
+          The teacher uploads the student list (PDF/Excel/CSV) →<br>
+          every student appears → he/she enters scores (0–100) →<br>
+          <strong>"Save &amp; Review"</strong> → the system ranks 1st to last → <strong>"Submit to Academic"</strong>
           {% endif %}
         </div>
 

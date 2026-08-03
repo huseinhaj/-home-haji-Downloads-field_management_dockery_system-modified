@@ -375,7 +375,7 @@ def exam_overview(request, exam_id):
             'submission': submission,
             'is_submitted': is_submitted,
             'is_approved': is_approved,
-            'speech_url': reverse('speech_entry_page') + f'?exam={exam.id}&subject={subject.id}',
+            'marks_url': reverse('marks_entry') + f'?exam={exam.id}&subject={subject.id}',
             'upload_url': reverse('subject_upload', args=[exam.id, subject.id]),
             'pdf_url': reverse('subject_pdf', args=[exam.id, subject.id]) if (is_submitted or is_approved) else None,
             'approve_url': reverse('approve_subject', args=[exam.id, subject.id]) if (is_submitted and is_academic) else None,

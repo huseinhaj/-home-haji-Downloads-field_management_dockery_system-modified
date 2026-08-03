@@ -154,7 +154,11 @@ class ProcessedResult(models.Model):
 
 
 class SubjectSubmission(models.Model):
-    METHOD_CHOICES = [('SPEECH', 'Speech Entry'), ('UPLOAD', 'File Upload')]
+    METHOD_CHOICES = [
+        ('MANUAL', 'Marks Entry (Manual)'),
+        ('SPEECH', 'Speech Entry'),
+        ('UPLOAD', 'File Upload'),
+    ]
     STATUS_PENDING = 'PENDING'
     STATUS_SUBMITTED = 'SUBMITTED'
     STATUS_APPROVED = 'APPROVED'

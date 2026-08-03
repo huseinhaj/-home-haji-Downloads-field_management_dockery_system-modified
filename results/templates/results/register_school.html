@@ -53,9 +53,13 @@
         <div class="col-md-4">
           <div class="field">
             <label>{% if LANG == 'sw' %}Shule (Sekondari){% else %}School (Secondary){% endif %}</label>
+            <input type="text" id="schoolSearch" class="form-control mb-2"
+                   placeholder="{% if LANG == 'sw' %}Tafuta shule hapa...{% else %}Search school here...{% endif %}"
+                   autocomplete="off" disabled>
             <select id="schoolSelect" class="form-select" required disabled>
               <option value="">{% if LANG == 'sw' %}-- Chagua Shule --{% else %}-- Select School --{% endif %}</option>
             </select>
+            <div id="schoolCount" class="hint" style="margin-top:4px;"></div>
           </div>
         </div>
       </div>
@@ -77,12 +81,24 @@
   const regionSelect = document.getElementById('regionSelect');
   const districtSelect = document.getElementById('districtSelect');
   const schoolSelect = document.getElementById('schoolSelect');
+  const schoolSearch = document.getElementById('schoolSearch');
+  const schoolCount = document.getElementById('schoolCount');
   const schoolIdInput = document.getElementById('schoolIdInput');
   const submitBtn = document.getElementById('submitBtn');
 
   function resetSelect(select, placeholder) {
     select.innerHTML = `<option value="">${placeholder}</option>`;
     select.disabled = true;
+  }
+
+  function updateSchoolCount() {
+    if (!schoolCount) return;
+    const visible = [...schoolSelect.options].filter(o => o.value && o.style.display !== 'none').length;
+    const total = [...schoolSelect.options].filter(o => o.value).length;
+    if (!total) { schoolCount.textContent = ''; return; }
+    schoolCount.textContent = visible === total
+      ? `${total} ${'{% if LANG == "sw" %}shule{% else %}schools{% endif %}'}`
+      : `${visible} / ${total} ${'{% if LANG == "sw" %}shule{% else %}schools{% endif %}'}`;
   }
 
   regionSelect.addEventListener('change', async () => {
@@ -101,6 +117,9 @@
 
   districtSelect.addEventListener('change', async () => {
     resetSelect(schoolSelect, '-- {% if LANG == "sw" %}Chagua Shule{% else %}Select School{% endif %} --');
+    schoolSearch.value = '';
+    schoolSearch.disabled = true;
+    schoolCount.textContent = '';
     schoolIdInput.value = '';
     submitBtn.disabled = true;
     if (!districtSelect.value) return;
@@ -110,6 +129,24 @@
     schoolSelect.innerHTML = `<option value="">-- {% if LANG == 'sw' %}Chagua Shule{% else %}Select School{% endif %} --</option>` +
       data.schools.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
     schoolSelect.disabled = false;
+    schoolSearch.disabled = false;
+    updateSchoolCount();
+    if (data.schools.length > 0) schoolSearch.focus();
+  });
+
+  // ── LIVE SEARCH FILTER: filter school options as the user types ──
+  schoolSearch.addEventListener('input', () => {
+    const q = schoolSearch.value.trim().toLowerCase();
+    for (const option of schoolSelect.options) {
+      if (!option.value) continue;
+      option.style.display = option.text.toLowerCase().includes(q) ? '' : 'none';
+    }
+    // Keep a previously selected school visible even if it no longer matches
+    if (schoolSelect.value) {
+      const selected = schoolSelect.querySelector(`option[value="${schoolSelect.value}"]`);
+      if (selected) selected.style.display = '';
+    }
+    updateSchoolCount();
   });
 
   schoolSelect.addEventListener('change', () => {

@@ -1,0 +1,620 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Jaza Alama — Marks Entry{% else %}Marks Entry{% endif %} | School Results{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Marks Entry wizard ─────────────────────────────────────────── */
+  .me-hero {
+    background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+    border: 2px solid #D9A441;
+    border-radius: 2px;
+    padding: 1.4rem 1.8rem;
+    color: #fff;
+    margin-bottom: 1.2rem;
+  }
+  .me-hero h1 { font-size: 1.35rem; font-weight: 800; margin-bottom: 0.2rem; }
+  .me-hero .meta { font-size: 0.82rem; color: #D9A441; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* Step indicator */
+  .me-steps { display: flex; gap: 0.35rem; margin-bottom: 1.4rem; flex-wrap: wrap; }
+  .me-step {
+    flex: 1 1 140px; min-width: 130px;
+    display: flex; align-items: center; gap: 0.5rem;
+    background: #f1f3f5; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 0.55rem 0.8rem; font-size: 0.78rem; font-weight: 700; color: #888;
+    letter-spacing: 0.02em;
+  }
+  .me-step .num {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: #dee2e6; color: #fff; font-size: 0.75rem; flex-shrink: 0;
+  }
+  .me-step.active { background: #1F7A3D; border-color: #1F7A3D; color: #fff; }
+  .me-step.active .num { background: #D9A441; }
+  .me-step.done { background: #e6f7ec; border-color: #a3d9b4; color: #1a7a3b; }
+  .me-step.done .num { background: #1a7a3b; }
+
+  /* Selection panel */
+  .me-select-panel { max-width: 640px; margin: 0 auto; }
+
+  /* Upload box */
+  .me-upload-box {
+    border: 2px dashed #D9A441; background: #fffbf0; border-radius: 2px;
+    padding: 1.4rem 1.2rem; text-align: center; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .me-upload-box.dragover { background: #fff3d6; border-color: #1F7A3D; }
+  .me-upload-box .icon { font-size: 1.8rem; }
+  .me-upload-box input[type=file] { display: none; }
+
+  /* Marks table */
+  .me-table-wrap {
+    max-height: 46vh; overflow-y: auto; border: 1.5px solid #dee2e6; border-radius: 2px;
+    background: #fff;
+  }
+  .me-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .me-table thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: #1F7A3D; color: #fff; font-size: 0.72rem; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 0.55rem 0.7rem; text-align: left;
+  }
+  .me-table tbody td { padding: 0.45rem 0.7rem; border-bottom: 1px solid #f0f0f0; }
+  .me-table tbody tr:nth-child(even) { background: #fafbfc; }
+  .me-table tbody tr:hover { background: #f0f7f2; }
+  .me-table .row-no { width: 44px; color: #999; font-weight: 700; }
+  .me-table .student-name { font-weight: 600; color: #222; }
+  .me-table input.score-input {
+    width: 74px; border: 1.5px solid #ced4da; border-radius: 2px;
+    padding: 0.3rem 0.5rem; font-weight: 700; text-align: center; color: #1F7A3D;
+  }
+  .me-table input.score-input:focus { border-color: #1F7A3D; outline: none; box-shadow: 0 0 0 2px rgba(31,122,61,0.15); }
+  .me-table .grade-chip {
+    display: inline-block; min-width: 30px; text-align: center;
+    font-weight: 800; font-size: 0.72rem; border-radius: 2px; padding: 0.12rem 0.35rem;
+  }
+
+  /* Review table */
+  .me-review .pos-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: #e9ecef; color: #555; font-weight: 800; font-size: 0.8rem;
+  }
+  .me-review tr:nth-child(1) .pos-badge { background: #D9A441; color: #fff; }
+  .me-review tr:nth-child(2) .pos-badge { background: #9aa7b5; color: #fff; }
+  .me-review tr:nth-child(3) .pos-badge { background: #b5743a; color: #fff; }
+
+  .me-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+  .me-stat {
+    background: #f8f9fa; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 0.6rem 1.1rem; text-align: center; min-width: 110px;
+  }
+  .me-stat b { display: block; font-size: 1.15rem; color: #1F7A3D; }
+  .me-stat span { font-size: 0.7rem; color: #777; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  .me-success {
+    background: #e6f7ec; border: 2px solid #1a7a3b; border-radius: 2px;
+    padding: 1.6rem; text-align: center;
+  }
+  .me-success .tick {
+    width: 64px; height: 64px; margin: 0 auto 0.8rem; border-radius: 50%;
+    background: #1a7a3b; color: #fff; font-size: 1.7rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .me-toast {
+    position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-120%);
+    z-index: 1200; padding: 0.75rem 1.4rem; border-radius: 2px; font-weight: 600; font-size: 0.85rem;
+    color: #fff; box-shadow: 0 6px 24px rgba(0,0,0,0.2); transition: transform 0.3s ease; max-width: 92vw;
+  }
+  .me-toast.show { transform: translateX(-50%) translateY(0); }
+  .me-toast.error { background: #c0392b; }
+  .me-toast.success { background: #1a7a3b; }
+
+  .btn-me-submit {
+    background: #1F7A3D; color: #fff; border: 2px solid #D9A441;
+    font-weight: 700; letter-spacing: 0.04em; padding: 0.65rem 1.6rem;
+    border-radius: 2px; text-transform: uppercase; font-size: 0.85rem; cursor: pointer;
+  }
+  .btn-me-submit:hover { background: #145226; color: #fff; }
+  .btn-me-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-me-ghost {
+    background: #fff; color: #1F7A3D; border: 1.5px solid #1F7A3D;
+    font-weight: 600; padding: 0.6rem 1.3rem; border-radius: 2px; font-size: 0.82rem;
+  }
+  .btn-me-ghost:hover { background: #1F7A3D; color: #fff; }
+  .me-hint { font-size: 0.75rem; color: #888; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="me-hero">
+  <h1>✏️ {% if LANG == 'sw' %}Jaza Alama — Marks Entry{% else %}Marks Entry{% endif %}</h1>
+  <div class="meta">
+    {% if exam %}
+      {{ exam.name }} &nbsp;|&nbsp; Form {{ exam.form }} &nbsp;|&nbsp; {{ exam.year }}
+      {% if subject %}&nbsp;|&nbsp; {{ subject.name }}{% endif %}
+    {% else %}
+      {% if LANG == 'sw' %}Chagua mtihani na somo ili kuanza kujaza alama{% else %}Pick an exam and subject to start entering marks{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- Step indicator -->
+<div class="me-steps">
+  <div class="me-step {% if exam %}done{% else %}active{% endif %}">
+    <span class="num">{% if exam %}✓{% else %}1{% endif %}</span> {% if LANG == 'sw' %}Chagua{% else %}Select{% endif %}
+  </div>
+  <div class="me-step {% if exam and not review_mode %}active{% elif review_mode %}done{% endif %}">
+    <span class="num">{% if review_mode %}✓{% else %}2{% endif %}</span> {% if LANG == 'sw' %}Jaza Alama{% else %}Enter Marks{% endif %}
+  </div>
+  <div class="me-step {% if review_mode %}active{% endif %}">
+    <span class="num">3</span> {% if LANG == 'sw' %}Kagua{% else %}Review{% endif %}
+  </div>
+  <div class="me-step {% if submission and submission.status != 'PENDING' %}active{% endif %}">
+    <span class="num">4</span> {% if LANG == 'sw' %}Tuma &amp; Pakua{% else %}Submit &amp; Download{% endif %}
+  </div>
+</div>
+
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+{% if not exam or not subject %}
+<!-- ═══ STEP 1: SELECT EXAM + SUBJECT ═══ -->
+<div class="panel me-select-panel">
+  <div class="panel-head">
+    <h3 class="mb-0">{% if LANG == 'sw' %}Chagua Mtihani na Somo{% else %}Select Exam &amp; Subject{% endif %}</h3>
+  </div>
+  <div class="panel-body">
+    <div class="field">
+      <label>{% if LANG == 'sw' %}Mtihani{% else %}Exam{% endif %}</label>
+      <select id="meExamSelect" class="form-select">
+        <option value="">— {% if LANG == 'sw' %}Chagua Mtihani{% else %}Choose an exam{% endif %} —</option>
+        {% for e in exams %}
+        <option value="{{ e.id }}" {% if e.id|stringformat:"s" == preselect_exam_id %}selected{% endif %}>
+          {{ e.name }} — Form {{ e.form }} ({{ e.year }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</label>
+      <select id="meSubjectSelect" class="form-select">
+        <option value="">— {% if LANG == 'sw' %}Chagua Somo{% else %}Choose a subject{% endif %} —</option>
+        {% for s in teacher_subjects %}
+        <option value="{{ s.id }}" {% if s.id|stringformat:"s" == preselect_subject_id %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <p class="me-hint mb-3">
+      {% if LANG == 'sw' %}
+      📌 Unaweza kuandika jina la mwanafunzi lenye herufi ndogo/kubwa popote kwenye kisanduku cha alama. Alama ni kati ya <strong>0–100</strong>.
+      {% else %}
+      📌 Scores are between <strong>0–100</strong>.
+      {% endif %}
+    </p>
+    <div class="d-grid">
+      <button class="btn btn-brand" id="meContinueBtn">{% if LANG == 'sw' %}Endelea →{% else %}Continue →{% endif %}</button>
+    </div>
+  </div>
+</div>
+
+{% elif review_mode %}
+<!-- ═══ STEP 3: REVIEW (sorted 1st → last) ═══ -->
+<div class="panel me-review">
+  <div class="panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h3 class="mb-0">🔍 {% if LANG == 'sw' %}Kagua Matokeo — Yamepangwa wa Kwanza hadi wa Mwisho{% else %}Review Results — Sorted 1st to Last{% endif %}</h3>
+      <small class="text-secondary">{% if LANG == 'sw' %}Somo: <strong>{{ subject.name }}</strong> — Hakikisha alama zote ni sahihi kabla ya kuwasilisha kwa Mtaaluma.{% else %}Subject: <strong>{{ subject.name }}</strong> — make sure every score is correct before submitting to the academic officer.{% endif %}</small>
+    </div>
+    {% if submission %}
+      {% if submission.status == 'SUBMITTED' %}
+      <span class="badge-soft" style="background:#e8f4ff;color:#0056b3;">&#8679; {% if LANG == 'sw' %}Imewasilishwa kwa Mtaaluma{% else %}Submitted to Academic{% endif %}</span>
+      {% elif submission.status == 'APPROVED' %}
+      <span class="badge-soft" style="background:#e6f7ec;color:var(--ok-500);">&#10003; {% if LANG == 'sw' %}Imeidhinishwa na Mtaaluma{% else %}Approved by Academic{% endif %}</span>
+      {% endif %}
+    {% endif %}
+  </div>
+  <div class="panel-body">
+    <div class="me-stats">
+      <div class="me-stat"><b>{{ review_rows|length }}</b><span>{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</span></div>
+      <div class="me-stat"><b>{{ avg_score }}</b><span>{% if LANG == 'sw' %}Wastani{% else %}Average{% endif %}</span></div>
+      <div class="me-stat"><b>{{ pass_rate }}%</b><span>{% if LANG == 'sw' %}Waliofuzu{% else %}Pass Rate{% endif %}</span></div>
+    </div>
+
+    <div class="me-table-wrap">
+      <table class="me-table">
+        <thead>
+          <tr>
+            <th style="width:56px;">#</th>
+            <th>{% if LANG == 'sw' %}Jina la Mwanafunzi{% else %}Student Name{% endif %}</th>
+            <th style="width:90px;">{% if LANG == 'sw' %}Alama{% else %}Score{% endif %}</th>
+            <th style="width:80px;">{% if LANG == 'sw' %}Daraja{% else %}Grade{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in review_rows %}
+          <tr>
+            <td><span class="pos-badge">{{ row.position }}</span></td>
+            <td class="student-name">{{ row.student.first_name }} {{ row.student.middle_name }} {{ row.student.last_name }}</td>
+            <td style="font-weight:800;color:#1F7A3D;">{{ row.score }}</td>
+            <td>
+              <span class="grade-chip" style="background:{% if row.grade == 'A' %}#e6f7ec;color:#1a7a3b{% elif row.grade == 'B' %}#eafaf1;color:#27ae60{% elif row.grade == 'C' %}#fff9e6;color:#b7950b{% elif row.grade == 'D' %}#fdf2e9;color:#ca6f1e{% else %}#fdecea;color:#c0392b{% endif %};">
+                {{ row.grade }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4">
+      <a href="{% url 'marks_entry' %}?exam={{ exam.id }}&subject={{ subject.id }}" class="btn-me-ghost">
+        ← {% if LANG == 'sw' %}Rudi na Rekebisha{% else %}Back &amp; Edit{% endif %}
+      </a>
+      <div class="d-flex gap-2 flex-wrap">
+        {% if pdf_url %}
+        <a href="{{ pdf_url }}" class="btn-me-submit" target="_blank" style="background:#24508a;border-color:#24508a;">
+          &#128196; {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}
+        </a>
+        {% endif %}
+        {% if submission and submission.status == 'SUBMITTED' %}
+        <a href="{% url 'exam_overview' exam.id %}" class="btn-me-ghost">{% if LANG == 'sw' %}Rudi kwenye Mtihani{% else %}Back to Exam{% endif %} →</a>
+        {% else %}
+        <button class="btn-me-submit" id="meSubmitBtn">
+          &#8679; {% if LANG == 'sw' %}Submit kwa Mtaaluma{% else %}Submit to Academic{% endif %}
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    <p class="me-hint mt-2 mb-0">
+      {% if LANG == 'sw' %}
+      ⚠️ Ukisubmit, mtaaluma (Academic Officer) atapokea alama hizi na kwenda kwenye mfumo wa idhini. Utakapofanya hivyo hutaweza kuzibadilisha bila idhini yake.
+      {% else %}
+      ⚠️ Once submitted, the academic officer receives these scores for approval. You won't be able to change them without their approval.
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+{% else %}
+<!-- ═══ STEP 2: UPLOAD ROSTER + FILL MARKS ═══ -->
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="panel">
+      <div class="panel-head">
+        <h3 class="mb-0">📥 {% if LANG == 'sw' %}Pakia Orodha ya Wanafunzi{% else %}Upload Student List{% endif %}</h3>
+      </div>
+      <div class="panel-body">
+        <div class="me-upload-box" id="meUploadBox">
+          <div class="icon">📂</div>
+          <div style="font-weight:700;color:#1F7A3D;" id="meUploadLabel">
+            {% if LANG == 'sw' %}Bonyeza au dondosha faili hapa{% else %}Click or drag &amp; drop a file here{% endif %}
+          </div>
+          <div class="me-hint mt-1">
+            {% if LANG == 'sw' %}PDF, Excel au CSV — orodha ya wanafunzi wa Form {{ exam.form }}{% else %}PDF, Excel or CSV — {{ exam.form }} class list{% endif %}
+          </div>
+          <input type="file" id="meRosterInput" accept=".pdf,.xlsx,.xls,.csv">
+        </div>
+        <div class="me-hint mt-2" style="line-height:1.7;">
+          {% if LANG == 'sw' %}
+          <strong>Muundo wa faili:</strong> kila mstari = mwanafunzi mmoja.<br>
+          Excel/CSV safu: <code>First Name | Middle Name | Last Name | Gender</code><br>
+          PDF: jina kamili kwa kila mstari (mf. <em>Halima Ally Mohamed F</em>).
+          {% else %}
+          <strong>File format:</strong> one student per line.<br>
+          Excel/CSV columns: <code>First Name | Middle Name | Last Name | Gender</code><br>
+          PDF: full name per line (e.g. <em>Halima Ally Mohamed F</em>).
+          {% endif %}
+        </div>
+        <div class="mt-3" id="meUploadStatus"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="panel">
+      <div class="panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h3 class="mb-0">📝 {% if LANG == 'sw' %}Jaza Alama za {{ subject.name }}{% else %}Enter {{ subject.name }} Marks{% endif %}</h3>
+          <small class="text-secondary">{% if LANG == 'sw' %}Mtihani: {{ exam.name }} — Form {{ exam.form }} ({{ exam.year }}){% else %}Exam: {{ exam.name }} — Form {{ exam.form }} ({{ exam.year }}){% endif %}</small>
+        </div>
+        <span class="badge-soft" id="meCountBadge" style="background:#1F7A3D;color:#fff;">0 {% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</span>
+      </div>
+      <div class="panel-body">
+        <div class="me-table-wrap" id="meTableWrap">
+          <table class="me-table">
+            <thead>
+              <tr>
+                <th style="width:44px;">#</th>
+                <th>{% if LANG == 'sw' %}Jina la Mwanafunzi{% else %}Student Name{% endif %}</th>
+                <th style="width:110px;">{% if LANG == 'sw' %}Alama (0–100){% else %}Score (0–100){% endif %}</th>
+              </tr>
+            </thead>
+            <tbody id="meRowsBody"></tbody>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4">
+          <a href="{% url 'marks_entry' %}" class="btn-me-ghost">← {% if LANG == 'sw' %}Badilisha{% else %}Change{% endif %}</a>
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'marks_entry' %}?exam={{ exam.id }}&subject={{ subject.id }}&review=1" class="btn-me-ghost" id="meViewReviewLink">
+              {% if LANG == 'sw' %}Tazama Alama Zilizohifadhiwa{% else %}View Saved Scores{% endif %}
+            </a>
+            <button class="btn-me-submit" id="meSaveBtn">{% if LANG == 'sw' %}Hifadhi &amp; Kagua →{% else %}Save &amp; Review →{% endif %}</button>
+          </div>
+        </div>
+        <p class="me-hint mt-2 mb-0">
+          {% if LANG == 'sw' %}💡 Badilisha alama zozote hapo juu kisha bonyeza <strong>Hifadhi &amp; Kagua</strong> — mfumo utapanga wanafunzi wa kwanza hadi wa mwisho.{% else %}💡 Adjust any scores above, then hit <strong>Save &amp; Review</strong> — the system will rank students from 1st to last.{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if exam %}
+<!-- Confirm submit modal -->
+<div class="modal fade" id="meConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:2px;">
+      <div class="modal-header" style="background:#1F7A3D;color:#fff;border-radius:0;">
+        <h5 class="modal-title">&#8679; {% if LANG == 'sw' %}Tuma kwa Mtaaluma?{% else %}Submit to Academic?{% endif %}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="font-size:0.9rem;line-height:1.8;">
+        {% if LANG == 'sw' %}
+        Unathibitisha kuwasilisha alama za <strong>{{ subject.name }}</strong> kwa Mtaaluma (Academic Officer)?
+        Baada ya kuwasilisha, mtaaluma atapokea na kuidhinisha matokeo haya.
+        {% else %}
+        Confirm submitting <strong>{{ subject.name }}</strong> scores to the academic officer?
+        Once submitted, the officer will receive and approve these results.
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
+        <button class="btn" id="meConfirmSubmit" style="background:#1F7A3D;color:#fff;font-weight:700;border-radius:2px;">
+          ✓ {% if LANG == 'sw' %}Ndio, Submit{% else %}Yes, Submit{% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Success modal -->
+<div class="modal fade" id="meSuccessModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:2px;">
+      <div class="modal-body">
+        <div class="me-success">
+          <div class="tick">✓</div>
+          <h4 style="color:#1a7a3b;font-weight:800;margin-bottom:0.4rem;">
+            {% if LANG == 'sw' %}Imewasilishwa!{% else %}Submitted!{% endif %}
+          </h4>
+          <p class="text-secondary" style="font-size:0.85rem;margin-bottom:1.2rem;">
+            {% if LANG == 'sw' %}Alama za {{ subject.name }} zimeenda kwa Mtaaluma kwa idhini.{% else %}Your {{ subject.name }} scores have been sent to the academic officer for approval.{% endif %}
+          </p>
+          <div class="d-flex gap-2 justify-content-center flex-wrap">
+            {% if pdf_url %}
+            <a href="{{ pdf_url }}" class="btn-me-submit" target="_blank" style="background:#24508a;border-color:#24508a;">&#128196; {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}</a>
+            {% endif %}
+            <a href="{% url 'exam_overview' exam.id %}" class="btn-me-ghost">{% if LANG == 'sw' %}Rudi kwenye Mtihani{% else %}Back to Exam{% endif %} →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Toast -->
+<div class="me-toast" id="meToast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const LANG = '{{ LANG }}';
+  const EXAM_ID = '{{ exam.id|default:"" }}';
+  const SUBJECT_ID = '{{ subject.id|default:"" }}';
+  const REVIEW = {{ review_mode|yesno:"true,false" }};
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+  const csrfToken = csrf ? csrf.value : '';
+
+  function toast(msg, isError) {
+    const el = document.getElementById('meToast');
+    el.textContent = msg;
+    el.className = 'me-toast ' + (isError ? 'error' : 'success') + ' show';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 3200);
+  }
+
+  async function postJSON(url, payload) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  }
+
+  /* ═══ STEP 1: select exam + subject ═══ */
+  const examSel = document.getElementById('meExamSelect');
+  const subjSel = document.getElementById('meSubjectSelect');
+  const contBtn = document.getElementById('meContinueBtn');
+  if (contBtn) {
+    contBtn.addEventListener('click', () => {
+      if (!examSel.value || !subjSel.value) {
+        toast(LANG === 'sw' ? 'Chagua mtihani na somo.' : 'Pick an exam and a subject.', true);
+        return;
+      }
+      window.location.href = "{% url 'marks_entry' %}?exam=" + examSel.value + '&subject=' + subjSel.value;
+    });
+  }
+
+  /* ═══ STEP 2: roster upload + marks table ═══ */
+  const tableWrap = document.getElementById('meTableWrap');
+  if (tableWrap && !REVIEW) {
+    // Preloaded: students already in this exam (with their saved scores)
+    let students = [];
+    try { students = JSON.parse('{{ class_students_json|escapejs }}'); } catch (e) {}
+
+    const rowsBody = document.getElementById('meRowsBody');
+    const countBadge = document.getElementById('meCountBadge');
+    const uploadBox = document.getElementById('meUploadBox');
+    const rosterInput = document.getElementById('meRosterInput');
+    const uploadStatus = document.getElementById('meUploadStatus');
+    const saveBtn = document.getElementById('meSaveBtn');
+
+    const byId = new Map();
+    function addStudent(s) {
+      if (!s || !s.id || byId.has(s.id)) return;
+      byId.set(s.id, s);
+      renderRows();
+    }
+
+    function scoreVal(s) {
+      return (s.score === null || s.score === undefined) ? '' : s.score;
+    }
+
+    function renderRows() {
+      const arr = [...byId.values()];
+      if (!arr.length) {
+        rowsBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;padding:1.4rem;">' +
+          (LANG === 'sw'
+            ? 'Hakuna wanafunzi bado — pakia orodha ya darasa upande wa kushoto, au wasiliana na mtaaluma ikiwa orodha haijapakiwa.'
+            : 'No students yet — upload the class list on the left, or ask the academic officer if the roster is missing.') +
+          '</td></tr>';
+      } else {
+        rowsBody.innerHTML = arr.map((s, i) => `
+          <tr data-id="${s.id}">
+            <td class="row-no">${i + 1}</td>
+            <td class="student-name">${escapeHtml(s.name)}</td>
+            <td><input type="number" class="score-input" min="0" max="100" value="${scoreVal(s)}" data-id="${s.id}" inputmode="numeric"></td>
+          </tr>
+        `).join('');
+      }
+      countBadge.textContent = arr.length + ' ' + (LANG === 'sw' ? 'wanafunzi' : 'students');
+      rowsBody.querySelectorAll('.score-input').forEach(inp => {
+        inp.addEventListener('input', () => {
+          const s = byId.get(parseInt(inp.dataset.id, 10));
+          if (s) s.score = inp.value === '' ? null : Math.max(0, Math.min(100, parseInt(inp.value, 10) || 0));
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    students.forEach(addStudent);
+
+    // Drag & drop
+    ['dragenter', 'dragover'].forEach(ev => uploadBox.addEventListener(ev, e => {
+      e.preventDefault(); uploadBox.classList.add('dragover');
+    }));
+    ['dragleave', 'drop'].forEach(ev => uploadBox.addEventListener(ev, e => {
+      e.preventDefault(); uploadBox.classList.remove('dragover');
+    }));
+    uploadBox.addEventListener('drop', e => {
+      if (e.dataTransfer.files.length) uploadRoster(e.dataTransfer.files[0]);
+    });
+    uploadBox.addEventListener('click', () => rosterInput.click());
+    rosterInput.addEventListener('change', () => {
+      if (rosterInput.files.length) uploadRoster(rosterInput.files[0]);
+    });
+
+    async function uploadRoster(file) {
+      const fd = new FormData();
+      fd.append('file', file);
+      uploadStatus.innerHTML = '<span style="color:#1F7A3D;font-size:0.82rem;">⏳ ' +
+        (LANG === 'sw' ? 'Inasoma orodha...' : 'Reading roster...') + '</span>';
+      try {
+        const res = await fetch("{% url 'upload_roster' %}", {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrfToken },
+          body: fd,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
+        let added = 0;
+        (data.students || []).forEach(s => {
+          if (!byId.has(s.id)) { byId.set(s.id, { id: s.id, name: s.name, score: null }); added++; }
+        });
+        renderRows();
+        uploadStatus.innerHTML = added
+          ? '<span style="color:#1a7a3b;font-size:0.82rem;">✅ ' + added + ' ' +
+            (LANG === 'sw' ? 'wanafunzi wameongezwa. Jaza alama zao hapa chini.' : 'students added. Enter their marks below.') + '</span>'
+          : '<span style="color:#c0392b;font-size:0.82rem;">⚠️ ' + (LANG === 'sw'
+              ? 'Hakuna wanafunzi wapya — orodha imesajiliwa tayari.' : 'No new students — roster already registered.') + '</span>';
+      } catch (err) {
+        uploadStatus.innerHTML = '<span style="color:#c0392b;font-size:0.82rem;">❌ ' + escapeHtml(err.message) + '</span>';
+      }
+      rosterInput.value = '';
+    }
+
+    // Save & Review
+    saveBtn.addEventListener('click', async () => {
+      const entries = [];
+      byId.forEach(s => {
+        const v = s.score;
+        if (v !== null && v !== undefined && v !== '' && !isNaN(v)) {
+          entries.push({ student_id: s.id, score: Math.max(0, Math.min(100, parseInt(v, 10))) });
+        }
+      });
+      if (!entries.length) {
+        toast(LANG === 'sw'
+          ? 'Hakuna alama zilizojazwa — jaza angalau alama moja.'
+          : 'No marks entered — fill in at least one score.', true);
+        return;
+      }
+      saveBtn.disabled = true;
+      try {
+        const data = await postJSON("{% url 'marks_entry_save' %}", {
+          exam_id: EXAM_ID, subject_id: SUBJECT_ID, entries,
+        });
+        toast(LANG === 'sw'
+          ? '✅ Alama ' + data.saved_count + ' zimehifadhiwa — unaelekezwa kwenye ukaguzi...'
+          : '✅ ' + data.saved_count + ' scores saved — taking you to review...');
+        setTimeout(() => { window.location.href = data.review_url; }, 700);
+      } catch (err) {
+        toast(err.message, true);
+        saveBtn.disabled = false;
+      }
+    });
+  }
+
+  /* ═══ STEP 3: submit to academic ═══ */
+  const submitBtn = document.getElementById('meSubmitBtn');
+  const confirmBtn = document.getElementById('meConfirmSubmit');
+  if (submitBtn && confirmBtn) {
+    let modalEl = document.getElementById('meConfirmModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    submitBtn.addEventListener('click', () => modal.show());
+    confirmBtn.addEventListener('click', async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = LANG === 'sw' ? 'Inatuma...' : 'Submitting...';
+      try {
+        await postJSON("{% url 'marks_entry_submit' %}", {
+          exam_id: EXAM_ID, subject_id: SUBJECT_ID,
+        });
+        modal.hide();
+        new bootstrap.Modal(document.getElementById('meSuccessModal')).show();
+      } catch (err) {
+        modal.hide();
+        toast(err.message, true);
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '✓ ' + (LANG === 'sw' ? 'Ndio, Submit' : 'Yes, Submit');
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

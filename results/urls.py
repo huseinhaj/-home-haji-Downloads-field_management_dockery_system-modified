@@ -43,6 +43,11 @@ from .views import (
     public_results_search,
     exam_share_links,
 )
+from .marks_entry import (
+    marks_entry,
+    marks_entry_save,
+    marks_entry_submit,
+)
 from .speech_views import (
     confirm_speech_candidate,
     create_speech_session,
@@ -107,6 +112,10 @@ urlpatterns = [
     path('malipo/inasubiri/<int:transaction_id>/', payment_pending, name='payment_pending'),
     path('malipo/status/<int:transaction_id>/', payment_status_json, name='payment_status_json'),
     path('malipo/webhook/', payment_webhook, name='payment_webhook'),
+    # Marks Entry — mbadala wa Speech Entry: pakia orodha → jaza alama → review → tuma
+    path('marks/', marks_entry, name='marks_entry'),
+    path('marks/save/', marks_entry_save, name='marks_entry_save'),
+    path('marks/submit/', marks_entry_submit, name='marks_entry_submit'),
     # Speech entry
     path('speech/', speech_entry_page, name='speech_entry_page'),
     path('speech-sessions/', create_speech_session, name='create_speech_session'),
