@@ -96,6 +96,9 @@
         <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Badilisha muonekano">
           <i class="fas fa-moon"></i>
         </button>
+        <button class="pwa-install-btn" id="pwaHeaderInstall" onclick="window.SRSInstall && SRSInstall.prompt()" title="Sakinisha App">
+          <i class="fas fa-download"></i> <span>Sakinisha App</span>
+        </button>
       </nav>
 
       <!-- Mobile controls -->
@@ -117,6 +120,8 @@
       <button class="drawer-close" onclick="closeDrawer()" aria-label="Funga"><i class="fas fa-times"></i></button>
     </div>
     <nav class="drawer-nav">
+      <a href="#" class="install-link" onclick="event.preventDefault(); window.SRSInstall && SRSInstall.prompt();"><i class="fas fa-download"></i> 📱 {% if LANG == 'sw' %}Sakinisha App{% else %}Install App{% endif %}</a>
+      <div class="nav-sep"></div>
       <a href="{% url 'home' %}"><i class="fas fa-home"></i> {% if LANG == 'sw' %}Nyumbani{% else %}Home{% endif %}</a>
       {% if user.is_authenticated %}
         {% if user.is_academic %}
@@ -183,6 +188,9 @@
       <i class="fas fa-sign-out-alt"></i> {% if LANG == 'sw' %}Toka{% else %}Exit{% endif %}
     </a>
     {% endif %}
+    <a href="#" class="install-link" title="{% if LANG == 'sw' %}Sakinisha App{% else %}Install App{% endif %}" onclick="event.preventDefault(); window.SRSInstall && SRSInstall.prompt();">
+      <i class="fas fa-download"></i> App
+    </a>
   </nav>
 
   <main class="container page-shell">

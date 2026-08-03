@@ -842,6 +842,67 @@ body {
   color: var(--accent-500);
 }
 
+/* ============================================================
+   INSTALL APP BUTTONS (header + drawer)
+   ============================================================ */
+.pwa-install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(135deg, var(--secondary-500), #a9863a);
+  color: white;
+  font-weight: 700;
+  font-size: 0.78rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  transition: transform 0.18s ease, filter 0.18s ease;
+  white-space: nowrap;
+}
+
+.pwa-install-btn:hover {
+  color: white;
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.drawer-nav a.install-link {
+  background: linear-gradient(135deg, var(--accent-500), var(--accent-600));
+  color: white;
+  font-weight: 700;
+}
+
+.drawer-nav a.install-link i {
+  color: var(--secondary-300);
+}
+
+.drawer-nav a.install-link:hover {
+  background: linear-gradient(135deg, var(--accent-600), var(--accent-500));
+  color: white;
+}
+
+/* Bottom nav install item — gold accent to stand out */
+.bottom-nav a.install-link {
+  color: var(--secondary-500);
+  font-weight: 800;
+}
+
+.bottom-nav a.install-link i {
+  color: var(--secondary-500);
+}
+
+.bottom-nav a.install-link:hover {
+  color: var(--secondary-500);
+  background: rgba(217, 164, 65, 0.12);
+}
+
+/* Hide install buttons once the app is already installed (standalone) */
+.pwa-standalone .pwa-install-btn,
+.pwa-standalone .install-link {
+  display: none !important;
+}
+
 .drawer-nav .nav-sep {
   height: 1px;
   background: var(--line);
