@@ -146,7 +146,8 @@
                 <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
                   <i class="fas fa-clock me-1 text-gold"></i> Muda (Dakika)
                 </label>
-                <input type="number" id="duration" value="120" min="10" max="360">
+                <input type="number" id="duration" value="150" min="10" max="360">
+                <div id="durationHint" style="font-size:9px;color:var(--text-muted);margin-top:3px;">Secondary (NECTA): dakika 150</div>
               </div>
               <div class="col-6">
                 <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
@@ -299,11 +300,42 @@ document.addEventListener('DOMContentLoaded', function() {
       hint.innerHTML = '💡 Secondary (si Kiswahili) → Mtihani utakuwa kwa ENGLISH';
     }
   }
-  document.getElementById('education_level').addEventListener('change', updateLangHint);
+
+  // Auto format rules per level (LusaElimu / NECTA style)
+  function updateFormatHints() {
+    const lvl = document.getElementById('education_level').value;
+    const durInput = document.getElementById('duration');
+    const durHint = document.getElementById('durationHint');
+    const marksInput = document.getElementById('total_marks');
+    const qInput = document.getElementById('question_count');
+    const isPrimary = lvl === 'primary';
+
+    if (isPrimary) {
+      // SFNA/PSLE: dakika 90; Std 1-4 → 50 alama, Std 5-7 → 100 alama
+      const cls = (document.getElementById('class_name').value || '').trim();
+      const upper = /std\s*[5-7]|standard\s*[5-7]|darasa\s*la\s*[5-7]/i.test(cls);
+      durInput.value = 90;
+      marksInput.value = upper ? 100 : 50;
+      qInput.value = upper ? 40 : 25;
+      durHint.innerHTML = 'Primary (SFNA/PSLE): dakika 90';
+    } else {
+      // FTNA/CSEE: dakika 150, 100 alama
+      durInput.value = 150;
+      marksInput.value = 100;
+      qInput.value = 35;
+      durHint.innerHTML = 'Secondary (FTNA/CSEE NECTA): dakika 150';
+    }
+  }
+  document.getElementById('education_level').addEventListener('change', function() {
+    updateLangHint();
+    updateFormatHints();
+  });
+  document.getElementById('class_name').addEventListener('change', updateFormatHints);
   document.getElementById('subject').addEventListener('change', function() {
     updateLangHint();
   });
   updateLangHint();
+  updateFormatHints();
 
   form.addEventListener('submit', function(e) {
     e.preventDefault();

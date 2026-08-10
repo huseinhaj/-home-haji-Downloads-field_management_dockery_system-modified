@@ -5577,26 +5577,27 @@ def ajax_generate_exam(request):
 
         topics_hint = f"COVER THESE TOPICS (spread questions evenly): {topics_input}" if topics_input else "COVER the official TIE syllabus topics for this subject/class."
 
-        # ── Level-specific NECTA format (Primary = SFNA/PSLE style, Secondary = CSEE style) ──
+        # ── Level-specific NECTA format (Primary = SFNA/PSLE style, Secondary = FTNA/CSEE CBA style) ──
         if education_level == 'primary':
             level_format_rule = (
-                "PRIMARY SCHOOL FORMAT (SFNA/PSLE style):\n"
-                "1. Section A: CHAGUA JIBU SAHIHI (multiple choice with 4 options A, B, C, D) — most questions here, age-appropriate and simple language.\n"
-                "2. Section B: MASWALI MAFUPI (short answer / fill-in-the-blank) with simple wording.\n"
-                "3. Section C: only for higher primary classes (Std 6-7): short structured/essay questions with sub-parts (a), (b), (c).\n"
-                "4. Keep sentences short and simple, suitable for young pupils.\n"
-                "5. Number questions continuously per section (1, 2, 3...).\n"
-                "6. Marks must sum to approximately {total_marks}.\n"
-                "7. Questions MUST be based on the real official TIE new syllabus content for {subject_name} {class_name} in Tanzania."
+                "PRIMARY SCHOOL FORMAT (SFNA/PSLE style — kama mitihani ya LusaElimu/NECTA):\n"
+                "1. Section A: OBJECTIVE (Chagua Jibu Sahihi) — multiple-choice (4 options A, B, C, D), matching items (linganisha), and true/false. Each item 1 mark. Most of the paper is here.\n"
+                "2. Section B: SHORT ANSWER (Maswali Mafupi) — structured questions with sub-items (a), (b), (c) e.g. one question of 10 marks split into 5 sub-items of 2 marks each.\n"
+                "3. Section C: only for upper primary (Std 5-7): short structured/application questions with sub-parts. NO long essay writing.\n"
+                "4. Lower primary (Std 1-4) uses Sections A + B only, total ~50 marks. Upper primary (Std 5-7) uses A + B + C, total ~100 marks.\n"
+                "5. Keep sentences short and simple, suitable for young pupils.\n"
+                "6. Number questions continuously per section (1, 2, 3...).\n"
+                "7. Marks must sum to approximately {total_marks}.\n"
+                "8. Questions MUST be based on the real official TIE new syllabus content for {subject_name} {class_name} in Tanzania."
             )
         else:
             level_format_rule = (
-                "SECONDARY SCHOOL FORMAT (CSEE/NECTA style):\n"
-                "1. Section A: OBJECTIVE / MULTIPLE CHOICE questions 1-{min(10, max(2, question_count//3))} with 4 options (A, B, C, D).\n"
-                "2. Section B: SHORT ANSWER questions.\n"
-                "3. Section C: LONG / STRUCTURED / ESSAY questions with sub-parts (a), (b), (c).\n"
-                "4. Number questions continuously per section (1, 2, 3...).\n"
-                "5. Marks must sum to approximately {total_marks}. Question difficulty increases across the paper.\n"
+                "SECONDARY SCHOOL FORMAT (FTNA/CSEE NECTA style — new CBA curriculum, kama LusaElimu):\n"
+                "1. Section A: OBJECTIVE questions — 15 marks total: (a) 10 multiple-choice items of 1 mark each (10 marks), (b) 5 matching or true/false items of 1 mark each (5 marks).\n"
+                "2. Section B: SHORT ANSWER questions — 70 marks total: seven (7) questions of 10 marks each covering calculations, explanations, diagram/map interpretation and applying methods.\n"
+                "3. Section C: LONG ANSWER / ESSAY — 15 marks: one (1) major question of 15 marks requiring analysis, problem-solving and real-life application.\n"
+                "4. Total = approximately 100 marks. Question difficulty increases across the paper.\n"
+                "5. Number questions continuously per section (1, 2, 3...).\n"
                 "6. Questions MUST be based on the real official TIE new syllabus content for {subject_name} {class_name} in Tanzania."
             )
 
