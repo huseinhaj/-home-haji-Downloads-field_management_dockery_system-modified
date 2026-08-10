@@ -4,6 +4,7 @@ No login/password needed. Teacher registers once via phone number + location, th
 we remember them via session/cookie on subsequent visits.
 """
 from django.db import models
+from django.utils import timezone
 from field_app.models import Region, District, School, Subject
 
 
@@ -185,3 +186,132 @@ class TopicSubtopic(models.Model):
 
     def __str__(self):
         return f"{self.topic.name} → {self.name}"
+
+
+class TLMLogbookEntry(models.Model):
+    """
+    Official TIE Logbook for TLM teachers (session-based, no Django login needed).
+    Data is auto-saved like lessons: each period is stored in `lessons_data` JSON
+    exactly like the IMS LogbookEntry, but scoped to a TLMTeacher so teachers
+    are NOT redirected to the student dashboard.
+    """
+    DAY_CHOICES = [
+        ('monday', 'Jumatatu'),
+        ('tuesday', 'Jumanne'),
+        ('wednesday', 'Jumatano'),
+        ('thursday', 'Alhamisi'),
+        ('friday', 'Ijumaa'),
+    ]
+
+    teacher = models.ForeignKey(
+        TLMTeacher, on_delete=models.CASCADE, related_name='logbook_entries',
+        verbose_name="Mwalimu (TLM)"
+    )
+    school = models.ForeignKey(
+        School, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Shule"
+    )
+    date = models.DateField(default=timezone.now)
+    day_of_week = models.CharField(max_length=10, choices=DAY_CHOICES, default='monday')
+
+    # Per-period lesson records stored as JSON list (TIE official format)
+    lessons_data = models.JSONField(default=list, blank=True)
+    other_activities = models.TextField(blank=True, null=True)
+    challenges_faced = models.TextField(blank=True, null=True)
+    lessons_learned = models.TextField(blank=True, null=True)
+    supervisor_remarks = models.TextField(blank=True, null=True)
+    head_teacher_remarks = models.TextField(blank=True, null=True)
+    is_location_verified = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+        unique_together = ['teacher', 'date']
+        verbose_name = "Logbook (TLM)"
+        verbose_name_plural = "Logbooks (TLM)"
+
+    def __str__(self):
+        return f"{self.teacher.full_name} — {self.date}"
+
+
+class GeneratedExam(models.Model):
+    """
+    AI-generated exam paper in NECTA format (Test, Quiz, Midterm, Terminal, Annual...).
+    Supports Primary, O-Level and A-Level. Questions stored as JSON:
+      [{"section": "A", "instructions": "...", "questions": [
+          {"number": 1, "text": "...", "marks": 2, "answer": "...", "topic": "..."}, ...
+      ]}, ...]
+    """
+    EXAM_TYPE_CHOICES = [
+        ('TEST', 'Test'),
+        ('QUIZ', 'Quiz'),
+        ('MIDTERM', 'Midterm'),
+        ('TERMINAL', 'Terminal'),
+        ('ANNUAL', 'Annual'),
+        ('COMPETITION', 'Competition'),
+        ('OTHER', 'Nyingine'),
+    ]
+    EDUCATION_LEVEL_CHOICES = [
+        ('primary', 'Primary School'),
+        ('ordinary', 'Ordinary Level (O-Level)'),
+        ('advanced', 'Advanced Level (A-Level)'),
+    ]
+    LANGUAGE_CHOICES = [
+        ('english', 'English'),
+        ('kiswahili', 'Kiswahili'),
+    ]
+
+    teacher = models.ForeignKey(
+        TLMTeacher, on_delete=models.CASCADE, related_name='generated_exams',
+        verbose_name="Mwalimu (TLM)"
+    )
+    school = models.ForeignKey(
+        School, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Shule"
+    )
+    title = models.CharField(max_length=300, verbose_name="Jina la Mtihani")
+    education_level = models.CharField(
+        max_length=20, choices=EDUCATION_LEVEL_CHOICES, default='ordinary',
+        verbose_name="Ngazi ya Elimu"
+    )
+    class_name = models.CharField(max_length=50, verbose_name="Darasa", help_text="e.g. Form 2, Standard 5")
+    subject = models.ForeignKey(
+        Subject, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Somo"
+    )
+    subject_name = models.CharField(max_length=200, blank=True, verbose_name="Jina la Somo")
+    exam_type = models.CharField(
+        max_length=20, choices=EXAM_TYPE_CHOICES, default='TEST', verbose_name="Aina ya Mtihani"
+    )
+    term = models.CharField(max_length=10, blank=True, default='', verbose_name="Muhula")
+    year = models.PositiveIntegerField(default=2026, verbose_name="Mwaka")
+    duration_minutes = models.PositiveIntegerField(default=120, verbose_name="Muda (Dakika)")
+    total_marks = models.PositiveIntegerField(default=100, verbose_name="Alama Zote")
+    instructions = models.TextField(blank=True, verbose_name="Maagizo ya Jumla")
+    language = models.CharField(
+        max_length=10, choices=LANGUAGE_CHOICES, default='english', verbose_name="Lugha"
+    )
+    questions = models.JSONField(default=list, blank=True, verbose_name="Maswali")
+    topics_covered = models.JSONField(default=list, blank=True, verbose_name="Mada Zilizohusika")
+    generated_by_ai = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Mtihani (Generated)"
+        verbose_name_plural = "Mitihani (Generated)"
+
+    def __str__(self):
+        return f"{self.title} — {self.class_name} ({self.get_exam_type_display()})"
+
+    @property
+    def question_count(self):
+        count = 0
+        for section in self.questions or []:
+            count += len(section.get('questions', []) or [])
+        return count
+
+    @property
+    def sections(self):
+        return self.questions or []

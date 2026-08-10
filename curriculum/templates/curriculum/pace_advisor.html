@@ -1,0 +1,194 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}Pace Advisor (AI){% endblock %}
+{% block extra_css %}
+<style>
+  .gen-status { font-size: var(--font-size-xs); padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); margin-top: 0.6rem; display: none; }
+  .gen-status.show { display: block; }
+  .gen-status.info { background: rgba(31,122,61,0.06); color: var(--green-500); }
+  .gen-status.error { background: rgba(220,38,38,0.06); color: var(--error); }
+  .gen-status.success { background: rgba(31,122,61,0.08); color: var(--green-500); }
+  .advice-box {
+    background: linear-gradient(135deg, #fffcf5, #fff8e8);
+    border: 1px solid rgba(217,164,65,0.3);
+    border-radius: var(--radius-md);
+    padding: 1.25rem 1.5rem;
+    font-size: var(--font-size-sm);
+    line-height: 1.75;
+    color: var(--text-primary);
+    white-space: pre-line;
+  }
+  [data-theme="dark"] .advice-box { background: linear-gradient(135deg, #1e293b, #172033); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="c-card p-3 mb-3" style="border-left:4px solid var(--gold-400);">
+    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+      <div class="stat-icon" style="background:var(--green-500);">
+        <i class="fas fa-gauge-high" style="color:#fff;font-size:1.1rem;"></i>
+      </div>
+      <div style="flex:1;">
+        <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:clamp(0.9rem,1.5vw,1.15rem);">
+          🧭 Pace Advisor (AI) — Mshauri wa Kasi ya Kufundisha
+        </h4>
+        <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
+          AI inakagua miezi iliyobaki na mada zilizobaki, kisha inakushauri kasi ya kufundisha ili mwaka uishe kwa wakati
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <div class="c-card p-3">
+        <div class="sec-hd"><h3><i class="fas fa-calendar-alt"></i> Chagua Scheme</h3></div>
+        {% if schemes %}
+        <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+          <i class="fas fa-file-alt me-1 text-gold"></i> Scheme of Work yako
+        </label>
+        <select id="schemeSelect" class="form-control" style="font-size:13px;">
+          <option value="">— Chagua Scheme —</option>
+          {% for s in schemes %}
+          <option value="{{ s.id }}">{{ s.subject.name|default:"N/A" }} — {{ s.class_name }} (Term {{ s.term }} {{ s.year }})</option>
+          {% endfor %}
+        </select>
+        <button class="btn-tlm btn-primary-tlm w-100 mt-3" id="adviceBtn" style="justify-content:center;">
+          <i class="fas fa-wand-magic-sparkles me-1"></i> Pata Ushauri wa AI
+        </button>
+        <div id="genStatus" class="gen-status"></div>
+        {% else %}
+        <div class="text-center py-4">
+          <i class="fas fa-info-circle" style="font-size:1.5rem;color:var(--text-muted);"></i>
+          <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:0.5rem 0 0;">
+            Hakuna Scheme of Work iliyohifadhiwa. Tengeneza Scheme kwanza kwenye
+            <a href="{% url 'curriculum:generate_scheme' %}">Scheme Generator</a>.
+          </p>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="c-card p-3 mt-3">
+        <div class="sec-hd"><h3><i class="fas fa-info-circle"></i> Jinsi Inavyofanya Kazi</h3></div>
+        <ul style="font-size:var(--font-size-xs);color:var(--text-secondary);padding-left:1rem;margin:0;line-height:1.8;">
+          <li>Chagua Scheme yako ya somo</li>
+          <li>Mfumo unakokotoa: miezi iliyobaki, wiki zilizobaki na mada zilizobaki</li>
+          <li>AI inapendekeza mada ngapi kwa wiki</li>
+          <li>Unaweza kufuata ratiba mpya ili kumaliza syllabus kwa wakati</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div id="summaryBox" style="display:none;"></div>
+      <div id="adviceContainer" style="display:none;">
+        <div class="sec-hd" style="margin-top:0.25rem;">
+          <h3><i class="fas fa-robot"></i> Ushauri wa AI</h3>
+          <button class="btn-tlm btn-gold-tlm btn-sm-tlm" onclick="window.print()">
+            <i class="fas fa-print me-1"></i> Chapisha
+          </button>
+        </div>
+        <div class="advice-box" id="adviceContent"></div>
+      </div>
+      <div id="emptyState">
+        <div class="c-card text-center py-5">
+          <div style="width:64px;height:64px;background:rgba(31,122,61,0.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+            <i class="fas fa-robot" style="font-size:1.5rem;color:var(--text-muted);"></i>
+          </div>
+          <h5 style="color:var(--text-secondary);font-weight:700;">Pace Advisor</h5>
+          <p style="color:var(--text-muted);font-size:var(--font-size-sm);max-width:420px;margin:0 auto;">
+            Chagua Scheme upande wa kushoto kisha bonyeza <strong>"Pata Ushauri wa AI"</strong> 
+            ili kupata mwongozo wa kasi ya kufundisha kulingana na miezi iliyobaki.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.getElementById('adviceBtn');
+  const status = document.getElementById('genStatus');
+  const schemeSelect = document.getElementById('schemeSelect');
+  if (!btn) return;
+
+  btn.addEventListener('click', function() {
+    const schemeId = schemeSelect.value;
+    if (!schemeId) {
+      status.textContent = '❌ Tafadhali chagua Scheme kwanza';
+      status.className = 'gen-status show error';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-tlm" style="width:18px;height:18px;border-width:2px;"></div> AI inachambua...';
+    status.textContent = '⏳ Inakokotoa miezi iliyobaki na mada zilizobaki... sekunde 15-30.';
+    status.className = 'gen-status show info';
+
+    fetch('{% url "curriculum:ajax_pace_advice" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({ scheme_id: schemeId }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles me-1"></i> Pata Ushauri wa AI';
+
+      if (data.success) {
+        renderSummary(data.summary);
+        if (data.advice) {
+          document.getElementById('adviceContent').textContent = data.advice;
+          document.getElementById('adviceContainer').style.display = 'block';
+        } else {
+          document.getElementById('adviceContainer').style.display = 'block';
+          document.getElementById('adviceContent').textContent = data.warning || 'Hakuna ushauri wa AI.';
+        }
+        document.getElementById('emptyState').style.display = 'none';
+        status.textContent = '✅ Ushauri upo!';
+        status.className = 'gen-status show success';
+        document.getElementById('adviceContainer').scrollIntoView({ behavior: 'smooth' });
+      } else {
+        status.textContent = '❌ ' + (data.error || 'Hitilafu');
+        status.className = 'gen-status show error';
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles me-1"></i> Pata Ushauri wa AI';
+      status.textContent = '❌ Network error: ' + err.message;
+      status.className = 'gen-status show error';
+    });
+  });
+
+  function renderSummary(s) {
+    const box = document.getElementById('summaryBox');
+    const pct = s.percent_done || 0;
+    const barColor = pct >= 60 ? 'var(--success)' : (pct >= 30 ? 'var(--warning)' : 'var(--error)');
+    box.style.display = 'block';
+    box.innerHTML = `
+      <div class="c-card p-3 mb-3" style="border-left:4px solid var(--green-500);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+          <strong style="font-size:var(--font-size-sm);color:var(--text-primary);">
+            ${s.subject} — ${s.class_name} (Term ${s.term} ${s.year})
+          </strong>
+          <span class="chip chip-blue" style="font-size:9px;">Mwezi wa sasa: ${s.current_month}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div class="progress-tlm" style="flex:1;height:10px;"><div class="progress-tlm-bar" style="width:${pct}%;background:${barColor};"></div></div>
+          <strong style="font-size:var(--font-size-sm);color:${barColor};">${pct}%</strong>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:var(--font-size-xs);color:var(--text-secondary);">
+          <span><i class="fas fa-check-circle me-1 text-success"></i>Imekamilika: ${s.rows_done}</span>
+          <span><i class="fas fa-hourglass-half me-1 text-warning"></i>Zimebaki: ${s.rows_remaining}</span>
+          <span><i class="fas fa-calendar-week me-1 text-info"></i>Wiki zilizobaki: ${s.weeks_left}</span>
+          <span><i class="fas fa-book me-1 text-gold"></i>Mada zilizobaki: ${s.topics_remaining_count}</span>
+        </div>
+      </div>`;
+  }
+});
+</script>
+{% endblock %}

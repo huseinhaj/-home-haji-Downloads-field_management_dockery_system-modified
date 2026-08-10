@@ -36,9 +36,9 @@
           — {{ today_name }}, {{ today|date:"d/m/Y" }}
         </h4>
         <div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:1px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
-          <span><i class="fas fa-school me-1 text-gold" style="font-size:9px;"></i>{{ tlm_school_name|default:school.name }}</span>
+          {% if tlm_school_name %}<span><i class="fas fa-school me-1 text-gold" style="font-size:9px;"></i>{{ tlm_school_name }}</span>{% elif school %}<span><i class="fas fa-school me-1 text-gold" style="font-size:9px;"></i>{{ school.name }}</span>{% endif %}
           <span style="color:var(--text-muted);font-size:8px;">|</span>
-          <span><i class="fas fa-user me-1" style="font-size:9px;color:var(--primary);"></i>{{ tlm_teacher_name|default:student.full_name }}</span>
+          <span><i class="fas fa-user me-1" style="font-size:9px;color:var(--primary);"></i>{{ tlm_teacher_name }}</span>
           {% if tlm_subject_name %}
           <span class="chip chip-green" style="font-size:8px;padding:0 6px;line-height:16px;">{{ tlm_subject_name }}</span>
           {% endif %}
@@ -80,15 +80,15 @@
             <!-- Other Activities -->
             <div class="mb-2">
               <label class="form-label-tlm"><span class="lang-label-sw">Shughuli Nyingine</span><span class="lang-label-en">Other Activities</span></label>
-              {{ form.other_activities }}
+              <textarea name="other_activities" rows="3" class="form-control" placeholder="Mikutano, majukumu ya shule, ziara, n.k...">{{ logbook_entry.other_activities|default:'' }}</textarea>
             </div>
             <div class="mb-2">
               <label class="form-label-tlm"><span class="lang-label-sw">Changamoto / Vikwazo</span><span class="lang-label-en">Challenges</span></label>
-              {{ form.challenges_faced }}
+              <textarea name="challenges_faced" rows="3" class="form-control" placeholder="Changamoto ulizokutana nazo leo...">{{ logbook_entry.challenges_faced|default:'' }}</textarea>
             </div>
             <div class="mb-3">
               <label class="form-label-tlm"><span class="lang-label-sw">Tafakari ya Kibinafsi</span><span class="lang-label-en">Personal Reflection</span></label>
-              {{ form.lessons_learned }}
+              <textarea name="lessons_learned" rows="3" class="form-control" placeholder="Mafunzo na tafakari ya kibinafsi...">{{ logbook_entry.lessons_learned|default:'' }}</textarea>
             </div>
 
             <button type="submit" class="btn-tlm btn-gold-tlm w-100 py-2" id="submitBtn" style="border-radius:var(--radius-md);">

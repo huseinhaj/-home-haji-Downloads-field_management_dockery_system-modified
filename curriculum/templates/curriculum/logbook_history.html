@@ -8,7 +8,7 @@
         <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:clamp(0.9rem,1.5vw,1.15rem);">
           <i class="fas fa-history me-2 text-gold"></i>Historia ya Logbook
         </h4>
-        <span style="font-size:var(--font-size-xs);color:var(--text-muted);">{{ student.full_name }}</span>
+        <span style="font-size:var(--font-size-xs);color:var(--text-muted);">{{ owner_name }}</span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <a href="{% url 'curriculum:submit_logbook' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">

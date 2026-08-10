@@ -86,4 +86,21 @@ urlpatterns = [
 
     # Diagnostic: test AI API keys
     path('api/ai-diagnostic/', views.ajax_ai_diagnostic, name='ai_diagnostic'),
+
+    # ── Exam Generator (NECTA format) ──
+    path('exams/', views.exam_generator_view, name='exam_generator'),
+    path('exams/ajax-generate/', views.ajax_generate_exam, name='ajax_generate_exam'),
+    path('exams/<int:exam_id>/', views.exam_detail_view, name='exam_detail'),
+    path('exams/<int:exam_id>/pdf/<str:mode>/', views.download_exam_pdf, name='download_exam_pdf'),
+    path('exams/<int:exam_id>/word/<str:mode>/', views.download_exam_word, name='download_exam_word'),
+    path('my-exams/', views.my_exams, name='my_exams'),
+    path('exams/ajax-delete/', views.ajax_delete_exam, name='ajax_delete_exam'),
+
+    # ── AI Pace Advisor ──
+    path('pace-advisor/', views.pace_advisor, name='pace_advisor'),
+    path('pace-advisor/ajax-advice/', views.ajax_pace_advice, name='ajax_pace_advice'),
+
+    # ── Results Upload + AI Analysis ──
+    path('results-analysis/', views.results_analysis, name='results_analysis'),
+    path('results-analysis/ajax-analyze/', views.ajax_analyze_results, name='ajax_analyze_results'),
 ]

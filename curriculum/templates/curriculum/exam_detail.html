@@ -1,0 +1,181 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}{{ exam.title }}{% endblock %}
+{% block extra_css %}
+<style>
+  .paper-header {
+    text-align: center;
+    padding: 1.25rem 1rem 1rem;
+    border-bottom: 3px double var(--gold-400);
+    margin-bottom: 1rem;
+  }
+  .paper-header .gov-line { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin: 0; }
+  .paper-header h2 { font-family: var(--font-display); font-weight: 800; color: var(--text-primary); margin: 0.4rem 0 0.2rem; font-size: clamp(1rem, 2vw, 1.35rem); }
+  .paper-header .meta-line { font-size: var(--font-size-xs); color: var(--text-secondary); margin: 2px 0; }
+  .paper-header .necta-tag { display: inline-block; background: var(--green-500); color: white; font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 12px; border-radius: var(--radius-full); margin-top: 6px; }
+  .section-block {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+  .section-head {
+    background: linear-gradient(135deg, var(--green-500), var(--green-600));
+    color: white;
+    padding: 0.6rem 1rem;
+    font-weight: 700;
+    font-size: var(--font-size-sm);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-instructions { font-size: var(--font-size-xs); color: var(--text-secondary); padding: 0.5rem 1rem; border-bottom: 1px dashed var(--border-color); font-style: italic; }
+  .question-row {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.15s;
+  }
+  .question-row:last-child { border-bottom: none; }
+  .question-row:hover { background: rgba(31,122,61,0.03); }
+  .q-text { font-size: var(--font-size-sm); color: var(--text-primary); line-height: 1.55; white-space: pre-line; }
+  .q-marks { font-weight: 700; color: var(--gold-400); font-size: var(--font-size-xs); white-space: nowrap; }
+  .q-answer {
+    display: none;
+    margin-top: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    background: rgba(31,122,61,0.06);
+    border-left: 3px solid var(--green-500);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: var(--font-size-xs);
+    color: var(--green-600);
+    white-space: pre-line;
+  }
+  body.show-marking .q-answer { display: block; }
+  .q-topic { font-size: 9px; color: var(--text-muted); margin-top: 3px; }
+  .q-topic span { background: rgba(37,99,235,0.08); color: var(--info); padding: 1px 8px; border-radius: var(--radius-full); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- Toolbar -->
+  <div class="c-card p-3 mb-3" style="border-left:4px solid var(--gold-400);">
+    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+      <a href="{% url 'curriculum:exam_generator' %}" class="btn-tlm btn-outline-tlm btn-sm-tlm">
+        <i class="fas fa-arrow-left me-1"></i> Rudi
+      </a>
+      <div style="flex:1;">
+        <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:clamp(0.9rem,1.5vw,1.1rem);">
+          <i class="fas fa-file-alt text-gold me-2"></i>{{ exam.title|truncatechars:55 }}
+        </h4>
+      </div>
+      <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="toggleMarking">
+        <i class="fas fa-eye me-1"></i> Onyesha Marking Scheme
+      </button>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;">
+        <a href="{% url 'curriculum:download_exam_pdf' exam.id 'paper' %}" class="btn-tlm btn-gold-tlm btn-sm-tlm" title="PDF ya maswali tu">
+          <i class="fas fa-file-pdf me-1"></i> PDF (Maswali)
+        </a>
+        <a href="{% url 'curriculum:download_exam_pdf' exam.id 'marking' %}" class="btn-tlm btn-gold-tlm btn-sm-tlm" title="PDF pamoja na majibu">
+          <i class="fas fa-check-double me-1"></i> PDF + Marking
+        </a>
+        <a href="{% url 'curriculum:download_exam_word' exam.id 'paper' %}" class="btn-tlm btn-outline-tlm btn-sm-tlm">
+          <i class="fas fa-file-word me-1"></i> Word
+        </a>
+        <button class="btn-tlm btn-outline-tlm btn-sm-tlm" style="color:var(--error);border-color:rgba(220,38,38,0.3);" onclick="deleteExam()">
+          <i class="fas fa-trash-alt me-1"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paper -->
+  <div class="c-card" style="max-width:900px;margin:0 auto;">
+    <div class="paper-header">
+      <p class="gov-line">JAMHURI YA MUUNGANO WA TANZANIA</p>
+      <p class="gov-line">WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA</p>
+      <h2>{{ exam.title }}</h2>
+      <p class="meta-line">{{ exam.subject_name }} | {{ exam.class_name }} | {{ exam.get_education_level_display }}</p>
+      <p class="meta-line">{{ exam.get_exam_type_display }} | Muhula: {{ exam.term|default:"-" }} | Mwaka: {{ exam.year }}</p>
+      <p class="meta-line">Muda: {{ exam.duration_minutes }} min | Alama Zote: {{ exam.total_marks }}</p>
+      <span class="necta-tag"><i class="fas fa-certificate"></i> NECTA Format</span>
+    </div>
+
+    {% if exam.instructions %}
+    <div style="padding:0 1.25rem 0.75rem;">
+      <div style="background:rgba(217,164,65,0.07);border:1px solid rgba(217,164,65,0.2);border-radius:var(--radius-sm);padding:0.75rem 1rem;font-size:var(--font-size-xs);color:var(--text-secondary);">
+        <strong style="color:var(--gold-400);"><i class="fas fa-bullhorn me-1"></i>INSTRUCTIONS:</strong> {{ exam.instructions }}
+      </div>
+    </div>
+    {% endif %}
+
+    <div style="padding:0 1.25rem 1.5rem;">
+      {% for sec in exam.sections %}
+      <div class="section-block">
+        <div class="section-head">
+          <i class="fas fa-layer-group"></i> SECTION {{ sec.section|default:"A" }}
+          <span style="margin-left:auto;font-weight:600;font-size:9px;opacity:0.85;">
+            Maswali: {{ sec.questions|length }}
+          </span>
+        </div>
+        {% if sec.instructions %}
+        <div class="section-instructions">{{ sec.instructions }}</div>
+        {% endif %}
+        {% for q in sec.questions %}
+        <div class="question-row">
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <div style="flex:1;">
+              <div class="q-text">{{ q.number }}. {{ q.text }}</div>
+              {% if q.topic %}
+              <div class="q-topic"><span><i class="fas fa-tag"></i> {{ q.topic }}</span></div>
+              {% endif %}
+              <div class="q-answer"><strong>Marking:</strong> {{ q.answer|default:"—" }}</div>
+            </div>
+            <div class="q-marks">{{ q.marks }} marks</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border-color);">
+        <div style="font-size:10px;color:var(--text-muted);">
+          <i class="fas fa-user me-1"></i>{{ teacher.full_name }} | <i class="fas fa-school me-1"></i>{{ teacher.school.name|default:"-" }}
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);">
+          <i class="fas fa-calendar me-1"></i>{{ exam.created_at|date:"d M Y H:i" }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('toggleMarking').addEventListener('click', function() {
+  document.body.classList.toggle('show-marking');
+  const showing = document.body.classList.contains('show-marking');
+  this.innerHTML = showing
+    ? '<i class="fas fa-eye-slash me-1"></i> Ficha Marking Scheme'
+    : '<i class="fas fa-eye me-1"></i> Onyesha Marking Scheme';
+});
+
+function deleteExam() {
+  if (!confirm('Una uhakika unataka kufuta mtihani huu?')) return;
+  fetch('{% url "curriculum:ajax_delete_exam" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+    body: JSON.stringify({ exam_id: {{ exam.id }} }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      showToast('✅ Mtihani umefutwa', 'success');
+      setTimeout(() => window.location.href = '{% url "curriculum:exam_generator" %}', 700);
+    } else {
+      showToast('❌ ' + (data.error || 'Imeshindwa'), 'error');
+    }
+  });
+}
+</script>
+{% endblock %}

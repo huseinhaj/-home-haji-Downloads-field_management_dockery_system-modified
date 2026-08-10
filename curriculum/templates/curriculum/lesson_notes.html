@@ -262,6 +262,34 @@
     </div>
   </div>
 
+  <!-- ── LIVE STATISTICS ── -->
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-green text-center" style="padding:0.9rem 0.5rem;">
+        <div class="stat-value" style="font-size:1.5rem;">{{ total_notes }}</div>
+        <div class="stat-label"><i class="fas fa-book me-1"></i>Jumla Notes</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-gold text-center" style="padding:0.9rem 0.5rem;{% if notes_today %}border-color:var(--gold-400);box-shadow:0 0 0 3px rgba(217,164,65,0.15);{% endif %}">
+        <div class="stat-value" style="font-size:1.5rem;color:{% if notes_today %}var(--gold-400){% endif %};">{{ notes_today }}</div>
+        <div class="stat-label"><i class="fas fa-bolt me-1"></i>Leo (Today)</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-blue text-center" style="padding:0.9rem 0.5rem;">
+        <div class="stat-value" style="font-size:1.5rem;">{{ notes_this_week }}</div>
+        <div class="stat-label"><i class="fas fa-calendar-week me-1"></i>Wiki Hii</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-purple text-center" style="padding:0.9rem 0.5rem;">
+        <div class="stat-value" style="font-size:1.5rem;">{{ notes_this_month }}</div>
+        <div class="stat-label"><i class="fas fa-calendar-alt me-1"></i>Mwezi Huu</div>
+      </div>
+    </div>
+  </div>
+
   <div class="row g-3">
     <!-- LEFT: Generate Notes -->
     <div class="col-lg-5 col-xl-4">
@@ -309,6 +337,34 @@
         </div>
       </div>
 
+      {% if notes_by_subject or notes_by_class %}
+      <div class="c-card mt-3">
+        <div class="c-card-body" style="padding:0.75rem 1rem;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin-bottom:6px;">
+            <i class="fas fa-chart-pie me-1 text-gold"></i>Takwimu kwa Somo / Darasa
+          </div>
+          {% if notes_by_subject %}
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">
+            {% for s in notes_by_subject %}
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:10px;color:var(--text-secondary);flex:0 0 40%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.subject }}</span>
+              <div class="progress-tlm" style="flex:1;"><div class="progress-tlm-bar" style="width:{% widthratio s.count total_notes 100 %}%;"></div></div>
+              <span style="font-size:10px;font-weight:700;color:var(--green-500);flex:0 0 24px;text-align:right;">{{ s.count }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if notes_by_class %}
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            {% for c in notes_by_class %}
+            <span class="chip chip-blue" style="font-size:9px;"><i class="fas fa-users"></i> {{ c.class_name }}: {{ c.count }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Saved Notes List -->
       <div class="c-card mt-3">
         <div class="c-card-head">
@@ -333,6 +389,11 @@
                 <span><i class="fas fa-book"></i> {{ note.subject|default:"—" }}</span>
                 <span><i class="fas fa-users"></i> {{ note.class_name|default:"—" }}</span>
                 <span><i class="far fa-clock"></i> {{ note.created_at|date:"d M Y" }}</span>
+                {% if note.created_at.date == today %}
+                <span class="chip chip-gold" style="font-size:8px;padding:1px 7px;animation:toastIn 300ms var(--ease-out);">
+                  <i class="fas fa-bolt"></i> Imetengenezwa Leo
+                </span>
+                {% endif %}
               </div>
               <div class="note-preview">{{ note.content|truncatechars:100 }}</div>
             </div>

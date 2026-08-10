@@ -1,0 +1,351 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}Mtihani Generator (NECTA){% endblock %}
+{% block extra_css %}
+<style>
+  .exam-toolbar {
+    display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  }
+  .exam-gen-card {
+    background: linear-gradient(135deg, #f8faf6 0%, #f0f5ed 100%);
+    border: 1.5px solid var(--green-500);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .exam-gen-card::before {
+    content: '';
+    position: absolute; top: -50%; right: -30%;
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(31,122,61,0.05) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .exam-gen-card select, .exam-gen-card input {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    background: var(--bg-card-solid);
+    color: var(--text-primary);
+    transition: border-color 0.2s;
+  }
+  .exam-gen-card select:focus, .exam-gen-card input:focus {
+    border-color: var(--green-500);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(31,122,61,0.1);
+  }
+  .exam-exam-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    transition: all var(--duration-normal) var(--ease-out);
+    cursor: pointer;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+  .exam-exam-card:hover {
+    border-color: var(--gold-400);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+    text-decoration: none;
+    color: inherit;
+  }
+  .gen-status { font-size: var(--font-size-xs); padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); margin-top: 0.6rem; display: none; }
+  .gen-status.show { display: block; }
+  .gen-status.info { background: rgba(31,122,61,0.06); color: var(--green-500); }
+  .gen-status.error { background: rgba(220,38,38,0.06); color: var(--error); }
+  .gen-status.success { background: rgba(31,122,61,0.08); color: var(--green-500); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- Header -->
+  <div class="c-card p-3 mb-3" style="border-left:4px solid var(--gold-400);">
+    <div class="exam-toolbar">
+      <div class="stat-icon" style="background:var(--green-500);">
+        <i class="fas fa-file-alt" style="color:#fff;font-size:1.1rem;"></i>
+      </div>
+      <div style="flex:1;">
+        <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin:0;font-size:clamp(0.9rem,1.5vw,1.15rem);">
+          📝 Mtihani Generator — NECTA Format
+        </h4>
+        <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
+          Tengeneza mitihani (Test, Quiz, Midterm, Terminal, Annual) kwa format ya NECTA — Primary, O-Level na A-Level — pamoja na Marking Scheme
+        </p>
+      </div>
+      <a href="{% url 'curriculum:my_exams' %}" class="btn-tlm btn-gold-tlm btn-sm-tlm">
+        <i class="fas fa-layer-group me-1"></i> Mitihani Yangu ({{ exams_count }})
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- LEFT: Generator form -->
+    <div class="col-lg-5 col-xl-4">
+      <div class="exam-gen-card">
+        <div style="position:relative;z-index:1;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.9rem;">
+            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green-500),#166534);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(31,122,61,0.2);">
+              <i class="fas fa-wand-magic-sparkles" style="color:#fff;font-size:1.1rem;"></i>
+            </div>
+            <div>
+              <h5 style="font-family:var(--font-display);font-weight:800;font-size:1rem;margin:0;color:var(--text-primary);">Generate Mtihani</h5>
+              <p style="font-size:10px;color:var(--text-secondary);margin:2px 0 0;">AI itatayarisha maswali ya mtindo wa NECTA</p>
+            </div>
+          </div>
+
+          <form id="examGenForm">
+            {% csrf_token %}
+            <div class="row g-2">
+              <div class="col-12">
+                <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                  <i class="fas fa-school me-1 text-gold"></i> Ngazi ya Elimu
+                </label>
+                <select id="education_level">
+                  <option value="primary">Primary School</option>
+                  <option value="ordinary" {% if teacher_info.class_name and 'form' in teacher_info.class_name|lower %}selected{% endif %}>Ordinary Level (O-Level)</option>
+                  <option value="advanced">Advanced Level (A-Level)</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                  <i class="fas fa-users me-1 text-gold"></i> Darasa
+                </label>
+                <input type="text" id="class_name" placeholder="e.g. Form 2 / Standard 5" value="{{ teacher_info.class_name }}">
+              </div>
+              <div class="col-6">
+                <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                  <i class="fas fa-book me-1 text-gold"></i> Somo
+                </label>
+                <select id="subject">
+                  <option value="">— Chagua Somo —</option>
+                  {% for subj in subjects %}
+                  <option value="{{ subj.id }}" data-name="{{ subj.name }}" {% if subj.id == teacher_info.subject_id %}selected{% endif %}>{{ subj.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-6">
+                <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                  <i class="fas fa-clipboard-list me-1 text-gold"></i> Aina ya Mtihani
+                </label>
+                <select id="exam_type">
+                  <option value="TEST">Test</option>
+                  <option value="QUIZ">Quiz</option>
+                  <option value="MIDTERM">Midterm</option>
+                  <option value="TERMINAL">Terminal</option>
+                  <option value="ANNUAL">Annual</option>
+                  <option value="COMPETITION">Competition</option>
+                  <option value="OTHER">Nyingine</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                  <i class="fas fa-clock me-1 text-gold"></i> Muda (Dakika)
+                </label>
+                <input type="number" id="duration" value="120" min="10" max="360">
+              </div>
+              <div class="col-6">
+                <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                  <i class="fas fa-star me-1 text-gold"></i> Alama Zote
+                </label>
+                <input type="number" id="total_marks" value="100" min="10" max="500">
+              </div>
+              <div class="col-6">
+                <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                  <i class="fas fa-hashtag me-1 text-gold"></i> Idadi ya Maswali
+                </label>
+                <input type="number" id="question_count" value="20" min="5" max="60">
+              </div>
+              <div class="col-6">
+                <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                  <i class="fas fa-language me-1 text-gold"></i> Lugha
+                </label>
+                <select id="language">
+                  <option value="auto">Auto (kulingana na somo)</option>
+                  <option value="english">English</option>
+                  <option value="kiswahili">Kiswahili</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                  <i class="fas fa-calendar-alt me-1 text-gold"></i> Muhula / Mwaka
+                </label>
+                <div style="display:flex;gap:6px;">
+                  <input type="text" id="term" placeholder="Muhula (I/II/III)" style="width:45%;">
+                  <input type="number" id="year" value="2026" style="width:55%;">
+                </div>
+              </div>
+              <div class="col-12">
+                <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                  <i class="fas fa-list me-1 text-gold"></i> Mada / Topics (hiari — tofautisha kwa koma)
+                </label>
+                <input type="text" id="topics" placeholder="e.g. Numbers, Algebra, Geometry">
+              </div>
+            </div>
+
+            <button type="submit" class="btn-tlm btn-generate mt-3" id="genBtn" style="background:linear-gradient(135deg,var(--green-500),#166534);color:#fff;border:none;padding:0.75rem 1.5rem;font-weight:700;border-radius:var(--radius-sm);width:100%;justify-content:center;display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+              <i class="fas fa-wand-magic-sparkles"></i> Generate Mtihani
+            </button>
+            <div id="genStatus" class="gen-status"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Progress by type -->
+      {% if exams_by_type %}
+      <div class="c-card mt-3">
+        <div class="c-card-body" style="padding:0.9rem 1rem;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin-bottom:8px;">
+            <i class="fas fa-chart-pie me-1 text-gold"></i> Maendeleo kwa Aina ya Mtihani
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            {% for t in exams_by_type %}
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="chip chip-blue" style="font-size:9px;flex:0 0 auto;">{{ t.label }}</span>
+              <div class="progress-tlm" style="flex:1;"><div class="progress-tlm-bar" style="width:{% widthratio t.count exams_count 100 %}%;"></div></div>
+              <span style="font-size:10px;font-weight:700;color:var(--green-500);">{{ t.count }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- RIGHT: Recent exams -->
+    <div class="col-lg-7 col-xl-8">
+      <div class="c-card">
+        <div class="c-card-head">
+          <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;color:var(--text-primary);">
+            <i class="fas fa-history text-gold me-1"></i> Mitihani Iliyotengenezwa ({{ my_exams|length }})
+          </h5>
+        </div>
+        <div class="c-card-body" style="padding:0.9rem 1rem;">
+          {% if my_exams %}
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            {% for exam in my_exams %}
+            <a href="{% url 'curriculum:exam_detail' exam.id %}" class="exam-exam-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:200px;">
+                  <div style="font-weight:700;font-size:var(--font-size-sm);color:var(--text-primary);">{{ exam.title|truncatechars:60 }}</div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;">
+                    <span class="chip chip-blue" style="font-size:8px;">{{ exam.exam_type }}</span>
+                    <span><i class="fas fa-users"></i> {{ exam.class_name }}</span>
+                    <span><i class="fas fa-book"></i> {{ exam.subject_name }}</span>
+                    <span><i class="far fa-clock"></i> {{ exam.created_at|date:"d M Y" }}</span>
+                  </div>
+                </div>
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <span class="chip chip-green" style="font-size:9px;"><i class="fas fa-question-circle"></i> {{ exam.question_count }} maswali</span>
+                  <span class="chip chip-gold" style="font-size:9px;">{{ exam.total_marks }} alama</span>
+                </div>
+              </div>
+            </a>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-5">
+            <div style="width:56px;height:56px;background:rgba(31,122,61,0.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.6rem;">
+              <i class="fas fa-file-alt" style="font-size:1.3rem;color:var(--text-muted);"></i>
+            </div>
+            <p style="font-size:var(--font-size-sm);color:var(--text-muted);margin:0;">
+              Hakuna mtihani bado. Jaza fomu upande wa kushoto na bonyeza <strong>"Generate Mtihani"</strong>.
+            </p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('examGenForm');
+  const btn = document.getElementById('genBtn');
+  const status = document.getElementById('genStatus');
+
+  // Auto-fill subject name when selected
+  document.getElementById('subject').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    if (opt && opt.dataset.name) {
+      // auto-language: Kiswahili subject → Kiswahili
+      const name = opt.dataset.name.toLowerCase();
+      if (name.includes('kiswahili') || name.includes('swahili')) {
+        document.getElementById('language').value = 'kiswahili';
+      } else {
+        const lvl = document.getElementById('education_level').value;
+        if (lvl === 'primary' && !name.includes('english')) {
+          document.getElementById('language').value = 'kiswahili';
+        } else {
+          document.getElementById('language').value = 'auto';
+        }
+      }
+    }
+  });
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const class_name = document.getElementById('class_name').value.trim();
+    const subjectSel = document.getElementById('subject');
+    const subject_name = subjectSel.options[subjectSel.selectedIndex]?.dataset?.name || '';
+
+    if (!class_name) { showStatus('❌ Tafadhali andika darasa (class)', 'error'); return; }
+    if (!subject_name) { showStatus('❌ Tafadhali chagua somo (subject)', 'error'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-tlm" style="width:18px;height:18px;border-width:2px;border-color:rgba(255,255,255,0.3) transparent rgba(255,255,255,0.3) rgba(255,255,255,0.3);"></div> Inazalisha Mtihani...';
+    showStatus('⏳ AI inatayarisha mtihani wa NECTA... Hii inaweza kuchukua sekunde 20-60.', 'info');
+
+    const payload = {
+      education_level: document.getElementById('education_level').value,
+      class_name: class_name,
+      subject_id: subjectSel.value,
+      subject: subject_name,
+      exam_type: document.getElementById('exam_type').value,
+      duration: document.getElementById('duration').value,
+      total_marks: document.getElementById('total_marks').value,
+      question_count: document.getElementById('question_count').value,
+      language: document.getElementById('language').value,
+      topics: document.getElementById('topics').value,
+      term: document.getElementById('term').value,
+      year: document.getElementById('year').value,
+    };
+
+    fetch('{% url "curriculum:ajax_generate_exam" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Mtihani';
+      if (data.success) {
+        showStatus('✅ Mtihani umezalishwa! (Maswali: ' + data.question_count + ', Alama: ' + data.total_marks + ') — Inaelekeza...', 'success');
+        setTimeout(() => window.location.href = data.url, 900);
+      } else {
+        showStatus('❌ ' + (data.error || 'Hitilafu. Jaribu tena.'), 'error');
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Mtihani';
+      showStatus('❌ Network error: ' + err.message, 'error');
+    });
+  });
+
+  function showStatus(msg, type) {
+    status.textContent = msg;
+    status.className = 'gen-status show ' + type;
+  }
+});
+</script>
+{% endblock %}

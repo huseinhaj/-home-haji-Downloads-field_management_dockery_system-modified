@@ -53,7 +53,10 @@ from field_app.views.utils import (
     get_current_academic_year, invalidate_student_cache,
 )
 
-from .models import TLMTeacher, Testimonial, LessonNote, SubjectTopic, TopicSubtopic
+from .models import (
+    TLMTeacher, Testimonial, LessonNote, SubjectTopic, TopicSubtopic,
+    TLMLogbookEntry, GeneratedExam,
+)
 
 
 # =============================================================================
@@ -3361,22 +3364,99 @@ def ajax_load_lesson_by_id(request, lesson_id):
 
 
 # =============================================================================
-# LOGBOOK
+# LOGBOOK — works for BOTH TLM teachers (session-based) and authenticated IMS users
 # =============================================================================
 
-@login_required
+def _tlm_subjects(teacher):
+    """Subjects suitable for the TLM teacher's school level."""
+    school_level = teacher.school.level if teacher and teacher.school else ''
+    if school_level:
+        sl = school_level.lower()
+        if 'primary' in sl:
+            return Subject.objects.filter(level='primary').order_by('name')
+        if 'advanced' in sl or 'a level' in sl:
+            return Subject.objects.filter(level='advanced').order_by('name')
+        if 'secondary' in sl:
+            return Subject.objects.filter(level='secondary').order_by('name')
+    return Subject.objects.all().order_by('name')
+
+
+def _tlm_logbook_context(teacher, logbook_entry, today):
+    """Context for the logbook template when the user is a TLM teacher."""
+    days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
+    days_english = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday'}
+    school = teacher.school
+    return {
+        'form': None,
+        'student': None,
+        'logbook_entry': logbook_entry,
+        'today': today,
+        'today_name': days_swahili.get(today.weekday(), 'Leo'),
+        'today_name_en': days_english.get(today.weekday(), 'Today'),
+        'school': school,
+        'subjects': _tlm_subjects(teacher),
+        'teacher': teacher,
+        'preferred_language': getattr(teacher, 'preferred_language', 'auto'),
+        'tlm_teacher_name': teacher.full_name,
+        'tlm_school_name': school.name if school else '',
+        'tlm_subject_name': teacher.subject.name if teacher.subject else '',
+        'tlm_class_name': teacher.class_name or '',
+    }
+
+
 def submit_logbook(request):
-    """Submit daily logbook entry."""
-    student = get_or_create_student_profile(request.user)
+    """
+    Submit daily logbook entry.
+    FIX: TLM teachers (session-based, no Django login) no longer get redirected
+    to the student dashboard — they use TLMLogbookEntry directly.
+    """
     today = timezone.now().date()
+    teacher = get_tlm_teacher(request)
+
+    # ── TLM TEACHER FLOW (session-based, NO Django login needed) ──
+    if teacher:
+        if today.weekday() >= 5:
+            messages.info(request, "Hakuna kazi ya uwanjani wikendi. Rudi tena Jumatatu.")
+            return redirect(reverse('curriculum:logbook_history'))
+
+        school = teacher.school
+        logbook_entry = TLMLogbookEntry.objects.filter(teacher=teacher, date=today).first()
+
+        if request.method == 'POST':
+            if logbook_entry is None:
+                logbook_entry = TLMLogbookEntry(
+                    teacher=teacher, date=today, school=school,
+                    day_of_week=['monday', 'tuesday', 'wednesday', 'thursday', 'friday'][today.weekday()],
+                )
+            logbook_entry.school = school
+            logbook_entry.other_activities = request.POST.get('other_activities', '')
+            logbook_entry.challenges_faced = request.POST.get('challenges_faced', '')
+            logbook_entry.lessons_learned = request.POST.get('lessons_learned', '')
+            try:
+                logbook_entry.lessons_data = json.loads(request.POST.get('lessons_data', '[]'))
+            except (ValueError, TypeError):
+                logbook_entry.lessons_data = []
+            logbook_entry.is_location_verified = True
+            logbook_entry.save()
+            messages.success(request, "✅ Logbook imesajiliwa kikamilifu!")
+            return redirect(reverse('curriculum:logbook_history'))
+
+        return render(request, 'curriculum/logbook.html',
+                      _tlm_logbook_context(teacher, logbook_entry, today))
+
+    # ── AUTHENTICATED IMS STUDENT FLOW (fallback) ──
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('login')}?next={reverse('curriculum:submit_logbook')}")
+
+    student = get_or_create_student_profile(request.user)
 
     if today.weekday() >= 5:
         messages.info(request, "Hakuna kazi ya uwanjani wikendi. Rudi tena Jumatatu.")
-        return redirect(reverse('curriculum:dashboard'))
+        return redirect(reverse('curriculum:logbook_history'))
 
     if not student.selected_school:
         messages.error(request, "Lazima uchague shule kabla ya kujaza logbook.")
-        return redirect(reverse('curriculum:dashboard'))
+        return redirect(reverse('curriculum:logbook_history'))
 
     school = student.selected_school
     logbook_entry = _cached_today_logbook(student, school, today)
@@ -3412,47 +3492,40 @@ def submit_logbook(request):
     subjects = _cached_subjects(student)
     days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
     days_english = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday'}
-    
-    # TLM teacher auto-fill for logbook
-    from .models import TLMTeacher
-    tlm_teacher = None
-    teacher_id = request.session.get('tlm_teacher_id')
-    if teacher_id:
-        try:
-            tlm_teacher = TLMTeacher.objects.get(id=teacher_id)
-        except TLMTeacher.DoesNotExist:
-            pass
-    preferred_language = getattr(tlm_teacher, 'preferred_language', 'auto') if tlm_teacher else 'auto'
-    
-    # Auto-fill from TLM teacher registration
-    tlm_teacher_name = tlm_teacher.full_name if tlm_teacher else (student.full_name if student else '')
-    tlm_school_name = tlm_teacher.school.name if tlm_teacher and tlm_teacher.school else (school.name if school else '')
-    tlm_subject_name = tlm_teacher.subject.name if tlm_teacher and tlm_teacher.subject else ''
-    tlm_class_name = tlm_teacher.class_name if tlm_teacher else ''
 
     return render(request, 'curriculum/logbook.html', {
         'form': form, 'student': student, 'logbook_entry': logbook_entry,
         'today': today, 'today_name': days_swahili.get(today.weekday(), 'Leo'),
         'today_name_en': days_english.get(today.weekday(), 'Today'),
         'school': school, 'subjects': subjects,
-        'teacher': tlm_teacher,
-        'preferred_language': preferred_language,
-        'tlm_teacher_name': tlm_teacher_name,
-        'tlm_school_name': tlm_school_name,
-        'tlm_subject_name': tlm_subject_name,
-        'tlm_class_name': tlm_class_name,
+        'teacher': None,
+        'preferred_language': 'auto',
+        'tlm_teacher_name': student.full_name,
+        'tlm_school_name': school.name if school else '',
+        'tlm_subject_name': '',
+        'tlm_class_name': '',
     })
 
 
-@login_required
 def logbook_history(request):
-    """View logbook history."""
-    student = get_or_create_student_profile(request.user)
+    """View logbook history — TLM teachers see their own TLM logbooks."""
+    teacher = get_tlm_teacher(request)
 
     week_filter = request.GET.get('week')
     month_filter = request.GET.get('month')
 
-    entries = LogbookEntry.objects.filter(student=student).select_related('subject_taught', 'school')
+    # ── TLM TEACHER FLOW ──
+    if teacher:
+        entries = TLMLogbookEntry.objects.filter(teacher=teacher).select_related('school')
+        owner_name = teacher.full_name
+        is_tlm = True
+    else:
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_history')}")
+        student = get_or_create_student_profile(request.user)
+        entries = LogbookEntry.objects.filter(student=student).select_related('subject_taught', 'school')
+        owner_name = student.full_name
+        is_tlm = False
 
     if week_filter:
         try:
@@ -3475,39 +3548,53 @@ def logbook_history(request):
         entries = entries.filter(date__range=[start_of_week, start_of_week + timedelta(days=4)])
 
     return render(request, 'curriculum/logbook_history.html', {
-        'entries': entries.order_by('-date'), 'student': student,
+        'entries': entries.order_by('-date'), 'student': None,
+        'teacher': teacher, 'owner_name': owner_name, 'is_tlm': is_tlm,
     })
 
 
-@login_required
 def download_logbook_pdf(request, period_type=None):
-    """Download logbook as PDF."""
+    """Download logbook as PDF — works for TLM teachers AND authenticated IMS users."""
     from reportlab.lib.units import cm
     from reportlab.lib.styles import getSampleStyleSheet
 
-    student = get_or_create_student_profile(request.user)
-    period_value = period_type or 'week'
     today = timezone.now().date()
+    teacher = get_tlm_teacher(request)
+    period_value = period_type or 'week'
+
+    # ── Decide data source: TLM teacher vs authenticated IMS student ──
+    if teacher:
+        entries = TLMLogbookEntry.objects.filter(teacher=teacher)
+        owner_name = teacher.full_name
+        owner_label = 'Jina la Mwalimu'
+        school = teacher.school
+    else:
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_download_options')}")
+        student = get_or_create_student_profile(request.user)
+        entries = LogbookEntry.objects.filter(student=student)
+        owner_name = student.full_name
+        owner_label = 'Jina la Mwalimu'
+        school = student.selected_school
 
     if period_value == 'today':
-        entries = LogbookEntry.objects.filter(student=student, date=today)
+        entries = entries.filter(date=today)
         filename = f"logbook_{today}.pdf"
         title = f"Logbook — {today}"
     elif period_value == 'week':
         start_of_week = today - timedelta(days=today.weekday())
         end_of_week = start_of_week + timedelta(days=4)
-        entries = LogbookEntry.objects.filter(student=student, date__range=[start_of_week, end_of_week])
+        entries = entries.filter(date__range=[start_of_week, end_of_week])
         filename = f"logbook_wiki_{start_of_week}.pdf"
         title = f"Logbook — Wiki {start_of_week} hadi {end_of_week}"
     elif period_value == 'month':
         start_of_month = today.replace(day=1)
         next_month = today.replace(day=28) + timedelta(days=4)
         end_of_month = next_month - timedelta(days=next_month.day)
-        entries = LogbookEntry.objects.filter(student=student, date__range=[start_of_month, end_of_month])
+        entries = entries.filter(date__range=[start_of_month, end_of_month])
         filename = f"logbook_mwezi_{today.year}_{today.month:02d}.pdf"
         title = f"Logbook — Mwezi {today.month}/{today.year}"
     else:
-        entries = LogbookEntry.objects.filter(student=student)
         filename = f"logbook_zote_{today}.pdf"
         title = "Logbook Zote"
 
@@ -3530,21 +3617,21 @@ def download_logbook_pdf(request, period_type=None):
     s_body = ParagraphStyle('body', fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#1A1A2E'), leading=11)
     s_small = ParagraphStyle('small', fontName='Helvetica', fontSize=7.5, textColor=colors.HexColor('#4A5568'), leading=10)
 
-    school_name = student.selected_school.name if student.selected_school else '—'
-    district_name = (student.selected_school.district.name if student.selected_school and student.selected_school.district else '—')
+    school_name = school.name if school else '—'
+    district_name = (school.district.name if school and school.district else '—')
     current_year = _cached_active_year()
     year_label = str(current_year) if current_year else '—'
 
     story = []
     story.append(Paragraph("WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA",
                            ParagraphStyle('gov', fontName='Helvetica-Bold', fontSize=11, textColor=NAVY, alignment=1)))
-    story.append(Paragraph("Mfumo wa Ufuatiliaji wa Walimu Wanafunzi (IMS)",
+    story.append(Paragraph("Mfumo wa Ufuatiliaji wa Walimu (TLM — Teaching & Learning Materials)",
                            ParagraphStyle('gov2', fontName='Helvetica', fontSize=9, textColor=colors.HexColor('#4A5568'), alignment=1, spaceAfter=6)))
     story.append(HRFlowable(width="100%", thickness=2, color=GOLD, spaceAfter=6))
     story.append(Paragraph(title, s_title))
 
     info_data = [
-        [Paragraph('<b>Jina la Mwanafunzi:</b>', s_label), Paragraph(student.full_name, s_body),
+        [Paragraph(f'<b>{owner_label}:</b>', s_label), Paragraph(owner_name, s_body),
          Paragraph('<b>Shule:</b>', s_label), Paragraph(school_name, s_body)],
         [Paragraph('<b>Wilaya:</b>', s_label), Paragraph(district_name, s_body),
          Paragraph('<b>Mwaka wa Masomo:</b>', s_label), Paragraph(year_label, s_body)],
@@ -3705,9 +3792,22 @@ def download_logbook_pdf(request, period_type=None):
     return response
 
 
-@login_required
 def logbook_download_options(request):
-    """Page for choosing download options."""
+    """Page for choosing download options — works for TLM teachers too."""
+    teacher = get_tlm_teacher(request)
+    if teacher:
+        total_entries = TLMLogbookEntry.objects.filter(teacher=teacher).count()
+        this_week_entries = TLMLogbookEntry.objects.filter(
+            teacher=teacher, date__gte=timezone.now().date() - timedelta(days=7)
+        ).count()
+        return render(request, 'curriculum/logbook_download.html', {
+            'student': None, 'teacher': teacher, 'owner_name': teacher.full_name,
+            'total_entries': total_entries, 'this_week_entries': this_week_entries,
+        })
+
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_download_options')}")
+
     student = get_or_create_student_profile(request.user)
     total_entries = LogbookEntry.objects.filter(student=student).count()
     this_week_entries = LogbookEntry.objects.filter(
@@ -3715,7 +3815,8 @@ def logbook_download_options(request):
     ).count()
 
     return render(request, 'curriculum/logbook_download.html', {
-        'student': student, 'total_entries': total_entries, 'this_week_entries': this_week_entries,
+        'student': student, 'teacher': None, 'owner_name': student.full_name,
+        'total_entries': total_entries, 'this_week_entries': this_week_entries,
     })
 
 
@@ -4067,6 +4168,7 @@ def lesson_notes_view(request):
     Lesson Notes page — teachers write their own reflections, methods, challenges.
     Notes are filtered by the teacher's school education level.
     Teachers only see notes from their own level (primary/ordinary/advanced).
+    Shows live statistics + "Imetengenezwa Leo" badges.
     """
     teacher = get_tlm_teacher(request)
     if not teacher:
@@ -4092,6 +4194,27 @@ def lesson_notes_view(request):
         teacher=teacher,
         education_level=teacher_edu_level,
     ).order_by('-created_at')[:50]
+
+    # ── LIVE STATISTICS ──
+    today = timezone.now().date()
+    week_ago = today - timedelta(days=7)
+    month_start = today.replace(day=1)
+
+    notes_qs = LessonNote.objects.filter(teacher=teacher, education_level=teacher_edu_level)
+    total_notes = notes_qs.count()
+    notes_today = notes_qs.filter(created_at__date=today).count()
+    notes_this_week = notes_qs.filter(created_at__date__gte=week_ago).count()
+    notes_this_month = notes_qs.filter(created_at__date__gte=month_start).count()
+
+    from django.db.models import Count as _Count
+    notes_by_subject = list(
+        notes_qs.exclude(subject='').values('subject').annotate(count=_Count('id'))
+        .order_by('-count')[:6]
+    )
+    notes_by_class = list(
+        notes_qs.exclude(class_name='').values('class_name').annotate(count=_Count('id'))
+        .order_by('-count')[:6]
+    )
     
     # Subjects for dropdown
     subjects = Subject.objects.all().order_by('name')
@@ -4115,6 +4238,14 @@ def lesson_notes_view(request):
         'teacher_school_name': teacher.school.name if teacher and teacher.school else '',
         'teacher_subject_name': teacher.subject.name if teacher and teacher.subject else '',
         'teacher_class_name': teacher.class_name if teacher else '',
+        # Statistics
+        'today': today,
+        'total_notes': total_notes,
+        'notes_today': notes_today,
+        'notes_this_week': notes_this_week,
+        'notes_this_month': notes_this_month,
+        'notes_by_subject': notes_by_subject,
+        'notes_by_class': notes_by_class,
     })
 
 
@@ -5142,3 +5273,903 @@ def my_lessons(request):
         'grouped_lessons': dict(grouped),
         'total_lessons': lessons.count(),
     })
+
+
+# =============================================================================
+# EXAM GENERATOR — NECTA FORMAT (Primary / O-Level / A-Level)
+# =============================================================================
+
+_EXAM_TYPE_LABELS = dict(GeneratedExam.EXAM_TYPE_CHOICES)
+_EXAM_LEVEL_LABELS = dict(GeneratedExam.EDUCATION_LEVEL_CHOICES)
+
+
+def _safe_marks(val):
+    """Safely convert a marks value (int, float or numeric string) to int."""
+    try:
+        return int(float(val))
+    except (ValueError, TypeError):
+        return 0
+
+
+def _parse_exam_json(response_text):
+    """Parse AI exam response into a dict with 'title', 'instructions', 'sections'."""
+    cleaned = re.sub(r'```(?:json)?\s*', '', response_text)
+    cleaned = re.sub(r'```\s*', '', cleaned).strip()
+
+    def _extract_obj(text):
+        start = text.find('{')
+        if start == -1:
+            return None
+        depth = 0
+        in_str = False
+        esc = False
+        for i in range(start, len(text)):
+            ch = text[i]
+            if esc:
+                esc = False
+                continue
+            if ch == '\\' and in_str:
+                esc = True
+                continue
+            if ch == '"' and not esc:
+                in_str = not in_str
+                continue
+            if in_str:
+                continue
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    candidate = text[start:i + 1]
+                    try:
+                        return json.loads(candidate)
+                    except json.JSONDecodeError:
+                        try:
+                            return json.loads(_sanitize_json_control_chars(candidate))
+                        except json.JSONDecodeError:
+                            continue
+        # Fallback: fix unbalanced braces
+        candidate = text[start:]
+        if candidate.count('"') % 2 == 1:
+            candidate += '"'
+        open_b = candidate.count('{')
+        close_b = candidate.count('}')
+        if open_b > close_b:
+            candidate += '}' * (open_b - close_b)
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            try:
+                return json.loads(_sanitize_json_control_chars(candidate))
+            except json.JSONDecodeError:
+                return None
+
+    data = _extract_obj(cleaned)
+    if data is None:
+        # Sometimes AI returns a bare array of sections
+        arr_start = cleaned.find('[')
+        if arr_start != -1:
+            try:
+                arr = json.loads(cleaned[arr_start:])
+                if isinstance(arr, list):
+                    data = {'sections': arr}
+            except json.JSONDecodeError:
+                pass
+
+    if not isinstance(data, dict):
+        data = {'sections': []}
+
+    sections = data.get('sections') or data.get('questions') or []
+    # Normalize: if sections is a flat list of questions, wrap into one section
+    normalized = []
+    if isinstance(sections, list):
+        for sec in sections:
+            if isinstance(sec, dict):
+                qs = sec.get('questions') or []
+                # If this dict looks like a single question, wrap it
+                if not qs and (sec.get('text') or sec.get('question')):
+                    qs = [sec]
+                if qs or sec.get('section'):
+                    normalized.append({
+                        'section': sec.get('section') or sec.get('name') or 'A',
+                        'instructions': sec.get('instructions') or '',
+                        'questions': qs,
+                    })
+    if not normalized:
+        # Flat list of questions
+        normalized = [{'section': 'A', 'instructions': '', 'questions': sections}]
+
+    # Clean questions
+    for sec in normalized:
+        clean_qs = []
+        for i, q in enumerate(sec.get('questions', []) or []):
+            if isinstance(q, dict):
+                clean_qs.append({
+                    'number': q.get('number') or (i + 1),
+                    'text': q.get('text') or q.get('question') or '',
+                    'marks': _safe_marks(q.get('marks')),
+                    'answer': q.get('answer') or q.get('correct_answer') or '',
+                    'topic': q.get('topic') or '',
+                })
+        sec['questions'] = clean_qs
+
+    total = sum(
+        q.get('marks', 0)
+        for sec in normalized for q in sec.get('questions', [])
+    )
+
+    return {
+        'title': data.get('title') or '',
+        'instructions': data.get('instructions') or '',
+        'sections': normalized,
+        'total_marks': data.get('total_marks') or total,
+    }
+
+
+def _exam_language_instruction(language, education_level, subject_name):
+    """Strong language rule for exam generation."""
+    subj_lower = (subject_name or '').lower()
+    if language == 'kiswahili':
+        return (
+            "\n" +
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+            "🚨 KANUNI YA LUGHA: Maswali NA Majibu (answers) yote LAZIMA yaandikwe kwa\n" +
+            "KISWAHILI KAMILI. Hakuna Kiingereza kinachokubalika katika question text au\n" +
+            "answers. (Isipokuwa majina ya istilahi za kipekee kama 'cell', 'DNA' n.k.)\n" +
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+        )
+    if education_level == 'primary' and subj_lower not in ('english', 'english language'):
+        return (
+            "\n" +
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+            "🚨 KANUNI YA LUGHA: Hili ni somo la MSINGI (Primary) si English — maswali\n" +
+            "na majibu yote LAZIMA yaandikwe kwa KISWAHILI KAMILI.\n" +
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+        )
+    if subj_lower in ('kiswahili', 'swahili'):
+        return (
+            "\n" +
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+            "🚨 KANUNI YA LUGHA: Somo ni Kiswahili — maswali na majibu yote LAZIMA\n" +
+            "yaandikwe kwa KISWAHILI KAMILI.\n" +
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+        )
+    return "\nLANGUAGE: Write ALL questions and answers in ENGLISH.\n"
+
+
+def exam_generator_view(request):
+    """Exam generator page — teacher picks level/class/subject/type then AI generates."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:exam_generator')}")
+
+    education_levels = EducationLevel.objects.all().order_by('order')
+    subjects = Subject.objects.all().order_by('name')
+
+    from django.db.models import Count as _C
+    my_exams = GeneratedExam.objects.filter(teacher=teacher).order_by('-created_at')[:30]
+    exams_count = GeneratedExam.objects.filter(teacher=teacher).count()
+    exams_by_type = [
+        {'exam_type': t['exam_type'],
+         'label': _EXAM_TYPE_LABELS.get(t['exam_type'], t['exam_type']),
+         'count': t['count']}
+        for t in GeneratedExam.objects.filter(teacher=teacher)
+        .values('exam_type').annotate(count=_C('id')).order_by('-count')
+    ]
+    exams_by_subject = list(
+        GeneratedExam.objects.filter(teacher=teacher).values('subject_name')
+        .annotate(count=_C('id')).order_by('-count')
+    )
+
+    teacher_info = {
+        'name': teacher.full_name,
+        'school': teacher.school.name if teacher.school else '',
+        'class_name': teacher.class_name or '',
+        'subject_id': teacher.subject_id or '',
+        'subject_name': teacher.subject.name if teacher.subject else '',
+    }
+
+    return render(request, 'curriculum/exam_generator.html', {
+        'teacher': teacher,
+        'education_levels': education_levels,
+        'subjects': subjects,
+        'my_exams': my_exams,
+        'exams_count': exams_count,
+        'exams_by_type': exams_by_type,
+        'exams_by_subject': exams_by_subject,
+        'teacher_info': teacher_info,
+    })
+
+
+@csrf_exempt
+def ajax_generate_exam(request):
+    """AI generates an exam in NECTA format and saves it."""
+    if client is None:
+        return JsonResponse({'success': False, 'error': 'Huduma ya AI haitumiki. Ufunguo wa API haujawekwa.'}, status=503)
+    if request.method != 'POST':
+        return JsonResponse({'success': False}, status=400)
+
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Tafadhali jisajili kwanza.'}, status=401)
+
+    try:
+        data = json.loads(request.body)
+        education_level = data.get('education_level', 'ordinary')
+        class_name = (data.get('class_name') or '').strip()
+        subject_id = data.get('subject_id')
+        subject_name = (data.get('subject') or '').strip()
+        exam_type = data.get('exam_type', 'TEST')
+        duration = int(data.get('duration', 120))
+        total_marks = int(data.get('total_marks', 100))
+        question_count = int(data.get('question_count', 20))
+        language = data.get('language', 'english')
+        topics_input = (data.get('topics') or '').strip()
+        term = (data.get('term') or '').strip()
+        year = int(data.get('year', 2026))
+
+        if not class_name or not subject_name:
+            return JsonResponse({'success': False, 'error': 'Tafadhali jaza darasa (class) na somo (subject).'}, status=400)
+
+        subject_obj = Subject.objects.filter(id=subject_id).first() if subject_id else None
+        school_name = teacher.school.name if teacher.school else ''
+        teacher_name = teacher.full_name
+
+        level_label = _EXAM_LEVEL_LABELS.get(education_level, education_level)
+        type_label = _EXAM_TYPE_LABELS.get(exam_type, exam_type)
+        lang_rule = _exam_language_instruction(language, education_level, subject_name)
+
+        topics_hint = f"COVER THESE TOPICS (spread questions evenly): {topics_input}" if topics_input else "COVER the official TIE syllabus topics for this subject/class."
+
+        prompt = f"""You are a senior Tanzanian NECTA exam setter and curriculum expert. Generate a complete {type_label} examination paper for {subject_name} — {class_name} ({level_label}) in the official NECTA format.
+
+EXAM DETAILS:
+- Subject: {subject_name} | Class: {class_name} | Level: {level_label}
+- Exam type: {type_label} | Year: {year} | Term: {term or 'N/A'}
+- Time allowed: {duration} minutes | Total marks: {total_marks}
+- Number of questions: approximately {question_count}
+- School: {school_name} | Teacher: {teacher_name}
+- {topics_hint}
+{lang_rule}
+
+NECTA FORMAT RULES:
+1. Structure the paper in SECTIONS (e.g. Section A: Objective/Multiple Choice 1-{min(10, max(2, question_count//3))}, Section B: Short Answer, Section C: Long/Structured/Essay). For primary school use age-appropriate sections.
+2. Section A: multiple-choice questions with 4 options (A, B, C, D) — include the options in the question text on separate lines.
+3. Section B: short answer questions.
+4. Section C: longer structured/essay questions with sub-parts (a), (b), (c).
+5. Number questions continuously per section (1, 2, 3...).
+6. Marks must sum to approximately {total_marks}. Question difficulty increases across the paper.
+7. Questions MUST be based on the real official TIE new syllabus content for {subject_name} {class_name} in Tanzania.
+
+OUTPUT: Return ONLY valid JSON (no markdown, no extra text) with this EXACT structure:
+{{
+  "title": "{subject_name} — {class_name} {type_label} Examination",
+  "instructions": "General instructions for candidates (e.g. this paper consists of sections A, B and C with a total of {total_marks} marks. Answer ALL questions...)",
+  "sections": [
+    {{
+      "section": "A",
+      "instructions": "Answer all questions in this section.",
+      "questions": [
+        {{"number": 1, "text": "...", "marks": 2, "answer": "...", "topic": "..."}}
+      ]
+    }}
+  ],
+  "total_marks": {total_marks}
+}}
+
+The "answer" field MUST contain the correct answer AND brief marking points (for the marking scheme). Question "text" must be the full question including options if multiple choice. Do NOT omit any field."""
+
+        logger.info(f"[Exam Gen] Generating {type_label} for {subject_name} {class_name}")
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        exam_data = _parse_exam_json(response.text)
+
+        if not exam_data.get('sections'):
+            return JsonResponse({'success': False, 'error': 'AI haikurejesha maswali. Jaribu tena.'}, status=500)
+
+        total_qs = sum(len(s.get('questions', [])) for s in exam_data['sections'])
+        if total_qs == 0:
+            return JsonResponse({'success': False, 'error': 'Hakuna maswali yaliyopatikana. Jaribu tena.'}, status=500)
+
+        # Collect topics covered
+        topics_covered = []
+        for sec in exam_data['sections']:
+            for q in sec.get('questions', []):
+                if q.get('topic') and q['topic'] not in topics_covered:
+                    topics_covered.append(q['topic'])
+
+        exam = GeneratedExam.objects.create(
+            teacher=teacher,
+            school=teacher.school,
+            title=exam_data.get('title') or f"{subject_name} — {class_name} {type_label}",
+            education_level=education_level,
+            class_name=class_name,
+            subject=subject_obj,
+            subject_name=subject_name,
+            exam_type=exam_type,
+            term=term,
+            year=year,
+            duration_minutes=duration,
+            total_marks=exam_data.get('total_marks') or total_marks,
+            instructions=exam_data.get('instructions') or '',
+            language=language,
+            questions=exam_data['sections'],
+            topics_covered=topics_covered,
+        )
+
+        return JsonResponse({
+            'success': True,
+            'exam_id': exam.id,
+            'title': exam.title,
+            'question_count': total_qs,
+            'total_marks': exam.total_marks,
+            'url': reverse('curriculum:exam_detail', args=[exam.id]),
+        })
+    except Exception as e:
+        logger.exception("[Exam Gen] Error")
+        return JsonResponse({'success': False, 'error': str(e)[:300]}, status=500)
+
+
+def exam_detail_view(request, exam_id):
+    """View a generated exam — NECTA-style paper + toggleable marking scheme."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:exam_generator')}")
+    exam = get_object_or_404(GeneratedExam, id=exam_id, teacher=teacher)
+    return render(request, 'curriculum/exam_detail.html', {
+        'exam': exam,
+        'teacher': teacher,
+    })
+
+
+def my_exams(request):
+    """List all generated exams + progress statistics."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:my_exams')}")
+
+    from django.db.models import Count as _C
+    exams = GeneratedExam.objects.filter(teacher=teacher).order_by('-created_at')[:100]
+    total = GeneratedExam.objects.filter(teacher=teacher).count()
+    by_type = [
+        {'exam_type': t['exam_type'],
+         'label': _EXAM_TYPE_LABELS.get(t['exam_type'], t['exam_type']),
+         'count': t['count']}
+        for t in GeneratedExam.objects.filter(teacher=teacher)
+        .values('exam_type').annotate(count=_C('id')).order_by('-count')
+    ]
+    by_subject = list(GeneratedExam.objects.filter(teacher=teacher).values('subject_name').annotate(count=_C('id')).order_by('-count'))
+    by_class = list(GeneratedExam.objects.filter(teacher=teacher).values('class_name').annotate(count=_C('id')).order_by('-count'))
+
+    return render(request, 'curriculum/my_exams.html', {
+        'exams': exams,
+        'total': total,
+        'by_type': by_type,
+        'by_subject': by_subject,
+        'by_class': by_class,
+        'teacher': teacher,
+    })
+
+
+@require_POST
+def ajax_delete_exam(request):
+    """Delete a generated exam."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False}, status=401)
+    try:
+        data = json.loads(request.body)
+        exam = GeneratedExam.objects.get(id=data.get('exam_id'), teacher=teacher)
+        exam.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)[:200]}, status=500)
+
+
+def download_exam_pdf(request, exam_id, mode='paper'):
+    """Download exam as PDF — mode: 'paper' (questions only) or 'marking' (with answers)."""
+    from reportlab.lib.units import cm
+
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('login')}?next={request.path}")
+    exam = get_object_or_404(GeneratedExam, id=exam_id, teacher=teacher)
+    include_answers = mode == 'marking'
+
+    NAVY = colors.HexColor('#0A2B5E')
+    GOLD = colors.HexColor('#C8900A')
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=1.6 * cm, rightMargin=1.6 * cm,
+                            topMargin=1.4 * cm, bottomMargin=1.4 * cm)
+    s_title = ParagraphStyle('t', fontName='Helvetica-Bold', fontSize=13, textColor=NAVY, alignment=1, spaceAfter=2)
+    s_sub = ParagraphStyle('s', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#4A5568'), alignment=1, spaceAfter=1)
+    s_inst = ParagraphStyle('i', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#1A1A2E'), leading=11, spaceAfter=6)
+    s_sec = ParagraphStyle('sec', fontName='Helvetica-Bold', fontSize=10, textColor=colors.white, backColor=NAVY, spaceAfter=2, leading=13)
+    s_q = ParagraphStyle('q', fontName='Helvetica', fontSize=9, textColor=colors.HexColor('#1A1A2E'), leading=12, spaceAfter=2)
+    s_a = ParagraphStyle('a', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#0D4F2B'), leading=11, leftIndent=18, spaceAfter=6)
+
+    story = []
+    story.append(Paragraph("JAMHURI YA MUUNGANO WA TANZANIA", s_sub))
+    story.append(Paragraph("WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA", s_sub))
+    story.append(Paragraph("THE NATIONAL EXAMINATIONS COUNCIL OF TANZANIA (NECTA) FORMAT",
+                           ParagraphStyle('ne', fontName='Helvetica-Bold', fontSize=8, textColor=GOLD, alignment=1, spaceAfter=6)))
+    story.append(Paragraph(exam.title, s_title))
+    story.append(Paragraph(f"{exam.subject_name}  |  {exam.class_name}  |  {_EXAM_LEVEL_LABELS.get(exam.education_level, exam.education_level)}", s_sub))
+    story.append(Paragraph(f"{_EXAM_TYPE_LABELS.get(exam.exam_type, exam.exam_type)}  |  Muhula: {exam.term or '-'}  |  Mwaka: {exam.year}  |  Muda: {exam.duration_minutes} min  |  Alama: {exam.total_marks}", s_sub))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=GOLD, spaceBefore=4, spaceAfter=8))
+
+    if exam.instructions:
+        story.append(Paragraph(f"<b>INSTRUCTIONS:</b> {exam.instructions}", s_inst))
+
+    for sec in exam.sections:
+        story.append(Paragraph(f"SECTION {sec.get('section', 'A')}", s_sec))
+        if sec.get('instructions'):
+            story.append(Paragraph(sec['instructions'], s_inst))
+        for q in sec.get('questions', []):
+            num = q.get('number', '')
+            marks = q.get('marks', 0)
+            txt = q.get('text', '')
+            story.append(Paragraph(f"<b>{num}.</b> {txt} <b>({marks} marks)</b>", s_q))
+            if include_answers and q.get('answer'):
+                story.append(Paragraph(f"<b>Answer:</b> {q['answer']}", s_a))
+        story.append(Spacer(1, 8))
+
+    if include_answers:
+        story.append(HRFlowable(width="100%", thickness=1.5, color=GOLD, spaceBefore=6))
+        story.append(Paragraph("MARKING SCHEME / SCHEME YA KUSAHLIHIA",
+                               ParagraphStyle('ms', fontName='Helvetica-Bold', fontSize=10, textColor=NAVY, alignment=1, spaceBefore=4)))
+
+    story.append(Spacer(1, 10))
+    story.append(Paragraph(f"Prepared by: {teacher.full_name}", s_sub))
+    story.append(Paragraph(f"School: {teacher.school.name if teacher.school else '-'}", s_sub))
+
+    doc.build(story)
+    buffer.seek(0)
+    suffix = 'marking' if include_answers else 'paper'
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{exam.title[:40].replace(chr(32), "_")}_{suffix}.pdf"'
+    return response
+
+
+def download_exam_word(request, exam_id, mode='paper'):
+    """Download exam as Word (.docx)."""
+    from docx import Document
+    from docx.shared import Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('login')}?next={request.path}")
+    exam = get_object_or_404(GeneratedExam, id=exam_id, teacher=teacher)
+    include_answers = mode == 'marking'
+
+    doc = Document()
+    navy = RGBColor(0x0A, 0x2B, 0x5E)
+    gold = RGBColor(0xC8, 0x90, 0x0A)
+    green = RGBColor(0x0D, 0x4F, 0x2B)
+
+    for line in ["JAMHURI YA MUUNGANO WA TANZANIA", "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA"]:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = p.add_run(line)
+        r.font.size = Pt(9)
+        r.font.color.rgb = navy
+
+    t = doc.add_paragraph()
+    t.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    tr = t.add_run(exam.title)
+    tr.bold = True
+    tr.font.size = Pt(15)
+    tr.font.color.rgb = navy
+
+    for line in [
+        f"{exam.subject_name} | {exam.class_name} | {_EXAM_LEVEL_LABELS.get(exam.education_level, exam.education_level)}",
+        f"{_EXAM_TYPE_LABELS.get(exam.exam_type, exam.exam_type)} | Muhula: {exam.term or '-'} | Mwaka: {exam.year} | Muda: {exam.duration_minutes} min | Alama: {exam.total_marks}",
+    ]:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = p.add_run(line)
+        r.font.size = Pt(9)
+        r.font.color.rgb = RGBColor(0x4A, 0x55, 0x68)
+
+    if exam.instructions:
+        ip = doc.add_paragraph()
+        ip.add_run('INSTRUCTIONS: ').bold = True
+        ip.add_run(exam.instructions)
+
+    for sec in exam.sections:
+        hp = doc.add_paragraph()
+        hr = hp.add_run(f"SECTION {sec.get('section', 'A')}")
+        hr.bold = True
+        hr.font.size = Pt(12)
+        hr.font.color.rgb = navy
+        if sec.get('instructions'):
+            doc.add_paragraph(sec['instructions'])
+        for q in sec.get('questions', []):
+            qp = doc.add_paragraph()
+            qr = qp.add_run(f"{q.get('number', '')}. {q.get('text', '')} ({q.get('marks', 0)} marks)")
+            qr.font.size = Pt(10)
+            if include_answers and q.get('answer'):
+                ap = doc.add_paragraph()
+                ar = ap.add_run(f"Answer: {q['answer']}")
+                ar.font.size = Pt(9.5)
+                ar.font.color.rgb = green
+                ap.paragraph_format.left_indent = Pt(18)
+
+    if include_answers:
+        mp = doc.add_paragraph()
+        mr = mp.add_run("MARKING SCHEME / SCHEME YA KUSAHLIHIA")
+        mr.bold = True
+        mr.font.size = Pt(12)
+        mr.font.color.rgb = gold
+
+    fp = doc.add_paragraph()
+    fp.add_run(f"Prepared by: {teacher.full_name}  |  School: {teacher.school.name if teacher.school else '-'}")
+
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    suffix = 'marking' if include_answers else 'paper'
+    response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    response['Content-Disposition'] = f'attachment; filename="{exam.title[:40].replace(chr(32), "_")}_{suffix}.docx"'
+    return response
+
+
+# =============================================================================
+# AI PACE ADVISOR — remaining months vs remaining topics
+# =============================================================================
+
+_MONTH_NUM = {'JANUARY': 1, 'FEBRUARY': 2, 'MARCH': 3, 'APRIL': 4, 'MAY': 5, 'JUNE': 6,
+              'JULY': 7, 'AUGUST': 8, 'SEPTEMBER': 9, 'OCTOBER': 10, 'NOVEMBER': 11, 'DECEMBER': 12}
+_SW_TO_EN_MONTH = {v: k for k, v in SWAHILI_MONTHS.items()}
+
+
+def _scheme_progress(scheme):
+    """Compute progress stats from a SchemeOfWork: months elapsed, rows done, topics remaining."""
+    rows = scheme.scheme_data if isinstance(scheme.scheme_data, list) else []
+    today = timezone.now().date()
+    current_month_num = today.month
+
+    months_in_scheme = []
+    for row in rows:
+        m = (row.get('Month') or '').strip().upper()
+        m = _SW_TO_EN_MONTH.get(m, m)
+        if m in _MONTH_NUM and m not in months_in_scheme:
+            months_in_scheme.append(m)
+    months_in_scheme.sort(key=lambda m: _MONTH_NUM[m])
+
+    total_rows = len(rows)
+    rows_done = 0
+    for row in rows:
+        m = (row.get('Month') or '').strip().upper()
+        m = _SW_TO_EN_MONTH.get(m, m)
+        if m in _MONTH_NUM and _MONTH_NUM[m] < current_month_num:
+            rows_done += 1
+        elif m in _MONTH_NUM and _MONTH_NUM[m] == current_month_num:
+            rows_done += 0.5  # halfway through current month
+    rows_remaining = max(0, total_rows - int(rows_done))
+
+    # Unique topic-ish entries from scheme rows
+    topic_keys = []
+    for row in rows:
+        for key in ('Main Competence', 'Specific Competences', 'UMAHIRI MKUU', 'UMAHIRI MAHUSUSI'):
+            val = (row.get(key) or '').strip()
+            if val and val not in topic_keys:
+                topic_keys.append(val)
+                break
+
+    total_months = len(months_in_scheme)
+    months_done = sum(1 for m in months_in_scheme if _MONTH_NUM[m] < current_month_num)
+    months_remaining = max(0, total_months - months_done)
+
+    # End of school year = December
+    end_of_year = today.replace(month=12, day=31)
+    days_left = (end_of_year - today).days
+    weeks_left = max(0, days_left // 7)
+
+    return {
+        'scheme': scheme,
+        'total_rows': total_rows,
+        'rows_done': int(rows_done),
+        'rows_remaining': rows_remaining,
+        'total_months': total_months,
+        'months_done': months_done,
+        'months_remaining': months_remaining,
+        'months_in_scheme': months_in_scheme,
+        'current_month': today.strftime('%B').upper(),
+        'weeks_left': weeks_left,
+        'days_left': days_left,
+        'topics': topic_keys[:30],
+        'percent_done': round((int(rows_done) / total_rows) * 100) if total_rows else 0,
+    }
+
+
+def pace_advisor(request):
+    """AI Pace Advisor page — teacher picks a scheme; AI recommends teaching pace."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:pace_advisor')}")
+
+    schemes = SchemeOfWork.objects.filter(
+        school=teacher.school, teacher_name=teacher.full_name
+    ).select_related('subject').order_by('-created_at')[:30]
+
+    # Also allow schemes from other schools by the same teacher name
+    if not schemes:
+        schemes = SchemeOfWork.objects.filter(
+            teacher_name=teacher.full_name
+        ).select_related('subject').order_by('-created_at')[:30]
+
+    return render(request, 'curriculum/pace_advisor.html', {
+        'teacher': teacher,
+        'schemes': schemes,
+    })
+
+
+@csrf_exempt
+def ajax_pace_advice(request):
+    """Generate AI advice about teaching pace from a scheme."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False}, status=400)
+
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Jisajili kwanza.'}, status=401)
+
+    try:
+        data = json.loads(request.body)
+        scheme_id = data.get('scheme_id')
+        # Scope to this teacher's own schemes
+        scheme = SchemeOfWork.objects.filter(id=scheme_id, teacher_name=teacher.full_name).first()
+        if not scheme:
+            return JsonResponse({'success': False, 'error': 'Scheme haipatikani.'}, status=404)
+        progress = _scheme_progress(scheme)
+
+        subject_name = scheme.subject.name if scheme.subject else 'N/A'
+        class_name = scheme.class_name
+        term = scheme.term
+        year = scheme.year
+
+        topics_text = '\n'.join(f"- {t}" for t in progress['topics']) or "(hakuna topics zilizopatikana)"
+
+        # Build a manual (non-AI) summary too
+        summary = {
+            'subject': subject_name,
+            'class_name': class_name,
+            'term': term,
+            'year': year,
+            'total_rows': progress['total_rows'],
+            'rows_done': progress['rows_done'],
+            'rows_remaining': progress['rows_remaining'],
+            'percent_done': progress['percent_done'],
+            'months_in_scheme': progress['months_in_scheme'],
+            'current_month': progress['current_month'],
+            'weeks_left': progress['weeks_left'],
+            'days_left': progress['days_left'],
+            'topics_remaining_count': len(progress['topics']),
+        }
+
+        if client is None:
+            return JsonResponse({'success': True, 'summary': summary, 'advice': None,
+                                 'warning': 'Huduma ya AI haipo — unaona hesabu tu.'})
+
+        prompt = f"""You are an experienced Tanzanian education advisor for teachers. A teacher needs help finishing the syllabus on time.
+
+SUBJECT: {subject_name}
+CLASS: {class_name} | TERM: {term} | YEAR: {year}
+
+PROGRESS DATA:
+- Total scheme entries: {progress['total_rows']}
+- Completed: {int(progress['rows_done'])} | Remaining: {progress['rows_remaining']} ({progress['percent_done']}% done)
+- Months covered in scheme: {', '.join(progress['months_in_scheme'])}
+- Current month: {progress['current_month']}
+- Weeks left until end of December: {progress['weeks_left']} (about {progress['days_left']} days)
+- Remaining topics/subjects in the syllabus: {progress['topics_remaining_count']}
+
+TOPICS IN THE SYLLABUS:
+{topics_text}
+
+Give practical, specific advice in a mix of Kiswahili and English (teachers understand both). Include:
+1. Current pace assessment: is the teacher ON TRACK, SLIGHTLY BEHIND, or FAR BEHIND?
+2. Recommended pace: how many topics to cover per week and per month to finish by December.
+3. A suggested weekly schedule for the remaining months (which topics, in what order, how many periods).
+4. Strategies to catch up if behind (e.g. combining similar topics, prioritising examinable topics, revision drills).
+5. What to do if the teacher is ahead (e.g. deepen understanding, mocks, project work).
+
+Be concrete and encouraging. Use bullet points and short paragraphs."""
+
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        return JsonResponse({'success': True, 'summary': summary, 'advice': response.text})
+    except Exception as e:
+        logger.exception("[Pace] Error")
+        return JsonResponse({'success': False, 'error': str(e)[:300]}, status=500)
+
+
+# =============================================================================
+# RESULTS UPLOAD + AI ANALYSIS
+# =============================================================================
+
+def results_analysis(request):
+    """Upload subject results (CSV/Excel) → AI analyses → recommends topics & students to support."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:results_analysis')}")
+    return render(request, 'curriculum/results_analysis.html', {'teacher': teacher})
+
+
+def _parse_results_file(uploaded_file):
+    """Parse CSV/Excel upload into (headers, rows)."""
+    import csv
+    import io
+    name = (uploaded_file.name or '').lower()
+    if name.endswith('.csv'):
+        content = uploaded_file.read().decode('utf-8-sig', errors='replace')
+        reader = csv.reader(io.StringIO(content))
+        rows = [r for r in reader if any(c.strip() for c in r)]
+        if not rows:
+            raise ValueError('Faili halina data')
+        return rows[0], rows[1:]
+    if name.endswith(('.xlsx', '.xlsm')):
+        from openpyxl import load_workbook
+        wb = load_workbook(uploaded_file, data_only=True)
+        ws = wb.active
+        all_rows = list(ws.iter_rows(values_only=True))
+        rows = [[('' if v is None else str(v).strip()) for v in r] for r in all_rows]
+        rows = [r for r in rows if any(c for c in r)]
+        if not rows:
+            raise ValueError('Faili halina data')
+        return rows[0], rows[1:]
+    raise ValueError('Aina ya faili haitambuliki. Tumia CSV au Excel (.xlsx).')
+
+
+def _extract_number(val):
+    """Extract a float from a value or None."""
+    try:
+        return float(str(val).strip().replace('%', '').replace(',', ''))
+    except (ValueError, TypeError):
+        return None
+
+
+@csrf_exempt
+def ajax_analyze_results(request):
+    """Analyze uploaded results: per-topic stats + AI recommendations."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Jisajili kwanza.'}, status=401)
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False}, status=400)
+
+    try:
+        uploaded = request.FILES.get('file')
+        if not uploaded:
+            return JsonResponse({'success': False, 'error': 'Hakuna faili iliyopakiwa.'}, status=400)
+
+        subject_name = request.POST.get('subject', '').strip()
+        class_name = request.POST.get('class_name', '').strip()
+        pass_mark = float(request.POST.get('pass_mark', 50) or 50)
+
+        headers, rows = _parse_results_file(uploaded)
+        if not rows:
+            return JsonResponse({'success': False, 'error': 'Faili halina rekodi za wanafunzi.'}, status=400)
+
+        # Identify name column (first column usually) and score columns
+        score_cols = []
+        for i, h in enumerate(headers[1:], start=1):
+            hh = (h or '').strip()
+            if hh and not _extract_number(hh):  # skip pure-number headers
+                score_cols.append((i, hh))
+        if not score_cols:
+            # Fallback: treat each column after name as a score column
+            score_cols = [(i, (h or f'Kolomu {i}').strip()) for i, h in enumerate(headers[1:], start=1)]
+
+        students = []
+        for r in rows:
+            if len(r) < 2:
+                continue
+            name = (r[0] or '').strip()
+            if not name:
+                continue
+            scores = {}
+            for col_idx, col_name in score_cols:
+                val = r[col_idx] if col_idx < len(r) else ''
+                num = _extract_number(val)
+                scores[col_name] = num if num is not None else None
+            students.append({'name': name, 'scores': scores})
+
+        if not students:
+            return JsonResponse({'success': False, 'error': 'Hakuna wanafunzi walioonekana.'}, status=400)
+
+        # ── Per-column (topic/subject) statistics ──
+        col_stats = []
+        for col_idx, col_name in score_cols:
+            vals = [s['scores'].get(col_name) for s in students if s['scores'].get(col_name) is not None]
+            if not vals:
+                continue
+            avg = round(sum(vals) / len(vals), 1)
+            passed = sum(1 for v in vals if v >= pass_mark)
+            col_stats.append({
+                'name': col_name,
+                'average': avg,
+                'pass_count': passed,
+                'total': len(vals),
+                'pass_rate': round((passed / len(vals)) * 100) if vals else 0,
+                'weak': avg < pass_mark,
+            })
+        col_stats.sort(key=lambda c: c['average'])
+
+        # ── Student overall averages ──
+        for s in students:
+            vals = [v for v in s['scores'].values() if v is not None]
+            s['average'] = round(sum(vals) / len(vals), 1) if vals else None
+            s['passed'] = (s['average'] or 0) >= pass_mark
+        students.sort(key=lambda s: (s['average'] or 0))
+
+        class_avg = round(sum(s['average'] or 0 for s in students) / len(students), 1)
+        below = [s for s in students if (s['average'] or 0) < pass_mark]
+        pass_rate = round(((len(students) - len(below)) / len(students)) * 100)
+
+        summary = {
+            'subject': subject_name or (score_cols[0][1] if score_cols else ''),
+            'class_name': class_name,
+            'student_count': len(students),
+            'class_average': class_avg,
+            'pass_rate': pass_rate,
+            'below_count': len(below),
+            'weakest_columns': [c['name'] for c in col_stats[:5] if c['weak']],
+            'strongest_columns': [c['name'] for c in reversed(col_stats[-3:])],
+        }
+
+        # Per-topic weak students list
+        topic_students = []
+        for c in col_stats:
+            if c['weak']:
+                weak_students = [s['name'] for s in students if (s['scores'].get(c['name']) or 0) < pass_mark]
+                topic_students.append({'topic': c['name'], 'avg': c['average'], 'weak_students': weak_students[:15]})
+
+        if client is None:
+            return JsonResponse({'success': True, 'summary': summary, 'col_stats': col_stats,
+                                 'students': students[:50], 'topic_students': topic_students,
+                                 'advice': None, 'warning': 'Huduma ya AI haipo — unaona takwimu tu.'})
+
+        weak_text = '\n'.join(f"- {c['name']}: wastani {c['average']} (faulu {c['pass_rate']}%)" for c in col_stats if c['weak']) or "(hakuna)"
+        strong_text = '\n'.join(f"- {c['name']}: wastani {c['average']}" for c in reversed(col_stats[-3:])) or "(hakuna)"
+        below_names = ', '.join(s['name'] for s in below[:20])
+
+        prompt = f"""You are an experienced Tanzanian teacher-mentor and data analyst. Analyse these exam results and give practical advice.
+
+SUBJECT: {subject_name or 'N/A'} | CLASS: {class_name or 'N/A'} | PASS MARK: {pass_mark}
+STUDENTS: {len(students)} | CLASS AVERAGE: {class_avg} | PASS RATE: {pass_rate}% | BELOW PASS: {len(below)} students
+
+WEAK TOPICS/AREAS (lowest averages):
+{weak_text}
+
+STRONG TOPICS/AREAS:
+{strong_text}
+
+STUDENTS WHO NEED MOST SUPPORT:
+{below_names or '(hakuna)'}
+
+Give advice (mix Kiswahili and English) covering:
+1. Which topics MUST be re-taught and how (concrete strategies: remedial classes, group work, practical examples).
+2. Specific students to give extra support and what kind (naming them).
+3. How to group students for mixed-ability learning.
+4. Suggestions for the next assessment (what to test, difficulty).
+5. General teaching tips to lift the class average.
+Use bullet points and short paragraphs."""
+
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        return JsonResponse({
+            'success': True,
+            'summary': summary,
+            'col_stats': col_stats,
+            'students': students[:50],
+            'topic_students': topic_students[:10],
+            'advice': response.text,
+        })
+    except ValueError as ve:
+        return JsonResponse({'success': False, 'error': str(ve)}, status=400)
+    except Exception as e:
+        logger.exception("[Results] Error")
+        return JsonResponse({'success': False, 'error': str(e)[:300]}, status=500)
