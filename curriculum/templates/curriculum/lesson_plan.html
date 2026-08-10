@@ -104,6 +104,27 @@
     font-size: var(--font-size-sm);
     padding: 0.45rem 0.65rem;
   }
+
+  /* ── Imetengenezwa Leo items ── */
+  .today-lp-item {
+    display: block;
+    text-decoration: none;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.65rem;
+    background: var(--bg-card-solid);
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+  .today-lp-item:hover {
+    border-color: var(--gold-400);
+    background: rgba(217,164,65,0.05);
+    transform: translateX(3px);
+    box-shadow: var(--shadow-sm);
+  }
+  .today-lp-item:hover .chip-gold {
+    background: var(--gold-400);
+    color: #fff;
+  }
 </style>
 {% endblock %}
 
@@ -138,6 +159,34 @@
         <i class="fas fa-user-check"></i> {{ teacher.full_name|truncatechars:20 }}
       </span>
       {% endif %}
+    </div>
+  </div>
+
+  <!-- ─── Statistics strip: Jumla / Leo / Wiki Hii / Mwezi Huu ─── -->
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+      <div class="c-card text-center py-2" style="border-left:3px solid var(--green-500);">
+        <div style="font-size:1.35rem;font-weight:800;color:var(--green-500);line-height:1;">{{ lesson_plans_count }}</div>
+        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:3px;">Jumla</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="c-card text-center py-2" style="border-left:3px solid var(--gold-400);">
+        <div style="font-size:1.35rem;font-weight:800;color:var(--gold-400);line-height:1;">{{ lesson_plans_today }}</div>
+        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:3px;">⚡ Leo</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="c-card text-center py-2" style="border-left:3px solid var(--info);">
+        <div style="font-size:1.35rem;font-weight:800;color:var(--info);line-height:1;">{{ lesson_plans_week }}</div>
+        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:3px;">Wiki Hii</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="c-card text-center py-2" style="border-left:3px solid var(--warning);">
+        <div style="font-size:1.35rem;font-weight:800;color:var(--warning);line-height:1;">{{ lesson_plans_month }}</div>
+        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:3px;">Mwezi Huu</div>
+      </div>
     </div>
   </div>
 
@@ -338,6 +387,41 @@
               <i class="fas fa-book me-1"></i> My Lessons Library
             </a>
           </form>
+        </div>
+      </div>
+
+      <!-- ─── Imetengenezwa Leo (Today Generated) ─── -->
+      <div class="c-card mt-3" style="border:1px solid rgba(217,164,65,0.35);">
+        <div class="c-card-head" style="padding:0.6rem 0.85rem;">
+          <h3 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);color:var(--text-primary);margin:0;display:flex;align-items:center;gap:6px;">
+            <i class="fas fa-bolt text-gold"></i> Imetengenezwa Leo
+            <span class="chip chip-gold" style="font-size:9px;padding:1px 8px;">{{ lesson_plans_today }}</span>
+          </h3>
+        </div>
+        <div class="c-card-body" style="padding:0.6rem 0.85rem;">
+          {% if todays_lesson_plans %}
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              {% for lp in todays_lesson_plans %}
+              <a href="{% url 'curriculum:lesson_plan' %}?load={{ lp.id }}" class="today-lp-item">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:var(--font-size-xs);font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                      {{ lp.subject.name|default:'Somo' }} — {{ lp.topic|truncatechars:28 }}
+                    </div>
+                    <div style="font-size:9px;color:var(--text-muted);">
+                      {{ lp.class_name|default:'—' }}{% if lp.stream %} {{ lp.stream }}{% endif %} • {{ lp.created_at|timesince }} iliyopita
+                    </div>
+                  </div>
+                  <span class="chip chip-gold" style="font-size:8px;white-space:nowrap;"><i class="fas fa-bolt"></i> Leo</span>
+                </div>
+              </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:0;text-align:center;padding:8px 0;">
+              <i class="fas fa-hourglass-half me-1"></i> Hakuna lesson plan iliyotengenezwa leo bado. Generate kwanza!
+            </p>
+          {% endif %}
         </div>
       </div>
     </div>
