@@ -5446,34 +5446,51 @@ def _parse_exam_json(response_text):
 
 
 def _exam_language_instruction(language, education_level, subject_name):
-    """Strong language rule for exam generation."""
+    """Strong language rule for exam generation.
+
+    Returns a tuple: (instruction_text, resolved_language)
+    - 'auto' (default): Primary (except English subject) → KISWAHILI;
+      Secondary / A-Level (except Kiswahili subject) → ENGLISH.
+    - Explicit 'kiswahili' / 'english' choice wins.
+    """
     subj_lower = (subject_name or '').lower()
-    if language == 'kiswahili':
+    lang = (language or 'auto').lower()
+    level_lower = (education_level or '').lower()
+
+    is_english_subject = subj_lower in ('english', 'english language')
+    is_kiswahili_subject = subj_lower in ('kiswahili', 'swahili')
+    is_primary = level_lower == 'primary'
+
+    # ── Resolve 'auto' ──
+    if lang == 'auto':
+        if is_kiswahili_subject:
+            lang = 'kiswahili'
+        elif is_primary and not is_english_subject:
+            lang = 'kiswahili'
+        else:
+            lang = 'english'
+
+    if lang == 'kiswahili':
         return (
             "\n" +
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
-            "🚨 KANUNI YA LUGHA: Maswali NA Majibu (answers) yote LAZIMA yaandikwe kwa\n" +
-            "KISWAHILI KAMILI. Hakuna Kiingereza kinachokubalika katika question text au\n" +
-            "answers. (Isipokuwa majina ya istilahi za kipekee kama 'cell', 'DNA' n.k.)\n" +
-            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+            "🚨 KANUNI YA LUGHA: KILA KITU (maswali, majibu, maelekezo ya sections, na\n" +
+            "instructions za mtihani mzima) LAZIMA kiandikwe kwa KISWAHILI KAMILI.\n" +
+            "Hakuna Kiingereza kinachokubalika katika question text au answers.\n" +
+            "(Isipokuwa majina ya istilahi za kipekee kama 'cell', 'DNA' n.k.)\n" +
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+            'kiswahili',
         )
-    if education_level == 'primary' and subj_lower not in ('english', 'english language'):
-        return (
-            "\n" +
-            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
-            "🚨 KANUNI YA LUGHA: Hili ni somo la MSINGI (Primary) si English — maswali\n" +
-            "na majibu yote LAZIMA yaandikwe kwa KISWAHILI KAMILI.\n" +
-            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-        )
-    if subj_lower in ('kiswahili', 'swahili'):
-        return (
-            "\n" +
-            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
-            "🚨 KANUNI YA LUGHA: Somo ni Kiswahili — maswali na majibu yote LAZIMA\n" +
-            "yaandikwe kwa KISWAHILI KAMILI.\n" +
-            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-        )
-    return "\nLANGUAGE: Write ALL questions and answers in ENGLISH.\n"
+    # ENGLISH default (Secondary / A-Level / Primary English subject)
+    return (
+        "\n" +
+        "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+        "🚨 LANGUAGE RULE: EVERYTHING (questions, answers, section instructions and\n" +
+        "the whole paper instructions) MUST be written in ENGLISH ONLY. Do NOT mix\n" +
+        "any Kiswahili into the question text or answers.\n" +
+        "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+        'english',
+    )
 
 
 def exam_generator_view(request):
@@ -5556,9 +5573,32 @@ def ajax_generate_exam(request):
 
         level_label = _EXAM_LEVEL_LABELS.get(education_level, education_level)
         type_label = _EXAM_TYPE_LABELS.get(exam_type, exam_type)
-        lang_rule = _exam_language_instruction(language, education_level, subject_name)
+        lang_rule, resolved_language = _exam_language_instruction(language, education_level, subject_name)
 
         topics_hint = f"COVER THESE TOPICS (spread questions evenly): {topics_input}" if topics_input else "COVER the official TIE syllabus topics for this subject/class."
+
+        # ── Level-specific NECTA format (Primary = SFNA/PSLE style, Secondary = CSEE style) ──
+        if education_level == 'primary':
+            level_format_rule = (
+                "PRIMARY SCHOOL FORMAT (SFNA/PSLE style):\n"
+                "1. Section A: CHAGUA JIBU SAHIHI (multiple choice with 4 options A, B, C, D) — most questions here, age-appropriate and simple language.\n"
+                "2. Section B: MASWALI MAFUPI (short answer / fill-in-the-blank) with simple wording.\n"
+                "3. Section C: only for higher primary classes (Std 6-7): short structured/essay questions with sub-parts (a), (b), (c).\n"
+                "4. Keep sentences short and simple, suitable for young pupils.\n"
+                "5. Number questions continuously per section (1, 2, 3...).\n"
+                "6. Marks must sum to approximately {total_marks}.\n"
+                "7. Questions MUST be based on the real official TIE new syllabus content for {subject_name} {class_name} in Tanzania."
+            )
+        else:
+            level_format_rule = (
+                "SECONDARY SCHOOL FORMAT (CSEE/NECTA style):\n"
+                "1. Section A: OBJECTIVE / MULTIPLE CHOICE questions 1-{min(10, max(2, question_count//3))} with 4 options (A, B, C, D).\n"
+                "2. Section B: SHORT ANSWER questions.\n"
+                "3. Section C: LONG / STRUCTURED / ESSAY questions with sub-parts (a), (b), (c).\n"
+                "4. Number questions continuously per section (1, 2, 3...).\n"
+                "5. Marks must sum to approximately {total_marks}. Question difficulty increases across the paper.\n"
+                "6. Questions MUST be based on the real official TIE new syllabus content for {subject_name} {class_name} in Tanzania."
+            )
 
         prompt = f"""You are a senior Tanzanian NECTA exam setter and curriculum expert. Generate a complete {type_label} examination paper for {subject_name} — {class_name} ({level_label}) in the official NECTA format.
 
@@ -5572,18 +5612,12 @@ EXAM DETAILS:
 {lang_rule}
 
 NECTA FORMAT RULES:
-1. Structure the paper in SECTIONS (e.g. Section A: Objective/Multiple Choice 1-{min(10, max(2, question_count//3))}, Section B: Short Answer, Section C: Long/Structured/Essay). For primary school use age-appropriate sections.
-2. Section A: multiple-choice questions with 4 options (A, B, C, D) — include the options in the question text on separate lines.
-3. Section B: short answer questions.
-4. Section C: longer structured/essay questions with sub-parts (a), (b), (c).
-5. Number questions continuously per section (1, 2, 3...).
-6. Marks must sum to approximately {total_marks}. Question difficulty increases across the paper.
-7. Questions MUST be based on the real official TIE new syllabus content for {subject_name} {class_name} in Tanzania.
+{level_format_rule}
 
 OUTPUT: Return ONLY valid JSON (no markdown, no extra text) with this EXACT structure:
 {{
   "title": "{subject_name} — {class_name} {type_label} Examination",
-  "instructions": "General instructions for candidates (e.g. this paper consists of sections A, B and C with a total of {total_marks} marks. Answer ALL questions...)",
+  "instructions": "General instructions for candidates written in the exam language (e.g. this paper consists of sections A, B and C with a total of {total_marks} marks. Answer ALL questions...)",
   "sections": [
     {{
       "section": "A",
@@ -5630,7 +5664,7 @@ The "answer" field MUST contain the correct answer AND brief marking points (for
             duration_minutes=duration,
             total_marks=exam_data.get('total_marks') or total_marks,
             instructions=exam_data.get('instructions') or '',
-            language=language,
+            language=resolved_language,
             questions=exam_data['sections'],
             topics_covered=topics_covered,
         )

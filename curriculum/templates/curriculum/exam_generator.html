@@ -164,11 +164,14 @@
                 <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
                   <i class="fas fa-language me-1 text-gold"></i> Lugha
                 </label>
-                <select id="language">
-                  <option value="auto">Auto (kulingana na somo)</option>
+                <select id="language" onchange="updateLangHint()">
+                  <option value="auto">Auto (inapendekezwa)</option>
                   <option value="english">English</option>
                   <option value="kiswahili">Kiswahili</option>
                 </select>
+                <div id="langHint" style="font-size:9px;color:var(--green-500);margin-top:3px;font-weight:600;">
+                  💡 Primary → Kiswahili • Secondary → English
+                </div>
               </div>
               <div class="col-6">
                 <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
@@ -271,24 +274,36 @@ document.addEventListener('DOMContentLoaded', function() {
   const btn = document.getElementById('genBtn');
   const status = document.getElementById('genStatus');
 
-  // Auto-fill subject name when selected
-  document.getElementById('subject').addEventListener('change', function() {
-    const opt = this.options[this.selectedIndex];
-    if (opt && opt.dataset.name) {
-      // auto-language: Kiswahili subject → Kiswahili
-      const name = opt.dataset.name.toLowerCase();
-      if (name.includes('kiswahili') || name.includes('swahili')) {
-        document.getElementById('language').value = 'kiswahili';
-      } else {
-        const lvl = document.getElementById('education_level').value;
-        if (lvl === 'primary' && !name.includes('english')) {
-          document.getElementById('language').value = 'kiswahili';
-        } else {
-          document.getElementById('language').value = 'auto';
-        }
-      }
+  // Auto-language hint: Primary → Kiswahili, Secondary → English (unless subject dictates otherwise)
+  function updateLangHint() {
+    const hint = document.getElementById('langHint');
+    const lvl = document.getElementById('education_level').value;
+    const sel = document.getElementById('subject');
+    const opt = sel.options[sel.selectedIndex];
+    const name = (opt && opt.dataset.name || '').toLowerCase();
+    const lang = document.getElementById('language').value;
+
+    if (lang !== 'auto') {
+      hint.innerHTML = lang === 'kiswahili' ? '🇹🇿 Mtihani mzima utaandikwa kwa KISWAHILI' : '🇬🇧 Mtihani mzima utaandikwa kwa ENGLISH';
+      hint.style.color = 'var(--text-secondary)';
+      return;
     }
+    hint.style.color = 'var(--green-500)';
+    if (name.includes('kiswahili') || name.includes('swahili')) {
+      hint.innerHTML = '💡 Somo la Kiswahili → Mtihani utakuwa kwa KISWAHILI';
+    } else if (lvl === 'primary' && !name.includes('english')) {
+      hint.innerHTML = '💡 Primary (si English) → Mtihani utakuwa kwa KISWAHILI';
+    } else if (lvl === 'primary' && name.includes('english')) {
+      hint.innerHTML = '💡 Somo la English (Primary) → Mtihani utakuwa kwa ENGLISH';
+    } else {
+      hint.innerHTML = '💡 Secondary (si Kiswahili) → Mtihani utakuwa kwa ENGLISH';
+    }
+  }
+  document.getElementById('education_level').addEventListener('change', updateLangHint);
+  document.getElementById('subject').addEventListener('change', function() {
+    updateLangHint();
   });
+  updateLangHint();
 
   form.addEventListener('submit', function(e) {
     e.preventDefault();
