@@ -199,6 +199,26 @@
         </div>
       </div>
 
+      <!-- NECTA Format Preview -->
+      <div class="c-card mt-3" id="formatPreviewCard" style="border-top:3px solid var(--green-500);">
+        <div class="c-card-body" style="padding:0.9rem 1rem;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(31,122,61,0.08);display:flex;align-items:center;justify-content:center;">
+              <i class="fas fa-certificate" style="color:var(--green-500);"></i>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);">Format ya NECTA Itakayotumika</div>
+              <div id="fpAssessment" style="font-size:11px;font-weight:800;color:var(--green-600);margin-top:1px;">CSEE — Certificate of Secondary Education</div>
+            </div>
+            <span id="fpTime" class="chip chip-gold" style="font-size:9px;"><i class="fas fa-clock"></i> 2:30 Hours</span>
+          </div>
+          <div id="fpSections" style="display:flex;flex-direction:column;gap:4px;"></div>
+          <div style="margin-top:7px;font-size:9px;color:var(--text-muted);border-top:1px dashed var(--border-color);padding-top:6px;">
+            <i class="fas fa-check-circle text-gold"></i> Mwalimu anapogenerate, mtihani wote utafuata muundo huu wa NECTA — header rasmi, sections, alama na muda.
+          </div>
+        </div>
+      </div>
+
       <!-- Progress by type -->
       {% if exams_by_type %}
       <div class="c-card mt-3">
@@ -301,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Auto format rules per level (LusaElimu / NECTA style)
+  // Auto format rules per level — exact NECTA formats (PSLE 2024 / FTNA-CSEE CBA)
   function updateFormatHints() {
     const lvl = document.getElementById('education_level').value;
     const durInput = document.getElementById('duration');
@@ -311,26 +331,118 @@ document.addEventListener('DOMContentLoaded', function() {
     const isPrimary = lvl === 'primary';
 
     if (isPrimary) {
-      // SFNA/PSLE: dakika 90; Std 1-4 → 50 alama, Std 5-7 → 100 alama
+      // PSLE 2024 (Std 5-7): maswali 6-8, sehemu A=20/B=20/C=10, alama 50, muda 1:40
+      // SFNA (Std 1-4): sehemu A + B, alama 50, muda 1:30
       const cls = (document.getElementById('class_name').value || '').trim();
-      const upper = /std\s*[5-7]|standard\s*[5-7]|darasa\s*la\s*[5-7]/i.test(cls);
-      durInput.value = 90;
-      marksInput.value = upper ? 100 : 50;
-      qInput.value = upper ? 40 : 25;
-      durHint.innerHTML = 'Primary (SFNA/PSLE): dakika 90';
+      const lower = /\b(std|standard|darasa(?:\s+la)?)\s*\.?\s*[1-4]\b/i.test(cls);
+      if (lower) {
+        durInput.value = 90;
+        marksInput.value = 50;
+        qInput.value = 6;
+        durHint.innerHTML = 'Primary (SFNA Std 1-4): muda Saa 1:30 — Sehemu A + B, alama 50';
+      } else {
+        durInput.value = 100;
+        marksInput.value = 50;
+        qInput.value = 8;
+        durHint.innerHTML = 'Primary (PSLE 2024 Std 5-7): muda Saa 1:40 — Sehemu A(20) B(20) C(10), alama 50, maswali 6-8';
+      }
+    } else if (lvl === 'advanced') {
+      // ACSEE (Form 5-6): A=20 objective, B=40 (4x10), C=40 (2 essays of 20, answer one), alama 100, muda 3:00
+      durInput.value = 180;
+      marksInput.value = 100;
+      qInput.value = 8;
+      durHint.innerHTML = 'Advanced (ACSEE NECTA): muda Saa 3:00 — A(20) B(40) C(40), alama 100, maswali 8';
     } else {
-      // FTNA/CSEE: dakika 150, 100 alama
+      // FTNA/CSEE CBA: Sehemu A=15 (10 MCQ + 5 matching), B=70 (7x10), C=15 (1 essay), alama 100, muda 2:30
       durInput.value = 150;
       marksInput.value = 100;
-      qInput.value = 35;
-      durHint.innerHTML = 'Secondary (FTNA/CSEE NECTA): dakika 150';
+      qInput.value = 10;
+      durHint.innerHTML = 'Secondary (FTNA/CSEE NECTA CBA): muda Saa 2:30 — A(15) B(70) C(15), alama 100, maswali 10';
     }
+
+    renderFormatPreview();
+  }
+
+  // ── Live NECTA format preview (hufuata PSLE 2024 / SFNA / FTNA-CSEE CBA halisi) ──
+  function renderFormatPreview() {
+    const lvl = document.getElementById('education_level').value;
+    const cls = (document.getElementById('class_name').value || '').trim();
+    const assessEl = document.getElementById('fpAssessment');
+    const timeEl = document.getElementById('fpTime');
+    const secsEl = document.getElementById('fpSections');
+
+    const isLowerPrimary = /\b(std|standard|darasa(?:\s+la)?)\s*\.?\s*[1-4]\b/i.test(cls);
+    const isUpperPrimary = /\b(std|standard|darasa(?:\s+la)?)\s*\.?\s*[5-7]\b/i.test(cls);
+    const isA = /form\s*[5-6]|form\s*five|form\s*six/i.test(cls);
+    const isF2 = /form\s*[1-2]|form\s*one|form\s*two/i.test(cls);
+
+    let assessment, timeLabel, sections, extra;
+    if (lvl === 'primary') {
+      if (isLowerPrimary || !isUpperPrimary) {
+        assessment = 'SFNA — Standard Four National Assessment';
+        timeLabel = 'Saa 1:30';
+        sections = [
+          { s: 'A', m: 20, d: 'Maswali ya objective (MCQ, matching, true/false) — kila item 1 alama' },
+          { s: 'B', m: 30, d: 'Maswali mafupi / structured (a)(b)(c) — kila item 2 alama' },
+        ];
+        extra = 'Jumla: alama 50 · Sehemu A + B tu (hakuna C)';
+      } else {
+        assessment = 'PSLE 2024 — Primary School Leaving Examination';
+        timeLabel = 'Saa 1:40';
+        sections = [
+          { s: 'A', m: 20, d: 'Objective — MCQ (A-D/E), matching, true/false · kila item 1 alama' },
+          { s: 'B', m: 20, d: 'Short answer — fill-in-the-blanks, sentences, passages · kila item 2 alama' },
+          { s: 'C', m: 10, d: 'SWALI 1 la structured (composition / picha / ramani) · (a)-(e) kila moja 2 alama' },
+        ];
+        extra = 'Jumla: alama 50 · Maswali 6-8 tu (Hisabati 8, Sayansi 8, Kiswahili 6, English 7, Maarifa 7)';
+      }
+    } else if (lvl === 'advanced') {
+      assessment = 'ACSEE — Advanced Certificate of Secondary Education';
+      timeLabel = 'Saa 3:00';
+      sections = [
+        { s: 'A', m: 20, d: 'Objective — MCQ (A-D), matching, true/false · kila item 1 alama' },
+        { s: 'B', m: 40, d: 'Short answer — maswali 4 ya alama 10 kila moja (4 × 10 = 40)' },
+        { s: 'C', m: 40, d: 'Essay — maswali 2 ya alama 20 kila moja · jibu MOJA tu (a)-(e)' },
+      ];
+      extra = 'Jumla: alama 100 · Maswali 8 · Muda Saa 3:00';
+    } else {
+      if (isF2) {
+        assessment = 'FTNA — Form Two National Assessment';
+      } else {
+        assessment = 'CSEE — Certificate of Secondary Education Examination';
+      }
+      timeLabel = 'Saa 2:30';
+      sections = [
+        { s: 'A', m: 15, d: 'Swali 1: MCQ 10 × 1 alama · Swali 2: matching 5 × 1 alama' },
+        { s: 'B', m: 70, d: 'Maswali 7 ya short answer · 10 alama kila moja (7 × 10 = 70)' },
+        { s: 'C', m: 15, d: 'Swali 1 la essay / long answer · alama 15' },
+      ];
+      extra = 'Jumla: alama 100 · Maswali 10';
+    }
+
+    assessEl.textContent = assessment;
+    timeEl.innerHTML = '<i class="fas fa-clock"></i> ' + timeLabel;
+    secsEl.innerHTML = sections.map(function(sec) {
+      return '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<span class="chip chip-green" style="font-size:9px;flex:0 0 auto;min-width:64px;">SEHEMU ' + sec.s + '</span>' +
+        '<span style="font-size:10px;color:var(--text-secondary);flex:1;line-height:1.3;">' + sec.d + '</span>' +
+        '<span style="font-weight:800;color:var(--gold-400);font-size:11px;white-space:nowrap;">' + sec.m + ' alama</span>' +
+        '</div>';
+    }).join('');
+    let extraEl = document.getElementById('fpExtra');
+    if (!extraEl) {
+      extraEl = document.createElement('div');
+      extraEl.id = 'fpExtra';
+      extraEl.style.cssText = 'margin-top:7px;font-size:9px;font-weight:700;color:var(--green-500);';
+      secsEl.parentNode.appendChild(extraEl);
+    }
+    extraEl.innerHTML = '<i class="fas fa-balance-scale"></i> ' + extra;
   }
   document.getElementById('education_level').addEventListener('change', function() {
     updateLangHint();
     updateFormatHints();
   });
-  document.getElementById('class_name').addEventListener('change', updateFormatHints);
+  document.getElementById('class_name').addEventListener('input', updateFormatHints);
   document.getElementById('subject').addEventListener('change', function() {
     updateLangHint();
   });

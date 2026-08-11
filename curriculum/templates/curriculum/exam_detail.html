@@ -91,13 +91,19 @@
   <!-- Paper -->
   <div class="c-card" style="max-width:900px;margin:0 auto;">
     <div class="paper-header">
-      <p class="gov-line">JAMHURI YA MUUNGANO WA TANZANIA</p>
-      <p class="gov-line">WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA</p>
+      {% for line in exam.necta_header_lines %}
+      <p class="gov-line">{{ line }}</p>
+      {% endfor %}
       <h2>{{ exam.title }}</h2>
       <p class="meta-line">{{ exam.subject_name }} | {{ exam.class_name }} | {{ exam.get_education_level_display }}</p>
-      <p class="meta-line">{{ exam.get_exam_type_display }} | Muhula: {{ exam.term|default:"-" }} | Mwaka: {{ exam.year }}</p>
-      <p class="meta-line">Muda: {{ exam.duration_minutes }} min | Alama Zote: {{ exam.total_marks }}</p>
-      <span class="necta-tag"><i class="fas fa-certificate"></i> NECTA Format</span>
+      <p class="meta-line">
+        {{ exam.get_exam_type_display }} |
+        {% if exam.language == "kiswahili" %}Muhula: {{ exam.term|default:"-" }} | Mwaka: {{ exam.year }}{% else %}Term: {{ exam.term|default:"-" }} | Year: {{ exam.year }}{% endif %}
+      </p>
+      <p class="meta-line">
+        {% if exam.language == "kiswahili" %}Muda: {{ exam.duration_display }} | Alama Zote: {{ exam.total_marks }}{% else %}Time: {{ exam.duration_display }} | Total Marks: {{ exam.total_marks }}{% endif %}
+      </p>
+      <span class="necta-tag"><i class="fas fa-certificate"></i> NECTA Format · {{ exam.assessment_name }}</span>
     </div>
 
     {% if exam.instructions %}
@@ -112,9 +118,13 @@
       {% for sec in exam.sections %}
       <div class="section-block">
         <div class="section-head">
+          {% if exam.language == "kiswahili" %}
+          <i class="fas fa-layer-group"></i> SEHEMU {{ sec.section|default:"A" }}
+          {% else %}
           <i class="fas fa-layer-group"></i> SECTION {{ sec.section|default:"A" }}
+          {% endif %}
           <span style="margin-left:auto;font-weight:600;font-size:9px;opacity:0.85;">
-            Maswali: {{ sec.questions|length }}
+            {% if exam.language == "kiswahili" %}Maswali: {{ sec.questions|length }}{% else %}Questions: {{ sec.questions|length }}{% endif %}
           </span>
         </div>
         {% if sec.instructions %}
@@ -128,9 +138,9 @@
               {% if q.topic %}
               <div class="q-topic"><span><i class="fas fa-tag"></i> {{ q.topic }}</span></div>
               {% endif %}
-              <div class="q-answer"><strong>Marking:</strong> {{ q.answer|default:"—" }}</div>
+              <div class="q-answer">{% if exam.language == "kiswahili" %}<strong>Jibu / Marking:</strong>{% else %}<strong>Marking:</strong>{% endif %} {{ q.answer|default:"—" }}</div>
             </div>
-            <div class="q-marks">{{ q.marks }} marks</div>
+            <div class="q-marks">{% if exam.language == "kiswahili" %}{{ q.marks }} alama{% else %}{{ q.marks }} marks{% endif %}</div>
           </div>
         </div>
         {% endfor %}

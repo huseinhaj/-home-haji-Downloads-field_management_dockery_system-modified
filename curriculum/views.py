@@ -5329,6 +5329,21 @@ def _safe_marks(val):
         return 0
 
 
+def _exam_probe(education_level, class_name, language='english'):
+    """Build an unsaved GeneratedExam so we reuse the model's NECTA helpers
+    (assessment_name / necta_header_lines / duration_display) — single source of truth."""
+    return GeneratedExam(
+        education_level=education_level,
+        class_name=class_name or '',
+        language=language or 'english',
+    )
+
+
+def _exam_necta_header_lines(education_level, class_name, language):
+    """Official NECTA paper header lines — via GeneratedExam.necta_header_lines."""
+    return _exam_probe(education_level, class_name, language).necta_header_lines
+
+
 def _parse_exam_json(response_text):
     """Parse AI exam response into a dict with 'title', 'instructions', 'sections'."""
     cleaned = re.sub(r'```(?:json)?\s*', '', response_text)
@@ -5577,36 +5592,88 @@ def ajax_generate_exam(request):
 
         topics_hint = f"COVER THESE TOPICS (spread questions evenly): {topics_input}" if topics_input else "COVER the official TIE syllabus topics for this subject/class."
 
-        # ── Level-specific NECTA format (Primary = SFNA/PSLE style, Secondary = FTNA/CSEE CBA style) ──
-        if education_level == 'primary':
+        # NECTA-style time label, e.g. 150 → '2:30 Hours' / 'Saa 2:30'
+        _dur_h = duration // 60
+        _dur_m = duration % 60
+        _time_label = f"{_dur_h}:{_dur_m:02d} Hours" if _dur_h else f"{_dur_m} minutes"
+        if resolved_language == 'kiswahili':
+            _time_label = f"Saa {_dur_h}:{_dur_m:02d}" if _dur_h else f"Dakika {_dur_m}"
+        # Official NECTA paper header lines for the prompt
+        _hdr = _exam_necta_header_lines(education_level, class_name, resolved_language)
+        _header_text = '\n'.join(_hdr)
+
+        # ── Level-specific NECTA format (Primary = PSLE 2024 / SFNA, Secondary = FTNA/CSEE CBA) ──
+        is_primary = education_level == 'primary'
+        cls_lower = (class_name or '').lower()
+        is_lower_primary = bool(re.search(r'\b(std|standard|darasa(?:\s+la)?)\s*\.?\s*[1-4]\b', cls_lower))
+        is_upper_primary = bool(re.search(r'\b(std|standard|darasa(?:\s+la)?)\s*\.?\s*[5-7]\b', cls_lower))
+
+        if is_primary:
+            if is_lower_primary or (not is_upper_primary):
+                # SFNA (Std 1-4): Sections A + B, ~50 marks, 90 min
+                level_format_rule = (
+                    "PRIMARY SCHOOL FORMAT (SFNA — Standard Four National Assessment, NECTA exact format):\n"
+                    "1. The paper consists of SECTIONS A and B ONLY (no Section C). Total marks = 50.\n"
+                    "2. Section A (ALAMA 20): OBJECTIVE — multiple-choice items (chaguo A, B, C, D), matching items (linganisha), and true/false items. Each item carries 1 mark.\n"
+                    "3. Section B (ALAMA 30): SHORT ANSWER / structured items — fill-in-the-blanks, short responses, simple problem solving with sub-items (a), (b), (c). Each item carries 2 marks.\n"
+                    "4. Questions MUST be based on the official TIE new syllabus for {subject_name} {class_name} (Tanzania primary).\n"
+                    "5. Use simple age-appropriate Kiswahili sentences (unless subject is English).\n"
+                    "6. Time allowed: 1 hour 30 minutes.\n"
+                    "7. Number questions continuously (1, 2, 3...).\n"
+                    "8. Marks must sum to approximately {total_marks}."
+                )
+            else:
+                # PSLE 2024 (Std 5-7): 6-8 questions, A=20/B=20/C=10, 50 marks, 100 min
+                level_format_rule = (
+                    "PRIMARY SCHOOL FORMAT (PSLE 2024 — Primary School Leaving Examination, improved NECTA format):\n"
+                    "1. The paper consists of SECTIONS A, B and C with a TOTAL OF 6 TO 8 QUESTIONS only (NOT 30+). Total marks = 50.\n"
+                    "2. Section A (ALAMA 20): OBJECTIVE — multiple-choice items (chaguo A, B, C, D or A-E), matching items (linganisha), and true/false items. Each item carries 1 mark.\n"
+                    "3. Section B (ALAMA 20): SHORT ANSWER — fill-in-the-blanks, complete sentences, short responses based on passages/stories. Each item carries 2 marks.\n"
+                    "4. Section C (ALAMA 10): ONE (1) structured question (composition / picture interpretation / map reading) divided into five (5) sub-items (a)-(e), each carrying 2 marks. NO long essay.\n"
+                    "5. Follow the real subject question counts: Hisabati/Mathematics = 8 questions, Sayansi na Teknolojia = 8 questions, Kiswahili = 6 questions, English = 7 questions, Maarifa ya Jamii = 7 questions.\n"
+                    "6. Questions MUST be based on the official TIE new syllabus for {subject_name} {class_name} (Tanzania primary).\n"
+                    "7. Use simple age-appropriate Kiswahili sentences (unless subject is English).\n"
+                    "8. Time allowed: 1 hour 40 minutes.\n"
+                    "9. Number questions continuously (1, 2, 3...).\n"
+                    "10. Marks must sum to approximately {total_marks}."
+                )
+        elif education_level == 'advanced':
+            # ACSEE (Form 5-6): 3 hours, 100 marks — A=20 objective, B=40 (4×10), C=40 (2 essays of 20, answer one)
             level_format_rule = (
-                "PRIMARY SCHOOL FORMAT (SFNA/PSLE style — kama mitihani ya LusaElimu/NECTA):\n"
-                "1. Section A: OBJECTIVE (Chagua Jibu Sahihi) — multiple-choice (4 options A, B, C, D), matching items (linganisha), and true/false. Each item 1 mark. Most of the paper is here.\n"
-                "2. Section B: SHORT ANSWER (Maswali Mafupi) — structured questions with sub-items (a), (b), (c) e.g. one question of 10 marks split into 5 sub-items of 2 marks each.\n"
-                "3. Section C: only for upper primary (Std 5-7): short structured/application questions with sub-parts. NO long essay writing.\n"
-                "4. Lower primary (Std 1-4) uses Sections A + B only, total ~50 marks. Upper primary (Std 5-7) uses A + B + C, total ~100 marks.\n"
-                "5. Keep sentences short and simple, suitable for young pupils.\n"
-                "6. Number questions continuously per section (1, 2, 3...).\n"
-                "7. Marks must sum to approximately {total_marks}.\n"
-                "8. Questions MUST be based on the real official TIE new syllabus content for {subject_name} {class_name} in Tanzania."
+                "ADVANCED LEVEL FORMAT (ACSEE — Advanced Certificate of Secondary Education, NECTA exact style):\n"
+                "1. The paper consists of sections A, B and C with a total of EIGHT (8) questions. Total marks = 100.\n"
+                "2. Section A (20 marks): OBJECTIVE — multiple-choice items (chaguo A, B, C, D), matching items and true/false items. Each item carries 1 mark.\n"
+                "3. Section B (40 marks): FOUR (4) short-answer / structured questions, each carrying 10 marks (4 x 10 = 40). Calculations, explanations, diagram interpretation, applying methods.\n"
+                "4. Section C (40 marks): TWO (2) essay / long-answer questions, each carrying 20 marks. Candidates answer ONE (1) question from this section.\n"
+                "5. Questions MUST be based on the official TIE advanced level syllabus for {subject_name} {class_name} in Tanzania.\n"
+                "6. Number questions continuously across the whole paper (1 to 8).\n"
+                "7. Difficulty increases from Section A to Section C.\n"
+                "8. Total marks must sum to approximately {total_marks}. Time allowed: 3 hours."
             )
         else:
             level_format_rule = (
-                "SECONDARY SCHOOL FORMAT (FTNA/CSEE NECTA style — new CBA curriculum, kama LusaElimu):\n"
-                "1. Section A: OBJECTIVE questions — 15 marks total: (a) 10 multiple-choice items of 1 mark each (10 marks), (b) 5 matching or true/false items of 1 mark each (5 marks).\n"
-                "2. Section B: SHORT ANSWER questions — 70 marks total: seven (7) questions of 10 marks each covering calculations, explanations, diagram/map interpretation and applying methods.\n"
-                "3. Section C: LONG ANSWER / ESSAY — 15 marks: one (1) major question of 15 marks requiring analysis, problem-solving and real-life application.\n"
-                "4. Total = approximately 100 marks. Question difficulty increases across the paper.\n"
-                "5. Number questions continuously per section (1, 2, 3...).\n"
-                "6. Questions MUST be based on the real official TIE new syllabus content for {subject_name} {class_name} in Tanzania."
+                "SECONDARY SCHOOL FORMAT (FTNA/CSEE — NECTA Competence-Based Assessment, exact format as LusaElimu):\n"
+                "1. The paper consists of sections A, B and C with a total of TEN (10) questions. Answer ALL questions.\n"
+                "2. Section A (15 marks): TWO (2) objective questions —\n"
+                "   - Question 1: MULTIPLE CHOICE — ten (10) items, each carrying one (1) mark (total 10 marks). Each item has four options A, B, C, D on separate lines.\n"
+                "   - Question 2: MATCHING ITEMS — five (5) items, each carrying one (1) mark (total 5 marks). Provide List A and List B.\n"
+                "3. Section B (70 marks): SEVEN (7) short-answer questions, each carrying 10 marks (7 x 10 = 70 marks). Calculations, explanations, diagram/map interpretation, applying methods.\n"
+                "4. Section C (15 marks): ONE (1) essay / long-answer question carrying 15 marks — analysis, problem-solving and real-life application.\n"
+                "5. Questions MUST be based on the official TIE new syllabus (CBA) for {subject_name} {class_name} in Tanzania.\n"
+                "6. Number questions continuously across the whole paper (1 to 10).\n"
+                "7. Difficulty increases from Section A to Section C.\n"
+                "8. Total marks must sum to approximately {total_marks}. Time allowed: 2 hours 30 minutes."
             )
 
         prompt = f"""You are a senior Tanzanian NECTA exam setter and curriculum expert. Generate a complete {type_label} examination paper for {subject_name} — {class_name} ({level_label}) in the official NECTA format.
 
+The paper MUST carry this official NECTA header (print it at the top of the paper):
+{_header_text}
+
 EXAM DETAILS:
 - Subject: {subject_name} | Class: {class_name} | Level: {level_label}
 - Exam type: {type_label} | Year: {year} | Term: {term or 'N/A'}
-- Time allowed: {duration} minutes | Total marks: {total_marks}
+- Time allowed: {_time_label} | Total marks: {total_marks}
 - Number of questions: approximately {question_count}
 - School: {school_name} | Teacher: {teacher_name}
 - {topics_hint}
@@ -5618,11 +5685,11 @@ NECTA FORMAT RULES:
 OUTPUT: Return ONLY valid JSON (no markdown, no extra text) with this EXACT structure:
 {{
   "title": "{subject_name} — {class_name} {type_label} Examination",
-  "instructions": "General instructions for candidates written in the exam language (e.g. this paper consists of sections A, B and C with a total of {total_marks} marks. Answer ALL questions...)",
+  "instructions": "General instructions for candidates, written EXACTLY like a real NECTA paper in the exam language. Example: 'This paper consists of sections A, B and C with a total of {total_marks} marks. Answer ALL questions in sections A and B and one (1) question from section C. Show all your working. Calculators may be used...' — for primary use: 'Karatasi hii ina sehemu A, B na C zenye jumla ya alama {total_marks}. Jibu maswali YOTE...'",
   "sections": [
     {{
       "section": "A",
-      "instructions": "Answer all questions in this section.",
+      "instructions": "Official section instruction in the exam language, e.g. 'SECTION A (15 Marks): Answer ALL questions in this section.' / 'SEHEMU A (Alama 20): Jibu maswali YOTE katika sehemu hii.'",
       "questions": [
         {{"number": 1, "text": "...", "marks": 2, "answer": "...", "topic": "..."}}
       ]
@@ -5763,29 +5830,33 @@ def download_exam_pdf(request, exam_id, mode='paper'):
     s_a = ParagraphStyle('a', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#0D4F2B'), leading=11, leftIndent=18, spaceAfter=6)
 
     story = []
-    story.append(Paragraph("JAMHURI YA MUUNGANO WA TANZANIA", s_sub))
-    story.append(Paragraph("WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA", s_sub))
-    story.append(Paragraph("THE NATIONAL EXAMINATIONS COUNCIL OF TANZANIA (NECTA) FORMAT",
-                           ParagraphStyle('ne', fontName='Helvetica-Bold', fontSize=8, textColor=GOLD, alignment=1, spaceAfter=6)))
+    for line in exam.necta_header_lines:
+        story.append(Paragraph(line, s_sub))
     story.append(Paragraph(exam.title, s_title))
     story.append(Paragraph(f"{exam.subject_name}  |  {exam.class_name}  |  {_EXAM_LEVEL_LABELS.get(exam.education_level, exam.education_level)}", s_sub))
-    story.append(Paragraph(f"{_EXAM_TYPE_LABELS.get(exam.exam_type, exam.exam_type)}  |  Muhula: {exam.term or '-'}  |  Mwaka: {exam.year}  |  Muda: {exam.duration_minutes} min  |  Alama: {exam.total_marks}", s_sub))
+    time_label = f"Time: {exam.duration_display}" if exam.language != 'kiswahili' else f"Muda: {exam.duration_display}"
+    marks_label = f"Total Marks: {exam.total_marks}" if exam.language != 'kiswahili' else f"Alama Zote: {exam.total_marks}"
+    story.append(Paragraph(f"{_EXAM_TYPE_LABELS.get(exam.exam_type, exam.exam_type)}  |  Muhula: {exam.term or '-'}  |  Mwaka: {exam.year}  |  {time_label}  |  {marks_label}", s_sub))
     story.append(HRFlowable(width="100%", thickness=1.5, color=GOLD, spaceBefore=4, spaceAfter=8))
 
     if exam.instructions:
         story.append(Paragraph(f"<b>INSTRUCTIONS:</b> {exam.instructions}", s_inst))
 
+    sw = exam.language == 'kiswahili'
     for sec in exam.sections:
-        story.append(Paragraph(f"SECTION {sec.get('section', 'A')}", s_sec))
+        sec_label = f"SEHEMU {sec.get('section', 'A')}" if sw else f"SECTION {sec.get('section', 'A')}"
+        story.append(Paragraph(sec_label, s_sec))
         if sec.get('instructions'):
             story.append(Paragraph(sec['instructions'], s_inst))
         for q in sec.get('questions', []):
             num = q.get('number', '')
             marks = q.get('marks', 0)
             txt = q.get('text', '')
-            story.append(Paragraph(f"<b>{num}.</b> {txt} <b>({marks} marks)</b>", s_q))
+            marks_suffix = 'alama' if sw else 'marks'
+            story.append(Paragraph(f"<b>{num}.</b> {txt} <b>({marks} {marks_suffix})</b>", s_q))
             if include_answers and q.get('answer'):
-                story.append(Paragraph(f"<b>Answer:</b> {q['answer']}", s_a))
+                ans_label = 'Jibu' if sw else 'Answer'
+                story.append(Paragraph(f"<b>{ans_label}:</b> {q['answer']}", s_a))
         story.append(Spacer(1, 8))
 
     if include_answers:
@@ -5822,7 +5893,7 @@ def download_exam_word(request, exam_id, mode='paper'):
     gold = RGBColor(0xC8, 0x90, 0x0A)
     green = RGBColor(0x0D, 0x4F, 0x2B)
 
-    for line in ["JAMHURI YA MUUNGANO WA TANZANIA", "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA"]:
+    for line in exam.necta_header_lines:
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         r = p.add_run(line)
@@ -5836,9 +5907,11 @@ def download_exam_word(request, exam_id, mode='paper'):
     tr.font.size = Pt(15)
     tr.font.color.rgb = navy
 
+    time_label = f"Time: {exam.duration_display}" if exam.language != 'kiswahili' else f"Muda: {exam.duration_display}"
+    marks_label = f"Total Marks: {exam.total_marks}" if exam.language != 'kiswahili' else f"Alama Zote: {exam.total_marks}"
     for line in [
         f"{exam.subject_name} | {exam.class_name} | {_EXAM_LEVEL_LABELS.get(exam.education_level, exam.education_level)}",
-        f"{_EXAM_TYPE_LABELS.get(exam.exam_type, exam.exam_type)} | Muhula: {exam.term or '-'} | Mwaka: {exam.year} | Muda: {exam.duration_minutes} min | Alama: {exam.total_marks}",
+        f"{_EXAM_TYPE_LABELS.get(exam.exam_type, exam.exam_type)} | Muhula: {exam.term or '-'} | Mwaka: {exam.year} | {time_label} | {marks_label}",
     ]:
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -5851,9 +5924,11 @@ def download_exam_word(request, exam_id, mode='paper'):
         ip.add_run('INSTRUCTIONS: ').bold = True
         ip.add_run(exam.instructions)
 
+    sw = exam.language == 'kiswahili'
     for sec in exam.sections:
         hp = doc.add_paragraph()
-        hr = hp.add_run(f"SECTION {sec.get('section', 'A')}")
+        sec_label = f"SEHEMU {sec.get('section', 'A')}" if sw else f"SECTION {sec.get('section', 'A')}"
+        hr = hp.add_run(sec_label)
         hr.bold = True
         hr.font.size = Pt(12)
         hr.font.color.rgb = navy
@@ -5861,11 +5936,13 @@ def download_exam_word(request, exam_id, mode='paper'):
             doc.add_paragraph(sec['instructions'])
         for q in sec.get('questions', []):
             qp = doc.add_paragraph()
-            qr = qp.add_run(f"{q.get('number', '')}. {q.get('text', '')} ({q.get('marks', 0)} marks)")
+            marks_suffix = 'alama' if sw else 'marks'
+            qr = qp.add_run(f"{q.get('number', '')}. {q.get('text', '')} ({q.get('marks', 0)} {marks_suffix})")
             qr.font.size = Pt(10)
             if include_answers and q.get('answer'):
                 ap = doc.add_paragraph()
-                ar = ap.add_run(f"Answer: {q['answer']}")
+                ans_label = 'Jibu' if sw else 'Answer'
+                ar = ap.add_run(f"{ans_label}: {q['answer']}")
                 ar.font.size = Pt(9.5)
                 ar.font.color.rgb = green
                 ap.paragraph_format.left_indent = Pt(18)

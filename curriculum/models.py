@@ -7,6 +7,8 @@ from django.db import models
 from django.utils import timezone
 from field_app.models import Region, District, School, Subject
 
+import re
+
 
 class TLMTeacher(models.Model):
     """A teacher registered to use TLM tools (Scheme of Work, Lesson Plan)."""
@@ -315,3 +317,67 @@ class GeneratedExam(models.Model):
     @property
     def sections(self):
         return self.questions or []
+
+    @property
+    def duration_display(self):
+        """NECTA-style time label, e.g. 150 → '2:30 Hours' / 'Saa 2:30'.
+        Under one hour → '45 minutes' / 'Dakika 45'."""
+        hours = self.duration_minutes // 60
+        mins = self.duration_minutes % 60
+        if not hours:
+            return f"Dakika {mins}" if self.language == 'kiswahili' else f"{mins} minutes"
+        time_str = f"{hours}:{mins:02d}"
+        if self.language == 'kiswahili':
+            return f"Saa {time_str}"
+        return f"{time_str} Hours"
+
+    @property
+    def assessment_name(self):
+        """NECTA assessment this paper belongs to: SFNA / PSLE / FTNA / CSEE / ACSEE."""
+        cls = (self.class_name or '').lower()
+        if self.education_level == 'primary':
+            if re.search(r'\b(std|standard|darasa(?:\s+la)?)\s*\.?\s*[1-4]\b', cls):
+                return 'SFNA'
+            return 'PSLE'
+        if any(x in cls for x in ('form 5', 'form 6', 'form five', 'form six')):
+            return 'ACSEE'
+        if any(x in cls for x in ('form 1', 'form 2', 'form one', 'form two')):
+            return 'FTNA'
+        return 'CSEE'
+
+    @property
+    def necta_header_lines(self):
+        """Official NECTA paper header lines — depends on level & language.
+        Secondary → English header (CSEE/FTNA/ACSEE), Primary → Kiswahili (PSLE/SFNA).
+        Lower primary (Std 1-4) → SFNA, Upper primary (Std 5-7) → PSLE."""
+        sw = self.language == 'kiswahili'
+        assessment = self.assessment_name
+        # Official bilingual assessment names used by NECTA
+        _ENG = {
+            'SFNA': 'STANDARD FOUR NATIONAL ASSESSMENT (SFNA)',
+            'PSLE': 'PRIMARY SCHOOL LEAVING EXAMINATION (PSLE)',
+            'FTNA': 'FORM TWO NATIONAL ASSESSMENT (FTNA)',
+            'CSEE': 'CERTIFICATE OF SECONDARY EDUCATION EXAMINATION (CSEE)',
+            'ACSEE': 'ADVANCED CERTIFICATE OF SECONDARY EDUCATION EXAMINATION (ACSEE)',
+        }
+        _SW = {
+            'SFNA': 'TAFITI YA TAIFA YA DARASA LA NNE (SFNA)',
+            'PSLE': 'MTIHANI WA KUMALIZA ELIMU YA MSINGI (PSLE)',
+            'FTNA': 'TAFITI YA TAIFA YA KIDATO CHA PILI (FTNA)',
+            'CSEE': 'CERTIFICATE OF SECONDARY EDUCATION EXAMINATION (CSEE)',
+            'ACSEE': 'ADVANCED CERTIFICATE OF SECONDARY EDUCATION EXAMINATION (ACSEE)',
+        }
+        name = _SW[assessment] if sw else _ENG[assessment]
+        if sw:
+            return [
+                "JAMHURI YA MUUNGANO WA TANZANIA",
+                "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA",
+                "BARAZA LA MITIHANI LA TANZANIA",
+                name,
+            ]
+        return [
+            "THE UNITED REPUBLIC OF TANZANIA",
+            "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY",
+            "NATIONAL EXAMINATIONS COUNCIL OF TANZANIA",
+            name,
+        ]
