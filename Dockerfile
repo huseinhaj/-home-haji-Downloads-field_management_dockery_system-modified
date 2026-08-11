@@ -35,6 +35,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdal-bin \
     libgdal36 \
     libgeos-c1v5 \
+    # nginx — routes /ttc/ (TTC Student Portal) inside the same container
+    nginx \
     # ffmpeg for audio processing (faster-whisper)
     ffmpeg \
     # Chromium / Playwright runtime deps
@@ -71,6 +73,9 @@ RUN python -m playwright install chromium
 
 # ── Application code ───────────────────────────────────────────────────────────
 COPY . .
+
+# ── Container nginx config (used when TTC_PORTAL_ENABLED=true) ────────────────
+COPY nginx/container.conf /app/nginx-container.conf
 
 # ── Non-root user for security ────────────────────────────────────────────────
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup --home /app appuser \

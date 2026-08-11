@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Jiandikishe — TTC Student Portal{% endblock %}
+
+{% block content %}
+<div class="container container-narrow" style="margin-top:44px;">
+  <div class="card auth-card" style="max-width:640px;margin:0 auto;">
+    <div class="text-center mb-3">
+      <div class="brand-logo" style="margin:0 auto 12px;width:52px;height:52px;font-size:22px;">📝</div>
+      <h1>Usajili wa Mwanafunzi</h1>
+      <p class="sub">Jaza taarifa zako — utaweza kuona bili zako, generate namba za malipo na kufuatilia malipo yako.</p>
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="form-errors">
+        <ul>{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label>Chuo Chako *</label>
+        {{ form.college }}
+        <div class="help">Chagua chuo cha ualimu unachosoma. Programu zake zitaonekana papo hapo.</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Programu (Diploma)</label>
+          {{ form.program }}
+        </div>
+        <div class="form-group">
+          <label>Mwaka wa Masomo *</label>
+          {{ form.year_of_study }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Jina Kamili *</label>
+        {{ form.full_name }}
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Namba ya Usajili (Registration Number)</label>
+          {{ form.registration_number }}
+          <div class="help">{{ form.registration_number.help_text }}</div>
+        </div>
+        <div class="form-group">
+          <label>Mwaka wa Kujiunga *</label>
+          {{ form.admission_year }}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Jinsia</label>
+          {{ form.gender }}
+        </div>
+        <div class="form-group">
+          <label>Namba ya Simu *</label>
+          {{ form.phone_number }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Barua Pepe (Email)</label>
+        {{ form.email }}
+        <div class="help">Inatumika kuingia ikiwa huna namba ya usajili bado.</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nywila *</label>
+          {{ form.password }}
+        </div>
+        <div class="form-group">
+          <label>Rudia Nywila *</label>
+          {{ form.confirm_password }}
+        </div>
+      </div>
+
+      {% for field in form %}
+        {% if field.errors %}
+          <div class="form-errors">
+            <b>{{ field.label }}:</b>
+            <ul>{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+          </div>
+        {% endif %}
+      {% endfor %}
+
+      <button class="btn btn-primary btn-block" type="submit" style="font-size:16px;">Jiandikishe na Unda Bili Zangu</button>
+    </form>
+
+    <div class="auth-alt">
+      Tayari una akaunti? <a href="{% url 'login' %}"><b>Ingia hapa</b></a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Load programs for the selected college (filtered dropdown)
+  const collegeSelect = document.getElementById('id_college');
+  const programSelect = document.getElementById('id_program');
+
+  async function loadPrograms() {
+    const collegeId = collegeSelect.value;
+    if (!collegeId) { programSelect.innerHTML = '<option value="">--- Chagua Chuo kwanza ---</option>'; return; }
+    const base = '{{ request.script_name }}' || '';
+    const resp = await fetch(`${base}/api/programs/?college=${collegeId}`);
+    const data = await resp.json();
+    programSelect.innerHTML = '<option value="">--- Chagua Programu ---</option>';
+    data.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      programSelect.appendChild(opt);
+    });
+  }
+  collegeSelect.addEventListener('change', loadPrograms);
+  loadPrograms();
+</script>
+{% endblock %}

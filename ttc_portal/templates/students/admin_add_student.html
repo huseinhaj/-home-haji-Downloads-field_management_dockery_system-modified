@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Ongeza Mwanafunzi — {{ college.short_name }}{% endblock %}
+
+{% block content %}
+<div class="container container-narrow" style="margin-top:36px;">
+  <div class="card auth-card">
+    <h1>Ongeza Mwanafunzi</h1>
+    <p class="sub">Msimamizi wa chuo anamsajili mwanafunzi — bili zake zitaandaliwa moja kwa moja.</p>
+
+    {% if form.non_field_errors %}
+      <div class="form-errors"><ul>{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label>Chuo</label>
+        <input class="form-control" value="{{ college.name }}" disabled>
+        {{ form.college }}
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Programu</label>
+          {{ form.program }}
+        </div>
+        <div class="form-group">
+          <label>Mwaka wa Masomo *</label>
+          {{ form.year_of_study }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Jina Kamili *</label>
+        {{ form.full_name }}
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Namba ya Usajili *</label>
+          {{ form.registration_number }}
+        </div>
+        <div class="form-group">
+          <label>Mwaka wa Kujiunga</label>
+          {{ form.admission_year }}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Jinsia</label>
+          {{ form.gender }}
+        </div>
+        <div class="form-group">
+          <label>Namba ya Simu</label>
+          {{ form.phone_number }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Barua Pepe</label>
+        {{ form.email }}
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nywila (si lazima)</label>
+          {{ form.password }}
+        </div>
+        <div class="form-group">
+          <label>Rudia Nywila</label>
+          {{ form.confirm_password }}
+        </div>
+      </div>
+
+      {% for field in form %}
+        {% if field.errors %}
+          <div class="form-errors">
+            <b>{{ field.label }}:</b>
+            <ul>{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+          </div>
+        {% endif %}
+      {% endfor %}
+
+      <button class="btn btn-primary btn-block" type="submit">Hifadhi Mwanafunzi</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TTC Student Portal{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a class="brand" href="{% url 'home' %}">
+      <div class="brand-logo">TC</div>
+      <div>
+        TTC Student Portal
+        <small>Mfumo wa Vyuo vya Ualimu · Diploma in Education</small>
+      </div>
+    </a>
+    <button class="hamburger" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
+    <div class="nav-links">
+      <a href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' %}class="active"{% endif %}>Nyumbani</a>
+      <a href="{% url 'home' %}#vyuo">Vyuo Vyote</a>
+      {% if user.is_authenticated %}
+        {% if user.is_student %}
+          <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard Yangu</a>
+        {% elif user.is_college_admin %}
+          <a href="{% url 'admin_dashboard' %}" {% if request.resolver_match.url_name == 'admin_dashboard' %}class="active"{% endif %}>Jopo la Chuo</a>
+          <a href="{% url 'admin_payments' %}">Malipo</a>
+          <a href="{% url 'admin_fees' %}">Ada na Michango</a>
+        {% elif user.is_super_admin %}
+          <a href="{% url 'super_admin_dashboard' %}" {% if request.resolver_match.url_name == 'super_admin_dashboard' %}class="active"{% endif %}>Usimamizi</a>
+          <a href="{% url 'admin:index' %}">Admin Django</a>
+        {% endif %}
+        <div class="nav-user">
+          <div class="avatar">{{ user.first_name|first|default:user.username|first|upper }}</div>
+          <div class="who">
+            <b>{{ user.first_name|default:user.username }}</b>
+            <span>{% if user.is_student %}Mwanafunzi{% elif user.is_college_admin %}Msimamizi wa Chuo{% else %}Super Admin{% endif %}</span>
+          </div>
+          <a href="{% url 'logout' %}" class="btn btn-outline btn-sm">Toka</a>
+        </div>
+      {% else %}
+        <a href="{% url 'register' %}" class="btn btn-outline btn-sm">Jiandikishe</a>
+        <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Ingia</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+{% if messages %}
+  <div class="messages">
+    {% for message in messages %}
+      <div class="message {{ message.tags }}">{% if message.tags == 'success' %}✅{% elif message.tags == 'error' %}⛔{% elif message.tags == 'warning' %}⚠️{% else %}ℹ️{% endif %}{{ message }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div>
+      <b>TTC Student Portal</b> — Mfumo wa Vyuo vya Ualimu (Diploma in Education)
+    </div>
+    <div class="fsmall">
+      Mfumo wa kujitegemea (database yake tofauti) · SR2-style · Tanzania © 2026
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Auto-dismiss messages
+  document.querySelectorAll('.message').forEach(el => {
+    setTimeout(() => {
+      el.style.transition = 'opacity .4s ease, transform .4s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(20px)';
+      setTimeout(() => el.remove(), 400);
+    }, 6000);
+  });
+  // Copy to clipboard helper
+  function copyText(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    navigator.clipboard.writeText(el.textContent.trim());
+    const btn = document.querySelector('[data-copy="' + id + '"]');
+    if (btn) { const old = btn.textContent; btn.textContent = '✓ Imeandikwa!'; setTimeout(() => btn.textContent = old, 1800); }
+  }
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

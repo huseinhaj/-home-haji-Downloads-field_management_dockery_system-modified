@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Ingia — TTC Student Portal{% endblock %}
+
+{% block content %}
+<div class="container container-narrow">
+  <div class="auth-wrap">
+    <div class="card auth-card">
+      <div class="text-center mb-3">
+        <div class="brand-logo" style="margin:0 auto 12px;width:52px;height:52px;font-size:22px;">TC</div>
+        <h1>Ingia Kwenye Mfumo</h1>
+        <p class="sub">Weka namba yako ya usajili (au barua pepe) na nywila — mtindo wa SR2.</p>
+      </div>
+
+      {% if form.errors %}
+        <div class="form-errors">
+          Namba ya usajili/barua pepe au nywila si sahihi. Tafadhali jaribu tena.
+        </div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="id_username">Namba ya Usajili au Barua Pepe</label>
+          <input class="form-control form-control-lg" type="text" name="username" id="id_username" placeholder="mfano: KAS/2026/014 au jina@gmail.com" autofocus required>
+        </div>
+        <div class="form-group">
+          <label for="id_password">Nywila</label>
+          <input class="form-control form-control-lg" type="password" name="password" id="id_password" placeholder="Weka nywila yako" required>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Ingia</button>
+      </form>
+
+      <div class="auth-alt">
+        Hujajiandikisha bado? <a href="{% url 'register' %}"><b>Jiandikishe hapa</b></a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

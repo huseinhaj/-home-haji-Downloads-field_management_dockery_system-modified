@@ -9,7 +9,35 @@ fi
 echo "GDAL_LIBRARY_PATH=$GDAL_LIBRARY_PATH"
 echo "GEOS_LIBRARY_PATH=$GEOS_LIBRARY_PATH"
 
-# Run migrations
+# ═════════════════════════════════════════════════════════════════════════════
+# TTC STUDENT PORTAL — separate Django project with its OWN database.
+# Deployed inside this same container under /ttc/ via container nginx.
+# Only active when TTC_PORTAL_ENABLED=true (set on Railway). When the flag is
+# off (e.g. docker-compose on the VPS) field_management behaves exactly as
+# before — the two projects never touch each other's data.
+# ═════════════════════════════════════════════════════════════════════════════
+TTC_READY=0
+if [ "$TTC_PORTAL_ENABLED" = "true" ]; then
+    echo "🖥️  TTC Student Portal ENABLED — running its own migrations..."
+    # Failure-tolerant: ikiwa TTC itashindwa (mf. TTC_DATABASE_URL mbovu),
+    # field_management inaendelea kuanza bila TTC portal — haipotezi container.
+    if (cd /app/ttc_portal && python manage.py migrate --noinput); then
+        # Seed is fully idempotent (get_or_create) — run it every boot so a
+        # partial/crashed seed heals itself. Demo accounts (admin/admin123)
+        # are created ONLY when TTC_SEED_DEMO=true or DEBUG=true, so in
+        # production no passwords are ever created or reset.
+        echo "Seeding TTC data (vyuo, programu, ada)..."
+        (cd /app/ttc_portal && python seed_data.py) || echo "⚠️  TTC seed failed — continuing."
+        # Collect TTC static (incl. Django admin) so nginx serves /ttc/static/
+        echo "Collecting TTC static files..."
+        (cd /app/ttc_portal && python manage.py collectstatic --noinput) || echo "⚠️  TTC collectstatic failed."
+        TTC_READY=1
+    else
+        echo "⚠️  TTC migrations FAILED (angalia TTC_DATABASE_URL) — field_management itaendelea bila TTC portal."
+    fi
+fi
+
+# Run field_management migrations
 echo "Running migrations..."
 python manage.py migrate --noinput
 python manage.py migrate --database=transfer --noinput
@@ -72,11 +100,51 @@ else:
     print('HESLB knowledge already cached.')
 " 2>&1 || true) &
 
-# Start gunicorn
-echo "Starting gunicorn on port ${PORT:-8000}..."
-exec gunicorn field_management.wsgi:application \
-    --bind "0.0.0.0:${PORT:-8000}" \
-    --workers "${WEB_CONCURRENCY:-2}" \
-    --timeout 300 \
-    --access-logfile - \
-    --error-logfile -
+# ── Start services ────────────────────────────────────────────────────────────
+if [ "$TTC_READY" = "1" ]; then
+    # TTC portal gunicorn on internal port 8001
+    echo "Starting TTC portal gunicorn on 127.0.0.1:8001..."
+    (cd /app/ttc_portal && exec gunicorn ttc_portal.wsgi:application \
+        --bind "127.0.0.1:8001" \
+        --workers "${TTC_WEB_CONCURRENCY:-1}" \
+        --timeout 120 \
+        --access-logfile - \
+        --error-logfile -) &
+    TTC_PID=$!
+
+    # Container nginx — owns the public port, routes /ttc/ → TTC portal,
+    # everything else → field_management (started below on 127.0.0.1:8000).
+    PORT="${PORT:-8000}"
+    echo "Starting container nginx on 0.0.0.0:${PORT}..."
+    sed "s/\${PORT}/$PORT/g" /app/nginx-container.conf > /tmp/nginx.conf
+    nginx -c /tmp/nginx.conf -g 'daemon off;' &
+    NGINX_PID=$!
+
+    # field_management gunicorn as a background job (NOT exec) so this shell
+    # stays PID 1 and the trap below can kill ALL three on SIGTERM/SIGINT —
+    # graceful shutdown ya TTC gunicorn na nginx pia.
+    echo "Starting field_management gunicorn on 127.0.0.1:8000 (behind nginx)..."
+    gunicorn field_management.wsgi:application \
+        --bind "127.0.0.1:8000" \
+        --workers "${WEB_CONCURRENCY:-2}" \
+        --timeout 300 \
+        --access-logfile - \
+        --error-logfile - &
+    FM_PID=$!
+
+    cleanup() { kill "$FM_PID" "$TTC_PID" "$NGINX_PID" 2>/dev/null || true; }
+    trap cleanup TERM INT EXIT
+
+    # Wait for the main app; if it exits, the container stops and cleanup kills
+    # the other two.
+    wait "$FM_PID"
+else
+    # Original single-app behaviour (docker-compose / TTC not enabled)
+    echo "Starting gunicorn on port ${PORT:-8000}..."
+    exec gunicorn field_management.wsgi:application \
+        --bind "0.0.0.0:${PORT:-8000}" \
+        --workers "${WEB_CONCURRENCY:-2}" \
+        --timeout 300 \
+        --access-logfile - \
+        --error-logfile -
+fi

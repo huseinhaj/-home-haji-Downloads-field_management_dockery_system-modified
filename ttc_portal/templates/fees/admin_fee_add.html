@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Ongeza Ada/Mchango — {{ college.short_name }}{% endblock %}
+
+{% block content %}
+<div class="container container-narrow" style="margin-top:36px;">
+  <div class="card auth-card">
+    <h1>Ongeza Ada / Mchango</h1>
+    <p class="sub">Kipengee kipya kitaunda bili kwa wanafunzi wapya wa {{ college.short_name }}.</p>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Jina la Ada/Mchango *</label>
+        {{ form.name }}
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Aina</label>
+          {{ form.category }}
+        </div>
+        <div class="form-group">
+          <label>Kiasi (TZS) *</label>
+          {{ form.amount }}
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mwaka wa Masomo (wazi = kila mwaka)</label>
+          {{ form.academic_year }}
+        </div>
+        <div class="form-group">
+          <label>Mwaka wa Mwanafunzi (1 au 2)</label>
+          {{ form.year_of_study }}
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tarehe ya Malipo (si lazima)</label>
+          {{ form.due_date }}
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;">{{ form.is_active }} Inatumika</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Maelezo</label>
+        {{ form.description }}
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Hifadhi Ada/Mchango</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
