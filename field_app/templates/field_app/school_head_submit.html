@@ -103,6 +103,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
               <option value="">-- Chagua --</option>
               <option value="Primary">Shule ya Msingi</option>
               <option value="Secondary">Shule ya Sekondari</option>
+              <option value="Technical">Chuo cha VETA / Technical</option>
             </select>
           </div>
           <div class="field">
@@ -161,6 +162,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
 // Subjects per level from Django
 const PRIMARY_SUBJECTS = {{ primary_subjects|safe }};
 const SECONDARY_SUBJECTS = {{ secondary_subjects|safe }};
+const TECHNICAL_SUBJECTS = {{ technical_subjects|safe }};
 
 let rowCount = 0;
 
@@ -168,6 +170,7 @@ function getSubjects() {
   const lvl = document.getElementById('levelSelect').value;
   if (lvl === 'Primary') return PRIMARY_SUBJECTS;
   if (lvl === 'Secondary') return SECONDARY_SUBJECTS;
+  if (lvl === 'Technical') return TECHNICAL_SUBJECTS;
   return [];
 }
 

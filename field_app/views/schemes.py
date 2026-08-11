@@ -22,6 +22,19 @@ from .models import (
 )
 
 
+def _subject_level_for_education(level_name):
+    """Map an EducationLevel name to the Subject.level to use for it.
+    Primary → primary | Technical/VETA → technical | Advanced → advanced | else secondary."""
+    ln = (level_name or '').lower()
+    if 'primary' in ln:
+        return 'primary'
+    if 'technical' in ln or 'veta' in ln:
+        return 'technical'
+    if 'advanced' in ln:
+        return 'advanced'
+    return 'secondary'
+
+
 @login_required
 def generate_scheme_view(request):
     from .models import EducationLevel, ClassLevel, StudentApplication
@@ -35,12 +48,9 @@ def generate_scheme_view(request):
     for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
         classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
 
-    primary_ids = list(
-        EducationLevel.objects.filter(name__icontains='primary').values_list('id', flat=True)
-    )
     subjects_by_level = {
         lvl.id: list(
-            Subject.objects.filter(level='primary' if lvl.id in primary_ids else 'secondary')
+            Subject.objects.filter(level=_subject_level_for_education(lvl.name))
             .order_by('name').values('id', 'name')
         )
         for lvl in education_levels
@@ -687,12 +697,9 @@ def lesson_plan_view(request):
     for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
         classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
 
-    primary_ids = list(
-        EducationLevel.objects.filter(name__icontains='primary').values_list('id', flat=True)
-    )
     subjects_by_level = {
         lvl.id: list(
-            Subject.objects.filter(level='primary' if lvl.id in primary_ids else 'secondary')
+            Subject.objects.filter(level=_subject_level_for_education(lvl.name))
             .order_by('name').values('id', 'name')
         )
         for lvl in education_levels

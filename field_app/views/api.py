@@ -339,6 +339,10 @@ def get_subjects_by_level(request):
             level_name = education_level.name.lower()
             if 'primary' in level_name:
                 subjects = Subject.objects.filter(level='primary')
+            elif 'technical' in level_name or 'veta' in level_name:
+                subjects = Subject.objects.filter(level='technical')
+            elif 'advanced' in level_name:
+                subjects = Subject.objects.filter(level='advanced')
             else:
                 subjects = Subject.objects.filter(level='secondary')
             return JsonResponse(list(subjects.order_by('name').values('id', 'name')), safe=False)

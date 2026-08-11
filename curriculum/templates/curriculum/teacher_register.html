@@ -512,6 +512,7 @@
 
 <script>
 const CLASSES_BY_LEVEL = {{ classes_by_level_json|safe }};
+const SUBJECTS_BY_LEVEL = {{ subjects_by_level_json|safe }};
 </script>
 {% endblock %}
 
@@ -598,6 +599,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const name = (opt.getAttribute('data-level-name') || opt.textContent || '').toLowerCase();
       if (schoolLevel === 'Primary' && name.includes('primary')) return opt.value;
       if (schoolLevel === 'Secondary' && (name.includes('ordinary') || name.includes('secondary'))) return opt.value;
+      if ((schoolLevel === 'Technical' || schoolLevel === 'VETA') && (name.includes('technical') || name.includes('veta'))) return opt.value;
     }
     // Fallback: first option
     return eduLevelSelect.options.length > 0 ? eduLevelSelect.options[0].value : '';
@@ -612,6 +614,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // ── Filter subjects by education level (VETA → technical subjects) ──
+  function populateSubjects(eduLevelId) {
+    const prev = subjectSelect.value;
+    subjectSelect.innerHTML = '<option value="">— Chagua —</option>';
+    const list = (eduLevelId && SUBJECTS_BY_LEVEL[eduLevelId]) || [];
+    list.forEach(function(s) {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.name;
+      subjectSelect.appendChild(opt);
+    });
+    if (prev) subjectSelect.value = prev;
+  }
+
   // ── Auto-detect education level when school selected ──
   function onSchoolSelected(id, name, level) {
     schoolHidden.value = id;
@@ -620,7 +636,8 @@ document.addEventListener('DOMContentLoaded', function() {
     schoolResults.classList.remove('open');
     
     // Show school tag
-    const levelLabel = level === 'Primary' ? 'Msingi' : 'Sekondari';
+    const isTech = level === 'Technical' || level === 'VETA';
+    const levelLabel = level === 'Primary' ? 'Msingi' : (isTech ? 'VETA/Technical' : 'Sekondari');
     selectedSchoolTag.innerHTML = `<span class="school-tag">
       <i class="fas fa-school"></i> ${name} <span style="color:var(--text-muted);font-size:0.65rem;">(${levelLabel})</span>
       <i class="fas fa-times" onclick="clearSchool()"></i>
@@ -633,17 +650,19 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('eduLevelField').style.display = 'block';
       // Auto-detected but teacher can change (e.g. Secondary→Advanced)
       eduLevelSelect.disabled = false;
-      // Repopulate classes when education level changes
+      // Repopulate classes + subjects when education level changes
       eduLevelSelect.onchange = function() {
         populateClasses(this.value);
+        populateSubjects(this.value);
       };
       
       // Show level badge
       schoolLevelBadge.style.display = 'inline-flex';
-      schoolLevelText.textContent = level === 'Primary' ? 'Shule ya Msingi' : 'Shule ya Sekondari';
+      schoolLevelText.textContent = level === 'Primary' ? 'Shule ya Msingi' : (isTech ? 'Chuo cha VETA / Technical' : 'Shule ya Sekondari');
       
-      // Populate classes
+      // Populate classes + subjects
       populateClasses(eduLevelId);
+      populateSubjects(eduLevelId);
       document.getElementById('classField').style.display = 'block';
     }
   }
@@ -683,7 +702,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     let html = '';
     data.forEach(function(s) {
-      const levelLabel = s.level === 'Primary' ? 'Msingi' : 'Sekondari';
+      const isTech = s.level === 'Technical' || s.level === 'VETA';
+      const levelLabel = s.level === 'Primary' ? 'Msingi' : (isTech ? 'VETA' : 'Sekondari');
       html += `<div class="school-result-item" data-id="${s.id}" data-name="${s.name}" data-level="${s.level}">
         <span class="school-name">${s.name}</span>
         <span class="school-meta">${levelLabel} &middot; ${s.district_name || ''}</span>

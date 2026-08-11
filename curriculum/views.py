@@ -558,12 +558,29 @@ def teacher_register(request):
     classes_by_level = {}
     for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
         classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
+
+    # Masomo kwa kila ngazi ya elimu (Primary→primary, Technical/VETA→technical, n.k.)
+    def _subjects_for_level(level_name):
+        ln = (level_name or '').lower()
+        if 'primary' in ln:
+            return list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name'))
+        if 'technical' in ln or 'veta' in ln:
+            return list(Subject.objects.filter(level='technical').order_by('name').values('id', 'name'))
+        if 'advanced' in ln:
+            return list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name'))
+        return list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name'))
+
+    subjects_by_level = {
+        lvl.id: _subjects_for_level(lvl.name)
+        for lvl in education_levels
+    }
     
     return render(request, 'curriculum/teacher_register.html', {
         'regions': regions,
         'subjects': subjects,
         'education_levels': education_levels,
         'classes_by_level_json': _json.dumps(classes_by_level),
+        'subjects_by_level_json': _json.dumps(subjects_by_level),
     })
 
 
@@ -1272,6 +1289,9 @@ def generate_scheme_view(request):
             return list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name'))
         elif 'advanced' in name_lower:
             return list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name'))
+        elif 'technical' in name_lower or 'veta' in name_lower:
+            # Technical / VETA → technical subjects
+            return list(Subject.objects.filter(level='technical').order_by('name').values('id', 'name'))
         else:
             # Ordinary Level → secondary subjects
             return list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name'))
@@ -2229,6 +2249,9 @@ def lesson_plan_view(request):
             return list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name'))
         elif 'advanced' in name_lower:
             return list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name'))
+        elif 'technical' in name_lower or 'veta' in name_lower:
+            # Technical / VETA → technical subjects
+            return list(Subject.objects.filter(level='technical').order_by('name').values('id', 'name'))
         else:
             # Ordinary Level → secondary subjects
             return list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name'))
@@ -3414,6 +3437,8 @@ def _tlm_subjects(teacher):
             return Subject.objects.filter(level='primary').order_by('name')
         if 'advanced' in sl or 'a level' in sl:
             return Subject.objects.filter(level='advanced').order_by('name')
+        if 'technical' in sl or 'veta' in sl:
+            return Subject.objects.filter(level='technical').order_by('name')
         if 'secondary' in sl:
             return Subject.objects.filter(level='secondary').order_by('name')
     return Subject.objects.all().order_by('name')
@@ -3928,6 +3953,9 @@ def get_subjects_by_level(request):
         subjects = Subject.objects.filter(level='primary').order_by('name')
     elif 'advanced' in level.name.lower():
         subjects = Subject.objects.filter(level='advanced').order_by('name')
+    elif 'technical' in level.name.lower() or 'veta' in level.name.lower():
+        # Technical / VETA → technical subjects
+        subjects = Subject.objects.filter(level='technical').order_by('name')
     else:
         # Ordinary Level → secondary subjects
         subjects = Subject.objects.filter(level='secondary').order_by('name')

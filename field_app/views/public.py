@@ -16,12 +16,31 @@ from .models import (
 from .utils import _cached_active_year
 
 
+def _subject_lists():
+    """Primary / Secondary / Technical subject name lists for the head form."""
+    return (
+        list(Subject.objects.filter(level='primary').order_by('name').values_list('name', flat=True)),
+        list(Subject.objects.filter(level='secondary').order_by('name').values_list('name', flat=True)),
+        list(Subject.objects.filter(level='technical').order_by('name').values_list('name', flat=True)),
+    )
+
+
 def public_school_head_form(request):
     """General public form for any school head in Tanzania."""
     current_year = _cached_active_year()
     regions = Region.objects.all().order_by('name')
-    primary_subjects   = list(Subject.objects.filter(level='primary').order_by('name').values_list('name', flat=True))
-    secondary_subjects = list(Subject.objects.filter(level='secondary').order_by('name').values_list('name', flat=True))
+    primary_subjects, secondary_subjects, technical_subjects = _subject_lists()
+
+    def _ctx(**extra):
+        ctx = {
+            'regions': regions,
+            'primary_subjects': primary_subjects,
+            'secondary_subjects': secondary_subjects,
+            'technical_subjects': technical_subjects,
+            'current_year': current_year,
+        }
+        ctx.update(extra)
+        return ctx
 
     if request.method == 'POST':
         school_id  = request.POST.get('school_id', '').strip()
@@ -29,7 +48,8 @@ def public_school_head_form(request):
         head_phone = request.POST.get('head_phone', '').strip()
         notes      = request.POST.get('notes', '').strip()
 
-        school = School.objects.filter(id=school_id).select_related('district__region').first()
+        school = (School.objects.filter(id=school_id).select_related('district__region').first()
+                  if school_id else None)
 
         subjects_needed_json = {}
         i = 1
@@ -55,14 +75,8 @@ def public_school_head_form(request):
             error = 'Tafadhali ongeza angalau somo moja na idadi inayohitajika.'
 
         if error:
-            return render(request, 'field_app/public_school_head_form.html', {
-                'regions': regions,
-                'primary_subjects': primary_subjects,
-                'secondary_subjects': secondary_subjects,
-                'current_year': current_year,
-                'error': error,
-                'post': request.POST,
-            })
+            return render(request, 'field_app/public_school_head_form.html', _ctx(
+                error=error, post=request.POST))
 
         SchoolHeadRequest.objects.create(
             district=school.district,
@@ -89,26 +103,17 @@ def public_school_head_form(request):
             school_id = request.POST.get('school_id', '').strip()
             school = School.objects.filter(id=school_id).first()
             if not school:
-                return render(request, 'field_app/public_school_head_form.html', {
-                    'stage': 'verify',
-                    'error': 'Shule haikutambuliwa. Jaribu tena.',
-                    'current_year': current_year,
-                    'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
-                })
+                return render(request, 'field_app/public_school_head_form.html', _ctx(
+                    stage='verify', error='Shule haikutambuliwa. Jaribu tena.'))
             already = SchoolHeadRequest.objects.filter(
                 school=school, academic_year=current_year,
             ).exclude(status='rejected').exists()
             if already:
-                return render(request, 'field_app/public_school_head_form.html', {
-                    'stage': 'verify',
-                    'error': f'Shule ya {school.name} tayari imetuma ombi kwa mwaka huu.',
-                    'current_year': current_year,
-                    'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
-                })
-            return render(request, 'field_app/public_school_head_form.html', {
-                'stage': 'form', 'school': school, 'current_year': current_year,
-                'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
-            })
+                return render(request, 'field_app/public_school_head_form.html', _ctx(
+                    stage='verify',
+                    error=f'Shule ya {school.name} tayari imetuma ombi kwa mwaka huu.'))
+            return render(request, 'field_app/public_school_head_form.html', _ctx(
+                stage='form', school=school))
 
         if stage == 'verify':
             query = request.POST.get('school_code', '').strip()
@@ -131,22 +136,14 @@ def public_school_head_form(request):
                 matches = qs.filter(name__icontains=name_query or query).order_by('level', 'name')[:10]
 
                 if not matches:
-                    return render(request, 'field_app/public_school_head_form.html', {
-                        'stage': 'verify',
-                        'error': f'"{query}" haikupatikana. Jaribu namba ya usajili (S.2895) au sehemu ya jina la shule.',
-                        'current_year': current_year,
-                        'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
-                    })
+                    return render(request, 'field_app/public_school_head_form.html', _ctx(
+                        stage='verify',
+                        error=f'"{query}" haikupatikana. Jaribu namba ya usajili (S.2895) au sehemu ya jina la shule.'))
                 if len(matches) == 1:
                     school = matches[0]
                 else:
-                    return render(request, 'field_app/public_school_head_form.html', {
-                        'stage': 'select',
-                        'matches': matches,
-                        'query': query,
-                        'current_year': current_year,
-                        'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
-                    })
+                    return render(request, 'field_app/public_school_head_form.html', _ctx(
+                        stage='select', matches=matches, query=query))
 
             already = SchoolHeadRequest.objects.filter(
                 school=school, academic_year=current_year,
@@ -154,24 +151,14 @@ def public_school_head_form(request):
             if already:
                 bm = BoardMember.objects.filter(school=school, role='head_teacher', is_active=True).first()
                 request.session['ombi_school_id'] = school.id
-                return render(request, 'field_app/public_school_head_form.html', {
-                    'stage': 'goto_login',
-                    'school': school,
-                    'has_account': bm is not None,
-                    'needs_password': bm is not None and not bm.user.has_usable_password(),
-                    'current_year': current_year,
-                    'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
-                })
-            return render(request, 'field_app/public_school_head_form.html', {
-                'stage': 'form', 'school': school, 'current_year': current_year,
-                'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
-            })
+                return render(request, 'field_app/public_school_head_form.html', _ctx(
+                    stage='goto_login', school=school,
+                    has_account=bm is not None,
+                    needs_password=bm is not None and not bm.user.has_usable_password()))
+            return render(request, 'field_app/public_school_head_form.html', _ctx(
+                stage='form', school=school))
 
-    return render(request, 'field_app/public_school_head_form.html', {
-        'stage': 'verify',
-        'current_year': current_year,
-        'regions': regions, 'primary_subjects': primary_subjects, 'secondary_subjects': secondary_subjects,
-    })
+    return render(request, 'field_app/public_school_head_form.html', _ctx(stage='verify'))
 
 
 def school_head_submit(request, district_id):
@@ -180,8 +167,7 @@ def school_head_submit(request, district_id):
     current_year = _cached_active_year()
     schools = School.objects.filter(district=district).order_by('level', 'name')
 
-    primary_subjects = list(Subject.objects.filter(level='primary').order_by('name').values_list('name', flat=True))
-    secondary_subjects = list(Subject.objects.filter(level='secondary').order_by('name').values_list('name', flat=True))
+    primary_subjects, secondary_subjects, technical_subjects = _subject_lists()
 
     if request.method == 'POST':
         school_name = request.POST.get('school_name', '').strip()
@@ -246,4 +232,5 @@ def school_head_submit(request, district_id):
         'current_year': current_year,
         'primary_subjects': primary_subjects,
         'secondary_subjects': secondary_subjects,
+        'technical_subjects': technical_subjects,
     })

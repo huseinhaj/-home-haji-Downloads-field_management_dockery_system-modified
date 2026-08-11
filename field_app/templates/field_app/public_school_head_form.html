@@ -208,6 +208,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
 <script>
 const PRIMARY_SUBJECTS   = {{ primary_subjects|safe }};
 const SECONDARY_SUBJECTS = {{ secondary_subjects|safe }};
+const TECHNICAL_SUBJECTS = {{ technical_subjects|safe }};
 
 let currentSubjects = [];
 let rowCount = 0;
@@ -249,8 +250,9 @@ function loadSchools(districtId) {
   Promise.all([
     fetch(base + 'Primary').then(r => r.json()),
     fetch(base + 'Secondary').then(r => r.json()),
+    fetch(base + 'Technical').then(r => r.json()),
   ]).then(function(results) {
-    const all = (results[0].schools || []).concat(results[1].schools || []);
+    const all = (results[0].schools || []).concat(results[1].schools || []).concat(results[2].schools || []);
     all.sort(function(a, b) { return a.name.localeCompare(b.name); });
     sSel.innerHTML = '<option value="">-- Chagua Shule --</option>';
     all.forEach(function(s) {
@@ -273,11 +275,20 @@ function onSchoolChange(sel) {
 
   const hint = document.getElementById('levelHint');
   if (level) {
-    const isP = level.toLowerCase().includes('primary');
-    hint.innerHTML = '<span class="level-badge ' + (isP ? 'level-primary' : 'level-secondary') + '">' +
-      '<i class="fas fa-school" style="margin-right:4px;"></i>' + (isP ? 'Shule ya Msingi' : 'Shule ya Sekondari') + '</span>';
+    const lvl = level.toLowerCase();
+    let label = 'Shule ya Sekondari';
+    let badge = 'level-secondary';
+    if (lvl.includes('primary')) {
+      label = 'Shule ya Msingi'; badge = 'level-primary';
+    } else if (lvl.includes('technical') || lvl.includes('veta')) {
+      label = 'Chuo cha VETA / Technical'; badge = 'level-secondary';
+    }
+    hint.innerHTML = '<span class="level-badge ' + badge + '">' +
+      '<i class="fas fa-school" style="margin-right:4px;"></i>' + label + '</span>';
     hint.style.display = 'block';
-    currentSubjects = isP ? PRIMARY_SUBJECTS : SECONDARY_SUBJECTS;
+    currentSubjects = lvl.includes('primary') ? PRIMARY_SUBJECTS
+      : (lvl.includes('technical') || lvl.includes('veta')) ? TECHNICAL_SUBJECTS
+      : SECONDARY_SUBJECTS;
   } else {
     hint.style.display = 'none';
     currentSubjects = SECONDARY_SUBJECTS;

@@ -183,6 +183,7 @@ class School(models.Model):
     SCHOOL_LEVEL_CHOICES = [
         ('Primary', 'Primary School'),
         ('Secondary', 'Secondary School'),
+        ('Technical', 'Technical School / VETA College'),
     ]
     OWNERSHIP_CHOICES = [
         ('government', 'Serikali'),
@@ -221,6 +222,7 @@ class Subject(models.Model):
         ('primary', 'Primary'),
         ('secondary', 'Secondary'),
         ('advanced', 'Advanced'),
+        ('technical', 'Technical / Vocational'),
     ]
 
     name = models.CharField(max_length=100)
