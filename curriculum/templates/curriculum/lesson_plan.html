@@ -1259,8 +1259,20 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('progressSubtitle').textContent = `Inazalisha ${topicName}... (${i + 1}/${totalTopics})`;
         progressBar.style.width = `${percent}%`;
         
+        // ── Fetch the first subtopic of this topic (from TIE syllabus DB) ──
+        // so every full-subject lesson plan is as COMPLETE as single-topic mode.
+        let subtopicName = '';
+        if (topic.id) {
+          try {
+            const subResp = await fetch(`{% url 'curriculum:get_subtopics_db' %}?topic_id=${topic.id}`).then(r => r.json());
+            if (subResp.success && subResp.subtopics && subResp.subtopics.length > 0) {
+              subtopicName = subResp.subtopics[0].name;
+            }
+          } catch (e) { /* subtopic inabaki tupu — backend itaijaza */ }
+        }
+        
         // Prepare request data for this single topic
-        const topicData = { ...fd, topic: topicName, subtopic: '', topic_index: i, total_topics: totalTopics };
+        const topicData = { ...fd, topic: topicName, subtopic: subtopicName, topic_index: i, total_topics: totalTopics };
         
         const resp = await jsonFetch('{% url "curriculum:ajax_generate_one_lesson" %}', {
           method: 'POST',

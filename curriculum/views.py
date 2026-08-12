@@ -5133,7 +5133,13 @@ Return ONLY the JSON object. ALL content must be specific to {topic.name}."""
 @require_POST
 def ajax_generate_one_lesson(request):
     """Generate a single lesson plan for a given topic. Used by the frontend
-    to iterate topic-by-topic with real-time progress."""
+    to iterate topic-by-topic with real-time progress.
+
+    NOTE: Uses the SAME rich prompt as the single-topic generator
+    (ajax_generate_lessonplan) so that "Generate Full Subject" produces
+    equally COMPLETE lesson plans — student statistics, numbered
+    competences, content matching, TIE references, detailed IDDR stages.
+    """
     if client is None:
         return JsonResponse({'success': False, 'error': 'AI haitumiki'}, status=503)
     if request.method != 'POST':
@@ -5155,6 +5161,13 @@ def ajax_generate_one_lesson(request):
         duration = int(data.get('duration', 40))
         total_boys = data.get('total_boys', '')
         total_girls = data.get('total_girls', '')
+        total_students = data.get('total_students', '')
+        present_boys = data.get('present_boys', '')
+        present_girls = data.get('present_girls', '')
+        present_students = data.get('present_students', '')
+        absent_boys = data.get('absent_boys', '')
+        absent_girls = data.get('absent_girls', '')
+        absent_students = data.get('absent_students', '')
         teacher_name = data.get('teacher_name', '')
         school_name = data.get('school_name', '')
         topic_name = data.get('topic', '').strip()
@@ -5182,14 +5195,33 @@ def ajax_generate_one_lesson(request):
         if not subj_obj:
             return JsonResponse({'success': False, 'error': f'Somo "{subject_name}" halipatikani'}, status=404)
 
+        # ── Auto-fill subtopic from syllabus (DB) if not provided ──
+        # (Full Subject mode sends no subtopic — we fetch the first real
+        #  subtopic so every lesson plan is as complete as single-topic.)
+        if not subtopic_name and subj_obj:
+            # Class-scoped first (like ajax_get_topics_db), then broad fallback
+            topic_row = (
+                SubjectTopic.objects.filter(
+                    subject=subj_obj, class_name__iexact=class_name,
+                    name__iexact=topic_name,
+                ).first()
+                or SubjectTopic.objects.filter(
+                    subject=subj_obj, name__iexact=topic_name,
+                ).first()
+            )
+            if topic_row:
+                first_sub = TopicSubtopic.objects.filter(topic=topic_row).order_by('order').first()
+                if first_sub:
+                    subtopic_name = first_sub.name
+
         # ── Language: manual selection or auto-detect ──
         _lp_tlm = teacher  # Already fetched
         _lp_language = data.get('language', getattr(_lp_tlm, 'preferred_language', 'auto') if _lp_tlm else 'auto')
         _lp_school_level = _lp_tlm.school.level if _lp_tlm and _lp_tlm.school else ''
         lp_language_instruction = _get_lp_language_instruction(_lp_language, subject_name, _lp_school_level)
 
-        # Build prompt
-        prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom.
+        # ── RICH PROMPT — same quality as the single-topic generator ──
+        prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom following the OFFICIAL TAMISEMI (PRIME MINISTER'S OFFICE - REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT) format.
 
 ============================================
 PRIME MINISTER'S OFFICE
@@ -5206,37 +5238,66 @@ Date: {datetime.now().strftime('%d/%m/%Y')}
 Main Topic: {topic_name}
 Sub-topic: {subtopic_name or 'N/A'}
 
-Main Competence: Numbered format from Tanzanian syllabus for {subject_name} {full_class}.
-Specific Competence: The specific competence for {topic_name}.
+Main Competence: Numbered format "1.0 Topic Name" - the REAL numbered competence from the Tanzanian syllabus for this subject/class.
+Specific Competence: The REAL specific competence from the syllabus for this subtopic.
 
 Term: {term}, Year: {year}
 Duration: {duration} minutes
+
 {lp_language_instruction}
 
-Content MUST relate to Subject: {subject_name}, Class: {full_class}, Topic: \"{topic_name}\".
+-- STUDENT STATISTICS --
+Registered Boys: {total_boys or 'N/A'}, Registered Girls: {total_girls or 'N/A'}, Total: {total_students or 'N/A'}
+Present Boys: {present_boys or 'N/A'}, Present Girls: {present_girls or 'N/A'}, Present Total: {present_students or 'N/A'}
+Absent Boys: {absent_boys or 'N/A'}, Absent Girls: {absent_girls or 'N/A'}, Absent Total: {absent_students or 'N/A'}
 
-Lesson Development uses the IDDR Model (Introduction, Competence Development, Design, Realisation).
-Use CBC methodologies: Brainstorming, Group discussion, Jigsaw, Q&A, Demonstration.
+-- TEACHING PROCESS (IDDR Model) --
+
+CRITICAL REQUIREMENTS - MUST FOLLOW EXACTLY:
+
+!!! CONTENT MATCHING (CRITICAL): ALL content below MUST be specifically about:
+   - Subject: {subject_name} (do NOT use a different subject)
+   - Class: {full_class} (do NOT use a different form level)
+   - Main Topic: \"{topic_name}\" (ALL content must relate DIRECTLY to this topic)
+   - Sub-topic: \"{subtopic_name or 'N/A'}\" (ALL content must relate DIRECTLY to this subtopic)
+   FAILURE: If you use content for a different topic, subject, or class, the output is WRONG.
+
+1. main_competence: Use numbered format like \"1.0 Topic Name\" - the REAL Tanzanian syllabus competence for {subject_name} {full_class}
+2. specific_competence: REAL subtopic-specific competence from the {subject_name} syllabus for this subtopic
+3. specific_activity: Start with \"By the end of this lesson, students should be able to:\" then list 2-3 measurable outcomes SPECIFIC to \"{topic_name}\" and \"{subtopic_name or 'N/A'}\"
+4. references: Use the LATEST TIE textbook format - \"Tanzania Institute of Education. (2024). {subject_name} for Secondary Schools Student's Book. Tanzania Institute of Education.\" If primary: \"Tanzania Institute of Education. (2024). {subject_name} for Primary Schools Pupil's Book. Tanzania Institute of Education.\"
+5. teaching_resources: MUST include specific, real resources for THIS topic (not generic) - e.g. TIE textbook pages, charts, real specimens, manila sheets, markers
+6. remarks: Must be a detailed paragraph evaluating student achievement, specific challenges faced, and concrete way forward
+7. student_statistics: Provide registered/present counts for girls and boys
+
+!!! ALL lesson_development stages MUST use the EXACT topic \"{topic_name}\" and subtopic \"{subtopic_name or 'N/A'}\":
+   - Introduction: relate directly to \"{topic_name}\"
+   - Competence Development: explore \"{topic_name}\" / \"{subtopic_name or 'N/A'}\" specifically
+   - Design: apply \"{topic_name}\" in real-life contexts
+   - Realisation: assess understanding of \"{topic_name}\" / \"{subtopic_name or 'N/A'}\"
+
+Lesson Development uses the IDDR Model with these 5 columns per stage: stage, time, teaching_activities, learning_activities, assessment_criteria. Each stage MUST have detailed, Tanzania-specific content using CBC methodologies.
 
 Output ONLY valid JSON with this EXACT structure.
 ⚠️ LANGUAGE REMINDER: ALL text values MUST be in the language specified by the LANGUAGE instruction above. If Kiswahili -> ALL values KISWAHILI. If English -> ALL values ENGLISH. CHECK every field before outputting!
 {{
-    \"main_competence\": \"[Competence in the language specified above]\",
-    \"specific_competence\": \"[Specific competence in the language specified above]\",
-    \"main_activity\": \"[Main activity in the language specified above]\",
-    \"specific_activity\": \"[Specific activity in the language specified above]\",
-    \"teaching_resources\": \"[Resources in the language specified above]\",
-    \"references\": \"[References in the language specified above]\",
-    \"lesson_development\": [
-        {{\"stage\": \"[Stage 1 - language specified]\", \"time\": \"{intro_time:02d}\", \"teaching_activities\": \"[language specified]\", \"learning_activities\": \"[language specified]\", \"assessment_criteria\": \"[language specified]\"}},
-        {{\"stage\": \"[Stage 2 - language specified]\", \"time\": \"{dev_time:02d}\", \"teaching_activities\": \"[language specified]\", \"learning_activities\": \"[language specified]\", \"assessment_criteria\": \"[language specified]\"}},
-        {{\"stage\": \"[Stage 3 - language specified]\", \"time\": \"{design_time:02d}\", \"teaching_activities\": \"[language specified]\", \"learning_activities\": \"[language specified]\", \"assessment_criteria\": \"[language specified]\"}},
-        {{\"stage\": \"[Stage 4 - language specified]\", \"time\": \"{real_time:02d}\", \"teaching_activities\": \"[language specified]\", \"learning_activities\": \"[language specified]\", \"assessment_criteria\": \"[language specified]\"}}
+    "main_competence": "1.0 [Competence description in the language specified above]",
+    "specific_competence": "[Specific competence in the language specified above]",
+    "main_activity": "[Main learning activity in the language specified above]",
+    "specific_activity": "[Specific learning activity in the language specified above]",
+    "teaching_resources": "[Teaching resources in the language specified above]",
+    "references": "[References in the language specified above]",
+    "student_statistics": {{"registered_girls": "", "registered_boys": "", "present_girls": "", "present_boys": ""}},
+    "lesson_development": [
+        {{"stage": "[Stage 1 name in the language specified]", "time": "{intro_time:02d}", "teaching_activities": "[Description in the language specified]", "learning_activities": "[Description in the language specified]", "assessment_criteria": "[Criteria in the language specified]"}},
+        {{"stage": "[Stage 2 name in the language specified]", "time": "{dev_time:02d}", "teaching_activities": "[Description in the language specified]", "learning_activities": "[Description in the language specified]", "assessment_criteria": "[Criteria in the language specified]"}},
+        {{"stage": "[Stage 3 name in the language specified]", "time": "{design_time:02d}", "teaching_activities": "[Description in the language specified]", "learning_activities": "[Description in the language specified]", "assessment_criteria": "[Criteria in the language specified]"}},
+        {{"stage": "[Stage 4 name in the language specified]", "time": "{real_time:02d}", "teaching_activities": "[Description in the language specified]", "learning_activities": "[Description in the language specified]", "assessment_criteria": "[Criteria in the language specified]"}}
     ],
-    \"remarks\": \"[Remarks in the language specified above]\"
+    "remarks": "[Remarks in the language specified above]"
 }}
 
-Return ONLY the JSON object. ALL content must be specific to {topic_name}."""
+All text values must be plain strings. Use REAL Tanzanian content. Return ONLY the JSON object, no extra text."""
 
         response = client.models.generate_content(model=model_name, contents=prompt)
         response_text = response.text
@@ -5255,55 +5316,84 @@ Return ONLY the JSON object. ALL content must be specific to {topic_name}."""
                 try:
                     lesson_data = json.loads(_sanitize_json_control_chars(json_str))
                 except json.JSONDecodeError:
-                    pass
+                    lesson_data = None
 
-        if lesson_data:
-            tr = lesson_data.get('teaching_resources', '')
-            if isinstance(tr, str):
-                tr = [x.strip() for x in tr.split(',') if x.strip()] or ['TIE textbook']
+        if lesson_data is None:
+            # Fallback: sensible defaults (same as single-topic generator) so
+            # a Full Subject run never fails on a JSON parsing hiccup.
+            lesson_data = {
+                "main_competence": f"1.0 {topic_name} - Demonstrate understanding of {topic_name}",
+                "specific_competence": f"Explain key concepts of {topic_name} based on the Tanzanian syllabus",
+                "main_activity": f"Within 1 period students should be able to describe and apply {topic_name}",
+                "specific_activity": f"By the end of this lesson, students should be able to:\n- Define {topic_name}\n- Explain key concepts of {topic_name}\n- Apply {topic_name} in real-life situations",
+                "teaching_resources": "TIE textbook, Chalkboard/Whiteboard, Charts, Real objects, Manila sheets, Markers",
+                "references": f"Tanzania Institute of Education. (2024). {subject_name} for Secondary Schools Student's Book. Tanzania Institute of Education.",
+                "lesson_development": [
+                    {"stage": "Introduction", "time": f"{intro_time:02d}", "teaching_activities": f"Display pictures/video about {topic_name}. Ask students questions to activate prior knowledge.", "learning_activities": "Observe pictures and respond to questions.", "assessment_criteria": "Questions about the lesson are answered."},
+                    {"stage": "Competence Development", "time": f"{dev_time:02d}", "teaching_activities": f"Guide students in groups to explore {topic_name}. Provide guiding questions and resources.", "learning_activities": "Discuss in groups and share findings.", "assessment_criteria": "Concepts taught are clearly explained."},
+                    {"stage": "Design", "time": f"{design_time:02d}", "teaching_activities": f"Ask students to apply knowledge of {topic_name} in real-life contexts through exercises.", "learning_activities": "Complete exercises and present findings.", "assessment_criteria": "Correct application of concepts."},
+                    {"stage": "Realisation", "time": f"{real_time:02d}", "teaching_activities": "Assess student understanding through oral questions or short quiz. Provide feedback.", "learning_activities": "Respond to assessment questions and reflect.", "assessment_criteria": "Achievement of lesson objectives."}
+                ],
+                "student_statistics": {"registered_girls": "", "registered_boys": "", "present_girls": "", "present_boys": ""},
+                "remarks": f"The students were able to explain {topic_name} due to the use of interactive teaching and learning methods. However, some students need more clarification. I will address this in the next lesson through remedial activities."
+            }
 
-            ed_level = ({'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}).get((education_level or '').lower(), 'ordinary')
+        tr = lesson_data.get('teaching_resources', '')
+        if isinstance(tr, str):
+            tr = [x.strip() for x in tr.split(',') if x.strip()] or ['TIE textbook']
 
-            lp = LessonPlan.objects.create(
-                student=None,
-                school=school_obj,
-                subject=subj_obj,
-                class_name=class_name,
-                term=term,
-                year=int(year),
-                teacher_name=teacher_name or teacher.full_name,
-                topic=topic_name,
-                subtopic=subtopic_name or '',
-                date=timezone.now().date(),
-                duration=duration,
-                education_level=ed_level,
-                main_competence=lesson_data.get('main_competence', ''),
-                specific_competence=lesson_data.get('specific_competence', ''),
-                previous_knowledge=lesson_data.get('main_activity', lesson_data.get('specific_activity', '')),
-                learning_objectives=[lesson_data.get('specific_activity', 'By the end students should be able to...')],
-                teaching_methods=[],
-                teaching_resources=tr,
-                lesson_development=lesson_data.get('lesson_development', []),
-                remarks=lesson_data.get('remarks', ''),
-                generated_by_ai=True,
-            )
+        ed_level = ({'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}).get((education_level or '').lower(), 'ordinary')
 
-            return JsonResponse({
-                'success': True,
-                'lp_id': lp.id,
-                'topic': topic_name,
-                'topic_index': topic_index,
-                'total_topics': total_topics,
-                'data': lesson_data,
+        # Build lesson_development for DB (map new keys to old keys, same as single-topic)
+        lp_development = []
+        for stage in lesson_data.get('lesson_development', []):
+            lp_development.append({
+                'stage': stage.get('stage', ''),
+                'time': stage.get('time', '') + ' min',
+                'teacher_activities': stage.get('teaching_activities', ''),
+                'student_activities': stage.get('learning_activities', ''),
+                'assessment_criteria': stage.get('assessment_criteria', ''),
             })
-        else:
-            return JsonResponse({
-                'success': False,
-                'error': 'AI ilishindwa kuchakata response',
-                'topic': topic_name,
-                'topic_index': topic_index,
-                'total_topics': total_topics,
-            }, status=422)
+
+        lp = LessonPlan.objects.create(
+            student=None,
+            school=school_obj,
+            subject=subj_obj,
+            class_name=class_name,
+            term=term,
+            year=int(year),
+            teacher_name=teacher_name or teacher.full_name,
+            topic=topic_name,
+            subtopic=subtopic_name or '',
+            date=timezone.now().date(),
+            duration=duration,
+            education_level=ed_level,
+            total_boys=int(total_boys) if total_boys else 0,
+            total_girls=int(total_girls) if total_girls else 0,
+            total_students=int(total_students) if total_students else 0,
+            present_boys=int(present_boys) if present_boys else 0,
+            present_girls=int(present_girls) if present_girls else 0,
+            present_students=int(present_students) if present_students else 0,
+            main_competence=lesson_data.get('main_competence', ''),
+            specific_competence=lesson_data.get('specific_competence', ''),
+            previous_knowledge=lesson_data.get('specific_activity', ''),
+            learning_objectives=[lesson_data.get('specific_activity', 'By the end students should be able to...')],
+            teaching_methods=[],
+            teaching_resources=tr,
+            lesson_development=lp_development,
+            remarks=lesson_data.get('remarks', ''),
+            generated_by_ai=True,
+        )
+
+        return JsonResponse({
+            'success': True,
+            'lp_id': lp.id,
+            'topic': topic_name,
+            'subtopic': subtopic_name or '',
+            'topic_index': topic_index,
+            'total_topics': total_topics,
+            'data': lesson_data,
+        })
 
     except Exception as e:
         import traceback
