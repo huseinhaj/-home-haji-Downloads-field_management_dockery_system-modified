@@ -1,11 +1,19 @@
+import logging
+
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import FeeBill, FeeItem, Payment
 from .services import generate_control_number, control_number_is_valid, refresh_bill_status
 from .forms import FeeItemForm, PaymentSubmissionForm
+from . import gepg
+
+logger = logging.getLogger(__name__)
 
 
 # ───────────────────────────── Student actions ─────────────────────────────
@@ -87,6 +95,55 @@ def submit_payment(request, bill_id):
             return redirect('dashboard')
         messages.error(request, 'Tafadhali sahihisha makosa kwenye fomu.')
     return redirect('dashboard')
+
+
+# ───────────────────────────── GePG webhook (malipo otomatiki) ─────────────────────────────
+
+@csrf_exempt
+def gepg_notification(request):
+    """Webhook ya GePG — malipo yanathibitishwa MOJA KWA MOJA.
+
+    GePG inatuma taarifa ya malipo hapa (XML au JSON kwa sandbox testing)
+    baada ya mwanafunzi kulipa kwa control number. Ikiwa
+    TTC_GEPG_NOTIFICATION_TOKEN imewekwa, ombi lazima liwe na header
+    `X-GEPG-Token` (au `?token=`) inayolingana.
+    """
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    token = getattr(settings, 'TTC_GEPG_NOTIFICATION_TOKEN', '')
+    supplied = request.headers.get('X-GEPG-Token') or request.GET.get('token', '')
+    if token and supplied != token:
+        return HttpResponse(
+            '<Gepg><gepgPaymentAck><StsCode>7202</StsCode>'
+            '<Desc>Invalid token</Desc></gepgPaymentAck></Gepg>',
+            content_type='application/xml', status=401,
+        )
+
+    try:
+        bill, payment, created = gepg.handle_payment_notification(request.body)
+    except Exception:
+        logger.exception('GePG notification processing error')
+        return HttpResponse(
+            '<Gepg><gepgPaymentAck><StsCode>7201</StsCode>'
+            '<Desc>Processing error</Desc></gepgPaymentAck></Gepg>',
+            content_type='application/xml', status=500,
+        )
+
+    if bill is None:
+        return HttpResponse(
+            '<Gepg><gepgPaymentAck><StsCode>7201</StsCode>'
+            '<Desc>Control number not found</Desc></gepgPaymentAck></Gepg>',
+            content_type='application/xml', status=404,
+        )
+
+    if created:
+        logger.info('GePG webhook: malipo mapya yamethibitishwa (payment=%s)', payment.pk)
+    return HttpResponse(
+        '<Gepg><gepgPaymentAck><StsCode>7101</StsCode>'
+        '<Desc>SUCCESSFUL</Desc></gepgPaymentAck></Gepg>',
+        content_type='application/xml',
+    )
 
 
 # ───────────────────────────── College admin: fees & payments ─────────────────────────────

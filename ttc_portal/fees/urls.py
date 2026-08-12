@@ -2,6 +2,8 @@ from django.urls import path
 from fees import views
 
 urlpatterns = [
+    # GePG webhook — malipo yanathibitishwa kiotomatiki (csrf_exempt)
+    path('api/gepg/notification/', views.gepg_notification, name='gepg_notification'),
     # Student actions (SR2-style)
     path('dashboard/generate/<int:bill_id>/', views.generate_control, name='generate_control'),
     path('dashboard/pay/<int:bill_id>/', views.submit_payment, name='submit_payment'),

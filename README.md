@@ -22,20 +22,15 @@ Katika Railway service hii (hazigusi mipangilio iliyopo):
 |---|---|---|
 | `TTC_PORTAL_ENABLED` | `true` | Anzisha TTC portal + nginx ya container |
 | `TTC_DATABASE_URL` | `postgresql://...` | **Postgres yake tofauti kabisa** (undaa DB mpya kwenye Railway) |
-| `TTC_SECRET_KEY` | `...` | Secret key ya TTC (hiyo ndiyo DB yake) |
-| `TTC_SEED_DEMO` | `true` *(kwanza tu)* | Unda akaunti za demo (admin/admin123 nk). Production usiweke — tumia `createsuperuser` |
+| `TTC_SECRET_KEY` | `...` | Secret key ya TTC |
+| `TTC_SUPERUSER_EMAIL` | `yako@chuo.ac.tz` | Super admin ya TTC (pamoja na `TTC_SUPERUSER_PASSWORD`) — **hakuna demo accounts!** |
+| `TTC_SUPERUSER_PASSWORD` | `...` | Nywila ya super admin ya TTC |
+| `TTC_GEPG_*` | *(hiari)* | Credentials za **GePG halisi** (control numbers halisi + malipo otomatiki) — tazama `ttc_portal/README.md` |
 
 > **MUHIMU:** TTC inasoma `TTC_DATABASE_URL` TU — haigusi kamwe `DATABASE_URL`
 > yako ya field_management. Postgres ya TTC ni **service tofauti** kwenye Railway.
-> Akaunti za demo (`admin/admin123`) huundwa TU ukiweka `TTC_SEED_DEMO=true` —
-> usiweke flag hii production.
->
-> **Kusafisha demo baada ya majaribio** (demo accounts hubaki DB hata ukiondoa
-> flag): endesha kwenye DB ya TTC:
-> ```sql
-> DELETE FROM accounts_customuser WHERE username IN ('admin','kasulu_admin','KAS/2026/014','BUT/2026/007','MOR/2026/021');
-> ```
-> kisha tengeneza super admin yako mwenyewe: `python manage.py createsuperuser`.
+> **Hakuna akaunti za demo** — super admin inaundwa kwa `TTC_SUPERUSER_EMAIL` +
+> `TTC_SUPERUSER_PASSWORD` (au `createsuperuser`).
 
 ### 🚀 Hatua za kuset up kwenye Railway
 
@@ -48,21 +43,14 @@ Katika Railway service hii (hazigusi mipangilio iliyopo):
 3. Push kwenye `main` → inadeploy → fungua **`https://domain/ttc/`**.
 
 Mara ya kwanza container inafanya **migrations + seed** za TTC kiotomatiki
-(vyuo 33, wasimamizi, wanafunzi wa mfano) kabla ya kuanza nginx. Kumbuka:
+(vyuo 33 + programu + ada) kabla ya kuanza nginx. Super admin inaundwa kutoka
+`TTC_SUPERUSER_EMAIL`/`TTC_SUPERUSER_PASSWORD` — **hakuna akaunti za demo**.
 
-- Seed ya **vyuo/programu/ada** inafanyika siku zote (data halisi).
-- **Akaunti za demo** huundwa TU ikiwa `TTC_SEED_DEMO=true` (au DEBUG) —
-  production zinafanywa kupitia `createsuperuser` kwa usalama.
-
-### 🔑 Akaunti za demo (baada ya seed)
-
-| Wajibu | Username | Nywila |
-|---|---|---|
-| Super Admin | `admin` | `admin123` |
-| Msimamizi wa Kasulu TC | `kasulu_admin` | `admin123` |
-| Mwanafunzi | `KAS/2026/014` | `juma2026` |
-
-> Badilisha nywila hizi mara baada ya kuanza kutumia production!
+💳 **GePG halisi:** weka `TTC_GEPG_ENABLED=true` + credentials (SP code, private
+key, mTLS cert, API URL) — basi control numbers zinakuja kutoka GePG na malipo
+yanathibitishwa kiotomatiki kupitia webhook `/ttc/api/gepg/notification/`.
+Maelezo kamili (pamoja na jinsi ya kusajiliwa na GePG) yamo kwenye
+`ttc_portal/README.md`. Credentials zisipokuwepo, simulated mode inatumika.
 
 ### 🧪 Kujaribu locally
 

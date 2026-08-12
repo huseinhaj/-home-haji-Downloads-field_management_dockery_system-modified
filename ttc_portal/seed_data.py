@@ -5,9 +5,10 @@ Inajumuisha:
   • Vyuo vyote vya ualimu (TTCs) vinavyotoa Diploma in Education
   • Programu 2 kwa kila chuo (Arts & Science)
   • Ada ya Mwaka + Mchango wa Chuo kwa kila chuo
-  • Super admin, msimamizi wa chuo (Kasulu) na wanafunzi wa mfano
+  • Super admin kwa njia ya env vars (TTC_SUPERUSER_EMAIL / TTC_SUPERUSER_PASSWORD)
 
-Endeleza:  python seed_data.py
+Hakuna akaunti za demo zinazoundwa — production huunda super admin yake kupitia
+env vars au `python manage.py createsuperuser`.
 """
 
 import os
@@ -18,22 +19,12 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ttc_portal.settings')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 django.setup()
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from colleges.models import College, Program, CollegeAdmin
+from colleges.models import College, Program
 from fees.models import FeeItem
-from students.models import Student
-from fees.services import create_bills_for_student, academic_year_now
+from fees.services import academic_year_now
 
 User = get_user_model()
-
-# Demo accounts (super admin / college admin / wanafunzi wa mfano) huundwa TU
-# wakati TTC_SEED_DEMO=true au DEBUG=true. Production haipaswi kuwa na
-# admin/admin123 wazi! Vyuo, programu na ada huundwa siku zote (data halisi).
-DEMO_ENABLED = (
-    os.environ.get('TTC_SEED_DEMO', '').lower() == 'true'
-    or getattr(settings, 'DEBUG', False)
-)
 
 # ── Vyuo vya ualimu Tanzania (Teacher Training Colleges) ──
 # (name, short_name, code, region, district, established)
@@ -84,6 +75,33 @@ FEE_ITEMS = [
 ]
 
 
+def create_superuser_from_env():
+    """Create the super admin from TTC_SUPERUSER_EMAIL / TTC_SUPERUSER_PASSWORD.
+
+    Ukizitaka, weka pia TTC_SUPERUSER_USERNAME (default: 'admin'). Hakuna
+    akaunti inayoundwa kama env vars hazipo — tumia createsuperuser baadaye.
+    """
+    email = os.environ.get('TTC_SUPERUSER_EMAIL', '').strip()
+    password = os.environ.get('TTC_SUPERUSER_PASSWORD', '')
+    username = os.environ.get('TTC_SUPERUSER_USERNAME', 'admin').strip()
+    if not (email and password):
+        print("   ⚠️  Hakuna TTC_SUPERUSER_EMAIL / TTC_SUPERUSER_PASSWORD — hakuna super admin.")
+        print("       Unda baada ya deploy:  python manage.py createsuperuser")
+        return
+    user, created = User.objects.get_or_create(
+        username=username,
+        defaults={'email': email, 'role': 'super_admin', 'is_staff': True,
+                  'is_superuser': True, 'first_name': 'Super', 'last_name': 'Admin'},
+    )
+    user.email = email
+    user.is_staff = True
+    user.is_superuser = True
+    user.role = 'super_admin'
+    user.set_password(password)
+    user.save()
+    print(f"   {'✓' if created else '='} Super Admin: {username} ({email})")
+
+
 def run():
     print("⚙️  TTC Student Portal — seed data...")
 
@@ -116,82 +134,14 @@ def run():
                 defaults={'category': category, 'amount': amount, 'is_active': True},
             )
 
-    # 4. Super admin / msimamizi wa chuo / wanafunzi wa mfano
-    #    (DEMO tu — production hujenga akaunti zake kwa createsuperuser)
-    year = academic_year_now()
-    if not DEMO_ENABLED:
-        print("\n   ⚠️  Demo accounts ZIMERUKWA (production mode).")
-        print("       Tengeneza super admin: python manage.py createsuperuser")
-        print("       au weka TTC_SEED_DEMO=true kwenye uanzishaji wa kwanza tu.")
-    else:
-        # Super admin
-        super_admin, _ = User.objects.get_or_create(
-            username='admin',
-            defaults={'email': 'admin@ttc.ac.tz', 'role': 'super_admin', 'is_staff': True,
-                      'is_superuser': True, 'first_name': 'Super', 'last_name': 'Admin'},
-        )
-        super_admin.set_password('admin123')
-        super_admin.is_staff = True
-        super_admin.is_superuser = True
-        super_admin.role = 'super_admin'
-        super_admin.save()
+    # 4. Super admin (kutoka env vars — hakuna demo accounts!)
+    create_superuser_from_env()
 
-        # Msimamizi wa chuo (Kasulu TC)
-        kasulu = College.objects.get(code='KAS')
-        admin_user, _ = User.objects.get_or_create(
-            username='kasulu_admin',
-            defaults={'email': 'kasulu@ttc.ac.tz', 'role': 'college_admin',
-                      'first_name': 'Mkuu', 'last_name': 'Kasulu'},
-        )
-        admin_user.set_password('admin123')
-        admin_user.role = 'college_admin'
-        admin_user.save()
-        CollegeAdmin.objects.get_or_create(
-            user=admin_user,
-            defaults={'college': kasulu, 'full_name': 'Mtumishi wa Mahesabu — Kasulu TC',
-                      'title': 'Mtumishi wa Mahesabu'},
-        )
-
-        # Wanafunzi wa mfano
-        demo_students = [
-            ("KAS", "Juma Hassan Mussa", "KAS/2026/014", 1, "M", "0712 345 678", "juma@gmail.com", "juma2026"),
-            ("BUT", "Neema Joseph Kileo", "BUT/2026/007", 1, "F", "0755 123 456", "neema@gmail.com", "neema2026"),
-            ("MOR", "Baraka Emmanuel John", "MOR/2026/021", 2, "M", "0768 234 567", "baraka@gmail.com", "baraka2026"),
-        ]
-        for code, name, reg, yr, gender, phone, email, pw in demo_students:
-            college = College.objects.get(code=code)
-            username = reg
-            user, created = User.objects.get_or_create(
-                username=username,
-                defaults={'email': email, 'role': 'student', 'phone_number': phone},
-            )
-            if created:
-                user.set_password(pw)
-                user.save()
-            student, created = Student.objects.get_or_create(
-                registration_number=reg,
-                defaults=dict(
-                    user=user, college=college,
-                    full_name=name, admission_year=2026, year_of_study=yr,
-                    gender=gender, phone_number=phone, email=email,
-                ),
-            )
-            if created:
-                program = college.programs.first()
-                if program:
-                    student.program = program
-                    student.save()
-                create_bills_for_student(student, year)
-            print(f"  {'✓' if created else '='} Mwanafunzi: {name} ({reg}) @ {college.short_name}")
-
-        print("\n✅ Seed imekamilika!")
-        print("   ─────────────────────────────────────────────")
-        print("   Super Admin    : admin / admin123")
-        print("   Kasulu Admin   : kasulu_admin / admin123")
-        for _, _, reg, _, _, _, _, pw in demo_students:
-            print(f"   Mwanafunzi     : {reg} / {pw}")
-        print("   ─────────────────────────────────────────────")
-        print("   Mwaka wa masomo: ", year)
+    print("\n✅ Seed imekamilika!")
+    print("   ─────────────────────────────────────────────")
+    print("   Hakuna akaunti za demo zilizoundwa.")
+    print("   Tengeneza super admin: python manage.py createsuperuser")
+    print("   Mwaka wa masomo: ", academic_year_now())
 
 
 if __name__ == '__main__':

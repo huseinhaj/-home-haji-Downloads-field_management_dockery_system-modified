@@ -75,6 +75,12 @@ class FeeBill(models.Model):
     control_number_generated_at = models.DateTimeField(null=True, blank=True)
     control_number_expires = models.DateTimeField(null=True, blank=True)
 
+    # GePG: BillId iliyowasilishwa kwenye GePG (inahitajika kwa bill
+    # update/cancel/reuse na ku-correlate malipo) — inatolewa na GePG halisi.
+    gepg_bill_id = models.CharField(
+        max_length=64, blank=True, db_index=True, verbose_name='GePG Bill ID',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

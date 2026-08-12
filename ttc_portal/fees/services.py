@@ -2,9 +2,11 @@
 
 - Derives the current academic year (August–July cycle, like Tanzania schools).
 - Auto-creates a bill (bili) for every active fee item when a student registers.
-- Generates unique GePG-style control numbers (namba ya malipo) on demand.
+- Generates unique GePG-style control numbers (namba ya malipo) on demand —
+  kupitia GePG HALISI ikiwa credentials zimewekwa, vinginevyo simulated.
 """
 
+import logging
 import random
 from datetime import timedelta
 
@@ -12,6 +14,8 @@ from django.utils import timezone
 from django.conf import settings
 
 from .models import FeeItem, FeeBill
+
+logger = logging.getLogger(__name__)
 
 
 def academic_year_now():
@@ -45,11 +49,36 @@ def create_bills_for_student(student, academic_year=None):
 
 
 def generate_control_number(bill):
-    """Generate a unique GePG-style control number (10 digits starting with 99).
+    """Generate a control number (namba ya malipo) for a bill.
+
+    • Ikiwa GePG HALISI imesanidiwa (TTC_GEPG_* env vars) → bili
+      inawasilishwa kwa GePG na GePG inarudisha control number yake.
+    • Vinginevyo → simulated GePG-style number (10 digits starting with 99).
 
     Numbers are unique across the whole system and expire after
     TTC_CONTROL_NUMBER_LIFETIME_DAYS days (SR2/GePG behaviour).
     """
+    from . import gepg
+
+    if gepg.gepg_enabled():
+        try:
+            control_number = gepg.submit_bill(bill)
+            if control_number:
+                bill.control_number = control_number
+                bill.control_number_generated_at = timezone.now()
+                bill.control_number_expires = timezone.now() + timedelta(
+                    days=settings.TTC_CONTROL_NUMBER_LIFETIME_DAYS
+                )
+                bill.save(update_fields=[
+                    'control_number', 'control_number_generated_at',
+                    'control_number_expires', 'gepg_bill_id',
+                ])
+                logger.info('GePG control number imezalishwa kwa bill %s: %s', bill.pk, control_number)
+                return control_number
+        except Exception as exc:
+            # Usimzuie mwanafunzi — tumia simulated fallback + log error.
+            logger.exception('GePG bill submission imeshindikana — kuendelea na simulated: %s', exc)
+
     prefix = settings.TTC_CONTROL_NUMBER_PREFIX
     digits_needed = max(1, 10 - len(prefix))
     for _ in range(100):

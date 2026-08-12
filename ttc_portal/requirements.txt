@@ -4,3 +4,6 @@ python-dotenv>=1.0
 whitenoise>=6.6
 gunicorn>=21.2
 Pillow>=10.0
+requests>=2.31.0
+cryptography>=42.0
+lxml>=5.0

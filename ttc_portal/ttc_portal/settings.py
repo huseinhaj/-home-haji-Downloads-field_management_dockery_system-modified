@@ -157,3 +157,23 @@ DEFAULT_FROM_EMAIL = os.environ.get('TTC_FROM_EMAIL', 'TTC Portal <noreply@ttcpo
 TTC_CONTROL_NUMBER_PREFIX = os.environ.get('TTC_CONTROL_NUMBER_PREFIX', '99')
 TTC_CONTROL_NUMBER_LIFETIME_DAYS = int(os.environ.get('TTC_CONTROL_NUMBER_LIFETIME_DAYS', '30'))
 TTC_SYSTEM_NAME = os.environ.get('TTC_SYSTEM_NAME', 'TTC Student Portal')
+
+# ── Real GePG (Government e-Payment Gateway) integration ──────────────────
+# Credentials hizi zinapatikana baada ya PSP registration na GePG (kupitia
+# benki yako au GePG moja kwa moja) — tazama README sehemu ya GePG.
+# Zikiwa hazijawekwa, mfumo unatumia simulated control numbers kiotomatiki.
+TTC_GEPG_ENABLED = os.environ.get('TTC_GEPG_ENABLED', 'False').lower() == 'true'
+TTC_GEPG_CODE = os.environ.get('TTC_GEPG_CODE', '')            # mf. SP023 — SP code
+TTC_GEPG_SUB_SP_CODE = os.environ.get('TTC_GEPG_SUB_SP_CODE', '')
+TTC_GEPG_SP_SYS_ID = os.environ.get('TTC_GEPG_SP_SYS_ID', '')  # mf. SYSTT000
+TTC_GEPG_GFS_CODE = os.environ.get('TTC_GEPG_GFS_CODE', '')    # mf. 140100 (tuition fees)
+TTC_GEPG_API_URL = os.environ.get('TTC_GEPG_API_URL', '')      # GePG gateway base URL (HTTPS/mTLS)
+TTC_GEPG_API_USER = os.environ.get('TTC_GEPG_API_USER', '')
+TTC_GEPG_API_PASSWORD = os.environ.get('TTC_GEPG_API_PASSWORD', '')
+TTC_GEPG_PRIVATE_KEY_PATH = os.environ.get('TTC_GEPG_PRIVATE_KEY_PATH', '')  # PKCS#8 PEM au PKCS#12 (.pfx)
+TTC_GEPG_PRIVATE_KEY_PASSWORD = os.environ.get('TTC_GEPG_PRIVATE_KEY_PASSWORD', '')
+TTC_GEPG_CLIENT_CERT = os.environ.get('TTC_GEPG_CLIENT_CERT', '')  # PEM cert chain (mTLS)
+TTC_GEPG_CLIENT_KEY = os.environ.get('TTC_GEPG_CLIENT_KEY', '')    # PEM private key (mTLS)
+TTC_GEPG_SIGNATURE_ALGORITHM = os.environ.get('TTC_GEPG_SIGNATURE_ALGORITHM', 'SHA1withRSA')
+TTC_GEPG_NOTIFICATION_TOKEN = os.environ.get('TTC_GEPG_NOTIFICATION_TOKEN', '')
+TTC_GEPG_TIMEOUT = int(os.environ.get('TTC_GEPG_TIMEOUT', '30'))
