@@ -56,6 +56,41 @@
     </div>
   </div>
 
+  <!-- ✅ SUCCESS PANEL — PDF hapo hapo baada ya kusajiliwa -->
+  {% if just_submitted %}
+  <div class="c-card mb-3" style="border:2px solid var(--success);border-left:6px solid var(--success);background:linear-gradient(135deg,rgba(5,150,105,0.06),rgba(5,150,105,0.02));">
+    <div class="c-card-body" style="padding:1.25rem;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(5,150,105,0.3);">
+          <i class="fas fa-check" style="color:#fff;font-size:1.4rem;"></i>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <h5 style="font-family:var(--font-display);font-weight:800;margin:0;color:var(--success);font-size:1rem;">
+            ✅ Logbook imesajiliwa kikamilifu!
+          </h5>
+          <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
+            Pakua PDF ya logbook yako hapo chini — Leo, Wiki hii, Mwezi huu au zote.
+          </p>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:0.9rem;">
+        <a href="{% url 'curriculum:download_logbook_pdf' 'today' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
+          <i class="fas fa-file-pdf me-1"></i> Pakua PDF ya Leo
+        </a>
+        <a href="{% url 'curriculum:download_logbook_pdf' 'week' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
+          <i class="fas fa-file-pdf me-1"></i> Wiki hii
+        </a>
+        <a href="{% url 'curriculum:download_logbook_pdf' 'month' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
+          <i class="fas fa-file-pdf me-1"></i> Mwezi huu
+        </a>
+        <a href="{% url 'curriculum:download_logbook_pdf' 'all' %}" class="btn-tlm btn-gold-tlm btn-sm-tlm">
+          <i class="fas fa-file-archive me-1"></i> Zote
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="row g-2">
     <div class="col-lg-8">
       <div class="c-card">
@@ -101,6 +136,34 @@
 
     <!-- Side info -->
     <div class="col-lg-4">
+      <!-- ⬇️ PAKUA PDF — hapo hapo, hakuna page nyingine -->
+      <div class="c-card p-3 mb-3" style="border-left:3px solid var(--gold-400);">
+        <div class="sec-hd">
+          <h3><i class="fas fa-file-pdf"></i> <span class="lang-label-sw">Pakua PDF</span><span class="lang-label-en">Download PDF</span></h3>
+        </div>
+        <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:0 0 8px;">
+          <span class="lang-label-sw">Chagua kipindi cha logbook unachotaka kupakua</span>
+          <span class="lang-label-en">Choose the logbook period you want to download</span>
+        </p>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <a href="{% url 'curriculum:download_logbook_pdf' 'today' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm w-100" style="justify-content:flex-start;">
+            <i class="fas fa-calendar-day me-1"></i> <span class="lang-label-sw">Leo — {% now "d/m/Y" %}</span><span class="lang-label-en">Today — {% now "d/m/Y" %}</span>
+          </a>
+          <a href="{% url 'curriculum:download_logbook_pdf' 'week' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm w-100" style="justify-content:flex-start;">
+            <i class="fas fa-calendar-week me-1"></i> <span class="lang-label-sw">Wiki hii</span><span class="lang-label-en">This week</span>
+            {% if week_entries_count %}<span class="chip chip-gold" style="font-size:8px;padding:0 6px;line-height:14px;margin-left:auto;">{{ week_entries_count }}</span>{% endif %}
+          </a>
+          <a href="{% url 'curriculum:download_logbook_pdf' 'month' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm w-100" style="justify-content:flex-start;">
+            <i class="fas fa-calendar-alt me-1"></i> <span class="lang-label-sw">Mwezi huu</span><span class="lang-label-en">This month</span>
+            {% if month_entries_count %}<span class="chip chip-gold" style="font-size:8px;padding:0 6px;line-height:14px;margin-left:auto;">{{ month_entries_count }}</span>{% endif %}
+          </a>
+          <a href="{% url 'curriculum:download_logbook_pdf' 'all' %}" class="btn-tlm btn-gold-tlm btn-sm-tlm w-100" style="justify-content:flex-start;">
+            <i class="fas fa-file-archive me-1"></i> <span class="lang-label-sw">Logbook zote</span><span class="lang-label-en">All logbooks</span>
+            {% if total_entries_count %}<span class="chip chip-gold" style="font-size:8px;padding:0 6px;line-height:14px;margin-left:auto;">{{ total_entries_count }}</span>{% endif %}
+          </a>
+        </div>
+      </div>
+
       {% if logbook_entry and logbook_entry.lessons_data %}
       <div class="c-card p-3 mb-3">
         <div class="sec-hd"><h3><i class="fas fa-history"></i> <span class="lang-label-sw">Leo Umeshajaza</span><span class="lang-label-en">Today's Submissions</span></h3></div>
@@ -118,13 +181,36 @@
       </div>
       {% endif %}
 
+      <!-- 🕐 HISTORIA NDOGO — wiki hii, kwenye ukurasa mmoja -->
+      {% if recent_entries %}
+      <div class="c-card p-3 mb-3">
+        <div class="sec-hd"><h3><i class="fas fa-list"></i> <span class="lang-label-sw">Historia ya Wiki Hii</span><span class="lang-label-en">This Week's History</span></h3></div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          {% for e in recent_entries %}
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(15,23,42,0.02);border-radius:var(--radius-sm);border-left:3px solid var(--green-500);">
+            <i class="fas fa-check-circle" style="color:var(--success);font-size:0.8rem;flex-shrink:0;"></i>
+            <div style="flex:1;min-width:0;">
+              <strong style="font-size:var(--font-size-xs);color:var(--text-primary);">{{ e.date|date:"d/m/Y" }}</strong>
+              <span style="font-size:9px;color:var(--text-muted);display:block;">{{ e.get_day_of_week_display }} · {{ e.lessons_data|length }} vipindi</span>
+            </div>
+            <a href="{% url 'curriculum:download_logbook_pdf' 'week' %}" title="Pakua PDF (Wiki hii)" style="flex-shrink:0;color:var(--error);font-size:0.85rem;">
+              <i class="fas fa-file-pdf"></i>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+        {% if week_entries_count > 5 %}
+        <p style="font-size:9px;color:var(--text-muted);margin:6px 0 0;">+ {{ week_entries_count|add:"-5" }} zaidi wiki hii — pakua PDF hapo juu.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+
       <div class="c-card p-3">
         <div class="sec-hd"><h3><i class="fas fa-info-circle"></i> <span class="lang-label-sw">Maelekezo</span><span class="lang-label-en">Instructions</span></h3></div>
         <ul style="font-size:var(--font-size-sm);color:var(--text-secondary);padding-left:1rem;margin:0;">
           <li class="mb-2"><span class="lang-label-sw">Jaza kila kipindi ulichofundisha kwa ukamilifu</span><span class="lang-label-en">Fill in each lesson period you taught completely</span></li>
-          <li class="mb-2"><span class="lang-label-sw">Jaza kila kipindi ulichofundisha</span><span class="lang-label-en">Fill in each lesson period you taught</span></li>
           <li class="mb-2"><span class="lang-label-sw">Andika changamoto na tafakari zako</span><span class="lang-label-en">Write challenges and personal reflection</span></li>
-          <li><span class="lang-label-sw">Logbook inatumwa kwa siku za Jumatatu hadi Ijumaa tu</span><span class="lang-label-en">Logbook is submitted Monday to Friday only</span></li>
+          <li><span class="lang-label-sw">Baada ya kusajiliwa, pakua PDF hapo juu mara moja</span><span class="lang-label-en">After saving, download the PDF right here</span></li>
         </ul>
       </div>
     </div>

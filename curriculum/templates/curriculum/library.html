@@ -196,6 +196,23 @@
     </div>
   </div>
   {% endif %}
+
+  <!-- Pagination -->
+  {% if has_next or has_prev %}
+  <div style="display:flex;justify-content:center;gap:8px;margin-top:1.5rem;">
+    {% if has_prev %}
+    <a href="{% url 'curriculum:template_library' %}?page={{ prev_page }}" class="btn-tlm btn-outline-tlm btn-sm-tlm">
+      <i class="fas fa-chevron-left me-1"></i> Zamani
+    </a>
+    {% endif %}
+    <span class="chip chip-green" style="font-size:10px;">Ukurasa {{ page }}</span>
+    {% if has_next %}
+    <a href="{% url 'curriculum:template_library' %}?page={{ next_page }}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
+      Zifuatazo <i class="fas fa-chevron-right ms-1"></i>
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
 {% else %}
   <!-- Empty state -->
   <div class="empty-library">

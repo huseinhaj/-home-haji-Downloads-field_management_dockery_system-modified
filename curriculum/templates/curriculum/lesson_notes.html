@@ -260,6 +260,21 @@
       </span>
       {% endif %}
     </div>
+    <!-- Hatua rahisi 1-2-3 -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:12px;">
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(31,122,61,0.06);border:1px solid rgba(31,122,61,0.15);border-radius:var(--radius-sm);padding:8px 10px;">
+        <span style="width:26px;height:26px;border-radius:50%;background:var(--green-500);color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</span>
+        <div style="font-size:var(--font-size-xs);color:var(--text-primary);font-weight:600;">Chagua Lesson Plan<br><span style="color:var(--text-muted);font-weight:400;">upande wa kushoto</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(31,122,61,0.06);border:1px solid rgba(31,122,61,0.15);border-radius:var(--radius-sm);padding:8px 10px;">
+        <span style="width:26px;height:26px;border-radius:50%;background:var(--gold-400);color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</span>
+        <div style="font-size:var(--font-size-xs);color:var(--text-primary);font-weight:600;">Bonyeza Generate Notes<br><span style="color:var(--text-muted);font-weight:400;">AI itaandika daftari kamili</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(31,122,61,0.06);border:1px solid rgba(31,122,61,0.15);border-radius:var(--radius-sm);padding:8px 10px;">
+        <span style="width:26px;height:26px;border-radius:50%;background:var(--info);color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</span>
+        <div style="font-size:var(--font-size-xs);color:var(--text-primary);font-weight:600;">Pakua PDF<br><span style="color:var(--text-muted);font-weight:400;">kitufe cha PDF hapo juu</span></div>
+      </div>
+    </div>
   </div>
 
   <!-- ── LIVE STATISTICS ── -->
@@ -380,6 +395,9 @@
               <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                 <div class="note-title">{{ note.topic|default:note.subject|truncatechars:40 }}</div>
                 <div style="display:flex;gap:3px;">
+                  <button class="btn-tlm btn-sm-tlm" style="background:rgba(31,122,61,0.08);color:var(--green-500);padding:2px 6px;font-size:9px;" onclick="event.stopPropagation(); downloadNotePdf('{{ note.id }}')" title="Pakua PDF">
+                    <i class="fas fa-file-pdf"></i>
+                  </button>
                   <button class="btn-tlm btn-sm-tlm" style="background:rgba(220,38,38,0.06);color:var(--error);padding:2px 6px;font-size:9px;" onclick="event.stopPropagation(); deleteNote('{{ note.id }}')" title="Futa">
                     <i class="fas fa-trash-alt"></i>
                   </button>
@@ -420,11 +438,14 @@
           <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;color:var(--text-primary);">
             <i class="fas fa-book text-gold me-1"></i> Daftari la Somo
           </h5>
-          <div style="display:flex;gap:6px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="downloadNotebookBtn">
+              <i class="fas fa-file-pdf me-1"></i> Pakua PDF
+            </button>
             <button class="btn-tlm btn-gold-tlm btn-sm-tlm" id="saveNotebookBtn">
               <i class="fas fa-save me-1"></i> Hifadhi Notes
             </button>
-            <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="printNotebookBtn">
+            <button class="btn-tlm btn-ghost-tlm btn-sm-tlm" id="printNotebookBtn">
               <i class="fas fa-print me-1"></i> Chapisha
             </button>
           </div>
@@ -468,9 +489,11 @@ document.addEventListener('DOMContentLoaded', function() {
   const notebookContent = document.getElementById('notebookContent');
   const emptyState = document.getElementById('emptyState');
   const saveNotebookBtn = document.getElementById('saveNotebookBtn');
+  const downloadNotebookBtn = document.getElementById('downloadNotebookBtn');
 
   let lastGeneratedData = null;
   let lastGeneratedHtml = null;
+  let lastGeneratedNoteId = null;
 
   // ── Generate Notes from Lesson Plan ──
   generateForm.addEventListener('submit', function(e) {
@@ -586,6 +609,34 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // ── Helper: save the current notebook, returns Promise<noteId|null> ──
+  function saveNotebook(onDone) {
+    const payload = {
+      note_id: lastGeneratedNoteId,
+      content: lastGeneratedHtml,
+      subject: lastGeneratedData && lastGeneratedData.title ? lastGeneratedData.title.split('—')[0].trim() : '{{ teacher_subject_name|escapejs }}',
+      class_name: '{{ teacher_class_name|escapejs }}',
+      topic: (lastGeneratedData && lastGeneratedData.title) || 'Lesson Notes',
+      education_level: '{{ teacher_edu_level }}',
+    };
+    return fetch('{% url "curriculum:save_lesson_note" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        lastGeneratedNoteId = data.note_id || lastGeneratedNoteId;
+        if (onDone) onDone(data.note_id || lastGeneratedNoteId);
+        return data.note_id || lastGeneratedNoteId;
+      }
+      showToast('❌ ' + (data.error || 'Hitilafu'), 'error');
+      return null;
+    })
+    .catch(err => { showToast('❌ Network error', 'error'); return null; });
+  }
+
   // ── Save Notebook ──
   saveNotebookBtn.addEventListener('click', function() {
     if (!lastGeneratedHtml) {
@@ -597,50 +648,27 @@ document.addEventListener('DOMContentLoaded', function() {
     btn.disabled = true;
     btn.innerHTML = '<div class="spinner-tlm" style="width:14px;height:14px;border-width:2px;"></div> Inahifadhi...';
     
-    // Get info from the selected lesson plan
-    const selectedOption = lpSelect.options[lpSelect.selectedIndex];
-    const lpInfo = selectedOption ? selectedOption.text : '';
-    
-    // Extract subject, class, topic from the selected lesson plan
-    const fd = {
-      note_id: null,
-      content: lastGeneratedHtml,
-      subject: '{{ teacher_subject_name|escapejs }}',
-      class_name: '',
-      topic: lastGeneratedData ? (lastGeneratedData.title || 'Lesson Notes') : 'Lesson Notes',
-      education_level: '{{ teacher_edu_level }}',
-    };
-    
-    fetch('{% url "curriculum:save_lesson_note" %}', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': '{{ csrf_token }}'
-      },
-      body: JSON.stringify({
-        note_id: null,
-        content: lastGeneratedHtml,
-        subject: lastGeneratedData && lastGeneratedData.title ? lastGeneratedData.title.split('—')[0].trim() : '{{ teacher_subject_name|escapejs }}',
-        class_name: '{{ teacher_class_name|escapejs }}',
-        topic: (lastGeneratedData && lastGeneratedData.title) || 'Lesson Notes',
-        education_level: '{{ teacher_edu_level }}',
-      }),
-    })
-    .then(r => r.json())
-    .then(data => {
+    saveNotebook(function() {
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-save me-1"></i> Hifadhi Notes';
-      if (data.success) {
-        showToast('✅ Daftari limehifadhiwa!', 'success');
-        setTimeout(() => location.reload(), 1200);
-      } else {
-        showToast('❌ ' + (data.error || 'Hitilafu'), 'error');
-      }
-    })
-    .catch(err => {
+      showToast('✅ Daftari limehifadhiwa!', 'success');
+      setTimeout(() => location.reload(), 1200);
+    });
+  });
+
+  // ── Pakua PDF hapo hapo (save first if needed, then download) ──
+  downloadNotebookBtn.addEventListener('click', function() {
+    if (!lastGeneratedHtml) {
+      showToast('Hakuna daftari la kupakua. Generate Notes kwanza.', 'warning');
+      return;
+    }
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-tlm" style="width:14px;height:14px;border-width:2px;"></div> Inatayarisha PDF...';
+    saveNotebook(function(noteId) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-save me-1"></i> Hifadhi Notes';
-      showToast('❌ Network error', 'error');
+      btn.innerHTML = '<i class="fas fa-file-pdf me-1"></i> Pakua PDF';
+      if (noteId) downloadNotePdf(noteId);
     });
   });
 
@@ -662,6 +690,25 @@ document.addEventListener('DOMContentLoaded', function() {
     win.print();
   });
 });
+
+// ── Pakua PDF ya note iliyohifadhiwa ──
+function downloadNotePdf(noteId) {
+  fetch('{% url "curriculum:notes_library_note_pdf" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+    body: JSON.stringify({ note_id: noteId }),
+  })
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+  .then(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Notes_' + noteId + '.pdf';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('📄 Notes PDF imepakuliwa!', 'success');
+  })
+  .catch(err => showToast('Download error: ' + err.message, 'error'));
+}
 
 // ── View saved note ──
 function viewNote(noteId) {

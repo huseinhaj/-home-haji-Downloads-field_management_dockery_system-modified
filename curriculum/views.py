@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.db.utils import IntegrityError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -426,7 +427,104 @@ def get_tlm_teacher(request):
 
 
 # =============================================================================
-# LANDING PAGE (public) — never_cache to show LIVE statistics
+# CACHED HELPERS — reduce DB load on hot pages
+# =============================================================================
+
+# TTLs (seconds)
+_CACHE_LANDING = 600       # landing stats — 10 min
+_CACHE_STATIC = 600        # subjects/levels/classes — 10 min
+_CACHE_SYLLABUS = 3600     # topics/subtopics — 1 hour
+_CACHE_LOGBOOK_COUNTS = 120  # logbook PDF counts — 2 min
+
+
+def _cached_landing_stats():
+    """Cached landing-page statistics + testimonials (single cache get instead of
+    6 DB queries on every page load)."""
+    stats = cache.get('curriculum_landing_stats')
+    if stats is not None:
+        return stats
+    from django.db.models import Count
+    stats = {
+        'total_teachers': TLMTeacher.objects.count(),
+        'total_schemes': SchemeOfWork.objects.count(),
+        'total_lesson_plans': LessonPlan.objects.count(),
+        'total_logbooks': LogbookEntry.objects.count(),
+        'total_notes': LessonNote.objects.count(),
+        'testimonials': list(Testimonial.objects.filter(is_approved=True)
+                             .select_related('teacher__school')[:6]),
+    }
+    cache.set('curriculum_landing_stats', stats, _CACHE_LANDING)
+    return stats
+
+
+def _cached_subjects_by_level():
+    """Cached {level_key: [{'id','name'}, ...]} for all 4 education levels.
+    Used by registration, scheme, lesson-plan and notes-library pages."""
+    data = cache.get('curriculum_subjects_by_level')
+    if data is not None:
+        return data
+    data = {
+        'primary': list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name')),
+        'secondary': list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name')),
+        'advanced': list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name')),
+        'technical': list(Subject.objects.filter(level='technical').order_by('name').values('id', 'name')),
+    }
+    cache.set('curriculum_subjects_by_level', data, _CACHE_STATIC)
+    return data
+
+
+def _subjects_for_level(level_name):
+    """Map an EducationLevel name → its subject list (uses cached data)."""
+    subs = _cached_subjects_by_level()
+    ln = (level_name or '').lower()
+    if 'primary' in ln:
+        return subs['primary']
+    if 'advanced' in ln:
+        return subs['advanced']
+    if 'technical' in ln or 'veta' in ln:
+        return subs['technical']
+    return subs['secondary']
+
+
+def _cached_level_classes():
+    """Cached {level_id: [{'id','name'}], ...} — classes grouped by education level."""
+    data = cache.get('curriculum_level_classes')
+    if data is not None:
+        return data
+    classes_by_level = {}
+    for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
+        classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
+    cache.set('curriculum_level_classes', classes_by_level, _CACHE_STATIC)
+    return classes_by_level
+
+
+def _cached_education_levels():
+    """Cached list of EducationLevel objects (ordered)."""
+    levels = cache.get('curriculum_education_levels')
+    if levels is not None:
+        return levels
+    levels = list(EducationLevel.objects.all().order_by('order'))
+    cache.set('curriculum_education_levels', levels, _CACHE_STATIC)
+    return levels
+
+
+def _cached_topic_subtopics(topic_id):
+    """Cached subtopics for a topic (syllabus data — rarely changes)."""
+    try:
+        topic_id = int(topic_id)
+    except (TypeError, ValueError):
+        return []
+    key = f'curriculum_subtopics_{topic_id}'
+    data = cache.get(key)
+    if data is not None:
+        return data
+    data = list(TopicSubtopic.objects.filter(topic_id=topic_id).order_by('order').values('id', 'name'))
+    cache.set(key, data, _CACHE_SYLLABUS)
+    return data
+
+
+# =============================================================================
+# LANDING PAGE (public) — cached statistics
 # =============================================================================
 
 @never_cache
@@ -434,25 +532,17 @@ def landing(request):
     """Public landing page — shows tools. If teacher is registered, greet them."""
     teacher = get_tlm_teacher(request)
     
-    # Real DB statistics for the landing page
-    from django.db.models import Count
-    total_teachers = TLMTeacher.objects.count()
-    total_schemes = SchemeOfWork.objects.count()
-    total_lesson_plans = LessonPlan.objects.count()
-    total_logbooks = LogbookEntry.objects.count()
-    total_notes = LessonNote.objects.count()
-    
-    # Real testimonials from teachers
-    testimonials = Testimonial.objects.filter(is_approved=True).select_related('teacher__school')[:6]
+    # Cached DB statistics + testimonials (10-min TTL)
+    stats = _cached_landing_stats()
     
     return render(request, 'curriculum/landing.html', {
         'teacher': teacher,
-        'total_teachers': total_teachers,
-        'total_schemes': total_schemes,
-        'total_lesson_plans': total_lesson_plans,
-        'total_logbooks': total_logbooks,
-        'total_notes': total_notes,
-        'testimonials': testimonials,
+        'total_teachers': stats['total_teachers'],
+        'total_schemes': stats['total_schemes'],
+        'total_lesson_plans': stats['total_lesson_plans'],
+        'total_logbooks': stats['total_logbooks'],
+        'total_notes': stats['total_notes'],
+        'testimonials': stats['testimonials'],
     })
 
 
@@ -462,29 +552,53 @@ def landing(request):
 
 @never_cache
 def template_library(request):
-    """Browse ALL saved schemes and lesson plans from all teachers."""
+    """Browse ALL saved schemes and lesson plans from all teachers.
+    Paginated (25/page) + cached totals to keep the page fast as the library grows."""
     teacher = get_tlm_teacher(request)
     
     # Show ALL schemes and lesson plans from ALL teachers — not just the logged-in user
     # This creates a shared library where everyone can see what others have created
-    all_schemes = SchemeOfWork.objects.all().select_related(
+    try:
+        page = max(1, int(request.GET.get('page', 1)))
+    except (TypeError, ValueError):
+        page = 1
+    per_page = 25
+    offset = (page - 1) * per_page
+
+    # Cached counts for stats (10 min)
+    totals = cache.get('curriculum_library_totals')
+    if totals is None:
+        totals = {
+            'schemes': SchemeOfWork.objects.count(),
+            'lessons': LessonPlan.objects.count(),
+        }
+        cache.set('curriculum_library_totals', totals, _CACHE_LANDING)
+
+    all_schemes = list(SchemeOfWork.objects.all().select_related(
         'subject', 'school'
-    ).order_by('-updated_at')[:50]
+    ).order_by('-updated_at')[offset:offset + per_page])
     
-    all_lessons = LessonPlan.objects.all().select_related(
+    all_lessons = list(LessonPlan.objects.all().select_related(
         'subject'
-    ).order_by('-created_at')[:50]
+    ).order_by('-created_at')[offset:offset + per_page])
+
+    # Clamp: if a deep page has no items but earlier pages do, go back to page 1
+    if page > 1 and not all_schemes and not all_lessons:
+        return redirect(f"{reverse('curriculum:template_library')}?page=1")
     
-    # Counts for stats
-    total_schemes_count = SchemeOfWork.objects.count()
-    total_lessons_count = LessonPlan.objects.count()
+    has_more = offset + per_page < max(totals['schemes'], totals['lessons'])
     
     return render(request, 'curriculum/library.html', {
         'teacher': teacher,
         'schemes': all_schemes,
         'lesson_plans': all_lessons,
-        'total_schemes_count': total_schemes_count,
-        'total_lessons_count': total_lessons_count,
+        'total_schemes_count': totals['schemes'],
+        'total_lessons_count': totals['lessons'],
+        'page': page,
+        'has_prev': page > 1,
+        'has_next': has_more,
+        'next_page': page + 1,
+        'prev_page': page - 1,
     })
 
 
@@ -527,6 +641,8 @@ def ajax_submit_testimonial(request):
             message=message,
             is_approved=True,  # Auto-approve for now
         )
+        # Landing page shows cached testimonials — refresh it
+        cache.delete('curriculum_landing_stats')
         
         return JsonResponse({'success': True, 'id': testimonial.id})
     except Exception as e:
@@ -554,22 +670,10 @@ def teacher_register(request):
     subjects = Subject.objects.all().order_by('name')
     
     import json as _json
-    education_levels = EducationLevel.objects.all().order_by('order')
-    classes_by_level = {}
-    for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
-        classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
+    education_levels = _cached_education_levels()
+    classes_by_level = _cached_level_classes()
 
     # Masomo kwa kila ngazi ya elimu (Primary→primary, Technical/VETA→technical, n.k.)
-    def _subjects_for_level(level_name):
-        ln = (level_name or '').lower()
-        if 'primary' in ln:
-            return list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name'))
-        if 'technical' in ln or 'veta' in ln:
-            return list(Subject.objects.filter(level='technical').order_by('name').values('id', 'name'))
-        if 'advanced' in ln:
-            return list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name'))
-        return list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name'))
-
     subjects_by_level = {
         lvl.id: _subjects_for_level(lvl.name)
         for lvl in education_levels
@@ -647,6 +751,8 @@ def ajax_save_teacher(request):
             total_girls=int(total_girls) if total_girls else 0,
         )
         request.session['tlm_teacher_id'] = teacher.id
+        # Landing page shows cached teacher count — refresh it
+        cache.delete('curriculum_landing_stats')
         return JsonResponse({'success': True, 'is_new': True})
     except IntegrityError:
         # Race condition: another request got there first
@@ -690,8 +796,9 @@ def dashboard(request):
     try:
         student = StudentTeacher.objects.select_related('selected_school').get(user=request.user)
     except StudentTeacher.DoesNotExist:
+        # FIX: was redirecting to itself (infinite loop). Send user to profile creation.
         messages.error(request, "Tafadhali jaza wasifu wako kwanza.")
-        return redirect(reverse('curriculum:dashboard'))
+        return redirect(reverse('profile_create'))
 
     school = student.selected_school
     today = timezone.now().date()
@@ -1275,27 +1382,12 @@ def generate_scheme_view(request):
         return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:generate_scheme')}")
     
     form = SchemeOfWorkForm()
-    education_levels = EducationLevel.objects.all().order_by('order')
+    education_levels = _cached_education_levels()
 
     import json as _json
-    classes_by_level = {}
-    for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
-        classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
+    classes_by_level = _cached_level_classes()
 
     # Filter subjects by education level (Primary → primary, Advanced → advanced, Ordinary → secondary)
-    def _subjects_for_level(level_name):
-        name_lower = level_name.lower()
-        if 'primary' in name_lower:
-            return list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name'))
-        elif 'advanced' in name_lower:
-            return list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name'))
-        elif 'technical' in name_lower or 'veta' in name_lower:
-            # Technical / VETA → technical subjects
-            return list(Subject.objects.filter(level='technical').order_by('name').values('id', 'name'))
-        else:
-            # Ordinary Level → secondary subjects
-            return list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name'))
-
     subjects_by_level = {
         lvl.id: _subjects_for_level(lvl.name)
         for lvl in education_levels
@@ -2235,27 +2327,12 @@ def lesson_plan_view(request):
     if not teacher:
         return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:lesson_plan')}")
     
-    education_levels = EducationLevel.objects.all().order_by('order')
+    education_levels = _cached_education_levels()
 
     import json as _json
-    classes_by_level = {}
-    for cl in ClassLevel.objects.select_related('education_level').order_by('education_level', 'order'):
-        classes_by_level.setdefault(cl.education_level_id, []).append({'id': cl.id, 'name': cl.name})
+    classes_by_level = _cached_level_classes()
 
     # Filter subjects by education level (Primary → primary, Advanced → advanced, Ordinary → secondary)
-    def _subjects_for_level(level_name):
-        name_lower = level_name.lower()
-        if 'primary' in name_lower:
-            return list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name'))
-        elif 'advanced' in name_lower:
-            return list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name'))
-        elif 'technical' in name_lower or 'veta' in name_lower:
-            # Technical / VETA → technical subjects
-            return list(Subject.objects.filter(level='technical').order_by('name').values('id', 'name'))
-        else:
-            # Ordinary Level → secondary subjects
-            return list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name'))
-
     subjects_by_level = {
         lvl.id: _subjects_for_level(lvl.name)
         for lvl in education_levels
@@ -3509,11 +3586,38 @@ def _tlm_subjects(teacher):
     return Subject.objects.all().order_by('name')
 
 
-def _tlm_logbook_context(teacher, logbook_entry, today):
-    """Context for the logbook template when the user is a TLM teacher."""
+def _tlm_logbook_context(teacher, logbook_entry, today, just_submitted=False):
+    """Context for the logbook template when the user is a TLM teacher.
+    Includes PDF download counts + mini history so the whole logbook
+    experience lives on ONE page (no separate Historia / Pakua pages)."""
     days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
     days_english = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday'}
     school = teacher.school
+
+    # ── PDF download counts + mini history (cached 2 min; invalidated on save) ──
+    counts_key = f'curriculum_logbook_counts_{teacher.id}'
+    counts = cache.get(counts_key)
+    if counts is None:
+        week_start = today - timedelta(days=today.weekday())
+        week_entries_qs = TLMLogbookEntry.objects.filter(
+            teacher=teacher, date__range=[week_start, week_start + timedelta(days=4)]
+        )
+        recent_entries = list(week_entries_qs.select_related('school').order_by('-date', '-created_at')[:5])
+        counts = {
+            'week': week_entries_qs.count(),
+            'month': TLMLogbookEntry.objects.filter(
+                teacher=teacher, date__year=today.year, date__month=today.month
+            ).count(),
+            'total': TLMLogbookEntry.objects.filter(teacher=teacher).count(),
+            'recent_entries': recent_entries,
+        }
+        cache.set(counts_key, counts, _CACHE_LOGBOOK_COUNTS)
+
+    week_entries_count = counts['week']
+    month_entries_count = counts['month']
+    total_entries_count = counts['total']
+    recent_entries = counts['recent_entries']
+
     return {
         'form': None,
         'student': None,
@@ -3529,23 +3633,36 @@ def _tlm_logbook_context(teacher, logbook_entry, today):
         'tlm_school_name': school.name if school else '',
         'tlm_subject_name': teacher.subject.name if teacher.subject else '',
         'tlm_class_name': teacher.class_name or '',
+        # ── ONE-PAGE logbook extras ──
+        'just_submitted': just_submitted,
+        'recent_entries': recent_entries,
+        'week_entries_count': week_entries_count,
+        'month_entries_count': month_entries_count,
+        'total_entries_count': total_entries_count,
     }
 
 
 def submit_logbook(request):
     """
-    Submit daily logbook entry.
+    Submit daily logbook entry — ONE-PAGE experience.
+    After saving, the same page re-renders with a success panel + PDF download
+    buttons right there (no separate Historia / Pakua pages).
     FIX: TLM teachers (session-based, no Django login) no longer get redirected
     to the student dashboard — they use TLMLogbookEntry directly.
     """
     today = timezone.now().date()
     teacher = get_tlm_teacher(request)
 
+    days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
+    days_english = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday'}
+
     # ── TLM TEACHER FLOW (session-based, NO Django login needed) ──
     if teacher:
         if today.weekday() >= 5:
             messages.info(request, "Hakuna kazi ya uwanjani wikendi. Rudi tena Jumatatu.")
-            return redirect(reverse('curriculum:logbook_history'))
+            # Render the same page (PDF/history still available) — no redirect loop
+            return render(request, 'curriculum/logbook.html',
+                          _tlm_logbook_context(teacher, None, today))
 
         school = teacher.school
         logbook_entry = TLMLogbookEntry.objects.filter(teacher=teacher, date=today).first()
@@ -3566,8 +3683,12 @@ def submit_logbook(request):
                 logbook_entry.lessons_data = []
             logbook_entry.is_location_verified = True
             logbook_entry.save()
-            messages.success(request, "✅ Logbook imesajiliwa kikamilifu!")
-            return redirect(reverse('curriculum:logbook_history'))
+            # Invalidate cached counts so the success panel shows fresh numbers
+            cache.delete(f'curriculum_logbook_counts_{teacher.id}')
+            messages.success(request, "✅ Logbook imesajiliwa kikamilifu! Pakua PDF hapa chini.")
+            # Re-render the SAME page with a success panel + PDF buttons right there
+            return render(request, 'curriculum/logbook.html',
+                          _tlm_logbook_context(teacher, logbook_entry, today, just_submitted=True))
 
         return render(request, 'curriculum/logbook.html',
                       _tlm_logbook_context(teacher, logbook_entry, today))
@@ -3580,11 +3701,12 @@ def submit_logbook(request):
 
     if today.weekday() >= 5:
         messages.info(request, "Hakuna kazi ya uwanjani wikendi. Rudi tena Jumatatu.")
-        return redirect(reverse('curriculum:logbook_history'))
+        # Redirect to a terminal page (avoid self-redirect loop)
+        return redirect(reverse('curriculum:landing'))
 
     if not student.selected_school:
         messages.error(request, "Lazima uchague shule kabla ya kujaza logbook.")
-        return redirect(reverse('curriculum:logbook_history'))
+        return redirect(reverse('curriculum:landing'))
 
     school = student.selected_school
     logbook_entry = _cached_today_logbook(student, school, today)
@@ -3609,17 +3731,32 @@ def submit_logbook(request):
             entry.is_location_verified = True
             entry.save()
             _invalidate_today_logbook(student, today)
-            messages.success(request, "✅ Logbook imesajiliwa kikamilifu!")
+            messages.success(request, "✅ Logbook imesajiliwa kikamilifu! Pakua PDF hapa chini.")
 
-            return redirect(reverse('curriculum:logbook_history'))
+            # Re-render the SAME page with PDF buttons right there
+            return render(request, 'curriculum/logbook.html', {
+                'form': form, 'student': student, 'logbook_entry': entry,
+                'today': today, 'today_name': days_swahili.get(today.weekday(), 'Leo'),
+                'today_name_en': days_english.get(today.weekday(), 'Today'),
+                'school': school, 'subjects': _cached_subjects(student),
+                'teacher': None,
+                'preferred_language': 'auto',
+                'tlm_teacher_name': student.full_name,
+                'tlm_school_name': school.name if school else '',
+                'tlm_subject_name': '',
+                'tlm_class_name': '',
+                'just_submitted': True,
+                'recent_entries': [],
+                'week_entries_count': 0,
+                'month_entries_count': 0,
+                'total_entries_count': 0,
+            })
         else:
             messages.error(request, "Tafadhali kagua makosa yaliyomo kwenye fomu.")
     else:
         form = LogbookForm(instance=logbook_entry)
 
     subjects = _cached_subjects(student)
-    days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
-    days_english = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday'}
 
     return render(request, 'curriculum/logbook.html', {
         'form': form, 'student': student, 'logbook_entry': logbook_entry,
@@ -3632,28 +3769,36 @@ def submit_logbook(request):
         'tlm_school_name': school.name if school else '',
         'tlm_subject_name': '',
         'tlm_class_name': '',
+        'just_submitted': False,
+        'recent_entries': [],
+        'week_entries_count': 0,
+        'month_entries_count': 0,
+        'total_entries_count': 0,
     })
 
 
 def logbook_history(request):
-    """View logbook history — TLM teachers see their own TLM logbooks."""
+    """View logbook history.
+    ONE-PAGE experience: TLM teachers are redirected to the single logbook page,
+    which shows the form + PDF buttons + mini history together.
+    Authenticated IMS users keep the full history page as a fallback."""
     teacher = get_tlm_teacher(request)
+
+    # ── TLM TEACHER FLOW → redirect to the single logbook page ──
+    if teacher:
+        return redirect(reverse('curriculum:submit_logbook'))
 
     week_filter = request.GET.get('week')
     month_filter = request.GET.get('month')
 
-    # ── TLM TEACHER FLOW ──
-    if teacher:
-        entries = TLMLogbookEntry.objects.filter(teacher=teacher).select_related('school')
-        owner_name = teacher.full_name
-        is_tlm = True
-    else:
-        if not request.user.is_authenticated:
-            return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_history')}")
-        student = get_or_create_student_profile(request.user)
-        entries = LogbookEntry.objects.filter(student=student).select_related('subject_taught', 'school')
-        owner_name = student.full_name
-        is_tlm = False
+    # ── IMS STUDENT FLOW (fallback) ──
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_history')}")
+
+    student = get_or_create_student_profile(request.user)
+    entries = LogbookEntry.objects.filter(student=student).select_related('subject_taught', 'school')
+    owner_name = student.full_name
+    is_tlm = False
 
     if week_filter:
         try:
@@ -3921,17 +4066,12 @@ def download_logbook_pdf(request, period_type=None):
 
 
 def logbook_download_options(request):
-    """Page for choosing download options — works for TLM teachers too."""
+    """ONE-PAGE experience: PDF download lives on the single logbook page.
+    This route redirects TLM teachers straight there (no separate page).
+    Authenticated IMS users keep the legacy download page as a fallback."""
     teacher = get_tlm_teacher(request)
     if teacher:
-        total_entries = TLMLogbookEntry.objects.filter(teacher=teacher).count()
-        this_week_entries = TLMLogbookEntry.objects.filter(
-            teacher=teacher, date__gte=timezone.now().date() - timedelta(days=7)
-        ).count()
-        return render(request, 'curriculum/logbook_download.html', {
-            'student': None, 'teacher': teacher, 'owner_name': teacher.full_name,
-            'total_entries': total_entries, 'this_week_entries': this_week_entries,
-        })
+        return redirect(reverse('curriculum:submit_logbook'))
 
     if not request.user.is_authenticated:
         return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_download_options')}")
@@ -3995,36 +4135,43 @@ def get_topics_by_subject(request):
 
 
 def get_classes_by_level(request):
-    """AJAX: Get classes for a given education level."""
+    """AJAX: Get classes for a given education level (cached — static data)."""
     level_id = request.GET.get('level_id')
     if not level_id:
         return JsonResponse([], safe=False)
-    classes = ClassLevel.objects.filter(education_level_id=level_id).order_by('order')
-    return JsonResponse([{'id': c.id, 'name': c.name} for c in classes], safe=False)
+    try:
+        level_id = int(level_id)
+    except (TypeError, ValueError):
+        return JsonResponse([], safe=False)
+    classes = _cached_level_classes().get(level_id, [])
+    return JsonResponse(classes, safe=False)
 
 
 def get_subjects_by_level(request):
-    """AJAX: Get subjects for a given education level.
+    """AJAX: Get subjects for a given education level (cached — static data).
     Primary School → primary subjects
     Ordinary/Advanced Level → secondary subjects
     """
     level_id = request.GET.get('level_id')
     if not level_id:
         return JsonResponse([], safe=False)
-    level = EducationLevel.objects.filter(id=level_id).first()
+    try:
+        level_id = int(level_id)
+    except (TypeError, ValueError):
+        return JsonResponse([], safe=False)
+    levels = _cached_education_levels()
+    level = next((l for l in levels if l.id == level_id), None)
     if not level:
         return JsonResponse([], safe=False)
+    subs = _cached_subjects_by_level()
     if 'primary' in level.name.lower():
-        subjects = Subject.objects.filter(level='primary').order_by('name')
+        return JsonResponse(subs['primary'], safe=False)
     elif 'advanced' in level.name.lower():
-        subjects = Subject.objects.filter(level='advanced').order_by('name')
+        return JsonResponse(subs['advanced'], safe=False)
     elif 'technical' in level.name.lower() or 'veta' in level.name.lower():
-        # Technical / VETA → technical subjects
-        subjects = Subject.objects.filter(level='technical').order_by('name')
+        return JsonResponse(subs['technical'], safe=False)
     else:
-        # Ordinary Level → secondary subjects
-        subjects = Subject.objects.filter(level='secondary').order_by('name')
-    return JsonResponse([{'id': s.id, 'name': s.name} for s in subjects], safe=False)
+        return JsonResponse(subs['secondary'], safe=False)
 
 
 def get_topics_ai(request):
@@ -4840,9 +4987,9 @@ def ajax_update_teacher_profile(request):
 
 def ajax_get_topics_db(request):
     """
-    AJAX: Get topics from DB for a given subject and class name.
-    Uses the TIE syllabus data seeded via the seed_tie_syllabus management command.
-    Returns a JSON array of topic objects with id and name.
+    AJAX: Get topics from DB for a given subject and class name (cached 1 hour —
+    syllabus data rarely changes). Uses the TIE syllabus data seeded via the
+    seed_tie_syllabus management command.
     """
     subject_id = request.GET.get('subject_id')
     class_name = request.GET.get('class_name', '').strip()
@@ -4850,51 +4997,51 @@ def ajax_get_topics_db(request):
     if not subject_id or not class_name:
         return JsonResponse({'success': False, 'error': 'subject_id na class_name vinahitajika'}, status=400)
     
-    # Map common class names (e.g., "Form 1" matches "Form 1" in DB)
-    topics = SubjectTopic.objects.filter(
-        subject_id=subject_id,
-        class_name__iexact=class_name
-    ).order_by('order').values('id', 'name')
-    
-    # If no topics found, try with broader matching
-    if not topics.exists():
-        # Try just with the form number (e.g., "1" from "Form 1")
-        words = class_name.split()
-        for w in words:
-            if w.isdigit():
-                topics = SubjectTopic.objects.filter(
-                    subject_id=subject_id,
-                    class_name__icontains=w
-                ).order_by('order').values('id', 'name')
-                break
+    key = f'curriculum_topics_{subject_id}_{class_name.lower().replace(" ", "_")}'
+    topics = cache.get(key)
+    if topics is None:
+        topics_qs = SubjectTopic.objects.filter(
+            subject_id=subject_id,
+            class_name__iexact=class_name
+        ).order_by('order').values('id', 'name')
+        
+        # If no topics found, try with broader matching
+        if not topics_qs.exists():
+            # Try just with the form number (e.g., "1" from "Form 1")
+            words = class_name.split()
+            for w in words:
+                if w.isdigit():
+                    topics_qs = SubjectTopic.objects.filter(
+                        subject_id=subject_id,
+                        class_name__icontains=w
+                    ).order_by('order').values('id', 'name')
+                    break
+        topics = list(topics_qs)
+        cache.set(key, topics, _CACHE_SYLLABUS)
     
     return JsonResponse({
         'success': True,
-        'topics': list(topics),
-        'count': topics.count(),
+        'topics': topics,
+        'count': len(topics),
         'source': 'database'
     })
 
 
 def ajax_get_subtopics_db(request):
     """
-    AJAX: Get subtopics from DB for a given topic.
-    Uses the TIE syllabus data seeded via the seed_tie_syllabus management command.
-    Returns a JSON array of subtopic strings.
+    AJAX: Get subtopics from DB for a given topic (cached 1 hour).
     """
     topic_id = request.GET.get('topic_id')
     
     if not topic_id:
         return JsonResponse({'success': False, 'error': 'topic_id inahitajika'}, status=400)
     
-    subtopics = TopicSubtopic.objects.filter(
-        topic_id=topic_id
-    ).order_by('order').values('id', 'name')
+    subtopics = _cached_topic_subtopics(topic_id)
     
     return JsonResponse({
         'success': True,
-        'subtopics': list(subtopics),
-        'count': subtopics.count(),
+        'subtopics': subtopics,
+        'count': len(subtopics),
         'source': 'database'
     })
 
@@ -6650,20 +6797,18 @@ def notes_library_view(request):
         'Technical / VETA': 'technical',
     }
     level_classes = []
-    for el in EducationLevel.objects.all().order_by('order'):
+    _cls_by_level = _cached_level_classes()
+    _lvl_by_id = {lvl.id: lvl for lvl in _cached_education_levels()}
+    for el in sorted(_lvl_by_id.values(), key=lambda l: l.order):
+        classes = _cls_by_level.get(el.id, [])
         level_classes.append({
             'code': _level_code_map.get(el.name, 'ordinary'),
             'label': el.name,
-            'classes': [{'name': c.name} for c in el.classes.all().order_by('order')],
+            'classes': [{'name': c['name']} for c in classes],
         })
 
     # Subjects per level (82 total: 11 primary, 19 secondary, 16 advanced, 36 VETA)
-    subjects_by_level = {
-        'primary': list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name')),
-        'secondary': list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name')),
-        'advanced': list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name')),
-        'technical': list(Subject.objects.filter(level='technical').order_by('name').values('id', 'name')),
-    }
+    subjects_by_level = _cached_subjects_by_level()
 
     notes = LessonNote.objects.filter(teacher=teacher).order_by('-created_at')[:100]
     today = timezone.now().date()
