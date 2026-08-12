@@ -105,6 +105,16 @@
     padding: 0.45rem 0.65rem;
   }
 
+  /* ── Mode selector active state ── */
+  #modeFullBtn.active-mode, #modeSingleBtn.active-mode {
+    outline: 3px solid rgba(31,122,61,0.25);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+  #modeFullBtn.active-mode { background: var(--green-500); color: #fff; }
+  #modeSingleBtn.active-mode { background: var(--gold-400); color: #fff; }
+  #modeFullBtn:not(.active-mode), #modeSingleBtn:not(.active-mode) { opacity: 0.85; }
+
   /* ── Imetengenezwa Leo items ── */
   .today-lp-item {
     display: block;
@@ -275,7 +285,29 @@
               </select>
             </div>
 
-            <!-- Topic: AI suggestions + manual -->
+            <!-- ─── Mode Selector: Full Subject vs Single Topic ─── -->
+            <div class="mb-2" style="border:2px solid var(--gold-400);border-radius:var(--radius-sm);padding:0.55rem 0.65rem;background:linear-gradient(135deg,rgba(217,164,65,0.08),rgba(31,122,61,0.05));">
+              <label style="font-weight:700;font-size:var(--font-size-xs);color:var(--gold-400);margin-bottom:5px;display:flex;align-items:center;gap:5px;">
+                <i class="fas fa-layer-group"></i> Je, unataka Lesson Plans za Topics ZOTE?
+              </label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" id="modeFullBtn" class="btn-tlm btn-gold-tlm py-1" style="flex:1;font-size:11px;padding:0.45rem 0.5rem;">
+                  <i class="fas fa-layer-group"></i> NDIYO — Full Subject
+                </button>
+                <button type="button" id="modeSingleBtn" class="btn-tlm btn-primary-tlm py-1" style="flex:1;font-size:11px;padding:0.45rem 0.5rem;">
+                  <i class="fas fa-chalkboard"></i> HAPANA — Topic Moja
+                </button>
+              </div>
+              <div id="modeFullHint" style="font-size:9px;color:var(--green-500);margin-top:5px;">
+                <i class="fas fa-info-circle"></i> Itazalisha lesson plan kwa KILA topic ya somo hili — mpaka topics zote ziishe. Hakuna haja ya kuchagua topic.
+              </div>
+              <div id="modeSingleHint" style="font-size:9px;color:var(--text-muted);margin-top:5px;display:none;">
+                <i class="fas fa-info-circle"></i> Utachagua topic moja na subtopic yake — kisha unazalisha lesson plan ya topic hiyo tu.
+              </div>
+            </div>
+
+            <!-- Topic: AI suggestions + manual (SINGLE TOPIC mode tu) -->
+            <div id="singleTopicSection">
             <div class="mb-2">
               <label>Topic <span id="topicStatus" style="font-weight:400;font-size:9px;color:var(--text-muted);"></span></label>
               <select class="form-control form-select" id="topic">
@@ -296,6 +328,7 @@
                 <span style="font-size:11px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> AI inatafuta subtopics...</span>
               </div>
               <input class="form-control mt-1" id="subtopicManual" placeholder="Andika subtopic mwenyewe" style="font-size:12px;">
+            </div>
             </div>
 
             <div class="row g-1 mb-2">
@@ -377,7 +410,7 @@
             <button type="submit" class="btn-tlm btn-gold-tlm w-100 py-2 mt-1" id="generateBtn">
               <i class="fas fa-magic me-1"></i> Generate Lesson Plan
             </button>
-            <button type="button" class="btn-tlm btn-primary-tlm w-100 py-2 mt-1" id="generateAllBtn">
+            <button type="button" class="btn-tlm btn-primary-tlm w-100 py-2 mt-1" id="generateAllBtn" style="display:none;" hidden>
               <i class="fas fa-layer-group"></i> Generate Full Subject
             </button>
             <button type="button" class="btn-tlm btn-primary-tlm w-100 py-2 mt-1" id="loadSavedBtn">
@@ -906,10 +939,45 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 
+  // ── Mode Selector: Full Subject vs Single Topic ──
+  // NDIYO → hide topic/subtopic selection, generateBtn becomes Generate Full Subject
+  // HAPANA → show topic/subtopic selection, generateBtn stays Generate Lesson Plan
+  let lessonPlanModeFull = false;  // single source of truth for the mode
+  function setLessonPlanMode(fullMode) {
+    lessonPlanModeFull = fullMode;
+    document.getElementById('singleTopicSection').style.display = fullMode ? 'none' : '';
+    document.getElementById('modeFullHint').style.display = fullMode ? '' : 'none';
+    document.getElementById('modeSingleHint').style.display = fullMode ? 'none' : '';
+    const genBtn = document.getElementById('generateBtn');
+    if (fullMode) {
+      genBtn.innerHTML = '<i class="fas fa-layer-group me-1"></i> Generate Full Subject (Topics Zote)';
+      genBtn.classList.remove('btn-gold-tlm');
+      genBtn.classList.add('btn-primary-tlm');
+      document.getElementById('modeFullBtn').classList.add('active-mode');
+      document.getElementById('modeSingleBtn').classList.remove('active-mode');
+    } else {
+      genBtn.innerHTML = '<i class="fas fa-magic me-1"></i> Generate Lesson Plan';
+      genBtn.classList.add('btn-gold-tlm');
+      genBtn.classList.remove('btn-primary-tlm');
+      document.getElementById('modeSingleBtn').classList.add('active-mode');
+      document.getElementById('modeFullBtn').classList.remove('active-mode');
+    }
+  }
+
+  document.getElementById('modeFullBtn').addEventListener('click', function() { setLessonPlanMode(true); });
+  document.getElementById('modeSingleBtn').addEventListener('click', function() { setLessonPlanMode(false); });
+  // Default mode: Single Topic (HAPANA) — mwalimu anachagua NDIYO ikiwa anataka zote
+  setLessonPlanMode(false);
+
   // ── Generate ──
   document.getElementById('lessonPlanForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    generateLessonPlan();
+    if (lessonPlanModeFull) {
+      // generateAllBtn iko hidden kwenye full mode — tunatumia .click() moja kwa moja
+      document.getElementById('generateAllBtn').click();
+    } else {
+      generateLessonPlan();
+    }
   });
 
   // ── Helper: robust JSON fetch — handles non-JSON / error responses ──
@@ -1274,18 +1342,40 @@ document.addEventListener('DOMContentLoaded', function() {
         // Prepare request data for this single topic
         const topicData = { ...fd, topic: topicName, subtopic: subtopicName, topic_index: i, total_topics: totalTopics };
         
-        const resp = await jsonFetch('{% url "curriculum:ajax_generate_one_lesson" %}', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-          body: JSON.stringify(topicData),
-        });
+        // ── Retry logic: jaribu mara 3 kwa kila topic ikiwa AI inakwama/rate-limit ──
+        // (Retry TU kwa network error / 429 rate-limit / 5xx — siyo 422 au 400 ambazo
+        //  hazitapona kwa kujaribu tena, zinasave muda wa mwalimu)
+        let resp = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          document.getElementById('progressSubtitle').textContent = `Inazalisha ${topicName}... (${i + 1}/${totalTopics})${attempt > 1 ? ' — jaribio la ' + attempt : ''}`;
+          try {
+            resp = await jsonFetch('{% url "curriculum:ajax_generate_one_lesson" %}', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+              body: JSON.stringify(topicData),
+            });
+          } catch (e) {
+            resp = { ok: false, status: 0, data: { error: 'Network: ' + e.message } };
+          }
+          const shouldRetry = resp && (!resp.ok) && (resp.status === 0 || resp.status === 429 || resp.status >= 500);
+          if (resp && resp.ok && resp.data && resp.data.success) break;
+          if (shouldRetry && attempt < 3) {
+            await new Promise(r => setTimeout(r, 2000));
+          } else {
+            break;  // 400/404/422 → usijaribu tena, topic hii imeshindikana
+          }
+        }
         
-        if (resp.ok && resp.data.success) {
+        if (resp.ok && resp.data && resp.data.success) {
           generated++;
           results.push({ topic: topicName, id: resp.data.lp_id, success: true });
         } else {
           failed++;
-          results.push({ topic: topicName, success: false, error: resp.data.error || 'Failed' });
+          results.push({ topic: topicName, success: false, error: (resp && resp.data && resp.data.error) || 'Failed' });
+        }
+        // Pumziko fupi kati ya topics ili kuepuka rate limiting
+        if (i < totalTopics - 1) {
+          await new Promise(r => setTimeout(r, 600));
         }
       }
       
@@ -1306,7 +1396,8 @@ document.addEventListener('DOMContentLoaded', function() {
       setTimeout(() => {
         spinner.classList.remove('show');
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-layer-group"></i> Generate Full Subject';
+        // Restore the visible generateBtn to match the current mode
+        setLessonPlanMode(lessonPlanModeFull);
         // Reload saved
         document.getElementById('loadSavedBtn').click();
       }, 1500);
@@ -1315,7 +1406,8 @@ document.addEventListener('DOMContentLoaded', function() {
       clearInterval(elapsedInterval);
       spinner.classList.remove('show');
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-layer-group"></i> Generate Full Subject';
+      // Restore the visible generateBtn to match the current mode
+      setLessonPlanMode(lessonPlanModeFull);
       showToast('Hitilafu: ' + (err.message || 'Tafadhali jaribu tena'), 'error');
       emptyState.style.display = 'block';
     }
