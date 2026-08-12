@@ -1028,6 +1028,7 @@ class Textbook(models.Model):
         ('primary', 'Primary School'),
         ('ordinary', 'Ordinary Level'),
         ('advanced', 'Advanced Level'),
+        ('technical', 'Technical / VETA'),
     ]
     
     title = models.CharField(max_length=200)
@@ -1039,6 +1040,14 @@ class Textbook(models.Model):
     isbn = models.CharField(max_length=50, blank=True, null=True)
     file = models.FileField(upload_to='textbooks/', blank=True, null=True)
     cover_image = models.ImageField(upload_to='textbook_covers/', blank=True, null=True)
+    # Kiungo cha nje (mf. PDF ya TIE/TETEA online) — file au url mojawapo
+    url = models.URLField(blank=True, verbose_name='External link (PDF/reader)')
+    description = models.TextField(blank=True, verbose_name='Maelezo mafupi')
+    # Mwalimu aliyepakia kitabu hiki (blank = system/admin)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='uploaded_textbooks',
+    )
     is_active = models.BooleanField(default=True)
     
     def __str__(self):

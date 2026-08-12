@@ -36,7 +36,7 @@ except ImportError:
     PILImage = None
 
 
-from .ai_utils import client, model_name, OPENROUTER_API_KEY, GROQ_API_KEY, GOOGLE_API_KEY
+from .ai_utils import client, model_name, OPENROUTER_API_KEY, GROQ_API_KEY, GOOGLE_API_KEY, GenerateContentConfig
 from .forms import SchemeOfWorkForm, LogbookForm
 
 logger = logging.getLogger(__name__)
@@ -4602,25 +4602,48 @@ LENGTH REQUIREMENTS:
 
 Return ONLY valid JSON. No other text."""
 
-        response = client.models.generate_content(model=model_name, contents=prompt)
-        response_text = response.text
-        
-        cleaned = re.sub(r'```json\\s*', '', response_text)
-        cleaned = re.sub(r'```\\s*', '', cleaned).strip()
-        
-        start_idx = cleaned.find('{')
-        end_idx = cleaned.rfind('}')
+                # ── Generate with HIGH token budget + auto-retry on partial output ──
+        # (Teachers reported notes coming out "very partial" — the long notebook
+        #  prompt could exceed the model's default output limit, truncating the
+        #  JSON. Request more tokens and retry once with a nudge when incomplete.)
         note_data = None
-        if start_idx != -1 and end_idx != -1:
-            json_str = cleaned[start_idx:end_idx + 1]
-            try:
-                note_data = json.loads(json_str)
-            except json.JSONDecodeError:
+        for _attempt in range(2):
+            if _attempt > 0:
+                prompt += ("\n\nIMPORTANT: Your previous response was INCOMPLETE or TRUNCATED. "
+                           "Produce the ENTIRE notes again — every section fully complete, "
+                           "no placeholders, no '...', no empty arrays.")
+            response = client.models.generate_content(
+                model=model_name, contents=prompt,
+                config=GenerateContentConfig(max_output_tokens=32768),
+            )
+            response_text = response.text
+
+            cleaned = re.sub(r'```json\s*', '', response_text)
+            cleaned = re.sub(r'```\s*', '', cleaned).strip()
+
+            start_idx = cleaned.find('{')
+            end_idx = cleaned.rfind('}')
+            note_data = None
+            if start_idx != -1 and end_idx != -1:
+                json_str = cleaned[start_idx:end_idx + 1]
                 try:
-                    note_data = json.loads(_sanitize_json_control_chars(json_str))
+                    note_data = json.loads(json_str)
                 except json.JSONDecodeError:
-                    pass
-        
+                    try:
+                        note_data = json.loads(_sanitize_json_control_chars(json_str))
+                    except json.JSONDecodeError:
+                        pass
+
+            if note_data:
+                _paras = note_data.get('summary_paragraphs', []) or []
+                if not _paras and note_data.get('summary'):
+                    _paras = [note_data['summary']]
+                _kps = note_data.get('key_points', []) or []
+                _quiz = note_data.get('quiz', []) or []
+                if len(_paras) >= 3 and len(_kps) >= 5 and len(_quiz) >= 3:
+                    break  # complete enough
+                note_data = None  # incomplete → retry once
+
         if note_data:
             # Save the generated content as a LessonNote
             ed_level = ({'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}).get(
@@ -6506,3 +6529,588 @@ Use bullet points and short paragraphs."""
     except Exception as e:
         logger.exception("[Results] Error")
         return JsonResponse({'success': False, 'error': str(e)[:300]}, status=500)
+
+
+# =============================================================================
+# NOTES & PAST PAPERS LIBRARY (Maktaba ya Notes na Past Papers)
+# Levels zote: Primary (Std 1-6/7), Secondary (Form 1-4), Advanced (Form 5-6),
+# VETA/Technical — kwa mtindo wa kimataifa (TIE content + Cambridge organization).
+# =============================================================================
+
+NECTA_LIBRARY_LINKS = {
+    'primary': {
+        'label': 'PSLE & SFNA (Shule za Msingi)',
+        'exams': [
+            {'code': 'PSLE', 'name': 'Primary School Leaving Examination (Std 7)'},
+            {'code': 'SFNA', 'name': 'Standard Four National Assessment (Std 4)'},
+        ],
+        'url': 'https://maktaba.tetea.org/resources/',
+    },
+    'ordinary': {
+        'label': 'CSEE & FTNA (Sekondari — Form 1-4)',
+        'exams': [
+            {'code': 'CSEE', 'name': 'Certificate of Secondary Education Examination (Form 4)'},
+            {'code': 'FTNA', 'name': 'Form Two National Assessment (Form 2)'},
+        ],
+        'url': 'https://maktaba.tetea.org/resources/',
+    },
+    'advanced': {
+        'label': 'ACSEE (Sekondari — Form 5-6)',
+        'exams': [
+            {'code': 'ACSEE', 'name': 'Advanced Certificate of Secondary Education Examination (Form 6)'},
+        ],
+        'url': 'https://maktaba.tetea.org/resources/',
+    },
+    'technical': {
+        'label': 'NVA / NACTE (VETA na Vyuo vya Ufundi)',
+        'exams': [
+            {'code': 'NVA', 'name': 'National Vocational Awards (VETA)'},
+            {'code': 'NACTE', 'name': 'NACTE assessments (NTA levels)'},
+        ],
+        'url': 'https://nacte.go.tz/',
+    },
+}
+
+TIE_BOOK_LINKS = {
+    'primary': {
+        'label': 'Primary School (Shule ya Msingi — Std 1-7)',
+        'books': [
+            {'title': 'TIE Online Library — Vitabu vya Primary', 'url': 'https://ol.tie.go.tz/',
+             'note': 'Hisabati, Sayansi na Teknolojia, Kiswahili, English, Maarifa ya Jamii, Uraia na Maadili, Stadi za Kazi (Std 1-7)'},
+            {'title': 'Maktaba TETEA — Primary Resources', 'url': 'https://maktaba.tetea.org/resources/',
+             'note': 'Syllabi rasmi za TIE, teaching guides na study aids (Std 1-4 & 5-7)'},
+        ],
+    },
+    'ordinary': {
+        'label': 'Ordinary Level (Sekondari — Form 1-4)',
+        'books': [
+            {'title': 'TIE Online Library — Secondary (Form 1-4)', 'url': 'https://ol.tie.go.tz/',
+             'note': 'Civics, History, Geography, Kiswahili, English, Biology, Basic Mathematics, Physics, Chemistry, Book Keeping, Commerce, Computer/ICT, Home Economics n.k.'},
+            {'title': 'Maktaba TETEA — Forms 1-2 & 3-4', 'url': 'https://maktaba.tetea.org/resources/',
+             'note': 'Syllabi na study aids za FTNA/CSEE'},
+        ],
+    },
+    'advanced': {
+        'label': 'Advanced Level (Sekondari — Form 5-6)',
+        'books': [
+            {'title': 'TIE Online Library — Advanced (Form 5-6)', 'url': 'https://ol.tie.go.tz/',
+             'note': 'Advanced Mathematics, Physics, Chemistry, Biology, Economics, Geography, History, Accountancy, Computer Science, General Studies (PCM/PCB/HGL/EGM/ECA)'},
+            {'title': 'Maktaba TETEA — Forms 5-6', 'url': 'https://maktaba.tetea.org/resources/',
+             'note': 'Syllabi na study aids za ACSEE'},
+        ],
+    },
+    'technical': {
+        'label': 'Technical / VETA (Ufundi)',
+        'books': [
+            {'title': 'TIE Online Library — Technical & Vocational', 'url': 'https://ol.tie.go.tz/',
+             'note': 'Vitabu vya ufundi: Electrical Installation, Mechanical Engineering, Architectural Draughting, ICT n.k.'},
+            {'title': 'NACTE / VETA — Resources', 'url': 'https://nacte.go.tz/',
+             'note': 'NVA na NACTE assessments (NTA 4-6, Grade I-III)'},
+        ],
+    },
+}
+
+_LEVEL_LABELS = {
+    'primary': 'Primary School (Shule ya Msingi)',
+    'ordinary': 'Ordinary Level Secondary (Sekondari)',
+    'advanced': 'Advanced Level Secondary (Sekondari)',
+    'technical': 'Technical / VETA (Ufundi)',
+}
+
+_LEVEL_SCHOOL_LABELS = {
+    'primary': 'Primary School',
+    'ordinary': 'Ordinary Level',
+    'advanced': 'Advanced Level',
+    'technical': 'Technical School / VETA College',
+}
+
+
+def notes_library_view(request):
+    """Maktaba ya Notes na Past Papers — notes kamili kwa levels zote + papers."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:notes_library')}")
+
+    school_level = teacher.school.level if teacher and teacher.school else ''
+    teacher_edu_level = 'ordinary'
+    if school_level:
+        sl = school_level.lower()
+        if 'primary' in sl:
+            teacher_edu_level = 'primary'
+        elif 'advanced' in sl or 'a level' in sl:
+            teacher_edu_level = 'advanced'
+        elif 'technical' in sl or 'veta' in sl:
+            teacher_edu_level = 'technical'
+
+    # Levels + their classes (Standard 1-7, Form 1-4, Form 5-6, VETA grades)
+    _level_code_map = {
+        'Primary': 'primary',
+        'Ordinary Level': 'ordinary',
+        'Advanced Level': 'advanced',
+        'Technical / VETA': 'technical',
+    }
+    level_classes = []
+    for el in EducationLevel.objects.all().order_by('order'):
+        level_classes.append({
+            'code': _level_code_map.get(el.name, 'ordinary'),
+            'label': el.name,
+            'classes': [{'name': c.name} for c in el.classes.all().order_by('order')],
+        })
+
+    # Subjects per level (82 total: 11 primary, 19 secondary, 16 advanced, 36 VETA)
+    subjects_by_level = {
+        'primary': list(Subject.objects.filter(level='primary').order_by('name').values('id', 'name')),
+        'secondary': list(Subject.objects.filter(level='secondary').order_by('name').values('id', 'name')),
+        'advanced': list(Subject.objects.filter(level='advanced').order_by('name').values('id', 'name')),
+        'technical': list(Subject.objects.filter(level='technical').order_by('name').values('id', 'name')),
+    }
+
+    notes = LessonNote.objects.filter(teacher=teacher).order_by('-created_at')[:100]
+    today = timezone.now().date()
+    notes_qs = LessonNote.objects.filter(teacher=teacher)
+    stats = {
+        'total': notes_qs.count(),
+        'today': notes_qs.filter(created_at__date=today).count(),
+        'week': notes_qs.filter(created_at__date__gte=today - timedelta(days=7)).count(),
+        'month': notes_qs.filter(created_at__date__gte=today.replace(day=1)).count(),
+    }
+
+    return render(request, 'curriculum/notes_library.html', {
+        'teacher': teacher,
+        'teacher_edu_level': teacher_edu_level,
+        'level_classes': level_classes,
+        'subjects_by_level': subjects_by_level,
+        'necta_links': NECTA_LIBRARY_LINKS,
+        'notes': notes,
+        'stats': stats,
+        'today': today,
+        'teacher_name': teacher.full_name if teacher else '',
+    })
+
+
+def ajax_notes_library_topics(request):
+    """Topics kwa somo+darasa kutoka TIE syllabus DB (fallback: AI list)."""
+    subject_id = request.GET.get('subject_id')
+    class_name = (request.GET.get('class_name') or '').strip()
+    if not subject_id or not class_name:
+        return JsonResponse({'success': False, 'error': 'subject_id na class_name vinahitajika'}, status=400)
+
+    topics = SubjectTopic.objects.filter(
+        subject_id=subject_id, class_name__iexact=class_name
+    ).order_by('order').values('id', 'name')
+    if not topics.exists():
+        for w in class_name.split():
+            if w.isdigit():
+                topics = SubjectTopic.objects.filter(
+                    subject_id=subject_id, class_name__icontains=w
+                ).order_by('order').values('id', 'name')
+                break
+    if topics.exists():
+        return JsonResponse({'success': True, 'topics': list(topics), 'source': 'database'})
+
+    # Fallback: AI topic list
+    subj = Subject.objects.filter(id=subject_id).first()
+    topic_names = []
+    if subj and client is not None:
+        try:
+            ai_prompt = (f"List the 8-12 main topics for {subj.name} {class_name} "
+                         f"(Tanzanian TIE syllabus{' technical/vocational' if subj.level == 'technical' else ''}). "
+                         "Return as a comma-separated list. No numbers. No extra text.")
+            ai_resp = client.models.generate_content(model=model_name, contents=ai_prompt)
+            topic_names = [t.strip() for t in ai_resp.text.replace('\n', ',').split(',') if t.strip() and len(t.strip()) > 3]
+        except Exception:
+            pass
+    if topic_names:
+        return JsonResponse({'success': True, 'topics': [{'id': None, 'name': t} for t in topic_names], 'source': 'ai'})
+    return JsonResponse({'success': False, 'error': 'Hakuna topics zilizopatikana'}, status=404)
+
+
+def ajax_generate_full_notes(request):
+    """Generate COMPLETE textbook-style notes (international structure) for ANY
+    level/class/subject/topic — no lesson plan needed.
+
+    Structure (TIE content + Cambridge IGCSE organization):
+      Overview → Key Terms → Content Sections → Worked Examples → Key Points →
+      Exam Tips → Practice Questions → Summary.
+    Robust against partial output: high token budget + auto-retry + validation.
+    """
+    if client is None:
+        return JsonResponse({'success': False, 'error': 'AI haitumiki'}, status=503)
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Jisajili kwanza'}, status=401)
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Data si sahihi'}, status=400)
+
+    level = (data.get('level') or 'ordinary').strip()
+    class_name = (data.get('class_name') or '').strip()
+    subject_id = data.get('subject_id') or ''
+    subject_name = (data.get('subject') or '').strip()
+    topic = (data.get('topic') or '').strip()
+    subtopic = (data.get('subtopic') or '').strip()
+    language = (data.get('language') or 'auto').strip()
+
+    if not (class_name and subject_name and topic):
+        return JsonResponse({'success': False, 'error': 'Darasa, somo na topic zinahitajika'}, status=400)
+
+    if not subject_id:
+        subj_obj = Subject.objects.filter(name__iexact=subject_name).first()
+        subject_id = subj_obj.id if subj_obj else ''
+    if not subtopic and subject_id:
+        topic_row = (
+            SubjectTopic.objects.filter(
+                subject_id=subject_id, class_name__iexact=class_name, name__iexact=topic
+            ).first()
+            or SubjectTopic.objects.filter(subject_id=subject_id, name__iexact=topic).first()
+        )
+        if topic_row:
+            first_sub = TopicSubtopic.objects.filter(topic=topic_row).order_by('order').first()
+            if first_sub:
+                subtopic = first_sub.name
+
+    level_label = _LEVEL_LABELS.get(level, level)
+    sw = _is_kiswahili_mode(language, subject_name, _LEVEL_SCHOOL_LABELS.get(level, ''))
+    lang_instr = ("Write ALL content in KISWAHILI (Swahili) except technical terms."
+                  if sw else "Write ALL content in ENGLISH.")
+
+    prompt = f"""You are an expert curriculum writer producing COMPLETE, textbook-quality lesson notes for a Tanzanian classroom. The notes must follow an INTERNATIONAL organization (like Cambridge IGCSE / Save My Exams): topic broken into clear sections, bold key terms with definitions, exam tips, and practice questions.
+
+LEVEL: {level_label}
+CLASS: {class_name}
+SUBJECT: {subject_name}
+TOPIC: {topic}
+SUBTOPIC: {subtopic or 'N/A'}
+
+{lang_instr}
+
+Write EXTREMELY DETAILED and COMPLETE notes. A colleague must be able to teach this topic from your notes alone.
+
+Return ONLY valid JSON with EXACTLY this structure:
+{{
+  "title": "Topic \u2014 Subject, Class (Lesson Notes)",
+  "overview": "2-3 long paragraphs (5-7 sentences each) introducing the topic, why it matters, and what students will learn.",
+  "key_terms": [
+    {{"term": "Term 1", "definition": "Clear definition (1-2 sentences)"}},
+    {{"term": "Term 2", "definition": "Clear definition (1-2 sentences)"}}
+  ],
+  "sections": [
+    {{"heading": "1.0 Subtopic/Heading 1", "content": "2-4 detailed paragraphs with explanations, examples and step-by-step detail. Plain text, no markdown."}},
+    {{"heading": "2.0 Subtopic/Heading 2", "content": "2-4 detailed paragraphs"}},
+    {{"heading": "3.0 Subtopic/Heading 3", "content": "2-4 detailed paragraphs"}}
+  ],
+  "worked_examples": [
+    {{"example": "A fully-worked example relevant to the topic", "solution": "Complete step-by-step solution"}}
+  ],
+  "key_points": [
+    "1. Concept \u2014 short explanation",
+    "2. Concept \u2014 short explanation"
+  ],
+  "exam_tips": [
+    "Tip 1 \u2014 common mistake or exam advice",
+    "Tip 2 \u2014 common mistake or exam advice"
+  ],
+  "practice_questions": [
+    {{"question": "Question 1 (exam-style)", "answer": "Complete model answer (2-4 sentences)"}},
+    {{"question": "Question 2 (exam-style)", "answer": "Complete model answer (2-4 sentences)"}}
+  ],
+  "summary": "One final paragraph tying everything together."
+}}
+
+LENGTH REQUIREMENTS (MUST be met):
+- overview: 2-3 paragraphs
+- key_terms: at least 6 terms
+- sections: at least 3 sections, each with 2-4 paragraphs
+- worked_examples: 1-2
+- key_points: at least 8 items
+- exam_tips: at least 4 tips
+- practice_questions: at least 5 questions with full answers
+- summary: 1 paragraph
+
+Do NOT truncate. Do NOT use placeholders like "...". Every field must be complete.
+Return ONLY valid JSON. No other text."""
+
+    note_data = None
+    for _attempt in range(2):
+        if _attempt > 0:
+            prompt += ("\n\nIMPORTANT: Your previous response was INCOMPLETE or TRUNCATED. "
+                       "Produce the ENTIRE notes again \u2014 every field fully complete, "
+                       "no placeholders, no empty arrays, no '...'.")
+        response = client.models.generate_content(
+            model=model_name, contents=prompt,
+            config=GenerateContentConfig(max_output_tokens=32768),
+        )
+        response_text = response.text
+        cleaned = re.sub(r'```(?:json)?\s*', '', response_text)
+        cleaned = re.sub(r'```\s*', '', cleaned).strip()
+        start_idx = cleaned.find('{')
+        end_idx = cleaned.rfind('}')
+        note_data = None
+        if start_idx != -1 and end_idx != -1:
+            json_str = cleaned[start_idx:end_idx + 1]
+            try:
+                note_data = json.loads(json_str)
+            except json.JSONDecodeError:
+                try:
+                    note_data = json.loads(_sanitize_json_control_chars(json_str))
+                except json.JSONDecodeError:
+                    note_data = None
+        if note_data:
+            _ok = (len(note_data.get('sections', []) or []) >= 2
+                   and len(note_data.get('key_points', []) or []) >= 4
+                   and len(note_data.get('practice_questions', []) or []) >= 3)
+            if _ok:
+                break
+            note_data = None
+
+    if not note_data:
+        return JsonResponse({'success': False, 'error': 'AI ilishindwa kuzalisha notes kamili. Jaribu tena.'}, status=422)
+
+    # Build notebook-style text for the saved LessonNote
+    parts = []
+    parts.append(f"📖 {note_data.get('title', f'{topic} \u2014 {subject_name}')}")
+    parts.append(f"\nLevel: {level_label} | Class: {class_name} | Subject: {subject_name} | Topic: {topic}")
+    if subtopic:
+        parts.append(f"Subtopic: {subtopic}")
+    parts.append('')
+
+    parts += ['=' * 60, '1. OVERVIEW / UTANGULIZI', '=' * 60, str(note_data.get('overview', '')), '']
+
+    kt = note_data.get('key_terms', []) or []
+    if kt:
+        parts += ['=' * 60, '2. KEY TERMS / MANENO MUHIMU', '=' * 60]
+        for k in kt:
+            parts.append(f"• {k.get('term', '')}: {k.get('definition', '')}")
+        parts.append('')
+
+    sections = note_data.get('sections', []) or []
+    if sections:
+        parts += ['=' * 60, '3. MAIN CONTENT / MAELEZO KAMILI', '=' * 60]
+        for s in sections:
+            parts.append(f"\n### {s.get('heading', '')}")
+            parts.append(str(s.get('content', '')))
+        parts.append('')
+
+    we = note_data.get('worked_examples', []) or []
+    if we:
+        parts += ['=' * 60, '4. WORKED EXAMPLES / MIFANO', '=' * 60]
+        for ex in we:
+            parts.append(f"\nExample: {ex.get('example', '')}")
+            parts.append(f"Solution: {ex.get('solution', '')}")
+        parts.append('')
+
+    kps = note_data.get('key_points', []) or []
+    if kps:
+        parts += ['=' * 60, '5. KEY POINTS / NUKTA MUHIMU', '=' * 60]
+        for kp in kps:
+            parts.append(f"  • {kp}")
+        parts.append('')
+
+    et = note_data.get('exam_tips', []) or []
+    if et:
+        parts += ['=' * 60, '6. EXAM TIPS / USHAURI WA MITIHANI', '=' * 60]
+        for t in et:
+            parts.append(f"  ⚠ {t}")
+        parts.append('')
+
+    pq = note_data.get('practice_questions', []) or []
+    if pq:
+        parts += ['=' * 60, '7. PRACTICE QUESTIONS / MASWALI YA MAZOEZI', '=' * 60]
+        for i, q in enumerate(pq, 1):
+            parts.append(f"\nQ{i}: {q.get('question', '')}")
+            parts.append(f"A: {q.get('answer', '')}")
+        parts.append('')
+
+    parts += ['=' * 60, '8. SUMMARY / MUHTASARI', '=' * 60, str(note_data.get('summary', '')), '']
+    note_content = '\n'.join(parts)
+
+    note = LessonNote.objects.create(
+        teacher=teacher,
+        teacher_name=teacher.full_name,
+        school=teacher.school if teacher.school else None,
+        school_name=teacher.school.name if teacher.school else '',
+        education_level=level,
+        class_name=class_name,
+        subject=subject_name,
+        topic=topic,
+        content=note_content,
+    )
+
+    return JsonResponse({
+        'success': True,
+        'note_id': note.id,
+        'note_data': note_data,
+        'note_html': note_content,
+        'created': note.created_at.isoformat(),
+    })
+
+
+def download_note_pdf(request):
+    """Export a saved LessonNote as a clean textbook-style PDF."""
+    if request.method != 'POST':
+        return HttpResponse("Invalid request", status=400)
+    try:
+        data = json.loads(request.body)
+        note_id = data.get('note_id')
+        teacher = get_tlm_teacher(request)
+        if not teacher:
+            return HttpResponse("Unauthorized", status=401)
+        note = LessonNote.objects.get(id=note_id, teacher=teacher)
+    except Exception:
+        return HttpResponse("Note haipatikani", status=404)
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=45, leftMargin=45, topMargin=45, bottomMargin=40)
+    _title_s = ParagraphStyle('nt', fontName='Helvetica-Bold', fontSize=15, leading=19,
+                              textColor=colors.HexColor('#0A2B5E'), alignment=1, spaceAfter=6)
+    _meta_s = ParagraphStyle('nm', fontName='Helvetica', fontSize=9, leading=13,
+                             textColor=colors.HexColor('#555555'), alignment=1, spaceAfter=8)
+    _hdr_s = ParagraphStyle('nh', fontName='Helvetica-Bold', fontSize=11, leading=15,
+                            textColor=colors.HexColor('#C8900A'), spaceBefore=10, spaceAfter=4)
+    _nrm_s = ParagraphStyle('nn', fontName='Helvetica', fontSize=9.5, leading=13.5, spaceAfter=4)
+
+    def _esc(s):
+        """Escape XML-special chars so reportlab Paragraph doesn't choke on
+        notes containing & < > (e.g. 'Teaching & Learning')."""
+        return (str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
+
+    story = []
+    story.append(Paragraph(_esc(f"{note.topic or 'Lesson Notes'} \u2014 {note.subject or ''}"), _title_s))
+    story.append(Paragraph(_esc(f"{note.class_name or ''} | {note.get_education_level_display()}"), _meta_s))
+    story.append(HRFlowable(width='100%', thickness=1.5, color=colors.HexColor('#C8900A'), spaceAfter=8))
+
+    _labels = ('1. OVERVIEW', '2. KEY TERMS', '3. MAIN CONTENT', '4. WORKED EXAMPLES',
+               '5. KEY POINTS', '6. EXAM TIPS', '7. PRACTICE', '8. SUMMARY')
+    for raw_line in (note.content or '').split('\n'):
+        line = raw_line.strip()
+        if not line:
+            story.append(Spacer(1, 4))
+        elif line.startswith('=' * 5):
+            story.append(HRFlowable(width='100%', thickness=0.8, color=colors.HexColor('#9BAAC4'),
+                                    spaceBefore=6, spaceAfter=6))
+        elif line.startswith('###'):
+            story.append(Paragraph(_esc(line[3:].strip()), _hdr_s))
+        elif any(line.startswith(l) for l in _labels):
+            story.append(Paragraph(_esc(line), _hdr_s))
+        else:
+            story.append(Paragraph(_esc(line), _nrm_s))
+    doc.build(story)
+    buffer.seek(0)
+    safe_name = f"Notes_{note.subject or 'Notes'}_{note.topic or ''}".replace(' ', '_')
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{safe_name}.pdf"'
+    return response
+
+
+def ajax_past_papers(request):
+    """Curated NECTA past-paper links kwa level (+ optional subject)."""
+    level = (request.GET.get('level') or 'ordinary').strip()
+    subject = (request.GET.get('subject') or '').strip()
+    info = NECTA_LIBRARY_LINKS.get(level, NECTA_LIBRARY_LINKS['ordinary'])
+    papers = []
+    for ex in info['exams']:
+        papers.append({
+            'code': ex['code'],
+            'name': ex['name'],
+            'subject': subject or 'All Subjects',
+            'tetea_url': info['url'],
+            'necta_url': 'https://www.necta.go.tz/',
+            'years': [str(y) for y in range(2025, 2014, -1)],
+        })
+    return JsonResponse({'success': True, 'level': level, 'label': info['label'], 'papers': papers})
+
+
+@login_required
+def ajax_notes_library_books(request):
+    """Vitabu halisi (uploaded/system) kwa level + subject."""
+    level = (request.GET.get('level') or 'ordinary').strip()
+    subject_id = request.GET.get('subject_id') or ''
+    qs = Textbook.objects.filter(education_level=level, is_active=True)
+    if subject_id:
+        qs = qs.filter(subject_id=subject_id)
+    books = []
+    for b in qs.order_by('-id'):
+        books.append({
+            'id': b.id,
+            'title': b.title,
+            'subject': b.subject.name if b.subject else '',
+            'class_name': b.class_level.name if b.class_level else '',
+            'publisher': b.publisher,
+            'year': b.year,
+            'description': b.description,
+            'file_url': b.file.url if b.file else '',
+            'url': b.url,
+            'uploaded_by_me': request.user.is_authenticated and b.uploaded_by_id == request.user.id,
+        })
+    books.sort(key=lambda b: (b['uploaded_by_me'] is not True, -b['id']))
+    return JsonResponse({
+        'success': True,
+        'books': books,
+        'tie_links': TIE_BOOK_LINKS.get(level, TIE_BOOK_LINKS['ordinary']),
+    })
+
+
+@login_required
+def ajax_upload_textbook(request):
+    """Upload PDF (file) au link ya kitabu — inaonekana kwenye Maktaba ya Vitabu."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=400)
+    title = (request.POST.get('title') or '').strip()[:200]
+    level = (request.POST.get('education_level') or '').strip()
+    subject_id = request.POST.get('subject_id') or ''
+    class_name = (request.POST.get('class_name') or '').strip()
+    url = (request.POST.get('url') or '').strip()
+    description = (request.POST.get('description') or '').strip()
+    file = request.FILES.get('file')
+    if not title or level not in dict(Textbook.LEVEL_CHOICES):
+        return JsonResponse({'success': False, 'error': 'Jina la kitabu na Level vinahitajika'}, status=400)
+    if not file and not url:
+        return JsonResponse({'success': False, 'error': 'Weka PDF (file) au link ya kitabu — angalau moja'}, status=400)
+    if file:
+        if not file.name.lower().endswith('.pdf'):
+            return JsonResponse({'success': False, 'error': 'File lazima iwe PDF'}, status=400)
+        if file.size > 100 * 1024 * 1024:
+            return JsonResponse({'success': False, 'error': 'PDF ni kubwa sana (max 100MB)'}, status=400)
+    if subject_id and not (str(subject_id).isdigit() and Subject.objects.filter(id=subject_id).exists()):
+        subject_id = ''
+    if url and not (url.startswith('http://') or url.startswith('https://')):
+        return JsonResponse({'success': False, 'error': 'Link lazima ianze na http:// au https://'}, status=400)
+    class_level = ClassLevel.objects.filter(name__iexact=class_name).first() if class_name else None
+    tb = Textbook.objects.create(
+        title=title,
+        education_level=level,
+        subject_id=subject_id or None,
+        class_level=class_level,
+        url=url,
+        description=description,
+        file=file,
+        publisher='Uploaded',
+        uploaded_by=request.user if request.user.is_authenticated else None,
+    )
+    return JsonResponse({
+        'success': True,
+        'book': {
+            'id': tb.id,
+            'title': tb.title,
+            'file_url': tb.file.url if tb.file else '',
+            'url': tb.url,
+        },
+    })
+
+
+@login_required
+def ajax_delete_textbook(request):
+    """Futa kitabu (mwenye kuupload au superuser)."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=400)
+    book_id = request.POST.get('book_id') or ''
+    if not str(book_id).isdigit():
+        return JsonResponse({'success': False, 'error': 'book_id is invalid'}, status=400)
+    tb = get_object_or_404(Textbook, id=book_id)
+    if tb.uploaded_by_id and tb.uploaded_by_id != request.user.id and not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Huwezi kufuta kitabu cha mwalimu mwingine'}, status=403)
+    tb.delete()
+    return JsonResponse({'success': True})
+

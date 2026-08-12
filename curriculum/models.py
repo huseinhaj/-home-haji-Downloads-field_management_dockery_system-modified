@@ -109,6 +109,7 @@ class LessonNote(models.Model):
         ('primary', 'Primary School'),
         ('ordinary', 'Ordinary Level'),
         ('advanced', 'Advanced Level'),
+        ('technical', 'Technical / VETA'),
     ]
     
     teacher = models.ForeignKey(

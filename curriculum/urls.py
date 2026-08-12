@@ -33,6 +33,14 @@ urlpatterns = [
 
     # Lesson Notes
     path('lesson-notes/', views.lesson_notes_view, name='lesson_notes'),
+    path('notes-library/', views.notes_library_view, name='notes_library'),
+    path('notes-library/ajax-topics/', views.ajax_notes_library_topics, name='notes_library_topics'),
+    path('notes-library/ajax-generate/', views.ajax_generate_full_notes, name='notes_library_generate'),
+    path('notes-library/ajax-papers/', views.ajax_past_papers, name='notes_library_papers'),
+    path('notes-library/note-pdf/', views.download_note_pdf, name='notes_library_note_pdf'),
+    path('notes-library/ajax-books/', views.ajax_notes_library_books, name='notes_library_books'),
+    path('notes-library/upload-book/', views.ajax_upload_textbook, name='notes_library_upload_book'),
+    path('notes-library/delete-book/', views.ajax_delete_textbook, name='notes_library_delete_book'),
     path('lesson-notes/ajax-save/', views.ajax_save_lesson_note, name='save_lesson_note'),
     path('lesson-notes/ajax-get/<int:note_id>/', views.ajax_get_lesson_note, name='get_lesson_note'),
     path('lesson-notes/ajax-delete/', views.ajax_delete_lesson_note, name='delete_lesson_note'),

@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
@@ -47,4 +49,6 @@ urlpatterns = [
     # Muungano Curriculum — Scheme of Work, Lesson Plan & Logbook
     path('curriculum/', include('curriculum.urls')),
 
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# NOTE: static(settings.MEDIA_URL, ...) ni no-op kwenye production (DEBUG=False) —
+# nginx/whitenoise inaserve /media/ kwenye Railway.

@@ -1,0 +1,870 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}Maktaba ya Notes na Past Papers{% endblock %}
+{% block content %}
+{{ level_classes|json_script:"level-classes-data" }}
+{{ subjects_by_level|json_script:"subjects-data" }}
+<style>
+  /* ── Library tabs ── */
+  .lib-tabs { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .lib-tab { flex: 1; min-width: 150px; padding: 0.7rem 0.5rem; border-radius: var(--radius-md);
+    background: var(--bg-card); border: 2px solid var(--border-color); cursor: pointer;
+    font-weight: 700; font-size: var(--font-size-sm); color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all var(--duration-normal) var(--ease-out); }
+  .lib-tab:hover { transform: translateY(-2px); border-color: var(--green-500); }
+  .lib-tab.active { background: linear-gradient(135deg, var(--green-500), #166534); color: #fff;
+    border-color: var(--green-500); box-shadow: 0 4px 14px rgba(31,122,61,0.25); }
+
+  /* ── Level pills (Primary / Secondary / Advanced / VETA) ── */
+  .level-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .level-pill { padding: 0.4rem 0.9rem; border-radius: var(--radius-full); border: 1.5px solid var(--border-color);
+    background: var(--bg-card); font-size: var(--font-size-xs); font-weight: 700; color: var(--text-secondary);
+    cursor: pointer; transition: all var(--duration-fast) var(--ease-out); }
+  .level-pill:hover { border-color: var(--gold-400); color: var(--gold-400); }
+  .level-pill.active { background: var(--gold-400); color: #fff; border-color: var(--gold-400); }
+
+  .lib-select { width: 100%; padding: 0.55rem 0.7rem; border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-sm); background: var(--bg-card); font-size: var(--font-size-sm);
+    color: var(--text-primary); transition: border-color var(--duration-fast); }
+  .lib-select:focus { outline: none; border-color: var(--green-500); }
+  .lib-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text-muted); display: block; margin-bottom: 4px; }
+
+  .btn-generate-lib { width: 100%; padding: 0.7rem; border: none; border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--green-500), #166534); color: #fff; font-weight: 800;
+    font-size: var(--font-size-sm); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    gap: 8px; transition: all var(--duration-normal) var(--ease-out); margin-top: 0.5rem; }
+  .btn-generate-lib:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(31,122,61,0.3); }
+  .btn-generate-lib:disabled { opacity: 0.6; transform: none; cursor: not-allowed; }
+
+  /* ── Notebook ── */
+  .notebook-page { background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-md);
+    padding: 1.5rem 1.75rem; font-family: Georgia, serif; line-height: 1.8; color: #222;
+    box-shadow: inset 0 0 0 1px rgba(217,164,65,0.08), 0 2px 10px rgba(0,0,0,0.04); }
+  .notebook-page h2 { border-bottom: 3px double var(--gold-400); padding-bottom: 6px;
+    color: var(--green-600); font-weight: 800; font-size: 1.25rem; margin: 0 0 0.5rem; }
+  .notebook-page h3 { color: var(--green-600); font-size: 1rem; font-weight: 700;
+    margin: 1.25rem 0 0.5rem; border-left: 4px solid var(--gold-400); padding-left: 10px; }
+  .notebook-page p { margin: 0 0 0.75rem; font-size: 0.95rem; }
+  .kt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin: 8px 0; }
+  .kt-card { background: #f7f9f4; border: 1px solid #dce8dc; border-radius: 8px; padding: 8px 12px; }
+  .kt-card b { color: var(--green-600); }
+  .exam-tip { background: #fff8e6; border-left: 4px solid var(--gold-400); padding: 8px 12px;
+    border-radius: 0 8px 8px 0; margin-bottom: 6px; font-size: 0.9rem; }
+  .pq-item { border: 1px solid #dde7dd; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
+  .pq-item .q { font-weight: 700; color: var(--green-600); }
+  .pq-item .a { padding-left: 12px; border-left: 3px solid var(--gold-400); margin-left: 6px; margin-top: 6px; }
+
+  .paper-card { border: 1px solid var(--border-color); border-radius: var(--radius-md);
+    padding: 0.9rem 1rem; margin-bottom: 0.75rem; transition: all var(--duration-normal) var(--ease-out); }
+  .paper-card:hover { border-color: var(--green-500); transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(31,122,61,0.1); }
+  .year-chip { display: inline-block; background: rgba(31,122,61,0.08); color: var(--green-500);
+    font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-full); margin: 2px; }
+
+  .note-card-compact { cursor: pointer; border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+    padding: 8px 10px; transition: all var(--duration-fast); }
+  .note-card-compact:hover { border-color: var(--gold-400); background: rgba(217,164,65,0.04); }
+  .note-meta { font-size: 9px; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; margin-top: 3px; }
+</style>
+
+<div class="container-fluid px-0">
+  <!-- Header -->
+  <div class="c-card p-3 mb-3" style="border-left:4px solid var(--gold-400);">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div class="stat-icon" style="background:linear-gradient(135deg,var(--gold-400),#b8860b);">
+        <i class="fas fa-book-open" style="color:#fff;font-size:1.1rem;"></i>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <h4 style="font-family:var(--font-display);font-weight:800;margin:0;font-size:1.05rem;color:var(--text-primary);">
+          Maktaba ya Notes na Past Papers
+        </h4>
+        <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
+          Notes kamili kwa <strong>Shule za Msingi (Std 1-6)</strong> • <strong>Sekondari (Form 1-4)</strong> •
+          <strong>Advanced (Form 5-6)</strong> • <strong>VETA</strong> — mtindo wa kimataifa (TIE + Cambridge) +
+          Past Papers za NECTA
+        </p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="chip chip-green"><i class="fas fa-book"></i> {{ stats.total }} Notes</span>
+        <span class="chip chip-gold"><i class="fas fa-bolt"></i> {{ stats.today }} Leo</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="lib-tabs">
+    <div class="lib-tab active" id="tabNotesBtn" onclick="switchLibTab('notes')">
+      <i class="fas fa-book-open"></i> Notes
+    </div>
+    <div class="lib-tab" id="tabPapersBtn" onclick="switchLibTab('papers')">
+      <i class="fas fa-file-alt"></i> Past Papers (NECTA)
+    </div>
+    <div class="lib-tab" id="tabBooksBtn" onclick="switchLibTab('books')">
+      <i class="fas fa-book"></i> Vitabu (TIE)
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- LEFT: Controls -->
+    <div class="col-lg-4 col-xl-3">
+      <!-- ═══ NOTES GENERATOR ═══ -->
+      <div id="notesTab">
+        <div class="c-card">
+          <div class="c-card-head">
+            <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;">
+              <i class="fas fa-wand-magic-sparkles text-gold me-1"></i> Generate Notes Kamili
+            </h5>
+          </div>
+          <div class="c-card-body">
+            <span class="lib-label"><i class="fas fa-graduation-cap me-1"></i> Level / Ngazi</span>
+            <div class="level-pills" id="levelPills">
+              <span class="level-pill active" data-level="primary">Primary (Std 1-6)</span>
+              <span class="level-pill" data-level="ordinary">Secondary (Form 1-4)</span>
+              <span class="level-pill" data-level="advanced">Advanced (Form 5-6)</span>
+              <span class="level-pill" data-level="technical">VETA</span>
+            </div>
+
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-users me-1"></i> Darasa / Class</label>
+              <select class="lib-select" id="classSelect"><option value="">— Chagua Darasa —</option></select>
+            </div>
+
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-book me-1"></i> Somo / Subject</label>
+              <select class="lib-select" id="subjectSelect"><option value="">— Chagua Somo —</option></select>
+            </div>
+
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-list me-1"></i> Topic / Mada</label>
+              <select class="lib-select" id="topicSelect" style="margin-bottom:4px;">
+                <option value="">— Chagua Topic —</option>
+              </select>
+              <input type="text" class="lib-select" id="topicManual" placeholder="Au andika topic mwenyewe..." style="font-size:var(--font-size-xs);">
+            </div>
+
+            <button class="btn-generate-lib" id="generateBtn">
+              <i class="fas fa-wand-magic-sparkles"></i> Generate Notes Kamili
+            </button>
+            <div id="genStatus" style="font-size:11px;margin-top:8px;min-height:16px;"></div>
+          </div>
+        </div>
+
+        <!-- Saved notes -->
+        <div class="c-card mt-3">
+          <div class="c-card-head">
+            <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;">
+              <i class="fas fa-save text-gold me-1"></i> Notes Zilizohifadhiwa ({{ notes|length }})
+            </h5>
+          </div>
+          <div class="c-card-body" style="padding:0.5rem 0.75rem 0.75rem;max-height:520px;overflow-y:auto;">
+            {% if notes %}
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              {% for note in notes %}
+              <div class="note-card-compact" onclick="viewSavedNote({{ note.id }})">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;">
+                  <div style="font-weight:600;font-size:var(--font-size-xs);">{{ note.topic|truncatechars:42 }}</div>
+                  <div style="display:flex;gap:3px;flex-shrink:0;">
+                    <button class="btn-tlm btn-sm-tlm" style="background:rgba(31,122,61,0.08);color:var(--green-500);padding:2px 6px;font-size:9px;"
+                            onclick="event.stopPropagation(); downloadNotePdf({{ note.id }})" title="Pakua PDF">
+                      <i class="fas fa-file-pdf"></i>
+                    </button>
+                    <button class="btn-tlm btn-sm-tlm" style="background:rgba(220,38,38,0.06);color:var(--error);padding:2px 6px;font-size:9px;"
+                            onclick="event.stopPropagation(); deleteNote({{ note.id }})" title="Futa">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="note-meta">
+                  <span><i class="fas fa-book"></i> {{ note.subject|default:"—" }}</span>
+                  <span><i class="fas fa-users"></i> {{ note.class_name|default:"—" }}</span>
+                  <span><i class="far fa-clock"></i> {{ note.created_at|date:"d M Y" }}</span>
+                  {% if note.created_at.date == today %}<span class="chip chip-gold" style="font-size:8px;padding:1px 7px;"><i class="fas fa-bolt"></i> Leo</span>{% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p style="font-size:var(--font-size-xs);color:var(--text-muted);text-align:center;padding:1rem 0;margin:0;">
+              Hakuna notes bado. Generate notes za somo lako upande wa juu.
+            </p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PAST PAPERS ═══ -->
+      <div id="papersTab" style="display:none;">
+        <div class="c-card">
+          <div class="c-card-head">
+            <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;">
+              <i class="fas fa-file-alt text-gold me-1"></i> Past Papers za NECTA
+            </h5>
+          </div>
+          <div class="c-card-body">
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-graduation-cap me-1"></i> Level</label>
+              <select class="lib-select" id="paperLevelSelect">
+                <option value="primary">Primary (PSLE / SFNA)</option>
+                <option value="ordinary" selected>Secondary (CSEE / FTNA)</option>
+                <option value="advanced">Advanced (ACSEE)</option>
+                <option value="technical">VETA (NVA / NACTE)</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-book me-1"></i> Somo (hiari)</label>
+              <select class="lib-select" id="paperSubjectSelect"><option value="">All Subjects</option></select>
+            </div>
+            <button class="btn-generate-lib" id="findPapersBtn" style="background:linear-gradient(135deg,#b8860b,var(--gold-400));">
+              <i class="fas fa-search"></i> Tafuta Past Papers
+            </button>
+            <a href="{% url 'curriculum:exam_generator' %}" class="btn-generate-lib" style="text-decoration:none;margin-top:6px;">
+              <i class="fas fa-robot"></i> 🤖 Generate AI Practice Paper
+            </a>
+            <div id="papersStatus" style="font-size:11px;margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ VITABU (TIE / Uploads) ═══ -->
+      <div id="booksTab" style="display:none;">
+        <div class="c-card">
+          <div class="c-card-head">
+            <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;">
+              <i class="fas fa-book text-gold me-1"></i> Vitabu vya Kweli (TIE / TETEA)
+            </h5>
+          </div>
+          <div class="c-card-body">
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-graduation-cap me-1"></i> Level</label>
+              <select class="lib-select" id="bookLevelSelect">
+                <option value="primary">Primary (Std 1-6/7)</option>
+                <option value="ordinary" selected>Secondary (Form 1-4)</option>
+                <option value="advanced">Advanced (Form 5-6)</option>
+                <option value="technical">VETA</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-book me-1"></i> Somo (hiari)</label>
+              <select class="lib-select" id="bookSubjectSelect"><option value="">All Subjects</option></select>
+            </div>
+            <button class="btn-generate-lib" id="findBooksBtn" style="background:linear-gradient(135deg,#b8860b,var(--gold-400));">
+              <i class="fas fa-search"></i> Tafuta Vitabu
+            </button>
+            <div id="booksStatus" style="font-size:11px;margin-top:8px;"></div>
+          </div>
+        </div>
+
+        <!-- Upload kitabu chako -->
+        <div class="c-card mt-3">
+          <div class="c-card-head">
+            <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;">
+              <i class="fas fa-upload text-gold me-1"></i> Ongeza Kitabu Chako (PDF / Link)
+            </h5>
+          </div>
+          <div class="c-card-body">
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-bookmark me-1"></i> Jina la Kitabu *</label>
+              <input type="text" class="lib-select" id="bookTitle" placeholder="mf. Biology for Secondary Schools Form 2">
+            </div>
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-graduation-cap me-1"></i> Level *</label>
+              <select class="lib-select" id="bookUploadLevel">
+                <option value="primary">Primary</option>
+                <option value="ordinary" selected>Secondary</option>
+                <option value="advanced">Advanced</option>
+                <option value="technical">VETA</option>
+              </select>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="lib-label"><i class="fas fa-users me-1"></i> Darasa</label>
+                <input type="text" class="lib-select" id="bookClassName" placeholder="mf. Form 2">
+              </div>
+              <div class="col-6">
+                <label class="lib-label"><i class="fas fa-book me-1"></i> Somo</label>
+                <select class="lib-select" id="bookUploadSubject"><option value="">—</option></select>
+              </div>
+            </div>
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-file-pdf me-1"></i> PDF ya Kitabu (file)</label>
+              <input type="file" class="lib-select" id="bookFile" accept=".pdf,application/pdf">
+            </div>
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-link me-1"></i> AU Kiungo (link ya PDF/reader)</label>
+              <input type="url" class="lib-select" id="bookUrl" placeholder="https://...">
+            </div>
+            <div class="mb-2">
+              <label class="lib-label"><i class="fas fa-align-left me-1"></i> Maelezo (hiari)</label>
+              <textarea class="lib-select" id="bookDesc" rows="2" placeholder="Maelezo mafupi ya kitabu..."></textarea>
+            </div>
+            <button class="btn-generate-lib" id="uploadBookBtn">
+              <i class="fas fa-upload"></i> Hifadhi Kitabu
+            </button>
+            <div id="uploadStatus" style="font-size:11px;margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div class="col-lg-8 col-xl-9">
+      <div id="papersResults" style="display:none;">
+        <div class="c-card">
+          <div class="c-card-head">
+            <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;">
+              <i class="fas fa-file-alt text-gold me-1"></i> <span id="papersTitle">Past Papers</span>
+            </h5>
+          </div>
+          <div class="c-card-body" id="papersList"></div>
+        </div>
+      </div>
+
+      <div id="booksResults" style="display:none;">
+        <div class="c-card">
+          <div class="c-card-head">
+            <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;">
+              <i class="fas fa-book text-gold me-1"></i> <span id="booksTitle">Vitabu</span>
+            </h5>
+          </div>
+          <div class="c-card-body" id="booksList"></div>
+        </div>
+      </div>
+
+      <div id="notebookContainer" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;gap:8px;">
+          <h5 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);margin:0;color:var(--text-primary);">
+            <i class="fas fa-book text-gold me-1"></i> Notes Kamili (Daftari)
+          </h5>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn-tlm btn-gold-tlm btn-sm-tlm" id="saveNoteBtn">
+              <i class="fas fa-save me-1"></i> Hifadhi Notes
+            </button>
+            <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="downloadNotePdfBtn">
+              <i class="fas fa-file-pdf me-1"></i> Pakua PDF
+            </button>
+            <button class="btn-tlm btn-ghost-tlm btn-sm-tlm" id="printNoteBtn">
+              <i class="fas fa-print me-1"></i> Chapisha
+            </button>
+          </div>
+        </div>
+        <div class="notebook-page" id="notebookContent"></div>
+      </div>
+
+      <div id="emptyState">
+        <div class="c-card text-center py-5">
+          <div style="width:80px;height:80px;background:rgba(31,122,61,0.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+            <i class="fas fa-book-open" style="font-size:2.2rem;color:var(--text-muted);"></i>
+          </div>
+          <h5 style="color:var(--text-secondary);font-weight:700;font-size:1rem;">Maktaba ya Notes na Past Papers</h5>
+          <p style="color:var(--text-muted);font-size:var(--font-size-sm);max-width:420px;margin:0 auto;">
+            Chagua <strong>Level → Darasa → Somo → Topic</strong> upande wa kushoto, kisha bonyeza
+            <strong>"Generate Notes Kamili"</strong> ili kupata daftari la kimataifa: muhtasari, maneno muhimu,
+            maelezo kamili, mifano, nukta muhimu, ushauri wa mitihani na maswali ya mazoezi.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- View Note Modal -->
+<div class="modal-overlay" id="viewNoteModal">
+  <div class="modal-content" style="max-width:800px;">
+    <button class="modal-close" onclick="document.getElementById('viewNoteModal').classList.remove('show')">&times;</button>
+    <div id="viewNoteContent"></div>
+  </div>
+</div>
+
+<script>
+// ── Data from server ──
+const LEVEL_CLASSES = JSON.parse(document.getElementById('level-classes-data').textContent || '[]');
+const SUBJECTS = JSON.parse(document.getElementById('subjects-data').textContent || '{}');
+const SUBJECT_KEY = { primary: 'primary', ordinary: 'secondary', advanced: 'advanced', technical: 'technical' };
+let currentLevel = 'primary';
+let currentNoteId = null;
+let currentNoteData = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+  const classSelect = document.getElementById('classSelect');
+  const subjectSelect = document.getElementById('subjectSelect');
+  const topicSelect = document.getElementById('topicSelect');
+  const topicManual = document.getElementById('topicManual');
+  const genBtn = document.getElementById('generateBtn');
+  const genStatus = document.getElementById('genStatus');
+  const notebookContainer = document.getElementById('notebookContainer');
+  const notebookContent = document.getElementById('notebookContent');
+  const emptyState = document.getElementById('emptyState');
+  const papersResults = document.getElementById('papersResults');
+
+  // ── Level pills ──
+  document.querySelectorAll('.level-pill').forEach(pill => {
+    pill.addEventListener('click', function() {
+      document.querySelectorAll('.level-pill').forEach(p => p.classList.remove('active'));
+      this.classList.add('active');
+      currentLevel = this.getAttribute('data-level');
+      populateLevelData();
+      emptyState.style.display = 'block';
+      notebookContainer.style.display = 'none';
+      papersResults.style.display = 'none';
+    });
+  });
+
+  function populateLevelData() {
+    // Classes for this level
+    const lc = LEVEL_CLASSES.find(l => l.code === currentLevel);
+    classSelect.innerHTML = '<option value="">— Chagua Darasa —</option>';
+    (lc ? lc.classes : []).forEach(c => {
+      classSelect.insertAdjacentHTML('beforeend', `<option value="${c.name}">${c.name}</option>`);
+    });
+    // Subjects for this level
+    const subs = SUBJECTS[SUBJECT_KEY[currentLevel]] || [];
+    subjectSelect.innerHTML = '<option value="">— Chagua Somo —</option>';
+    subs.forEach(s => {
+      subjectSelect.insertAdjacentHTML('beforeend', `<option value="${s.id}" data-name="${s.name.replace(/"/g,'&quot;')}">${s.name}</option>`);
+    });
+    topicSelect.innerHTML = '<option value="">— Chagua Topic —</option>';
+    topicManual.value = '';
+  }
+
+  // Load topics when subject + class chosen
+  function loadTopics() {
+    const sid = subjectSelect.value;
+    const cn = classSelect.value;
+    if (!sid || !cn) { topicSelect.innerHTML = '<option value="">— Chagua Topic —</option>'; return; }
+    topicSelect.innerHTML = '<option value="">Inapakia topics...</option>';
+    fetch(`{% url 'curriculum:notes_library_topics' %}?subject_id=${sid}&class_name=${encodeURIComponent(cn)}`)
+      .then(r => r.json())
+      .then(data => {
+        topicSelect.innerHTML = '<option value="">— Chagua Topic —</option>';
+        if (data.success) {
+          (data.topics || []).forEach(t => {
+            topicSelect.insertAdjacentHTML('beforeend', `<option value="${t.name.replace(/"/g,'&quot;')}">${t.name}</option>`);
+          });
+          genStatus.textContent = `✅ Topics ${(data.topics||[]).length} zimepatikana (${data.source})`;
+          genStatus.style.color = 'var(--green-500)';
+        } else {
+          genStatus.textContent = '⚠️ Hakuna topics DB — andika topic mwenyewe';
+          genStatus.style.color = 'var(--gold-400)';
+        }
+      })
+      .catch(() => {
+        topicSelect.innerHTML = '<option value="">— Chagua Topic —</option>';
+      });
+  }
+  subjectSelect.addEventListener('change', loadTopics);
+  classSelect.addEventListener('change', loadTopics);
+
+  // ── Generate full notes ──
+  genBtn.addEventListener('click', function() {
+    const sid = subjectSelect.value;
+    const selOpt = subjectSelect.options[subjectSelect.selectedIndex];
+    const subjectName = selOpt ? (selOpt.getAttribute('data-name') || selOpt.textContent) : '';
+    const topic = topicSelect.value || topicManual.value.trim();
+    const cn = classSelect.value;
+
+    if (!cn) { genStatus.textContent = '❌ Chagua darasa kwanza'; genStatus.style.color = '#dc2626'; return; }
+    if (!subjectName) { genStatus.textContent = '❌ Chagua somo kwanza'; genStatus.style.color = '#dc2626'; return; }
+    if (!topic) { genStatus.textContent = '❌ Chagua/andika topic kwanza'; genStatus.style.color = '#dc2626'; return; }
+
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inazalisha notes kamili... (sekunde 20-45)';
+    genStatus.textContent = '⏳ AI inaandika daftari kamili la kimataifa... Usifunge ukurasa huu.';
+    genStatus.style.color = 'var(--gold-400)';
+    notebookContainer.style.display = 'none';
+    emptyState.style.display = 'none';
+
+    fetch('{% url "curriculum:notes_library_generate" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({
+        level: currentLevel, class_name: cn, subject_id: sid,
+        subject: subjectName, topic: topic, language: 'auto',
+      }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Notes Kamili';
+      if (data.success) {
+        currentNoteId = data.note_id;
+        currentNoteData = data.note_data;
+        renderNotebook(data.note_data, data.note_html);
+        genStatus.textContent = '✅ Notes kamili zimezalishwa na kuhifadhiwa!';
+        genStatus.style.color = 'var(--green-500)';
+        notebookContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        genStatus.textContent = '❌ ' + (data.error || 'Imeshindwa. Jaribu tena.');
+        genStatus.style.color = '#dc2626';
+        emptyState.style.display = 'block';
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Notes Kamili';
+      genStatus.textContent = '❌ Network error: ' + err.message;
+      genStatus.style.color = '#dc2626';
+    });
+  });
+
+  // ── Render notebook (international structure) ──
+  function renderNotebook(nd, fallbackHtml) {
+    if (!nd) { notebookContent.innerHTML = fallbackHtml || ''; notebookContainer.style.display = 'block'; return; }
+    let h = '';
+    h += `<h2>📖 ${nd.title || 'Lesson Notes'}</h2>`;
+
+    h += '<h3>1. Overview / Utangulizi</h3>';
+    (nd.overview || '').split('\n').filter(Boolean).forEach(p => { h += `<p>${p.trim()}</p>`; });
+
+    if (nd.key_terms && nd.key_terms.length) {
+      h += '<h3>2. Key Terms / Maneno Muhimu</h3><div class="kt-grid">';
+      nd.key_terms.forEach(k => { h += `<div class="kt-card"><b>${k.term || ''}</b><br>${k.definition || ''}</div>`; });
+      h += '</div>';
+    }
+
+    if (nd.sections && nd.sections.length) {
+      h += '<h3>3. Main Content / Maelezo Kamili</h3>';
+      nd.sections.forEach(s => {
+        h += `<p><strong style="color:var(--green-600);">${s.heading || ''}</strong></p>`;
+        (s.content || '').split('\n').filter(Boolean).forEach(p => { h += `<p>${p.trim()}</p>`; });
+      });
+    }
+
+    if (nd.worked_examples && nd.worked_examples.length) {
+      h += '<h3>4. Worked Examples / Mifano</h3>';
+      nd.worked_examples.forEach(ex => {
+        h += '<div class="pq-item"><div class="q">Example: ' + (ex.example || '') + '</div><div class="a"><strong>Solution:</strong> ' + (ex.solution || '') + '</div></div>';
+      });
+    }
+
+    if (nd.key_points && nd.key_points.length) {
+      h += '<h3>5. Key Points / Nukta Muhimu</h3><ul>';
+      nd.key_points.forEach(kp => { if (kp.trim()) h += `<li style="font-size:0.92rem;margin-bottom:4px;">${kp.trim()}</li>`; });
+      h += '</ul>';
+    }
+
+    if (nd.exam_tips && nd.exam_tips.length) {
+      h += '<h3>6. Exam Tips / Ushauri wa Mitihani</h3>';
+      nd.exam_tips.forEach(t => { if (t.trim()) h += `<div class="exam-tip">⚠️ ${t.trim()}</div>`; });
+    }
+
+    if (nd.practice_questions && nd.practice_questions.length) {
+      h += '<h3>7. Practice Questions / Maswali ya Mazoezi</h3>';
+      nd.practice_questions.forEach((q, i) => {
+        if (q.question || q.answer) {
+          h += '<div class="pq-item"><div class="q">Q' + (i+1) + ': ' + (q.question || '') + '</div><div class="a"><strong>Jibu:</strong> ' + (q.answer || '') + '</div></div>';
+        }
+      });
+    }
+
+    if (nd.summary) h += '<h3>8. Summary / Muhtasari</h3>' + `<p>${nd.summary}</p>`;
+
+    notebookContent.innerHTML = h;
+    notebookContainer.style.display = 'block';
+  }
+
+  // ── Save note (already auto-saved; just confirm) ──
+  document.getElementById('saveNoteBtn').addEventListener('click', function() {
+    if (currentNoteId) { showToast('✅ Notes zimehifadhiwa tayari kwenye maktaba yako!', 'success'); }
+    else showToast('Generate notes kwanza', 'warning');
+  });
+
+  // ── Download PDF of current note ──
+  document.getElementById('downloadNotePdfBtn').addEventListener('click', function() {
+    if (!currentNoteId) { showToast('Hakuna notes za kupakua', 'warning'); return; }
+    downloadNotePdf(currentNoteId);
+  });
+
+  // ── Print ──
+  document.getElementById('printNoteBtn').addEventListener('click', function() {
+    const content = document.getElementById('notebookContent').innerHTML;
+    if (!content) return;
+    const win = window.open('', '', 'width=800,height=600');
+    win.document.write('<html><head><title>Notes</title><style>body{font-family:Georgia,serif;padding:2rem;line-height:1.8;max-width:750px;margin:auto;}h2{border-bottom:3px double #c9a84c;padding-bottom:6px;}h3{color:#1f7a3d;border-left:4px solid #c9a84c;padding-left:10px;margin-top:1.25rem;}.kt-card{background:#f7f9f4;border:1px solid #dce8dc;border-radius:8px;padding:8px 12px;margin-bottom:6px;}.exam-tip{background:#fff8e6;border-left:4px solid #c9a84c;padding:8px 12px;margin-bottom:6px;}.pq-item{border:1px solid #dde7dd;border-radius:10px;padding:10px 14px;margin-bottom:10px;}.pq-item .q{font-weight:700;color:#1f7a3d;}.pq-item .a{padding-left:12px;border-left:3px solid #c9a84c;margin-left:6px;margin-top:6px;}</style></head><body>');
+    win.document.write(content);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.print();
+  });
+
+  // ── Past papers ──
+  // Populate paper subject select from all subjects
+  const paperSubject = document.getElementById('paperSubjectSelect');
+  Object.values(SUBJECTS).flat().forEach(s => {
+    paperSubject.insertAdjacentHTML('beforeend', `<option value="${s.name.replace(/"/g,'&quot;')}">${s.name}</option>`);
+  });
+
+  document.getElementById('findPapersBtn').addEventListener('click', function() {
+    const level = document.getElementById('paperLevelSelect').value;
+    const subject = paperSubject.value;
+    const btn = this;
+    const status = document.getElementById('papersStatus');
+    btn.disabled = true;
+    status.textContent = '⏳ Inatafuta past papers...';
+    status.style.color = 'var(--gold-400)';
+
+    fetch(`{% url 'curriculum:notes_library_papers' %}?level=${level}&subject=${encodeURIComponent(subject)}`)
+      .then(r => r.json())
+      .then(data => {
+        btn.disabled = false;
+        if (!data.success) { status.textContent = '❌ ' + (data.error || 'Imeshindwa'); status.style.color = '#dc2626'; return; }
+        status.textContent = '';
+        document.getElementById('papersTitle').textContent = data.label;
+        let h = `<p style="font-size:var(--font-size-xs);color:var(--text-secondary);">Past papers za <strong>${subject || 'somo zote'}</strong> zinapatikana kwenye vyanzo rasmi hapa chini (PDF za bure).</p>`;
+        data.papers.forEach(p => {
+          h += `<div class="paper-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+              <div>
+                <strong style="font-size:var(--font-size-sm);color:var(--text-primary);">${p.code} — ${p.name}</strong>
+                <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${p.subject}</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <a class="btn-tlm btn-primary-tlm btn-sm-tlm" style="text-decoration:none;" href="${p.tetea_url}" target="_blank" rel="noopener"><i class="fas fa-book-open"></i> Maktaba TETEA</a>
+                <a class="btn-tlm btn-gold-tlm btn-sm-tlm" style="text-decoration:none;" href="${p.necta_url}" target="_blank" rel="noopener"><i class="fas fa-globe"></i> NECTA Official</a>
+              </div>
+            </div>
+            <div style="margin-top:8px;">${p.years.map(y => `<span class="year-chip">${y}</span>`).join('')}</div>
+          </div>`;
+        });
+        h += `<div style="margin-top:0.5rem;" class="exam-tip"><i class="fas fa-robot"></i> Ungependa mazoezi ya AI? Bonyeza <a href="{% url 'curriculum:exam_generator' %}"><strong>Generate AI Practice Paper</strong></a> upande wa kushoto — mtindo halisi wa NECTA.</div>`;
+        document.getElementById('papersList').innerHTML = h;
+        papersResults.style.display = 'block';
+        papersResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      })
+      .catch(err => { btn.disabled = false; status.textContent = '❌ ' + err.message; status.style.color = '#dc2626'; });
+  });
+});
+
+// ── Tab switching ──
+function switchLibTab(tab) {
+  document.getElementById('tabNotesBtn').classList.toggle('active', tab === 'notes');
+  document.getElementById('tabPapersBtn').classList.toggle('active', tab === 'papers');
+  document.getElementById('tabBooksBtn').classList.toggle('active', tab === 'books');
+  document.getElementById('notesTab').style.display = tab === 'notes' ? '' : 'none';
+  document.getElementById('papersTab').style.display = tab === 'papers' ? '' : 'none';
+  document.getElementById('booksTab').style.display = tab === 'books' ? '' : 'none';
+}
+
+// ── View saved note ──
+function viewSavedNote(noteId) {
+  fetch('{% url "curriculum:get_lesson_note" 0 %}'.replace('/0/', '/' + noteId + '/'))
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const note = data.note;
+        let content = note.content;
+        if (!content.includes('<')) {
+          content = content.replace(/\n/g, '<br>');
+          content = '<div style="white-space:pre-wrap;font-family:Georgia,serif;line-height:1.8;">' + content + '</div>';
+        }
+        document.getElementById('viewNoteContent').innerHTML = content;
+        document.getElementById('viewNoteModal').classList.add('show');
+      } else showToast('❌ ' + (data.error || 'Note haipatikani'), 'error');
+    })
+    .catch(() => showToast('❌ Hitilafu kupakia note', 'error'));
+}
+
+// ── Download note PDF ──
+function downloadNotePdf(noteId) {
+  fetch('{% url "curriculum:notes_library_note_pdf" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+    body: JSON.stringify({ note_id: noteId }),
+  })
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+  .then(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Notes_' + noteId + '.pdf';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('📄 Notes PDF imepakuliwa!', 'success');
+  })
+  .catch(err => showToast('Download error: ' + err.message, 'error'));
+}
+
+// ── Delete note ──
+function deleteNote(noteId) {
+  if (!confirm('Una uhakika unataka kufuta note hii?')) return;
+  fetch('{% url "curriculum:delete_lesson_note" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+    body: JSON.stringify({ note_id: noteId }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) { showToast('✅ Note imefutwa!', 'info'); setTimeout(() => location.reload(), 500); }
+    else showToast('❌ ' + (data.error || 'Imeshindwa'), 'error');
+  });
+}
+
+// ═══════════════ VITABU (TIE links + Maktaba Yangu) ═══════════════
+// HTML-escape user-controlled strings (stored XSS protection)
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function populateBookSubjects() {
+  const level = document.getElementById('bookUploadLevel').value;
+  const sel = document.getElementById('bookUploadSubject');
+  sel.innerHTML = '<option value="">—</option>';
+  (SUBJECTS[SUBJECT_KEY[level]] || []).forEach(s => {
+    sel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.name}</option>`);
+  });
+}
+
+function refreshBookFilterSubjects() {
+  const level = document.getElementById('bookLevelSelect').value;
+  const sel = document.getElementById('bookSubjectSelect');
+  sel.innerHTML = '<option value="">All Subjects</option>';
+  (SUBJECTS[SUBJECT_KEY[level]] || []).forEach(s => {
+    sel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.name}</option>`);
+  });
+}
+
+function findBooks() {
+  const level = document.getElementById('bookLevelSelect').value;
+  const subjectId = document.getElementById('bookSubjectSelect').value;
+  const status = document.getElementById('booksStatus');
+  status.textContent = '⏳ Inatafuta vitabu...';
+  status.style.color = '';
+  fetch(`{% url "curriculum:notes_library_books" %}?level=${encodeURIComponent(level)}&subject_id=${encodeURIComponent(subjectId)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) throw new Error(data.error || 'Hitilafu');
+      status.textContent = '';
+      const books = data.books || [];
+      const links = data.tie_links || {};
+      let html = '';
+      // TIE/TETEA links halisi (bila AI)
+      if (links.books && links.books.length) {
+        html += `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:var(--green-500);margin:0 0 6px;">
+          <i class="fas fa-external-link-alt me-1"></i> ${links.label} — Maktaba za nje (halisi, bila AI)</div>`;
+        links.books.forEach(b => {
+          html += `<div class="paper-card">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+              <div>
+                <div style="font-weight:700;font-size:var(--font-size-sm);">📖 ${esc(b.title)}</div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">${esc(b.note)}</div>
+              </div>
+              <a class="btn-tlm btn-gold-tlm btn-sm-tlm" style="text-decoration:none;white-space:nowrap;"
+                 href="${b.url}" target="_blank" rel="noopener"><i class="fas fa-book-open"></i> Fungua</a>
+            </div>
+          </div>`;
+        });
+      }
+      // Vitabu vya system (uploads)
+      if (books.length) {
+        html += `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:var(--green-500);margin:10px 0 6px;">
+          <i class="fas fa-folder-open me-1"></i> Vitabu vya System (${books.length})</div>`;
+        books.forEach(b => {
+          const rawUrl = b.file_url || b.url || '';
+          const openUrl = rawUrl.startsWith('http') ? rawUrl : '';
+          html += `<div class="paper-card">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+              <div>
+                <div style="font-weight:700;font-size:var(--font-size-sm);">📘 ${esc(b.title)}</div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">
+                  ${b.subject ? `<span class="chip chip-green" style="font-size:9px;padding:1px 7px;">${esc(b.subject)}</span> ` : ''}
+                  ${b.class_name ? `<span class="chip chip-gold" style="font-size:9px;padding:1px 7px;">${esc(b.class_name)}</span> ` : ''}
+                  ${b.publisher ? `<span class="chip" style="font-size:9px;padding:1px 7px;">${esc(b.publisher)}</span>` : ''}
+                  ${b.description ? `<div style="margin-top:3px;">${esc(b.description)}</div>` : ''}
+                </div>
+              </div>
+              <div style="display:flex;gap:4px;flex-shrink:0;">
+                ${openUrl ? `<a class="btn-tlm btn-primary-tlm btn-sm-tlm" style="text-decoration:none;"
+                   href="${openUrl}" target="_blank" rel="noopener" title="Fungua / Pakua"><i class="fas fa-download"></i></a>` : ''}
+                ${b.uploaded_by_me ? `<button class="btn-tlm btn-sm-tlm" style="background:rgba(220,38,38,0.06);color:var(--error);padding:2px 8px;font-size:9px;"
+                   onclick="deleteBook(${b.id})" title="Futa"><i class="fas fa-trash-alt"></i></button>` : ''}
+              </div>
+            </div>
+          </div>`;
+        });
+      }
+      if (!html) {
+        html = `<div class="text-center py-4" style="color:var(--text-muted);font-size:var(--font-size-xs);">
+          Hakuna vitabu kwa level hii bado. Bonyeza <strong>"Ongeza Kitabu Chako"</strong> upande wa kushoto
+          kupakia PDF au link.<br><br>
+          <i class="fas fa-info-circle"></i> Links za <strong>TIE Online Library</strong> na <strong>Maktaba TETEA</strong>
+          huonekana hapo juu kwa kila level.
+        </div>`;
+      }
+      document.getElementById('booksTitle').textContent = links.label || 'Vitabu';
+      document.getElementById('booksList').innerHTML = html;
+      document.getElementById('booksResults').style.display = '';
+    })
+    .catch(err => { status.textContent = '❌ ' + err.message; status.style.color = '#dc2626'; });
+}
+
+function uploadBook() {
+  const title = document.getElementById('bookTitle').value.trim();
+  const level = document.getElementById('bookUploadLevel').value;
+  const className = document.getElementById('bookClassName').value.trim();
+  const subjectId = document.getElementById('bookUploadSubject').value;
+  const url = document.getElementById('bookUrl').value.trim();
+  const desc = document.getElementById('bookDesc').value.trim();
+  const file = document.getElementById('bookFile').files[0];
+  const status = document.getElementById('uploadStatus');
+  status.style.color = '';
+  if (!title) { status.textContent = '❌ Andika jina la kitabu'; status.style.color = '#dc2626'; return; }
+  if (!file && !url) { status.textContent = '❌ Weka PDF (file) au link ya kitabu'; status.style.color = '#dc2626'; return; }
+  const fd = new FormData();
+  fd.append('title', title);
+  fd.append('education_level', level);
+  fd.append('class_name', className);
+  fd.append('subject_id', subjectId);
+  fd.append('url', url);
+  fd.append('description', desc);
+  if (file) fd.append('file', file);
+  status.textContent = '⏳ Inahifadhi kitabu...';
+  fetch('{% url "curriculum:notes_library_upload_book" %}', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+    body: fd,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.success) throw new Error(data.error || 'Hitilafu');
+    status.textContent = '';
+    showToast('✅ Kitabu kimehifadhiwa!', 'success');
+    document.getElementById('bookTitle').value = '';
+    document.getElementById('bookUrl').value = '';
+    document.getElementById('bookDesc').value = '';
+    document.getElementById('bookFile').value = '';
+    document.getElementById('bookLevelSelect').value = level;
+    refreshBookFilterSubjects();
+    findBooks();
+  })
+  .catch(err => { status.textContent = '❌ ' + err.message; status.style.color = '#dc2626'; });
+}
+
+function deleteBook(bookId) {
+  if (!confirm('Una uhakika unataka kufuta kitabu hiki?')) return;
+  const fd = new FormData();
+  fd.append('book_id', bookId);
+  fetch('{% url "curriculum:notes_library_delete_book" %}', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+    body: fd,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) { showToast('✅ Kitabu kimefutwa!', 'info'); findBooks(); }
+    else showToast('❌ ' + (data.error || 'Imeshindwa'), 'error');
+  });
+}
+
+// ── Books tab: listeners ──
+document.addEventListener('DOMContentLoaded', function() {
+  populateBookSubjects();
+  document.getElementById('bookLevelSelect').addEventListener('change', refreshBookFilterSubjects);
+  document.getElementById('bookUploadLevel').addEventListener('change', populateBookSubjects);
+  document.getElementById('findBooksBtn').addEventListener('click', findBooks);
+  document.getElementById('uploadBookBtn').addEventListener('click', uploadBook);
+});
+</script>
+
+{% endblock %}
