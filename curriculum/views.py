@@ -2587,15 +2587,14 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
         return JsonResponse({'success': False, 'error': msg}, status=500)
 
 
-def download_lesson_plan_pdf(request):
-    """Export Lesson Plan as PDF — supports new Tanzanian format + old format."""
-    if request.method != 'POST':
-        return HttpResponse("Invalid request", status=400)
+def _build_lp_pdf(lesson, form, teacher=None):
+    """Build ONE lesson-plan PDF (TAMISEMI format) into a BytesIO buffer.
 
-    data = json.loads(request.body)
-    lesson = data.get('lesson_data', {})
-    form = data.get('form_data', {})
-
+    Shared by the single download (download_lesson_plan_pdf) and the
+    full-subject batch download (download_all_lesson_plans_pdf), so every
+    lesson plan in a "Full Subject" bundle is identical in quality to the
+    single-topic export.
+    """
     # Helper: get value from new key or old key
     def _get(new_key, old_key, default=''):
         return lesson.get(new_key, lesson.get(old_key, default))
@@ -2684,7 +2683,6 @@ def download_lesson_plan_pdf(request):
         can.restoreState()
 
     # ── Get teacher theme for PDF ──
-    teacher = get_tlm_teacher(request)
     theme_name = getattr(teacher, 'theme', 'classic') if teacher else 'classic'
     
     THEMES = {
@@ -2840,7 +2838,7 @@ def download_lesson_plan_pdf(request):
     _lp_sw = form.get('language', '') == 'kiswahili' or form.get('subject', '').lower() in ('kiswahili', 'swahili')
     if not _lp_sw:
         # Also check via teacher's school level
-        _lp_teacher_lp = get_tlm_teacher(request)
+        _lp_teacher_lp = teacher
         if _lp_teacher_lp and _lp_teacher_lp.school:
             _lp_sw = _is_kiswahili_mode(
                 form.get('language', getattr(_lp_teacher_lp, 'preferred_language', 'auto')),
@@ -3084,8 +3082,127 @@ def download_lesson_plan_pdf(request):
 
     doc.build(elements, onFirstPage=_lp_cover, onLaterPages=_lp_header)
     buffer.seek(0)
+    return buffer
+
+
+def download_lesson_plan_pdf(request):
+    """Export Lesson Plan as PDF — supports new Tanzanian format + old format."""
+    if request.method != 'POST':
+        return HttpResponse("Invalid request", status=400)
+
+    data = json.loads(request.body)
+    lesson = data.get('lesson_data', {})
+    form = data.get('form_data', {})
+
+    teacher = get_tlm_teacher(request)
+    buffer = _build_lp_pdf(lesson, form, teacher)
     safe_name = f"LessonPlan_{form.get('subject','')}_{form.get('topic','')}".replace(' ', '_')
     response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{safe_name}.pdf"'
+    return response
+
+
+def _lp_to_dicts(lp):
+    """Convert a saved LessonPlan row to the lesson_data/form_data dicts that
+    the PDF builder expects (same shape as ajax_load_lesson_by_id)."""
+    lesson_data = {
+        'lesson_title': f"{lp.subject.name} - {lp.topic}",
+        'main_competence': lp.main_competence,
+        'specific_competence': lp.specific_competence,
+        'main_activity': None,  # Not stored in old model
+        'specific_activity': lp.previous_knowledge or '',
+        'previous_knowledge': lp.previous_knowledge,
+        'learning_objectives': lp.learning_objectives,
+        'teaching_methods': lp.teaching_methods,
+        'teaching_resources': lp.teaching_resources,
+        'references': None,  # Not stored in old model
+        'lesson_development': lp.lesson_development,
+        'remarks': lp.remarks,
+    }
+    form_data = {
+        'subject': lp.subject.name, 'class_name': lp.class_name,
+        'term': lp.term, 'year': lp.year, 'topic': lp.topic,
+        'subtopic': lp.subtopic or '', 'teacher_name': lp.teacher_name,
+        'duration': str(lp.duration),  # Must be string for PDF generator
+        'school_name': lp.school.name if lp.school else '',
+        'total_students': lp.total_students or '',
+        'present_students': lp.present_students or '',
+        'total_boys': lp.total_boys or '',
+        'total_girls': lp.total_girls or '',
+        'present_boys': lp.present_boys or '',
+        'present_girls': lp.present_girls or '',
+    }
+    return lesson_data, form_data
+
+
+def download_all_lesson_plans_pdf(request):
+    """Batch export — ALL lesson plans in ONE PDF (each LP starts its own page).
+
+    Accepts POST JSON:
+      {"lp_ids": [1,2,3]}                          → exactly those lesson plans, or
+      {"subject_id": 15, "class_name": "Form 2"}  → latest LP per topic for this teacher+subject+class
+
+    Every lesson plan is rendered with the same TAMISEMI template as the single
+    download, then merged into a single PDF via pypdfium2.
+    """
+    if request.method != 'POST':
+        return HttpResponse("Invalid request", status=400)
+
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return HttpResponse("Unauthorized", status=401)
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        data = {}
+    lp_ids = data.get('lp_ids') or []
+    subject_id = data.get('subject_id')
+    class_name = (data.get('class_name') or '').strip()
+
+    qs = LessonPlan.objects.select_related('subject', 'school').filter(
+        teacher_name=teacher.full_name, school=teacher.school
+    )
+
+    if lp_ids:
+        lps = list(qs.filter(id__in=lp_ids).order_by('id'))
+    elif subject_id and class_name:
+        # Keep the LATEST LP per topic (full-subject re-runs may have duplicates),
+        # then sort by syllabus topic order so the PDF follows the syllabus.
+        latest = {}
+        for lp in qs.filter(subject_id=subject_id, class_name__iexact=class_name).order_by('-created_at'):
+            if lp.topic not in latest:
+                latest[lp.topic] = lp
+        order_map = {}
+        for t in SubjectTopic.objects.filter(subject_id=subject_id, class_name__iexact=class_name):
+            order_map[t.name.lower()] = t.order
+        lps = list(latest.values())
+        lps.sort(key=lambda lp: order_map.get((lp.topic or '').lower(), 9999))
+    else:
+        return HttpResponse("lp_ids au subject_id+class_name vinahitajika", status=400)
+
+    if not lps:
+        return HttpResponse("Hakuna lesson plans zilizopatikana", status=404)
+
+    import pypdfium2 as pdfium
+
+    merged = pdfium.PdfDocument.new()
+    buffers = []
+    for lp in lps:
+        lesson_data, form_data = _lp_to_dicts(lp)
+        buf = _build_lp_pdf(lesson_data, form_data, teacher)
+        buffers.append(buf)
+        src = pdfium.PdfDocument(buf)  # buffers stay alive until save()
+        merged.import_pages(src)
+        src.close()
+
+    out = BytesIO()
+    merged.save(out)
+    merged.close()
+    first = lps[0]
+    subject_name = first.subject.name if first.subject else 'All'
+    safe_name = f"All_Lesson_Plans_{subject_name}_{first.class_name}".replace(' ', '_')
+    response = HttpResponse(out.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{safe_name}.pdf"'
     return response
 
@@ -3350,33 +3467,7 @@ def ajax_load_saved_lessonplan(request):
                   .first())
         if not lp or not lp.lesson_development:
             return JsonResponse({'success': False, 'error': 'Hakuna mpango wa somo uliohifadhiwa.'}, status=404)
-        # Build lesson_data with backward-compatible keys
-        lesson_data = {
-            'lesson_title': f"{lp.subject.name} - {lp.topic}",
-            'main_competence': lp.main_competence,
-            'specific_competence': lp.specific_competence,
-            'main_activity': None,  # Not stored in old model
-            'specific_activity': lp.previous_knowledge or '',
-            'previous_knowledge': lp.previous_knowledge,
-            'learning_objectives': lp.learning_objectives,
-            'teaching_methods': lp.teaching_methods,
-            'teaching_resources': lp.teaching_resources,
-            'references': None,  # Not stored in old model
-            'lesson_development': lp.lesson_development,
-            'remarks': lp.remarks,
-        }
-        form_data = {
-            'subject': lp.subject.name, 'class_name': lp.class_name,
-            'term': lp.term, 'year': lp.year, 'topic': lp.topic,
-            'subtopic': lp.subtopic or '', 'teacher_name': lp.teacher_name,
-            'duration': str(lp.duration),  # Must be string for PDF generator
-            'total_students': lp.total_students or '',
-            'present_students': lp.present_students or '',
-            'total_boys': lp.total_boys or '',
-            'total_girls': lp.total_girls or '',
-            'present_boys': lp.present_boys or '',
-            'present_girls': lp.present_girls or '',
-        }
+        lesson_data, form_data = _lp_to_dicts(lp)
         return JsonResponse({'success': True, 'data': lesson_data, 'form_data': form_data, 'saved_id': lp.id})
     except StudentTeacher.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Wasifu haupatikani.'}, status=404)
@@ -3392,33 +3483,7 @@ def ajax_load_lesson_by_id(request, lesson_id):
         lp = LessonPlan.objects.select_related('subject', 'school').get(id=lesson_id)
         if not lp.lesson_development:
             return JsonResponse({'success': False, 'error': 'Lesson Plan haina data.'}, status=404)
-        # Build lesson_data with backward-compatible keys
-        lesson_data = {
-            'lesson_title': f"{lp.subject.name} - {lp.topic}",
-            'main_competence': lp.main_competence,
-            'specific_competence': lp.specific_competence,
-            'main_activity': None,  # Not stored in old model
-            'specific_activity': lp.previous_knowledge or '',
-            'previous_knowledge': lp.previous_knowledge,
-            'learning_objectives': lp.learning_objectives,
-            'teaching_methods': lp.teaching_methods,
-            'teaching_resources': lp.teaching_resources,
-            'references': None,  # Not stored in old model
-            'lesson_development': lp.lesson_development,
-            'remarks': lp.remarks,
-        }
-        form_data = {
-            'subject': lp.subject.name, 'class_name': lp.class_name,
-            'term': lp.term, 'year': lp.year, 'topic': lp.topic,
-            'subtopic': lp.subtopic or '', 'teacher_name': lp.teacher_name,
-            'duration': str(lp.duration),  # Must be string for PDF generator
-            'total_students': lp.total_students or '',
-            'present_students': lp.present_students or '',
-            'total_boys': lp.total_boys or '',
-            'total_girls': lp.total_girls or '',
-            'present_boys': lp.present_boys or '',
-            'present_girls': lp.present_girls or '',
-        }
+        lesson_data, form_data = _lp_to_dicts(lp)
         return JsonResponse({'success': True, 'data': lesson_data, 'form_data': form_data, 'saved_id': lp.id})
     except LessonPlan.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Lesson Plan haipatikani.'}, status=404)

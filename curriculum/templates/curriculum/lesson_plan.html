@@ -502,6 +502,20 @@
 
       <!-- Results -->
       <div id="resultsArea" style="display:none;">
+        <!-- Full Subject results list (ALL generated topics) -->
+        <div id="fullSubjectPanel" style="display:none;margin-bottom:1rem;">
+          <div class="c-card" style="border:2px solid var(--green-500);border-radius:var(--radius-md);">
+            <div class="c-card-head">
+              <h3 style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);color:var(--text-primary);margin:0;">
+                <i class="fas fa-layer-group text-gold"></i> <span id="fullSubjectPanelTitle">Full Subject Results</span>
+              </h3>
+              <button class="btn-tlm btn-gold-tlm btn-sm-tlm" id="downloadAllPdfBtn">
+                <i class="fas fa-file-pdf me-1"></i> Pakua Zote kwa PDF Moja
+              </button>
+            </div>
+            <div class="c-card-body" id="fullSubjectList" style="max-height:280px;overflow-y:auto;padding-top:0.5rem;"></div>
+          </div>
+        </div>
         <div class="c-card" style="
           border: 2.5px solid var(--green-500);
           border-top: 4px solid var(--gold-400);
@@ -572,6 +586,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const topicStatus = document.getElementById('topicStatus');
 
   let currentLessonData = null;
+  let fullSubjectResults = [];  // topics zote zilizozalishwa na Full Subject mode
   let currentFormData = null;
   let currentSavedId = null;
 
@@ -1028,6 +1043,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressBar = document.getElementById('progressBar');
     const resultsArea = document.getElementById('resultsArea');
     const emptyState = document.getElementById('emptyState');
+    // Full-subject list haihusiki kwenye single-topic mode — ificha
+    document.getElementById('fullSubjectPanel').style.display = 'none';
 
     // ── Show progress bar IMMEDIATELY ──
     btn.disabled = true;
@@ -1392,6 +1409,10 @@ document.addEventListener('DOMContentLoaded', function() {
       
       const msg = `✅ ${generated}/${totalTopics} lessons zimezalishwa! ${failed > 0 ? failed + ' zimeshindwa.' : ''}`;
       showToast(msg, failed > 0 ? 'warning' : 'success');
+
+      // Show the FULL list of generated lesson plans + batch download button
+      fullSubjectResults = results;
+      renderFullSubjectResults(results, fd.subject);
       
       setTimeout(() => {
         spinner.classList.remove('show');
@@ -1635,6 +1656,105 @@ document.addEventListener('DOMContentLoaded', function() {
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
       body: JSON.stringify({lesson_data: currentLessonData, form_data: currentFormData}),
     }, currentFormData, 'pdf');
+  });
+
+  // ── Full Subject: list of ALL generated lesson plans + batch PDF download ──
+  function renderFullSubjectResults(results, subjectName) {
+    const panel = document.getElementById('fullSubjectPanel');
+    if (!results || results.length === 0) { panel.style.display = 'none'; return; }
+    // Hakikisha resultsArea iko visible hata kama loadSavedBtn itashindikana
+    document.getElementById('resultsArea').style.display = 'block';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('fullSubjectPanelTitle').textContent = `Full Subject — ${subjectName}: ${results.length} topics`;
+    let html = '';
+    results.forEach((r, idx) => {
+      const ok = r.success;
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px dashed #cfe3cf;font-size:var(--font-size-xs);">';
+      html += ok ? '<span style="color:var(--green-500);"><i class="fas fa-check-circle"></i></span>'
+                 : '<span style="color:#dc2626;"><i class="fas fa-times-circle"></i></span>';
+      html += `<span style="flex:1;font-weight:600;color:var(--text-primary);">${idx + 1}. ${r.topic}</span>`;
+      if (ok) {
+        html += `<button class="btn-tlm btn-ghost-tlm btn-sm-tlm" data-lp-action="view" data-lp-id="${r.id}"><i class="fas fa-eye"></i> View</button>`;
+        html += `<button class="btn-tlm btn-primary-tlm btn-sm-tlm" data-lp-action="pdf" data-lp-id="${r.id}"><i class="fas fa-file-pdf"></i> PDF</button>`;
+      } else {
+        html += `<span style="color:#dc2626;font-size:10px;">${r.error || 'Imeshindikana'}</span>`;
+      }
+      html += '</div>';
+    });
+    document.getElementById('fullSubjectList').innerHTML = html;
+    panel.style.display = 'block';
+  }
+
+  function downloadLpById(id) {
+    jsonFetch('{% url 'curriculum:lesson_plan' %}ajax-load-by-id/' + id + '/')
+    .then(({ ok, data }) => {
+      if (!ok || !data.success) { showToast('Hitilafu kupakia LP: ' + (data.error || ''), 'error'); return; }
+      fetchForBlob('{% url "curriculum:download_lesson_plan_pdf" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+        body: JSON.stringify({lesson_data: data.data, form_data: data.form_data}),
+      }, data.form_data, 'pdf');
+    });
+  }
+
+  // Load a specific LP into the editor via AJAX (bila kupoteza full-subject list)
+  function loadLessonById(id) {
+    jsonFetch('{% url 'curriculum:lesson_plan' %}ajax-load-by-id/' + id + '/')
+    .then(({ ok, data }) => {
+      if (!ok || !data.success) { showToast('Hitilafu kupakia LP: ' + (data.error || ''), 'error'); return; }
+      currentLessonData = data.data;
+      currentFormData = data.form_data;
+      currentSavedId = data.saved_id;
+      renderLesson(data.data);
+      document.getElementById('resultsArea').style.display = 'block';
+      document.getElementById('emptyState').style.display = 'none';
+      if (data.form_data) restoreFormFromSavedData(data.form_data);
+      document.getElementById('resultsArea').scrollIntoView({behavior: 'smooth', block: 'start'});
+    });
+  }
+
+  // Delegated clicks on the full-subject list (View / PDF per topic)
+  document.getElementById('fullSubjectList').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-lp-action]');
+    if (!btn) return;
+    const id = parseInt(btn.getAttribute('data-lp-id'), 10);
+    if (btn.getAttribute('data-lp-action') === 'view') {
+      loadLessonById(id);
+    } else if (btn.getAttribute('data-lp-action') === 'pdf') {
+      downloadLpById(id);
+    }
+  });
+
+  // ── Batch download: ALL lesson plans in ONE PDF (each LP starts its own page) ──
+  document.getElementById('downloadAllPdfBtn').addEventListener('click', function() {
+    if (!fullSubjectResults || fullSubjectResults.length === 0) return;
+    const ids = fullSubjectResults.filter(r => r.success).map(r => r.id);
+    if (ids.length === 0) { showToast('Hakuna lesson plan zilizofanikiwa kupakuliwa', 'warning'); return; }
+    const btn = this;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Inaunda PDF...';
+    const title = document.getElementById('fullSubjectPanelTitle').textContent;
+    const subjectName = (title.match(/—\s*(.*?):\s*\d+ topics/) || [])[1] || 'All_Subjects';
+    fetch('{% url "curriculum:download_all_lesson_plans_pdf" %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+      body: JSON.stringify({ lp_ids: ids }),
+    })
+    .then(r => {
+      if (!r.ok) return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 150)); });
+      return r.blob();
+    })
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = subjectName.replace(/\s+/g, '_') + '_Full_Subject_Lesson_Plans.pdf';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('📥 PDF moja yenye lesson plans zote imepakuliwa!', 'success');
+    })
+    .catch(err => showToast('Download error: ' + err.message, 'error'))
+    .finally(() => { btn.disabled = false; btn.innerHTML = originalHtml; });
   });
 
   // ── Download PDF after Edit ──

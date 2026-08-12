@@ -28,6 +28,7 @@ urlpatterns = [
     path('lesson-plan/ajax-load-saved/', views.ajax_load_saved_lessonplan, name='ajax_load_saved_lessonplan'),
     path('lesson-plan/ajax-load-by-id/<int:lesson_id>/', views.ajax_load_lesson_by_id, name='ajax_load_lesson_by_id'),
     path('lesson-plan/download-pdf/', views.download_lesson_plan_pdf, name='download_lesson_plan_pdf'),
+    path('lesson-plan/download-all-pdf/', views.download_all_lesson_plans_pdf, name='download_all_lesson_plans_pdf'),
     path('lesson-plan/download-word/', views.download_lesson_plan_word, name='download_lesson_plan_word'),
 
     # Lesson Notes
