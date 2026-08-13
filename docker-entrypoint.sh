@@ -17,7 +17,11 @@ echo "GEOS_LIBRARY_PATH=$GEOS_LIBRARY_PATH"
 # before — the two projects never touch each other's data.
 # ═════════════════════════════════════════════════════════════════════════════
 TTC_READY=0
-if [ "$TTC_PORTAL_ENABLED" = "true" ]; then
+# Normalise the flag: accept true/True/TRUE/1/yes (trim + lowercase) so a
+# copy-paste with different casing can never silently disable the portal.
+TTC_FLAG="$(printf '%s' "$TTC_PORTAL_ENABLED" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+echo "TTC_PORTAL_ENABLED='$TTC_PORTAL_ENABLED' → normalised='$TTC_FLAG' (TTC_DATABASE_URL set: $([ -n "$TTC_DATABASE_URL" ] && echo yes || echo no))"
+if [ "$TTC_FLAG" = "true" ] || [ "$TTC_FLAG" = "1" ] || [ "$TTC_FLAG" = "yes" ]; then
     echo "🖥️  TTC Student Portal ENABLED — running its own migrations..."
     # Failure-tolerant: ikiwa TTC itashindwa (mf. TTC_DATABASE_URL mbovu),
     # field_management inaendelea kuanza bila TTC portal — haipotezi container.
