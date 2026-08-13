@@ -192,6 +192,46 @@
   .lib-select:focus { outline: none; border-color: var(--green-500); }
   .lib-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
     color: var(--text-muted); display: block; margin-bottom: 4px; }
+
+  /* ── Category overview (international library dashboard) ── */
+  .lib-cat-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 1rem; }
+  @media (min-width: 640px) { .lib-cat-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1024px) { .lib-cat-grid { grid-template-columns: repeat(4, 1fr); } }
+  .lib-cat-card {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+    background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+    padding: 1.1rem 1.15rem; cursor: pointer; text-align: left;
+    box-shadow: var(--shadow-sm); transition: all var(--duration-normal) var(--ease-out);
+    position: relative; overflow: hidden;
+  }
+  .lib-cat-card::after {
+    content: '\f061'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+    position: absolute; right: 14px; bottom: 12px; font-size: 0.9rem;
+    color: var(--text-muted); opacity: 0; transition: all var(--duration-fast);
+  }
+  .lib-cat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--green-500); }
+  .lib-cat-card:hover::after { opacity: 1; right: 12px; color: var(--green-500); }
+  .lib-cat-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+  .lib-cat-card h5 { font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; margin: 0; color: var(--text-primary); }
+  .lib-cat-card p { font-size: var(--font-size-xs); color: var(--text-secondary); margin: 0; line-height: 1.45; padding-right: 8px; }
+  .lib-cat-count {
+    position: absolute; top: 12px; right: 14px; font-size: 9px; font-weight: 800;
+    background: rgba(31,122,61,0.08); color: var(--green-500); border: 1px solid rgba(31,122,61,0.15);
+    padding: 2px 8px; border-radius: var(--radius-full);
+  }
+
+  /* ── Usage steps (Jinsi ya kutumia) ── */
+  .lib-howto { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; margin-bottom: 1.25rem; }
+  .lib-howto-step {
+    flex: 1; min-width: 180px; display: flex; align-items: center; gap: 10px;
+    background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-md);
+    padding: 0.7rem 0.9rem; font-size: var(--font-size-xs); color: var(--text-secondary); line-height: 1.4;
+  }
+  .lib-howto-n {
+    width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--green-500), var(--green-600));
+    color: #fff; font-weight: 800; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .lib-howto-step b { color: var(--text-primary); }
 </style>
 
 <div class="container-fluid px-0">
@@ -208,6 +248,41 @@
       <span class="chip"><i class="fas fa-bolt"></i> {{ stats.today }} Leo</span>
       <span class="chip"><i class="fas fa-file-alt"></i> Past Papers: PSLE · CSEE · FTNA · ACSEE</span>
     </div>
+  </div>
+
+  <!-- ═══ KATEGORIA (international overview) ═══ -->
+  <div class="lib-cat-grid">
+    <button class="lib-cat-card" onclick="scrollToSection('secBooks')">
+      <div class="lib-cat-icon" style="background:rgba(31,122,61,0.12);color:var(--green-500);"><i class="fas fa-book"></i></div>
+      <h5>Vitabu</h5>
+      <p>Vitabu halisi vya TIE, TETEA na uploads za walimu kwa kila darasa.</p>
+      <span class="lib-cat-count">{{ lib_counts.books }} vitabu</span>
+    </button>
+    <button class="lib-cat-card" onclick="scrollToSection('secNotes')">
+      <div class="lib-cat-icon" style="background:rgba(37,99,235,0.12);color:var(--info);"><i class="fas fa-pen-nib"></i></div>
+      <h5>Notes</h5>
+      <p>Notes kamili za kimataifa (TIE + Cambridge) — generate kwa Somo na Topic.</p>
+      <span class="lib-cat-count">{{ lib_counts.notes }} notes</span>
+    </button>
+    <button class="lib-cat-card" onclick="scrollToSection('secPapers')">
+      <div class="lib-cat-icon" style="background:rgba(217,164,65,0.15);color:var(--gold-400);"><i class="fas fa-file-alt"></i></div>
+      <h5>Past Papers</h5>
+      <p>Mitihani halisi ya NECTA (PSLE · CSEE · FTNA · ACSEE) kwa kila darasa.</p>
+      <span class="lib-cat-count">{{ lib_counts.papers }} papers</span>
+    </button>
+    <button class="lib-cat-card" onclick="scrollToSection('secSchemes')">
+      <div class="lib-cat-icon" style="background:rgba(5,150,105,0.12);color:var(--success);"><i class="fas fa-check-double"></i></div>
+      <h5>Marking Schemes</h5>
+      <p>Majibu kamili yanayogeneratwa na AI kulingana na past paper uliyochagua.</p>
+      <span class="lib-cat-count">{{ lib_counts.schemes }} schemes</span>
+    </button>
+  </div>
+
+  <!-- ═══ JINSI YA KUTUMIA (3 hatua) ═══ -->
+  <div class="lib-howto">
+    <div class="lib-howto-step"><span class="lib-howto-n">1</span><span><b>Chagua Kategoria</b> — Vitabu, Notes, Past Papers au Marking Schemes</span></div>
+    <div class="lib-howto-step"><span class="lib-howto-n">2</span><span><b>Chagua Level</b> — Primary, Secondary, Advanced au VETA</span></div>
+    <div class="lib-howto-step"><span class="lib-howto-n">3</span><span><b>Chagua Darasa</b> — kisha ona au generate vitu vyake</span></div>
   </div>
 
   <!-- ═══ CATEGORY NAV (sticky) ═══ -->
@@ -248,7 +323,6 @@
         <h2><i class="fas fa-file-alt"></i> Past Papers (NECTA)</h2>
         <p>Chagua Level → Darasa kuona past papers halisi (Maktaba TETEA) za darasa hilo — fungua PDF au generate Marking Scheme.</p>
       </div>
-      <a class="btn-tlm btn-primary-tlm btn-sm-tlm" href="{% url 'curriculum:exam_generator' %}"><i class="fas fa-robot"></i> Generate AI Practice Paper</a>
     </div>
     <div class="lib-drill" id="papersDrill"></div>
   </section>
@@ -378,6 +452,10 @@ function decodeName(s) {
 }
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 function openModal(id) { document.getElementById(id).classList.add('show'); }
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 function levelLabel(code) { const l = LEVEL_META.find(x => x.code === code); return l ? l.label : code; }
 function toast(msg, type) {
   const t = document.createElement('div');
@@ -952,7 +1030,6 @@ function renderPapers(data, s, res) {
   let h = breadcrumb('papers', 'Past Papers');
   h += `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:0.5rem;">
     <span class="lib-sub-label" style="margin:0;"><i class="fas fa-file-alt"></i> Past Papers za ${esc(s.className)} (${papers.length})</span>
-    <a class="btn-tlm btn-outline-tlm btn-sm-tlm" style="text-decoration:none;" href="{% url 'curriculum:exam_generator' %}"><i class="fas fa-robot"></i> AI Practice Paper</a>
   </div>`;
 
   if (!papers.length) {

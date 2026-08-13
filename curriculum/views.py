@@ -7065,6 +7065,12 @@ def notes_library_view(request):
         'stats': stats,
         'today': today,
         'teacher_name': teacher.full_name if teacher else '',
+        'lib_counts': {
+            'books': Textbook.objects.filter(is_active=True).count(),
+            'papers': PastPaper.objects.filter(is_active=True).count(),
+            'schemes': MarkingScheme.objects.count(),
+            'notes': notes_qs.count(),
+        },
     })
 
 
