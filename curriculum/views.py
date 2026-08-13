@@ -3625,10 +3625,13 @@ def _tlm_logbook_context(teacher, today, just_submitted=False, just_entry=None, 
         }
         cache.set(counts_key, counts, _CACHE_LOGBOOK_COUNTS)
 
+    # Chronological order (kama daftari rasmi) — Term I → II → III, kwa mpangilio
+    # wa tarehe ndani ya kila term. Hivyo {% regroup ... by term %} inafanya kazi
+    # vizuri kwenye template na jedwali linapangilia sawa.
     all_entries = list(
         TLMTopicLogbook.objects.filter(teacher=teacher)
         .select_related('subject', 'school')
-        .order_by('-date_ended', '-created_at')[:200]
+        .order_by('date_ended', 'main_topic')[:200]
     )
 
     return {
@@ -4011,11 +4014,6 @@ def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_ent
             ('PADDING', (0, 0), (-1, -1), 5),
         ]))
         story.append(sig_tbl)
-
-    story.append(HRFlowable(width="100%", thickness=1, color=GOLD, spaceBefore=8, spaceAfter=3))
-    story.append(Paragraph("© TAMISEMI — Mfumo wa Ufuatiliaji wa Walimu (TLM) | Subject Log-Book",
-                           ParagraphStyle('footer', fontName='Helvetica', fontSize=7,
-                                          textColor=colors.HexColor('#4A5568'), alignment=1)))
 
     doc.build(story)
     buffer.seek(0)

@@ -909,9 +909,6 @@
                 <a href="{% url 'curriculum:notes_library' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'notes_library' %}active{% endif %}">
                     <i class="fas fa-book-open"></i> Maktaba
                 </a>
-                <a href="{% url 'curriculum:template_library' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'template_library' %}active{% endif %}">
-                    <i class="fas fa-layer-group"></i> Library
-                </a>
                 {% if user.is_authenticated or tlm_teacher %}
                 <a href="{% url 'curriculum:submit_logbook' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">
                     <i class="fas fa-book-medical"></i> Logbook
@@ -980,9 +977,6 @@
             <a href="{% url 'curriculum:notes_library' %}" class="{% if request.resolver_match.url_name == 'notes_library' %}active{% endif %}">
                 <i class="fas fa-book-open"></i> Maktaba ya Notes &amp; Papers
             </a>
-            <a href="{% url 'curriculum:template_library' %}" class="{% if request.resolver_match.url_name == 'template_library' %}active{% endif %}">
-                <i class="fas fa-layer-group"></i> Library / Mfano
-            </a>
             {% if user.is_authenticated or tlm_teacher %}
             <div class="nav-sep"></div>
             <a href="{% url 'curriculum:submit_logbook' %}" class="{% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">
@@ -1033,9 +1027,6 @@
         </a>
         <a href="{% url 'curriculum:notes_library' %}" class="{% if request.resolver_match.url_name == 'notes_library' %}active{% endif %}">
             <i class="fas fa-book-open"></i> Maktaba
-        </a>
-        <a href="{% url 'curriculum:template_library' %}" class="{% if request.resolver_match.url_name == 'template_library' %}active{% endif %}">
-            <i class="fas fa-layer-group"></i> Library
         </a>
         {% if user.is_authenticated or tlm_teacher %}
         <a href="{% url 'curriculum:submit_logbook' %}" class="{% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">

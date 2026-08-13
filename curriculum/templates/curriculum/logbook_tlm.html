@@ -28,6 +28,13 @@
   .lb-table tr:hover td { background: rgba(31,122,61,0.04); }
   .auto-chip { background: rgba(200,144,10,0.1); color: #9a6d00; border: 1px dashed rgba(200,144,10,0.5); font-size: 9px; padding: 1px 7px; border-radius: 10px; }
   .sig-dots { font-size: 10px; letter-spacing: 1px; color: var(--text-muted); }
+  .lb-term-row td {
+    background: rgba(10,43,94,0.06);
+    border-top: 2px solid var(--navy, #0A2B5E);
+    padding: 5px 6px;
+  }
+  .lb-term-row .term-name { font-weight: 800; color: var(--navy, #0A2B5E); font-size: 11px; }
+  .lb-filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 </style>
 
 <div class="container-fluid px-0">
@@ -228,8 +235,12 @@
               <i class="fas fa-file-pdf me-1"></i> <span class="lang-label-sw">Full Logbook PDF</span><span class="lang-label-en">Full Logbook PDF</span>
             </a>
           </div>
+          <div class="lb-filter-row">
+            <input type="text" id="lbFilter" class="form-control form-control-sm" style="max-width:300px;font-size:12px;" placeholder="🔍 Tafuta topic / mada / somo...">
+            <span id="lbFilterCount" style="font-size:10px;color:var(--text-muted);"></span>
+          </div>
           <div style="overflow-x:auto;">
-            <table class="lb-table">
+            <table class="lb-table" id="lbTable">
               <thead>
                 <tr>
                   <th>#</th><th>TERM</th><th>MONTH</th><th>WEEK</th>
@@ -239,9 +250,17 @@
                 </tr>
               </thead>
               <tbody>
-                {% for e in topic_entries %}
-                <tr>
-                  <td>{{ forloop.counter }}</td>
+                {% regroup topic_entries by term as term_groups %}
+                {% for group in term_groups %}
+                <tr class="lb-term-row">
+                  <td colspan="10">
+                    <span class="term-name"><i class="fas fa-layer-group me-1"></i>TERM {{ group.grouper|default:'—' }}</span>
+                    <span class="chip chip-gold" style="font-size:8px;padding:0 7px;line-height:16px;margin-left:6px;">{{ group.list|length }} topics</span>
+                  </td>
+                </tr>
+                {% for e in group.list %}
+                <tr class="lb-entry">
+                  <td>{{ forloop.parentloop.counter }}.{{ forloop.counter }}</td>
                   <td><b>Term {{ e.term|default:'—' }}</b></td>
                   <td>{{ e.month|default:'—' }}</td>
                   <td>{{ e.week|default:'—' }}</td>
@@ -259,6 +278,7 @@
                     <a href="{% url 'curriculum:submit_logbook' %}?delete={{ e.id }}" title="Futa" onclick="return confirm('Una uhakika unataka kufuta topic hii?');" style="color:var(--error);font-size:0.85rem;"><i class="fas fa-trash-alt"></i></a>
                   </td>
                 </tr>
+                {% endfor %}
                 {% endfor %}
               </tbody>
             </table>
@@ -460,6 +480,31 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initial topic load if we already have a class (edit mode)
   if (subjectSelect.value) loadTopics();
   if (mainTopicInput.value) loadSubtopics();
+
+  // ── Quick filter kwenye jedwali la topics (pangilia vizuri) ──
+  const lbFilter = document.getElementById('lbFilter');
+  if (lbFilter) {
+    lbFilter.addEventListener('input', function() {
+      const q = this.value.toLowerCase().trim();
+      let visible = 0;
+      document.querySelectorAll('#lbTable tbody tr.lb-entry').forEach(tr => {
+        const show = !q || tr.textContent.toLowerCase().includes(q);
+        tr.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      document.querySelectorAll('#lbTable tbody tr.lb-term-row').forEach(tr => {
+        let hasVisible = false;
+        let next = tr.nextElementSibling;
+        while (next && !next.classList.contains('lb-term-row')) {
+          if (next.style.display !== 'none') { hasVisible = true; break; }
+          next = next.nextElementSibling;
+        }
+        tr.style.display = hasVisible ? '' : 'none';
+      });
+      const countEl = document.getElementById('lbFilterCount');
+      if (countEl) countEl.textContent = q ? `🔎 ${visible} / {{ topic_entries|length }}` : '';
+    });
+  }
 });
 </script>
 {% endblock %}
