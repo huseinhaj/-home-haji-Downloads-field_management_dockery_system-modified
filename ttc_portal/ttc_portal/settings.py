@@ -37,8 +37,13 @@ CSRF_TRUSTED_ORIGINS = os.environ.get(
 
 # ── Deployed INSIDE the field_management container under /ttc/ ──
 # The nginx proxy strips nothing (passes the full URI); Django uses this to
-# build all reversed URLs with the /ttc/ prefix.
-FORCE_SCRIPT_NAME = '/ttc'
+# build all reversed URLs with the /ttc/ prefix. Only active when running
+# inside that container (TTC_PORTAL_ENABLED=true) — standalone local runs
+# (`python3 manage.py runserver 8001`, per this project's own README) are
+# mounted at root, so forcing '/ttc' there would 404 every link.
+TTC_UNDER_CONTAINER = os.environ.get('TTC_PORTAL_ENABLED', 'false').lower() == 'true'
+if TTC_UNDER_CONTAINER:
+    FORCE_SCRIPT_NAME = '/ttc'
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = os.environ.get('TTC_SSL_REDIRECT', 'False').lower() == 'true'
@@ -118,20 +123,22 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # Served by the container nginx straight from disk under /ttc/static/
-STATIC_URL = '/ttc/static/'
+STATIC_URL = '/ttc/static/' if TTC_UNDER_CONTAINER else '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 # No manifest hashing: nginx serves the raw files directly.
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # Media files
-MEDIA_URL = '/ttc/media/'
+MEDIA_URL = '/ttc/media/' if TTC_UNDER_CONTAINER else '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Keep TTC session/csrf cookies scoped to /ttc/ so they never collide with
-# the field_management cookies served at the root path.
-SESSION_COOKIE_PATH = '/ttc/'
-CSRF_COOKIE_PATH = '/ttc/'
+# the field_management cookies served at the root path. Only meaningful
+# when actually sharing that origin (inside the container).
+if TTC_UNDER_CONTAINER:
+    SESSION_COOKIE_PATH = '/ttc/'
+    CSRF_COOKIE_PATH = '/ttc/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

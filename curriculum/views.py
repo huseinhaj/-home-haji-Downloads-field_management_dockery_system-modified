@@ -56,7 +56,7 @@ from field_app.views.utils import (
 
 from .models import (
     TLMTeacher, Testimonial, LessonNote, SubjectTopic, TopicSubtopic,
-    TLMLogbookEntry, GeneratedExam,
+    TLMLogbookEntry, TLMTopicLogbook, GeneratedExam, PastPaper, MarkingScheme,
 )
 
 
@@ -3586,9 +3586,25 @@ def _tlm_subjects(teacher):
     return Subject.objects.all().order_by('name')
 
 
-def _tlm_logbook_context(teacher, logbook_entry, today, just_submitted=False):
-    """Context for the logbook template when the user is a TLM teacher.
-    Includes PDF download counts + mini history so the whole logbook
+def _term_month_week(date_obj):
+    """Map a date to the official Tanzanian school Term / Month / Week.
+    Term I: Jan-Apr, Term II: May-Aug, Term III: Sep-Dec (TAMISEMI calendar)."""
+    m = date_obj.month
+    if 1 <= m <= 4:
+        term, term_start = 'I', date_obj.replace(month=1, day=1)
+    elif 5 <= m <= 8:
+        term, term_start = 'II', date_obj.replace(month=5, day=1)
+    else:
+        term, term_start = 'III', date_obj.replace(month=9, day=1)
+    week_num = ((date_obj - term_start).days // 7) + 1
+    month_names = ['', 'Januari', 'Februari', 'Machi', 'Aprili', 'Mei', 'Juni',
+                   'Julai', 'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba']
+    return term, month_names[m], f"Wiki {week_num}"
+
+
+def _tlm_logbook_context(teacher, today, just_submitted=False, just_entry=None, edit_entry=None):
+    """Context for the TLM subject log-book page (official per-topic format).
+    Includes PDF download counts + recent topic entries so the whole logbook
     experience lives on ONE page (no separate Historia / Pakua pages)."""
     days_swahili = {0: 'Jumatatu', 1: 'Jumanne', 2: 'Jumatano', 3: 'Alhamisi', 4: 'Ijumaa'}
     days_english = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday'}
@@ -3598,30 +3614,27 @@ def _tlm_logbook_context(teacher, logbook_entry, today, just_submitted=False):
     counts_key = f'curriculum_logbook_counts_{teacher.id}'
     counts = cache.get(counts_key)
     if counts is None:
-        week_start = today - timedelta(days=today.weekday())
-        week_entries_qs = TLMLogbookEntry.objects.filter(
-            teacher=teacher, date__range=[week_start, week_start + timedelta(days=4)]
-        )
-        recent_entries = list(week_entries_qs.select_related('school').order_by('-date', '-created_at')[:5])
+        entries_qs = TLMTopicLogbook.objects.filter(teacher=teacher)
+        recent_entries = list(entries_qs.select_related('subject').order_by('-date_ended', '-created_at')[:5])
         counts = {
-            'week': week_entries_qs.count(),
-            'month': TLMLogbookEntry.objects.filter(
-                teacher=teacher, date__year=today.year, date__month=today.month
+            'month': entries_qs.filter(
+                date_ended__year=today.year, date_ended__month=today.month
             ).count(),
-            'total': TLMLogbookEntry.objects.filter(teacher=teacher).count(),
+            'total': entries_qs.count(),
             'recent_entries': recent_entries,
         }
         cache.set(counts_key, counts, _CACHE_LOGBOOK_COUNTS)
 
-    week_entries_count = counts['week']
-    month_entries_count = counts['month']
-    total_entries_count = counts['total']
-    recent_entries = counts['recent_entries']
+    all_entries = list(
+        TLMTopicLogbook.objects.filter(teacher=teacher)
+        .select_related('subject', 'school')
+        .order_by('-date_ended', '-created_at')[:200]
+    )
 
     return {
         'form': None,
         'student': None,
-        'logbook_entry': logbook_entry,
+        'logbook_entry': None,
         'today': today,
         'today_name': days_swahili.get(today.weekday(), 'Leo'),
         'today_name_en': days_english.get(today.weekday(), 'Today'),
@@ -3633,12 +3646,16 @@ def _tlm_logbook_context(teacher, logbook_entry, today, just_submitted=False):
         'tlm_school_name': school.name if school else '',
         'tlm_subject_name': teacher.subject.name if teacher.subject else '',
         'tlm_class_name': teacher.class_name or '',
+        'term_choices': TLMTopicLogbook.TERM_CHOICES,
+        'today_iso': today.isoformat(),
         # ── ONE-PAGE logbook extras ──
         'just_submitted': just_submitted,
-        'recent_entries': recent_entries,
-        'week_entries_count': week_entries_count,
-        'month_entries_count': month_entries_count,
-        'total_entries_count': total_entries_count,
+        'just_entry': just_entry,
+        'edit_entry': edit_entry,
+        'recent_entries': counts['recent_entries'],
+        'month_entries_count': counts['month'],
+        'total_entries_count': counts['total'],
+        'topic_entries': all_entries,
     }
 
 
@@ -3658,40 +3675,75 @@ def submit_logbook(request):
 
     # ── TLM TEACHER FLOW (session-based, NO Django login needed) ──
     if teacher:
-        if today.weekday() >= 5:
-            messages.info(request, "Hakuna kazi ya uwanjani wikendi. Rudi tena Jumatatu.")
-            # Render the same page (PDF/history still available) — no redirect loop
-            return render(request, 'curriculum/logbook.html',
-                          _tlm_logbook_context(teacher, None, today))
-
+        # Official Subject Log-Book: teacher fills ONE ROW per completed topic.
+        # (No weekend restriction — topics can be completed any day.)
         school = teacher.school
-        logbook_entry = TLMLogbookEntry.objects.filter(teacher=teacher, date=today).first()
+
+        # Edit or delete actions
+        edit_id = request.GET.get('edit')
+        delete_id = request.GET.get('delete')
+        edit_entry = None
+        if edit_id:
+            edit_entry = TLMTopicLogbook.objects.filter(id=edit_id, teacher=teacher).first()
+        if delete_id:
+            TLMTopicLogbook.objects.filter(id=delete_id, teacher=teacher).delete()
+            cache.delete(f'curriculum_logbook_counts_{teacher.id}')
+            messages.info(request, "🗑️ Rekodi ya topic imefutwa.")
+            return redirect(reverse('curriculum:submit_logbook'))
 
         if request.method == 'POST':
-            if logbook_entry is None:
-                logbook_entry = TLMLogbookEntry(
-                    teacher=teacher, date=today, school=school,
-                    day_of_week=['monday', 'tuesday', 'wednesday', 'thursday', 'friday'][today.weekday()],
-                )
-            logbook_entry.school = school
-            logbook_entry.other_activities = request.POST.get('other_activities', '')
-            logbook_entry.challenges_faced = request.POST.get('challenges_faced', '')
-            logbook_entry.lessons_learned = request.POST.get('lessons_learned', '')
+            entry_id = request.POST.get('entry_id', '')
+            entry = None
+            if entry_id:
+                entry = TLMTopicLogbook.objects.filter(id=entry_id, teacher=teacher).first()
+            if entry is None:
+                entry = TLMTopicLogbook(teacher=teacher, school=school)
+
+            entry.school = school
+            subject_id = request.POST.get('subject_id', '')
+            entry.subject = Subject.objects.filter(id=subject_id).first() if subject_id else teacher.subject
+            entry.class_name = request.POST.get('class_name', '').strip() or teacher.class_name or ''
+            entry.main_topic = request.POST.get('main_topic', '').strip()
+            entry.subtopic = request.POST.get('subtopic', '').strip()
+
+            # Dates (start + ended)
             try:
-                logbook_entry.lessons_data = json.loads(request.POST.get('lessons_data', '[]'))
+                entry.date_started = datetime.strptime(request.POST.get('date_started', ''), '%Y-%m-%d').date()
             except (ValueError, TypeError):
-                logbook_entry.lessons_data = []
-            logbook_entry.is_location_verified = True
-            logbook_entry.save()
+                entry.date_started = None
+            try:
+                entry.date_ended = datetime.strptime(request.POST.get('date_ended', ''), '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                entry.date_ended = today
+
+            # TERM / MONTH / WEEK — auto-computed from the ended date (official format)
+            term, month, week = _term_month_week(entry.date_ended)
+            entry.term = request.POST.get('term', '').strip() or term
+            entry.month = month
+            entry.week = week
+
+            entry.teacher_comment = request.POST.get('teacher_comment', '').strip()
+            entry.teacher_name = request.POST.get('teacher_name', '').strip() or teacher.full_name
+            entry.hod_comment = request.POST.get('hod_comment', '').strip()
+            entry.hod_name = request.POST.get('hod_name', '').strip()
+            entry.head_comment = request.POST.get('head_comment', '').strip()
+            entry.head_name = request.POST.get('head_name', '').strip()
+
+            if not entry.main_topic:
+                messages.error(request, "Tafadhali andika Mada Kuu (Main Topic) kwanza.")
+                return render(request, 'curriculum/logbook_tlm.html',
+                              _tlm_logbook_context(teacher, today, edit_entry=entry))
+
+            entry.save()
             # Invalidate cached counts so the success panel shows fresh numbers
             cache.delete(f'curriculum_logbook_counts_{teacher.id}')
-            messages.success(request, "✅ Logbook imesajiliwa kikamilifu! Pakua PDF hapa chini.")
+            messages.success(request, "✅ Topic imehifadhiwa kwenye Subject Log-Book! Pakua PDF hapo chini.")
             # Re-render the SAME page with a success panel + PDF buttons right there
-            return render(request, 'curriculum/logbook.html',
-                          _tlm_logbook_context(teacher, logbook_entry, today, just_submitted=True))
+            return render(request, 'curriculum/logbook_tlm.html',
+                          _tlm_logbook_context(teacher, today, just_submitted=True, just_entry=entry))
 
-        return render(request, 'curriculum/logbook.html',
-                      _tlm_logbook_context(teacher, logbook_entry, today))
+        return render(request, 'curriculum/logbook_tlm.html',
+                      _tlm_logbook_context(teacher, today, edit_entry=edit_entry))
 
     # ── AUTHENTICATED IMS STUDENT FLOW (fallback) ──
     if not request.user.is_authenticated:
@@ -3826,6 +3878,172 @@ def logbook_history(request):
     })
 
 
+def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_entry=None):
+    """Build the OFFICIAL Tanzanian Subject Log-Book PDF (TAMISEMI format).
+
+    One ROW PER TOPIC with the official columns:
+      S/N | TERM | MONTH | WEEK | MAIN TOPIC | SUBTOPIC | DATE STARTED |
+      DATE ENDED | TEACHER COMMENT & SIGN | HOD SIGN | HEAD OF SCHOOL REMARKS & SIGN
+    """
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import cm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib import colors
+
+    school = teacher.school
+    entries = list(entries)
+
+    NAVY = colors.HexColor('#0A2B5E')
+    GOLD = colors.HexColor('#C8900A')
+    LIGHT = colors.HexColor('#F3F5F9')
+    WHITE = colors.white
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), leftMargin=1.1 * cm,
+                            rightMargin=1.1 * cm, topMargin=1.1 * cm, bottomMargin=1.1 * cm)
+
+    styles = getSampleStyleSheet()
+    s_rep = ParagraphStyle('rep', fontName='Helvetica-Bold', fontSize=10.5, textColor=NAVY, alignment=1, spaceAfter=1)
+    s_rep2 = ParagraphStyle('rep2', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#4A5568'), alignment=1, spaceAfter=1)
+    s_title = ParagraphStyle('title', fontName='Helvetica-Bold', fontSize=13, textColor=NAVY, alignment=1, spaceAfter=3)
+    s_sub = ParagraphStyle('sub', fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#4A5568'), spaceAfter=2)
+    s_head = ParagraphStyle('head', fontName='Helvetica-Bold', fontSize=7.5, textColor=WHITE, leading=9)
+    s_cell = ParagraphStyle('cell', fontName='Helvetica', fontSize=7.5, textColor=colors.HexColor('#1A1A2E'), leading=9.5)
+    s_cellb = ParagraphStyle('cellb', fontName='Helvetica-Bold', fontSize=7.5, textColor=NAVY, leading=9.5)
+    s_label = ParagraphStyle('label', fontName='Helvetica-Bold', fontSize=8, textColor=NAVY)
+    s_body = ParagraphStyle('body', fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#1A1A2E'), leading=10)
+
+    school_name = school.name if school else '—'
+    district_name = (school.district.name if school and school.district else '—')
+    current_year = _cached_active_year()
+    year_label = str(current_year) if current_year else str(today.year)
+    subject_name = teacher.subject.name if teacher.subject else '—'
+    class_name = teacher.class_name or '—'
+
+    story = []
+    # ── Official header ──
+    story.append(Paragraph("JAMHURI YA MUUNGANO WA TANZANIA", s_rep))
+    story.append(Paragraph("OFISI YA RAIS — TAWALA ZA MIKOA NA SERIKALI ZA MITAA (TAMISEMI)", s_rep2))
+    story.append(HRFlowable(width="100%", thickness=2, color=GOLD, spaceBefore=2, spaceAfter=3))
+    story.append(Paragraph("DAFTARI LA SOMO / SUBJECT LOG-BOOK", s_title))
+    story.append(Paragraph(period_label, s_sub))
+
+    # ── School / teacher info ──
+    info_rows = [
+        [Paragraph('<b>Jina la Shule:</b>', s_label), Paragraph(school_name, s_body),
+         Paragraph('<b>Jina la Mwalimu:</b>', s_label), Paragraph(teacher.full_name, s_body)],
+        [Paragraph('<b>Somo:</b>', s_label), Paragraph(subject_name, s_body),
+         Paragraph('<b>Darasa:</b>', s_label), Paragraph(class_name, s_body)],
+        [Paragraph('<b>Wilaya:</b>', s_label), Paragraph(district_name, s_body),
+         Paragraph('<b>Mwaka wa Masomo:</b>', s_label), Paragraph(year_label, s_body)],
+        [Paragraph('<b>Tarehe ya Chapisha:</b>', s_label), Paragraph(str(today), s_body),
+         Paragraph('<b>Idadi ya Topics:</b>', s_label), Paragraph(str(len(entries)), s_body)],
+    ]
+    info_tbl = Table(info_rows, colWidths=[3.3 * cm, 6.3 * cm, 3.6 * cm, 6.3 * cm])
+    info_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), LIGHT),
+        ('BOX', (0, 0), (-1, -1), 0.6, NAVY),
+        ('INNERGRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#CBD5E0')),
+        ('PADDING', (0, 0), (-1, -1), 4),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    story.append(info_tbl)
+    story.append(Spacer(1, 8))
+
+    # ── Official 11-column subject log-book table ──
+    headers = ['S/N', 'TERM', 'MONTH', 'WEEK', 'MAIN TOPIC', 'SUBTOPIC',
+               'DATE STARTED', 'DATE ENDED', 'TEACHER COMMENT & SIGN',
+               'HEAD OF DEPT SIGN', 'HEAD OF SCHOOL REMARKS & SIGN']
+    data = [[Paragraph(h, s_head) for h in headers]]
+
+    dot_line = '.<br/>' * 3 + '&nbsp;&nbsp;(Sahihi)................'  # signature line
+    for i, e in enumerate(entries, 1):
+        teacher_sign = f"{e.teacher_comment or '—'}<br/><br/>{dot_line}<br/><b>{e.teacher_name or ''}</b>"
+        hod_sign = f"{e.hod_comment or ''}<br/><br/>{dot_line}<br/><b>{e.hod_name or ''}</b>"
+        head_sign = f"{e.head_comment or ''}<br/><br/>{dot_line}<br/><b>{e.head_name or ''}</b>"
+        data.append([
+            Paragraph(str(i), s_cellb),
+            Paragraph(e.term or '—', s_cell),
+            Paragraph(e.month or '—', s_cell),
+            Paragraph(e.week or '—', s_cell),
+            Paragraph(e.main_topic or '—', s_cellb),
+            Paragraph(e.subtopic or '—', s_cell),
+            Paragraph(str(e.date_started) if e.date_started else '—', s_cell),
+            Paragraph(str(e.date_ended) if e.date_ended else '—', s_cell),
+            Paragraph(teacher_sign, s_cell),
+            Paragraph(hod_sign, s_cell),
+            Paragraph(head_sign, s_cell),
+        ])
+
+    if len(data) == 1:
+        data.append([Paragraph('—', s_cell) for _ in headers])
+
+    col_widths = [0.9 * cm, 1.4 * cm, 2.0 * cm, 1.6 * cm, 4.2 * cm, 3.6 * cm,
+                  2.0 * cm, 2.0 * cm, 3.6 * cm, 2.8 * cm, 3.0 * cm]
+    main_tbl = Table(data, colWidths=col_widths, repeatRows=1)
+    main_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('BOX', (0, 0), (-1, -1), 0.6, NAVY),
+        ('INNERGRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#B8C2D0')),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+        ('ALIGN', (1, 1), (7, -1), 'CENTER'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, LIGHT]),
+        ('PADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(main_tbl)
+
+    if single_entry:
+        # Per-topic page: extra space for physical signatures at the bottom
+        story.append(Spacer(1, 14))
+        sig_rows = [
+            [Paragraph('<b>Sahihi ya Mwalimu wa Somo:</b>', s_label), '', '', ''],
+            [Paragraph('<b>Jina:</b>', s_label), Paragraph(single_entry.teacher_name or '', s_body),
+             Paragraph('<b>Tarehe:</b>', s_label), Paragraph(str(single_entry.date_ended or ''), s_body)],
+        ]
+        sig_tbl = Table(sig_rows, colWidths=[4.5 * cm, 4.5 * cm, 2.5 * cm, 4.0 * cm])
+        sig_tbl.setStyle(TableStyle([
+            ('BOX', (0, 0), (-1, -1), 0.6, NAVY),
+            ('INNERGRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#CBD5E0')),
+            ('SPAN', (0, 0), (-1, 0)),
+            ('BACKGROUND', (0, 0), (-1, 0), LIGHT),
+            ('PADDING', (0, 0), (-1, -1), 5),
+        ]))
+        story.append(sig_tbl)
+
+    story.append(HRFlowable(width="100%", thickness=1, color=GOLD, spaceBefore=8, spaceAfter=3))
+    story.append(Paragraph("© TAMISEMI — Mfumo wa Ufuatiliaji wa Walimu (TLM) | Subject Log-Book",
+                           ParagraphStyle('footer', fontName='Helvetica', fontSize=7,
+                                          textColor=colors.HexColor('#4A5568'), alignment=1)))
+
+    doc.build(story)
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    return response
+
+
+def download_topic_logbook_pdf(request, entry_id):
+    """Download the OFFICIAL Subject Log-Book page for ONE completed topic.
+    Teacher downloads this per topic right after filling it."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('login')}?next={reverse('curriculum:submit_logbook')}")
+        return redirect(reverse('curriculum:submit_logbook'))
+
+    entry = TLMTopicLogbook.objects.filter(id=entry_id, teacher=teacher).first()
+    if not entry:
+        messages.error(request, "Rekodi ya topic haikupatikana.")
+        return redirect(reverse('curriculum:submit_logbook'))
+
+    today = timezone.now().date()
+    label = f"Topic: {entry.main_topic} — {entry.subtopic or ''} | Term {entry.term or ''} | {entry.month or ''} | {entry.week or ''}"
+    response = _build_subject_logbook_pdf([entry], teacher, label, today, single_entry=entry)
+    response['Content-Disposition'] = f'attachment; filename="logbook_topic_{entry.id}.pdf"'
+    return response
+
+
 def download_logbook_pdf(request, period_type=None):
     """Download logbook as PDF — works for TLM teachers AND authenticated IMS users."""
     from reportlab.lib.units import cm
@@ -3833,22 +4051,41 @@ def download_logbook_pdf(request, period_type=None):
 
     today = timezone.now().date()
     teacher = get_tlm_teacher(request)
-    period_value = period_type or 'week'
+    period_value = period_type or 'all'
 
-    # ── Decide data source: TLM teacher vs authenticated IMS student ──
+    # ── TLM TEACHER → OFFICIAL Subject Log-Book (one row per topic) ──
     if teacher:
-        entries = TLMLogbookEntry.objects.filter(teacher=teacher)
-        owner_name = teacher.full_name
-        owner_label = 'Jina la Mwalimu'
-        school = teacher.school
-    else:
-        if not request.user.is_authenticated:
-            return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_download_options')}")
-        student = get_or_create_student_profile(request.user)
-        entries = LogbookEntry.objects.filter(student=student)
-        owner_name = student.full_name
-        owner_label = 'Jina la Mwalimu'
-        school = student.selected_school
+        entries = TLMTopicLogbook.objects.filter(teacher=teacher)
+        if period_value == 'today':
+            entries = entries.filter(date_ended=today)
+        elif period_value == 'week':
+            start_of_week = today - timedelta(days=today.weekday())
+            entries = entries.filter(date_ended__range=[start_of_week, start_of_week + timedelta(days=4)])
+        elif period_value == 'month':
+            entries = entries.filter(date_ended__year=today.year, date_ended__month=today.month)
+        entries = entries.order_by('date_ended', 'main_topic')
+
+        labels = {
+            'today': f"Logbook — Leo {today}",
+            'week': f"Logbook — Wiki ya {today}",
+            'month': f"Logbook — Mwezi {today.month}/{today.year}",
+            'all': "Logbook — Topics Zote",
+        }
+        label = labels.get(period_value, labels['all'])
+        response = _build_subject_logbook_pdf(entries, teacher, label, today)
+        filename = f"subject_logbook_{period_value}_{today}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    # ── AUTHENTICATED IMS STUDENT (legacy daily logbook fallback) ──
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_download_options')}")
+
+    student = get_or_create_student_profile(request.user)
+    entries = LogbookEntry.objects.filter(student=student)
+    owner_name = student.full_name
+    owner_label = 'Jina la Mwalimu'
+    school = student.selected_school
 
     if period_value == 'today':
         entries = entries.filter(date=today)
@@ -7149,30 +7386,82 @@ def download_note_pdf(request):
     return response
 
 
+def _paper_matches_class(paper_class, selected_class):
+    """Past paper class inaweza kuwa 'Form 4', 'Form 1-4' au 'Standard 7'.
+    Matches exact name, or a numeric range (Form 1-4) against the selected
+    class's form/standard number."""
+    if not selected_class or not paper_class:
+        return True
+    if paper_class.lower() == selected_class.lower():
+        return True
+    sel_digits = [int(d) for d in re.findall(r'\d+', selected_class)]
+    if not sel_digits:
+        return False
+    paper_digits = [int(d) for d in re.findall(r'\d+', paper_class)]
+    if not paper_digits:
+        return False
+    if len(paper_digits) >= 2:  # range kama 'Form 1-4'
+        lo, hi = min(paper_digits), max(paper_digits)
+        return any(lo <= d <= hi for d in sel_digits)
+    return any(d in sel_digits for d in paper_digits)
+
+
 def ajax_past_papers(request):
-    """Curated NECTA past-paper links kwa level (+ optional subject)."""
+    """Past papers HALISI kwenye database (seeded TETEA links) kwa level + darasa.
+    Kila paper ina buttons za kufungua PDF na kuzalisha Marking Scheme (AI)."""
     level = (request.GET.get('level') or 'ordinary').strip()
+    class_name = (request.GET.get('class_name') or '').strip()
     subject = (request.GET.get('subject') or '').strip()
-    info = NECTA_LIBRARY_LINKS.get(level, NECTA_LIBRARY_LINKS['ordinary'])
+
+    qs = list(PastPaper.objects.filter(education_level=level, is_active=True))
+    if class_name:
+        qs = [p for p in qs if _paper_matches_class(p.class_name, class_name)]
+    if subject:
+        qs = [p for p in qs if (p.subject_name or '').lower() == subject.lower()]
+
     papers = []
-    for ex in info['exams']:
+    for p in sorted(qs, key=lambda x: (x.subject_name or '', x.year or 0), reverse=True):
+        existing = p.marking_schemes.order_by('-created_at').first()
         papers.append({
-            'code': ex['code'],
-            'name': ex['name'],
-            'subject': subject or 'All Subjects',
+            'id': p.id,
+            'title': p.title,
+            'code': p.exam_code,
+            'subject': p.subject_name or (p.subject.name if p.subject else ''),
+            'class_name': p.class_name,
+            'year': p.year,
+            'url': p.url,
+            'source': p.source,
+            'marking_scheme_url': p.marking_scheme_url,
+            'has_scheme': bool(existing),
+            'scheme_id': existing.id if existing else None,
+        })
+
+    info = NECTA_LIBRARY_LINKS.get(level, NECTA_LIBRARY_LINKS['ordinary'])
+    return JsonResponse({
+        'success': True,
+        'level': level,
+        'label': info['label'],
+        'papers': papers,
+        'official': {
+            'label': info['label'],
             'tetea_url': info['url'],
             'necta_url': 'https://www.necta.go.tz/',
-            'years': [str(y) for y in range(2025, 2014, -1)],
-        })
-    return JsonResponse({'success': True, 'level': level, 'label': info['label'], 'papers': papers})
+        },
+    })
 
 
-@login_required
 def ajax_notes_library_books(request):
-    """Vitabu halisi (uploaded/system) kwa level + subject."""
+    """Vitabu halisi (uploaded/system) kwa level + darasa (+ subject hiari).
+    TLM-session based (sawa na kurasa nyingine za Maktaba)."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Jisajili kwanza'}, status=401)
     level = (request.GET.get('level') or 'ordinary').strip()
+    class_name = (request.GET.get('class_name') or '').strip()
     subject_id = request.GET.get('subject_id') or ''
     qs = Textbook.objects.filter(education_level=level, is_active=True)
+    if class_name:
+        qs = qs.filter(class_level__name__iexact=class_name)
     if subject_id:
         qs = qs.filter(subject_id=subject_id)
     books = []
@@ -7197,7 +7486,6 @@ def ajax_notes_library_books(request):
     })
 
 
-@login_required
 def ajax_upload_textbook(request):
     """Upload PDF (file) au link ya kitabu — inaonekana kwenye Maktaba ya Vitabu."""
     if request.method != 'POST':
@@ -7245,7 +7533,6 @@ def ajax_upload_textbook(request):
     })
 
 
-@login_required
 def ajax_delete_textbook(request):
     """Futa kitabu (mwenye kuupload au superuser)."""
     if request.method != 'POST':
@@ -7258,4 +7545,322 @@ def ajax_delete_textbook(request):
         return JsonResponse({'success': False, 'error': 'Huwezi kufuta kitabu cha mwalimu mwingine'}, status=403)
     tb.delete()
     return JsonResponse({'success': True})
+
+
+# =============================================================================
+# MAKTABA — Browse API (Vitabu / Notes / Past Papers / Marking Schemes)
+# =============================================================================
+
+def ajax_notes_library_notes(request):
+    """Notes za mwalimu kwa level + darasa (browse kwenye Maktaba)."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Jisajili kwanza'}, status=401)
+    level = (request.GET.get('level') or '').strip()
+    class_name = (request.GET.get('class_name') or '').strip()
+    qs = LessonNote.objects.filter(teacher=teacher)
+    if level:
+        qs = qs.filter(education_level=level)
+    if class_name:
+        qs = qs.filter(class_name__iexact=class_name)
+    notes = list(qs.order_by('-created_at')[:200].values(
+        'id', 'education_level', 'class_name', 'subject', 'topic', 'created_at'
+    ))
+    return JsonResponse({'success': True, 'count': len(notes), 'notes': notes})
+
+
+def _marking_scheme_prompt(level, class_name, subject_name, exam_code, year, topic):
+    """Build the AI prompt for generating a NECTA-style marking scheme."""
+    level_label = _LEVEL_LABELS.get(level, level or 'Tanzania')
+    year_label = str(year) if year else 'Various years'
+    scope = topic or 'Full syllabus'
+
+    format_hint = {
+        'PSLE': ('Section A: objective questions (1 mark each) covering all subjects tested; '
+                 'short answers in Section B. Total 50 marks.'),
+        'SFNA': ('Section A: 20 objective questions (1 mark each); Section B: short answers '
+                 '(10 marks). Standard Four National Assessment format.'),
+        'FTNA': ('Section A: 15 objective (10 MCQ + 5 matching, 15 marks); Section B: 7 short-answer '
+                 'questions of 10 marks each (70 marks); 150 minutes.'),
+        'CSEE': ('Section A: 15 objective (10 MCQ + 5 matching, 15 marks); Section B: 7 short-answer '
+                 'of 10 marks each (70 marks); Section C: essay 15 marks; 150 minutes.'),
+        'ACSEE': ('Section A: 20 objective (20 marks); Section B: 4 long-answer questions of 10 marks '
+                  '(40 marks); Section C: 2 essay questions of 20 marks (answer one); 3 hours.'),
+        'NVA': ('Practical/competence-based assessment: theory section plus practical tasks with '
+                'marking points per competency.'),
+        'NACTE': ('NTA-level assessment: multiple choice, short answer and applied questions per '
+                  'learning outcome.'),
+    }.get(exam_code) or ('Follow the standard NECTA format for this level: an objective section '
+                          '(1 mark each), a short-answer section (10 marks each) and an '
+                          'essay/application section where applicable.')
+
+    return f"""You are a NECTA senior examiner writing the OFFICIAL MARKING SCHEME for a Tanzanian national examination paper.
+
+EXAM PAPER: {subject_name} — {class_name}
+EXAM CODE: {exam_code or 'N/A'}
+LEVEL: {level_label}
+CLASS: {class_name}
+YEAR: {year_label}
+TOPIC / SCOPE: {scope}
+
+{format_hint}
+
+Write the COMPLETE marking scheme a teacher would use to mark this exact paper — every question listed with a full model answer and marks. Use realistic, exam-style questions for {subject_name} at {class_name} level (Tanzanian TIE syllabus).
+
+Return ONLY valid JSON with EXACTLY this structure:
+{{
+  "title": "Marking Scheme — {subject_name} ({year_label})",
+  "overview": "1-2 paragraphs describing the paper structure and how marks are awarded.",
+  "sections": [
+    {{
+      "heading": "SECTION A: Objective Questions (15 marks)",
+      "items": [
+        {{"q": "1. Question text...", "a": "Complete model answer with brief explanation", "marks": 1}}
+      ]
+    }},
+    {{
+      "heading": "SECTION B: Short Answer (70 marks)",
+      "items": [
+        {{"q": "7. Question text...", "a": "Complete model answer with marking breakdown (key points each worth marks)", "marks": 10}}
+      ]
+    }}
+  ],
+  "tips": ["Marker guidance / common student errors"],
+  "summary": "Overall guidance on awarding marks and grade boundaries."
+}}
+
+REQUIREMENTS:
+- Every question MUST have a COMPLETE model answer (no placeholders, no '...').
+- Total marks per section must follow the real NECTA structure for {exam_code or 'this exam'}.
+- Marking points should be numbered inside long answers (e.g., 'Key point 1 (3 marks)').
+Do NOT truncate. Return ONLY valid JSON. No other text."""
+
+
+def ajax_generate_marking_scheme(request):
+    """Generate Marking Scheme (AI) kwa past paper iliyochaguliwa na mwalimu.
+    Result imehifadhiwa kwenye MarkingScheme (content = JSON) na kurudishwa."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=400)
+    if client is None:
+        return JsonResponse({'success': False, 'error': 'AI haitumiki kwa sasa'}, status=503)
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Jisajili kwanza'}, status=401)
+
+    paper_id = request.POST.get('paper_id') or ''
+    paper = None
+    if paper_id and str(paper_id).isdigit():
+        paper = PastPaper.objects.filter(id=paper_id).first()
+
+    level = (request.POST.get('level') or '').strip()
+    class_name = (request.POST.get('class_name') or '').strip()
+    subject_name = (request.POST.get('subject_name') or '').strip()
+    topic = (request.POST.get('topic') or '').strip()
+
+    exam_code = ''
+    year = ''
+    if paper:
+        level = paper.education_level or level
+        class_name = paper.class_name or class_name
+        subject_name = paper.subject_name or (paper.subject.name if paper.subject else '') or subject_name
+        exam_code = paper.exam_code or ''
+        year = paper.year
+        if not topic:
+            topic = f"{exam_code} {year}".strip() if exam_code else ''
+    else:
+        exam_code = (request.POST.get('exam_code') or '').strip()
+        year = (request.POST.get('year') or '').strip()
+        if not topic:
+            topic = f"{exam_code} {year}".strip() if exam_code else ''
+
+    if not (class_name and subject_name):
+        return JsonResponse({'success': False, 'error': 'Darasa na somo zinahitajika'}, status=400)
+
+    prompt = _marking_scheme_prompt(level, class_name, subject_name, exam_code, year, topic)
+    scheme_data = None
+    for _attempt in range(2):
+        if _attempt > 0:
+            prompt += ("\n\nIMPORTANT: Your previous response was INCOMPLETE or TRUNCATED. "
+                       "Produce the ENTIRE marking scheme again — every question fully answered, "
+                       "no placeholders, no empty arrays.")
+        try:
+            response = client.models.generate_content(
+                model=model_name, contents=prompt,
+                config=GenerateContentConfig(max_output_tokens=32768),
+            )
+            cleaned = re.sub(r'```(?:json)?\s*', '', response.text)
+            cleaned = re.sub(r'```\s*', '', cleaned).strip()
+            start_idx = cleaned.find('{')
+            end_idx = cleaned.rfind('}')
+            if start_idx != -1 and end_idx != -1:
+                json_str = cleaned[start_idx:end_idx + 1]
+                try:
+                    scheme_data = json.loads(json_str)
+                except json.JSONDecodeError:
+                    scheme_data = json.loads(_sanitize_json_control_chars(json_str))
+        except Exception:
+            scheme_data = None
+        if scheme_data and scheme_data.get('sections'):
+            break
+        scheme_data = None
+
+    if not scheme_data:
+        return JsonResponse({'success': False, 'error': 'AI ilishindwa kuzalisha marking scheme. Jaribu tena.'}, status=422)
+
+    scheme_title = scheme_data.get('title') or f"Marking Scheme — {subject_name} ({year or ''})"
+    scheme_data['title'] = scheme_title
+    scheme_data.setdefault('overview', '')
+    scheme_data.setdefault('sections', [])
+    scheme_data.setdefault('tips', [])
+    scheme_data.setdefault('summary', '')
+
+    ms = MarkingScheme.objects.create(
+        past_paper=paper,
+        education_level=level,
+        class_name=class_name,
+        subject_name=subject_name,
+        topic=topic or scope_label(exam_code, year),
+        exam_code=exam_code,
+        content=json.dumps(scheme_data, ensure_ascii=False),
+        source='ai',
+        created_by=request.user if request.user.is_authenticated else None,
+    )
+    return JsonResponse({
+        'success': True,
+        'scheme': {
+            'id': ms.id,
+            'past_paper_id': ms.past_paper_id,
+            'education_level': ms.education_level,
+            'class_name': ms.class_name,
+            'subject_name': ms.subject_name,
+            'topic': ms.topic,
+            'exam_code': ms.exam_code,
+            'source': ms.source,
+            'content': ms.content,
+            'created_at': ms.created_at.strftime('%d %b %Y %H:%M'),
+        },
+    })
+
+
+def scope_label(exam_code, year):
+    """Label ndogo kwa topic wakati hakuna topic maalumu."""
+    bits = [b for b in [exam_code, year] if b]
+    return ' '.join(bits) if bits else 'Full syllabus'
+
+
+def ajax_list_marking_schemes(request):
+    """Orodha ya marking schemes zilizogeneratwa kwa level/darasa/somo/paper."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'Jisajili kwanza'}, status=401)
+    paper_id = request.GET.get('paper_id') or ''
+    level = (request.GET.get('level') or '').strip()
+    class_name = (request.GET.get('class_name') or '').strip()
+    subject_name = (request.GET.get('subject_name') or '').strip()
+
+    qs = MarkingScheme.objects.all()
+    if paper_id and str(paper_id).isdigit():
+        qs = qs.filter(past_paper_id=paper_id)
+    if level:
+        qs = qs.filter(education_level=level)
+    if class_name:
+        qs = qs.filter(class_name__iexact=class_name)
+    if subject_name:
+        qs = qs.filter(subject_name__iexact=subject_name)
+
+    schemes = []
+    for ms in qs.order_by('-created_at')[:100]:
+        schemes.append({
+            'id': ms.id,
+            'past_paper_id': ms.past_paper_id,
+            'education_level': ms.education_level,
+            'class_name': ms.class_name,
+            'subject_name': ms.subject_name,
+            'topic': ms.topic,
+            'exam_code': ms.exam_code,
+            'source': ms.source,
+            'content': ms.content,
+            'created_at': ms.created_at.strftime('%d %b %Y %H:%M'),
+        })
+    return JsonResponse({'success': True, 'count': len(schemes), 'schemes': schemes})
+
+
+def ajax_delete_marking_scheme(request):
+    """Futa marking scheme (mwenye kuigenerate au superuser)."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=400)
+    scheme_id = request.POST.get('scheme_id') or ''
+    if not str(scheme_id).isdigit():
+        return JsonResponse({'success': False, 'error': 'scheme_id si sahihi'}, status=400)
+    ms = get_object_or_404(MarkingScheme, id=scheme_id)
+    if ms.created_by_id and ms.created_by_id != request.user.id and not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Huwezi kufuta scheme ya mwalimu mwingine'}, status=403)
+    ms.delete()
+    return JsonResponse({'success': True})
+
+
+def download_marking_scheme_pdf(request, scheme_id):
+    """Pakua Marking Scheme kama PDF (JSON structured au plain text)."""
+    teacher = get_tlm_teacher(request)
+    if not teacher:
+        return redirect(f"{reverse('curriculum:teacher_register')}?next={reverse('curriculum:notes_library')}")
+    ms = get_object_or_404(MarkingScheme, id=scheme_id)
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=45, leftMargin=45, topMargin=45, bottomMargin=40)
+    _t = ParagraphStyle('mt', fontName='Helvetica-Bold', fontSize=15, leading=19,
+                        textColor=colors.HexColor('#0A2B5E'), alignment=1, spaceAfter=6)
+    _m = ParagraphStyle('mm', fontName='Helvetica', fontSize=9, leading=13,
+                        textColor=colors.HexColor('#555555'), alignment=1, spaceAfter=8)
+    _h = ParagraphStyle('mh', fontName='Helvetica-Bold', fontSize=11, leading=15,
+                        textColor=colors.HexColor('#C8900A'), spaceBefore=10, spaceAfter=4)
+    _n = ParagraphStyle('mn', fontName='Helvetica', fontSize=9.5, leading=13.5, spaceAfter=4)
+    _qa = ParagraphStyle('qa', fontName='Helvetica', fontSize=9.5, leading=13.5, spaceAfter=4,
+                         leftIndent=10, borderColor=colors.HexColor('#E5E7EB'), borderWidth=0.6,
+                         borderPadding=5, backColor=colors.HexColor('#F9FAFB'))
+
+    def _esc(s):
+        return (str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
+
+    story = []
+    story.append(Paragraph(_esc(ms.subject_name or 'Marking Scheme'), _t))
+    story.append(Paragraph(_esc(f"{ms.class_name or ''} | {ms.education_level or ''} | {ms.exam_code or ''} | {ms.topic or ''}"), _m))
+    story.append(HRFlowable(width='100%', thickness=1.5, color=colors.HexColor('#C8900A'), spaceAfter=8))
+
+    try:
+        data = json.loads(ms.content)
+    except (ValueError, TypeError):
+        data = None
+
+    if isinstance(data, dict) and data.get('sections'):
+        story.append(Paragraph(_esc(data.get('overview') or ''), _n))
+        for sec in data.get('sections', []):
+            story.append(Paragraph(_esc(sec.get('heading') or ''), _h))
+            for it in sec.get('items', []) or []:
+                marks = it.get('marks')
+                q_line = _esc(it.get('q') or '')
+                if marks:
+                    q_line += f" &nbsp;<b>[{_esc(marks)} marks]</b>"
+                story.append(Paragraph(q_line, _n))
+                story.append(Paragraph(f"<b>Jibu:</b> {_esc(it.get('a') or '')}", _qa))
+        for tip in data.get('tips', []) or []:
+            if tip:
+                story.append(Paragraph(f"📌 {_esc(tip)}", _n))
+        if data.get('summary'):
+            story.append(Paragraph(f"<b>Muhtasari:</b> {_esc(data.get('summary'))}", _n))
+    else:
+        # Plain text / legacy content
+        for line in (ms.content or '').split('\n'):
+            line = line.strip()
+            if not line:
+                story.append(Spacer(1, 4))
+            else:
+                story.append(Paragraph(_esc(line), _n))
+
+    doc.build(story)
+    buffer.seek(0)
+    safe_name = f"MarkingScheme_{ms.subject_name or 'Scheme'}_{ms.class_name or ''}".replace(' ', '_')
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{safe_name}.pdf"'
+    return response
 

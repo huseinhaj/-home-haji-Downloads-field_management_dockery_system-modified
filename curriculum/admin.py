@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     TLMTeacher, Testimonial, LessonNote, SubjectTopic, TopicSubtopic,
-    TLMLogbookEntry, GeneratedExam,
+    TLMLogbookEntry, TLMTopicLogbook, GeneratedExam,
 )
 
 admin.site.register(TLMTeacher)
@@ -17,6 +17,15 @@ class TLMLogbookEntryAdmin(admin.ModelAdmin):
     list_filter = ['day_of_week', 'is_location_verified']
     search_fields = ['teacher__full_name']
     list_select_related = ['teacher', 'school']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(TLMTopicLogbook)
+class TLMTopicLogbookAdmin(admin.ModelAdmin):
+    list_display = ['teacher', 'term', 'month', 'week', 'main_topic', 'subtopic', 'date_ended', 'updated_at']
+    list_filter = ['term', 'month']
+    search_fields = ['main_topic', 'subtopic', 'teacher__full_name']
+    list_select_related = ['teacher', 'school', 'subject']
     readonly_fields = ['created_at', 'updated_at']
 
 

@@ -1,0 +1,465 @@
+{% extends 'curriculum/base.html' %}
+{% block title %}Subject Log-Book{% endblock %}
+{% block content %}
+<style>
+  .period-card {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    animation: fadeUp 250ms var(--ease-out);
+    transition: box-shadow 0.2s;
+  }
+  .period-card:hover { box-shadow: var(--shadow-sm); border-color: rgba(31,122,61,0.2); }
+  .lang-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 2px; }
+  .lang-label-sw { color: var(--green-500); }
+  .lang-label-en { color: var(--info); display: none; }
+  body.lang-en .lang-label-sw { display: none; }
+  body.lang-en .lang-label-en { display: block; }
+  .lang-label-en { color: var(--info); }
+  .field-tip { font-size: 8px; color: var(--text-muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .lb-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .lb-table th {
+    background: var(--navy, #0A2B5E); color: #fff; padding: 7px 6px; text-align: left;
+    font-size: 9.5px; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap;
+  }
+  .lb-table td { padding: 8px 6px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+  .lb-table tr:hover td { background: rgba(31,122,61,0.04); }
+  .auto-chip { background: rgba(200,144,10,0.1); color: #9a6d00; border: 1px dashed rgba(200,144,10,0.5); font-size: 9px; padding: 1px 7px; border-radius: 10px; }
+  .sig-dots { font-size: 10px; letter-spacing: 1px; color: var(--text-muted); }
+</style>
+
+<div class="container-fluid px-0">
+  <!-- Header -->
+  <div class="c-card p-2 mb-2" style="border-left:3px solid var(--green-500);">
+    <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+      <div style="flex:1;">
+        <h4 style="font-family:var(--font-display);font-weight:700;color:var(--text-primary);margin:0;font-size:clamp(0.85rem,1.5vw,1.05rem);">
+          📖 <span class="lang-label-sw">Subject Log-Book (Daftari la Somo)</span><span class="lang-label-en">Subject Log-Book</span>
+        </h4>
+        <div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:1px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+          {% if tlm_school_name %}<span><i class="fas fa-school me-1 text-gold" style="font-size:9px;"></i>{{ tlm_school_name }}</span>{% endif %}
+          <span style="color:var(--text-muted);font-size:8px;">|</span>
+          <span><i class="fas fa-user me-1" style="font-size:9px;color:var(--primary);"></i>{{ tlm_teacher_name }}</span>
+          {% if tlm_subject_name %}<span class="chip chip-green" style="font-size:8px;padding:0 6px;line-height:16px;">{{ tlm_subject_name }}</span>{% endif %}
+          {% if tlm_class_name %}<span class="chip chip-gold" style="font-size:8px;padding:0 6px;line-height:16px;">{{ tlm_class_name }}</span>{% endif %}
+        </div>
+        <p style="font-size:9px;color:var(--text-muted);margin:4px 0 0;">
+          <span class="lang-label-sw">Jaza safu MOJA kwa kila topic unayomaliza kufundisha. TERM, MONTH na WEEK zinajazwa otomatiki.</span>
+          <span class="lang-label-en">Fill ONE row for each topic you finish teaching. TERM, MONTH and WEEK are auto-filled.</span>
+        </p>
+      </div>
+      <!-- Language toggle -->
+      <div style="display:flex;align-items:center;gap:4px;">
+        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('sw')" id="langSwBtn" style="{% if preferred_language != 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:9px;padding:2px 8px;border-radius:4px;">🇹🇿 SW</button>
+        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('en')" id="langEnBtn" style="{% if preferred_language == 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:9px;padding:2px 8px;border-radius:4px;">🇬🇧 EN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ SUCCESS PANEL — PDF hapo hapo baada ya kuhifadhi topic -->
+  {% if just_submitted and just_entry %}
+  <div class="c-card mb-3" style="border:2px solid var(--success);border-left:6px solid var(--success);background:linear-gradient(135deg,rgba(5,150,105,0.06),rgba(5,150,105,0.02));">
+    <div class="c-card-body" style="padding:1.25rem;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(5,150,105,0.3);">
+          <i class="fas fa-check" style="color:#fff;font-size:1.4rem;"></i>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <h5 style="font-family:var(--font-display);font-weight:800;margin:0;color:var(--success);font-size:1rem;">
+            ✅ <span class="lang-label-sw">Topic imehifadhiwa kwenye Subject Log-Book!</span><span class="lang-label-en">Topic saved to Subject Log-Book!</span>
+          </h5>
+          <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
+            <span class="lang-label-sw">Pakua PDF ya topic hii, au pakua logbook nzima ya topics zote.</span>
+            <span class="lang-label-en">Download this topic's PDF, or the full logbook of all topics.</span>
+          </p>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:0.9rem;">
+        <a href="{% url 'curriculum:download_topic_logbook_pdf' just_entry.id %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
+          <i class="fas fa-file-pdf me-1"></i> <span class="lang-label-sw">PDF ya Topic hii</span><span class="lang-label-en">This Topic's PDF</span>
+        </a>
+        <a href="{% url 'curriculum:download_logbook_pdf' 'all' %}" class="btn-tlm btn-gold-tlm btn-sm-tlm">
+          <i class="fas fa-book me-1"></i> <span class="lang-label-sw">Full Logbook (Topics Zote)</span><span class="lang-label-en">Full Logbook (All Topics)</span>
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row g-2">
+    <!-- ─────────── FORM: ONE ROW PER TOPIC ─────────── -->
+    <div class="col-lg-7">
+      <div class="c-card">
+        <div class="c-card-body">
+          <div class="sec-hd mb-2">
+            <h3><i class="fas fa-chalkboard"></i> <span class="lang-label-sw">Topic Mpya / Kujaza Topic</span><span class="lang-label-en">New Topic Entry</span></h3>
+            {% if edit_entry %}
+            <span class="chip chip-gold" style="font-size:9px;"><i class="fas fa-edit me-1"></i> <span class="lang-label-sw">Unahariri</span><span class="lang-label-en">Editing</span> #{{ edit_entry.id }}</span>
+            {% endif %}
+          </div>
+
+          <form method="post" id="logbookForm" autocomplete="off">
+            {% csrf_token %}
+            {% if edit_entry %}<input type="hidden" name="entry_id" value="{{ edit_entry.id }}">{% endif %}
+
+            <!-- Row 1: Subject, Class, Term -->
+            <div class="row g-2 mb-2">
+              <div class="col-12 col-sm-5">
+                <label class="lang-label lang-label-sw">Somo (Subject)</label>
+                <label class="lang-label lang-label-en">Subject</label>
+                <select name="subject_id" id="subjectSelect" class="form-control form-control-sm" style="font-size:12px;">
+                  {% for subj in subjects %}
+                  <option value="{{ subj.id }}" {% if edit_entry and edit_entry.subject_id == subj.id %}selected{% elif not edit_entry and tlm_subject_name and subj.name == tlm_subject_name %}selected{% endif %}>{{ subj.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-6 col-sm-3">
+                <label class="lang-label lang-label-sw">Darasa (Class)</label>
+                <label class="lang-label lang-label-en">Class</label>
+                <input name="class_name" class="form-control form-control-sm" value="{{ edit_entry.class_name|default:tlm_class_name }}" placeholder="e.g. Form 2A" style="font-size:12px;">
+              </div>
+              <div class="col-6 col-sm-4">
+                <label class="lang-label lang-label-sw">TERM</label>
+                <label class="lang-label lang-label-en">TERM</label>
+                <select name="term" class="form-control form-control-sm" style="font-size:12px;">
+                  {% for val, label in term_choices %}
+                  <option value="{{ val }}" {% if edit_entry and edit_entry.term == val %}selected{% elif not edit_entry and val == 'I' %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <!-- Row 2: MAIN TOPIC & SUBTOPIC -->
+            <div class="row g-2 mb-2">
+              <div class="col-12 col-sm-6">
+                <label class="lang-label lang-label-sw">Mada Kuu (MAIN TOPIC) *</label>
+                <label class="lang-label lang-label-en">MAIN TOPIC *</label>
+                <input name="main_topic" id="mainTopicInput" list="topicsDatalist" class="form-control form-control-sm" value="{{ edit_entry.main_topic|default:'' }}" placeholder="e.g. Numbers / Algebra" style="font-size:12px;" required>
+                <datalist id="topicsDatalist"></datalist>
+                <div style="font-size:9px;color:var(--text-muted);margin-top:2px;"><span class="lang-label-sw">💡 Chagua kutoka syllabus (TIE) au andika mwenyewe</span><span class="lang-label-en">💡 Pick from the TIE syllabus or type your own</span></div>
+              </div>
+              <div class="col-12 col-sm-6">
+                <label class="lang-label lang-label-sw">Mada Ndogo (SUBTOPIC)</label>
+                <label class="lang-label lang-label-en">SUBTOPIC</label>
+                <input name="subtopic" id="subtopicInput" list="subtopicsDatalist" class="form-control form-control-sm" value="{{ edit_entry.subtopic|default:'' }}" placeholder="e.g. Rational Numbers" style="font-size:12px;">
+                <datalist id="subtopicsDatalist"></datalist>
+              </div>
+            </div>
+
+            <!-- Row 3: Dates -->
+            <div class="row g-2 mb-2">
+              <div class="col-6 col-sm-3">
+                <label class="lang-label lang-label-sw">DATE STARTED</label>
+                <label class="lang-label lang-label-en">DATE STARTED</label>
+                <input type="date" name="date_started" id="dateStarted" class="form-control form-control-sm" value="{{ edit_entry.date_started|date:'Y-m-d'|default:today_iso }}" style="font-size:12px;">
+              </div>
+              <div class="col-6 col-sm-3">
+                <label class="lang-label lang-label-sw">DATE ENDED *</label>
+                <label class="lang-label lang-label-en">DATE ENDED *</label>
+                <input type="date" name="date_ended" id="dateEnded" class="form-control form-control-sm" value="{{ edit_entry.date_ended|date:'Y-m-d'|default:today_iso }}" style="font-size:12px;">
+              </div>
+              <div class="col-12 col-sm-6">
+                <label class="lang-label lang-label-sw">MONTH & WEEK (Otomatiki)</label>
+                <label class="lang-label lang-label-en">MONTH & WEEK (Auto)</label>
+                <div id="monthWeekPreview" style="font-size:12px;padding:6px 8px;background:rgba(200,144,10,0.08);border-radius:6px;border:1px dashed rgba(200,144,10,0.4);min-height:32px;">
+                  <span class="auto-chip">MONTH: —</span> <span class="auto-chip">WEEK: —</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 4: Teacher comment -->
+            <div class="mb-2">
+              <label class="lang-label lang-label-sw">Maoni ya Mwalimu wa Somo (TEACHER COMMENT & SIGN)</label>
+              <label class="lang-label lang-label-en">TEACHER COMMENT & SIGN</label>
+              <textarea name="teacher_comment" rows="2" class="form-control" placeholder="Mafanikio, changamoto, mapendekezo kuhusu topic hii..." style="font-size:12px;">{{ edit_entry.teacher_comment|default:'' }}</textarea>
+            </div>
+
+            <!-- Row 5: HOD -->
+            <div class="row g-2 mb-2">
+              <div class="col-12 col-sm-8">
+                <label class="lang-label lang-label-sw">Maoni ya Mkuu wa Idara (HEAD OF DEPT)</label>
+                <label class="lang-label lang-label-en">HEAD OF DEPT Comment</label>
+                <textarea name="hod_comment" rows="2" class="form-control" placeholder="Maoni ya mkuu wa idara..." style="font-size:12px;">{{ edit_entry.hod_comment|default:'' }}</textarea>
+              </div>
+              <div class="col-12 col-sm-4">
+                <label class="lang-label lang-label-sw">Jina (Sahihi ya HOD)</label>
+                <label class="lang-label lang-label-en">HOD Name (Sign)</label>
+                <input name="hod_name" class="form-control form-control-sm" value="{{ edit_entry.hod_name|default:'' }}" placeholder="Jina kamili" style="font-size:12px;">
+              </div>
+            </div>
+
+            <!-- Row 6: Head of School -->
+            <div class="row g-2 mb-2">
+              <div class="col-12 col-sm-8">
+                <label class="lang-label lang-label-sw">Maelezo ya Mkuu wa Shule (HEAD OF SCHOOL REMARKS)</label>
+                <label class="lang-label lang-label-en">HEAD OF SCHOOL Remarks</label>
+                <textarea name="head_comment" rows="2" class="form-control" placeholder="Maelezo / uthibitisho wa mkuu wa shule..." style="font-size:12px;">{{ edit_entry.head_comment|default:'' }}</textarea>
+              </div>
+              <div class="col-12 col-sm-4">
+                <label class="lang-label lang-label-sw">Jina (Sahihi ya Mkuu wa Shule)</label>
+                <label class="lang-label lang-label-en">Head of School Name (Sign)</label>
+                <input name="head_name" class="form-control form-control-sm" value="{{ edit_entry.head_name|default:'' }}" placeholder="Jina kamili" style="font-size:12px;">
+              </div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn-tlm btn-gold-tlm flex-fill py-2" id="submitBtn" style="border-radius:var(--radius-md);">
+                <i class="fas fa-save me-2"></i> <span class="lang-label-sw">Hifadhi Topic kwenye Logbook</span><span class="lang-label-en">Save Topic to Logbook</span>
+              </button>
+              {% if edit_entry %}
+              <a href="{% url 'curriculum:submit_logbook' %}" class="btn-tlm btn-sm-tlm" style="background:rgba(15,23,42,0.06);color:var(--text-secondary);">
+                <i class="fas fa-times"></i> <span class="lang-label-sw">Ghairi</span><span class="lang-label-en">Cancel</span>
+              </a>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ─────────── HISTORY: ALL TOPIC ROWS ─────────── -->
+      {% if topic_entries %}
+      <div class="c-card mt-2">
+        <div class="c-card-body">
+          <div class="sec-hd mb-2">
+            <h3><i class="fas fa-list"></i> <span class="lang-label-sw">Topics Zilizohifadhiwa (Logbook yako)</span><span class="lang-label-en">Saved Topics (Your Logbook)</span></h3>
+            <a href="{% url 'curriculum:download_logbook_pdf' 'all' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
+              <i class="fas fa-file-pdf me-1"></i> <span class="lang-label-sw">Full Logbook PDF</span><span class="lang-label-en">Full Logbook PDF</span>
+            </a>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="lb-table">
+              <thead>
+                <tr>
+                  <th>#</th><th>TERM</th><th>MONTH</th><th>WEEK</th>
+                  <th>MAIN TOPIC</th><th>SUBTOPIC</th>
+                  <th>DATE STARTED</th><th>DATE ENDED</th>
+                  <th style="text-align:center;">PDF</th><th style="text-align:center;">Vitendo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for e in topic_entries %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td><b>Term {{ e.term|default:'—' }}</b></td>
+                  <td>{{ e.month|default:'—' }}</td>
+                  <td>{{ e.week|default:'—' }}</td>
+                  <td><b>{{ e.main_topic }}</b>{% if e.class_name %}<br><span style="font-size:9px;color:var(--text-muted);">{{ e.class_name }}</span>{% endif %}</td>
+                  <td>{{ e.subtopic|default:'—' }}</td>
+                  <td>{{ e.date_started|date:"d/m/Y"|default:'—' }}</td>
+                  <td>{{ e.date_ended|date:"d/m/Y"|default:'—' }}</td>
+                  <td style="text-align:center;">
+                    <a href="{% url 'curriculum:download_topic_logbook_pdf' e.id %}" title="Pakua PDF ya topic hii" style="color:var(--error);font-size:1rem;">
+                      <i class="fas fa-file-pdf"></i>
+                    </a>
+                  </td>
+                  <td style="text-align:center;white-space:nowrap;">
+                    <a href="{% url 'curriculum:submit_logbook' %}?edit={{ e.id }}" title="Hariri" style="color:var(--primary);font-size:0.85rem;margin-right:6px;"><i class="fas fa-edit"></i></a>
+                    <a href="{% url 'curriculum:submit_logbook' %}?delete={{ e.id }}" title="Futa" onclick="return confirm('Una uhakika unataka kufuta topic hii?');" style="color:var(--error);font-size:0.85rem;"><i class="fas fa-trash-alt"></i></a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ─────────── SIDE INFO ─────────── -->
+    <div class="col-lg-5">
+      <!-- Pakua PDF -->
+      <div class="c-card p-3 mb-3" style="border-left:3px solid var(--gold-400);">
+        <div class="sec-hd">
+          <h3><i class="fas fa-file-pdf"></i> <span class="lang-label-sw">Pakua PDF</span><span class="lang-label-en">Download PDF</span></h3>
+        </div>
+        <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:0 0 8px;">
+          <span class="lang-label-sw">Logbook nzima ya topics zote, au kwa mwezi huu</span>
+          <span class="lang-label-en">Full logbook of all topics, or this month only</span>
+        </p>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <a href="{% url 'curriculum:download_logbook_pdf' 'all' %}" class="btn-tlm btn-gold-tlm btn-sm-tlm w-100" style="justify-content:flex-start;">
+            <i class="fas fa-book me-1"></i> <span class="lang-label-sw">Full Logbook (Topics Zote)</span><span class="lang-label-en">Full Logbook (All Topics)</span>
+            {% if total_entries_count %}<span class="chip chip-gold" style="font-size:8px;padding:0 6px;line-height:14px;margin-left:auto;">{{ total_entries_count }}</span>{% endif %}
+          </a>
+          <a href="{% url 'curriculum:download_logbook_pdf' 'month' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm w-100" style="justify-content:flex-start;">
+            <i class="fas fa-calendar-alt me-1"></i> <span class="lang-label-sw">Mwezi huu</span><span class="lang-label-en">This month</span>
+            {% if month_entries_count %}<span class="chip chip-gold" style="font-size:8px;padding:0 6px;line-height:14px;margin-left:auto;">{{ month_entries_count }}</span>{% endif %}
+          </a>
+        </div>
+      </div>
+
+      <!-- Official columns explainer -->
+      <div class="c-card p-3 mb-3" style="border-left:3px solid var(--green-500);">
+        <div class="sec-hd"><h3><i class="fas fa-columns"></i> <span class="lang-label-sw">Columns za Official Subject Log-Book</span><span class="lang-label-en">Official Log-Book Columns</span></h3></div>
+        <table style="width:100%;font-size:10px;border-collapse:collapse;">
+          <tr><td style="padding:3px 0;font-weight:700;color:var(--navy,#0A2B5E);">TERM</td><td style="padding:3px 0;color:var(--text-muted);">Term I / II / III</td></tr>
+          <tr><td style="padding:3px 0;font-weight:700;color:var(--navy,#0A2B5E);">MONTH</td><td style="padding:3px 0;color:var(--text-muted);">Mwezi (otomatiki)</td></tr>
+          <tr><td style="padding:3px 0;font-weight:700;color:var(--navy,#0A2B5E);">WEEK</td><td style="padding:3px 0;color:var(--text-muted);">Wiki ya term (otomatiki)</td></tr>
+          <tr><td style="padding:3px 0;font-weight:700;color:var(--navy,#0A2B5E);">MAIN TOPIC</td><td style="padding:3px 0;color:var(--text-muted);">Mada kuu iliyofundishwa</td></tr>
+          <tr><td style="padding:3px 0;font-weight:700;color:var(--navy,#0A2B5E);">SUBTOPIC</td><td style="padding:3px 0;color:var(--text-muted);">Mada ndogo</td></tr>
+          <tr><td style="padding:3px 0;font-weight:700;color:var(--navy,#0A2B5E);">DATE STARTED / ENDED</td><td style="padding:3px 0;color:var(--text-muted);">Kuanza / kumaliza topic</td></tr>
+          <tr><td style="padding:3px 0;font-weight:700;color:var(--navy,#0A2B5E);">TEACHER COMMENT & SIGN</td><td style="padding:3px 0;color:var(--text-muted);">Maoni + sahihi ya mwalimu</td></tr>
+          <tr><td style="padding:3px 0;font-weight:700;color:var(--navy,#0A2B5E);">HEAD OF DEPT SIGN</td><td style="padding:3px 0;color:var(--text-muted);">Sahihi ya mkuu wa idara</td></tr>
+          <tr><td style="padding:3px 0;font-weight:700;color:var(--navy,#0A2B5E);">HEAD OF SCHOOL REMARKS & SIGN</td><td style="padding:3px 0;color:var(--text-muted);">Maelezo + sahihi ya mkuu wa shule</td></tr>
+        </table>
+      </div>
+
+      <!-- Recent topics -->
+      {% if recent_entries %}
+      <div class="c-card p-3 mb-3">
+        <div class="sec-hd"><h3><i class="fas fa-history"></i> <span class="lang-label-sw">Topics za Hivi Karibuni</span><span class="lang-label-en">Recent Topics</span></h3></div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          {% for e in recent_entries %}
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(15,23,42,0.02);border-radius:var(--radius-sm);border-left:3px solid var(--green-500);">
+            <i class="fas fa-check-circle" style="color:var(--success);font-size:0.8rem;flex-shrink:0;"></i>
+            <div style="flex:1;min-width:0;">
+              <strong style="font-size:var(--font-size-xs);color:var(--text-primary);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ e.main_topic }}</strong>
+              <span style="font-size:9px;color:var(--text-muted);">Term {{ e.term|default:'—' }} · {{ e.week|default:'—' }} · {{ e.date_ended|date:"d/m/Y" }}</span>
+            </div>
+            <a href="{% url 'curriculum:download_topic_logbook_pdf' e.id %}" title="Pakua PDF" style="flex-shrink:0;color:var(--error);font-size:0.85rem;">
+              <i class="fas fa-file-pdf"></i>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="c-card p-3">
+        <div class="sec-hd"><h3><i class="fas fa-info-circle"></i> <span class="lang-label-sw">Maelekezo</span><span class="lang-label-en">Instructions</span></h3></div>
+        <ul style="font-size:var(--font-size-sm);color:var(--text-secondary);padding-left:1rem;margin:0;">
+          <li class="mb-2"><span class="lang-label-sw">Kila unapomaliza kufundisha TOPIC, jaza safu moja hapo juu na uhifadhi</span><span class="lang-label-en">Whenever you finish teaching a TOPIC, fill one row above and save</span></li>
+          <li class="mb-2"><span class="lang-label-sw">TERM, MONTH na WEEK zinajazwa otomatiki kutokana na tarehe ya kumaliza</span><span class="lang-label-en">TERM, MONTH and WEEK auto-fill from the end date</span></li>
+          <li class="mb-2"><span class="lang-label-sw">Baada ya kuhifadhi, pakua PDF ya topic hiyo mara moja</span><span class="lang-label-en">After saving, download that topic's PDF right away</span></li>
+          <li><span class="lang-label-sw">Mwishoni mwa muhula, pakua FULL LOGBOOK yenye topics zote</span><span class="lang-label-en">At term end, download the FULL LOGBOOK with all topics</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const topicsDatalist = document.getElementById('topicsDatalist');
+  const subtopicsDatalist = document.getElementById('subtopicsDatalist');
+  const subjectSelect = document.getElementById('subjectSelect');
+  const classInput = document.querySelector('input[name="class_name"]');
+  const mainTopicInput = document.getElementById('mainTopicInput');
+  const subtopicInput = document.getElementById('subtopicInput');
+  const dateStarted = document.getElementById('dateStarted');
+  const dateEnded = document.getElementById('dateEnded');
+
+  // ── Auto MONTH / WEEK preview from DATE ENDED ──
+  function computeMonthWeek(dateStr) {
+    if (!dateStr) return null;
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d)) return null;
+    const months = ['', 'Januari', 'Februari', 'Machi', 'Aprili', 'Mei', 'Juni',
+                    'Julai', 'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba'];
+    const m = d.getMonth() + 1;
+    const term = m <= 4 ? 'I' : (m <= 8 ? 'II' : 'III');
+    const termStart = new Date(d.getFullYear(), [0, 4, 8][term === 'I' ? 0 : term === 'II' ? 1 : 2], 1);
+    const weekNum = Math.max(1, Math.floor((d - termStart) / (7 * 24 * 3600 * 1000)) + 1);
+    return { month: months[m], week: 'Wiki ' + weekNum, term: term };
+  }
+  function updatePreview() {
+    const info = computeMonthWeek(dateEnded.value);
+    const el = document.getElementById('monthWeekPreview');
+    if (info) {
+      el.innerHTML = `<span class="auto-chip">TERM: ${info.term}</span> <span class="auto-chip">MONTH: ${info.month}</span> <span class="auto-chip">WEEK: ${info.week}</span>`;
+    } else {
+      el.innerHTML = '<span class="auto-chip">MONTH: —</span> <span class="auto-chip">WEEK: —</span>';
+    }
+  }
+  dateEnded.addEventListener('change', updatePreview);
+  dateEnded.addEventListener('input', updatePreview);
+  updatePreview();
+
+  // ── Auto-fill SUBTOPIC when main topic chosen (datalist) ──
+  let topicIdByName = {};  // main topic name → syllabus topic id
+  function loadTopics() {
+    const sid = subjectSelect.value;
+    const cls = (classInput.value || '').trim();
+    if (!sid) return;
+    fetch(`{% url 'curriculum:get_topics_db' %}?subject_id=${encodeURIComponent(sid)}&class_name=${encodeURIComponent(cls)}`)
+      .then(r => r.json())
+      .then(data => {
+        const topics = Array.isArray(data) ? data : (data.topics || []);
+        topicIdByName = {};
+        topicsDatalist.innerHTML = topics.map(t => {
+          topicIdByName[t.name] = t.id;
+          return `<option value="${(t.name || '').replace(/"/g, '&quot;')}">`;
+        }).join('');
+        if (mainTopicInput.value) loadSubtopics();
+      })
+      .catch(() => {});
+  }
+  function loadSubtopics() {
+    const val = (mainTopicInput.value || '').trim();
+    const topicId = topicIdByName[val];
+    if (!topicId) {
+      subtopicsDatalist.innerHTML = '';
+      return;
+    }
+    fetch(`{% url 'curriculum:get_subtopics_db' %}?topic_id=${topicId}`)
+      .then(r => r.json())
+      .then(data => {
+        const subs = Array.isArray(data) ? data : (data.subtopics || []);
+        subtopicsDatalist.innerHTML = subs.map(s => `<option value="${((s.name || s) || '').replace(/"/g, '&quot;')}">`).join('');
+      })
+      .catch(() => {});
+  }
+
+  subjectSelect.addEventListener('change', loadTopics);
+  classInput.addEventListener('change', loadTopics);
+  classInput.addEventListener('input', debounce(loadTopics, 500));
+  mainTopicInput.addEventListener('change', loadSubtopics);
+
+  function debounce(fn, ms) {
+    let t; return function() { clearTimeout(t); t = setTimeout(fn, ms); };
+  }
+
+  // ── Language Toggle ──
+  window.toggleLogbookLang = function(lang) {
+    const body = document.body;
+    const swBtn = document.getElementById('langSwBtn');
+    const enBtn = document.getElementById('langEnBtn');
+    if (lang === 'en') {
+      body.classList.add('lang-en');
+      swBtn.style.background = 'rgba(31,122,61,0.08)'; swBtn.style.color = 'var(--green-500)';
+      enBtn.style.background = 'var(--green-500)'; enBtn.style.color = 'white';
+    } else {
+      body.classList.remove('lang-en');
+      swBtn.style.background = 'var(--green-500)'; swBtn.style.color = 'white';
+      enBtn.style.background = 'rgba(31,122,61,0.08)'; enBtn.style.color = 'var(--green-500)';
+    }
+    localStorage.setItem('logbook-lang', lang);
+    fetch('{% url "curriculum:update_teacher_profile" %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+      body: JSON.stringify({ preferred_language: lang === 'en' ? 'english' : 'auto' }),
+    }).catch(() => {});
+  };
+  (function() {
+    if (localStorage.getItem('logbook-lang') === 'en') {
+      document.body.classList.add('lang-en');
+      const swBtn = document.getElementById('langSwBtn');
+      const enBtn = document.getElementById('langEnBtn');
+      if (swBtn && enBtn) {
+        swBtn.style.background = 'rgba(31,122,61,0.08)'; swBtn.style.color = 'var(--green-500)';
+        enBtn.style.background = 'var(--green-500)'; enBtn.style.color = 'white';
+      }
+    }
+  })();
+
+  // Initial topic load if we already have a class (edit mode)
+  if (subjectSelect.value) loadTopics();
+  if (mainTopicInput.value) loadSubtopics();
+});
+</script>
+{% endblock %}

@@ -3,6 +3,7 @@ TLM Teacher model — lightweight registration for the Teaching & Learning Mater
 No login/password needed. Teacher registers once via phone number + location, then
 we remember them via session/cookie on subsequent visits.
 """
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from field_app.models import Region, District, School, Subject
@@ -236,6 +237,139 @@ class TLMLogbookEntry(models.Model):
 
     def __str__(self):
         return f"{self.teacher.full_name} — {self.date}"
+
+
+class TLMTopicLogbook(models.Model):
+    """Official TAMISEMI Subject Log-Book — ONE ROW PER TOPIC.
+
+    Filled by the teacher at the END of each topic. Columns follow the official
+    Tanzanian subject log-book format:
+      TERM | MONTH | WEEK | MAIN TOPIC | SUBTOPIC | DATE STARTED | DATE ENDED |
+      TEACHER COMMENT & SIGN | HEAD OF DEPARTMENT SIGN | HEAD OF SCHOOL REMARKS & SIGN
+
+    TERM / MONTH / WEEK are auto-computed from the end date (Tanzanian school
+    calendar: Term I Jan-Apr, Term II May-Aug, Term III Sep-Dec).
+    """
+    TERM_CHOICES = [
+        ('I', 'Term I'),
+        ('II', 'Term II'),
+        ('III', 'Term III'),
+    ]
+
+    teacher = models.ForeignKey(
+        TLMTeacher, on_delete=models.CASCADE, related_name='topic_logbook_entries',
+        verbose_name="Mwalimu (TLM)"
+    )
+    school = models.ForeignKey(
+        School, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Shule"
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='topic_logbook_entries', verbose_name="Somo"
+    )
+    class_name = models.CharField(max_length=50, blank=True, verbose_name="Darasa")
+
+    # ── Official subject log-book columns ──
+    term = models.CharField(max_length=10, choices=TERM_CHOICES, blank=True, verbose_name="Term")
+    month = models.CharField(max_length=20, blank=True, verbose_name="Mwezi / Month")
+    week = models.CharField(max_length=20, blank=True, verbose_name="Wiki / Week")
+    main_topic = models.CharField(max_length=300, verbose_name="Mada Kuu / Main Topic")
+    subtopic = models.CharField(max_length=300, blank=True, verbose_name="Mada Ndogo / Subtopic")
+    date_started = models.DateField(null=True, blank=True, verbose_name="Tarehe ya Kuanza / Date Started")
+    date_ended = models.DateField(default=timezone.now, verbose_name="Tarehe ya Kumaliza / Date Ended")
+
+    # ── Comments & signatures ──
+    teacher_comment = models.TextField(blank=True, verbose_name="Maoni ya Mwalimu wa Somo / Teacher Comment")
+    teacher_name = models.CharField(max_length=200, blank=True, verbose_name="Jina la Mwalimu (Sahihi)")
+    hod_comment = models.TextField(blank=True, verbose_name="Maoni ya Mkuu wa Idara / HOD Comment")
+    hod_name = models.CharField(max_length=200, blank=True, verbose_name="Jina la Mkuu wa Idara (Sahihi)")
+    head_comment = models.TextField(blank=True, verbose_name="Maelezo ya Mkuu wa Shule / Head of School Remarks")
+    head_name = models.CharField(max_length=200, blank=True, verbose_name="Jina la Mkuu wa Shule (Sahihi)")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date_ended', '-created_at']
+        verbose_name = "Subject Log-Book (kwa Topic)"
+        verbose_name_plural = "Subject Log-Books (kwa Topic)"
+
+    def __str__(self):
+        return f"{self.term} | {self.main_topic} — {self.teacher.full_name}"
+
+
+class PastPaper(models.Model):
+    """NECTA past-paper link kwenye database — kwa kila level + class + subject.
+
+    Kurasa za maktaba za TETEA kwa kila somo (PDF halisi), na marking scheme
+    (hiari) kwa kila paper. Seeded kutoka kwenye management command ili mwalimu
+    apate links halisi bila ku-search mtandaoni.
+    """
+    LEVEL_CHOICES = [
+        ('primary', 'Primary School'),
+        ('ordinary', 'Ordinary Level'),
+        ('advanced', 'Advanced Level'),
+        ('technical', 'Technical / VETA'),
+    ]
+
+    education_level = models.CharField(max_length=20, choices=LEVEL_CHOICES, verbose_name="Level")
+    class_name = models.CharField(max_length=50, blank=True, verbose_name="Darasa (mf. Form 4, Std 7)")
+    subject = models.ForeignKey(
+        Subject, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='past_papers', verbose_name="Somo"
+    )
+    subject_name = models.CharField(max_length=200, blank=True, verbose_name="Jina la Somo (fallback)")
+    exam_code = models.CharField(max_length=20, blank=True, verbose_name="Mtihani (CSEE/FTNA/PSLE/ACSEE)")
+    year = models.IntegerField(null=True, blank=True, verbose_name="Mwaka")
+    title = models.CharField(max_length=300, verbose_name="Jina la Past Paper")
+    url = models.URLField(verbose_name="Link ya PDF / Maktaba TETEA")
+    source = models.CharField(max_length=50, default='tetea', verbose_name="Chanzo")
+    marking_scheme_url = models.URLField(blank=True, verbose_name="Link ya Marking Scheme (hiari)")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['education_level', 'class_name', 'subject_name', '-year']
+        verbose_name = "Past Paper (NECTA)"
+        verbose_name_plural = "Past Papers (NECTA)"
+
+    def __str__(self):
+        return f"{self.title} ({self.exam_code} {self.year or ''})"
+
+
+class MarkingScheme(models.Model):
+    """Marking scheme kwa past paper — AI-generated (jibu la kila swali) au link."""
+    past_paper = models.ForeignKey(
+        PastPaper, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='marking_schemes', verbose_name="Past Paper"
+    )
+    # Wakati hakuna past paper (AI genera generic kwa subject+class+topic)
+    education_level = models.CharField(max_length=20, blank=True, verbose_name="Level")
+    class_name = models.CharField(max_length=50, blank=True, verbose_name="Darasa")
+    subject_name = models.CharField(max_length=200, blank=True, verbose_name="Somo")
+    topic = models.CharField(max_length=300, blank=True, verbose_name="Topic / Mada")
+    exam_code = models.CharField(max_length=20, blank=True, verbose_name="Mtihani")
+
+    content = models.TextField(verbose_name="Marking Scheme (maandishi/HTML)")
+    source = models.CharField(max_length=20, default='ai', choices=[
+        ('ai', 'AI Generated'),
+        ('link', 'External Link'),
+        ('manual', 'Manual'),
+    ], verbose_name="Chanzo")
+    url = models.URLField(blank=True, verbose_name="Link ya nje (ikiwa source=link)")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='marking_schemes', verbose_name="Iliyoundwa na"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Marking Scheme"
+        verbose_name_plural = "Marking Schemes"
+
+    def __str__(self):
+        return f"MS: {self.subject_name or ''} {self.class_name or ''} — {self.topic or self.exam_code or ''}"
 
 
 class GeneratedExam(models.Model):
