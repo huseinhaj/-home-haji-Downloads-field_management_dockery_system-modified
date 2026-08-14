@@ -3,37 +3,37 @@
 
 {% block content %}
 <div class="container" style="margin-top:36px;">
-  <div class="card" style="background:linear-gradient(120deg,#1e3a8a,#2563eb);color:#fff;border:none;">
+  <div class="banner">
     <div class="card-pad flex-between">
       <div>
-        <div style="font-size:13px;opacity:.85;">Jopo la Msimamizi wa Chuo</div>
-        <h1 style="font-size:26px;margin:2px 0 4px;color:#fff;">{{ college.name }}</h1>
-        <div class="flex" style="gap:10px;flex-wrap:wrap;margin-top:8px;">
-          <span style="background:rgba(255,255,255,.16);padding:4px 12px;border-radius:999px;font-size:13px;font-weight:700;">{{ college.region }}</span>
-          <span style="background:rgba(255,255,255,.16);padding:4px 12px;border-radius:999px;font-size:13px;font-weight:700;">Msimbo: {{ college.code }}</span>
+        <div class="kicker">Jopo la Msimamizi wa Chuo</div>
+        <h1>{{ college.name }}</h1>
+        <div class="flex" style="gap:10px;flex-wrap:wrap;">
+          <span class="pill">{{ college.region }}</span>
+          <span class="pill">Msimbo: {{ college.code }}</span>
         </div>
       </div>
       <div class="flex" style="align-self:flex-start;flex-wrap:wrap;">
-        <a class="btn btn-gold btn-sm" href="{% url 'admin_add_student' %}">+ Mwanafunzi</a>
-        <a class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.5);background:transparent;" href="{% url 'admin_fee_add' %}">+ Ada/Mchango</a>
+        <a class="btn btn-gold btn-sm" href="{% url 'admin_add_student' %}">Ongeza Mwanafunzi</a>
+        <a class="btn btn-light btn-sm" href="{% url 'admin_fee_add' %}">Ongeza Ada/Mchango</a>
       </div>
     </div>
   </div>
 
   <div class="stats-grid mt-4">
-    <div class="card stat-card"><div><b>{{ stats.students }}</b><span>Wanafunzi</span></div></div>
-    <div class="card stat-card"><div><b>{{ stats.unpaid_bills }}</b><span>Bili Hazijalipwa</span></div></div>
-    <div class="card stat-card"><div><b>{{ stats.pending_payments }}</b><span>Malipo Yanayosubiri Uthibitisho</span></div></div>
-    <div class="card stat-card"><div><b>TZS {{ stats.collected|floatformat:0 }}</b><span>Jumla Imekusanywa (Imethibitishwa)</span></div></div>
+    <div class="card stat-card"><div class="s-ico">W</div><div><b>{{ stats.students }}</b><span>Wanafunzi</span></div></div>
+    <div class="card stat-card"><div class="s-ico red">B</div><div><b>{{ stats.unpaid_bills }}</b><span>Bili Hazijalipwa</span></div></div>
+    <div class="card stat-card"><div class="s-ico gold">M</div><div><b>{{ stats.pending_payments }}</b><span>Malipo Yanayosubiri Uthibitisho</span></div></div>
+    <div class="card stat-card"><div class="s-ico blue">TZS</div><div><b>{{ stats.collected|floatformat:0 }}</b><span>Jumla Imekusanywa</span></div></div>
   </div>
 
   <div class="grid-2 mt-4">
     <div class="card card-pad">
       <div class="flex-between mb-3">
-        <div class="card-title">Malipo Yanayosubiri Kuthibitishwa</div>
-        <a class="btn btn-outline btn-sm" href="{% url 'admin_payments' %}">Yote →</a>
+        <div class="card-title rule">Malipo Yanayosubiri Kuthibitishwa</div>
+        <a class="btn btn-ghost btn-sm" href="{% url 'admin_payments' %}">Yote →</a>
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap mt-3">
         <table>
           <thead><tr><th>Mwanafunzi</th><th>Kipengee</th><th>Kiasi</th><th>Vitendo</th></tr></thead>
           <tbody>
@@ -44,8 +44,8 @@
               <td class="money">TZS {{ p.amount|floatformat:0 }}</td>
               <td>
                 <div class="flex" style="gap:6px;">
-                  <form method="post" action="{% url 'admin_payment_confirm' p.id 'confirm' %}">{% csrf_token %}<button class="btn btn-primary btn-sm">✓ Thibitisha</button></form>
-                  <form method="post" action="{% url 'admin_payment_confirm' p.id 'reject' %}">{% csrf_token %}<button class="btn btn-danger btn-sm">✕</button></form>
+                  <form method="post" action="{% url 'admin_payment_confirm' p.id 'confirm' %}">{% csrf_token %}<button class="btn btn-primary btn-sm">Thibitisha</button></form>
+                  <form method="post" action="{% url 'admin_payment_confirm' p.id 'reject' %}">{% csrf_token %}<button class="btn btn-danger btn-sm">Kataa</button></form>
                 </div>
               </td>
             </tr>
@@ -59,17 +59,17 @@
 
     <div class="card card-pad">
       <div class="flex-between mb-3">
-        <div class="card-title">Wanafunzi wa Hivi Karibuni</div>
-        <a class="btn btn-outline btn-sm" href="{% url 'admin_students' %}">Wote →</a>
+        <div class="card-title rule">Wanafunzi wa Hivi Karibuni</div>
+        <a class="btn btn-ghost btn-sm" href="{% url 'admin_students' %}">Wote →</a>
       </div>
-      <div class="flex" style="flex-direction:column;gap:12px;align-items:stretch;">
+      <div class="flex mt-3" style="flex-direction:column;gap:12px;align-items:stretch;">
         {% for s in recent_students %}
         <a href="{% url 'admin_student_detail' s.id %}" class="card" style="padding:12px 16px;box-shadow:none;display:flex;align-items:center;gap:12px;">
-          <div class="avatar">{{ s.full_name|first|upper }}</div>
-          <div style="flex:1;">
+          <span class="avatar">{{ s.full_name|first|upper }}</span>
+          <span style="flex:1;">
             <b style="color:var(--slate-900);font-size:14px;">{{ s.full_name }}</b>
             <div class="small muted">{{ s.registration_number }}</div>
-          </div>
+          </span>
           <span class="muted small">{{ s.created_at|date:'d/m' }}</span>
         </a>
         {% empty %}

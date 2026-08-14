@@ -3,9 +3,9 @@
 
 {% block content %}
 <div class="container container-narrow" style="margin-top:36px;">
-  <div class="card auth-card">
-    <h1>Ongeza Ada / Mchango</h1>
-    <p class="sub">Kipengee kipya kitaunda bili kwa wanafunzi wapya wa {{ college.short_name }}.</p>
+  <div class="card card-pad">
+    <div class="card-title" style="font-size:20px;">Ongeza Ada / Mchango</div>
+    <p class="small muted mt-2" style="margin-bottom:20px;">Kipengee kipya kitaunda bili kwa wanafunzi wapya wa {{ college.short_name }}.</p>
 
     <form method="post">
       {% csrf_token %}

@@ -40,8 +40,8 @@
             <td>
               {% if p.status == 'pending' %}
               <div class="flex" style="gap:6px;">
-                <form method="post" action="{% url 'admin_payment_confirm' p.id 'confirm' %}">{% csrf_token %}<button class="btn btn-primary btn-sm">✓ Thibitisha</button></form>
-                <form method="post" action="{% url 'admin_payment_confirm' p.id 'reject' %}">{% csrf_token %}<button class="btn btn-danger btn-sm">✕</button></form>
+                <form method="post" action="{% url 'admin_payment_confirm' p.id 'confirm' %}">{% csrf_token %}<button class="btn btn-primary btn-sm">Thibitisha</button></form>
+                <form method="post" action="{% url 'admin_payment_confirm' p.id 'reject' %}">{% csrf_token %}<button class="btn btn-danger btn-sm">Kataa</button></form>
               </div>
               {% else %}
               <span class="muted small">{% if p.confirmed_by %}na {{ p.confirmed_by.first_name|default:p.confirmed_by.username }}{% endif %}</span>

@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
-{% block title %}Dashboard Yangu — {{ student.full_name }}{% endblock %}
+{% block title %}Dashboard — {{ student.full_name }}{% endblock %}
 
 {% block content %}
 <div class="container" style="margin-top:36px;">
   <!-- Welcome banner -->
-  <div class="card" style="background:linear-gradient(120deg,var(--green-800),var(--green-600));color:#fff;border:none;">
+  <div class="banner">
     <div class="card-pad flex-between">
       <div>
-        <div style="font-size:13px;opacity:.85;">Mwanafunzi</div>
-        <h1 style="font-size:26px;margin:2px 0 4px;color:#fff;">{{ student.full_name }}</h1>
-        <div class="flex" style="gap:14px;flex-wrap:wrap;">
-          <span style="background:rgba(255,255,255,.16);padding:4px 12px;border-radius:999px;font-size:13px;font-weight:700;">{{ student.registration_number }}</span>
-          <span style="background:rgba(255,255,255,.16);padding:4px 12px;border-radius:999px;font-size:13px;font-weight:700;">{{ student.college.short_name }}</span>
-          <span style="background:rgba(255,255,255,.16);padding:4px 12px;border-radius:999px;font-size:13px;font-weight:700;">Mwaka {{ student.year_of_study }}</span>
+        <div class="kicker">Mwanafunzi</div>
+        <h1>{{ student.full_name }}</h1>
+        <div class="flex" style="gap:10px;flex-wrap:wrap;">
+          <span class="pill">{{ student.registration_number }}</span>
+          <span class="pill">{{ student.college.short_name }}</span>
+          <span class="pill">Mwaka {{ student.year_of_study }}</span>
         </div>
       </div>
       <a href="{% url 'college_detail' student.college.code %}" class="btn btn-gold" style="align-self:flex-start;">Angalia Chuo →</a>
@@ -22,20 +22,23 @@
   <!-- Financial summary -->
   <div class="stats-grid mt-4">
     <div class="card stat-card">
-      <div><b>TZS {{ student.total_billed|floatformat:0 }}</b><span>Jumla ya Bili (Ada + Michango)</span></div>
+      <div class="s-ico">TZS</div>
+      <div><b>{{ student.total_billed|floatformat:0 }}</b><span>Jumla ya Bili (Ada + Michango)</span></div>
     </div>
     <div class="card stat-card">
-      <div><b>TZS {{ student.total_paid|floatformat:0 }}</b><span>Malipo Yaliyothibitishwa</span></div>
+      <div class="s-ico">TZS</div>
+      <div><b>{{ student.total_paid|floatformat:0 }}</b><span>Malipo Yaliyothibitishwa</span></div>
     </div>
     <div class="card stat-card">
+      <div class="s-ico {% if student.has_balance %}red{% else %}gold{% endif %}">TZS</div>
       <div>
-        <b>TZS {{ student.balance_due|floatformat:0 }}</b>
+        <b>{{ student.balance_due|floatformat:0 }}</b>
         <span>{% if student.has_balance %}Deni (Unachodaiwa){% else %}Hakuna Deni{% endif %}</span>
       </div>
     </div>
   </div>
 
-  <div class="card card-pad mt-3">
+  <div class="card card-pad mt-4">
     <div class="flex-between mb-3">
       <div class="card-title">Hali ya Malipo Yako</div>
       <span class="muted small">{{ academic_year }}</span>
@@ -51,8 +54,11 @@
     <div>
       <!-- Fee statement -->
       <div class="card card-pad">
-        <div class="card-title">Taarifa ya Ada na Michango (Fee Statement)</div>
-        <p class="small mt-2 muted">Kwa kila kipengee: <b>generate</b> namba ya malipo, lipa kupitia benki/simu, kisha <b>wasilisha malipo</b> — msimamizi wa chuo atathibitisha.</p>
+        <div class="card-title rule">Taarifa ya Ada na Michango (Fee Statement)</div>
+        <p class="small mt-3 muted">
+          Kwa kila kipengee: <b>generate</b> namba ya malipo, lipa kupitia benki au simu,
+          kisha <b>wasilisha malipo</b> — msimamizi wa chuo atathibitisha.
+        </p>
 
         {% if bills %}
         <div class="table-wrap mt-3">
@@ -87,11 +93,9 @@
                 <td>
                   {% if bill.control_number %}
                     <span class="control-pill" id="cn-{{ bill.id }}">{{ bill.control_number }}</span>
-                    <div class="small muted mt-2">
-                      {% if bill.control_number_expires %}
-                        Inaisha: {{ bill.control_number_expires|date:'d/m/Y' }}
-                      {% endif %}
-                    </div>
+                    {% if bill.control_number_expires %}
+                    <div class="small muted mt-2">Inaisha: {{ bill.control_number_expires|date:'d/m/Y' }}</div>
+                    {% endif %}
                   {% else %}
                     <span class="muted small">— Bado haijazalishwa</span>
                   {% endif %}
@@ -105,12 +109,12 @@
                         <button class="btn btn-gold btn-sm" type="submit">Generate Control No.</button>
                       </form>
                       {% else %}
-                      <button class="btn btn-outline btn-sm" data-copy="cn-{{ bill.id }}" onclick="copyText('cn-{{ bill.id }}')">📋 Nakili</button>
+                      <button class="btn btn-ghost btn-sm" data-copy="cn-{{ bill.id }}" onclick="copyText('cn-{{ bill.id }}')">Nakili</button>
                       {% endif %}
                       <button class="btn btn-primary btn-sm" onclick="openPayModal({{ bill.id }}, '{{ bill.fee_item.name|escapejs }}', {{ bill.remaining_amount }})">Wasilisha Malipo</button>
                     </div>
                   {% else %}
-                    <span class="badge badge-green">✓ Kamilifu</span>
+                    <span class="badge badge-green">Kamilifu</span>
                   {% endif %}
                 </td>
               </tr>
@@ -125,7 +129,7 @@
 
       <!-- Payments history -->
       <div class="card card-pad mt-4">
-        <div class="card-title">Historia ya Malipo Yako</div>
+        <div class="card-title rule">Historia ya Malipo Yako</div>
         <div class="table-wrap mt-3">
           <table>
             <thead><tr><th>Tarehe</th><th>Kipengee</th><th>Njia</th><th>Kumbukumbu</th><th>Kiasi</th><th>Hali</th></tr></thead>
@@ -155,7 +159,7 @@
     <!-- Profile sidebar -->
     <div>
       <div class="card card-pad">
-        <div class="card-title">Taarifa Zangu</div>
+        <div class="card-title rule">Taarifa Zangu</div>
         <div class="info-list mt-4" style="grid-template-columns:1fr;">
           <div class="info-item"><div class="k">Jina Kamili</div><div class="v">{{ student.full_name }}</div></div>
           <div class="info-item"><div class="k">Namba ya Usajili</div><div class="v">{{ student.registration_number }}</div></div>
@@ -169,7 +173,7 @@
       </div>
 
       <div class="card card-pad mt-4">
-        <div class="card-title">Chuo Changu</div>
+        <div class="card-title rule">Chuo Changu</div>
         <div class="mt-3">
           <b>{{ student.college.name }}</b>
           <p class="small muted mt-2">{{ student.college.region }}{% if student.college.district %} · {{ student.college.district }}{% endif %}</p>
@@ -179,7 +183,7 @@
       </div>
 
       <div class="card card-pad mt-4">
-        <div class="card-title">Jinsi ya Kulipa</div>
+        <div class="card-title rule">Jinsi ya Kulipa</div>
         <ol class="small mt-3" style="margin-left:18px;display:grid;gap:8px;">
           <li>Generate namba ya malipo kwa kipengee unachotaka kulipa.</li>
           <li>Lipa kupitia benki au simu ya mkonomi kwa kutumia namba ya malipo.</li>
@@ -192,43 +196,44 @@
 </div>
 
 <!-- Payment modal -->
-<div id="payModal" style="display:none;position:fixed;inset:0;background:rgba(11,46,31,.55);z-index:200;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closePayModal()">
-  <div class="card card-pad" style="max-width:480px;width:100%;">
-    <div class="flex-between mb-3">
-      <div class="card-title">Wasilisha Malipo</div>
-      <button class="btn btn-outline btn-sm" onclick="closePayModal()">✕</button>
+<div id="payModal" class="modal-backdrop" onclick="if(event.target===this)closePayModal()">
+  <div class="modal">
+    <div class="card-pad">
+      <div class="flex-between mb-3">
+        <div class="card-title">Wasilisha Malipo</div>
+        <button class="btn btn-ghost btn-sm" onclick="closePayModal()">Funga</button>
+      </div>
+      <form method="post" id="payForm" action="">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>Kipengee</label>
+          <input class="form-control" id="payItem" value="" disabled>
+        </div>
+        <div class="form-group">
+          <label>Kiasi Ulicholipa (TZS)</label>
+          <input class="form-control" type="number" name="amount" id="payAmountInput" min="1" required>
+          <div class="help" id="payRemaining"></div>
+        </div>
+        <div class="form-group">
+          <label>Njia ya Malipo</label>
+          <select class="form-control" name="method" required>
+            <option value="mobile">Simu ya Mkonomi (M-Pesa / Tigo Pesa / Airtel Money)</option>
+            <option value="bank">Benki (NMB / CRDB / NBC)</option>
+            <option value="cash">Fedha Taslimu (Cash)</option>
+            <option value="other">Nyingine</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Namba ya Kumbukumbu (Reference)</label>
+          <input class="form-control" type="text" name="reference" placeholder="mfano: SWE7K9L2M1" required>
+        </div>
+        <div class="form-group">
+          <label>Maelezo (si lazima)</label>
+          <input class="form-control" type="text" name="notes">
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Wasilisha Malipo</button>
+      </form>
     </div>
-    <form method="post" id="payForm" action="">
-      {% csrf_token %}
-      <input type="hidden" name="amount" id="payAmount" value="">
-      <div class="form-group">
-        <label>Kipengee</label>
-        <input class="form-control" id="payItem" value="" disabled>
-      </div>
-      <div class="form-group">
-        <label>Kiasi Ulicholipa (TZS)</label>
-        <input class="form-control" type="number" name="amount" id="payAmountInput" min="1" required>
-        <div class="help" id="payRemaining"></div>
-      </div>
-      <div class="form-group">
-        <label>Njia ya Malipo</label>
-        <select class="form-control" name="method" required>
-          <option value="mobile">Simu ya Mkonomi (M-Pesa / Tigo Pesa / Airtel Money)</option>
-          <option value="bank">Benki (NMB / CRDB / NBC)</option>
-          <option value="cash">Fedha Taslimu (Cash)</option>
-          <option value="other">Nyingine</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Namba ya Kumbukumbu (Reference)</label>
-        <input class="form-control" type="text" name="reference" placeholder="mfano: SWE7K9L2M1" required>
-      </div>
-      <div class="form-group">
-        <label>Maelezo (si lazima)</label>
-        <input class="form-control" type="text" name="notes">
-      </div>
-      <button class="btn btn-primary btn-block" type="submit">Wasilisha Malipo</button>
-    </form>
   </div>
 </div>
 
@@ -241,11 +246,12 @@
     document.getElementById('payItem').value = itemName;
     document.getElementById('payAmountInput').value = remaining > 0 ? remaining : '';
     document.getElementById('payRemaining').textContent = 'Deni lililobaki: TZS ' + remaining.toLocaleString();
-    document.getElementById('payForm').action = '/dashboard/pay/' + billId + '/';
-    modal.style.display = 'flex';
+    const base = '{{ request.script_name }}' || '';
+    document.getElementById('payForm').action = base + '/dashboard/pay/' + billId + '/';
+    modal.classList.add('open');
   }
   function closePayModal() {
-    document.getElementById('payModal').style.display = 'none';
+    document.getElementById('payModal').classList.remove('open');
   }
 </script>
 {% endblock %}

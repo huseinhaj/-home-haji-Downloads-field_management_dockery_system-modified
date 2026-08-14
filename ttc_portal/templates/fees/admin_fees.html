@@ -8,7 +8,7 @@
       <h1 class="section-title">Ada na Michango — {{ college.short_name }}</h1>
       <p class="section-sub">Ada na michango hizi ndizo zinazounda bili za wanafunzi wa chuo hiki.</p>
     </div>
-    <a class="btn btn-primary" href="{% url 'admin_fee_add' %}">+ Ongeza Ada/Mchango</a>
+    <a class="btn btn-primary" href="{% url 'admin_fee_add' %}">Ongeza Ada/Mchango</a>
   </div>
 
   <div class="card">
@@ -23,7 +23,7 @@
             <td><b>{{ f.name }}</b>{% if f.description %}<div class="small muted">{{ f.description }}</div>{% endif %}</td>
             <td>
               {% if f.category == 'ada' %}<span class="badge badge-blue">Ada</span>
-              {% elif f.category == 'mchango' %}<span class="badge badge-gold" style="background:var(--amber-100);color:var(--amber-600);">Mchango</span>
+              {% elif f.category == 'mchango' %}<span class="badge badge-gold">Mchango</span>
               {% else %}<span class="badge badge-slate">Nyingine</span>{% endif %}
             </td>
             <td class="money">{{ f.amount|floatformat:0 }}</td>

@@ -2,30 +2,30 @@
 {% block title %}{{ college.name }} — TTC Student Portal{% endblock %}
 
 {% block content %}
-<section class="hero" style="padding-bottom:0;">
-  <div class="container" style="padding-top:48px;padding-bottom:0;">
-    <nav style="font-size:13px;opacity:.8;margin-bottom:14px;">
+<section class="banner" style="border-radius:0;">
+  <div class="container" style="padding-top:44px;padding-bottom:40px;">
+    <nav class="breadcrumb" style="color:rgba(255,255,255,.75);">
       <a href="{% url 'home' %}" style="color:#fff;">Nyumbani</a> / <span>{{ college.short_name }}</span>
     </nav>
-    <div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;text-align:left;">
-      <div class="logo-big" style="width:76px;height:76px;border-radius:16px;background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;">{{ college.code }}</div>
+    <div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;">
+      <div class="logo-big" style="width:76px;height:76px;border-radius:16px;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.32);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;">{{ college.code }}</div>
       <div style="flex:1;min-width:260px;">
-        <h1 style="margin:0;text-align:left;">{{ college.name }}</h1>
-        <p style="margin:6px 0 0;">{{ college.region }}{% if college.district %} · {{ college.district }}{% endif %} · Msimbo: <b>{{ college.code }}</b>{% if college.established %} · Tangu {{ college.established }}{% endif %}</p>
-        <div class="flex" style="margin-top:18px;">
+        <h1 style="margin:0;color:#fff;font-size:28px;letter-spacing:-.4px;">{{ college.name }}</h1>
+        <p style="margin:8px 0 0;opacity:.9;">{{ college.region }}{% if college.district %} · {{ college.district }}{% endif %} · Msimbo: <b>{{ college.code }}</b>{% if college.established %} · Tangu {{ college.established }}{% endif %}</p>
+        <div class="flex" style="margin-top:20px;">
           <a href="{% url 'register' %}?college={{ college.code }}" class="btn btn-gold">Jiandikishe Hapa</a>
-          <a href="{% url 'login' %}" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.5);background:transparent;">Nina Akaunti — Ingia</a>
+          <a href="{% url 'login' %}" class="btn btn-light">Nina Akaunti — Ingia</a>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<div class="container" style="margin-top:-34px;">
+<div class="container" style="margin-top:36px;">
   <div class="grid-2">
     <div>
       <div class="card card-pad mb-3">
-        <div class="card-title">Maelezo ya Chuo</div>
+        <div class="card-title rule">Maelezo ya Chuo</div>
         {% if college.description %}
           <p class="mt-3 small">{{ college.description }}</p>
         {% else %}
@@ -44,7 +44,7 @@
       </div>
 
       <div class="card card-pad mb-3">
-        <div class="card-title">Programu Zinazotolewa</div>
+        <div class="card-title rule">Programu Zinazotolewa</div>
         <div class="table-wrap mt-3">
           <table>
             <thead><tr><th>Programu</th><th>Msimbo</th><th>Muda</th></tr></thead>
@@ -66,8 +66,8 @@
 
     <div>
       <div class="card card-pad">
-        <div class="card-title">Ada na Michango</div>
-        <p class="small mt-2 muted">Hizi ndizo ada na michango zinazotozwa na chuo hiki (mwaka wa masomo unaoendelea).</p>
+        <div class="card-title rule">Ada na Michango</div>
+        <p class="small mt-3 muted">Hizi ndizo ada na michango zinazotozwa na chuo hiki (mwaka wa masomo unaoendelea).</p>
         <div class="table-wrap mt-3">
           <table>
             <thead><tr><th>Kipengee</th><th>Aina</th><th>Kiasi</th></tr></thead>
@@ -77,7 +77,7 @@
                 <td>{{ f.name }}</td>
                 <td>
                   {% if f.category == 'ada' %}<span class="badge badge-blue">Ada</span>
-                  {% elif f.category == 'mchango' %}<span class="badge badge-gold" style="background:var(--amber-100);color:var(--amber-600);">Mchango wa Chuo</span>
+                  {% elif f.category == 'mchango' %}<span class="badge badge-gold">Mchango wa Chuo</span>
                   {% else %}<span class="badge badge-slate">Nyingine</span>{% endif %}
                 </td>
                 <td class="money">TZS {{ f.amount|floatformat:0 }}</td>
@@ -88,9 +88,9 @@
             </tbody>
           </table>
         </div>
-        <div class="callout mt-3" style="background:var(--blue-100);border-color:var(--navy-500);">
-          <h4 style="color:var(--navy-800);">Baada ya kujiandikisha</h4>
-          <ul style="font-size:13px;color:var(--navy-800);margin:8px 0 0 18px;">
+        <div class="callout mt-4">
+          <h4>Baada ya kujiandikisha</h4>
+          <ul>
             <li>Bili zako (ada + mchango wa chuo) zinaandaliwa moja kwa moja.</li>
             <li>Unapata <b>Namba ya Malipo (Control Number)</b> ya kipekee.</li>
             <li>Unafuatilia <b>ulicholipa</b> na <b>unachodaiwa</b> kwa wakati halisi.</li>

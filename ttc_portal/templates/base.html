@@ -5,32 +5,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}TTC Student Portal{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260815">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230b1f3f'/><text x='50' y='68' font-size='46' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>TTC</text></svg>">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260816">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230d5c3a'/><text x='50' y='68' font-size='46' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>TTC</text></svg>">
 </head>
 <body>
 
-<!-- Official security notice -->
-<div class="sec-band">
-  Mfumo Rasmi wa Malipo ya Ada na Michango — Vyuo vya Ualimu Tanzania · Usalama wa hali ya juu (HTTPS)
+<!-- ══════════════════════ Government top bar ══════════════════════ -->
+<div class="gov-bar">
+  <div class="container gov-bar-inner">
+    <div class="gov-bar-left">
+      <svg class="gov-emblem" viewBox="0 0 40 40" aria-hidden="true">
+        <rect x="2" y="2" width="36" height="36" rx="8" fill="#fff" opacity="0.12"/>
+        <path d="M20 8l10 4v7c0 6-4.5 10.5-10 12-5.5-1.5-10-6-10-12v-7l10-4z" fill="none" stroke="#fff" stroke-width="2"/>
+        <path d="M14 15h12v2H14z" fill="#fff"/>
+        <circle cx="20" cy="21" r="2.2" fill="#f5c542"/>
+      </svg>
+      <span>Jamhuri ya Muungano wa Tanzania</span>
+    </div>
+    <div class="gov-bar-right">
+      Wizara ya Elimu, Sayansi na Teknolojia
+    </div>
+  </div>
 </div>
 
+<!-- ══════════════════════ Navbar ══════════════════════ -->
 <nav class="navbar">
-  <div class="container">
+  <div class="container nav-inner">
     <a class="brand" href="{% url 'home' %}">
-      <div class="brand-logo">TTC</div>
-      <div>
-        TTC Student Portal
-        <small>Mfumo Rasmi wa Malipo — Vyuo vya Ualimu</small>
-      </div>
+      <span class="brand-emblem">
+        <svg viewBox="0 0 40 40" aria-hidden="true">
+          <rect x="1" y="1" width="38" height="38" rx="10" fill="url(#brandGrad)"/>
+          <path d="M20 9l11 4.5v6.5c0 6.2-4.6 10.6-11 12.5-6.4-1.9-11-6.3-11-12.5v-6.5L20 9z" fill="#fff" opacity="0.95"/>
+          <path d="M14 15.5h12v1.8H14z" fill="#0d5c3a"/>
+          <circle cx="20" cy="21.5" r="2" fill="#f5c542"/>
+          <defs>
+            <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#0d5c3a"/>
+              <stop offset="1" stop-color="#158347"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <b>TTC Student Portal</b>
+        <small>Mfumo wa Malipo ya Ada na Michango</small>
+      </span>
     </a>
-    <button class="hamburger" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menyu">☰</button>
+
+    <button class="hamburger" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menyu">
+      <span></span><span></span><span></span>
+    </button>
+
     <div class="nav-links">
       <a href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' %}class="active"{% endif %}>Nyumbani</a>
-      <a href="{% url 'home' %}#vyuo">Vyuo Vyote</a>
+      <a href="{% url 'home' %}#vyuo">Vyuo</a>
       {% if user.is_authenticated %}
         {% if user.is_student %}
-          <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard Yangu</a>
+          <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
         {% elif user.is_college_admin %}
           <a href="{% url 'admin_dashboard' %}" {% if request.resolver_match.url_name == 'admin_dashboard' %}class="active"{% endif %}>Jopo la Chuo</a>
           <a href="{% url 'admin_payments' %}">Malipo</a>
@@ -40,15 +71,15 @@
           <a href="{% url 'admin:index' %}">Admin Django</a>
         {% endif %}
         <div class="nav-user">
-          <div class="avatar">{{ user.first_name|first|default:user.username|first|upper }}</div>
-          <div class="who">
+          <span class="avatar">{{ user.first_name|first|default:user.username|first|upper }}</span>
+          <span class="nav-who">
             <b>{{ user.first_name|default:user.username }}</b>
-            <span>{% if user.is_student %}Mwanafunzi{% elif user.is_college_admin %}Msimamizi wa Chuo{% else %}Super Admin{% endif %}</span>
-          </div>
-          <a href="{% url 'logout' %}" class="btn btn-outline btn-sm">Toka</a>
+            <i>{% if user.is_student %}Mwanafunzi{% elif user.is_college_admin %}Msimamizi wa Chuo{% else %}Super Admin{% endif %}</i>
+          </span>
+          <a href="{% url 'logout' %}" class="btn btn-ghost btn-sm">Toka</a>
         </div>
       {% else %}
-        <a href="{% url 'register' %}" class="btn btn-outline btn-sm">Jiandikishe</a>
+        <a href="{% url 'register' %}" class="btn btn-ghost btn-sm">Jiandikishe</a>
         <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Ingia</a>
       {% endif %}
     </div>
@@ -59,7 +90,7 @@
 {% if messages %}
   <div class="messages">
     {% for message in messages %}
-      <div class="message {{ message.tags }}">{% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}✕{% elif message.tags == 'warning' %}!{% else %}i{% endif %} {{ message }}</div>
+      <div class="message {{ message.tags }}">{{ message }}</div>
     {% endfor %}
   </div>
 {% endif %}
@@ -69,13 +100,39 @@
   {% block content %}{% endblock %}
 </main>
 
+<!-- ══════════════════════ Footer ══════════════════════ -->
 <footer class="footer">
   <div class="container">
-    <div>
-      <b>TTC Student Portal</b> — Mfumo Rasmi wa Malipo ya Ada na Michango
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">
+          <span class="brand-emblem sm">
+            <svg viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="10" fill="#158347"/><path d="M20 9l11 4.5v6.5c0 6.2-4.6 10.6-11 12.5-6.4-1.9-11-6.3-11-12.5v-6.5L20 9z" fill="#fff"/><path d="M14 15.5h12v1.8H14z" fill="#0d5c3a"/><circle cx="20" cy="21.5" r="2" fill="#f5c542"/></svg>
+          </span>
+          <div>
+            <b>TTC Student Portal</b>
+            <small>Mfumo Rasmi wa Malipo ya Ada na Michango</small>
+          </div>
+        </div>
+        <p class="footer-note">
+          Mfumo rasmi wa serikali. Taarifa zote zinachakatwa kwa njia salama
+          na kwa kufuata sheria za Jamhuri ya Muungano wa Tanzania.
+        </p>
+      </div>
+      <div class="footer-col">
+        <h5>Wizara</h5>
+        <p>Wizara ya Elimu, Sayansi na Teknolojia</p>
+        <p>S.L.P. 10, Dar es Salaam, Tanzania</p>
+      </div>
+      <div class="footer-col">
+        <h5>Usalama</h5>
+        <p>Mawasiliano yote yamelindwa (HTTPS)</p>
+        <p>Hakuna taarifa za malipo zinazoshirikiwa na wahusika wengine</p>
+      </div>
     </div>
-    <div class="fsmall">
-      Jamhuri ya Muungano wa Tanzania · Wizara ya Elimu, Sayansi na Teknolojia
+    <div class="footer-bottom">
+      <span>© {% now 'Y' %} TTC Student Portal. Haki zote zimehifadhiwa.</span>
+      <span>Jamhuri ya Muungano wa Tanzania</span>
     </div>
   </div>
 </footer>
@@ -96,7 +153,7 @@
     if (!el) return;
     navigator.clipboard.writeText(el.textContent.trim());
     const btn = document.querySelector('[data-copy="' + id + '"]');
-    if (btn) { const old = btn.textContent; btn.textContent = '✓ Imeandikwa!'; setTimeout(() => btn.textContent = old, 1800); }
+    if (btn) { const old = btn.textContent; btn.textContent = 'Imeandikwa'; setTimeout(() => btn.textContent = old, 1800); }
   }
 </script>
 {% block scripts %}{% endblock %}

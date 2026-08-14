@@ -3,9 +3,9 @@
 
 {% block content %}
 <div class="container container-narrow" style="margin-top:36px;">
-  <div class="card auth-card">
-    <h1>Ongeza Mwanafunzi</h1>
-    <p class="sub">Msimamizi wa chuo anamsajili mwanafunzi — bili zake zitaandaliwa moja kwa moja.</p>
+  <div class="card card-pad">
+    <div class="card-title" style="font-size:20px;">Ongeza Mwanafunzi</div>
+    <p class="small muted mt-2" style="margin-bottom:20px;">Msimamizi wa chuo anamsajili mwanafunzi — bili zake zitaandaliwa moja kwa moja.</p>
 
     {% if form.non_field_errors %}
       <div class="form-errors"><ul>{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>

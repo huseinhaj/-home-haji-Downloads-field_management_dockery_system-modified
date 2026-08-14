@@ -7,13 +7,14 @@
     <div class="auth-card-head">
       <div class="emblem">TTC</div>
       <h1>Jiandikishe</h1>
-      <div class="tag">TTC Student Portal — Mfumo Rasmi wa Malipo</div>
+      <div class="tag">TTC Student Portal</div>
     </div>
 
     <div class="auth-card-body">
-      <p class="sub" style="margin:0 0 18px;color:var(--slate-500);font-size:14px;">
-        Jaza taarifa zako — bili zako za Ada na Mchango zitaundwa moja kwa moja.
-      </p>
+      <div class="auth-note">
+        Jaza taarifa zako. Bili zako za Ada na Mchango zitaundwa moja kwa moja
+        baada ya kukamilisha usajili.
+      </div>
 
       {% if form.non_field_errors %}
         <div class="form-errors">
@@ -48,7 +49,7 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label>Namba ya Usajili (Registration Number)</label>
+            <label>Namba ya Usajili</label>
             {{ form.registration_number }}
             <div class="help">{{ form.registration_number.help_text }}</div>
           </div>
@@ -70,7 +71,7 @@
         </div>
 
         <div class="form-group">
-          <label>Barua Pepe (Email)</label>
+          <label>Barua Pepe</label>
           {{ form.email }}
           <div class="help">Inatumika kuingia ikiwa huna namba ya usajili bado.</div>
         </div>
@@ -108,7 +109,6 @@
 
 {% block scripts %}
 <script>
-  // Load programs for the selected college (filtered dropdown)
   const collegeSelect = document.getElementById('id_college');
   const programSelect = document.getElementById('id_program');
 

@@ -4,7 +4,7 @@
 {% block content %}
 <section class="hero">
   <div class="container">
-    <span class="tagline">Mfumo Rasmi wa Malipo — Vyuo vya Ualimu Tanzania</span>
+    <span class="tagline">Mfumo Rasmi wa Malipo ya Ada na Michango</span>
     <h1>Malipo ya Ada na Michango kwa Vyuo vya Ualimu</h1>
     <p>
       Chagua chuo chako, jiandikishe, pata namba ya malipo (control number),
@@ -13,7 +13,7 @@
     <div class="hero-actions">
       <a href="#vyuo" class="btn btn-primary">Angalia Vyuo Vyote</a>
       <a href="{% url 'register' %}" class="btn btn-gold">Jiandikishe</a>
-      <a href="{% url 'login' %}" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.5);background:transparent;">Ingia</a>
+      <a href="{% url 'login' %}" class="btn btn-light">Ingia</a>
     </div>
     <div class="hero-stats">
       <div class="stat"><b>{{ total_colleges }}</b><span>Vyuo vya Ualimu</span></div>
@@ -24,51 +24,53 @@
   </div>
 </section>
 
-<section id="vyuo" class="container" style="margin-top:48px;">
-  <div class="flex-between" style="margin-bottom:8px;">
-    <div>
-      <h2 class="section-title">Vyuo Vyote vya Ualimu</h2>
-      <p class="section-sub">Chagua chuo chako kutoka kwenye orodha hii — bofya kuona maelezo kamili.</p>
+<section id="vyuo" class="section">
+  <div class="container">
+    <div class="section-head flex-between">
+      <div>
+        <h2 class="section-title">Vyuo Vyote vya Ualimu</h2>
+        <p class="section-sub">Chagua chuo chako kutoka kwenye orodha hii.</p>
+      </div>
     </div>
-  </div>
 
-  <form method="get" class="toolbar">
-    <div class="grow">
-      <input class="search-input" type="text" name="q" value="{{ query }}" placeholder="Tafuta chuo... mfano: Kasulu, Butimba, Morogoro">
-    </div>
-    <select class="form-control" name="region" onchange="this.form.submit()" style="max-width:240px;">
-      <option value="">Mkoa Wote</option>
-      {% for r in regions %}
-        <option value="{{ r }}" {% if region == r %}selected{% endif %}>{{ r }}</option>
+    <form method="get" class="toolbar">
+      <div class="grow">
+        <input class="search-input" type="text" name="q" value="{{ query }}" placeholder="Tafuta chuo... mfano: Kasulu, Butimba, Morogoro">
+      </div>
+      <select class="form-control" name="region" onchange="this.form.submit()" style="max-width:240px;">
+        <option value="">Mkoa Wote</option>
+        {% for r in regions %}
+          <option value="{{ r }}" {% if region == r %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-primary" type="submit">Tafuta</button>
+    </form>
+
+    {% if colleges %}
+    <div class="college-grid">
+      {% for college in colleges %}
+      <a href="{% url 'college_detail' college.code %}" class="college-card">
+        <div class="college-card-top">
+          <span class="code">{{ college.code }}</span>
+          <div class="logo-big">{{ college.code }}</div>
+          <h3>{{ college.name }}</h3>
+        </div>
+        <div class="college-card-body">
+          <div class="meta-row"><span class="dot"></span>{{ college.region }}{% if college.district %} · {{ college.district }}{% endif %}</div>
+          <div class="meta-row"><span class="dot"></span>Programu {{ college.num_programs }} · Wanafunzi {{ college.num_students }}</div>
+          <div class="meta-row"><span class="dot"></span>Msimbo wa Chuo: <b>{{ college.code }}</b></div>
+          <span class="btn btn-primary btn-sm">Angalia Taasisi →</span>
+        </div>
+      </a>
       {% endfor %}
-    </select>
-    <button class="btn btn-primary" type="submit">Tafuta</button>
-  </form>
-
-  {% if colleges %}
-  <div class="college-grid">
-    {% for college in colleges %}
-    <a href="{% url 'college_detail' college.code %}" class="college-card">
-      <div class="college-card-top">
-        <span class="code">{{ college.code }}</span>
-        <div class="logo-big">{{ college.code }}</div>
-        <h3>{{ college.name }}</h3>
-      </div>
-      <div class="college-card-body">
-        <div class="meta-row"><span class="dot"></span>{{ college.region }}{% if college.district %} · {{ college.district }}{% endif %}</div>
-        <div class="meta-row"><span class="dot"></span>Programu {{ college.num_programs }} · Wanafunzi {{ college.num_students }}</div>
-        <div class="meta-row"><span class="dot"></span>Msimbo wa Chuo: <b>{{ college.code }}</b></div>
-        <span class="btn btn-primary btn-sm">Angalia Taasisi →</span>
-      </div>
-    </a>
-    {% endfor %}
+    </div>
+    {% else %}
+    <div class="card empty">
+      <b>Hakuna chuo kilichopatikana</b>
+      <p class="mt-2">Jaribu kutafuta jina lingine au ondoa kichujio cha mkoa.</p>
+    </div>
+    {% endif %}
   </div>
-  {% else %}
-  <div class="card empty">
-    <b>Hakuna chuo kilichopatikana</b>
-    <p class="mt-2">Jaribu kutafuta jina lingine au ondoa kichujio cha mkoa.</p>
-  </div>
-  {% endif %}
 </section>
 
 {% endblock %}
