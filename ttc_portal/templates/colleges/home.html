@@ -5,13 +5,13 @@
 <section class="hero">
   <div class="container">
     <span class="tagline">🎓 Vyuo vya Ualimu · Diploma in Education</span>
-    <h1>Chagua Chuo Chako cha Ualimu na Udhibiti Ada na Michango Yako</h1>
+    <h1>Chagua Chuo Chako cha Ualimu na Udhibiti <span style="color:var(--gold-500);">Ada na Michango</span> Yako</h1>
     <p>
       Chagua chuo chako, jiandikishe, generate namba ya malipo (control number),
       na uone kile ulicholipa na kile unachodaiwa — mtindo wa SR2.
     </p>
     <div class="hero-actions">
-      <a href="#vyuo" class="btn btn-gold">Angalia Vyuo Vyote</a>
+      <a href="#vyuo" class="btn btn-gold">🏫 Angalia Vyuo Vyote</a>
       <a href="{% url 'register' %}" class="btn btn-primary">Jiandikishe Sasa</a>
       <a href="{% url 'login' %}" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.5);background:transparent;">Ingia Akaunti Yako</a>
     </div>
@@ -73,18 +73,26 @@
 </section>
 
 <section class="container mt-5">
+  <div class="text-center mb-4">
+    <span class="tagline" style="background:var(--green-100);color:var(--green-700);border:1px solid var(--green-500);margin-bottom:10px;">Jinsi Inavyofanya Kazi</span>
+    <h2 class="section-title" style="font-size:26px;">Hatua 4 Rahisi za Kulipia Ada na Michango</h2>
+  </div>
   <div class="grid-3">
     <div class="card card-pad">
-      <div class="card-title"><span class="ico">🏫</span>Angalia Chuo Chako</div>
+      <div class="card-title"><span class="ico">🏫</span>1. Chagua Chuo Chako</div>
       <p class="small mt-2" style="color:var(--slate-500);">Tafuta chuo chako kwenye orodha na uone maelezo yake: mkoa, programu zinazotolewa, ada na michango.</p>
     </div>
     <div class="card card-pad">
-      <div class="card-title"><span class="ico">📝</span>Jiandikishe</div>
+      <div class="card-title"><span class="ico">📝</span>2. Jiandikishe</div>
       <p class="small mt-2" style="color:var(--slate-500);">Jaza fomu ya usajili — namba ya usajili, programu na mwaka wa masomo. Bili zako zitaandaliwa moja kwa moja.</p>
     </div>
     <div class="card card-pad">
-      <div class="card-title"><span class="ico">🔢</span>Generate Namba ya Malipo</div>
+      <div class="card-title"><span class="ico">🔢</span>3. Generate Namba ya Malipo</div>
       <p class="small mt-2" style="color:var(--slate-500);">Bofya "Generate Control Number" kupata namba ya kipekee ya malipo, kisha lipa kupitia benki au simu ya mkonomi.</p>
+    </div>
+    <div class="card card-pad">
+      <div class="card-title"><span class="ico">✅</span>4. Malipo Yathibitishwe</div>
+      <p class="small mt-2" style="color:var(--slate-500);">Wasilisha malipo yako na msimamizi wa chuo atathibitisha (au GePG kiotomatiki) — deni lako litapungua mara moja.</p>
     </div>
   </div>
 </section>

@@ -1,33 +1,60 @@
 {% extends 'base.html' %}
 {% block title %}Ingia — TTC Student Portal{% endblock %}
 
-{% block content %}
-<div class="container container-narrow">
-  <div class="auth-wrap">
-    <div class="card auth-card">
-      <div class="text-center mb-3">
-        <div class="brand-logo" style="margin:0 auto 12px;width:52px;height:52px;font-size:22px;">TC</div>
-        <h1>Ingia Kwenye Mfumo</h1>
-        <p class="sub">Weka namba yako ya usajili (au barua pepe) na nywila — mtindo wa SR2.</p>
-      </div>
+{% block messages %}{% endblock %}
 
-      {% if form.errors %}
-        <div class="form-errors">
-          Namba ya usajili/barua pepe au nywila si sahihi. Tafadhali jaribu tena.
+{% block content %}
+<div class="auth-hero">
+  <div class="auth-shell">
+    <!-- Left: branding -->
+    <div class="auth-brand">
+      <div class="auth-brand-inner">
+        <div class="auth-emblem">🎓</div>
+        <h2>TTC Student Portal</h2>
+        <div class="tag">Mfumo wa Vyuo vya Ualimu · Diploma in Education</div>
+        <div class="auth-points">
+          <div><span>🧾</span> Bili za Ada na Michango zinaundwa moja kwa moja baada ya usajili</div>
+          <div><span>🔢</span> Generate namba ya malipo (Control Number) kwa sekunde</div>
+          <div><span>💳</span> Lipa kupitia benki au simu ya mkonomi — mtindo wa SR2</div>
+          <div><span>✅</span> Malipo yanathibitishwa kiotomatiki na msimamizi wa chuo</div>
         </div>
+        <div class="auth-foot">
+          Mfumo wa Malipo ya Ada na Michango — Vyuo vya Ualimu Tanzania<br>
+          Wizara ya Elimu, Sayansi na Teknolojia
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: form -->
+    <div class="auth-form-side">
+      <h1>Ingia Kwenye Mfumo 👋</h1>
+      <p class="sub">Weka namba yako ya usajili (au barua pepe) na nywila.</p>
+
+      {% if messages %}
+        {% for message in messages %}
+          {% if message.tags == 'error' %}
+          <div class="form-errors" style="margin-bottom:18px;">{{ message }}</div>
+          {% endif %}
+        {% endfor %}
       {% endif %}
 
       <form method="post">
         {% csrf_token %}
         <div class="form-group">
           <label for="id_username">Namba ya Usajili au Barua Pepe</label>
-          <input class="form-control form-control-lg" type="text" name="username" id="id_username" placeholder="mfano: KAS/2026/014 au jina@gmail.com" autofocus required>
+          <div class="input-icon">
+            <span class="i">👤</span>
+            <input class="form-control form-control-lg" type="text" name="username" id="id_username" placeholder="mfano: KAS/2026/014 au jina@gmail.com" autofocus required>
+          </div>
         </div>
         <div class="form-group">
           <label for="id_password">Nywila</label>
-          <input class="form-control form-control-lg" type="password" name="password" id="id_password" placeholder="Weka nywila yako" required>
+          <div class="input-icon">
+            <span class="i">🔒</span>
+            <input class="form-control form-control-lg" type="password" name="password" id="id_password" placeholder="Weka nywila yako" required>
+          </div>
         </div>
-        <button class="btn btn-primary btn-block" type="submit">Ingia</button>
+        <button class="btn btn-primary btn-block" type="submit" style="padding:13px;font-size:15px;">Ingia</button>
       </form>
 
       <div class="auth-alt">
