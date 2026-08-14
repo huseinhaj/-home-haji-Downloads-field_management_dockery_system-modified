@@ -24,15 +24,17 @@ def login_view(request):
         if user is not None:
             # Mwanafunzi aliye na akaunti ya user lakini HAKUNA wasifu wa
             # mwanafunzi (k.m. aliundwa kupitia Django admin bila Student):
-            # usimwache aingie kisha adunduke — mwambie wazi cha kufanya.
+            # amwache aingie kisha aelekezwe kwenye "Kamilisha Usajili" ili
+            # achague chuo chake — badala ya kudundwa mara kwa mara.
             student = getattr(user, 'student_profile', None)
             if user.is_student and student is None:
-                messages.error(
+                login(request, user)
+                messages.info(
                     request,
-                    'Akaunti yako bado haijaunganishwa na wasifu wa mwanafunzi. '
-                    'Wasiliana na msimamizi wa chuo chako ili akamilishe usajili wako.',
+                    'Karibu! Akaunti yako bado haijakamilika — '
+                    'chagua chuo chako na jaza taarifa zako kuingia dashboard.',
                 )
-                return redirect('login')
+                return redirect('complete_profile')
 
             login(request, user)
             messages.success(

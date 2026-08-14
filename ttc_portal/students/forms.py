@@ -86,6 +86,81 @@ class StudentRegistrationForm(forms.Form):
         return cleaned
 
 
+class CompleteStudentForm(forms.Form):
+    """Kamilisha usajili kwa akaunti ya mwanafunzi ambayo bado haina Student profile.
+
+    Akaunti kama hizi zinaweza kutokea kama mtumiaji aliundwa kupitia Django admin
+    (CustomUser tu, bila Student). Badala ya kumdundisha, mwanafunzi anajaza chuo
+    chake na taarifa nyingine, na profile inaundwa kwenye akaunti yake ya sasa.
+    """
+
+    college = forms.ModelChoiceField(
+        queryset=None, label='Chuo Chako',
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_college'}),
+    )
+    program = forms.ModelChoiceField(
+        queryset=None, required=False, label='Programu (Diploma)',
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_program'}),
+    )
+    full_name = forms.CharField(
+        max_length=255, label='Jina Kamili',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'mfano: Juma Hassan Mussa'}),
+    )
+    registration_number = forms.CharField(
+        max_length=50, label='Namba ya Usajili (Registration Number)',
+        help_text='Inaonekana kwenye kitambulisho chako cha chuo — mfano: KAS/2026/014.',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'mfano: KAS/2026/014'}),
+    )
+    admission_year = forms.IntegerField(
+        initial=2026, min_value=2000, max_value=2100, label='Mwaka wa Kujiunga',
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+    )
+    year_of_study = forms.ChoiceField(
+        choices=[(1, 'Mwaka wa 1'), (2, 'Mwaka wa 2')], label='Mwaka wa Masomo',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    gender = forms.ChoiceField(
+        choices=[('', '--- Chagua ---'), ('M', 'Mume'), ('F', 'Mke')],
+        required=False, label='Jinsia',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    phone_number = forms.CharField(
+        max_length=15, label='Namba ya Simu',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'mfano: 0712 345 678'}),
+    )
+    email = forms.EmailField(
+        label='Barua Pepe (Email)', required=False,
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'jina@gmail.com'}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        from colleges.models import College, Program
+        super().__init__(*args, **kwargs)
+        self.fields['college'].queryset = College.objects.filter(is_active=True)
+        self.fields['program'].queryset = Program.objects.all()
+
+    def clean_registration_number(self):
+        reg_no = (self.cleaned_data.get('registration_number') or '').strip()
+        if not reg_no:
+            raise forms.ValidationError('Tafadhali jaza namba yako ya usajili.')
+        if Student.objects.filter(registration_number__iexact=reg_no).exists():
+            raise forms.ValidationError(
+                f'Namba ya usajili "{reg_no}" tayari imetumika. Angalia tena.'
+            )
+        return reg_no
+
+    def clean(self):
+        cleaned = super().clean()
+        # Programu lazima iwe ya chuo kilichochaguliwa (server-side guard)
+        college = cleaned.get('college')
+        program = cleaned.get('program')
+        if program and college and program.college_id != college.id:
+            self.add_error(
+                'program', 'Programu hii si ya chuo ulichokichagua. Tafadhali chagua tena.'
+            )
+        return cleaned
+
+
 class AdminStudentForm(StudentRegistrationForm):
     """College admin adds a student manually — password optional (auto default).
 

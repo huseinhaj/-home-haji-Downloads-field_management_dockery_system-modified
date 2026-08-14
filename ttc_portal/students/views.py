@@ -10,7 +10,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from accounts.models import CustomUser
 from colleges.models import College
 from fees.services import create_bills_for_student, academic_year_now
-from .forms import StudentRegistrationForm, AdminStudentForm
+from .forms import StudentRegistrationForm, AdminStudentForm, CompleteStudentForm
 from .models import Student
 
 
@@ -111,6 +111,62 @@ def dashboard(request):
         'paid_percent': round((student.total_paid / student.total_billed * 100) if student.total_billed else 0),
     }
     return render(request, 'students/dashboard.html', context)
+
+
+# ────────────────────── Kamilisha usajili (orphan account) ─────────────────
+
+@login_required
+def complete_profile(request):
+    """Kamilisha usajili kwa akaunti ya student ambayo bado haina Student profile.
+
+    Hutokea kama akaunti iliundwa kupitia Django admin (CustomUser tu, bila
+    Student). Badala ya kumwambia mwanafunzi "wasiliana na msimamizi", tunampa
+    fomu ya kuchagua chuo/taarifa zake na profile inaundwa papo hapo.
+    """
+    student = getattr(request.user, 'student_profile', None)
+    if student is not None:
+        return redirect('dashboard')
+    if not request.user.is_student:
+        messages.error(request, 'Sehemu hii ni kwa wanafunzi pekee.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = CompleteStudentForm(request.POST)
+        if form.is_valid():
+            student = Student.objects.create(
+                user=request.user,
+                college=form.cleaned_data['college'],
+                program=form.cleaned_data.get('program'),
+                full_name=form.cleaned_data['full_name'].strip(),
+                registration_number=form.cleaned_data['registration_number'],
+                admission_year=form.cleaned_data['admission_year'],
+                year_of_study=int(form.cleaned_data['year_of_study']),
+                gender=form.cleaned_data.get('gender') or '',
+                phone_number=form.cleaned_data.get('phone_number', ''),
+                email=form.cleaned_data.get('email', ''),
+            )
+            # SR2-style: bili za ada na michango zinaundwa moja kwa moja
+            create_bills_for_student(student)
+            messages.success(
+                request,
+                f'Usajili wako umekamilika! Karibu, {student.full_name}. '
+                'Bili zako zimeandaliwa.',
+            )
+            return redirect('dashboard')
+    else:
+        initial = {'admission_year': 2026, 'year_of_study': 1}
+        if request.user.get_full_name():
+            initial['full_name'] = request.user.get_full_name()
+        if request.user.email:
+            initial['email'] = request.user.email
+        if request.user.phone_number:
+            initial['phone_number'] = request.user.phone_number
+        # Username inaweza kuwa namba ya usajili — ijaze mapema ikiwa inafanana
+        uname = request.user.username or ''
+        if uname and ('/' in uname or uname[:1].isalpha()):
+            initial['registration_number'] = uname
+        form = CompleteStudentForm(initial=initial)
+    return render(request, 'students/complete_profile.html', {'form': form})
 
 
 # ───────────────────────────── College admin ─────────────────────────────

@@ -3,6 +3,7 @@ from students import views
 
 urlpatterns = [
     path('register/', views.register, name='register'),
+    path('complete-profile/', views.complete_profile, name='complete_profile'),
     path('dashboard/', views.dashboard, name='dashboard'),
     # College admin
     path('college-admin/', views.admin_dashboard, name='admin_dashboard'),

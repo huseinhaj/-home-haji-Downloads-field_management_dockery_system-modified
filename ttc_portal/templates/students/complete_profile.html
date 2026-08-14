@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}Kamilisha Usajili — TTC Student Portal{% endblock %}
+
+{% block content %}
+<div class="auth-hero">
+  <div class="auth-shell">
+    <!-- Left: branding -->
+    <div class="auth-brand">
+      <div class="auth-brand-inner">
+        <div class="auth-emblem">✅</div>
+        <h2>Kamilisha Usajili Wako</h2>
+        <div class="tag">Hatua moja tu — kisha uingie dashboard yako</div>
+        <div class="auth-points">
+          <div><span>🏫</span> Chagua chuo chako cha ualimu</div>
+          <div><span>📚</span> Chagua programu yako (Diploma)</div>
+          <div><span>🧾</span> Bili zako za Ada na Michango zitaundwa moja kwa moja</div>
+          <div><span>🔢</span> Pata namba yako ya malipo mara moja</div>
+        </div>
+        <div class="auth-foot">
+          Mfumo wa Malipo ya Ada na Michango — Vyuo vya Ualimu Tanzania<br>
+          Wizara ya Elimu, Sayansi na Teknolojia
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: form -->
+    <div class="auth-form-side">
+      <h1>Taarifa za Mwanafunzi 🎓</h1>
+      <p class="sub">Jaza taarifa zako — sehemu zilizojazwa tayari zinaweza kubadilishwa ikiwa si sahihi.</p>
+
+      {% if form.non_field_errors %}
+        <div class="form-errors">
+          <ul>{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        </div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label>Chuo Chako *</label>
+          {{ form.college }}
+          <div class="help">Chagua chuo cha ualimu unachosoma. Programu zake zitaonekana papo hapo.</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Programu (Diploma)</label>
+            {{ form.program }}
+          </div>
+          <div class="form-group">
+            <label>Mwaka wa Masomo *</label>
+            {{ form.year_of_study }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Jina Kamili *</label>
+          {{ form.full_name }}
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Namba ya Usajili (Registration Number)</label>
+            {{ form.registration_number }}
+            <div class="help">{{ form.registration_number.help_text }}</div>
+          </div>
+          <div class="form-group">
+            <label>Mwaka wa Kujiunga *</label>
+            {{ form.admission_year }}
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Jinsia</label>
+            {{ form.gender }}
+          </div>
+          <div class="form-group">
+            <label>Namba ya Simu *</label>
+            {{ form.phone_number }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Barua Pepe (Email)</label>
+          {{ form.email }}
+        </div>
+
+        {% for field in form %}
+          {% if field.errors %}
+            <div class="form-errors">
+              <b>{{ field.label }}:</b>
+              <ul>{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            </div>
+          {% endif %}
+        {% endfor %}
+
+        <button class="btn btn-primary btn-block" type="submit" style="font-size:16px;">Kamilisha na Unda Bili Zangu</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Load programs for the selected college (filtered dropdown)
+  const collegeSelect = document.getElementById('id_college');
+  const programSelect = document.getElementById('id_program');
+
+  async function loadPrograms() {
+    const collegeId = collegeSelect.value;
+    if (!collegeId) { programSelect.innerHTML = '<option value="">--- Chagua Chuo kwanza ---</option>'; return; }
+    const base = '{{ request.script_name }}' || '';
+    const resp = await fetch(`${base}/api/programs/?college=${collegeId}`);
+    const data = await resp.json();
+    programSelect.innerHTML = '<option value="">--- Chagua Programu ---</option>';
+    data.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      programSelect.appendChild(opt);
+    });
+  }
+  collegeSelect.addEventListener('change', loadPrograms);
+  loadPrograms();
+</script>
+{% endblock %}
