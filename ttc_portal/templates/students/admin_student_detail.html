@@ -7,7 +7,7 @@
 
   <div class="grid-2">
     <div class="card card-pad">
-      <div class="card-title"><span class="ico">👤</span>Taarifa za Mwanafunzi</div>
+      <div class="card-title">Taarifa za Mwanafunzi</div>
       <div class="info-list mt-4">
         <div class="info-item"><div class="k">Jina Kamili</div><div class="v">{{ student.full_name }}</div></div>
         <div class="info-item"><div class="k">Namba ya Usajili</div><div class="v">{{ student.registration_number }}</div></div>
@@ -21,14 +21,14 @@
     </div>
 
     <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="card stat-card"><div class="s-ico blue">📄</div><div><b>TZS {{ student.total_billed|floatformat:0 }}</b><span>Bili</span></div></div>
-      <div class="card stat-card"><div class="s-ico green">✅</div><div><b>TZS {{ student.total_paid|floatformat:0 }}</b><span>Malipo</span></div></div>
-      <div class="card stat-card"><div class="s-ico red">💳</div><div><b>TZS {{ student.balance_due|floatformat:0 }}</b><span>Deni</span></div></div>
+      <div class="card stat-card"><div><b>TZS {{ student.total_billed|floatformat:0 }}</b><span>Bili</span></div></div>
+      <div class="card stat-card"><div><b>TZS {{ student.total_paid|floatformat:0 }}</b><span>Malipo</span></div></div>
+      <div class="card stat-card"><div><b>TZS {{ student.balance_due|floatformat:0 }}</b><span>Deni</span></div></div>
     </div>
   </div>
 
   <div class="card card-pad mt-4">
-    <div class="card-title"><span class="ico">🧾</span>Bili za Mwanafunzi</div>
+    <div class="card-title">Bili za Mwanafunzi</div>
     <div class="table-wrap mt-3">
       <table>
         <thead><tr><th>Kipengee</th><th>Mwaka</th><th>Kiasi</th><th>Iliyolipwa</th><th>Hali</th><th>Namba ya Malipo</th></tr></thead>
@@ -55,7 +55,7 @@
   </div>
 
   <div class="card card-pad mt-4">
-    <div class="card-title"><span class="ico">🕘</span>Malipo Yaliyofanywa</div>
+    <div class="card-title">Malipo Yaliyofanywa</div>
     <div class="table-wrap mt-3">
       <table>
         <thead><tr><th>Tarehe</th><th>Kipengee</th><th>Njia</th><th>Kumbukumbu</th><th>Kiasi</th><th>Hali</th></tr></thead>

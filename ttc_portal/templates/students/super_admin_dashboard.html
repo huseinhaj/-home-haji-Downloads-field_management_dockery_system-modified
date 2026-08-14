@@ -6,7 +6,7 @@
   <div class="card" style="background:linear-gradient(120deg,#111827,#374151);color:#fff;border:none;">
     <div class="card-pad flex-between">
       <div>
-        <div style="font-size:13px;opacity:.85;">Usimamizi Mkuu (Super Admin) 🔐</div>
+        <div style="font-size:13px;opacity:.85;">Usimamizi Mkuu (Super Admin)</div>
         <h1 style="font-size:26px;margin:2px 0 4px;color:#fff;">Muhtasari wa Mfumo Mzima</h1>
       </div>
       <a class="btn btn-gold btn-sm" href="{% url 'admin:index' %}">Django Admin →</a>
@@ -14,15 +14,15 @@
   </div>
 
   <div class="stats-grid mt-4">
-    <div class="card stat-card"><div class="s-ico blue">🏫</div><div><b>{{ stats.colleges }}</b><span>Vyuo Vinavyotumika</span></div></div>
-    <div class="card stat-card"><div class="s-ico green">👨‍🎓</div><div><b>{{ stats.students }}</b><span>Wanafunzi Wote</span></div></div>
-    <div class="card stat-card"><div class="s-ico gold">👤</div><div><b>{{ stats.college_admins }}</b><span>Wasimamizi wa Vyuo</span></div></div>
-    <div class="card stat-card"><div class="s-ico red">💰</div><div><b>TZS {{ stats.collected|floatformat:0 }}</b><span>Jumla Imekusanywa</span></div></div>
+    <div class="card stat-card"><div><b>{{ stats.colleges }}</b><span>Vyuo Vinavyotumika</span></div></div>
+    <div class="card stat-card"><div><b>{{ stats.students }}</b><span>Wanafunzi Wote</span></div></div>
+    <div class="card stat-card"><div><b>{{ stats.college_admins }}</b><span>Wasimamizi wa Vyuo</span></div></div>
+    <div class="card stat-card"><div><b>TZS {{ stats.collected|floatformat:0 }}</b><span>Jumla Imekusanywa</span></div></div>
   </div>
 
   <div class="grid-2 mt-4">
     <div class="card card-pad">
-      <div class="card-title"><span class="ico">🏫</span>Vyuo Vyote</div>
+      <div class="card-title">Vyuo Vyote</div>
       <div class="table-wrap mt-3">
         <table>
           <thead><tr><th>Chuo</th><th>Mkoa</th><th>Programu</th><th>Wanafunzi</th></tr></thead>
@@ -41,7 +41,7 @@
     </div>
 
     <div class="card card-pad">
-      <div class="card-title"><span class="ico">👨‍🎓</span>Wanafunzi Wapya Wa Hivi Karibuni</div>
+      <div class="card-title">Wanafunzi Wapya wa Hivi Karibuni</div>
       <div class="flex mt-3" style="flex-direction:column;gap:10px;align-items:stretch;">
         {% for s in recent_students %}
         <div class="card" style="padding:10px 14px;box-shadow:none;">
@@ -53,11 +53,11 @@
         {% endfor %}
       </div>
       <div class="callout mt-3">
-        <h4>🛠️ Vidokezo vya Usimamizi</h4>
+        <h4>Maelekezo ya Usimamizi</h4>
         <ul class="small" style="margin:8px 0 0 18px;display:grid;gap:6px;color:#78350f;">
-          <li>Ongeza vyuo na wasimamizi kupitia <b>Django Admin</b>.</li>
-          <li>Kila chuo kinaweza kuweka <b>ada na michango</b> yake.</li>
-          <li>Wasimamizi wa vyuo wanathibitisha malipo ya wanafunzi.</li>
+          <li>Vyuo na wasimamizi huongezwa kupitia Django Admin.</li>
+          <li>Kila chuo huweka ada na michango yake.</li>
+          <li>Wasimamizi wa vyuo huthibitisha malipo ya wanafunzi.</li>
         </ul>
       </div>
     </div>

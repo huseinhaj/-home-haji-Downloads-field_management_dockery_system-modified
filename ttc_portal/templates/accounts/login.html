@@ -6,20 +6,15 @@
 {% block content %}
 <div class="auth-hero">
   <div class="auth-shell">
-    <!-- Left: branding -->
+    <!-- Left: official branding -->
     <div class="auth-brand">
       <div class="auth-brand-inner">
-        <div class="auth-emblem">🎓</div>
+        <div class="auth-emblem">TTC</div>
         <h2>TTC Student Portal</h2>
-        <div class="tag">Mfumo wa Vyuo vya Ualimu · Diploma in Education</div>
-        <div class="auth-points">
-          <div><span>🧾</span> Bili za Ada na Michango zinaundwa moja kwa moja baada ya usajili</div>
-          <div><span>🔢</span> Generate namba ya malipo (Control Number) kwa sekunde</div>
-          <div><span>💳</span> Lipa kupitia benki au simu ya mkonomi — mtindo wa SR2</div>
-          <div><span>✅</span> Malipo yanathibitishwa kiotomatiki na msimamizi wa chuo</div>
-        </div>
+        <div class="tag">Mfumo Rasmi wa Malipo ya Ada na Michango</div>
         <div class="auth-foot">
-          Mfumo wa Malipo ya Ada na Michango — Vyuo vya Ualimu Tanzania<br>
+          Vyuo vya Ualimu · Diploma in Education<br>
+          Jamhuri ya Muungano wa Tanzania<br>
           Wizara ya Elimu, Sayansi na Teknolojia
         </div>
       </div>
@@ -27,7 +22,7 @@
 
     <!-- Right: form -->
     <div class="auth-form-side">
-      <h1>Ingia Kwenye Mfumo 👋</h1>
+      <h1>Ingia Kwenye Mfumo</h1>
       <p class="sub">Weka namba yako ya usajili (au barua pepe) na nywila.</p>
 
       {% if messages %}
@@ -40,19 +35,14 @@
 
       <form method="post">
         {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
         <div class="form-group">
           <label for="id_username">Namba ya Usajili au Barua Pepe</label>
-          <div class="input-icon">
-            <span class="i">👤</span>
-            <input class="form-control form-control-lg" type="text" name="username" id="id_username" placeholder="mfano: KAS/2026/014 au jina@gmail.com" autofocus required>
-          </div>
+          <input class="form-control form-control-lg" type="text" name="username" id="id_username" placeholder="mfano: KAS/2026/014" autofocus required autocomplete="username">
         </div>
         <div class="form-group">
           <label for="id_password">Nywila</label>
-          <div class="input-icon">
-            <span class="i">🔒</span>
-            <input class="form-control form-control-lg" type="password" name="password" id="id_password" placeholder="Weka nywila yako" required>
-          </div>
+          <input class="form-control form-control-lg" type="password" name="password" id="id_password" placeholder="Weka nywila yako" required autocomplete="current-password">
         </div>
         <button class="btn btn-primary btn-block" type="submit" style="padding:13px;font-size:15px;">Ingia</button>
       </form>

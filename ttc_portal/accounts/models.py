@@ -37,3 +37,23 @@ class CustomUser(AbstractUser):
     @property
     def is_super_admin(self):
         return self.role == 'super_admin'
+
+
+class LoginAttempt(models.Model):
+    """Ulinzi dhidi ya brute-force: hufuatilia majaribio yaliyoshindikana ya
+    kuingia kwa kila (username + IP) na hufunga akaunti kwa muda baada ya
+    majaribio mengi — muhimu kwa mfumo unaoshughulikia malipo."""
+
+    username = models.CharField(max_length=150, db_index=True)
+    ip_address = models.CharField(max_length=45, default='', blank=True)
+    failed = models.PositiveIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Jaribio la Kuingia'
+        verbose_name_plural = 'Majaribio ya Kuingia'
+        unique_together = [('username', 'ip_address')]
+
+    def __str__(self):
+        return f'{self.username} @ {self.ip_address} (failed={self.failed})'

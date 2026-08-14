@@ -8,7 +8,7 @@
       <a href="{% url 'home' %}" style="color:#fff;">Nyumbani</a> / <span>{{ college.short_name }}</span>
     </nav>
     <div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;text-align:left;">
-      <div class="logo-big" style="width:76px;height:76px;border-radius:18px;background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:34px;">🎓</div>
+      <div class="logo-big" style="width:76px;height:76px;border-radius:16px;background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;">{{ college.code }}</div>
       <div style="flex:1;min-width:260px;">
         <h1 style="margin:0;text-align:left;">{{ college.name }}</h1>
         <p style="margin:6px 0 0;">{{ college.region }}{% if college.district %} · {{ college.district }}{% endif %} · Msimbo: <b>{{ college.code }}</b>{% if college.established %} · Tangu {{ college.established }}{% endif %}</p>
@@ -25,7 +25,7 @@
   <div class="grid-2">
     <div>
       <div class="card card-pad mb-3">
-        <div class="card-title"><span class="ico">🏫</span>Maelezo ya Chuo</div>
+        <div class="card-title">Maelezo ya Chuo</div>
         {% if college.description %}
           <p class="mt-3 small">{{ college.description }}</p>
         {% else %}
@@ -44,7 +44,7 @@
       </div>
 
       <div class="card card-pad mb-3">
-        <div class="card-title"><span class="ico">📚</span>Programu Zinazotolewa</div>
+        <div class="card-title">Programu Zinazotolewa</div>
         <div class="table-wrap mt-3">
           <table>
             <thead><tr><th>Programu</th><th>Msimbo</th><th>Muda</th></tr></thead>
@@ -66,7 +66,7 @@
 
     <div>
       <div class="card card-pad">
-        <div class="card-title"><span class="ico">💰</span>Ada na Michango</div>
+        <div class="card-title">Ada na Michango</div>
         <p class="small mt-2 muted">Hizi ndizo ada na michango zinazotozwa na chuo hiki (mwaka wa masomo unaoendelea).</p>
         <div class="table-wrap mt-3">
           <table>
@@ -88,12 +88,12 @@
             </tbody>
           </table>
         </div>
-        <div class="callout mt-3" style="background:var(--green-100);border-color:var(--green-500);">
-          <h4 style="color:var(--green-800);">💡 Unachopata baada ya kujiandikisha</h4>
-          <ul style="font-size:13px;color:var(--green-800);margin:8px 0 0 18px;">
+        <div class="callout mt-3" style="background:var(--blue-100);border-color:var(--navy-500);">
+          <h4 style="color:var(--navy-800);">Baada ya kujiandikisha</h4>
+          <ul style="font-size:13px;color:var(--navy-800);margin:8px 0 0 18px;">
             <li>Bili zako (ada + mchango wa chuo) zinaandaliwa moja kwa moja.</li>
-            <li>Unabofya <b>Generate Control Number</b> kupata namba ya malipo.</li>
-            <li>Unaona <b>ulicholipa</b> na <b>unachodaiwa</b> kwa wakati halisi.</li>
+            <li>Unapata <b>Namba ya Malipo (Control Number)</b> ya kipekee.</li>
+            <li>Unafuatilia <b>ulicholipa</b> na <b>unachodaiwa</b> kwa wakati halisi.</li>
           </ul>
         </div>
       </div>

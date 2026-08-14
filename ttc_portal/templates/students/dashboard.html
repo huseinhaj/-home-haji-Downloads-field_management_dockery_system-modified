@@ -7,7 +7,7 @@
   <div class="card" style="background:linear-gradient(120deg,var(--green-800),var(--green-600));color:#fff;border:none;">
     <div class="card-pad flex-between">
       <div>
-        <div style="font-size:13px;opacity:.85;">Karibu, Mwanafunzi 👋</div>
+        <div style="font-size:13px;opacity:.85;">Mwanafunzi</div>
         <h1 style="font-size:26px;margin:2px 0 4px;color:#fff;">{{ student.full_name }}</h1>
         <div class="flex" style="gap:14px;flex-wrap:wrap;">
           <span style="background:rgba(255,255,255,.16);padding:4px 12px;border-radius:999px;font-size:13px;font-weight:700;">{{ student.registration_number }}</span>
@@ -22,25 +22,22 @@
   <!-- Financial summary -->
   <div class="stats-grid mt-4">
     <div class="card stat-card">
-      <div class="s-ico blue">📄</div>
       <div><b>TZS {{ student.total_billed|floatformat:0 }}</b><span>Jumla ya Bili (Ada + Michango)</span></div>
     </div>
     <div class="card stat-card">
-      <div class="s-ico green">✅</div>
-      <div><b>TZS {{ student.total_paid|floatformat:0 }}</b><span>Umepiga Malipo Yaliyothibitishwa</span></div>
+      <div><b>TZS {{ student.total_paid|floatformat:0 }}</b><span>Malipo Yaliyothibitishwa</span></div>
     </div>
     <div class="card stat-card">
-      <div class="s-ico {% if student.has_balance %}red{% else %}green{% endif %}">💳</div>
       <div>
         <b>TZS {{ student.balance_due|floatformat:0 }}</b>
-        <span>{% if student.has_balance %}Deni (Unachodaiwa){% else %}Huna Deni — Hongera! 🎉{% endif %}</span>
+        <span>{% if student.has_balance %}Deni (Unachodaiwa){% else %}Hakuna Deni{% endif %}</span>
       </div>
     </div>
   </div>
 
   <div class="card card-pad mt-3">
     <div class="flex-between mb-3">
-      <div class="card-title"><span class="ico">📊</span>Hali ya Malipo Yako</div>
+      <div class="card-title">Hali ya Malipo Yako</div>
       <span class="muted small">{{ academic_year }}</span>
     </div>
     <div class="progress"><div class="bar" style="width:{{ paid_percent }}%"></div></div>
@@ -54,7 +51,7 @@
     <div>
       <!-- Fee statement -->
       <div class="card card-pad">
-        <div class="card-title"><span class="ico">🧾</span>Taarifa ya Ada na Michango (Fee Statement)</div>
+        <div class="card-title">Taarifa ya Ada na Michango (Fee Statement)</div>
         <p class="small mt-2 muted">Kwa kila kipengee: <b>generate</b> namba ya malipo, lipa kupitia benki/simu, kisha <b>wasilisha malipo</b> — msimamizi wa chuo atathibitisha.</p>
 
         {% if bills %}
@@ -110,7 +107,7 @@
                       {% else %}
                       <button class="btn btn-outline btn-sm" data-copy="cn-{{ bill.id }}" onclick="copyText('cn-{{ bill.id }}')">📋 Nakili</button>
                       {% endif %}
-                      <button class="btn btn-primary btn-sm" onclick="openPayModal({{ bill.id }}, '{{ bill.fee_item.name|escapejs }}', {{ bill.remaining_amount }})">💳 Wasilisha Malipo</button>
+                      <button class="btn btn-primary btn-sm" onclick="openPayModal({{ bill.id }}, '{{ bill.fee_item.name|escapejs }}', {{ bill.remaining_amount }})">Wasilisha Malipo</button>
                     </div>
                   {% else %}
                     <span class="badge badge-green">✓ Kamilifu</span>
@@ -122,33 +119,33 @@
           </table>
         </div>
         {% else %}
-        <div class="empty"><div class="big">🧾</div><b>Hakuna bili</b><p class="mt-2">Bili zako zitaonekana hapa baada ya chuo kuweka ada na michango.</p></div>
+        <div class="empty"><b>Hakuna bili</b><p class="mt-2">Bili zako zitaonekana hapa baada ya chuo kuweka ada na michango.</p></div>
         {% endif %}
       </div>
 
       <!-- Payments history -->
       <div class="card card-pad mt-4">
-        <div class="card-title"><span class="ico">🕘</span>Historia ya Malipo Yako</div>
+        <div class="card-title">Historia ya Malipo Yako</div>
         <div class="table-wrap mt-3">
           <table>
             <thead><tr><th>Tarehe</th><th>Kipengee</th><th>Njia</th><th>Kumbukumbu</th><th>Kiasi</th><th>Hali</th></tr></thead>
             <tbody>
-              {% for p in payments %}
-              <tr>
-                <td>{{ p.created_at|date:'d/m/Y H:i' }}</td>
-                <td>{{ p.bill.fee_item.name }}</td>
-                <td class="small">{{ p.get_method_display }}</td>
-                <td class="small">{{ p.reference|default:'—' }}</td>
-                <td class="money">TZS {{ p.amount|floatformat:0 }}</td>
-                <td>
-                  {% if p.status == 'confirmed' %}<span class="badge badge-green">Imethibitishwa</span>
-                  {% elif p.status == 'pending' %}<span class="badge badge-amber">Inasubiri</span>
-                  {% else %}<span class="badge badge-red">Imekataliwa</span>{% endif %}
-                </td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="6" class="muted">Hujafanya malipo yoyote bado.</td></tr>
-              {% endfor %}
+          {% for p in payments %}
+          <tr>
+            <td>{{ p.created_at|date:'d/m/Y H:i' }}</td>
+            <td>{{ p.bill.fee_item.name }}</td>
+            <td class="small">{{ p.get_method_display }}</td>
+            <td class="small">{{ p.reference|default:'—' }}</td>
+            <td class="money">TZS {{ p.amount|floatformat:0 }}</td>
+            <td>
+              {% if p.status == 'confirmed' %}<span class="badge badge-green">Imethibitishwa</span>
+              {% elif p.status == 'pending' %}<span class="badge badge-amber">Inasubiri</span>
+              {% else %}<span class="badge badge-red">Imekataliwa</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="muted">Hujafanya malipo yoyote bado.</td></tr>
+          {% endfor %}
             </tbody>
           </table>
         </div>
@@ -158,7 +155,7 @@
     <!-- Profile sidebar -->
     <div>
       <div class="card card-pad">
-        <div class="card-title"><span class="ico">👤</span>Taarifa Zangu</div>
+        <div class="card-title">Taarifa Zangu</div>
         <div class="info-list mt-4" style="grid-template-columns:1fr;">
           <div class="info-item"><div class="k">Jina Kamili</div><div class="v">{{ student.full_name }}</div></div>
           <div class="info-item"><div class="k">Namba ya Usajili</div><div class="v">{{ student.registration_number }}</div></div>
@@ -172,22 +169,22 @@
       </div>
 
       <div class="card card-pad mt-4">
-        <div class="card-title"><span class="ico">🏫</span>Chuo Changu</div>
+        <div class="card-title">Chuo Changu</div>
         <div class="mt-3">
           <b>{{ student.college.name }}</b>
           <p class="small muted mt-2">{{ student.college.region }}{% if student.college.district %} · {{ student.college.district }}{% endif %}</p>
-          {% if student.college.phone %}<p class="small mt-2">📞 {{ student.college.phone }}</p>{% endif %}
-          {% if student.college.email %}<p class="small">✉️ {{ student.college.email }}</p>{% endif %}
+          {% if student.college.phone %}<p class="small mt-2">Simu: {{ student.college.phone }}</p>{% endif %}
+          {% if student.college.email %}<p class="small">Barua Pepe: {{ student.college.email }}</p>{% endif %}
         </div>
       </div>
 
       <div class="card card-pad mt-4">
-        <div class="card-title"><span class="ico">💡</span>Jinsi ya Kulipa</div>
+        <div class="card-title">Jinsi ya Kulipa</div>
         <ol class="small mt-3" style="margin-left:18px;display:grid;gap:8px;">
-          <li><b>Generate</b> namba ya malipo kwa kipengee unachotaka kulipa.</li>
-          <li>Lipa kupitia <b>benki</b> (NMB/CRDB/NBC) au <b>simu ya mkonomi</b> (M-Pesa/Tigo Pesa/Airtel) kwa kutumia namba ya malipo.</li>
-          <li>Wasilisha malipo yako hapa kwa kujaza kiasi na namba ya kumbukumbu.</li>
-          <li>Msimamizi wa chuo <b>atathibitisha</b> na deni lako litapungua.</li>
+          <li>Generate namba ya malipo kwa kipengee unachotaka kulipa.</li>
+          <li>Lipa kupitia benki au simu ya mkonomi kwa kutumia namba ya malipo.</li>
+          <li>Wasilisha malipo yako kwa kujaza kiasi na namba ya kumbukumbu.</li>
+          <li>Msimamizi wa chuo atathibitisha na deni lako litapungua.</li>
         </ol>
       </div>
     </div>
@@ -198,7 +195,7 @@
 <div id="payModal" style="display:none;position:fixed;inset:0;background:rgba(11,46,31,.55);z-index:200;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closePayModal()">
   <div class="card card-pad" style="max-width:480px;width:100%;">
     <div class="flex-between mb-3">
-      <div class="card-title"><span class="ico">💳</span>Wasilisha Malipo</div>
+      <div class="card-title">Wasilisha Malipo</div>
       <button class="btn btn-outline btn-sm" onclick="closePayModal()">✕</button>
     </div>
     <form method="post" id="payForm" action="">

@@ -6,7 +6,7 @@
   <div class="card" style="background:linear-gradient(120deg,#1e3a8a,#2563eb);color:#fff;border:none;">
     <div class="card-pad flex-between">
       <div>
-        <div style="font-size:13px;opacity:.85;">Jopo la Msimamizi wa Chuo 🏫</div>
+        <div style="font-size:13px;opacity:.85;">Jopo la Msimamizi wa Chuo</div>
         <h1 style="font-size:26px;margin:2px 0 4px;color:#fff;">{{ college.name }}</h1>
         <div class="flex" style="gap:10px;flex-wrap:wrap;margin-top:8px;">
           <span style="background:rgba(255,255,255,.16);padding:4px 12px;border-radius:999px;font-size:13px;font-weight:700;">{{ college.region }}</span>
@@ -21,16 +21,16 @@
   </div>
 
   <div class="stats-grid mt-4">
-    <div class="card stat-card"><div class="s-ico blue">👨‍🎓</div><div><b>{{ stats.students }}</b><span>Wanafunzi</span></div></div>
-    <div class="card stat-card"><div class="s-ico amber" style="background:var(--amber-100);">📄</div><div><b>{{ stats.unpaid_bills }}</b><span>Bili Hazijalipwa</span></div></div>
-    <div class="card stat-card"><div class="s-ico red">⏳</div><div><b>{{ stats.pending_payments }}</b><span>Malipo Yanayosubiri Uthibitisho</span></div></div>
-    <div class="card stat-card"><div class="s-ico green">💰</div><div><b>TZS {{ stats.collected|floatformat:0 }}</b><span>Jumla Imekusanywa (Imethibitishwa)</span></div></div>
+    <div class="card stat-card"><div><b>{{ stats.students }}</b><span>Wanafunzi</span></div></div>
+    <div class="card stat-card"><div><b>{{ stats.unpaid_bills }}</b><span>Bili Hazijalipwa</span></div></div>
+    <div class="card stat-card"><div><b>{{ stats.pending_payments }}</b><span>Malipo Yanayosubiri Uthibitisho</span></div></div>
+    <div class="card stat-card"><div><b>TZS {{ stats.collected|floatformat:0 }}</b><span>Jumla Imekusanywa (Imethibitishwa)</span></div></div>
   </div>
 
   <div class="grid-2 mt-4">
     <div class="card card-pad">
       <div class="flex-between mb-3">
-        <div class="card-title"><span class="ico">⏳</span>Malipo Yanayosubiri Kuthibitishwa</div>
+        <div class="card-title">Malipo Yanayosubiri Kuthibitishwa</div>
         <a class="btn btn-outline btn-sm" href="{% url 'admin_payments' %}">Yote →</a>
       </div>
       <div class="table-wrap">
@@ -50,7 +50,7 @@
               </td>
             </tr>
             {% empty %}
-            <tr><td colspan="4" class="muted text-center">Hakuna malipo yanayosubiri. 🎉</td></tr>
+            <tr><td colspan="4" class="muted text-center">Hakuna malipo yanayosubiri.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -59,7 +59,7 @@
 
     <div class="card card-pad">
       <div class="flex-between mb-3">
-        <div class="card-title"><span class="ico">👨‍🎓</span>Wanafunzi wa Hivi Karibuni</div>
+        <div class="card-title">Wanafunzi wa Hivi Karibuni</div>
         <a class="btn btn-outline btn-sm" href="{% url 'admin_students' %}">Wote →</a>
       </div>
       <div class="flex" style="flex-direction:column;gap:12px;align-items:stretch;">
@@ -73,7 +73,7 @@
           <span class="muted small">{{ s.created_at|date:'d/m' }}</span>
         </a>
         {% empty %}
-        <div class="empty"><div class="big">👨‍🎓</div><b>Hakuna wanafunzi bado</b></div>
+        <div class="empty"><b>Hakuna wanafunzi bado</b></div>
         {% endfor %}
       </div>
     </div>

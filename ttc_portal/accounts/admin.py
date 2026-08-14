@@ -2,7 +2,20 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django import forms
-from .models import CustomUser
+from .models import CustomUser, LoginAttempt
+
+
+@admin.register(LoginAttempt)
+class LoginAttemptAdmin(admin.ModelAdmin):
+    list_display = ('username', 'ip_address', 'failed', 'locked_until', 'updated_at')
+    list_filter = ('locked_until',)
+    search_fields = ('username', 'ip_address')
+    actions = ['unlock']
+
+    @admin.action(description='Fungua akaunti zilizofungwa (unlock)')
+    def unlock(self, request, queryset):
+        updated = queryset.update(failed=0, locked_until=None)
+        self.message_user(request, f'Akaunti {updated} zimefunguliwa.')
 
 
 class CustomUserCreationForm(UserCreationForm):
