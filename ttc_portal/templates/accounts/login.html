@@ -4,27 +4,15 @@
 {% block messages %}{% endblock %}
 
 {% block content %}
-<div class="auth-hero">
-  <div class="auth-shell">
-    <!-- Left: official branding -->
-    <div class="auth-brand">
-      <div class="auth-brand-inner">
-        <div class="auth-emblem">TTC</div>
-        <h2>TTC Student Portal</h2>
-        <div class="tag">Mfumo Rasmi wa Malipo ya Ada na Michango</div>
-        <div class="auth-foot">
-          Vyuo vya Ualimu · Diploma in Education<br>
-          Jamhuri ya Muungano wa Tanzania<br>
-          Wizara ya Elimu, Sayansi na Teknolojia
-        </div>
-      </div>
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-card-head">
+      <div class="emblem">TTC</div>
+      <h1>Ingia Kwenye Mfumo</h1>
+      <div class="tag">TTC Student Portal — Mfumo Rasmi wa Malipo</div>
     </div>
 
-    <!-- Right: form -->
-    <div class="auth-form-side">
-      <h1>Ingia Kwenye Mfumo</h1>
-      <p class="sub">Weka namba yako ya usajili (au barua pepe) na nywila.</p>
-
+    <div class="auth-card-body">
       {% if messages %}
         {% for message in messages %}
           {% if message.tags == 'error' %}
@@ -46,10 +34,10 @@
         </div>
         <button class="btn btn-primary btn-block" type="submit" style="padding:13px;font-size:15px;">Ingia</button>
       </form>
+    </div>
 
-      <div class="auth-alt">
-        Hujajiandikisha bado? <a href="{% url 'register' %}"><b>Jiandikishe hapa</b></a>
-      </div>
+    <div class="auth-card-foot">
+      Hujajiandikisha bado? <a href="{% url 'register' %}">Jiandikishe hapa</a>
     </div>
   </div>
 </div>
