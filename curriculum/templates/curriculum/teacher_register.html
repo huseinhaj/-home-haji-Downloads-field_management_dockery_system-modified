@@ -281,11 +281,12 @@
             <span data-lang-en>Already registered? Enter your phone:</span>
           </p>
           <div style="display:flex;gap:6px;">
-            <input type="tel" id="lookupPhone" class="form-control" placeholder="0712 345 678" style="font-size:14px;flex:1;">
-            <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="lookupBtn" type="button">
-              <i class="fas fa-search"></i>
+            <input type="tel" id="lookupPhone" class="form-control" placeholder="0712 345 678" style="font-size:14px;flex:1;" list="savedPhones" autocomplete="tel">
+            <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="lookupBtn" type="button" style="white-space:nowrap;">
+              <i class="fas fa-sign-in-alt"></i> <span data-lang-sw>Ingia</span><span data-lang-en>Login</span>
             </button>
           </div>
+          <datalist id="savedPhones"></datalist>
           <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;cursor:pointer;color:var(--text-secondary);">
             <input type="checkbox" id="rememberMe" checked style="accent-color:var(--green-500);width:16px;height:16px;">
             <span data-lang-sw="Nikumbuke kwenye kifaa hiki (siku 30)" data-lang-en="Remember me on this device (30 days)"></span>
@@ -536,14 +537,37 @@ function setLang(lang) {
 })();
 
 document.addEventListener('DOMContentLoaded', function() {
-  // ── Auto-check saved phone from localStorage ──
+  // ── Saved phone suggestions (NO auto-login: user picks a number, then presses Login) ──
+  const lookupPhone = document.getElementById('lookupPhone');
+  const savedPhonesDl = document.getElementById('savedPhones');
+
+  function getSavedPhones() {
+    try { return JSON.parse(localStorage.getItem('tlm-phones')) || []; } catch (e) { return []; }
+  }
+
+  function rememberPhone(phone) {
+    const phones = getSavedPhones().filter(p => p !== phone);
+    phones.unshift(phone);
+    localStorage.setItem('tlm-phones', JSON.stringify(phones.slice(0, 5)));
+    localStorage.setItem('tlm-phone', phone);
+    renderSavedPhones();
+  }
+
+  function renderSavedPhones() {
+    savedPhonesDl.innerHTML = '';
+    getSavedPhones().forEach(function(p) {
+      const opt = document.createElement('option');
+      opt.value = p;
+      savedPhonesDl.appendChild(opt);
+    });
+  }
+
+  renderSavedPhones();
+
+  // Pre-fill the last used number only — the user must press Login to enter
   const savedPhone = localStorage.getItem('tlm-phone');
   if (savedPhone) {
-    document.getElementById('lookupPhone').value = savedPhone;
-    // Auto-lookup saving phone
-    setTimeout(function() {
-      document.getElementById('lookupBtn').click();
-    }, 300);
+    lookupPhone.value = savedPhone;
   }
 
   // ── DOM refs ──
@@ -842,10 +866,9 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(r => r.json())
       .then(data => {
         if (data.found) {
-          // Auto-redirect after successful lookup!
-            localStorage.setItem('tlm-phone', phone);
-            setTimeout(function() {
-              window.location.href = '{% url "curriculum:landing" %}';
+          rememberPhone(phone);
+          setTimeout(function() {
+            window.location.href = '{% url "curriculum:landing" %}';
             }, 800);
             resultDiv.innerHTML = `
             <div style="background:rgba(31,122,61,0.08);padding:12px;border-radius:var(--radius-sm);">
@@ -901,7 +924,7 @@ document.addEventListener('DOMContentLoaded', function() {
       btn.disabled = false;
       if (data.success) {
         // Save phone to localStorage so they're remembered next visit
-        localStorage.setItem('tlm-phone', phoneNumber.value.trim());
+        rememberPhone(phoneNumber.value.trim());
         document.getElementById('successName').textContent = fullName.value;
         document.getElementById('successSchool').textContent = selectedSchoolData ? selectedSchoolData.name : schoolSearch.value || '';
         document.getElementById('successClass').textContent = (classSelect.value || '') + (streamSelect.value ? ' ' + streamSelect.value : '');
@@ -924,7 +947,12 @@ document.addEventListener('DOMContentLoaded', function() {
   // ── Enter key ──
   document.querySelectorAll('#registerForm input, #registerForm select').forEach(function(el) {
     el.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { e.preventDefault(); submitBtn.click(); }
+      // Enter in the phone login box → Login; elsewhere → submit registration
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (el.id === 'lookupPhone') { document.getElementById('lookupBtn').click(); }
+        else { submitBtn.click(); }
+      }
     });
   });
 });
