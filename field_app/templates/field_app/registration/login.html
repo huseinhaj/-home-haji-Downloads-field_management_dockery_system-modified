@@ -146,6 +146,22 @@ input::placeholder{color:#B8C4CE;font-size:12.5px;}
 .reg-note a{color:var(--navy);font-weight:700;text-decoration:none;}
 .reg-note a:hover{color:var(--gold);}
 
+/* TTC portal cross-link (separate system, same container) */
+.ttc-link{
+  margin-top:14px;
+  background:#F4F8F4;border:1.5px dashed #0A5C36;
+  border-radius:6px;padding:11px 13px;
+  display:flex;align-items:center;gap:11px;
+  font-size:12.5px;color:var(--text);
+}
+.ttc-link i{font-size:17px;color:#0A5C36;flex-shrink:0;}
+.ttc-link b{color:#0A5C36;}
+.ttc-link a{
+  display:inline-block;margin-top:2px;
+  color:#0A5C36;font-weight:800;text-decoration:none;
+}
+.ttc-link a:hover{text-decoration:underline;}
+
 /* alerts */
 .msg{padding:10px 12px;border-radius:4px;font-size:12.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-weight:500;}
 .msg-err {background:#FEE2E2;color:#7F1D1D;border-left:4px solid var(--danger);}
@@ -270,6 +286,19 @@ footer .ver{font-size:10px;color:var(--gold);font-weight:700;}
         {% if LANG == 'sw' %}Mwalimu Mwanafunzi mpya? <a href="{% url 'register' %}">Fungua akaunti &rarr;</a>
         {% else %}New student teacher? <a href="{% url 'register' %}">Create account &rarr;</a>{% endif %}
       </p>
+
+      <div class="ttc-link">
+        <i class="fas fa-graduation-cap"></i>
+        <div>
+          {% if LANG == 'sw' %}
+            <b>TTC Student Portal</b> — Malipo ya Ada za Vyuo vya Ualimu<br>
+            <a href="/ttc/">Fungua hapa &rarr;</a>
+          {% else %}
+            <b>TTC Student Portal</b> — Teacher College Fee Payment<br>
+            <a href="/ttc/">Open here &rarr;</a>
+          {% endif %}
+        </div>
+      </div>
     </div>
 
   </div>
