@@ -11,13 +11,13 @@
   --navy-800: #4285f4;
   --navy-700: #669df6;
   --navy-600: #a8c7fa;
-  /* ── Gold (accent) — silver/neutral ya chrome (sio dhahabu) ── */
-  --gold-600: #5f6368;
-  --gold-500: #80868b;
-  --gold-400: #9aa0a6;
-  --gold-300: #bdc1c6;
-  --gold-100: #e8eaed;
-  --gold-50:  #f1f3f4;
+  /* ── Gold (accent) — blue nyepesi ya chrome (blue + white ndizo kuu) ── */
+  --gold-600: #1769d2;
+  --gold-500: #1a73e8;
+  --gold-400: #4285f4;
+  --gold-300: #a8c7fa;
+  --gold-100: #e8f0fe;
+  --gold-50:  #f1f6fe;
   /* ── Semantic (errors only) ── */
   --red-700: #b3261e;
   --red-600: #d6453b;
@@ -156,10 +156,10 @@ main { flex: 1; }
 }
 .btn-primary:hover { background: var(--navy-700); color: var(--gold-300); transform: translateY(-1px); }
 .btn-gold {
-  background: linear-gradient(180deg, var(--gold-400), var(--gold-600));
-  color: #1c1c22; box-shadow: 0 4px 14px -8px rgba(122, 106, 66, .45);
+  background: linear-gradient(180deg, var(--gold-500), var(--gold-600));
+  color: #fff; box-shadow: 0 4px 14px -8px rgba(26, 115, 232, .45);
 }
-.btn-gold:hover { color: #101014; transform: translateY(-1px); filter: brightness(1.05); }
+.btn-gold:hover { color: #fff; transform: translateY(-1px); filter: brightness(1.08); }
 .btn-ghost { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-300); }
 .btn-ghost:hover { border-color: var(--gold-500); color: var(--navy-900); background: var(--gold-50); }
 .btn-outline { background: #fff; color: var(--navy-900); border: 1.5px solid var(--navy-900); }
@@ -188,7 +188,7 @@ main { flex: 1; }
 .hero h1 { font-size: clamp(30px, 4.6vw, 42px); font-weight: 800; letter-spacing: -.6px; max-width: 760px; margin: 0 auto 12px; line-height: 1.15; color: var(--navy-950); }
 .hero p { font-size: 16px; color: var(--gray-600); max-width: 640px; margin: 0 auto; }
 .hero-actions { display: flex; gap: 12px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
-.hero-actions .btn-gold { color: #1f2633; }
+.hero-actions .btn-gold { color: #fff; }
 
 /* ─────────── Sections ─────────── */
 .section { padding: 52px 0; }
