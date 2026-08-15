@@ -69,9 +69,10 @@ def login_view(request):
         return redirect(_home_for_user(request.user))
 
     next_url = request.POST.get('next') or request.GET.get('next') or ''
+    # Hifadhi identifier iliyojazwa ili isifutike baada ya kosa (UX)
+    identifier = request.POST.get('username', '').strip()
 
     if request.method == 'POST':
-        identifier = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
         ip = _client_ip(request)
 
@@ -135,7 +136,7 @@ def login_view(request):
                 'Namba ya usajili/barua pepe au nywila si sahihi. '
                 f'Majaribio yaliyobaki: {remaining}.',
             )
-    return render(request, 'accounts/login.html')
+    return render(request, 'accounts/login.html', {'identifier': identifier})
 
 
 def logout_view(request):

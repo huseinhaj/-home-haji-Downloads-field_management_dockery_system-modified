@@ -89,7 +89,7 @@ def register(request):
             messages.success(
                 request,
                 f"Hongera {student.full_name}! Umejiandikisha katika {student.college.short_name}. "
-                f"Karibu kwenye mfumo.",
+                f"Kuingia mara nyingine tumia: {student.registration_number} na nywila yako.",
             )
             return redirect('dashboard')
         # Ikiwa fomu imeshindikana, tungeza kuweka lock kwenye chuo kilichochaguliwa
