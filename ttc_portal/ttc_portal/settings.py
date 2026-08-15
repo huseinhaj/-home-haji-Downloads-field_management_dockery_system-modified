@@ -160,11 +160,17 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 MEDIA_URL = '/ttc/media/' if TTC_UNDER_CONTAINER else '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Keep TTC session/csrf cookies scoped to /ttc/ so they never collide with
-# the field_management cookies served at the root path. Only meaningful
-# when actually sharing that origin (inside the container).
+# Keep TTC cookies fully isolated from field_management, which serves the
+# SAME host at path '/'. Path-scoping alone is NOT enough: a browser sends
+# BOTH same-named cookies ('sessionid' from IMS at path=/ and 'sessionid'
+# from TTC at path=/ttc/) for every /ttc/* request, and Django only reads the
+# LAST one in the Cookie header — which (longest-path-first ordering) is the
+# IMS cookie. The TTC session then never sticks and the user is bounced back
+# to the login page. Using unique cookie NAMES removes the collision entirely.
 if TTC_UNDER_CONTAINER:
+    SESSION_COOKIE_NAME = 'ttc_sessionid'
     SESSION_COOKIE_PATH = '/ttc/'
+    CSRF_COOKIE_NAME = 'ttc_csrftoken'
     CSRF_COOKIE_PATH = '/ttc/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
