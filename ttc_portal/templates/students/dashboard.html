@@ -185,15 +185,18 @@
         </div>
         {% endfor %}
 
-        {% if missing_by_year|get_item:year %}
         <div class="fetch-controls mt-3">
           <div>
+            {% if missing_by_year|get_item:year %}
             <b>Control numbers za mwaka {{ year }} hazijajazwa bado</b>
             <div class="small muted">Bofya hapa kuzijaza zote kwa mara moja (fetched kutoka mfumo wa malipo).</div>
+            {% else %}
+            <b>Control numbers za mwaka {{ year }} zipo</b>
+            <div class="small muted">Bofya hapa kufetch upya / kuangalia namba zako za malipo.</div>
+            {% endif %}
           </div>
           <a class="btn btn-gold btn-sm" href="{% url 'student_fetch_control_numbers' %}?year={{ year }}">Fetch Control Numbers</a>
         </div>
-        {% endif %}
       </div>
       {% endfor %}
       {% else %}
