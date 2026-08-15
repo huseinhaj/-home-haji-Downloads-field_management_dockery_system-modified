@@ -129,11 +129,23 @@
                 <div class="v">
                   {% if bill.control_number %}
                   <span class="control-pill" id="cn-{{ bill.id }}">{{ bill.control_number }}</span>
-                  {% else %}<span class="muted">— Bado haijazalishwa</span>{% endif %}
+                  {% else %}<span class="muted">— Mhasibu atajaza</span>{% endif %}
                 </div>
                 {% if bill.control_number_expires %}
                 <div class="small muted mt-2">Expiry Date: {{ bill.control_number_expires|date:'d/m/Y' }} | {{ bill.control_number_expires|date:'H:i:s' }}</div>
                 {% endif %}
+              </div>
+              <div>
+                <div class="k">Akaunti ya Kulipia</div>
+                <div class="v">
+                  {% if bill.fee_item.category == 'ada' %}
+                    {% if student.college.tuition_account_number %}{{ student.college.tuition_account_number }}{% else %}—{% endif %}
+                    <div class="small muted">{{ student.college.tuition_bank_name|default:'Tuition' }}{% if student.college.tuition_account_name %} · {{ student.college.tuition_account_name }}{% endif %}</div>
+                  {% else %}
+                    {{ contribution_account_number|default:'—' }}
+                    <div class="small muted">{{ contribution_bank_name|default:'College Contribution' }}</div>
+                  {% endif %}
+                </div>
               </div>
               <div>
                 <div class="k">Billed Amount</div>
@@ -158,12 +170,7 @@
 
             {% if bill.status != 'paid' %}
             <div class="flex mt-3" style="gap:8px;flex-wrap:wrap;">
-              {% if not bill.control_number %}
-              <form method="post" action="{% url 'generate_control' bill.id %}">
-                {% csrf_token %}
-                <button class="btn btn-gold btn-sm" type="submit">Generate Control No.</button>
-              </form>
-              {% else %}
+              {% if bill.control_number %}
               <button class="btn btn-ghost btn-sm" data-copy="cn-{{ bill.id }}" onclick="copyText('cn-{{ bill.id }}')">Nakili</button>
               {% endif %}
               <button class="btn btn-primary btn-sm"

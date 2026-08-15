@@ -64,6 +64,7 @@
           <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
         {% elif user.is_college_admin %}
           <a href="{% url 'admin_dashboard' %}" {% if request.resolver_match.url_name == 'admin_dashboard' %}class="active"{% endif %}>Jopo la Chuo</a>
+          <a href="{% url 'admin_control_numbers' %}" {% if request.resolver_match.url_name == 'admin_control_numbers' %}class="active"{% endif %}>Namba za Malipo</a>
           <a href="{% url 'admin_payments' %}">Malipo</a>
           <a href="{% url 'admin_fees' %}">Ada na Michango</a>
         {% elif user.is_super_admin %}

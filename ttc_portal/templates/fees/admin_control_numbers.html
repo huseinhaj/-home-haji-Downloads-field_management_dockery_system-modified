@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block title %}Namba za Malipo — {{ college.short_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:36px;">
+  <div class="banner">
+    <div class="card-pad">
+      <div class="kicker">Mhasibu wa Chuo</div>
+      <h1>Namba za Malipo (Control Numbers)</h1>
+      <p style="opacity:.9;max-width:640px;">Chagua mwaka wa masomo, kisha generate namba za malipo kwa bili moja au kwa bili zote za mwaka huo mara moja.</p>
+    </div>
+  </div>
+
+  <!-- Akaunti za kulipia (Tuition = ya chuo, Contribution = constant) -->
+  <div class="card card-pad mt-4">
+    <div class="card-title rule">Akaunti za Kulipia (Payment Accounts)</div>
+    <div class="grid-2 mt-3">
+      <div class="bill-card">
+        <div class="bill-card-head"><div class="bill-name"><b>Tuition Fee</b><span class="small">Inatofautiana kwa kila chuo</span></div></div>
+        <div class="bill-card-body">
+          <div class="bill-grid">
+            <div><div class="k">Namba ya Akaunti</div><div class="v">{{ college.tuition_account_number|default:'— Haina bado' }}</div></div>
+            <div><div class="k">Benki</div><div class="v">{{ college.tuition_bank_name|default:'—' }}</div></div>
+            <div><div class="k">Jina la Akaunti</div><div class="v">{{ college.tuition_account_name|default:'—' }}</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="bill-card">
+        <div class="bill-card-head" style="background:linear-gradient(135deg,var(--blue-700),var(--blue-600) 50%,var(--green-700));"><div class="bill-name"><b>College Contribution</b><span class="small">CONSTANT kwa vyuo vyote</span></div></div>
+        <div class="bill-card-body">
+          <div class="bill-grid">
+            <div><div class="k">Namba ya Akaunti</div><div class="v">{{ contribution_account_number|default:'— Haina bado' }}</div></div>
+            <div><div class="k">Benki</div><div class="v">{{ contribution_bank_name|default:'—' }}</div></div>
+            <div><div class="k">Jina la Akaunti</div><div class="v">{{ contribution_account_name|default:'—' }}</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chagua mwaka -->
+  <div class="card card-pad mt-4">
+    <form method="get" class="toolbar" style="margin-bottom:0;">
+      <div class="form-group" style="margin-bottom:0;min-width:220px;">
+        <label>Mwaka wa Masomo</label>
+        <select class="form-control" name="year" onchange="this.form.submit()">
+          {% for y in years %}
+          <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="margin-top:26px;">
+        <button class="btn btn-gold" type="submit">Badilisha Mwaka</button>
+      </div>
+      <div class="small muted" style="margin-top:26px;">Hali ya sasa: <b>{{ mode_label }}</b></div>
+    </form>
+  </div>
+
+  <!-- Generate zote za mwaka huo -->
+  {% if pending_bills %}
+  <div class="card card-pad mt-4" style="border:1px solid var(--gold-300);background:linear-gradient(135deg,#fffef9,var(--gold-50));">
+    <div class="flex-between">
+      <div>
+        <div class="card-title">Generate Namba za Malipo — Mwaka {{ selected_year }}</div>
+        <p class="small muted mt-2">Bili <b>{{ pending_bills|length }}</b> hazina namba ya malipo bado kwa mwaka huu.</p>
+      </div>
+      <a class="btn btn-primary" href="{% url 'admin_control_generate_all' %}?year={{ selected_year }}">Generate Zote ({{ pending_bills|length }})</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Bili zinazosubiri namba -->
+  <div class="card card-pad mt-4">
+    <div class="card-title rule">Bili Zinazosubiri Namba ya Malipo</div>
+    {% if pending_bills %}
+    <div class="table-wrap mt-3">
+      <table>
+        <thead><tr><th>Mwanafunzi</th><th>Kipengee</th><th>Kiasi</th><th>Hali</th><th>Vitendo</th></tr></thead>
+        <tbody>
+          {% for b in pending_bills %}
+          <tr>
+            <td>
+              <b>{{ b.student.full_name }}</b>
+              <div class="small muted">{{ b.student.registration_number }}</div>
+            </td>
+            <td>
+              <b>{{ b.fee_item.name }}</b>
+              <div class="small muted">
+                {% if b.fee_item.category == 'ada' %}Tuition Fees
+                {% elif b.fee_item.category == 'mchango' %}College Contribution
+                {% else %}Nyingine{% endif %}
+              </div>
+            </td>
+            <td class="money">TZS {{ b.amount|floatformat:0 }}</td>
+            <td>
+              {% if b.status == 'paid' %}<span class="badge badge-green">Imelipwa</span>
+              {% elif b.status == 'partially_paid' %}<span class="badge badge-amber">Sehemu</span>
+              {% else %}<span class="badge badge-red">Haijalipwa</span>{% endif %}
+            </td>
+            <td>
+              <a class="btn btn-primary btn-sm" href="{% url 'admin_control_generate' b.id %}?year={{ selected_year }}">Generate</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty"><b>Hakuna bili zinazosubiri</b><p class="mt-2">Bili zote za mwaka {{ selected_year }} zina namba za malipo zinazofanya kazi.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Namba zilizogenerated -->
+  <div class="card card-pad mt-4">
+    <div class="card-title rule">Namba za Malipo Zilizogenerated</div>
+    {% if generated_bills %}
+    <div class="table-wrap mt-3">
+      <table>
+        <thead><tr><th>Mwanafunzi</th><th>Kipengee</th><th>Namba ya Malipo</th><th>Inaisha</th><th>Hali</th></tr></thead>
+        <tbody>
+          {% for b in generated_bills %}
+          <tr>
+            <td>
+              <b>{{ b.student.full_name }}</b>
+              <div class="small muted">{{ b.student.registration_number }}</div>
+            </td>
+            <td>{{ b.fee_item.name }}</td>
+            <td><span class="control-pill" id="cn-{{ b.id }}">{{ b.control_number }}</span></td>
+            <td class="small">{{ b.control_number_expires|date:'d/m/Y' }}</td>
+            <td>
+              {% if b.status == 'paid' %}<span class="badge badge-green">Imelipwa</span>
+              {% elif b.status == 'partially_paid' %}<span class="badge badge-amber">Sehemu</span>
+              {% else %}<span class="badge badge-red">Haijalipwa</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty"><b>Hakuna namba bado</b><p class="mt-2">Generate namba za malipo za mwaka {{ selected_year }} hapo juu.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

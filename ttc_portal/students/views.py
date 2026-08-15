@@ -1,6 +1,7 @@
 import random
 import string
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -153,6 +154,9 @@ def dashboard(request):
         'academic_year': current_year,
         'paid_percent': round((student.total_paid / student.total_billed * 100) if student.total_billed else 0),
         'profile_form': profile_form,
+        # Akaunti ya College Contribution ni CONSTANT kwa vyuo vyote (settings)
+        'contribution_account_number': getattr(settings, 'TTC_CONTRIBUTION_ACCOUNT_NUMBER', ''),
+        'contribution_bank_name': getattr(settings, 'TTC_CONTRIBUTION_BANK_NAME', ''),
     }
     return render(request, 'students/dashboard.html', context)
 
