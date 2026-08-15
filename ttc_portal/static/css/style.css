@@ -451,6 +451,28 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
 .callout ol, .callout ul { margin: 8px 0 0 18px; font-size: 13.5px; color: var(--gold-600); }
 .callout li { margin-bottom: 5px; }
 
+/* ─────────── Segmented tabs (mgawanyo wa wanafunzi) ─────────── */
+.seg-tabs {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius);
+  padding: 8px; box-shadow: var(--shadow);
+}
+.seg-tab {
+  padding: 9px 16px; border-radius: 9px; font-weight: 700; font-size: 13px;
+  color: var(--gray-600); background: transparent; transition: all .15s ease;
+  white-space: nowrap;
+}
+.seg-tab:hover { background: var(--gold-50); color: var(--navy-900); }
+.seg-tab.active {
+  background: linear-gradient(135deg, var(--navy-800), var(--navy-950));
+  color: #fff; box-shadow: 0 4px 14px -8px rgba(13, 101, 45, .5);
+}
+.seg-tab-danger:hover { color: var(--red-600); }
+.seg-tab-danger.active {
+  background: linear-gradient(135deg, var(--red-600), var(--red-700));
+  box-shadow: 0 4px 14px -8px rgba(179, 38, 30, .5);
+}
+
 /* ─────────── Toolbar / search ─────────── */
 .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 22px; flex-wrap: wrap; }
 .toolbar .grow { flex: 1; min-width: 200px; }

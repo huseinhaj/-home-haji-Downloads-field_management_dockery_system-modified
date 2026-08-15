@@ -22,10 +22,28 @@
   </div>
 
   <div class="stats-grid mt-4">
-    <div class="card stat-card"><div class="s-ico green">W</div><div><b>{{ stats.students }}</b><span>Wanafunzi</span></div></div>
+    <div class="card stat-card"><div class="s-ico green">W</div><div><b>{{ stats.students }}</b><span>Wanafunzi Wote</span></div></div>
+    <div class="card stat-card"><div class="s-ico blue">1</div><div><b>{{ stats.first_year }}</b><span>First Year (Mwaka 1)</span></div></div>
+    <div class="card stat-card"><div class="s-ico green">2+</div><div><b>{{ stats.continuing }}</b><span>Wanaoendelea</span></div></div>
+    <div class="card stat-card"><div class="s-ico gold">G</div><div><b>{{ stats.graduated }}</b><span>Waliohitimu</span></div></div>
+    <div class="card stat-card"><div class="s-ico red">D</div><div><b>{{ stats.debtors }}</b><span>Wanadaiwa (Deni)</span></div></div>
     <div class="card stat-card"><div class="s-ico red">B</div><div><b>{{ stats.unpaid_bills }}</b><span>Bili Hazijalipwa</span></div></div>
     <div class="card stat-card"><div class="s-ico gold">M</div><div><b>{{ stats.pending_payments }}</b><span>Malipo Yanayosubiri Uthibitisho</span></div></div>
     <div class="card stat-card"><div class="s-ico gold">TZS</div><div><b>{{ stats.collected|floatformat:0 }}</b><span>Jumla Imekusanywa</span></div></div>
+  </div>
+
+  <div class="card card-pad mt-4">
+    <div class="flex-between mb-3">
+      <div class="card-title rule">Mgawanyo wa Wanafunzi</div>
+      <a class="btn btn-ghost btn-sm" href="{% url 'admin_students' %}">Wote →</a>
+    </div>
+    <div class="seg-tabs">
+      <a class="seg-tab" href="{% url 'admin_students' %}{{ filter_urls.first_year }}">First Year ({{ stats.first_year }})</a>
+      <a class="seg-tab" href="{% url 'admin_students' %}{{ filter_urls.continuing }}">Wanaoendelea ({{ stats.continuing }})</a>
+      <a class="seg-tab" href="{% url 'admin_students' %}{{ filter_urls.graduated }}">Waliohitimu ({{ stats.graduated }})</a>
+      <a class="seg-tab seg-tab-danger" href="{% url 'admin_students' %}{{ filter_urls.debtors }}">Wanadaiwa ({{ stats.debtors }})</a>
+    </div>
+    <p class="small muted mt-3" style="margin-bottom:0;">Bonyeza tab kuona orodha kamili ya wanafunzi wa kundi hilo. Wanadaiwa = walio na bili ambazo bado hazijalipwa (pamoja na waliohitimu).</p>
   </div>
 
   <div class="grid-2 mt-4">

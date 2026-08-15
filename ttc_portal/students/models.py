@@ -10,6 +10,11 @@ class Student(models.Model):
         ('F', 'Mke (Female)'),
     ]
 
+    ENROLLMENT_CHOICES = [
+        ('active', 'Anasoma (Active)'),
+        ('graduated', 'Alihitimu (Graduated)'),
+    ]
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='student_profile',
         verbose_name='Mtumiaji',
@@ -37,6 +42,11 @@ class Student(models.Model):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True, verbose_name='Jinsia')
     phone_number = models.CharField(max_length=15, blank=True, verbose_name='Namba ya Simu')
     email = models.EmailField(blank=True, verbose_name='Barua Pepe')
+    enrollment_status = models.CharField(
+        max_length=20, choices=ENROLLMENT_CHOICES, default='active',
+        verbose_name='Hali ya Masomo',
+        help_text='active = anasoma, graduated = alihitimu (bado anaweza kuwa na deni)',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -78,3 +88,11 @@ class Student(models.Model):
     @property
     def has_balance(self):
         return self.balance_due > 0
+
+    @property
+    def is_first_year(self):
+        return self.enrollment_status == 'active' and self.year_of_study == 1
+
+    @property
+    def is_continuing(self):
+        return self.enrollment_status == 'active' and self.year_of_study > 1

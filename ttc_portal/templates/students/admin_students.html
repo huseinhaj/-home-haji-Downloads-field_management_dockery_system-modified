@@ -6,12 +6,21 @@
   <div class="flex-between mb-4">
     <div>
       <h1 class="section-title">Wanafunzi wa {{ college.short_name }}</h1>
-      <p class="section-sub">Orodha ya wanafunzi wote wa chuo hiki.</p>
+      <p class="section-sub">Orodha ya wanafunzi wote wa chuo hiki — wanaoanza, wanaoendelea, na waliohitimu.</p>
     </div>
     <a class="btn btn-primary" href="{% url 'admin_add_student' %}">Ongeza Mwanafunzi</a>
   </div>
 
+  <div class="seg-tabs mb-3">
+    <a href="?filter=all{% if q %}&q={{ q|urlencode }}{% endif %}" class="seg-tab {% if filter == 'all' %}active{% endif %}">Wote ({{ tab_counts.all }})</a>
+    <a href="?filter=first_year{% if q %}&q={{ q|urlencode }}{% endif %}" class="seg-tab {% if filter == 'first_year' %}active{% endif %}">First Year ({{ tab_counts.first_year }})</a>
+    <a href="?filter=continuing{% if q %}&q={{ q|urlencode }}{% endif %}" class="seg-tab {% if filter == 'continuing' %}active{% endif %}">Wanaoendelea ({{ tab_counts.continuing }})</a>
+    <a href="?filter=graduated{% if q %}&q={{ q|urlencode }}{% endif %}" class="seg-tab {% if filter == 'graduated' %}active{% endif %}">Waliohitimu ({{ tab_counts.graduated }})</a>
+    <a href="?filter=debtors{% if q %}&q={{ q|urlencode }}{% endif %}" class="seg-tab seg-tab-danger {% if filter == 'debtors' %}active{% endif %}">Wanadaiwa ({{ tab_counts.debtors }})</a>
+  </div>
+
   <form method="get" class="toolbar">
+    {% if filter != 'all' %}<input type="hidden" name="filter" value="{{ filter }}">{% endif %}
     <div class="grow"><input class="search-input" type="text" name="q" value="{{ q }}" placeholder="Tafuta kwa jina au namba ya usajili..."></div>
     <button class="btn btn-primary" type="submit">Tafuta</button>
   </form>
@@ -20,7 +29,7 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Mwanafunzi</th><th>Namba ya Usajili</th><th>Programu</th><th>Mwaka</th><th>Deni</th><th></th></tr>
+          <tr><th>Mwanafunzi</th><th>Namba ya Usajili</th><th>Programu</th><th>Hali</th><th>Deni</th><th></th></tr>
         </thead>
         <tbody>
           {% for s in students %}
@@ -28,7 +37,12 @@
             <td><b>{{ s.full_name }}</b><div class="small muted">{{ s.gender|default:'' }} · {{ s.phone_number|default:'—' }}</div></td>
             <td>{{ s.registration_number }}</td>
             <td class="small">{{ s.program.name|default:'—' }}</td>
-            <td>Mwaka {{ s.year_of_study }} ({{ s.admission_year }})</td>
+            <td>
+              {% if s.enrollment_status == 'graduated' %}<span class="badge badge-gold">Alihitimu</span>
+              {% elif s.is_first_year %}<span class="badge badge-blue">First Year · Mwaka 1</span>
+              {% elif s.is_continuing %}<span class="badge badge-green">Anasoma · Mwaka {{ s.year_of_study }}</span>
+              {% else %}<span class="badge badge-slate">Mwaka {{ s.year_of_study }}</span>{% endif %}
+            </td>
             <td>
               {% if s.has_balance %}<span class="badge badge-red">TZS {{ s.balance_due|floatformat:0 }}</span>
               {% else %}<span class="badge badge-green">Imelipwa</span>{% endif %}

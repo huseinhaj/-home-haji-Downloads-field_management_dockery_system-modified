@@ -261,6 +261,10 @@ def admin_dashboard(request):
 
     stats = {
         'students': students.count(),
+        'first_year': students.filter(enrollment_status='active', year_of_study=1).count(),
+        'continuing': students.filter(enrollment_status='active', year_of_study__gt=1).count(),
+        'graduated': students.filter(enrollment_status='graduated').count(),
+        'debtors': students.filter(bills__status__in=['unpaid', 'partially_paid']).distinct().count(),
         'unpaid_bills': FeeBill.objects.filter(
             student__college=college, status__in=['unpaid', 'partially_paid'],
         ).count(),
@@ -274,6 +278,14 @@ def admin_dashboard(request):
         'stats': stats,
         'pending_payments': pending_payments[:15],
         'recent_students': students.order_by('-created_at')[:8],
+        # Links za mgawanyo kwenye dashboard — moja kwa moja kwenye orodha filtered
+        'filter_urls': {
+            'first_year': '?filter=first_year',
+            'continuing': '?filter=continuing',
+            'graduated': '?filter=graduated',
+            'debtors': '?filter=debtors',
+            'all': '?filter=all',
+        },
     }
     return render(request, 'students/admin_dashboard.html', context)
 
@@ -283,12 +295,46 @@ def admin_dashboard(request):
 def admin_students(request):
     college = _get_admin_college(request.user)
     students = college.students.all()
+
+    # Tabs za mgawanyo: wote / mwaka wa kwanza / wanaoendelea / waliohitimu /
+    # wanadaiwa (deni). Msimamizi anaona mgawanyo huu wote kwa urahisi.
+    filter_ = request.GET.get('filter', 'all')
+    if filter_ == 'first_year':
+        students = students.filter(enrollment_status='active', year_of_study=1)
+    elif filter_ == 'continuing':
+        students = students.filter(enrollment_status='active', year_of_study__gt=1)
+    elif filter_ == 'graduated':
+        students = students.filter(enrollment_status='graduated')
+    elif filter_ == 'debtors':
+        students = students.filter(bills__status__in=['unpaid', 'partially_paid']).distinct()
+
     q = request.GET.get('q', '').strip()
     if q:
         students = students.filter(
             Q(full_name__icontains=q) | Q(registration_number__icontains=q)
         )
-    context = {'college': college, 'students': students.order_by('full_name'), 'q': q}
+
+    # Hesabu kwa kila tab (bila filter ya q) ili tabs zionyeshe namba sahihi
+    def _count(f):
+        qs = college.students.all()
+        if f == 'first_year':
+            return qs.filter(enrollment_status='active', year_of_study=1).count()
+        if f == 'continuing':
+            return qs.filter(enrollment_status='active', year_of_study__gt=1).count()
+        if f == 'graduated':
+            return qs.filter(enrollment_status='graduated').count()
+        if f == 'debtors':
+            return qs.filter(bills__status__in=['unpaid', 'partially_paid']).distinct().count()
+        return qs.count()
+
+    tab_counts = {f: _count(f) for f in ['all', 'first_year', 'continuing', 'graduated', 'debtors']}
+    context = {
+        'college': college,
+        'students': students.order_by('enrollment_status', 'year_of_study', 'full_name'),
+        'q': q,
+        'filter': filter_,
+        'tab_counts': tab_counts,
+    }
     return render(request, 'students/admin_students.html', context)
 
 
@@ -297,6 +343,21 @@ def admin_students(request):
 def admin_student_detail(request, student_id):
     college = _get_admin_college(request.user)
     student = get_object_or_404(Student, id=student_id, college=college)
+
+    # Msimamizi anadhibiti hali ya masomo: kuweka mhitimu (alihitimu) au
+    # kurudisha kwenye 'anasoma' — muhimu hasa kwa waliohitimu lakini bado
+    # wanadaiwa: bili na deni zinabaki sawa.
+    if request.method == 'POST' and request.POST.get('set_enrollment'):
+        new_status = request.POST['set_enrollment']
+        if new_status in dict(Student.ENROLLMENT_CHOICES):
+            student.enrollment_status = new_status
+            student.save()
+            if new_status == 'graduated':
+                messages.success(request, f'{student.full_name} amewekwa kama ALIYEHITIMU. Bili na deni zimebaki sawa.')
+            else:
+                messages.success(request, f'{student.full_name} amerudishwa kwenye hali ya Anasoma.')
+            return redirect('admin_student_detail', student_id=student.id)
+
     bills = student.bills.select_related('fee_item').order_by('fee_item__category')
     payments = student.payments.order_by('-created_at')
     context = {

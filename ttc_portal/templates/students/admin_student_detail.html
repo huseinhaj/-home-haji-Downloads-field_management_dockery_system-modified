@@ -17,6 +17,26 @@
         <div class="info-item"><div class="k">Simu</div><div class="v">{{ student.phone_number|default:'—' }}</div></div>
         <div class="info-item"><div class="k">Barua Pepe</div><div class="v">{{ student.email|default:'—' }}</div></div>
         <div class="info-item"><div class="k">Username</div><div class="v">{{ student.user.username }}</div></div>
+        <div class="info-item"><div class="k">Hali ya Masomo</div><div class="v">
+          {% if student.enrollment_status == 'graduated' %}<span class="badge badge-gold">Alihitimu</span>
+          {% elif student.is_first_year %}<span class="badge badge-blue">First Year · Mwaka 1</span>
+          {% else %}<span class="badge badge-green">Anasoma · Mwaka {{ student.year_of_study }}</span>{% endif %}
+        </div></div>
+      </div>
+
+      <div class="flex mt-4" style="flex-wrap:wrap;gap:8px;">
+        {% if student.enrollment_status == 'graduated' %}
+        <form method="post" action="">{% csrf_token %}
+          <input type="hidden" name="set_enrollment" value="active">
+          <button class="btn btn-outline btn-sm" type="submit">↩ Rudisha kwenye Anasoma</button>
+        </form>
+        {% else %}
+        <form method="post" action="">{% csrf_token %}
+          <input type="hidden" name="set_enrollment" value="graduated">
+          <button class="btn btn-gold btn-sm" type="submit">🎓 Weka Aliyemaliza (Alihitimu)</button>
+        </form>
+        {% endif %}
+        <span class="small muted">Waliohitimu wanabaki kwenye mfumo — bili na deni zao haziondoki.</span>
       </div>
     </div>
 
