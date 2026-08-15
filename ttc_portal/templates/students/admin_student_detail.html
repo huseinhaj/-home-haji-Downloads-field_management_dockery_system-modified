@@ -38,7 +38,7 @@
             <td><b>{{ bill.fee_item.name }}</b><div class="small muted">{{ bill.fee_item.get_category_display }}</div></td>
             <td>{{ bill.academic_year }}</td>
             <td class="money">TZS {{ bill.amount|floatformat:0 }}</td>
-            <td class="money" style="color:var(--green-700);">TZS {{ bill.paid_amount|floatformat:0 }}</td>
+            <td class="money" style="color:var(--gold-600);">TZS {{ bill.paid_amount|floatformat:0 }}</td>
             <td>
               {% if bill.status == 'paid' %}<span class="badge badge-green">Imelipwa</span>
               {% elif bill.status == 'partially_paid' %}<span class="badge badge-amber">Sehemu</span>

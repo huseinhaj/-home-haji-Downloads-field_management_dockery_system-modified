@@ -1,38 +1,10 @@
 from django.shortcuts import render, get_object_or_404
-from django.db.models import Count
-from .models import College, Program
+from .models import College
 
 
 def home(request):
-    """Orodha ya vyuo vyote vya ualimi — mgombea anachagua chuo chake."""
-    colleges = College.objects.filter(is_active=True).annotate(
-        num_students=Count('students', distinct=True),
-        num_programs=Count('programs', distinct=True),
-    )
-    regions = (
-        College.objects.filter(is_active=True)
-        .exclude(region='')
-        .values_list('region', flat=True)
-        .distinct()
-        .order_by('region')
-    )
-
-    query = request.GET.get('q', '').strip()
-    region = request.GET.get('region', '').strip()
-    if query:
-        colleges = colleges.filter(name__icontains=query)
-    if region:
-        colleges = colleges.filter(region=region)
-
-    context = {
-        'colleges': colleges,
-        'regions': regions,
-        'total_colleges': College.objects.filter(is_active=True).count(),
-        'total_regions': len(regions),
-        'query': query,
-        'region': region,
-    }
-    return render(request, 'colleges/home.html', context)
+    """Landing page rasmi — mwanafunzi anafikia chuo chake kupitia usajili/login."""
+    return render(request, 'colleges/home.html')
 
 
 def college_detail(request, code):

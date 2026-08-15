@@ -64,6 +64,12 @@ if TTC_UNDER_CONTAINER:
     SESSION_COOKIE_SAMESITE = 'Lax'
     CSRF_COOKIE_SECURE = True
     CSRF_COOKIE_HTTPONLY = True
+    # Session kali: muda mfupi (saa 2), inaisha ukifunga browser, na inajiendeleza
+    # kwa kila shughuli (sliding) — mtumiaji anakuwa na muda wa kutosha kwa kazi
+    # moja, lakini session haiishi milele kwenye kifaa.
+    SESSION_COOKIE_AGE = 7200            # sekunde 7200 = saa 2
+    SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+    SESSION_SAVE_EVERY_REQUEST = True    # sliding expiration: muda unaanza upya kila shughuli
     # HSTS: browser itumie HTTPS tu kwa mwaka mmoja
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True

@@ -1,119 +1,57 @@
 {% extends 'base.html' %}
-{% block title %}Vyuo vya Ualimu Tanzania — TTC Student Portal{% endblock %}
+{% block title %}TTC Student Portal — Malipo ya Ada na Michango{% endblock %}
 
 {% block content %}
+<!-- Official landing hero -->
 <section class="hero">
   <div class="container">
-    <span class="tagline">Mfumo Rasmi wa Malipo ya Ada na Michango</span>
-    <h1>Malipo ya Ada na Michango kwa Vyuo vya Ualimu</h1>
-    <p>
-      Chagua chuo chako, jiandikishe, pata namba ya malipo (control number),
-      na ufuatilie malipo yako kwa wakati halisi.
-    </p>
+    <span class="tagline">Mfumo Rasmi wa Serikali</span>
+    <h1>TTC Student Portal</h1>
+    <p>Mfumo rasmi wa malipo ya Ada na Michango kwa wanafunzi wa Vyuo vya Ualimu Tanzania.</p>
     <div class="hero-actions">
-      <a href="#vyuo" class="btn btn-primary">Angalia Vyuo Vyote</a>
-      <a href="{% url 'register' %}" class="btn btn-gold">Jiandikishe</a>
-      <a href="{% url 'login' %}" class="btn btn-light">Ingia</a>
-    </div>
-    <div class="hero-stats">
-      <div class="stat"><b>{{ total_colleges }}</b><span>Vyuo vya Ualimu</span></div>
-      <div class="stat"><b>{{ total_regions }}</b><span>Mikoa Inayowakilishwa</span></div>
-      <div class="stat"><b>2</b><span>Miaka ya Diploma</span></div>
-      <div class="stat"><b>Ada + Michango</b><span>Namba za Malipo</span></div>
+      {% if user.is_authenticated %}
+        {% if user.is_student %}
+          <a href="{% url 'dashboard' %}" class="btn btn-gold">Dashboard Yangu</a>
+        {% elif user.is_college_admin %}
+          <a href="{% url 'admin_dashboard' %}" class="btn btn-gold">Jopo la Chuo</a>
+        {% else %}
+          <a href="{% url 'super_admin_dashboard' %}" class="btn btn-gold">Usimamizi</a>
+        {% endif %}
+        <a href="{% url 'logout' %}" class="btn btn-light">Toka</a>
+      {% else %}
+        <a href="{% url 'login' %}" class="btn btn-gold">Ingia</a>
+        <a href="{% url 'register' %}" class="btn btn-light">Jiandikishe</a>
+      {% endif %}
     </div>
   </div>
 </section>
 
-<section id="vyuo" class="section">
+<!-- Minimal info strip -->
+<section class="section" style="padding:36px 0;">
   <div class="container">
-    <div class="section-head flex-between">
-      <div>
-        <h2 class="section-title">Vyuo Vyote vya Ualimu</h2>
-        <p class="section-sub">Chagua chuo chako — unachokichagua hapa ndicho kitawekwa kwenye bili zako.</p>
-      </div>
-      <span class="badge badge-slate" id="collegeCount"></span>
-    </div>
-
-    <form method="get" class="toolbar" id="collegeFilterForm">
-      <div class="grow">
-        <input class="search-input" type="text" name="q" id="collegeSearch" value="{{ query }}" placeholder="Tafuta chuo... mfano: Kasulu, Butimba, Morogoro" autocomplete="off">
-      </div>
-      <select class="form-control" name="region" id="regionFilter" style="max-width:240px;">
-        <option value="">Mkoa Wote</option>
-        {% for r in regions %}
-          <option value="{{ r }}" {% if region == r %}selected{% endif %}>{{ r }}</option>
-        {% endfor %}
-      </select>
-      <button class="btn btn-primary" type="submit">Tafuta</button>
-    </form>
-
-    {% if colleges %}
-    <div class="college-grid" id="collegeGrid">
-      {% for college in colleges %}
-      <a href="{% url 'college_detail' college.code %}" class="college-card" data-name="{{ college.name|lower }}" data-region="{{ college.region|lower }}" data-code="{{ college.code|lower }}">
-        <div class="college-card-top">
-          <span class="code">{{ college.code }}</span>
-          <div class="logo-big">{{ college.code }}</div>
-          <h3>{{ college.name }}</h3>
+    <div class="grid-3" style="max-width:900px;margin:0 auto;">
+      <div class="card card-pad" style="text-align:center;">
+        <div class="stat-card" style="padding:0;">
+          <div class="s-ico" style="margin:0 auto 12px;">TZS</div>
+          <b style="font-size:16px;">Malipo Salama</b>
+          <span style="display:block;margin-top:4px;">Ada na Michango kupitia namba za malipo (Control Number)</span>
         </div>
-        <div class="college-card-body">
-          <div class="meta-row"><span class="dot"></span>{{ college.region }}{% if college.district %} · {{ college.district }}{% endif %}</div>
-          <div class="meta-row"><span class="dot"></span>Programu {{ college.num_programs }} · Wanafunzi {{ college.num_students }}</div>
-          <div class="meta-row"><span class="dot"></span>Msimbo wa Chuo: <b>{{ college.code }}</b></div>
-          <span class="btn btn-primary btn-sm">Angalia Taasisi →</span>
+      </div>
+      <div class="card card-pad" style="text-align:center;">
+        <div class="stat-card" style="padding:0;">
+          <div class="s-ico gold" style="margin:0 auto 12px;">HTTPS</div>
+          <b style="font-size:16px;">Usalama wa Hali ya Juu</b>
+          <span style="display:block;margin-top:4px;">Mawasiliano yamelindwa (HTTPS) na kumbukumbu zote zimehifadhiwa kwa usalama</span>
         </div>
-      </a>
-      {% endfor %}
+      </div>
+      <div class="card card-pad" style="text-align:center;">
+        <div class="stat-card" style="padding:0;">
+          <div class="s-ico" style="margin:0 auto 12px;">TTC</div>
+          <b style="font-size:16px;">Vyuo vya Ualimu</b>
+          <span style="display:block;margin-top:4px;">Huduma kwa wanafunzi wa vyuo vya ualimu nchini Tanzania</span>
+        </div>
+      </div>
     </div>
-    <div class="card empty" id="noResults" style="display:none;">
-      <b>Hakuna chuo kinacholingana na tafuta yako</b>
-      <p class="mt-2">Jaribu jina lingine au badilisha mkoa.</p>
-    </div>
-    {% else %}
-    <div class="card empty">
-      <b>Hakuna chuo kilichopatikana</b>
-      <p class="mt-2">Jaribu kutafuta jina lingine au ondoa kichujio cha mkoa.</p>
-    </div>
-    {% endif %}
   </div>
 </section>
-
-{% endblock %}
-
-{% block scripts %}
-<script>
-  // Instant filtering — hakuna reload, inajibu mara moja unapoandika au kubadilisha mkoa
-  const searchInput = document.getElementById('collegeSearch');
-  const regionSelect = document.getElementById('regionFilter');
-  const grid = document.getElementById('collegeGrid');
-  const countEl = document.getElementById('collegeCount');
-  if (grid) {
-    const cards = Array.from(grid.querySelectorAll('.college-card'));
-    const total = cards.length;
-
-    function applyFilter() {
-      const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
-      const reg = (regionSelect ? regionSelect.value : '').toLowerCase();
-      let visible = 0;
-      cards.forEach(card => {
-        const name = card.dataset.name || '';
-        const region = card.dataset.region || '';
-        const code = card.dataset.code || '';
-        const matchQ = !q || name.includes(q) || region.includes(q) || code.includes(q);
-        const matchR = !reg || region === reg;
-        const show = matchQ && matchR;
-        card.style.display = show ? '' : 'none';
-        if (show) visible++;
-      });
-      if (countEl) countEl.textContent = visible + ' / ' + total + ' vyuo vimeonekana';
-      // onyesha tu grid ikiwa angalau kimoja kipo
-      grid.style.display = visible ? '' : 'none';
-      const empty = document.getElementById('noResults');
-      if (empty) empty.style.display = visible ? 'none' : '';
-    }
-    if (searchInput) searchInput.addEventListener('input', applyFilter);
-    if (regionSelect) regionSelect.addEventListener('change', applyFilter);
-    applyFilter();
-  }
-</script>
 {% endblock %}
