@@ -5,12 +5,12 @@
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Navy (primary) — rangi kuu ── */
-  --navy-950: #0a2540;
-  --navy-900: #10335c;
-  --navy-800: #17437a;
-  --navy-700: #1f5496;
-  --navy-600: #2a66b4;
+  /* ── Navy (primary) — bluu ya serikali, isiyo giza kama nyeusi ── */
+  --navy-950: #0d3b6e;
+  --navy-900: #124a8a;
+  --navy-800: #185aa6;
+  --navy-700: #216cc0;
+  --navy-600: #2f80d6;
   /* ── Gold (accent) — rangi ya pili ── */
   --gold-600: #a57d10;
   --gold-500: #c8900a;
