@@ -10,7 +10,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from accounts.models import CustomUser
 from colleges.models import College
 from fees.services import create_bills_for_student, academic_year_now
-from .forms import StudentRegistrationForm, AdminStudentForm, CompleteStudentForm
+from .forms import StudentRegistrationForm, AdminStudentForm, CompleteStudentForm, StudentProfileForm
 from .models import Student
 
 
@@ -118,15 +118,41 @@ def dashboard(request):
         messages.error(request, 'Akaunti yako haijaunganishwa na wasifu wa mwanafunzi.')
         return redirect('home')
 
-    bills = student.bills.select_related('fee_item').order_by('fee_item__category')
+    # Mwanafunzi anaweza kubadilisha taarifa zake (My Information) — hii ni POST
+    # kutoka kwenye modal ya edit profile kwenye dashboard yenyewe.
+    profile_form = None
+    if request.method == 'POST' and request.POST.get('profile_update') == '1':
+        profile_form = StudentProfileForm(request.POST, instance=student)
+        if profile_form.is_valid():
+            profile_form.save()
+            messages.success(request, 'Taarifa zako zimebadilishwa kikamilifu.')
+            return redirect('dashboard')
+        messages.error(request, 'Taarifa hazikubaliki — angalia fomu na ujaribu tena.')
+
+    bills = student.bills.select_related('fee_item').order_by('-academic_year', 'fee_item__category')
     payments = student.payments.select_related('bill__fee_item').order_by('-created_at')
+
+    # Gawa bili kwa miaka ya masomo: mwaka huu (current) + miaka mingine.
+    current_year = academic_year_now()
+    bills_by_year = {}
+    for bill in bills:
+        bills_by_year.setdefault(bill.academic_year, []).append(bill)
+    ordered_years = sorted(bills_by_year.keys(), reverse=True)
+    current_bills = bills_by_year.get(current_year, [])
+    other_years = [y for y in ordered_years if y != current_year]
+
+    if profile_form is None:
+        profile_form = StudentProfileForm(instance=student)
 
     context = {
         'student': student,
-        'bills': bills,
+        'bills_by_year': bills_by_year,
+        'current_bills': current_bills,
+        'other_years': other_years,
         'payments': payments,
-        'academic_year': academic_year_now(),
+        'academic_year': current_year,
         'paid_percent': round((student.total_paid / student.total_billed * 100) if student.total_billed else 0),
+        'profile_form': profile_form,
     }
     return render(request, 'students/dashboard.html', context)
 

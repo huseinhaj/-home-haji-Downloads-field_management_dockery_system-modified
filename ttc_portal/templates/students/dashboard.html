@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 {% block title %}Dashboard — {{ student.full_name }}{% endblock %}
 
 {% block content %}
@@ -18,160 +19,21 @@
     </div>
   </div>
 
-  <!-- Financial summary -->
-  <div class="stats-grid mt-4">
-    <div class="card stat-card">
-      <div class="s-ico blue">TZS</div>
-      <div><b>{{ student.total_billed|floatformat:0 }}</b><span>Jumla ya Bili (Ada + Michango)</span></div>
-    </div>
-    <div class="card stat-card">
-      <div class="s-ico green">TZS</div>
-      <div><b>{{ student.total_paid|floatformat:0 }}</b><span>Malipo Yaliyothibitishwa</span></div>
-    </div>
-    <div class="card stat-card">
-      <div class="s-ico {% if student.has_balance %}red{% else %}green{% endif %}">TZS</div>
-      <div>
-        <b>{{ student.balance_due|floatformat:0 }}</b>
-        <span>{% if student.has_balance %}Deni (Unachodaiwa){% else %}Hakuna Deni{% endif %}</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="card card-pad mt-4">
-    <div class="flex-between mb-3">
-      <div class="card-title">Hali ya Malipo Yako</div>
-      <span class="muted small">{{ academic_year }}</span>
-    </div>
-    <div class="progress"><div class="bar" style="width:{{ paid_percent }}%"></div></div>
-    <div class="progress-label">
-      <span>Umepiga {{ paid_percent }}% ya bili zako</span>
-      <span>TZS {{ student.total_paid|floatformat:0 }} / {{ student.total_billed|floatformat:0 }}</span>
-    </div>
-  </div>
-
-  <div class="grid-2 mt-4" style="grid-template-columns:1.9fr 1fr;">
-    <div>
-      <!-- Fee statement -->
-      <div class="card card-pad">
-        <div class="card-title rule">Taarifa ya Ada na Michango (Fee Statement)</div>
-        <p class="small mt-3 muted">
-          Kwa kila kipengee: <b>generate</b> namba ya malipo, lipa kupitia benki au simu,
-          kisha <b>wasilisha malipo</b> — msimamizi wa chuo atathibitisha.
-        </p>
-
-        {% if bills %}
-        <div class="table-wrap mt-3">
-          <table>
-            <thead>
-              <tr>
-                <th>Kipengee</th>
-                <th>Kiasi</th>
-                <th>Hali</th>
-                <th>Namba ya Malipo</th>
-                <th>Vitendo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for bill in bills %}
-              <tr>
-                <td>
-                  <b>{{ bill.fee_item.name }}</b>
-                  <div class="small muted">
-                    {% if bill.fee_item.category == 'ada' %}Ada (Tuition)
-                    {% elif bill.fee_item.category == 'mchango' %}Mchango wa Chuo
-                    {% else %}Nyingine{% endif %}
-                    · {{ bill.academic_year }}
-                  </div>
-                </td>
-                <td class="money">TZS {{ bill.amount|floatformat:0 }}</td>
-                <td>
-                  {% if bill.status == 'paid' %}<span class="badge badge-green">Imelipwa</span>
-                  {% elif bill.status == 'partially_paid' %}<span class="badge badge-amber">Sehemu</span>
-                  {% else %}<span class="badge badge-red">Haijalipwa</span>{% endif %}
-                  {% if bill.status == 'partially_paid' %}
-                  <div class="bill-progress mt-2">
-                    <div class="progress"><div class="bar" style="width:{% widthratio bill.paid_amount bill.amount 100 %}%"></div></div>
-                    <div class="bill-progress-label">TZS {{ bill.paid_amount|floatformat:0 }} / {{ bill.amount|floatformat:0 }} imelipwa</div>
-                  </div>
-                  {% endif %}
-                </td>
-                <td>
-                  {% if bill.control_number %}
-                    <span class="control-pill" id="cn-{{ bill.id }}">{{ bill.control_number }}</span>
-                    {% if bill.control_number_expires %}
-                    <div class="small muted mt-2">Inaisha: {{ bill.control_number_expires|date:'d/m/Y' }}</div>
-                    {% endif %}
-                  {% else %}
-                    <span class="muted small">— Bado haijazalishwa</span>
-                  {% endif %}
-                </td>
-                <td>
-                  {% if bill.status != 'paid' %}
-                    <div class="flex" style="gap:6px;flex-wrap:wrap;">
-                      {% if not bill.control_number %}
-                      <form method="post" action="{% url 'generate_control' bill.id %}">
-                        {% csrf_token %}
-                        <button class="btn btn-gold btn-sm" type="submit">Generate Control No.</button>
-                      </form>
-                      {% else %}
-                      <button class="btn btn-ghost btn-sm" data-copy="cn-{{ bill.id }}" onclick="copyText('cn-{{ bill.id }}')">Nakili</button>
-                      {% endif %}
-                      <button class="btn btn-primary btn-sm" onclick="openPayModal({{ bill.id }}, '{{ bill.fee_item.name|escapejs }}', {{ bill.remaining_amount }})">Wasilisha Malipo</button>
-                    </div>
-                  {% else %}
-                    <span class="badge badge-green">Kamilifu</span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% else %}
-        <div class="empty"><b>Hakuna bili</b><p class="mt-2">Bili zako zitaonekana hapa baada ya chuo kuweka ada na michango.</p></div>
-        {% endif %}
-      </div>
-
-      <!-- Payments history -->
-      <div class="card card-pad mt-4">
-        <div class="card-title rule">Historia ya Malipo Yako</div>
-        <div class="table-wrap mt-3">
-          <table>
-            <thead><tr><th>Tarehe</th><th>Kipengee</th><th>Njia</th><th>Kumbukumbu</th><th>Kiasi</th><th>Hali</th></tr></thead>
-            <tbody>
-          {% for p in payments %}
-          <tr>
-            <td>{{ p.created_at|date:'d/m/Y H:i' }}</td>
-            <td>{{ p.bill.fee_item.name }}</td>
-            <td class="small">{{ p.get_method_display }}</td>
-            <td class="small">{{ p.reference|default:'—' }}</td>
-            <td class="money">TZS {{ p.amount|floatformat:0 }}</td>
-            <td>
-              {% if p.status == 'confirmed' %}<span class="badge badge-green">Imethibitishwa</span>
-              {% elif p.status == 'pending' %}<span class="badge badge-amber">Inasubiri</span>
-              {% else %}<span class="badge badge-red">Imekataliwa</span>{% endif %}
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="6" class="muted">Hujafanya malipo yoyote bado.</td></tr>
-          {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Profile sidebar -->
+  <div class="grid-2 mt-4" style="grid-template-columns:1fr 1.6fr;">
+    <!-- ═══════════════ KUSHOTO: MY INFORMATION ═══════════════ -->
     <div>
       <div class="card card-pad">
-        <div class="card-title rule">Taarifa Zangu</div>
-        <div class="info-list mt-4" style="grid-template-columns:1fr;">
+        <div class="flex-between mb-3">
+          <div class="card-title">My Information</div>
+          <button class="btn btn-ghost btn-sm" onclick="openEditModal()">Badilisha Taarifa</button>
+        </div>
+        <div class="info-list mt-3" style="grid-template-columns:1fr;">
           <div class="info-item"><div class="k">Jina Kamili</div><div class="v">{{ student.full_name }}</div></div>
           <div class="info-item"><div class="k">Namba ya Usajili</div><div class="v">{{ student.registration_number }}</div></div>
-          <div class="info-item"><div class="k">Chuo</div><div class="v">{{ student.college.name }}</div></div>
+          <div class="info-item"><div class="k">Chuo</div><div class="v">{{ student.college.short_name }}</div></div>
           <div class="info-item"><div class="k">Programu</div><div class="v">{{ student.program.name|default:'—' }}</div></div>
-          <div class="info-item"><div class="k">Mwaka wa Masomo</div><div class="v">{{ student.year_of_study }} ({{ student.admission_year }})</div></div>
-          <div class="info-item"><div class="k">Jinsia</div><div class="v">{% if student.gender == 'M' %}Mume{% elif student.gender == 'F' %}Mke{% else %}—{% endif %}</div></div>
+          <div class="info-item"><div class="k">Mwaka wa Masomo</div><div class="v">Mwaka {{ student.year_of_study }} (Kujiunga {{ student.admission_year }})</div></div>
+          <div class="info-item"><div class="k">Jinsia</div><div class="v">{% if student.gender == 'M' %}Male{% elif student.gender == 'F' %}Female{% else %}—{% endif %}</div></div>
           <div class="info-item"><div class="k">Namba ya Simu</div><div class="v">{{ student.phone_number|default:'—' }}</div></div>
           <div class="info-item"><div class="k">Barua Pepe</div><div class="v">{{ student.email|default:'—' }}</div></div>
         </div>
@@ -195,6 +57,150 @@
           <li>Wasilisha malipo yako kwa kujaza kiasi na namba ya kumbukumbu.</li>
           <li>Msimamizi wa chuo atathibitisha na deni lako litapungua.</li>
         </ol>
+      </div>
+    </div>
+
+    <!-- ═══════════════ KULIA: PAYMENT DETAILS ═══════════════ -->
+    <div>
+      <!-- Financial summary -->
+      <div class="stats-grid">
+        <div class="card stat-card">
+          <div class="s-ico blue">TZS</div>
+          <div><b>{{ student.total_billed|floatformat:0|intcomma }}</b><span>Jumla ya Bili</span></div>
+        </div>
+        <div class="card stat-card">
+          <div class="s-ico green">TZS</div>
+          <div><b>{{ student.total_paid|floatformat:0|intcomma }}</b><span>Imelipwa</span></div>
+        </div>
+        <div class="card stat-card">
+          <div class="s-ico {% if student.has_balance %}red{% else %}green{% endif %}">TZS</div>
+          <div>
+            <b>{{ student.balance_due|floatformat:0|intcomma }}</b>
+            <span>{% if student.has_balance %}Balance (Deni){% else %}Hakuna Deni{% endif %}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-pad mt-4">
+        <div class="card-title">Payment Details</div>
+
+        {% if bills_by_year %}
+        <!-- Tabs za miaka -->
+        <div class="year-tabs mt-3" id="yearTabs">
+          <button class="year-tab active" data-year="tab-year-{{ academic_year|slugify }}" onclick="switchYear(this)">{{ academic_year }}</button>
+          {% for year in other_years %}
+          <button class="year-tab" data-year="tab-year-{{ year|slugify }}" onclick="switchYear(this)">{{ year }}</button>
+          {% endfor %}
+        </div>
+
+        {% for year, year_bills in bills_by_year.items %}
+        <div class="year-pane {% if year == academic_year %}active{% endif %}" id="tab-year-{{ year|slugify }}">
+          {% for bill in year_bills %}
+          <div class="bill-card">
+            <div class="bill-card-head">
+              <div class="bill-no">#{{ forloop.counter }}</div>
+              <div class="bill-name">
+                <b>{{ bill.fee_item.name }}</b>
+                <span class="small muted">
+                  {% if bill.fee_item.category == 'ada' %}Tuition Fees
+                  {% elif bill.fee_item.category == 'mchango' %}Mchango wa Chuo
+                  {% else %}Nyingine{% endif %}
+                  · {{ bill.academic_year }}
+                </span>
+              </div>
+              {% if bill.status == 'paid' %}<span class="badge badge-green">Imelipwa</span>
+              {% elif bill.status == 'partially_paid' %}<span class="badge badge-amber">Sehemu</span>
+              {% else %}<span class="badge badge-red">Haijalipwa</span>{% endif %}
+            </div>
+
+            <div class="bill-card-body">
+              <div class="bill-grid">
+                <div>
+                  <div class="k">Control Number</div>
+                  <div class="v">
+                    {% if bill.control_number %}
+                    <span class="control-pill" id="cn-{{ bill.id }}">{{ bill.control_number }}</span>
+                    {% else %}<span class="muted">— Bado haijazalishwa</span>{% endif %}
+                  </div>
+                  {% if bill.control_number_expires %}
+                  <div class="small muted mt-2">Expiry Date: {{ bill.control_number_expires|date:'d/m/Y' }} | {{ bill.control_number_expires|date:'H:i:s' }}</div>
+                  {% endif %}
+                </div>
+                <div>
+                  <div class="k">Billed Amount</div>
+                  <div class="v money">TZS {{ bill.amount|floatformat:2|intcomma }}</div>
+                </div>
+                <div>
+                  <div class="k">Paid Amount</div>
+                  <div class="v money green">TZS {{ bill.paid_amount|floatformat:2|intcomma }}</div>
+                </div>
+                <div>
+                  <div class="k">Balance</div>
+                  <div class="v money {% if bill.remaining_amount > 0 %}red{% else %}green{% endif %}">TZS {{ bill.remaining_amount|floatformat:2|intcomma }}</div>
+                </div>
+              </div>
+
+              {% if bill.status == 'partially_paid' %}
+              <div class="bill-progress mt-3">
+                <div class="progress"><div class="bar" style="width:{% widthratio bill.paid_amount bill.amount 100 %}%"></div></div>
+                <div class="bill-progress-label">TZS {{ bill.paid_amount|floatformat:0|intcomma }} / {{ bill.amount|floatformat:0|intcomma }} imelipwa</div>
+              </div>
+              {% endif %}
+
+              {% if bill.status != 'paid' %}
+              <div class="flex mt-3" style="gap:8px;flex-wrap:wrap;">
+                {% if not bill.control_number %}
+                <form method="post" action="{% url 'generate_control' bill.id %}">
+                  {% csrf_token %}
+                  <button class="btn btn-gold btn-sm" type="submit">Generate Control No.</button>
+                </form>
+                {% else %}
+                <button class="btn btn-ghost btn-sm" data-copy="cn-{{ bill.id }}" onclick="copyText('cn-{{ bill.id }}')">Nakili</button>
+                {% endif %}
+                <button class="btn btn-primary btn-sm"
+                        onclick="openPayModal({{ bill.id }}, '{{ bill.fee_item.name|escapejs }}', {{ bill.remaining_amount }}, '{% url 'submit_payment' bill.id %}')">
+                  Wasilisha Malipo
+                </button>
+              </div>
+              {% else %}
+              <div class="mt-3"><span class="badge badge-green">Kamilifu</span></div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty mt-3"><b>Hakuna bili</b><p class="mt-2">Bili zako zitaonekana hapa baada ya chuo kuweka ada na michango.</p></div>
+        {% endif %}
+      </div>
+
+      <!-- Payments history -->
+      <div class="card card-pad mt-4">
+        <div class="card-title rule">Historia ya Malipo Yako</div>
+        <div class="table-wrap mt-3">
+          <table>
+            <thead><tr><th>Tarehe</th><th>Kipengee</th><th>Njia</th><th>Kumbukumbu</th><th>Kiasi</th><th>Hali</th></tr></thead>
+            <tbody>
+          {% for p in payments %}
+          <tr>
+            <td>{{ p.created_at|date:'d/m/Y H:i' }}</td>
+            <td>{{ p.bill.fee_item.name }}</td>
+            <td class="small">{{ p.get_method_display }}</td>
+            <td class="small">{{ p.reference|default:'—' }}</td>
+            <td class="money">TZS {{ p.amount|floatformat:0|intcomma }}</td>
+            <td>
+              {% if p.status == 'confirmed' %}<span class="badge badge-green">Imethibitishwa</span>
+              {% elif p.status == 'pending' %}<span class="badge badge-amber">Inasubiri</span>
+              {% else %}<span class="badge badge-red">Imekataliwa</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="muted">Hujafanya malipo yoyote bado.</td></tr>
+          {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -246,21 +252,71 @@
   </div>
 </div>
 
+<!-- Edit profile modal -->
+<div id="editModal" class="modal-backdrop" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal">
+    <div class="card-pad">
+      <div class="flex-between mb-3">
+        <div class="card-title">Badilisha Taarifa Zangu</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeEditModal()">Funga</button>
+      </div>
+      <form method="post" action="{% url 'dashboard' %}">
+        {% csrf_token %}
+        <input type="hidden" name="profile_update" value="1">
+        {% if profile_form.non_field_errors %}
+          <div class="form-errors"><ul>{% for e in profile_form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+        {% endif %}
+        <div class="form-group">
+          <label>{{ profile_form.full_name.label }}</label>
+          {{ profile_form.full_name }}
+        </div>
+        <div class="form-group">
+          <label>{{ profile_form.phone_number.label }}</label>
+          {{ profile_form.phone_number }}
+        </div>
+        <div class="form-group">
+          <label>{{ profile_form.email.label }}</label>
+          {{ profile_form.email }}
+        </div>
+        <div class="form-group">
+          <label>{{ profile_form.gender.label }}</label>
+          {{ profile_form.gender }}
+        </div>
+        <div class="small muted" style="margin-bottom:18px;">
+          Chuo, programu na namba ya usajili hazibadiliki kwenye ukurasa huu — zikihitaji kubadilishwa, wasiliana na msimamizi wa chuo chako.
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Hifadhi Mabadiliko</button>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-  function openPayModal(billId, itemName, remaining) {
-    const modal = document.getElementById('payModal');
+  function openPayModal(billId, itemName, remaining, action) {
     document.getElementById('payItem').value = itemName;
     document.getElementById('payAmountInput').value = remaining > 0 ? remaining : '';
     document.getElementById('payRemaining').textContent = 'Deni lililobaki: TZS ' + remaining.toLocaleString();
-    const base = '{{ request.script_name }}' || '';
-    document.getElementById('payForm').action = base + '/dashboard/pay/' + billId + '/';
-    modal.classList.add('open');
+    document.getElementById('payForm').action = action;
+    document.getElementById('payModal').classList.add('open');
   }
   function closePayModal() {
     document.getElementById('payModal').classList.remove('open');
   }
+  function openEditModal() {
+    document.getElementById('editModal').classList.add('open');
+  }
+  function closeEditModal() {
+    document.getElementById('editModal').classList.remove('open');
+  }
+  function switchYear(btn) {
+    document.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.year-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.year).classList.add('active');
+  }
+  {% if profile_form.errors %}openEditModal();{% endif %}
 </script>
 {% endblock %}

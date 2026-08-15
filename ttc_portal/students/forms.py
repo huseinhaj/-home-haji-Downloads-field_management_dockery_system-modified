@@ -161,6 +161,30 @@ class CompleteStudentForm(forms.Form):
         return cleaned
 
 
+class StudentProfileForm(forms.ModelForm):
+    """Mwanafunzi anaweza kubadilisha taarifa zake za mawasiliano na jinsia.
+
+    Chuo, programu na namba ya usajili hazibadiliki na mwanafunzi mwenyewe —
+    hizo zinahitaji msimamizi wa chuo (kwa usalama wa taarifa rasmi).
+    """
+
+    class Meta:
+        model = Student
+        fields = ['full_name', 'phone_number', 'email', 'gender']
+        widgets = {
+            'full_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Jina Kamili'}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'mfano: 0712 345 678'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'jina@gmail.com'}),
+            'gender': forms.Select(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'full_name': 'Jina Kamili',
+            'phone_number': 'Namba ya Simu',
+            'email': 'Barua Pepe',
+            'gender': 'Jinsia',
+        }
+
+
 class AdminStudentForm(StudentRegistrationForm):
     """College admin adds a student manually — password optional (auto default).
 
