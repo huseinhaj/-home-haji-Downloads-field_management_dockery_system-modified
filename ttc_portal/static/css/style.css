@@ -125,6 +125,13 @@ main { flex: 1; }
 .nav-who { line-height: 1.2; }
 .nav-who b { font-size: 13px; color: var(--slate-900); display: block; }
 .nav-who i { font-size: 11px; color: var(--slate-500); font-style: normal; }
+.nav-college {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; color: var(--green-800);
+  background: var(--green-100); border: 1px solid var(--green-200);
+  padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+}
+.nav-college::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green-600); flex: none; }
 
 .hamburger {
   display: none; background: none; border: none; cursor: pointer;
@@ -369,6 +376,9 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
 .progress { background: var(--slate-100); border-radius: 999px; height: 12px; overflow: hidden; }
 .progress .bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--green-700), var(--green-500)); transition: width .5s ease; }
 .progress-label { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--slate-500); margin-top: 8px; font-weight: 600; }
+.bill-progress { min-width: 130px; }
+.bill-progress .progress { height: 7px; }
+.bill-progress-label { font-size: 11px; color: var(--slate-500); margin-top: 4px; font-weight: 600; }
 
 /* ─────────── Layout ─────────── */
 .grid-2 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 22px; align-items: start; }

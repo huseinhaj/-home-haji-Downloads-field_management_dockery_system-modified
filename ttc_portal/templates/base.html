@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}TTC Student Portal{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260816">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260816b">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230d5c3a'/><text x='50' y='68' font-size='46' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>TTC</text></svg>">
 </head>
 <body>
@@ -71,6 +71,9 @@
           <a href="{% url 'admin:index' %}">Admin Django</a>
         {% endif %}
         <div class="nav-user">
+          {% if user.is_authenticated and user.is_student and user.student_profile.college %}
+          <span class="nav-college" title="Chuo chako">{{ user.student_profile.college.short_name }}</span>
+          {% endif %}
           <span class="avatar">{{ user.first_name|first|default:user.username|first|upper }}</span>
           <span class="nav-who">
             <b>{{ user.first_name|default:user.username }}</b>

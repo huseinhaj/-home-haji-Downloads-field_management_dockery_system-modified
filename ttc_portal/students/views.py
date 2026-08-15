@@ -66,8 +66,21 @@ def register(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
 
+    locked_college = None
+    college_code = request.GET.get('college', '').strip()
+    if college_code:
+        try:
+            locked_college = College.objects.get(code=college_code.upper(), is_active=True)
+        except College.DoesNotExist:
+            locked_college = None
+
     if request.method == 'POST':
         form = StudentRegistrationForm(request.POST)
+        # Kinga ya server-side: mwanafunzi aliyetoka kwenye ukurasa wa chuo
+        # (?college=...) hawezi kubadilisha chuo hata kama POST imetengenezwa
+        # upya — chuo kinafungwa kwa kile alichokichagua.
+        if locked_college is not None and form.is_valid():
+            form.cleaned_data['college'] = locked_college
         if form.is_valid():
             student, user = _create_student_from_form(form)
             # Multiple auth backends are configured → set the backend explicitly
@@ -79,16 +92,21 @@ def register(request):
                 f"Karibu kwenye mfumo.",
             )
             return redirect('dashboard')
+        # Ikiwa fomu imeshindikana, tungeza kuweka lock kwenye chuo kilichochaguliwa
+        if locked_college is None and form.data.get('college'):
+            try:
+                locked_college = College.objects.get(id=form.data['college'], is_active=True)
+            except (College.DoesNotExist, ValueError):
+                locked_college = None
     else:
         initial = {'admission_year': 2026}
-        college_code = request.GET.get('college', '').strip()
-        if college_code:
-            try:
-                initial['college'] = College.objects.get(code=college_code.upper(), is_active=True)
-            except College.DoesNotExist:
-                pass
+        if locked_college:
+            initial['college'] = locked_college
         form = StudentRegistrationForm(initial=initial)
-    return render(request, 'students/register.html', {'form': form})
+    return render(request, 'students/register.html', {
+        'form': form,
+        'locked_college': locked_college,
+    })
 
 
 # ───────────────────────────── Student dashboard ─────────────────────────────

@@ -11,10 +11,17 @@
     </div>
 
     <div class="auth-card-body">
+      {% if locked_college %}
+      <div class="auth-note" style="border-color:var(--gold-100);background:var(--gold-100);">
+        <b>Unajiandikisha kwa: {{ locked_college.name }} ({{ locked_college.code }})</b><br>
+        Chuo hiki hakibadiliki — hakikisha ndicho chuo unachosoma.
+      </div>
+      {% else %}
       <div class="auth-note">
         Jaza taarifa zako. Bili zako za Ada na Mchango zitaundwa moja kwa moja
         baada ya kukamilisha usajili.
       </div>
+      {% endif %}
 
       {% if form.non_field_errors %}
         <div class="form-errors">
@@ -27,8 +34,16 @@
 
         <div class="form-group">
           <label>Chuo Chako *</label>
-          {{ form.college }}
-          <div class="help">Chagua chuo cha ualimu unachosoma. Programu zake zitaonekana papo hapo.</div>
+          {% if locked_college %}
+            <input type="hidden" name="college" value="{{ locked_college.id }}">
+            <select class="form-control" id="id_college" disabled>
+              <option value="{{ locked_college.id }}" selected>{{ locked_college.name }} ({{ locked_college.code }})</option>
+            </select>
+            <div class="help">Ulikuwa umelichagua chuo hiki kutoka kwenye orodha ya vyuo. Ili kubadilisha, rudi kwenye orodha ya vyuo na uchague kingine.</div>
+          {% else %}
+            {{ form.college }}
+            <div class="help">Chagua chuo cha ualimu unachosoma. Programu zake zitaonekana papo hapo.</div>
+          {% endif %}
         </div>
 
         <div class="form-row">
@@ -126,7 +141,10 @@
       programSelect.appendChild(opt);
     });
   }
-  collegeSelect.addEventListener('change', loadPrograms);
-  loadPrograms();
+  if (collegeSelect && programSelect) {
+    collegeSelect.addEventListener('change', loadPrograms);
+    // Ikiwa chuo kimefungwa (locked), programu zake zipakiwe moja kwa moja
+    loadPrograms();
+  }
 </script>
 {% endblock %}

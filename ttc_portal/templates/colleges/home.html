@@ -29,15 +29,16 @@
     <div class="section-head flex-between">
       <div>
         <h2 class="section-title">Vyuo Vyote vya Ualimu</h2>
-        <p class="section-sub">Chagua chuo chako kutoka kwenye orodha hii.</p>
+        <p class="section-sub">Chagua chuo chako — unachokichagua hapa ndicho kitawekwa kwenye bili zako.</p>
       </div>
+      <span class="badge badge-slate" id="collegeCount"></span>
     </div>
 
-    <form method="get" class="toolbar">
+    <form method="get" class="toolbar" id="collegeFilterForm">
       <div class="grow">
-        <input class="search-input" type="text" name="q" value="{{ query }}" placeholder="Tafuta chuo... mfano: Kasulu, Butimba, Morogoro">
+        <input class="search-input" type="text" name="q" id="collegeSearch" value="{{ query }}" placeholder="Tafuta chuo... mfano: Kasulu, Butimba, Morogoro" autocomplete="off">
       </div>
-      <select class="form-control" name="region" onchange="this.form.submit()" style="max-width:240px;">
+      <select class="form-control" name="region" id="regionFilter" style="max-width:240px;">
         <option value="">Mkoa Wote</option>
         {% for r in regions %}
           <option value="{{ r }}" {% if region == r %}selected{% endif %}>{{ r }}</option>
@@ -47,9 +48,9 @@
     </form>
 
     {% if colleges %}
-    <div class="college-grid">
+    <div class="college-grid" id="collegeGrid">
       {% for college in colleges %}
-      <a href="{% url 'college_detail' college.code %}" class="college-card">
+      <a href="{% url 'college_detail' college.code %}" class="college-card" data-name="{{ college.name|lower }}" data-region="{{ college.region|lower }}" data-code="{{ college.code|lower }}">
         <div class="college-card-top">
           <span class="code">{{ college.code }}</span>
           <div class="logo-big">{{ college.code }}</div>
@@ -64,6 +65,10 @@
       </a>
       {% endfor %}
     </div>
+    <div class="card empty" id="noResults" style="display:none;">
+      <b>Hakuna chuo kinacholingana na tafuta yako</b>
+      <p class="mt-2">Jaribu jina lingine au badilisha mkoa.</p>
+    </div>
     {% else %}
     <div class="card empty">
       <b>Hakuna chuo kilichopatikana</b>
@@ -73,4 +78,42 @@
   </div>
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Instant filtering — hakuna reload, inajibu mara moja unapoandika au kubadilisha mkoa
+  const searchInput = document.getElementById('collegeSearch');
+  const regionSelect = document.getElementById('regionFilter');
+  const grid = document.getElementById('collegeGrid');
+  const countEl = document.getElementById('collegeCount');
+  if (grid) {
+    const cards = Array.from(grid.querySelectorAll('.college-card'));
+    const total = cards.length;
+
+    function applyFilter() {
+      const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+      const reg = (regionSelect ? regionSelect.value : '').toLowerCase();
+      let visible = 0;
+      cards.forEach(card => {
+        const name = card.dataset.name || '';
+        const region = card.dataset.region || '';
+        const code = card.dataset.code || '';
+        const matchQ = !q || name.includes(q) || region.includes(q) || code.includes(q);
+        const matchR = !reg || region === reg;
+        const show = matchQ && matchR;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      if (countEl) countEl.textContent = visible + ' / ' + total + ' vyuo vimeonekana';
+      // onyesha tu grid ikiwa angalau kimoja kipo
+      grid.style.display = visible ? '' : 'none';
+      const empty = document.getElementById('noResults');
+      if (empty) empty.style.display = visible ? 'none' : '';
+    }
+    if (searchInput) searchInput.addEventListener('input', applyFilter);
+    if (regionSelect) regionSelect.addEventListener('change', applyFilter);
+    applyFilter();
+  }
+</script>
 {% endblock %}

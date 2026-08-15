@@ -89,6 +89,12 @@
                   {% if bill.status == 'paid' %}<span class="badge badge-green">Imelipwa</span>
                   {% elif bill.status == 'partially_paid' %}<span class="badge badge-amber">Sehemu</span>
                   {% else %}<span class="badge badge-red">Haijalipwa</span>{% endif %}
+                  {% if bill.status == 'partially_paid' %}
+                  <div class="bill-progress mt-2">
+                    <div class="progress"><div class="bar" style="width:{% widthratio bill.paid_amount bill.amount 100 %}%"></div></div>
+                    <div class="bill-progress-label">TZS {{ bill.paid_amount|floatformat:0 }} / {{ bill.amount|floatformat:0 }} imelipwa</div>
+                  </div>
+                  {% endif %}
                 </td>
                 <td>
                   {% if bill.control_number %}
@@ -205,6 +211,10 @@
       </div>
       <form method="post" id="payForm" action="">
         {% csrf_token %}
+        <div class="auth-note" style="padding:11px 14px;font-size:13px;">
+          Malipo yataingia kwenye akaunti ya <b>{{ student.college.name }} ({{ student.college.code }})</b> pekee.
+          Hakikisha namba ya malipo ni ya chuo hiki.
+        </div>
         <div class="form-group">
           <label>Kipengee</label>
           <input class="form-control" id="payItem" value="" disabled>
