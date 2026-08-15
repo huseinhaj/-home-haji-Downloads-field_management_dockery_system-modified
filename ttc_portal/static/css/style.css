@@ -479,6 +479,25 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
 }
 @media (max-width: 820px) { .footer-grid { grid-template-columns: 1fr; gap: 24px; } }
 
+/* ─────────── Dashboard: top tabs (My Information / Payment Details / Statement) ─────────── */
+.dash-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius);
+  padding: 8px; box-shadow: var(--shadow);
+}
+.dash-tab {
+  flex: 1; min-width: 160px; padding: 12px 18px; border: none; border-radius: 9px;
+  background: transparent; color: var(--gray-600); font-weight: 700; font-size: 14px;
+  font-family: inherit; cursor: pointer; transition: all .15s ease; text-align: center;
+}
+.dash-tab:hover { background: var(--green-50); color: var(--green-700); }
+.dash-tab.active {
+  background: linear-gradient(135deg, var(--green-700), var(--green-600));
+  color: #fff; box-shadow: 0 4px 14px -8px rgba(14, 122, 61, .5);
+}
+.dash-panel { display: none; }
+.dash-panel.active { display: block; }
+
 /* ─────────── Dashboard: year tabs + bill cards (HESLB-style) ─────────── */
 .year-tabs { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 2px solid var(--gray-200); padding-bottom: 12px; }
 .year-tab {
