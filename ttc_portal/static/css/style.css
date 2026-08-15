@@ -5,19 +5,19 @@
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Navy (primary) — bluu ya serikali, isiyo giza kama nyeusi ── */
-  --navy-950: #0d3b6e;
-  --navy-900: #124a8a;
-  --navy-800: #185aa6;
-  --navy-700: #216cc0;
-  --navy-600: #2f80d6;
-  /* ── Gold (accent) — rangi ya pili ── */
-  --gold-600: #a57d10;
-  --gold-500: #c8900a;
-  --gold-400: #d9a81e;
-  --gold-300: #e6c04a;
-  --gold-100: #fbf1d8;
-  --gold-50:  #fdf8ea;
+  /* ── Navy (primary) — Chrome/Google blue, nyepesi na rasmi ── */
+  --navy-950: #0b57d0;
+  --navy-900: #1a73e8;
+  --navy-800: #4285f4;
+  --navy-700: #669df6;
+  --navy-600: #a8c7fa;
+  /* ── Gold (accent) — silver/neutral ya chrome (sio dhahabu) ── */
+  --gold-600: #5f6368;
+  --gold-500: #80868b;
+  --gold-400: #9aa0a6;
+  --gold-300: #bdc1c6;
+  --gold-100: #e8eaed;
+  --gold-50:  #f1f3f4;
   /* ── Semantic (errors only) ── */
   --red-700: #b3261e;
   --red-600: #d6453b;
