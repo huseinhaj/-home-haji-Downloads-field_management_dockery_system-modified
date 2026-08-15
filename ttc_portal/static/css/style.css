@@ -18,6 +18,20 @@
   --gold-300: #e6c04a;
   --gold-100: #fbf1d8;
   --gold-50:  #fdf8ea;
+  /* ── Green (Coat of Arms) — kijani ya taifa ── */
+  --green-800: #0b5d2e;
+  --green-700: #0e7a3d;
+  --green-600: #149a4e;
+  --green-500: #1db45c;
+  --green-100: #e2f5ea;
+  --green-50:  #f2fbf5;
+  /* ── Blue (Coat of Arms) — bluu ya taifa (mawimbi ya nembo) ── */
+  --blue-800: #0a3d7a;
+  --blue-700: #0e5296;
+  --blue-600: #1468b8;
+  --blue-500: #1f7fd8;
+  --blue-100: #e3eefc;
+  --blue-50:  #f2f7fe;
   /* ── Semantic (errors only) ── */
   --red-700: #b3261e;
   --red-600: #d6453b;
@@ -327,22 +341,28 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
   overflow: hidden;
 }
 .auth-card.wide { max-width: 620px; }
+/* Rangi 3 za Nembo ya Taifa (Coat of Arms): Kijani, Dhahabu, Bluu */
+.auth-card::before {
+  content: ""; display: block; height: 6px;
+  background: linear-gradient(90deg, var(--green-600) 0 33.3%, var(--gold-500) 33.3% 66.6%, var(--blue-600) 66.6% 100%);
+}
 .auth-card-head {
-  background: linear-gradient(135deg, var(--navy-950), var(--navy-700));
+  background: linear-gradient(135deg, var(--green-700) 0%, var(--green-600) 38%, var(--gold-500) 72%, var(--blue-700) 100%);
   color: #fff; padding: 28px 28px 24px; text-align: center; position: relative;
 }
 .auth-card-head::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-  background: linear-gradient(90deg, var(--gold-500) 0 30%, var(--navy-700) 30% 45%, var(--gold-500) 45% 100%);
+  background: linear-gradient(90deg, var(--green-600) 0 33.3%, var(--gold-400) 33.3% 66.6%, var(--blue-600) 66.6% 100%);
 }
 .auth-card-head .emblem {
   width: 58px; height: 58px; margin: 0 auto 12px;
-  background: rgba(255,255,255,.08); border: 1.5px solid var(--gold-500);
+  background: linear-gradient(135deg, var(--green-700), var(--blue-700));
+  border: 1.5px solid var(--gold-400);
   border-radius: 14px; display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 19px; letter-spacing: 1px; color: var(--gold-300);
+  font-weight: 800; font-size: 19px; letter-spacing: 1px; color: #fff;
 }
 .auth-card-head h1 { font-size: 19px; font-weight: 800; margin: 0; color: #fff; letter-spacing: -.2px; }
-.auth-card-head .tag { font-size: 12px; opacity: .85; margin-top: 4px; color: var(--gold-300); }
+.auth-card-head .tag { font-size: 12px; opacity: .92; margin-top: 4px; color: #fff; }
 .auth-card-body { padding: 28px 28px 24px; }
 .auth-card-foot {
   background: var(--gray-50); border-top: 1px solid var(--gray-200);
