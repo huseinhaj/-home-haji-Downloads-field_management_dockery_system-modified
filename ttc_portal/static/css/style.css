@@ -5,12 +5,12 @@
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Black (primary) ── */
-  --black-950: #0a0a0c;
-  --black-900: #101014;
-  --black-800: #1a1a1f;
-  --black-700: #26262c;
-  --black-600: #34343c;
+  /* ── Black (primary) — soft navy-charcoal, sio pure black ── */
+  --black-950: #0e1219;
+  --black-900: #151b25;
+  --black-800: #1f2633;
+  --black-700: #2b3442;
+  --black-600: #3b4556;
   /* ── Gold (accent) — muted antique gold, sio kali ── */
   --gold-600: #7a6a42;
   --gold-500: #a08c55;
