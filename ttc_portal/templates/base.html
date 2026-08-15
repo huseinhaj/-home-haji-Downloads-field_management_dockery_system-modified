@@ -57,7 +57,6 @@
     </button>
 
     <div class="nav-links">
-      <a href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' %}class="active"{% endif %}>Nyumbani</a>
       {% if user.is_authenticated %}
         {% if user.is_student %}
           <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
