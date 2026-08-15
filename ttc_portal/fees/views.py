@@ -28,27 +28,67 @@ def _get_own_bill(user, bill_id):
 
 @login_required
 def generate_control(request, bill_id):
-    """SR2 flow: student generates a unique control number for an unpaid bill."""
+    """Mwanafunzi HAWEZI tena kuzalisha control number — hii ni kazi ya mhasibu.
+
+    Endpoint hii imeachwa kwa ajili ya maelewano ya nyuma (backwards
+    compatibility), lakini inamwelekeza mwanafunzi kumwona mhasibu wa chuo.
+    """
     student, bill = _get_own_bill(request.user, bill_id)
     if student is None:
         messages.error(request, 'Akaunti yako si ya mwanafunzi.')
         return redirect('home')
 
-    if bill.is_fully_paid:
-        messages.warning(request, 'Bili hii tayari imelipwa kikamilifu.')
-        return redirect('dashboard')
+    messages.info(
+        request,
+        'Namba ya malipo inazalishwa na mhasibu wa chuo chako. '
+        'Wasiliana na mhasibu wa ' + bill.student.college.short_name + ' ili kujaza namba yako.',
+    )
+    return redirect('dashboard')
 
-    if bill.control_number and control_number_is_valid(bill):
-        messages.info(request, 'Ukweli: una namba ya malipo inayofanya kazi tayari.')
+
+@login_required
+def student_fetch_control_numbers(request):
+    """Mwanafunzi anafetch (kujaza) control numbers zote za mwaka huo — mtindo wa UDOM.
+
+    Mwanafunzi anaweza kuwa na bili zisizo na namba ya malipo (mhasibu bado
+    hajazaa) au zilizomalizika muda (expired). Kwa kubofya 'Fetch Control
+    Numbers', mfumo unajaza namba zote za mwaka huo kwa bili zake ambazo
+    hazina namba halali. Hii inawezesha mwanafunzi kuanza kulipa bila
+    kusubiri mhasibu.
+    """
+    student = getattr(request.user, 'student_profile', None)
+    if student is None:
+        messages.error(request, 'Akaunti yako si ya mwanafunzi.')
+        return redirect('home')
+
+    from .services import academic_year_now
+
+    year = request.GET.get('year', '').strip() or academic_year_now()
+    bills = (
+        FeeBill.objects
+        .filter(student=student, academic_year=year)
+        .select_related('fee_item')
+    )
+
+    made = 0
+    for bill in bills:
+        if bill.is_fully_paid:
+            continue
+        if bill.control_number and control_number_is_valid(bill):
+            continue
+        if generate_control_number(bill):
+            made += 1
+
+    if made:
+        messages.success(
+            request,
+            f'Namba {made} za malipo za mwaka {year} zimejazwa (fetched) kwa bili zako.',
+        )
     else:
-        control_number = generate_control_number(bill)
-        if control_number:
-            messages.success(
-                request,
-                f"Namba yako ya malipo imezalishwa: {control_number}",
-            )
-        else:
-            messages.error(request, 'Imeshindikana kuzalisha namba ya malipo. Jaribu tena.')
+        messages.info(
+            request,
+            f'Bili zako za mwaka {year} tayari zina namba za malipo zinazofanya kazi.',
+        )
     return redirect('dashboard')
 
 
@@ -146,11 +186,124 @@ def gepg_notification(request):
     )
 
 
-# ───────────────────────────── College admin: fees & payments ─────────────────────────────
+# ───────────────────────────── Mhasibu wa chuo: control numbers ─────────────────────────────
 
 def _get_admin_college(user):
     profile = getattr(user, 'college_admin_profile', None)
     return profile.college if profile else None
+
+
+@login_required
+def admin_control_numbers(request):
+    """Mhasibu (msimamizi wa chuo) anagenerate control numbers za mwaka huo.
+
+    Mwanafunzi HAWEZI tena kuzalisha control number — hii ni kazi ya mhasibu:
+    anachagua mwaka (default: mwaka huu), anaona bili za wanafunzi wa chuo
+    chake, na anagenerate kwa bili moja au kwa zote za mwaka huo mara moja.
+    """
+    college = _get_admin_college(request.user)
+    if college is None:
+        messages.error(request, 'Huna ruhusa ya kufikia ukurasa huu.')
+        return redirect('home')
+
+    from .services import academic_year_now
+
+    selected_year = request.GET.get('year', '').strip() or academic_year_now()
+
+    # Bili za mwaka huo za wanafunzi wa chuo — zenye namba halali zinaonyeshwa,
+    # zisizo na namba zinaweza kuzalishwa.
+    bills = (
+        FeeBill.objects
+        .filter(student__college=college, academic_year=selected_year)
+        .select_related('student', 'fee_item')
+        .order_by('student__full_name', 'fee_item__name')
+    )
+
+    pending = [b for b in bills if not (b.control_number and control_number_is_valid(b))]
+    generated = [b for b in bills if b.control_number and control_number_is_valid(b)]
+
+    context = {
+        'college': college,
+        'selected_year': selected_year,
+        'years': sorted(
+            set(FeeBill.objects.filter(student__college=college)
+                .values_list('academic_year', flat=True)),
+            reverse=True,
+        ),
+        'pending_bills': pending,
+        'generated_bills': generated,
+        'mode_label': gepg.gepg_mode_label(),
+        # Akaunti ya College Contribution ni CONSTANT kwa vyuo vyote (settings)
+        'contribution_account_number': getattr(settings, 'TTC_CONTRIBUTION_ACCOUNT_NUMBER', ''),
+        'contribution_account_name': getattr(settings, 'TTC_CONTRIBUTION_ACCOUNT_NAME', ''),
+        'contribution_bank_name': getattr(settings, 'TTC_CONTRIBUTION_BANK_NAME', ''),
+    }
+    return render(request, 'fees/admin_control_numbers.html', context)
+
+
+@login_required
+def admin_control_generate(request, bill_id):
+    """Mhasibu anagenerate control number kwa bili moja."""
+    college = _get_admin_college(request.user)
+    if college is None:
+        return redirect('home')
+    bill = get_object_or_404(FeeBill, id=bill_id, student__college=college)
+
+    if bill.is_fully_paid:
+        messages.warning(request, 'Bili hii tayari imelipwa kikamilifu.')
+    elif bill.control_number and control_number_is_valid(bill):
+        messages.info(
+            request,
+            f'{bill.student.full_name} — {bill.fee_item.name}: namba ya malipo inayofanya kazi tayari ipo.',
+        )
+    else:
+        control_number = generate_control_number(bill)
+        if control_number:
+            messages.success(
+                request,
+                f'{bill.student.full_name} — {bill.fee_item.name}: namba ya malipo imezalishwa ({control_number}).',
+            )
+        else:
+            messages.error(request, 'Imeshindikana kuzalisha namba ya malipo. Jaribu tena.')
+    return redirect(request.GET.get('next') or 'admin_control_numbers')
+
+
+@login_required
+def admin_control_generate_all(request):
+    """Mhasibu anagenerate control numbers kwa BILI ZOTE za mwaka huo kwa chuo chake."""
+    college = _get_admin_college(request.user)
+    if college is None:
+        return redirect('home')
+
+    from .services import academic_year_now
+
+    selected_year = request.GET.get('year', '').strip() or academic_year_now()
+    bills = (
+        FeeBill.objects
+        .filter(student__college=college, academic_year=selected_year)
+        .select_related('student', 'fee_item')
+    )
+
+    made = 0
+    for bill in bills:
+        if bill.is_fully_paid:
+            continue
+        if bill.control_number and control_number_is_valid(bill):
+            continue
+        if generate_control_number(bill):
+            made += 1
+
+    if made:
+        messages.success(
+            request,
+            f'Namba {made} za malipo zimezalishwa kwa mwaka {selected_year}.',
+        )
+    else:
+        messages.info(
+            request,
+            f'Bili za mwaka {selected_year} zote tayari zina namba za malipo zinazofanya kazi.',
+        )
+    return redirect(f'admin_control_numbers?year={selected_year}')
 
 
 @login_required

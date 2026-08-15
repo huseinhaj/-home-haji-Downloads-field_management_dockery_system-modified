@@ -540,6 +540,14 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
 .bill-grid .money { font-variant-numeric: tabular-nums; }
 .money.green { color: var(--green-700); }
 .money.red { color: var(--red-600); }
+.fetch-controls {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  margin-top: 18px; padding: 14px 18px; border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--blue-50), #fff);
+  border: 1.5px dashed var(--blue-600);
+}
+.fetch-controls b { color: var(--blue-700); font-size: 13.5px; }
+.fetch-controls .small { margin-top: 2px; }
 
 /* ─────────── Empty state ─────────── */
 .empty { text-align: center; padding: 52px 20px; color: var(--gray-500); }

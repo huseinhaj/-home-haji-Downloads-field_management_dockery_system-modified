@@ -145,6 +145,18 @@ def dashboard(request):
     if profile_form is None:
         profile_form = StudentProfileForm(instance=student)
 
+    # Bili zisizo na namba halali kwa kila mwaka — zinatumiwa na link ya
+    # 'Fetch Control Numbers' (mtindo wa UDOM): mwanafunzi anajaza zote kwa
+    # mwaka huo kwa kitufe kimoja.
+    from fees.services import control_number_is_valid
+    missing_by_year = {}
+    for year, year_bills in bills_by_year.items():
+        missing_by_year[year] = sum(
+            1 for b in year_bills
+            if not (b.control_number and control_number_is_valid(b))
+            and not b.is_fully_paid
+        )
+
     context = {
         'student': student,
         'bills_by_year': bills_by_year,
@@ -154,6 +166,7 @@ def dashboard(request):
         'academic_year': current_year,
         'paid_percent': round((student.total_paid / student.total_billed * 100) if student.total_billed else 0),
         'profile_form': profile_form,
+        'missing_by_year': missing_by_year,
         # Akaunti ya College Contribution ni CONSTANT kwa vyuo vyote (settings)
         'contribution_account_number': getattr(settings, 'TTC_CONTRIBUTION_ACCOUNT_NUMBER', ''),
         'contribution_bank_name': getattr(settings, 'TTC_CONTRIBUTION_BANK_NAME', ''),

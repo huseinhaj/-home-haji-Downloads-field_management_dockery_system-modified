@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize portal_filters %}
 {% block title %}Dashboard — {{ student.full_name }}{% endblock %}
 
 {% block content %}
@@ -117,9 +117,9 @@
                 · {{ bill.academic_year }}
               </span>
             </div>
-            {% if bill.status == 'paid' %}<span class="badge badge-green">Imelipwa</span>
-            {% elif bill.status == 'partially_paid' %}<span class="badge badge-amber">Sehemu</span>
-            {% else %}<span class="badge badge-red">Haijalipwa</span>{% endif %}
+            {% if bill.status == 'paid' %}<span class="badge badge-green">Paid (Imelipwa)</span>
+            {% elif bill.status == 'partially_paid' %}<span class="badge badge-amber">Partial (Nusu)</span>
+            {% else %}<span class="badge badge-red">Outstanding (Haijalipwa)</span>{% endif %}
           </div>
 
           <div class="bill-card-body">
@@ -184,6 +184,16 @@
           </div>
         </div>
         {% endfor %}
+
+        {% if missing_by_year|get_item:year %}
+        <div class="fetch-controls mt-3">
+          <div>
+            <b>Control numbers za mwaka {{ year }} hazijajazwa bado</b>
+            <div class="small muted">Bofya hapa kuzijaza zote kwa mara moja (fetched kutoka mfumo wa malipo).</div>
+          </div>
+          <a class="btn btn-gold btn-sm" href="{% url 'student_fetch_control_numbers' %}?year={{ year }}">Fetch Control Numbers</a>
+        </div>
+        {% endif %}
       </div>
       {% endfor %}
       {% else %}
