@@ -1,5 +1,5 @@
-from django.shortcuts import render, get_object_or_404
-from .models import College
+from django.shortcuts import render
+from .models import College, Program
 
 
 def home(request):

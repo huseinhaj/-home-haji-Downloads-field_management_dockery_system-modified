@@ -130,8 +130,7 @@
   async function loadPrograms() {
     const collegeId = collegeSelect.value;
     if (!collegeId) { programSelect.innerHTML = '<option value="">--- Chagua Chuo kwanza ---</option>'; return; }
-    const base = '{{ request.script_name }}' || '';
-    const resp = await fetch(`${base}/api/programs/?college=${collegeId}`);
+    const resp = await fetch(`{% url 'programs_api' %}?college=${collegeId}`);
     const data = await resp.json();
     programSelect.innerHTML = '<option value="">--- Chagua Programu ---</option>';
     data.forEach(p => {

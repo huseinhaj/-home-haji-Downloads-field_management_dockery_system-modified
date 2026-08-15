@@ -88,3 +88,25 @@
   </div>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+  // Programu za chuo cha msimamizi pekee (college ni hidden — imefungwa kwa admin)
+  const collegeSelect = document.getElementById('id_college');
+  const programSelect = document.getElementById('id_program');
+  async function loadPrograms() {
+    const collegeId = collegeSelect.value;
+    if (!collegeId) { return; }
+    const resp = await fetch(`{% url 'programs_api' %}?college=${collegeId}`);
+    const data = await resp.json();
+    programSelect.innerHTML = '<option value="">--- Chagua Programu ---</option>';
+    data.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      programSelect.appendChild(opt);
+    });
+  }
+  if (collegeSelect && programSelect) { loadPrograms(); }
+</script>
+{% endblock %}

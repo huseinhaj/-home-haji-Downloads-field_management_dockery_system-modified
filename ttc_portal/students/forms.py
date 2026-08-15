@@ -30,11 +30,11 @@ class StudentRegistrationForm(forms.Form):
         widget=forms.NumberInput(attrs={'class': 'form-control'}),
     )
     year_of_study = forms.ChoiceField(
-        choices=[(1, 'Mwaka wa 1'), (2, 'Mwaka wa 2')], label='Mwaka wa Masomo',
+        choices=[(1, 'Mwaka wa 1'), (2, 'Mwaka wa 2'), (3, 'Mwaka wa 3')], label='Mwaka wa Masomo',
         widget=forms.Select(attrs={'class': 'form-control'}),
     )
     gender = forms.ChoiceField(
-        choices=[('', '--- Chagua ---'), ('M', 'Mume'), ('F', 'Mke')],
+        choices=[('', '--- Chagua ---'), ('M', 'Male'), ('F', 'Female')],
         required=False, label='Jinsia',
         widget=forms.Select(attrs={'class': 'form-control'}),
     )
@@ -116,11 +116,11 @@ class CompleteStudentForm(forms.Form):
         widget=forms.NumberInput(attrs={'class': 'form-control'}),
     )
     year_of_study = forms.ChoiceField(
-        choices=[(1, 'Mwaka wa 1'), (2, 'Mwaka wa 2')], label='Mwaka wa Masomo',
+        choices=[(1, 'Mwaka wa 1'), (2, 'Mwaka wa 2'), (3, 'Mwaka wa 3')], label='Mwaka wa Masomo',
         widget=forms.Select(attrs={'class': 'form-control'}),
     )
     gender = forms.ChoiceField(
-        choices=[('', '--- Chagua ---'), ('M', 'Mume'), ('F', 'Mke')],
+        choices=[('', '--- Chagua ---'), ('M', 'Male'), ('F', 'Female')],
         required=False, label='Jinsia',
         widget=forms.Select(attrs={'class': 'form-control'}),
     )
