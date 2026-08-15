@@ -200,7 +200,16 @@ main { flex: 1; }
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
   background: linear-gradient(90deg, var(--navy-900) 0 30%, var(--gold-500) 30% 55%, var(--navy-900) 55% 100%);
 }
-.hero .container { position: relative; padding-top: 90px; padding-bottom: 90px; text-align: center; }
+.hero .container { position: relative; padding-top: 70px; padding-bottom: 90px; text-align: center; }
+.hero-logo {
+  width: 108px; height: 108px; margin: 0 auto 22px;
+  background: #fff; border-radius: 50%;
+  border: 3px solid var(--gold-500);
+  box-shadow: 0 14px 34px -12px rgba(13, 101, 45, .35);
+  display: flex; align-items: center; justify-content: center;
+  padding: 9px;
+}
+.hero-logo svg { width: 100%; height: 100%; display: block; }
 .hero h1 { font-size: clamp(30px, 4.6vw, 42px); font-weight: 800; letter-spacing: -.6px; max-width: 760px; margin: 0 auto 12px; line-height: 1.15; color: var(--navy-950); }
 .hero p { font-size: 16px; color: var(--gray-600); max-width: 640px; margin: 0 auto; }
 .hero-actions { display: flex; gap: 12px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
@@ -351,12 +360,14 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
   background: linear-gradient(90deg, var(--navy-900) 0 30%, var(--gold-500) 30% 55%, var(--navy-900) 55% 100%);
 }
 .auth-card-head .emblem {
-  width: 58px; height: 58px; margin: 0 auto 12px;
-  background: rgba(255,255,255,.08);
-  border: 1.5px solid var(--gold-400);
-  border-radius: 14px; display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 19px; letter-spacing: 1px; color: var(--gold-300);
+  width: 66px; height: 66px; margin: 0 auto 14px;
+  background: #fff;
+  border: 2.5px solid var(--gold-400);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 18px -6px rgba(0,0,0,.28);
+  padding: 6px;
 }
+.auth-card-head .emblem svg { width: 100%; height: 100%; display: block; }
 .auth-card-head h1 { font-size: 19px; font-weight: 800; margin: 0; color: #fff; letter-spacing: -.2px; }
 .auth-card-head .tag { font-size: 12px; opacity: .92; margin-top: 4px; color: #fff; }
 .auth-card-body { padding: 28px 28px 24px; }
