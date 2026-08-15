@@ -21,15 +21,15 @@
   <!-- Financial summary -->
   <div class="stats-grid mt-4">
     <div class="card stat-card">
-      <div class="s-ico">TZS</div>
+      <div class="s-ico blue">TZS</div>
       <div><b>{{ student.total_billed|floatformat:0 }}</b><span>Jumla ya Bili (Ada + Michango)</span></div>
     </div>
     <div class="card stat-card">
-      <div class="s-ico">TZS</div>
+      <div class="s-ico green">TZS</div>
       <div><b>{{ student.total_paid|floatformat:0 }}</b><span>Malipo Yaliyothibitishwa</span></div>
     </div>
     <div class="card stat-card">
-      <div class="s-ico {% if student.has_balance %}red{% else %}gold{% endif %}">TZS</div>
+      <div class="s-ico {% if student.has_balance %}red{% else %}green{% endif %}">TZS</div>
       <div>
         <b>{{ student.balance_due|floatformat:0 }}</b>
         <span>{% if student.has_balance %}Deni (Unachodaiwa){% else %}Hakuna Deni{% endif %}</span>
