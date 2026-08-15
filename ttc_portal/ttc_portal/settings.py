@@ -205,6 +205,20 @@ TTC_CONTROL_NUMBER_PREFIX = os.environ.get('TTC_CONTROL_NUMBER_PREFIX', '99')
 TTC_CONTROL_NUMBER_LIFETIME_DAYS = int(os.environ.get('TTC_CONTROL_NUMBER_LIFETIME_DAYS', '30'))
 TTC_SYSTEM_NAME = os.environ.get('TTC_SYSTEM_NAME', 'TTC Student Portal')
 
+# ── College Contribution (Mchango wa Chuo) — akaunti CONSTANT kwa vyuo vyote ──
+# Kinyume na Tuition (ambayo inatofautiana kwa kila chuo na imehifadhiwa kwenye
+# College.tuition_account_number), akaunti ya college contribution ni MOJA kwa
+# vyuo vyote vya ualimu — namba hii inajazwa hapa mara moja.
+TTC_CONTRIBUTION_ACCOUNT_NUMBER = os.environ.get(
+    'TTC_CONTRIBUTION_ACCOUNT_NUMBER', ''
+)
+TTC_CONTRIBUTION_ACCOUNT_NAME = os.environ.get(
+    'TTC_CONTRIBUTION_ACCOUNT_NAME', 'College Contribution Account'
+)
+TTC_CONTRIBUTION_BANK_NAME = os.environ.get(
+    'TTC_CONTRIBUTION_BANK_NAME', 'Benki Kuu ya Tanzania (BOT)'
+)
+
 # ── Real GePG (Government e-Payment Gateway) integration ──────────────────
 # Credentials hizi zinapatikana baada ya PSP registration na GePG (kupitia
 # benki yako au GePG moja kwa moja) — tazama README sehemu ya GePG.

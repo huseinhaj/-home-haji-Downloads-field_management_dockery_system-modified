@@ -21,6 +21,18 @@ class College(models.Model):
     phone = models.CharField(max_length=20, blank=True, verbose_name='Namba ya Simu')
     address = models.CharField(max_length=255, blank=True, verbose_name='Anwani (P.O.Box)')
     website = models.URLField(blank=True, verbose_name='Tovuti')
+    tuition_account_number = models.CharField(
+        max_length=30, blank=True, verbose_name='Tuition Akaunti Namba',
+        help_text='Namba ya akaunti ya benki ya Tuition — inatofautiana kwa kila chuo.',
+    )
+    tuition_bank_name = models.CharField(
+        max_length=100, blank=True, verbose_name='Tuition Benki (Jina la Benki)',
+        help_text='mfano: NMB, CRDB, NBC',
+    )
+    tuition_account_name = models.CharField(
+        max_length=150, blank=True, verbose_name='Tuition Jina la Akaunti',
+        help_text='Jina la mmiliki wa akaunti ya tuition.',
+    )
     description = models.TextField(blank=True, verbose_name='Maelezo')
     logo = models.ImageField(
         upload_to='college_logos/', blank=True, null=True, verbose_name='Nembo (Logo)',

@@ -2,12 +2,11 @@
 {% block title %}TTC Student Portal — Malipo ya Ada na Michango{% endblock %}
 
 {% block content %}
-<!-- Official landing hero -->
+<!-- Official landing hero — fupi na rasmi -->
 <section class="hero">
   <div class="container">
-    <span class="tagline">Mfumo Rasmi wa Serikali</span>
     <h1>TTC Student Portal</h1>
-    <p>Mfumo rasmi wa malipo ya Ada na Michango kwa wanafunzi wa Vyuo vya Ualimu Tanzania.</p>
+    <p>Official Fee and Contribution Payment System</p>
     <div class="hero-actions">
       {% if user.is_authenticated %}
         {% if user.is_student %}
@@ -22,35 +21,6 @@
         <a href="{% url 'login' %}" class="btn btn-gold">Ingia</a>
         <a href="{% url 'register' %}" class="btn btn-light">Jiandikishe</a>
       {% endif %}
-    </div>
-  </div>
-</section>
-
-<!-- Minimal info strip -->
-<section class="section" style="padding:36px 0;">
-  <div class="container">
-    <div class="grid-3" style="max-width:900px;margin:0 auto;">
-      <div class="card card-pad" style="text-align:center;">
-        <div class="stat-card" style="padding:0;">
-          <div class="s-ico green" style="margin:0 auto 12px;">TZS</div>
-          <b style="font-size:16px;">Malipo Salama</b>
-          <span style="display:block;margin-top:4px;">Ada na Michango kupitia namba za malipo (Control Number)</span>
-        </div>
-      </div>
-      <div class="card card-pad" style="text-align:center;">
-        <div class="stat-card" style="padding:0;">
-          <div class="s-ico gold" style="margin:0 auto 12px;">HTTPS</div>
-          <b style="font-size:16px;">Usalama wa Hali ya Juu</b>
-          <span style="display:block;margin-top:4px;">Mawasiliano yamelindwa (HTTPS) na kumbukumbu zote zimehifadhiwa kwa usalama</span>
-        </div>
-      </div>
-      <div class="card card-pad" style="text-align:center;">
-        <div class="stat-card" style="padding:0;">
-          <div class="s-ico blue" style="margin:0 auto 12px;">TTC</div>
-          <b style="font-size:16px;">Vyuo vya Ualimu</b>
-          <span style="display:block;margin-top:4px;">Huduma kwa wanafunzi wa vyuo vya ualimu nchini Tanzania</span>
-        </div>
-      </div>
     </div>
   </div>
 </section>

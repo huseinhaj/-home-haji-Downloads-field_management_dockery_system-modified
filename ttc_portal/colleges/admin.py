@@ -16,6 +16,14 @@ class CollegeModelAdmin(admin.ModelAdmin):
     prepopulated_fields = {'code': ('short_name',)}
     inlines = [ProgramInline]
     ordering = ('name',)
+    fieldsets = (
+        (None, {'fields': ('name', 'short_name', 'code', 'region', 'district',
+                           'established', 'description', 'is_active')}),
+        ('Mawasiliano', {'fields': ('email', 'phone', 'address', 'website', 'logo')}),
+        ('Akaunti ya Tuition (inatumika kwa malipo ya ada)', {'fields': (
+            'tuition_account_number', 'tuition_bank_name', 'tuition_account_name',
+        )}),
+    )
 
 
 @admin.register(Program)
