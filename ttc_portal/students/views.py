@@ -10,6 +10,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 
 from accounts.models import CustomUser
 from colleges.models import College
+from fees.gepg import gepg_mode_label
 from fees.services import create_bills_for_student, academic_year_now
 from .forms import StudentRegistrationForm, AdminStudentForm, CompleteStudentForm, StudentProfileForm
 from .models import Student
@@ -170,6 +171,8 @@ def dashboard(request):
         # Akaunti ya College Contribution ni CONSTANT kwa vyuo vyote (settings)
         'contribution_account_number': getattr(settings, 'TTC_CONTRIBUTION_ACCOUNT_NUMBER', ''),
         'contribution_bank_name': getattr(settings, 'TTC_CONTRIBUTION_BANK_NAME', ''),
+        # Hali ya integration ya GePG — mwanafunzi anafetch moja kwa moja
+        'gepg_mode': gepg_mode_label(),
     }
     return render(request, 'students/dashboard.html', context)
 

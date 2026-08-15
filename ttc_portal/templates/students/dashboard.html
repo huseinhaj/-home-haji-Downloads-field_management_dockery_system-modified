@@ -189,10 +189,10 @@
           <div>
             {% if missing_by_year|get_item:year %}
             <b>Control numbers za mwaka {{ year }} hazijajazwa bado</b>
-            <div class="small muted">Bofya hapa kuzijaza zote kwa mara moja (fetched kutoka mfumo wa malipo).</div>
+            <div class="small muted">Bofya hapa kuzijaza zote kwa mara moja — zinazalishwa moja kwa moja na mfumo wa malipo ({{ gepg_mode }}). Huna haja ya kumtafuta mhasibu.</div>
             {% else %}
             <b>Control numbers za mwaka {{ year }} zipo</b>
-            <div class="small muted">Bofya hapa kufetch upya / kuangalia namba zako za malipo.</div>
+            <div class="small muted">Bofya hapa kufetch upya / kuangalia namba zako za malipo ({{ gepg_mode }}).</div>
             {% endif %}
           </div>
           <a class="btn btn-gold btn-sm" href="{% url 'student_fetch_control_numbers' %}?year={{ year }}">Fetch Control Numbers</a>

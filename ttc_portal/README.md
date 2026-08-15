@@ -112,6 +112,23 @@ GePG **haitoi credentials kiotomatiki** — unahitaji kuwa PSP/SP:
 > **Ikiwa hazijawekwa**, mfumo unatumia **simulated control numbers** kiotomatiki —
 > portal inaendelea kufanya kazi hadi GePG iko tayari.
 
+### Mwanafunzi anafetch control numbers MOJA KWA MOJA (bila mhasibu)
+
+Mfumo unatoa njia mbili za kuzalisha control numbers, zote mbili zinaendesha
+GePG halisi (au simulated) moja kwa moja:
+
+1. **Mwanafunzi (Fetch Control Numbers)** — kwenye dashboard, chini ya tab ya
+   kila mwaka kuna link **"Fetch Control Numbers"**. Mwanafunzi anabofya →
+   mfumo unazalisha namba kwa bili zake zote za mwaka huo mara moja, pasipo
+   kumtafuta mhasibu. (`/dashboard/fetch-control-numbers/`)
+2. **Mhasibu wa chuo (batch)** — ukurasa wa **"Namba za Malipo"** kwenye jopo
+   la msimamizi wa chuo: anachagua mwaka na kugenerate kwa bili zote za chuo
+   chake kwa kitufe kimoja. (`/college-admin/control-numbers/`)
+
+Kwa hiyo mwanafunzi **hatalazimika kumtafuta mhasibu** — namba inatoka moja
+kwa moja kwenye GePG/system ya malipo. Mhasibu anabaki kwa ajili ya kuangalia
+na kuthibitisha malipo yaliyowasilishwa.
+
 ### Kupima webhook (sandbox)
 
 ```bash
