@@ -7,17 +7,6 @@ def home(request):
     return render(request, 'colleges/home.html')
 
 
-def college_detail(request, code):
-    college = get_object_or_404(College, code=code.upper(), is_active=True)
-    programs = college.programs.all()
-    fee_items = college.fee_items.filter(is_active=True)
-    context = {
-        'college': college,
-        'programs': programs,
-        'fee_items': fee_items,
-    }
-    return render(request, 'colleges/college_detail.html', context)
-
 
 def programs_api(request):
     """JSON list of programs for a college (used by the register form dropdown)."""
