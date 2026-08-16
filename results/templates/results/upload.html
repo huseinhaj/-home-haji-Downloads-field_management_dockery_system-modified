@@ -235,6 +235,20 @@
       alert('Tafadhali ongeza masomo angalau moja.');
     }
   });
+
+  // ── Auto-generate exam name from type + year (bado anaweza kubadilisha) ──
+  const nameInput = document.querySelector('[name=exam_name]');
+  const typeSel = document.querySelector('[name=exam_type_new]');
+  const yearInput = document.querySelector('[name=exam_year]');
+  function autoName() {
+    if (!nameInput || !typeSel) return;
+    const label = typeSel.options[typeSel.selectedIndex]?.text || '';
+    const year = yearInput ? yearInput.value : new Date().getFullYear();
+    if (label) nameInput.value = `${label} ${year}`;
+  }
+  if (typeSel) typeSel.addEventListener('change', autoName);
+  if (yearInput) yearInput.addEventListener('change', autoName);
+  autoName();
 })();
 </script>
 {% endblock %}

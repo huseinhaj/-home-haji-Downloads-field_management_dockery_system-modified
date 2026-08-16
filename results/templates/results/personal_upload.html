@@ -37,7 +37,13 @@
           </div>
           <div class="field">
             <label for="title">{% if LANG == 'sw' %}Jina la Tathmini{% else %}Assessment Name{% endif %}</label>
-            <input type="text" name="title" id="title" class="form-control" placeholder="{% if LANG == 'sw' %}mf. Mtihani wa Mwezi - Julai 2026{% else %}e.g. Monthly Test - July 2026{% endif %}" required>
+            <select name="title" id="title" class="form-select" required>
+              <option value="">— {% if LANG == 'sw' %}Chagua Aina ya Tathmini{% else %}Choose Assessment Type{% endif %} —</option>
+              {% for val, label in exam_type_choices %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+            <div class="hint mt-1">{% if LANG == 'sw' %}Chagua aina ya tathmini (mf. Monthly Test, Midterm, Terminal, n.k.){% else %}Pick the assessment type (e.g. Monthly Test, Midterm, Terminal, etc.){% endif %}</div>
           </div>
           <div class="field">
             <label for="file">{% if LANG == 'sw' %}Faili la Alama{% else %}Scores File{% endif %} (.xlsx, .xls, .csv)</label>

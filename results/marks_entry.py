@@ -46,7 +46,14 @@ def marks_entry(request):
         )
         return redirect('select_my_subjects')
 
-    exams = Exam.objects.filter(school=teacher.school).order_by('-year', 'name')
+    # Mitihani ya shule ya mwalimu. Kama mwalimu hana shule iliyowekwa
+    # au shule yake haina mitihani bado, onyesha mitihani yote
+    # (fallback) ili dropdown isiwe tupu.
+    school_exams = Exam.objects.filter(school=teacher.school).order_by('-year', 'name')
+    if teacher.school and school_exams.exists():
+        exams = school_exams
+    else:
+        exams = Exam.objects.order_by('-year', 'name')
     exam_id = request.GET.get('exam') or ''
     subject_id = request.GET.get('subject') or ''
     review_mode = request.GET.get('review') == '1'

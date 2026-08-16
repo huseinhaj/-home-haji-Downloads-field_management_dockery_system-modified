@@ -16,6 +16,8 @@ first time and setting their own password.
 
 from __future__ import annotations
 
+import json
+
 from django.contrib import messages
 from django.contrib.auth import login
 from django.http import JsonResponse
@@ -155,4 +157,24 @@ def register_school_confirm(request):
     )
     # Log them in straight away — their account is already activated
     login(request, account, backend='results.backends.ResultsAuthBackend')
-    return redirect('academic_dashboard')
+    response = redirect('academic_dashboard')
+    # Kumbuka email kwenye list ya recent-logins (inavyotumiwa na login page)
+    from .auth_views import RECENT_EMAILS_COOKIE, RECENT_EMAILS_MAX
+    try:
+        emails = json.loads(request.COOKIES.get(RECENT_EMAILS_COOKIE, '[]') or '[]')
+        if not isinstance(emails, list):
+            emails = []
+    except (ValueError, TypeError):
+        emails = []
+    if email in emails:
+        emails.remove(email)
+    emails.insert(0, email)
+    emails = emails[:RECENT_EMAILS_MAX]
+    response.set_cookie(
+        RECENT_EMAILS_COOKIE,
+        json.dumps(emails),
+        max_age=60 * 60 * 24 * 365,
+        samesite='Lax',
+        httponly=False,
+    )
+    return response

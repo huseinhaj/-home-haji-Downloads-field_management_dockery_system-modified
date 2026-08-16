@@ -1,3 +1,5 @@
+import json
+
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.password_validation import validate_password
@@ -10,6 +12,45 @@ from .models import TeacherAccount
 from .permissions import academic_required
 
 RESULTS_BACKEND = 'results.backends.ResultsAuthBackend'
+
+# ── Recent-logins cookie: kumbuka emails zilizotumika ili mtumiaji
+#    achague tu kwenye login badala ya kuandika upya kila mara ───────────
+RECENT_EMAILS_COOKIE = 'recent_emails'
+RECENT_EMAILS_MAX = 6
+
+
+def _get_recent_emails(request):
+    raw = request.COOKIES.get(RECENT_EMAILS_COOKIE, '')
+    if not raw:
+        return []
+    try:
+        emails = json.loads(raw)
+        if isinstance(emails, list):
+            return [e for e in emails if isinstance(e, str)][:RECENT_EMAILS_MAX]
+    except (ValueError, TypeError):
+        pass
+    return []
+
+
+def _remember_email(request, response, email):
+    """Add an email to the recent-logins cookie on the outgoing response.
+    Pass the request (for existing cookies) and the response from
+    redirect/render so the Set-Cookie ships with it."""
+    if not email:
+        return response
+    emails = _get_recent_emails(request)
+    if email in emails:
+        emails.remove(email)
+    emails.insert(0, email)
+    emails = emails[:RECENT_EMAILS_MAX]
+    response.set_cookie(
+        RECENT_EMAILS_COOKIE,
+        json.dumps(emails),
+        max_age=60 * 60 * 24 * 365,  # 1 year
+        samesite='Lax',
+        httponly=False,
+    )
+    return response
 
 
 def _redirect_for_role(account):
@@ -40,15 +81,25 @@ def results_login(request):
         account = _lookup_account(email)
         if account is None:
             messages.error(request, "Email hii haipo kwenye mfumo. Wasiliana na Afisa Taaluma.")
-            return render(request, 'results/login.html', {'step': 'email'})
+            return render(request, 'results/login.html', {
+                'step': 'email',
+                'recent_emails': _get_recent_emails(request),
+            })
         next_step = 'login' if account.is_activated else 'activate'
-        return render(request, 'results/login.html', {'step': next_step, 'email': email})
+        return render(request, 'results/login.html', {
+            'step': next_step,
+            'email': email,
+            'recent_emails': _get_recent_emails(request),
+        })
 
     # ───────────────────────────────────────────────────────────────────
     # STEP: forgot — GET request shows email prompt
     # ───────────────────────────────────────────────────────────────────
     if request.method == 'GET' and step == 'forgot':
-        return render(request, 'results/login.html', {'step': 'forgot_email'})
+        return render(request, 'results/login.html', {
+            'step': 'forgot_email',
+            'recent_emails': _get_recent_emails(request),
+        })
 
     # ───────────────────────────────────────────────────────────────────
     # STEP: forgot_email — POST email to start password reset
@@ -57,11 +108,22 @@ def results_login(request):
         account = _lookup_account(email)
         if account is None:
             messages.error(request, "Email hii haipo kwenye mfumo.")
-            return render(request, 'results/login.html', {'step': 'forgot_email'})
+            return render(request, 'results/login.html', {
+                'step': 'forgot_email',
+                'recent_emails': _get_recent_emails(request),
+            })
         if not account.is_activated:
             messages.info(request, "Akaunti hii bado haijawasha. Tafadhali weka password yako kwanza.")
-            return render(request, 'results/login.html', {'step': 'activate', 'email': email})
-        return render(request, 'results/login.html', {'step': 'forgot', 'email': email})
+            return render(request, 'results/login.html', {
+                'step': 'activate',
+                'email': email,
+                'recent_emails': _get_recent_emails(request),
+            })
+        return render(request, 'results/login.html', {
+            'step': 'forgot',
+            'email': email,
+            'recent_emails': _get_recent_emails(request),
+        })
 
     # ───────────────────────────────────────────────────────────────────
     # STEP: activate — first-time password setup
@@ -73,22 +135,37 @@ def results_login(request):
         account = _lookup_account(email)
         if account is None:
             messages.error(request, "Email hii haipo kwenye mfumo.")
-            return render(request, 'results/login.html', {'step': 'email'})
+            return render(request, 'results/login.html', {
+                'step': 'email',
+                'recent_emails': _get_recent_emails(request),
+            })
 
         if account.is_activated:
             messages.error(request, "Akaunti hii tayari ina password. Tafadhali ingia kawaida.")
-            return render(request, 'results/login.html', {'step': 'login', 'email': email})
+            return render(request, 'results/login.html', {
+                'step': 'login',
+                'email': email,
+                'recent_emails': _get_recent_emails(request),
+            })
 
         if password1 != password2:
             messages.error(request, "Password hazifanani.")
-            return render(request, 'results/login.html', {'step': 'activate', 'email': email})
+            return render(request, 'results/login.html', {
+                'step': 'activate',
+                'email': email,
+                'recent_emails': _get_recent_emails(request),
+            })
 
         try:
             validate_password(password1, user=account)
         except ValidationError as exc:
             for err in exc.messages:
                 messages.error(request, err)
-            return render(request, 'results/login.html', {'step': 'activate', 'email': email})
+            return render(request, 'results/login.html', {
+                'step': 'activate',
+                'email': email,
+                'recent_emails': _get_recent_emails(request),
+            })
 
         account.set_password(password1)
         account.save(using='results')
@@ -96,11 +173,15 @@ def results_login(request):
         account.refresh_from_db(using='results')
         if not account.has_usable_password():
             messages.error(request, "Hitilafu ya mfumo: password haikuweza kuhifadhiwa. Jaribu tena.")
-            return render(request, 'results/login.html', {'step': 'activate', 'email': email})
+            return render(request, 'results/login.html', {
+                'step': 'activate',
+                'email': email,
+                'recent_emails': _get_recent_emails(request),
+            })
 
         login(request, account, backend=RESULTS_BACKEND)
         messages.success(request, "Akaunti imeundwa. Karibu!")
-        return _redirect_for_role(account)
+        return _remember_email(request, _redirect_for_role(account), account.email)
 
     # ───────────────────────────────────────────────────────────────────
     # STEP: login — existing password login
@@ -110,9 +191,13 @@ def results_login(request):
         account = ResultsAuthBackend().authenticate(request, email=email, password=password)
         if account is None:
             messages.error(request, "Email au password si sahihi.")
-            return render(request, 'results/login.html', {'step': 'login', 'email': email})
+            return render(request, 'results/login.html', {
+                'step': 'login',
+                'email': email,
+                'recent_emails': _get_recent_emails(request),
+            })
         login(request, account, backend=RESULTS_BACKEND)
-        return _redirect_for_role(account)
+        return _remember_email(request, _redirect_for_role(account), account.email)
 
     # ───────────────────────────────────────────────────────────────────
     # STEP: forgot — submit new password after email verified
@@ -124,18 +209,29 @@ def results_login(request):
         account = _lookup_account(email)
         if account is None:
             messages.error(request, "Email hii haipo kwenye mfumo.")
-            return render(request, 'results/login.html', {'step': 'email'})
+            return render(request, 'results/login.html', {
+                'step': 'email',
+                'recent_emails': _get_recent_emails(request),
+            })
 
         if password1 != password2:
             messages.error(request, "Password hazifanani.")
-            return render(request, 'results/login.html', {'step': 'forgot', 'email': email})
+            return render(request, 'results/login.html', {
+                'step': 'forgot',
+                'email': email,
+                'recent_emails': _get_recent_emails(request),
+            })
 
         try:
             validate_password(password1, user=account)
         except ValidationError as exc:
             for err in exc.messages:
                 messages.error(request, err)
-            return render(request, 'results/login.html', {'step': 'forgot', 'email': email})
+            return render(request, 'results/login.html', {
+                'step': 'forgot',
+                'email': email,
+                'recent_emails': _get_recent_emails(request),
+            })
 
         account.set_password(password1)
         account.save(using='results')
@@ -143,14 +239,21 @@ def results_login(request):
         account.refresh_from_db(using='results')
         if not account.has_usable_password():
             messages.error(request, "Hitilafu ya mfumo: password haikuweza kuhifadhiwa. Jaribu tena.")
-            return render(request, 'results/login.html', {'step': 'forgot', 'email': email})
+            return render(request, 'results/login.html', {
+                'step': 'forgot',
+                'email': email,
+                'recent_emails': _get_recent_emails(request),
+            })
 
         login(request, account, backend=RESULTS_BACKEND)
         messages.success(request, "Password yako imebadilishwa. Karibu tena!")
-        return _redirect_for_role(account)
+        return _remember_email(request, _redirect_for_role(account), account.email)
 
     # ── Default: show email step ──────────────────────────────────────
-    return render(request, 'results/login.html', {'step': 'email'})
+    return render(request, 'results/login.html', {
+        'step': 'email',
+        'recent_emails': _get_recent_emails(request),
+    })
 
 
 def results_logout(request):

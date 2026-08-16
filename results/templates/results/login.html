@@ -22,6 +22,29 @@
         </h4>
 
         {% if step == 'email' %}
+        {% if recent_emails %}
+        <div class="text-start mb-3">
+          <div style="font-size:0.78rem;font-weight:700;color:var(--accent-500);margin-bottom:0.4rem;">
+            {% if LANG == 'sw' %}Akaunti zilizotumika hapo awali{% else %}Previously used accounts{% endif %}
+          </div>
+          <div class="d-flex flex-column gap-1">
+            {% for e in recent_emails %}
+            <form method="post" class="m-0">
+              {% csrf_token %}
+              <input type="hidden" name="step" value="email">
+              <input type="hidden" name="email" value="{{ e }}">
+              <button type="submit" class="btn w-100 text-start"
+                style="border:1.5px solid var(--border-color);border-radius:2px;background:#f8fafc;color:#333;font-size:0.85rem;padding:0.45rem 0.75rem;"
+                onmouseover="this.style.borderColor='#1F7A3D';this.style.background='#f0f7f2'"
+                onmouseout="this.style.borderColor='';this.style.background='#f8fafc'">
+                <i class="fas fa-user-circle" style="color:#1F7A3D;margin-right:0.4rem;"></i>{{ e }}
+              </button>
+            </form>
+            {% endfor %}
+          </div>
+          <div style="font-size:0.7rem;color:#999;margin-top:0.5rem;">{% if LANG == 'sw' %}Bonyeza email kuchagua, au andika nyingine hapa chini{% else %}Click an email to select it, or type a new one below{% endif %}</div>
+        </div>
+        {% endif %}
         <form method="post" class="text-start">
           {% csrf_token %}
           <input type="hidden" name="step" value="email">

@@ -1338,7 +1338,11 @@ def personal_upload(request):
 
     if request.method == 'POST':
         subject_id = request.POST.get('subject_id')
-        title = request.POST.get('title', '').strip() or 'Matokeo Binafsi'
+        # Jina la tathmini linachaguliwa kwenye dropdown (aina za mtihani)
+        # badala ya kuandikwa — default ni 'OTHER' ikiwa hakuna kilichochaguliwa.
+        title_choice = request.POST.get('title', '').strip()
+        title_label = dict(Exam.EXAM_TYPE_CHOICES).get(title_choice, '')
+        title = title_label or title_choice or 'Matokeo Binafsi'
         uploaded_file = request.FILES.get('file')
 
         subject = teacher_subjects.filter(pk=subject_id).first()
@@ -1372,6 +1376,7 @@ def personal_upload(request):
     return render(request, 'results/personal_upload.html', {
         'teacher_subjects': teacher_subjects,
         'recent_uploads': recent_uploads,
+        'exam_type_choices': Exam.EXAM_TYPE_CHOICES,
     })
 
 
