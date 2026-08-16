@@ -3,6 +3,7 @@
 {% block content %}
 {{ level_classes|json_script:"level-classes-data" }}
 {{ subjects_by_level|json_script:"subjects-data" }}
+{{ syllabus_links|json_script:"syllabus-links-data" }}
 <style>
   /* ═══════════════ MAKTABA v2 — Browse Categories ═══════════════ */
   .lib-hero {
@@ -72,6 +73,17 @@
   .lib-sec-head h2 { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; margin: 0; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
   .lib-sec-head h2 i { color: var(--gold-400); }
   .lib-sec-head p { margin: 2px 0 0; font-size: var(--font-size-xs); color: var(--text-secondary); }
+
+  /* ── Panel head (ndani ya kategoria) ── */
+  .lib-panel-head {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-left: 4px solid var(--gold-400);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem; margin-bottom: 0.9rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .lib-panel-head h2 i { color: var(--gold-400); }
 
   .lib-drill { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; box-shadow: var(--shadow-sm); }
 
@@ -239,9 +251,8 @@
   <div class="lib-hero">
     <h3><i class="fas fa-book-open"></i> Maktaba ya Kujifunzia</h3>
     <p>
-      <strong>Browse Categories:</strong> Vitabu → Notes → Past Papers → Marking Schemes.
-      Chagua <strong>Level → Darasa</strong> hatua kwa hatua — Primary, Secondary (Form 1-4),
-      Advanced (Form 5-6) na VETA / Technical.
+      Bonyeza kategoria — <strong>Vitabu, New Syllabus, Notes, Past Papers au Marking Schemes</strong> —
+      kisha uingie ndani na uchague <strong>Level → Darasa → Somo</strong>. Rahisi, hatua kwa hatua.
     </p>
     <div class="lib-hero-stats">
       <span class="chip"><i class="fas fa-book"></i> {{ stats.total }} Notes</span>
@@ -250,93 +261,57 @@
     </div>
   </div>
 
-  <!-- ═══ KATEGORIA (international overview) ═══ -->
-  <div class="lib-cat-grid">
-    <button class="lib-cat-card" onclick="scrollToSection('secBooks')">
-      <div class="lib-cat-icon" style="background:rgba(31,122,61,0.12);color:var(--green-500);"><i class="fas fa-book"></i></div>
-      <h5>Vitabu</h5>
-      <p>Vitabu halisi vya TIE, TETEA na uploads za walimu kwa kila darasa.</p>
-      <span class="lib-cat-count">{{ lib_counts.books }} vitabu</span>
-    </button>
-    <button class="lib-cat-card" onclick="scrollToSection('secNotes')">
-      <div class="lib-cat-icon" style="background:rgba(37,99,235,0.12);color:var(--info);"><i class="fas fa-pen-nib"></i></div>
-      <h5>Notes</h5>
-      <p>Notes kamili za kimataifa (TIE + Cambridge) — generate kwa Somo na Topic.</p>
-      <span class="lib-cat-count">{{ lib_counts.notes }} notes</span>
-    </button>
-    <button class="lib-cat-card" onclick="scrollToSection('secPapers')">
-      <div class="lib-cat-icon" style="background:rgba(217,164,65,0.15);color:var(--gold-400);"><i class="fas fa-file-alt"></i></div>
-      <h5>Past Papers</h5>
-      <p>Mitihani halisi ya NECTA (PSLE · CSEE · FTNA · ACSEE) kwa kila darasa.</p>
-      <span class="lib-cat-count">{{ lib_counts.papers }} papers</span>
-    </button>
-    <button class="lib-cat-card" onclick="scrollToSection('secSchemes')">
-      <div class="lib-cat-icon" style="background:rgba(5,150,105,0.12);color:var(--success);"><i class="fas fa-check-double"></i></div>
-      <h5>Marking Schemes</h5>
-      <p>Majibu kamili yanayogeneratwa na AI kulingana na past paper uliyochagua.</p>
-      <span class="lib-cat-count">{{ lib_counts.schemes }} schemes</span>
-    </button>
+  <!-- ═══ HOME — KATEGORIA ═══ -->
+  <div id="libHome">
+    <div class="lib-cat-grid">
+      <button class="lib-cat-card" onclick="enterCategory('books', 'Vitabu')">
+        <div class="lib-cat-icon" style="background:rgba(31,122,61,0.12);color:var(--green-500);"><i class="fas fa-book"></i></div>
+        <h5>Vitabu</h5>
+        <p>Vitabu halisi vya TIE, TETEA na uploads za walimu — fungua au pakua PDF kwa darasa lako.</p>
+        <span class="lib-cat-count">{{ lib_counts.books }} vitabu</span>
+      </button>
+      <button class="lib-cat-card" onclick="enterCategory('syllabus', 'New Syllabus')">
+        <div class="lib-cat-icon" style="background:rgba(147,51,234,0.12);color:#9333ea;"><i class="fas fa-list-ol"></i></div>
+        <h5>New Syllabus</h5>
+        <p>Mada zote (topics) na mada ndogo (subtopics) za <strong>mtaala mpya</strong> + mihtasari rasmi ya TIE.</p>
+        <span class="lib-cat-count">Mtaala Mpya</span>
+      </button>
+      <button class="lib-cat-card" onclick="enterCategory('notes', 'Notes')">
+        <div class="lib-cat-icon" style="background:rgba(37,99,235,0.12);color:var(--info);"><i class="fas fa-pen-nib"></i></div>
+        <h5>Notes</h5>
+        <p>Generate Notes kamili za kimataifa (TIE + Cambridge) kwa Somo na Topic.</p>
+        <span class="lib-cat-count">{{ lib_counts.notes }} notes</span>
+      </button>
+      <button class="lib-cat-card" onclick="enterCategory('papers', 'Past Papers')">
+        <div class="lib-cat-icon" style="background:rgba(217,164,65,0.15);color:var(--gold-400);"><i class="fas fa-file-alt"></i></div>
+        <h5>Past Papers</h5>
+        <p>Mitihani halisi ya NECTA (PSLE · CSEE · FTNA · ACSEE) kwa kila darasa.</p>
+        <span class="lib-cat-count">{{ lib_counts.papers }} papers</span>
+      </button>
+      <button class="lib-cat-card" onclick="enterCategory('schemes', 'Marking Schemes')">
+        <div class="lib-cat-icon" style="background:rgba(5,150,105,0.12);color:var(--success);"><i class="fas fa-check-double"></i></div>
+        <h5>Marking Schemes</h5>
+        <p>Majibu kamili yanayogeneratwa na AI kulingana na past paper uliyochagua.</p>
+        <span class="lib-cat-count">{{ lib_counts.schemes }} schemes</span>
+      </button>
+    </div>
+
+    <!-- ═══ JINSI YA KUTUMIA (3 hatua) ═══ -->
+    <div class="lib-howto">
+      <div class="lib-howto-step"><span class="lib-howto-n">1</span><span><b>Bonyeza Kategoria</b> — Vitabu, New Syllabus, Notes, Past Papers au Marking Schemes</span></div>
+      <div class="lib-howto-step"><span class="lib-howto-n">2</span><span><b>Uingie ndani</b> — ukurasa wa kategoria hiyo unafunguka peke yake</span></div>
+      <div class="lib-howto-step"><span class="lib-howto-n">3</span><span><b>Chagua Level → Darasa → Somo</b> — kisha ona au generate matokeo</span></div>
+    </div>
   </div>
 
-  <!-- ═══ JINSI YA KUTUMIA (3 hatua) ═══ -->
-  <div class="lib-howto">
-    <div class="lib-howto-step"><span class="lib-howto-n">1</span><span><b>Chagua Kategoria</b> — Vitabu, Notes, Past Papers au Marking Schemes</span></div>
-    <div class="lib-howto-step"><span class="lib-howto-n">2</span><span><b>Chagua Level</b> — Primary, Secondary, Advanced au VETA</span></div>
-    <div class="lib-howto-step"><span class="lib-howto-n">3</span><span><b>Chagua Darasa</b> — kisha ona au generate vitu vyake</span></div>
+  <!-- ═══ PANEL — NDANI YA KATEGORIA ═══ -->
+  <div id="libPanel" style="display:none;">
+    <div class="lib-panel-head">
+      <button class="btn-tlm btn-ghost-tlm btn-sm-tlm" onclick="goHome()"><i class="fas fa-arrow-left"></i> Kategoria zote</button>
+      <h2 id="libPanelTitle" style="font-family:var(--font-display);font-weight:800;font-size:1.15rem;margin:0;display:flex;align-items:center;gap:8px;"></h2>
+    </div>
+    <div class="lib-drill" id="libDrill"></div>
   </div>
-
-  <!-- ═══ CATEGORY NAV (sticky) ═══ -->
-  <div class="lib-cat-nav" id="libCatNav">
-    <button class="active" data-target="secBooks"><i class="fas fa-book"></i>Vitabu<span>Books</span></button>
-    <button data-target="secNotes"><i class="fas fa-pen-nib"></i>Notes<span>AI · TIE</span></button>
-    <button data-target="secPapers"><i class="fas fa-file-alt"></i>Past Papers<span>NECTA</span></button>
-    <button data-target="secSchemes"><i class="fas fa-check-double"></i>Marking Schemes<span>AI kwa Paper</span></button>
-  </div>
-
-  <!-- ═══ 1. VITABU ═══ -->
-  <section class="lib-section" id="secBooks">
-    <div class="lib-sec-head">
-      <div>
-        <h2><i class="fas fa-book"></i> Vitabu (Books)</h2>
-        <p>Chagua Level → Darasa ili kuona vitabu vyote vya darasa hilo (TIE, TETEA na uploads za walimu).</p>
-      </div>
-      <button class="btn-tlm btn-gold-tlm btn-sm-tlm" onclick="openUploadBook()"><i class="fas fa-upload"></i> Ongeza Kitabu</button>
-    </div>
-    <div class="lib-drill" id="booksDrill"></div>
-  </section>
-
-  <!-- ═══ 2. NOTES ═══ -->
-  <section class="lib-section" id="secNotes">
-    <div class="lib-sec-head">
-      <div>
-        <h2><i class="fas fa-pen-nib"></i> Notes (Maelezo ya Somo)</h2>
-        <p>Chagua Level → Darasa → Somo → Topic, kisha <strong>Generate Notes Kamili</strong> (mtindo wa kimataifa: TIE + Cambridge).</p>
-      </div>
-    </div>
-    <div class="lib-drill" id="notesDrill"></div>
-  </section>
-
-  <!-- ═══ 3. PAST PAPERS ═══ -->
-  <section class="lib-section" id="secPapers">
-    <div class="lib-sec-head">
-      <div>
-        <h2><i class="fas fa-file-alt"></i> Past Papers (NECTA)</h2>
-        <p>Chagua Level → Darasa kuona past papers halisi (Maktaba TETEA) za darasa hilo — fungua PDF au generate Marking Scheme.</p>
-      </div>
-    </div>
-    <div class="lib-drill" id="papersDrill"></div>
-  </section>
-
-  <!-- ═══ 4. MARKING SCHEMES ═══ -->
-  <section class="lib-section" id="secSchemes">
-    <div class="lib-sec-head">
-      <div>
-        <h2><i class="fas fa-check-double"></i> Marking Schemes</h2>
-        <p>Chagua Level → Darasa → Past Paper, kisha <strong>Generate Marking Scheme</strong> (AI) kwa mtihani huo — jibu kamili la kila swali na alama.</p>
-      </div>
-    </div>
-    <div class="lib-drill" id="schemesDrill"></div>
-  </section>
 </div>
 
 <!-- ═══ MODAL: Tazama Note ═══ -->
@@ -422,6 +397,7 @@ const API = {
   schemeDel:  '{% url "curriculum:notes_library_delete_scheme" %}',
   schemePdf:  '{% url "curriculum:notes_library_scheme_pdf" 0 %}'.replace('/0/', '/'),
   topics:     '{% url "curriculum:notes_library_topics" %}',
+  syllabus:   '{% url "curriculum:notes_library_syllabus" %}',
   noteGen:    '{% url "curriculum:notes_library_generate" %}',
   notePdf:    '{% url "curriculum:notes_library_note_pdf" %}',
   getNote:    '{% url "curriculum:get_lesson_note" 0 %}'.replace('/0/', '/'),
@@ -430,12 +406,25 @@ const API = {
   delBook:    '{% url "curriculum:notes_library_delete_book" %}',
 };
 
-const state = {
-  books:   { level: null, className: null },
-  notes:   { level: null, className: null, subjectId: '', subjectName: '', topic: '', notes: [] },
-  papers:  { level: null, className: null },
-  schemes: { level: null, className: null, subjectName: '', papers: [], schemes: [] },
+// ── New Syllabus links rasmi (kutoka server — TIE mihtasari) ──
+const SYLLABUS_LINKS = JSON.parse(document.getElementById('syllabus-links-data').textContent || '{}');
+
+const CATEGORIES = {
+  books:    { title: 'Vitabu',           icon: 'fa-book',         desc: 'Vitabu halisi vya TIE, TETEA na walimu' },
+  syllabus: { title: 'New Syllabus',     icon: 'fa-list-ol',      desc: 'Mada zote za mtaala mpya + mihtasari ya TIE' },
+  notes:    { title: 'Notes',            icon: 'fa-pen-nib',      desc: 'Generate Notes kamili (TIE + Cambridge)' },
+  papers:   { title: 'Past Papers',      icon: 'fa-file-alt',     desc: 'Mitihani halisi ya NECTA' },
+  schemes:  { title: 'Marking Schemes',  icon: 'fa-check-double', desc: 'Majibu kamili yanayogeneratwa na AI' },
 };
+
+const state = {
+  books:    { level: null, className: null, subjectId: '', subjectName: '' },
+  syllabus: { level: null, className: null, subjectId: '', subjectName: '' },
+  notes:    { level: null, className: null, subjectId: '', subjectName: '', topic: '', notes: [] },
+  papers:   { level: null, className: null },
+  schemes:  { level: null, className: null, subjectName: '', papers: [], schemes: [] },
+};
+let currentCategory = null;
 let currentNoteId = null;
 let currentNoteData = null;
 
@@ -452,10 +441,6 @@ function decodeName(s) {
 }
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 function openModal(id) { document.getElementById(id).classList.add('show'); }
-function scrollToSection(id) {
-  const el = document.getElementById(id);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
 function levelLabel(code) { const l = LEVEL_META.find(x => x.code === code); return l ? l.label : code; }
 function toast(msg, type) {
   const t = document.createElement('div');
@@ -467,14 +452,37 @@ function toast(msg, type) {
   setTimeout(() => { t.classList.add('removing'); setTimeout(() => t.remove(), 300); }, 4200);
 }
 
-// ═══════════════ DRILL-DOWN ENGINE ═══════════════
+// ═══════════════ WIZARD ENGINE — enter category → Level → Darasa → Somo ═══════════════
+// Categories that need a subject step (vitabu, syllabus, notes)
+const SUBJECT_STEP_SECS = ['books', 'syllabus', 'notes'];
+
+function enterCategory(sec, title) {
+  currentCategory = sec;
+  document.getElementById('libHome').style.display = 'none';
+  document.getElementById('libPanel').style.display = 'block';
+  document.getElementById('libPanelTitle').innerHTML = `<i class="fas ${CATEGORIES[sec].icon}"></i> ${esc(title || CATEGORIES[sec].title)}`;
+  buildDrill(sec);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goHome() {
+  currentCategory = null;
+  document.getElementById('libHome').style.display = 'block';
+  document.getElementById('libPanel').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function buildDrill(sec) {
-  const host = document.getElementById(sec + 'Drill');
+  const host = document.getElementById('libDrill');
+  const needsSubject = SUBJECT_STEP_SECS.includes(sec);
   host.innerHTML = `
     <div class="lib-step"><span class="lib-step-n">1</span><span class="lib-step-t">Chagua Level</span></div>
     <div class="lib-pills" id="${sec}LevelPills"></div>
     <div class="lib-step" id="${sec}ClassStep" style="display:none;"><span class="lib-step-n">2</span><span class="lib-step-t">Chagua Darasa</span></div>
     <div class="lib-chips" id="${sec}ClassChips"></div>
+    ${needsSubject ? `
+    <div class="lib-step" id="${sec}SubjectStep" style="display:none;"><span class="lib-step-n">3</span><span class="lib-step-t">Chagua Somo</span></div>
+    <div class="lib-chips" id="${sec}SubjectChips"></div>` : ''}
     <div class="lib-results" id="${sec}Results" style="display:none;"></div>`;
   if (!state[sec].level && LEVEL_META.some(l => l.code === TEACHER_LEVEL)) {
     state[sec].level = TEACHER_LEVEL;
@@ -494,7 +502,8 @@ function renderLevelPills(sec) {
 function pickLevel(sec, level) {
   state[sec].level = level;
   state[sec].className = null;
-  if (sec === 'notes') { state[sec].subjectId = ''; state[sec].subjectName = ''; state[sec].topic = ''; }
+  if (SUBJECT_STEP_SECS.includes(sec)) { state[sec].subjectId = ''; state[sec].subjectName = ''; }
+  if (sec === 'notes') { state[sec].topic = ''; }
   if (sec === 'schemes') { state[sec].subjectName = ''; }
   renderLevelPills(sec);
   clearResults(sec);
@@ -504,22 +513,63 @@ function renderClassChips(sec) {
   const step = document.getElementById(sec + 'ClassStep');
   const el = document.getElementById(sec + 'ClassChips');
   const lc = LEVEL_CLASSES.find(l => l.code === state[sec].level);
-  if (!lc) { step.style.display = 'none'; el.innerHTML = ''; return; }
+  if (!lc) { step.style.display = 'none'; el.innerHTML = ''; renderSubjectChips(sec); return; }
   step.style.display = 'flex';
   el.innerHTML = lc.classes.map(c => {
     const cls = String(c.name).replace(/'/g, "\\'");
     return `<button class="lib-chip ${state[sec].className === c.name ? 'active' : ''}" onclick="pickClass('${sec}', '${cls}')">${esc(c.name)}</button>`;
   }).join('');
+  renderSubjectChips(sec);
+}
+
+function renderSubjectChips(sec) {
+  if (!SUBJECT_STEP_SECS.includes(sec)) return;
+  const step = document.getElementById(sec + 'SubjectStep');
+  const el = document.getElementById(sec + 'SubjectChips');
+  if (!step || !el) return;
+  if (!state[sec].className) {
+    step.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  step.style.display = 'flex';
+  const subs = SUBJECTS[SUBJECT_KEY[state[sec].level]] || [];
+  if (!subs.length) {
+    step.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = subs.map(sub =>
+    `<button class="lib-chip ${state[sec].subjectId === String(sub.id) ? 'active' : ''}" data-sid="${sub.id}" onclick="pickSubject('${sec}', this)">${esc(sub.name)}</button>`
+  ).join('');
+}
+
+function pickSubject(sec, btn) {
+  const subs = SUBJECTS[SUBJECT_KEY[state[sec].level]] || [];
+  const sub = subs.find(x => String(x.id) === String(btn.dataset.sid));
+  state[sec].subjectId = btn.dataset.sid;
+  state[sec].subjectName = sub ? sub.name : '';
+  if (sec === 'notes') state[sec].topic = '';
+  renderSubjectChips(sec);
+  if (state[sec].className) loadResults(sec);
 }
 
 function pickClass(sec, cls) {
   state[sec].className = cls;
   renderClassChips(sec);
+  if (SUBJECT_STEP_SECS.includes(sec)) {
+    renderSubjectChips(sec);
+    if (!state[sec].subjectId) {
+      clearResults(sec);
+      return;
+    }
+  }
   loadResults(sec);
 }
 
 function clearResults(sec) {
   const res = document.getElementById(sec + 'Results');
+  if (!res) return;
   res.style.display = 'none';
   res.innerHTML = '';
 }
@@ -530,6 +580,7 @@ function loadResults(sec) {
   res.style.display = 'block';
   res.innerHTML = '<div class="lib-loading"><i class="fas fa-spinner fa-spin"></i> Inapakia...</div>';
   if (sec === 'books') loadBooks(s, res);
+  else if (sec === 'syllabus') loadSyllabus(s, res);
   else if (sec === 'notes') loadNotes(s, res);
   else if (sec === 'papers') loadPapers(s, res);
   else loadSchemes(s, res);
@@ -537,16 +588,22 @@ function loadResults(sec) {
 
 function breadcrumb(sec, label) {
   const s = state[sec];
-  return `<div class="lib-breadcrumb">
+  let h = `<div class="lib-breadcrumb">
     <i class="fas fa-folder-open"></i> ${label}
     <span class="sep">›</span> <button onclick="pickLevel('${sec}', '${s.level}')">${levelLabel(s.level)}</button>
-    <span class="sep">›</span> <button onclick="pickClass('${sec}', '${s.className.replace(/'/g, "\\'")}')">${esc(s.className)}</button>
-  </div>`;
+    <span class="sep">›</span> <button onclick="pickClass('${sec}', '${s.className.replace(/'/g, "\\'")}')">${esc(s.className)}</button>`;
+  if (s.subjectName) {
+    h += `<span class="sep">›</span> <button onclick="pickSubject('${sec}', document.querySelector('#${sec}SubjectChips .active'))">${esc(s.subjectName)}</button>`;
+  }
+  h += `</div>`;
+  return h;
 }
 
 // ═══════════════ 1. VITABU ═══════════════
 function loadBooks(s, res) {
-  fetch(`${API.books}?level=${encodeURIComponent(s.level)}&class_name=${encodeURIComponent(s.className || '')}`)
+  let url = `${API.books}?level=${encodeURIComponent(s.level)}&class_name=${encodeURIComponent(s.className || '')}`;
+  if (s.subjectId) url += `&subject_id=${encodeURIComponent(s.subjectId)}`;
+  fetch(url)
     .then(r => r.json())
     .then(data => {
       if (!data.success) throw new Error(data.error || 'Hitilafu');
@@ -691,6 +748,72 @@ function deleteBook(bookId) {
     });
 }
 
+// ═══════════════ NEW SYLLABUS (Mtaala Mpya) ═══════════════
+function loadSyllabus(s, res) {
+  fetch(`${API.syllabus}?subject_id=${encodeURIComponent(s.subjectId)}&class_name=${encodeURIComponent(s.className)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) throw new Error(data.error || 'Hitilafu');
+      renderSyllabus(data, s, res);
+    })
+    .catch(e => { res.innerHTML = `<div class="lib-empty">❌ ${esc(e.message)}</div>`; });
+}
+
+function renderSyllabus(data, s, res) {
+  const topics = data.topics || [];
+  let h = breadcrumb('syllabus', 'New Syllabus');
+  h += `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:0.5rem;">
+    <span class="lib-sub-label" style="margin:0;"><i class="fas fa-list-ol"></i> Mtaala Mpya — ${esc(s.subjectName)} ${esc(s.className)} (${topics.length} Mada)</span>
+  </div>`;
+
+  if (!topics.length) {
+    h += `<div class="lib-empty"><i class="fas fa-info-circle"></i> Hakuna topics za mtaala mpya kwa somo hili bado kwenye database.</div>`;
+  } else {
+    topics.forEach((t, i) => {
+      h += `<div class="lib-item" style="display:block;cursor:default;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="lib-item-icon" style="background:rgba(147,51,234,0.12);color:#9333ea;"><i class="fas fa-list-ol"></i></div>
+          <div style="min-width:0;flex:1;">
+            <h6>${i + 1}. ${esc(t.name)}</h6>
+            <div class="lib-item-meta">
+              <span class="chip" style="font-size:9px;padding:1px 7px;">${(t.subtopics || []).length} Mada ndogo</span>
+            </div>
+          </div>
+          <button class="btn-tlm btn-ghost-tlm btn-sm-tlm" onclick="toggleSubtopicList(${t.id})"><i class="fas fa-chevron-down"></i></button>
+        </div>
+        <div id="subtopicList${t.id}" style="display:none;margin-top:0.6rem;padding-left:0.75rem;border-left:3px solid rgba(147,51,234,0.3);">
+          ${(t.subtopics || []).map(sub => `<div style="font-size:var(--font-size-xs);color:var(--text-secondary);padding:3px 0;display:flex;gap:6px;"><span style="color:#9333ea;">▸</span> ${esc(sub)}</div>`).join('') || '<div style="font-size:var(--font-size-xs);color:var(--text-muted);">Hakuna mada ndogo.</div>'}
+        </div>
+      </div>`;
+    });
+  }
+
+  // ── Mihtasari rasmi (TIE / online) ──
+  const links = (SYLLABUS_LINKS[s.level] || {}).links || [];
+  if (links.length) {
+    h += `<div class="lib-sub-label" style="margin-top:1rem;"><i class="fas fa-external-link-alt"></i> ${esc((SYLLABUS_LINKS[s.level] || {}).label || 'Mihtasari Rasmi')}</div>`;
+    links.forEach(l => {
+      h += `<div class="lib-item">
+        <div style="display:flex;gap:10px;min-width:0;">
+          <div class="lib-item-icon" style="background:rgba(217,164,65,0.12);color:var(--gold-400);"><i class="fas fa-external-link-alt"></i></div>
+          <div style="min-width:0;">
+            <h6>📄 ${esc(l.title)}</h6>
+            <div class="lib-item-meta">${esc(l.note)}</div>
+          </div>
+        </div>
+        <a class="btn-tlm btn-gold-tlm btn-sm-tlm" style="text-decoration:none;white-space:nowrap;" href="${l.url}" target="_blank" rel="noopener"><i class="fas fa-book-open"></i> Fungua</a>
+      </div>`;
+    });
+  }
+  res.innerHTML = h;
+}
+
+function toggleSubtopicList(topicId) {
+  const el = document.getElementById('subtopicList' + topicId);
+  if (!el) return;
+  el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+}
+
 // ═══════════════ 2. NOTES ═══════════════
 function loadNotes(s, res) {
   fetch(`${API.notes}?level=${encodeURIComponent(s.level)}&class_name=${encodeURIComponent(s.className)}`)
@@ -704,15 +827,8 @@ function loadNotes(s, res) {
 }
 
 function renderNotes(s, res) {
-  const subs = SUBJECTS[SUBJECT_KEY[s.level]] || [];
   let h = breadcrumb('notes', 'Notes');
-  h += `<div class="lib-sub-label"><i class="fas fa-wand-magic-sparkles"></i> Generate Notes Kamili — chagua Somo</div>`;
-  if (!subs.length) {
-    h += `<div class="lib-empty">Hakuna masomo kwa level hii.</div>`;
-  } else {
-    h += `<div class="lib-chips" style="margin-bottom:0.8rem;">` +
-      subs.map(sub => `<button class="lib-chip ${s.subjectId === String(sub.id) ? 'active' : ''}" data-sid="${sub.id}" onclick="pickNoteSubject(this)">${esc(sub.name)}</button>`).join('') + `</div>`;
-  }
+  h += `<div class="lib-sub-label"><i class="fas fa-wand-magic-sparkles"></i> Generate Notes Kamili — ${esc(s.subjectName || 'Chagua Somo')}</div>`;
 
   // Topic picker (shown after subject chosen)
   h += `<div id="noteTopicBox" style="display:${s.subjectId ? 'block' : 'none'};">
@@ -808,16 +924,6 @@ function refreshSavedNotes(s) {
     .then(r => r.json())
     .then(data => { if (data.success) { s.notes = data.notes || []; renderSavedNotes(s); } })
     .catch(() => {});
-}
-
-function pickNoteSubject(btn) {
-  const s = state.notes;
-  const subs = SUBJECTS[SUBJECT_KEY[s.level]] || [];
-  const sub = subs.find(x => String(x.id) === String(btn.dataset.sid));
-  s.subjectId = btn.dataset.sid;
-  s.subjectName = sub ? sub.name : '';
-  s.topic = '';
-  loadResults('notes');
 }
 
 function bindNoteGen(s) {
@@ -1206,23 +1312,8 @@ function deleteScheme(schemeId) {
 
 // ═══════════════ INIT ═══════════════
 document.addEventListener('DOMContentLoaded', function() {
-  ['books', 'notes', 'papers', 'schemes'].forEach(buildDrill);
-
-  // Category nav (scrollspy)
-  const nav = document.getElementById('libCatNav');
-  const links = [...nav.querySelectorAll('button')];
-  const sections = links.map(b => document.getElementById(b.dataset.target));
-  links.forEach(b => b.addEventListener('click', () => {
-    document.getElementById(b.dataset.target).scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }));
-  const spy = () => {
-    const y = window.scrollY + 150;
-    let current = links[0];
-    sections.forEach((sec, i) => { if (sec.offsetTop <= y) current = links[i]; });
-    links.forEach(b => b.classList.toggle('active', b === current));
-  };
-  window.addEventListener('scroll', spy, { passive: true });
-  spy();
+  // Wizard flow — mwalimu anabonyeza kategoria kwenye home, kisha anaingia ndani.
+  // Hakuna drills za kujengwa awali; zinafunguka kwenye enterCategory().
 });
 </script>
 

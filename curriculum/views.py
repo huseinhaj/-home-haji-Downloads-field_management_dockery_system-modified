@@ -7395,6 +7395,54 @@ _LEVEL_SCHOOL_LABELS = {
     'technical': 'Technical School / VETA College',
 }
 
+# ── New Syllabus (mtaala mpya) — links rasmi za mihtasari ya TIE kwa kila level ──
+TIE_SYLLABUS_LINKS = {
+    'primary': {
+        'label': 'Primary Education — Mtaala Mpya (Std 1-7)',
+        'links': [
+            {'title': 'Mihtasari ya Elimu ya Msingi (TIE Official)', 'url': 'https://www.tie.go.tz/publications/syllabus-for-primary-education',
+             'note': 'Syllabi rasmi za mtaala mpya: Hisabati, Sayansi na Teknolojia, Kiswahili, English, Maarifa ya Jamii, Stadi za Kazi, Uraia na Maadili n.k.'},
+            {'title': 'TIE Online Library — Vitabu vya Primary (Mtaala Mpya)', 'url': 'https://ol.tie.go.tz/',
+             'note': 'Vitabu vya mtaala mpya kwa Standard 1-7 vya kusoma online (TIE)'},
+            {'title': 'Maktaba TETEA — Primary Resources', 'url': 'https://maktaba.tetea.org/resources/',
+             'note': 'Syllabi na study aids za Standards 1-4 & 5-7'},
+        ],
+    },
+    'ordinary': {
+        'label': 'Secondary — Mtaala Mpya (Form 1-4)',
+        'links': [
+            {'title': 'Mihtasari ya Elimu ya Sekondari ya Chini (TIE Official)', 'url': 'https://www.tie.go.tz/publications/syllabus-for-lower-secondary-academics',
+             'note': 'Syllabi rasmi za mtaala mpya (FINAL): Mathematics, Physics, Chemistry, Biology, Kiswahili, English, History, Geography n.k.'},
+            {'title': 'TIE Online Library — Secondary Books (Form 1-4)', 'url': 'https://ol.tie.go.tz/',
+             'note': 'Vitabu vya mtaala mpya vya kusoma online (TIE)'},
+            {'title': 'Maktaba TETEA — Forms 1-4', 'url': 'https://maktaba.tetea.org/resources/',
+             'note': 'Syllabi na study aids za FTNA/CSEE'},
+        ],
+    },
+    'advanced': {
+        'label': 'Advanced Secondary — Mtaala (Form 5-6)',
+        'links': [
+            {'title': 'Machapisho ya TIE — Mihtasari (A-Level)', 'url': 'https://www.tie.go.tz/publications',
+             'note': 'Mihtasari rasmi ya Advanced Level: PCM, PCB, HGL, EGM, ECA, Accountancy, Computer Science n.k.'},
+            {'title': 'TIE Online Library — Advanced Books (Form 5-6)', 'url': 'https://ol.tie.go.tz/',
+             'note': 'Vitabu vya Advanced Level vya kusoma online (TIE)'},
+            {'title': 'Maktaba TETEA — Forms 5-6', 'url': 'https://maktaba.tetea.org/resources/',
+             'note': 'Syllabi na study aids za ACSEE'},
+        ],
+    },
+    'technical': {
+        'label': 'VETA / Technical — Mitaala ya Ufundi (NTA, Grade I-III)',
+        'links': [
+            {'title': 'NACTE — Mihtasari na Mitaala (NTA levels)', 'url': 'https://nacte.go.tz/',
+             'note': 'NACTE assessments na mihtasari ya NTA 4-6 (Basic, Certificate, Diploma)'},
+            {'title': 'VETA — Mafunzo ya Ufundi Stadi', 'url': 'https://www.veta.go.tz/',
+             'note': 'Mihtasari ya ufundi stadi: Electrical Installation, Plumbing, Masonry, Carpentry, Welding n.k.'},
+            {'title': 'TIE Online Library — Technical & Vocational', 'url': 'https://ol.tie.go.tz/',
+             'note': 'Vitabu vya ufundi: Electrical Installation, Mechanical Engineering, Architectural Draughting, ICT n.k.'},
+        ],
+    },
+}
+
 
 def notes_library_view(request):
     """Maktaba ya Notes na Past Papers — notes kamili kwa levels zote + papers."""
@@ -7450,6 +7498,7 @@ def notes_library_view(request):
         'level_classes': level_classes,
         'subjects_by_level': subjects_by_level,
         'necta_links': NECTA_LIBRARY_LINKS,
+        'syllabus_links': TIE_SYLLABUS_LINKS,
         'notes': notes,
         'stats': stats,
         'today': today,
@@ -7498,6 +7547,30 @@ def ajax_notes_library_topics(request):
     if topic_names:
         return JsonResponse({'success': True, 'topics': [{'id': None, 'name': t} for t in topic_names], 'source': 'ai'})
     return JsonResponse({'success': False, 'error': 'Hakuna topics zilizopatikana'}, status=404)
+
+
+def ajax_notes_library_syllabus(request):
+    """NEW SYLLABUS: topics + subtopics kamili za mtaala mpya kutoka DB
+    (SubjectTopic/TopicSubtopic) kwa somo + darasa — hakuna AI, data halisi ya TIE."""
+    subject_id = request.GET.get('subject_id') or ''
+    class_name = (request.GET.get('class_name') or '').strip()
+    if not subject_id or not class_name:
+        return JsonResponse({'success': False, 'error': 'subject_id na class_name vinahitajika'}, status=400)
+
+    topics = SubjectTopic.objects.filter(subject_id=subject_id, class_name__iexact=class_name).order_by('order')
+    if not topics.exists():
+        for w in class_name.split():
+            if w.isdigit():
+                topics = SubjectTopic.objects.filter(subject_id=subject_id, class_name__icontains=w).order_by('order')
+                break
+
+    result = []
+    for t in topics.select_related('subject'):
+        subs = list(t.subtopics.all().order_by('order').values_list('name', flat=True))
+        result.append({'id': t.id, 'name': t.name, 'subtopics': subs})
+    if result:
+        return JsonResponse({'success': True, 'topics': result, 'source': 'database', 'total': len(result)})
+    return JsonResponse({'success': False, 'error': 'Hakuna topics za mtaala mpya kwa somo/darasa hili kwenye database'}, status=404)
 
 
 def ajax_generate_full_notes(request):

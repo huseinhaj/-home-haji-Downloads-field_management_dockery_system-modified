@@ -35,6 +35,7 @@ urlpatterns = [
     path('lesson-notes/', views.lesson_notes_view, name='lesson_notes'),
     path('notes-library/', views.notes_library_view, name='notes_library'),
     path('notes-library/ajax-topics/', views.ajax_notes_library_topics, name='notes_library_topics'),
+    path('notes-library/ajax-syllabus/', views.ajax_notes_library_syllabus, name='notes_library_syllabus'),
     path('notes-library/ajax-generate/', views.ajax_generate_full_notes, name='notes_library_generate'),
     path('notes-library/ajax-notes/', views.ajax_notes_library_notes, name='notes_library_notes'),
     path('notes-library/ajax-papers/', views.ajax_past_papers, name='notes_library_papers'),
