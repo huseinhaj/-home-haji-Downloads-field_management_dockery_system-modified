@@ -87,54 +87,83 @@
 
   .lib-drill { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; box-shadow: var(--shadow-sm); }
 
-  /* ── Steps ── */
-  .lib-step { display: flex; align-items: center; gap: 8px; margin: 0 0 0.6rem; }
-  .lib-step-n {
-    width: 24px; height: 24px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--gold-400), var(--gold-500));
-    color: #fff; font-size: 11px; font-weight: 800;
-    display: inline-flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 8px rgba(217,164,65,0.35);
+  /* ═══ WIZARD — big attractive step cards ═══ */
+  .wiz-progress { display: flex; align-items: center; gap: 8px; margin-bottom: 1.1rem; }
+  .wiz-prog-step { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  .wiz-prog-step .dot {
+    width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-card-solid); border: 2px solid var(--border-color); font-size: 11px; color: var(--text-muted); transition: all 200ms var(--ease-out);
   }
-  .lib-step-t { font-family: var(--font-display); font-weight: 700; font-size: var(--font-size-xs); color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.04em; }
+  .wiz-prog-step.active { color: var(--green-500); }
+  .wiz-prog-step.active .dot { background: linear-gradient(135deg, var(--green-500), var(--green-600)); border-color: var(--green-500); color: #fff; box-shadow: 0 3px 10px rgba(31,122,61,0.3); }
+  .wiz-prog-line { flex: 1; height: 2px; background: var(--border-color); border-radius: 2px; min-width: 14px; }
+  .wiz-prog-line.done { background: linear-gradient(90deg, var(--green-500), var(--gold-400)); }
 
-  /* ── Level pills (cards) ── */
-  .lib-pills { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 1rem; }
-  .lib-pill {
-    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-    padding: 0.75rem 0.85rem; border-radius: var(--radius-md);
-    background: var(--bg-card-solid); border: 2px solid var(--border-color);
-    cursor: pointer; text-align: left;
-    font-family: var(--font-display); font-weight: 700; font-size: var(--font-size-sm);
-    color: var(--text-primary);
+  .wiz-screen { animation: fadeUp 320ms var(--ease-out); }
+  .wiz-screen-head { display: flex; align-items: center; gap: 10px; margin-bottom: 0.9rem; }
+  .wiz-back {
+    width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border-color);
+    background: var(--bg-card-solid); color: var(--text-secondary); font-size: 13px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: all var(--duration-fast) var(--ease-out); flex-shrink: 0;
+  }
+  .wiz-back:hover { border-color: var(--green-500); color: var(--green-500); transform: translateX(-2px); }
+  .wiz-title { font-family: var(--font-display); font-weight: 800; font-size: 1rem; color: var(--text-primary); margin: 0; }
+  .wiz-title small { display: block; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .wiz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  @media (max-width: 480px) { .wiz-grid { grid-template-columns: 1fr 1fr; } }
+
+  .wiz-card {
+    position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+    padding: 1rem 1.1rem; border-radius: var(--radius-lg); border: 1.5px solid var(--border-color);
+    background: var(--bg-card-solid); cursor: pointer; text-align: left; overflow: hidden;
+    font-family: var(--font-display); font-weight: 800; font-size: var(--font-size-sm); color: var(--text-primary);
     transition: all var(--duration-normal) var(--ease-out);
   }
-  .lib-pill i { font-size: 1.15rem; color: var(--gold-400); margin-bottom: 4px; }
-  .lib-pill small { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-  .lib-pill:hover { transform: translateY(-2px); border-color: var(--green-500); box-shadow: var(--shadow-md); }
-  .lib-pill.active {
-    background: linear-gradient(135deg, var(--green-500), var(--green-600));
-    color: #fff; border-color: var(--green-500);
-    box-shadow: 0 6px 18px rgba(31,122,61,0.3);
+  .wiz-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--green-500), var(--gold-400));
+    transform: scaleX(0); transform-origin: left; transition: transform 250ms var(--ease-out);
   }
-  .lib-pill.active i { color: var(--gold-300); }
-  .lib-pill.active small { color: rgba(255,255,255,0.75); }
+  .wiz-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--green-500); }
+  .wiz-card:hover::before { transform: scaleX(1); }
+  .wiz-card .wiz-icon {
+    width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem; margin-bottom: 2px;
+  }
+  .wiz-card .wiz-sub { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .wiz-card .wiz-arrow {
+    position: absolute; right: 12px; bottom: 10px; font-size: 11px; color: var(--text-muted); opacity: 0;
+    transition: all var(--duration-fast);
+  }
+  .wiz-card:hover .wiz-arrow { opacity: 1; color: var(--green-500); }
+  .wiz-card.selected {
+    border-color: var(--green-500); box-shadow: 0 6px 18px rgba(31,122,61,0.2);
+  }
+  .wiz-card.selected::before { transform: scaleX(1); }
 
-  /* ── Class chips ── */
-  .lib-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 0.25rem; }
-  .lib-chip {
-    padding: 0.55rem 1.1rem; border-radius: var(--radius-full);
-    border: 1.5px solid var(--border-color);
-    background: var(--bg-card-solid);
-    font-family: var(--font-display); font-weight: 700; font-size: var(--font-size-sm);
-    color: var(--text-primary); cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
-  }
-  .lib-chip:hover { border-color: var(--gold-400); color: var(--gold-400); transform: translateY(-1px); }
-  .lib-chip.active {
-    background: var(--gold-400); color: #fff; border-color: var(--gold-400);
-    box-shadow: 0 4px 12px rgba(217,164,65,0.35);
-  }
+  /* Level cards — gradient covers */
+  .wiz-card.lv-primary .wiz-icon { background: linear-gradient(135deg, #1F7A3D, #2E9E56); color: #fff; box-shadow: 0 4px 12px rgba(31,122,61,0.3); }
+  .wiz-card.lv-ordinary .wiz-icon { background: linear-gradient(135deg, #2563EB, #3B82F6); color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+  .wiz-card.lv-advanced .wiz-icon { background: linear-gradient(135deg, #7C3AED, #A78BFA); color: #fff; box-shadow: 0 4px 12px rgba(124,58,237,0.3); }
+  .wiz-card.lv-technical .wiz-icon { background: linear-gradient(135deg, #D97706, #F59E0B); color: #fff; box-shadow: 0 4px 12px rgba(217,119,6,0.3); }
+  .wiz-card.selected.lv-primary { border-color: #1F7A3D; }
+  .wiz-card.selected.lv-ordinary { border-color: #2563EB; }
+  .wiz-card.selected.lv-advanced { border-color: #7C3AED; }
+  .wiz-card.selected.lv-technical { border-color: #D97706; }
+
+  /* Class cards — pastel */
+  .wiz-card.cls-card .wiz-icon { background: linear-gradient(135deg, #0D9488, #14B8A6); color: #fff; }
+  .wiz-card.cls-card:nth-child(3n+1) .wiz-icon { background: linear-gradient(135deg, #D97706, #F59E0B); }
+  .wiz-card.cls-card:nth-child(3n+2) .wiz-icon { background: linear-gradient(135deg, #2563EB, #3B82F6); }
+
+  /* Subject cards */
+  .wiz-card.subj-card .wiz-icon { background: linear-gradient(135deg, #7C3AED, #A78BFA); color: #fff; }
+  .wiz-card.subj-card:nth-child(4n+1) .wiz-icon { background: linear-gradient(135deg, #DC2626, #EF4444); }
+  .wiz-card.subj-card:nth-child(4n+2) .wiz-icon { background: linear-gradient(135deg, #1F7A3D, #2E9E56); }
+  .wiz-card.subj-card:nth-child(4n+3) .wiz-icon { background: linear-gradient(135deg, #D97706, #F59E0B); }
+  .wiz-card.subj-card:nth-child(4n+4) .wiz-icon { background: linear-gradient(135deg, #2563EB, #3B82F6); }
 
   /* ── Results ── */
   .lib-results { margin-top: 1rem; animation: fadeUp 300ms var(--ease-out); }
@@ -456,6 +485,8 @@ function toast(msg, type) {
 // Categories that need a subject step (vitabu, syllabus, notes)
 const SUBJECT_STEP_SECS = ['books', 'syllabus', 'notes'];
 
+const STEP_LABELS = { 1: 'Chagua Level', 2: 'Chagua Darasa', 3: 'Chagua Somo' };
+
 function enterCategory(sec, title) {
   currentCategory = sec;
   document.getElementById('libHome').style.display = 'none';
@@ -475,28 +506,68 @@ function goHome() {
 function buildDrill(sec) {
   const host = document.getElementById('libDrill');
   const needsSubject = SUBJECT_STEP_SECS.includes(sec);
+  const totalSteps = needsSubject ? 3 : 2;
+  let prog = '';
+  for (let i = 1; i <= totalSteps; i++) {
+    prog += `<div class="wiz-prog-step" id="${sec}Prog${i}"><span class="dot">${i}</span>${STEP_LABELS[i]}</div>`;
+    if (i < totalSteps) prog += `<div class="wiz-prog-line" id="${sec}ProgLine${i}"></div>`;
+  }
   host.innerHTML = `
-    <div class="lib-step"><span class="lib-step-n">1</span><span class="lib-step-t">Chagua Level</span></div>
-    <div class="lib-pills" id="${sec}LevelPills"></div>
-    <div class="lib-step" id="${sec}ClassStep" style="display:none;"><span class="lib-step-n">2</span><span class="lib-step-t">Chagua Darasa</span></div>
-    <div class="lib-chips" id="${sec}ClassChips"></div>
+    <div class="wiz-progress">${prog}</div>
+    <div class="wiz-screen" id="${sec}Screen1">
+      <div class="wiz-screen-head">
+        <button class="wiz-back" onclick="goHome()" title="Rudi kwenye Kategoria"><i class="fas fa-arrow-left"></i></button>
+        <h4 class="wiz-title">Hatua 1<small>Chagua Level</small></h4>
+      </div>
+      <div class="wiz-grid" id="${sec}LevelGrid"></div>
+    </div>
+    <div class="wiz-screen" id="${sec}Screen2" style="display:none;">
+      <div class="wiz-screen-head">
+        <button class="wiz-back" onclick="showWizScreen('${sec}', 1)" title="Rudi"><i class="fas fa-arrow-left"></i></button>
+        <h4 class="wiz-title">Hatua 2<small>Chagua Darasa</small></h4>
+      </div>
+      <div class="wiz-grid" id="${sec}ClassGrid"></div>
+    </div>
     ${needsSubject ? `
-    <div class="lib-step" id="${sec}SubjectStep" style="display:none;"><span class="lib-step-n">3</span><span class="lib-step-t">Chagua Somo</span></div>
-    <div class="lib-chips" id="${sec}SubjectChips"></div>` : ''}
+    <div class="wiz-screen" id="${sec}Screen3" style="display:none;">
+      <div class="wiz-screen-head">
+        <button class="wiz-back" onclick="showWizScreen('${sec}', 2)" title="Rudi"><i class="fas fa-arrow-left"></i></button>
+        <h4 class="wiz-title">Hatua 3<small>Chagua Somo</small></h4>
+      </div>
+      <div class="wiz-grid" id="${sec}SubjectGrid"></div>
+    </div>` : ''}
     <div class="lib-results" id="${sec}Results" style="display:none;"></div>`;
   if (!state[sec].level && LEVEL_META.some(l => l.code === TEACHER_LEVEL)) {
     state[sec].level = TEACHER_LEVEL;
   }
-  renderLevelPills(sec);
+  renderLevelGrid(sec);
 }
 
-function renderLevelPills(sec) {
-  const el = document.getElementById(sec + 'LevelPills');
+function showWizScreen(sec, n) {
+  const totalSteps = SUBJECT_STEP_SECS.includes(sec) ? 3 : 2;
+  for (let i = 1; i <= totalSteps; i++) {
+    document.getElementById(sec + 'Screen' + i).style.display = (i === n) ? 'block' : 'none';
+    const p = document.getElementById(sec + 'Prog' + i);
+    if (p) p.classList.toggle('active', i <= n);
+    if (i < totalSteps) {
+      const pl = document.getElementById(sec + 'ProgLine' + i);
+      if (pl) pl.classList.toggle('done', i < n);
+    }
+  }
+  const res = document.getElementById(sec + 'Results');
+  if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderLevelGrid(sec) {
+  const el = document.getElementById(sec + 'LevelGrid');
   el.innerHTML = LEVEL_META.map(l => `
-    <button class="lib-pill ${state[sec].level === l.code ? 'active' : ''}" onclick="pickLevel('${sec}', '${l.code}')">
-      <i class="fas ${l.icon}"></i>${l.label}<small>${l.sub}</small>
+    <button class="wiz-card lv-${l.code} ${state[sec].level === l.code ? 'selected' : ''}" onclick="pickLevel('${sec}', '${l.code}')">
+      <span class="wiz-icon"><i class="fas ${l.icon}"></i></span>
+      ${l.label}<small class="wiz-sub">${l.sub}</small>
+      <i class="fas fa-arrow-right wiz-arrow"></i>
     </button>`).join('');
-  if (state[sec].level) renderClassChips(sec);
+  if (state[sec].level) renderClassGrid(sec);
 }
 
 function pickLevel(sec, level) {
@@ -505,42 +576,44 @@ function pickLevel(sec, level) {
   if (SUBJECT_STEP_SECS.includes(sec)) { state[sec].subjectId = ''; state[sec].subjectName = ''; }
   if (sec === 'notes') { state[sec].topic = ''; }
   if (sec === 'schemes') { state[sec].subjectName = ''; }
-  renderLevelPills(sec);
-  clearResults(sec);
+  renderLevelGrid(sec);
+  renderClassGrid(sec);
+  showWizScreen(sec, 2);
 }
 
-function renderClassChips(sec) {
-  const step = document.getElementById(sec + 'ClassStep');
-  const el = document.getElementById(sec + 'ClassChips');
+function renderClassGrid(sec) {
+  const el = document.getElementById(sec + 'ClassGrid');
+  if (!el) return;
   const lc = LEVEL_CLASSES.find(l => l.code === state[sec].level);
-  if (!lc) { step.style.display = 'none'; el.innerHTML = ''; renderSubjectChips(sec); return; }
-  step.style.display = 'flex';
-  el.innerHTML = lc.classes.map(c => {
-    const cls = String(c.name).replace(/'/g, "\\'");
-    return `<button class="lib-chip ${state[sec].className === c.name ? 'active' : ''}" onclick="pickClass('${sec}', '${cls}')">${esc(c.name)}</button>`;
-  }).join('');
-  renderSubjectChips(sec);
-}
-
-function renderSubjectChips(sec) {
-  if (!SUBJECT_STEP_SECS.includes(sec)) return;
-  const step = document.getElementById(sec + 'SubjectStep');
-  const el = document.getElementById(sec + 'SubjectChips');
-  if (!step || !el) return;
-  if (!state[sec].className) {
-    step.style.display = 'none';
-    el.innerHTML = '';
+  if (!lc || !lc.classes.length) {
+    el.innerHTML = '<div class="lib-empty">Hakuna madarasa kwa level hii.</div>';
     return;
   }
-  step.style.display = 'flex';
+  el.innerHTML = lc.classes.map(c => {
+    const cls = String(c.name).replace(/'/g, "\\'");
+    return `<button class="wiz-card cls-card ${state[sec].className === c.name ? 'selected' : ''}" onclick="pickClass('${sec}', '${cls}')">
+      <span class="wiz-icon"><i class="fas fa-users"></i></span>
+      ${esc(c.name)}<small class="wiz-sub">Darasa</small>
+      <i class="fas fa-arrow-right wiz-arrow"></i>
+    </button>`;
+  }).join('');
+}
+
+function renderSubjectGrid(sec) {
+  if (!SUBJECT_STEP_SECS.includes(sec)) return;
+  const el = document.getElementById(sec + 'SubjectGrid');
+  if (!el) return;
   const subs = SUBJECTS[SUBJECT_KEY[state[sec].level]] || [];
   if (!subs.length) {
-    step.style.display = 'none';
-    el.innerHTML = '';
+    el.innerHTML = '<div class="lib-empty">Hakuna masomo kwa level hii.</div>';
     return;
   }
   el.innerHTML = subs.map(sub =>
-    `<button class="lib-chip ${state[sec].subjectId === String(sub.id) ? 'active' : ''}" data-sid="${sub.id}" onclick="pickSubject('${sec}', this)">${esc(sub.name)}</button>`
+    `<button class="wiz-card subj-card ${state[sec].subjectId === String(sub.id) ? 'selected' : ''}" data-sid="${sub.id}" onclick="pickSubject('${sec}', this)">
+      <span class="wiz-icon"><i class="fas fa-book-open"></i></span>
+      ${esc(sub.name)}<small class="wiz-sub">Somo</small>
+      <i class="fas fa-arrow-right wiz-arrow"></i>
+    </button>`
   ).join('');
 }
 
@@ -550,21 +623,41 @@ function pickSubject(sec, btn) {
   state[sec].subjectId = btn.dataset.sid;
   state[sec].subjectName = sub ? sub.name : '';
   if (sec === 'notes') state[sec].topic = '';
-  renderSubjectChips(sec);
-  if (state[sec].className) loadResults(sec);
+  renderSubjectGrid(sec);
+  if (state[sec].className) {
+    showResultsScreen(sec);
+    loadResults(sec);
+  }
 }
 
 function pickClass(sec, cls) {
   state[sec].className = cls;
-  renderClassChips(sec);
+  renderClassGrid(sec);
   if (SUBJECT_STEP_SECS.includes(sec)) {
-    renderSubjectChips(sec);
-    if (!state[sec].subjectId) {
-      clearResults(sec);
-      return;
+    renderSubjectGrid(sec);
+    showWizScreen(sec, 3);
+    return;
+  }
+  showResultsScreen(sec);
+  loadResults(sec);
+}
+
+// Hide all wizard screens, show only the results panel
+function showResultsScreen(sec) {
+  const totalSteps = SUBJECT_STEP_SECS.includes(sec) ? 3 : 2;
+  for (let i = 1; i <= totalSteps; i++) {
+    const scr = document.getElementById(sec + 'Screen' + i);
+    if (scr) scr.style.display = 'none';
+    const p = document.getElementById(sec + 'Prog' + i);
+    if (p) p.classList.add('active');
+    if (i < totalSteps) {
+      const pl = document.getElementById(sec + 'ProgLine' + i);
+      if (pl) pl.classList.add('done');
     }
   }
-  loadResults(sec);
+  const res = document.getElementById(sec + 'Results');
+  if (res) { res.style.display = 'block'; }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function clearResults(sec) {
@@ -588,12 +681,15 @@ function loadResults(sec) {
 
 function breadcrumb(sec, label) {
   const s = state[sec];
+  const needsSubject = SUBJECT_STEP_SECS.includes(sec);
+  const backTarget = needsSubject ? 3 : 2;
   let h = `<div class="lib-breadcrumb">
+    <button class="wiz-back" style="width:26px;height:26px;font-size:11px;" onclick="showWizScreen('${sec}', ${backTarget})" title="Rudi"><i class="fas fa-arrow-left"></i></button>
     <i class="fas fa-folder-open"></i> ${label}
     <span class="sep">›</span> <button onclick="pickLevel('${sec}', '${s.level}')">${levelLabel(s.level)}</button>
     <span class="sep">›</span> <button onclick="pickClass('${sec}', '${s.className.replace(/'/g, "\\'")}')">${esc(s.className)}</button>`;
   if (s.subjectName) {
-    h += `<span class="sep">›</span> <button onclick="pickSubject('${sec}', document.querySelector('#${sec}SubjectChips .active'))">${esc(s.subjectName)}</button>`;
+    h += `<span class="sep">›</span> <button onclick="pickSubject('${sec}', document.querySelector('#${sec}SubjectGrid .selected'))">${esc(s.subjectName)}</button>`;
   }
   h += `</div>`;
   return h;
