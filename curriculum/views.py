@@ -7944,6 +7944,25 @@ def ajax_notes_library_books(request):
             'url': b.url,
             'uploaded_by_me': request.user.is_authenticated and b.uploaded_by_id == request.user.id,
         })
+    # Maktaba rasmi za darasa (subject=NULL) — ziweze kuonekana kwa kila somo,
+    # hasa kama somo hilo halina kitabu maalum bado (fallback ya "madude ya kutosha").
+    if subject_id and not books:
+        lib_qs = Textbook.objects.filter(education_level=level, is_active=True, subject__isnull=True)
+        if class_name:
+            lib_qs = lib_qs.filter(class_level__name__iexact=class_name)
+        for b in lib_qs.order_by('-id'):
+            books.append({
+                'id': b.id,
+                'title': b.title,
+                'subject': b.subject.name if b.subject else '',
+                'class_name': b.class_level.name if b.class_level else '',
+                'publisher': b.publisher,
+                'year': b.year,
+                'description': b.description,
+                'file_url': b.file.url if b.file else '',
+                'url': b.url,
+                'uploaded_by_me': request.user.is_authenticated and b.uploaded_by_id == request.user.id,
+            })
     books.sort(key=lambda b: (b['uploaded_by_me'] is not True, -b['id']))
     return JsonResponse({
         'success': True,
