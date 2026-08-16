@@ -1476,6 +1476,10 @@ def ajax_generate_scheme(request):
         school_name = data.get('school_name', '')
         reference_source = data.get('reference_source', '')
         breaks = data.get('breaks', [])
+        # ── Muundo / Format: 'table' (jedwali) au 'notable' (bila jedwali — VETA) ──
+        _scheme_format = data.get('format', 'table')
+        if _scheme_format not in ('table', 'notable'):
+            _scheme_format = 'table'
         # ── Language: manual selection (english/kiswahili) or auto-detect ──
         _lang_tlm = get_tlm_teacher(request)
         _scheme_language = data.get('language', getattr(_lang_tlm, 'preferred_language', 'auto') if _lang_tlm else 'auto')
@@ -1706,6 +1710,7 @@ RULES:
                         'reference_source': reference_source,
                         'breaks': breaks,
                         'scheme_data': all_scheme_data,
+                        'format': _scheme_format,
                         'generated_by_ai': True,
                     }
                     if student:
@@ -1726,6 +1731,7 @@ RULES:
             'data': all_scheme_data,
             'saved_id': saved_id,
             'groups': [','.join(grp) for grp in month_groups],
+            'format': _scheme_format,
         })
 
     except Exception as e:
@@ -1763,6 +1769,10 @@ def download_scheme_pdf(request):
     teacher_name = data.get('teacher_name', '')
     school_name = data.get('school_name', '')
     total_weeks = data.get('total_weeks', '')
+    # ── Muundo / Format: 'table' (jedwali) au 'notable' (bila jedwali — VETA) ──
+    fmt = str(data.get('format', 'table')).lower()
+    if fmt not in ('table', 'notable'):
+        fmt = 'table'
 
     # Normalize Swahili keys to English for PDF processing
     was_swahili = _has_swahili_keys(scheme_data)
@@ -2075,10 +2085,37 @@ def download_scheme_pdf(request):
         ('RIGHTPADDING', (0, 0), (-1, -1), 10),
     ]))
     elements.append(info_table)
-    # ── PageBreak: Cover page ends here, data table starts on page 2 ──
+    # ── PageBreak: Cover page ends here, content starts on page 2 ──
     elements.append(PageBreak())
 
-    if scheme_data:
+    if scheme_data and fmt == 'notable':
+        # ══════════════════════════════════════════════════════════════════
+        # BILA JEDWALI (E-Logbook / VETA) — numbered list, no table grid
+        # ══════════════════════════════════════════════════════════════════
+        _scheme_lbl = lambda en: (SWAHILI_SCHEME_KEYS.get(en, en) if was_swahili else en)
+        _lb_head = ParagraphStyle('LbHead', fontName='Helvetica-Bold', fontSize=_fs + 1.5,
+                                  leading=_fs + 5, textColor=NAVY, spaceBefore=10, spaceAfter=3)
+        _lb_val = ParagraphStyle('LbVal', fontName='Helvetica', fontSize=_fs,
+                                 leading=_fs + 3.5, textColor=colors.HexColor('#222222'),
+                                 leftIndent=14, spaceAfter=2.5)
+        _field_order = ['Month', 'Week', 'Number of Periods', 'Main Competence', 'Specific Competences',
+                        'Main Learning Activities', 'Specific Learning Activities',
+                        'Teaching and Learning Methods', 'Teaching and Learning Resources',
+                        'Assessment Tools', 'References', 'Remarks']
+        for _n, _row in enumerate(scheme_data, start=1):
+            _parts = []
+            for _k in ('Month', 'Week', 'Number of Periods'):
+                _vv = str(_row.get(_k, '') or '').strip()
+                if _vv:
+                    _parts.append(f"{_scheme_lbl(_k)}: {_vv}")
+            elements.append(Paragraph(f"{_n}. {' | '.join(_parts) if _parts else _scheme_lbl('Main Competence')}", _lb_head))
+            for _k in _field_order:
+                _vv = str(_row.get(_k, '') or '').strip()
+                if not _vv:
+                    continue
+                elements.append(Paragraph(f"<b>{_scheme_lbl(_k)}:</b> {_vv.replace('&', '&amp;').replace('<', '&lt;')}", _lb_val))
+            elements.append(Spacer(1, 4))
+    elif scheme_data:
         headers = list(scheme_data[0].keys())
         WIDTH_MAP = {
             'Main Competence': 72, 'Specific Competences': 72,
@@ -2149,6 +2186,10 @@ def download_scheme_word(request):
     year = data.get('year', '')
     teacher_name = data.get('teacher_name', '')
     school_name = data.get('school_name', '')
+    # ── Muundo / Format: 'table' (jedwali) au 'notable' (bila jedwali — VETA) ──
+    fmt = str(data.get('format', 'table')).lower()
+    if fmt not in ('table', 'notable'):
+        fmt = 'table'
 
     # Normalize Swahili keys to English for Word processing
     was_swahili = _has_swahili_keys(scheme_data)
@@ -2171,7 +2212,46 @@ def download_scheme_word(request):
     info.alignment = WD_ALIGN_PARAGRAPH.CENTER
     doc.add_paragraph()
 
-    if scheme_data:
+    if scheme_data and fmt == 'notable':
+        # ══════════════════════════════════════════════════════════════════
+        # BILA JEDWALI (E-Logbook / VETA) — numbered list, no table grid
+        # ══════════════════════════════════════════════════════════════════
+        section = doc.sections[0]
+        section.page_width = Cm(21.0)
+        section.page_height = Cm(29.7)
+        section.left_margin = section.right_margin = Cm(1.8)
+        section.top_margin = section.bottom_margin = Cm(1.8)
+        _field_order = ['Month', 'Week', 'Number of Periods', 'Main Competence', 'Specific Competences',
+                        'Main Learning Activities', 'Specific Learning Activities',
+                        'Teaching and Learning Methods', 'Teaching and Learning Resources',
+                        'Assessment Tools', 'References', 'Remarks']
+        for _i, _row in enumerate(scheme_data, start=1):
+            _parts = []
+            for _k in ('Month', 'Week', 'Number of Periods'):
+                _vv = str(_row.get(_k, '') or '').strip()
+                if _vv:
+                    _lbl = SWAHILI_SCHEME_KEYS.get(_k, _k) if was_swahili else _k
+                    _parts.append(f"{_lbl}: {_vv}")
+            _h = doc.add_paragraph()
+            _hr = _h.add_run(f"{_i}. {' | '.join(_parts)}")
+            _hr.bold = True
+            _hr.font.size = Pt(11)
+            _hr.font.color.rgb = RGBColor(0x0A, 0x2B, 0x5E)
+            for _k in _field_order:
+                _vv = str(_row.get(_k, '') or '').strip()
+                if not _vv:
+                    continue
+                _lbl = SWAHILI_SCHEME_KEYS.get(_k, _k) if was_swahili else _k
+                _p = doc.add_paragraph()
+                _p.paragraph_format.left_indent = Cm(0.6)
+                _p.paragraph_format.space_after = Pt(2)
+                _r1 = _p.add_run(f"{_lbl}: ")
+                _r1.bold = True
+                _r1.font.size = Pt(10)
+                _r2 = _p.add_run(_vv)
+                _r2.font.size = Pt(10)
+            doc.add_paragraph()
+    elif scheme_data:
         headers = list(scheme_data[0].keys())
         table = doc.add_table(rows=1, cols=len(headers))
         table.style = 'Table Grid'
@@ -2284,6 +2364,7 @@ def ajax_load_saved_scheme(request):
                 'school_name': scheme.school.name if scheme.school else '',
                 'total_weeks': scheme.total_weeks,
                 'syllabus': scheme.syllabus,
+                'format': scheme.format,
                 'updated_at': scheme.updated_at.strftime('%d %b %Y, %H:%M'),
             }
         })
@@ -2310,6 +2391,7 @@ def ajax_load_scheme_by_id(request, scheme_id):
                 'school_name': scheme.school.name if scheme.school else '',
                 'total_weeks': scheme.total_weeks,
                 'syllabus': scheme.syllabus,
+                'format': scheme.format,
                 'updated_at': scheme.updated_at.strftime('%d %b %Y, %H:%M'),
             }
         })
@@ -2320,6 +2402,109 @@ def ajax_load_scheme_by_id(request, scheme_id):
 # =============================================================================
 # LESSON PLAN
 # =============================================================================
+
+# =============================================================================
+# E-LOGBOOK (BILA JEDWALI) LESSON PLAN — VETA format
+# =============================================================================
+
+def _notable_lp_prompt(**kw):
+    """AI prompt kwa LESSON PLAN ya E-Logbook (bila jedwali) — format inayotumiwa
+    na walimu wa VETA (Mpangilio wa kazi wa E-Logbook)."""
+    return f"""Generate a LESSON PLAN using the VETA E-LOGBOOK format (type against each item — NO tables, NO IDDR grid).
+
+============================================
+LESSON PLAN
+(Format to be used in E-Logbook. Type against each item)
+============================================
+
+Teacher's Name: {kw.get('teacher_name') or '...............................'}
+Subject Name: {kw.get('subject') or ''}
+Date: {datetime.now().strftime("%d/%m/%Y")}
+Class/Stream: {kw.get('full_class') or kw.get('class_name') or ''}
+Period: {kw.get('period') or '...............................'}
+Time: {kw.get('time') or '...............................'}
+Number of students Registered in the Class: Male: {kw.get('total_boys') or '......'}  Female: {kw.get('total_girls') or '......'}  Total: {kw.get('total_students') or '......'}
+Number of students Present in the Class: Male: {kw.get('present_boys') or '......'}  Female: {kw.get('present_girls') or '......'}  Total: {kw.get('present_students') or '......'}
+
+Education level: {kw.get('education_level')} | Term: {kw.get('term')} | Year: {kw.get('year')} | Duration: {kw.get('duration')} minutes
+
+{kw.get('lp_language_instruction') or ''}
+
+-- CONTENT MATCHING (CRITICAL) --
+ALL content below MUST be specifically about:
+   - Subject: {kw.get('subject')}
+   - Class: {kw.get('full_class') or kw.get('class_name')}
+   - Main Topic: \"{kw.get('topic')}\"
+   - Sub-Topic: \"{kw.get('subtopic') or 'N/A'}\"
+
+-- THE 6 NUMBERED ITEMS --
+1. Main Topic: {kw.get('topic')}
+   Sub-Topic: {kw.get('subtopic') or 'N/A'}
+2. Competences: REAL numbered competence(s) (e.g. \"1.0 Topic Name\") kutoka mtaala wa {kw.get('subject')} kwa darasa hili — specific kwa mada hii.
+3. Main Objectives: Lengthy overall objective for the lesson (what the teacher aims to achieve).
+   Specific Objectives: 2-3 measurable objectives, each starting with a verb (define, explain, apply, demonstrate, construct, test...) — specific to \"{kw.get('topic')}\" / \"{kw.get('subtopic') or 'N/A'}\".
+4. Teaching Methods/Strategies: real CBC methods (e.g. Demonstration, Group Discussion, Practical Work, Question & Answer, Discovery, Role Play, Project-based) — specific for this practical/technical topic.
+5. Teaching and Learning Materials/Aids: specific real materials for THIS topic (e.g. tools, apparatus, charts, specimens, PPE, TIE textbook pages) — NOT generic.
+6. References: LATEST TIE / VETA-NACTE reference: \"Tanzania Institute of Education. (2024). {kw.get('subject')}. Tanzania Institute of Education.\" (+ any practical manual).
+
+Remarks: short paragraph evaluating student achievement, challenges, and way forward.
+
+Output ONLY valid JSON with EXACTLY this structure (no extra text, no markdown):
+{{
+    "competences": "...",
+    "main_objectives": "...",
+    "specific_objectives": "1. ...\n2. ...\n3. ...",
+    "teaching_methods": "...",
+    "teaching_resources": "...",
+    "references": "...",
+    "remarks": "..."
+}}
+
+⚠️ LANGUAGE REMINDER: ALL text values MUST be in the language specified by the LANGUAGE instruction above. Return ONLY the JSON object."""
+
+
+def _normalize_notable_lp(raw, topic='', subtopic='', subject=''):
+    """Normalize AI output ya E-Logbook format kuwa lesson_data yenye keys zote
+    (zile za E-Logbook + zile za kuhifadhi DB). Inatumika pia kama fallback."""
+    if not raw or not isinstance(raw, dict):
+        raw = {}
+
+    def _g(*keys):
+        for k in keys:
+            if raw.get(k):
+                return raw.get(k)
+        return ''
+
+    comp = str(_g('competences', 'main_competence')).strip() or f"1.0 {topic} — Demonstrate understanding of {topic}"
+    main_obj = str(_g('main_objectives', 'specific_competence')).strip() or f"By the end of this lesson, the teacher aims to enable students to master {topic} ({subtopic or 'the subtopic'})."
+    spec_obj = str(_g('specific_objectives', 'specific_activity')).strip() or f"By the end of this lesson, students should be able to:\n- Define {topic}\n- Explain key concepts of {topic}\n- Apply {topic} in real-life/practical situations"
+    methods = str(_g('teaching_methods')).strip() or "Demonstration, Group Discussion, Practical Work, Question and Answer"
+    resources = str(_g('teaching_resources')).strip() or "TIE textbook, Chalkboard, Charts, Tools and apparatus, PPE"
+    refs = str(_g('references')).strip() or f"Tanzania Institute of Education. (2024). {subject}. Tanzania Institute of Education."
+    remarks = str(_g('remarks')).strip() or "Students participated well. Some need more practice — remedial work will be given next lesson."
+
+    spec_obj_lines = [s.strip() for s in re.split(r'[\n\r]+', spec_obj) if s.strip()]
+
+    return {
+        'format': 'notable',
+        'competences': comp,
+        'main_objectives': main_obj,
+        'specific_objectives': spec_obj,
+        'teaching_methods': methods,
+        # legacy keys (display + DB)
+        'main_competence': comp,
+        'specific_competence': main_obj,
+        'main_activity': main_obj,
+        'specific_activity': spec_obj,
+        'previous_knowledge': spec_obj,
+        'learning_objectives': spec_obj_lines or [main_obj],
+        'teaching_resources': resources,
+        'references': refs,
+        'remarks': remarks,
+        'lesson_development': [],
+        'student_statistics': raw.get('student_statistics', {}),
+    }
+
 
 def lesson_plan_view(request):
     """Display lesson plan generator form — requires TLM registration."""
@@ -2468,7 +2653,23 @@ def ajax_generate_lessonplan(request):
         _lp_school_level = _lp_tlm.school.level if _lp_tlm and _lp_tlm.school else ''
         lp_language_instruction = _get_lp_language_instruction(_lp_language, subject, _lp_school_level)
 
-        prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom following the OFFICIAL TAMISEMI (PRIME MINISTER'S OFFICE - REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT) format.
+        # ── Muundo / Format: 'table' (IDDR) au 'notable' (E-Logbook bila jedwali) ──
+        fmt = (data.get('format') or 'table').lower()
+        period = data.get('period', '')
+        period_time = data.get('time', '')
+
+        if fmt == 'notable':
+            prompt = _notable_lp_prompt(
+                teacher_name=teacher_name, school_name=school_name, subject=subject,
+                full_class=full_class, class_name=class_name, education_level=education_level,
+                term=term, year=year, duration=duration, topic=topic, subtopic=subtopic,
+                total_boys=total_boys, total_girls=total_girls, total_students=total_students,
+                present_boys=present_boys, present_girls=present_girls, present_students=present_students,
+                period=period, time=period_time, lp_language_instruction=lp_language_instruction,
+            )
+        else:
+            fmt = 'table'
+            prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom following the OFFICIAL TAMISEMI (PRIME MINISTER'S OFFICE - REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT) format.
 
 ============================================
 PRIME MINISTER'S OFFICE
@@ -2586,6 +2787,10 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
                 "remarks": f"The students were able to explain {topic} due to the use of interactive teaching and learning methods. However, some students need more clarification. I will address this in the next lesson through remedial activities."
             }
 
+        # ── E-Logbook (bila jedwali): normalize keys za display + DB ──
+        if fmt == 'notable':
+            lesson_data = _normalize_notable_lp(lesson_data, topic=topic, subtopic=subtopic, subject=subject)
+
         saved_id = None
         try:
             tlm_teacher = get_tlm_teacher(request)
@@ -2637,11 +2842,12 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
                         main_competence=lesson_data.get('main_competence', ''),
                         specific_competence=lesson_data.get('specific_competence', ''),
                         previous_knowledge=lesson_data.get('specific_activity', ''),
-                        learning_objectives=[lesson_data.get('specific_activity', '')],
-                        teaching_methods=[],
+                        learning_objectives=lesson_data.get('learning_objectives') or [lesson_data.get('specific_activity', '')],
+                        teaching_methods=[m for m in str(lesson_data.get('teaching_methods', '')).split(',') if m.strip()] if fmt == 'notable' else [],
                         teaching_resources=[lesson_data.get('teaching_resources', '')],
                         lesson_development=lp_development,
                         remarks=lesson_data.get('remarks', ''),
+                        format=fmt,
                         generated_by_ai=True,
                     )
                     saved_id = lp_obj.id
@@ -2894,6 +3100,18 @@ def _build_lp_pdf(lesson, form, teacher=None):
     BORDER = T['border']
     _lp_fs = T.get('font_size', 8.5)
 
+    # ── Determine language mode for LP (check form data for language hint) ──
+    _lp_sw = form.get('language', '') == 'kiswahili' or form.get('subject', '').lower() in ('kiswahili', 'swahili')
+    if not _lp_sw:
+        # Also check via teacher's school level
+        _lp_teacher_lp = teacher
+        if _lp_teacher_lp and _lp_teacher_lp.school:
+            _lp_sw = _is_kiswahili_mode(
+                form.get('language', getattr(_lp_teacher_lp, 'preferred_language', 'auto')),
+                form.get('subject', ''),
+                _lp_teacher_lp.school.level
+            )
+
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
                             rightMargin=36, leftMargin=36, topMargin=40, bottomMargin=30)
@@ -2907,21 +3125,71 @@ def _build_lp_pdf(lesson, form, teacher=None):
     title_s = ParagraphStyle('LP_TITLE', fontName='Helvetica-Bold', fontSize=16, alignment=1, textColor=NAVY, spaceAfter=1)
     subtitle_s = ParagraphStyle('LP_SUBTITLE', fontName='Helvetica-Bold', fontSize=_lp_fs - 0.5, alignment=1, textColor=DARK_GOLD, spaceAfter=1)
 
+    # ═══════════════════════════════════════════════════════════════════════
+    # E-LOGBOOK FORMAT (BILA JEDWALI) — VETA — mpango wa somo kama orodha
+    # ═══════════════════════════════════════════════════════════════════════
+    if (form.get('format') or lesson.get('format') or '') == 'notable':
+        elements = []
+        # Cover lines
+        elements.append(HRFlowable(width="100%", thickness=2.5, color=GOLD, spaceAfter=2))
+        elements.append(HRFlowable(width="100%", thickness=1.2, color=NAVY, spaceAfter=10))
+        # Title
+        elements.append(Paragraph("LESSON PLAN",
+            ParagraphStyle('LP_TITLE_NB', fontName='Helvetica-Bold', fontSize=16, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+        elements.append(Paragraph("(Format to be used in E-Logbook. Type against each item)",
+            ParagraphStyle('LP_SUB_NB', fontName='Helvetica-Oblique', fontSize=9, alignment=1,
+                           textColor=colors.HexColor('#C00000'), spaceAfter=10)))
+
+        # ── Info block (hati ya E-Logbook — bila jedwali) ──
+        def _dotted(value):
+            v = str(value or '').strip()
+            return v + (' ' + '.' * max(5, 40 - len(v)) if v else '.' * 45)
+
+        info_items = [
+            (_tl("Teacher's Name", _lp_sw), _dotted(form.get('teacher_name', ''))),
+            ('Subject Name', _dotted(form.get('subject', ''))),
+            ('Date', _dotted(str(timezone.now().date()))),
+            ('Class/Stream', _dotted(f"{form.get('class_name','')}{' ' + (form.get('stream') or '') if form.get('stream') else ''}")),
+            ('Period', _dotted(form.get('period', ''))),
+            ('Time', _dotted(form.get('time', ''))),
+            ('Number of students Registered in the Class',
+             f"Male: {form.get('total_boys') or '......'}   Female: {form.get('total_girls') or '......'}   Total: {form.get('total_students') or '......'}"),
+            ('Number of students Present in the Class',
+             f"Male: {form.get('present_boys') or '......'}   Female: {form.get('present_girls') or '......'}   Total: {form.get('present_students') or '......'}"),
+        ]
+        for label, value in info_items:
+            elements.append(Paragraph(
+                f"<b>{label}:</b> {value}", normal))
+
+        elements.append(Spacer(1, 8))
+
+        # ── Vipengele 1-6 (E-Logbook) ──
+        def _item(number, label, value, indent=False):
+            elements.append(Paragraph(
+                f"<b>{number}. {label}:</b> {value or (' ' + '.' * 45)} ", normal))
+
+        _item(1, 'Main Topic', _dotted(form.get('topic', '')))
+        _item('', 'Sub-Topic', _dotted(form.get('subtopic', '')), indent=True)
+        _item(2, 'Competences', lesson.get('competences') or lesson.get('main_competence', ''))
+        _item(3, 'Main Objectives', lesson.get('main_objectives') or lesson.get('specific_competence', ''))
+        _item('', 'Specific Objectives', lesson.get('specific_objectives') or lesson.get('specific_activity', ''), indent=True)
+        _item(4, 'Teaching Methods/Strategies', lesson.get('teaching_methods', ''))
+        _item(5, 'Teaching and Learning Materials/Aids', lesson.get('teaching_resources', ''))
+        _item(6, 'References', lesson.get('references', ''))
+
+        remarks = lesson.get('remarks', '')
+        if remarks:
+            elements.append(Spacer(1, 6))
+            elements.append(Paragraph(f"<b>Remarks:</b> {remarks}", normal))
+
+        doc.build(elements, onFirstPage=_lp_cover, onLaterPages=_lp_header)
+        buffer.seek(0)
+        return buffer
+
     # ── Cover page: decorative top lines ──
     elements.append(HRFlowable(width="100%", thickness=2.5, color=GOLD, spaceAfter=2))
     elements.append(HRFlowable(width="100%", thickness=1.2, color=NAVY, spaceAfter=10))
-
-    # ── Determine language mode for LP (check form data for language hint) ──
-    _lp_sw = form.get('language', '') == 'kiswahili' or form.get('subject', '').lower() in ('kiswahili', 'swahili')
-    if not _lp_sw:
-        # Also check via teacher's school level
-        _lp_teacher_lp = teacher
-        if _lp_teacher_lp and _lp_teacher_lp.school:
-            _lp_sw = _is_kiswahili_mode(
-                form.get('language', getattr(_lp_teacher_lp, 'preferred_language', 'auto')),
-                form.get('subject', ''),
-                _lp_teacher_lp.school.level
-            )
 
     # ── TAMISEMI Header (centered, bold) — bilingual ──
     _pm = _tl("PRIME MINISTER'S OFFICE", _lp_sw)
@@ -3182,8 +3450,10 @@ def download_lesson_plan_pdf(request):
 def _lp_to_dicts(lp):
     """Convert a saved LessonPlan row to the lesson_data/form_data dicts that
     the PDF builder expects (same shape as ajax_load_lesson_by_id)."""
+    fmt = getattr(lp, 'format', 'table') or 'table'
     lesson_data = {
         'lesson_title': f"{lp.subject.name} - {lp.topic}",
+        'format': fmt,
         'main_competence': lp.main_competence,
         'specific_competence': lp.specific_competence,
         'main_activity': None,  # Not stored in old model
@@ -3196,6 +3466,16 @@ def _lp_to_dicts(lp):
         'lesson_development': lp.lesson_development,
         'remarks': lp.remarks,
     }
+    if fmt == 'notable':
+        # Reconstruct E-Logbook keys from the saved model fields
+        lesson_data.update({
+            'competences': lp.main_competence or '',
+            'main_objectives': lp.specific_competence or '',
+            'specific_objectives': lp.previous_knowledge or (
+                '\n'.join(o for o in (lp.learning_objectives or []) if o)
+            ),
+            'teaching_methods': ', '.join(m for m in (lp.teaching_methods or []) if m),
+        })
     form_data = {
         'subject': lp.subject.name, 'class_name': lp.class_name,
         'term': lp.term, 'year': lp.year, 'topic': lp.topic,
@@ -3208,6 +3488,7 @@ def _lp_to_dicts(lp):
         'total_girls': lp.total_girls or '',
         'present_boys': lp.present_boys or '',
         'present_girls': lp.present_girls or '',
+        'format': fmt,
     }
     return lesson_data, form_data
 
@@ -3291,10 +3572,73 @@ def download_lesson_plan_word(request):
 
     from docx import Document
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import RGBColor
 
     data = json.loads(request.body)
     lesson = data.get('lesson_data', {})
     form = data.get('form_data', {})
+
+    fmt = form.get('format') or lesson.get('format') or 'table'
+    if fmt == 'notable':
+        # ── E-Logbook format (bila jedwali) — VETA ──
+        doc = Document()
+        h = doc.add_heading('LESSON PLAN', 0)
+        h.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        sub = doc.add_paragraph()
+        sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = sub.add_run('(Format to be used in E-Logbook. Type against each item)')
+        r.italic = True
+        r.font.color.rgb = RGBColor(0xC0, 0x00, 0x00)
+
+        def _add_line(label, value):
+            p = doc.add_paragraph()
+            p.add_run(f"{label}: ").bold = True
+            p.add_run(str(value or (' .' * 24)))
+
+        _add_line("Teacher's Name", form.get('teacher_name', ''))
+        _add_line('Subject Name', form.get('subject', ''))
+        _add_line('Date', str(timezone.now().date()))
+        _add_line('Class/Stream', f"{form.get('class_name','')} {form.get('stream','') or ''}".strip())
+        _add_line('Period', form.get('period', ''))
+        _add_line('Time', form.get('time', ''))
+        _add_line('Number of students Registered in the Class',
+                  f"Male: {form.get('total_boys') or '......'}   Female: {form.get('total_girls') or '......'}   Total: {form.get('total_students') or '......'}")
+        _add_line('Number of students Present in the Class',
+                  f"Male: {form.get('present_boys') or '......'}   Female: {form.get('present_girls') or '......'}   Total: {form.get('present_students') or '......'}")
+        doc.add_paragraph()
+
+        def _add_item(number, label, value):
+            p = doc.add_paragraph()
+            p.add_run(f"{number}. {label}: ").bold = True
+            p.add_run(str(value or (' .' * 24)))
+
+        _add_item(1, 'Main Topic', form.get('topic', ''))
+        p = doc.add_paragraph()
+        p.add_run('    Sub-Topic: ').bold = True
+        p.add_run(str(form.get('subtopic', '') or (' .' * 24)))
+        _add_item(2, 'Competences', lesson.get('competences') or lesson.get('main_competence', ''))
+        _add_item(3, 'Main Objectives', lesson.get('main_objectives') or lesson.get('specific_competence', ''))
+        p = doc.add_paragraph()
+        p.add_run('    Specific Objectives: ').bold = True
+        p.add_run(str(lesson.get('specific_objectives') or lesson.get('specific_activity', '') or (' .' * 24)))
+        _add_item(4, 'Teaching Methods/Strategies', lesson.get('teaching_methods', ''))
+        _add_item(5, 'Teaching and Learning Materials/Aids', lesson.get('teaching_resources', ''))
+        _add_item(6, 'References', lesson.get('references', ''))
+
+        remarks = lesson.get('remarks', '')
+        if remarks:
+            doc.add_paragraph()
+            p = doc.add_paragraph()
+            p.add_run('Remarks: ').bold = True
+            p.add_run(str(remarks))
+
+        buffer = BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+        safe_name = f"LessonPlan_{form.get('subject','')}_{form.get('topic','')}".replace(' ', '_')
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        response['Content-Disposition'] = f'attachment; filename="{safe_name}.docx"'
+        return response
 
     doc = Document()
     doc.add_heading('LESSON PLAN', 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3423,11 +3767,16 @@ def ajax_save_scheme_edits(request):
         if not scheme_data:
             return JsonResponse({'success': False, 'error': 'Hakuna data'}, status=400)
         
+        fmt = data.get('format', '')
         if scheme_id:
             try:
                 scheme = SchemeOfWork.objects.get(id=scheme_id)
                 scheme.scheme_data = scheme_data
-                scheme.save(update_fields=['scheme_data'])
+                if fmt in ('table', 'notable'):
+                    scheme.format = fmt
+                    scheme.save(update_fields=['scheme_data', 'format'])
+                else:
+                    scheme.save(update_fields=['scheme_data'])
             except SchemeOfWork.DoesNotExist:
                 pass
         
@@ -3466,7 +3815,20 @@ def ajax_save_lesson_edits(request):
                     lp.learning_objectives = [spec_act]
                 # Teaching methods (new data may not have this)
                 if lesson_data.get('teaching_methods'):
-                    lp.teaching_methods = lesson_data['teaching_methods']
+                    _tm = lesson_data['teaching_methods']
+                    if isinstance(_tm, str):
+                        lp.teaching_methods = [x.strip() for x in _tm.split(',') if x.strip()]
+                    else:
+                        lp.teaching_methods = _tm
+                # E-Logbook (notable) fields — map kwenye DB fields
+                if lesson_data.get('competences'):
+                    lp.main_competence = lesson_data['competences']
+                if lesson_data.get('main_objectives'):
+                    lp.specific_competence = lesson_data['main_objectives']
+                if lesson_data.get('specific_objectives'):
+                    _spec = lesson_data['specific_objectives']
+                    lp.previous_knowledge = _spec
+                    lp.learning_objectives = [s.strip() for s in re.split(r'[\n\r]+', str(_spec)) if s.strip()] or lp.learning_objectives
                 # Teaching resources (new: string, old: array)
                 tlr = lesson_data.get('teaching_resources', '')
                 if tlr:
@@ -3490,6 +3852,10 @@ def ajax_save_lesson_edits(request):
                 # Remarks (new: string, old: dict with strength/weakness/way_forward)
                 if lesson_data.get('remarks'):
                     lp.remarks = lesson_data['remarks']
+                # Format: table / notable (E-Logbook)
+                _fmt = form_data.get('format') or lesson_data.get('format')
+                if _fmt in ('table', 'notable'):
+                    lp.format = _fmt
                 # Teacher name
                 if form_data.get('teacher_name'):
                     lp.teacher_name = form_data['teacher_name']
@@ -3542,7 +3908,9 @@ def ajax_load_saved_lessonplan(request):
                   .select_related('subject')
                   .order_by('-created_at')
                   .first())
-        if not lp or not lp.lesson_development:
+        if not lp:
+            return JsonResponse({'success': False, 'error': 'Hakuna mpango wa somo uliohifadhiwa.'}, status=404)
+        if not lp.lesson_development and getattr(lp, 'format', 'table') != 'notable':
             return JsonResponse({'success': False, 'error': 'Hakuna mpango wa somo uliohifadhiwa.'}, status=404)
         lesson_data, form_data = _lp_to_dicts(lp)
         return JsonResponse({'success': True, 'data': lesson_data, 'form_data': form_data, 'saved_id': lp.id})
@@ -3558,7 +3926,7 @@ def ajax_load_lesson_by_id(request, lesson_id):
     """Load a specific LessonPlan by ID for viewing/editing from the library."""
     try:
         lp = LessonPlan.objects.select_related('subject', 'school').get(id=lesson_id)
-        if not lp.lesson_development:
+        if not lp.lesson_development and getattr(lp, 'format', 'table') != 'notable':
             return JsonResponse({'success': False, 'error': 'Lesson Plan haina data.'}, status=404)
         lesson_data, form_data = _lp_to_dicts(lp)
         return JsonResponse({'success': True, 'data': lesson_data, 'form_data': form_data, 'saved_id': lp.id})
@@ -5690,8 +6058,24 @@ def ajax_generate_one_lesson(request):
         _lp_school_level = _lp_tlm.school.level if _lp_tlm and _lp_tlm.school else ''
         lp_language_instruction = _get_lp_language_instruction(_lp_language, subject_name, _lp_school_level)
 
-        # ── RICH PROMPT — same quality as the single-topic generator ──
-        prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom following the OFFICIAL TAMISEMI (PRIME MINISTER'S OFFICE - REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT) format.
+        # ── Muundo / Format: 'table' (IDDR) au 'notable' (E-Logbook bila jedwali) ──
+        fmt = (data.get('format') or 'table').lower()
+        period = data.get('period', '')
+        period_time = data.get('time', '')
+
+        if fmt == 'notable':
+            prompt = _notable_lp_prompt(
+                teacher_name=teacher_name, school_name=school_name, subject=subject_name,
+                full_class=full_class, class_name=class_name, education_level=education_level,
+                term=term, year=year, duration=duration, topic=topic_name, subtopic=subtopic_name,
+                total_boys=total_boys, total_girls=total_girls, total_students=total_students,
+                present_boys=present_boys, present_girls=present_girls, present_students=present_students,
+                period=period, time=period_time, lp_language_instruction=lp_language_instruction,
+            )
+        else:
+            fmt = 'table'
+            # ── RICH PROMPT — same quality as the single-topic generator ──
+            prompt = f"""Generate a TEACHER'S LESSON PLAN for a Tanzanian {education_level} classroom following the OFFICIAL TAMISEMI (PRIME MINISTER'S OFFICE - REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT) format.
 
 ============================================
 PRIME MINISTER'S OFFICE
@@ -5808,6 +6192,10 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
                 "remarks": f"The students were able to explain {topic_name} due to the use of interactive teaching and learning methods. However, some students need more clarification. I will address this in the next lesson through remedial activities."
             }
 
+        # ── E-Logbook (bila jedwali): normalize keys za display + DB ──
+        if fmt == 'notable':
+            lesson_data = _normalize_notable_lp(lesson_data, topic=topic_name, subtopic=subtopic_name, subject=subject_name)
+
         tr = lesson_data.get('teaching_resources', '')
         if isinstance(tr, str):
             tr = [x.strip() for x in tr.split(',') if x.strip()] or ['TIE textbook']
@@ -5847,11 +6235,12 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
             main_competence=lesson_data.get('main_competence', ''),
             specific_competence=lesson_data.get('specific_competence', ''),
             previous_knowledge=lesson_data.get('specific_activity', ''),
-            learning_objectives=[lesson_data.get('specific_activity', 'By the end students should be able to...')],
-            teaching_methods=[],
+            learning_objectives=lesson_data.get('learning_objectives') or [lesson_data.get('specific_activity', 'By the end students should be able to...')],
+            teaching_methods=[m for m in str(lesson_data.get('teaching_methods', '')).split(',') if m.strip()] if fmt == 'notable' else [],
             teaching_resources=tr,
             lesson_development=lp_development,
             remarks=lesson_data.get('remarks', ''),
+            format=fmt,
             generated_by_ai=True,
         )
 

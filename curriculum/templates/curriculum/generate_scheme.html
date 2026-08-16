@@ -265,6 +265,26 @@
               </select>
             </div>
 
+            <!-- ─── Muundo / Format: Kwa Jedwali au Bila Jedwali (E-Logbook) ─── -->
+            <div class="mb-2" style="border:2px solid var(--green-500);border-radius:var(--radius-sm);padding:0.55rem 0.65rem;background:linear-gradient(135deg,rgba(31,122,61,0.06),rgba(217,164,65,0.05));">
+              <label style="font-weight:700;font-size:var(--font-size-xs);color:var(--green-500);margin-bottom:5px;display:flex;align-items:center;gap:5px;">
+                <i class="fas fa-table"></i> Muundo wa Scheme / Format
+              </label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" id="fmtTableBtn" class="btn-tlm btn-primary-tlm py-1" style="flex:1;font-size:11px;padding:0.45rem 0.5rem;">
+                  <i class="fas fa-table"></i> Kwa Jedwali
+                </button>
+                <button type="button" id="fmtNotableBtn" class="btn-tlm btn-gold-tlm py-1" style="flex:1;font-size:11px;padding:0.45rem 0.5rem;">
+                  <i class="fas fa-list"></i> Bila Jedwali (E-Logbook)
+                </button>
+              </div>
+              <div id="fmtTableHint" style="font-size:9px;color:var(--text-muted);margin-top:5px;">
+                <i class="fas fa-info-circle"></i> Jedwali la kawaida la Azimio la Kazi (TIE/SEQUIP).
+              </div>
+              <div id="fmtNotableHint" style="font-size:9px;color:var(--gold-400);margin-top:5px;display:none;">
+                <i class="fas fa-info-circle"></i> Mpangilio wa kazi bila jedwali — orodha ya mada kwa wiki na miezi. Wengi wa VETA wanaupendelea.
+              </div>
+            </div>
 
             <div class="row g-1 mb-2">
               <div class="col-5">
@@ -504,6 +524,37 @@ document.addEventListener('DOMContentLoaded', function() {
   let breakCount = 0;
   let progressStartTime = null;
 
+  // ── Muundo / Format: 'table' (jedwali) au 'notable' (bila jedwali — VETA) ──
+  let schemeFormat = 'table';
+  function setSchemeFormat(fmt) {
+    schemeFormat = (fmt === 'notable') ? 'notable' : 'table';
+    const tableBtn = document.getElementById('fmtTableBtn');
+    const notableBtn = document.getElementById('fmtNotableBtn');
+    if (schemeFormat === 'notable') {
+      notableBtn.classList.add('active-mode');
+      tableBtn.classList.remove('active-mode');
+      document.getElementById('fmtNotableHint').style.display = '';
+      document.getElementById('fmtTableHint').style.display = 'none';
+    } else {
+      tableBtn.classList.add('active-mode');
+      notableBtn.classList.remove('active-mode');
+      document.getElementById('fmtTableHint').style.display = '';
+      document.getElementById('fmtNotableHint').style.display = 'none';
+    }
+  }
+  document.getElementById('fmtTableBtn').addEventListener('click', function() { setSchemeFormat('table'); });
+  document.getElementById('fmtNotableBtn').addEventListener('click', function() { setSchemeFormat('notable'); });
+  setSchemeFormat('table');
+
+  // VETA/Technical level → default to Bila Jedwali (E-Logbook)
+  function applySchemeFormatByLevel() {
+    const opt = levelSelect.options[levelSelect.selectedIndex];
+    const lvl = (opt ? opt.textContent : '').toLowerCase();
+    if (lvl.includes('technical') || lvl.includes('veta')) {
+      setSchemeFormat('notable');
+    }
+  }
+
   // ── Helper: add a break item ──
   function addBreakItem(name, startDate, endDate) {
     breakCount++;
@@ -609,6 +660,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── Cascading dropdowns ──
   levelSelect.addEventListener('change', function() {
+    applySchemeFormatByLevel();
     const levelId = this.value;
     classSelect.innerHTML = '<option value="">— Chagua Darasa —</option>';
     if (CLASSES_BY_LEVEL[levelId]) {
@@ -722,6 +774,7 @@ document.addEventListener('DOMContentLoaded', function() {
       school_name: document.getElementById('school_name').value,
       breaks: breaks,
       language: document.getElementById('langSelect')?.value || 'auto',
+      format: schemeFormat,
     };
   }
 
@@ -956,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('school_name').value = data.meta.school_name || '';
         }
         renderTable(data.data);
+        if (data.meta && data.meta.format) setSchemeFormat(data.meta.format);
         resultsArea.style.display = 'block';
         emptyState.style.display = 'none';
         showToast('📂 Scheme imepakiwa kutoka hifadhi!', 'success');
@@ -968,6 +1022,13 @@ document.addEventListener('DOMContentLoaded', function() {
   // ── Render table (with contenteditable for editing) ──
   function renderTable(data) {
     if (!data || data.length === 0) return;
+
+    // ── Bila Jedwali (E-Logbook) — orodha, si jedwali ──
+    if (schemeFormat === 'notable') {
+      renderNotableList(data);
+      return;
+    }
+
     const headers = Object.keys(data[0]);
 
     // Calculate column widths (supports both English & Swahili Azimio la Kazi keys)
@@ -1001,20 +1062,100 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('editSavedBadge').style.display = 'none';
   }
 
+  // ── Render scheme kama orodha (Bila Jedwali — E-Logbook) ──
+  // Inaweza kupokea data ya Kiingereza au ya Kiswahili (Azimio la Kazi) —
+  // huwa normalizes keys za Kiswahili kwanza, kisha huchota kwa mpangilio wa kawaida.
+  const SW2EN_KEYS = {
+    'MWEZI': 'Month',
+    'WIKI': 'Week',
+    'VIPINDI': 'Number of Periods',
+    'UMAHIRI MKUU': 'Main Competence',
+    'UMAHIRI MAHUSUSI': 'Specific Competences',
+    'SHUGHULI KUU ZA UJIFUNZAJI': 'Main Learning Activities',
+    'SHUGHULI NDOGO ZA UJIFUNZAJI': 'Specific Learning Activities',
+    'MBINU ZA UJIFUNZAJI NA UFUNDISHAJI': 'Teaching and Learning Methods',
+    'ZANA ZA UJIFUNZAJI NA UFUNDISHAJI': 'Teaching and Learning Resources',
+    'ZANA ZA UPIMAJI': 'Assessment Tools',
+    'REJEA': 'References',
+    'MAONI': 'Remarks',
+  };
+  const EN2SW_KEYS = {
+    'Month': 'MWEZI',
+    'Week': 'WIKI',
+    'Number of Periods': 'VIPINDI',
+    'Main Competence': 'UMAHIRI MKUU',
+    'Specific Competences': 'UMAHIRI MAHUSUSI',
+    'Main Learning Activities': 'SHUGHULI KUU ZA UJIFUNZAJI',
+    'Specific Learning Activities': 'SHUGHULI NDOGO ZA UJIFUNZAJI',
+    'Teaching and Learning Methods': 'MBINU ZA UJIFUNZAJI NA UFUNDISHAJI',
+    'Teaching and Learning Resources': 'ZANA ZA UJIFUNZAJI NA UFUNDISHAJI',
+    'Assessment Tools': 'ZANA ZA UPIMAJI',
+    'References': 'REJEA',
+    'Remarks': 'MAONI',
+  };
+  function renderNotableList(data) {
+    const esc = s => (s == null ? '' : String(s));
+    const order = ['Month', 'Week', 'Number of Periods', 'Main Competence', 'Specific Competences',
+                   'Main Learning Activities', 'Specific Learning Activities',
+                   'Teaching and Learning Methods', 'Teaching and Learning Resources',
+                   'Assessment Tools', 'References', 'Remarks'];
+    const isSw = data.length > 0 && SW2EN_KEYS[Object.keys(data[0] || {})[0]];
+    // Normalize: keys za Kiswahili → English kwa uchukuaji rahisi
+    const norm = data.map(function(row) {
+      const out = {};
+      Object.keys(row).forEach(function(k) {
+        out[SW2EN_KEYS[k] || k] = row[k];
+      });
+      return out;
+    });
+    let html = '<div class="scheme-list">';
+    norm.forEach(function(row, i) {
+      const headParts = [];
+      ['Month', 'Week', 'Number of Periods'].forEach(function(k) {
+        if (row[k]) headParts.push(`<b>${esc(isSw ? EN2SW_KEYS[k] || k : k)}:</b> ${esc(row[k])}`);
+      });
+      html += '<div style="border:1px solid var(--border-color);border-left:3px solid var(--green-500);border-radius:var(--radius-sm);padding:0.5rem 0.6rem;margin-bottom:0.5rem;background:var(--bg-card-solid);">';
+      html += `<div style="font-weight:700;color:var(--green-600);font-size:11px;margin-bottom:4px;">${i + 1}. ${headParts.join(' &nbsp;|&nbsp; ')}</div>`;
+      order.forEach(function(k) {
+        if (['Month', 'Week', 'Number of Periods'].includes(k)) return;
+        if (!String(row[k] || '').trim()) return;
+        // data-col inaweka key ya ORIGINAL (Kiswahili ikiwa ndiyo chanzo) ili kuhifadhi
+        // isiharibu lugha ya scheme wakati wa kubadilisha maandishi
+        const origKey = isSw ? EN2SW_KEYS[k] || k : k;
+        html += `<div style="margin-bottom:3px;line-height:1.45;"><span style="font-weight:600;color:var(--text-secondary);font-size:10px;">${esc(isSw ? EN2SW_KEYS[k] || k : k)}:</span> <span contenteditable="true" class="editable-cell" data-col="${esc(origKey)}" style="cursor:text;white-space:pre-wrap;">${esc(row[k])}</span></div>`;
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    document.getElementById('tableContainer').innerHTML = html;
+    document.getElementById('editActions').style.display = 'flex';
+    document.getElementById('editSavedBadge').style.display = 'none';
+  }
+
   // ── Save edited scheme data ──
   document.getElementById('saveEditsBtn').addEventListener('click', function() {
     if (!currentSchemeData) return;
     const headers = Object.keys(currentSchemeData[0]);
-    const rows = document.querySelectorAll('#tableContainer table tbody tr');
+    const isNotable = schemeFormat === 'notable';
+    const rows = isNotable
+      ? document.querySelectorAll('#tableContainer .scheme-list > div')
+      : document.querySelectorAll('#tableContainer table tbody tr');
     const updatedData = [];
-    rows.forEach(function(row) {
-      const cells = row.querySelectorAll('td');
-      if (cells.length === headers.length) {
-        const rowData = {};
-        cells.forEach(function(cell, ci) {
-          rowData[headers[ci]] = cell.textContent.trim();
+    rows.forEach(function(row, ri) {
+      const rowData = { ...(currentSchemeData[ri] || {}) };
+      if (isNotable) {
+        row.querySelectorAll('.editable-cell').forEach(function(cell) {
+          rowData[cell.getAttribute('data-col')] = cell.textContent.trim();
         });
         updatedData.push(rowData);
+      } else {
+        const cells = row.querySelectorAll('td');
+        if (cells.length === headers.length) {
+          cells.forEach(function(cell, ci) {
+            rowData[headers[ci]] = cell.textContent.trim();
+          });
+          updatedData.push(rowData);
+        }
       }
     });
     if (updatedData.length === 0) { showToast('Hakuna data ya kuhifadhi', 'warning'); return; }
@@ -1029,7 +1170,7 @@ document.addEventListener('DOMContentLoaded', function() {
     jsonFetch('{% url "curriculum:save_scheme_edits" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-      body: JSON.stringify({ saved_id: currentSavedId, scheme_data: updatedData }),
+      body: JSON.stringify({ saved_id: currentSavedId, scheme_data: updatedData, format: schemeFormat }),
     })
     .then(({ ok, data }) => {
       btn.disabled = false;
@@ -1110,6 +1251,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentSchemeData = data.data;
         currentSavedId = data.saved_id;
         renderTable(data.data);
+        if (data.meta && data.meta.format) setSchemeFormat(data.meta.format);
         resultsArea.style.display = 'block';
         emptyState.style.display = 'none';
         // Auto-fill form meta from the loaded scheme

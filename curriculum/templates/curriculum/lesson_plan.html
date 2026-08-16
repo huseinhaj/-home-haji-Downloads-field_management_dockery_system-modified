@@ -306,6 +306,39 @@
               </div>
             </div>
 
+            <!-- ─── Muundo / Format: Kwa Jedwali (IDDR) au Bila Jedwali (E-Logbook) ─── -->
+            <div class="mb-2" style="border:2px solid var(--green-500);border-radius:var(--radius-sm);padding:0.55rem 0.65rem;background:linear-gradient(135deg,rgba(31,122,61,0.06),rgba(217,164,65,0.05));">
+              <label style="font-weight:700;font-size:var(--font-size-xs);color:var(--green-500);margin-bottom:5px;display:flex;align-items:center;gap:5px;">
+                <i class="fas fa-table"></i> Muundo wa Lesson Plan / Format
+              </label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" id="fmtTableBtn" class="btn-tlm btn-primary-tlm py-1" style="flex:1;font-size:11px;padding:0.45rem 0.5rem;">
+                  <i class="fas fa-table"></i> Kwa Jedwali (IDDR)
+                </button>
+                <button type="button" id="fmtNotableBtn" class="btn-tlm btn-gold-tlm py-1" style="flex:1;font-size:11px;padding:0.45rem 0.5rem;">
+                  <i class="fas fa-list"></i> Bila Jedwali (E-Logbook)
+                </button>
+              </div>
+              <div id="fmtTableHint" style="font-size:9px;color:var(--text-muted);margin-top:5px;">
+                <i class="fas fa-info-circle"></i> Jedwali la IDDR (Introduction, Competence Development, Design, Realisation) — format ya TAMISEMI.
+              </div>
+              <div id="fmtNotableHint" style="font-size:9px;color:var(--gold-400);margin-top:5px;display:none;">
+                <i class="fas fa-info-circle"></i> Mpangilio wa kazi wa E-Logbook (1. Main Topic, 2. Competences, 3. Main Objectives...) — bila jedwali. Wengi wa VETA wanaupendelea.
+              </div>
+              <div id="notableFields" style="display:none;margin-top:6px;">
+                <div class="row g-1">
+                  <div class="col-6">
+                    <label style="font-size:9px;color:var(--text-muted);">Period</label>
+                    <input class="form-control" id="period" placeholder="mf. 1" style="font-size:12px;">
+                  </div>
+                  <div class="col-6">
+                    <label style="font-size:9px;color:var(--text-muted);">Time</label>
+                    <input class="form-control" id="period_time" placeholder="mf. 8:00 - 8:40" style="font-size:12px;">
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Topic: AI suggestions + manual (SINGLE TOPIC mode tu) -->
             <div id="singleTopicSection">
             <div class="mb-2">
@@ -590,6 +623,40 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentFormData = null;
   let currentSavedId = null;
 
+  // ── Muundo / Format: 'table' (IDDR) au 'notable' (E-Logbook bila jedwali) ──
+  let lessonPlanFormat = 'table';
+  function getSelectedFormat() { return lessonPlanFormat; }
+  function setLessonPlanFormat(fmt) {
+    lessonPlanFormat = (fmt === 'notable') ? 'notable' : 'table';
+    const tableBtn = document.getElementById('fmtTableBtn');
+    const notableBtn = document.getElementById('fmtNotableBtn');
+    if (lessonPlanFormat === 'notable') {
+      notableBtn.classList.add('active-mode');
+      tableBtn.classList.remove('active-mode');
+      document.getElementById('fmtNotableHint').style.display = '';
+      document.getElementById('fmtTableHint').style.display = 'none';
+      document.getElementById('notableFields').style.display = '';
+    } else {
+      tableBtn.classList.add('active-mode');
+      notableBtn.classList.remove('active-mode');
+      document.getElementById('fmtTableHint').style.display = '';
+      document.getElementById('fmtNotableHint').style.display = 'none';
+      document.getElementById('notableFields').style.display = 'none';
+    }
+  }
+  document.getElementById('fmtTableBtn').addEventListener('click', function() { setLessonPlanFormat('table'); });
+  document.getElementById('fmtNotableBtn').addEventListener('click', function() { setLessonPlanFormat('notable'); });
+  setLessonPlanFormat('table');
+
+  function applyFormatByLevel() {
+    const el = document.getElementById('education_level');
+    const opt = el.options[el.selectedIndex];
+    const lvl = (opt ? opt.textContent : '').toLowerCase();
+    if (lvl.includes('technical') || lvl.includes('veta')) {
+      setLessonPlanFormat('notable');
+    }
+  }
+
   // ── Auto-calculate Total Students = Boys + Girls, with validation ──
   function calcTotals(fieldId) {
     const tb = parseInt(document.getElementById('total_boys').value) || 0;
@@ -658,6 +725,8 @@ document.addEventListener('DOMContentLoaded', function() {
         subjectSelect.innerHTML += `<option value="${subj.id}" data-name="${subj.name}">${subj.name}</option>`;
       });
     }
+    // VETA → default to E-Logbook (bila jedwali); wengine → jedwali
+    applyFormatByLevel();
     resetTopics();
   });
 
@@ -951,6 +1020,9 @@ document.addEventListener('DOMContentLoaded', function() {
       teacher_name: document.getElementById('teacher_name').value,
       school_name: document.getElementById('school_name').value,
       language: document.getElementById('langSelect')?.value || 'auto',
+      format: getSelectedFormat(),
+      period: document.getElementById('period').value,
+      time: document.getElementById('period_time').value,
     };
   }
 
@@ -1129,6 +1201,13 @@ document.addEventListener('DOMContentLoaded', function() {
   // ── Helper: restore form fields from saved form_data & fetch topics automatically ──
   function restoreFormFromSavedData(fd) {
     if (!fd) return;
+    
+    // 0. Muundo / Format (E-Logbook au Jedwali)
+    if (fd.format === 'notable' || fd.format === 'table') {
+      setLessonPlanFormat(fd.format);
+    }
+    if (fd.period) document.getElementById('period').value = fd.period;
+    if (fd.time) document.getElementById('period_time').value = fd.time;
     
     // 1. Simple text/number fields
     ['teacher_name','school_name','stream','term','year','duration',
@@ -1466,6 +1545,53 @@ document.addEventListener('DOMContentLoaded', function() {
     html += '<div style="background:rgba(217,164,65,0.06);border:1px dashed var(--gold-400);border-radius:var(--radius-sm);padding:0.5rem 0.75rem;margin-bottom:0.75rem;font-size:var(--font-size-xs);color:var(--text-muted);display:flex;align-items:center;gap:6px;">';
     html += '<i class="fas fa-pencil-alt text-gold"></i> Bonyeza moja kwa moja kwenye maandishi kuubadilisha, kisha bonyeza "Hifadhi Mabadiliko"';
     html += '</div>';
+
+    // ── E-Logbook format (bila jedwali) — VETA ──
+    if ((data.format || '').toLowerCase() === 'notable') {
+      const fd = currentFormData || {};
+      const esc = s => (s == null ? '' : String(s));
+      html += '<div style="text-align:center;margin-bottom:0.5rem;">';
+      html += '<h5 style="font-family:var(--font-display);font-weight:800;color:var(--green-600);margin:0;font-size:1rem;">LESSON PLAN</h5>';
+      html += '<p style="font-size:10px;color:#C00000;font-style:italic;margin:2px 0 0;">(Format to be used in E-Logbook. Type against each item)</p>';
+      html += '</div>';
+      html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-bottom:0.75rem;line-height:1.7;">';
+      html += `<div><b>Teacher's Name:</b> <span contenteditable="true" class="editable-lesson" data-key="teacher_name_field" style="cursor:text;padding:1px 4px;border-radius:3px;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${esc(fd.teacher_name)}</span></div>`;
+      html += `<div><b>Subject Name:</b> ${esc(fd.subject)}</div>`;
+      html += `<div><b>Date:</b> ${new Date().toLocaleDateString('en-GB')}</div>`;
+      html += `<div><b>Class/Stream:</b> ${esc(fd.class_name)}${fd.stream ? ' ' + esc(fd.stream) : ''}</div>`;
+      html += `<div><b>Period:</b> ${esc(fd.period || '')}</div>`;
+      html += `<div><b>Time:</b> ${esc(fd.time || '')}</div>`;
+      html += `<div><b>Number of students Registered in the Class:</b> Male: ${esc(fd.total_boys) || '......'}  Female: ${esc(fd.total_girls) || '......'}  Total: ${esc(fd.total_students) || '......'}</div>`;
+      html += `<div><b>Number of students Present in the Class:</b> Male: ${esc(fd.present_boys) || '......'}  Female: ${esc(fd.present_girls) || '......'}  Total: ${esc(fd.present_students) || '......'}</div>`;
+      html += '</div>';
+      html += '<div style="border-top:1.5px solid var(--gold-400);margin-bottom:0.75rem;"></div>';
+
+      const notableItems = [
+        { num: '1', label: 'Main Topic', val: esc(fd.topic || '') },
+        { num: '', label: 'Sub-Topic', val: esc(fd.subtopic || ''), indent: true },
+        { num: '2', label: 'Competences', val: esc(data.competences || data.main_competence || ''), key: 'competences' },
+        { num: '3', label: 'Main Objectives', val: esc(data.main_objectives || data.specific_competence || ''), key: 'main_objectives' },
+        { num: '', label: 'Specific Objectives', val: esc(data.specific_objectives || data.specific_activity || ''), key: 'specific_objectives', indent: true },
+        { num: '4', label: 'Teaching Methods/Strategies', val: esc(data.teaching_methods || ''), key: 'teaching_methods' },
+        { num: '5', label: 'Teaching and Learning Materials/Aids', val: esc(data.teaching_resources || ''), key: 'teaching_resources' },
+        { num: '6', label: 'References', val: esc(data.references || ''), key: 'references' },
+      ];
+      notableItems.forEach(function(it) {
+        const numTxt = it.num ? it.num + '.' : '&nbsp;&nbsp;';
+        const editable = it.key
+          ? `<span contenteditable="true" class="editable-lesson" data-key="${it.key}" style="cursor:text;padding:1px 4px;border-radius:3px;white-space:pre-wrap;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${it.val || ''}</span>`
+          : (it.val || '');
+        html += `<div style="font-size:var(--font-size-sm);margin-bottom:0.4rem;padding-left:${it.indent ? '1.25rem' : '0'};"><b>${numTxt} ${it.label}:</b> ${editable}</div>`;
+      });
+      html += '<div style="border-top:1.5px solid var(--gold-400);margin:0.6rem 0;"></div>';
+      if (data.remarks) {
+        html += `<div style="font-size:var(--font-size-sm);"><b>Remarks:</b> <span contenteditable="true" class="editable-lesson" data-key="remarks" style="cursor:text;padding:1px 4px;border-radius:3px;white-space:pre-wrap;" onfocus="this.style.background='rgba(217,164,65,0.06)'" onblur="this.style.background='';">${esc(data.remarks)}</span></div>`;
+      }
+      document.getElementById('lessonContent').innerHTML = html;
+      document.getElementById('lessonEditActions').style.display = 'flex';
+      document.getElementById('lessonEditSavedBadge').style.display = 'none';
+      return;
+    }
 
     // TEACHER'S LESSON PLAN header
     html += '<div style="text-align:center;margin-bottom:1rem;">';

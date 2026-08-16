@@ -807,6 +807,15 @@ class SchemeOfWork(models.Model):
     # Generated data (JSON) - stores the table rows
     scheme_data = models.JSONField(default=list, help_text="Generated scheme of work data")
     
+    # Output format: with table (grid) or without table (list/Mpangilio wa kazi)
+    format = models.CharField(
+        max_length=20,
+        choices=[('table', 'Kwa Jedwali (Table)'), ('notable', 'Bila Jedwali (No Table)')],
+        default='table',
+        verbose_name="Muundo / Format",
+        help_text="table = jedwali la kawaida; notable = orodha bila jedwali (VETA)",
+    )
+    
     # Breaks (holidays/exams) stored as JSON
     breaks = models.JSONField(default=list, blank=True, null=True)
     
@@ -895,6 +904,15 @@ class LessonPlan(models.Model):
     # Lesson development (stored as JSON)
     # Structure: [{"time": "5 min", "stage": "Introduction", "teacher_activities": "...", "student_activities": "...", "assessment_criteria": "..."}]
     lesson_development = models.JSONField(default=list)
+    
+    # Output format: table (IDDR grid) or notable (E-Logbook list format)
+    format = models.CharField(
+        max_length=20,
+        choices=[('table', 'Kwa Jedwali (Table)'), ('notable', 'Bila Jedwali (E-Logbook)')],
+        default='table',
+        verbose_name="Muundo / Format",
+        help_text="table = jedwali la IDDR; notable = mpango wa somo wa E-Logbook (VETA)",
+    )
     
     # Remarks
     remarks = models.TextField(blank=True, null=True)
