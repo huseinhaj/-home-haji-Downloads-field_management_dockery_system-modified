@@ -53,8 +53,23 @@ WHITE = colors.white
 LIGHT_GREY = colors.HexColor('#F0F2F5')
 DARK_GREY = colors.HexColor('#444444')
 
-GRADE_KEYS_OLEVEL = [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
+GRADE_KEYS_OLEVEL = [('A', '75-100'), ('B', '65-74'), ('C', '50-64'), ('D', '40-49'), ('F', '0-39')]
+GRADE_KEYS_FTNA = [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
 GRADE_KEYS_ALEVEL = [('A', '80-100'), ('B', '70-79'), ('C', '60-69'), ('D', '50-59'), ('E', '40-49'), ('S', '35-39'), ('F', '0-34')]
+
+
+def get_grade_keys_for_form(form):
+    """Return the correct NECTA grade key for an exam's form level.
+
+    - Form 2 (FTNA) uses its own scale (C 45+, D 30+, F <30)
+    - Form 5/6 (ACSEE) uses the 7-band scale
+    - Form 1/3/4 (CSEE) uses the standard O-Level scale
+    """
+    if form == 2:
+        return GRADE_KEYS_FTNA
+    if form in (5, 6):
+        return GRADE_KEYS_ALEVEL
+    return GRADE_KEYS_OLEVEL
 
 _LABELS = {
     'sw': {
@@ -112,7 +127,7 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: s
         rows_data=rows_data,
         filename_stub=f"{safe_subject}_{exam.id}_results",
         subject_name=subject.name,
-        grade_keys=GRADE_KEYS_ALEVEL if is_alevel else GRADE_KEYS_OLEVEL,
+        grade_keys=get_grade_keys_for_form(exam.form),
         lang=lang,
     )
 

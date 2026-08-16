@@ -1,4 +1,5 @@
 {% extends 'results/base.html' %}
+{% load results_filters %}
 {% block title %}Matokeo — {{ form_label }} | School Results{% endblock %}
 
 {% block content %}
@@ -149,11 +150,15 @@
     {% endif %}
 
     {% if ed.processed_results %}
-    <table class="results-table">
+    <div style="overflow-x:auto;">
+    <table class="results-table" style="min-width:680px;">
       <thead>
         <tr>
           <th style="width:50px">{% if LANG == 'sw' %}Nafasi{% else %}Pos.{% endif %}</th>
-          <th>{% if LANG == 'sw' %}Jina la Mwanafunzi{% else %}Student Name{% endif %}</th>
+          <th style="min-width:180px;">{% if LANG == 'sw' %}Jina la Mwanafunzi{% else %}Student Name{% endif %}</th>
+          {% for subj in ed.subjects %}
+          <th style="text-align:center;font-size:0.62rem;" title="{{ subj.name }}">{{ subj.name|truncatechars:8 }}</th>
+          {% endfor %}
           <th style="width:90px;text-align:center;">{% if LANG == 'sw' %}Jumla{% else %}Total{% endif %}</th>
           <th style="width:90px;text-align:center;">{% if LANG == 'sw' %}Wastani{% else %}Average{% endif %}</th>
           <th style="width:70px;text-align:center;">{% if LANG == 'sw' %}Pointi{% else %}Points{% endif %}</th>
@@ -167,6 +172,13 @@
           <td>
             <strong>{{ res.student.first_name }} {% if res.student.middle_name %}{{ res.student.middle_name }} {% endif %}{{ res.student.last_name }}</strong>
           </td>
+          {% for subj in ed.subjects %}
+            {% with grade=ed.grade_lookup|get_item:res.student.id|get_item:subj.id %}
+            <td style="text-align:center;" class="score-{{ grade }}">
+              <strong style="font-size:0.78rem;">{{ grade|default:"—" }}</strong>
+            </td>
+            {% endwith %}
+          {% endfor %}
           <td style="text-align:center;font-weight:700;color:#1F7A3D;">{{ res.total_score }}</td>
           <td style="text-align:center;">{{ res.average_score }}</td>
           <td style="text-align:center;">{{ res.points }}</td>
@@ -177,6 +189,13 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
+    <div style="font-size:0.72rem;color:#888;padding:0.5rem 0.9rem;border-top:1px solid #f0f2f5;">
+      {% if LANG == 'sw' %}Ufunguo wa Daraja:{% else %}Grading Key:{% endif %}
+      {% for g, rng in ed.grade_key %}
+      <span style="display:inline-block;margin:0 0.35rem 0.15rem 0;padding:0.1rem 0.45rem;border-radius:2px;background:#f4f6fb;">{{ g }} ({{ rng }})</span>
+      {% endfor %}
+    </div>
     {% else %}
     <div class="empty-notice">
       {% if LANG == 'sw' %}Matokeo bado hayajahesabiwa. Idhinisha masomo yote kwanza, kisha system itahesabu.{% else %}Results haven't been computed yet. Approve every subject first, then the system will calculate them.{% endif %}

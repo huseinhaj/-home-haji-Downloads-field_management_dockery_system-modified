@@ -67,14 +67,29 @@ def _get_location(exam):
     return "LOCATION UNKNOWN"
 
 
-def _score_fill(score):
-    """Return (background-hex, font-hex) for a score value."""
+def _grade_thresholds(form):
+    """Return (score-thresholds, grade-ranges) for the exam's NECTA scale.
+
+    Form 2 (FTNA) grades on a different scale than Form 1/3/4 (CSEE):
+        CSEE: A 75+ | B 65+ | C 50+ | D 40+ | F <40
+        FTNA: A 75+ | B 65+ | C 45+ | D 30+ | F <30
+    """
+    if form == 2:
+        return [75, 65, 45, 30], ["A (75-100)", "B (65-74)", "C (45-64)", "D (30-44)", "F (<30)"]
+    return [75, 65, 50, 40], ["A (75-100)", "B (65-74)", "C (50-64)", "D (40-49)", "F (<40)"]
+
+
+def _score_fill(score, form=4):
+    """Return (background-hex, font-hex) for a score value, using the
+    exam's NECTA grade scale (FTNA for Form 2, CSEE otherwise)."""
     if score is None or not isinstance(score, (int, float)):
         return None, None
-    if score >= 75:  return "#C6F4D6", "#145A32"
-    if score >= 65:  return "#D5F5E3", "#1E8449"
-    if score >= 50:  return "#FFF9C4", "#7D6608"
-    if score >= 40:  return "#FDEBD0", "#784212"
+    thresholds, _ = _grade_thresholds(form)
+    a, b, c, d = thresholds
+    if score >= a:  return "#C6F4D6", "#145A32"
+    if score >= b:  return "#D5F5E3", "#1E8449"
+    if score >= c:  return "#FFF9C4", "#7D6608"
+    if score >= d:  return "#FDEBD0", "#784212"
     return "#FADBD8", "#922B21"
 
 
@@ -440,7 +455,8 @@ def generate_results_pdf_response(exam):
     p.setFillColor(TZ_GREEN_CLR)
     key_title = get_section_title(exam, 'grading_key')
     p.drawString(LM, y_footer + 12, f"{key_title}:")
-    grad_data = [["A (75-100)", "B (65-74)", "C (50-64)", "D (40-49)", "F (<40)"]]
+    _, grade_ranges = _grade_thresholds(exam.form)
+    grad_data = [grade_ranges]
     grad_colors = ["#C6F4D6", "#D5F5E3", "#FFF9C4", "#FDEBD0", "#FADBD8"]
     gt = Table(grad_data, colWidths=[(CW - 20) / 5] * 5)
     gs_cmds = [
@@ -581,7 +597,7 @@ def generate_results_pdf_response(exam):
                 sc = score_lookup.get((r.student_id, subj.id))
                 if sc is not None:
                     ci = 3 + si
-                    bg, fg = _score_fill(sc)
+                    bg, fg = _score_fill(sc, exam.form)
                     if bg:
                         style.append(('BACKGROUND', (ci, i), (ci, i), colors.HexColor(bg)))
                     if fg:
@@ -605,8 +621,8 @@ def generate_results_pdf_response(exam):
         # Grade legend at bottom
         ly = y - th - 14
         if ly > 40:
-            leg_data = [["A (75-100)", "B (65-74)", "C (50-64)",
-                         "D (40-49)", "F (<40)"]]
+            _, grade_ranges = _grade_thresholds(exam.form)
+            leg_data = [grade_ranges]
             leg_w = min(CW - 20, 400)
             leg_cols = [leg_w / 5] * 5
             lt = Table(leg_data, colWidths=leg_cols)

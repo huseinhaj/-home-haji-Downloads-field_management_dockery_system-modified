@@ -326,11 +326,9 @@
 
         <!-- Grade Key -->
         <div class="grade-key">
-          <span class="grade-key-item" style="background:#C6F4D6;color:#145A32;">A (75-100)</span>
-          <span class="grade-key-item" style="background:#D5F5E3;color:#1E8449;">B (65-74)</span>
-          <span class="grade-key-item" style="background:#FFF9C4;color:#7D6608;">C (50-64)</span>
-          <span class="grade-key-item" style="background:#FDEBD0;color:#784212;">D (40-49)</span>
-          <span class="grade-key-item" style="background:#FADBD8;color:#922B21;">F (&lt;40)</span>
+          {% for g, rng in grade_key %}
+          <span class="grade-key-item score-{{ g }}" style="background:#f0f2f5;">{{ g }} ({{ rng }})</span>
+          {% endfor %}
         </div>
 
         {% if result.counted_subjects %}

@@ -15,7 +15,6 @@ from .permissions import academic_required, results_login_required as login_requ
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
 from .services.pdf_export_service import generate_results_pdf_response
 from .services.subject_pdf_service import (
-    GRADE_KEYS_ALEVEL,
     GRADE_KEYS_OLEVEL,
     generate_personal_pdf_response,
     generate_subject_pdf_response,
@@ -276,6 +275,9 @@ def student_result_public(request, token):
 
     division_label = dict(ProcessedResult.DIVISION_CHOICES).get(result.division, result.division)
 
+    from .services.subject_pdf_service import get_grade_keys_for_form
+    grade_key = get_grade_keys_for_form(exam.form)
+
     return render(request, 'results/student_result_public.html', {
         'result': result,
         'exam': exam,
@@ -283,6 +285,7 @@ def student_result_public(request, token):
         'student_name': student_name,
         'subject_rows': subject_rows,
         'division_label': division_label,
+        'grade_key': grade_key,
         'location': location,
         'school_name': exam.school_name or (exam.school.name if exam.school else ''),
         'total_students': ProcessedResult.objects.filter(exam=exam).count(),
@@ -600,7 +603,6 @@ def subject_summary(request, exam_id, subject_id):
     )
     results.sort(key=lambda r: r.score, reverse=True)
 
-    is_alevel = exam.form in (5, 6)
     rows_data = []
     for pos, result in enumerate(results, 1):
         student = result.student
@@ -616,7 +618,8 @@ def subject_summary(request, exam_id, subject_id):
     lang = request.session.get('ui_lang', 'en')
     stats = compute_subject_stats(rows_data)
     recommendations = generate_recommendations(stats, subject_name=subject.name, lang=lang)
-    grade_keys = GRADE_KEYS_ALEVEL if is_alevel else GRADE_KEYS_OLEVEL
+    from .services.subject_pdf_service import get_grade_keys_for_form
+    grade_keys = get_grade_keys_for_form(exam.form)
     distribution = _build_distribution(stats, grade_keys)
     teacher_label = 'Mwalimu' if lang == 'sw' else 'Teacher'
 
@@ -960,12 +963,27 @@ def form_results(request, form_num):
         total_subs = subs.count()
         approved_subs = subs.filter(status=SubjectSubmission.STATUS_APPROVED).count()
         processed = exam.processedresult_set.select_related('student').order_by('position')
+
+        # NECTA-style per-subject grades for this exam
+        from .services.export_data import get_exam_export_payload
+        payload = get_exam_export_payload(exam)
+        exam_subjects = payload['subjects']
+        score_lookup = payload['score_lookup']
+        grade_lookup = {}
+        for (sid, subj_id), score in score_lookup.items():
+            grade_lookup.setdefault(sid, {})[subj_id] = get_grade_for_form(score, exam.form)
+        from .services.subject_pdf_service import get_grade_keys_for_form
+        grade_key = get_grade_keys_for_form(exam.form)
+
         exams_ctx.append({
             'exam': exam,
             'total_subs': total_subs,
             'approved_subs': approved_subs,
             'all_approved': total_subs > 0 and approved_subs == total_subs,
             'processed_results': list(processed),
+            'subjects': exam_subjects,
+            'grade_lookup': grade_lookup,
+            'grade_key': grade_key,
             'excel_url': reverse('export_results_excel', args=[exam.id]),
             'pdf_url': reverse('generate_results_pdf', args=[exam.id]),
             'overview_url': reverse('exam_overview', args=[exam.id]),

@@ -43,23 +43,39 @@ LIGHT_GREY = "FF" + TZ_LIGHT_GREY
 DARK_GREY  = "FF" + TZ_DARK_GREY
 
 
-def _score_fill(score) -> tuple[str | None, str | None]:
+def _grade_thresholds(form):
+    """Return (score-thresholds, grade-ranges) for the exam's NECTA scale.
+
+    Form 2 (FTNA) grades on a different scale than Form 1/3/4 (CSEE):
+        CSEE: A 75+ | B 65+ | C 50+ | D 40+ | F <40
+        FTNA: A 75+ | B 65+ | C 45+ | D 30+ | F <30
+    """
+    if form == 2:
+        return [75, 65, 45, 30], [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
+    return [75, 65, 50, 40], [('A', '75-100'), ('B', '65-74'), ('C', '50-64'), ('D', '40-49'), ('F', '0-39')]
+
+
+def _score_fill(score, form=4) -> tuple[str | None, str | None]:
     if not isinstance(score, (int, float)):
         return None, None
-    if score >= 75: return "FFC6F4D6", "FF145A32"
-    if score >= 65: return "FFD5F5E3", "FF1E8449"
-    if score >= 50: return "FFFFF9C4", "FF7D6608"
-    if score >= 40: return "FFFDEBD0", "FF784212"
+    thresholds, _ = _grade_thresholds(form)
+    a, b, c, d = thresholds
+    if score >= a: return "FFC6F4D6", "FF145A32"
+    if score >= b: return "FFD5F5E3", "FF1E8449"
+    if score >= c: return "FFFFF9C4", "FF7D6608"
+    if score >= d: return "FFFDEBD0", "FF784212"
     return "FFFADBD8", "FF922B21"
 
 
-def _score_grade(score) -> str:
+def _score_grade(score, form=4) -> str:
     if not isinstance(score, (int, float)):
         return '-'
-    if score >= 75: return 'A'
-    if score >= 65: return 'B'
-    if score >= 50: return 'C'
-    if score >= 40: return 'D'
+    thresholds, _ = _grade_thresholds(form)
+    a, b, c, d = thresholds
+    if score >= a: return 'A'
+    if score >= b: return 'B'
+    if score >= c: return 'C'
+    if score >= d: return 'D'
     return 'F'
 
 
@@ -187,7 +203,7 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
             cell = ws.cell(row=data_row, column=col_idx)
             if score is not None:
                 cell.value = score
-                fill_hex, font_hex = _score_fill(score)
+                fill_hex, font_hex = _score_fill(score, exam.form)
                 if fill_hex:
                     cell.fill = _make_fill(fill_hex)
                 if font_hex:
@@ -221,15 +237,15 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
 
         ws.cell(row=data_row, column=pts_col, value=result.points)
 
-    # Grade legend
+    # Grade legend — ranges follow the exam's NECTA scale (FTNA vs CSEE)
     last_data_row = header_row + len(results) + 1
     legend_row = last_data_row + 2
+    _, grade_ranges = _grade_thresholds(exam.form)
+    legend_fills = ["FFC6F4D6", "FFD5F5E3", "FFFFF9C4", "FFFDEBD0", "FFFADBD8"]
+    legend_fonts = ["FF145A32", "FF1E8449", "FF7D6608", "FF784212", "FF922B21"]
     legend_labels = [
-        ("A  (75-100)", "FFC6F4D6", "FF145A32"),
-        ("B  (65-74)", "FFD5F5E3", "FF1E8449"),
-        ("C  (50-64)", "FFFFF9C4", "FF7D6608"),
-        ("D  (40-49)", "FFFDEBD0", "FF784212"),
-        ("F  (<40)", "FFFADBD8", "FF922B21"),
+        (f"{g}  ({rng})", legend_fills[i], legend_fonts[i])
+        for i, (g, rng) in enumerate(grade_ranges)
     ]
     if lang == 'sw':
         ws.cell(row=legend_row, column=1, value="UFUNGUO WA DARAJA:")
@@ -470,8 +486,8 @@ def _build_sheet_somo_kwa_somo(wb: openpyxl.Workbook, exam, payload: dict):
         subject_rows.sort(key=lambda r: r['score'], reverse=True)
 
         for rank, row in enumerate(subject_rows, 1):
-            grade = _score_grade(row['score'])
-            fill_hex, font_hex = _score_fill(row['score'])
+            grade = _score_grade(row['score'], exam.form)
+            fill_hex, font_hex = _score_fill(row['score'], exam.form)
 
             ws.cell(row=cur_row, column=1, value=rank)
             ws.cell(row=cur_row, column=2, value=row['name'])

@@ -114,8 +114,32 @@ def get_grade_alevel(score):
     return "F"
 
 
+def get_grade_ftna(score):
+    """NECTA FTNA (Form Two National Assessment) subject grade.
+
+    Official FTNA scale differs from CSEE: C starts at 45, D at 30, F below 30.
+        A: 75-100  B: 65-74  C: 45-64  D: 30-44  F: 0-29
+    """
+    if score >= 75:
+        return "A"
+    if score >= 65:
+        return "B"
+    if score >= 45:
+        return "C"
+    if score >= 30:
+        return "D"
+    return "F"
+
+
 def get_grade_for_form(score, form):
-    """Pick the right NECTA scale: ACSEE for Form 5/6, CSEE otherwise."""
+    """Pick the right NECTA scale for the exam's form level:
+
+    - Form 2 (FTNA):        A 75+ | B 65+ | C 45+ | D 30+ | F <30
+    - Form 5/6 (ACSEE):     A 80+ | B 70+ | C 60+ | D 50+ | E 40+ | S 35+ | F <35
+    - Form 1/3/4 (CSEE):    A 75+ | B 65+ | C 50+ | D 40+ | F <40
+    """
+    if form == 2:
+        return get_grade_ftna(score)
     if form in (5, 6):
         return get_grade_alevel(score)
     return get_grade(score)
