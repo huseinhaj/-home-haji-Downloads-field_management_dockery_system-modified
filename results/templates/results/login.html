@@ -52,11 +52,17 @@
           <input type="hidden" name="email" value="{{ email }}">
           <div class="field">
             <label>{% if LANG == 'sw' %}Password Mpya{% else %}New Password{% endif %}</label>
-            <input type="password" name="password1" class="form-control" required autofocus>
+            <div class="input-group">
+              <input type="password" name="password1" id="pw1" class="form-control" required autofocus>
+              <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="pw1" tabindex="-1" aria-label="{% if LANG == 'sw' %}Onyesha password{% else %}Show password{% endif %}"><i class="fas fa-eye"></i></button>
+            </div>
           </div>
           <div class="field">
             <label>{% if LANG == 'sw' %}Thibitisha Password{% else %}Confirm Password{% endif %}</label>
-            <input type="password" name="password2" class="form-control" required>
+            <div class="input-group">
+              <input type="password" name="password2" id="pw2" class="form-control" required>
+              <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="pw2" tabindex="-1" aria-label="{% if LANG == 'sw' %}Onyesha password{% else %}Show password{% endif %}"><i class="fas fa-eye"></i></button>
+            </div>
           </div>
           <button type="submit" class="btn btn-brand w-100">
             {% if LANG == 'sw' %}Tengeneza Akaunti{% else %}Create Account{% endif %}
@@ -73,7 +79,10 @@
           <input type="hidden" name="email" value="{{ email }}">
           <div class="field">
             <label>Password</label>
-            <input type="password" name="password" class="form-control" required autofocus>
+            <div class="input-group">
+              <input type="password" name="password" id="pwLogin" class="form-control" required autofocus>
+              <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="pwLogin" tabindex="-1" aria-label="{% if LANG == 'sw' %}Onyesha password{% else %}Show password{% endif %}"><i class="fas fa-eye"></i></button>
+            </div>
           </div>
           <button type="submit" class="btn btn-brand w-100">
             {% if LANG == 'sw' %}Ingia{% else %}Login{% endif %}
@@ -122,11 +131,17 @@
           <input type="hidden" name="email" value="{{ email }}">
           <div class="field">
             <label>{% if LANG == 'sw' %}Password Mpya{% else %}New Password{% endif %}</label>
-            <input type="password" name="password1" class="form-control" required autofocus>
+            <div class="input-group">
+              <input type="password" name="password1" id="fpw1" class="form-control" required autofocus>
+              <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="fpw1" tabindex="-1" aria-label="{% if LANG == 'sw' %}Onyesha password{% else %}Show password{% endif %}"><i class="fas fa-eye"></i></button>
+            </div>
           </div>
           <div class="field">
             <label>{% if LANG == 'sw' %}Thibitisha Password{% else %}Confirm Password{% endif %}</label>
-            <input type="password" name="password2" class="form-control" required>
+            <div class="input-group">
+              <input type="password" name="password2" id="fpw2" class="form-control" required>
+              <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="fpw2" tabindex="-1" aria-label="{% if LANG == 'sw' %}Onyesha password{% else %}Show password{% endif %}"><i class="fas fa-eye"></i></button>
+            </div>
           </div>
           <button type="submit" class="btn btn-brand w-100">
             {% if LANG == 'sw' %}Badilisha Password{% else %}Reset Password{% endif %}
@@ -140,4 +155,26 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show/hide password toggle (macho ya kuona password unayoandika)
+document.querySelectorAll('.toggle-pw').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const input = document.getElementById(btn.dataset.target);
+    if (!input) return;
+    const isPw = input.type === 'password';
+    input.type = isPw ? 'text' : 'password';
+    const icon = btn.querySelector('i');
+    if (icon) {
+      icon.className = isPw ? 'fas fa-eye-slash' : 'fas fa-eye';
+    }
+    btn.setAttribute('aria-label', isPw
+      ? '{% if LANG == "sw" %}Ficha password{% else %}Hide password{% endif %}'
+      : '{% if LANG == "sw" %}Onyesha password{% else %}Show password{% endif %}');
+    input.focus();
+  });
+});
+</script>
 {% endblock %}

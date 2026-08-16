@@ -59,11 +59,14 @@ class Student(models.Model):
 class Exam(models.Model):
     EXAM_TYPE_CHOICES = [
         ('TEST', 'Test'),
-        ('COMPETITION', 'Competition'),
-        ('TERMINAL', 'Terminal'),
+        ('MONTHLY', 'Monthly Test'),
+        ('QUIZ', 'Quiz'),
         ('MIDTERM', 'Midterm'),
-        ('DECEMBER', 'December'),
+        ('TERMINAL', 'Terminal'),
+        ('MOCK', 'Mock'),
         ('ANNUAL', 'Annual'),
+        ('DECEMBER', 'December'),
+        ('COMPETITION', 'Competition'),
         ('OTHER', 'Other'),
     ]
 

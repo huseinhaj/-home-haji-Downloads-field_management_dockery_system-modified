@@ -1,31 +1,87 @@
 {% extends 'results/base.html' %}
-{% block title %}{% if LANG == 'sw' %}Wasiliana na Msimamizi{% else %}Contact the Administrator{% endif %} | School Results{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Sajili Akaunti{% else %}Register Account{% endif %} | School Results{% endblock %}
 
 {% block content %}
-<div class="panel mt-4">
-  <div class="panel-body text-center">
-    <div style="font-size:2.5rem;margin-bottom:0.5rem;">📞</div>
-    <h3 style="font-family:'Sora',sans-serif;color:var(--accent-500);">{{ school.name }}</h3>
-    <p class="text-secondary">
-      {% if LANG == 'sw' %}
-      Shule hii bado haina Afisa Taaluma (Academic) aliyesajiliwa kwenye mfumo.
-      Piga simu au tuma ujumbe kwa msimamizi wa mfumo akusajili barua pepe yako kama Academic wa shule hii.
-      {% else %}
-      This school doesn't have an Academic officer registered in the system yet.
-      Call or message the system administrator to have your email registered as this school's Academic.
-      {% endif %}
-    </p>
-    <div class="panel mt-3" style="max-width:320px;margin-inline:auto;">
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="panel mt-4">
       <div class="panel-body">
-        <div class="text-secondary" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.06em;">
-          {% if LANG == 'sw' %}Wasiliana na Msimamizi{% else %}Contact Administrator{% endif %}
+        <div style="font-size:2.2rem;margin-bottom:0.5rem;text-align:center;">🏫</div>
+        <h3 style="font-family:'Sora',sans-serif;color:var(--accent-500);text-align:center;">{{ school.name }}</h3>
+        <p class="text-secondary text-center" style="font-size:0.9rem;">
+          {% if LANG == 'sw' %}
+          Shule hii bado haina Afisa Taaluma (Academic). Jisajili hapa kuwa Academic wa shule yako —
+          utaweza kuingia mara moja na kuanza kuunda mitihani.
+          {% else %}
+          This school doesn't have an Academic officer registered yet. Register here to become your
+          school's Academic — you'll be able to log in immediately and start creating exams.
+          {% endif %}
+        </p>
+
+        {% if messages %}
+        <div class="mb-2">
+          {% for message in messages %}
+          <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} shadow-sm mb-2" role="alert">{{ message }}</div>
+          {% endfor %}
         </div>
-        <div style="font-size:1.4rem;font-weight:800;color:var(--accent-500);font-family:'Sora',sans-serif;">
-          <a href="tel:{{ support_phone }}" style="color:inherit;text-decoration:none;">{{ support_phone }}</a>
+        {% endif %}
+
+        <form method="post" class="text-start">
+          {% csrf_token %}
+          <input type="hidden" name="school_id" value="{{ school.id }}">
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Jina Kamili{% else %}Full Name{% endif %}</label>
+            <input type="text" name="full_name" class="form-control" required autofocus value="{{ form_data.full_name|default:'' }}">
+          </div>
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Barua pepe (Email){% else %}Email{% endif %}</label>
+            <input type="email" name="email" class="form-control" required value="{{ form_data.email|default:'' }}">
+          </div>
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Password{% else %}Password{% endif %}</label>
+            <div class="input-group">
+              <input type="password" name="password1" id="regPw1" class="form-control" required>
+              <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="regPw1" tabindex="-1" aria-label="{% if LANG == 'sw' %}Onyesha password{% else %}Show password{% endif %}"><i class="fas fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="field">
+            <label>{% if LANG == 'sw' %}Thibitisha Password{% else %}Confirm Password{% endif %}</label>
+            <div class="input-group">
+              <input type="password" name="password2" id="regPw2" class="form-control" required>
+              <button type="button" class="btn btn-outline-secondary toggle-pw" data-target="regPw2" tabindex="-1" aria-label="{% if LANG == 'sw' %}Onyesha password{% else %}Show password{% endif %}"><i class="fas fa-eye"></i></button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-brand w-100 mt-2">
+            {% if LANG == 'sw' %}Sajili Akaunti{% else %}Register Account{% endif %}
+          </button>
+        </form>
+
+        <div class="text-center mt-3" style="font-size:0.8rem;color:#888;">
+          {% if LANG == 'sw' %}Au wasiliana na msimamizi:{% else %}Or contact the administrator:{% endif %}
+          <a href="tel:{{ support_phone }}" style="font-weight:800;color:var(--accent-500);text-decoration:none;">{{ support_phone }}</a>
+        </div>
+
+        <div class="text-center mt-2">
+          <a href="{% url 'register_school_start' %}" class="btn btn-outline-secondary btn-sm">{% if LANG == 'sw' %}Rudi Nyuma{% else %}Back{% endif %}</a>
         </div>
       </div>
     </div>
-    <a href="{% url 'register_school_start' %}" class="btn btn-outline-secondary mt-3">{% if LANG == 'sw' %}Rudi Nyuma{% else %}Back{% endif %}</a>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.toggle-pw').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const input = document.getElementById(btn.dataset.target);
+    if (!input) return;
+    const isPw = input.type === 'password';
+    input.type = isPw ? 'text' : 'password';
+    const icon = btn.querySelector('i');
+    if (icon) icon.className = isPw ? 'fas fa-eye-slash' : 'fas fa-eye';
+    input.focus();
+  });
+});
+</script>
 {% endblock %}

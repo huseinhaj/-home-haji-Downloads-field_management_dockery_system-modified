@@ -106,6 +106,9 @@ def get_report_label(exam):
     if lang == 'sw':
         type_map = {
             'TEST': 'MTIHANI WA MAJARIBIO',
+            'MONTHLY': 'MTIHANI WA MWEZI',
+            'QUIZ': 'MAJARIBIO YA DARASANI',
+            'MOCK': 'MTIHANI WA MAZOEZI (MOCK)',
             'COMPETITION': 'MTIHANI WA MASHINDANO',
             'TERMINAL': 'MTIHANI WA MWISHO WA MUHULA',
             'MIDTERM': 'MTIHANI WA KATI YA MUHULA',
@@ -121,6 +124,9 @@ def get_report_label(exam):
         else:
             type_map = {
                 'TEST': 'TEST',
+                'MONTHLY': 'MONTHLY TEST',
+                'QUIZ': 'QUIZ',
+                'MOCK': 'MOCK',
                 'COMPETITION': 'COMPETITION',
                 'TERMINAL': 'END OF TERM',
                 'MIDTERM': 'MIDTERM',

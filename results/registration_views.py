@@ -16,8 +16,10 @@ first time and setting their own password.
 
 from __future__ import annotations
 
+from django.contrib import messages
+from django.contrib.auth import login
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from field_app.models import District, Region
 from field_app.models import School as SourceSchool
@@ -73,8 +75,13 @@ def _get_or_create_school(source_school):
 
 
 def register_school_confirm(request):
-    """POST: the visitor picked a school. Show whether it already has an
-    Academic (contact them) or needs one set up (contact the admin)."""
+    """POST: the visitor picked a school.
+
+    - If the school already has an Academic → tell them who to contact.
+    - If not → register the visitor as the school's first Academic
+      (full name + email + password), so their data is actually saved
+      and they can log in immediately.
+    """
     if request.user.is_authenticated:
         return render(request, 'results/register_already_logged_in.html')
 
@@ -94,7 +101,58 @@ def register_school_confirm(request):
             'academic_email': _mask_email(existing.email),
         })
 
-    return render(request, 'results/register_school_contact_admin.html', {
-        'school': school,
-        'support_phone': SUPPORT_PHONE,
-    })
+    # ── Create the school's first Academic account (data is saved here) ──
+    full_name = request.POST.get('full_name', '').strip()
+    email = request.POST.get('email', '').strip().lower()
+    password1 = request.POST.get('password1', '')
+    password2 = request.POST.get('password2', '')
+
+    # If the visitor only picked the school (no account form submitted yet),
+    # show the registration form so they can create their account.
+    if not (full_name and email):
+        return render(request, 'results/register_school_contact_admin.html', {
+            'school': school,
+            'support_phone': SUPPORT_PHONE,
+            'form_data': {'full_name': full_name, 'email': email},
+        })
+
+    if password1 != password2:
+        messages.error(request, "Password hazifanani. Jaribu tena.")
+        return render(request, 'results/register_school_contact_admin.html', {
+            'school': school,
+            'support_phone': SUPPORT_PHONE,
+            'form_data': {'full_name': full_name, 'email': email},
+        })
+
+    if len(password1) < 8:
+        messages.error(request, "Password inatakiwa iwe angalau herufi 8.")
+        return render(request, 'results/register_school_contact_admin.html', {
+            'school': school,
+            'support_phone': SUPPORT_PHONE,
+            'form_data': {'full_name': full_name, 'email': email},
+        })
+
+    if TeacherAccount.objects.filter(email__iexact=email).exists():
+        messages.error(request, "Email hii tayari imesajiliwa kwenye mfumo. Ingia kwanza.")
+        return render(request, 'results/register_school_contact_admin.html', {
+            'school': school,
+            'support_phone': SUPPORT_PHONE,
+            'form_data': {'full_name': full_name, 'email': email},
+        })
+
+    account = TeacherAccount(
+        email=email,
+        full_name=full_name,
+        role=TeacherAccount.ROLE_ACADEMIC,
+        school=school,
+    )
+    account.set_password(password1)
+    account.save(using='results')
+
+    messages.success(
+        request,
+        f"Akaunti imeundwa kwa {school.name}! Karibu {full_name}."
+    )
+    # Log them in straight away — their account is already activated
+    login(request, account, backend='results.backends.ResultsAuthBackend')
+    return redirect('academic_dashboard')
