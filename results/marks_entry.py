@@ -66,7 +66,12 @@ def marks_entry(request):
     class_students = []
 
     if exam_id and subject_id:
-        exam = Exam.objects.filter(id=exam_id, school=teacher.school).first()
+        # Inalingana na fallback ya dropdown: shule ikiwa na mitihani tumia yake,
+        # vinginevyo mwalimu anaweza kuchagua mtihani wowote alioona kwenye orodha.
+        if teacher.school and school_exams.exists():
+            exam = Exam.objects.filter(id=exam_id, school=teacher.school).first()
+        else:
+            exam = Exam.objects.filter(id=exam_id).first()
         subject = teacher_subjects.filter(id=subject_id).first()
         if exam and subject:
             existing_marks = {
@@ -133,13 +138,24 @@ def marks_entry(request):
     })
 
 
+def _teacher_exam(teacher, exam_id):
+    """Inalingana na dropdown ya marks entry: shule ikiwa na mitihani tumia yake,
+    vinginevyo mwalimu anaweza kufanya kazi na mtihani wowote alioona kwenye orodha."""
+    school_exams = Exam.objects.filter(school=teacher.school)
+    if teacher.school and school_exams.exists():
+        return Exam.objects.filter(id=exam_id, school=teacher.school).first()
+    return Exam.objects.filter(id=exam_id).first()
+
+
 @teacher_required
 @require_POST
 def marks_entry_save(request):
     """Save (or update) all scores for an exam+subject. Does NOT submit yet."""
     payload = _parse_payload(request)
     teacher = request.user
-    exam = get_object_or_404(Exam, id=payload.get('exam_id'), school=teacher.school)
+    exam = _teacher_exam(teacher, payload.get('exam_id'))
+    if exam is None:
+        return JsonResponse({'error': 'Mtihani haupatikani.'}, status=404)
     subject = get_object_or_404(Subject, id=payload.get('subject_id'))
     if not teacher.subjects.filter(pk=subject.pk).exists():
         return JsonResponse({'error': 'Hujapangiwa somo hili.'}, status=403)
@@ -189,7 +205,9 @@ def marks_entry_submit(request):
     officer sees it (same logic as the old file-upload/speech flows)."""
     payload = _parse_payload(request)
     teacher = request.user
-    exam = get_object_or_404(Exam, id=payload.get('exam_id'), school=teacher.school)
+    exam = _teacher_exam(teacher, payload.get('exam_id'))
+    if exam is None:
+        return JsonResponse({'error': 'Mtihani haupatikani.'}, status=404)
     subject = get_object_or_404(Subject, id=payload.get('subject_id'))
     if not teacher.subjects.filter(pk=subject.pk).exists():
         return JsonResponse({'error': 'Hujapangiwa somo hili.'}, status=403)
