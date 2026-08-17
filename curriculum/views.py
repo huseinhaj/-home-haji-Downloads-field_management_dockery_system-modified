@@ -1926,22 +1926,24 @@ def download_scheme_pdf(request):
         can.saveState()
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
-        # Outer gold border (thick)
-        can.setStrokeColor(GOLD)
+        # ── Mistari ya pambizo (margin frame) — full black, si gold/orange ──
+        _frame = colors.black
+        # Outer black border (thick)
+        can.setStrokeColor(_frame)
         can.setLineWidth(3.5)
         can.rect(12, 12, pw - 24, ph - 24)
-        # Inner navy border (thin)
-        can.setStrokeColor(NAVY)
+        # Inner black border (thin)
+        can.setStrokeColor(_frame)
         can.setLineWidth(1.5)
         can.rect(18, 18, pw - 36, ph - 36)
-        # Top gold accent bar
-        can.setStrokeColor(GOLD)
+        # Top black accent bar
+        can.setStrokeColor(_frame)
         can.setLineWidth(4)
         can.line(18, ph - 55, pw - 18, ph - 55)
-        # Bottom gold accent bar
+        # Bottom black accent bar
         can.line(18, 55, pw - 18, 55)
         # Top-left corner square
-        can.setFillColor(GOLD)
+        can.setFillColor(_frame)
         can.rect(18, ph - 26, 14, 8, fill=1, stroke=0)
         # Top-right corner square
         can.rect(pw - 32, ph - 26, 14, 8, fill=1, stroke=0)
@@ -2905,22 +2907,24 @@ def _build_lp_pdf(lesson, form, teacher=None):
         can.saveState()
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
-        # Outer gold border (thick)
-        can.setStrokeColor(GOLD)
+        # ── Mistari ya pambizo (margin frame) — full black, si gold/orange ──
+        _frame = colors.black
+        # Outer black border (thick)
+        can.setStrokeColor(_frame)
         can.setLineWidth(3.5)
         can.rect(30, 30, pw - 60, ph - 60)
-        # Inner navy border (thin)
-        can.setStrokeColor(NAVY)
+        # Inner black border (thin)
+        can.setStrokeColor(_frame)
         can.setLineWidth(1.5)
         can.rect(36, 36, pw - 72, ph - 72)
-        # Top gold accent bar
-        can.setStrokeColor(GOLD)
+        # Top black accent bar
+        can.setStrokeColor(_frame)
         can.setLineWidth(4)
         can.line(36, ph - 55, pw - 36, ph - 55)
-        # Bottom gold accent bar
+        # Bottom black accent bar
         can.line(36, 55, pw - 36, 55)
         # Top-left corner square
-        can.setFillColor(GOLD)
+        can.setFillColor(_frame)
         can.rect(36, ph - 26, 14, 8, fill=1, stroke=0)
         # Top-right corner square
         can.rect(pw - 50, ph - 26, 14, 8, fill=1, stroke=0)

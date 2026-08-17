@@ -320,113 +320,65 @@ FORM_1_SYLLABUS = {
                 "name": "Introduction to Biology",
                 "order": 1,
                 "subtopics": [
-                    "Meaning of Biology",
+                    "Basic concepts and terminologies in Biology",
                     "Branches of Biology",
-                    "Importance of Biology",
-                    "Relationship between Biology and other subjects",
-                    "Career opportunities in Biology",
+                    "Characteristics of living things",
+                    "Importance of studying Biology",
+                    "Relationship between Biology and other scientific fields",
                 ]
             },
             {
-                "name": "Biology Laboratory",
+                "name": "Scientific processes in Biology",
                 "order": 2,
                 "subtopics": [
-                    "Meaning of a Biology laboratory",
-                    "Rules and safety in a Biology laboratory",
-                    "Biology laboratory equipment",
-                    "Handling and using Biology laboratory equipment",
+                    "Common Biology laboratory apparati, equipment and other resources",
+                    "Basic skills in scientific studies",
+                    "Scientific methods",
+                    "Simple biological experiments",
                 ]
             },
             {
-                "name": "Scientific Processes in Biology",
+                "name": "Cell structure and organization",
                 "order": 3,
                 "subtopics": [
-                    "Scientific procedures",
-                    "Scientific skills",
-                    "Observation and recording",
-                    "Experimentation in Biology",
+                    "The cell",
+                    "Types of cells",
+                    "Animal and plant cells",
+                    "Cell differentiation",
                 ]
             },
             {
-                "name": "First Aid and Safety in Our Environment",
+                "name": "Classification of living things",
                 "order": 4,
                 "subtopics": [
-                    "Meaning of first aid",
-                    "First aid kit and its contents",
-                    "Common accidents and their first aid",
-                    "Safety measures in the environment",
+                    "Concept of classification",
+                    "Classification systems",
+                    "Major groups of living things",
+                    "Binomial nomenclature",
                 ]
             },
             {
-                "name": "Waste Disposal",
+                "name": "Viruses and major groups of living things",
                 "order": 5,
                 "subtopics": [
-                    "Meaning of waste",
-                    "Types of waste",
-                    "Effects of poor waste disposal",
-                    "Methods of waste disposal",
+                    "Viruses",
+                    "Kingdom Monera",
+                    "Kingdom Protoctista",
+                    "Kingdom Fungi",
+                    "Kingdom Plantae",
+                    "Classes of the division Angiospermophyta",
+                    "Kingdom Animalia",
                 ]
             },
             {
-                "name": "Personal Hygiene and Good Manners",
+                "name": "Nutrition in plants",
                 "order": 6,
                 "subtopics": [
-                    "Meaning of personal hygiene",
-                    "Types of personal hygiene",
-                    "Importance of personal hygiene",
-                    "Good manners and behaviour",
-                ]
-            },
-            {
-                "name": "Health, Immunity and Diseases",
-                "order": 7,
-                "subtopics": [
-                    "Meaning of health",
-                    "Types of diseases",
-                    "Causes and transmission of diseases",
-                    "Immunity and immunization",
-                    "Prevention and control of diseases",
-                ]
-            },
-            {
-                "name": "STIs, STDs, HIV and AIDS",
-                "order": 8,
-                "subtopics": [
-                    "Meaning of STIs, STDs, HIV and AIDS",
-                    "Causes and transmission",
-                    "Signs and symptoms",
-                    "Prevention and control",
-                    "Care and support for people living with HIV/AIDS",
-                ]
-            },
-            {
-                "name": "Cell Structure and Organization",
-                "order": 9,
-                "subtopics": [
-                    "Meaning of a cell",
-                    "Cell structures and functions",
-                    "Differences between plant and animal cells",
-                    "Cell organization (tissues, organs, systems)",
-                ]
-            },
-            {
-                "name": "Classification of Living Things",
-                "order": 10,
-                "subtopics": [
-                    "Need for classification",
-                    "Kingdoms of living things",
-                    "Binomial nomenclature",
-                    "Characteristics of each kingdom",
-                ]
-            },
-            {
-                "name": "Viruses, Kingdom Monera and Kingdom Protoctista",
-                "order": 11,
-                "subtopics": [
-                    "Characteristics of viruses",
-                    "Characteristics of Kingdom Monera",
-                    "Characteristics of Kingdom Protoctista",
-                    "Economic importance of each group",
+                    "Concept of nutrition",
+                    "Photosynthesis",
+                    "Structure of the leaf in relation to photosynthesis",
+                    "Importance of photosynthesis",
+                    "Essential and non-essential elements in plants",
                 ]
             },
         ]
@@ -921,17 +873,44 @@ FORM_2_SYLLABUS = {
     "Biology": {
         "subject_code": "secondary",
         "topics": [
-            {"name": "Classification of Living Things (Fungi and Plantae)", "order": 1, "subtopics": ["Kingdom Fungi", "Division Bryophyta", "Division Pteridophyta", "Division Spermatophyta"]},
-            {"name": "Nutrition", "order": 2, "subtopics": ["Concept and types of nutrition", "Importance of nutrition", "Malnutrition and disorders"]},
-            {"name": "Nutrition in Animals", "order": 3, "subtopics": ["Human nutrition", "Balanced diet", "Nutritional requirements for different groups"]},
-            {"name": "Digestive System", "order": 4, "subtopics": ["Structure of the digestive system", "Human digestion process", "Digestive system of ruminants"]},
-            {"name": "Nutrition in Plants", "order": 5, "subtopics": ["Essential elements for plants", "Photosynthesis", "Factors affecting photosynthesis"]},
-            {"name": "Food Processing, Preservation and Storage", "order": 6, "subtopics": ["Methods of food processing", "Food preservation techniques", "Food storage"]},
-            {"name": "Balance of Nature", "order": 7, "subtopics": ["Natural environment", "Food chains and food webs", "Ecosystem and energy flow"]},
-            {"name": "Transportation of Materials in Living Organisms", "order": 8, "subtopics": ["Concept of transport", "Transport in simple organisms", "Transport systems"]},
-            {"name": "Transport of Materials in Mammals", "order": 9, "subtopics": ["The heart and blood vessels", "Blood composition and groups", "Blood transfusion", "Lymphatic system"]},
-            {"name": "Transport of Materials in Plants", "order": 10, "subtopics": ["Vascular system", "Movement of water and minerals", "Transpiration and guttation"]},
-            {"name": "Gaseous Exchange and Respiration", "order": 11, "subtopics": ["Gaseous exchange in animals", "Gaseous exchange in plants", "Respiration process", "Respiratory diseases"]},
+            {"name": "Nutrition in animals", "order": 1, "subtopics": [
+                "Concept of nutrition in animals",
+                "Nutrients",
+                "Balanced diet",
+                "Nutritional requirements for different groups of people",
+                "Nutritional deficiencies and disorders",
+                "Properties of food nutrients",
+            ]},
+            {"name": "Digestive system", "order": 2, "subtopics": [
+                "The digestion process",
+                "The digestive system of ruminants",
+                "Disorders and diseases of human digestive system",
+            ]},
+            {"name": "Transport of materials in living organisms", "order": 3, "subtopics": [
+                "Concept of transportation of materials",
+                "Ways of transportation of materials",
+            ]},
+            {"name": "Transport of materials in flowering plants", "order": 4, "subtopics": [
+                "The vascular system",
+                "Absorption and movement of water and mineral salts",
+                "Transpiration",
+                "Guttation",
+            ]},
+            {"name": "Transport of materials in mammals", "order": 5, "subtopics": [
+                "The mammalian heart",
+                "Blood vessels",
+                "The blood",
+                "Blood groups",
+                "Blood transfusion",
+                "Blood circulation in human beings",
+            ]},
+            {"name": "Gas exchange and respiration", "order": 6, "subtopics": [
+                "Concept of gas exchange",
+                "Gas exchange in mammals",
+                "Gas exchange in plants",
+                "Respiration in mammals",
+                "Infections and diseases of the respiratory system in humans",
+            ]},
         ]
     },
     "Physics": {
