@@ -1754,6 +1754,77 @@ def ajax_get_scheme_result(request):
     """Legacy stub - no longer needed."""
     return JsonResponse({'success': False, 'error': 'No task'}, status=404)
 
+
+# =============================================================================
+# PER-TEACHER PDF VISUAL PROFILE — kila mwalimu apate mwonekano wake wa kudumu
+# (deterministic) ili PDF za Scheme / Lesson Plan zionekane kama zimetengenezwa
+# na watu tofauti, huku format na muundo wa TAMISEMI ukibaki ule ule.
+#
+# Seed inatokana na utambulisho wa mwalimu (id + namba ya simu + jina) pamoja
+# na somo na darasa — kwa hiyo mwalimu mmoja daima anapata profile ile ile,
+# lakini walimu wawili tofauti (hata wa somo moja) wanapata mwonekano tofauti.
+# =============================================================================
+
+_PDF_PALETTES = [
+    # (primary, accent, accent_dark, stripe, border, light_bg)
+    ('#0A2B5E', '#C8900A', '#A67B07', '#EBF0FB', '#9BAAC4', '#FAFBFD'),  # Navy & Gold (classic)
+    ('#1E4D2B', '#B8860B', '#96640A', '#EBF4EC', '#8FB08F', '#F7FBF7'),  # Forest & Amber
+    ('#4A1D24', '#C19A5B', '#9A7B4B', '#F9EEF0', '#C09A9A', '#FEF8F8'),  # Maroon & Tan
+    ('#2D3748', '#9CA3AF', '#6B7280', '#EDEFF3', '#AAB2BF', '#F8F9FA'),  # Charcoal & Silver
+    ('#0F4C5C', '#D4A017', '#B8860B', '#E8F4F6', '#8FB6BE', '#F4FAFB'),  # Teal & Amber
+    ('#4C1D95', '#C8900A', '#A67B07', '#F1EBFA', '#B7A6D9', '#FAF7FE'),  # Purple & Gold
+    ('#1A365D', '#2B6CB0', '#2C5282', '#E8EFF7', '#8FA8C8', '#F6F9FD'),  # Midnight Blue
+    ('#78350F', '#D97706', '#B45309', '#FEF3C7', '#FCD34D', '#FFFBEB'),  # Brown & Amber
+]
+
+_PDF_BODY_FONTS = ['Helvetica', 'Times-Roman', 'Courier']
+_PDF_HEAD_FONTS = ['Helvetica-Bold', 'Times-Bold', 'Courier-Bold']
+
+
+def _pdf_profile_seed(teacher, subject='', class_name=''):
+    """Stable numeric seed kwa mwalimu + somo + darasa (deterministic)."""
+    import hashlib
+    parts = '|'.join([
+        str(getattr(teacher, 'id', '') or ''),
+        str(getattr(teacher, 'phone_number', '') or ''),
+        str(getattr(teacher, 'full_name', '') or ''),
+        subject or '',
+        class_name or '',
+    ])
+    return int(hashlib.md5(parts.encode('utf-8')).hexdigest()[:8], 16)
+
+
+def _pdf_visual_profile(teacher, subject='', class_name=''):
+    """Chagua palette, fonts, mpangilio wa kichwa na sura ya cover kwa mwalimu huyu.
+
+    Returns dict:
+      palette      — rangi (primary/accent/accent_dark/stripe/border/light_bg)
+      font_body    — font ya maandishi ya kawaida (Helvetica/Times-Roman/Courier)
+      font_head    — font ya vichwa (Helvetica-Bold/Times-Bold/Courier-Bold)
+      header_style — 0..7 (variant za mpangilio wa kichwa cha TAMISEMI)
+      cover_style  — 0: double+corners, 1: double plain, 2: single border
+      font_size    — 8.0 au 8.5 (tofauti ndogo ya ukubwa)
+    """
+    seed = _pdf_profile_seed(teacher, subject, class_name)
+    palette = _PDF_PALETTES[seed % len(_PDF_PALETTES)]
+    body_idx = (seed // 7) % len(_PDF_BODY_FONTS)
+    return {
+        'palette': {
+            'primary': colors.HexColor(palette[0]),
+            'accent': colors.HexColor(palette[1]),
+            'accent_dark': colors.HexColor(palette[2]),
+            'stripe': colors.HexColor(palette[3]),
+            'border': colors.HexColor(palette[4]),
+            'light_bg': colors.HexColor(palette[5]),
+        },
+        'font_body': _PDF_BODY_FONTS[body_idx],
+        'font_head': _PDF_HEAD_FONTS[body_idx],
+        'header_style': (seed // 11) % 8,
+        'cover_style': (seed // 13) % 3,
+        'font_size': 8.0 if (seed // 17) % 2 == 0 else 8.5,
+    }
+
+
 def download_scheme_pdf(request):
     """Generate PDF ya Scheme of Work."""
     if request.method != 'POST':
@@ -1896,12 +1967,26 @@ def download_scheme_pdf(request):
         },
     }
     T = THEMES.get(theme_name, THEMES['classic'])
+
+    # ── Mwonekano wa kudumu wa mwalimu (PDF zionekane kama za watu tofauti) ──
+    # Mwalimu aliye na theme maalum anaheshimiwa; aliye kwenye classic (default)
+    # anapata palette yake binafsi kutoka profile. Fonts, mpangilio wa kichwa na
+    # sura ya cover hubadilika kwa kila mwalimu — format ya TAMISEMI inabaki.
+    _prof = _pdf_visual_profile(teacher, subject, class_name)
+    if theme_name == 'classic':
+        T = {**T, **_prof['palette']}
+        _fs = _prof['font_size']
+    else:
+        _fs = T.get('font_size', 8.5)
     NAVY = T['primary']
     GOLD = T['accent']
     DARK_GOLD = T['accent_dark']
     STRIPE = T['stripe']
     BORDER = T['border']
-    _fs = T.get('font_size', 8.5)
+    _BODY_FONT = _prof['font_body']
+    _HEAD_FONT = _prof['font_head']
+    _header_style = _prof['header_style']
+    _cover_style = _prof['cover_style']
 
     # ── Create Tanzania flag watermark ──
     _tz_watermark = None
@@ -1920,37 +2005,41 @@ def download_scheme_pdf(request):
         except Exception:
             pass
 
-    # ── Cover page: professional border drawing ──
+    # ── Cover page: professional border drawing (mistari ya pambizo = black) ──
     def _scheme_cover(can, doc_obj):
-        """Draw professional double-border frame with flag watermark."""
+        """Draw border frame with flag watermark. Frame inabaki black (VETA fix),
+        ila sura inabadilika kwa mwalimu: 0=double+corners, 1=double plain, 2=single."""
         can.saveState()
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
         # ── Mistari ya pambizo (margin frame) — full black, si gold/orange ──
         _frame = colors.black
-        # Outer black border (thick)
-        can.setStrokeColor(_frame)
-        can.setLineWidth(3.5)
-        can.rect(12, 12, pw - 24, ph - 24)
-        # Inner black border (thin)
-        can.setStrokeColor(_frame)
-        can.setLineWidth(1.5)
-        can.rect(18, 18, pw - 36, ph - 36)
-        # Top black accent bar
-        can.setStrokeColor(_frame)
-        can.setLineWidth(4)
-        can.line(18, ph - 55, pw - 18, ph - 55)
-        # Bottom black accent bar
-        can.line(18, 55, pw - 18, 55)
-        # Top-left corner square
-        can.setFillColor(_frame)
-        can.rect(18, ph - 26, 14, 8, fill=1, stroke=0)
-        # Top-right corner square
-        can.rect(pw - 32, ph - 26, 14, 8, fill=1, stroke=0)
-        # Bottom-left corner square
-        can.rect(18, 18, 14, 8, fill=1, stroke=0)
-        # Bottom-right corner square
-        can.rect(pw - 32, 18, 14, 8, fill=1, stroke=0)
+        if _cover_style == 2:
+            # Single border (rahisi)
+            can.setStrokeColor(_frame)
+            can.setLineWidth(2.5)
+            can.rect(12, 12, pw - 24, ph - 24)
+        else:
+            # Double border (outer thick + inner thin) — style 0 na 1
+            can.setStrokeColor(_frame)
+            can.setLineWidth(3.5)
+            can.rect(12, 12, pw - 24, ph - 24)
+            can.setStrokeColor(_frame)
+            can.setLineWidth(1.5)
+            can.rect(18, 18, pw - 36, ph - 36)
+            # Top black accent bar
+            can.setStrokeColor(_frame)
+            can.setLineWidth(4)
+            can.line(18, ph - 55, pw - 18, ph - 55)
+            # Bottom black accent bar
+            can.line(18, 55, pw - 18, 55)
+            if _cover_style == 0:
+                # Corner squares (style 0 pekee)
+                can.setFillColor(_frame)
+                can.rect(18, ph - 26, 14, 8, fill=1, stroke=0)
+                can.rect(pw - 32, ph - 26, 14, 8, fill=1, stroke=0)
+                can.rect(18, 18, 14, 8, fill=1, stroke=0)
+                can.rect(pw - 32, 18, 14, 8, fill=1, stroke=0)
         # ── Draw Tanzania flag watermark ──
         if _tz_watermark:
             try:
@@ -1967,7 +2056,7 @@ def download_scheme_pdf(request):
     def _scheme_header(can, doc_obj):
         """Draw NAME OF SCHOOL / TEACHER header bar on pages 2+."""
         can.saveState()
-        can.setFont('Helvetica-Bold', 7)
+        can.setFont(_HEAD_FONT, 7)
         can.setFillColor(NAVY)
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
@@ -1994,9 +2083,9 @@ def download_scheme_pdf(request):
     elements.append(HRFlowable(width="100%", thickness=3, color=GOLD, spaceAfter=2))
     elements.append(HRFlowable(width="100%", thickness=1.5, color=NAVY, spaceAfter=12))
 
-    cell_style = ParagraphStyle('SchCell', fontName='Helvetica', fontSize=_fs,
+    cell_style = ParagraphStyle('SchCell', fontName=_BODY_FONT, fontSize=_fs,
                                 leading=_fs + 3.5, wordWrap='LTR')
-    hdr_style = ParagraphStyle('SchHdr', fontName='Helvetica-Bold', fontSize=_fs,
+    hdr_style = ParagraphStyle('SchHdr', fontName=_HEAD_FONT, fontSize=_fs,
                                leading=_fs + 3.5, textColor=colors.white, wordWrap='LTR', alignment=1)
 
     # ── TAMISEMI Header (centered, bold) — bilingual ──
@@ -2004,63 +2093,91 @@ def download_scheme_pdf(request):
     _ralg = _tl("REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT", was_swahili)
     _sow_title = _tl("SCHEME OF WORK", was_swahili)
     
-    # Visual style: alternate between styles for variety based on hash of subject
-    _style_seed = sum(ord(c) for c in subject + (class_name or '')) % 5
+    # Visual style ya kichwa — inategemea profile ya mwalimu (mwonekano tofauti)
+    _style_seed = _header_style
     if _style_seed == 0:
         # Classic centered
         elements.append(Paragraph(_pm,
-            ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=13, alignment=1,
+            ParagraphStyle('MH1', fontName=_HEAD_FONT, fontSize=13, alignment=1,
                            textColor=NAVY, spaceAfter=2)))
         elements.append(Paragraph(_ralg,
-            ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=10, alignment=1,
+            ParagraphStyle('MH2', fontName=_HEAD_FONT, fontSize=10, alignment=1,
                            textColor=NAVY, spaceAfter=2)))
         elements.append(HRFlowable(width="50%", thickness=1, color=GOLD, spaceAfter=8))
     elif _style_seed == 1:
         # Gold background bar style
         elements.append(Spacer(1, 2))
         elements.append(Paragraph(_pm,
-            ParagraphStyle('MH1b', fontName='Helvetica-Bold', fontSize=14, alignment=1,
+            ParagraphStyle('MH1b', fontName=_HEAD_FONT, fontSize=14, alignment=1,
                            textColor=GOLD, spaceAfter=1)))
         elements.append(Paragraph(_ralg,
-            ParagraphStyle('MH2b', fontName='Helvetica-Bold', fontSize=11, alignment=1,
+            ParagraphStyle('MH2b', fontName=_HEAD_FONT, fontSize=11, alignment=1,
                            textColor=NAVY, spaceAfter=2)))
         elements.append(HRFlowable(width="100%", thickness=3, color=NAVY, spaceAfter=6))
     elif _style_seed == 2:
         # Modern compact
         elements.append(HRFlowable(width="100%", thickness=2, color=GOLD, spaceAfter=2))
         elements.append(Paragraph(f"{_pm}  |  {_ralg}",
-            ParagraphStyle('MH1c', fontName='Helvetica-Bold', fontSize=9, alignment=1,
+            ParagraphStyle('MH1c', fontName=_HEAD_FONT, fontSize=9, alignment=1,
                            textColor=NAVY, spaceAfter=2)))
         elements.append(HRFlowable(width="100%", thickness=1, color=NAVY, spaceAfter=6))
     elif _style_seed == 3:
         # Navy bg with gold text
         elements.append(Spacer(1, 4))
         elements.append(Paragraph(_pm,
-            ParagraphStyle('MH1d', fontName='Helvetica-Bold', fontSize=13, alignment=1,
+            ParagraphStyle('MH1d', fontName=_HEAD_FONT, fontSize=13, alignment=1,
                            textColor=NAVY, spaceAfter=0, backColor=colors.HexColor('#F0F4FF'))))
         elements.append(Paragraph(_ralg,
-            ParagraphStyle('MH2d', fontName='Helvetica-Bold', fontSize=10, alignment=1,
+            ParagraphStyle('MH2d', fontName=_HEAD_FONT, fontSize=10, alignment=1,
                            textColor=GOLD, spaceAfter=2)))
         elements.append(HRFlowable(width="40%", thickness=0.5, color=GOLD, spaceAfter=6))
-    else:
+    elif _style_seed == 4:
         # Gold underline style
         elements.append(Spacer(1, 2))
         elements.append(Paragraph(_pm,
-            ParagraphStyle('MH1e', fontName='Helvetica-Bold', fontSize=12, alignment=1,
+            ParagraphStyle('MH1e', fontName=_HEAD_FONT, fontSize=12, alignment=1,
                            textColor=NAVY, spaceAfter=1,
                            borderWidth=0, borderPadding=2)))
         elements.append(Paragraph(_ralg,
-            ParagraphStyle('MH2e', fontName='Helvetica-Bold', fontSize=9, alignment=1,
+            ParagraphStyle('MH2e', fontName=_HEAD_FONT, fontSize=9, alignment=1,
                            textColor=colors.HexColor('#555555'), spaceAfter=4)))
+    elif _style_seed == 5:
+        # Kichwa kimepambwa kwa rangi ya accent — background bar
+        elements.append(Spacer(1, 2))
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1f', fontName=_HEAD_FONT, fontSize=14, alignment=1,
+                           textColor=colors.white, spaceAfter=1, backColor=NAVY,
+                           borderPadding=3, borderWidth=0)))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2f', fontName=_HEAD_FONT, fontSize=10, alignment=1,
+                           textColor=GOLD, spaceAfter=2)))
+        elements.append(HRFlowable(width="100%", thickness=1, color=NAVY, spaceAfter=6))
+    elif _style_seed == 6:
+        # Mbili juu-chini (PM kubwa, RALG chini yake kwa italiki)
+        elements.append(Spacer(1, 2))
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1g', fontName=_HEAD_FONT, fontSize=15, alignment=1,
+                           textColor=NAVY, spaceAfter=0)))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2g', fontName=_BODY_FONT, fontSize=10, alignment=1,
+                           textColor=DARK_GOLD, spaceAfter=2)))
+        elements.append(HRFlowable(width="70%", thickness=0.5, color=DARK_GOLD, spaceAfter=6))
+    else:
+        # Compact — PM na RALG kwa mstari mmoja, navy
+        elements.append(Spacer(1, 2))
+        elements.append(Paragraph(f"{_pm}  •  {_ralg}",
+            ParagraphStyle('MH1h', fontName=_HEAD_FONT, fontSize=10, alignment=1,
+                           textColor=NAVY, spaceAfter=1)))
+        elements.append(HRFlowable(width="60%", thickness=2, color=GOLD, spaceAfter=6))
 
     # ── Title ──
     elements.append(Paragraph(_sow_title,
-        ParagraphStyle('ST', fontName='Helvetica-Bold', fontSize=18, alignment=1,
+        ParagraphStyle('ST', fontName=_HEAD_FONT, fontSize=18, alignment=1,
                        textColor=NAVY, spaceAfter=10)))
 
     # ── Cover info: styled table (bilingual labels) ──
-    lbl = ParagraphStyle('lbl', fontName='Helvetica-Bold', fontSize=10, textColor=colors.white, leading=14)
-    val = ParagraphStyle('val', fontName='Helvetica', fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
+    lbl = ParagraphStyle('lbl', fontName=_HEAD_FONT, fontSize=10, textColor=colors.white, leading=14)
+    val = ParagraphStyle('val', fontName=_BODY_FONT, fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
     info_rows = [
         [Paragraph(_tl("Teacher's Name", was_swahili), lbl), Paragraph(teacher_name, val)],
         [Paragraph(_tl('School Name', was_swahili), lbl), Paragraph(school_name or '____________________', val)],
@@ -2095,9 +2212,9 @@ def download_scheme_pdf(request):
         # BILA JEDWALI (E-Logbook / VETA) — numbered list, no table grid
         # ══════════════════════════════════════════════════════════════════
         _scheme_lbl = lambda en: (SWAHILI_SCHEME_KEYS.get(en, en) if was_swahili else en)
-        _lb_head = ParagraphStyle('LbHead', fontName='Helvetica-Bold', fontSize=_fs + 1.5,
+        _lb_head = ParagraphStyle('LbHead', fontName=_HEAD_FONT, fontSize=_fs + 1.5,
                                   leading=_fs + 5, textColor=NAVY, spaceBefore=10, spaceAfter=3)
-        _lb_val = ParagraphStyle('LbVal', fontName='Helvetica', fontSize=_fs,
+        _lb_val = ParagraphStyle('LbVal', fontName=_BODY_FONT, fontSize=_fs,
                                  leading=_fs + 3.5, textColor=colors.HexColor('#222222'),
                                  leftIndent=14, spaceAfter=2.5)
         _field_order = ['Month', 'Week', 'Number of Periods', 'Main Competence', 'Specific Competences',
@@ -2901,37 +3018,41 @@ def _build_lp_pdf(lesson, form, teacher=None):
         except Exception:
             pass
 
-    # ── Cover page: professional border drawing ──
+    # ── Cover page: professional border drawing (mistari ya pambizo = black) ──
     def _lp_cover(can, doc_obj):
-        """Draw professional double-border frame with flag watermark."""
+        """Draw border frame with flag watermark. Frame inabaki black (VETA fix),
+        ila sura inabadilika kwa mwalimu: 0=double+corners, 1=double plain, 2=single."""
         can.saveState()
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
         # ── Mistari ya pambizo (margin frame) — full black, si gold/orange ──
         _frame = colors.black
-        # Outer black border (thick)
-        can.setStrokeColor(_frame)
-        can.setLineWidth(3.5)
-        can.rect(30, 30, pw - 60, ph - 60)
-        # Inner black border (thin)
-        can.setStrokeColor(_frame)
-        can.setLineWidth(1.5)
-        can.rect(36, 36, pw - 72, ph - 72)
-        # Top black accent bar
-        can.setStrokeColor(_frame)
-        can.setLineWidth(4)
-        can.line(36, ph - 55, pw - 36, ph - 55)
-        # Bottom black accent bar
-        can.line(36, 55, pw - 36, 55)
-        # Top-left corner square
-        can.setFillColor(_frame)
-        can.rect(36, ph - 26, 14, 8, fill=1, stroke=0)
-        # Top-right corner square
-        can.rect(pw - 50, ph - 26, 14, 8, fill=1, stroke=0)
-        # Bottom-left corner square
-        can.rect(36, 36, 14, 8, fill=1, stroke=0)
-        # Bottom-right corner square
-        can.rect(pw - 50, 36, 14, 8, fill=1, stroke=0)
+        if _cover_style == 2:
+            # Single border (rahisi)
+            can.setStrokeColor(_frame)
+            can.setLineWidth(2.5)
+            can.rect(30, 30, pw - 60, ph - 60)
+        else:
+            # Double border (outer thick + inner thin) — style 0 na 1
+            can.setStrokeColor(_frame)
+            can.setLineWidth(3.5)
+            can.rect(30, 30, pw - 60, ph - 60)
+            can.setStrokeColor(_frame)
+            can.setLineWidth(1.5)
+            can.rect(36, 36, pw - 72, ph - 72)
+            # Top black accent bar
+            can.setStrokeColor(_frame)
+            can.setLineWidth(4)
+            can.line(36, ph - 55, pw - 36, ph - 55)
+            # Bottom black accent bar
+            can.line(36, 55, pw - 36, 55)
+            if _cover_style == 0:
+                # Corner squares (style 0 pekee)
+                can.setFillColor(_frame)
+                can.rect(36, ph - 26, 14, 8, fill=1, stroke=0)
+                can.rect(pw - 50, ph - 26, 14, 8, fill=1, stroke=0)
+                can.rect(36, 36, 14, 8, fill=1, stroke=0)
+                can.rect(pw - 50, 36, 14, 8, fill=1, stroke=0)
         # ── Draw Tanzania flag watermark ──
         if _tz_watermark:
             try:
@@ -2948,7 +3069,7 @@ def _build_lp_pdf(lesson, form, teacher=None):
     def _lp_header(can, doc_obj):
         """Draw NAME OF SCHOOL / TEACHER header bar on pages 2+."""
         can.saveState()
-        can.setFont('Helvetica-Bold', 7)
+        can.setFont(_HEAD_FONT, 7)
         can.setFillColor(NAVY)
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
@@ -3096,13 +3217,24 @@ def _build_lp_pdf(lesson, form, teacher=None):
         },
     }
     T = THEMES.get(theme_name, THEMES['classic'])
+
+    # ── Mwonekano wa kudumu wa mwalimu (PDF zionekane kama za watu tofauti) ──
+    _prof = _pdf_visual_profile(teacher, form.get('subject', ''), form.get('class_name', ''))
+    if theme_name == 'classic':
+        T = {**T, **_prof['palette'], 'light': _prof['palette']['stripe']}
+        _lp_fs = _prof['font_size']
+    else:
+        _lp_fs = T.get('font_size', 8.5)
     NAVY = T['primary']
     GOLD = T['accent']
     DARK_GOLD = T['accent_dark']
     LIGHT = T['light']
     STRIPE = T['stripe']
     BORDER = T['border']
-    _lp_fs = T.get('font_size', 8.5)
+    _BODY_FONT = _prof['font_body']
+    _HEAD_FONT = _prof['font_head']
+    _header_style = _prof['header_style']
+    _cover_style = _prof['cover_style']
 
     # ── Determine language mode for LP (check form data for language hint) ──
     _lp_sw = form.get('language', '') == 'kiswahili' or form.get('subject', '').lower() in ('kiswahili', 'swahili')
@@ -3121,13 +3253,13 @@ def _build_lp_pdf(lesson, form, teacher=None):
                             rightMargin=36, leftMargin=36, topMargin=40, bottomMargin=30)
     elements = []
 
-    normal = ParagraphStyle('LP_N', fontName='Helvetica', fontSize=_lp_fs + 0.5, leading=_lp_fs + 4.5, wordWrap='LTR', spaceAfter=3)
-    section_hdr = ParagraphStyle('LP_H', fontName='Helvetica-Bold', fontSize=_lp_fs + 1.5, textColor=NAVY, spaceBefore=10, spaceAfter=4)
-    cell_s = ParagraphStyle('LP_C', fontName='Helvetica', fontSize=_lp_fs, leading=_lp_fs + 3, wordWrap='LTR')
-    hdr_s = ParagraphStyle('LP_CH', fontName='Helvetica-Bold', fontSize=_lp_fs, leading=_lp_fs + 3, textColor=colors.white, wordWrap='LTR', alignment=1)
-    label_s = ParagraphStyle('LP_L', fontName='Helvetica-Bold', fontSize=_lp_fs, leading=_lp_fs + 3, textColor=NAVY)
-    title_s = ParagraphStyle('LP_TITLE', fontName='Helvetica-Bold', fontSize=16, alignment=1, textColor=NAVY, spaceAfter=1)
-    subtitle_s = ParagraphStyle('LP_SUBTITLE', fontName='Helvetica-Bold', fontSize=_lp_fs - 0.5, alignment=1, textColor=DARK_GOLD, spaceAfter=1)
+    normal = ParagraphStyle('LP_N', fontName=_BODY_FONT, fontSize=_lp_fs + 0.5, leading=_lp_fs + 4.5, wordWrap='LTR', spaceAfter=3)
+    section_hdr = ParagraphStyle('LP_H', fontName=_HEAD_FONT, fontSize=_lp_fs + 1.5, textColor=NAVY, spaceBefore=10, spaceAfter=4)
+    cell_s = ParagraphStyle('LP_C', fontName=_BODY_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, wordWrap='LTR')
+    hdr_s = ParagraphStyle('LP_CH', fontName=_HEAD_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, textColor=colors.white, wordWrap='LTR', alignment=1)
+    label_s = ParagraphStyle('LP_L', fontName=_HEAD_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, textColor=NAVY)
+    title_s = ParagraphStyle('LP_TITLE', fontName=_HEAD_FONT, fontSize=16, alignment=1, textColor=NAVY, spaceAfter=1)
+    subtitle_s = ParagraphStyle('LP_SUBTITLE', fontName=_HEAD_FONT, fontSize=_lp_fs - 0.5, alignment=1, textColor=DARK_GOLD, spaceAfter=1)
 
     # ═══════════════════════════════════════════════════════════════════════
     # E-LOGBOOK FORMAT (BILA JEDWALI) — VETA — mpango wa somo kama orodha
@@ -3139,10 +3271,10 @@ def _build_lp_pdf(lesson, form, teacher=None):
         elements.append(HRFlowable(width="100%", thickness=1.2, color=NAVY, spaceAfter=10))
         # Title
         elements.append(Paragraph("LESSON PLAN",
-            ParagraphStyle('LP_TITLE_NB', fontName='Helvetica-Bold', fontSize=16, alignment=1,
+            ParagraphStyle('LP_TITLE_NB', fontName=_HEAD_FONT, fontSize=16, alignment=1,
                            textColor=NAVY, spaceAfter=2)))
         elements.append(Paragraph("(Format to be used in E-Logbook. Type against each item)",
-            ParagraphStyle('LP_SUB_NB', fontName='Helvetica-Oblique', fontSize=9, alignment=1,
+            ParagraphStyle('LP_SUB_NB', fontName=_BODY_FONT, fontSize=9, alignment=1,
                            textColor=colors.HexColor('#C00000'), spaceAfter=10)))
 
         # ── Info block (hati ya E-Logbook — bila jedwali) ──
@@ -3200,59 +3332,84 @@ def _build_lp_pdf(lesson, form, teacher=None):
     _ralg = _tl("REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT", _lp_sw)
     _lp_title = _tl("TEACHER'S LESSON PLAN", _lp_sw)
 
-    # Visual style based on subject hash for variety
-    _lp_style_seed = sum(ord(c) for c in form.get('subject','') + (form.get('class_name','') or '')) % 5
+    # Visual style ya kichwa — inategemea profile ya mwalimu (mwonekano tofauti)
+    _lp_style_seed = _header_style
     if _lp_style_seed == 0:
         # Classic centered navy
         elements.append(Paragraph(_pm,
-            ParagraphStyle('MH1', fontName='Helvetica-Bold', fontSize=13, alignment=1,
+            ParagraphStyle('MH1', fontName=_HEAD_FONT, fontSize=13, alignment=1,
                            textColor=NAVY, spaceAfter=2)))
         elements.append(Paragraph(_ralg,
-            ParagraphStyle('MH2', fontName='Helvetica-Bold', fontSize=10, alignment=1,
+            ParagraphStyle('MH2', fontName=_HEAD_FONT, fontSize=10, alignment=1,
                            textColor=NAVY, spaceAfter=2)))
     elif _lp_style_seed == 1:
         # Gold text on light background
         elements.append(Spacer(1, 3))
         elements.append(Paragraph(_pm,
-            ParagraphStyle('MH1b', fontName='Helvetica-Bold', fontSize=14, alignment=1,
+            ParagraphStyle('MH1b', fontName=_HEAD_FONT, fontSize=14, alignment=1,
                            textColor=GOLD, spaceAfter=0)))
         elements.append(Paragraph(_ralg,
-            ParagraphStyle('MH2b', fontName='Helvetica-Bold', fontSize=11, alignment=1,
+            ParagraphStyle('MH2b', fontName=_HEAD_FONT, fontSize=11, alignment=1,
                            textColor=NAVY, spaceAfter=2)))
     elif _lp_style_seed == 2:
         # Single line combined
         elements.append(Paragraph(f"{_pm} ❖ {_ralg}",
-            ParagraphStyle('MH1c', fontName='Helvetica-Bold', fontSize=9, alignment=1,
+            ParagraphStyle('MH1c', fontName=_HEAD_FONT, fontSize=9, alignment=1,
                            textColor=NAVY, spaceAfter=2)))
     elif _lp_style_seed == 3:
         # Navy with decorative border
         elements.append(Paragraph(_pm,
-            ParagraphStyle('MH1d', fontName='Helvetica-Bold', fontSize=13, alignment=1,
+            ParagraphStyle('MH1d', fontName=_HEAD_FONT, fontSize=13, alignment=1,
                            textColor=NAVY, spaceAfter=0, backColor=colors.HexColor('#F0F4FF'))))
         elements.append(Paragraph(_ralg,
-            ParagraphStyle('MH2d', fontName='Helvetica-Bold', fontSize=10, alignment=1,
+            ParagraphStyle('MH2d', fontName=_HEAD_FONT, fontSize=10, alignment=1,
                            textColor=GOLD, spaceAfter=2)))
-    else:
+    elif _lp_style_seed == 4:
         # Inline style
         elements.append(Paragraph(f"{_pm}  |  {_ralg}",
-            ParagraphStyle('MH1e', fontName='Helvetica-Bold', fontSize=8, alignment=1,
+            ParagraphStyle('MH1e', fontName=_HEAD_FONT, fontSize=8, alignment=1,
                            textColor=colors.HexColor('#555555'), spaceAfter=2)))
+    elif _lp_style_seed == 5:
+        # Navy background bar, white text
+        elements.append(Spacer(1, 2))
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1f', fontName=_HEAD_FONT, fontSize=14, alignment=1,
+                           textColor=colors.white, spaceAfter=1, backColor=NAVY,
+                           borderPadding=3, borderWidth=0)))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2f', fontName=_HEAD_FONT, fontSize=10, alignment=1,
+                           textColor=GOLD, spaceAfter=2)))
+    elif _lp_style_seed == 6:
+        # PM kubwa juu, RALG chini kwa rangi ya accent
+        elements.append(Spacer(1, 2))
+        elements.append(Paragraph(_pm,
+            ParagraphStyle('MH1g', fontName=_HEAD_FONT, fontSize=15, alignment=1,
+                           textColor=NAVY, spaceAfter=0)))
+        elements.append(Paragraph(_ralg,
+            ParagraphStyle('MH2g', fontName=_BODY_FONT, fontSize=10, alignment=1,
+                           textColor=DARK_GOLD, spaceAfter=2)))
+    else:
+        # Compact single-line kwa rangi ya accent
+        elements.append(Spacer(1, 2))
+        elements.append(Paragraph(f"{_pm}  •  {_ralg}",
+            ParagraphStyle('MH1h', fontName=_HEAD_FONT, fontSize=10, alignment=1,
+                           textColor=NAVY, spaceAfter=1)))
 
     elements.append(HRFlowable(width="50%", thickness=1, color=GOLD, spaceAfter=6))
 
     # ── Title ──
     elements.append(Paragraph(_lp_title,
-        ParagraphStyle('LP_T', fontName='Helvetica-Bold', fontSize=14, alignment=1,
+        ParagraphStyle('LP_T', fontName=_HEAD_FONT, fontSize=14, alignment=1,
                        textColor=NAVY, spaceAfter=2)))
     _term_label = _tl('Term', _lp_sw)
     _year_label = _tl('Year', _lp_sw)
     elements.append(Paragraph(
         f"{form.get('subject','')}  |  {form.get('class_name','')}  |  {_term_label} {form.get('term','')} {_year_label} {form.get('year','')}",
-        ParagraphStyle('LP_S', fontSize=9, alignment=1, textColor=colors.grey, spaceAfter=6)))
+        ParagraphStyle('LP_S', fontName=_BODY_FONT, fontSize=9, alignment=1, textColor=colors.grey, spaceAfter=6)))
 
     # ── Cover info: styled table (bilingual labels) ──
-    lbl = ParagraphStyle('lbl', fontName='Helvetica-Bold', fontSize=10, textColor=colors.white, leading=14)
-    val = ParagraphStyle('val', fontName='Helvetica', fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
+    lbl = ParagraphStyle('lbl', fontName=_HEAD_FONT, fontSize=10, textColor=colors.white, leading=14)
+    val = ParagraphStyle('val', fontName=_BODY_FONT, fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
     info_rows = [
         [Paragraph(_tl("Teacher's Name", _lp_sw), lbl), Paragraph(form.get('teacher_name',''), val)],
         [Paragraph(_tl('School Name', _lp_sw), lbl), Paragraph(form.get('school_name','____________________'), val)],
@@ -3315,10 +3472,10 @@ def _build_lp_pdf(lesson, form, teacher=None):
     total_label = _tl('Total', _lp_sw)
     
     # Styles for embedded students stats table
-    _s_hdr = ParagraphStyle('_sh', fontName='Helvetica-Bold', fontSize=7.5, textColor=colors.white, alignment=1, leading=10)
-    _s_cel = ParagraphStyle('_sc', fontName='Helvetica', fontSize=7.5, alignment=1, leading=10)
-    _s_lbl = ParagraphStyle('_sl', fontName='Helvetica-Bold', fontSize=7.5, textColor=NAVY, leading=10)
-    _s_cb  = ParagraphStyle('_cb', fontName='Helvetica-Bold', fontSize=7.5, alignment=1, leading=10, textColor=NAVY)
+    _s_hdr = ParagraphStyle('_sh', fontName=_HEAD_FONT, fontSize=7.5, textColor=colors.white, alignment=1, leading=10)
+    _s_cel = ParagraphStyle('_sc', fontName=_BODY_FONT, fontSize=7.5, alignment=1, leading=10)
+    _s_lbl = ParagraphStyle('_sl', fontName=_HEAD_FONT, fontSize=7.5, textColor=NAVY, leading=10)
+    _s_cb  = ParagraphStyle('_cb', fontName=_HEAD_FONT, fontSize=7.5, alignment=1, leading=10, textColor=NAVY)
     
     stat_rows = [
         [Paragraph('', _s_hdr), Paragraph(f'<b>{reg_label}</b>', _s_hdr), Paragraph(f'<b>{pres_label}</b>', _s_hdr), Paragraph(f'<b>{abs_label}</b>', _s_hdr)],
@@ -3380,7 +3537,7 @@ def _build_lp_pdf(lesson, form, teacher=None):
         if isinstance(tlr, list):
             for item in tlr:
                 elements.append(Paragraph(f"<bullet>•</bullet> {item}",
-                    ParagraphStyle('LP_B', fontName='Helvetica', fontSize=9, leading=13, leftIndent=14, wordWrap='LTR')))
+                    ParagraphStyle('LP_B', fontName=_BODY_FONT, fontSize=9, leading=13, leftIndent=14, wordWrap='LTR')))
         else:
             elements.append(Paragraph(f"{tlr}", normal))
 
