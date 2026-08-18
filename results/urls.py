@@ -16,6 +16,7 @@ from .registration_views import (
 )
 from .views import (
     home,
+    download_roster_template,
     upload_results,
     generate_results_pdf,
     export_results_excel,
@@ -91,6 +92,7 @@ urlpatterns = [
     path('exam/<int:exam_id>/approve-all/', approve_exam_submissions, name='approve_exam_submissions'),
     # Roster upload (AJAX)
     path('upload-roster/', upload_roster, name='upload_roster'),
+    path('download-template/', download_roster_template, name='download_roster_template'),
     # Academic dashboard & form results
     path('academic/', academic_dashboard, name='academic_dashboard'),
     path('form/<int:form_num>/results/', form_results, name='form_results'),

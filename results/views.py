@@ -921,6 +921,125 @@ def upload_roster(request):
         return JsonResponse({'error': f'Hitilafu ya faili: {exc}'}, status=400)
 
 
+@login_required
+def download_roster_template(request):
+    """Download a ready-to-fill class list template (CSV or PDF)."""
+    fmt = request.GET.get('fmt', 'csv').lower()
+
+    # ── CSV template ──
+    if fmt == 'csv':
+        import csv, io
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(['First Name', 'Middle Name', 'Last Name', 'Gender'])
+        w.writerow(['Halima', 'Ally', 'Mohamed', 'F'])
+        w.writerow(['Juma', 'Said', 'Hassan', 'M'])
+        w.writerow(['Aisha', '', 'Khamis', 'F'])
+        w.writerow(['', '', '', ''])  # empty row for teacher to start
+        response = HttpResponse(buf.getvalue(), content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="Orodha_Ya_Wanafunzi.csv"'
+        return response
+
+    # ── PDF template ──
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm, mm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    import io as _io
+
+    buf = _io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm,
+                            leftMargin=2*cm, rightMargin=2*cm)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('T', parent=styles['Title'], fontSize=16, spaceAfter=6,
+                                  textColor=colors.HexColor('#1F7A3D'))
+    sub_style = ParagraphStyle('Sub', parent=styles['Normal'], fontSize=10, spaceAfter=10,
+                                textColor=colors.HexColor('#333333'))
+    hint_style = ParagraphStyle('Hint', parent=styles['Normal'], fontSize=9, spaceAfter=4,
+                                 textColor=colors.HexColor('#555555'))
+    field_style = ParagraphStyle('Field', parent=styles['Normal'], fontSize=10, spaceAfter=8)
+
+    GREEN = colors.HexColor('#1F7A3D')
+    GOLD = colors.HexColor('#D9A441')
+    GREY = colors.HexColor('#F2F4F7')
+
+    elements = []
+    elements.append(Paragraph('ORODHA YA WANAFUNZI — CLASS LIST', title_style))
+    elements.append(Paragraph('Pakua, jaza kwa mkono au kompyuta, kisha piga picha / scan na upakie kwenye mfumo.', sub_style))
+    elements.append(Spacer(1, 4*mm))
+
+    # School / class / year fields
+    _field = [
+        ['Shule / School:', '____________________________', 'Mwaka / Year:', '________'],
+        ['Darasa / Class:',  '____________________________', 'Somo / Subject:', '________'],
+        ['Mwalimu / Teacher:', '__________________________', '', ''],
+    ]
+    ft = Table(_field, colWidths=[3.2*cm, 7*cm, 3.2*cm, 3.5*cm])
+    ft.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(ft)
+    elements.append(Spacer(1, 6*mm))
+
+    # Instructions
+    elements.append(Paragraph('<b>Maelekezo / Instructions:</b>', hint_style))
+    elements.append(Paragraph("\u2022 Andika jina la kila mwanafunzi kwenye mstari wake / Write each student\u2019s name on their own row.", hint_style))
+    elements.append(Paragraph('• Jinsia: F = Mwanamke (Female), M = Mwanaume (Male).', hint_style))
+    elements.append(Paragraph('• Jina la Kati (Middle Name) — kama hakuna, acha tupu / leave blank.', hint_style))
+    elements.append(Paragraph('• Fomu hii inatumika kwa PDF, Excel, au CSV / Use this form for PDF, Excel, or CSV uploads.', hint_style))
+    elements.append(Spacer(1, 6*mm))
+
+    # Student table
+    hdr = ['#', 'Jina la Kwanza / First Name', 'Jina la Kati / Middle Name', 'Jina la Mwisho / Last Name', 'Jinsia / Gender']
+    rows = [hdr]
+    examples = [
+        ['1', 'Halima', 'Ally', 'Mohamed', 'F'],
+        ['2', 'Juma', 'Said', 'Hassan', 'M'],
+        ['3', 'Aisha', '', 'Khamis', 'F'],
+    ]
+    for ex in examples:
+        rows.append(ex)
+    # 17 empty rows for teachers to fill
+    for i in range(4, 21):
+        rows.append([str(i), '', '', '', ''])
+
+    t = Table(rows, colWidths=[1.2*cm, 3.8*cm, 3.8*cm, 3.8*cm, 2*cm])
+    t.setStyle(TableStyle([
+        # Header
+        ('BACKGROUND', (0, 0), (-1, 0), GREEN),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        # Body
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+        ('ALIGN', (-1, 1), (-1, -1), 'CENTER'),
+        # Example rows — light green background
+        ('BACKGROUND', (0, 1), (-1, 3), colors.HexColor('#E8F5E9')),
+        # Alternating rows
+        *[('BACKGROUND', (0, i), (-1, i), GREY) for i in range(4, 21, 2)],
+        # Grid
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+        ('BOX', (0, 0), (-1, -1), 1.2, GREEN),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(t)
+
+    doc.build(elements)
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="Orodha_Ya_Wanafunzi.pdf"'
+    return response
+
+
 # ── Finalize Exam ─────────────────────────────────────────────────────────────
 
 @academic_required

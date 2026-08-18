@@ -311,6 +311,14 @@
           PDF: full name per line (e.g. <em>Halima Ally Mohamed F</em>).
           {% endif %}
         </div>
+        <div class="mt-2 d-flex gap-2 flex-wrap">
+          <a href="{% url 'download_roster_template' %}?fmt=csv" class="btn btn-sm btn-outline-success" style="font-size:0.78rem;">
+            📋 {% if LANG == 'sw' %}Pakua Muundo wa CSV{% else %}Download CSV Template{% endif %}
+          </a>
+          <a href="{% url 'download_roster_template' %}?fmt=pdf" class="btn btn-sm btn-outline-danger" style="font-size:0.78rem;">
+            📄 {% if LANG == 'sw' %}Pakua Muundo wa PDF{% else %}Download PDF Template{% endif %}
+          </a>
+        </div>
         <div class="mt-3" id="meUploadStatus"></div>
       </div>
     </div>
