@@ -43,6 +43,8 @@ class ResultsUtilsTests(TestCase):
 
 
 class SpeechSubmissionServiceTests(TestCase):
+	databases = {'default', 'results'}
+
 	def setUp(self):
 		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=1)
 		self.subject = Subject.objects.create(name='Mathematics')

@@ -159,6 +159,36 @@ def get_grade_points(grade):
     return GRADE_POINTS.get(grade, 5)
 
 
+# ── Exam dropdown grouping ────────────────────────────────────────────────
+# Order ya aina za mitihani kwenye dropdown ya "Chagua Mtihani": mwalimu
+# anatarajia kuona Terminal → Midterm → Test → Quiz → Annual → Mock →
+# Monthly → (December/Competition) → Other, si mpangilio wa alphabet.
+EXAM_TYPE_ORDER = [
+    'TERMINAL', 'MIDTERM', 'TEST', 'QUIZ', 'ANNUAL', 'MOCK', 'MONTHLY',
+    'DECEMBER', 'COMPETITION', 'OTHER',
+]
+
+
+def group_exams_by_type(exams, label_map):
+    """Group an exam queryset by exam type, in the dropdown order teachers
+    expect (Terminal first ... Other last). Returns
+    [(code, label, [exam, ...]), ...] with only non-empty groups, each
+    sorted newest year first then by name. Unknown types fall into 'OTHER'.
+    """
+    buckets = {code: [] for code in EXAM_TYPE_ORDER}
+    for e in exams:
+        code = e.exam_type if e.exam_type in buckets else 'OTHER'
+        buckets[code].append(e)
+    groups = []
+    for code in EXAM_TYPE_ORDER:
+        bucket = buckets[code]
+        if not bucket:
+            continue
+        bucket.sort(key=lambda e: (-e.year, e.name))
+        groups.append((code, label_map.get(code, code), bucket))
+    return groups
+
+
 def parse_name_score_sheet(uploaded_file) -> list[tuple[str, int]]:
     """Parse a simple 'Name, Score' CSV/Excel sheet for ad-hoc/personal uploads."""
     data_frame = load_results_dataframe(uploaded_file)

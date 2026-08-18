@@ -314,10 +314,14 @@ tr.row-flash td       { animation: rowFound 1.2s ease-out forwards; }
           <label for="s_exam_id">Mtihani</label>
           <select id="s_exam_id" class="form-select form-select-sm">
             <option value="">— Chagua mtihani —</option>
-            {% for exam in exams %}
-              <option value="{{ exam.id }}" {% if preselect_exam_id == exam.id|stringformat:"s" %}selected{% endif %}>
-                {{ exam.name }} ({{ exam.year }})
-              </option>
+            {% for code, type_label, group_exams in exam_groups %}
+              <optgroup label="{{ type_label }}">
+                {% for exam in group_exams %}
+                  <option value="{{ exam.id }}" {% if preselect_exam_id == exam.id|stringformat:"s" %}selected{% endif %}>
+                    {{ exam.name }} ({{ exam.year }})
+                  </option>
+                {% endfor %}
+              </optgroup>
             {% endfor %}
           </select>
         </div>

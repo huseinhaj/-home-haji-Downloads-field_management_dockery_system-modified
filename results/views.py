@@ -651,10 +651,24 @@ def _build_distribution(stats, grade_keys):
 # ── Roster Upload ─────────────────────────────────────────────────────────────
 
 def _pick_col(row, col_lower_map, keys):
+    """Match a column using substring containment so that
+    'Jina la Mwanafunzi' matches the key 'jina', and 'Student Name'
+    matches 'name'.  We walk columns in order and return the first hit,
+    which is usually what the user intends.
+    """
+    # 1) Exact match first (most reliable)
     for k in keys:
         if k in col_lower_map:
             val = str(row[col_lower_map[k]]).strip()
             return '' if val in ('nan', 'None', '') else val
+    # 2) Substring match — key must appear as a word-boundary fragment
+    #    in the column name (e.g. 'jina' matches 'Jina la Mwanafunzi',
+    #    but NOT 'firstname').
+    for k in keys:
+        for col_lower, col_orig in col_lower_map.items():
+            if k in col_lower and k not in ('no', 'id',):  # skip short ambiguous keys
+                val = str(row[col_orig]).strip()
+                return '' if val in ('nan', 'None', '') else val
     return ''
 
 
@@ -713,8 +727,9 @@ def _parse_pdf_roster(uploaded_file):
                         cells = [str(c).strip() for c in row if c and str(c).strip()]
                         if len(cells) < 2:
                             continue
-                        # Skip header rows
-                        if any(h in ' '.join(cells).lower() for h in ('jina', 'name', 'first', 'gender', 'jinsia', '#', 'no')):
+                        # Skip header rows — note: 'no' removed (too aggressive;
+                        # matches real names like Noel/Norah).
+                        if any(h in ' '.join(cells).lower() for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'jinsia ya', '#')):
                             continue
                         # Try joining all cells as one line
                         line = ' '.join(cells)
@@ -759,7 +774,10 @@ def _parse_spreadsheet_roster(uploaded_file):
         first  = _pick_col(row, col_lower, ['first name', 'firstname', 'jina la kwanza'])
         middle = _pick_col(row, col_lower, ['middle name', 'middlename', 'jina la kati', 'jina la pili'])
         last   = _pick_col(row, col_lower, ['last name', 'lastname', 'surname', 'jina la mwisho', 'ukoo'])
-        full   = _pick_col(row, col_lower, ['name', 'full name', 'jina kamili', 'majina', 'jina'])
+        full   = _pick_col(row, col_lower, [
+            'name', 'full name', 'jina kamili', 'majina', 'jina',
+            'student name', 'jina la mwanafunzi', 'jina kamili la mwanafunzi',
+        ])
 
         if not first and full:
             parts = full.split()
@@ -773,17 +791,29 @@ def _parse_spreadsheet_roster(uploaded_file):
             elif parts:
                 first = parts[0].capitalize()
 
+        # Last-resort fallback: walk columns left-to-right looking for
+        # any non-numeric text value that contains at least 2 words.
+        # This catches spreadsheets where the name column has a header
+        # the detection above doesn't know about (e.g. 'Majina', 'Full',
+        # 'Mwanafunzi').
         if not first:
-            val = str(row.iloc[0]).strip()
-            if val and val not in ('nan', 'None', ''):
+            _SKIP_COLS = {'namba', 'no.', 'no', '#', 'id', 's/n', 'sirina', 'register', 'reg no'}
+            for ci in range(len(df.columns)):
+                cname = df.columns[ci].strip().lower()
+                if cname in _SKIP_COLS:
+                    continue
+                val = str(row.iloc[ci]).strip()
+                if val in ('nan', 'None', '', '0'):
+                    continue
                 parsed = _parse_roster_line(val)
                 if parsed:
                     first, middle, last, _ = parsed
+                    break
 
         if not first or first in ('nan', 'None', ''):
             continue
 
-        gender_raw = _pick_col(row, col_lower, ['gender', 'jinsia', 'sex']) or 'M'
+        gender_raw = _pick_col(row, col_lower, ['gender', 'jinsia', 'sex', 'jinsia ya mwanafunzi']) or 'M'
         students_out.append(_save_student(
             first.strip().capitalize(),
             (middle or '').strip().capitalize(),

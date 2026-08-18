@@ -22,7 +22,7 @@ from django.views.decorators.http import require_POST
 from .models import Exam, ExamResult, Student, Subject, SubjectSubmission
 from .permissions import teacher_required
 from .services.upload_processing_service import recompute_processed_results_for_exam
-from .utils import get_grade_for_form
+from .utils import get_grade_for_form, group_exams_by_type
 
 
 def _parse_payload(request):
@@ -54,6 +54,9 @@ def marks_entry(request):
         exams = school_exams
     else:
         exams = Exam.objects.order_by('-year', 'name')
+    # Dropdown inapangwa kwa aina ya mtihani: Terminal → Midterm → Test →
+    # Quiz → Annual → Mock → Monthly → Other (si alphabetical).
+    exam_groups = group_exams_by_type(exams, dict(Exam.EXAM_TYPE_CHOICES))
     exam_id = request.GET.get('exam') or ''
     subject_id = request.GET.get('subject') or ''
     review_mode = request.GET.get('review') == '1'
@@ -121,7 +124,7 @@ def marks_entry(request):
         pass_rate = round(sum(1 for s in scores if get_grade_for_form(s, exam.form) != 'F') / len(scores) * 100)
 
     return render(request, 'results/marks_entry.html', {
-        'exams': exams,
+        'exam_groups': exam_groups,
         'teacher_subjects': teacher_subjects,
         'preselect_exam_id': exam_id,
         'preselect_subject_id': subject_id,

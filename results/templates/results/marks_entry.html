@@ -169,10 +169,14 @@
       <label>{% if LANG == 'sw' %}Mtihani{% else %}Exam{% endif %}</label>
       <select id="meExamSelect" class="form-select">
         <option value="">— {% if LANG == 'sw' %}Chagua Mtihani{% else %}Choose an exam{% endif %} —</option>
-        {% for e in exams %}
-        <option value="{{ e.id }}" {% if e.id|stringformat:"s" == preselect_exam_id %}selected{% endif %}>
-          {{ e.name }} — Form {{ e.form }} ({{ e.year }})
-        </option>
+        {% for code, type_label, group_exams in exam_groups %}
+        <optgroup label="{{ type_label }}">
+          {% for e in group_exams %}
+          <option value="{{ e.id }}" {% if e.id|stringformat:"s" == preselect_exam_id %}selected{% endif %}>
+            {{ e.name }} — Form {{ e.form }} ({{ e.year }})
+          </option>
+          {% endfor %}
+        </optgroup>
         {% endfor %}
       </select>
     </div>

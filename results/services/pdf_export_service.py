@@ -70,27 +70,43 @@ def _get_location(exam):
 def _grade_thresholds(form):
     """Return (score-thresholds, grade-ranges) for the exam's NECTA scale.
 
-    Form 2 (FTNA) grades on a different scale than Form 1/3/4 (CSEE):
-        CSEE: A 75+ | B 65+ | C 50+ | D 40+ | F <40
-        FTNA: A 75+ | B 65+ | C 45+ | D 30+ | F <30
+    Form 2 (FTNA) and Form 5/6 (ACSEE) grade on different scales than
+    Form 1/3/4 (CSEE):
+        CSEE:  A 75+ | B 65+ | C 50+ | D 40+ | F <40
+        FTNA:  A 75+ | B 65+ | C 45+ | D 30+ | F <30
+        ACSEE: A 80+ | B 70+ | C 60+ | D 50+ | E 40+ | S 35+ | F <35
     """
     if form == 2:
-        return [75, 65, 45, 30], ["A (75-100)", "B (65-74)", "C (45-64)", "D (30-44)", "F (<30)"]
-    return [75, 65, 50, 40], ["A (75-100)", "B (65-74)", "C (50-64)", "D (40-49)", "F (<40)"]
+        return [75, 65, 45, 30], [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
+    if form in (5, 6):
+        return [80, 70, 60, 50, 40, 35], [('A', '80-100'), ('B', '70-79'), ('C', '60-69'), ('D', '50-59'), ('E', '40-49'), ('S', '35-39'), ('F', '0-34')]
+    return [75, 65, 50, 40], [('A', '75-100'), ('B', '65-74'), ('C', '50-64'), ('D', '40-49'), ('F', '0-39')]
+
+
+# Grade colour per letter — shared by score cells and the grading-key legend.
+# Must stay in sync with utils.get_grade_for_form / get_grade_points.
+_FILL_BY_LETTER = {
+    'A': ("#C6F4D6", "#145A32"),
+    'B': ("#D5F5E3", "#1E8449"),
+    'C': ("#FFF9C4", "#7D6608"),
+    'D': ("#FDEBD0", "#784212"),
+    'E': ("#F0B27A", "#9C640C"),
+    'S': ("#F9E79F", "#B9770B"),
+    'F': ("#FADBD8", "#922B21"),
+}
 
 
 def _score_fill(score, form=4):
     """Return (background-hex, font-hex) for a score value, using the
-    exam's NECTA grade scale (FTNA for Form 2, CSEE otherwise)."""
+    exam's NECTA grade scale (FTNA for Form 2, ACSEE for Form 5/6,
+    CSEE otherwise)."""
     if score is None or not isinstance(score, (int, float)):
         return None, None
-    thresholds, _ = _grade_thresholds(form)
-    a, b, c, d = thresholds
-    if score >= a:  return "#C6F4D6", "#145A32"
-    if score >= b:  return "#D5F5E3", "#1E8449"
-    if score >= c:  return "#FFF9C4", "#7D6608"
-    if score >= d:  return "#FDEBD0", "#784212"
-    return "#FADBD8", "#922B21"
+    thresholds, grade_ranges = _grade_thresholds(form)
+    for i, t in enumerate(thresholds):
+        if score >= t:
+            return _FILL_BY_LETTER.get(grade_ranges[i][0], (None, None))
+    return _FILL_BY_LETTER.get(grade_ranges[-1][0], (None, None))
 
 
 def _make_style(*cmds):
@@ -456,9 +472,12 @@ def generate_results_pdf_response(exam):
     key_title = get_section_title(exam, 'grading_key')
     p.drawString(LM, y_footer + 12, f"{key_title}:")
     _, grade_ranges = _grade_thresholds(exam.form)
-    grad_data = [grade_ranges]
-    grad_colors = ["#C6F4D6", "#D5F5E3", "#FFF9C4", "#FDEBD0", "#FADBD8"]
-    gt = Table(grad_data, colWidths=[(CW - 20) / 5] * 5)
+    grad_data = [[f"{g} ({rng})" for g, rng in grade_ranges]]
+    grad_colors = [
+        _FILL_BY_LETTER.get(g, ("#C6F4D6", "#145A32"))[0]
+        for g, _ in grade_ranges
+    ]
+    gt = Table(grad_data, colWidths=[(CW - 20) / len(grade_ranges)] * len(grade_ranges))
     gs_cmds = [
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 7),
@@ -622,9 +641,9 @@ def generate_results_pdf_response(exam):
         ly = y - th - 14
         if ly > 40:
             _, grade_ranges = _grade_thresholds(exam.form)
-            leg_data = [grade_ranges]
+            leg_data = [[f"{g} ({rng})" for g, rng in grade_ranges]]
             leg_w = min(CW - 20, 400)
-            leg_cols = [leg_w / 5] * 5
+            leg_cols = [leg_w / len(grade_ranges)] * len(grade_ranges)
             lt = Table(leg_data, colWidths=leg_cols)
             ls_cmds = [
                 ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
@@ -635,7 +654,8 @@ def generate_results_pdf_response(exam):
                 ('BOX', (0, 0), (-1, -1), 1, TZ_GREEN_CLR),
                 ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
             ]
-            for i, bg in enumerate(["#C6F4D6", "#D5F5E3", "#FFF9C4", "#FDEBD0", "#FADBD8"]):
+            for i, (g, _) in enumerate(grade_ranges):
+                bg = _FILL_BY_LETTER.get(g, ("#C6F4D6", "#145A32"))[0]
                 ls_cmds.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(bg)))
             lt.setStyle(_make_style(*ls_cmds))
             lt.wrapOn(p, leg_w, 14)

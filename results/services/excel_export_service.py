@@ -46,37 +46,50 @@ DARK_GREY  = "FF" + TZ_DARK_GREY
 def _grade_thresholds(form):
     """Return (score-thresholds, grade-ranges) for the exam's NECTA scale.
 
-    Form 2 (FTNA) grades on a different scale than Form 1/3/4 (CSEE):
-        CSEE: A 75+ | B 65+ | C 50+ | D 40+ | F <40
-        FTNA: A 75+ | B 65+ | C 45+ | D 30+ | F <30
+    Form 2 (FTNA) and Form 5/6 (ACSEE) grade on different scales than
+    Form 1/3/4 (CSEE):
+        CSEE:  A 75+ | B 65+ | C 50+ | D 40+ | F <40
+        FTNA:  A 75+ | B 65+ | C 45+ | D 30+ | F <30
+        ACSEE: A 80+ | B 70+ | C 60+ | D 50+ | E 40+ | S 35+ | F <35
     """
     if form == 2:
         return [75, 65, 45, 30], [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
+    if form in (5, 6):
+        return [80, 70, 60, 50, 40, 35], [('A', '80-100'), ('B', '70-79'), ('C', '60-69'), ('D', '50-59'), ('E', '40-49'), ('S', '35-39'), ('F', '0-34')]
     return [75, 65, 50, 40], [('A', '75-100'), ('B', '65-74'), ('C', '50-64'), ('D', '40-49'), ('F', '0-39')]
+
+
+# Grade colour per letter — shared by score cells and the grading-key legend.
+# Must stay in sync with utils.get_grade_for_form / get_grade_points.
+_FILL_BY_LETTER = {
+    'A': ("FFC6F4D6", "FF145A32"),
+    'B': ("FFD5F5E3", "FF1E8449"),
+    'C': ("FFFFF9C4", "FF7D6608"),
+    'D': ("FFFDEBD0", "FF784212"),
+    'E': ("FFF0B27A", "FF9C640C"),
+    'S': ("FFF9E79F", "FFB9770B"),
+    'F': ("FFFADBD8", "FF922B21"),
+}
 
 
 def _score_fill(score, form=4) -> tuple[str | None, str | None]:
     if not isinstance(score, (int, float)):
         return None, None
-    thresholds, _ = _grade_thresholds(form)
-    a, b, c, d = thresholds
-    if score >= a: return "FFC6F4D6", "FF145A32"
-    if score >= b: return "FFD5F5E3", "FF1E8449"
-    if score >= c: return "FFFFF9C4", "FF7D6608"
-    if score >= d: return "FFFDEBD0", "FF784212"
-    return "FFFADBD8", "FF922B21"
+    thresholds, grade_ranges = _grade_thresholds(form)
+    for i, t in enumerate(thresholds):
+        if score >= t:
+            return _FILL_BY_LETTER.get(grade_ranges[i][0], (None, None))
+    return _FILL_BY_LETTER.get(grade_ranges[-1][0], (None, None))
 
 
 def _score_grade(score, form=4) -> str:
     if not isinstance(score, (int, float)):
         return '-'
-    thresholds, _ = _grade_thresholds(form)
-    a, b, c, d = thresholds
-    if score >= a: return 'A'
-    if score >= b: return 'B'
-    if score >= c: return 'C'
-    if score >= d: return 'D'
-    return 'F'
+    thresholds, grade_ranges = _grade_thresholds(form)
+    for i, t in enumerate(thresholds):
+        if score >= t:
+            return grade_ranges[i][0]
+    return grade_ranges[-1][0]
 
 
 def _make_fill(hex_color: str) -> PatternFill:
@@ -241,11 +254,9 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
     last_data_row = header_row + len(results) + 1
     legend_row = last_data_row + 2
     _, grade_ranges = _grade_thresholds(exam.form)
-    legend_fills = ["FFC6F4D6", "FFD5F5E3", "FFFFF9C4", "FFFDEBD0", "FFFADBD8"]
-    legend_fonts = ["FF145A32", "FF1E8449", "FF7D6608", "FF784212", "FF922B21"]
     legend_labels = [
-        (f"{g}  ({rng})", legend_fills[i], legend_fonts[i])
-        for i, (g, rng) in enumerate(grade_ranges)
+        (f"{g}  ({rng})", *_FILL_BY_LETTER.get(g, ("FFFFFFFF", "FF000000")))
+        for g, rng in grade_ranges
     ]
     if lang == 'sw':
         ws.cell(row=legend_row, column=1, value="UFUNGUO WA DARAJA:")
