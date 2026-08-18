@@ -161,8 +161,9 @@
 {% if not exam or not subject %}
 <!-- ═══ STEP 1: SELECT EXAM + SUBJECT ═══ -->
 <div class="panel me-select-panel">
-  <div class="panel-head">
+  <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;">
     <h3 class="mb-0">{% if LANG == 'sw' %}Chagua Mtihani na Somo{% else %}Select Exam &amp; Subject{% endif %}</h3>
+    <a href="{% url 'guided_voice_entry' %}" style="font-size:.75rem;color:#1F7A3D;text-decoration:none;">🎙️ {% if LANG == 'sw' %}Jaza kwa Sauti{% else %}Voice Entry{% endif %} →</a>
   </div>
   <div class="panel-body">
     <div class="field">

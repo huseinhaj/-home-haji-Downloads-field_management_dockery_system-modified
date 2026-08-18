@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import render
 
-from .models import Exam, SpeechSubmissionSession, Student, Subject, SubjectSubmission
+from .models import Exam, ExamResult, ProcessedResult, SpeechSubmissionSession, Student, Subject, SubjectSubmission
 from .utils import group_exams_by_type
 from .permissions import results_login_required as login_required
 from .services.speech_asr_service import transcribe_uploaded_audio, SpeechTranscriptionError
@@ -397,3 +397,139 @@ def finalize_speech_session(request, session_id):
     except Exception as exc:
         logger.exception("finalize_speech_session: unexpected error session_id=%s", session_id)
         return JsonResponse({"error": str(exc)}, status=400)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GUIDED VOICE ENTRY — mwalimu anasikia jina la mwanafunzi, anasema alama,
+# mfumo unajaza na kuendelea kwenye mwanafunzi wa pili automatically.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from .services.upload_processing_service import recompute_processed_results_for_exam
+
+
+@login_required
+def guided_voice_entry(request):
+    """Guided voice entry page — upload roster, then speak scores student by student."""
+    teacher = request.user
+    school_exams = Exam.objects.filter(school=teacher.school).order_by('-year', 'name')
+    if teacher.school and school_exams.exists():
+        exams = school_exams
+    else:
+        exams = Exam.objects.order_by('-year', 'name')
+    exam_groups = group_exams_by_type(exams, dict(Exam.EXAM_TYPE_CHOICES))
+
+    return render(request, 'results/guided_voice_entry.html', {
+        'exam_groups': exam_groups,
+        'teacher_subjects': teacher.subjects.all().order_by('name'),
+    })
+
+
+@require_POST
+@login_required
+def voice_entry_transcribe(request):
+    """Transcribe a short audio clip (student name + score) and return the score."""
+    audio = request.FILES.get('audio')
+    language = request.POST.get('language', 'sw')
+    if not audio:
+        return JsonResponse({'error': 'Hakuna sauti iliyotumwa.'}, status=400)
+    try:
+        transcript = transcribe_uploaded_audio(audio, language=language)
+        # Extract numeric score from transcript
+        import re
+        numbers = re.findall(r'\b(\d{1,3})\b', transcript)
+        score = None
+        if numbers:
+            # Take the last number (usually the score comes after the name)
+            score = int(numbers[-1])
+            if score > 100:
+                score = None
+        return JsonResponse({
+            'transcript': transcript,
+            'score': score,
+        })
+    except SpeechTranscriptionError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+    except Exception as exc:
+        logger.exception('voice_entry_transcribe: unexpected error')
+        return JsonResponse({'error': str(exc)}, status=400)
+
+
+@require_POST
+@login_required
+def voice_entry_save_score(request):
+    """Save a single score for one student in an exam+subject."""
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Data ya JSON si sahihi.'}, status=400)
+
+    exam_id = data.get('exam_id')
+    subject_id = data.get('subject_id')
+    student_id = data.get('student_id')
+    score = data.get('score')
+
+    if not all([exam_id, subject_id, student_id, score is not None]):
+        return JsonResponse({'error': 'Taarifa zote zinahitajika: exam_id, subject_id, student_id, score.'}, status=400)
+
+    try:
+        score = int(score)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': f'Alama "{score}" si nambari sahihi.'}, status=400)
+
+    if score < 0 or score > 100:
+        return JsonResponse({'error': f'Alama {score} ni nje ya kipimo 0-100.'}, status=400)
+
+    exam = get_object_or_404(Exam, id=exam_id)
+    subject = get_object_or_404(Subject, id=subject_id)
+    student = get_object_or_404(Student, id=student_id)
+
+    ExamResult.objects.update_or_create(
+        exam=exam, student=student, subject=subject,
+        defaults={'score': score},
+    )
+
+    return JsonResponse({'success': True, 'student_id': student_id, 'score': score})
+
+
+@require_POST
+@login_required
+def voice_entry_bulk_finalize(request):
+    """Recompute processed results for the exam after all scores are entered."""
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Data ya JSON si sahihi.'}, status=400)
+
+    exam_id = data.get('exam_id')
+    subject_id = data.get('subject_id')
+
+    if not exam_id or not subject_id:
+        return JsonResponse({'error': 'exam_id na subject_id zinahitajika.'}, status=400)
+
+    exam = get_object_or_404(Exam, id=exam_id)
+    subject = get_object_or_404(Subject, id=subject_id)
+
+    # Mark SubjectSubmission as SUBMITTED
+    student_count = ExamResult.objects.filter(exam=exam, subject=subject).count()
+    SubjectSubmission.objects.update_or_create(
+        exam=exam, subject=subject,
+        defaults={
+            'status': SubjectSubmission.STATUS_SUBMITTED,
+            'method': 'SPEECH',
+            'submitted_by': request.user.full_name or request.user.email,
+            'submitted_by_user': request.user,
+            'submitted_at': timezone.now(),
+            'student_count': student_count,
+        },
+    )
+
+    try:
+        recompute_processed_results_for_exam(exam)
+    except Exception:
+        pass
+
+    return JsonResponse({
+        'success': True,
+        'student_count': student_count,
+        'overview_url': reverse('exam_overview', args=[exam.id]),
+    })

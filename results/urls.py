@@ -53,9 +53,13 @@ from .speech_views import (
     confirm_speech_candidate,
     create_speech_session,
     finalize_speech_session,
+    guided_voice_entry,
     ingest_speech_entry,
     speech_entry_page,
     speech_session_status,
+    voice_entry_bulk_finalize,
+    voice_entry_save_score,
+    voice_entry_transcribe,
 )
 
 urlpatterns = [
@@ -120,6 +124,11 @@ urlpatterns = [
     path('marks/submit/', marks_entry_submit, name='marks_entry_submit'),
     # Speech entry
     path('speech/', speech_entry_page, name='speech_entry_page'),
+    # Guided voice entry — TTS reads name, teacher speaks score
+    path('voice/', guided_voice_entry, name='guided_voice_entry'),
+    path('voice/transcribe/', voice_entry_transcribe, name='voice_entry_transcribe'),
+    path('voice/save/', voice_entry_save_score, name='voice_entry_save_score'),
+    path('voice/finalize/', voice_entry_bulk_finalize, name='voice_entry_bulk_finalize'),
     path('speech-sessions/', create_speech_session, name='create_speech_session'),
     path('speech-sessions/<int:session_id>/', speech_session_status, name='speech_session_status'),
     path('speech-sessions/<int:session_id>/ingest/', ingest_speech_entry, name='ingest_speech_entry'),

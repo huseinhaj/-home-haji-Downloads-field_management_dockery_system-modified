@@ -1,0 +1,557 @@
+{% extends "results/base.html" %}
+{% load static %}
+
+{% block title %}Ingiza Alama kwa Sauti{% endblock %}
+
+{% block content %}
+<style>
+  .gv-hero { text-align:center; padding:1.5rem 1rem 0.5rem; }
+  .gv-hero h1 { font-size:1.5rem; color:#1F7A3D; margin-bottom:.3rem; }
+  .gv-hero p { color:#666; font-size:.85rem; }
+  .gv-card { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.08); padding:1.5rem; margin:1rem auto; max-width:600px; }
+  .gv-card h2 { font-size:1.1rem; color:#1F7A3D; margin-bottom:1rem; }
+  .gv-field { margin-bottom:.8rem; }
+  .gv-field label { display:block; font-weight:700; font-size:.78rem; color:#444; margin-bottom:.2rem; }
+  .gv-field select, .gv-field input { width:100%; padding:.5rem .7rem; border:1px solid #ddd; border-radius:8px; font-size:.85rem; }
+  .gv-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.6rem 1.4rem; border:none; border-radius:8px; font-weight:700; font-size:.85rem; cursor:pointer; transition:all .15s; }
+  .gv-btn-primary { background:#1F7A3D; color:#fff; }
+  .gv-btn-primary:hover { background:#177a34; }
+  .gv-btn-primary:disabled { background:#aaa; cursor:not-allowed; }
+  .gv-btn-danger { background:#c0392b; color:#fff; }
+  .gv-btn-danger:hover { background:#a93226; }
+  .gv-btn-ghost { background:#f0f0f0; color:#333; }
+  .gv-btn-ghost:hover { background:#e0e0e0; }
+  .gv-center { text-align:center; }
+  .gv-mt { margin-top:1rem; }
+
+  /* ── Guided mode ── */
+  .gv-progress-wrap { background:#e9ecef; border-radius:20px; height:8px; margin:1rem 0; overflow:hidden; }
+  .gv-progress-bar { background:#1F7A3D; height:100%; border-radius:20px; transition:width .4s ease; }
+  .gv-student-card {
+    background:linear-gradient(135deg,#1F7A3D 0%,#27ae60 100%);
+    color:#fff; border-radius:14px; padding:1.5rem; text-align:center;
+    margin:1rem 0; position:relative; overflow:hidden;
+  }
+  .gv-student-card .num { font-size:.75rem; opacity:.8; }
+  .gv-student-card .name { font-size:1.6rem; font-weight:800; margin:.3rem 0; }
+  .gv-student-card .score-display { font-size:1.1rem; margin-top:.5rem; }
+  .gv-student-card .score-display .score-val { font-size:2rem; font-weight:800; color:#ffd700; }
+
+  /* Recording indicator */
+  .gv-rec-btn {
+    width:80px; height:80px; border-radius:50%; border:4px solid #ddd;
+    background:#fff; cursor:pointer; display:inline-flex; align-items:center;
+    justify-content:center; transition:all .2s; position:relative;
+  }
+  .gv-rec-btn:hover { border-color:#c0392b; }
+  .gv-rec-btn.recording { border-color:#c0392b; animation:pulse 1s infinite; }
+  .gv-rec-btn .mic-icon { font-size:2rem; color:#c0392b; }
+  .gv-rec-btn.recording .mic-icon { color:#fff; }
+  @keyframes pulse {
+    0%,100% { box-shadow:0 0 0 0 rgba(192,57,43,.4); }
+    50% { box-shadow:0 0 0 15px rgba(192,57,43,0); }
+  }
+
+  .gv-score-table { width:100%; border-collapse:collapse; font-size:.82rem; margin-top:1rem; }
+  .gv-score-table th { background:#1F7A3D; color:#fff; padding:.4rem .5rem; text-align:left; }
+  .gv-score-table td { padding:.35rem .5rem; border-bottom:1px solid #eee; }
+  .gv-score-table tr:nth-child(even) td { background:#f8f9fa; }
+  .gv-score-table .grade-chip {
+    display:inline-block; padding:.1rem .4rem; border-radius:4px; font-weight:700; font-size:.75rem;
+  }
+
+  .gv-msg { padding:.5rem .8rem; border-radius:8px; font-size:.82rem; margin-top:.5rem; }
+  .gv-msg-info { background:#e8f4ff; color:#24508a; }
+  .gv-msg-ok { background:#e6f7ec; color:#1a7a3b; }
+  .gv-msg-err { background:#fdecea; color:#c0392b; }
+
+  .gv-upload-zone {
+    border:2px dashed #ccc; border-radius:12px; padding:2rem; text-align:center;
+    cursor:pointer; transition:all .2s;
+  }
+  .gv-upload-zone:hover, .gv-upload-zone.dragover { border-color:#1F7A3D; background:#f0fff4; }
+
+  .gv-hidden { display:none !important; }
+
+  .gv-wave { display:flex; gap:3px; align-items:center; justify-content:center; height:24px; }
+  .gv-wave span { width:3px; background:#c0392b; border-radius:2px; animation:wave .6s ease-in-out infinite; }
+  .gv-wave span:nth-child(2) { animation-delay:.1s; }
+  .gv-wave span:nth-child(3) { animation-delay:.2s; }
+  .gv-wave span:nth-child(4) { animation-delay:.3s; }
+  .gv-wave span:nth-child(5) { animation-delay:.4s; }
+  @keyframes wave { 0%,100% { height:4px; } 50% { height:20px; } }
+</style>
+
+<!-- Hero -->
+<div class="gv-hero">
+  <h1>🎙️ Ingiza Alama kwa Sauti</h1>
+  <p>Sema jina la mwanafunzi kisha alama — mfumo unajaza moja kwa moja.</p>
+</div>
+
+<!-- ═══ SETUP PHASE ═══ -->
+<div id="setupPhase">
+  <div class="gv-card">
+    <h2>⚙️ Chagua Mtihani na Somo</h2>
+    <div class="gv-field">
+      <label>Mtihani</label>
+      <select id="gvExam" class="form-select">
+        <option value="">— Chagua mtihani —</option>
+        {% for code, type_label, group_exams in exam_groups %}
+        <optgroup label="{{ type_label }}">
+          {% for e in group_exams %}
+          <option value="{{ e.id }}">{{ e.name }} — Form {{ e.form }} ({{ e.year }})</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="gv-field">
+      <label>Somo</label>
+      <select id="gvSubject" class="form-select">
+        <option value="">— Chagua somo —</option>
+        {% for s in teacher_subjects %}
+        <option value="{{ s.id }}">{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="gv-field">
+      <label>Lugha ya Recognition</label>
+      <select id="gvLang" class="form-select">
+        <option value="sw">Kiswahili</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+    <hr>
+    <h2>📋 Pakia Orodha ya Wanafunzi</h2>
+    <p style="font-size:.82rem;color:#666;">Pakia faili yenye majina ya wanafunzi (CSV au Excel). Safu: <code>First Name, Middle Name, Last Name, Gender</code></p>
+    <div class="gv-upload-zone" id="gvUploadZone">
+      <div style="font-size:2rem;">📂</div>
+      <div style="font-weight:700;color:#1F7A3D;">Bonyeza au dondosha faili hapa</div>
+      <div style="font-size:.78rem;color:#888;margin-top:.3rem;">PDF, CSV au Excel</div>
+      <input type="file" id="gvRosterInput" accept=".pdf,.xlsx,.xls,.csv" style="display:none;">
+    </div>
+    <div id="gvRosterMsg"></div>
+    <div id="gvStudentCount" class="gv-mt" style="font-size:.82rem;color:#666;"></div>
+    <div class="gv-center gv-mt">
+      <button class="gv-btn gv-btn-primary" id="gvStartBtn" disabled>▶️ Anza Kujaza Alama</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GUIDED PHASE ═══ -->
+<div id="guidedPhase" class="gv-hidden">
+  <div style="max-width:600px;margin:0 auto;padding:0 1rem;">
+    <!-- Progress -->
+    <div style="display:flex;justify-content:space-between;font-size:.78rem;color:#888;margin-bottom:.2rem;">
+      <span id="gvProgressLabel">0 / 0</span>
+      <span id="gvProgressPct">0%</span>
+    </div>
+    <div class="gv-progress-wrap">
+      <div class="gv-progress-bar" id="gvProgressBar" style="width:0%;"></div>
+    </div>
+
+    <!-- Current student card -->
+    <div class="gv-student-card" id="gvStudentCard">
+      <div class="num" id="gvStudentNum">Mwanafunzi #1</div>
+      <div class="name" id="gvStudentName">—</div>
+      <div class="score-display" id="gvScoreDisplay">
+        Sema alama...
+      </div>
+    </div>
+
+    <!-- Record button -->
+    <div class="gv-center">
+      <button class="gv-rec-btn" id="gvRecBtn" title="Bonyeza kurekodi">
+        <span class="mic-icon">🎙️</span>
+      </button>
+      <div style="font-size:.78rem;color:#888;margin-top:.4rem;" id="gvRecHint">Bonyeza kurekodi, sema alama</div>
+      <div class="gv-wave gv-hidden" id="gvWave">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <!-- Manual override -->
+    <div class="gv-center gv-mt">
+      <button class="gv-btn gv-btn-ghost" id="gvManualBtn" style="font-size:.78rem;">✍️ Andika kwa mkono</button>
+      <input type="number" id="gvManualInput" min="0" max="100" placeholder="0-100"
+             style="width:80px;padding:.3rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.9rem;display:none;">
+      <button class="gv-btn gv-btn-primary gv-hidden" id="gvManualSave" style="font-size:.78rem;padding:.3rem .8rem;">Hifadhi</button>
+    </div>
+
+    <!-- Message -->
+    <div id="gvMsg" class="gv-msg gv-hidden"></div>
+
+    <!-- Skip / Undo -->
+    <div class="gv-center gv-mt" style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
+      <button class="gv-btn gv-btn-ghost" id="gvSkipBtn" style="font-size:.78rem;">⏭️ Ruka</button>
+      <button class="gv-btn gv-btn-ghost" id="gvUndoBtn" style="font-size:.78rem;" disabled>↩️ Tendua</button>
+    </div>
+
+    <!-- Scored students table -->
+    <div class="gv-mt" id="gvTableWrap" style="max-height:300px;overflow-y:auto;">
+      <table class="gv-score-table">
+        <thead>
+          <tr><th>#</th><th>Jina</th><th>Alama</th><th>Daraja</th></tr>
+        </thead>
+        <tbody id="gvScoredBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Finish -->
+    <div class="gv-center gv-mt">
+      <button class="gv-btn gv-btn-primary" id="gvFinishBtn" style="display:none;">✅ Maliza na Wasilisha</button>
+      <button class="gv-btn gv-btn-danger" id="gvStopBtn">⛔ Simama</button>
+    </div>
+  </div>
+</div>
+
+<!-- Success modal -->
+<div id="gvSuccess" class="gv-hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999;">
+  <div style="background:#fff;border-radius:14px;padding:2rem;max-width:400px;text-align:center;">
+    <div style="font-size:3rem;">🎉</div>
+    <h3 style="color:#1F7A3D;">Imekamilika!</h3>
+    <p id="gvSuccessMsg" style="font-size:.85rem;color:#666;"></p>
+    <div class="gv-mt">
+      <a id="gvOverviewLink" href="#" class="gv-btn gv-btn-primary">Rudi kwenye Mtihani</a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const CSRF = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+  // ── Elements ──
+  const setupPhase = document.getElementById('setupPhase');
+  const guidedPhase = document.getElementById('guidedPhase');
+  const gvExam = document.getElementById('gvExam');
+  const gvSubject = document.getElementById('gvSubject');
+  const gvLang = document.getElementById('gvLang');
+  const gvUploadZone = document.getElementById('gvUploadZone');
+  const gvRosterInput = document.getElementById('gvRosterInput');
+  const gvRosterMsg = document.getElementById('gvRosterMsg');
+  const gvStudentCount = document.getElementById('gvStudentCount');
+  const gvStartBtn = document.getElementById('gvStartBtn');
+  const gvRecBtn = document.getElementById('gvRecBtn');
+  const gvRecHint = document.getElementById('gvRecHint');
+  const gvWave = document.getElementById('gvWave');
+  const gvStudentCard = document.getElementById('gvStudentCard');
+  const gvStudentNum = document.getElementById('gvStudentNum');
+  const gvStudentName = document.getElementById('gvStudentName');
+  const gvScoreDisplay = document.getElementById('gvScoreDisplay');
+  const gvProgressLabel = document.getElementById('gvProgressLabel');
+  const gvProgressPct = document.getElementById('gvProgressPct');
+  const gvProgressBar = document.getElementById('gvProgressBar');
+  const gvScoredBody = document.getElementById('gvScoredBody');
+  const gvMsg = document.getElementById('gvMsg');
+  const gvManualBtn = document.getElementById('gvManualBtn');
+  const gvManualInput = document.getElementById('gvManualInput');
+  const gvManualSave = document.getElementById('gvManualSave');
+  const gvSkipBtn = document.getElementById('gvSkipBtn');
+  const gvUndoBtn = document.getElementById('gvUndoBtn');
+  const gvFinishBtn = document.getElementById('gvFinishBtn');
+  const gvStopBtn = document.getElementById('gvStopBtn');
+
+  let students = [];          // [{id, name}]
+  let scored = new Map();     // student_id → score
+  let currentIdx = 0;
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let _examId = '';
+  let _subjectId = '';
+
+  // ── TTS helper ──
+  function speak(text, lang, onEnd) {
+    if (!('speechSynthesis' in window)) { onEnd && onEnd(); return; }
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang === 'sw' ? 'sw-TZ' : 'en-US';
+    u.rate = 0.9;
+    u.onend = () => onEnd && onEnd();
+    u.onerror = () => onEnd && onEnd();
+    speechSynthesis.speak(u);
+  }
+
+  // ── Grade helper ──
+  function getGrade(score, form) {
+    if (form == 2) {
+      if (score >= 75) return 'A'; if (score >= 65) return 'B'; if (score >= 45) return 'C'; if (score >= 30) return 'D'; return 'F';
+    }
+    if (form >= 5) {
+      if (score >= 80) return 'A'; if (score >= 70) return 'B'; if (score >= 60) return 'C'; if (score >= 50) return 'D'; if (score >= 40) return 'E'; if (score >= 35) return 'S'; return 'F';
+    }
+    if (score >= 75) return 'A'; if (score >= 65) return 'B'; if (score >= 50) return 'C'; if (score >= 40) return 'D'; return 'F';
+  }
+  function gradeColor(g) {
+    const m = {'A':'#e6f7ec;color:#1a7a3b','B':'#eafaf1;color:#27ae60','C':'#fff9e6;color:#b7950b','D':'#fdf2e9;color:#ca6f1e','E':'#fff3e0;color:#e65100','S':'#fffde7;color:#f9a825','F':'#fdecea;color:#c0392b'};
+    return m[g] || '#f0f0f0;color:#333';
+  }
+
+  function showMsg(text, type) {
+    gvMsg.textContent = text;
+    gvMsg.className = 'gv-msg gv-msg-' + type;
+    gvMsg.classList.remove('gv-hidden');
+    clearTimeout(gvMsg._t);
+    gvMsg._t = setTimeout(() => gvMsg.classList.add('gv-hidden'), 4000);
+  }
+
+  // ── Upload zone ──
+  gvUploadZone.addEventListener('click', () => gvRosterInput.click());
+  ['dragenter','dragover'].forEach(e => gvUploadZone.addEventListener(e, ev => { ev.preventDefault(); gvUploadZone.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(e => gvUploadZone.addEventListener(e, ev => { ev.preventDefault(); gvUploadZone.classList.remove('dragover'); }));
+  gvUploadZone.addEventListener('drop', e => { if (e.dataTransfer.files.length) uploadRoster(e.dataTransfer.files[0]); });
+  gvRosterInput.addEventListener('change', () => { if (gvRosterInput.files.length) uploadRoster(gvRosterInput.files[0]); });
+
+  async function uploadRoster(file) {
+    gvRosterMsg.innerHTML = '<span class="gv-msg gv-msg-info">⏳ Inasoma orodha...</span>';
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch("{% url 'upload_roster' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': CSRF},
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      students = (data.students || []).map(s => ({id: s.id, name: s.name}));
+      gvRosterMsg.innerHTML = `<span class="gv-msg gv-msg-ok">✅ Wanafunzi ${students.length} wamepatikana.</span>`;
+      gvStudentCount.textContent = `Wanafunzi: ${students.length}`;
+      gvStartBtn.disabled = students.length === 0;
+    } catch (err) {
+      gvRosterMsg.innerHTML = `<span class="gv-msg gv-msg-err">❌ ${err.message}</span>`;
+    }
+  }
+
+  // ── Start guided mode ──
+  gvStartBtn.addEventListener('click', () => {
+    if (!gvExam.value || !gvSubject.value) {
+      showMsg('Chagua mtihani na somo kwanza.', 'err');
+      return;
+    }
+    if (!students.length) {
+      showMsg('Pakia orodha ya wanafunzi kwanza.', 'err');
+      return;
+    }
+    _examId = gvExam.value;
+    _subjectId = gvSubject.value;
+    // Shuffle students for fairness
+    for (let i = students.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [students[i], students[j]] = [students[j], students[i]];
+    }
+    setupPhase.classList.add('gv-hidden');
+    guidedPhase.classList.remove('gv-hidden');
+    currentIdx = 0;
+    scored.clear();
+    gvScoredBody.innerHTML = '';
+    updateProgress();
+    showStudent();
+  });
+
+  // ── Show current student ──
+  function showStudent() {
+    if (currentIdx >= students.length) {
+      finishAll();
+      return;
+    }
+    const s = students[currentIdx];
+    gvStudentNum.textContent = `Mwanafunzi #${currentIdx + 1}`;
+    gvStudentName.textContent = s.name;
+    gvScoreDisplay.innerHTML = 'Sema alama...';
+    gvRecHint.textContent = 'Bonyeza kurekodi, sema alama';
+    gvRecBtn.classList.remove('recording');
+    gvWave.classList.add('gv-hidden');
+    gvUndoBtn.disabled = scored.size === 0;
+    gvFinishBtn.style.display = scored.size > 0 ? '' : 'none';
+
+    // TTS: read student name
+    const lang = gvLang.value;
+    const prompt = lang === 'sw' ? `Mwanafunzi: ${s.name}` : `Student: ${s.name}`;
+    speak(prompt, lang);
+  }
+
+  function updateProgress() {
+    const done = scored.size;
+    const total = students.length;
+    const pct = total ? Math.round(done / total * 100) : 0;
+    gvProgressLabel.textContent = `${done} / ${total}`;
+    gvProgressPct.textContent = `${pct}%`;
+    gvProgressBar.style.width = `${pct}%`;
+  }
+
+  // ── Recording ──
+  gvRecBtn.addEventListener('click', async () => {
+    if (isRecording) { stopRecording(); return; }
+    startRecording();
+  });
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        await processAudio(blob);
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      gvRecBtn.classList.add('recording');
+      gvWave.classList.remove('gv-hidden');
+      gvRecHint.textContent = '🔴 Inarekodi... bonyeza tena kusimama';
+    } catch (err) {
+      showMsg('Haikuweza kufungua maikrofoni. Tumia mfumo wa mkono.', 'err');
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    isRecording = false;
+    gvRecBtn.classList.remove('recording');
+    gvWave.classList.add('gv-hidden');
+    gvRecHint.textContent = 'Inachakata sauti...';
+  }
+
+  async function processAudio(blob) {
+    gvRecHint.textContent = '⏳ Inachakata sauti...';
+    const fd = new FormData();
+    fd.append('audio', blob, 'recording.webm');
+    fd.append('language', gvLang.value);
+    try {
+      const res = await fetch("{% url 'voice_entry_transcribe' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': CSRF},
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Transcription failed');
+
+      if (data.score !== null && data.score !== undefined) {
+        await saveScore(students[currentIdx].id, data.score, data.transcript);
+      } else {
+        showMsg(`Sauti: "${data.transcript}" — alama haijapatikana. Andika kwa mkono.`, 'err');
+        gvManualInput.classList.remove('gv-hidden');
+        gvManualSave.classList.remove('gv-hidden');
+        gvManualInput.focus();
+      }
+    } catch (err) {
+      showMsg(err.message, 'err');
+      gvRecHint.textContent = 'Jaribu tena au andika kwa mkono';
+    }
+  }
+
+  async function saveScore(studentId, score, transcript) {
+    try {
+      const res = await fetch("{% url 'voice_entry_save_score' %}", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+        body: JSON.stringify({ exam_id: _examId, subject_id: _subjectId, student_id: studentId, score }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+
+      scored.set(studentId, score);
+      const s = students[currentIdx];
+      const form = gvExam.options[gvExam.selectedIndex]?.text || '';
+      const formNum = form.match(/Form (\d)/)?.[1] || '4';
+      const grade = getGrade(score, parseInt(formNum));
+
+      // Show score on card
+      gvScoreDisplay.innerHTML = `<span class="score-val">${score}</span> <span style="font-size:.9rem;">— ${grade}</span>`;
+
+      // Add to table
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${scored.size}</td><td>${s.name}</td><td style="font-weight:800;color:#1F7A3D;">${score}</td><td><span class="grade-chip" style="background:${gradeColor(grade).split(';')[0]};color:${gradeColor(grade).split(';')[1]};">${grade}</span></td>`;
+      gvScoredBody.prepend(tr);
+
+      updateProgress();
+      gvUndoBtn.disabled = false;
+      gvFinishBtn.style.display = '';
+
+      // Auto-advance after 1.5s
+      setTimeout(() => { currentIdx++; showStudent(); }, 1500);
+
+    } catch (err) {
+      showMsg(err.message, 'err');
+    }
+  }
+
+  // ── Manual input ──
+  gvManualBtn.addEventListener('click', () => {
+    gvManualInput.classList.toggle('gv-hidden');
+    gvManualSave.classList.toggle('gv-hidden');
+    if (!gvManualInput.classList.contains('gv-hidden')) gvManualInput.focus();
+  });
+  gvManualSave.addEventListener('click', async () => {
+    const v = parseInt(gvManualInput.value);
+    if (isNaN(v) || v < 0 || v > 100) { showMsg('Weka alama sahihi (0-100).', 'err'); return; }
+    gvManualInput.value = '';
+    await saveScore(students[currentIdx].id, v, 'manual');
+  });
+  gvManualInput.addEventListener('keydown', e => { if (e.key === 'Enter') gvManualSave.click(); });
+
+  // ── Skip ──
+  gvSkipBtn.addEventListener('click', () => { currentIdx++; showStudent(); });
+
+  // ── Undo ──
+  gvUndoBtn.addEventListener('click', () => {
+    if (scored.size === 0) return;
+    // Remove last scored student
+    const lastId = [...scored.keys()].pop();
+    scored.delete(lastId);
+    // Find that student's index
+    const idx = students.findIndex(s => s.id === lastId);
+    if (idx >= 0) currentIdx = idx;
+    // Remove table row (first row = last scored)
+    if (gvScoredBody.firstChild) gvScoredBody.removeChild(gvScoredBody.firstChild);
+    updateProgress();
+    showStudent();
+  });
+
+  // ── Stop ──
+  gvStopBtn.addEventListener('click', () => {
+    if (scored.size === 0) {
+      if (confirm('Hujaweka alama yoyote. Ondoka?')) {
+        window.location.href = "{% url 'guided_voice_entry' %}";
+      }
+      return;
+    }
+    if (confirm(`Umejaza alama za wanafunzi ${scored.size}/${students.length}. Kuwa na uhakika?`)) {
+      finishAll();
+    }
+  });
+
+  // ── Finish ──
+  async function finishAll() {
+    gvFinishBtn.disabled = true;
+    gvFinishBtn.textContent = 'Inawasilisha...';
+    try {
+      const res = await fetch("{% url 'voice_entry_bulk_finalize' %}", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+        body: JSON.stringify({ exam_id: _examId, subject_id: _subjectId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Finalize failed');
+
+      document.getElementById('gvSuccessMsg').textContent =
+        `Alama za wanafunzi ${data.student_count} zimewasilishwa. Matokeo yamehesabiwa.`;
+      document.getElementById('gvOverviewLink').href = data.overview_url;
+      document.getElementById('gvSuccess').classList.remove('gv-hidden');
+    } catch (err) {
+      showMsg(err.message, 'err');
+      gvFinishBtn.disabled = false;
+      gvFinishBtn.textContent = '✅ Maliza na Wasilisha';
+    }
+  }
+})();
+</script>
+{% endblock %}
