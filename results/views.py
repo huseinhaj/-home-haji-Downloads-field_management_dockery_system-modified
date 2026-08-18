@@ -739,24 +739,99 @@ def _parse_pdf_roster(uploaded_file):
                             if first and first.lower() not in ('nan', 'none', ''):
                                 students_out.append(_save_student(first, middle, last, gender))
             else:
-                # Plain text extraction — each line is one student
+                # Plain text extraction — each line is one student.
+                # Some PDFs contain CSV text (comma-separated) rather than
+                # plain text with spaces.  Detect this by checking whether
+                # the first non-empty line contains commas.
                 text = page.extract_text() or ''
-                for line in text.splitlines():
-                    line = line.strip()
-                    if not line:
-                        continue
+                lines = [l.strip() for l in text.splitlines() if l.strip()]
+                if not lines:
+                    continue
+
+                # Detect CSV-style: first line has commas and looks like a header
+                first_data_line = re.sub(r'^\d+[.)]\s*', '', lines[0]).strip()
+                _is_csv = ',' in first_data_line and len(first_data_line.split(',')) >= 2
+
+                # If CSV, detect which column is which from the header
+                _col_map = {}  # role → column index
+                if _is_csv:
+                    header_cells = [c.strip().lower() for c in lines[0].split(',')]
+                    for ci, hc in enumerate(header_cells):
+                        if hc in ('firstname', 'first name', 'jina la kwanza'):
+                            _col_map.setdefault('first', ci)
+                        elif hc in ('middlename', 'middle name', 'jina la kati'):
+                            _col_map.setdefault('middle', ci)
+                        elif hc in ('lastname', 'last name', 'surname', 'jina la mwisho'):
+                            _col_map.setdefault('last', ci)
+                        elif hc in ('gender', 'jinsia', 'sex'):
+                            _col_map.setdefault('gender', ci)
+                        elif hc in ('name', 'full name', 'jina', 'student name', 'jina la mwanafunzi'):
+                            _col_map.setdefault('full', ci)
+                    # If no explicit columns, treat as: name,gender or name...
+                    if not _col_map and len(header_cells) >= 2:
+                        # Guess: first non-trivial column = name, last = gender
+                        for ci, hc in enumerate(header_cells):
+                            if hc and hc not in ('namba', 'no', 'no.', '#', 'id'):
+                                _col_map.setdefault('full', ci)
+                                break
+                    _start_row = 1  # skip header
+                else:
+                    _start_row = 0
+
+                for line in lines[_start_row:]:
                     # Remove leading numbering like "1." "1)" "01."
                     line = re.sub(r'^\d+[.)]\s*', '', line).strip()
                     if not line:
                         continue
-                    # Skip obvious header lines
+                    # Skip obvious header lines (safety net for CSV-detected data too)
                     if any(h in line.lower() for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'student')):
                         continue
-                    parsed = _parse_roster_line(line)
-                    if parsed:
+
+                    if _is_csv:
+                        cells = [c.strip() for c in line.split(',')]
+                        if len(cells) < 2:
+                            continue
+                        first = middle = last = ''
+                        gender = 'M'
+                        if 'first' in _col_map and _col_map['first'] < len(cells):
+                            first = cells[_col_map['first']]
+                        if 'middle' in _col_map and _col_map['middle'] < len(cells):
+                            middle = cells[_col_map['middle']]
+                        if 'last' in _col_map and _col_map['last'] < len(cells):
+                            last = cells[_col_map['last']]
+                        if 'gender' in _col_map and _col_map['gender'] < len(cells):
+                            gender = cells[_col_map['gender']]
+                        if 'full' in _col_map and _col_map['full'] < len(cells):
+                            full_val = cells[_col_map['full']]
+                            parts = full_val.split()
+                            if not first and len(parts) >= 3:
+                                first = parts[0]
+                                middle = ' '.join(parts[1:-1])
+                                last = parts[-1]
+                            elif not first and len(parts) == 2:
+                                first = parts[0]
+                                last = parts[1]
+                            elif not first and parts:
+                                first = parts[0]
+                        if not first and cells:
+                            # Last resort: first non-empty cell
+                            for c in cells:
+                                if c and c.lower() not in ('nan', 'none', ''):
+                                    parsed = _parse_roster_line(c)
+                                    if parsed:
+                                        first, middle, last, gender = parsed
+                                        break
+                    else:
+                        parsed = _parse_roster_line(line)
+                        if not parsed:
+                            continue
                         first, middle, last, gender = parsed
-                        if first and first.lower() not in ('nan', 'none', ''):
-                            students_out.append(_save_student(first, middle, last, gender))
+
+                    if first and first.lower() not in ('nan', 'none', ''):
+                        students_out.append(_save_student(
+                            first.strip(), (middle or '').strip(), last.strip() or 'Unknown',
+                            normalize_gender(gender)
+                        ))
     return students_out
 
 
@@ -838,7 +913,7 @@ def upload_roster(request):
 
         if not students_out:
             return JsonResponse({
-                'error': 'Hakuna wanafunzi waliopatikana. Angalia muundo wa faili — kila mstari: Jina la Kwanza Jina la Kati Jina la Mwisho Jinsia'
+                'error': 'Hakuna wanafunzi waliopatikana. Muundo unaoeleweka: (a) PDF/CSV ya maneno kwa mstari: Halima Ally Mohamed F \n (b) CSV/Excel zenye column: First Name, Middle Name, Last Name, Gender \n (c) CSV/Excel yenye column moja ya jina kamili: Name, Gender'
             }, status=400)
 
         return JsonResponse({'students': students_out, 'count': len(students_out)})
