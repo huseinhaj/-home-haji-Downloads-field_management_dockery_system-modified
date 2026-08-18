@@ -29,6 +29,34 @@ from .utils import get_grade, get_grade_for_form, normalize_gender, parse_name_s
 
 _EXAM_TYPE_CHOICES = Exam.EXAM_TYPE_CHOICES
 
+
+def _get_exam_or_404(exam_id, user):
+    """Safe exam lookup — tolerates NULL school FK and school mismatches.
+
+    1. Find by ID.
+    2. If user has a school and exam.school matches → OK.
+    3. If exam.school is NULL or mismatched → check teacher owns subjects on this exam.
+    4. Otherwise → 404.
+    """
+    exam = Exam.objects.filter(id=exam_id).first()
+    if exam is None:
+        raise Http404("Mtihani haujapatikana.")
+    user_school = getattr(user, 'school', None)
+    # Fast path: schools match
+    if user_school and exam.school_id == user_school.id:
+        return exam
+    # exam.school may be NULL or wrong — check teacher access
+    has_access = (
+        exam.subject_submissions.filter(
+            subject__in=user.subjects.all()
+        ).exists()
+        or exam.subject_submissions.filter(submitted_by_user=user).exists()
+    )
+    if has_access:
+        return exam
+    raise Http404("Mtihani haujapatikana kwenye shule yako.")
+
+
 COMMON_SUBJECTS = [
     'Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry',
     'Physics', 'History', 'Geography', 'Civics', 'Computer Studies',
@@ -137,13 +165,13 @@ def filter_exams(request):
 
 @academic_required
 def generate_results_pdf(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    exam = _get_exam_or_404(exam_id, request.user)
     return generate_results_pdf_response(exam)
 
 
 @academic_required
 def export_results_excel(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    exam = _get_exam_or_404(exam_id, request.user)
     return generate_results_excel_response(exam)
 
 
@@ -298,7 +326,7 @@ def student_result_public(request, token):
 def exam_share_links(request, exam_id):
     """Academic officer views all shareable links for an exam's students.
     Each link can be copied and shared with parents for online results lookup."""
-    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    exam = _get_exam_or_404(exam_id, request.user)
     results = list(
         ProcessedResult.objects.filter(exam=exam)
         .select_related('student')
@@ -338,24 +366,7 @@ def exam_share_links(request, exam_id):
 
 @login_required
 def exam_overview(request, exam_id):
-    # Look up by ID first; fall back to school-scoped lookup.
-    # Some exams may have a NULL school FK (e.g. created via older flow)
-    # or the school FK may point to a different row — in both cases
-    # the teacher should still be able to view the exam they have access to.
-    exam = Exam.objects.filter(id=exam_id).first()
-    if not exam:
-        raise Http404("Mtihani haujapatikana.")
-    # Verify the teacher has some connection to this exam
-    user_school = getattr(request.user, 'school', None)
-    if exam.school and user_school and exam.school_id != user_school.id:
-        # Exam belongs to a different school — check if teacher has submissions
-        has_access = SubjectSubmission.objects.filter(
-            exam=exam, subject__in=request.user.subjects.all()
-        ).exists() or SubjectSubmission.objects.filter(
-            exam=exam, submitted_by_user=request.user
-        ).exists()
-        if not has_access:
-            raise Http404("Mtihani haujapatikana kwenye shule yako.")
+    exam = _get_exam_or_404(exam_id, request.user)
     is_academic = getattr(request.user, 'is_academic', False)
 
     # Get all subjects that have results for this exam + known subjects from submissions
@@ -435,7 +446,7 @@ def exam_overview(request, exam_id):
 
 @teacher_required
 def subject_upload(request, exam_id, subject_id):
-    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    exam = _get_exam_or_404(exam_id, request.user)
     subject = get_object_or_404(Subject, id=subject_id)
     if not request.user.subjects.filter(pk=subject.pk).exists():
         raise PermissionDenied("You are not assigned to teach this subject.")
@@ -583,7 +594,7 @@ def subject_upload(request, exam_id, subject_id):
 
 @login_required
 def subject_pdf(request, exam_id, subject_id):
-    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    exam = _get_exam_or_404(exam_id, request.user)
     subject = get_object_or_404(Subject, id=subject_id)
 
     # Get teacher name from SubjectSubmission if available
@@ -605,7 +616,7 @@ def subject_summary(request, exam_id, subject_id):
     """Same analysis as the PDF (distribution, gender, recommendations) but
     viewable directly in the app — teachers don't have to download anything
     to see how their subject did and what to do next."""
-    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    exam = _get_exam_or_404(exam_id, request.user)
     subject = get_object_or_404(Subject, id=subject_id)
 
     teacher_name = ''
@@ -1062,7 +1073,7 @@ def download_roster_template(request):
 @academic_required
 @require_POST
 def finalize_exam(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    exam = _get_exam_or_404(exam_id, request.user)
     subs = exam.subject_submissions.all()
     total = subs.count()
     submitted = subs.filter(
@@ -1139,7 +1150,7 @@ def academic_dashboard(request):
 @academic_required
 @require_POST
 def approve_subject(request, exam_id, subject_id):
-    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    exam = _get_exam_or_404(exam_id, request.user)
     subject = get_object_or_404(Subject, id=subject_id)
     sub = get_object_or_404(SubjectSubmission, exam=exam, subject=subject)
 
@@ -1167,7 +1178,7 @@ def approve_subject(request, exam_id, subject_id):
 @academic_required
 @require_POST
 def approve_exam_submissions(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    exam = _get_exam_or_404(exam_id, request.user)
     approved_by = request.user.full_name or request.user.email
     notes = request.POST.get('notes', '').strip()
     now = timezone.now()
