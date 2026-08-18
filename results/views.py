@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -338,7 +338,24 @@ def exam_share_links(request, exam_id):
 
 @login_required
 def exam_overview(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id, school=request.user.school)
+    # Look up by ID first; fall back to school-scoped lookup.
+    # Some exams may have a NULL school FK (e.g. created via older flow)
+    # or the school FK may point to a different row — in both cases
+    # the teacher should still be able to view the exam they have access to.
+    exam = Exam.objects.filter(id=exam_id).first()
+    if not exam:
+        raise Http404("Mtihani haujapatikana.")
+    # Verify the teacher has some connection to this exam
+    user_school = getattr(request.user, 'school', None)
+    if exam.school and user_school and exam.school_id != user_school.id:
+        # Exam belongs to a different school — check if teacher has submissions
+        has_access = SubjectSubmission.objects.filter(
+            exam=exam, subject__in=request.user.subjects.all()
+        ).exists() or SubjectSubmission.objects.filter(
+            exam=exam, submitted_by_user=request.user
+        ).exists()
+        if not has_access:
+            raise Http404("Mtihani haujapatikana kwenye shule yako.")
     is_academic = getattr(request.user, 'is_academic', False)
 
     # Get all subjects that have results for this exam + known subjects from submissions
