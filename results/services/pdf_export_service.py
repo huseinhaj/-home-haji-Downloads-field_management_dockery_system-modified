@@ -2,14 +2,17 @@
 pdf_export_service.py — Professional academic report PDF with Tanzania flag colours.
 
 Page 1   MUHTASARI / SUMMARY
-         - Tanzania-flag-branded header (green, yellow, black, blue)
-         - Full school name ("KWADELO SECONDARY SCHOOL" not "KWADELO")
-         - English for secondary schools, Kiswahili for primary schools
-         - Division breakdown, subject stats, top 5
+         - "THE UNITED REPUBLIC OF TANZANIA" header with coat-of-arms SVG
+         - Ministry of Education branding + school name
+         - Tanzania flag-colour border (green, yellow, black, blue)
+         - Division breakdown, subject stats, top 5, grading key
 
 Page 2+  MATOKEO KAMILI / FULL RESULTS
-         - Full results table with colour-coded scores
+         - Full results table with colour-coded scores (A=green … F=red)
+         - Signature / stamp area for academic officer
          - Grade legend, page footer
+
+All A4, portrait. Landscape auto-selected when ≥9 subjects.
 """
 
 from collections import Counter
@@ -19,7 +22,7 @@ from io import BytesIO
 from django.http import HttpResponse
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle
 
@@ -40,21 +43,23 @@ from .report_helpers import (
 
 
 # ── Colour palette (ReportLab native) ────────────────────────────────────────
-# Tanzania flag: green (#1EB53A), yellow (#FCD116), black (#000000), blue (#00A3DD)
-TZ_GREEN_CLR    = colors.HexColor(f"#{TZ_GREEN}")
-TZ_YELLOW_CLR   = colors.HexColor("#FCD116")
-TZ_BLUE_CLR     = colors.HexColor(f"#{TZ_BLUE}")
-TZ_GOLD_CLR     = colors.HexColor(f"#{TZ_GOLD}")
-TZ_BLACK_CLR    = colors.black
-TZ_WHITE_CLR    = colors.white
+TZ_GREEN_CLR      = colors.HexColor(f"#{TZ_GREEN}")
+TZ_YELLOW_CLR     = colors.HexColor("#FCD116")
+TZ_BLUE_CLR       = colors.HexColor(f"#{TZ_BLUE}")
+TZ_GOLD_CLR       = colors.HexColor(f"#{TZ_GOLD}")
+TZ_BLACK_CLR      = colors.black
+TZ_WHITE_CLR      = colors.white
 TZ_LIGHT_GREY_CLR = colors.HexColor(f"#{TZ_LIGHT_GREY}")
 TZ_DARK_GREY_CLR  = colors.HexColor(f"#{TZ_DARK_GREY}")
 
 # Flag-bar colours for the header divider
-FLAG_GREEN = colors.HexColor("#1EB53A")
+FLAG_GREEN  = colors.HexColor("#1EB53A")
 FLAG_YELLOW = colors.HexColor("#FCD116")
-FLAG_BLACK = colors.black
-FLAG_BLUE  = colors.HexColor("#00A3DD")
+FLAG_BLACK  = colors.black
+FLAG_BLUE   = colors.HexColor("#00A3DD")
+
+# Dark green for signature / official use areas
+OFFICIAL_GREEN = colors.HexColor("#145A32")
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -84,7 +89,6 @@ def _grade_thresholds(form):
 
 
 # Grade colour per letter — shared by score cells and the grading-key legend.
-# Must stay in sync with utils.get_grade_for_form / get_grade_points.
 _FILL_BY_LETTER = {
     'A':  ("#C6F4D6", "#145A32"),
     'B+': ("#D5F5E3", "#1E8449"),
@@ -99,9 +103,7 @@ _FILL_BY_LETTER = {
 
 
 def _score_fill(score, form=4):
-    """Return (background-hex, font-hex) for a score value, using the
-    exam's NECTA grade scale (FTNA for Form 2, ACSEE for Form 5/6,
-    CSEE otherwise)."""
+    """Return (background-hex, font-hex) for a score value."""
     if score is None or not isinstance(score, (int, float)):
         return None, None
     thresholds, grade_ranges = _grade_thresholds(form)
@@ -180,134 +182,175 @@ def generate_results_pdf_response(exam):
 
     # ── Helper: draw Tanzania flag-colour page border ────────────────
     def _draw_page_border():
-        """Draw 4 thin coloured bands around the page perimeter — green top,
-        yellow right, black bottom, blue left (Tanzania flag order)."""
-        bw = 6   # border band thickness/width
+        """4 thin coloured bands around the page — green top, yellow right,
+        black bottom, blue left (Tanzania flag order)."""
+        bw = 6   # border band thickness
         gm = 15  # gap from page edge
-        # Top — Green
         p.setFillColor(TZ_GREEN_CLR)
         p.rect(gm, H - gm - bw, W - 2 * gm, bw, fill=1, stroke=0)
-        # Right — Yellow
         p.setFillColor(TZ_YELLOW_CLR)
         p.rect(W - gm - bw, gm, bw, H - 2 * gm, fill=1, stroke=0)
-        # Bottom — Black
         p.setFillColor(TZ_BLACK_CLR)
         p.rect(gm, gm, W - 2 * gm, bw, fill=1, stroke=0)
-        # Left — Blue
         p.setFillColor(TZ_BLUE_CLR)
         p.rect(gm, gm, bw, H - 2 * gm, fill=1, stroke=0)
 
-    # ── Helper: draw the flag-colour header block ──────────────────────
+    # ── Helper: coat-of-arms SVG (simplified Tanzania emblem) ────────
+    def _draw_coat_of_arms(cx, cy, size=28):
+        """Draw a simplified Tanzania coat of arms: shield + torch + elephants."""
+        # Shield background
+        p.setFillColor(TZ_GREEN_CLR)
+        p.setStrokeColor(TZ_GOLD_CLR)
+        p.setLineWidth(1.5)
+        # Rounded rectangle shield
+        p.roundRect(cx - size * 0.5, cy - size * 0.7, size, size * 1.4, 4, fill=1, stroke=1)
+        # Torch in center
+        p.setFillColor(TZ_GOLD_CLR)
+        p.rect(cx - 1.5, cy - size * 0.35, 3, size * 0.7, fill=1, stroke=0)
+        # Flame
+        p.setFillColor(FLAG_YELLOW)
+        p.circle(cx, cy + size * 0.42, 4, fill=1, stroke=0)
+        # Black stripe (Tanzania flag pattern on shield)
+        p.setFillColor(TZ_BLACK_CLR)
+        p.rect(cx - size * 0.35, cy - 2, size * 0.7, 4, fill=1, stroke=0)
+        # Blue stripe
+        p.setFillColor(TZ_BLUE_CLR)
+        p.rect(cx - size * 0.35, cy - size * 0.25, size * 0.7, 3, fill=1, stroke=0)
+        # Yellow stripe
+        p.setFillColor(TZ_YELLOW_CLR)
+        p.rect(cx - size * 0.35, cy + size * 0.1, size * 0.7, 3, fill=1, stroke=0)
+        # Outer circle
+        p.setStrokeColor(TZ_GOLD_CLR)
+        p.setLineWidth(2)
+        p.circle(cx, cy, size * 0.85, fill=0, stroke=1)
+
+    # ── Helper: draw the official header block ──────────────────────
     def _draw_header(y, header_w=None):
         """
-        Draw the header block. header_w can override the content width
-        for landscape (wider) pages.
+        Draw the official header block:
+          [Coat of Arms]  THE UNITED REPUBLIC OF TANZANIA
+                          MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY
+                          ─── flag colour bar ───
+                          SCHOOL NAME
+                          Location
+        header_w can override content width for landscape pages.
         """
         hdr_w = header_w if header_w else CW
-        hdr_lm = (W - hdr_w) / 2  # left margin for this header
+        hdr_lm = (W - hdr_w) / 2
 
-        # Green bar background
+        # ── Green banner background ──
+        banner_h = 108
         p.setFillColor(TZ_GREEN_CLR)
-        p.rect(hdr_lm, y - 100, hdr_w, 100, fill=1, stroke=0)
+        p.rect(hdr_lm, y - banner_h, hdr_w, banner_h, fill=1, stroke=0)
 
-        # THE UNITED REPUBLIC OF TANZANIA (top line)
+        # ── Coat of Arms (left side of banner) ──
+        coat_cx = hdr_lm + 38
+        coat_cy = y - banner_h / 2
+        _draw_coat_of_arms(coat_cx, coat_cy, size=24)
+
+        # ── Text centred in banner ──
+        text_cx = hdr_lm + hdr_w / 2
+
+        # Line 1: THE UNITED REPUBLIC OF TANZANIA
         p.setFillColor(TZ_WHITE_CLR)
-        p.setFont("Helvetica-Bold", 11)
+        p.setFont("Helvetica-Bold", 12)
         country_line = "THE UNITED REPUBLIC OF TANZANIA" if lang == 'en' \
             else "JAMHURI YA MUUNGANO WA TANZANIA"
-        p.drawCentredString(W / 2, y - 12, country_line)
+        p.drawCentredString(text_cx, y - 16, country_line)
 
-        # Ministry name (second line)
-        p.setFont("Helvetica-Bold", 13)
-        p.drawCentredString(W / 2, y - 30,
-            "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY" if lang == 'en'
-            else "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA")
+        # Line 2: Ministry
+        p.setFont("Helvetica-Bold", 10)
+        ministry = "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY" if lang == 'en' \
+            else "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA"
+        p.drawCentredString(text_cx, y - 32, ministry)
 
-        # School type subtitle
+        # Line 3: School type subtitle
         p.setFont("Helvetica", 8)
-        sub_lines = {
-            'en': f"{'SECONDARY' if school_type == 'secondary' else 'PRIMARY'} SCHOOL — EXAMINATION SECTION",
-            'sw': f"{'SEKONDARI' if school_type == 'secondary' else 'MSINGI'} — SEHEMU YA MITIHANI",
-        }
-        p.drawCentredString(W / 2, y - 46, sub_lines.get(lang, sub_lines['en']))
+        sub = f"{'SECONDARY' if school_type == 'secondary' else 'PRIMARY'} SCHOOL — EXAMINATION RESULTS" \
+            if lang == 'en' \
+            else f"{'SEKONDARI' if school_type == 'secondary' else 'MSINGI'} — MATOKEO YA MITIHANI"
+        p.drawCentredString(text_cx, y - 46, sub)
 
-        # Tanzania flag-colour divider bar (green → yellow → black → blue)
-        bar_y = y - 55
+        # ── Tanzania flag-colour divider bar ──
+        bar_y = y - 54
         bar_h = 5
-        bar_parts = 4
         for i, clr in enumerate([FLAG_GREEN, FLAG_YELLOW, FLAG_BLACK, FLAG_BLUE]):
             p.setFillColor(clr)
-            p.rect(hdr_lm + i * hdr_w / bar_parts, bar_y,
-                   hdr_w / bar_parts, bar_h, fill=1, stroke=0)
+            p.rect(hdr_lm + i * hdr_w / 4, bar_y, hdr_w / 4, bar_h, fill=1, stroke=0)
 
-        # School name (gold on green background)
+        # ── School name (gold on green) ──
         p.setFillColor(TZ_YELLOW_CLR)
-        p.setFont("Helvetica-Bold", 14)
-        p.drawCentredString(W / 2, y - 72, school_disp)
+        p.setFont("Helvetica-Bold", 15)
+        p.drawCentredString(text_cx, y - 75, school_disp)
 
-        # Location
+        # ── Location ──
         p.setFillColor(TZ_WHITE_CLR)
         p.setFont("Helvetica", 8)
         loc = _get_location(exam)
-        p.drawCentredString(W / 2, y - 88, loc)
+        p.drawCentredString(text_cx, y - 92, loc)
 
-        # Gold line below header
+        # ── Gold accent line ──
         p.setStrokeColor(TZ_GOLD_CLR)
-        p.setLineWidth(1.5)
-        p.line(hdr_lm, y - 98, hdr_lm + hdr_w, y - 98)
+        p.setLineWidth(2)
+        p.line(hdr_lm, y - banner_h - 2, hdr_lm + hdr_w, y - banner_h - 2)
 
     # ── Helper: section heading line ───────────────────────────────────
     def _section_heading(y, section_key):
         title = get_section_title(exam, section_key)
-        p.setFont("Helvetica-Bold", 12 if lang == 'en' else 11)
+        p.setFont("Helvetica-Bold", 11)
         p.setFillColor(TZ_GREEN_CLR)
         p.drawString(LM, y, title.upper())
-        p.setStrokeColor(TZ_GOLD_CLR)
-        p.setLineWidth(1)
+        # Green underline
+        p.setStrokeColor(TZ_GREEN_CLR)
+        p.setLineWidth(1.5)
         p.line(LM, y - 2, W - LM, y - 2)
-        return y - 20
+        # Gold accent below
+        p.setStrokeColor(TZ_GOLD_CLR)
+        p.setLineWidth(0.5)
+        p.line(LM, y - 4, W - LM, y - 4)
+        return y - 18
 
-    # ── Helper: page footer ─────────────────────────────────────────---
+    # ── Helper: page footer ────────────────────────────────────────────
     def _draw_footer(page, total_pages):
         p.setStrokeColor(TZ_GREEN_CLR)
         p.setLineWidth(0.5)
-        p.line(LM, 32, W - LM, 32)
+        p.line(LM, 36, W - LM, 36)
         p.setFont("Helvetica", 7)
         p.setFillColor(TZ_DARK_GREY_CLR)
         ts = datetime.now().strftime('%d/%m/%Y at %H:%M')
-        footer_text = {
-            'en': f"Page {page} of {total_pages} | Generated: {ts} | Academic Excellence Report",
-            'sw': f"Ukurasa {page} kati ya {total_pages} | Imeandaliwa: {ts} | Ripoti ya Taaluma",
-        }
-        p.drawCentredString(W / 2, 22, footer_text.get(lang, footer_text['en']))
+        # Left: school name
+        p.drawString(LM, 24, school_disp)
+        # Centre: page
+        footer_page = f"Page {page} of {total_pages}"
+        p.drawCentredString(W / 2, 24, footer_page)
+        # Right: timestamp
+        p.drawRightString(W - LM, 24, f"Generated: {ts}")
 
     # ═══════════════════════════════════════════════════════════════════
     #  PAGE 1 — MUHTASARI / SUMMARY
     # ═══════════════════════════════════════════════════════════════════
 
-    # Page border
     _draw_page_border()
 
-    # Header
     y = H - 50
     _draw_header(y)
-    y -= 110
+    y -= 118
 
-    # School title line
+    # Exam title
     p.setFont("Helvetica-Bold", 13)
     p.setFillColor(TZ_GREEN_CLR)
     title_text = f"{school_disp} — {etype_disp} {exam.year} — FORM {exam.form}" if lang == 'en' \
         else f"{school_disp} — {report_label}"
     p.drawCentredString(W / 2, y, title_text)
-    y -= 20
+    y -= 16
     p.setFont("Helvetica", 9)
     p.setFillColor(TZ_DARK_GREY_CLR)
     p.drawCentredString(W / 2, y, exam.name)
-    y -= 28
+    y -= 24
 
     # ── Division breakdown table ──────────────────────────────────────
     y = _section_heading(y, 'division_summary')
-    y -= 6
+    y -= 4
 
     div_header = ["DARAJA", "IDADI", "ASILIMIA"] if lang == 'sw' \
         else ["DIVISION", "COUNT", "PERCENTAGE"]
@@ -333,21 +376,23 @@ def generate_results_pdf_response(exam):
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
         ('BOX', (0, 0), (-1, -1), 1.5, TZ_GREEN_CLR),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TZ_WHITE_CLR, TZ_LIGHT_GREY_CLR]),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
     ))
+    # Colour each division label row
     for i, d in enumerate(('I', 'II', 'III', 'IV', '0'), 1):
         bg, fg = DIV_PALETTE.get(d, ('FFFFFF', '000000'))
         dt.setStyle(_make_style(
             ('BACKGROUND', (0, i), (0, i), colors.HexColor(bg)),
             ('TEXTCOLOR',  (0, i), (0, i), colors.HexColor(fg)),
+            ('FONTNAME', (0, i), (0, i), 'Helvetica-Bold'),
         ))
 
     dt.wrapOn(p, 300, 200)
-    div_table_h = len(div_rows) * 22 + 8
+    div_table_h = len(div_rows) * 24 + 8
     dt.drawOn(p, LM + 10, y - div_table_h)
 
-    # ── Key stats table (right side of division table) ─────────────────
+    # ── Key stats table (right side) ─────────────────────────────────
     stats_width = 180
     stats_x = LM + 310
     if lang == 'sw':
@@ -365,7 +410,6 @@ def generate_results_pdf_response(exam):
             ["Mean of Averages", f"{avg_avg:.1f}"],
         ]
 
-    # Build stats table with branded styling
     stats_header = [[stats_title, ""]]
     stats_all = stats_header + stats_rows
     st_tbl = Table(stats_all, colWidths=[stats_width * 0.58, stats_width * 0.42])
@@ -388,15 +432,15 @@ def generate_results_pdf_response(exam):
         ('LEFTPADDING', (0, 0), (-1, -1), 10),
         ('RIGHTPADDING', (0, 0), (-1, -1), 5),
     ))
-    st_h = len(stats_all) * 22 + 8
+    st_h = len(stats_all) * 24 + 8
     st_tbl.wrapOn(p, stats_width, st_h)
     st_tbl.drawOn(p, stats_x, y - st_h)
-    y -= max(div_table_h, st_h) + 25
+    y -= max(div_table_h, st_h) + 20
 
     # ── Subject Statistics ─────────────────────────────────────────────
     if subj_stats and y > 200:
         y = _section_heading(y, 'subject_stats')
-        y -= 8
+        y -= 6
 
         if lang == 'sw':
             subj_header = ["SOMO", "WASTANI", "JUU", "CHINI", "KUFAULU"]
@@ -417,20 +461,20 @@ def generate_results_pdf_response(exam):
             ('FONTSIZE', (0, 0), (-1, -1), 8.5),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
-        ('BOX', (0, 0), (-1, -1), 1.5, TZ_GREEN_CLR),
+            ('BOX', (0, 0), (-1, -1), 1.5, TZ_GREEN_CLR),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TZ_WHITE_CLR, TZ_LIGHT_GREY_CLR]),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ))
-        st_h = len(subj_data) * 18 + 4
+        st_h = len(subj_data) * 20 + 4
         st.wrapOn(p, 350, st_h)
         st.drawOn(p, LM + 10, y - st_h)
-        y -= st_h + 20
+        y -= st_h + 18
 
     # ── Top 5 students ─────────────────────────────────────────────────
-    if all_results and y > 140:
+    if all_results and y > 150:
         y = _section_heading(y, 'top_students')
-        y -= 8
+        y -= 6
 
         top5 = all_results[:5]
         if lang == 'sw':
@@ -455,24 +499,30 @@ def generate_results_pdf_response(exam):
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('ALIGN', (1, 1), (1, -1), 'LEFT'),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CCCCCC")),
-        ('BOX', (0, 0), (-1, -1), 1.5, TZ_GREEN_CLR),
+            ('BOX', (0, 0), (-1, -1), 1.5, TZ_GREEN_CLR),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TZ_WHITE_CLR, TZ_LIGHT_GREY_CLR]),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
         ))
-        tt_h = len(top_data) * 20 + 4
+        # Colour top-3 position badges
+        tt.setStyle(_make_style(
+            ('BACKGROUND', (0, 1), (0, 1), TZ_GOLD_CLR),
+            ('TEXTCOLOR',  (0, 1), (0, 1), TZ_WHITE_CLR),
+            ('FONTNAME',   (0, 1), (0, 1), 'Helvetica-Bold'),
+        ))
+        tt_h = len(top_data) * 22 + 4
         tt.wrapOn(p, 420, tt_h)
         tt.drawOn(p, LM + 10, y - tt_h)
 
     # ── Grading key ───────────────────────────────────────────────────
-    y_footer = 50
+    y_footer = 55
     p.setStrokeColor(TZ_GOLD_CLR)
     p.setLineWidth(0.75)
-    p.line(LM, y_footer + 25, W - LM, y_footer + 25)
+    p.line(LM, y_footer + 20, W - LM, y_footer + 20)
     p.setFont("Helvetica-Bold", 8)
     p.setFillColor(TZ_GREEN_CLR)
     key_title = get_section_title(exam, 'grading_key')
-    p.drawString(LM, y_footer + 12, f"{key_title}:")
+    p.drawString(LM, y_footer + 8, f"{key_title}:")
     _, grade_ranges = _grade_thresholds(exam.form)
     grad_data = [[f"{g} ({rng})" for g, rng in grade_ranges]]
     grad_colors = [
@@ -493,28 +543,30 @@ def generate_results_pdf_response(exam):
         gs_cmds.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(bg)))
     gt.setStyle(_make_style(*gs_cmds))
     gt.wrapOn(p, CW, 18)
-    gt.drawOn(p, LM + 10, y_footer - 5)
+    gt.drawOn(p, LM + 10, y_footer - 8)
+
+    # ── Official disclaimer ───────────────────────────────────────────
+    p.setFont("Helvetica", 6.5)
+    p.setFillColor(TZ_DARK_GREY_CLR)
+    disclaimer = "This is an official results report generated from the School Results Management System." if lang == 'en' \
+        else "Hii ni ripoti rashi ya matokeo iliyotolewa kutoka kwenye Mfumo wa Usimamizi wa Matokeo wa Shule."
+    p.drawCentredString(W / 2, 10, disclaimer)
 
     p.showPage()
 
     # ═══════════════════════════════════════════════════════════════════
-    #  PAGE 2+ — MATOKEO KAMILI / FULL RESULTS (Landscape for many subjects)
+    #  PAGE 2+ — MATOKEO KAMILI / FULL RESULTS
     # ═══════════════════════════════════════════════════════════════════
-    # If there are 10+ subjects, use landscape to avoid clipping
     USE_LANDSCAPE = len(subjects) >= 9
     if USE_LANDSCAPE:
-        from reportlab.lib.pagesizes import landscape as _landscape
-        W, H = _landscape(A4)  # 842 x 595
-        # Recalculate content width for landscape
-        LM = 40  # slightly narrower margins in landscape
+        W, H = landscape(A4)  # 842 x 595
+        LM = 40
         CW = W - 2 * LM
 
-    # Compute column widths dynamically
-    # Reserve space for fixed columns
-    fixed_cols_width = 28 + 110 + 20 + 28 + 28 + 24 + 24  # POS + NAME + SEX + TOTAL + AVG + DIV + PTS
+    # Column widths
+    fixed_cols_width = 28 + 110 + 20 + 28 + 28 + 24 + 24
     avail_for_subjects = CW - fixed_cols_width
     col_subj = max(22, int(avail_for_subjects / max(len(subjects), 1)))
-    # Cap subject columns so they don't get too wide
     col_subj = min(col_subj, 45)
 
     col_pos   = 28
@@ -527,18 +579,13 @@ def generate_results_pdf_response(exam):
     col_widths = ([col_pos, col_name, col_sex] + [col_subj] * len(subjects)
                   + [col_total, col_avg, col_div, col_pts])
 
-    cols_sw  = ["POS", "JINA", "JINSIA"]
-    cols_en  = ["POS", "NAME", "SEX"]
-    lang_cols = cols_sw if lang == 'sw' else cols_en
-
-    # Shorten subject names to 8 chars max for header
+    lang_cols = ["POS", "JINA", "JINSIA"] if lang == 'sw' else ["POS", "NAME", "SEX"]
     headers = (lang_cols
                + [s.name.upper()[:8] for s in subjects]
                + (["JUMLA", "WASTANI", "DARAJA", "POINTI"] if lang == 'sw'
                   else ["TOTAL", "AVG", "DIV.", "PTS"]))
 
     tbl_w = sum(col_widths)
-
     row_h  = 14
     head_h = 32
     avail  = H - 260
@@ -551,16 +598,14 @@ def generate_results_pdf_response(exam):
         if pn > 1:
             p.showPage()
 
-        # Switch to landscape pagesize after first page
         if USE_LANDSCAPE:
-            p.setPageSize(_landscape(A4))
+            p.setPageSize(landscape(A4))
 
-        # Page border on every page
         _draw_page_border()
 
         y = H - 40
         _draw_header(y, header_w=CW if USE_LANDSCAPE else None)
-        y -= 110
+        y -= 118
 
         # Title
         p.setFont("Helvetica-Bold", 11)
@@ -568,13 +613,13 @@ def generate_results_pdf_response(exam):
         disp = f"{school_disp} — {etype_disp} {exam.year} — FORM {exam.form}" if lang == 'en' \
             else f"{school_disp} — {report_label}"
         p.drawCentredString(W / 2, y, disp)
-        y -= 16
+        y -= 14
         p.setFont("Helvetica", 8)
         p.setFillColor(TZ_DARK_GREY_CLR)
-        p.drawCentredString(W / 2, y, f"{exam.name}  |  {full_results_title} (PAGE {pn})")
-        y -= 18
+        p.drawCentredString(W / 2, y, f"{exam.name}  |  {full_results_title} (PAGE {pn} OF {len(pages)})")
+        y -= 16
 
-        # Build table
+        # Build data table
         data = [headers]
         fontsize = 6.5 if len(subjects) >= 12 else 7.0 if len(subjects) >= 9 else 7.5
         for r in group:
@@ -608,6 +653,7 @@ def generate_results_pdf_response(exam):
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]
 
+        # Alternating row backgrounds
         for i in range(1, len(data)):
             if i % 2 == 0:
                 style.append(('BACKGROUND', (0, i), (-1, i), TZ_LIGHT_GREY_CLR))
@@ -631,6 +677,7 @@ def generate_results_pdf_response(exam):
                 bg, fg = DIV_PALETTE[r.division]
                 style.append(('BACKGROUND', (dc, i), (dc, i), colors.HexColor(bg)))
                 style.append(('TEXTCOLOR', (dc, i), (dc, i), colors.HexColor(fg)))
+                style.append(('FONTNAME', (dc, i), (dc, i), 'Helvetica-Bold'))
 
         tbl.setStyle(_make_style(*style))
 
@@ -639,9 +686,9 @@ def generate_results_pdf_response(exam):
         tbl.wrapOn(p, tbl_w, th)
         tbl.drawOn(p, tx, y - th)
 
-        # Grade legend at bottom
-        ly = y - th - 14
-        if ly > 40:
+        # ── Grade legend at bottom ──
+        ly = y - th - 12
+        if ly > 60:
             _, grade_ranges = _grade_thresholds(exam.form)
             leg_data = [[f"{g} ({rng})" for g, rng in grade_ranges]]
             leg_w = min(CW - 20, 400)
@@ -663,6 +710,32 @@ def generate_results_pdf_response(exam):
             lt.wrapOn(p, leg_w, 14)
             lt.drawOn(p, LM + 10, ly)
 
+        # ── Signature / Official stamp area (last page only) ──
+        if pn == len(pages):
+            sig_y = ly - 30 if ly > 60 else ly - 10
+            if sig_y > 80:
+                p.setStrokeColor(TZ_DARK_GREY_CLR)
+                p.setLineWidth(0.5)
+                sig_w = 160
+
+                # Academic Officer signature
+                p.line(LM + 10, sig_y, LM + 10 + sig_w, sig_y)
+                p.setFont("Helvetica", 7)
+                p.setFillColor(TZ_DARK_GREY_CLR)
+                p.drawString(LM + 10, sig_y - 10,
+                             "Signature & Stamp — Academic Officer")
+
+                # Head of School signature
+                p.line(W - LM - 10 - sig_w, sig_y, W - LM - 10, sig_y)
+                p.drawString(W - LM - 10 - sig_w, sig_y - 10,
+                             "Signature & Stamp — Head of School")
+
+                # Date line
+                p.setFont("Helvetica", 7)
+                p.setFillColor(TZ_DARK_GREY_CLR)
+                date_label = "Date: ________________________"
+                p.drawString(LM + 10, sig_y - 24, date_label)
+
         _draw_footer(pn, len(pages))
 
     p.save()
@@ -670,5 +743,5 @@ def generate_results_pdf_response(exam):
 
     resp = HttpResponse(buf, content_type='application/pdf')
     safe_name = exam.name.replace(' ', '_')
-    resp['Content-Disposition'] = f'attachment; filename=\"{safe_name}_Academic_Report.pdf\"'
+    resp['Content-Disposition'] = f'attachment; filename="{safe_name}_Academic_Report.pdf"'
     return resp
