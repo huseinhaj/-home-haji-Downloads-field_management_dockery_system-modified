@@ -132,7 +132,7 @@
   <h1>✏️ {% if LANG == 'sw' %}Jaza Alama — Marks Entry{% else %}Marks Entry{% endif %}</h1>
   <div class="meta">
     {% if exam %}
-      {{ exam.name }} &nbsp;|&nbsp; Form {{ exam.form }} &nbsp;|&nbsp; {{ exam.year }}
+      {{ exam.name }} &nbsp;|&nbsp; Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} &nbsp;|&nbsp; {{ exam.year }}
       {% if subject %}&nbsp;|&nbsp; {{ subject.name }}{% endif %}
     {% else %}
       {% if LANG == 'sw' %}Chagua mtihani na somo ili kuanza kujaza alama{% else %}Pick an exam and subject to start entering marks{% endif %}
@@ -174,7 +174,7 @@
         <optgroup label="{{ type_label }}">
           {% for e in group_exams %}
           <option value="{{ e.id }}" {% if e.id|stringformat:"s" == preselect_exam_id %}selected{% endif %}>
-            {{ e.name }} — Form {{ e.form }} ({{ e.year }})
+            {{ e.name }} — Form {{ e.form }}{% if e.stream %} {{ e.stream }}{% endif %} ({{ e.year }})
           </option>
           {% endfor %}
         </optgroup>
@@ -307,7 +307,7 @@
             {% if LANG == 'sw' %}Bonyeza au dondosha faili hapa{% else %}Click or drag &amp; drop a file here{% endif %}
           </div>
           <div class="me-hint mt-1">
-            {% if LANG == 'sw' %}PDF, Excel au CSV — orodha ya wanafunzi wa Form {{ exam.form }}{% else %}PDF, Excel or CSV — {{ exam.form }} class list{% endif %}
+            {% if LANG == 'sw' %}PDF, Excel au CSV — orodha ya wanafunzi wa Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %}{% else %}PDF, Excel or CSV — Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} class list{% endif %}
           </div>
           <input type="file" id="meRosterInput" accept=".pdf,.xlsx,.xls,.csv">
         </div>
@@ -340,7 +340,7 @@
       <div class="panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
           <h3 class="mb-0">📝 {% if LANG == 'sw' %}Jaza Alama za {{ subject.name }}{% else %}Enter {{ subject.name }} Marks{% endif %}</h3>
-          <small class="text-secondary">{% if LANG == 'sw' %}Mtihani: {{ exam.name }} — Form {{ exam.form }} ({{ exam.year }}){% else %}Exam: {{ exam.name }} — Form {{ exam.form }} ({{ exam.year }}){% endif %}</small>
+          <small class="text-secondary">{% if LANG == 'sw' %}Mtihani: {{ exam.name }} — Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} ({{ exam.year }}){% else %}Exam: {{ exam.name }} — Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} ({{ exam.year }}){% endif %}</small>
         </div>
         <span class="badge-soft" id="meCountBadge" style="background:#1F7A3D;color:#fff;">0 {% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</span>
       </div>

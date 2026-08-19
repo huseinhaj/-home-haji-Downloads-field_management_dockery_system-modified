@@ -129,7 +129,7 @@
       <h1>{{ exam.name }}</h1>
       <div class="meta-row">
         {{ exam.get_exam_type_display }} &nbsp;|&nbsp;
-        Form {{ exam.form }} &nbsp;|&nbsp;
+        Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} &nbsp;|&nbsp;
         {% if LANG == 'sw' %}Mwaka{% else %}Year{% endif %} {{ exam.year }}
         {% if exam.school_name %}&nbsp;|&nbsp;{{ exam.school_name }}{% endif %}
       </div>

@@ -45,7 +45,7 @@
         <div class="d-flex justify-content-between align-items-start mb-2">
           <div>
             <div style="font-weight:800;color:#1F7A3D;font-size:1rem;">{{ exam.name }}</div>
-            <div class="text-secondary" style="font-size:0.8rem;">Form {{ exam.form }} &nbsp;|&nbsp; {{ exam.year }} &nbsp;|&nbsp; {{ exam.get_exam_type_display }}</div>
+            <div class="text-secondary" style="font-size:0.8rem;">Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} &nbsp;|&nbsp; {{ exam.year }} &nbsp;|&nbsp; {{ exam.get_exam_type_display }}</div>
           </div>
           <span class="badge-soft" style="font-size:0.7rem;white-space:nowrap;">
             {% if exam.submitted_count == exam.total_submissions and exam.total_submissions > 0 %}

@@ -129,7 +129,7 @@
                    placeholder="Mid-term 2026" required>
           </div>
           <div class="row g-3 mb-3">
-            <div class="col-sm-4">
+            <div class="col-sm-3">
               <label class="form-label-sm">{% if LANG == 'sw' %}Mwaka (Year){% else %}Year{% endif %}</label>
               <select name="exam_year" class="form-control-styled">
                 {% for yr in year_range %}
@@ -137,18 +137,30 @@
                 {% endfor %}
               </select>
             </div>
-            <div class="col-sm-4">
+            <div class="col-sm-3">
               <label class="form-label-sm">{% if LANG == 'sw' %}Darasa (Form){% else %}Form{% endif %}</label>
               <select name="exam_form" class="form-control-styled">
-                <option value="1">Form 1</option>
-                <option value="2">Form 2</option>
-                <option value="3">Form 3</option>
-                <option value="4" selected>Form 4</option>
-                <option value="5">Form 5</option>
-                <option value="6">Form 6</option>
+                <option value="1">Form I</option>
+                <option value="2">Form II</option>
+                <option value="3">Form III</option>
+                <option value="4" selected>Form IV</option>
+                <option value="5">Form V</option>
+                <option value="6">Form VI</option>
               </select>
             </div>
-            <div class="col-sm-4">
+            <div class="col-sm-3">
+              <label class="form-label-sm">{% if LANG == 'sw' %}Darasa (Stream){% else %}Stream{% endif %}</label>
+              <select name="exam_stream" class="form-control-styled">
+                <option value="">— {% if LANG == 'sw' %}Chagua{% else %}Select{% endif %} —</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+                <option value="E">E</option>
+                <option value="F">F</option>
+              </select>
+            </div>
+            <div class="col-sm-3">
               <label class="form-label-sm">{% if LANG == 'sw' %}Aina ya Mtihani{% else %}Exam Type{% endif %}</label>
               <select name="exam_type" class="form-control-styled">
                 {% for val, label in exam_type_choices %}

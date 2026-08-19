@@ -112,13 +112,12 @@
 
 <!-- Form navigation -->
 <div class="form-nav">
-  {% for fn in 1|rjust:1 %}{% endfor %}
-  <a href="{% url 'form_results' 1 %}" {% if form_num == 1 %}class="active"{% endif %}>Form 1</a>
-  <a href="{% url 'form_results' 2 %}" {% if form_num == 2 %}class="active"{% endif %}>Form 2</a>
-  <a href="{% url 'form_results' 3 %}" {% if form_num == 3 %}class="active"{% endif %}>Form 3</a>
-  <a href="{% url 'form_results' 4 %}" {% if form_num == 4 %}class="active"{% endif %}>Form 4</a>
-  <a href="{% url 'form_results' 5 %}" {% if form_num == 5 %}class="active"{% endif %}>Form 5</a>
-  <a href="{% url 'form_results' 6 %}" {% if form_num == 6 %}class="active"{% endif %}>Form 6</a>
+  <a href="{% url 'form_results' 1 %}" {% if form_num == 1 %}class="active"{% endif %}>Form I</a>
+  <a href="{% url 'form_results' 2 %}" {% if form_num == 2 %}class="active"{% endif %}>Form II</a>
+  <a href="{% url 'form_results' 3 %}" {% if form_num == 3 %}class="active"{% endif %}>Form III</a>
+  <a href="{% url 'form_results' 4 %}" {% if form_num == 4 %}class="active"{% endif %}>Form IV</a>
+  <a href="{% url 'form_results' 5 %}" {% if form_num == 5 %}class="active"{% endif %}>Form V</a>
+  <a href="{% url 'form_results' 6 %}" {% if form_num == 6 %}class="active"{% endif %}>Form VI</a>
 </div>
 
 {% if exams_ctx %}
@@ -129,6 +128,7 @@
         <div class="ename">{{ ed.exam.name }}</div>
         <div class="emeta">
           {{ ed.exam.get_exam_type_display }} &bull; {{ ed.exam.year }}
+          &bull; Form {{ ed.exam.form }}{% if ed.exam.stream %} {{ ed.exam.stream }}{% endif %}
           {% if ed.exam.school_name %}&bull; {{ ed.exam.school_name }}{% endif %}
           &bull; {% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}: {{ ed.approved_subs }}/{{ ed.total_subs }} {% if LANG == 'sw' %}yameidhinishwa{% else %}approved{% endif %}
         </div>

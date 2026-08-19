@@ -70,9 +70,26 @@ class Exam(models.Model):
         ('OTHER', 'Other'),
     ]
 
+    STREAM_CHOICES = [
+        ('A', 'Stream A'),
+        ('B', 'Stream B'),
+        ('C', 'Stream C'),
+        ('D', 'Stream D'),
+        ('E', 'Stream E'),
+        ('F', 'Stream F'),
+    ]
+    FORM_LABELS = {
+        1: 'Form I', 2: 'Form II', 3: 'Form III',
+        4: 'Form IV', 5: 'Form V', 6: 'Form VI',
+    }
+
     name = models.CharField(max_length=100)
     year = models.PositiveIntegerField()
     form = models.PositiveIntegerField()  # Form 1, 2, etc.
+    stream = models.CharField(
+        max_length=2, choices=STREAM_CHOICES, blank=True, default='',
+        help_text="Stream / Class division within the form (A, B, C, …).",
+    )
     exam_type = models.CharField(
         max_length=20,
         choices=EXAM_TYPE_CHOICES,
@@ -85,7 +102,10 @@ class Exam(models.Model):
     )
 
     def __str__(self):
-        return f"{self.get_exam_type_display()} - {self.name} ({self.year})"
+        label = self.FORM_LABELS.get(self.form, f'Form {self.form}')
+        if self.stream:
+            label += f' {self.stream}'
+        return f"{self.get_exam_type_display()} - {self.name} ({label}, {self.year})"
 
     def generate_processed_excel(self):
         """Generate Excel file for all processed results of this exam."""

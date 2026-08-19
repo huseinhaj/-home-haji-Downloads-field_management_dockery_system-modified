@@ -101,6 +101,7 @@ def upload_results(request):
             name = request.POST.get('exam_name', '').strip()
             year = request.POST.get('exam_year', '2026')
             form_level = request.POST.get('exam_form', '4')
+            stream = request.POST.get('exam_stream', '').strip()
             exam_type = request.POST.get('exam_type_new', 'TERMINAL')
             subjects_raw = request.POST.get('subjects', '[]')
             try:
@@ -110,7 +111,8 @@ def upload_results(request):
 
             if name:
                 exam, _ = Exam.objects.get_or_create(
-                    name=name, year=int(year), form=int(form_level), exam_type=exam_type, school=school,
+                    name=name, year=int(year), form=int(form_level), stream=stream,
+                    exam_type=exam_type, school=school,
                     defaults={'school_name': school.name if school else ''},
                 )
 
@@ -1167,12 +1169,19 @@ def finalize_exam(request, exam_id):
 
 @academic_required
 def academic_dashboard(request):
-    """Dashboard for academic officer: see all exams grouped by form, approve submissions."""
+    """Dashboard for academic officer: exams grouped by Form → Stream.
+
+    Shows Form I A, B, C, … then Form II A, B, C, … etc.  Clicking on a
+    form level in the sidebar shows all exams / submissions across streams.
+    """
     exams = Exam.objects.filter(school=request.user.school).prefetch_related(
         'subject_submissions__subject'
-    ).select_related('school').order_by('form', '-year', 'name')
+    ).select_related('school').order_by('form', 'stream', '-year', 'name')
 
-    forms_map = {}
+    # Nested: { form_num: { stream: [exam_ctx, …], … }, … }
+    forms_map = {}       # form_num → { stream_str: [exam_ctx] }
+    form_totals = {}     # form_num → { submitted, approved, total }
+
     for exam in exams:
         subs = list(exam.subject_submissions.all())
         total = len(subs)
@@ -1185,7 +1194,6 @@ def academic_dashboard(request):
         all_approved = total > 0 and approved == total
         ready_for_approval = all_submitted and not all_approved
 
-        # Split subjects by status for clear pending display
         pending_subs = [s for s in subs if s.status == SubjectSubmission.STATUS_PENDING]
         submitted_subs = [s for s in subs if s.status == SubjectSubmission.STATUS_SUBMITTED]
         approved_subs_list = [s for s in subs if s.status == SubjectSubmission.STATUS_APPROVED]
@@ -1193,9 +1201,13 @@ def academic_dashboard(request):
         pending_names = ', '.join(s.subject.name for s in pending_subs)
 
         form_key = exam.form
+        stream_key = exam.stream or ''
         if form_key not in forms_map:
-            forms_map[form_key] = []
-        forms_map[form_key].append({
+            forms_map[form_key] = {}
+        if stream_key not in forms_map[form_key]:
+            forms_map[form_key][stream_key] = []
+
+        exam_ctx = {
             'exam': exam,
             'submissions': subs,
             'pending_subs': pending_subs,
@@ -1211,9 +1223,31 @@ def academic_dashboard(request):
             'ready_for_approval': ready_for_approval,
             'progress_pct': round(submitted / total * 100) if total else 0,
             'approval_pct': round(approved / total * 100) if total else 0,
+        }
+        forms_map[form_key][stream_key].append(exam_ctx)
+
+        # Accumulate form-level totals
+        ft = form_totals.setdefault(form_key, {'submitted': 0, 'approved': 0, 'total': 0})
+        ft['submitted'] += submitted
+        ft['approved'] += approved
+        ft['total'] += total
+
+    # Build sorted structure for template: [(form_num, { stream: [exams] })]
+    FORM_LABELS = Exam.FORM_LABELS
+    forms_list = []
+    for form_num in sorted(forms_map.keys()):
+        streams = forms_map[form_num]
+        form_label = FORM_LABELS.get(form_num, f'Form {form_num}')
+        ft = form_totals.get(form_num, {'submitted': 0, 'approved': 0, 'total': 0})
+        forms_list.append({
+            'form_num': form_num,
+            'form_label': form_label,
+            'streams': streams,
+            'total_submitted': ft['submitted'],
+            'total_approved': ft['approved'],
+            'total_all': ft['total'],
         })
 
-    forms_list = sorted(forms_map.items())
     return render(request, 'results/academic_dashboard.html', {
         'forms_list': forms_list,
         'total_exams': exams.count(),
@@ -1594,6 +1628,7 @@ def create_exam_for_school(request):
         name = request.POST.get('exam_name', '').strip()
         year = int(request.POST.get('exam_year', timezone.now().year))
         form_level = int(request.POST.get('exam_form', 4))
+        stream = request.POST.get('exam_stream', '').strip()
         exam_type = request.POST.get('exam_type', 'TERMINAL')
 
         if not name:
@@ -1604,6 +1639,7 @@ def create_exam_for_school(request):
             name=name,
             year=year,
             form=form_level,
+            stream=stream,
             exam_type=exam_type,
             school=school,
             defaults={'school_name': school.name},

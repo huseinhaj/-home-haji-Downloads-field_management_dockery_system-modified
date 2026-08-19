@@ -67,7 +67,7 @@
   <div class="upload-hero">
     <h1>{{ subject.name }}</h1>
     <div class="meta">
-      {{ exam.get_exam_type_display }} &bull; {{ exam.name }} &bull; Form {{ exam.form }} &bull; {{ exam.year }}
+      {{ exam.get_exam_type_display }} &bull; {{ exam.name }} &bull; Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} &bull; {{ exam.year }}
     </div>
   </div>
 

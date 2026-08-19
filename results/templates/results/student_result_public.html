@@ -261,7 +261,7 @@
         <div class="exam-info">{{ location }}</div>
         {% endif %}
         <div class="exam-info">
-          {{ exam.get_exam_type_display }} — {{ exam.year }} &bull; Form {{ exam.form }}
+          {{ exam.get_exam_type_display }} — {{ exam.year }} &bull; Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %}
           &bull; {{ exam.name }}
         </div>
       </div>

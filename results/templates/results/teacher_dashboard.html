@@ -38,7 +38,7 @@
         <div>
           <div style="font-weight:700;color:var(--ink-900);">{{ ec.exam.name }}</div>
           <div class="exam-meta">
-            {{ ec.exam.get_exam_type_display }} &bull; {{ ec.exam.year }} &bull; Form {{ ec.exam.form }}
+            {{ ec.exam.get_exam_type_display }} &bull; {{ ec.exam.year }} &bull; Form {{ ec.exam.form }}{% if ec.exam.stream %} {{ ec.exam.stream }}{% endif %}
             {% if ec.exam.school_name %}&bull; {{ ec.exam.school_name }}{% endif %}
           </div>
         </div>
@@ -150,7 +150,7 @@
     {% for r in stored_rosters %}
     <div class="subject-tile" style="border-left:4px solid #24508a;">
       <div class="s-name" style="font-weight:800;">{{ r.subject.name }}</div>
-      <div class="s-meta" style="color:#555;">{{ r.exam.name }} — Form {{ r.exam.form }} ({{ r.exam.year }})</div>
+      <div class="s-meta" style="color:#555;">{{ r.exam.name }} — Form {{ r.exam.form }}{% if r.exam.stream %} {{ r.exam.stream }}{% endif %} ({{ r.exam.year }})</div>
       <div class="s-meta">{{ r.student_count }} {% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</div>
       <div class="s-meta" style="font-size:0.72rem;color:#999;">
         {% if LANG == 'sw' %}Imehifadhiwa{% else %}Saved{% endif %}: {{ r.created_at|date:"d M Y H:i" }}
