@@ -1,3 +1,7 @@
+import os
+from pathlib import Path
+
+from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse, JsonResponse
@@ -1842,4 +1846,58 @@ def personal_upload_summary(request, upload_id):
         'distribution': distribution,
         'pdf_url': reverse('personal_upload_pdf', args=[upload.id]),
         'back_url': reverse('personal_upload'),
+    })
+
+
+# ── Logo Upload ──────────────────────────────────────────────────────────────
+
+@academic_required
+def upload_logos(request):
+    """Upload school and district logos for the PDF report header."""
+    logos_dir = Path(settings.BASE_DIR) / 'results' / 'static' / 'results' / 'logos'
+    logos_dir.mkdir(parents=True, exist_ok=True)
+
+    school_logo_exists = (logos_dir / 'school_logo.png').exists()
+    district_logo_exists = (logos_dir / 'district_logo.png').exists()
+
+    if request.method == 'POST':
+        logo_type = request.POST.get('logo_type', '')
+        uploaded_file = request.FILES.get('logo_file')
+
+        if not uploaded_file:
+            messages.error(request, "Hakuna faili lililochaguliwa.")
+            return redirect('upload_logos')
+
+        # Validate file type
+        allowed_types = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml']
+        if uploaded_file.content_type not in allowed_types:
+            messages.error(request, "Aina ya faili haitambuliki. Tumia PNG, JPG, au SVG.")
+            return redirect('upload_logos')
+
+        # Validate file size (max 2MB)
+        if uploaded_file.size > 2 * 1024 * 1024:
+            messages.error(request, "Faili ni kubwa sana. Kiwango ni 2MB.")
+            return redirect('upload_logos')
+
+        # Save file
+        if logo_type == 'school':
+            filename = 'school_logo.png'
+        elif logo_type == 'district':
+            filename = 'district_logo.png'
+        else:
+            messages.error(request, "Aina ya logo haijulikani.")
+            return redirect('upload_logos')
+
+        filepath = logos_dir / filename
+        with open(filepath, 'wb') as f:
+            for chunk in uploaded_file.chunks():
+                f.write(chunk)
+
+        logo_name = "ya Shule" if logo_type == 'school' else "ya Halmashauri"
+        messages.success(request, f"Logo {logo_name} imehifadhiwa! Itaonekana kwenye PDF ya matokeo.")
+        return redirect('upload_logos')
+
+    return render(request, 'results/upload_logos.html', {
+        'school_logo_exists': school_logo_exists,
+        'district_logo_exists': district_logo_exists,
     })

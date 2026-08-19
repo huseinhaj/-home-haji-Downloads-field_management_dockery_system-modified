@@ -1,0 +1,171 @@
+{% extends 'results/base.html' %}
+{% block title %}Pakua Logos | School Results{% endblock %}
+
+{% block content %}
+<style>
+  .logo-section {
+    background: #fff;
+    border: 1.5px solid #dee2e6;
+    border-radius: 2px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .logo-section h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1F7A3D;
+    margin-bottom: 0.8rem;
+  }
+  .logo-box {
+    border: 2px dashed #D9A441;
+    background: #fffbf0;
+    border-radius: 2px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 1rem;
+  }
+  .logo-box:hover { background: #fff3d6; border-color: #1F7A3D; }
+  .logo-box input[type=file] { display: none; }
+  .logo-preview {
+    max-width: 150px;
+    max-height: 150px;
+    margin: 0.5rem auto;
+    border: 1px solid #dee2e6;
+    border-radius: 2px;
+  }
+  .current-logo {
+    display: inline-block;
+    margin: 0.5rem;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 2px;
+    text-align: center;
+  }
+  .current-logo img {
+    max-width: 100px;
+    max-height: 100px;
+    display: block;
+    margin: 0 auto 0.3rem;
+  }
+  .current-logo small { color: #888; font-size: 0.72rem; }
+</style>
+
+<div class="hero">
+  <div>
+    <h1 style="font-size:1.3rem;font-weight:800;">🖼️ {% if LANG == 'sw' %}Pakia Logo za Shule{% else %}Upload School Logos{% endif %}</h1>
+    <p style="font-size:0.85rem;color:#D9A441;">{% if LANG == 'sw' %}Pakia picha za logo kwa PDF ya matokeo{% else %}Upload logo images for the results PDF{% endif %}</p>
+  </div>
+</div>
+
+{% if messages %}
+{% for msg in messages %}
+<div style="padding:0.8rem 1rem;border-radius:2px;margin-bottom:1rem;font-size:0.85rem;font-weight:600;
+  {% if msg.tags == 'success' %}background:#e6f7ec;color:#1a7a3b;border:1px solid #a3d9b4;
+  {% elif msg.tags == 'error' %}background:#fdecea;color:#c0392b;border:1px solid #f1948a;
+  {% else %}background:#e8f4ff;color:#0056b3;border:1px solid #b3d4f5;{% endif %}">
+  {{ msg }}
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="row g-4">
+  <!-- School Logo -->
+  <div class="col-md-6">
+    <div class="logo-section">
+      <h3>🏫 {% if LANG == 'sw' %}Logo ya Shule{% else %}School Logo{% endif %}</h3>
+      <p style="font-size:0.8rem;color:#888;">
+        {% if LANG == 'sw' %}Pakia logo ya shule yako. Itaonekana kushoto kwenye kichwa cha PDF.
+        {% else %}Upload your school logo. It appears top-left on the PDF header.{% endif %}
+      </p>
+
+      {% if school_logo_exists %}
+      <div class="current-logo">
+        <img src="{% static 'results/logos/school_logo.png' %}?v={% now 'U' %}" alt="School Logo">
+        <small>{% if LANG == 'sw' %}Logo ya sasa{% else %}Current logo{% endif %}</small>
+      </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="logo_type" value="school">
+        <div class="logo-box" onclick="this.querySelector('input').click()">
+          <div style="font-size:2rem;">📁</div>
+          <div style="font-weight:700;color:#1F7A3D;">
+            {% if LANG == 'sw' %}Bonyeza ili kupakia logo{% else %}Click to upload logo{% endif %}
+          </div>
+          <div style="font-size:0.75rem;color:#888;">PNG, JPG — max 2MB</div>
+          <input type="file" name="logo_file" accept=".png,.jpg,.jpeg,.svg" required
+                 onchange="previewLogo(this, 'schoolPreview')">
+        </div>
+        <img id="schoolPreview" class="logo-preview" style="display:none;">
+        <div class="d-grid">
+          <button type="submit" class="btn" style="background:#1F7A3D;color:#fff;font-weight:700;border-radius:2px;">
+            💾 {% if LANG == 'sw' %}Hifadhi Logo ya Shule{% else %}Save School Logo{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- District Logo -->
+  <div class="col-md-6">
+    <div class="logo-section">
+      <h3>🏛️ {% if LANG == 'sw' %}Logo ya Halmashauri{% else %}District Council Logo{% endif %}</h3>
+      <p style="font-size:0.8rem;color:#888;">
+        {% if LANG == 'sw' %}Pakia logo ya halmashauri ya wilaya. Itaonekana kulia kwenye kichwa cha PDF.
+        {% else %}Upload the district council logo. It appears top-right on the PDF header.{% endif %}
+      </p>
+
+      {% if district_logo_exists %}
+      <div class="current-logo">
+        <img src="{% static 'results/logos/district_logo.png' %}?v={% now 'U' %}" alt="District Logo">
+        <small>{% if LANG == 'sw' %}Logo ya sasa{% else %}Current logo{% endif %}</small>
+      </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="logo_type" value="district">
+        <div class="logo-box" onclick="this.querySelector('input').click()">
+          <div style="font-size:2rem;">📁</div>
+          <div style="font-weight:700;color:#1F7A3D;">
+            {% if LANG == 'sw' %}Bonyeza ili kupakia logo{% else %}Click to upload logo{% endif %}
+          </div>
+          <div style="font-size:0.75rem;color:#888;">PNG, JPG — max 2MB</div>
+          <input type="file" name="logo_file" accept=".png,.jpg,.jpeg,.svg" required
+                 onchange="previewLogo(this, 'districtPreview')">
+        </div>
+        <img id="districtPreview" class="logo-preview" style="display:none;">
+        <div class="d-grid">
+          <button type="submit" class="btn" style="background:#1F7A3D;color:#fff;font-weight:700;border-radius:2px;">
+            💾 {% if LANG == 'sw' %}Hifadhi Logo ya Halmashauri{% else %}Save District Logo{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center;margin-top:1.5rem;">
+  <a href="{% url 'academic_dashboard' %}" style="color:#1F7A3D;font-weight:600;font-size:0.85rem;">
+    &larr; {% if LANG == 'sw' %}Rudi Dashboard{% else %}Back to Dashboard{% endif %}
+  </a>
+</div>
+
+<script>
+function previewLogo(input, previewId) {
+  const preview = document.getElementById(previewId);
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+</script>
+{% endblock %}

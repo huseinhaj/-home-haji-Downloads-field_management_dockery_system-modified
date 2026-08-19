@@ -17,6 +17,7 @@ from .registration_views import (
 from .views import (
     home,
     download_roster_template,
+    upload_logos,
     upload_results,
     generate_results_pdf,
     export_results_excel,
@@ -103,6 +104,8 @@ urlpatterns = [
     path('academic/', academic_dashboard, name='academic_dashboard'),
     path('form/<int:form_num>/results/', form_results, name='form_results'),
     path('form/<int:form_num>/excel/', form_results_excel, name='form_results_excel'),
+    # Logo upload for PDF header
+    path('logos/', upload_logos, name='upload_logos'),
     # My school (each academic officer is scoped to exactly one school)
     path('school/', school_setup, name='school_setup'),
     path('school/masomo/', school_subjects, name='school_subjects'),
