@@ -5869,7 +5869,7 @@ def ajax_ai_diagnostic(request):
             from groq import Groq
             client_test = Groq(api_key=groq_key)
             resp = client_test.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model="openai/gpt-oss-20b",
                 messages=[{"role": "user", "content": "Say OK"}],
                 max_tokens=5,
             )

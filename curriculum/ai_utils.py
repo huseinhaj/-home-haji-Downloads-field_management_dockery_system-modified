@@ -25,8 +25,8 @@ FALLBACK_MODELS_OPENROUTER = [
 ]
 
 FALLBACK_MODELS_GROQ = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
 ]
 
 logger = logging.getLogger(__name__)
