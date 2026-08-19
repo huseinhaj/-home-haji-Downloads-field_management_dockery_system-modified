@@ -28,8 +28,8 @@ FALLBACK_MODELS_OPENROUTER = [
 ]
 
 FALLBACK_MODELS_GROQ = [
-    "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
 ]
 
 
@@ -152,8 +152,8 @@ class _UnifiedModels:
                     err_str = str(e).lower()
                     logger.warning(f"[AI] Groq model {attempt_model} error: {type(e).__name__}: {str(e)[:150]}")
                     if '413' in err_str or 'request too large' in err_str:
-                        logger.error(f"[AI] Groq request too large for {attempt_model}, not retrying further Groq models")
-                        raise last_error
+                        logger.warning(f"[AI] Groq {attempt_model} too large, trying next Groq model")
+                        continue
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
                         'overloaded', 'capacity'
@@ -240,7 +240,7 @@ class _UnifiedModels:
                     err_str = str(e).lower()
                     logger.warning(f"[AI] Groq stream {attempt_model}: {type(e).__name__}: {str(e)[:150]}")
                     if '413' in err_str or 'request too large' in err_str:
-                        raise
+                        continue
                     if any(k in err_str for k in (
                         'rate', '429', 'quota', 'limit', 'model', 'unavailable',
                         'overloaded', 'capacity'
