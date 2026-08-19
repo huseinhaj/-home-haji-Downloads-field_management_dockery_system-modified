@@ -217,14 +217,21 @@
   </div>
 </div>
 
-{% endblock %}
-
 <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+{% endblock %}
 
 {% block scripts %}
 <script>
 (() => {
-  const CSRF = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+  function getCSRF() {
+    const el = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (el && el.value) return el.value;
+    // Fallback: read from cookie
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+  }
+  const CSRF = getCSRF();
 
   // ── Elements ──
   const setupPhase = document.getElementById('setupPhase');
