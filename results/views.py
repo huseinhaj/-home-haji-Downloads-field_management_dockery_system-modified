@@ -1854,11 +1854,10 @@ def personal_upload_summary(request, upload_id):
 @academic_required
 def upload_logos(request):
     """Upload school and district logos for the PDF report header."""
-    logos_dir = Path(settings.MEDIA_ROOT) / 'logos'
-    logos_dir.mkdir(parents=True, exist_ok=True)
-
-    school_logo_exists = (logos_dir / 'school_logo.png').exists() or (logos_dir / 'school_logo.jpg').exists()
-    district_logo_exists = (logos_dir / 'district_logo.png').exists() or (logos_dir / 'district_logo.jpg').exists()
+    school = request.user.school
+    if not school:
+        messages.error(request, "Hakuna shule iliyowekwa. Weka shule kwanza.")
+        return redirect('home')
 
     if request.method == 'POST':
         logo_type = request.POST.get('logo_type', '')
@@ -1879,39 +1878,25 @@ def upload_logos(request):
             messages.error(request, "Faili ni kubwa sana. Kiwango ni 2MB.")
             return redirect('upload_logos')
 
-        # Save file
-        # Determine filename from uploaded file extension
-        ext = Path(uploaded_file.name).suffix.lower()
-        if ext not in ('.png', '.jpg', '.jpeg', '.svg'):
-            ext = '.png'
+        # Save to School model (persists in database)
         if logo_type == 'school':
-            filename = f'school_logo{ext}'
-            # Remove old versions
-            for old in logos_dir.glob('school_logo.*'):
-                if old.name != filename:
-                    old.unlink(missing_ok=True)
+            school.school_logo = uploaded_file
+            school.save(update_fields=['school_logo'])
+            logo_name = "ya Shule"
         elif logo_type == 'district':
-            filename = f'district_logo{ext}'
-            for old in logos_dir.glob('district_logo.*'):
-                if old.name != filename:
-                    old.unlink(missing_ok=True)
+            school.district_logo = uploaded_file
+            school.save(update_fields=['district_logo'])
+            logo_name = "ya Halmashauri"
         else:
             messages.error(request, "Aina ya logo haijulikani.")
             return redirect('upload_logos')
 
-        filepath = logos_dir / filename
-        with open(filepath, 'wb') as f:
-            for chunk in uploaded_file.chunks():
-                f.write(chunk)
-        # Debug: confirm file saved
-        import logging
-        logging.getLogger(__name__).info(f'Logo saved: {filepath} ({filepath.stat().st_size} bytes)')
-
-        logo_name = "ya Shule" if logo_type == 'school' else "ya Halmashauri"
         messages.success(request, f"Logo {logo_name} imehifadhiwa! Itaonekana kwenye PDF ya matokeo.")
         return redirect('upload_logos')
 
     return render(request, 'results/upload_logos.html', {
-        'school_logo_exists': school_logo_exists,
-        'district_logo_exists': district_logo_exists,
+        'school_logo_exists': bool(school.school_logo) if school else False,
+        'district_logo_exists': bool(school.district_logo) if school else False,
+        'school_logo_url': school.school_logo.url if school and school.school_logo else '',
+        'district_logo_url': school.district_logo.url if school and school.district_logo else '',
     })

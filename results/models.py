@@ -12,6 +12,10 @@ class School(models.Model):
     name = models.CharField(max_length=200)
     region = models.CharField(max_length=100)
     district = models.CharField(max_length=100)
+    school_logo = models.ImageField(upload_to='school_logos/', blank=True, null=True,
+        help_text="Logo ya shule — inaonekana kushoto kwenye PDF header")
+    district_logo = models.ImageField(upload_to='district_logos/', blank=True, null=True,
+        help_text="Logo ya halmashauri — inaonekana kulia kwenye PDF header")
     source_school_id = models.PositiveIntegerField(
         null=True, blank=True, unique=True,
         help_text="PK of the matching field_app.School record (nationwide master list). "

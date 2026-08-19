@@ -152,10 +152,28 @@ class NECTADocTemplate(SimpleDocTemplate):
         self._exam = exam
         self._lang = lang
         self._school_disp = school_disp
-        self._school_logo = _load_logo('school_logo.png')
-        self._district_logo = _load_logo('district_logo.png')
         self._page_count = 0
+        # Load logos from School model (ImageField) or fallback to filesystem
+        self._school_logo = self._district_logo = None
+        if exam and exam.school:
+            self._school_logo = self._load_image_field(exam.school.school_logo)
+            self._district_logo = self._load_image_field(exam.school.district_logo)
+        if not self._school_logo:
+            self._school_logo = _load_logo('school_logo.png')
+        if not self._district_logo:
+            self._district_logo = _load_logo('district_logo.png')
         super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def _load_image_field(image_field):
+        """Load a Django ImageField into a ReportLab ImageReader."""
+        if not image_field:
+            return None
+        try:
+            image_field.open('rb')
+            return ImageReader(image_field)
+        except Exception:
+            return None
 
     def afterPage(self):
         """Called after each page is drawn."""

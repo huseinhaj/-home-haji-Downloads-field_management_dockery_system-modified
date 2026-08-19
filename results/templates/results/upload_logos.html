@@ -84,7 +84,7 @@
 
       {% if school_logo_exists %}
       <div class="current-logo">
-        <img src="{{ MEDIA_URL }}logos/school_logo.png?v={% now 'U' %}" alt="School Logo">
+        <img src="{{ school_logo_url }}" alt="School Logo">
         <small>{% if LANG == 'sw' %}Logo ya sasa{% else %}Current logo{% endif %}</small>
       </div>
       {% endif %}
@@ -122,7 +122,7 @@
 
       {% if district_logo_exists %}
       <div class="current-logo">
-        <img src="{{ MEDIA_URL }}logos/district_logo.png?v={% now 'U' %}" alt="District Logo">
+        <img src="{{ district_logo_url }}" alt="District Logo">
         <small>{% if LANG == 'sw' %}Logo ya sasa{% else %}Current logo{% endif %}</small>
       </div>
       {% endif %}
