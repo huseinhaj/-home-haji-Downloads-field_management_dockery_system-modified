@@ -112,7 +112,7 @@ def _load_logo(filename):
         Path(settings.BASE_DIR) / 'results' / 'static' / 'results' / 'logos' / filename,
     ]
     if hasattr(settings, 'STATICFILES_DIRS') and settings.STATICFILES_DIRS:
-        for d in settings.STATICSFILES_DIRS:
+        for d in settings.STATICFILES_DIRS:
             candidates.insert(0, Path(d) / 'results' / 'logos' / filename)
     for path in candidates:
         if path and path.exists():
