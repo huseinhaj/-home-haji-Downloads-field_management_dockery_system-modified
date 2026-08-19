@@ -270,7 +270,7 @@ def generate_results_pdf_response(exam):
     ))
 
     w = Table([[dt,'',st]], colWidths=[4*cm,0.5*cm,5*cm])
-    w.setStyle(_ts([('VALIGN',(0,0),(-1,-1),'TOP')]))
+    w.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP')]))
     story.append(w)
     story.append(Spacer(1, 0.3*cm))
 
@@ -410,7 +410,7 @@ def generate_results_pdf_response(exam):
         ["", "", ""],
         ["Date: ________________________", "", ""],
     ], colWidths=[6*cm,2*cm,6*cm])
-    sig.setStyle(_ts([
+    sig.setStyle(TableStyle([
         ('FONTNAME',(0,0),(-1,-1),'Helvetica'),('FONTSIZE',(0,0),(-1,-1),7),
         ('TEXTCOLOR',(0,0),(-1,-1),DRK),
         ('ALIGN',(0,0),(0,-1),'LEFT'),('ALIGN',(2,0),(2,-1),'RIGHT'),
