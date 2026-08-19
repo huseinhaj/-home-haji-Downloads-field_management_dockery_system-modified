@@ -9,9 +9,63 @@ import threading
 from io import BytesIO
 from datetime import datetime, timedelta
 
+from functools import wraps
+
 from django.contrib import messages
+from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
+from django.http import HttpResponseRedirect
+
+
+def _is_curriculum_user(user):
+    """Return True if the user is a field_app.CustomUser (curriculum user).
+    Rejects Results TeacherAccount instances that share the same session."""
+    from field_app.models import CustomUser
+    return isinstance(user, CustomUser)
+
+
+def curriculum_login_required(view_func=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url=None):
+    """Like Django's @login_required, but ONLY authenticates CustomUser instances.
+
+    When a Results TeacherAccount is logged in via the same session, Django's
+    default @login_required sees ``request.user.is_authenticated == True``
+    (because TeacherAccount extends AbstractBaseUser).  This confuses
+    curriculum views that expect a ``field_app.CustomUser`` linked to a
+    ``StudentTeacher`` record.
+
+    This decorator wraps Django's ``login_required`` AND rejects any user
+    that is NOT a ``CustomUser`` — treating them as anonymous so the
+    curriculum login/registration flow works correctly.
+    """
+    from field_app.models import CustomUser
+
+    actual_login_url = login_url or 'curriculum:landing'
+
+    def decorator(view_func):
+        @wraps(view_func)
+        @login_required(login_url=actual_login_url, redirect_field_name=redirect_field_name)
+        def _wrapped(request, *args, **kwargs):
+            user = request.user
+            # Allow only CustomUser (field_app) — reject TeacherAccount (results)
+            if not isinstance(user, CustomUser):
+                # Treat as not logged in for curriculum purposes
+                from django.contrib.auth import logout as django_logout
+                # Save TLM session before logout (it's curriculum-specific)
+                tlm_id = request.session.get('tlm_teacher_id')
+                backend = request.session.get('_auth_user_backend', '')
+                if 'results' in str(backend).lower():
+                    # Only clear the Django auth keys, keep curriculum session
+                    for k in ('_auth_user_id', '_auth_user_backend', '_auth_user_hash'):
+                        request.session.pop(k, None)
+                # If no TLM teacher either, redirect to curriculum landing
+                if not tlm_id:
+                    return HttpResponseRedirect(actual_login_url)
+            return view_func(request, *args, **kwargs)
+        return _wrapped
+    if view_func:
+        return decorator(view_func)
+    return decorator
 from django.db.utils import IntegrityError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -790,7 +844,7 @@ def ajax_lookup_teacher(request):
 # DASHBOARD (login required)
 # =============================================================================
 
-@login_required
+@curriculum_login_required
 def dashboard(request):
     """Standalone curriculum dashboard — overview of schemes, lesson plans & logbooks."""
     try:
@@ -1012,7 +1066,7 @@ def _is_kiswahili_mode(language_param, subject, school_level):
 # HELPER: Expand compact AI rows into a bigger document
 # =============================================================================
 
-def _expand_scheme_rows(rows, target_multiplier=3):
+def _expand_scheme_rows(rows, target_multiplier=3, advanced=False):
     """
     Take compact AI rows and expand them by splitting multi-week rows
     into individual week rows. This creates a bigger document without
@@ -1021,6 +1075,9 @@ def _expand_scheme_rows(rows, target_multiplier=3):
     Example: "Week: 1st-4th" becomes 4 rows: "1st", "2nd", "3rd", "4th"
     Each expanded row keeps all other fields from the original.
     Handles both English and Swahili (Azimio la Kazi) column keys.
+    
+    advanced=True → A-Level mwaka huanza Julai (mwezi 7) hadi Juni mwakani (6),
+    hivyo month sorting inaanza JULY si JANUARY.
     """
     import re as _re
     
@@ -1078,11 +1135,19 @@ def _expand_scheme_rows(rows, target_multiplier=3):
         expanded.extend(extra_rows)
     
     # Sort by month order for proper presentation
-    month_order = {
-        'JANUARY': 1, 'FEBRUARY': 2, 'MARCH': 3, 'APRIL': 4,
-        'MAY': 5, 'JUNE': 6, 'JULY': 7, 'AUGUST': 8,
-        'SEPTEMBER': 9, 'OCTOBER': 10, 'NOVEMBER': 11, 'DECEMBER': 12
-    }
+    # Advanced (A-Level): mwaka wa masomo Julai → Juni mwakani, hivyo JULY=1
+    if advanced:
+        month_order = {
+            'JULY': 1, 'AUGUST': 2, 'SEPTEMBER': 3, 'OCTOBER': 4,
+            'NOVEMBER': 5, 'DECEMBER': 6, 'JANUARY': 7, 'FEBRUARY': 8,
+            'MARCH': 9, 'APRIL': 10, 'MAY': 11, 'JUNE': 12
+        }
+    else:
+        month_order = {
+            'JANUARY': 1, 'FEBRUARY': 2, 'MARCH': 3, 'APRIL': 4,
+            'MAY': 5, 'JUNE': 6, 'JULY': 7, 'AUGUST': 8,
+            'SEPTEMBER': 9, 'OCTOBER': 10, 'NOVEMBER': 11, 'DECEMBER': 12
+        }
     expanded.sort(key=lambda r: (
         month_order.get((r.get('Month') or '').strip().upper(), 99),
         r.get('Week', '')
@@ -1392,17 +1457,14 @@ def generate_scheme_view(request):
         lvl.id: _subjects_for_level(lvl.name)
         for lvl in education_levels
     }
-
     student = None
     school = None
-    if request.user.is_authenticated:
+    if request.user.is_authenticated and _is_curriculum_user(request.user):
         try:
             student = StudentTeacher.objects.select_related('selected_school').get(user=request.user)
             school = student.selected_school
             if not school:
-                app = StudentApplication.objects.filter(
-                    student=student, status='approved'
-                ).select_related('school').first()
+                app = StudentApplication.objects.filter(student=student, status='approved').select_related('school').first()
                 if app:
                     school = app.school
         except StudentTeacher.DoesNotExist:
@@ -1492,7 +1554,7 @@ def ajax_generate_scheme(request):
         # ── school_id and user_id for saving ──
         school_id = None
         user_id = None
-        if request.user.is_authenticated:
+        if request.user.is_authenticated and _is_curriculum_user(request.user):
             user_id = request.user.id
             try:
                 student = StudentTeacher.objects.get(user=request.user)
@@ -1505,14 +1567,25 @@ def ajax_generate_scheme(request):
                 school_id = _lang_tlm.school.id
 
         # ── Compute month groups ──
+        # Primary/Secondary/VETA: mwaka huanza Januari hadi Novemba (miezi 1-11).
+        # Advanced (A-Level): mwaka wa masomo huanza Julai hadi Juni mwakani (7-6).
         import calendar as _cal
-        term_groups_map = {
-            'Full Year': [['JANUARY', 'FEBRUARY', 'MARCH'], ['APRIL', 'MAY', 'JUNE'], ['JULY', 'AUGUST', 'SEPTEMBER'], ['OCTOBER']],
-            'I': [['JANUARY', 'FEBRUARY', 'MARCH'], ['APRIL', 'MAY', 'JUNE']],
-            'II': [['JULY', 'AUGUST', 'SEPTEMBER'], ['OCTOBER']],
-            'III': [['AUGUST', 'SEPTEMBER'], ['OCTOBER', 'NOVEMBER']],
-        }
-        month_groups = term_groups_map.get(term, [['JANUARY', 'FEBRUARY', 'MARCH']])
+        _is_advanced = 'advanced' in str(education_level or '').lower()
+        if _is_advanced:
+            term_groups_map = {
+                'Full Year': [['JULY', 'AUGUST', 'SEPTEMBER'], ['OCTOBER', 'NOVEMBER', 'DECEMBER'], ['JANUARY', 'FEBRUARY', 'MARCH'], ['APRIL', 'MAY', 'JUNE']],
+                'I': [['JULY', 'AUGUST', 'SEPTEMBER'], ['OCTOBER', 'NOVEMBER', 'DECEMBER']],
+                'II': [['JANUARY', 'FEBRUARY', 'MARCH'], ['APRIL', 'MAY', 'JUNE']],
+                'III': [['FEBRUARY', 'MARCH'], ['APRIL', 'MAY', 'JUNE']],
+            }
+        else:
+            term_groups_map = {
+                'Full Year': [['JANUARY', 'FEBRUARY', 'MARCH'], ['APRIL', 'MAY', 'JUNE'], ['JULY', 'AUGUST', 'SEPTEMBER'], ['OCTOBER', 'NOVEMBER']],
+                'I': [['JANUARY', 'FEBRUARY', 'MARCH'], ['APRIL', 'MAY', 'JUNE']],
+                'II': [['JULY', 'AUGUST', 'SEPTEMBER'], ['OCTOBER', 'NOVEMBER']],
+                'III': [['AUGUST', 'SEPTEMBER'], ['OCTOBER', 'NOVEMBER']],
+            }
+        month_groups = term_groups_map.get(term, term_groups_map.get('Full Year'))
         total_groups = len(month_groups)
 
         # ── Breaks by month ──
@@ -1610,7 +1683,7 @@ RULES:
 
         # ── Expand rows: AI generates compact, Python expands for big document ──
         expanded_count = len(all_scheme_data)
-        all_scheme_data = _expand_scheme_rows(all_scheme_data)
+        all_scheme_data = _expand_scheme_rows(all_scheme_data, advanced=_is_advanced)
         logger.info(f"[Scheme] Expanded from {expanded_count} to {len(all_scheme_data)} rows")
 
         # ── If Kiswahili mode, convert keys back to Swahili ──
@@ -1825,6 +1898,28 @@ def _pdf_visual_profile(teacher, subject='', class_name=''):
     }
 
 
+def _is_veta_level(teacher, education_level='', fmt=''):
+    """Je mwalimu/darasa hili ni VETA (Technical)?
+
+    Mistari ya pambizo (margin frame) inabaki BLACK kwa VETA pekee;
+    level zingine (Primary/Ordinary/Advanced) zinapata rangi za theme.
+    Inatambua VETA kutoka: education_level (jina au choice), format ya
+    E-Logbook ('notable'), au somo la mwalimu lenyewe (level='technical').
+    """
+    lvl = str(education_level or '').lower()
+    if any(k in lvl for k in ('veta', 'technical', 'ufundi')):
+        return True
+    if fmt and str(fmt).lower() == 'notable':
+        return True
+    if teacher is not None:
+        try:
+            if teacher.subject_id and getattr(teacher.subject, 'level', '') == 'technical':
+                return True
+        except Exception:
+            pass
+    return False
+
+
 def download_scheme_pdf(request):
     """Generate PDF ya Scheme of Work."""
     if request.method != 'POST':
@@ -1832,23 +1927,37 @@ def download_scheme_pdf(request):
 
     data = json.loads(request.body)
     scheme_data = data.get('scheme_data') or []
-    subject = data.get('subject', '')
-    class_name = data.get('class_name', '')
-    term = data.get('term', '')
-    year = data.get('year', '')
-    syllabus = data.get('syllabus', '')
-    teacher_name = data.get('teacher_name', '')
-    school_name = data.get('school_name', '')
-    total_weeks = data.get('total_weeks', '')
+    subject = str(data.get('subject', '') or '')
+    class_name = str(data.get('class_name', '') or '')
+    term = str(data.get('term', '') or '')
+    year = str(data.get('year', '') or '')
+    syllabus = str(data.get('syllabus', '') or '')
+    teacher_name = str(data.get('teacher_name', '') or '')
+    school_name = str(data.get('school_name', '') or '')
+    total_weeks = str(data.get('total_weeks', '') or '')
+    education_level = str(data.get('education_level', '') or '')
     # ── Muundo / Format: 'table' (jedwali) au 'notable' (bila jedwali — VETA) ──
     fmt = str(data.get('format', 'table')).lower()
     if fmt not in ('table', 'notable'):
         fmt = 'table'
 
+    # ── Sanitize scheme_data: lazima iwe list ya dicts zenye keys ──
+    if not isinstance(scheme_data, list):
+        scheme_data = []
+    scheme_data = [r for r in scheme_data if isinstance(r, dict) and r]
+
     # Normalize Swahili keys to English for PDF processing
     was_swahili = _has_swahili_keys(scheme_data)
     if was_swahili:
         scheme_data = _normalize_scheme_keys(scheme_data)
+
+    # Coerce every value to string (Paragraph inaanguka kwa None)
+    for _row in scheme_data:
+        for _k in list(_row.keys()):
+            if _row[_k] is None:
+                _row[_k] = ''
+            elif not isinstance(_row[_k], str):
+                _row[_k] = str(_row[_k])
 
     # ── Get teacher theme for PDF ──
     teacher = get_tlm_teacher(request)
@@ -1987,6 +2096,8 @@ def download_scheme_pdf(request):
     _HEAD_FONT = _prof['font_head']
     _header_style = _prof['header_style']
     _cover_style = _prof['cover_style']
+    # VETA → mistari ya pambizo black; level zingine → rangi za theme (kama mwanzo)
+    _is_veta = _is_veta_level(teacher, education_level, fmt)
 
     # ── Create Tanzania flag watermark ──
     _tz_watermark = None
@@ -2005,15 +2116,17 @@ def download_scheme_pdf(request):
         except Exception:
             pass
 
-    # ── Cover page: professional border drawing (mistari ya pambizo = black) ──
+    # ── Cover page: professional border drawing ──
     def _scheme_cover(can, doc_obj):
-        """Draw border frame with flag watermark. Frame inabaki black (VETA fix),
-        ila sura inabadilika kwa mwalimu: 0=double+corners, 1=double plain, 2=single."""
+        """Draw border frame with flag watermark. VETA → mistari black; level
+        zingine → rangi za theme (kama mwanzo). Sura: 0=double+corners,
+        1=double plain, 2=single."""
         can.saveState()
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
-        # ── Mistari ya pambizo (margin frame) — full black, si gold/orange ──
-        _frame = colors.black
+        # ── Mistari ya pambizo (margin frame) — VETA: black; zingine: theme colors ──
+        _frame = colors.black if _is_veta else GOLD
+        _frame_inner = colors.black if _is_veta else NAVY
         if _cover_style == 2:
             # Single border (rahisi)
             can.setStrokeColor(_frame)
@@ -2024,14 +2137,14 @@ def download_scheme_pdf(request):
             can.setStrokeColor(_frame)
             can.setLineWidth(3.5)
             can.rect(12, 12, pw - 24, ph - 24)
-            can.setStrokeColor(_frame)
+            can.setStrokeColor(_frame_inner)
             can.setLineWidth(1.5)
             can.rect(18, 18, pw - 36, ph - 36)
-            # Top black accent bar
+            # Top accent bar
             can.setStrokeColor(_frame)
             can.setLineWidth(4)
             can.line(18, ph - 55, pw - 18, ph - 55)
-            # Bottom black accent bar
+            # Bottom accent bar
             can.line(18, 55, pw - 18, 55)
             if _cover_style == 0:
                 # Corner squares (style 0 pekee)
@@ -2178,15 +2291,19 @@ def download_scheme_pdf(request):
     # ── Cover info: styled table (bilingual labels) ──
     lbl = ParagraphStyle('lbl', fontName=_HEAD_FONT, fontSize=10, textColor=colors.white, leading=14)
     val = ParagraphStyle('val', fontName=_BODY_FONT, fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
+    def _pv(value, fallback=''):
+        """Safe value for Paragraph — kamwe usipe None."""
+        return str(value or fallback)
+
     info_rows = [
-        [Paragraph(_tl("Teacher's Name", was_swahili), lbl), Paragraph(teacher_name, val)],
-        [Paragraph(_tl('School Name', was_swahili), lbl), Paragraph(school_name or '____________________', val)],
-        [Paragraph(_tl('Subject', was_swahili), lbl), Paragraph(subject, val)],
-        [Paragraph(_tl('Class', was_swahili), lbl), Paragraph(class_name, val)],
-        [Paragraph(_tl('Term', was_swahili), lbl), Paragraph(term, val)],
-        [Paragraph(_tl('Year', was_swahili), lbl), Paragraph(str(year), val)],
-        [Paragraph(_tl('Total Weeks', was_swahili), lbl), Paragraph(str(total_weeks), val)],
-        [Paragraph(_tl('Syllabus', was_swahili), lbl), Paragraph(syllabus, val)],
+        [Paragraph(_tl("Teacher's Name", was_swahili), lbl), Paragraph(_pv(teacher_name), val)],
+        [Paragraph(_tl('School Name', was_swahili), lbl), Paragraph(_pv(school_name, '____________________'), val)],
+        [Paragraph(_tl('Subject', was_swahili), lbl), Paragraph(_pv(subject), val)],
+        [Paragraph(_tl('Class', was_swahili), lbl), Paragraph(_pv(class_name), val)],
+        [Paragraph(_tl('Term', was_swahili), lbl), Paragraph(_pv(term), val)],
+        [Paragraph(_tl('Year', was_swahili), lbl), Paragraph(_pv(year), val)],
+        [Paragraph(_tl('Total Weeks', was_swahili), lbl), Paragraph(_pv(total_weeks), val)],
+        [Paragraph(_tl('Syllabus', was_swahili), lbl), Paragraph(_pv(syllabus), val)],
     ]
     info_table = Table(info_rows, colWidths=[180, 280])
     info_table.setStyle(TableStyle([
@@ -2237,29 +2354,38 @@ def download_scheme_pdf(request):
     elif scheme_data:
         headers = list(scheme_data[0].keys())
         WIDTH_MAP = {
-            'Main Competence': 72, 'Specific Competences': 72,
-            'Main Learning Activities': 68, 'Specific Learning Activities': 76,
-            'Month': 38, 'Week': 34, 'Number of Periods': 32,
-            'Teaching and Learning Methods': 64,
-            'Teaching and Learning Resources': 64,
-            'Assessment Tools': 54, 'References': 64, 'Remarks': 68,
+            'Main Competence': 76, 'Specific Competences': 76,
+            'Main Learning Activities': 70, 'Specific Learning Activities': 78,
+            'Month': 40, 'Week': 36, 'Number of Periods': 34,
+            'Teaching and Learning Methods': 66,
+            'Teaching and Learning Resources': 66,
+            'Assessment Tools': 56, 'References': 66, 'Remarks': 70,
         }
         TOTAL = 806
         col_widths = []
-        for h in headers:
+        center_cols = set()
+        for i, h in enumerate(headers):
             w = WIDTH_MAP.get(h)
             if w is None:
                 for k, v in WIDTH_MAP.items():
                     if k.lower() in h.lower() or h.lower() in k.lower():
                         w = v
                         break
-            col_widths.append(w if w else TOTAL // len(headers))
-        scale = TOTAL / sum(col_widths)
+            col_widths.append(w if w else max(30, TOTAL // max(1, len(headers))))
+            hl = h.lower()
+            if 'month' in hl or 'week' in hl or 'period' in hl:
+                center_cols.add(i)
+        scale = TOTAL / max(1, sum(col_widths))
         col_widths = [w * scale for w in col_widths]
 
+        _cell_center = ParagraphStyle('SchCellC', parent=cell_style, alignment=1)
         table_data = [[Paragraph(h, hdr_style) for h in headers]]
         for row in scheme_data:
-            table_data.append([Paragraph(str(row.get(h, '') or ''), cell_style) for h in headers])
+            cells = []
+            for i, h in enumerate(headers):
+                _st = _cell_center if i in center_cols else cell_style
+                cells.append(Paragraph(str(row.get(h, '') or ''), _st))
+            table_data.append(cells)
 
         tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
         ts = [
@@ -2267,8 +2393,8 @@ def download_scheme_pdf(request):
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('GRID', (0, 0), (-1, -1), 0.35, BORDER),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
             ('LEFTPADDING', (0, 0), (-1, -1), 5),
             ('RIGHTPADDING', (0, 0), (-1, -1), 5),
             ('LINEBELOW', (0, 0), (-1, 0), 1.2, GOLD),
@@ -2451,7 +2577,7 @@ def ajax_load_saved_scheme(request):
     try:
         tlm_teacher = get_tlm_teacher(request)
         scheme = None
-        if request.user.is_authenticated:
+        if request.user.is_authenticated and _is_curriculum_user(request.user):
             try:
                 student = StudentTeacher.objects.get(user=request.user)
                 scheme = (SchemeOfWork.objects
@@ -2641,17 +2767,14 @@ def lesson_plan_view(request):
         lvl.id: _subjects_for_level(lvl.name)
         for lvl in education_levels
     }
-
     student = None
     school = None
-    if request.user.is_authenticated:
+    if request.user.is_authenticated and _is_curriculum_user(request.user):
         try:
             student = StudentTeacher.objects.select_related('selected_school').get(user=request.user)
             school = student.selected_school
             if not school:
-                app = StudentApplication.objects.filter(
-                    student=student, status='approved'
-                ).select_related('school').first()
+                app = StudentApplication.objects.filter(student=student, status='approved').select_related('school').first()
                 if app:
                     school = app.school
         except StudentTeacher.DoesNotExist:
@@ -2915,7 +3038,7 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
             tlm_teacher = get_tlm_teacher(request)
             student = None
             school = None
-            if request.user.is_authenticated:
+            if request.user.is_authenticated and _is_curriculum_user(request.user):
                 try:
                     student = StudentTeacher.objects.get(user=request.user)
                     school = student.selected_school
@@ -3018,15 +3141,17 @@ def _build_lp_pdf(lesson, form, teacher=None):
         except Exception:
             pass
 
-    # ── Cover page: professional border drawing (mistari ya pambizo = black) ──
+    # ── Cover page: professional border drawing ──
     def _lp_cover(can, doc_obj):
-        """Draw border frame with flag watermark. Frame inabaki black (VETA fix),
-        ila sura inabadilika kwa mwalimu: 0=double+corners, 1=double plain, 2=single."""
+        """Draw border frame with flag watermark. VETA → mistari black; level
+        zingine → rangi za theme (kama mwanzo). Sura: 0=double+corners,
+        1=double plain, 2=single."""
         can.saveState()
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
-        # ── Mistari ya pambizo (margin frame) — full black, si gold/orange ──
-        _frame = colors.black
+        # ── Mistari ya pambizo (margin frame) — VETA: black; zingine: theme colors ──
+        _frame = colors.black if _is_veta else GOLD
+        _frame_inner = colors.black if _is_veta else NAVY
         if _cover_style == 2:
             # Single border (rahisi)
             can.setStrokeColor(_frame)
@@ -3037,14 +3162,14 @@ def _build_lp_pdf(lesson, form, teacher=None):
             can.setStrokeColor(_frame)
             can.setLineWidth(3.5)
             can.rect(30, 30, pw - 60, ph - 60)
-            can.setStrokeColor(_frame)
+            can.setStrokeColor(_frame_inner)
             can.setLineWidth(1.5)
             can.rect(36, 36, pw - 72, ph - 72)
-            # Top black accent bar
+            # Top accent bar
             can.setStrokeColor(_frame)
             can.setLineWidth(4)
             can.line(36, ph - 55, pw - 36, ph - 55)
-            # Bottom black accent bar
+            # Bottom accent bar
             can.line(36, 55, pw - 36, 55)
             if _cover_style == 0:
                 # Corner squares (style 0 pekee)
@@ -3235,16 +3360,20 @@ def _build_lp_pdf(lesson, form, teacher=None):
     _HEAD_FONT = _prof['font_head']
     _header_style = _prof['header_style']
     _cover_style = _prof['cover_style']
+    # VETA → mistari ya pambizo black; level zingine → rangi za theme (kama mwanzo)
+    _is_veta = _is_veta_level(teacher, form.get('education_level', ''), form.get('format', ''))
 
     # ── Determine language mode for LP (check form data for language hint) ──
-    _lp_sw = form.get('language', '') == 'kiswahili' or form.get('subject', '').lower() in ('kiswahili', 'swahili')
+    _lp_subj = str(form.get('subject', '') or '')
+    _lp_lang = str(form.get('language', '') or '')
+    _lp_sw = _lp_lang == 'kiswahili' or _lp_subj.lower() in ('kiswahili', 'swahili')
     if not _lp_sw:
         # Also check via teacher's school level
         _lp_teacher_lp = teacher
         if _lp_teacher_lp and _lp_teacher_lp.school:
             _lp_sw = _is_kiswahili_mode(
-                form.get('language', getattr(_lp_teacher_lp, 'preferred_language', 'auto')),
-                form.get('subject', ''),
+                _lp_lang or getattr(_lp_teacher_lp, 'preferred_language', 'auto'),
+                _lp_subj,
                 _lp_teacher_lp.school.level
             )
 
@@ -3266,11 +3395,18 @@ def _build_lp_pdf(lesson, form, teacher=None):
     # ═══════════════════════════════════════════════════════════════════════
     if (form.get('format') or lesson.get('format') or '') == 'notable':
         elements = []
-        # Cover lines
-        elements.append(HRFlowable(width="100%", thickness=2.5, color=GOLD, spaceAfter=2))
-        elements.append(HRFlowable(width="100%", thickness=1.2, color=NAVY, spaceAfter=10))
+        # ── TAMISEMI Header (PMO/RALG) — ukurasa wa kwanza pekee ──
+        _nb_pm = _tl("PRIME MINISTER'S OFFICE", _lp_sw)
+        _nb_ralg = _tl("REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT", _lp_sw)
+        elements.append(Paragraph(_nb_pm,
+            ParagraphStyle('NB_MH1', fontName=_HEAD_FONT, fontSize=13, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+        elements.append(Paragraph(_nb_ralg,
+            ParagraphStyle('NB_MH2', fontName=_HEAD_FONT, fontSize=10, alignment=1,
+                           textColor=NAVY, spaceAfter=2)))
+        elements.append(HRFlowable(width="50%", thickness=1, color=GOLD, spaceAfter=8))
         # Title
-        elements.append(Paragraph("LESSON PLAN",
+        elements.append(Paragraph(_tl("TEACHER'S LESSON PLAN", _lp_sw),
             ParagraphStyle('LP_TITLE_NB', fontName=_HEAD_FONT, fontSize=16, alignment=1,
                            textColor=NAVY, spaceAfter=2)))
         elements.append(Paragraph("(Format to be used in E-Logbook. Type against each item)",
@@ -3286,7 +3422,7 @@ def _build_lp_pdf(lesson, form, teacher=None):
             (_tl("Teacher's Name", _lp_sw), _dotted(form.get('teacher_name', ''))),
             ('Subject Name', _dotted(form.get('subject', ''))),
             ('Date', _dotted(str(timezone.now().date()))),
-            ('Class/Stream', _dotted(f"{form.get('class_name','')}{' ' + (form.get('stream') or '') if form.get('stream') else ''}")),
+            ('Class/Stream', _dotted(f"{str(form.get('class_name') or '')}{' ' + str(form.get('stream') or '') if form.get('stream') else ''}")),
             ('Period', _dotted(form.get('period', ''))),
             ('Time', _dotted(form.get('time', ''))),
             ('Number of students Registered in the Class',
@@ -3410,15 +3546,20 @@ def _build_lp_pdf(lesson, form, teacher=None):
     # ── Cover info: styled table (bilingual labels) ──
     lbl = ParagraphStyle('lbl', fontName=_HEAD_FONT, fontSize=10, textColor=colors.white, leading=14)
     val = ParagraphStyle('val', fontName=_BODY_FONT, fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
+
+    def _pv(value, fallback=''):
+        """Safe value for Paragraph — kamwe usipe None."""
+        return str(value or fallback)
+
     info_rows = [
-        [Paragraph(_tl("Teacher's Name", _lp_sw), lbl), Paragraph(form.get('teacher_name',''), val)],
-        [Paragraph(_tl('School Name', _lp_sw), lbl), Paragraph(form.get('school_name','____________________'), val)],
-        [Paragraph(_tl('Subject', _lp_sw), lbl), Paragraph(form.get('subject',''), val)],
-        [Paragraph(_tl('Class', _lp_sw), lbl), Paragraph(form.get('class_name',''), val)],
-        [Paragraph(_tl('Term', _lp_sw), lbl), Paragraph(form.get('term',''), val)],
-        [Paragraph(_tl('Year', _lp_sw), lbl), Paragraph(str(form.get('year','')), val)],
-        [Paragraph(_tl('Duration', _lp_sw), lbl), Paragraph(str(form.get('duration', '')) + ' min', val)],
-        [Paragraph(_tl('Topic', _lp_sw), lbl), Paragraph(form.get('topic',''), val)],
+        [Paragraph(_tl("Teacher's Name", _lp_sw), lbl), Paragraph(_pv(form.get('teacher_name')), val)],
+        [Paragraph(_tl('School Name', _lp_sw), lbl), Paragraph(_pv(form.get('school_name'), '____________________'), val)],
+        [Paragraph(_tl('Subject', _lp_sw), lbl), Paragraph(_pv(form.get('subject')), val)],
+        [Paragraph(_tl('Class', _lp_sw), lbl), Paragraph(_pv(form.get('class_name')), val)],
+        [Paragraph(_tl('Term', _lp_sw), lbl), Paragraph(_pv(form.get('term')), val)],
+        [Paragraph(_tl('Year', _lp_sw), lbl), Paragraph(_pv(form.get('year')), val)],
+        [Paragraph(_tl('Duration', _lp_sw), lbl), Paragraph(_pv(form.get('duration')) + ' min', val)],
+        [Paragraph(_tl('Topic', _lp_sw), lbl), Paragraph(_pv(form.get('topic')), val)],
     ]
     info_table = Table(info_rows, colWidths=[180, 220])
     info_table.setStyle(TableStyle([
@@ -4053,7 +4194,7 @@ def ajax_load_saved_lessonplan(request):
     try:
         tlm_teacher = get_tlm_teacher(request)
         lp = None
-        if request.user.is_authenticated:
+        if request.user.is_authenticated and _is_curriculum_user(request.user):
             try:
                 student = StudentTeacher.objects.get(user=request.user)
                 lp = (LessonPlan.objects
@@ -4278,7 +4419,7 @@ def submit_logbook(request):
                       _tlm_logbook_context(teacher, today, edit_entry=edit_entry))
 
     # ── AUTHENTICATED IMS STUDENT FLOW (fallback) ──
-    if not request.user.is_authenticated:
+    if not request.user.is_authenticated or not _is_curriculum_user(request.user):
         return redirect(f"{reverse('login')}?next={reverse('curriculum:submit_logbook')}")
 
     student = get_or_create_student_profile(request.user)
@@ -4376,7 +4517,7 @@ def logbook_history(request):
     month_filter = request.GET.get('month')
 
     # ── IMS STUDENT FLOW (fallback) ──
-    if not request.user.is_authenticated:
+    if not request.user.is_authenticated or not _is_curriculum_user(request.user):
         return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_history')}")
 
     student = get_or_create_student_profile(request.user)
@@ -4555,7 +4696,7 @@ def download_topic_logbook_pdf(request, entry_id):
     Teacher downloads this per topic right after filling it."""
     teacher = get_tlm_teacher(request)
     if not teacher:
-        if not request.user.is_authenticated:
+        if not request.user.is_authenticated or not _is_curriculum_user(request.user):
             return redirect(f"{reverse('login')}?next={reverse('curriculum:submit_logbook')}")
         return redirect(reverse('curriculum:submit_logbook'))
 
@@ -4605,7 +4746,7 @@ def download_logbook_pdf(request, period_type=None):
         return response
 
     # ── AUTHENTICATED IMS STUDENT (legacy daily logbook fallback) ──
-    if not request.user.is_authenticated:
+    if not request.user.is_authenticated or not _is_curriculum_user(request.user):
         return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_download_options')}")
 
     student = get_or_create_student_profile(request.user)
@@ -4837,7 +4978,7 @@ def logbook_download_options(request):
     if teacher:
         return redirect(reverse('curriculum:submit_logbook'))
 
-    if not request.user.is_authenticated:
+    if not request.user.is_authenticated or not _is_curriculum_user(request.user):
         return redirect(f"{reverse('login')}?next={reverse('curriculum:logbook_download_options')}")
 
     student = get_or_create_student_profile(request.user)
