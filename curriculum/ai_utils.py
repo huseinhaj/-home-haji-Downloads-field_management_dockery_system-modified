@@ -114,10 +114,14 @@ def _call_openrouter_stream(messages, model, api_key, temperature=0.7, max_token
 
 def _call_gemini(prompt_text, api_key):
     """Call Gemini API via direct HTTP. Returns response text."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt_text}]}],
-        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 16384},
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 16384,
+            "thinkingConfig": {"thinkingLevel": "MINIMAL"},
+        },
     }
     resp = requests.post(url, json=payload, timeout=300)
     if resp.status_code != 200:
@@ -134,10 +138,14 @@ def _call_gemini(prompt_text, api_key):
 
 def _call_gemini_stream(prompt_text, api_key):
     """Call Gemini API streaming via direct HTTP. Yields text chunks."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key={api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt_text}]}],
-        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 16384},
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 16384,
+            "thinkingConfig": {"thinkingLevel": "MINIMAL"},
+        },
     }
     with requests.post(url, json=payload, stream=True, timeout=300) as resp:
         if resp.status_code != 200:
