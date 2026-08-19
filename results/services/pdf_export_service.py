@@ -107,19 +107,28 @@ def _score_fill(score, form=4):
 
 
 def _load_logo(filename):
-    """Load logo from static/results/logos/ directory."""
+    """Load logo from MEDIA_ROOT/logos/ or static/results/logos/."""
     candidates = [
+        Path(settings.MEDIA_ROOT) / 'logos' / filename,
         Path(settings.BASE_DIR) / 'results' / 'static' / 'results' / 'logos' / filename,
     ]
-    if hasattr(settings, 'STATICFILES_DIRS') and settings.STATICFILES_DIRS:
-        for d in settings.STATICFILES_DIRS:
-            candidates.insert(0, Path(d) / 'results' / 'logos' / filename)
-    for path in candidates:
-        if path and path.exists():
+    for p in candidates:
+        if p and p.exists():
             try:
-                return ImageReader(str(path))
+                return ImageReader(str(p))
             except Exception:
                 pass
+    # Also try without extension — match school_logo.* / district_logo.*
+    base = filename.rsplit('.', 1)[0]
+    for p in candidates:
+        parent = p.parent
+        if parent.exists():
+            for match in parent.glob(f'{base}.*'):
+                if match.suffix.lower() in ('.png', '.jpg', '.jpeg', '.svg'):
+                    try:
+                        return ImageReader(str(match))
+                    except Exception:
+                        pass
     return None
 
 

@@ -1854,11 +1854,11 @@ def personal_upload_summary(request, upload_id):
 @academic_required
 def upload_logos(request):
     """Upload school and district logos for the PDF report header."""
-    logos_dir = Path(settings.BASE_DIR) / 'results' / 'static' / 'results' / 'logos'
+    logos_dir = Path(settings.MEDIA_ROOT) / 'logos'
     logos_dir.mkdir(parents=True, exist_ok=True)
 
-    school_logo_exists = (logos_dir / 'school_logo.png').exists()
-    district_logo_exists = (logos_dir / 'district_logo.png').exists()
+    school_logo_exists = (logos_dir / 'school_logo.png').exists() or (logos_dir / 'school_logo.jpg').exists()
+    district_logo_exists = (logos_dir / 'district_logo.png').exists() or (logos_dir / 'district_logo.jpg').exists()
 
     if request.method == 'POST':
         logo_type = request.POST.get('logo_type', '')
@@ -1880,10 +1880,21 @@ def upload_logos(request):
             return redirect('upload_logos')
 
         # Save file
+        # Determine filename from uploaded file extension
+        ext = Path(uploaded_file.name).suffix.lower()
+        if ext not in ('.png', '.jpg', '.jpeg', '.svg'):
+            ext = '.png'
         if logo_type == 'school':
-            filename = 'school_logo.png'
+            filename = f'school_logo{ext}'
+            # Remove old versions
+            for old in logos_dir.glob('school_logo.*'):
+                if old.name != filename:
+                    old.unlink(missing_ok=True)
         elif logo_type == 'district':
-            filename = 'district_logo.png'
+            filename = f'district_logo{ext}'
+            for old in logos_dir.glob('district_logo.*'):
+                if old.name != filename:
+                    old.unlink(missing_ok=True)
         else:
             messages.error(request, "Aina ya logo haijulikani.")
             return redirect('upload_logos')
@@ -1892,6 +1903,9 @@ def upload_logos(request):
         with open(filepath, 'wb') as f:
             for chunk in uploaded_file.chunks():
                 f.write(chunk)
+        # Debug: confirm file saved
+        import logging
+        logging.getLogger(__name__).info(f'Logo saved: {filepath} ({filepath.stat().st_size} bytes)')
 
         logo_name = "ya Shule" if logo_type == 'school' else "ya Halmashauri"
         messages.success(request, f"Logo {logo_name} imehifadhiwa! Itaonekana kwenye PDF ya matokeo.")
