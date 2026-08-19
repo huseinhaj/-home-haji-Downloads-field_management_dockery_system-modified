@@ -270,7 +270,7 @@ def generate_results_pdf_response(exam):
     ))
 
     w = Table([[dt,'',st]], colWidths=[4*cm,0.5*cm,5*cm])
-    w.setStyle(_ts([('VALIGN',(0,0),(-1,-1),('TOP'))]))
+    w.setStyle(_ts([('VALIGN',(0,0),(-1,-1),'TOP')]))
     story.append(w)
     story.append(Spacer(1, 0.3*cm))
 
