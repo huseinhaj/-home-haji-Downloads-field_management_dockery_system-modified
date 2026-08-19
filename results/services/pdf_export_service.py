@@ -152,8 +152,11 @@ class NECTADocTemplate(SimpleDocTemplate):
         """Called after each page is drawn."""
         self._page_count += 1
 
-    def handle_pageBegin(self):
-        super().handle_pageBegin()
+    def handle_pageBegin(self, *args, **kwargs):
+        try:
+            super().handle_pageBegin(*args, **kwargs)
+        except Exception:
+            pass
         canvas = self.canv
         W, H = A4
 
