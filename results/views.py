@@ -711,9 +711,31 @@ def _pick_col(row, col_lower_map, keys):
 GENDER_TOKENS = {'m', 'me', 'male', 'kiume', 'f', 'fe', 'female', 'kike'}
 
 
+def _split_concatenated_names(text):
+    """Split concatenated CamelCase names — e.g. 'HalimaAllyMohamedF' → 'Halima Ally Mohamed F'.
+
+    Handles the common case where pdfplumber extracts text without spaces.
+    Last single-letter token is treated as gender if it matches M/F.
+    """
+    import re as _re
+    # Insert space before each uppercase letter that follows a lowercase letter
+    spaced = _re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+    # Also split digits from letters (e.g. 'John2Smith' → 'John 2 Smith')
+    spaced = _re.sub(r'([A-Za-z])(\d)', r'\1 \2', spaced)
+    spaced = _re.sub(r'(\d)([A-Za-z])', r'\1 \2', spaced)
+    return spaced
+
+
 def _parse_roster_line(line):
     """Parse one text line: 'FirstName MiddleName LastName Gender' → (first, middle, last, gender)."""
     parts = line.split()
+    if len(parts) < 2:
+        # May be concatenated (no spaces) — try splitting CamelCase
+        if len(line) > 3 and not line[0].isupper():
+            return None
+        if any(c.isupper() for c in line[1:]):
+            line = _split_concatenated_names(line)
+            parts = line.split()
     if len(parts) < 2:
         return None
 
