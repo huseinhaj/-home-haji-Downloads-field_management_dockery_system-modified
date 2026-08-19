@@ -97,7 +97,7 @@
   <div class="d-flex gap-2 flex-wrap">
     {% if is_academic %}
     <a href="{{ excel_url }}" class="btn btn-sm" style="background:#1a7a3b;color:#fff;font-weight:700;border-radius:2px;">
-      ⬇ {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %} — Form {{ form_num }} {% if LANG == 'sw' %}Yote{% else %}All{% endif %}
+      📊 {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %} — Form {{ form_num }}
     </a>
     <a href="{% url 'academic_dashboard' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
       &larr; Academic Dashboard
@@ -134,9 +134,11 @@
         </div>
       </div>
       <div class="d-flex gap-2 flex-wrap">
-        {% if ed.all_approved and is_academic %}
-          <a href="{{ ed.excel_url }}" class="btn btn-sm btn-outline-success" style="font-size:0.72rem;border-radius:2px;">Excel</a>
-          <a href="{{ ed.pdf_url }}" class="btn btn-sm btn-outline-danger" style="font-size:0.72rem;border-radius:2px;">PDF</a>
+        <a href="{{ ed.pdf_url }}" class="btn btn-sm" style="background:#c0392b;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;" target="_blank">
+          📄 PDF
+        </a>
+        {% if is_academic %}
+          <a href="{{ ed.excel_url }}" class="btn btn-sm btn-outline-success" style="font-size:0.72rem;border-radius:2px;">📊 Excel</a>
         {% endif %}
         <a href="{{ ed.overview_url }}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">{% if LANG == 'sw' %}Maelezo{% else %}Details{% endif %}</a>
       </div>

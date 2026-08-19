@@ -158,9 +158,16 @@ def generate_results_pdf_response(exam):
         avg_total  = total_sum / total_students
         avg_avg    = avg_sum   / total_students
         div_counts = Counter(r.division for r in all_results)
+        # GPA = average points across all students (NECTA style)
+        avg_points = sum(r.points for r in all_results) / total_students
+        # Count of subjects used for division calculation
+        counted_subjects_sample = all_results[0].counted_subjects if all_results else ''
+        n_counted = len([s for s in counted_subjects_sample.split(',') if s.strip()]) if counted_subjects_sample else len(subjects)
     else:
         avg_total = avg_avg = 0
         div_counts = Counter()
+        avg_points = 0
+        n_counted = len(subjects)
 
     def _pct(n):
         return f"{(n / total_students * 100):.1f}%" if total_students else "0%"
@@ -401,13 +408,17 @@ def generate_results_pdf_response(exam):
             ["Jumla ya Wanafunzi", str(total_students)],
             ["Wastani wa Jumla", f"{avg_total:.1f}"],
             ["Wastani wa Mean", f"{avg_avg:.1f}"],
+            ["Wastani wa Pointi (GPA)", f"{avg_points:.2f}"],
+            ["Masomo Yaliyohesabiwa", str(n_counted)],
         ]
     else:
-        stats_title = "PERFORMANCE SUMMARY"
+        stats_title = "PERFORMANCE SUMMARY (NECTA)"
         stats_rows = [
             ["Total Students", str(total_students)],
             ["Overall Average", f"{avg_total:.1f}"],
             ["Mean of Averages", f"{avg_avg:.1f}"],
+            ["Average Points (GPA)", f"{avg_points:.2f}"],
+            ["Subjects Counted", str(n_counted)],
         ]
 
     stats_header = [[stats_title, ""]]
@@ -570,20 +581,21 @@ def generate_results_pdf_response(exam):
     col_subj = min(col_subj, 45)
 
     col_pos   = 28
-    col_name  = 110
-    col_sex   = 20
-    col_total = 28
-    col_avg   = 28
-    col_div   = 24
-    col_pts   = 24
+    col_name  = 100
+    col_sex   = 18
+    col_total = 32
+    col_avg   = 30
+    col_pts   = 28
+    col_gpa   = 30
+    col_div   = 32
     col_widths = ([col_pos, col_name, col_sex] + [col_subj] * len(subjects)
-                  + [col_total, col_avg, col_div, col_pts])
+                  + [col_total, col_avg, col_pts, col_gpa, col_div])
 
     lang_cols = ["POS", "JINA", "JINSIA"] if lang == 'sw' else ["POS", "NAME", "SEX"]
     headers = (lang_cols
                + [s.name.upper()[:8] for s in subjects]
-               + (["JUMLA", "WASTANI", "DARAJA", "POINTI"] if lang == 'sw'
-                  else ["TOTAL", "AVG", "DIV.", "PTS"]))
+               + (["JUMLA", "WASTANI", "POINTI", "GPA", "DARAJA"] if lang == 'sw'
+                  else ["TOTAL", "AVG", "PTS", "GPA", "DIV."]))
 
     tbl_w = sum(col_widths)
     row_h  = 14
@@ -631,8 +643,12 @@ def generate_results_pdf_response(exam):
             for subj in subjects:
                 sc = score_lookup.get((stu.id, subj.id))
                 row.append(str(sc) if sc is not None else "-")
+            # GPA = Total Points / Number of subjects counted
+            counted = [s for s in (r.counted_subjects or '').split(',') if s.strip()]
+            n_count = len(counted) if counted else len(subjects)
+            student_gpa = r.points / n_count if n_count > 0 else 0
             row.extend([str(r.total_score), f"{r.average_score:.2f}",
-                        r.division, str(r.points)])
+                        str(r.points), f"{student_gpa:.2f}", r.division])
             data.append(row)
 
         tbl = Table(data, colWidths=col_widths)
@@ -670,8 +686,8 @@ def generate_results_pdf_response(exam):
                     if fg:
                         style.append(('TEXTCOLOR', (ci, i), (ci, i), colors.HexColor(fg)))
 
-        # Division colour
-        dc = len(headers) - 2  # DARAJA/DIV column
+        # Division colour (last column)
+        dc = len(headers) - 1  # DARAJA/DIV column
         for i, r in enumerate(group, 1):
             if r.division in DIV_PALETTE:
                 bg, fg = DIV_PALETTE[r.division]

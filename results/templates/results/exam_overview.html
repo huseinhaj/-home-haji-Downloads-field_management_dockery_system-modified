@@ -263,26 +263,24 @@
       </form>
       {% endif %}
 
-      {% if enough_to_finalize %}
-      <form method="post" action="{{ finalize_url }}" style="display:inline;">
-        {% csrf_token %}
-        <button type="submit" class="btn-finalize">
-          {% if LANG == 'sw' %}Tengeneza Excel ya Mwisho{% else %}Generate Final Excel{% endif %}
-        </button>
-      </form>
-      {% else %}
-      <button class="btn-finalize" disabled>{% if LANG == 'sw' %}Tengeneza Excel ya Mwisho{% else %}Generate Final Excel{% endif %}</button>
-      {% endif %}
-
       {% if submitted_count > 0 %}
+      <a href="{% url 'generate_results_pdf' exam.id %}" class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;" target="_blank">
+        📄 {% if LANG == 'sw' %}Pakua PDF ya Matokeo{% else %}Download Results PDF{% endif %}
+      </a>
       <a href="{{ excel_url }}" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
-        {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %}
+        📊 {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %}
       </a>
       {% endif %}
 
       {% if all_approved and is_academic %}
       <a href="{% url 'exam_share_links' exam.id %}" class="btn" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;font-size:0.82rem;">
         🔗 {% if LANG == 'sw' %}Viungo vya Matokeo{% else %}Share Links{% endif %}
+      </a>
+      {% endif %}
+    {% else %}
+      {% if submitted_count > 0 %}
+      <a href="{% url 'generate_results_pdf' exam.id %}" class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;" target="_blank">
+        📄 {% if LANG == 'sw' %}Pakua PDF ya Matokeo{% else %}Download Results PDF{% endif %}
       </a>
       {% endif %}
     {% endif %}
