@@ -397,6 +397,7 @@ def exam_overview(request, exam_id):
         submission = submission_map.get(subject.id)
         is_submitted = submission and submission.status == SubjectSubmission.STATUS_SUBMITTED
         is_approved = submission and submission.status == SubjectSubmission.STATUS_APPROVED
+        is_returned = submission and submission.status == SubjectSubmission.STATUS_RETURNED
         if is_submitted or is_approved:
             submitted_count += 1
         if is_approved:
@@ -406,10 +407,12 @@ def exam_overview(request, exam_id):
             'submission': submission,
             'is_submitted': is_submitted,
             'is_approved': is_approved,
+            'is_returned': is_returned,
             'marks_url': reverse('marks_entry') + f'?exam={exam.id}&subject={subject.id}',
             'upload_url': reverse('subject_upload', args=[exam.id, subject.id]),
             'pdf_url': reverse('subject_pdf', args=[exam.id, subject.id]) if (is_submitted or is_approved) else None,
             'approve_url': reverse('approve_subject', args=[exam.id, subject.id]) if (is_submitted and is_academic) else None,
+            'return_url': reverse('return_submission', args=[exam.id, subject.id]) if (is_submitted and is_academic) else None,
         })
 
     total_subjects = len(all_subjects)
@@ -554,17 +557,22 @@ def subject_upload(request, exam_id, subject_id):
                 return redirect(request.path)
 
             # Mark SubjectSubmission as SUBMITTED
-            SubjectSubmission.objects.update_or_create(
+            # If existing was RETURNED, delete old + create new revision
+            _existing = SubjectSubmission.objects.filter(exam=exam, subject=subject).first()
+            _new_rev = 1
+            if _existing and _existing.status == SubjectSubmission.STATUS_RETURNED:
+                _new_rev = _existing.revision_number + 1
+                _existing.delete()
+            SubjectSubmission.objects.create(
                 exam=exam,
                 subject=subject,
-                defaults={
-                    'status': SubjectSubmission.STATUS_SUBMITTED,
-                    'method': 'UPLOAD',
-                    'submitted_by': request.user.full_name or request.user.email,
-                    'submitted_by_user': request.user,
-                    'submitted_at': timezone.now(),
-                    'student_count': saved_count,
-                },
+                status=SubjectSubmission.STATUS_SUBMITTED,
+                method='UPLOAD',
+                submitted_by=request.user.full_name or request.user.email,
+                submitted_by_user=request.user,
+                submitted_at=timezone.now(),
+                student_count=saved_count,
+                revision_number=_new_rev,
             )
 
             # Recompute processed results
@@ -1116,6 +1124,7 @@ def academic_dashboard(request):
         pending_subs = [s for s in subs if s.status == SubjectSubmission.STATUS_PENDING]
         submitted_subs = [s for s in subs if s.status == SubjectSubmission.STATUS_SUBMITTED]
         approved_subs_list = [s for s in subs if s.status == SubjectSubmission.STATUS_APPROVED]
+        returned_subs = [s for s in subs if s.status == SubjectSubmission.STATUS_RETURNED]
         pending_names = ', '.join(s.subject.name for s in pending_subs)
 
         form_key = exam.form
@@ -1127,6 +1136,7 @@ def academic_dashboard(request):
             'pending_subs': pending_subs,
             'submitted_subs': submitted_subs,
             'approved_subs_list': approved_subs_list,
+            'returned_subs': returned_subs,
             'pending_names': pending_names,
             'total': total,
             'submitted': submitted,
@@ -1170,6 +1180,46 @@ def approve_subject(request, exam_id, subject_id):
     recompute_processed_results_for_exam(exam)
 
     messages.success(request, f"Somo la {subject.name} limeidhinishwa.")
+    return redirect(reverse('exam_overview', args=[exam.id]))
+
+
+# ── Return Submission to Teacher ─────────────────────────────────────────────
+
+@academic_required
+@require_POST
+def return_submission(request, exam_id, subject_id):
+    """Mtaaluma anarudisha submission kwa mwalimu kwa ukarabati.
+
+    Mtaaluma anaandika comment (return_notes) inayoonekana na mwalimu.
+    Submission hubadilisha status kuwa RETURNED — mwalimu atarekebisha
+    na kuwasilisha upya, na submission ya zamani itatolewa.
+    """
+    exam = _get_exam_or_404(exam_id, request.user)
+    subject = get_object_or_404(Subject, id=subject_id)
+    sub = get_object_or_404(SubjectSubmission, exam=exam, subject=subject)
+
+    if sub.status not in (SubjectSubmission.STATUS_SUBMITTED,):
+        messages.error(request, f"{subject.name} haiwezi kurudishwa (hali: {sub.get_status_display()}).")
+        return redirect(reverse('academic_dashboard'))
+
+    notes = request.POST.get('return_notes', '').strip()
+    if not notes:
+        messages.error(request, "Andika sababu ya kurudisha submission hii.")
+        return redirect(reverse('exam_overview', args=[exam.id]))
+
+    sub.status = SubjectSubmission.STATUS_RETURNED
+    sub.return_notes = notes
+    sub.returned_at = timezone.now()
+    sub.returned_by = request.user.full_name or request.user.email
+    sub.returned_by_user = request.user
+    sub.save(update_fields=[
+        'status', 'return_notes', 'returned_at', 'returned_by', 'returned_by_user',
+    ])
+
+    messages.warning(
+        request,
+        f"Somo la {subject.name} limerudishwa kwa mwalimu ({sub.submitted_by}) kwa ukarabati."
+    )
     return redirect(reverse('exam_overview', args=[exam.id]))
 
 
@@ -1271,11 +1321,13 @@ def form_results_excel(request, form_num):
     def _score_color(score):
         if score is None:
             return None, None
-        if score >= 75: return "FFC6F4D6", "FF145A32"
-        if score >= 65: return "FFD5F5E3", "FF1E8449"
-        if score >= 50: return "FFFFF9C4", "FF7D6608"
-        if score >= 40: return "FFFDEBD0", "FF784212"
-        return "FFFADBD8", "FF922B21"
+        if score >= 75: return "FFC6F4D6", "FF145A32"   # A
+        if score >= 65: return "FFD5F5E3", "FF1E8449"   # B+
+        if score >= 55: return "FFD5F5E3", "FF2D7D46"   # B
+        if score >= 45: return "FFFFF9C4", "FF7D6608"   # C+
+        if score >= 35: return "FFFFF9C4", "FF8A6F00"   # C
+        if score >= 25: return "FFFDEBD0", "FF784212"   # D
+        return "FFFADBD8", "FF922B21"                   # F
 
     exams = Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name')
     wb = openpyxl.Workbook()
@@ -1540,14 +1592,18 @@ def teacher_dashboard(request):
         pending = [s for s in subs if s.status == SubjectSubmission.STATUS_PENDING]
         submitted = [s for s in subs if s.status == SubjectSubmission.STATUS_SUBMITTED]
         approved = [s for s in subs if s.status == SubjectSubmission.STATUS_APPROVED]
+        returned = [s for s in subs if s.status == SubjectSubmission.STATUS_RETURNED]
         for s in submitted + approved:
             s.pdf_url = reverse('subject_pdf', args=[exam.id, s.subject_id])
             s.summary_url = reverse('subject_summary', args=[exam.id, s.subject_id])
+        for s in returned:
+            s.marks_url = reverse('marks_entry') + f'?exam={exam.id}&subject={s.subject_id}'
         exams_ctx.append({
             'exam': exam,
             'pending': pending,
             'submitted': submitted,
             'approved': approved,
+            'returned': returned,
             'total': len(subs),
         })
 

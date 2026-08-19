@@ -205,7 +205,11 @@ def marks_entry_save(request):
 @require_POST
 def marks_entry_submit(request):
     """Final submit — marks SubjectSubmission as SUBMITTED so the academic
-    officer sees it (same logic as the old file-upload/speech flows)."""
+    officer sees it (same logic as the old file-upload/speech flows).
+
+    Ikiwa submission ilikuwa RETURNED na mtaaluma, submission ya zamani
+    inatolewa kabisa na mpya inaingia na revision_number +1.
+    """
     payload = _parse_payload(request)
     teacher = request.user
     exam = _teacher_exam(teacher, payload.get('exam_id'))
@@ -220,17 +224,24 @@ def marks_entry_submit(request):
         return JsonResponse({'error': 'Hakuna alama zilizohifadhiwa. Jaza alama kwanza.'}, status=400)
 
     student_count = ExamResult.objects.filter(exam=exam, subject=subject).count()
-    SubjectSubmission.objects.update_or_create(
+
+    # ── Check if existing submission was RETURNED — if so, delete old + create new revision ──
+    existing = SubjectSubmission.objects.filter(exam=exam, subject=subject).first()
+    new_revision = 1
+    if existing and existing.status == SubjectSubmission.STATUS_RETURNED:
+        new_revision = existing.revision_number + 1
+        existing.delete()
+
+    SubjectSubmission.objects.create(
         exam=exam,
         subject=subject,
-        defaults={
-            'status': SubjectSubmission.STATUS_SUBMITTED,
-            'method': 'MANUAL',
-            'submitted_by': teacher.full_name or teacher.email,
-            'submitted_by_user': teacher,
-            'submitted_at': timezone.now(),
-            'student_count': student_count,
-        },
+        status=SubjectSubmission.STATUS_SUBMITTED,
+        method='MANUAL',
+        submitted_by=teacher.full_name or teacher.email,
+        submitted_by_user=teacher,
+        submitted_at=timezone.now(),
+        student_count=student_count,
+        revision_number=new_revision,
     )
 
     # Recompute overall processed results now that this subject is submitted
@@ -242,4 +253,5 @@ def marks_entry_submit(request):
     return JsonResponse({
         'success': True,
         'overview_url': reverse('exam_overview', args=[exam.id]),
+        'revision': new_revision,
     })

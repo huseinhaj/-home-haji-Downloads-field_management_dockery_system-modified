@@ -112,11 +112,20 @@ def recompute_processed_results_for_exam(exam):
 
     Points and division follow the official NECTA method: convert each
     subject score to a grade (CSEE for Form 1-4, ACSEE for Form 5-6), take
-    the student's best subjects, sum those grades' point values, then map
-    the total to a division — the same source of truth
-    (utils.get_grade_for_form/get_division) used for per-subject results,
-    so "Daraja" never disagrees between the subject-level and whole-exam
-    reports.
+    the student's BEST subjects (best_n = 7 for CSEE, 3 for ACSEE), sum
+    those grades' point values, then map the total to a division.
+
+    Fewer-subjects fairness:
+        - Division and points are computed ONLY from the subjects a student
+          actually has (minimum 1). A student with 4 CSEE subjects uses all
+          4 for their points/division — they are NOT penalised for missing
+          subjects they were never tested in.
+        - Position ranking still uses the same NECTA sort (ascending points,
+          then descending total-score as tiebreaker). This means a student
+          with 4 A's (4 points) will rank above a student with 7 A's
+          (7 points) — which matches real NECTA practice where the
+          division is what matters, not a competitive position across
+          different subject counts.
     """
     students = Student.objects.filter(examresult__exam=exam).distinct().prefetch_related(
         Prefetch('examresult_set', queryset=ExamResult.objects.filter(exam=exam).select_related('subject'))
@@ -134,11 +143,14 @@ def recompute_processed_results_for_exam(exam):
         count = len(results)
         average = (total / count) if count else 0.0
 
+        # Grade every subject, then sort by points (ascending = better)
         graded = sorted(
-            ((r, get_grade_points(get_grade_for_form(r.score, exam.form))) for r in results),
+            ((r, get_grade_points(get_grade_for_form(r.score, exam.form), form=exam.form)) for r in results),
             key=lambda pair: pair[1],
         )
-        best = graded[:best_n]  # lowest point values == best grades
+        # Use best N subjects (or all if fewer than N) — no penalty for
+        # having fewer subjects than the standard count.
+        best = graded[:best_n]
         points = sum(p for _, p in best)
         division = get_division(points)
         counted_subjects = ', '.join(r.subject.name for r, _ in best)
@@ -151,6 +163,7 @@ def recompute_processed_results_for_exam(exam):
                 'points': points,
                 'division': division,
                 'counted_subjects': counted_subjects,
+                'subject_count': count,
             }
         )
 

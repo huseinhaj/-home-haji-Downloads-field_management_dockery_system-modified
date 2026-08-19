@@ -30,6 +30,7 @@ from .views import (
     academic_dashboard,
     approve_subject,
     approve_exam_submissions,
+    return_submission,
     form_results,
     form_results_excel,
     school_setup,
@@ -92,6 +93,7 @@ urlpatterns = [
     path('exam/<int:exam_id>/subject/<int:subject_id>/pdf/', subject_pdf, name='subject_pdf'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/muhtasari/', subject_summary, name='subject_summary'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/approve/', approve_subject, name='approve_subject'),
+    path('exam/<int:exam_id>/subject/<int:subject_id>/return/', return_submission, name='return_submission'),
     path('exam/<int:exam_id>/finalize/', finalize_exam, name='finalize_exam'),
     path('exam/<int:exam_id>/approve-all/', approve_exam_submissions, name='approve_exam_submissions'),
     # Roster upload (AJAX)

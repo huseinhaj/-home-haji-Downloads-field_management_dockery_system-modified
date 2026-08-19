@@ -725,16 +725,22 @@ def submit_speech_entries_batch(
 def _update_subject_submission(session: SpeechSubmissionSession, teacher_name: str = '') -> SubjectSubmission:
     """Create or update SubjectSubmission when a session is finalized via speech."""
     student_count = session.entries.count()
-    submission, _ = SubjectSubmission.objects.update_or_create(
+    existing = SubjectSubmission.objects.filter(
+        exam=session.exam, subject=session.subject,
+    ).first()
+    new_rev = 1
+    if existing and existing.status == SubjectSubmission.STATUS_RETURNED:
+        new_rev = existing.revision_number + 1
+        existing.delete()
+    submission = SubjectSubmission.objects.create(
         exam=session.exam,
         subject=session.subject,
-        defaults={
-            'status': SubjectSubmission.STATUS_SUBMITTED,
-            'method': 'SPEECH',
-            'submitted_by': teacher_name or session.teacher_name,
-            'submitted_at': timezone.now(),
-            'student_count': student_count,
-        },
+        status=SubjectSubmission.STATUS_SUBMITTED,
+        method='SPEECH',
+        submitted_by=teacher_name or session.teacher_name,
+        submitted_at=timezone.now(),
+        student_count=student_count,
+        revision_number=new_rev,
     )
     return submission
 

@@ -181,16 +181,20 @@ def ingest_speech_entry(request, session_id):
             if session.status != SpeechSubmissionSession.STATUS_FINALIZED:
                 session.mark_finalized()
             student_count = session.entries.count()
-            SubjectSubmission.objects.update_or_create(
+            _existing = SubjectSubmission.objects.filter(exam=session.exam, subject=session.subject).first()
+            _new_rev = 1
+            if _existing and _existing.status == SubjectSubmission.STATUS_RETURNED:
+                _new_rev = _existing.revision_number + 1
+                _existing.delete()
+            SubjectSubmission.objects.create(
                 exam=session.exam,
                 subject=session.subject,
-                defaults={
-                    'status': SubjectSubmission.STATUS_SUBMITTED,
-                    'method': 'SPEECH',
-                    'submitted_by': teacher_name or session.teacher_name,
-                    'submitted_at': timezone.now(),
-                    'student_count': student_count,
-                },
+                status=SubjectSubmission.STATUS_SUBMITTED,
+                method='SPEECH',
+                submitted_by=teacher_name or session.teacher_name,
+                submitted_at=timezone.now(),
+                student_count=student_count,
+                revision_number=_new_rev,
             )
             recompute_processed_results_for_exam(session.exam)
             result['subject_pdf_url'] = reverse('subject_pdf', args=[session.exam_id, session.subject_id])
@@ -364,16 +368,20 @@ def finalize_speech_session(request, session_id):
 
         # Update SubjectSubmission
         student_count = session.entries.count()
-        SubjectSubmission.objects.update_or_create(
+        _existing = SubjectSubmission.objects.filter(exam=session.exam, subject=session.subject).first()
+        _new_rev = 1
+        if _existing and _existing.status == SubjectSubmission.STATUS_RETURNED:
+            _new_rev = _existing.revision_number + 1
+            _existing.delete()
+        SubjectSubmission.objects.create(
             exam=session.exam,
             subject=session.subject,
-            defaults={
-                'status': SubjectSubmission.STATUS_SUBMITTED,
-                'method': 'SPEECH',
-                'submitted_by': teacher_name or session.teacher_name,
-                'submitted_at': timezone.now(),
-                'student_count': student_count,
-            },
+            status=SubjectSubmission.STATUS_SUBMITTED,
+            method='SPEECH',
+            submitted_by=teacher_name or session.teacher_name,
+            submitted_at=timezone.now(),
+            student_count=student_count,
+            revision_number=_new_rev,
         )
 
         exam_finalized = maybe_finalize_exam(session.exam)
@@ -511,16 +519,21 @@ def voice_entry_bulk_finalize(request):
 
     # Mark SubjectSubmission as SUBMITTED
     student_count = ExamResult.objects.filter(exam=exam, subject=subject).count()
-    SubjectSubmission.objects.update_or_create(
-        exam=exam, subject=subject,
-        defaults={
-            'status': SubjectSubmission.STATUS_SUBMITTED,
-            'method': 'SPEECH',
-            'submitted_by': request.user.full_name or request.user.email,
-            'submitted_by_user': request.user,
-            'submitted_at': timezone.now(),
-            'student_count': student_count,
-        },
+    _existing = SubjectSubmission.objects.filter(exam=exam, subject=subject).first()
+    _new_rev = 1
+    if _existing and _existing.status == SubjectSubmission.STATUS_RETURNED:
+        _new_rev = _existing.revision_number + 1
+        _existing.delete()
+    SubjectSubmission.objects.create(
+        exam=exam,
+        subject=subject,
+        status=SubjectSubmission.STATUS_SUBMITTED,
+        method='SPEECH',
+        submitted_by=request.user.full_name or request.user.email,
+        submitted_by_user=request.user,
+        submitted_at=timezone.now(),
+        student_count=student_count,
+        revision_number=_new_rev,
     )
 
     try:

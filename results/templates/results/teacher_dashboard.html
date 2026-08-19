@@ -84,6 +84,23 @@
           </div>
           {% endfor %}
 
+          {% for sub in ec.returned %}
+          <div class="subject-tile" style="border-left:4px solid #c0392b;background:#fffdf5;">
+            <div class="s-name">{{ sub.subject.name }}</div>
+            <div class="s-status" style="color:#c0392b;">&#8630; {% if LANG == 'sw' %}IMERUDISHWA — REKEBISHA{% else %}RETURNED — FIX & RESUBMIT{% endif %}{% if sub.revision_number > 1 %} (rev{{ sub.revision_number }}){% endif %}</div>
+            {% if sub.return_notes %}
+            <div style="background:#fdecea;border:1px solid #f1948a;border-radius:2px;padding:0.5rem 0.7rem;font-size:0.78rem;color:#922b21;margin-top:0.25rem;line-height:1.5;">
+              💬 <strong>{% if LANG == 'sw' %}Comment ya Mtaaluma:{% else %}Academic Officer Notes:{% endif %}</strong><br>{{ sub.return_notes }}
+            </div>
+            {% endif %}
+            {% if sub.returned_by %}<div class="s-meta" style="color:#c0392b;">{% if LANG == 'sw' %}Rudishwa na{% else %}Returned by{% endif %}: {{ sub.returned_by }}</div>{% endif %}
+            {% if sub.returned_at %}<div class="s-meta">{{ sub.returned_at|date:"d M Y" }}</div>{% endif %}
+            <div class="d-flex gap-1 flex-wrap">
+              <a href="{{ sub.marks_url }}" class="btn-tile" style="background:#c0392b;color:#fff;border:none;">&#9997; {% if LANG == 'sw' %}Rekebisha & Tuma Tenaresubmit{% else %}Fix & Resubmit{% endif %}</a>
+            </div>
+          </div>
+          {% endfor %}
+
           {% for sub in ec.approved %}
           <div class="subject-tile approved">
             <div class="s-name">{{ sub.subject.name }}</div>

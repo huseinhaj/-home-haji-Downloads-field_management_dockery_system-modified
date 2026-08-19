@@ -214,6 +214,16 @@
     {% if submission %}
       {% if submission.status == 'SUBMITTED' %}
       <span class="badge-soft" style="background:#e8f4ff;color:#0056b3;">&#8679; {% if LANG == 'sw' %}Imewasilishwa kwa Mtaaluma{% else %}Submitted to Academic{% endif %}</span>
+      {% elif submission.status == 'RETURNED' %}
+      <div style="display:flex;flex-direction:column;gap:0.3rem;">
+        <span class="badge-soft" style="background:#fdecea;color:#c0392b;">&#8630; {% if LANG == 'sw' %}Imerudishwa na Mtaaluma{% else %}Returned by Academic{% endif %}{% if submission.revision_number > 1 %} (rev{{ submission.revision_number }}){% endif %}</span>
+        {% if submission.return_notes %}
+        <div style="background:#fdecea;border:1px solid #f1948a;border-radius:2px;padding:0.5rem 0.7rem;font-size:0.8rem;color:#922b21;line-height:1.5;max-width:400px;">
+          💬 <strong>{% if LANG == 'sw' %}Comment:{% else %}Notes:{% endif %}</strong> {{ submission.return_notes }}
+          {% if submission.returned_by %}<br><small style="color:#999;">— {{ submission.returned_by }}{% if submission.returned_at %}, {{ submission.returned_at|date:"d M Y" }}{% endif %}</small>{% endif %}
+        </div>
+        {% endif %}
+      </div>
       {% elif submission.status == 'APPROVED' %}
       <span class="badge-soft" style="background:#e6f7ec;color:var(--ok-500);">&#10003; {% if LANG == 'sw' %}Imeidhinishwa na Mtaaluma{% else %}Approved by Academic{% endif %}</span>
       {% endif %}
@@ -243,7 +253,7 @@
             <td class="student-name">{{ row.student.first_name }} {{ row.student.middle_name }} {{ row.student.last_name }}</td>
             <td style="font-weight:800;color:#1F7A3D;">{{ row.score }}</td>
             <td>
-              <span class="grade-chip" style="background:{% if row.grade == 'A' %}#e6f7ec;color:#1a7a3b{% elif row.grade == 'B' %}#eafaf1;color:#27ae60{% elif row.grade == 'C' %}#fff9e6;color:#b7950b{% elif row.grade == 'D' %}#fdf2e9;color:#ca6f1e{% else %}#fdecea;color:#c0392b{% endif %};">
+              <span class="grade-chip" style="background:{% if row.grade == 'A' %}#e6f7ec;color:#1a7a3b{% elif row.grade == 'B+' %}#eafaf1;color:#27ae60{% elif row.grade == 'B' %}#eafaf1;color:#2d7d46{% elif row.grade == 'C+' %}#fff9e6;color:#b7950b{% elif row.grade == 'C' %}#fff9e6;color:#8a6f00{% elif row.grade == 'D' %}#fdf2e9;color:#ca6f1e{% else %}#fdecea;color:#c0392b{% endif %};">
                 {{ row.grade }}
               </span>
             </td>

@@ -165,10 +165,12 @@ class SubjectSubmission(models.Model):
     STATUS_PENDING = 'PENDING'
     STATUS_SUBMITTED = 'SUBMITTED'
     STATUS_APPROVED = 'APPROVED'
+    STATUS_RETURNED = 'RETURNED'
     STATUS_CHOICES = [
         (STATUS_PENDING, 'Pending'),
         (STATUS_SUBMITTED, 'Submitted'),
         (STATUS_APPROVED, 'Approved'),
+        (STATUS_RETURNED, 'Returned'),
     ]
 
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='subject_submissions')
@@ -187,13 +189,36 @@ class SubjectSubmission(models.Model):
     )
     approved_at = models.DateTimeField(null=True, blank=True)
     approval_notes = models.TextField(blank=True)
+    # ── Returned / Revision fields ──
+    return_notes = models.TextField(
+        blank=True,
+        help_text="Comment ya mtaaluma anaporudisha submission kwa mwalimu.",
+    )
+    returned_at = models.DateTimeField(null=True, blank=True)
+    returned_by = models.CharField(max_length=100, blank=True)
+    returned_by_user = models.ForeignKey(
+        'TeacherAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    revision_number = models.PositiveIntegerField(
+        default=1,
+        help_text="Idadi ya marudio — revision 1 = awali, 2 = ya pili, n.k.",
+    )
 
     class Meta:
         unique_together = [('exam', 'subject')]
         ordering = ['subject__name']
 
     def __str__(self):
-        return f"{self.exam} - {self.subject} ({self.status})"
+        rev = f" rev{self.revision_number}" if self.revision_number > 1 else ''
+        return f"{self.exam} - {self.subject} ({self.status}{rev})"
+
+    @property
+    def is_returned(self):
+        return self.status == self.STATUS_RETURNED
+
+    @property
+    def has_return_notes(self):
+        return bool(self.return_notes and self.return_notes.strip())
 
 
 class TeacherAccountManager(BaseUserManager):

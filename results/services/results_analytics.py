@@ -13,7 +13,7 @@ from collections import Counter
 
 from ..utils import is_passing_grade
 
-GRADE_ORDER = ['A', 'B', 'C', 'D', 'E', 'S', 'F']
+GRADE_ORDER = ['A', 'B+', 'B', 'C+', 'C', 'D', 'E', 'S', 'F']
 
 
 def compute_subject_stats(rows: list[dict]) -> dict:

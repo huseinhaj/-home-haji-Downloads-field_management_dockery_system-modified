@@ -67,6 +67,13 @@
   .status-badge.submitted { background: #e8f4ff; color: #0056b3; border: 1px solid #b3d4f5; }
   .status-badge.approved  { background: #e6f7ec; color: #1a7a3b; border: 1px solid #a3d9b4; }
   .status-badge.pending   { background: #fff8e6; color: #7a5200; border: 1px solid #f0d07a; }
+  .status-badge.returned  { background: #fdecea; color: #c0392b; border: 1px solid #f1948a; }
+  .subject-card.is-returned { border-left: 4px solid #c0392b; background: #fffcf8; }
+  .return-notes {
+    background: #fdecea; border: 1px solid #f1948a; border-radius: 2px;
+    padding: 0.45rem 0.7rem; font-size: 0.78rem; color: #922b21; line-height: 1.5;
+    margin-top: 0.2rem;
+  }
 
   .subject-meta { font-size: 0.78rem; color: #666; }
   .subject-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.35rem; }
@@ -146,14 +153,15 @@
 </div>
 
 <!-- Subject cards -->
-{% if subjects_ctx %}
-<div class="subject-grid">
+{% if subjects_ctx %}  <div class="subject-grid">
   {% for ctx in subjects_ctx %}
-  <div class="subject-card {% if ctx.is_approved %}is-approved{% elif ctx.is_submitted %}is-submitted{% else %}is-pending{% endif %}">
+  <div class="subject-card {% if ctx.is_approved %}is-approved{% elif ctx.is_returned %}is-returned{% elif ctx.is_submitted %}is-submitted{% else %}is-pending{% endif %}">
     <div class="d-flex justify-content-between align-items-center">
       <div class="subject-name">{{ ctx.subject.name }}</div>
       {% if ctx.is_approved %}
         <span class="status-badge approved">{% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}</span>
+      {% elif ctx.is_returned %}
+        <span class="status-badge returned">&#8630; {% if LANG == 'sw' %}Imerudishwa{% else %}Returned{% endif %}</span>
       {% elif ctx.is_submitted %}
         <span class="status-badge submitted">{% if LANG == 'sw' %}Imewasilishwa{% else %}Submitted{% endif %}</span>
       {% else %}
@@ -172,11 +180,21 @@
             &nbsp;&bull;&nbsp;
             <span>{% if LANG == 'sw' %}Njia{% else %}Method{% endif %}: <strong>{{ ctx.submission.get_method_display }}</strong></span>
           {% endif %}
+          {% if ctx.submission.revision_number > 1 %}
+            &nbsp;&bull;&nbsp;
+            <span style="color:#c0392b;font-weight:700;">rev{{ ctx.submission.revision_number }}</span>
+          {% endif %}
         {% endif %}
         {% if ctx.submission.submitted_at %}
           <br><span style="color:#999;">{{ ctx.submission.submitted_at|date:"d M Y H:i" }}</span>
         {% endif %}
       </div>
+      {% if ctx.is_returned and ctx.submission.return_notes %}
+      <div class="return-notes">
+        &#8630; <strong>{% if LANG == 'sw' %}Comment ya Mtaaluma:{% else %}Returned by Academic:{% endif %}</strong><br>
+        {{ ctx.submission.return_notes }}
+      </div>
+      {% endif %}
     {% else %}
       <div class="subject-meta" style="color:#aaa;">{% if LANG == 'sw' %}Bado haijasajiliwa{% else %}Not registered yet{% endif %}</div>
     {% endif %}
@@ -185,6 +203,11 @@
       {% if not ctx.is_approved and not is_academic %}
       <a href="{{ ctx.marks_url }}" class="btn btn-speech">✏️ {% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</a>
       <a href="{{ ctx.upload_url }}" class="btn btn-upload-sm">{% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
+      {% endif %}
+      {% if ctx.is_returned and not is_academic %}
+      <a href="{{ ctx.marks_url }}" class="btn" style="background:#c0392b;color:#fff;font-size:.72rem;padding:.28rem .7rem;border-radius:2px;font-weight:700;border:none;">
+        &#8630; {% if LANG == 'sw' %}Rekebisha & Tuma Tenaresubmit{% else %}Fix & Resubmit{% endif %}
+      </a>
       {% endif %}
       {% if ctx.pdf_url %}
       <a href="{{ ctx.pdf_url }}" class="btn btn-pdf" target="_blank">PDF</a>
@@ -196,6 +219,11 @@
           ✓ {% if LANG == 'sw' %}Idhinisha{% else %}Approve{% endif %}
         </button>
       </form>
+      {% endif %}
+      {% if ctx.return_url %}
+      <button type="button" class="btn" style="background:#c0392b;color:#fff;font-size:.72rem;padding:.28rem .7rem;border-radius:2px;font-weight:700;border:none;cursor:pointer;" onclick="openReturnModal('{{ ctx.subject.id }}', '{{ ctx.subject.name }}', '{{ ctx.return_url }}')">
+        &#8630; {% if LANG == 'sw' %}Rudisha{% else %}Return{% endif %}
+      </button>
       {% endif %}
     </div>
   </div>
@@ -266,4 +294,51 @@
     {% endif %}
   </div>
 </div>
+
+<!-- Return to Teacher Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:2px;">
+      <div class="modal-header" style="background:#c0392b;color:#fff;border-radius:0;">
+        <h5 class="modal-title">&#8630; {% if LANG == 'sw' %}Rudisha kwa Mwalimu{% else %}Return to Teacher{% endif %}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.9rem;margin-bottom:0.8rem;">
+          {% if LANG == 'sw' %}Rudisha somo <strong id="returnSubjectLabel"></strong> kwa mwalimu wa somo hili kwa ukarabati. Andika sababu ya kurudisha.
+          {% else %}Return <strong id="returnSubjectLabel"></strong> to the subject teacher for corrections. Please state the reason for returning.
+          {% endif %}
+        </p>
+        <form method="post" id="returnForm">
+          {% csrf_token %}
+          <textarea name="return_notes" id="returnNotesInput" placeholder="{% if LANG == 'sw' %}Andika sababu ya kurudisha — mf. 'Alama hazijakamilika' au 'Wanafunzi wengi wamepata alama sawa'{% else %}State the reason for returning — e.g. 'Incomplete scores' or 'Multiple students have identical marks'{% endif %}" required style="width:100%;min-height:80px;border:1.5px solid #ccc;border-radius:2px;padding:0.5rem;font-size:0.85rem;resize:vertical;"></textarea>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
+        <button class="btn" onclick="submitReturnForm()" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px;">
+          &#8630; {% if LANG == 'sw' %}Rudisha{% else %}Return{% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openReturnModal(subjectId, subjectName, returnUrl) {
+  document.getElementById('returnSubjectLabel').textContent = subjectName;
+  document.getElementById('returnForm').action = returnUrl;
+  document.getElementById('returnNotesInput').value = '';
+  new bootstrap.Modal(document.getElementById('returnModal')).show();
+}
+function submitReturnForm() {
+  const notes = document.getElementById('returnNotesInput').value.trim();
+  if (!notes) {
+    document.getElementById('returnNotesInput').style.borderColor = '#c0392b';
+    return;
+  }
+  document.getElementById('returnForm').submit();
+}
+</script>
+
 {% endblock %}

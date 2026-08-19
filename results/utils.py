@@ -79,7 +79,16 @@ def normalize_gender(raw_gender: str) -> str:
 
 
 def get_grade(score):
-    """NECTA CSEE (O-Level, Form 1-4) subject grade.
+    """NECTA CSEE (O-Level, Form 1-4) subject grade — 7-band scale.
+
+    Official NECTA CSEE grading:
+        A:  75-100  (1 point)
+        B+: 65-74   (2 points)
+        B:  55-64   (3 points)
+        C+: 45-54   (4 points)
+        C:  35-44   (5 points)
+        D:  25-34   (6 points)
+        F:  0-24    (7 points)
 
     IMPORTANT: These thresholds MUST stay in sync with the PDF and Excel
     display services (pdf_export_service._score_fill, excel_export_service
@@ -89,10 +98,14 @@ def get_grade(score):
     if score >= 75:
         return "A"
     if score >= 65:
+        return "B+"
+    if score >= 55:
         return "B"
-    if score >= 50:
+    if score >= 45:
+        return "C+"
+    if score >= 35:
         return "C"
-    if score >= 40:
+    if score >= 25:
         return "D"
     return "F"
 
@@ -150,13 +163,22 @@ def is_passing_grade(grade):
     return grade != "F"
 
 
-GRADE_POINTS = {"A": 1, "B": 2, "C": 3, "D": 4, "F": 5}
+GRADE_POINTS = {"A": 1, "B+": 2, "B": 3, "C+": 4, "C": 5, "D": 6, "F": 7}
+
+# ACSEE (A-Level) uses a different point scale for grades B, C, D
+_ACSEE_POINTS = {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "S": 6, "F": 7}
 
 
-def get_grade_points(grade):
-    """NECTA CSEE point value for a subject grade (A=1 ... F=5), used to sum
-    a student's total points across subjects for division classification."""
-    return GRADE_POINTS.get(grade, 5)
+def get_grade_points(grade, form=None):
+    """NECTA point value for a subject grade (A=1 ... F=7), used to sum
+    a student's total points across subjects for division classification.
+
+    CSEE (Form 1-4): A=1, B+=2, B=3, C+=4, C=5, D=6, F=7
+    ACSEE (Form 5-6): A=1, B=2, C=3, D=4, E=5, S=6, F=7
+    """
+    if form in (5, 6):
+        return _ACSEE_POINTS.get(grade, 7)
+    return GRADE_POINTS.get(grade, 7)
 
 
 # ── Exam dropdown grouping ────────────────────────────────────────────────
@@ -221,13 +243,29 @@ def parse_name_score_sheet(uploaded_file) -> list[tuple[str, int]]:
 
 
 def get_division(points):
+    """NECTA division from accumulated grade points.
+
+    CSEE (7 subjects, points range 7–49):
+        I:   ≤ 17   (avg ~B+ or better)
+        II:  18–21  (avg ~B to B-)
+        III: 22–24  (avg ~C+)
+        IV:  25–30  (avg ~C)
+        0:   > 30   (avg ~D or worse)
+
+    ACSEE (3 subjects, points range 3–21):
+        I:   ≤ 7
+        II:  8–10
+        III: 11–12
+        IV:  13–15
+        0:   > 15
+    """
     if points <= 17:
         return "I"
     if points <= 21:
         return "II"
-    if points <= 25:
+    if points <= 24:
         return "III"
-    if points <= 33:
+    if points <= 30:
         return "IV"
     return "0"
 

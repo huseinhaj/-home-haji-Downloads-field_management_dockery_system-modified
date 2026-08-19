@@ -69,9 +69,20 @@
 .subjects-table td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
 .subjects-table tr:last-child td { border-bottom: none; }
 
-.badge-pending  { background:#fff8e6; color:#7a5200; border:1px solid #f0d07a; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
-.badge-submitted { background:#e8f4ff; color:#0056b3; border:1px solid #b3d4f5; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
-.badge-approved  { background:#e6f7ec; color:#1a7a3b; border:1px solid #a3d9b4; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.badge-pending   { background:#fff8e6; color:#7a5200; border:1px solid #f0d07a; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.badge-submitted  { background:#e8f4ff; color:#0056b3; border:1px solid #b3d4f5; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.badge-approved   { background:#e6f7ec; color:#1a7a3b; border:1px solid #a3d9b4; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.badge-returned   { background:#fdecea; color:#c0392b; border:1px solid #f1948a; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.btn-return { background:#c0392b; color:#fff; border:none; font-size:0.72rem; padding:0.25rem 0.7rem; border-radius:2px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.btn-return:hover { background:#96281b; }
+.return-notes-box {
+  background:#fdecea; border:1px solid #f1948a; border-radius:2px; padding:0.5rem 0.75rem;
+  font-size:0.78rem; color:#922b21; margin-top:0.35rem; line-height:1.5;
+}
+.return-modal-body textarea {
+  width:100%; min-height:80px; border:1.5px solid #ccc; border-radius:2px;
+  padding:0.5rem; font-size:0.85rem; resize:vertical;
+}
 
 .approve-form-inline { display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; }
 .approve-form-inline input[type=text] { font-size:0.75rem; padding:0.2rem 0.5rem; border:1px solid #ccc; border-radius:2px; width:130px; }
@@ -242,6 +253,8 @@
             <td>
               {% if sub.status == 'APPROVED' %}
                 <span class="badge-approved">&#10003; {% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}</span>
+              {% elif sub.status == 'RETURNED' %}
+                <span class="badge-returned">&#8630; {% if LANG == 'sw' %}Imerudishwa{% else %}Returned{% endif %}{% if sub.revision_number > 1 %} (rev{{ sub.revision_number }}){% endif %}</span>
               {% elif sub.status == 'SUBMITTED' %}
                 <span class="badge-submitted">&#8679; {% if LANG == 'sw' %}Imewasilishwa{% else %}Submitted{% endif %}</span>
               {% else %}
@@ -255,11 +268,22 @@
             </td>
             <td>
               {% if sub.status == 'SUBMITTED' %}
-              <form method="post" action="{% url 'approve_subject' ed.exam.id sub.subject.id %}" class="approve-form-inline">
-                {% csrf_token %}
-                <input type="text" name="approved_by" placeholder="{% if LANG == 'sw' %}Jina lako{% else %}Your name{% endif %}" required>
-                <button type="submit" class="btn-approve">{% if LANG == 'sw' %}Idhinisha{% else %}Approve{% endif %}</button>
-              </form>
+              <div class="d-flex gap-1 align-items-center flex-wrap">
+                <form method="post" action="{% url 'approve_subject' ed.exam.id sub.subject.id %}" class="approve-form-inline">
+                  {% csrf_token %}
+                  <input type="text" name="approved_by" placeholder="{% if LANG == 'sw' %}Jina lako{% else %}Your name{% endif %}" required>
+                  <button type="submit" class="btn-approve">{% if LANG == 'sw' %}Idhinisha{% else %}Approve{% endif %}</button>
+                </form>
+                <button type="button" class="btn-return" onclick="openReturnModal('{{ sub.subject.id }}', '{{ sub.subject.name }}', '{% url 'return_submission' ed.exam.id sub.subject.id %}')">&#8630; {% if LANG == 'sw' %}Rudisha{% else %}Return{% endif %}</button>
+              </div>
+              {% elif sub.status == 'RETURNED' %}
+              <span style="font-size:0.72rem;color:#c0392b;">
+                &#8630; {{ sub.returned_by|default:"—" }}
+                {% if sub.returned_at %}<br><span style="color:#999;">{{ sub.returned_at|date:"d M Y" }}</span>{% endif %}
+              </span>
+              {% if sub.return_notes %}
+              <div class="return-notes-box">💬 {{ sub.return_notes }}</div>
+              {% endif %}
               {% elif sub.status == 'APPROVED' %}
               <span style="font-size:0.72rem;color:#1a7a3b;">
                 &#10003; {{ sub.approved_by }}
@@ -299,4 +323,51 @@
   {% if LANG == 'sw' %}Hakuna mitihani yoyote bado.{% else %}No exams yet.{% endif %} <a href="{% url 'upload_results' %}">{% if LANG == 'sw' %}Unda mtihani wa kwanza{% else %}Create the first exam{% endif %}</a>.
 </div>
 {% endif %}
+
+<!-- Return to Teacher Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:2px;">
+      <div class="modal-header" style="background:#c0392b;color:#fff;border-radius:0;">
+        <h5 class="modal-title">&#8630; {% if LANG == 'sw' %}Rudisha kwa Mwalimu{% else %}Return to Teacher{% endif %}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.9rem;margin-bottom:0.8rem;">
+          {% if LANG == 'sw' %}Rudisha somo <strong id="returnSubjectLabel"></strong> kwa mwalimu wa somo hili kwa ukarabati. Andika sababu ya kurudisha.
+          {% else %}Return <strong id="returnSubjectLabel"></strong> to the subject teacher for corrections. Please state the reason for returning.
+          {% endif %}
+        </p>
+        <form method="post" id="returnForm">
+          {% csrf_token %}
+          <textarea name="return_notes" id="returnNotesInput" placeholder="{% if LANG == 'sw' %}Andika sababu ya kurudisha — mf. 'Alama hazijakamilika' au 'Wanafunzi wengi wamepata alama sawa'{% else %}State the reason for returning — e.g. 'Incomplete scores' or 'Multiple students have identical marks'{% endif %}" required></textarea>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
+        <button class="btn" onclick="submitReturnForm()" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px;">
+          &#8630; {% if LANG == 'sw' %}Rudisha{% else %}Return{% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openReturnModal(subjectId, subjectName, returnUrl) {
+  document.getElementById('returnSubjectLabel').textContent = subjectName;
+  document.getElementById('returnForm').action = returnUrl;
+  document.getElementById('returnNotesInput').value = '';
+  new bootstrap.Modal(document.getElementById('returnModal')).show();
+}
+function submitReturnForm() {
+  const notes = document.getElementById('returnNotesInput').value.trim();
+  if (!notes) {
+    document.getElementById('returnNotesInput').style.borderColor = '#c0392b';
+    return;
+  }
+  document.getElementById('returnForm').submit();
+}
+</script>
+
 {% endblock %}
