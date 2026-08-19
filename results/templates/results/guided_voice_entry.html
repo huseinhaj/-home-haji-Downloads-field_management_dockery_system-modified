@@ -219,6 +219,8 @@
 
 {% endblock %}
 
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
 {% block scripts %}
 <script>
 (() => {

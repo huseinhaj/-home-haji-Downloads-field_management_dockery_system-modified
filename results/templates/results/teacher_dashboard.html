@@ -63,9 +63,12 @@
           <div class="subject-tile pending">
             <div class="s-name">{{ sub.subject.name }}</div>
             <div class="s-status pending">&#9203; {% if LANG == 'sw' %}BADO &mdash; Inasubiri mwalimu{% else %}PENDING &mdash; waiting on teacher{% endif %}</div>
+            {% if sub.has_roster %}
+            <div class="s-meta" style="color:#24508a;">📋 {{ sub.roster_count }} {% if LANG == 'sw' %}wanafunzi kwenye orodha{% else %}students in roster{% endif %}</div>
+            {% endif %}
             <div class="d-flex gap-1 flex-wrap">
-              <a href="{% url 'subject_upload' ec.exam.id sub.subject.id %}" class="btn-tile primary">&#8679; {% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
-              <a href="{% url 'marks_entry' %}?exam={{ ec.exam.id }}&subject={{ sub.subject.id }}" class="btn-tile ghost">&#9997; {% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</a>
+              <a href="{{ sub.marks_url }}" class="btn-tile primary">&#9997; {% if LANG == 'sw' %}Jaza Alama{% else %}Enter Marks{% endif %}</a>
+              <a href="{% url 'subject_upload' ec.exam.id sub.subject.id %}" class="btn-tile ghost">&#8679; {% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
             </div>
           </div>
           {% endfor %}
@@ -134,4 +137,34 @@
   </div>
   {% endif %}
 </div>
+
+{% if stored_rosters %}
+<div class="mt-4">
+  <h2 style="font-family:'Sora',sans-serif;font-size:1.1rem;color:var(--ink-900);">
+    {% if LANG == 'sw' %}📋 Orodha Zilizohifadhiwa{% else %}📋 Stored Student Lists{% endif %}
+  </h2>
+  <p class="text-secondary" style="font-size:0.85rem;">
+    {% if LANG == 'sw' %}Orodha za wanafunzi ulizopakia zimehifadhiwa. Bonyeza 'Jaza Alama' kuanza kujaza alama.{% else %}Uploaded student lists are saved. Click 'Enter Marks' to start filling in scores.{% endif %}
+  </p>
+  <div class="subjects-grid">
+    {% for r in stored_rosters %}
+    <div class="subject-tile" style="border-left:4px solid #24508a;">
+      <div class="s-name" style="font-weight:800;">{{ r.subject.name }}</div>
+      <div class="s-meta" style="color:#555;">{{ r.exam.name }} — Form {{ r.exam.form }} ({{ r.exam.year }})</div>
+      <div class="s-meta">{{ r.student_count }} {% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</div>
+      <div class="s-meta" style="font-size:0.72rem;color:#999;">
+        {% if LANG == 'sw' %}Imehifadhiwa{% else %}Saved{% endif %}: {{ r.created_at|date:"d M Y H:i" }}
+        &bull; {{ r.source_file|default:r.source_format }}
+      </div>
+      <div class="d-flex gap-1 flex-wrap mt-1">
+        <a href="{% url 'marks_entry' %}?exam={{ r.exam.id }}&subject={{ r.subject.id }}" class="btn-tile primary">
+          &#9997; {% if LANG == 'sw' %}Jaza Alama{% else %}Enter Marks{% endif %}
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}

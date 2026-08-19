@@ -467,6 +467,28 @@ def subject_upload(request, exam_id, subject_id):
             uploaded_file.seek(0)
             file_name = uploaded_file.name.lower()
 
+            # ── PDF roster upload (names only — no scores) ──
+            if file_name.endswith('.pdf'):
+                from .views import _parse_pdf_roster, _save_student
+                students_out = _parse_pdf_roster(uploaded_file)
+                if not students_out:
+                    raise UploadProcessingError(
+                        "Hakuna wanafunzi waliopatikana kwenye PDF."
+                    )
+                # Return to marks_entry with these students pre-loaded
+                # Store student IDs in session so marks_entry picks them up
+                request.session['pending_roster_ids'] = [s['id'] for s in students_out]
+                request.session['pending_roster_subject'] = subject.id
+                request.session['pending_roster_exam'] = exam.id
+                messages.success(
+                    request,
+                    f"Orodha ya wanafunzi {len(students_out)} imepakwa. Jaza alama na ubadilishe."
+                )
+                return redirect(
+                    reverse('marks_entry') + f'?exam={exam.id}&subject={subject.id}'
+                )
+
+            # ── CSV / Excel upload (names + scores) ──
             if file_name.endswith('.csv'):
                 df = pd.read_csv(uploaded_file)
             else:
@@ -491,11 +513,6 @@ def subject_upload(request, exam_id, subject_id):
             if score_col is None:
                 raise UploadProcessingError("Hakuna safu ya alama iliyopatikana. Tumia jina kama 'Score' au 'Alama'.")
 
-            # Parse every row first without touching the database, then do
-            # the whole upload in a handful of bulk queries instead of two
-            # round trips per student — with a remote DB, per-row
-            # get_or_create/update_or_create made a 20-student file take
-            # over a minute; this brings it down to a few queries total.
             parsed_rows = []
             for _, row in df.iterrows():
                 first_name = str(row.get('First Name', row.get('first_name', ''))).strip()
@@ -556,23 +573,21 @@ def subject_upload(request, exam_id, subject_id):
                 )
                 return redirect(request.path)
 
-            # Mark SubjectSubmission as SUBMITTED
-            # If existing was RETURNED, delete old + create new revision
-            _existing = SubjectSubmission.objects.filter(exam=exam, subject=subject).first()
-            _new_rev = 1
-            if _existing and _existing.status == SubjectSubmission.STATUS_RETURNED:
-                _new_rev = _existing.revision_number + 1
-                _existing.delete()
-            SubjectSubmission.objects.create(
+            # Mark SubjectSubmission as SUBMITTED (update_or_create to avoid IntegrityError)
+            SubjectSubmission.objects.update_or_create(
                 exam=exam,
                 subject=subject,
-                status=SubjectSubmission.STATUS_SUBMITTED,
-                method='UPLOAD',
-                submitted_by=request.user.full_name or request.user.email,
-                submitted_by_user=request.user,
-                submitted_at=timezone.now(),
-                student_count=saved_count,
-                revision_number=_new_rev,
+                defaults={
+                    'status': SubjectSubmission.STATUS_SUBMITTED,
+                    'method': 'UPLOAD',
+                    'submitted_by': request.user.full_name or request.user.email,
+                    'submitted_by_user': request.user,
+                    'submitted_at': timezone.now(),
+                    'student_count': saved_count,
+                    'revision_number': SubjectSubmission.objects.filter(
+                        exam=exam, subject=subject
+                    ).values_list('revision_number', flat=True).first() or 1,
+                },
             )
 
             # Recompute processed results
@@ -956,9 +971,15 @@ def _parse_spreadsheet_roster(uploaded_file):
     return students_out
 
 
+@login_required
 @require_POST
 def upload_roster(request):
-    """Accept PDF, CSV, or Excel roster → create/get Student objects → return IDs."""
+    """Accept PDF, CSV, or Excel roster → create/get Student objects → return IDs.
+
+    When exam_id + subject_id are passed, the roster is saved to StoredRoster
+    so the teacher can reload it later from the dashboard.
+    """
+    from .models import StoredRoster
     uploaded_file = request.FILES.get('file')
     if not uploaded_file:
         return JsonResponse({'error': 'Hakuna faili lililotumwa.'}, status=400)
@@ -973,6 +994,28 @@ def upload_roster(request):
             return JsonResponse({
                 'error': 'Hakuna wanafunzi waliopatikana. Muundo unaoeleweka: (a) PDF/CSV ya maneno kwa mstari: Halima Ally Mohamed F \n (b) CSV/Excel zenye column: First Name, Middle Name, Last Name, Gender \n (c) CSV/Excel yenye column moja ya jina kamili: Name, Gender'
             }, status=400)
+
+        # Optionally persist roster for later access
+        exam_id = request.POST.get('exam_id')
+        subject_id = request.POST.get('subject_id')
+        if exam_id and subject_id:
+            try:
+                exam = Exam.objects.filter(id=exam_id).first()
+                subject = Subject.objects.filter(id=subject_id).first()
+                if exam and subject:
+                    StoredRoster.objects.update_or_create(
+                        teacher=request.user,
+                        exam=exam,
+                        subject=subject,
+                        defaults={
+                            'students': students_out,
+                            'student_count': len(students_out),
+                            'source_file': uploaded_file.name,
+                            'source_format': 'pdf' if fname.endswith('.pdf') else 'csv',
+                        },
+                    )
+            except Exception:
+                pass  # roster save is best-effort
 
         return JsonResponse({'students': students_out, 'count': len(students_out)})
     except Exception as exc:
@@ -1599,7 +1642,9 @@ def create_exam_for_school(request):
 
 @teacher_required
 def teacher_dashboard(request):
-    """Walimu wanaona masomo yao pekee ya kupakia (submission status kwa kila exam)."""
+    """Walimu wanaona masomo yao pekee ya kupakia (submission status kwa kila exam).
+    Pia onyesha orodha zilizohifadhiwa (stored rosters) kwa urahisi wa kujaza alama."""
+    from .models import StoredRoster
     teacher_subject_ids = set(request.user.subjects.values_list('id', flat=True))
 
     exams = Exam.objects.filter(school=request.user.school).prefetch_related(
@@ -1620,6 +1665,14 @@ def teacher_dashboard(request):
             s.summary_url = reverse('subject_summary', args=[exam.id, s.subject_id])
         for s in returned:
             s.marks_url = reverse('marks_entry') + f'?exam={exam.id}&subject={s.subject_id}'
+        # Attach stored roster info for pending subjects
+        for s in pending:
+            roster = StoredRoster.objects.filter(
+                teacher=request.user, exam=exam, subject=s.subject
+            ).first()
+            s.has_roster = roster is not None
+            s.roster_count = roster.student_count if roster else 0
+            s.marks_url = reverse('marks_entry') + f'?exam={exam.id}&subject={s.subject_id}'
         exams_ctx.append({
             'exam': exam,
             'pending': pending,
@@ -1629,9 +1682,15 @@ def teacher_dashboard(request):
             'total': len(subs),
         })
 
+    # Stored rosters summary
+    stored_rosters = StoredRoster.objects.filter(
+        teacher=request.user
+    ).select_related('exam', 'subject').order_by('-created_at')[:20]
+
     return render(request, 'results/teacher_dashboard.html', {
         'exams_ctx': exams_ctx,
         'has_subjects': bool(teacher_subject_ids),
+        'stored_rosters': stored_rosters,
     })
 
 

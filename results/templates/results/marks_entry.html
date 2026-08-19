@@ -555,6 +555,8 @@
     async function uploadRoster(file) {
       const fd = new FormData();
       fd.append('file', file);
+      if (EXAM_ID) fd.append('exam_id', EXAM_ID);
+      if (SUBJECT_ID) fd.append('subject_id', SUBJECT_ID);
       uploadStatus.innerHTML = '<span style="color:#1F7A3D;font-size:0.82rem;">⏳ ' +
         (LANG === 'sw' ? 'Inasoma orodha...' : 'Reading roster...') + '</span>';
       try {

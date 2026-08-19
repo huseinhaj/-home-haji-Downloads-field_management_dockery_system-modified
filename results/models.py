@@ -331,6 +331,30 @@ class PersonalUploadResult(models.Model):
         return f"{self.student_name}: {self.score}"
 
 
+class StoredRoster(models.Model):
+    """Orodha ya wanafunzi iliyopakiwa na kuhifadhiwa.
+
+    Inatumika ku-store orodha ya darasa ili mwalimu aweze kuona na kurekebisha
+    alama bila kila mara kupitia PDF/CSV. Inapatikana kwenye dashboard ya mwalimu.
+    """
+    teacher = models.ForeignKey(TeacherAccount, on_delete=models.CASCADE, related_name='stored_rosters')
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='stored_rosters')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='stored_rosters')
+    students = models.JSONField(default=list, help_text='List of {id, name} dicts')
+    student_count = models.PositiveIntegerField(default=0)
+    source_file = models.CharField(max_length=255, blank=True, help_text='Jina la faili la asili')
+    source_format = models.CharField(max_length=10, default='pdf', help_text='pdf, csv, excel')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = [('teacher', 'exam', 'subject')]
+
+    def __str__(self):
+        return f"Roster: {self.subject.name} — {self.exam.name} ({self.student_count} students)"
+
+
 class SpeechSubmissionSession(models.Model):
     STATUS_OPEN = 'OPEN'
     STATUS_FINALIZED = 'FINALIZED'

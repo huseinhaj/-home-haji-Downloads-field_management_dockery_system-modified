@@ -19,7 +19,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import Exam, ExamResult, Student, Subject, SubjectSubmission
+from .models import Exam, ExamResult, Student, StoredRoster, Subject, SubjectSubmission
 from .permissions import teacher_required
 from .services.upload_processing_service import recompute_processed_results_for_exam
 from .utils import get_grade_for_form, group_exams_by_type
@@ -103,17 +103,32 @@ def marks_entry(request):
                 else:
                     pdf_url = reverse('subject_pdf', args=[exam.id, subject.id])
             else:
-                # Wanafunzi wote waliosajiliwa kwenye mtihani huu (msingi wa orodha ya darasa)
-                class_students = [
-                    {
-                        'id': s.id,
-                        'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p),
-                        'score': existing_marks.get(s.id),
-                    }
-                    for s in Student.objects.filter(examresult__exam=exam)
-                    .distinct()
-                    .order_by('first_name', 'last_name')
-                ]
+                # Load students: try stored roster first, fall back to exam students
+                stored = StoredRoster.objects.filter(
+                    teacher=teacher, exam=exam, subject=subject
+                ).first()
+                if stored and stored.students:
+                    # Reattach existing marks
+                    class_students = [
+                        {
+                            'id': s['id'],
+                            'name': s['name'],
+                            'score': existing_marks.get(s['id']),
+                        }
+                        for s in stored.students
+                    ]
+                else:
+                    # Wanafunzi wote waliosajiliwa kwenye mtihani huu
+                    class_students = [
+                        {
+                            'id': s.id,
+                            'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p),
+                            'score': existing_marks.get(s.id),
+                        }
+                        for s in Student.objects.filter(examresult__exam=exam)
+                        .distinct()
+                        .order_by('first_name', 'last_name')
+                    ]
 
     # Wastani na kiwango cha kufaulu kwa ukaguzi
     avg_score = None
@@ -232,16 +247,18 @@ def marks_entry_submit(request):
         new_revision = existing.revision_number + 1
         existing.delete()
 
-    SubjectSubmission.objects.create(
+    SubjectSubmission.objects.update_or_create(
         exam=exam,
         subject=subject,
-        status=SubjectSubmission.STATUS_SUBMITTED,
-        method='MANUAL',
-        submitted_by=teacher.full_name or teacher.email,
-        submitted_by_user=teacher,
-        submitted_at=timezone.now(),
-        student_count=student_count,
-        revision_number=new_revision,
+        defaults={
+            'status': SubjectSubmission.STATUS_SUBMITTED,
+            'method': 'MANUAL',
+            'submitted_by': teacher.full_name or teacher.email,
+            'submitted_by_user': teacher,
+            'submitted_at': timezone.now(),
+            'student_count': student_count,
+            'revision_number': new_revision,
+        },
     )
 
     # Recompute overall processed results now that this subject is submitted
