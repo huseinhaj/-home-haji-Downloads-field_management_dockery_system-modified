@@ -315,14 +315,20 @@ class _UnifiedModels:
                         continue
                     break
 
-        # ── 2nd TRY GROQ ──
+        # ── 2nd TRY GROQ (models_to_try is Groq-only — `model` is an OpenRouter
+        # id like "google/gemini-2.5-flash" and is never valid on Groq, so
+        # prepending it just wastes a request) ──
         _groq_error = None
         if self._groq_key:
-            models_to_try = [model] + [m for m in FALLBACK_MODELS_GROQ if m != model]
-            for attempt_model in models_to_try:
+            # Cap max_tokens well below Groq's on-demand TPM ceiling — the
+            # bigger gpt-oss-120b model has a much tighter per-minute budget
+            # than 20b, so a large max_tokens request alone can trigger 413
+            # even before any output is generated.
+            groq_max_tokens = min(max_tokens, 4096)
+            for attempt_model in FALLBACK_MODELS_GROQ:
                 try:
                     logger.info(f"[AI] Groq (direct HTTP): {attempt_model}")
-                    text = _call_groq(messages, attempt_model, self._groq_key, temperature, 8192)
+                    text = _call_groq(messages, attempt_model, self._groq_key, temperature, groq_max_tokens)
                     logger.info(f"[AI] Groq success: {attempt_model}")
                     return _Response(text)
                 except Exception as e:
@@ -341,7 +347,8 @@ class _UnifiedModels:
                         continue
                     break
 
-        # ── 3rd TRY GEMINI ──
+        # ── 3rd TRY GEMINI (FREE, no per-request size ceiling like Groq) ──
+        _gemini_error = None
         if self._gemini_key:
             try:
                 logger.info("[AI] Gemini (direct HTTP, FREE fallback)")
@@ -349,14 +356,19 @@ class _UnifiedModels:
                 logger.info("[AI] Gemini success!")
                 return _Response(text)
             except Exception as e:
+                _gemini_error = e
                 logger.warning(f"[AI] Gemini failed: {type(e).__name__}: {str(e)[:200]}")
 
-        # All failed
+        # All failed — surface the most useful error. If Gemini was configured
+        # but also failed, that's the one worth showing (it's the free
+        # fallback that SHOULD have worked); otherwise fall back to Groq/OR.
+        if _gemini_error:
+            raise _gemini_error
         if _groq_error:
             raise _groq_error
         if _or_error:
             raise _or_error
-        raise RuntimeError("Hakuna AI provider iliyofanya kazi. Angalia OPENROUTER_API_KEY.")
+        raise RuntimeError("Hakuna AI provider iliyofanya kazi. Angalia OPENROUTER_API_KEY/GROQ_API_KEY/GOOGLE_API_KEY.")
 
     def generate_content_stream(self, model, contents, config=None):
         system_instruction = None
@@ -392,16 +404,19 @@ class _UnifiedModels:
                         continue
                     break
 
-        # ── 2nd GROQ ──
+        # ── 2nd GROQ (Groq-only model list — `model` is an OpenRouter id and
+        # is never valid on Groq) ──
+        _groq_error = None
         if self._groq_key:
-            models_to_try = [model] + [m for m in FALLBACK_MODELS_GROQ if m != model]
-            for attempt_model in models_to_try:
+            groq_max_tokens = min(max_tokens, 4096)
+            for attempt_model in FALLBACK_MODELS_GROQ:
                 try:
                     logger.info(f"[AI] Groq stream (direct HTTP): {attempt_model}")
-                    for chunk_text in _call_groq_stream(messages, attempt_model, self._groq_key, temperature, 8192):
+                    for chunk_text in _call_groq_stream(messages, attempt_model, self._groq_key, temperature, groq_max_tokens):
                         yield _Chunk(chunk_text)
                     return
                 except Exception as e:
+                    _groq_error = e
                     err_str = str(e).lower()
                     logger.warning(f"[AI] Groq stream {attempt_model}: {type(e).__name__}: {str(e)[:150]}")
                     if '413' in err_str or 'request too large' in err_str:
@@ -416,7 +431,8 @@ class _UnifiedModels:
                         continue
                     break
 
-        # ── 3rd GEMINI ──
+        # ── 3rd GEMINI (FREE, no per-request size ceiling like Groq) ──
+        _gemini_error = None
         if self._gemini_key:
             try:
                 logger.info("[AI] Gemini stream (FREE fallback)")
@@ -424,8 +440,12 @@ class _UnifiedModels:
                     yield _Chunk(chunk_text)
                 return
             except Exception as e:
+                _gemini_error = e
                 logger.warning(f"[AI] Gemini stream failed: {type(e).__name__}: {str(e)[:200]}")
 
+        last_error = _gemini_error or _groq_error
+        if last_error:
+            raise last_error
         raise RuntimeError("Hakuna AI provider iliyofanya kazi kwa streaming.")
 
 
