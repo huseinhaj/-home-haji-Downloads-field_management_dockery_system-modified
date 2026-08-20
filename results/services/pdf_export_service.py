@@ -291,6 +291,8 @@ def generate_results_pdf_response(exam):
     school_disp = get_full_school_name(exam)
     lang = get_report_language(exam)
     etype = exam.get_exam_type_display().upper()
+    # Use exam.name if etype is generic (e.g. 'TEST') — show actual exam name
+    exam_title = exam.name.upper() if exam.name else etype
     gen_date_short = datetime.now().strftime('%d/%m/%Y')
 
     payload = get_exam_export_payload(exam)
@@ -398,7 +400,7 @@ def generate_results_pdf_response(exam):
         spaceBefore=2, spaceAfter=0, alignment=TA_CENTER, leading=12,
     )
     title_block_data = [[
-        _p(f"<b>{etype} {exam.year} EXAMINATION RESULTS</b>", title_style),
+        _p(f"<b>{exam_title} {exam.year} EXAMINATION RESULTS</b>", title_style),
     ], [
         _p(f"FORM {exam.form}  \u2014  {exam.name}", subtitle_style),
     ]]
@@ -555,7 +557,7 @@ def generate_results_pdf_response(exam):
     for pg_idx, chunk in enumerate(chunks, 1):
         # Title
         res_title_data = [[
-            _p(f"<b>{etype} {exam.year} EXAMINATION RESULTS</b>", ParagraphStyle(
+            _p(f"<b>{exam_title} {exam.year} EXAMINATION RESULTS</b>", ParagraphStyle(
                 'rt', parent=st['title_md'], fontSize=11, textColor=NAVY,
                 spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
             )),
@@ -584,21 +586,27 @@ def generate_results_pdf_response(exam):
             nm = _student_name(r)
             stu_gpa = r.points / counted if counted else 0
 
-            # Build COLORED inline subjects: green=pass, red=fail
+            # Build COLOURED inline subjects — each grade has its own colour
+            GRADE_COLORS = {
+                'A':  ('#006100', '#C6EFCE'),  # dark green on light green
+                'B+': ('#006100', '#D5F5E3'),  # green on pale green
+                'B':  ('#1E8449', '#D5F5E3'),  # medium green on pale green
+                'C+': ('#9C6500', '#FEF9E7'),  # dark yellow on light yellow
+                'C':  ('#9C6500', '#FEF9E7'),  # dark yellow on light yellow
+                'D':  ('#CC3300', '#FDEBD0'),  # orange on light orange
+                'E':  ('#CC3300', '#F5CBA7'),  # dark orange on peach
+                'S':  ('#B9770B', '#F9E79F'),  # brown on light gold
+                'F':  ('#9C0006', '#FADBD8'),  # dark red on light red
+                'X':  ('#555555', '#E8E8E8'),  # grey on light grey (absent)
+            }
             subj_parts = []
             for sub in subjects:
                 sc = score_lookup.get((r.student_id, sub.id))
                 g = _grade_for_score(sc, exam.form) if sc is not None else 'X'
                 abbr = sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
-                # Pass = A/B+/B/C+/C (score >= 40), Fail = D/F
-                if g and g in ('A', 'B+', 'B', 'C+', 'C'):
-                    color = '#006100'  # green
-                    bg = '#C6EFCE'
-                else:
-                    color = '#9C0006'  # red
-                    bg = '#FADBD8'
+                fg, bg = GRADE_COLORS.get(g, ('#555555', '#E8E8E8'))
                 subj_parts.append(
-                    f"<font color='{color}'><b>{abbr} - '{g}'</b></font>"
+                    f"<font color='{fg}'><b>{abbr} - '{g}'</b></font>"
                 )
             subj_text = '&nbsp;'.join(subj_parts)
 
