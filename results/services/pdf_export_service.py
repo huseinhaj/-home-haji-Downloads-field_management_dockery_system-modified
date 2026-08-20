@@ -145,13 +145,16 @@ def _grade_point(grade):
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-def _load_logo_b64(field):
-    """Load logo from ImageField as base64 data URI.
-    Returns '' if file missing or unreadable — never raises."""
+def _load_logo_b64(field, b64_field_value=''):
+    """Load logo — first try base64 stored in DB, then fallback to ImageField.
+    Returns '' if nothing found — never raises."""
+    # Priority 1: base64 stored directly in DB (persists on Railway)
+    if b64_field_value and b64_field_value.startswith('data:'):
+        return b64_field_value
+    # Priority 2: ImageField on disk
     if not field:
         return ''
     try:
-        # Check if the file actually exists on disk
         storage = field.storage
         if not storage.exists(field.name):
             return ''
@@ -381,9 +384,15 @@ def generate_results_pdf_response(exam):
     N = len(results)
     n_subj = max(len(subjects), 1)
 
-    # Load logos with proper error handling
-    slogo_uri = _load_logo_b64(exam.school.school_logo) if exam.school else ''
-    dlogo_uri = _load_logo_b64(exam.school.district_logo) if exam.school else ''
+    # Load logos — base64 from DB first, then ImageField fallback
+    slogo_uri = _load_logo_b64(
+        exam.school.school_logo if exam.school else None,
+        getattr(exam.school, 'school_logo_b64', '') if exam.school else '',
+    ) if exam.school else ''
+    dlogo_uri = _load_logo_b64(
+        exam.school.district_logo if exam.school else None,
+        getattr(exam.school, 'district_logo_b64', '') if exam.school else '',
+    ) if exam.school else ''
     school_type = get_school_type_for_exam(exam)
     stype = "SECONDARY SCHOOL" if school_type == 'secondary' else "PRIMARY SCHOOL"
 

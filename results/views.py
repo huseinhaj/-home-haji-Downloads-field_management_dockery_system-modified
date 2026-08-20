@@ -1878,14 +1878,25 @@ def upload_logos(request):
             messages.error(request, "Faili ni kubwa sana. Kiwango ni 2MB.")
             return redirect('upload_logos')
 
-        # Save to School model (persists in database)
+        # Save to School model — both ImageField AND base64 in DB
+        # (base64 persists on Railway where filesystem is ephemeral)
+        import base64 as _b64
+        file_data = uploaded_file.read()
+        ext = Path(uploaded_file.name).suffix.lower()
+        mime_map = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml'}
+        mime = mime_map.get(ext, 'image/png')
+        b64_str = f'data:{mime};base64,{_b64.b64encode(file_data).decode("ascii")}'
+        uploaded_file.seek(0)  # reset for ImageField save
+
         if logo_type == 'school':
             school.school_logo = uploaded_file
-            school.save(update_fields=['school_logo'])
+            school.school_logo_b64 = b64_str
+            school.save(update_fields=['school_logo', 'school_logo_b64'])
             logo_name = "ya Shule"
         elif logo_type == 'district':
             school.district_logo = uploaded_file
-            school.save(update_fields=['district_logo'])
+            school.district_logo_b64 = b64_str
+            school.save(update_fields=['district_logo', 'district_logo_b64'])
             logo_name = "ya Halmashauri"
         else:
             messages.error(request, "Aina ya logo haijulikani.")
@@ -1895,8 +1906,8 @@ def upload_logos(request):
         return redirect('upload_logos')
 
     return render(request, 'results/upload_logos.html', {
-        'school_logo_exists': bool(school.school_logo) if school else False,
-        'district_logo_exists': bool(school.district_logo) if school else False,
+        'school_logo_exists': bool(school.school_logo_b64 or school.school_logo) if school else False,
+        'district_logo_exists': bool(school.district_logo_b64 or school.district_logo) if school else False,
         'school_logo_url': school.school_logo.url if school and school.school_logo else '',
         'district_logo_url': school.district_logo.url if school and school.district_logo else '',
     })

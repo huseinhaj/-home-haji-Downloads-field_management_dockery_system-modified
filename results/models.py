@@ -16,6 +16,10 @@ class School(models.Model):
         help_text="Logo ya shule — inaonekana kushoto kwenye PDF header")
     district_logo = models.ImageField(upload_to='district_logos/', blank=True, null=True,
         help_text="Logo ya halmashauri — inaonekana kulia kwenye PDF header")
+    school_logo_b64 = models.TextField(blank=True, default='',
+        help_text="School logo stored as base64 — persists on Railway")
+    district_logo_b64 = models.TextField(blank=True, default='',
+        help_text="District logo stored as base64 — persists on Railway")
     source_school_id = models.PositiveIntegerField(
         null=True, blank=True, unique=True,
         help_text="PK of the matching field_app.School record (nationwide master list). "
