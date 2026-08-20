@@ -536,34 +536,24 @@ def generate_results_pdf_response(exam):
         story.append(t_table)
 
     # ══════════════════════════════════════════════════════════════════════
-    # RESULTS PAGES — A4 Portrait (same size as summary!)
+    # RESULTS PAGES — A4 Portrait, NECTA format with GPA
+    # NECTA: CNO | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
     # ══════════════════════════════════════════════════════════════════════
     story.append(PageBreak())
 
-    # Adaptive font size for portrait results
-    if n_subj <= 4:
-        fs_cell = 7.5
-        fs_hdr = 7.5
-    elif n_subj <= 7:
-        fs_cell = 6.5
-        fs_hdr = 6.5
-    else:
-        fs_cell = 5.5
-        fs_hdr = 5.5
-
-    cell_st = ParagraphStyle('lsm', parent=st['td'], fontSize=fs_cell, leading=fs_cell + 2)
-    cell_bold = ParagraphStyle('lsb', parent=st['td_bold'], fontSize=fs_cell, leading=fs_cell + 2)
-    hdr_st = ParagraphStyle('lsh', parent=st['th'], fontSize=fs_hdr, leading=fs_hdr + 2)
-    name_st = ParagraphStyle('lsn', parent=st['td_name'], fontSize=fs_cell, leading=fs_cell + 2)
-    subj_st = ParagraphStyle('lss', parent=st['td'], fontSize=fs_cell - 0.5, leading=fs_cell + 1,
+    cell_st = ParagraphStyle('lsm', parent=st['td'], fontSize=7.5, leading=9)
+    cell_bold = ParagraphStyle('lsb', parent=st['td_bold'], fontSize=7.5, leading=9)
+    hdr_st = ParagraphStyle('lsh', parent=st['th'], fontSize=7.5, leading=9)
+    name_st = ParagraphStyle('lsn', parent=st['td_name'], fontSize=7.5, leading=9)
+    subj_st = ParagraphStyle('lss', parent=st['td'], fontSize=7, leading=8.5,
                              wordWrap='CJK')
 
-    rows_per_page = 28 if n_subj <= 4 else 22 if n_subj <= 7 else 16
+    rows_per_page = 30
     chunks = [results[i:i + rows_per_page] for i in range(0, N, rows_per_page)]
     total_pages = len(chunks) or 1
 
     for pg_idx, chunk in enumerate(chunks, 1):
-        # Title for results page
+        # Title
         res_title_data = [[
             _p(f"<b>{etype} {exam.year} EXAMINATION RESULTS</b>", ParagraphStyle(
                 'rt', parent=st['title_md'], fontSize=11, textColor=NAVY,
@@ -585,64 +575,49 @@ def generate_results_pdf_response(exam):
         story.append(rt)
         story.append(Spacer(1, 4))
 
-        # Build table: # | NAME | SEX | [Subjects] | TOTAL | AVG | GPA | PTS | DIV
-        subj_headers = []
-        for sub in subjects:
-            abbr = sub.name[:6] if len(sub.name) > 6 else sub.name
-            subj_headers.append(abbr.upper())
-
-        r_hdr = ["#", "NAME", "SEX"] + subj_headers + ["TOT", "AVG", "GPA", "PTS", "DIV"]
+        # NECTA-style table: CNO | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
+        r_hdr = ["CNO", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"]
         data = [[_p(f"<b>{h}</b>", hdr_st) for h in r_hdr]]
 
         for r in chunk:
-            nm = _student_name(r)
-            max_nm = 16 if n_subj <= 4 else 13 if n_subj <= 7 else 10
-            if len(nm) > max_nm:
-                nm = nm[:max_nm - 2] + '..'
+            # CNO — position-based candidate number
+            cno = f"{r.position:03d}"
 
             stu_gpa = r.points / counted if counted else 0
 
-            subj_cells = []
+            # Build inline subjects: CIV - 'B' HIST - 'C' ...
+            subj_parts = []
             for sub in subjects:
                 sc = score_lookup.get((r.student_id, sub.id))
-                sc_val = str(sc) if sc is not None else '-'
-                subj_cells.append(_p(sc_val, cell_st))
+                g = _grade_for_score(sc, exam.form) if sc is not None else 'X'
+                abbr = sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
+                subj_parts.append(f"{abbr} - '{g}'")
+            subj_text = '&nbsp;&nbsp;'.join(subj_parts)
 
             div_bg = DIV_BG.get(r.division, WHITE)
             div_fg = DIV_FG.get(r.division, BLACK)
-            div_st = ParagraphStyle(f'dv3_{r.student_id}', parent=cell_st,
+            div_st = ParagraphStyle(f'dv4_{r.student_id}', parent=cell_st,
                                     backColor=div_bg, textColor=div_fg,
                                     fontName='Helvetica-Bold')
 
-            row = [
-                _p(str(r.position), cell_st),
-                _p(nm, name_st),
+            data.append([
+                _p(cno, cell_st),
                 _p(r.student.gender or 'M', cell_st),
-            ] + subj_cells + [
-                _p(str(r.total_score), cell_bold),
-                _p(f"{r.average_score:.1f}", cell_bold),
-                _p(f"{stu_gpa:.2f}", cell_bold),
                 _p(str(r.points), cell_bold),
+                _p(f"{stu_gpa:.2f}", cell_bold),
                 _p(str(r.division), div_st),
-            ]
-            data.append(row)
+                _p(subj_text, subj_st),
+            ])
 
-        # Column widths: proportional for portrait A4
-        n_subj_cols = n_subj
-        fixed_pct = 0.32  # # + NAME + SEX + TOT + AVG + GPA + PTS + DIV
-        subj_pct = 1.0 - fixed_pct
-        subj_each = subj_pct / max(n_subj_cols, 1)
-
-        cw = [content_w * 0.03]   # #
-        cw.append(content_w * 0.12)  # NAME
-        cw.append(content_w * 0.03)  # SEX
-        for _ in range(n_subj_cols):
-            cw.append(content_w * subj_each)
-        cw.append(content_w * 0.05)  # TOT
-        cw.append(content_w * 0.05)  # AVG
-        cw.append(content_w * 0.05)  # GPA
-        cw.append(content_w * 0.04)  # PTS
-        cw.append(content_w * 0.04)  # DIV
+        # Column widths — NECTA style
+        cw = [
+            content_w * 0.06,  # CNO
+            content_w * 0.05,  # SEX
+            content_w * 0.06,  # AGGT
+            content_w * 0.06,  # GPA
+            content_w * 0.05,  # DIV
+            content_w * 0.72,  # DETAILED SUBJECTS (takes most space)
+        ]
 
         r_table = Table(data, colWidths=cw, repeatRows=1)
         rs = [
@@ -650,10 +625,10 @@ def generate_results_pdf_response(exam):
             ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
             ('GRID', (0, 0), (-1, -1), 0.3, DARK_LINE),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ('LEFTPADDING', (0, 0), (-1, -1), 2),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
         ]
         for i in range(1, len(data)):
             if i % 2 == 0:
