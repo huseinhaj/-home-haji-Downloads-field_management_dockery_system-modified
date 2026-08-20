@@ -17,7 +17,7 @@ from reportlab.lib.units import cm, mm
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak,
-    HRFlowable, KeepTogether,
+    HRFlowable, KeepTogether, Flowable,
 )
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -223,9 +223,10 @@ def _div_label(d, lang):
 
 
 # ── Header Flowable ──────────────────────────────────────────────────────────
-class NECTAHeader:
+class NECTAHeader(Flowable):
     """Custom flowable that draws the green banner + logos + text on first page."""
     def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang):
+        Flowable.__init__(self)
         self.exam = exam
         self.school_disp = school_disp
         self.slogo_uri = slogo_uri
