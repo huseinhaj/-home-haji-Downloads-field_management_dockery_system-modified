@@ -14,7 +14,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.core.exceptions import ValidationError
 
 from .forms import ExamUploadForm, TeacherSelfSubjectsForm
-from .models import Exam, ExamResult, PersonalUpload, PersonalUploadResult, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission
+from .models import Exam, ExamResult, FormStudent, PersonalUpload, PersonalUploadResult, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission, TeacherFormAssignment
 from .permissions import academic_required, results_login_required as login_required, teacher_required
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
 from .services.pdf_export_service import generate_results_pdf_response
@@ -1900,3 +1900,321 @@ def upload_logos(request):
         'school_logo_url': school.school_logo.url if school and school.school_logo else '',
         'district_logo_url': school.district_logo.url if school and school.district_logo else '',
     })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FORM STUDENT LIST — Upload + Teacher Dashboard
+# ══════════════════════════════════════════════════════════════════════════════
+
+@academic_required
+def upload_form_students(request):
+    """Academic Officer uploads orodha ya wanafunzi kwa form fulani.
+    Accepts Excel/CSV: columns = Admission No, First Name, Middle Name, Last Name, Gender."""
+    school = request.user.school
+    if not school:
+        messages.error(request, "Hakuna shule iliyowekwa.")
+        return redirect('home')
+
+    form_num = request.GET.get('form') or request.POST.get('form') or ''
+    selected_form = int(form_num) if form_num.isdigit() and int(form_num) in (1,2,3,4,5,6) else None
+
+    if request.method == 'POST' and selected_form:
+        uploaded_file = request.FILES.get('student_file')
+        if not uploaded_file:
+            messages.error(request, "Chagua faili la orodha ya wanafunzi.")
+            return redirect(f'{reverse("upload_form_students")}?form={selected_form}')
+
+        import csv, io
+        ext = Path(uploaded_file.name).suffix.lower()
+        count = 0
+        skipped = 0
+
+        try:
+            if ext in ('.csv', '.txt'):
+                content = uploaded_file.read().decode('utf-8', errors='replace')
+                reader = csv.reader(io.StringIO(content))
+                rows = list(reader)
+            elif ext in ('.xlsx', '.xls'):
+                import pandas as pd
+                df = pd.read_excel(uploaded_file, dtype=str).fillna('')
+                rows = [list(df.columns)] + df.values.tolist()
+            else:
+                messages.error(request, f"Aina ya faili '{ext}' haijulikani. Tumia CSV au Excel.")
+                return redirect(f'{reverse("upload_form_students")}?form={selected_form}')
+
+            # Skip header row
+            data_rows = rows[1:] if len(rows) > 1 else []
+
+            for row in data_rows:
+                if len(row) < 4:
+                    skipped += 1
+                    continue
+                adm = str(row[0]).strip() if row[0] else ''
+                fn = str(row[1]).strip() if len(row) > 1 else ''
+                mn = str(row[2]).strip() if len(row) > 2 else ''
+                ln = str(row[3]).strip() if len(row) > 3 else ''
+                g = str(row[4]).strip().upper() if len(row) > 4 and row[4] else 'M'
+                if g not in ('M', 'F'):
+                    g = 'M'
+                if not fn or not ln:
+                    skipped += 1
+                    continue
+
+                FormStudent.objects.update_or_create(
+                    school=school, form=selected_form, admission_no=adm,
+                    defaults={'first_name': fn, 'middle_name': mn, 'last_name': ln, 'gender': g},
+                )
+                count += 1
+
+            if count:
+                messages.success(request, f"Wanafunzi {count} wa Form {selected_form} wamehifadhiwa! ({skipped} wameachwa)")
+            else:
+                messages.warning(request, "Hakuna wanafunzi waliohifadhiwa. Angalia muundo wa faili.")
+        except Exception as e:
+            messages.error(request, f"Hitilafu ya kusoma faili: {e}")
+
+        return redirect(f'{reverse("upload_form_students")}?form={selected_form}')
+
+    # GET — show form
+    students = FormStudent.objects.filter(school=school, form=selected_form).order_by('last_name', 'first_name') if selected_form else FormStudent.objects.none()
+    counts = {}
+    for f in range(1, 7):
+        counts[f] = FormStudent.objects.filter(school=school, form=f).count()
+
+    return render(request, 'results/upload_form_students.html', {
+        'selected_form': selected_form,
+        'students': students,
+        'form_counts': counts,
+    })
+
+
+@academic_required
+@require_POST
+def delete_form_student(request, student_id):
+    """Delete a single form student."""
+    school = request.user.school
+    student = get_object_or_404(FormStudent, id=student_id, school=school)
+    form_num = student.form
+    student.delete()
+    messages.success(request, "Mwanafunzi ameondolewa.")
+    return redirect(f'{reverse("upload_form_students")}?form={form_num}')
+
+
+@academic_required
+def assign_teacher_form(request):
+    """Academic Officer assigns teacher to form + subject."""
+    school = request.user.school
+    if not school:
+        messages.error(request, "Hakuna shule iliyowekwa.")
+        return redirect('home')
+
+    if request.method == 'POST':
+        teacher_id = request.POST.get('teacher_id')
+        form_num = request.POST.get('form')
+        subject_id = request.POST.get('subject_id')
+        if teacher_id and form_num and subject_id:
+            from .models import TeacherAccount
+            teacher = TeacherAccount.objects.filter(id=teacher_id, school=school).first()
+            subject = Subject.objects.filter(id=subject_id).first()
+            if teacher and subject and int(form_num) in (1,2,3,4,5,6):
+                TeacherFormAssignment.objects.get_or_create(
+                    teacher=teacher, form=int(form_num), subject=subject, school=school,
+                )
+                messages.success(request, f"{teacher.full_name} ameassignwa Form {form_num} — {subject.name}")
+            else:
+                messages.error(request, "Taarifa hazijakamilika.")
+        return redirect('assign_teacher_form')
+
+    from .models import TeacherAccount
+    teachers = TeacherAccount.objects.filter(school=school, role='TEACHER').order_by('full_name')
+    subjects = Subject.objects.all().order_by('name')
+    assignments = TeacherFormAssignment.objects.filter(school=school).select_related('teacher', 'subject').order_by('form', 'subject__name')
+
+    return render(request, 'results/assign_teacher_form.html', {
+        'teachers': teachers,
+        'subjects': subjects,
+        'assignments': assignments,
+    })
+
+
+def _generate_recommendations_for_teacher(teacher, form, school):
+    """Generate automatic recommendations for a teacher based on subject performance."""
+    from .models import ExamResult, Exam, ExamResult as ER
+    from django.db.models import Avg, Count, Q
+
+    recs = []
+    assignment = TeacherFormAssignment.objects.filter(
+        teacher=teacher, form=form, school=school
+    ).first()
+    if not assignment:
+        return recs
+
+    subject = assignment.subject
+
+    # Find exams for this form at this school
+    exams = Exam.objects.filter(school=school, form=form).order_by('-year', '-date')[:5]
+    if not exams:
+        recs.append({
+            'type': 'info',
+            'title': 'Hakuna mitihani bado',
+            'detail': f'Hakuna mitihani ya Form {form} iliyopo. Tumia mitihani kuona matokeo ya somo la {subject.name}.',
+        })
+        return recs
+
+    for exam in exams[:3]:
+        results = ExamResult.objects.filter(exam=exam, subject=subject)
+        if not results.exists():
+            continue
+
+        avg = results.aggregate(avg=Avg('score'))['avg'] or 0
+        total = results.count()
+        passed = results.filter(score__gte=40).count()
+        pass_rate = (passed / total * 100) if total else 0
+        failed = total - passed
+
+        if pass_rate < 50:
+            recs.append({
+                'type': 'warning',
+                'title': f'{exam.name} — Kiwango cha kufaulu ni chini ( {pass_rate:.0f}%)',
+                'detail': f'Wanafunzi {failed} kati ya {total} wamefail {subject.name}. Fikiria: ongeza muda wa masomo, tumia mitihani ya ziada, au rekebisha mbinu za ufundishaji.',
+            })
+        elif avg < 45:
+            recs.append({
+                'type': 'info',
+                'title': f'{exam.name} — Wastani ni {avg:.1f} (chini ya 45)',
+                'detail': f'Wastani wa alama za {subject.name} ni {avg:.1f}. Wanafunzi wanahitaji msaada zaidi — ongeza mazoezi na ushauri wa karibu.',
+            })
+        elif pass_rate >= 80:
+            recs.append({
+                'type': 'success',
+                'title': f'{exam.name} — Matokeo mazuri ({pass_rate:.0f}% wamefaulu)',
+                'detail': f'Wanafunzi {passed} kati ya {total} wamefaulu {subject.name} kwa wastani wa {avg:.1f}. Endelea na mbinu ulizo nazo!',
+            })
+        else:
+            recs.append({
+                'type': 'info',
+                'title': f'{exam.name} — Wastani {avg:.1f}, Kufaulu {pass_rate:.0f}%',
+                'detail': f'Matokeo ni ya wastani. Fikiria kuongeza muda wa mazoezi na kuwasaidia wanafunzi walio chini ya 40.',
+            })
+
+    if not recs:
+        recs.append({
+            'type': 'info',
+            'title': 'Hakuna data ya kutosha',
+            'detail': f'Hakuna matokeo ya {subject.name} kwa Form {form} kwa ripoti ya mapendekezo.',
+        })
+
+    return recs
+
+
+@academic_required
+def teacher_performance_report(request, form_num):
+    """Generate PDF report ya walimu wote wa form fulani — performance + recommendations."""
+    school = request.user.school
+    if not school:
+        messages.error(request, "Hakuna shule iliyowekwa.")
+        return redirect('home')
+
+    if form_num not in (1,2,3,4,5,6):
+        raise Http404("Form haijulikani")
+
+    import io
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+
+    assignments = TeacherFormAssignment.objects.filter(
+        school=school, form=form_num
+    ).select_related('teacher', 'subject').order_by('teacher__full_name', 'subject__name')
+
+    form_labels = {1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI'}
+    form_label = form_labels.get(form_num, str(form_num))
+
+    student_count = FormStudent.objects.filter(school=school, form=form_num).count()
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm, leftMargin=2*cm, rightMargin=2*cm)
+    content_w = A4[0] - 4*cm
+    story = []
+
+    ss = getSampleStyleSheet()
+    title_s = ParagraphStyle('rpt_title', parent=ss['Title'], fontSize=16, alignment=TA_CENTER, textColor=colors.HexColor('#1A3C6E'), spaceAfter=6)
+    subtitle_s = ParagraphStyle('rpt_sub', parent=ss['Normal'], fontSize=11, alignment=TA_CENTER, textColor=colors.HexColor('#555555'), spaceAfter=12)
+    section_s = ParagraphStyle('rpt_sec', parent=ss['Heading2'], fontSize=12, textColor=colors.HexColor('#1A3C6E'), spaceBefore=16, spaceAfter=8)
+    body_s = ParagraphStyle('rpt_body', parent=ss['Normal'], fontSize=10, leading=14, spaceAfter=4)
+    rec_s = ParagraphStyle('rpt_rec', parent=ss['Normal'], fontSize=9, leading=13, leftIndent=12, spaceAfter=6)
+
+    # Title
+    story.append(Paragraph(f"{school.name}", title_s))
+    story.append(Paragraph(f"Ripoti ya Ufaulu — Form {form_label}", subtitle_s))
+    story.append(Paragraph(f"Wanafunzi: {student_count} | Walimu: {assignments.values('teacher').distinct().count()} | Masomo: {assignments.values('subject').distinct().count()}", subtitle_s))
+    story.append(Spacer(1, 12))
+
+    # Per-teacher sections
+    teachers_seen = []
+    for ta in assignments:
+        teacher = ta.teacher
+        if teacher.id in [t.id for t in teachers_seen]:
+            continue
+        teachers_seen.append(teacher)
+
+        teacher_assignments = [a for a in assignments if a.teacher.id == teacher.id]
+        teacher_subjects = ', '.join(a.subject.name for a in teacher_assignments)
+
+        story.append(Paragraph(f"<b>{teacher.full_name or teacher.email}</b>", section_s))
+        story.append(Paragraph(f"Masomo: {teacher_subjects}", body_s))
+
+        # Performance per subject
+        for ta2 in teacher_assignments:
+            subject = ta2.subject
+            from django.db.models import Avg
+            exams = Exam.objects.filter(school=school, form=form_num).order_by('-year')[:5]
+            perf_data = [['Mtihani', 'Wastani', 'Kufaulu%', 'Idadi']]
+            for ex in exams:
+                results = ExamResult.objects.filter(exam=ex, subject=subject)
+                if results.exists():
+                    avg = results.aggregate(a=Avg('score'))['a'] or 0
+                    passed = results.filter(score__gte=40).count()
+                    total = results.count()
+                    pr = round(passed/total*100, 1) if total else 0
+                    perf_data.append([ex.name, f'{avg:.1f}', f'{pr}%', str(total)])
+
+            if len(perf_data) > 1:
+                story.append(Paragraph(f"<b>{subject.name}</b>", body_s))
+                t = Table(perf_data, colWidths=[content_w*0.35, content_w*0.2, content_w*0.2, content_w*0.15])
+                t.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A3C6E')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                    ('FONTSIZE', (0, 0), (-1, -1), 9),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+                    ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ]))
+                story.append(t)
+                story.append(Spacer(1, 6))
+
+        # Recommendations
+        recs = _generate_recommendations_for_teacher(teacher, form_num, school)
+        if recs:
+            story.append(Paragraph("<b>Mapendekezo ya Kuimprove:</b>", body_s))
+            for rec in recs:
+                icon = {'warning': '⚠️', 'success': '✅', 'info': 'ℹ️'}.get(rec['type'], '•')
+                story.append(Paragraph(f"{icon} <b>{rec['title']}</b>", rec_s))
+                story.append(Paragraph(rec['detail'], rec_s))
+
+        story.append(Spacer(1, 8))
+
+    if not teachers_seen:
+        story.append(Paragraph("Hakuna walimu walioassignwa kwa Form hii bado.", body_s))
+        story.append(Paragraph("Tafadhali assign walimu kwanza (Assign Teacher → Form).", body_s))
+
+    doc.build(story)
+    buf.seek(0)
+    resp = HttpResponse(buf, content_type='application/pdf')
+    resp['Content-Disposition'] = f'attachment; filename="Form_{form_label}_Teacher_Report.pdf"'
+    return resp

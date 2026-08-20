@@ -1,0 +1,96 @@
+{% extends "results/base.html" %}
+{% block title %}Assign Mwalimu kwa Form{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <h2 class="mb-3" style="color:#1A3C6E;">👩‍🏫 Assign Mwalimu kwa Form + Somo</h2>
+  <p class="text-muted mb-4">Weka mwalimu kwa form na somo ili aone wanafunzi na aweze kuweka alama.</p>
+
+  <!-- Assign Form -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header" style="background:#1A3C6E;color:#fff;">
+      <strong>Assign Mpya</strong>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="row g-3 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Mwalimu</label>
+            <select name="teacher_id" class="form-select" required>
+              <option value="">— Chagua Mwalimu —</option>
+              {% for t in teachers %}
+              <option value="{{ t.id }}">{{ t.full_name|default:t.email }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Form</label>
+            <select name="form" class="form-select" required>
+              {% for f in "123456" %}
+              <option value="{{ f }}">Form {{ f }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Somo</label>
+            <select name="subject_id" class="form-select" required>
+              <option value="">— Chagua Somo —</option>
+              {% for s in subjects %}
+              <option value="{{ s.id }}">{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <button type="submit" class="btn w-100 fw-bold" style="background:#1A7B3A;color:#fff;">
+              ✅ Assign
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Current Assignments -->
+  <div class="card shadow-sm">
+    <div class="card-header" style="background:#F8F9FA;">
+      <strong>Assignments Zilizopo ({{ assignments|length }})</strong>
+    </div>
+    <div class="card-body p-0">
+      {% if assignments %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead style="background:#1A3C6E;color:#fff;">
+            <tr>
+              <th>Form</th>
+              <th>Mwalimu</th>
+              <th>Somo</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in assignments %}
+            <tr>
+              <td><span class="badge" style="background:#B8860B;">Form {{ a.form }}</span></td>
+              <td>{{ a.teacher.full_name|default:a.teacher.email }}</td>
+              <td>{{ a.subject.name }}</td>
+              <td>
+                <a href="{% url 'teacher_performance_report' a.form %}" class="btn btn-sm btn-outline-primary" title="Ripoti">
+                  📊
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5 text-muted">
+        <div class="fs-1">👩‍🏫</div>
+        <p>Hakuna assignments bado. Assign mwalimu hapo juu.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

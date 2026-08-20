@@ -45,6 +45,10 @@ from .views import (
     student_result_public,
     public_results_search,
     exam_share_links,
+    upload_form_students,
+    delete_form_student,
+    assign_teacher_form,
+    teacher_performance_report,
 )
 from .marks_entry import (
     marks_entry,
@@ -139,4 +143,11 @@ urlpatterns = [
     path('speech-sessions/<int:session_id>/ingest/', ingest_speech_entry, name='ingest_speech_entry'),
     path('speech-sessions/<int:session_id>/confirm/', confirm_speech_candidate, name='confirm_speech_candidate'),
     path('speech-sessions/<int:session_id>/finalize/', finalize_speech_session, name='finalize_speech_session'),
+    # Form student lists — Academic Officer uploads students per form
+    path('form-students/', upload_form_students, name='upload_form_students'),
+    path('form-students/<int:student_id>/delete/', delete_form_student, name='delete_form_student'),
+    # Assign teacher to form + subject
+    path('assign-teacher/', assign_teacher_form, name='assign_teacher_form'),
+    # Teacher performance report PDF — all teachers for a form
+    path('report/form-<int:form_num>/teachers/', teacher_performance_report, name='teacher_performance_report'),
 ]

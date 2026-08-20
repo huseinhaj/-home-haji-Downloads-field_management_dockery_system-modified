@@ -1,0 +1,133 @@
+{% extends "results/base.html" %}
+{% block title %}Orodha ya Wanafunzi{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <h2 class="mb-3" style="color:#1A3C6E;">📋 Orodha ya Wanafunzi kwa Form</h2>
+  <p class="text-muted mb-4">Upload orodha ya wanafunzi kwa kila form (Excel/CSV). Wanafunzi wataonekana kwenye dashibodi ya kila mwalimu.</p>
+
+  <!-- Form Tabs -->
+  <ul class="nav nav-tabs mb-4">
+    {% for f in "123456" %}
+    {% with fn=f|add:"0" %}
+    <li class="nav-item">
+      <a class="nav-link {% if selected_form == fn %}active{% endif %}"
+         href="?form={{ f }}"
+         style="{% if selected_form == fn %}background:#1A3C6E;color:#fff;{% endif %}">
+        Form {{ f }}
+        {% with cnt=form_counts|dictsort:0 %}
+        {% endwith %}
+        <span class="badge bg-secondary ms-1">{{ form_counts|default_if_none:"" }}</span>
+      </a>
+    </li>
+    {% endwith %}
+    {% endfor %}
+  </ul>
+
+  <!-- Per-form counts -->
+  <div class="row mb-4">
+    {% for f, cnt in form_counts.items %}
+    <div class="col-md-2 col-4 mb-2">
+      <a href="?form={{ f }}" class="text-decoration-none">
+        <div class="card text-center {% if selected_form == f %}border-primary shadow{% else %}border-light{% endif %}">
+          <div class="card-body py-2 px-1">
+            <div class="fw-bold" style="color:{% if selected_form == f %}#1A3C6E{% else %}#555{% endif %};">Form {{ f }}</div>
+            <div class="fs-4 fw-bold" style="color:{% if selected_form == f %}#B8860B{% else %}#999{% endif %};">{{ cnt }}</div>
+            <small class="text-muted">wanafunzi</small>
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if selected_form %}
+  <!-- Upload Section -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header" style="background:#1A3C6E;color:#fff;">
+      <strong>Pakia Orodha — Form {{ selected_form }}</strong>
+    </div>
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="form" value="{{ selected_form }}">
+        <div class="row align-items-end">
+          <div class="col-md-8">
+            <label class="form-label fw-bold">Faili la Orodha (CSV au Excel)</label>
+            <input type="file" name="student_file" class="form-control" accept=".csv,.xlsx,.xls,.txt" required>
+            <small class="text-muted">Muundo: Admission No, First Name, Middle Name, Last Name, Gender (M/F)</small>
+          </div>
+          <div class="col-md-4">
+            <button type="submit" class="btn w-100 fw-bold" style="background:#1A7B3A;color:#fff;">
+              📤 Pakia Wanafunzi
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Students Table -->
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background:#F8F9FA;">
+      <strong>Wanafunzi wa Form {{ selected_form }} ({{ students|length }})</strong>
+      {% if students %}
+      <a href="{% url 'teacher_performance_report' selected_form %}" class="btn btn-sm" style="background:#B8860B;color:#fff;">
+        📊 Ripoti ya Walimu
+      </a>
+      {% endif %}
+    </div>
+    <div class="card-body p-0">
+      {% if students %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead style="background:#1A3C6E;color:#fff;">
+            <tr>
+              <th>#</th>
+              <th>No. ya Usajili</th>
+              <th>Jina</th>
+              <th>Jinsia</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in students %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ s.admission_no|default:"—" }}</td>
+              <td>{{ s.first_name }} {{ s.middle_name }} {{ s.last_name }}</td>
+              <td>
+                {% if s.gender == 'F' %}
+                <span style="color:#C0392B;">♀ Female</span>
+                {% else %}
+                <span style="color:#2980B9;">♂ Male</span>
+                {% endif %}
+              </td>
+              <td>
+                <form method="post" action="{% url 'delete_form_student' s.id %}" class="d-inline"
+                      onsubmit="return confirm('Delete {{ s.first_name }} {{ s.last_name }}?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger">🗑</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5 text-muted">
+        <div class="fs-1">📭</div>
+        <p>Hakuna wanafunzi bado. Upload faili ya orodha hapo juu.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <div class="fs-1">👆</div>
+    <p>Chagua form hapo juu kuona na kuupload orodha ya wanafunzi.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

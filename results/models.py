@@ -48,6 +48,48 @@ class SchoolSubject(models.Model):
         return f"{self.school} — {self.subject}"
 
 
+class FormStudent(models.Model):
+    """Mwanafunzi wa form fulani shuleni.
+    Orodha hii ni ya shule yote — si kwa mtihani fulani.
+    Academic Officer anaupload orodha, kila mwalimu anaona wanafunzi wake."""
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='form_students')
+    form = models.PositiveIntegerField()  # 1, 2, 3, 4, 5, 6
+    admission_no = models.CharField(max_length=50, blank=True)
+    first_name = models.CharField(max_length=100)
+    middle_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100)
+    gender = models.CharField(max_length=1, choices=[('F', 'Female'), ('M', 'Male')])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('school', 'form', 'admission_no')]
+        ordering = ['form', 'last_name', 'first_name']
+
+    def __str__(self):
+        return f"Form {self.form} — {self.first_name} {self.last_name} ({self.school})"
+
+    @property
+    def full_name(self):
+        return ' '.join(p for p in [self.first_name, self.middle_name or '', self.last_name] if p)
+
+
+class TeacherFormAssignment(models.Model):
+    """Mwalimu anayefundisha somo fulani kwa form fulani.
+    Academic Officer anaassign mwalimu kwa form + subject."""
+    teacher = models.ForeignKey('TeacherAccount', on_delete=models.CASCADE, related_name='form_assignments')
+    form = models.PositiveIntegerField()
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='teacher_assignments')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('teacher', 'form', 'subject')]
+        ordering = ['form', 'subject__name']
+
+    def __str__(self):
+        return f"{self.teacher} — Form {self.form} {self.subject}"
+
+
 class Student(models.Model):
     GENDER_CHOICES = [('F', 'Female'), ('M', 'Male')]
 
