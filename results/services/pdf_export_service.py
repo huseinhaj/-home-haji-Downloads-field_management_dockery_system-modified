@@ -319,6 +319,47 @@ def _footer(canvas, doc):
     canvas.setStrokeColor(DARK_LINE)
     canvas.setLineWidth(0.3)
     canvas.line(doc.leftMargin, 0.85 * cm, w - doc.rightMargin, 0.85 * cm)
+
+    # Signature area — only on the LAST page, drawn on canvas at fixed bottom
+    pg_num = canvas.getPageNumber()
+    total = getattr(doc, '_total_pages', 0)
+    if pg_num == total and total > 1:
+        sig_y = 1.6 * cm  # above footer text
+        sig_x_left = doc.leftMargin
+        sig_x_right = w - doc.rightMargin
+        content_w_val = getattr(doc, '_content_w', w - 3 * cm)
+        sig_w = content_w_val * 0.42
+
+        canvas.setFont('Helvetica', 7.5)
+        canvas.setFillColor(SLATE)
+
+        # Left signature — Academic Officer
+        canvas.setStrokeColor(DARK_LINE)
+        canvas.setLineWidth(0.4)
+        canvas.line(sig_x_left, sig_y + 14, sig_x_left + sig_w, sig_y + 14)
+        canvas.setFont('Helvetica-Bold', 7.5)
+        canvas.setFillColor(NAVY)
+        canvas.drawCentredString(sig_x_left + sig_w / 2, sig_y + 6, 'Signature & Stamp')
+        canvas.setFont('Helvetica', 7)
+        canvas.setFillColor(SLATE)
+        canvas.drawCentredString(sig_x_left + sig_w / 2, sig_y - 4, 'Academic Officer')
+
+        # Right signature — Head of School
+        canvas.setStrokeColor(DARK_LINE)
+        canvas.setLineWidth(0.4)
+        canvas.line(sig_x_right - sig_w, sig_y + 14, sig_x_right, sig_y + 14)
+        canvas.setFont('Helvetica-Bold', 7.5)
+        canvas.setFillColor(NAVY)
+        canvas.drawCentredString(sig_x_right - sig_w / 2, sig_y + 6, 'Signature & Stamp')
+        canvas.setFont('Helvetica', 7)
+        canvas.setFillColor(SLATE)
+        canvas.drawCentredString(sig_x_right - sig_w / 2, sig_y - 4, 'Head of School')
+
+        # Date
+        canvas.setFont('Helvetica', 7)
+        canvas.setFillColor(SLATE)
+        canvas.drawString(sig_x_left, sig_y - 16, f'Date: {datetime.now().strftime("%d %B %Y")}')
+
     canvas.restoreState()
 
 
@@ -593,10 +634,12 @@ def generate_results_pdf_response(exam):
                              wordWrap='CJK')
 
     # Calculate how many rows fit per page
-    # header (84pt) + spacer (4pt) + title (24pt) + spacer (3pt) + footer (24pt) = 139pt overhead
-    header_overhead = 84 + 4 + 24 + 3 + 24  # 139pt
-    available_h = page_h - margin_top - margin_bot - header_overhead
-    row_h = 16  # each data row height
+    # header (84pt) + spacer (4pt) + title (20pt) + spacer (3pt) = 111pt overhead
+    # footer area reserved = 1.6cm (45pt) for signature + 0.85cm (24pt) for footer text
+    header_overhead = 84 + 4 + 20 + 3  # 111pt
+    footer_reserve = int(1.6 * cm) + int(0.85 * cm)  # ~69pt reserved for signature+footer on last page
+    available_h = page_h - margin_top - margin_bot - header_overhead - footer_reserve
+    row_h = 15  # each data row height (font 7.5 + padding 6)
     rows_per_page = max(20, int(available_h / row_h))
 
     chunks = [results[i:i + rows_per_page] for i in range(0, N, rows_per_page)]
@@ -779,29 +822,8 @@ def generate_results_pdf_response(exam):
                 story.append(sp_table)
                 story.append(Spacer(1, 6))
 
-            # Signature
-            sig_left = [
-                _p('<hr width="100%"/>', st['sig']),
-                _p('<b>Signature &amp; Stamp</b>', st['sig']),
-                _p('Academic Officer', st['sig']),
-            ]
-            sig_right = [
-                _p('<hr width="100%"/>', st['sig']),
-                _p('<b>Signature &amp; Stamp</b>', st['sig']),
-                _p('Head of School', st['sig']),
-            ]
-            sig_data = [[sig_left, '', sig_right]]
-            sig_table = Table(sig_data, colWidths=[content_w * 0.42, content_w * 0.16, content_w * 0.42])
-            sig_table.setStyle(TableStyle([
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ]))
-            story.append(sig_table)
-            story.append(Spacer(1, 3))
-            story.append(_p(f'Date: {datetime.now().strftime("%d %B %Y")}', ParagraphStyle(
-                'dt', parent=st['sig'], alignment=TA_LEFT,
-            )))
+            # Signature is drawn in _footer canvas function on the last page
+            # (left: Academic Officer, right: Head of School, with date)
 
         if pg_idx < total_pages:
             story.append(PageBreak())
@@ -824,6 +846,7 @@ def generate_results_pdf_response(exam):
     doc._exam = exam
     doc._gen_date_short = gen_date_short
     doc._total_pages = total_pages_count
+    doc._content_w = content_w
     doc.build(story)
 
     buf.seek(0)
