@@ -398,14 +398,31 @@ def generate_results_pdf_response(exam):
     n_subj = max(len(subjects), 1)
 
     # Load logos — base64 from DB first, then ImageField fallback
-    slogo_uri = _load_logo_b64(
-        exam.school.school_logo if exam.school else None,
-        getattr(exam.school, 'school_logo_b64', '') if exam.school else '',
-    ) if exam.school else ''
-    dlogo_uri = _load_logo_b64(
-        exam.school.district_logo if exam.school else None,
-        getattr(exam.school, 'district_logo_b64', '') if exam.school else '',
-    ) if exam.school else ''
+    # After loading from ImageField, auto-save to base64 in DB for next time
+    slogo_uri = ''
+    dlogo_uri = ''
+    if exam.school:
+        slogo_uri = _load_logo_b64(
+            exam.school.school_logo,
+            getattr(exam.school, 'school_logo_b64', ''),
+        )
+        dlogo_uri = _load_logo_b64(
+            exam.school.district_logo,
+            getattr(exam.school, 'district_logo_b64', ''),
+        )
+        # If base64 is still empty but we got data from ImageField, save it
+        if slogo_uri and not getattr(exam.school, 'school_logo_b64', ''):
+            try:
+                exam.school.school_logo_b64 = slogo_uri
+                exam.school.save(update_fields=['school_logo_b64'])
+            except Exception:
+                pass
+        if dlogo_uri and not getattr(exam.school, 'district_logo_b64', ''):
+            try:
+                exam.school.district_logo_b64 = dlogo_uri
+                exam.school.save(update_fields=['district_logo_b64'])
+            except Exception:
+                pass
     school_type = get_school_type_for_exam(exam)
     stype = "SECONDARY SCHOOL" if school_type == 'secondary' else "PRIMARY SCHOOL"
 
