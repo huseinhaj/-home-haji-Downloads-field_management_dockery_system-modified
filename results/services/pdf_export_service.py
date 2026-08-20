@@ -250,9 +250,9 @@ class NECTAHeader(Flowable):
     SEPTEMBER-2026
     ISINGIRO SECONDARY SCHOOL
     """
-    BANNER_H = 40
-    LOGOS_H = 50 
-    BELOW_H = 55
+    BANNER_H = 38
+    LOGOS_H = 44
+    BELOW_H = 68
 
     def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang, exam_title='', form_num=4, exam_month='', district='', coa_uri=''):
         Flowable.__init__(self)
@@ -703,13 +703,13 @@ def generate_results_pdf_response(exam):
                              wordWrap='CJK')
 
     # Calculate how many rows fit per page
-    # header (120pt) + spacer (8pt) = 128pt overhead
-    # footer area reserved = 1.6cm (45pt) for signature + 0.85cm (24pt) for footer text
-    header_overhead = 120 + 8  # 128pt
-    footer_reserve = int(1.6 * cm) + int(0.85 * cm)  # ~69pt reserved for signature+footer on last page
-    available_h = page_h - margin_top - margin_bot - header_overhead - footer_reserve
-    row_h = 15  # each data row height (font 7.5 + padding 6)
-    rows_per_page = max(20, int(available_h / row_h))
+    # header (150pt) + spacer (6pt) = 156pt overhead
+    # footer text only (20pt) — signature is on canvas, not in story
+    header_overhead = 150 + 6  # 156pt
+    footer_text = 20  # just footer text line
+    available_h = page_h - margin_top - margin_bot - header_overhead - footer_text
+    row_h = 14  # each data row height (font 7.5 + padding 5)
+    rows_per_page = max(25, int(available_h / row_h))
 
     chunks = [results[i:i + rows_per_page] for i in range(0, N, rows_per_page)]
     if not chunks:
