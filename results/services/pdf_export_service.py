@@ -240,18 +240,18 @@ def _std_table_style(n_rows, header_bg=None):
 
 # ── Header Flowable ──────────────────────────────────────────────────────────
 class NECTAHeader(Flowable):
-    """Official NECTA-style header:
+    """Official header — text only + coat of arms logo:
     PRIME MINISTER'S OFFICE
     REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
-        [Coat of Arms / District Logo]
+        [Coat of Arms logo]
     KYERWA DISTRICT COUNCIL
-    FORM X EXAM_TYPE EXAMINATION RESULTS
-    MONTH-YEAR
-    SCHOOL NAME
+    FORM THREE MID-TERM EXAMINATION RESULTS
+    SEPTEMBER-2026
+    ISINGIRO SECONDARY SCHOOL
     """
-    HEIGHT = 120  # total height in points
+    HEIGHT = 140  # total height in points
 
-    def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang, exam_title='', form_num=4, exam_month='', district=''):
+    def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang, exam_title='', form_num=4, exam_month='', district='', coa_uri=''):
         Flowable.__init__(self)
         self.exam = exam
         self.school_disp = school_disp
@@ -263,6 +263,7 @@ class NECTAHeader(Flowable):
         self.form_num = form_num
         self.exam_month = exam_month
         self.district = district
+        self.coa_uri = coa_uri  # coat of arms logo (3rd logo)
         self.width = A4[0] - 3.2 * cm
         self.height = self.HEIGHT
 
@@ -276,80 +277,50 @@ class NECTAHeader(Flowable):
         y = h  # start from top
 
         # ── 1. PRIME MINISTER'S OFFICE ──
-        c.setFillColor(NAVY)
-        c.setFont('Helvetica-Bold', 9)
-        y -= 12
+        c.setFillColor(BLACK)
+        c.setFont('Helvetica-Bold', 10)
+        y -= 14
         c.drawCentredString(cx, y, "PRIME MINISTER'S OFFICE")
 
         # ── 2. REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT ──
-        c.setFont('Helvetica-Bold', 7.5)
-        y -= 13
+        c.setFont('Helvetica-Bold', 8)
+        y -= 14
         c.drawCentredString(cx, y, "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT")
 
-        # ── 3. Coat of Arms (district logo centered) ──
-        y -= 6
-        logo_size = 38
-        if self.dlogo_uri:
+        # ── 3. Coat of Arms logo (centered) ──
+        y -= 8
+        logo_size = 45
+        if self.coa_uri:
+            _safe_b64_img(self.coa_uri, cx - logo_size / 2, y - logo_size, logo_size, logo_size, c)
+        elif self.dlogo_uri:
             _safe_b64_img(self.dlogo_uri, cx - logo_size / 2, y - logo_size, logo_size, logo_size, c)
         elif self.slogo_uri:
             _safe_b64_img(self.slogo_uri, cx - logo_size / 2, y - logo_size, logo_size, logo_size, c)
-        else:
-            # Placeholder circle
-            c.setStrokeColor(NAVY)
-            c.setLineWidth(1)
-            c.setFillColor(colors.HexColor("#E8E8E8"))
-            c.circle(cx, y - logo_size / 2, logo_size / 2, fill=1, stroke=1)
-            c.setFillColor(NAVY)
-            c.setFont('Helvetica-Bold', 6)
-            c.drawCentredString(cx, y - logo_size / 2 + 2, "COAT OF")
-            c.drawCentredString(cx, y - logo_size / 2 - 6, "ARMS")
-        y -= logo_size + 4
+        y -= logo_size + 6
 
         # ── 4. DISTRICT COUNCIL ──
-        c.setFillColor(NAVY)
-        c.setFont('Helvetica-Bold', 8)
-        y -= 10
+        c.setFillColor(BLACK)
+        c.setFont('Helvetica-Bold', 9)
         district_text = self.district.upper() + " DISTRICT COUNCIL" if self.district else "DISTRICT COUNCIL"
         c.drawCentredString(cx, y, district_text)
-
-        # ── Gold separator line ──
-        y -= 6
-        c.setStrokeColor(GOLD)
-        c.setLineWidth(1)
-        c.line(w * 0.15, y, w * 0.85, y)
+        y -= 16
 
         # ── 5. FORM X EXAM_TYPE EXAMINATION RESULTS ──
-        y -= 14
         form_labels = {1: 'ONE', 2: 'TWO', 3: 'THREE', 4: 'FOUR', 5: 'FIVE', 6: 'SIX'}
         form_word = form_labels.get(self.form_num, str(self.form_num))
         result_line = f"FORM {form_word} {self.exam_title} EXAMINATION RESULTS"
-        c.setFillColor(NAVY)
-        c.setFont('Helvetica-Bold', 10)
+        c.setFont('Helvetica-Bold', 11)
         c.drawCentredString(cx, y, result_line)
+        y -= 14
 
         # ── 6. MONTH-YEAR ──
-        y -= 13
-        c.setFont('Helvetica-Bold', 8)
-        c.setFillColor(SLATE)
+        c.setFont('Helvetica-Bold', 9)
         c.drawCentredString(cx, y, self.exam_month)
-
-        # ── Gold separator line ──
-        y -= 6
-        c.setStrokeColor(GOLD)
-        c.setLineWidth(1)
-        c.line(w * 0.15, y, w * 0.85, y)
+        y -= 14
 
         # ── 7. SCHOOL NAME ──
-        y -= 14
-        c.setFillColor(NAVY)
-        c.setFont('Helvetica-Bold', 11)
+        c.setFont('Helvetica-Bold', 12)
         c.drawCentredString(cx, y, self.school_disp)
-
-        # ── Final gold line ──
-        y -= 6
-        c.setStrokeColor(GOLD)
-        c.setLineWidth(1.5)
-        c.line(0, y, w, y)
 
 
 # ── Footer ───────────────────────────────────────────────────────────────────
@@ -557,11 +528,23 @@ def generate_results_pdf_response(exam):
     else:
         exam_month = datetime.now().strftime('%B-%Y').upper()
 
+    # Coat of arms logo — 3rd logo stored on School model
+    coa_uri = ''
+    if exam.school:
+        coa_uri = _load_logo_b64(
+            getattr(exam.school, 'coat_of_arms', None),
+            getattr(exam.school, 'coat_of_arms_b64', ''),
+        )
+        # Fallback: use district logo as coat of arms
+        if not coa_uri:
+            coa_uri = dlogo_uri
+
     # ── HEADER (official format) ──
     story.append(NECTAHeader(
         exam, school_disp, slogo_uri, dlogo_uri, stype, lang,
         exam_title=exam_title, form_num=exam.form,
         exam_month=exam_month, district=district,
+        coa_uri=coa_uri,
     ))
     story.append(Spacer(1, 8))
 
@@ -720,6 +703,7 @@ def generate_results_pdf_response(exam):
             exam, school_disp, slogo_uri, dlogo_uri, stype, lang,
             exam_title=exam_title, form_num=exam.form,
             exam_month=exam_month, district=district,
+            coa_uri=coa_uri,
         ))
         story.append(Spacer(1, 6))
 

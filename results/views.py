@@ -1898,6 +1898,11 @@ def upload_logos(request):
             school.district_logo_b64 = b64_str
             school.save(update_fields=['district_logo', 'district_logo_b64'])
             logo_name = "ya Halmashauri"
+        elif logo_type == 'coa':
+            school.coat_of_arms = uploaded_file
+            school.coat_of_arms_b64 = b64_str
+            school.save(update_fields=['coat_of_arms', 'coat_of_arms_b64'])
+            logo_name = "ya Coat of Arms"
         else:
             messages.error(request, "Aina ya logo haijulikani.")
             return redirect('upload_logos')
@@ -1908,8 +1913,10 @@ def upload_logos(request):
     return render(request, 'results/upload_logos.html', {
         'school_logo_exists': bool(school.school_logo_b64 or school.school_logo) if school else False,
         'district_logo_exists': bool(school.district_logo_b64 or school.district_logo) if school else False,
+        'coa_exists': bool(school.coat_of_arms_b64 or school.coat_of_arms) if school else False,
         'school_logo_url': school.school_logo.url if school and school.school_logo else '',
         'district_logo_url': school.district_logo.url if school and school.district_logo else '',
+        'coa_url': school.coat_of_arms.url if school and school.coat_of_arms else '',
     })
 
 

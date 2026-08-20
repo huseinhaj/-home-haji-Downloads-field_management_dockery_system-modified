@@ -150,6 +150,44 @@
   </div>
 </div>
 
+  <!-- Coat of Arms -->
+  <div class="col-md-4">
+    <div class="logo-section">
+      <h3>🛡️ Coat of Arms</h3>
+      <p style="font-size:0.8rem;color:#888;">
+        Upload the national coat of arms. It appears center on the PDF header.
+      </p>
+
+      {% if coa_exists %}
+      <div class="current-logo">
+        <img src="{{ coa_url }}" alt="Coat of Arms">
+        <small>Current logo</small>
+      </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="logo_type" value="coa">
+        <div class="logo-box" onclick="this.querySelector('input').click()">
+          <div style="font-size:2rem;">📁</div>
+          <div style="font-weight:700;color:#1F7A3D;">
+            Click to upload coat of arms
+          </div>
+          <div style="font-size:0.75rem;color:#888;">PNG, JPG — max 2MB</div>
+          <input type="file" name="logo_file" accept=".png,.jpg,.jpeg,.svg" required
+                 onchange="previewLogo(this, 'coaPreview')">
+        </div>
+        <img id="coaPreview" class="logo-preview" style="display:none;">
+        <div class="d-grid">
+          <button type="submit" class="btn" style="background:#1F7A3D;color:#fff;font-weight:700;border-radius:2px;">
+            💾 Save Coat of Arms
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div style="text-align:center;margin-top:1.5rem;">
   <a href="{% url 'academic_dashboard' %}" style="color:#1F7A3D;font-weight:600;font-size:0.85rem;">
     &larr; {% if LANG == 'sw' %}Rudi Dashboard{% else %}Back to Dashboard{% endif %}

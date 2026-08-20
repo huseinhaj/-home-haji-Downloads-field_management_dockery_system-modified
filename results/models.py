@@ -20,6 +20,10 @@ class School(models.Model):
         help_text="School logo stored as base64 — persists on Railway")
     district_logo_b64 = models.TextField(blank=True, default='',
         help_text="District logo stored as base64 — persists on Railway")
+    coat_of_arms = models.ImageField(upload_to='coat_of_arms/', blank=True, null=True,
+        help_text="Nembo ya Coat of Arms — inaonekana katikati ya header")
+    coat_of_arms_b64 = models.TextField(blank=True, default='',
+        help_text="Coat of arms stored as base64 — persists on Railway")
     source_school_id = models.PositiveIntegerField(
         null=True, blank=True, unique=True,
         help_text="PK of the matching field_app.School record (nationwide master list). "
