@@ -240,16 +240,19 @@ def _std_table_style(n_rows, header_bg=None):
 
 # ── Header Flowable ──────────────────────────────────────────────────────────
 class NECTAHeader(Flowable):
-    """Official header — text only + coat of arms logo:
+    """Official header with green banner, logos, flag strip:
     PRIME MINISTER'S OFFICE
     REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
-        [Coat of Arms logo]
+    [School Logo] [Coat of Arms] [District Logo]
+    Flag strip
     KYERWA DISTRICT COUNCIL
     FORM THREE MID-TERM EXAMINATION RESULTS
     SEPTEMBER-2026
     ISINGIRO SECONDARY SCHOOL
     """
-    HEIGHT = 140  # total height in points
+    BANNER_H = 40
+    LOGOS_H = 50 
+    BELOW_H = 55
 
     def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang, exam_title='', form_num=4, exam_month='', district='', coa_uri=''):
         Flowable.__init__(self)
@@ -263,9 +266,9 @@ class NECTAHeader(Flowable):
         self.form_num = form_num
         self.exam_month = exam_month
         self.district = district
-        self.coa_uri = coa_uri  # coat of arms logo (3rd logo)
+        self.coa_uri = coa_uri
         self.width = A4[0] - 3.2 * cm
-        self.height = self.HEIGHT
+        self.height = self.BANNER_H + self.LOGOS_H + self.BELOW_H  # 145pt
 
     def wrap(self, availWidth, availHeight):
         return self.width, self.height
@@ -274,53 +277,69 @@ class NECTAHeader(Flowable):
         c = self.canv
         w, h = self.width, self.height
         cx = w / 2
-        y = h  # start from top
 
-        # ── 1. PRIME MINISTER'S OFFICE ──
-        c.setFillColor(BLACK)
-        c.setFont('Helvetica-Bold', 10)
-        y -= 14
-        c.drawCentredString(cx, y, "PRIME MINISTER'S OFFICE")
+        # ── 1. GREEN BANNER — PMO + Regional Admin ──
+        banner_y = self.BELOW_H + self.LOGOS_H
+        c.setFillColor(GREEN)
+        c.roundRect(0, banner_y, w, self.BANNER_H, 3, fill=1, stroke=0)
+        c.setFillColor(colors.white)
+        c.setFont('Helvetica-Bold', 9)
+        c.drawCentredString(cx, banner_y + self.BANNER_H - 14, "PRIME MINISTER'S OFFICE")
+        c.setFont('Helvetica-Bold', 7)
+        c.drawCentredString(cx, banner_y + self.BANNER_H - 26, "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT")
 
-        # ── 2. REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT ──
-        c.setFont('Helvetica-Bold', 8)
-        y -= 14
-        c.drawCentredString(cx, y, "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT")
-
-        # ── 3. Coat of Arms logo (centered) ──
-        y -= 8
-        logo_size = 45
+        # ── 2. LOGOS ROW — School (left) + Coat of Arms (center) + District (right) ──
+        logos_y = self.BELOW_H
+        logo_sz = 40
+        # School logo — left
+        if self.slogo_uri:
+            _safe_b64_img(self.slogo_uri, 2, logos_y + 5, logo_sz, logo_sz, c)
+        # Coat of Arms — center
         if self.coa_uri:
-            _safe_b64_img(self.coa_uri, cx - logo_size / 2, y - logo_size, logo_size, logo_size, c)
+            _safe_b64_img(self.coa_uri, cx - logo_sz / 2, logos_y + 5, logo_sz, logo_sz, c)
         elif self.dlogo_uri:
-            _safe_b64_img(self.dlogo_uri, cx - logo_size / 2, y - logo_size, logo_size, logo_size, c)
-        elif self.slogo_uri:
-            _safe_b64_img(self.slogo_uri, cx - logo_size / 2, y - logo_size, logo_size, logo_size, c)
-        y -= logo_size + 6
+            _safe_b64_img(self.dlogo_uri, cx - logo_sz / 2, logos_y + 5, logo_sz, logo_sz, c)
+        # District logo — right
+        if self.dlogo_uri:
+            _safe_b64_img(self.dlogo_uri, w - logo_sz - 2, logos_y + 5, logo_sz, logo_sz, c)
+
+        # ── 3. FLAG STRIP ──
+        strip_y = logos_y - 2
+        for i, col in enumerate([TZ_GREEN, TZ_YELLOW, TZ_BLACK, TZ_BLUE]):
+            c.setFillColor(col)
+            c.rect(i * w / 4, strip_y, w / 4, 3, fill=1, stroke=0)
 
         # ── 4. DISTRICT COUNCIL ──
-        c.setFillColor(BLACK)
+        y = strip_y - 14
+        c.setFillColor(NAVY)
         c.setFont('Helvetica-Bold', 9)
         district_text = self.district.upper() + " DISTRICT COUNCIL" if self.district else "DISTRICT COUNCIL"
         c.drawCentredString(cx, y, district_text)
-        y -= 16
 
         # ── 5. FORM X EXAM_TYPE EXAMINATION RESULTS ──
+        y -= 15
         form_labels = {1: 'ONE', 2: 'TWO', 3: 'THREE', 4: 'FOUR', 5: 'FIVE', 6: 'SIX'}
         form_word = form_labels.get(self.form_num, str(self.form_num))
         result_line = f"FORM {form_word} {self.exam_title} EXAMINATION RESULTS"
         c.setFont('Helvetica-Bold', 11)
         c.drawCentredString(cx, y, result_line)
-        y -= 14
 
         # ── 6. MONTH-YEAR ──
-        c.setFont('Helvetica-Bold', 9)
+        y -= 13
+        c.setFont('Helvetica-Bold', 8)
+        c.setFillColor(SLATE)
         c.drawCentredString(cx, y, self.exam_month)
-        y -= 14
 
         # ── 7. SCHOOL NAME ──
+        y -= 14
+        c.setFillColor(NAVY)
         c.setFont('Helvetica-Bold', 12)
         c.drawCentredString(cx, y, self.school_disp)
+
+        # ── Gold line at bottom ──
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(1.5)
+        c.line(0, 0, w, 0)
 
 
 # ── Footer ───────────────────────────────────────────────────────────────────
