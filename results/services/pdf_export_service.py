@@ -429,14 +429,14 @@ def generate_results_pdf_response(exam):
     story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
     story.append(Spacer(1, 6))
 
-    # ── TITLE BLOCK ──
+    # ── TITLE BLOCK (blue background, white text) ──
     title_style = ParagraphStyle(
-        'tblock', parent=st['title_lg'], fontSize=13, textColor=NAVY,
+        'tblock', parent=st['title_lg'], fontSize=13, textColor=WHITE,
         spaceBefore=0, spaceAfter=0, alignment=TA_CENTER, leading=16,
     )
     subtitle_style = ParagraphStyle(
-        'tsub', parent=st['subtitle'], fontSize=9, textColor=SLATE,
-        spaceBefore=2, spaceAfter=0, alignment=TA_CENTER, leading=12,
+        'tsub', parent=st['subtitle'], fontSize=9, textColor=colors.HexColor("#D0E8FF"),
+        spaceBefore=1, spaceAfter=0, alignment=TA_CENTER, leading=12,
     )
     title_block_data = [[
         _p(f"<b>{exam_title} {exam.year} EXAMINATION RESULTS</b>", title_style),
@@ -447,9 +447,12 @@ def generate_results_pdf_response(exam):
     tb.setStyle(TableStyle([
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-        ('LINEBELOW', (0, 1), (-1, 1), 1.2, GOLD),
+        ('BACKGROUND', (0, 0), (-1, -1), NAVY),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('LINEBELOW', (0, -1), (-1, -1), 1.5, GOLD),
     ]))
     story.append(tb)
     story.append(Spacer(1, 5))
@@ -606,24 +609,27 @@ def generate_results_pdf_response(exam):
         story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
         story.append(Spacer(1, 4))
 
-        # ── Title on EVERY page ──
+        # ── Title on EVERY page (blue background, white text) ──
         res_title_data = [[
             _p(f"<b>{exam_title} {exam.year} EXAMINATION RESULTS</b>", ParagraphStyle(
-                'rt', parent=st['title_md'], fontSize=10, textColor=NAVY,
+                'rt', parent=st['title_md'], fontSize=10, textColor=WHITE,
                 spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
             )),
         ], [
             _p(f"FORM {exam.form}  \u2014  {exam.name}  |  PAGE {pg_idx} of {total_pages}", ParagraphStyle(
-                'rts', parent=st['subtitle'], fontSize=7.5, textColor=SLATE,
+                'rts', parent=st['subtitle'], fontSize=7.5, textColor=colors.HexColor("#D0E8FF"),
                 spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
             )),
         ]]
         rt = Table(res_title_data, colWidths=[content_w])
         rt.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('TOPPADDING', (0, 0), (-1, -1), 1),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
-            ('LINEBELOW', (0, 0), (-1, 0), 1, GOLD),
+            ('BACKGROUND', (0, 0), (-1, -1), NAVY),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('LINEBELOW', (0, -1), (-1, -1), 1.2, GOLD),
         ]))
         story.append(rt)
         story.append(Spacer(1, 3))
