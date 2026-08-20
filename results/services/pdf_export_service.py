@@ -147,11 +147,12 @@ def _grade_point(grade):
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def _load_logo_b64(field, b64_field_value=''):
     """Load logo — first try base64 stored in DB, then fallback to ImageField.
+    If ImageField has data, auto-save it as base64 for next time.
     Returns '' if nothing found — never raises."""
     # Priority 1: base64 stored directly in DB (persists on Railway)
     if b64_field_value and b64_field_value.startswith('data:'):
         return b64_field_value
-    # Priority 2: ImageField on disk
+    # Priority 2: ImageField on disk — read AND save to DB for next time
     if not field:
         return ''
     try:
@@ -169,7 +170,19 @@ def _load_logo_b64(field, b64_field_value=''):
                     '.svg': 'image/svg+xml'}
         mime = mime_map.get(ext, 'image/png')
         b64 = base64.b64encode(data).decode('ascii')
-        return f'data:{mime};base64,{b64}'
+        data_uri = f'data:{mime};base64,{b64}'
+        # Auto-save to DB so next time it's instant
+        try:
+            if hasattr(field, 'instance') and field.instance:
+                model = field.instance.__class__
+                field_name = field.field.name
+                b64_field = f'{field_name}_b64'
+                if hasattr(field.instance, b64_field):
+                    setattr(field.instance, b64_field, data_uri)
+                    field.instance.save(update_fields=[b64_field])
+        except Exception:
+            pass  # best effort — don't break PDF generation
+        return data_uri
     except Exception:
         return ''
 
