@@ -575,24 +575,32 @@ def generate_results_pdf_response(exam):
         story.append(rt)
         story.append(Spacer(1, 4))
 
-        # NECTA-style table: CNO | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
-        r_hdr = ["CNO", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"]
+        # NECTA-style: CNO | NAME | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
+        r_hdr = ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"]
         data = [[_p(f"<b>{h}</b>", hdr_st) for h in r_hdr]]
 
         for r in chunk:
-            # CNO — position-based candidate number
             cno = f"{r.position:03d}"
-
+            nm = _student_name(r)
             stu_gpa = r.points / counted if counted else 0
 
-            # Build inline subjects: CIV - 'B' HIST - 'C' ...
+            # Build COLORED inline subjects: green=pass, red=fail
             subj_parts = []
             for sub in subjects:
                 sc = score_lookup.get((r.student_id, sub.id))
                 g = _grade_for_score(sc, exam.form) if sc is not None else 'X'
                 abbr = sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
-                subj_parts.append(f"{abbr} - '{g}'")
-            subj_text = '&nbsp;&nbsp;'.join(subj_parts)
+                # Pass = A/B+/B/C+/C (score >= 40), Fail = D/F
+                if g and g in ('A', 'B+', 'B', 'C+', 'C'):
+                    color = '#006100'  # green
+                    bg = '#C6EFCE'
+                else:
+                    color = '#9C0006'  # red
+                    bg = '#FADBD8'
+                subj_parts.append(
+                    f"<font color='{color}'><b>{abbr} - '{g}'</b></font>"
+                )
+            subj_text = '&nbsp;'.join(subj_parts)
 
             div_bg = DIV_BG.get(r.division, WHITE)
             div_fg = DIV_FG.get(r.division, BLACK)
@@ -602,6 +610,7 @@ def generate_results_pdf_response(exam):
 
             data.append([
                 _p(cno, cell_st),
+                _p(nm, name_st),
                 _p(r.student.gender or 'M', cell_st),
                 _p(str(r.points), cell_bold),
                 _p(f"{stu_gpa:.2f}", cell_bold),
@@ -609,14 +618,15 @@ def generate_results_pdf_response(exam):
                 _p(subj_text, subj_st),
             ])
 
-        # Column widths — NECTA style
+        # Column widths — NECTA style with NAME
         cw = [
-            content_w * 0.06,  # CNO
-            content_w * 0.05,  # SEX
-            content_w * 0.06,  # AGGT
-            content_w * 0.06,  # GPA
-            content_w * 0.05,  # DIV
-            content_w * 0.72,  # DETAILED SUBJECTS (takes most space)
+            content_w * 0.05,  # CNO
+            content_w * 0.14,  # NAME
+            content_w * 0.04,  # SEX
+            content_w * 0.05,  # AGGT
+            content_w * 0.05,  # GPA
+            content_w * 0.04,  # DIV
+            content_w * 0.63,  # DETAILED SUBJECTS
         ]
 
         r_table = Table(data, colWidths=cw, repeatRows=1)
