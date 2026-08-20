@@ -181,6 +181,9 @@ def _std_table_style(n_rows):
 
 # ── Header Flowable ──────────────────────────────────────────────────────────
 class NECTAHeader(Flowable):
+    BANNER_H = 68
+    BELOW_H = 40
+
     def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang):
         Flowable.__init__(self)
         self.exam = exam
@@ -190,7 +193,7 @@ class NECTAHeader(Flowable):
         self.stype = stype
         self.lang = lang
         self.width = A4[0] - 3.6 * cm
-        self.height = 3.2 * cm
+        self.height = self.BANNER_H + self.BELOW_H
 
     def wrap(self, availWidth, availHeight):
         return self.width, self.height
@@ -198,29 +201,31 @@ class NECTAHeader(Flowable):
     def draw(self):
         c = self.canv
         w, h = self.width, self.height
+        bh = self.BANNER_H
+        by = self.BELOW_H
 
         # Green banner
         c.setFillColor(GREEN)
-        c.roundRect(0, 0, w, h, 4, fill=1, stroke=0)
+        c.roundRect(0, by, w, bh, 4, fill=1, stroke=0)
 
         # Logos
-        _safe_b64_img(self.slogo_uri, 6, 6, 40, 40, c)
-        _safe_b64_img(self.dlogo_uri, w - 46, 6, 40, 40, c)
+        _safe_b64_img(self.slogo_uri, 6, by + 6, 38, 38, c)
+        _safe_b64_img(self.dlogo_uri, w - 44, by + 6, 38, 38, c)
 
         cx = w / 2
         c.setFillColor(colors.white)
-        c.setFont('Helvetica-Bold', 10)
+        c.setFont('Helvetica-Bold', 9.5)
         republic = "THE UNITED REPUBLIC OF TANZANIA" if self.lang == 'en' else "JAMHURI YA MUUNGANO WA TANZANIA"
-        c.drawCentredString(cx, h - 14, republic)
-        c.setFont('Helvetica-Bold', 7.5)
+        c.drawCentredString(cx, by + bh - 14, republic)
+        c.setFont('Helvetica-Bold', 7)
         ministry = "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY" if self.lang == 'en' else "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA"
-        c.drawCentredString(cx, h - 24, ministry)
-        c.setFont('Helvetica', 6.5)
-        c.setFillColor(colors.HexColor("#E0E0E0"))
-        c.drawCentredString(cx, h - 33, f"{self.stype} — EXAMINATION RESULTS")
+        c.drawCentredString(cx, by + bh - 26, ministry)
+        c.setFont('Helvetica', 6)
+        c.setFillColor(colors.HexColor("#D0E8D0"))
+        c.drawCentredString(cx, by + bh - 36, f"{self.stype} — EXAMINATION RESULTS")
 
         # Flag strip
-        strip_y = -3
+        strip_y = by - 2
         for i, col in enumerate([TZ_GREEN, TZ_YELLOW, TZ_BLACK, TZ_BLUE]):
             c.setFillColor(col)
             c.rect(i * w / 4, strip_y, w / 4, 3, fill=1, stroke=0)
@@ -235,19 +240,31 @@ class NECTAHeader(Flowable):
         c.setFont('Helvetica', 7)
         c.drawCentredString(cx, strip_y - 28, _location_str(self.exam))
 
-        # Gold line
+        # Gold line at y=0
         c.setStrokeColor(GOLD)
         c.setLineWidth(1.5)
-        c.line(0, strip_y - 34, w, strip_y - 34)
+        c.line(0, 0, w, 0)
 
 
 # ── Footer ───────────────────────────────────────────────────────────────────
 def _footer(canvas, doc):
     canvas.saveState()
     try:
-        w, _ = doc.pagesize
+        w, h = doc.pagesize
     except Exception:
-        w = A4[0]
+        w, h = A4
+
+    # Page border
+    canvas.setStrokeColor(NAVY)
+    canvas.setLineWidth(1.5)
+    canvas.rect(1.0 * cm, 0.9 * cm, w - 2.0 * cm, h - 1.8 * cm)
+
+    # Inner decorative line
+    canvas.setStrokeColor(GOLD)
+    canvas.setLineWidth(0.5)
+    canvas.rect(1.2 * cm, 1.1 * cm, w - 2.4 * cm, h - 2.2 * cm)
+
+    # Footer text
     canvas.setFont('Helvetica', 6.5)
     canvas.setFillColor(SLATE)
     canvas.drawString(doc.leftMargin, 0.7 * cm, get_full_school_name(doc._exam))
@@ -370,31 +387,32 @@ def generate_results_pdf_response(exam):
 
     story = []
     story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
-    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 14))
 
-    # ── Beautiful title block ──
+    # ── Title block ──
+    title_style = ParagraphStyle(
+        'tblock', parent=st['title_lg'], fontSize=13, textColor=NAVY,
+        spaceBefore=0, spaceAfter=0, alignment=TA_CENTER, leading=16,
+    )
+    subtitle_style = ParagraphStyle(
+        'tsub', parent=st['subtitle'], fontSize=9, textColor=SLATE,
+        spaceBefore=2, spaceAfter=0, alignment=TA_CENTER, leading=12,
+    )
     title_block_data = [[
-        _p(f"<b>{etype} {exam.year} EXAMINATION RESULTS</b>", ParagraphStyle(
-            'tblock', parent=st['title_lg'], fontSize=13, textColor=NAVY,
-            spaceBefore=0, spaceAfter=1, alignment=TA_CENTER,
-        )),
+        _p(f"<b>{etype} {exam.year} EXAMINATION RESULTS</b>", title_style),
     ], [
-        _p(f"FORM {exam.form}  &mdash;  {exam.name}", ParagraphStyle(
-            'tsub', parent=st['subtitle'], fontSize=9, textColor=SLATE,
-            spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
-        )),
+        _p(f"FORM {exam.form}  &mdash;  {exam.name}", subtitle_style),
     ]]
     tb = Table(title_block_data, colWidths=[content_w])
     tb.setStyle(TableStyle([
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-        # Gold underline
-        ('LINEBELOW', (0, 0), (-1, 0), 1.5, GOLD),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LINEBELOW', (0, 1), (-1, 1), 1.2, GOLD),
     ]))
     story.append(tb)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 10))
 
     # ── DIVISION PERFORMANCE SUMMARY (NECTA style — by sex) ──
     story.append(_p("<b>DIVISION PERFORMANCE SUMMARY</b>", st['section']))
