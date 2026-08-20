@@ -1,6 +1,6 @@
 """
 Professional Academic Results PDF — Pure ReportLab.
-All pages A4 Portrait. Consistent size. NECTA-style layout.
+All pages A4 Portrait. NECTA-style layout. Pages fully filled with results.
 """
 import io
 import os
@@ -67,6 +67,31 @@ DIV_FG = {
     'I':   colors.HexColor("#006100"), 'II':  colors.HexColor("#006100"),
     'III': colors.HexColor("#9C6500"), 'IV':  colors.HexColor("#CC3300"),
     '0':   colors.HexColor("#9C0006"),
+}
+
+# Grade colour tuples (fg_hex, bg_hex) for inline subjects
+GRADE_COLORS = {
+    'A':  ('#006100', '#C6EFCE'),
+    'B+': ('#006100', '#D5F5E3'),
+    'B':  ('#1E8449', '#D5F5E3'),
+    'C+': ('#9C6500', '#FEF9E7'),
+    'C':  ('#9C6500', '#FEF9E7'),
+    'D':  ('#CC3300', '#FDEBD0'),
+    'E':  ('#CC3300', '#F5CBA7'),
+    'S':  ('#B9770B', '#F9E79F'),
+    'F':  ('#9C0006', '#FADBD8'),
+    'X':  ('#555555', '#E8E8E8'),
+}
+
+LEVEL_COLORS = {
+    'Grade A': ('#006100', '#C6EFCE'),
+    'Grade B+': ('#006100', '#D5F5E3'),
+    'Grade B': ('#1E8449', '#D5F5E3'),
+    'Grade C': ('#9C6500', '#FEF9E7'),
+    'Grade D': ('#CC3300', '#FDEBD0'),
+    'Grade E': ('#CC3300', '#F5CBA7'),
+    'Grade S': ('#B9770B', '#F9E79F'),
+    'Grade F': ('#9C0006', '#FADBD8'),
 }
 
 
@@ -188,8 +213,9 @@ def _std_table_style(n_rows, header_bg=None):
 
 # ── Header Flowable ──────────────────────────────────────────────────────────
 class NECTAHeader(Flowable):
-    BANNER_H = 68
-    BELOW_H = 40
+    """Header that draws within its own bounds — no overlap with content below."""
+    BANNER_H = 58
+    BELOW_H = 36
 
     def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang):
         Flowable.__init__(self)
@@ -199,7 +225,7 @@ class NECTAHeader(Flowable):
         self.dlogo_uri = dlogo_uri
         self.stype = stype
         self.lang = lang
-        self.width = A4[0] - 3.6 * cm
+        self.width = A4[0] - 3.2 * cm
         self.height = self.BANNER_H + self.BELOW_H
 
     def wrap(self, availWidth, availHeight):
@@ -213,23 +239,23 @@ class NECTAHeader(Flowable):
 
         # Green banner
         c.setFillColor(GREEN)
-        c.roundRect(0, by, w, bh, 4, fill=1, stroke=0)
+        c.roundRect(0, by, w, bh, 3, fill=1, stroke=0)
 
-        # Logos
-        _safe_b64_img(self.slogo_uri, 6, by + 6, 38, 38, c)
-        _safe_b64_img(self.dlogo_uri, w - 44, by + 6, 38, 38, c)
+        # Logos — slightly smaller for compact header
+        _safe_b64_img(self.slogo_uri, 4, by + 5, 34, 34, c)
+        _safe_b64_img(self.dlogo_uri, w - 38, by + 5, 34, 34, c)
 
         cx = w / 2
         c.setFillColor(colors.white)
-        c.setFont('Helvetica-Bold', 9.5)
+        c.setFont('Helvetica-Bold', 8.5)
         republic = "THE UNITED REPUBLIC OF TANZANIA" if self.lang == 'en' else "JAMHURI YA MUUNGANO WA TANZANIA"
-        c.drawCentredString(cx, by + bh - 14, republic)
-        c.setFont('Helvetica-Bold', 7)
+        c.drawCentredString(cx, by + bh - 13, republic)
+        c.setFont('Helvetica-Bold', 6.5)
         ministry = "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY" if self.lang == 'en' else "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA"
-        c.drawCentredString(cx, by + bh - 26, ministry)
-        c.setFont('Helvetica', 6)
+        c.drawCentredString(cx, by + bh - 23, ministry)
+        c.setFont('Helvetica', 5.5)
         c.setFillColor(colors.HexColor("#D0E8D0"))
-        c.drawCentredString(cx, by + bh - 36, f"{self.stype} \u2014 EXAMINATION RESULTS")
+        c.drawCentredString(cx, by + bh - 32, f"{self.stype} \u2014 EXAMINATION RESULTS")
 
         # Flag strip
         strip_y = by - 2
@@ -239,13 +265,13 @@ class NECTAHeader(Flowable):
 
         # School name
         c.setFillColor(GOLD)
-        c.setFont('Helvetica-Bold', 14)
-        c.drawCentredString(cx, strip_y - 18, self.school_disp)
+        c.setFont('Helvetica-Bold', 13)
+        c.drawCentredString(cx, strip_y - 16, self.school_disp)
 
         # Location
         c.setFillColor(SLATE)
-        c.setFont('Helvetica', 7)
-        c.drawCentredString(cx, strip_y - 28, _location_str(self.exam))
+        c.setFont('Helvetica', 6.5)
+        c.drawCentredString(cx, strip_y - 25, _location_str(self.exam))
 
         # Gold line at y=0
         c.setStrokeColor(GOLD)
@@ -263,35 +289,34 @@ def _footer(canvas, doc):
 
     # Page border — navy outer
     canvas.setStrokeColor(NAVY)
-    canvas.setLineWidth(1.2)
-    canvas.rect(1.0 * cm, 0.9 * cm, w - 2.0 * cm, h - 1.8 * cm)
+    canvas.setLineWidth(1.0)
+    canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, h - 1.6 * cm)
 
     # Inner decorative line — gold
     canvas.setStrokeColor(GOLD)
-    canvas.setLineWidth(0.4)
-    canvas.rect(1.2 * cm, 1.1 * cm, w - 2.4 * cm, h - 2.2 * cm)
+    canvas.setLineWidth(0.3)
+    canvas.rect(1.15 * cm, 0.95 * cm, w - 2.3 * cm, h - 1.9 * cm)
 
     # Footer text
-    canvas.setFont('Helvetica', 6.5)
+    canvas.setFont('Helvetica', 6)
     canvas.setFillColor(SLATE)
-    canvas.drawString(doc.leftMargin, 0.7 * cm, get_full_school_name(doc._exam))
-    canvas.drawCentredString(w / 2, 0.7 * cm, f"Page {canvas.getPageNumber()} of {doc._total_pages}")
-    canvas.drawRightString(w - doc.rightMargin, 0.7 * cm, f"Generated: {doc._gen_date_short}")
+    canvas.drawString(doc.leftMargin, 0.6 * cm, get_full_school_name(doc._exam))
+    canvas.drawCentredString(w / 2, 0.6 * cm, f"Page {canvas.getPageNumber()} of {doc._total_pages}")
+    canvas.drawRightString(w - doc.rightMargin, 0.6 * cm, f"Generated: {doc._gen_date_short}")
     canvas.setStrokeColor(DARK_LINE)
-    canvas.setLineWidth(0.4)
-    canvas.line(doc.leftMargin, 1.05 * cm, w - doc.rightMargin, 1.05 * cm)
+    canvas.setLineWidth(0.3)
+    canvas.line(doc.leftMargin, 0.9 * cm, w - doc.rightMargin, 0.9 * cm)
     canvas.restoreState()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# BUILD PDF — ALL PAGES PORTRAIT A4
+# BUILD PDF — ALL PAGES PORTRAIT A4, FULLY FILLED
 # ══════════════════════════════════════════════════════════════════════════════
 def generate_results_pdf_response(exam):
     st = _styles()
     school_disp = get_full_school_name(exam)
     lang = get_report_language(exam)
     etype = exam.get_exam_type_display().upper()
-    # Use exam.name if etype is generic (e.g. 'TEST') — show actual exam name
     exam_title = exam.name.upper() if exam.name else etype
     gen_date_short = datetime.now().strftime('%d/%m/%Y')
 
@@ -379,16 +404,16 @@ def generate_results_pdf_response(exam):
     # ALL PAGES: A4 Portrait
     # ══════════════════════════════════════════════════════════════════════
     page_w, page_h = A4
-    margin_lr = 1.6 * cm
-    margin_top = 0.6 * cm
-    margin_bot = 1.4 * cm
+    margin_lr = 1.5 * cm
+    margin_top = 0.5 * cm
+    margin_bot = 1.3 * cm
     content_w = page_w - 2 * margin_lr
 
     story = []
 
     # ── HEADER ──
     story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
-    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 8))
 
     # ── TITLE BLOCK ──
     title_style = ParagraphStyle(
@@ -408,12 +433,12 @@ def generate_results_pdf_response(exam):
     tb.setStyle(TableStyle([
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
         ('LINEBELOW', (0, 1), (-1, 1), 1.2, GOLD),
     ]))
     story.append(tb)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
     # ── DIVISION PERFORMANCE SUMMARY ──
     story.append(_p("<b>DIVISION PERFORMANCE SUMMARY</b>", st['section']))
@@ -435,7 +460,7 @@ def generate_results_pdf_response(exam):
     ds.append(('ALIGN', (1, 0), (-1, -1), 'CENTER'))
     div_table.setStyle(TableStyle(ds))
     story.append(div_table)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
     # ── PERFORMANCE SUMMARY + GRADING KEY (side by side) ──
     perf_title = "PERFORMANCE SUMMARY" if lang == 'en' else "TAARIFA YA MAENDELEO"
@@ -487,9 +512,9 @@ def generate_results_pdf_response(exam):
         ('RIGHTPADDING', (0, 0), (-1, -1), 0),
     ]))
     story.append(side_table)
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
     story.append(gk_table)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
     # ── SUBJECT STATISTICS ──
     if subj_stats:
@@ -508,7 +533,7 @@ def generate_results_pdf_response(exam):
         s_table = Table(s_data, colWidths=cw_s)
         s_table.setStyle(TableStyle(_std_table_style(len(s_data))))
         story.append(s_table)
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 5))
 
     # ── TOP 5 ──
     if results:
@@ -538,8 +563,8 @@ def generate_results_pdf_response(exam):
         story.append(t_table)
 
     # ══════════════════════════════════════════════════════════════════════
-    # RESULTS PAGES — A4 Portrait, NECTA format with GPA
-    # NECTA: CNO | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
+    # RESULTS PAGES — A4 Portrait, NECTA format with GPA + names
+    # CNO | NAME | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
     # ══════════════════════════════════════════════════════════════════════
     story.append(PageBreak())
 
@@ -550,24 +575,32 @@ def generate_results_pdf_response(exam):
     subj_st = ParagraphStyle('lss', parent=st['td'], fontSize=7, leading=8.5,
                              wordWrap='CJK')
 
-    rows_per_page = 28
+    # Calculate rows per page: fill the page completely
+    # Available height for results table = page_h - top_margin - bottom_margin
+    # - header (94pt) - spacer (6pt) - title (22pt) - spacer (4pt) - footer_space (28pt)
+    available_h = page_h - margin_top - margin_bot - 94 - 6 - 22 - 4 - 28
+    row_h = 18  # approximate height per row including padding
+    rows_per_page = max(28, int(available_h / row_h))
+
     chunks = [results[i:i + rows_per_page] for i in range(0, N, rows_per_page)]
-    total_pages = len(chunks) or 1
+    if not chunks:
+        chunks = [[]]
+    total_pages = len(chunks)
 
     for pg_idx, chunk in enumerate(chunks, 1):
         # Header with logos on EVERY results page
         story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
 
-        # Title
+        # Title — compact
         res_title_data = [[
             _p(f"<b>{exam_title} {exam.year} EXAMINATION RESULTS</b>", ParagraphStyle(
-                'rt', parent=st['title_md'], fontSize=11, textColor=NAVY,
+                'rt', parent=st['title_md'], fontSize=10, textColor=NAVY,
                 spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
             )),
         ], [
             _p(f"FORM {exam.form}  \u2014  {exam.name}  |  PAGE {pg_idx} of {total_pages}", ParagraphStyle(
-                'rts', parent=st['subtitle'], fontSize=8, textColor=SLATE,
+                'rts', parent=st['subtitle'], fontSize=7.5, textColor=SLATE,
                 spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
             )),
         ]]
@@ -579,7 +612,7 @@ def generate_results_pdf_response(exam):
             ('LINEBELOW', (0, 0), (-1, 0), 1, GOLD),
         ]))
         story.append(rt)
-        story.append(Spacer(1, 4))
+        story.append(Spacer(1, 3))
 
         # NECTA-style: CNO | NAME | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
         r_hdr = ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"]
@@ -590,19 +623,7 @@ def generate_results_pdf_response(exam):
             nm = _student_name(r)
             stu_gpa = r.points / counted if counted else 0
 
-            # Build COLOURED inline subjects — each grade has its own colour
-            GRADE_COLORS = {
-                'A':  ('#006100', '#C6EFCE'),  # dark green on light green
-                'B+': ('#006100', '#D5F5E3'),  # green on pale green
-                'B':  ('#1E8449', '#D5F5E3'),  # medium green on pale green
-                'C+': ('#9C6500', '#FEF9E7'),  # dark yellow on light yellow
-                'C':  ('#9C6500', '#FEF9E7'),  # dark yellow on light yellow
-                'D':  ('#CC3300', '#FDEBD0'),  # orange on light orange
-                'E':  ('#CC3300', '#F5CBA7'),  # dark orange on peach
-                'S':  ('#B9770B', '#F9E79F'),  # brown on light gold
-                'F':  ('#9C0006', '#FADBD8'),  # dark red on light red
-                'X':  ('#555555', '#E8E8E8'),  # grey on light grey (absent)
-            }
+            # Build COLOURED inline subjects
             subj_parts = []
             for sub in subjects:
                 sc = score_lookup.get((r.student_id, sub.id))
@@ -630,7 +651,7 @@ def generate_results_pdf_response(exam):
                 _p(subj_text, subj_st),
             ])
 
-        # Column widths — NECTA style with NAME
+        # Column widths — NECTA style
         cw = [
             content_w * 0.05,  # CNO
             content_w * 0.14,  # NAME
@@ -657,9 +678,9 @@ def generate_results_pdf_response(exam):
                 rs.append(('BACKGROUND', (0, i), (-1, i), CREAM))
         r_table.setStyle(TableStyle(rs))
         story.append(r_table)
-        story.append(Spacer(1, 8))
+        story.append(Spacer(1, 6))
 
-        # ── Last page: grading key + signature ──
+        # ── Last page: grading key + centre performance + signature ──
         if pg_idx == total_pages:
             # Grading key (compact)
             gk_cells_pg = [
@@ -681,7 +702,7 @@ def generate_results_pdf_response(exam):
                 gk_s2.append(('BACKGROUND', (i, 0), (i, 0), GRADE_BG.get(g, WHITE)))
             gk_table_pg.setStyle(TableStyle(gk_s2))
             story.append(gk_table_pg)
-            story.append(Spacer(1, 10))
+            story.append(Spacer(1, 6))
 
             # Centre performance summary
             story.append(_p("<b>EXAMINATION CENTRE OVERALL PERFORMANCE</b>", st['section']))
@@ -710,24 +731,13 @@ def generate_results_pdf_response(exam):
                 ('RIGHTPADDING', (0, 0), (-1, -1), 2),
             ]))
             story.append(dp_table)
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 5))
 
             # Subject performance — with colour per level
             if subj_gpa:
                 story.append(_p("<b>SUBJECT PERFORMANCE</b>", st['section']))
                 sp_hdrs = ["#", "SUBJECT", "SAT", "PASS", "GPA", "LEVEL"]
                 sp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('sph', parent=cell_st, fontSize=6, textColor=WHITE, fontName='Helvetica-Bold')) for h in sp_hdrs]]
-                # Level colours
-                LEVEL_COLORS = {
-                    'Grade A': ('#006100', '#C6EFCE'),
-                    'Grade B+': ('#006100', '#D5F5E3'),
-                    'Grade B': ('#1E8449', '#D5F5E3'),
-                    'Grade C': ('#9C6500', '#FEF9E7'),
-                    'Grade D': ('#CC3300', '#FDEBD0'),
-                    'Grade E': ('#CC3300', '#F5CBA7'),
-                    'Grade S': ('#B9770B', '#F9E79F'),
-                    'Grade F': ('#9C0006', '#FADBD8'),
-                }
                 for idx, sg in enumerate(subj_gpa, 1):
                     level_key = sg['level'].split(' (')[0] if sg['level'] else ''
                     fg, bg = LEVEL_COLORS.get(level_key, ('#555555', '#E8E8E8'))
@@ -746,9 +756,9 @@ def generate_results_pdf_response(exam):
                 sp_table = Table(sp_data, colWidths=cw_sp)
                 sp_table.setStyle(TableStyle(_std_table_style(len(sp_data))))
                 story.append(sp_table)
-                story.append(Spacer(1, 10))
+                story.append(Spacer(1, 8))
 
-            # Signature
+            # Signature — bottom of last page
             sig_left = [
                 _p('<hr width="100%"/>', st['sig']),
                 _p('<b>Signature &amp; Stamp</b>', st['sig']),
@@ -767,7 +777,7 @@ def generate_results_pdf_response(exam):
                 ('RIGHTPADDING', (0, 0), (-1, -1), 0),
             ]))
             story.append(sig_table)
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 4))
             story.append(_p(f'Date: {datetime.now().strftime("%d %B %Y")}', ParagraphStyle(
                 'dt', parent=st['sig'], alignment=TA_LEFT,
             )))
@@ -782,7 +792,7 @@ def generate_results_pdf_response(exam):
 
     tmpl = PageTemplate(id='main', frames=[frame], pagesize=A4, onPage=_footer)
 
-    total_pages_count = 1 + len(chunks)
+    total_pages_count = 1 + total_pages
 
     doc = BaseDocTemplate(
         buf,
