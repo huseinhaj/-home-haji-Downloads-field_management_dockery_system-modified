@@ -550,11 +550,15 @@ def generate_results_pdf_response(exam):
     subj_st = ParagraphStyle('lss', parent=st['td'], fontSize=7, leading=8.5,
                              wordWrap='CJK')
 
-    rows_per_page = 30
+    rows_per_page = 28
     chunks = [results[i:i + rows_per_page] for i in range(0, N, rows_per_page)]
     total_pages = len(chunks) or 1
 
     for pg_idx, chunk in enumerate(chunks, 1):
+        # Header with logos on EVERY results page
+        story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
+        story.append(Spacer(1, 6))
+
         # Title
         res_title_data = [[
             _p(f"<b>{exam_title} {exam.year} EXAMINATION RESULTS</b>", ParagraphStyle(
@@ -708,19 +712,35 @@ def generate_results_pdf_response(exam):
             story.append(dp_table)
             story.append(Spacer(1, 6))
 
-            # Subject performance
+            # Subject performance — with colour per level
             if subj_gpa:
                 story.append(_p("<b>SUBJECT PERFORMANCE</b>", st['section']))
                 sp_hdrs = ["#", "SUBJECT", "SAT", "PASS", "GPA", "LEVEL"]
                 sp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('sph', parent=cell_st, fontSize=6, textColor=WHITE, fontName='Helvetica-Bold')) for h in sp_hdrs]]
+                # Level colours
+                LEVEL_COLORS = {
+                    'Grade A': ('#006100', '#C6EFCE'),
+                    'Grade B+': ('#006100', '#D5F5E3'),
+                    'Grade B': ('#1E8449', '#D5F5E3'),
+                    'Grade C': ('#9C6500', '#FEF9E7'),
+                    'Grade D': ('#CC3300', '#FDEBD0'),
+                    'Grade E': ('#CC3300', '#F5CBA7'),
+                    'Grade S': ('#B9770B', '#F9E79F'),
+                    'Grade F': ('#9C0006', '#FADBD8'),
+                }
                 for idx, sg in enumerate(subj_gpa, 1):
+                    level_key = sg['level'].split(' (')[0] if sg['level'] else ''
+                    fg, bg = LEVEL_COLORS.get(level_key, ('#555555', '#E8E8E8'))
+                    level_st = ParagraphStyle(f'lvl_{idx}', parent=cell_st, fontSize=6,
+                                              textColor=colors.HexColor(fg), backColor=colors.HexColor(bg),
+                                              fontName='Helvetica-Bold', alignment=TA_LEFT)
                     sp_data.append([
                         _p(str(idx), cell_st),
                         _p(sg['name'], ParagraphStyle('spn', parent=cell_st, fontSize=6, alignment=TA_LEFT)),
                         _p(str(sg['sat']), cell_st),
                         _p(str(sg['pass_count']), cell_st),
                         _p(f"{sg['gpa']:.4f}", cell_st),
-                        _p(sg['level'], ParagraphStyle('spl', parent=cell_st, fontSize=6, alignment=TA_LEFT)),
+                        _p(sg['level'], level_st),
                     ])
                 cw_sp = [content_w * w for w in [0.04, 0.22, 0.08, 0.08, 0.12, 0.46]]
                 sp_table = Table(sp_data, colWidths=cw_sp)
