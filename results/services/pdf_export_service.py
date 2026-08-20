@@ -1,6 +1,7 @@
 """
 Professional Academic Results PDF — Pure ReportLab.
 All pages A4 Portrait. NECTA-style layout. Pages fully filled with results.
+Each results page has its own Table (no ReportLab splitting issues).
 """
 import io
 import os
@@ -69,7 +70,6 @@ DIV_FG = {
     '0':   colors.HexColor("#9C0006"),
 }
 
-# Grade colour tuples (fg_hex, bg_hex) for inline subjects
 GRADE_COLORS = {
     'A':  ('#006100', '#C6EFCE'),
     'B+': ('#006100', '#D5F5E3'),
@@ -146,14 +146,24 @@ def _grade_point(grade):
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def _load_logo_b64(field):
+    """Load logo from ImageField as base64 data URI.
+    Returns '' if file missing or unreadable — never raises."""
     if not field:
         return ''
     try:
+        # Check if the file actually exists on disk
+        storage = field.storage
+        if not storage.exists(field.name):
+            return ''
         field.open('rb')
         data = field.read()
+        field.close()
+        if not data:
+            return ''
         ext = os.path.splitext(str(field.name))[1].lower()
         mime_map = {'.png': 'image/png', '.jpg': 'image/jpeg',
-                    '.jpeg': 'image/jpeg', '.gif': 'image/gif'}
+                    '.jpeg': 'image/jpeg', '.gif': 'image/gif',
+                    '.svg': 'image/svg+xml'}
         mime = mime_map.get(ext, 'image/png')
         b64 = base64.b64encode(data).decode('ascii')
         return f'data:{mime};base64,{b64}'
@@ -179,6 +189,7 @@ def _p(text, style):
 
 
 def _safe_b64_img(data_uri, x, y, w, h, canvas):
+    """Draw a base64 image on canvas. Silently skips on any error."""
     if not data_uri or not data_uri.startswith('data:'):
         return
     try:
@@ -213,9 +224,9 @@ def _std_table_style(n_rows, header_bg=None):
 
 # ── Header Flowable ──────────────────────────────────────────────────────────
 class NECTAHeader(Flowable):
-    """Header that draws within its own bounds — no overlap with content below."""
-    BANNER_H = 58
-    BELOW_H = 36
+    """Compact header with logos, green banner, flag strip, school name."""
+    BANNER_H = 52
+    BELOW_H = 32
 
     def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang):
         Flowable.__init__(self)
@@ -226,7 +237,7 @@ class NECTAHeader(Flowable):
         self.stype = stype
         self.lang = lang
         self.width = A4[0] - 3.2 * cm
-        self.height = self.BANNER_H + self.BELOW_H
+        self.height = self.BANNER_H + self.BELOW_H  # 84pt total
 
     def wrap(self, availWidth, availHeight):
         return self.width, self.height
@@ -241,21 +252,23 @@ class NECTAHeader(Flowable):
         c.setFillColor(GREEN)
         c.roundRect(0, by, w, bh, 3, fill=1, stroke=0)
 
-        # Logos — slightly smaller for compact header
-        _safe_b64_img(self.slogo_uri, 4, by + 5, 34, 34, c)
-        _safe_b64_img(self.dlogo_uri, w - 38, by + 5, 34, 34, c)
+        # Logos — properly positioned inside banner
+        if self.slogo_uri:
+            _safe_b64_img(self.slogo_uri, 4, by + 4, 32, 32, c)
+        if self.dlogo_uri:
+            _safe_b64_img(self.dlogo_uri, w - 36, by + 4, 32, 32, c)
 
         cx = w / 2
         c.setFillColor(colors.white)
-        c.setFont('Helvetica-Bold', 8.5)
+        c.setFont('Helvetica-Bold', 8)
         republic = "THE UNITED REPUBLIC OF TANZANIA" if self.lang == 'en' else "JAMHURI YA MUUNGANO WA TANZANIA"
-        c.drawCentredString(cx, by + bh - 13, republic)
-        c.setFont('Helvetica-Bold', 6.5)
+        c.drawCentredString(cx, by + bh - 12, republic)
+        c.setFont('Helvetica-Bold', 6)
         ministry = "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY" if self.lang == 'en' else "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA"
-        c.drawCentredString(cx, by + bh - 23, ministry)
-        c.setFont('Helvetica', 5.5)
+        c.drawCentredString(cx, by + bh - 22, ministry)
+        c.setFont('Helvetica', 5)
         c.setFillColor(colors.HexColor("#D0E8D0"))
-        c.drawCentredString(cx, by + bh - 32, f"{self.stype} \u2014 EXAMINATION RESULTS")
+        c.drawCentredString(cx, by + bh - 30, f"{self.stype} \u2014 EXAMINATION RESULTS")
 
         # Flag strip
         strip_y = by - 2
@@ -265,13 +278,13 @@ class NECTAHeader(Flowable):
 
         # School name
         c.setFillColor(GOLD)
-        c.setFont('Helvetica-Bold', 13)
-        c.drawCentredString(cx, strip_y - 16, self.school_disp)
+        c.setFont('Helvetica-Bold', 12)
+        c.drawCentredString(cx, strip_y - 15, self.school_disp)
 
         # Location
         c.setFillColor(SLATE)
-        c.setFont('Helvetica', 6.5)
-        c.drawCentredString(cx, strip_y - 25, _location_str(self.exam))
+        c.setFont('Helvetica', 6)
+        c.drawCentredString(cx, strip_y - 23, _location_str(self.exam))
 
         # Gold line at y=0
         c.setStrokeColor(GOLD)
@@ -279,7 +292,7 @@ class NECTAHeader(Flowable):
         c.line(0, 0, w, 0)
 
 
-# ── Footer (consistent for all pages) ────────────────────────────────────────
+# ── Footer ───────────────────────────────────────────────────────────────────
 def _footer(canvas, doc):
     canvas.saveState()
     try:
@@ -300,17 +313,17 @@ def _footer(canvas, doc):
     # Footer text
     canvas.setFont('Helvetica', 6)
     canvas.setFillColor(SLATE)
-    canvas.drawString(doc.leftMargin, 0.6 * cm, get_full_school_name(doc._exam))
-    canvas.drawCentredString(w / 2, 0.6 * cm, f"Page {canvas.getPageNumber()} of {doc._total_pages}")
-    canvas.drawRightString(w - doc.rightMargin, 0.6 * cm, f"Generated: {doc._gen_date_short}")
+    canvas.drawString(doc.leftMargin, 0.55 * cm, get_full_school_name(doc._exam))
+    canvas.drawCentredString(w / 2, 0.55 * cm, f"Page {canvas.getPageNumber()} of {doc._total_pages}")
+    canvas.drawRightString(w - doc.rightMargin, 0.55 * cm, f"Generated: {doc._gen_date_short}")
     canvas.setStrokeColor(DARK_LINE)
     canvas.setLineWidth(0.3)
-    canvas.line(doc.leftMargin, 0.9 * cm, w - doc.rightMargin, 0.9 * cm)
+    canvas.line(doc.leftMargin, 0.85 * cm, w - doc.rightMargin, 0.85 * cm)
     canvas.restoreState()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# BUILD PDF — ALL PAGES PORTRAIT A4, FULLY FILLED
+# BUILD PDF
 # ══════════════════════════════════════════════════════════════════════════════
 def generate_results_pdf_response(exam):
     st = _styles()
@@ -327,6 +340,7 @@ def generate_results_pdf_response(exam):
     N = len(results)
     n_subj = max(len(subjects), 1)
 
+    # Load logos with proper error handling
     slogo_uri = _load_logo_b64(exam.school.school_logo) if exam.school else ''
     dlogo_uri = _load_logo_b64(exam.school.district_logo) if exam.school else ''
     school_type = get_school_type_for_exam(exam)
@@ -406,14 +420,14 @@ def generate_results_pdf_response(exam):
     page_w, page_h = A4
     margin_lr = 1.5 * cm
     margin_top = 0.5 * cm
-    margin_bot = 1.3 * cm
+    margin_bot = 1.2 * cm
     content_w = page_w - 2 * margin_lr
 
     story = []
 
     # ── HEADER ──
     story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
     # ── TITLE BLOCK ──
     title_style = ParagraphStyle(
@@ -438,7 +452,7 @@ def generate_results_pdf_response(exam):
         ('LINEBELOW', (0, 1), (-1, 1), 1.2, GOLD),
     ]))
     story.append(tb)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
     # ── DIVISION PERFORMANCE SUMMARY ──
     story.append(_p("<b>DIVISION PERFORMANCE SUMMARY</b>", st['section']))
@@ -460,7 +474,7 @@ def generate_results_pdf_response(exam):
     ds.append(('ALIGN', (1, 0), (-1, -1), 'CENTER'))
     div_table.setStyle(TableStyle(ds))
     story.append(div_table)
-    story.append(Spacer(1, 5))
+    story.append(Spacer(1, 4))
 
     # ── PERFORMANCE SUMMARY + GRADING KEY (side by side) ──
     perf_title = "PERFORMANCE SUMMARY" if lang == 'en' else "TAARIFA YA MAENDELEO"
@@ -514,7 +528,7 @@ def generate_results_pdf_response(exam):
     story.append(side_table)
     story.append(Spacer(1, 3))
     story.append(gk_table)
-    story.append(Spacer(1, 5))
+    story.append(Spacer(1, 4))
 
     # ── SUBJECT STATISTICS ──
     if subj_stats:
@@ -533,7 +547,7 @@ def generate_results_pdf_response(exam):
         s_table = Table(s_data, colWidths=cw_s)
         s_table.setStyle(TableStyle(_std_table_style(len(s_data))))
         story.append(s_table)
-        story.append(Spacer(1, 5))
+        story.append(Spacer(1, 4))
 
     # ── TOP 5 ──
     if results:
@@ -563,7 +577,7 @@ def generate_results_pdf_response(exam):
         story.append(t_table)
 
     # ══════════════════════════════════════════════════════════════════════
-    # RESULTS PAGES — A4 Portrait, NECTA format with GPA + names
+    # RESULTS PAGES — each page gets its OWN table (no splitting issues)
     # CNO | NAME | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
     # ══════════════════════════════════════════════════════════════════════
     story.append(PageBreak())
@@ -575,12 +589,12 @@ def generate_results_pdf_response(exam):
     subj_st = ParagraphStyle('lss', parent=st['td'], fontSize=7, leading=8.5,
                              wordWrap='CJK')
 
-    # Calculate rows per page: fill the page completely
-    # Available height for results table = page_h - top_margin - bottom_margin
-    # - header (94pt) - spacer (6pt) - title (22pt) - spacer (4pt) - footer_space (28pt)
-    available_h = page_h - margin_top - margin_bot - 94 - 6 - 22 - 4 - 28
-    row_h = 18  # approximate height per row including padding
-    rows_per_page = max(28, int(available_h / row_h))
+    # Calculate how many rows fit per page
+    # header (84pt) + spacer (4pt) + title (24pt) + spacer (3pt) + footer (24pt) = 139pt overhead
+    header_overhead = 84 + 4 + 24 + 3 + 24  # 139pt
+    available_h = page_h - margin_top - margin_bot - header_overhead
+    row_h = 16  # each data row height
+    rows_per_page = max(20, int(available_h / row_h))
 
     chunks = [results[i:i + rows_per_page] for i in range(0, N, rows_per_page)]
     if not chunks:
@@ -588,11 +602,11 @@ def generate_results_pdf_response(exam):
     total_pages = len(chunks)
 
     for pg_idx, chunk in enumerate(chunks, 1):
-        # Header with logos on EVERY results page
+        # ── Header on EVERY page ──
         story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
         story.append(Spacer(1, 4))
 
-        # Title — compact
+        # ── Title on EVERY page ──
         res_title_data = [[
             _p(f"<b>{exam_title} {exam.year} EXAMINATION RESULTS</b>", ParagraphStyle(
                 'rt', parent=st['title_md'], fontSize=10, textColor=NAVY,
@@ -614,7 +628,7 @@ def generate_results_pdf_response(exam):
         story.append(rt)
         story.append(Spacer(1, 3))
 
-        # NECTA-style: CNO | NAME | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
+        # ── Build SEPARATE table for this chunk (no splitting!) ──
         r_hdr = ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"]
         data = [[_p(f"<b>{h}</b>", hdr_st) for h in r_hdr]]
 
@@ -637,9 +651,9 @@ def generate_results_pdf_response(exam):
 
             div_bg = DIV_BG.get(r.division, WHITE)
             div_fg = DIV_FG.get(r.division, BLACK)
-            div_st = ParagraphStyle(f'dv4_{r.student_id}', parent=cell_st,
-                                    backColor=div_bg, textColor=div_fg,
-                                    fontName='Helvetica-Bold')
+            dv_st = ParagraphStyle(f'dv4_{r.student_id}', parent=cell_st,
+                                   backColor=div_bg, textColor=div_fg,
+                                   fontName='Helvetica-Bold')
 
             data.append([
                 _p(cno, cell_st),
@@ -647,11 +661,11 @@ def generate_results_pdf_response(exam):
                 _p(r.student.gender or 'M', cell_st),
                 _p(str(r.points), cell_bold),
                 _p(f"{stu_gpa:.2f}", cell_bold),
-                _p(str(r.division), div_st),
+                _p(str(r.division), dv_st),
                 _p(subj_text, subj_st),
             ])
 
-        # Column widths — NECTA style
+        # Column widths
         cw = [
             content_w * 0.05,  # CNO
             content_w * 0.14,  # NAME
@@ -662,7 +676,8 @@ def generate_results_pdf_response(exam):
             content_w * 0.63,  # DETAILED SUBJECTS
         ]
 
-        r_table = Table(data, colWidths=cw, repeatRows=1)
+        # Each page has its OWN table — no repeatRows, no splitting
+        r_table = Table(data, colWidths=cw)
         rs = [
             ('BACKGROUND', (0, 0), (-1, 0), NAVY),
             ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
@@ -678,11 +693,11 @@ def generate_results_pdf_response(exam):
                 rs.append(('BACKGROUND', (0, i), (-1, i), CREAM))
         r_table.setStyle(TableStyle(rs))
         story.append(r_table)
-        story.append(Spacer(1, 6))
 
         # ── Last page: grading key + centre performance + signature ──
         if pg_idx == total_pages:
-            # Grading key (compact)
+            story.append(Spacer(1, 6))
+            # Grading key
             gk_cells_pg = [
                 _p(f"<b>{g} ({rng})</b>", ParagraphStyle(
                     f'gk3_{g}', parent=cell_st, textColor=GRADE_FG.get(g, BLACK),
@@ -702,7 +717,7 @@ def generate_results_pdf_response(exam):
                 gk_s2.append(('BACKGROUND', (i, 0), (i, 0), GRADE_BG.get(g, WHITE)))
             gk_table_pg.setStyle(TableStyle(gk_s2))
             story.append(gk_table_pg)
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 5))
 
             # Centre performance summary
             story.append(_p("<b>EXAMINATION CENTRE OVERALL PERFORMANCE</b>", st['section']))
@@ -731,9 +746,9 @@ def generate_results_pdf_response(exam):
                 ('RIGHTPADDING', (0, 0), (-1, -1), 2),
             ]))
             story.append(dp_table)
-            story.append(Spacer(1, 5))
+            story.append(Spacer(1, 4))
 
-            # Subject performance — with colour per level
+            # Subject performance
             if subj_gpa:
                 story.append(_p("<b>SUBJECT PERFORMANCE</b>", st['section']))
                 sp_hdrs = ["#", "SUBJECT", "SAT", "PASS", "GPA", "LEVEL"]
@@ -756,9 +771,9 @@ def generate_results_pdf_response(exam):
                 sp_table = Table(sp_data, colWidths=cw_sp)
                 sp_table.setStyle(TableStyle(_std_table_style(len(sp_data))))
                 story.append(sp_table)
-                story.append(Spacer(1, 8))
+                story.append(Spacer(1, 6))
 
-            # Signature — bottom of last page
+            # Signature
             sig_left = [
                 _p('<hr width="100%"/>', st['sig']),
                 _p('<b>Signature &amp; Stamp</b>', st['sig']),
@@ -777,7 +792,7 @@ def generate_results_pdf_response(exam):
                 ('RIGHTPADDING', (0, 0), (-1, -1), 0),
             ]))
             story.append(sig_table)
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 3))
             story.append(_p(f'Date: {datetime.now().strftime("%d %B %Y")}', ParagraphStyle(
                 'dt', parent=st['sig'], alignment=TA_LEFT,
             )))
