@@ -470,32 +470,55 @@ def generate_results_pdf_response(exam):
     story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
     story.append(Spacer(1, 6))
 
-    # ── TITLE BLOCK (blue background, white text) ──
-    title_style = ParagraphStyle(
-        'tblock', parent=st['title_lg'], fontSize=13, textColor=WHITE,
-        spaceBefore=0, spaceAfter=0, alignment=TA_CENTER, leading=16,
-    )
-    subtitle_style = ParagraphStyle(
-        'tsub', parent=st['subtitle'], fontSize=9, textColor=colors.HexColor("#D0E8FF"),
-        spaceBefore=1, spaceAfter=0, alignment=TA_CENTER, leading=12,
-    )
-    title_block_data = [[
-        _p(f"<b>{exam_title} {exam.year} EXAMINATION RESULTS</b>", title_style),
-    ], [
-        _p(f"FORM {exam.form}  \u2014  {exam.name}", subtitle_style),
-    ]]
-    tb = Table(title_block_data, colWidths=[content_w])
-    tb.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('BACKGROUND', (0, 0), (-1, -1), NAVY),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ('LINEBELOW', (0, -1), (-1, -1), 1.5, GOLD),
-    ]))
-    story.append(tb)
+    # ── TITLE BLOCK (coat of arms 4-color background) ──
+    class TitleBlock(Flowable):
+        """Title block with 4 coat-of-arms color bands as background."""
+        HEIGHT = 48  # total height in points
+
+        def __init__(self, title_text, subtitle_text, w):
+            Flowable.__init__(self)
+            self.title_text = title_text
+            self.subtitle_text = subtitle_text
+            self.width = w
+            self.height = self.HEIGHT
+
+        def wrap(self, availWidth, availHeight):
+            return self.width, self.height
+
+        def draw(self):
+            c = self.canv
+            w, h = self.width, self.height
+
+            # 4 coat-of-arms color bands (equal width, vertical)
+            band_w = w / 4
+            coa_colors = [TZ_GREEN, TZ_YELLOW, TZ_BLACK, TZ_BLUE]
+            for i, col in enumerate(coa_colors):
+                c.setFillColor(col)
+                c.rect(i * band_w, 0, band_w, h, fill=1, stroke=0)
+
+            # Semi-transparent dark overlay for text readability
+            c.setFillColor(colors.Color(0, 0, 0, 0.35))
+            c.rect(0, 0, w, h, fill=1, stroke=0)
+
+            # Title text — white, bold, centered
+            cx = w / 2
+            c.setFillColor(colors.white)
+            c.setFont('Helvetica-Bold', 13)
+            c.drawCentredString(cx, h / 2 + 4, self.title_text)
+
+            # Subtitle text — light blue, centered
+            c.setFillColor(colors.HexColor("#D0E8FF"))
+            c.setFont('Helvetica', 9)
+            c.drawCentredString(cx, h / 2 - 10, self.subtitle_text)
+
+            # Gold border bottom
+            c.setStrokeColor(GOLD)
+            c.setLineWidth(1.5)
+            c.line(0, 0, w, 0)
+
+    title_text = f"{exam_title} {exam.year} EXAMINATION RESULTS"
+    subtitle_text = f"FORM {exam.form}  \u2014  {exam.name}"
+    story.append(TitleBlock(title_text, subtitle_text, content_w))
     story.append(Spacer(1, 5))
 
     # ── DIVISION PERFORMANCE SUMMARY ──
@@ -652,29 +675,41 @@ def generate_results_pdf_response(exam):
         story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
         story.append(Spacer(1, 4))
 
-        # ── Title on EVERY page (blue background, white text) ──
-        res_title_data = [[
-            _p(f"<b>{exam_title} {exam.year} EXAMINATION RESULTS</b>", ParagraphStyle(
-                'rt', parent=st['title_md'], fontSize=10, textColor=WHITE,
-                spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
-            )),
-        ], [
-            _p(f"FORM {exam.form}  \u2014  {exam.name}  |  PAGE {pg_idx} of {total_pages}", ParagraphStyle(
-                'rts', parent=st['subtitle'], fontSize=7.5, textColor=colors.HexColor("#D0E8FF"),
-                spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
-            )),
-        ]]
-        rt = Table(res_title_data, colWidths=[content_w])
-        rt.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('BACKGROUND', (0, 0), (-1, -1), NAVY),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            ('LEFTPADDING', (0, 0), (-1, -1), 6),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-            ('LINEBELOW', (0, -1), (-1, -1), 1.2, GOLD),
-        ]))
-        story.append(rt)
+        # ── Title on EVERY page (coat of arms 4-color background) ──
+        res_title_text = f"{exam_title} {exam.year} EXAMINATION RESULTS"
+        res_subtitle_text = f"FORM {exam.form}  \u2014  {exam.name}  |  PAGE {pg_idx} of {total_pages}"
+
+        class ResultTitleBlock(Flowable):
+            HEIGHT = 40
+            def __init__(self, t, st, w):
+                Flowable.__init__(self)
+                self.t = t
+                self.st = st
+                self.width = w
+                self.height = self.HEIGHT
+            def wrap(self, aW, aH):
+                return self.width, self.height
+            def draw(self):
+                c = self.canv
+                w, h = self.width, self.height
+                band_w = w / 4
+                for i, col in enumerate([TZ_GREEN, TZ_YELLOW, TZ_BLACK, TZ_BLUE]):
+                    c.setFillColor(col)
+                    c.rect(i * band_w, 0, band_w, h, fill=1, stroke=0)
+                c.setFillColor(colors.Color(0, 0, 0, 0.35))
+                c.rect(0, 0, w, h, fill=1, stroke=0)
+                cx = w / 2
+                c.setFillColor(colors.white)
+                c.setFont('Helvetica-Bold', 10)
+                c.drawCentredString(cx, h / 2 + 3, self.t)
+                c.setFillColor(colors.HexColor("#D0E8FF"))
+                c.setFont('Helvetica', 7.5)
+                c.drawCentredString(cx, h / 2 - 9, self.st)
+                c.setStrokeColor(GOLD)
+                c.setLineWidth(1.2)
+                c.line(0, 0, w, 0)
+
+        story.append(ResultTitleBlock(res_title_text, res_subtitle_text, content_w))
         story.append(Spacer(1, 3))
 
         # ── Build SEPARATE table for this chunk (no splitting!) ──
