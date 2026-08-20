@@ -225,18 +225,20 @@ class NECTAHeader(Flowable):
             c.setFillColor(col)
             c.rect(i * w / 4, strip_y, w / 4, 3, fill=1, stroke=0)
 
-        # School name
+        # School name (large, gold, bold)
         c.setFillColor(GOLD)
-        c.setFont('Helvetica-Bold', 13)
-        c.drawCentredString(cx, strip_y - 16, self.school_disp)
+        c.setFont('Helvetica-Bold', 14)
+        c.drawCentredString(cx, strip_y - 18, self.school_disp)
+
+        # Location (small, slate)
         c.setFillColor(SLATE)
-        c.setFont('Helvetica', 6.5)
-        c.drawCentredString(cx, strip_y - 26, _location_str(self.exam))
+        c.setFont('Helvetica', 7)
+        c.drawCentredString(cx, strip_y - 28, _location_str(self.exam))
 
         # Gold line
         c.setStrokeColor(GOLD)
         c.setLineWidth(1.5)
-        c.line(0, strip_y - 32, w, strip_y - 32)
+        c.line(0, strip_y - 34, w, strip_y - 34)
 
 
 # ── Footer ───────────────────────────────────────────────────────────────────
@@ -368,13 +370,31 @@ def generate_results_pdf_response(exam):
 
     story = []
     story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 12))
 
-    # Title — beautifully formatted
-    story.append(_p(f"<b>{school_disp}</b>", st['title_lg']))
-    story.append(_p(f"<b>{etype} {exam.year} — FORM {exam.form}</b>", st['title_md']))
-    story.append(_p(exam.name, st['subtitle']))
-    story.append(Spacer(1, 4))
+    # ── Beautiful title block ──
+    title_block_data = [[
+        _p(f"<b>{etype} {exam.year} EXAMINATION RESULTS</b>", ParagraphStyle(
+            'tblock', parent=st['title_lg'], fontSize=13, textColor=NAVY,
+            spaceBefore=0, spaceAfter=1, alignment=TA_CENTER,
+        )),
+    ], [
+        _p(f"FORM {exam.form}  &mdash;  {exam.name}", ParagraphStyle(
+            'tsub', parent=st['subtitle'], fontSize=9, textColor=SLATE,
+            spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
+        )),
+    ]]
+    tb = Table(title_block_data, colWidths=[content_w])
+    tb.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        # Gold underline
+        ('LINEBELOW', (0, 0), (-1, 0), 1.5, GOLD),
+    ]))
+    story.append(tb)
+    story.append(Spacer(1, 6))
 
     # ── DIVISION PERFORMANCE SUMMARY (NECTA style — by sex) ──
     story.append(_p("<b>DIVISION PERFORMANCE SUMMARY</b>", st['section']))
@@ -535,9 +555,26 @@ def generate_results_pdf_response(exam):
     total_pages = len(chunks) or 1
 
     for pg_idx, chunk in enumerate(chunks, 1):
-        # Title
-        story.append(_p(f"<b>{school_disp} — {etype} {exam.year} — FORM {exam.form}</b>", st['title_md']))
-        story.append(_p(f"{exam.name}  |  PAGE {pg_idx} of {total_pages}", st['subtitle']))
+        # Title — compact, no school name (it's in footer)
+        res_title_data = [[
+            _p(f"<b>{etype} {exam.year} EXAMINATION RESULTS — FORM {exam.form}</b>", ParagraphStyle(
+                'rt', parent=st['title_md'], fontSize=10, textColor=NAVY,
+                spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
+            )),
+        ], [
+            _p(f"{exam.name}  &mdash;  PAGE {pg_idx} of {total_pages}", ParagraphStyle(
+                'rts', parent=st['subtitle'], fontSize=7, textColor=SLATE,
+                spaceBefore=0, spaceAfter=0, alignment=TA_CENTER,
+            )),
+        ]]
+        rt = Table(res_title_data, colWidths=[land_content_w])
+        rt.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('TOPPADDING', (0, 0), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+            ('LINEBELOW', (0, 0), (-1, 0), 1, GOLD),
+        ]))
+        story.append(rt)
 
         # NECTA-style table: # | NAME | SEX | AGGT | DIV | DETAILED SUBJECTS
         r_hdr = ["#", "NAME", "SEX", "AGGT", "DIV", "DETAILED SUBJECTS"]
