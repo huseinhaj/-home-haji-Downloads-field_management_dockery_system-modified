@@ -1,40 +1,33 @@
 """
-Professional NECTA Academic Results PDF — Complete rewrite.
-Clean layout, proper spacing, beautiful colors, no overlapping.
+Professional NECTA Academic Results PDF — xhtml2pdf-based.
+Generates HTML → renders to PDF via xhtml2pdf for clean, professional output.
+No overlapping, no text cutting, proper word-wrap, CSS-styled tables.
 """
+import io
+import os
+import base64
 from collections import Counter
 from datetime import datetime
-from io import BytesIO
 
 from django.http import HttpResponse
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import cm, mm
-from reportlab.lib.utils import ImageReader
-from reportlab.platypus import (
-    SimpleDocTemplate, Frame, PageTemplate,
-    Table, TableStyle, Paragraph, Spacer, PageBreak,
-)
+from django.utils.safestring import mark_safe
+from xhtml2pdf import pisa
 
 from .export_data import get_exam_export_payload
 from .report_helpers import (
-    TZ_BLUE, TZ_DARK_GREY, TZ_GOLD, TZ_GREEN, TZ_LIGHT_GREY,
     get_full_school_name, get_report_label, get_report_language,
     get_section_title, get_school_type_for_exam,
 )
 
-# ── Professional colour palette ─────────────────────────────────────────────
-NAVY   = colors.HexColor("#1B3A5C")
-GREEN  = colors.HexColor("#1A7B3A")
-GOLD   = colors.HexColor("#C4961A")
-CREAM  = colors.HexColor("#FAF7F0")
-SLATE  = colors.HexColor("#5A6B7A")
-WHITE  = colors.white
-BLACK  = colors.black
-LGRAY  = colors.HexColor("#E8EBF0")
+# ── Colour constants ──
+NAVY   = "#1B3A5C"
+GREEN  = "#1A7B3A"
+GOLD   = "#C4961A"
+CREAM  = "#FAF7F0"
+SLATE  = "#5A6B7A"
+LGRAY  = "#E8EBF0"
 
-GRADE_COLORS = {
+GRADE_CSS = {
     'A':  ("#D4EFDF", "#1A6B3A"),
     'B+': ("#D5F5E3", "#1E8449"),
     'B':  ("#D5F5E3", "#2D7D46"),
@@ -45,7 +38,7 @@ GRADE_COLORS = {
     'S':  ("#F9E79F", "#B9770B"),
     'F':  ("#FADBD8", "#922B21"),
 }
-DIV_COLORS = {
+DIV_CSS = {
     'I':   ("#D4EFDF", "#1A6B3A"),
     'II':  ("#D5F5E3", "#1E8449"),
     'III': ("#FEF9E7", "#B7950B"),
@@ -55,7 +48,6 @@ DIV_COLORS = {
 
 
 def _grading_thresholds(form):
-    """Return (thresholds, grade_names) for the given form level."""
     if form == 2:
         return [75, 65, 45, 30], [('A','75-100'),('B','65-74'),('C','45-64'),('D','30-44'),('F','0-29')]
     if form in (5, 6):
@@ -63,26 +55,30 @@ def _grading_thresholds(form):
     return [75, 65, 55, 45, 35, 25], [('A','75-100'),('B+','65-74'),('B','55-64'),('C+','45-54'),('C','35-44'),('D','25-34'),('F','0-24')]
 
 
-def _score_fill(score, form=4):
-    """Return (bg_hex, fg_hex) for a numeric score."""
+def _score_color(score, form=4):
     if score is None or not isinstance(score, (int, float)):
         return None, None
-    thresholds, grades = _grading_thresholds(form)
-    for i, t in enumerate(thresholds):
+    th, gr = _grading_thresholds(form)
+    for i, t in enumerate(th):
         if score >= t:
-            return GRADE_COLORS.get(grades[i][0], (None, None))
-    return GRADE_COLORS.get(grades[-1][0], (None, None))
+            return GRADE_CSS.get(gr[i][0], (None, None))
+    return GRADE_CSS.get(gr[-1][0], (None, None))
 
 
-def _load_image(field):
-    """Load an ImageField into an ImageReader, or return None."""
+def _load_logo_b64(field):
+    """Load an ImageField as a base64 data URI, or return empty string."""
     if not field:
-        return None
+        return ''
     try:
         field.open('rb')
-        return ImageReader(field)
+        data = field.read()
+        ext = os.path.splitext(str(field.name))[1].lower()
+        mime = {'png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+                '.gif': 'image/gif', '.svg': 'image/svg+xml'}.get(ext, 'image/png')
+        b64 = base64.b64encode(data).decode('ascii')
+        return f'data:{mime};base64,{b64}'
     except Exception:
-        return None
+        return ''
 
 
 def _location_str(exam):
@@ -91,107 +87,300 @@ def _location_str(exam):
         parts.append(exam.school.district.upper())
     if exam.school and exam.school.region:
         parts.append(exam.school.region.upper())
-    return ' — '.join(parts) if parts else 'TANZANIA'
+    return ' &mdash; '.join(parts) if parts else 'TANZANIA'
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  PAGE DECORATION (header + footer drawn on every page)
-# ═════════════════════════════════════════════════════════════════════════════
-
-def _decorate_page(cv, doc, *, exam, lang, school_disp, slogo, dlogo, page_num, total_pages):
-    """Draw border + header banner + footer on each page."""
-    W, H = A4
-    LM, RM = 2.0 * cm, 2.0 * cm
-    BW = W - LM - RM
-
-    # ── Outer border ──
-    cv.setStrokeColor(NAVY)
-    cv.setLineWidth(1.5)
-    cv.rect(12, 12, W - 24, H - 24, fill=0, stroke=1)
-
-    # ── Header green banner ──
-    banner_h = 2.4 * cm
-    banner_top = H - 18
-
-    cv.setFillColor(GREEN)
-    cv.roundRect(LM, banner_top - banner_h, BW, banner_h, 4, fill=1, stroke=0)
-
-    cx = LM + BW / 2
-
-    # Logos (school left, district right)
-    logo_h = banner_h - 6
-    if slogo:
-        cv.drawImage(slogo, LM + 3, banner_top - banner_h + 3,
-                     width=logo_h, height=logo_h,
-                     preserveAspectRatio=True, mask='auto')
-    if dlogo:
-        cv.drawImage(dlogo, LM + BW - 3 - logo_h, banner_top - banner_h + 3,
-                     width=logo_h, height=logo_h,
-                     preserveAspectRatio=True, mask='auto')
-
-    # Header text
-    cv.setFillColor(WHITE)
-    cv.setFont("Helvetica-Bold", 10)
-    title_text = "THE UNITED REPUBLIC OF TANZANIA" if lang == 'en' else "JAMHURI YA MUUNGANO WA TANZANIA"
-    cv.drawCentredString(cx, banner_top - 12, title_text)
-
-    cv.setFont("Helvetica-Bold", 8)
-    ministry = "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY" if lang == 'en' else "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA"
-    cv.drawCentredString(cx, banner_top - 22, ministry)
-
-    cv.setFont("Helvetica", 6.5)
-    school_type = "SECONDARY SCHOOL" if get_school_type_for_exam(exam) == 'secondary' else "PRIMARY SCHOOL"
-    cv.drawCentredString(cx, banner_top - 31, f"{school_type} — EXAMINATION RESULTS")
-
-    # Tanzania flag colour strip
-    strip_y = banner_top - 36
-    strip_h = 3
-    for i, clr in enumerate([GREEN, GOLD, BLACK, colors.HexColor("#00A3DD")]):
-        cv.setFillColor(clr)
-        cv.rect(LM + i * BW / 4, strip_y, BW / 4, strip_h, fill=1, stroke=0)
-
-    # School name (gold)
-    cv.setFillColor(GOLD)
-    cv.setFont("Helvetica-Bold", 12)
-    cv.drawCentredString(cx, banner_top - 50, school_disp)
-
-    # Location
-    cv.setFillColor(colors.HexColor("#E8F5E9"))
-    cv.setFont("Helvetica", 6.5)
-    cv.drawCentredString(cx, banner_top - 60, _location_str(exam))
-
-    # Gold accent line below banner
-    cv.setStrokeColor(GOLD)
-    cv.setLineWidth(1.5)
-    cv.line(LM, banner_top - banner_h - 1, LM + BW, banner_top - banner_h - 1)
-
-    # ── Footer ──
-    footer_y = 14
-    cv.setStrokeColor(NAVY)
-    cv.setLineWidth(0.5)
-    cv.line(LM, footer_y + 10, W - RM, footer_y + 10)
-
-    cv.setFont("Helvetica", 5.5)
-    cv.setFillColor(SLATE)
-    cv.drawString(LM, footer_y, school_disp[:40])
-    cv.drawCentredString(W / 2, footer_y, f"Page {page_num} of {total_pages}")
-    cv.drawRightString(W - RM, footer_y, datetime.now().strftime('%d/%m/%Y'))
+def _student_name(r):
+    return ' '.join(p for p in [r.student.first_name, r.student.middle_name or '', r.student.last_name] if p)
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  HELPER: build a clean TableStyle from a list of command tuples
-# ═════════════════════════════════════════════════════════════════════════════
+def _grade_legend(form):
+    _, grades = _grading_thresholds(form)
+    cells = []
+    for g, rng in grades:
+        bg, fg = GRADE_CSS.get(g, ("#fff", "#000"))
+        cells.append(f'<td style="background:{bg};color:{fg};font-weight:bold;text-align:center;padding:3px 6px;font-size:7pt;border:0.5px solid #ccc;">{g} ({rng})</td>')
+    return '<table style="width:100%;border-collapse:collapse;margin-top:4px;"><tr>' + ''.join(cells) + '</tr></table>'
 
-def _make_style(commands):
-    """Safely build a TableStyle from a list of command tuples."""
-    return TableStyle(commands)
+
+def _css():
+    """Return the CSS styles for the PDF."""
+    return f"""
+    @page {{
+        size: A4 portrait;
+        margin: 3.6cm 1.8cm 1.4cm 1.8cm;
+        @top-left {{ content: ""; }}
+        @top-center {{ content: ""; }}
+        @top-right {{ content: ""; }}
+        @bottom-left {{
+            content: "{school_disp_}";
+            font-family: Helvetica, sans-serif;
+            font-size: 6pt;
+            color: {SLATE};
+        }}
+        @bottom-center {{
+            content: "Page " counter(page) " of " counter(pages);
+            font-family: Helvetica, sans-serif;
+            font-size: 6pt;
+            color: {SLATE};
+        }}
+        @bottom-right {{
+            content: "{date_str_}";
+            font-family: Helvetica, sans-serif;
+            font-size: 6pt;
+            color: {SLATE};
+        }}
+    }}
+
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 8pt;
+        color: #333;
+        line-height: 1.3;
+    }}
+
+    /* Header banner */
+    .header-banner {{
+        background: {GREEN};
+        border-radius: 4px;
+        padding: 8px 12px 6px 12px;
+        margin-bottom: 0;
+        position: relative;
+        min-height: 72px;
+    }}
+    .header-logos {{
+        position: absolute;
+        top: 4px;
+    }}
+    .header-logos.left {{ left: 4px; }}
+    .header-logos.right {{ right: 4px; }}
+    .header-logos img {{
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        object-fit: contain;
+    }}
+    .header-text {{
+        text-align: center;
+        color: white;
+    }}
+    .header-text .republic {{
+        font-size: 10pt;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+    }}
+    .header-text .ministry {{
+        font-size: 7.5pt;
+        font-weight: bold;
+        margin-top: 2px;
+    }}
+    .header-text .exam-type {{
+        font-size: 6.5pt;
+        margin-top: 2px;
+    }}
+
+    /* Flag strip */
+    .flag-strip {{
+        height: 3px;
+        margin: 0;
+    }}
+    .flag-strip td {{
+        height: 3px;
+        padding: 0;
+    }}
+
+    /* School name */
+    .school-name {{
+        text-align: center;
+        font-size: 13pt;
+        font-weight: bold;
+        color: {GOLD};
+        margin-top: 6px;
+        margin-bottom: 2px;
+    }}
+    .school-location {{
+        text-align: center;
+        font-size: 6.5pt;
+        color: #666;
+        margin-bottom: 6px;
+    }}
+
+    /* Gold line */
+    .gold-line {{
+        border: none;
+        border-top: 1.5px solid {GOLD};
+        margin: 0 0 8px 0;
+    }}
+
+    /* Section titles */
+    .section-title {{
+        font-size: 9.5pt;
+        font-weight: bold;
+        color: {GREEN};
+        border-bottom: 1px solid {GREEN};
+        padding-bottom: 2px;
+        margin-top: 10px;
+        margin-bottom: 4px;
+    }}
+
+    /* Page title */
+    .page-title {{
+        font-size: 11pt;
+        font-weight: bold;
+        color: {NAVY};
+        text-align: center;
+        margin-bottom: 1px;
+    }}
+    .page-subtitle {{
+        font-size: 7pt;
+        color: {SLATE};
+        text-align: center;
+        margin-bottom: 6px;
+    }}
+
+    /* Tables */
+    table.data {{
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 6px;
+        font-size: 7.5pt;
+    }}
+    table.data th {{
+        background: {NAVY};
+        color: white;
+        font-weight: bold;
+        padding: 4px 3px;
+        text-align: center;
+        border: 0.5px solid #ccc;
+        font-size: 7pt;
+        white-space: nowrap;
+    }}
+    table.data td {{
+        padding: 3px 3px;
+        text-align: center;
+        border: 0.5px solid {LGRAY};
+        vertical-align: middle;
+    }}
+    table.data tr:nth-child(even) td {{
+        background: {CREAM};
+    }}
+    table.data td.name-col {{
+        text-align: left;
+        font-weight: normal;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 120px;
+    }}
+
+    /* Summary tables */
+    table.summary {{
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 6px;
+    }}
+    table.summary th {{
+        background: {NAVY};
+        color: white;
+        font-weight: bold;
+        padding: 4px 6px;
+        text-align: center;
+        border: 0.5px solid #ccc;
+        font-size: 7.5pt;
+    }}
+    table.summary td {{
+        padding: 3px 6px;
+        border: 0.5px solid {LGRAY};
+        font-size: 7.5pt;
+    }}
+
+    /* Side by side wrapper */
+    .two-col {{
+        width: 100%;
+        border-collapse: collapse;
+    }}
+    .two-col > tr > td {{
+        vertical-align: top;
+        padding: 0;
+        border: none;
+    }}
+    .two-col > tr > td.spacer {{
+        width: 12px;
+    }}
+
+    /* Signature area */
+    .signature {{
+        margin-top: 20px;
+    }}
+    .signature table {{
+        width: 100%;
+        border-collapse: collapse;
+    }}
+    .signature td {{
+        font-size: 7pt;
+        color: {SLATE};
+        padding: 2px 0;
+        vertical-align: top;
+    }}
+    .sig-line {{
+        border-bottom: 1px solid #999;
+        height: 30px;
+        margin-bottom: 2px;
+    }}
+
+    /* Score cell colouring */
+    .sc-a  {{ background: #D4EFDF; color: #1A6B3A; font-weight: bold; }}
+    .sc-bp {{ background: #D5F5E3; color: #1E8449; }}
+    .sc-b  {{ background: #D5F5E3; color: #2D7D46; }}
+    .sc-cp {{ background: #FEF9E7; color: #B7950B; }}
+    .sc-c  {{ background: #FEF9E7; color: #9A7D0A; }}
+    .sc-d  {{ background: #FDEBD0; color: #BA4A00; }}
+    .sc-e  {{ background: #F5CBA7; color: #AF601A; }}
+    .sc-s  {{ background: #F9E79F; color: #B9770B; }}
+    .sc-f  {{ background: #FADBD8; color: #922B21; font-weight: bold; }}
+
+    /* Division colours */
+    .div-1  {{ background: #D4EFDF; color: #1A6B3A; font-weight: bold; }}
+    .div-2  {{ background: #D5F5E3; color: #1E8449; font-weight: bold; }}
+    .div-3  {{ background: #FEF9E7; color: #B7950B; font-weight: bold; }}
+    .div-4  {{ background: #FDEBD0; color: #BA4A00; font-weight: bold; }}
+    .div-0  {{ background: #FADBD8; color: #922B21; font-weight: bold; }}
+
+    .gold-bg {{ background: {GOLD} !important; color: white !important; font-weight: bold; }}
+    .total-row td {{ font-weight: bold; background: #E8EBF0 !important; }}
+
+    /* Top 1 badge */
+    .top1 {{ background: {GOLD} !important; color: white !important; font-weight: bold; }}
+    """
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  PUBLIC API
-# ═════════════════════════════════════════════════════════════════════════════
+# These will be set per-request for CSS @page margin content
+school_disp_ = ""
+date_str_ = ""
 
-def generate_results_pdf_response(exam):
+
+def _score_class(score, form=4):
+    if score is None or not isinstance(score, (int, float)):
+        return ''
+    th, gr = _grading_thresholds(form)
+    for i, t in enumerate(th):
+        if score >= t:
+            g = gr[i][0]
+            return {
+                'A': 'sc-a', 'B+': 'sc-bp', 'B': 'sc-b', 'C+': 'sc-cp',
+                'C': 'sc-c', 'D': 'sc-d', 'E': 'sc-e', 'S': 'sc-s', 'F': 'sc-f',
+            }.get(g, '')
+    return 'sc-f'
+
+
+def _div_class(div):
+    return {
+        'I': 'div-1', 'II': 'div-2', 'III': 'div-3', 'IV': 'div-4', '0': 'div-0',
+    }.get(div, '')
+
+
+def _generate_html(exam):
     payload = get_exam_export_payload(exam)
     subjects = payload['subjects']
     results = payload['processed_results']
@@ -202,13 +391,11 @@ def generate_results_pdf_response(exam):
     etype = exam.get_exam_type_display().upper()
     rlabel = get_report_label(exam)
 
-    # ── Logos ──
-    slogo = dlogo = None
-    if exam.school:
-        slogo = _load_image(exam.school.school_logo)
-        dlogo = _load_image(exam.school.district_logo)
+    # Logos
+    slogo_uri = _load_logo_b64(exam.school.school_logo) if exam.school else ''
+    dlogo_uri = _load_logo_b64(exam.school.district_logo) if exam.school else ''
 
-    # ── Aggregate stats ──
+    # Stats
     if N:
         avg_total = sum(r.total_score for r in results) / N
         avg_average = sum(float(r.average_score) for r in results) / N
@@ -223,7 +410,7 @@ def generate_results_pdf_response(exam):
     def pct(n):
         return f"{n / N * 100:.1f}%" if N else "0%"
 
-    # ── Per-subject stats ──
+    # Subject stats
     subj_stats = []
     for subj in subjects:
         scores = [score_lookup[(r.student_id, subj.id)]
@@ -237,347 +424,284 @@ def generate_results_pdf_response(exam):
                 'pass_pct': round(sum(1 for s in scores if s >= 40) / len(scores) * 100, 1),
             })
 
-    # ── Paragraph styles ──
-    ss = getSampleStyleSheet()
-    TITLE_ST = ParagraphStyle('PTitle', parent=ss['Heading1'], fontSize=12, textColor=NAVY,
-                              alignment=1, spaceAfter=2, spaceBefore=0, fontName='Helvetica-Bold')
-    SUB_ST = ParagraphStyle('PSub', parent=ss['Normal'], fontSize=7.5, textColor=SLATE,
-                            alignment=1, spaceAfter=1)
-    SEC_ST = ParagraphStyle('PSec', parent=ss['Heading2'], fontSize=9, textColor=GREEN,
-                            fontName='Helvetica-Bold', spaceBefore=6, spaceAfter=3)
+    # ── Header HTML ──
+    s_logo_html = f'<div class="header-logos left"><img src="{slogo_uri}" /></div>' if slogo_uri else ''
+    d_logo_html = f'<div class="header-logos right"><img src="{dlogo_uri}" /></div>' if dlogo_uri else ''
 
-    story = []
+    republic = "THE UNITED REPUBLIC OF TANZANIA" if lang == 'en' else "JAMHURI YA MUUNGANO WA TANZANIA"
+    ministry = "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY" if lang == 'en' else "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA"
+    stype = "SECONDARY SCHOOL" if get_school_type_for_exam(exam) == 'secondary' else "PRIMARY SCHOOL"
 
-    # ═════════════════════════════════════════════════════════════════════════
-    #  PAGE 1: SUMMARY
-    # ═════════════════════════════════════════════════════════════════════════
-    story.append(Spacer(1, 0.15 * cm))
-    story.append(Paragraph(
-        f"{etype} {exam.year} — FORM {exam.form}" if lang == 'en' else rlabel, TITLE_ST))
-    story.append(Paragraph(exam.name, SUB_ST))
-    story.append(Spacer(1, 0.25 * cm))
+    header_html = f"""
+    <div class="header-banner">
+        {s_logo_html}
+        {d_logo_html}
+        <div class="header-text">
+            <div class="republic">{republic}</div>
+            <div class="ministry">{ministry}</div>
+            <div class="exam-type">{stype} &mdash; EXAMINATION RESULTS</div>
+        </div>
+    </div>
+    <table class="flag-strip" style="width:100%;"><tr>
+        <td style="width:25%;background:{GREEN};"></td>
+        <td style="width:25%;background:{GOLD};"></td>
+        <td style="width:25%;background:#000;"></td>
+        <td style="width:25%;background:#00A3DD;"></td>
+    </tr></table>
+    <div class="school-name">{school_disp}</div>
+    <div class="school-location">{_location_str(exam)}</div>
+    <hr class="gold-line" />
+    """
 
-    # ── Division breakdown table ──
-    story.append(Paragraph(get_section_title(exam, 'division_summary'), SEC_ST))
+    # ── Page 1: SUMMARY ──
+    page_title = f"{etype} {exam.year} &mdash; FORM {exam.form}" if lang == 'en' else rlabel
+    page_sub = exam.name
 
+    # Division table
     div_labels = {
-        'I': 'Division I', 'II': 'Division II', 'III': 'Division III',
-        'IV': 'Division IV', '0': 'Fail (0)',
+        'I': ('Division I', 'Daraja I'), 'II': ('Division II', 'Daraja II'),
+        'III': ('Division III', 'Daraja III'), 'IV': ('Division IV', 'Daraja IV'),
+        '0': ('Fail (0)', 'Faili (0)'),
     }
-    if lang == 'sw':
-        div_labels = {
-            'I': 'Daraja I', 'II': 'Daraja II', 'III': 'Daraja III',
-            'IV': 'Daraja IV', '0': 'Faili (0)',
-        }
-
     d_hdr = ["DIVISION", "COUNT", "%"] if lang == 'en' else ["DARAJA", "IDADI", "%"]
-    d_data = [d_hdr]
+    d_rows = ""
     for d in ('I', 'II', 'III', 'IV', '0'):
-        d_data.append([div_labels[d], str(div_counts.get(d, 0)), pct(div_counts.get(d, 0))])
-    d_data.append(["Total" if lang == 'en' else "Jumla", str(N), "100%"])
+        label = div_labels[d][0] if lang == 'en' else div_labels[d][1]
+        dc = div_counts.get(d, 0)
+        bg, fg = DIV_CSS.get(d, ("#fff", "#000"))
+        d_rows += f'<tr><td style="background:{bg};color:{fg};font-weight:bold;text-align:left;">{label}</td><td>{dc}</td><td>{pct(dc)}</td></tr>'
+    d_rows += f'<tr class="total-row"><td style="text-align:left;font-weight:bold;">{"Total" if lang == "en" else "Jumla"}</td><td>{N}</td><td>100%</td></tr>'
 
-    dt = Table(d_data, colWidths=[3.2 * cm, 1.8 * cm, 1.8 * cm])
-    dt_style = [
-        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-        ('INNERGRID', (0, 0), (-1, -1), 0.4, LGRAY),
-        ('BOX', (0, 0), (-1, -1), 1, NAVY),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, CREAM]),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-    ]
-    for idx, d in enumerate(('I', 'II', 'III', 'IV', '0'), 1):
-        bg, fg = DIV_COLORS.get(d, ("ffffff", "000000"))
-        dt_style.append(('BACKGROUND', (0, idx), (0, idx), colors.HexColor(bg)))
-        dt_style.append(('TEXTCOLOR', (0, idx), (0, idx), colors.HexColor(fg)))
-        dt_style.append(('FONTNAME', (0, idx), (0, idx), 'Helvetica-Bold'))
-    dt.setStyle(_make_style(dt_style))
+    div_html = f"""
+    <table class="summary" style="width:100%;">
+        <tr><th colspan="3">{get_section_title(exam, 'division_summary')}</th></tr>
+        <tr>{"".join(f'<th>{h}</th>' for h in d_hdr)}</tr>
+        {d_rows}
+    </table>
+    """
 
-    # ── Performance summary table ──
+    # Performance summary
     if lang == 'sw':
-        perf_data = [
-            ["TAARIFA YA MAENDELEO", ""],
-            ["Wanafunzi", str(N)],
-            ["Wastani Jumla", f"{avg_total:.1f}"],
-            ["Wastani Mean", f"{avg_average:.1f}"],
-            ["GPA", f"{avg_points:.2f}"],
-            ["Masomo", str(counted)],
+        perf_rows = [
+            ("Wanafunzi", str(N)),
+            ("Wastani Jumla", f"{avg_total:.1f}"),
+            ("Wastani Mean", f"{avg_average:.1f}"),
+            ("GPA (Pointi)", f"{avg_points:.2f}"),
+            ("Masomo", str(counted)),
         ]
     else:
-        perf_data = [
-            ["PERFORMANCE SUMMARY", ""],
-            ["Total Students", str(N)],
-            ["Overall Average", f"{avg_total:.1f}"],
-            ["Mean of Averages", f"{avg_average:.1f}"],
-            ["Average Points (GPA)", f"{avg_points:.2f}"],
-            ["Subjects", str(counted)],
+        perf_rows = [
+            ("Total Students", str(N)),
+            ("Overall Average", f"{avg_total:.1f}"),
+            ("Mean of Averages", f"{avg_average:.1f}"),
+            ("Average Points (GPA)", f"{avg_points:.2f}"),
+            ("Subjects", str(counted)),
         ]
+    perf_title = "TAARIFA YA MAENDELEO" if lang == 'sw' else "PERFORMANCE SUMMARY"
+    perf_html = f"""
+    <table class="summary" style="width:100%;">
+        <tr><th colspan="2">{perf_title}</th></tr>
+        {''.join(f'<tr><td style="text-align:left;font-weight:normal;">{k}</td><td style="text-align:center;font-weight:bold;">{v}</td></tr>' for k, v in perf_rows)}
+    </table>
+    """
 
-    pt = Table(perf_data, colWidths=[4.5 * cm, 2.5 * cm])
-    pt.setStyle(_make_style([
-        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-        ('INNERGRID', (0, 0), (-1, -1), 0.4, LGRAY),
-        ('BOX', (0, 0), (-1, -1), 1, NAVY),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, CREAM]),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-    ]))
+    # Two-column layout
+    two_col_html = f"""
+    <table class="two-col"><tr>
+        <td style="width:48%;">{div_html}</td>
+        <td class="spacer"></td>
+        <td style="width:48%;">{perf_html}</td>
+    </tr></table>
+    """
 
-    # Side by side: division table + perf summary
-    wrapper = Table([[dt, '', pt]], colWidths=[4 * cm, 0.5 * cm, 5 * cm])
-    wrapper.setStyle(_make_style([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    story.append(wrapper)
-    story.append(Spacer(1, 0.35 * cm))
-
-    # ── Subject Statistics ──
+    # Subject statistics
+    subj_html = ""
     if subj_stats:
-        story.append(Paragraph(get_section_title(exam, 'subject_stats'), SEC_ST))
         s_hdr = ["SUBJECT", "AVG", "HIGH", "LOW", "PASS%"] if lang == 'en' else ["SOMO", "WASTANI", "JUU", "CHINI", "KUFAULU"]
-        s_data = [s_hdr]
-        for s in subj_stats:
-            s_data.append([s['name'], str(s['avg']), str(s['high']), str(s['low']), f"{s['pass_pct']}%"])
+        s_rows = ''.join(f'<tr><td style="text-align:left;">{s["name"]}</td><td>{s["avg"]}</td><td>{s["high"]}</td><td>{s["low"]}</td><td>{s["pass_pct"]}%</td></tr>' for s in subj_stats)
+        subj_html = f"""
+        <div class="section-title">{get_section_title(exam, 'subject_stats')}</div>
+        <table class="data" style="width:100%;">
+            <tr>{"".join(f'<th>{h}</th>' for h in s_hdr)}</tr>
+            {s_rows}
+        </table>
+        """
 
-        st = Table(s_data, colWidths=[4 * cm, 1.8 * cm, 1.5 * cm, 1.5 * cm, 1.7 * cm])
-        st.setStyle(_make_style([
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-            ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 7.5),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('ALIGN', (0, 1), (0, -1), 'LEFT'),
-            ('INNERGRID', (0, 0), (-1, -1), 0.4, LGRAY),
-            ('BOX', (0, 0), (-1, -1), 1, NAVY),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, CREAM]),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            ('LEFTPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        story.append(st)
-        story.append(Spacer(1, 0.3 * cm))
-
-    # ── Top 5 Students ──
+    # Top 5
+    top5_html = ""
     if results:
-        story.append(Paragraph(get_section_title(exam, 'top_students'), SEC_ST))
         t_hdr = ["POS", "NAME", "TOTAL", "AVG", "PTS", "DIV"] if lang == 'en' else ["NAFASI", "JINA", "JUMLA", "WASTANI", "POINTI", "DARAJA"]
-        t_data = [t_hdr]
-        for r in results[:5]:
-            nm = ' '.join(p for p in [r.student.first_name, r.student.middle_name or '', r.student.last_name] if p)
-            if len(nm) > 24:
-                nm = nm[:22] + '..'
-            t_data.append([str(r.position), nm, str(r.total_score),
-                           f"{r.average_score:.1f}", str(r.points), r.division])
+        t_rows = ""
+        for idx, r in enumerate(results[:5]):
+            nm = _student_name(r)
+            if len(nm) > 22:
+                nm = nm[:20] + '..'
+            css_class = 'top1' if idx == 0 else ''
+            t_rows += f'<tr><td class="{css_class}">{r.position}</td><td class="name-col {css_class}">{nm}</td><td class="{css_class}">{r.total_score}</td><td class="{css_class}">{r.average_score:.1f}</td><td class="{css_class}">{r.points}</td><td class="{css_class}">{r.division}</td></tr>'
+        top5_html = f"""
+        <div class="section-title">{get_section_title(exam, 'top_students')}</div>
+        <table class="data" style="width:100%;">
+            <tr>{"".join(f'<th>{h}</th>' for h in t_hdr)}</tr>
+            {t_rows}
+        </table>
+        """
 
-        top_t = Table(t_data, colWidths=[1 * cm, 5 * cm, 1.5 * cm, 1.5 * cm, 1.2 * cm, 1.2 * cm])
-        top_t.setStyle(_make_style([
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-            ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 7.5),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-            ('INNERGRID', (0, 0), (-1, -1), 0.4, LGRAY),
-            ('BOX', (0, 0), (-1, -1), 1, NAVY),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, CREAM]),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            # Highlight #1
-            ('BACKGROUND', (0, 1), (0, 1), GOLD),
-            ('TEXTCOLOR', (0, 1), (0, 1), WHITE),
-            ('FONTNAME', (0, 1), (0, 1), 'Helvetica-Bold'),
-        ]))
-        story.append(top_t)
-        story.append(Spacer(1, 0.2 * cm))
+    summary_page = f"""
+    {header_html}
+    <div class="page-title">{page_title}</div>
+    <div class="page-subtitle">{page_sub}</div>
 
-    # ── Grading Key ──
-    _, grades = _grading_thresholds(exam.form)
-    gk_data = [[f"{g} ({rng})" for g, rng in grades]]
-    gk_t = Table(gk_data, colWidths=[max(2.2 * cm, 11 * cm / len(grades))] * len(grades))
-    gk_cmds = [
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 6.5),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('BOX', (0, 0), (-1, -1), 0.8, NAVY),
-        ('INNERGRID', (0, 0), (-1, -1), 0.3, LGRAY),
-    ]
-    for i, (g, _) in enumerate(grades):
-        bg, fg = GRADE_COLORS.get(g, ("ffffff", "000000"))
-        gk_cmds.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(bg)))
-        gk_cmds.append(('TEXTCOLOR', (i, 0), (i, 0), colors.HexColor(fg)))
-    gk_t.setStyle(_make_style(gk_cmds))
-    story.append(gk_t)
+    {two_col_html}
+    {subj_html}
+    {top5_html}
 
-    # ═════════════════════════════════════════════════════════════════════════
-    #  PAGE 2+: FULL RESULTS TABLE
-    # ═════════════════════════════════════════════════════════════════════════
-    story.append(PageBreak())
+    <div class="section-title">{"GRADING KEY" if lang == "en" else "UFUNGUO WA DARAJA"}</div>
+    {_grade_legend(exam.form)}
+    """
 
+    # ── Page 2+: FULL RESULTS ──
     n_subj = max(len(subjects), 1)
-    font_sz = 5.8 if n_subj >= 11 else 6.2 if n_subj >= 9 else 6.8 if n_subj >= 7 else 7.5
-    rows_per_page = 30 if n_subj <= 5 else 24 if n_subj <= 8 else 16
+
+    # Subject header cells
+    subj_th = ''.join(f'<th style="font-size:6pt;min-width:28px;max-width:42px;">{s.name.upper()[:8]}</th>' for s in subjects)
+
+    # Results pages
+    rows_per_page = 30 if n_subj <= 5 else 22 if n_subj <= 8 else 14
     chunks = [results[i:i + rows_per_page] for i in range(0, N, rows_per_page)]
-    total_result_pages = len(chunks) or 1
+    total_pages = len(chunks) or 1
+    result_pages = []
 
-    for page_idx, chunk in enumerate(chunks, 1):
-        if page_idx > 1:
-            story.append(PageBreak())
-
-        story.append(Paragraph(
-            f"{school_disp} — {etype} {exam.year} — FORM {exam.form}" if lang == 'en'
-            else f"{school_disp} — {rlabel}", TITLE_ST))
-        story.append(Paragraph(f"{exam.name}  |  PAGE {page_idx}/{total_result_pages}", SUB_ST))
-        story.append(Spacer(1, 0.15 * cm))
-
-        # Column widths — adapt to number of subjects
-        name_w = 2.5 * cm if n_subj <= 7 else 2.0 * cm
-        avail = A4[0] - 4 * cm - name_w - 3.5 * cm  # usable width for subject columns
-        subj_col_w = max(0.65 * cm, min(avail / n_subj, 1.2 * cm))
-        col_widths = (
-            [0.6 * cm, name_w, 0.45 * cm]                # #, NAME, S
-            + [subj_col_w] * n_subj                        # subject scores
-            + [0.75 * cm, 0.65 * cm, 0.65 * cm, 0.7 * cm, 0.75 * cm]  # TOTAL, AVG, PTS, GPA, DIV
-        )
-
-        # Headers
-        result_hdrs = ["#", "NAME", "S"]
-        result_hdrs += [s.name.upper()[:8] for s in subjects]
-        if lang == 'sw':
-            result_hdrs += ["JUMLA", "AVG", "PTS", "GPA", "DARAJA"]
-        else:
-            result_hdrs += ["TOTAL", "AVG", "PTS", "GPA", "DIV"]
-
-        # Data rows
-        table_data = [result_hdrs]
+    for pg_idx, chunk in enumerate(chunks, 1):
+        rows_html = ""
         for r in chunk:
-            nm = ' '.join(p for p in [r.student.first_name, r.student.middle_name or '', r.student.last_name] if p)
-            max_nm = 12 if n_subj >= 10 else 16 if n_subj >= 8 else 20
+            nm = _student_name(r)
+            max_nm = 10 if n_subj >= 10 else 14 if n_subj >= 8 else 18
             if len(nm) > max_nm:
                 nm = nm[:max_nm - 2] + '..'
 
-            row = [str(r.position), nm, r.student.gender or 'M']
+            # Score cells
+            score_cells = ""
             for sub in subjects:
                 sc = score_lookup.get((r.student_id, sub.id))
-                row.append(str(sc) if sc is not None else '-')
+                cls = _score_class(sc, exam.form) if sc is not None else ''
+                val = str(sc) if sc is not None else '-'
+                score_cells += f'<td class="{cls}">{val}</td>'
 
+            # Stats
             c = [s for s in (r.counted_subjects or '').split(',') if s.strip()]
             nc = len(c) if c else n_subj
             gpa = r.points / nc if nc else 0
-            row += [str(r.total_score), f"{r.average_score:.1f}", str(r.points),
-                    f"{gpa:.2f}", r.division]
-            table_data.append(row)
+            div_cls = _div_class(r.division)
 
-        # Build table
-        result_table = Table(table_data, colWidths=col_widths, repeatRows=1)
+            rows_html += f"""
+            <tr>
+                <td>{r.position}</td>
+                <td class="name-col">{nm}</td>
+                <td>{r.student.gender or 'M'}</td>
+                {score_cells}
+                <td style="font-weight:bold;">{r.total_score}</td>
+                <td>{r.average_score:.1f}</td>
+                <td>{r.points}</td>
+                <td>{gpa:.2f}</td>
+                <td class="{div_cls}">{r.division}</td>
+            </tr>"""
 
-        # Table style
-        style_cmds = [
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-            ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), font_sz),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-            ('INNERGRID', (0, 0), (-1, -1), 0.3, LGRAY),
-            ('BOX', (0, 0), (-1, -1), 1, NAVY),
-            ('TOPPADDING', (0, 0), (-1, -1), 1.5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5),
-            ('LEFTPADDING', (0, 0), (-1, -1), 2),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]
+        r_hdr = ["#", "NAME", "S"] + [s.name.upper()[:8] for s in subjects]
+        if lang == 'sw':
+            r_hdr += ["JUMLA", "AVG", "PTS", "GPA", "DARAJA"]
+        else:
+            r_hdr += ["TOTAL", "AVG", "PTS", "GPA", "DIV"]
 
-        # Alternating row backgrounds
-        for i in range(1, len(table_data)):
-            if i % 2 == 0:
-                style_cmds.append(('BACKGROUND', (0, i), (-1, i), CREAM))
+        result_page_html = f"""
+        <div class="page-title">{school_disp} &mdash; {etype} {exam.year} &mdash; FORM {exam.form}</div>
+        <div class="page-subtitle">{exam.name} &nbsp;|&nbsp; PAGE {pg_idx}/{total_pages}</div>
 
-        # Per-cell score colouring + division colour
-        for row_idx, r in enumerate(chunk, 1):
-            # Score colours
-            for col_idx, sub in enumerate(subjects):
-                sc = score_lookup.get((r.student_id, sub.id))
-                if sc is not None:
-                    bg, fg = _score_fill(sc, exam.form)
-                    if bg:
-                        style_cmds.append(('BACKGROUND', (3 + col_idx, row_idx), (3 + col_idx, row_idx), colors.HexColor(bg)))
-                    if fg:
-                        style_cmds.append(('TEXTCOLOR', (3 + col_idx, row_idx), (3 + col_idx, row_idx), colors.HexColor(fg)))
+        <table class="data" style="width:100%;font-size:{6 if n_subj >= 9 else 7}pt;">
+            <tr>
+                <th style="width:18px;">#</th>
+                <th style="min-width:60px;text-align:left;">NAME</th>
+                <th style="width:16px;">S</th>
+                {subj_th}
+                <th style="min-width:30px;">TOTAL</th>
+                <th style="min-width:28px;">AVG</th>
+                <th style="min-width:24px;">PTS</th>
+                <th style="min-width:24px;">GPA</th>
+                <th style="min-width:28px;">DIV</th>
+            </tr>
+            {rows_html}
+        </table>
 
-            # Division cell colour
-            div_col = len(result_hdrs) - 1
-            if r.division in DIV_COLORS:
-                bg, fg = DIV_COLORS[r.division]
-                style_cmds.append(('BACKGROUND', (div_col, row_idx), (div_col, row_idx), colors.HexColor(bg)))
-                style_cmds.append(('TEXTCOLOR', (div_col, row_idx), (div_col, row_idx), colors.HexColor(fg)))
-                style_cmds.append(('FONTNAME', (div_col, row_idx), (div_col, row_idx), 'Helvetica-Bold'))
+        {_grade_legend(exam.form)}
 
-        result_table.setStyle(_make_style(style_cmds))
-        story.append(result_table)
+        <div class="signature">
+            <table><tr>
+                <td style="width:45%;text-align:left;">
+                    <div class="sig-line"></div>
+                    <strong>Signature &amp; Stamp</strong><br/>
+                    Academic Officer
+                </td>
+                <td style="width:10%;"></td>
+                <td style="width:45%;text-align:right;">
+                    <div class="sig-line"></div>
+                    <strong>Signature &amp; Stamp</strong><br/>
+                    Head of School
+                </td>
+            </tr></table>
+            <div style="margin-top:8px;font-size:6.5pt;color:{SLATE};">Date: _________________________________</div>
+        </div>
+        """
+        result_pages.append(result_page_html)
 
-        # Grade key below table
-        story.append(Spacer(1, 0.1 * cm))
-        story.append(gk_t)
+    # ── Combine all pages ──
+    full_html = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>{_css()}</style>
+</head>
+<body>
+    {summary_page}
+    {''.join(f'<div style="page-break-before:always;">{rp}</div>' for rp in result_pages)}
+</body>
+</html>"""
 
-    # ── Signature area ──
-    story.append(Spacer(1, 0.8 * cm))
-    sig_data = [
-        ["_" * 28, "", "_" * 28],
-        ["Signature & Stamp", "", "Signature & Stamp"],
-        ["Academic Officer", "", "Head of School"],
-        ["", "", ""],
-        ["Date: ________________________", "", ""],
-    ]
-    sig_t = Table(sig_data, colWidths=[6 * cm, 2 * cm, 6 * cm])
-    sig_t.setStyle(_make_style([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
-        ('TEXTCOLOR', (0, 0), (-1, -1), SLATE),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-    ]))
-    story.append(sig_t)
+    return full_html
 
-    # ═══ BUILD PDF ═══
-    buf = BytesIO()
-    page_counter = [0]
 
-    def on_page(cv, doc):
-        page_counter[0] += 1
-        _decorate_page(cv, doc,
-                       exam=exam, lang=lang, school_disp=school_disp,
-                       slogo=slogo, dlogo=dlogo,
-                       page_num=page_counter[0],
-                       total_pages=total_result_pages + 1)
+def generate_results_pdf_response(exam):
+    """Generate a professional NECTA-style PDF report for the given exam."""
+    global school_disp_, date_str_
 
-    doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        rightMargin=2.0 * cm, leftMargin=2.0 * cm,
-        topMargin=3.8 * cm, bottomMargin=1.4 * cm,
+    school_disp_ = get_full_school_name(exam)
+    date_str_ = datetime.now().strftime('%d/%m/%Y')
+
+    html = _generate_html(exam)
+
+    buf = io.BytesIO()
+    pisa_status = pisa.CreatePDF(
+        io.BytesIO(html.encode('utf-8')),
+        dest=buf,
+        encoding='utf-8',
     )
-    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id='main')
-    doc.addPageTemplates([PageTemplate(id='main', frames=[frame], onPage=on_page)])
-    doc.build(story)
-    buf.seek(0)
 
+    if pisa_status.err:
+        # Fallback: return a simple error PDF
+        return HttpResponse(
+            b'%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 9 0 R>>endobj\n'
+            b'9 0 obj<</Type/Pages/Kids[10 0 R]/Count 1>>endobj\n'
+            b'10 0 obj<</Type/Page/MediaBox[0 0 595 842]/Parent 9 0 R'
+            b'/Contents 11 0 R/Resources<</Font<</F1 2 0 R>>>>>>endobj\n'
+            b'2 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n'
+            b'11 0 obj<</Length 55>>stream\nBT /F1 14 Tf 200 700 Td '
+            b'(PDF Generation Error) Tj ET\nendstream\nendobj\n'
+            b'xref\n0 12\n0000000000 65535 f\n0000000009 00000 n\n'
+            b'0000000200 00000 n\n0000000058 00000 n\n'
+            b'0000000268 00000 n\n0000000340 00000 n\n'
+            b'trailer<</Size 12/Root 1 0 R>>\nstartxref\n410\n%%EOF',
+            content_type='application/pdf'
+        )
+
+    buf.seek(0)
     resp = HttpResponse(buf, content_type='application/pdf')
     safe_name = exam.name.replace(" ", "_")
     resp['Content-Disposition'] = f'attachment; filename="{safe_name}_Results.pdf"'
