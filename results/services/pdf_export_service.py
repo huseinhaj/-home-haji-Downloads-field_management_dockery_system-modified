@@ -240,11 +240,18 @@ def _std_table_style(n_rows, header_bg=None):
 
 # ── Header Flowable ──────────────────────────────────────────────────────────
 class NECTAHeader(Flowable):
-    """Compact header with logos, green banner, flag strip, school name."""
-    BANNER_H = 52
-    BELOW_H = 32
+    """Official NECTA-style header:
+    PRIME MINISTER'S OFFICE
+    REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
+        [Coat of Arms / District Logo]
+    KYERWA DISTRICT COUNCIL
+    FORM X EXAM_TYPE EXAMINATION RESULTS
+    MONTH-YEAR
+    SCHOOL NAME
+    """
+    HEIGHT = 120  # total height in points
 
-    def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang):
+    def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang, exam_title='', form_num=4, exam_month='', district=''):
         Flowable.__init__(self)
         self.exam = exam
         self.school_disp = school_disp
@@ -252,8 +259,12 @@ class NECTAHeader(Flowable):
         self.dlogo_uri = dlogo_uri
         self.stype = stype
         self.lang = lang
+        self.exam_title = exam_title
+        self.form_num = form_num
+        self.exam_month = exam_month
+        self.district = district
         self.width = A4[0] - 3.2 * cm
-        self.height = self.BANNER_H + self.BELOW_H  # 84pt total
+        self.height = self.HEIGHT
 
     def wrap(self, availWidth, availHeight):
         return self.width, self.height
@@ -261,51 +272,84 @@ class NECTAHeader(Flowable):
     def draw(self):
         c = self.canv
         w, h = self.width, self.height
-        bh = self.BANNER_H
-        by = self.BELOW_H
-
-        # Green banner
-        c.setFillColor(GREEN)
-        c.roundRect(0, by, w, bh, 3, fill=1, stroke=0)
-
-        # Logos — properly positioned inside banner
-        if self.slogo_uri:
-            _safe_b64_img(self.slogo_uri, 4, by + 4, 32, 32, c)
-        if self.dlogo_uri:
-            _safe_b64_img(self.dlogo_uri, w - 36, by + 4, 32, 32, c)
-
         cx = w / 2
-        c.setFillColor(colors.white)
+        y = h  # start from top
+
+        # ── 1. PRIME MINISTER'S OFFICE ──
+        c.setFillColor(NAVY)
+        c.setFont('Helvetica-Bold', 9)
+        y -= 12
+        c.drawCentredString(cx, y, "PRIME MINISTER'S OFFICE")
+
+        # ── 2. REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT ──
+        c.setFont('Helvetica-Bold', 7.5)
+        y -= 13
+        c.drawCentredString(cx, y, "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT")
+
+        # ── 3. Coat of Arms (district logo centered) ──
+        y -= 6
+        logo_size = 38
+        if self.dlogo_uri:
+            _safe_b64_img(self.dlogo_uri, cx - logo_size / 2, y - logo_size, logo_size, logo_size, c)
+        elif self.slogo_uri:
+            _safe_b64_img(self.slogo_uri, cx - logo_size / 2, y - logo_size, logo_size, logo_size, c)
+        else:
+            # Placeholder circle
+            c.setStrokeColor(NAVY)
+            c.setLineWidth(1)
+            c.setFillColor(colors.HexColor("#E8E8E8"))
+            c.circle(cx, y - logo_size / 2, logo_size / 2, fill=1, stroke=1)
+            c.setFillColor(NAVY)
+            c.setFont('Helvetica-Bold', 6)
+            c.drawCentredString(cx, y - logo_size / 2 + 2, "COAT OF")
+            c.drawCentredString(cx, y - logo_size / 2 - 6, "ARMS")
+        y -= logo_size + 4
+
+        # ── 4. DISTRICT COUNCIL ──
+        c.setFillColor(NAVY)
         c.setFont('Helvetica-Bold', 8)
-        republic = "THE UNITED REPUBLIC OF TANZANIA" if self.lang == 'en' else "JAMHURI YA MUUNGANO WA TANZANIA"
-        c.drawCentredString(cx, by + bh - 12, republic)
-        c.setFont('Helvetica-Bold', 6)
-        ministry = "MINISTRY OF EDUCATION, SCIENCE AND TECHNOLOGY" if self.lang == 'en' else "WIZARA YA ELIMU, SAYANSI NA TEKNOLOJIA"
-        c.drawCentredString(cx, by + bh - 22, ministry)
-        c.setFont('Helvetica', 5)
-        c.setFillColor(colors.HexColor("#D0E8D0"))
-        c.drawCentredString(cx, by + bh - 30, f"{self.stype} \u2014 EXAMINATION RESULTS")
+        y -= 10
+        district_text = self.district.upper() + " DISTRICT COUNCIL" if self.district else "DISTRICT COUNCIL"
+        c.drawCentredString(cx, y, district_text)
 
-        # Flag strip
-        strip_y = by - 2
-        for i, col in enumerate([TZ_GREEN, TZ_YELLOW, TZ_BLACK, TZ_BLUE]):
-            c.setFillColor(col)
-            c.rect(i * w / 4, strip_y, w / 4, 3, fill=1, stroke=0)
+        # ── Gold separator line ──
+        y -= 6
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(1)
+        c.line(w * 0.15, y, w * 0.85, y)
 
-        # School name
-        c.setFillColor(GOLD)
-        c.setFont('Helvetica-Bold', 12)
-        c.drawCentredString(cx, strip_y - 15, self.school_disp)
+        # ── 5. FORM X EXAM_TYPE EXAMINATION RESULTS ──
+        y -= 14
+        form_labels = {1: 'ONE', 2: 'TWO', 3: 'THREE', 4: 'FOUR', 5: 'FIVE', 6: 'SIX'}
+        form_word = form_labels.get(self.form_num, str(self.form_num))
+        result_line = f"FORM {form_word} {self.exam_title} EXAMINATION RESULTS"
+        c.setFillColor(NAVY)
+        c.setFont('Helvetica-Bold', 10)
+        c.drawCentredString(cx, y, result_line)
 
-        # Location
+        # ── 6. MONTH-YEAR ──
+        y -= 13
+        c.setFont('Helvetica-Bold', 8)
         c.setFillColor(SLATE)
-        c.setFont('Helvetica', 6)
-        c.drawCentredString(cx, strip_y - 23, _location_str(self.exam))
+        c.drawCentredString(cx, y, self.exam_month)
 
-        # Gold line at y=0
+        # ── Gold separator line ──
+        y -= 6
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(1)
+        c.line(w * 0.15, y, w * 0.85, y)
+
+        # ── 7. SCHOOL NAME ──
+        y -= 14
+        c.setFillColor(NAVY)
+        c.setFont('Helvetica-Bold', 11)
+        c.drawCentredString(cx, y, self.school_disp)
+
+        # ── Final gold line ──
+        y -= 6
         c.setStrokeColor(GOLD)
         c.setLineWidth(1.5)
-        c.line(0, 0, w, 0)
+        c.line(0, y, w, y)
 
 
 # ── Footer ───────────────────────────────────────────────────────────────────
@@ -505,60 +549,21 @@ def generate_results_pdf_response(exam):
 
     story = []
 
-    # ── HEADER ──
-    story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
-    story.append(Spacer(1, 6))
+    # ── Header params ──
+    district = exam.school.district if exam.school and exam.school.district else ''
+    # Get month from exam date or current date
+    if exam.date:
+        exam_month = exam.date.strftime('%B-%Y').upper()
+    else:
+        exam_month = datetime.now().strftime('%B-%Y').upper()
 
-    # ── TITLE BLOCK (coat of arms 4-color background) ──
-    class TitleBlock(Flowable):
-        """Title block with 4 coat-of-arms color bands as background."""
-        HEIGHT = 48  # total height in points
-
-        def __init__(self, title_text, subtitle_text, w):
-            Flowable.__init__(self)
-            self.title_text = title_text
-            self.subtitle_text = subtitle_text
-            self.width = w
-            self.height = self.HEIGHT
-
-        def wrap(self, availWidth, availHeight):
-            return self.width, self.height
-
-        def draw(self):
-            c = self.canv
-            w, h = self.width, self.height
-
-            # 4 coat-of-arms color bands (equal width, vertical)
-            band_w = w / 4
-            coa_colors = [TZ_GREEN, TZ_YELLOW, TZ_BLACK, TZ_BLUE]
-            for i, col in enumerate(coa_colors):
-                c.setFillColor(col)
-                c.rect(i * band_w, 0, band_w, h, fill=1, stroke=0)
-
-            # Semi-transparent dark overlay for text readability
-            c.setFillColor(colors.Color(0, 0, 0, 0.35))
-            c.rect(0, 0, w, h, fill=1, stroke=0)
-
-            # Title text — white, bold, centered
-            cx = w / 2
-            c.setFillColor(colors.white)
-            c.setFont('Helvetica-Bold', 13)
-            c.drawCentredString(cx, h / 2 + 4, self.title_text)
-
-            # Subtitle text — light blue, centered
-            c.setFillColor(colors.HexColor("#D0E8FF"))
-            c.setFont('Helvetica', 9)
-            c.drawCentredString(cx, h / 2 - 10, self.subtitle_text)
-
-            # Gold border bottom
-            c.setStrokeColor(GOLD)
-            c.setLineWidth(1.5)
-            c.line(0, 0, w, 0)
-
-    title_text = f"{exam_title} {exam.year} EXAMINATION RESULTS"
-    subtitle_text = f"FORM {exam.form}  \u2014  {exam.name}"
-    story.append(TitleBlock(title_text, subtitle_text, content_w))
-    story.append(Spacer(1, 5))
+    # ── HEADER (official format) ──
+    story.append(NECTAHeader(
+        exam, school_disp, slogo_uri, dlogo_uri, stype, lang,
+        exam_title=exam_title, form_num=exam.form,
+        exam_month=exam_month, district=district,
+    ))
+    story.append(Spacer(1, 8))
 
     # ── DIVISION PERFORMANCE SUMMARY ──
     story.append(_p("<b>DIVISION PERFORMANCE SUMMARY</b>", st['section']))
@@ -696,9 +701,9 @@ def generate_results_pdf_response(exam):
                              wordWrap='CJK')
 
     # Calculate how many rows fit per page
-    # header (84pt) + spacer (4pt) + title (20pt) + spacer (3pt) = 111pt overhead
+    # header (120pt) + spacer (8pt) = 128pt overhead
     # footer area reserved = 1.6cm (45pt) for signature + 0.85cm (24pt) for footer text
-    header_overhead = 84 + 4 + 20 + 3  # 111pt
+    header_overhead = 120 + 8  # 128pt
     footer_reserve = int(1.6 * cm) + int(0.85 * cm)  # ~69pt reserved for signature+footer on last page
     available_h = page_h - margin_top - margin_bot - header_overhead - footer_reserve
     row_h = 15  # each data row height (font 7.5 + padding 6)
@@ -710,46 +715,13 @@ def generate_results_pdf_response(exam):
     total_pages = len(chunks)
 
     for pg_idx, chunk in enumerate(chunks, 1):
-        # ── Header on EVERY page ──
-        story.append(NECTAHeader(exam, school_disp, slogo_uri, dlogo_uri, stype, lang))
-        story.append(Spacer(1, 4))
-
-        # ── Title on EVERY page (coat of arms 4-color background) ──
-        res_title_text = f"{exam_title} {exam.year} EXAMINATION RESULTS"
-        res_subtitle_text = f"FORM {exam.form}  \u2014  {exam.name}  |  PAGE {pg_idx} of {total_pages}"
-
-        class ResultTitleBlock(Flowable):
-            HEIGHT = 40
-            def __init__(self, t, st, w):
-                Flowable.__init__(self)
-                self.t = t
-                self.st = st
-                self.width = w
-                self.height = self.HEIGHT
-            def wrap(self, aW, aH):
-                return self.width, self.height
-            def draw(self):
-                c = self.canv
-                w, h = self.width, self.height
-                band_w = w / 4
-                for i, col in enumerate([TZ_GREEN, TZ_YELLOW, TZ_BLACK, TZ_BLUE]):
-                    c.setFillColor(col)
-                    c.rect(i * band_w, 0, band_w, h, fill=1, stroke=0)
-                c.setFillColor(colors.Color(0, 0, 0, 0.35))
-                c.rect(0, 0, w, h, fill=1, stroke=0)
-                cx = w / 2
-                c.setFillColor(colors.white)
-                c.setFont('Helvetica-Bold', 10)
-                c.drawCentredString(cx, h / 2 + 3, self.t)
-                c.setFillColor(colors.HexColor("#D0E8FF"))
-                c.setFont('Helvetica', 7.5)
-                c.drawCentredString(cx, h / 2 - 9, self.st)
-                c.setStrokeColor(GOLD)
-                c.setLineWidth(1.2)
-                c.line(0, 0, w, 0)
-
-        story.append(ResultTitleBlock(res_title_text, res_subtitle_text, content_w))
-        story.append(Spacer(1, 3))
+        # ── Header on EVERY page (official format) ──
+        story.append(NECTAHeader(
+            exam, school_disp, slogo_uri, dlogo_uri, stype, lang,
+            exam_title=exam_title, form_num=exam.form,
+            exam_month=exam_month, district=district,
+        ))
+        story.append(Spacer(1, 6))
 
         # ── Build SEPARATE table for this chunk (no splitting!) ──
         r_hdr = ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"]
