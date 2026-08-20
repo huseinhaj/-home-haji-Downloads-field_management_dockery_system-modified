@@ -884,17 +884,31 @@ def generate_results_pdf_response(exam):
 
     tmpl = PageTemplate(id='main', frames=[frame], pagesize=A4, onPage=_footer)
 
-    total_pages_count = 1 + total_pages
+    # Two-pass build to get correct total page count
+    # Pass 1: build with placeholder to count pages
+    pass1_buf = io.BytesIO()
+    doc1 = BaseDocTemplate(
+        pass1_buf, pagesize=A4,
+        title=f"{school_disp} \u2014 {etype} {exam.year}",
+        pageTemplates=[tmpl],
+    )
+    doc1._exam = exam
+    doc1._gen_date_short = gen_date_short
+    doc1._total_pages = 999  # placeholder
+    doc1._content_w = content_w
+    doc1.build(story)
+    real_total = doc1.page
+    pass1_buf.close()
 
+    # Pass 2: build with correct page count
     doc = BaseDocTemplate(
-        buf,
-        pagesize=A4,
+        buf, pagesize=A4,
         title=f"{school_disp} \u2014 {etype} {exam.year}",
         pageTemplates=[tmpl],
     )
     doc._exam = exam
     doc._gen_date_short = gen_date_short
-    doc._total_pages = total_pages_count
+    doc._total_pages = real_total
     doc._content_w = content_w
     doc.build(story)
 
