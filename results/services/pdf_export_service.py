@@ -342,7 +342,7 @@ class NECTAHeader(Flowable):
         c.line(0, 0, w, 0)
 
 
-# ── Footer ───────────────────────────────────────────────────────────────────
+# ── Footer (per-page, without page numbers) ─────────────────────────────────
 def _footer(canvas, doc):
     canvas.saveState()
     try:
@@ -360,57 +360,94 @@ def _footer(canvas, doc):
     canvas.setLineWidth(0.3)
     canvas.rect(1.15 * cm, 0.95 * cm, w - 2.3 * cm, h - 1.9 * cm)
 
-    # Footer text
+    # Footer text (without page numbers — added later by NumberedCanvas)
     canvas.setFont('Helvetica', 6)
     canvas.setFillColor(SLATE)
     canvas.drawString(doc.leftMargin, 0.55 * cm, get_full_school_name(doc._exam))
-    canvas.drawCentredString(w / 2, 0.55 * cm, f"Page {canvas.getPageNumber()} of {doc._total_pages}")
     canvas.drawRightString(w - doc.rightMargin, 0.55 * cm, f"Generated: {doc._gen_date_short}")
     canvas.setStrokeColor(DARK_LINE)
     canvas.setLineWidth(0.3)
     canvas.line(doc.leftMargin, 0.85 * cm, w - doc.rightMargin, 0.85 * cm)
 
-    # Signature area — only on the LAST page, drawn on canvas at fixed bottom
-    pg_num = canvas.getPageNumber()
-    total = getattr(doc, '_total_pages', 0)
-    if pg_num == total and total > 1:
-        sig_y = 1.6 * cm  # above footer text
-        sig_x_left = doc.leftMargin
-        sig_x_right = w - doc.rightMargin
-        content_w_val = getattr(doc, '_content_w', w - 3 * cm)
-        sig_w = content_w_val * 0.42
-
-        canvas.setFont('Helvetica', 7.5)
-        canvas.setFillColor(SLATE)
-
-        # Left signature — Academic Officer
-        canvas.setStrokeColor(DARK_LINE)
-        canvas.setLineWidth(0.4)
-        canvas.line(sig_x_left, sig_y + 14, sig_x_left + sig_w, sig_y + 14)
-        canvas.setFont('Helvetica-Bold', 7.5)
-        canvas.setFillColor(NAVY)
-        canvas.drawCentredString(sig_x_left + sig_w / 2, sig_y + 6, 'Signature & Stamp')
-        canvas.setFont('Helvetica', 7)
-        canvas.setFillColor(SLATE)
-        canvas.drawCentredString(sig_x_left + sig_w / 2, sig_y - 4, 'Academic Officer')
-
-        # Right signature — Head of School
-        canvas.setStrokeColor(DARK_LINE)
-        canvas.setLineWidth(0.4)
-        canvas.line(sig_x_right - sig_w, sig_y + 14, sig_x_right, sig_y + 14)
-        canvas.setFont('Helvetica-Bold', 7.5)
-        canvas.setFillColor(NAVY)
-        canvas.drawCentredString(sig_x_right - sig_w / 2, sig_y + 6, 'Signature & Stamp')
-        canvas.setFont('Helvetica', 7)
-        canvas.setFillColor(SLATE)
-        canvas.drawCentredString(sig_x_right - sig_w / 2, sig_y - 4, 'Head of School')
-
-        # Date
-        canvas.setFont('Helvetica', 7)
-        canvas.setFillColor(SLATE)
-        canvas.drawString(sig_x_left, sig_y - 16, f'Date: {datetime.now().strftime("%d %B %Y")}')
-
     canvas.restoreState()
+
+
+# ── NumberedCanvas — adds page numbers + signature as post-processing ─────
+def _make_numbered_canvas(doc):
+    """Builds a Canvas subclass bound to `doc` that draws page numbers
+    ("Page X of Y") and the signature block on the last page, after all
+    pages have been laid out (so the true total page count is known)."""
+    from reportlab.pdfgen.canvas import Canvas
+
+    class NumberedCanvas(Canvas):
+        def __init__(self, *args, **kwargs):
+            Canvas.__init__(self, *args, **kwargs)
+            self._saved_page_states = []
+
+        def showPage(self):
+            self._saved_page_states.append(dict(self.__dict__))
+            Canvas.showPage(self)
+
+        def save(self):
+            total = len(self._saved_page_states)
+            for i, state in enumerate(self._saved_page_states):
+                self.__dict__.update(state)
+                self._draw_page_number(i + 1, total)
+                self._draw_signature(i + 1, total)
+                Canvas.showPage(self)
+            Canvas.save(self)
+
+        def _draw_page_number(self, pg, total):
+            try:
+                w, h = doc.pagesize
+            except Exception:
+                w, h = A4
+            self.saveState()
+            self.setFont('Helvetica', 6)
+            self.setFillColor(SLATE)
+            self.drawCentredString(w / 2, 0.55 * cm, f"Page {pg} of {total}")
+            self.restoreState()
+
+        def _draw_signature(self, pg, total):
+            if pg != total or total <= 1:
+                return
+            try:
+                w, h = doc.pagesize
+            except Exception:
+                w, h = A4
+            sig_y = 1.6 * cm
+            sig_x_left = doc.leftMargin
+            sig_x_right = w - doc.rightMargin
+            content_w_val = getattr(doc, '_content_w', w - 3 * cm)
+            sig_w = content_w_val * 0.42
+
+            self.saveState()
+            # Left signature
+            self.setStrokeColor(DARK_LINE)
+            self.setLineWidth(0.4)
+            self.line(sig_x_left, sig_y + 14, sig_x_left + sig_w, sig_y + 14)
+            self.setFont('Helvetica-Bold', 7.5)
+            self.setFillColor(NAVY)
+            self.drawCentredString(sig_x_left + sig_w / 2, sig_y + 6, 'Signature & Stamp')
+            self.setFont('Helvetica', 7)
+            self.setFillColor(SLATE)
+            self.drawCentredString(sig_x_left + sig_w / 2, sig_y - 4, 'Academic Officer')
+            # Right signature
+            self.setStrokeColor(DARK_LINE)
+            self.setLineWidth(0.4)
+            self.line(sig_x_right - sig_w, sig_y + 14, sig_x_right, sig_y + 14)
+            self.setFont('Helvetica-Bold', 7.5)
+            self.setFillColor(NAVY)
+            self.drawCentredString(sig_x_right - sig_w / 2, sig_y + 6, 'Signature & Stamp')
+            self.setFont('Helvetica', 7)
+            self.setFillColor(SLATE)
+            self.drawCentredString(sig_x_right - sig_w / 2, sig_y - 4, 'Head of School')
+            # Date
+            self.setFont('Helvetica', 7)
+            self.drawString(sig_x_left, sig_y - 16, f'Date: {datetime.now().strftime("%d %B %Y")}')
+            self.restoreState()
+
+    return NumberedCanvas
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -884,23 +921,7 @@ def generate_results_pdf_response(exam):
 
     tmpl = PageTemplate(id='main', frames=[frame], pagesize=A4, onPage=_footer)
 
-    # Two-pass build to get correct total page count
-    # Pass 1: build with placeholder to count pages
-    pass1_buf = io.BytesIO()
-    doc1 = BaseDocTemplate(
-        pass1_buf, pagesize=A4,
-        title=f"{school_disp} \u2014 {etype} {exam.year}",
-        pageTemplates=[tmpl],
-    )
-    doc1._exam = exam
-    doc1._gen_date_short = gen_date_short
-    doc1._total_pages = 999  # placeholder
-    doc1._content_w = content_w
-    doc1.build(story)
-    real_total = doc1.page
-    pass1_buf.close()
-
-    # Pass 2: build with correct page count
+    # Single build — NumberedCanvas adds page numbers + signature at the end
     doc = BaseDocTemplate(
         buf, pagesize=A4,
         title=f"{school_disp} \u2014 {etype} {exam.year}",
@@ -908,9 +929,11 @@ def generate_results_pdf_response(exam):
     )
     doc._exam = exam
     doc._gen_date_short = gen_date_short
-    doc._total_pages = real_total
     doc._content_w = content_w
-    doc.build(story)
+
+    # NumberedCanvas draws "Page X of Y" + signature after all pages are laid
+    # out, once the true total page count is known — no second build needed.
+    doc.build(story, canvasmaker=_make_numbered_canvas(doc))
 
     buf.seek(0)
     resp = HttpResponse(buf, content_type='application/pdf')
