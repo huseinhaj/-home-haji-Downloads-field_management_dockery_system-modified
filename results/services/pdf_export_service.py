@@ -36,6 +36,7 @@ CREAM     = colors.HexColor("#F8FAFC")  # cool neutral row tint (was warm cream)
 SLATE     = colors.HexColor("#475569")  # modern slate gray for muted text
 LGRAY     = colors.HexColor("#CBD5E1")  # light slate — grid lines
 MGRAY     = colors.HexColor("#F1F5F9")  # subtle slate surface tint
+TINT      = colors.HexColor("#EFF6FF")  # light blue card behind the title block
 WHITE     = colors.white
 BLACK     = colors.black
 DARK_LINE = colors.HexColor("#94A3B8")  # medium slate — page border/dividers
@@ -283,6 +284,13 @@ class NECTAHeader(Flowable):
         logos_y = self.BELOW_H
         strip_y = logos_y - 2
         strip_top = strip_y + 3
+
+        # Light tint card behind the district/title/school-name block below
+        # the flag strip, so that block reads as a distinct panel rather
+        # than plain white page background.
+        c.setFillColor(TINT)
+        c.rect(0, 0, w, logos_y, fill=1, stroke=0)
+
         c.setFillColor(GREEN)
         c.roundRect(0, strip_top, w, h - strip_top, 3, fill=1, stroke=0)
 
@@ -297,7 +305,7 @@ class NECTAHeader(Flowable):
         # Nudged up within the green band so the gap to the flag strip below
         # matches the gap to the PMO text above, instead of sitting low.
         logo_sz = 40
-        logo_y = logos_y + 8
+        logo_y = logos_y + 12
         # School logo — left
         if self.slogo_uri:
             _safe_b64_img(self.slogo_uri, 2, logo_y, logo_sz, logo_sz, c)
@@ -322,16 +330,26 @@ class NECTAHeader(Flowable):
         district_text = self.district.upper() + " DISTRICT COUNCIL" if self.district else "DISTRICT COUNCIL"
         c.drawCentredString(cx, y, district_text)
 
-        # ── 5. FORM X EXAM_TYPE EXAMINATION RESULTS ──
-        y -= 15
+        # Thin gold divider separating the district identity from the
+        # exam title below it.
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(0.8)
+        c.line(cx - 60, y - 6, cx + 60, y - 6)
+
+        # ── 5. FORM X EXAM_TYPE EXAMINATION RESULTS — navy badge for emphasis ──
+        y -= 19
         form_labels = {1: 'ONE', 2: 'TWO', 3: 'THREE', 4: 'FOUR', 5: 'FIVE', 6: 'SIX'}
         form_word = form_labels.get(self.form_num, str(self.form_num))
         result_line = f"FORM {form_word} {self.exam_title} EXAMINATION RESULTS"
         c.setFont('Helvetica-Bold', 11)
+        badge_w = c.stringWidth(result_line, 'Helvetica-Bold', 11) + 24
+        c.setFillColor(NAVY)
+        c.roundRect(cx - badge_w / 2, y - 4, badge_w, 16, 3, fill=1, stroke=0)
+        c.setFillColor(colors.white)
         c.drawCentredString(cx, y, result_line)
 
         # ── 6. MONTH-YEAR ──
-        y -= 13
+        y -= 17
         c.setFont('Helvetica-Bold', 8)
         c.setFillColor(SLATE)
         c.drawCentredString(cx, y, self.exam_month)
