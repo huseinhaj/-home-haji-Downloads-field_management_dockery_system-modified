@@ -739,20 +739,24 @@ def generate_results_pdf_response(exam):
     cell_bold = ParagraphStyle('lsb', parent=st['td_bold'], fontSize=7.5, leading=9)
     hdr_st = ParagraphStyle('lsh', parent=st['th'], fontSize=7.5, leading=9)
     name_st = ParagraphStyle('lsn', parent=st['td_name'], fontSize=7.5, leading=9)
-    subj_st = ParagraphStyle('lss', parent=st['td'], fontSize=7, leading=8.5,
+    subj_st = ParagraphStyle('lss', parent=st['td'], fontSize=6.5, leading=8,
                              wordWrap='CJK')
 
     r_hdr = ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"]
+    # NAME and DETAILED SUBJECTS are the columns most prone to wrapping onto
+    # extra lines (driving up row height, and so page count) — give them as
+    # much of the row as the narrow fixed columns can spare.
     cw = [
-        content_w * 0.05,  # CNO
-        content_w * 0.14,  # NAME
-        content_w * 0.04,  # SEX
-        content_w * 0.05,  # AGGT
-        content_w * 0.05,  # GPA
-        content_w * 0.04,  # DIV
-        content_w * 0.63,  # DETAILED SUBJECTS
+        content_w * 0.04,   # CNO
+        content_w * 0.18,   # NAME
+        content_w * 0.03,   # SEX
+        content_w * 0.045,  # AGGT
+        content_w * 0.045,  # GPA
+        content_w * 0.035,  # DIV
+        content_w * 0.625,  # DETAILED SUBJECTS
     ]
-    ROW_PAD = 6  # matches TOPPADDING(3)+BOTTOMPADDING(3) / LEFTPADDING(3)+RIGHTPADDING(3)
+    PAD_V = 4  # TOPPADDING(2) + BOTTOMPADDING(2) — row height budget
+    PAD_H = 6  # LEFTPADDING(3) + RIGHTPADDING(3) — row width budget
 
     def _row_cells_height(cells):
         """Real rendered height of a table row — each cell wrapped at its
@@ -761,9 +765,9 @@ def generate_results_pdf_response(exam):
         as subject count or name length grows, so it must be measured."""
         h = 0
         for cell, col_w in zip(cells, cw):
-            _, ch = cell.wrap(max(col_w - ROW_PAD, 1), 10000)
+            _, ch = cell.wrap(max(col_w - PAD_H, 1), 10000)
             h = max(h, ch)
-        return h + ROW_PAD
+        return h + PAD_V
 
     def _new_header_row():
         return [_p(f"<b>{h}</b>", hdr_st) for h in r_hdr]
@@ -786,7 +790,7 @@ def generate_results_pdf_response(exam):
             abbr = sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
             fg, bg = GRADE_COLORS.get(g, ('#555555', '#E8E8E8'))
             subj_parts.append(
-                f"<font color='{fg}'><b>{abbr} - '{g}'</b></font>"
+                f"<font color='{fg}'><b>{abbr}-{g}</b></font>"
             )
         subj_text = '&nbsp;'.join(subj_parts)
 
@@ -964,8 +968,8 @@ def generate_results_pdf_response(exam):
             ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
             ('GRID', (0, 0), (-1, -1), 0.3, DARK_LINE),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
             ('LEFTPADDING', (0, 0), (-1, -1), 3),
             ('RIGHTPADDING', (0, 0), (-1, -1), 3),
         ]
