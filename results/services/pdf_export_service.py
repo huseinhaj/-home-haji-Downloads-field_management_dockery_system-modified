@@ -295,9 +295,12 @@ class NECTAHeader(Flowable):
         c.roundRect(0, strip_top, w, h - strip_top, 3, fill=1, stroke=0)
 
         # ── PMO + Regional Admin text (on the green background) ──
+        pmo_text = "PRIME MINISTER'S OFFICE"
+        pmo_font, pmo_size = 'Helvetica-Bold', 9
+        pmo_y = banner_y + self.BANNER_H - 14
         c.setFillColor(colors.white)
-        c.setFont('Helvetica-Bold', 9)
-        c.drawCentredString(cx, banner_y + self.BANNER_H - 14, "PRIME MINISTER'S OFFICE")
+        c.setFont(pmo_font, pmo_size)
+        c.drawCentredString(cx, pmo_y, pmo_text)
         c.setFont('Helvetica-Bold', 7)
         c.drawCentredString(cx, banner_y + self.BANNER_H - 26, "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT")
 
@@ -311,6 +314,18 @@ class NECTAHeader(Flowable):
         logo_y = logos_y + 12
         coa_sz = 46
         coa_y = logo_y - (coa_sz - logo_sz) / 2  # keep it vertically centred on the same midline
+
+        # Decorative rays: from the top-inner corner of each side logo up
+        # toward the PMO title — school logo's top-right corner points up
+        # to where "PRIME" starts, district logo's top-left corner points
+        # up to where "OFFICE" ends.
+        pmo_w = c.stringWidth(pmo_text, pmo_font, pmo_size)
+        pmo_left_x = cx - pmo_w / 2
+        pmo_right_x = cx + pmo_w / 2
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(0.9)
+        c.line(2 + logo_sz, logo_y + logo_sz, pmo_left_x, pmo_y - 2)
+        c.line(w - logo_sz - 2, logo_y + logo_sz, pmo_right_x, pmo_y - 2)
 
         # White badge disc with a thin gold ring behind the LEFT and RIGHT
         # logos only, so they pop against the green instead of sitting
