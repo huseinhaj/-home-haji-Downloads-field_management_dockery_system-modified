@@ -311,6 +311,19 @@ class NECTAHeader(Flowable):
         logo_y = logos_y + 12
         coa_sz = 46
         coa_y = logo_y - (coa_sz - logo_sz) / 2  # keep it vertically centred on the same midline
+
+        # White badge disc with a thin gold ring behind the LEFT and RIGHT
+        # logos only, so they pop against the green instead of sitting
+        # flat on it (the centre Coat of Arms stays plain — it's already
+        # the larger, primary emblem).
+        badge_r = logo_sz / 2 + 4
+        for badge_cx in (2 + logo_sz / 2, w - logo_sz / 2 - 2):
+            badge_cy = logo_y + logo_sz / 2
+            c.setFillColor(colors.white)
+            c.setStrokeColor(GOLD)
+            c.setLineWidth(1.2)
+            c.circle(badge_cx, badge_cy, badge_r, fill=1, stroke=1)
+
         # School logo — left
         if self.slogo_uri:
             _safe_b64_img(self.slogo_uri, 2, logo_y, logo_sz, logo_sz, c)
