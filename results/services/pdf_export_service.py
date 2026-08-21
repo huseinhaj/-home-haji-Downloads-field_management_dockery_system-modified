@@ -391,8 +391,16 @@ def _make_numbered_canvas(doc):
             self._saved_page_states = []
 
         def showPage(self):
+            # Capture this page's finished state and start a fresh one
+            # WITHOUT emitting the page yet — _startPage() resets canvas
+            # state for the next page but does not commit anything to the
+            # PDF. The real Canvas.showPage() (which actually commits a
+            # page) only runs once per page, inside save() below. Calling
+            # the real showPage() here too — as an earlier version of this
+            # code did — commits every page twice: once here, once more in
+            # save(), silently doubling the entire document.
             self._saved_page_states.append(dict(self.__dict__))
-            Canvas.showPage(self)
+            self._startPage()
 
         def save(self):
             total = len(self._saved_page_states)
