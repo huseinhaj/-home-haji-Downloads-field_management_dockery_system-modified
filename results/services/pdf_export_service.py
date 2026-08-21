@@ -294,18 +294,21 @@ class NECTAHeader(Flowable):
         c.drawCentredString(cx, banner_y + self.BANNER_H - 26, "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT")
 
         # ── 2. LOGOS ROW — School (left) + Coat of Arms (center) + District (right) ──
+        # Nudged up within the green band so the gap to the flag strip below
+        # matches the gap to the PMO text above, instead of sitting low.
         logo_sz = 40
+        logo_y = logos_y + 8
         # School logo — left
         if self.slogo_uri:
-            _safe_b64_img(self.slogo_uri, 2, logos_y + 5, logo_sz, logo_sz, c)
+            _safe_b64_img(self.slogo_uri, 2, logo_y, logo_sz, logo_sz, c)
         # Coat of Arms — center
         if self.coa_uri:
-            _safe_b64_img(self.coa_uri, cx - logo_sz / 2, logos_y + 5, logo_sz, logo_sz, c)
+            _safe_b64_img(self.coa_uri, cx - logo_sz / 2, logo_y, logo_sz, logo_sz, c)
         elif self.dlogo_uri:
-            _safe_b64_img(self.dlogo_uri, cx - logo_sz / 2, logos_y + 5, logo_sz, logo_sz, c)
+            _safe_b64_img(self.dlogo_uri, cx - logo_sz / 2, logo_y, logo_sz, logo_sz, c)
         # District logo — right
         if self.dlogo_uri:
-            _safe_b64_img(self.dlogo_uri, w - logo_sz - 2, logos_y + 5, logo_sz, logo_sz, c)
+            _safe_b64_img(self.dlogo_uri, w - logo_sz - 2, logo_y, logo_sz, logo_sz, c)
 
         # ── 3. FLAG STRIP ──
         for i, col in enumerate([TZ_GREEN, TZ_YELLOW, TZ_BLACK, TZ_BLUE]):
@@ -906,9 +909,13 @@ def generate_results_pdf_response(exam):
     # Calculate how much vertical room a results table has on a page:
     # header (150pt) + spacer (6pt) = 156pt overhead
     # footer text only (20pt) — signature is on canvas, not in story
+    # SAFETY_MARGIN absorbs small font-metric differences between the
+    # environment this was tuned in and wherever it actually renders, so a
+    # borderline page can never silently overflow onto a spurious extra one.
     header_overhead = 150 + 6  # 156pt
     footer_text = 20  # just footer text line
-    available_h = page_h - margin_top - margin_bot - header_overhead - footer_text
+    SAFETY_MARGIN = 15
+    available_h = page_h - margin_top - margin_bot - header_overhead - footer_text - SAFETY_MARGIN
 
     # Pack rows by their REAL measured height: fill each page up to
     # available_h, then make sure the final chunk also leaves room for the
