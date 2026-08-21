@@ -15,6 +15,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm, mm
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
+from reportlab.pdfbase.pdfmetrics import getAscent
 from reportlab.platypus import (
     BaseDocTemplate, PageTemplate, Frame,
     Table, TableStyle, Paragraph, Spacer, PageBreak,
@@ -316,16 +317,17 @@ class NECTAHeader(Flowable):
         coa_y = logo_y - (coa_sz - logo_sz) / 2  # keep it vertically centred on the same midline
 
         # Decorative rays: from the top-inner corner of each side logo up
-        # toward the PMO title — school logo's top-right corner points up
-        # to where "PRIME" starts, district logo's top-left corner points
-        # up to where "OFFICE" ends.
+        # to the TOP of the PMO title's first/last letter — school logo's
+        # top-right corner to the top of "P" (PRIME), district logo's
+        # top-left corner to the top of "E" (OFFICE).
         pmo_w = c.stringWidth(pmo_text, pmo_font, pmo_size)
         pmo_left_x = cx - pmo_w / 2
         pmo_right_x = cx + pmo_w / 2
+        pmo_top_y = pmo_y + getAscent(pmo_font) / 1000.0 * pmo_size
         c.setStrokeColor(GOLD)
         c.setLineWidth(0.9)
-        c.line(2 + logo_sz, logo_y + logo_sz, pmo_left_x, pmo_y - 2)
-        c.line(w - logo_sz - 2, logo_y + logo_sz, pmo_right_x, pmo_y - 2)
+        c.line(2 + logo_sz, logo_y + logo_sz, pmo_left_x, pmo_top_y)
+        c.line(w - logo_sz - 2, logo_y + logo_sz, pmo_right_x, pmo_top_y)
 
         # White badge disc with a thin gold ring behind the LEFT and RIGHT
         # logos only, so they pop against the green instead of sitting
