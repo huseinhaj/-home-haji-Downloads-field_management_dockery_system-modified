@@ -304,16 +304,21 @@ class NECTAHeader(Flowable):
         # ── 2. LOGOS ROW — School (left) + Coat of Arms (center) + District (right) ──
         # Nudged up within the green band so the gap to the flag strip below
         # matches the gap to the PMO text above, instead of sitting low.
+        # The Coat of Arms sits centered, directly under the PMO/Regional
+        # Admin text, and is drawn a little larger than the side logos so
+        # it reads as the primary emblem rather than a third equal logo.
         logo_sz = 40
         logo_y = logos_y + 12
+        coa_sz = 46
+        coa_y = logo_y - (coa_sz - logo_sz) / 2  # keep it vertically centred on the same midline
         # School logo — left
         if self.slogo_uri:
             _safe_b64_img(self.slogo_uri, 2, logo_y, logo_sz, logo_sz, c)
-        # Coat of Arms — center
+        # Coat of Arms — center, larger, as the primary emblem
         if self.coa_uri:
-            _safe_b64_img(self.coa_uri, cx - logo_sz / 2, logo_y, logo_sz, logo_sz, c)
+            _safe_b64_img(self.coa_uri, cx - coa_sz / 2, coa_y, coa_sz, coa_sz, c)
         elif self.dlogo_uri:
-            _safe_b64_img(self.dlogo_uri, cx - logo_sz / 2, logo_y, logo_sz, logo_sz, c)
+            _safe_b64_img(self.dlogo_uri, cx - coa_sz / 2, coa_y, coa_sz, coa_sz, c)
         # District logo — right
         if self.dlogo_uri:
             _safe_b64_img(self.dlogo_uri, w - logo_sz - 2, logo_y, logo_sz, logo_sz, c)
