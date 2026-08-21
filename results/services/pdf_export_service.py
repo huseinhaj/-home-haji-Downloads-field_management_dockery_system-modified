@@ -60,12 +60,12 @@ GRADE_FG = {
     'F':  colors.HexColor("#B91C1C"),
 }
 DIV_BG = {
-    'I':   colors.HexColor("#DCFCE7"), 'II':  colors.HexColor("#D1FAE5"),
+    'I':   colors.HexColor("#DCFCE7"), 'II':  colors.HexColor("#CFFAFE"),
     'III': colors.HexColor("#FEF3C7"), 'IV':  colors.HexColor("#FFEDD5"),
     '0':   colors.HexColor("#FEE2E2"),
 }
 DIV_FG = {
-    'I':   colors.HexColor("#15803D"), 'II':  colors.HexColor("#047857"),
+    'I':   colors.HexColor("#15803D"), 'II':  colors.HexColor("#0E7490"),
     'III': colors.HexColor("#B45309"), 'IV':  colors.HexColor("#C2410C"),
     '0':   colors.HexColor("#B91C1C"),
 }
