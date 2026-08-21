@@ -278,10 +278,15 @@ class NECTAHeader(Flowable):
         w, h = self.width, self.height
         cx = w / 2
 
-        # ── 1. GREEN BANNER — PMO + Regional Admin ──
+        # ── 1. GREEN BACKGROUND — banner + logos row, full down to the flag strip ──
         banner_y = self.BELOW_H + self.LOGOS_H
+        logos_y = self.BELOW_H
+        strip_y = logos_y - 2
+        strip_top = strip_y + 3
         c.setFillColor(GREEN)
-        c.roundRect(0, banner_y, w, self.BANNER_H, 3, fill=1, stroke=0)
+        c.roundRect(0, strip_top, w, h - strip_top, 3, fill=1, stroke=0)
+
+        # ── PMO + Regional Admin text (on the green background) ──
         c.setFillColor(colors.white)
         c.setFont('Helvetica-Bold', 9)
         c.drawCentredString(cx, banner_y + self.BANNER_H - 14, "PRIME MINISTER'S OFFICE")
@@ -289,7 +294,6 @@ class NECTAHeader(Flowable):
         c.drawCentredString(cx, banner_y + self.BANNER_H - 26, "REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT")
 
         # ── 2. LOGOS ROW — School (left) + Coat of Arms (center) + District (right) ──
-        logos_y = self.BELOW_H
         logo_sz = 40
         # School logo — left
         if self.slogo_uri:
@@ -304,7 +308,6 @@ class NECTAHeader(Flowable):
             _safe_b64_img(self.dlogo_uri, w - logo_sz - 2, logos_y + 5, logo_sz, logo_sz, c)
 
         # ── 3. FLAG STRIP ──
-        strip_y = logos_y - 2
         for i, col in enumerate([TZ_GREEN, TZ_YELLOW, TZ_BLACK, TZ_BLUE]):
             c.setFillColor(col)
             c.rect(i * w / 4, strip_y, w / 4, 3, fill=1, stroke=0)
@@ -748,9 +751,27 @@ def generate_results_pdf_response(exam):
     row_h = 14  # each data row height (font 7.5 + padding 5)
     rows_per_page = max(25, int(available_h / row_h))
 
-    chunks = [results[i:i + rows_per_page] for i in range(0, N, rows_per_page)]
-    if not chunks:
-        chunks = [[]]
+    # The LAST page also carries the grading key, centre performance summary
+    # and subject performance table below the results — reserve room for
+    # those so that block never overflows onto a spurious extra page.
+    last_page_reserve = (
+        6 + 20 +                    # spacer + grading key row
+        5 + 16 + 26 +                # spacer + section title + centre performance table
+        4 + (16 + 13 * (len(subj_gpa) + 1) if subj_gpa else 0) +  # subject performance block
+        6                            # trailing spacer
+    )
+    last_page_rows = max(10, int((available_h - last_page_reserve) / row_h))
+
+    # Fill normal pages at full capacity, but never let the taken amount
+    # dip the remainder below last_page_rows — so the final chunk always
+    # ends up at or under the reserved last-page capacity.
+    chunks = []
+    idx = 0
+    while N - idx > last_page_rows:
+        take = min(rows_per_page, N - idx - last_page_rows)
+        chunks.append(results[idx:idx + take])
+        idx += take
+    chunks.append(results[idx:N])
     total_pages = len(chunks)
 
     for pg_idx, chunk in enumerate(chunks, 1):
