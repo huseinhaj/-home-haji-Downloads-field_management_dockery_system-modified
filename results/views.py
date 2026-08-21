@@ -1867,10 +1867,16 @@ def upload_logos(request):
             messages.error(request, "Hakuna faili lililochaguliwa.")
             return redirect('upload_logos')
 
-        # Validate file type
-        allowed_types = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml']
+        # Validate file type — SVG is deliberately NOT accepted: the PDF
+        # renderer (ReportLab's ImageReader, backed by Pillow) cannot
+        # decode SVG at all. It used to be listed as "supported" here but
+        # every SVG upload silently failed to ever appear in the PDF, with
+        # no error anywhere, because the drawing code swallows the
+        # resulting exception. PNG/JPG only, so what's accepted here is
+        # guaranteed to actually be drawable.
+        allowed_types = ['image/png', 'image/jpeg', 'image/jpg']
         if uploaded_file.content_type not in allowed_types:
-            messages.error(request, "Aina ya faili haitambuliki. Tumia PNG, JPG, au SVG.")
+            messages.error(request, "Aina ya faili haitambuliki. Tumia PNG au JPG (SVG haiwezi kuonyeshwa kwenye PDF).")
             return redirect('upload_logos')
 
         # Validate file size (max 2MB)
@@ -1878,12 +1884,23 @@ def upload_logos(request):
             messages.error(request, "Faili ni kubwa sana. Kiwango ni 2MB.")
             return redirect('upload_logos')
 
+        # Verify the bytes are actually a decodable image — a spoofed or
+        # corrupt content_type would otherwise pass the check above and
+        # then silently fail to render in the PDF with no error at all.
+        import io as _io
+        from PIL import Image as _PILImage
+        file_data = uploaded_file.read()
+        try:
+            _PILImage.open(_io.BytesIO(file_data)).verify()
+        except Exception:
+            messages.error(request, "Faili hii si picha inayosomeka. Jaribu picha nyingine ya PNG/JPG.")
+            return redirect('upload_logos')
+
         # Save to School model — both ImageField AND base64 in DB
         # (base64 persists on Railway where filesystem is ephemeral)
         import base64 as _b64
-        file_data = uploaded_file.read()
         ext = Path(uploaded_file.name).suffix.lower()
-        mime_map = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml'}
+        mime_map = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif'}
         mime = mime_map.get(ext, 'image/png')
         b64_str = f'data:{mime};base64,{_b64.b64encode(file_data).decode("ascii")}'
         uploaded_file.seek(0)  # reset for ImageField save
