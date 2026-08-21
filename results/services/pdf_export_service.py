@@ -925,10 +925,14 @@ def generate_results_pdf_response(exam):
     SAFETY_MARGIN = 15
     available_h = page_h - margin_top - margin_bot - header_overhead - footer_text - SAFETY_MARGIN
 
-    # Pack rows by their REAL measured height: fill each page up to
-    # available_h, then make sure the final chunk also leaves room for the
-    # tail block above it — if it doesn't fit, peel the overflow onto a new
-    # final page instead of letting it silently spill past the frame.
+    # Pack rows by their REAL measured height, filling EVERY page to full
+    # capacity first — plain greedy, ignoring the tail block entirely — so
+    # every results page, including what would be the last, holds as many
+    # rows as actually fit. The tail block (grading key / centre performance
+    # / subject performance) then either rides in whatever slack is left on
+    # that final page, or — if it doesn't fit there — gets a page of its
+    # own. Rows are never pulled off an already-packed page to make room
+    # for it, so no results page ends up smaller than it needs to be.
     chunks = []
     idx = 0
     n_rows = len(all_rows)
@@ -943,24 +947,10 @@ def generate_results_pdf_response(exam):
     if not chunks:
         chunks = [(0, 0)]
 
-    # If the final chunk doesn't leave room for the tail block, peel rows off
-    # ITS END (not its start) onto a new final chunk — the remaining prefix
-    # is a subset of a range that already fit the full budget, so it stays
-    # full, and the peeled tail is packed as tightly as the smaller budget
-    # allows, instead of splitting near the front and leaving both halves
-    # sparse.
     c_start, c_end = chunks[-1]
-    last_budget = available_h - tail_reserve
-    total = sum(row_heights[c_start:c_end])
-    if header_h + total > last_budget:
-        k = c_end
-        remaining = total
-        while k > c_start and header_h + remaining > last_budget:
-            k -= 1
-            remaining -= row_heights[k]
-        if k > c_start:
-            chunks[-1] = (c_start, k)
-            chunks.append((k, c_end))
+    last_page_used = header_h + sum(row_heights[c_start:c_end])
+    if last_page_used + tail_reserve > available_h:
+        chunks.append((n_rows, n_rows))  # tail doesn't fit here — give it its own page
 
     total_pages = len(chunks)
 
@@ -975,24 +965,28 @@ def generate_results_pdf_response(exam):
         story.append(Spacer(1, 6))
 
         # ── Build SEPARATE table for this chunk (no splitting!) ──
-        data = [_new_header_row()] + all_rows[c_start:c_end]
+        # A chunk can be empty when the tail block didn't fit on the
+        # previous page and got bumped to a page of its own — skip the
+        # table entirely rather than render one with just a header row.
+        if c_end > c_start:
+            data = [_new_header_row()] + all_rows[c_start:c_end]
 
-        r_table = Table(data, colWidths=cw)
-        rs = [
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-            ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-            ('GRID', (0, 0), (-1, -1), 0.3, DARK_LINE),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ('LEFTPADDING', (0, 0), (-1, -1), 3),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-        ]
-        for i in range(1, len(data)):
-            if i % 2 == 0:
-                rs.append(('BACKGROUND', (0, i), (-1, i), CREAM))
-        r_table.setStyle(TableStyle(rs))
-        story.append(r_table)
+            r_table = Table(data, colWidths=cw)
+            rs = [
+                ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+                ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+                ('GRID', (0, 0), (-1, -1), 0.3, DARK_LINE),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ('LEFTPADDING', (0, 0), (-1, -1), 3),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ]
+            for i in range(1, len(data)):
+                if i % 2 == 0:
+                    rs.append(('BACKGROUND', (0, i), (-1, i), CREAM))
+            r_table.setStyle(TableStyle(rs))
+            story.append(r_table)
 
         # ── Last page: grading key + centre performance + subject performance ──
         if pg_idx == total_pages:
