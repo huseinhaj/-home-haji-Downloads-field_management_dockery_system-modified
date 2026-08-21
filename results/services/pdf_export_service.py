@@ -27,18 +27,18 @@ from .report_helpers import (
     get_section_title, get_school_type_for_exam,
 )
 
-# ── Colours ──────────────────────────────────────────────────────────────────
-NAVY      = colors.HexColor("#1A3C6E")
-DARK_NAVY = colors.HexColor("#0F2744")
-GREEN     = colors.HexColor("#1A7B3A")
-GOLD      = colors.HexColor("#B8860B")
-CREAM     = colors.HexColor("#FAF8F2")
-SLATE     = colors.HexColor("#555555")
-LGRAY     = colors.HexColor("#CCCCCC")
-MGRAY     = colors.HexColor("#E8E8E8")
+# ── Colours — modern flat palette (blue/emerald/amber) ────────────────────────
+NAVY      = colors.HexColor("#1D4ED8")  # vivid modern blue (was muted navy)
+DARK_NAVY = colors.HexColor("#1E3A8A")  # deep blue for contrast accents
+GREEN     = colors.HexColor("#15803D")  # clean modern green (PMO banner)
+GOLD      = colors.HexColor("#F59E0B")  # vivid amber (was dull goldenrod)
+CREAM     = colors.HexColor("#F8FAFC")  # cool neutral row tint (was warm cream)
+SLATE     = colors.HexColor("#475569")  # modern slate gray for muted text
+LGRAY     = colors.HexColor("#CBD5E1")  # light slate — grid lines
+MGRAY     = colors.HexColor("#F1F5F9")  # subtle slate surface tint
 WHITE     = colors.white
 BLACK     = colors.black
-DARK_LINE = colors.HexColor("#999999")
+DARK_LINE = colors.HexColor("#94A3B8")  # medium slate — page border/dividers
 
 TZ_GREEN  = colors.HexColor("#00A651")
 TZ_YELLOW = colors.HexColor("#FCD116")
@@ -46,52 +46,52 @@ TZ_BLACK  = colors.black
 TZ_BLUE   = colors.HexColor("#00A3DD")
 
 GRADE_BG = {
-    'A':  colors.HexColor("#C6EFCE"), 'B+': colors.HexColor("#D5F5E3"),
-    'B':  colors.HexColor("#D5F5E3"), 'C+': colors.HexColor("#FEF9E7"),
-    'C':  colors.HexColor("#FEF9E7"), 'D':  colors.HexColor("#FDEBD0"),
-    'E':  colors.HexColor("#F5CBA7"), 'S':  colors.HexColor("#F9E79F"),
-    'F':  colors.HexColor("#FADBD8"),
+    'A':  colors.HexColor("#DCFCE7"), 'B+': colors.HexColor("#DCFCE7"),
+    'B':  colors.HexColor("#D1FAE5"), 'C+': colors.HexColor("#FEF3C7"),
+    'C':  colors.HexColor("#FEF3C7"), 'D':  colors.HexColor("#FFEDD5"),
+    'E':  colors.HexColor("#FFEDD5"), 'S':  colors.HexColor("#FEF3C7"),
+    'F':  colors.HexColor("#FEE2E2"),
 }
 GRADE_FG = {
-    'A':  colors.HexColor("#006100"), 'B+': colors.HexColor("#006100"),
-    'B':  colors.HexColor("#006100"), 'C+': colors.HexColor("#9C6500"),
-    'C':  colors.HexColor("#9C6500"), 'D':  colors.HexColor("#CC3300"),
-    'E':  colors.HexColor("#CC3300"), 'S':  colors.HexColor("#9C6500"),
-    'F':  colors.HexColor("#9C0006"),
+    'A':  colors.HexColor("#15803D"), 'B+': colors.HexColor("#15803D"),
+    'B':  colors.HexColor("#047857"), 'C+': colors.HexColor("#B45309"),
+    'C':  colors.HexColor("#B45309"), 'D':  colors.HexColor("#C2410C"),
+    'E':  colors.HexColor("#C2410C"), 'S':  colors.HexColor("#B45309"),
+    'F':  colors.HexColor("#B91C1C"),
 }
 DIV_BG = {
-    'I':   colors.HexColor("#C6EFCE"), 'II':  colors.HexColor("#D5F5E3"),
-    'III': colors.HexColor("#FEF9E7"), 'IV':  colors.HexColor("#FDEBD0"),
-    '0':   colors.HexColor("#FADBD8"),
+    'I':   colors.HexColor("#DCFCE7"), 'II':  colors.HexColor("#D1FAE5"),
+    'III': colors.HexColor("#FEF3C7"), 'IV':  colors.HexColor("#FFEDD5"),
+    '0':   colors.HexColor("#FEE2E2"),
 }
 DIV_FG = {
-    'I':   colors.HexColor("#006100"), 'II':  colors.HexColor("#006100"),
-    'III': colors.HexColor("#9C6500"), 'IV':  colors.HexColor("#CC3300"),
-    '0':   colors.HexColor("#9C0006"),
+    'I':   colors.HexColor("#15803D"), 'II':  colors.HexColor("#047857"),
+    'III': colors.HexColor("#B45309"), 'IV':  colors.HexColor("#C2410C"),
+    '0':   colors.HexColor("#B91C1C"),
 }
 
 GRADE_COLORS = {
-    'A':  ('#006100', '#C6EFCE'),
-    'B+': ('#006100', '#D5F5E3'),
-    'B':  ('#1E8449', '#D5F5E3'),
-    'C+': ('#9C6500', '#FEF9E7'),
-    'C':  ('#9C6500', '#FEF9E7'),
-    'D':  ('#CC3300', '#FDEBD0'),
-    'E':  ('#CC3300', '#F5CBA7'),
-    'S':  ('#B9770B', '#F9E79F'),
-    'F':  ('#9C0006', '#FADBD8'),
-    'X':  ('#555555', '#E8E8E8'),
+    'A':  ('#15803D', '#DCFCE7'),
+    'B+': ('#15803D', '#DCFCE7'),
+    'B':  ('#047857', '#D1FAE5'),
+    'C+': ('#B45309', '#FEF3C7'),
+    'C':  ('#B45309', '#FEF3C7'),
+    'D':  ('#C2410C', '#FFEDD5'),
+    'E':  ('#C2410C', '#FFEDD5'),
+    'S':  ('#B45309', '#FEF3C7'),
+    'F':  ('#B91C1C', '#FEE2E2'),
+    'X':  ('#475569', '#F1F5F9'),
 }
 
 LEVEL_COLORS = {
-    'Grade A': ('#006100', '#C6EFCE'),
-    'Grade B+': ('#006100', '#D5F5E3'),
-    'Grade B': ('#1E8449', '#D5F5E3'),
-    'Grade C': ('#9C6500', '#FEF9E7'),
-    'Grade D': ('#CC3300', '#FDEBD0'),
-    'Grade E': ('#CC3300', '#F5CBA7'),
-    'Grade S': ('#B9770B', '#F9E79F'),
-    'Grade F': ('#9C0006', '#FADBD8'),
+    'Grade A': ('#15803D', '#DCFCE7'),
+    'Grade B+': ('#15803D', '#DCFCE7'),
+    'Grade B': ('#047857', '#D1FAE5'),
+    'Grade C': ('#B45309', '#FEF3C7'),
+    'Grade D': ('#C2410C', '#FFEDD5'),
+    'Grade E': ('#C2410C', '#FFEDD5'),
+    'Grade S': ('#B45309', '#FEF3C7'),
+    'Grade F': ('#B91C1C', '#FEE2E2'),
 }
 
 
@@ -724,7 +724,7 @@ def generate_results_pdf_response(exam):
         cw_t5 = [content_w * w for w in [0.06, 0.30, 0.10, 0.10, 0.10, 0.10, 0.14]]
         t_table = Table(t_data, colWidths=cw_t5)
         ts = _std_table_style(len(t_data))
-        ts.append(('BACKGROUND', (0, 1), (-1, 1), colors.HexColor("#DAA520")))
+        ts.append(('BACKGROUND', (0, 1), (-1, 1), GOLD))
         ts.append(('TEXTCOLOR', (0, 1), (-1, 1), WHITE))
         t_table.setStyle(TableStyle(ts))
         story.append(t_table)
