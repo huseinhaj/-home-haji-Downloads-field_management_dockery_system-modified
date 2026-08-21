@@ -742,39 +742,210 @@ def generate_results_pdf_response(exam):
     subj_st = ParagraphStyle('lss', parent=st['td'], fontSize=7, leading=8.5,
                              wordWrap='CJK')
 
-    # Calculate how many rows fit per page
+    r_hdr = ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"]
+    cw = [
+        content_w * 0.05,  # CNO
+        content_w * 0.14,  # NAME
+        content_w * 0.04,  # SEX
+        content_w * 0.05,  # AGGT
+        content_w * 0.05,  # GPA
+        content_w * 0.04,  # DIV
+        content_w * 0.63,  # DETAILED SUBJECTS
+    ]
+    ROW_PAD = 6  # matches TOPPADDING(3)+BOTTOMPADDING(3) / LEFTPADDING(3)+RIGHTPADDING(3)
+
+    def _row_cells_height(cells):
+        """Real rendered height of a table row — each cell wrapped at its
+        actual column width, same as ReportLab does when laying out the
+        table. A fixed per-row guess doesn't hold: rows wrap to more lines
+        as subject count or name length grows, so it must be measured."""
+        h = 0
+        for cell, col_w in zip(cells, cw):
+            _, ch = cell.wrap(max(col_w - ROW_PAD, 1), 10000)
+            h = max(h, ch)
+        return h + ROW_PAD
+
+    def _new_header_row():
+        return [_p(f"<b>{h}</b>", hdr_st) for h in r_hdr]
+
+    header_h = _row_cells_height(_new_header_row())
+
+    # Build every result row ONCE, up front, so its real height can be
+    # measured before deciding how many rows fit on each page.
+    all_rows = []
+    for r in results:
+        cno = f"{r.position:03d}"
+        nm = _student_name(r)
+        stu_gpa = r.points / counted if counted else 0
+
+        # Build COLOURED inline subjects
+        subj_parts = []
+        for sub in subjects:
+            sc = score_lookup.get((r.student_id, sub.id))
+            g = _grade_for_score(sc, exam.form) if sc is not None else 'X'
+            abbr = sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
+            fg, bg = GRADE_COLORS.get(g, ('#555555', '#E8E8E8'))
+            subj_parts.append(
+                f"<font color='{fg}'><b>{abbr} - '{g}'</b></font>"
+            )
+        subj_text = '&nbsp;'.join(subj_parts)
+
+        div_bg = DIV_BG.get(r.division, WHITE)
+        div_fg = DIV_FG.get(r.division, BLACK)
+        dv_st = ParagraphStyle(f'dv4_{r.student_id}', parent=cell_st,
+                               backColor=div_bg, textColor=div_fg,
+                               fontName='Helvetica-Bold')
+
+        all_rows.append([
+            _p(cno, cell_st),
+            _p(nm, name_st),
+            _p(r.student.gender or 'M', cell_st),
+            _p(str(r.points), cell_bold),
+            _p(f"{stu_gpa:.2f}", cell_bold),
+            _p(str(r.division), dv_st),
+            _p(subj_text, subj_st),
+        ])
+
+    row_heights = [_row_cells_height(cells) for cells in all_rows]
+
+    # ── Tail block (grading key + centre performance + subject performance) ──
+    # Built once — it only ever lands on the true last page, right after the
+    # last chunk of results, so its real height can be reserved up front.
+    tail_flowables = []
+
+    gk_cells_pg = [
+        _p(f"<b>{g} ({rng})</b>", ParagraphStyle(
+            f'gk3_{g}', parent=cell_st, textColor=GRADE_FG.get(g, BLACK),
+            fontName='Helvetica-Bold',
+        ))
+        for g, rng in grades
+    ]
+    gk_table_pg = Table([gk_cells_pg], colWidths=[content_w / len(grades)] * len(grades))
+    gk_s2 = [
+        ('GRID', (0, 0), (-1, -1), 0.3, LGRAY),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ]
+    for i, (g, _) in enumerate(grades):
+        gk_s2.append(('BACKGROUND', (i, 0), (i, 0), GRADE_BG.get(g, WHITE)))
+    gk_table_pg.setStyle(TableStyle(gk_s2))
+    tail_flowables.append(Spacer(1, 6))
+    tail_flowables.append(gk_table_pg)
+    tail_flowables.append(Spacer(1, 5))
+
+    # Centre performance summary
+    tail_flowables.append(_p("<b>EXAMINATION CENTRE OVERALL PERFORMANCE</b>", st['section']))
+    div_perf_hdrs = ["", "REGIST", "ABSENT", "SAT", "CLEAN", "DIV I", "DIV II", "DIV III", "DIV IV", "DIV 0"]
+    absent_count = sum(1 for r in results if r.total_score == 0)
+    dp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('dph', parent=cell_st, fontSize=6, textColor=WHITE, fontName='Helvetica-Bold')) for h in div_perf_hdrs]]
+    dp_row = [_p("<b>TOTAL</b>", ParagraphStyle('dpt', parent=cell_st, fontSize=6, fontName='Helvetica-Bold'))]
+    dp_row += [
+        _p(str(N), cell_st), _p(str(absent_count), cell_st),
+        _p(str(N - absent_count), cell_st), _p(str(N - absent_count), cell_st),
+        _p(str(div_counts.get('I', 0)), cell_st), _p(str(div_counts.get('II', 0)), cell_st),
+        _p(str(div_counts.get('III', 0)), cell_st), _p(str(div_counts.get('IV', 0)), cell_st),
+        _p(str(div_counts.get('0', 0)), cell_st),
+    ]
+    dp_data.append(dp_row)
+    cw_dp = [content_w / len(div_perf_hdrs)] * len(div_perf_hdrs)
+    dp_table = Table(dp_data, colWidths=cw_dp)
+    dp_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('GRID', (0, 0), (-1, -1), 0.3, LGRAY),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 2),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    tail_flowables.append(dp_table)
+    tail_flowables.append(Spacer(1, 4))
+
+    # Subject performance
+    if subj_gpa:
+        tail_flowables.append(_p("<b>SUBJECT PERFORMANCE</b>", st['section']))
+        sp_hdrs = ["#", "SUBJECT", "SAT", "PASS", "GPA", "LEVEL"]
+        sp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('sph', parent=cell_st, fontSize=6, textColor=WHITE, fontName='Helvetica-Bold')) for h in sp_hdrs]]
+        for idx, sg in enumerate(subj_gpa, 1):
+            level_key = sg['level'].split(' (')[0] if sg['level'] else ''
+            fg, bg = LEVEL_COLORS.get(level_key, ('#555555', '#E8E8E8'))
+            level_st = ParagraphStyle(f'lvl_{idx}', parent=cell_st, fontSize=6,
+                                      textColor=colors.HexColor(fg), backColor=colors.HexColor(bg),
+                                      fontName='Helvetica-Bold', alignment=TA_LEFT)
+            sp_data.append([
+                _p(str(idx), cell_st),
+                _p(sg['name'], ParagraphStyle('spn', parent=cell_st, fontSize=6, alignment=TA_LEFT)),
+                _p(str(sg['sat']), cell_st),
+                _p(str(sg['pass_count']), cell_st),
+                _p(f"{sg['gpa']:.4f}", cell_st),
+                _p(sg['level'], level_st),
+            ])
+        cw_sp = [content_w * w for w in [0.04, 0.22, 0.08, 0.08, 0.12, 0.46]]
+        sp_table = Table(sp_data, colWidths=cw_sp)
+        sp_table.setStyle(TableStyle(_std_table_style(len(sp_data))))
+        tail_flowables.append(sp_table)
+        tail_flowables.append(Spacer(1, 6))
+
+    # Signature is drawn in _footer canvas function on the last page
+    # (left: Academic Officer, right: Head of School, with date)
+
+    def _flowable_height(f):
+        if isinstance(f, Spacer):
+            return f.height
+        return f.wrap(content_w, 10000)[1]
+
+    tail_reserve = sum(_flowable_height(f) for f in tail_flowables)
+
+    # Calculate how much vertical room a results table has on a page:
     # header (150pt) + spacer (6pt) = 156pt overhead
     # footer text only (20pt) — signature is on canvas, not in story
     header_overhead = 150 + 6  # 156pt
     footer_text = 20  # just footer text line
     available_h = page_h - margin_top - margin_bot - header_overhead - footer_text
-    row_h = 14  # each data row height (font 7.5 + padding 5)
-    rows_per_page = max(25, int(available_h / row_h))
 
-    # The LAST page also carries the grading key, centre performance summary
-    # and subject performance table below the results — reserve room for
-    # those so that block never overflows onto a spurious extra page.
-    last_page_reserve = (
-        6 + 20 +                    # spacer + grading key row
-        5 + 16 + 26 +                # spacer + section title + centre performance table
-        4 + (16 + 13 * (len(subj_gpa) + 1) if subj_gpa else 0) +  # subject performance block
-        6                            # trailing spacer
-    )
-    last_page_rows = max(10, int((available_h - last_page_reserve) / row_h))
-
-    # Fill normal pages at full capacity, but never let the taken amount
-    # dip the remainder below last_page_rows — so the final chunk always
-    # ends up at or under the reserved last-page capacity.
+    # Pack rows by their REAL measured height: fill each page up to
+    # available_h, then make sure the final chunk also leaves room for the
+    # tail block above it — if it doesn't fit, peel the overflow onto a new
+    # final page instead of letting it silently spill past the frame.
     chunks = []
     idx = 0
-    while N - idx > last_page_rows:
-        take = min(rows_per_page, N - idx - last_page_rows)
-        chunks.append(results[idx:idx + take])
-        idx += take
-    chunks.append(results[idx:N])
+    n_rows = len(all_rows)
+    while idx < n_rows:
+        cum = header_h
+        j = idx
+        while j < n_rows and (j == idx or cum + row_heights[j] <= available_h):
+            cum += row_heights[j]
+            j += 1
+        chunks.append((idx, j))
+        idx = j
+    if not chunks:
+        chunks = [(0, 0)]
+
+    # If the final chunk doesn't leave room for the tail block, peel rows off
+    # ITS END (not its start) onto a new final chunk — the remaining prefix
+    # is a subset of a range that already fit the full budget, so it stays
+    # full, and the peeled tail is packed as tightly as the smaller budget
+    # allows, instead of splitting near the front and leaving both halves
+    # sparse.
+    c_start, c_end = chunks[-1]
+    last_budget = available_h - tail_reserve
+    total = sum(row_heights[c_start:c_end])
+    if header_h + total > last_budget:
+        k = c_end
+        remaining = total
+        while k > c_start and header_h + remaining > last_budget:
+            k -= 1
+            remaining -= row_heights[k]
+        if k > c_start:
+            chunks[-1] = (c_start, k)
+            chunks.append((k, c_end))
+
     total_pages = len(chunks)
 
-    for pg_idx, chunk in enumerate(chunks, 1):
+    for pg_idx, (c_start, c_end) in enumerate(chunks, 1):
         # ── Header on EVERY page (official format) ──
         story.append(NECTAHeader(
             exam, school_disp, slogo_uri, dlogo_uri, stype, lang,
@@ -785,54 +956,8 @@ def generate_results_pdf_response(exam):
         story.append(Spacer(1, 6))
 
         # ── Build SEPARATE table for this chunk (no splitting!) ──
-        r_hdr = ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"]
-        data = [[_p(f"<b>{h}</b>", hdr_st) for h in r_hdr]]
+        data = [_new_header_row()] + all_rows[c_start:c_end]
 
-        for r in chunk:
-            cno = f"{r.position:03d}"
-            nm = _student_name(r)
-            stu_gpa = r.points / counted if counted else 0
-
-            # Build COLOURED inline subjects
-            subj_parts = []
-            for sub in subjects:
-                sc = score_lookup.get((r.student_id, sub.id))
-                g = _grade_for_score(sc, exam.form) if sc is not None else 'X'
-                abbr = sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
-                fg, bg = GRADE_COLORS.get(g, ('#555555', '#E8E8E8'))
-                subj_parts.append(
-                    f"<font color='{fg}'><b>{abbr} - '{g}'</b></font>"
-                )
-            subj_text = '&nbsp;'.join(subj_parts)
-
-            div_bg = DIV_BG.get(r.division, WHITE)
-            div_fg = DIV_FG.get(r.division, BLACK)
-            dv_st = ParagraphStyle(f'dv4_{r.student_id}', parent=cell_st,
-                                   backColor=div_bg, textColor=div_fg,
-                                   fontName='Helvetica-Bold')
-
-            data.append([
-                _p(cno, cell_st),
-                _p(nm, name_st),
-                _p(r.student.gender or 'M', cell_st),
-                _p(str(r.points), cell_bold),
-                _p(f"{stu_gpa:.2f}", cell_bold),
-                _p(str(r.division), dv_st),
-                _p(subj_text, subj_st),
-            ])
-
-        # Column widths
-        cw = [
-            content_w * 0.05,  # CNO
-            content_w * 0.14,  # NAME
-            content_w * 0.04,  # SEX
-            content_w * 0.05,  # AGGT
-            content_w * 0.05,  # GPA
-            content_w * 0.04,  # DIV
-            content_w * 0.63,  # DETAILED SUBJECTS
-        ]
-
-        # Each page has its OWN table — no repeatRows, no splitting
         r_table = Table(data, colWidths=cw)
         rs = [
             ('BACKGROUND', (0, 0), (-1, 0), NAVY),
@@ -850,87 +975,9 @@ def generate_results_pdf_response(exam):
         r_table.setStyle(TableStyle(rs))
         story.append(r_table)
 
-        # ── Last page: grading key + centre performance + signature ──
+        # ── Last page: grading key + centre performance + subject performance ──
         if pg_idx == total_pages:
-            story.append(Spacer(1, 6))
-            # Grading key
-            gk_cells_pg = [
-                _p(f"<b>{g} ({rng})</b>", ParagraphStyle(
-                    f'gk3_{g}', parent=cell_st, textColor=GRADE_FG.get(g, BLACK),
-                    fontName='Helvetica-Bold',
-                ))
-                for g, rng in grades
-            ]
-            gk_table_pg = Table([gk_cells_pg], colWidths=[content_w / len(grades)] * len(grades))
-            gk_s2 = [
-                ('GRID', (0, 0), (-1, -1), 0.3, LGRAY),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            ]
-            for i, (g, _) in enumerate(grades):
-                gk_s2.append(('BACKGROUND', (i, 0), (i, 0), GRADE_BG.get(g, WHITE)))
-            gk_table_pg.setStyle(TableStyle(gk_s2))
-            story.append(gk_table_pg)
-            story.append(Spacer(1, 5))
-
-            # Centre performance summary
-            story.append(_p("<b>EXAMINATION CENTRE OVERALL PERFORMANCE</b>", st['section']))
-            div_perf_hdrs = ["", "REGIST", "ABSENT", "SAT", "CLEAN", "DIV I", "DIV II", "DIV III", "DIV IV", "DIV 0"]
-            absent_count = sum(1 for r in results if r.total_score == 0)
-            dp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('dph', parent=cell_st, fontSize=6, textColor=WHITE, fontName='Helvetica-Bold')) for h in div_perf_hdrs]]
-            dp_row = [_p("<b>TOTAL</b>", ParagraphStyle('dpt', parent=cell_st, fontSize=6, fontName='Helvetica-Bold'))]
-            dp_row += [
-                _p(str(N), cell_st), _p(str(absent_count), cell_st),
-                _p(str(N - absent_count), cell_st), _p(str(N - absent_count), cell_st),
-                _p(str(div_counts.get('I', 0)), cell_st), _p(str(div_counts.get('II', 0)), cell_st),
-                _p(str(div_counts.get('III', 0)), cell_st), _p(str(div_counts.get('IV', 0)), cell_st),
-                _p(str(div_counts.get('0', 0)), cell_st),
-            ]
-            dp_data.append(dp_row)
-            cw_dp = [content_w / len(div_perf_hdrs)] * len(div_perf_hdrs)
-            dp_table = Table(dp_data, colWidths=cw_dp)
-            dp_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-                ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-                ('GRID', (0, 0), (-1, -1), 0.3, LGRAY),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-                ('LEFTPADDING', (0, 0), (-1, -1), 2),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-            ]))
-            story.append(dp_table)
-            story.append(Spacer(1, 4))
-
-            # Subject performance
-            if subj_gpa:
-                story.append(_p("<b>SUBJECT PERFORMANCE</b>", st['section']))
-                sp_hdrs = ["#", "SUBJECT", "SAT", "PASS", "GPA", "LEVEL"]
-                sp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('sph', parent=cell_st, fontSize=6, textColor=WHITE, fontName='Helvetica-Bold')) for h in sp_hdrs]]
-                for idx, sg in enumerate(subj_gpa, 1):
-                    level_key = sg['level'].split(' (')[0] if sg['level'] else ''
-                    fg, bg = LEVEL_COLORS.get(level_key, ('#555555', '#E8E8E8'))
-                    level_st = ParagraphStyle(f'lvl_{idx}', parent=cell_st, fontSize=6,
-                                              textColor=colors.HexColor(fg), backColor=colors.HexColor(bg),
-                                              fontName='Helvetica-Bold', alignment=TA_LEFT)
-                    sp_data.append([
-                        _p(str(idx), cell_st),
-                        _p(sg['name'], ParagraphStyle('spn', parent=cell_st, fontSize=6, alignment=TA_LEFT)),
-                        _p(str(sg['sat']), cell_st),
-                        _p(str(sg['pass_count']), cell_st),
-                        _p(f"{sg['gpa']:.4f}", cell_st),
-                        _p(sg['level'], level_st),
-                    ])
-                cw_sp = [content_w * w for w in [0.04, 0.22, 0.08, 0.08, 0.12, 0.46]]
-                sp_table = Table(sp_data, colWidths=cw_sp)
-                sp_table.setStyle(TableStyle(_std_table_style(len(sp_data))))
-                story.append(sp_table)
-                story.append(Spacer(1, 6))
-
-            # Signature is drawn in _footer canvas function on the last page
-            # (left: Academic Officer, right: Head of School, with date)
+            story.extend(tail_flowables)
 
         if pg_idx < total_pages:
             story.append(PageBreak())
