@@ -100,6 +100,11 @@
   }
   .me-voice-status { font-size: 0.82rem; color: #555; font-weight: 600; }
   .me-voice-status .name { color: #1F7A3D; font-weight: 800; }
+  .me-voice-hint {
+    font-size: 0.78rem; color: #8a6d1a; background: #fff8e6;
+    border: 1px solid #f0dca0; border-radius: 2px; padding: 0.35rem 0.6rem;
+    width: 100%; margin-top: 0.4rem;
+  }
 
   /* Review table */
   .me-review .pos-badge {
@@ -378,6 +383,13 @@
             🎙️ {% if LANG == 'sw' %}Jaza kwa Sauti{% else %}Voice Entry{% endif %}
           </button>
           <div class="me-voice-status" id="meVoiceStatus"></div>
+          <div class="me-voice-hint" id="meVoiceHint" style="display:none;">
+            💡 {% if LANG == 'sw' %}
+              Sauti ikishindwa kutambua, andika alama kwenye kisanduku kilichoangaziwa kisha bonyeza Enter — itaendelea bila sauti.
+            {% else %}
+              If voice can't catch it, type the score in the highlighted box and press Enter — it'll move on without the mic.
+            {% endif %}
+          </div>
         </div>
         <div class="me-table-wrap" id="meTableWrap">
           <table class="me-table">
@@ -578,6 +590,7 @@
     (() => {
       const voiceBtn = document.getElementById('meVoiceBtn');
       const voiceStatus = document.getElementById('meVoiceStatus');
+      const voiceHint = document.getElementById('meVoiceHint');
       if (!voiceBtn) return;
 
       const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -708,6 +721,7 @@
         active = true;
         voiceBtn.textContent = '⏹ ' + (LANG === 'sw' ? 'Simamisha Sauti' : 'Stop Voice Entry');
         voiceBtn.classList.add('listening');
+        if (voiceHint) voiceHint.style.display = '';
 
         recognition = new SpeechRecognitionCtor();
         recognition.lang = LANG === 'sw' ? 'sw-TZ' : 'en-US';
@@ -793,12 +807,39 @@
         }
         voiceBtn.textContent = '🎙️ ' + (LANG === 'sw' ? 'Jaza kwa Sauti' : 'Voice Entry');
         voiceBtn.classList.remove('listening');
+        if (voiceHint) voiceHint.style.display = 'none';
         rowsBody.querySelectorAll('tr.voice-active').forEach(tr => tr.classList.remove('voice-active'));
       }
 
       voiceBtn.addEventListener('click', () => {
         if (active) { stopVoice(); voiceStatus.textContent = ''; }
         else startVoice();
+      });
+
+      // ── Manual override during voice mode — if speech keeps failing on
+      // a name, the teacher can just type the score for the CURRENTLY
+      // prompted student and confirm with Enter or by clicking away.
+      // Any other row is untouched — this only ever affects order[idx],
+      // the one voice is actively waiting on. ──
+      function tryManualOverride(inp) {
+        if (!active) return;
+        const id = parseInt(inp.dataset.id, 10);
+        if (id !== order[idx]) return;
+        const v = inp.value === '' ? NaN : parseInt(inp.value, 10);
+        if (isNaN(v) || v < 0 || v > 100) return;
+        wantListen = false;
+        if (recognizing) { try { recognition.abort(); } catch (e) {} }
+        applyScore(id, v);
+        goToStudent(idx + 1);
+      }
+      rowsBody.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('score-input')) {
+          e.preventDefault();
+          tryManualOverride(e.target);
+        }
+      });
+      rowsBody.addEventListener('change', (e) => {
+        if (e.target.classList && e.target.classList.contains('score-input')) tryManualOverride(e.target);
       });
     })();
 
