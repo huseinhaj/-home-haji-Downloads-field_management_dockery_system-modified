@@ -76,6 +76,7 @@
     background: #fff3d6 !important; outline: 2px solid #D9A441; outline-offset: -2px;
   }
   .me-table tbody tr.voice-done { background: #eafaf1; }
+  .me-table tbody tr.voice-skipped { background: #f1f1f1; color: #999; font-style: italic; }
 
   /* Voice entry bar */
   .me-voice-bar {
@@ -385,9 +386,9 @@
           <div class="me-voice-status" id="meVoiceStatus"></div>
           <div class="me-voice-hint" id="meVoiceHint" style="display:none;">
             💡 {% if LANG == 'sw' %}
-              Sema alama kwa Kiingereza (mfano "forty five") kwa usahihi zaidi — Kiswahili mara nyingi hakieleweki vizuri na mfumo. Ikishindwa kutambua, andika alama kwenye kisanduku kilichoangaziwa kisha bonyeza Enter — itaendelea bila sauti.
+              Sema alama kwa Kiingereza (mfano "forty five") kwa usahihi zaidi — Kiswahili mara nyingi hakieleweki vizuri na mfumo. Mwanafunzi asiyesoma somo hili? Sema "skip" (au bonyeza Enter kwenye kisanduku tupu) kuruka bila kuweka alama. Ikishindwa kutambua namba, andika alama kwenye kisanduku kilichoangaziwa kisha bonyeza Enter.
             {% else %}
-              Say the score in English (e.g. "forty five") for best accuracy. If voice can't catch it, type the score in the highlighted box and press Enter — it'll move on without the mic.
+              Say the score in English (e.g. "forty five") for best accuracy. Student doesn't take this subject? Say "skip" (or press Enter on an empty box) to move on without a score. If voice can't catch a number, type it in the highlighted box and press Enter.
             {% endif %}
           </div>
         </div>
@@ -623,6 +624,21 @@
       // that specific word — see the per-word fallback order below.
       const EN_HOMOPHONES = { to: 2, too: 2, for: 4, fore: 4, won: 1, ate: 8, oh: 0 };
 
+      // Not every student in a form takes every subject (different
+      // combinations, e.g. 7 vs 8 subjects). Saying one of these moves
+      // past a student who doesn't take this subject WITHOUT touching
+      // whatever's already in their box — leaving it blank is correct:
+      // marks_entry_save only creates a result for rows with an actual
+      // score, and division/points are computed only from subjects a
+      // student actually has (see recompute_processed_results_for_exam).
+      // "pass" is deliberately excluded — too easily confused with a
+      // grading term in an academic context.
+      const SKIP_WORDS = ['skip', 'next', 'none', 'ruka', 'hakuna', 'hapana'];
+      function isSkipCommand(transcript) {
+        const words = transcript.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+        return words.some(w => SKIP_WORDS.includes(w));
+      }
+
       // Edit distance so a slightly misheard word ("arubaini" instead of
       // "arobaini") still matches — ASR on a less-common recognizer
       // language like Swahili often gets one letter wrong rather than
@@ -837,12 +853,23 @@
 
         recognition.onresult = (ev) => {
           const results = ev.results[ev.results.length - 1];
+          const id = order[idx];
+          const s = byId.get(id);
+
+          // "skip"/"ruka"/"hakuna" — this student doesn't take the
+          // subject. Move on without setting anything for them.
+          for (let i = 0; i < results.length; i++) {
+            if (isSkipCommand(results[i].transcript)) {
+              skipStudent(id);
+              goToStudent(idx + 1);
+              return;
+            }
+          }
+
           let score = null;
           for (let i = 0; i < results.length && score === null; i++) {
             score = parseScore(results[i].transcript);
           }
-          const id = order[idx];
-          const s = byId.get(id);
           if (score === null) {
             retryCount++;
             // Show exactly what the recognizer heard once it's failed a
@@ -925,6 +952,14 @@
         if (row) { row.classList.remove('voice-active'); row.classList.add('voice-done'); }
       }
 
+      // A student who doesn't take this subject — move on WITHOUT
+      // touching whatever's already in their box (blank stays blank,
+      // an existing saved score stays untouched).
+      function skipStudent(id) {
+        const row = currentRow(id);
+        if (row) { row.classList.remove('voice-active'); row.classList.add('voice-skipped'); }
+      }
+
       function stopVoice() {
         active = false;
         wantListen = false;
@@ -950,15 +985,22 @@
       // a name, the teacher can just type the score for the CURRENTLY
       // prompted student and confirm with Enter or by clicking away.
       // Any other row is untouched — this only ever affects order[idx],
-      // the one voice is actively waiting on. ──
+      // the one voice is actively waiting on. Pressing Enter on a box
+      // that's left EMPTY skips that student instead — the same as
+      // saying "skip" — since not every student takes every subject. ──
       function tryManualOverride(inp) {
         if (!active) return;
         const id = parseInt(inp.dataset.id, 10);
         if (id !== order[idx]) return;
-        const v = inp.value === '' ? NaN : parseInt(inp.value, 10);
-        if (isNaN(v) || v < 0 || v > 100) return;
         wantListen = false;
         if (recognizing) { try { recognition.abort(); } catch (e) {} }
+        if (inp.value === '') {
+          skipStudent(id);
+          goToStudent(idx + 1);
+          return;
+        }
+        const v = parseInt(inp.value, 10);
+        if (isNaN(v) || v < 0 || v > 100) { wantListen = true; tryStartListening(); return; }
         applyScore(id, v);
         goToStudent(idx + 1);
       }
