@@ -81,6 +81,7 @@
             <div class="s-meta">{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}: {{ sub.student_count }}</div>
             {% if sub.submitted_at %}<div class="s-meta">{{ sub.submitted_at|date:"d M Y" }}</div>{% endif %}
             <div class="d-flex gap-1 flex-wrap">
+              <a href="{{ sub.marks_url }}" class="btn-tile ghost">&#9997; {% if LANG == 'sw' %}Rekebisha Alama{% else %}Edit Marks{% endif %}</a>
               <a href="{{ sub.summary_url }}" class="btn-tile ghost">&#128202; {% if LANG == 'sw' %}Muhtasari &amp; Mapendekezo{% else %}Summary &amp; Recommendations{% endif %}</a>
               <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; PDF</a>
             </div>
@@ -111,6 +112,7 @@
             <div class="s-meta">{% if LANG == 'sw' %}Mwalimu{% else %}Teacher{% endif %}: {{ sub.submitted_by|default:"—" }}</div>
             <div class="s-meta">{% if LANG == 'sw' %}Imeidhinishwa na{% else %}Approved by{% endif %}: {{ sub.approved_by|default:"—" }}</div>
             <div class="d-flex gap-1 flex-wrap">
+              <a href="{{ sub.marks_url }}" class="btn-tile ghost" title="{% if LANG == 'sw' %}Kuedit kutahitaji idhini tena ya Mtaaluma{% else %}Editing will need re-approval from the Academic Officer{% endif %}">&#9997; {% if LANG == 'sw' %}Rekebisha Alama{% else %}Edit Marks{% endif %}</a>
               <a href="{{ sub.summary_url }}" class="btn-tile ghost">&#128202; {% if LANG == 'sw' %}Muhtasari &amp; Mapendekezo{% else %}Summary &amp; Recommendations{% endif %}</a>
               <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; PDF</a>
             </div>

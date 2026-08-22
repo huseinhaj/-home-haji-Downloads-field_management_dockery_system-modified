@@ -1713,7 +1713,11 @@ def teacher_dashboard(request):
         for s in submitted + approved:
             s.pdf_url = reverse('subject_pdf', args=[exam.id, s.subject_id])
             s.summary_url = reverse('subject_summary', args=[exam.id, s.subject_id])
-        for s in returned:
+        # A teacher can still edit their own marks after submitting — even
+        # once approved, in which case re-saving/re-submitting flips the
+        # status back to SUBMITTED so the academic officer knows to look
+        # at it again. Every status below PENDING gets a way back in.
+        for s in submitted + approved + returned:
             s.marks_url = reverse('marks_entry') + f'?exam={exam.id}&subject={s.subject_id}'
         # Attach stored roster info for pending subjects
         for s in pending:
