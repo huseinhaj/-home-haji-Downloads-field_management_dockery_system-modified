@@ -2021,8 +2021,10 @@ def upload_form_students(request):
 
         return redirect(f'{reverse("upload_form_students")}?form={selected_form}')
 
-    # GET — show form
-    students = FormStudent.objects.filter(school=school, form=selected_form).order_by('last_name', 'first_name') if selected_form else FormStudent.objects.none()
+    # GET — show form. Ordered by insertion order (id), not alphabetically —
+    # the Academic uploaded a specific roster order (e.g. matching the
+    # school register) and expects to see it back exactly as uploaded.
+    students = FormStudent.objects.filter(school=school, form=selected_form).order_by('id') if selected_form else FormStudent.objects.none()
     counts = {}
     for f in range(1, 7):
         counts[f] = FormStudent.objects.filter(school=school, form=f).count()

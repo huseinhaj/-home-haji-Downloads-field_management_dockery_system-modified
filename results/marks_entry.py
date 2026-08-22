@@ -147,9 +147,11 @@ def marks_entry(request):
                         for s in stored.students
                     ]
                 else:
+                    # Insertion order (id), not alphabetical — matches the
+                    # order the Academic uploaded the roster in.
                     form_students = FormStudent.objects.filter(
                         school=exam.school, form=exam.form
-                    ).order_by('last_name', 'first_name') if exam.school else FormStudent.objects.none()
+                    ).order_by('id') if exam.school else FormStudent.objects.none()
                     if form_students.exists():
                         class_students = []
                         for fs in form_students:
