@@ -1365,6 +1365,21 @@ def approve_exam_submissions(request, exam_id):
     return redirect(reverse('exam_overview', args=[exam.id]))
 
 
+# ── Recompute Results (for exams already fully approved) ────────────────────
+# approve_subject/approve_exam_submissions only recompute as a side effect of
+# a status change to APPROVED — once every subject is already approved there
+# was no way to force a fresh recompute (e.g. after a grading-rule fix), so
+# AGGT/points/division on an already-processed exam stayed stale forever.
+
+@academic_required
+@require_POST
+def recompute_exam_results(request, exam_id):
+    exam = _get_exam_or_404(exam_id, request.user)
+    recompute_processed_results_for_exam(exam)
+    messages.success(request, "Matokeo yamehesabiwa upya.")
+    return redirect(reverse('exam_overview', args=[exam.id]))
+
+
 # ── Form-Level Results View ───────────────────────────────────────────────────
 
 @login_required

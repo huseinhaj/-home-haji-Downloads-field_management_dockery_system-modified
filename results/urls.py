@@ -31,6 +31,7 @@ from .views import (
     academic_dashboard,
     approve_subject,
     approve_exam_submissions,
+    recompute_exam_results,
     return_submission,
     form_results,
     form_results_excel,
@@ -102,6 +103,7 @@ urlpatterns = [
     path('exam/<int:exam_id>/subject/<int:subject_id>/return/', return_submission, name='return_submission'),
     path('exam/<int:exam_id>/finalize/', finalize_exam, name='finalize_exam'),
     path('exam/<int:exam_id>/approve-all/', approve_exam_submissions, name='approve_exam_submissions'),
+    path('exam/<int:exam_id>/recompute/', recompute_exam_results, name='recompute_exam_results'),
     # Roster upload (AJAX)
     path('upload-roster/', upload_roster, name='upload_roster'),
     path('download-template/', download_roster_template, name='download_roster_template'),

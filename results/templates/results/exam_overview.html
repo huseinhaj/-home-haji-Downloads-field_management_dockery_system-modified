@@ -276,6 +276,13 @@
       <a href="{% url 'exam_share_links' exam.id %}" class="btn" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;font-size:0.82rem;">
         🔗 {% if LANG == 'sw' %}Viungo vya Matokeo{% else %}Share Links{% endif %}
       </a>
+      <form method="post" action="{% url 'recompute_exam_results' exam.id %}" style="display:inline;"
+            onsubmit="return confirm('{% if LANG == "sw" %}Hesabu upya AGGT, GPA na Division za mtihani huu?{% else %}Recompute AGGT, GPA and Division for this exam?{% endif %}');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
+          🔄 {% if LANG == 'sw' %}Hesabu Upya Matokeo{% else %}Recompute Results{% endif %}
+        </button>
+      </form>
       {% endif %}
     {% else %}
       {% if submitted_count > 0 %}
