@@ -253,11 +253,11 @@ def get_division(points, form=None):
         0:   > 30   (avg ~D or worse)
 
     ACSEE (Form 5/6, 3 subjects, points range 3–21):
-        I:   ≤ 7
-        II:  8–10
-        III: 11–12
-        IV:  13–15
-        0:   > 15
+        I:   3–9
+        II:  10–12
+        III: 13–17
+        IV:  18–19
+        0:   20–21
 
     Was previously CSEE-only regardless of form — an A-level student with
     3 subjects averaging D (12 points) fell under the CSEE "≤17 = Division
@@ -267,13 +267,13 @@ def get_division(points, form=None):
     of subjects (3 vs 7) and can't share one set of cutoffs.
     """
     if form in (5, 6):
-        if points <= 7:
+        if points <= 9:
             return "I"
-        if points <= 10:
-            return "II"
         if points <= 12:
+            return "II"
+        if points <= 17:
             return "III"
-        if points <= 15:
+        if points <= 19:
             return "IV"
         return "0"
     if points <= 17:
