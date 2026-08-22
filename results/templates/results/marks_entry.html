@@ -662,15 +662,24 @@
       }
 
       function speak(text, onDone) {
-        if (!window.speechSynthesis) { if (onDone) onDone(); return; }
+        let done = false;
+        const finish = () => { if (done) return; done = true; if (onDone) onDone(); };
+        if (!window.speechSynthesis) { finish(); return; }
         try {
           const u = new SpeechSynthesisUtterance(text);
           u.lang = LANG === 'sw' ? 'sw-TZ' : 'en-US';
           u.rate = 1.05;
-          u.onend = () => { if (onDone) onDone(); };
-          u.onerror = () => { if (onDone) onDone(); };
+          u.onend = finish;
+          u.onerror = finish;
           window.speechSynthesis.speak(u);
-        } catch (e) { if (onDone) onDone(); }
+          // Chrome can occasionally leave an utterance hanging with
+          // neither onend nor onerror ever firing — a hard timeout
+          // guarantees we always move on to actually listening instead
+          // of getting stuck silently "announcing a name" forever with
+          // the mic never turning on (which looks exactly like "I'm
+          // talking but nothing fills in").
+          setTimeout(finish, 3500);
+        } catch (e) { finish(); }
       }
 
       // The single place that ever calls recognition.start() — safe to
@@ -766,8 +775,26 @@
               ? '❌ Ruhusa ya maikrofoni imekataliwa.'
               : '❌ Microphone permission denied.';
             stopVoice();
+            return;
           }
-          // other errors (no-speech, aborted, network) are recovered by onend's restart
+          if (ev.error === 'audio-capture') {
+            voiceStatus.textContent = LANG === 'sw'
+              ? '❌ Haikupata microphone — hakikisha kifaa chako kina microphone inayofanya kazi.'
+              : '❌ No microphone found — make sure this device has a working mic.';
+            stopVoice();
+            return;
+          }
+          if (ev.error === 'no-speech') return; // normal silence — onend below restarts automatically
+          // Anything else (language-not-supported, network, aborted…) —
+          // surface the real error instead of retrying silently forever
+          // with no visible feedback (onend below still restarts it).
+          retryCount++;
+          const id = order[idx];
+          const s = byId.get(id);
+          voiceStatus.innerHTML = (LANG === 'sw'
+            ? '⚠️ Hitilafu ya sauti (' + ev.error + '), najaribu tena'
+            : '⚠️ Voice error (' + ev.error + '), retrying') +
+            (s ? ' — <span class="name">' + escapeHtml(s.name) + '</span>' : '');
         };
 
         recognition.onend = () => {
