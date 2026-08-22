@@ -19,10 +19,30 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import Exam, ExamResult, Student, StoredRoster, Subject, SubjectSubmission
+from .models import Exam, ExamResult, FormStudent, Student, StoredRoster, Subject, SubjectSubmission
 from .permissions import teacher_required
 from .services.upload_processing_service import recompute_processed_results_for_exam
 from .utils import get_grade_for_form, group_exams_by_type
+
+
+def _student_from_form_student(fs):
+    """Bridge a FormStudent row (the Academic Officer's official class
+    list) to the Student model that ExamResult/marks-entry actually key
+    off. Mirrors the exact (first_name, last_name) dedup that the
+    file-upload roster path already uses (see _save_student in views.py)
+    so a name the Academic uploaded and a name a teacher separately
+    uploaded earlier converge on the same Student row instead of
+    creating two.
+    """
+    student, _ = Student.objects.get_or_create(
+        first_name=fs.first_name,
+        last_name=fs.last_name or 'Unknown',
+        defaults={'middle_name': fs.middle_name, 'gender': fs.gender},
+    )
+    if fs.middle_name and not student.middle_name:
+        student.middle_name = fs.middle_name
+        student.save(update_fields=['middle_name'])
+    return student
 
 
 def _parse_payload(request):
@@ -103,7 +123,16 @@ def marks_entry(request):
                 else:
                     pdf_url = reverse('subject_pdf', args=[exam.id, subject.id])
             else:
-                # Load students: try stored roster first, fall back to exam students
+                # Load students, in priority order:
+                #  1. This teacher's own uploaded/edited roster for this
+                #     exact exam+subject (StoredRoster) — an explicit
+                #     choice for this exam always wins.
+                #  2. The Academic Officer's class list for this exam's
+                #     form (FormStudent) — auto-populated, no upload
+                #     needed, so a teacher can go straight to entering
+                #     marks the moment the academic has uploaded the class.
+                #  3. Whichever students already have results for this
+                #     exam (legacy fallback for older exams).
                 stored = StoredRoster.objects.filter(
                     teacher=teacher, exam=exam, subject=subject
                 ).first()
@@ -118,17 +147,30 @@ def marks_entry(request):
                         for s in stored.students
                     ]
                 else:
-                    # Wanafunzi wote waliosajiliwa kwenye mtihani huu
-                    class_students = [
-                        {
-                            'id': s.id,
-                            'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p),
-                            'score': existing_marks.get(s.id),
-                        }
-                        for s in Student.objects.filter(examresult__exam=exam)
-                        .distinct()
-                        .order_by('first_name', 'last_name')
-                    ]
+                    form_students = FormStudent.objects.filter(
+                        school=exam.school, form=exam.form
+                    ).order_by('last_name', 'first_name') if exam.school else FormStudent.objects.none()
+                    if form_students.exists():
+                        class_students = []
+                        for fs in form_students:
+                            student = _student_from_form_student(fs)
+                            class_students.append({
+                                'id': student.id,
+                                'name': ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p),
+                                'score': existing_marks.get(student.id),
+                            })
+                    else:
+                        # Wanafunzi wote waliosajiliwa kwenye mtihani huu
+                        class_students = [
+                            {
+                                'id': s.id,
+                                'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p),
+                                'score': existing_marks.get(s.id),
+                            }
+                            for s in Student.objects.filter(examresult__exam=exam)
+                            .distinct()
+                            .order_by('first_name', 'last_name')
+                        ]
 
     # Wastani na kiwango cha kufaulu kwa ukaguzi
     avg_score = None
