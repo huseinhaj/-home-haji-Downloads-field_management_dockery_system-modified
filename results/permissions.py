@@ -20,3 +20,9 @@ def _role_required(is_role_fn, message):
 
 academic_required = _role_required(lambda user: getattr(user, 'is_academic', False), "Academic access required.")
 teacher_required = _role_required(lambda user: getattr(user, 'is_teacher', False), "Teacher access required.")
+# Academic Officers often teach a subject themselves — anything a subject
+# teacher can do (marks entry, above all) should be open to them too.
+teacher_or_academic_required = _role_required(
+    lambda user: getattr(user, 'is_teacher', False) or getattr(user, 'is_academic', False),
+    "Teacher or Academic access required.",
+)

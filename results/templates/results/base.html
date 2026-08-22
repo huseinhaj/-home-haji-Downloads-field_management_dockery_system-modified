@@ -75,6 +75,7 @@
             <a href="{% url 'upload_results' %}">{% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}</a>
             <a href="{% url 'academic_dashboard' %}">Academic</a>
             <a href="{% url 'manage_teachers' %}">{% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</a>
+            <a href="{% url 'upload_form_students' %}">{% if LANG == 'sw' %}Wanafunzi wa Form{% else %}Form Students{% endif %}</a>
             <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
             <a href="{% url 'choose_plan' %}">{% if LANG == 'sw' %}Malipo{% else %}Billing{% endif %}</a>
           {% elif user.is_teacher %}
@@ -82,7 +83,7 @@
             <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
             <a href="{% url 'personal_upload' %}">{% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
           {% endif %}
-          {% if user.is_teacher %}
+          {% if user.is_teacher or user.is_academic %}
           <a href="{% url 'marks_entry' %}">✏️ {% if LANG == 'sw' %}Jaza Alama{% else %}Marks{% endif %}</a>
           {% endif %}
           <a href="{% url 'results_logout' %}">{% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}</a>
@@ -129,13 +130,14 @@
           <a href="{% url 'school_setup' %}"><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule Yangu{% else %}My School{% endif %}</a>
           <a href="{% url 'academic_dashboard' %}"><i class="fas fa-chart-bar"></i> Academic</a>
           <a href="{% url 'manage_teachers' %}"><i class="fas fa-users"></i> {% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</a>
+          <a href="{% url 'upload_form_students' %}"><i class="fas fa-user-graduate"></i> {% if LANG == 'sw' %}Wanafunzi wa Form{% else %}Form Students{% endif %}</a>
           <a href="{% url 'choose_plan' %}"><i class="fas fa-coins"></i> {% if LANG == 'sw' %}Malipo{% else %}Billing{% endif %}</a>
         {% elif user.is_teacher %}
           <a href="{% url 'teacher_dashboard' %}"><i class="fas fa-chalkboard-teacher"></i> {% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}</a>
           <a href="{% url 'personal_upload' %}"><i class="fas fa-file-upload"></i> {% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
         {% endif %}
         <a href="{% url 'select_my_subjects' %}"><i class="fas fa-book"></i> {% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
-        {% if user.is_teacher %}
+        {% if user.is_teacher or user.is_academic %}
         <a href="{% url 'marks_entry' %}"><i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</a>
         {% endif %}
         <div class="nav-sep"></div>
@@ -175,7 +177,7 @@
       <i class="fas fa-sign-in-alt"></i> {% if LANG == 'sw' %}Ingia{% else %}Login{% endif %}
     </a>
     {% endif %}
-    {% if user.is_teacher %}
+    {% if user.is_teacher or user.is_academic %}
     <a href="{% url 'marks_entry' %}">
       <i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Alama{% else %}Marks{% endif %}
     </a>

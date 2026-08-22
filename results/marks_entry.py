@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import Exam, ExamResult, FormStudent, Student, StoredRoster, Subject, SubjectSubmission
-from .permissions import teacher_required
+from .permissions import teacher_or_academic_required
 from .services.upload_processing_service import recompute_processed_results_for_exam
 from .utils import get_grade_for_form, group_exams_by_type
 
@@ -54,7 +54,7 @@ def _parse_payload(request):
     return request.POST.dict()
 
 
-@teacher_required
+@teacher_or_academic_required
 def marks_entry(request):
     """Entry page (fill marks) + review page (?review=1 shows sorted results)."""
     teacher = request.user
@@ -207,7 +207,7 @@ def _teacher_exam(teacher, exam_id):
     return Exam.objects.filter(id=exam_id).first()
 
 
-@teacher_required
+@teacher_or_academic_required
 @require_POST
 def marks_entry_save(request):
     """Save (or update) all scores for an exam+subject. Does NOT submit yet."""
@@ -258,7 +258,7 @@ def marks_entry_save(request):
     })
 
 
-@teacher_required
+@teacher_or_academic_required
 @require_POST
 def marks_entry_submit(request):
     """Final submit — marks SubjectSubmission as SUBMITTED so the academic

@@ -210,9 +210,14 @@
         &nbsp;&bull;&nbsp; {{ total_exams }} {% if LANG == 'sw' %}mitihani jumla{% else %}total exams{% endif %}
       </div>
     </div>
-    <a href="{% url 'upload_results' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
-      + {% if LANG == 'sw' %}Mtihani Mpya{% else %}New Exam{% endif %}
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'upload_form_students' %}" class="btn btn-sm" style="background:#1F7A3D;color:#fff;font-weight:700;border-radius:2px;">
+        📥 {% if LANG == 'sw' %}Wanafunzi wa Form{% else %}Form Students{% endif %}
+      </a>
+      <a href="{% url 'upload_results' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
+        + {% if LANG == 'sw' %}Mtihani Mpya{% else %}New Exam{% endif %}
+      </a>
+    </div>
   </div>
 </div>
 
