@@ -616,6 +616,12 @@
         eight: 8, nine: 9, ten: 10, twenty: 20, thirty: 30, forty: 40, fourty: 40,
         fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100,
       };
+      // Common ASR homophones for short digit words ("two" heard as
+      // "to"/"too", "four" heard as "for"). These are also everyday
+      // filler words, so parseScore() only ever checks a word against
+      // this AFTER every real number dictionary has already failed for
+      // that specific word — see the per-word fallback order below.
+      const EN_HOMOPHONES = { to: 2, too: 2, for: 4, fore: 4, won: 1, ate: 8, oh: 0 };
 
       // Edit distance so a slightly misheard word ("arubaini" instead of
       // "arobaini") still matches — ASR on a less-common recognizer
@@ -696,7 +702,14 @@
           // that's the recognizer's actual locale now.
           let v = closestNumberWord(w, EN_NUMBERS);
           if (v === null) v = closestNumberWord(w, SW_NUMBERS);
-          if (v !== null) { sum += v; found = true; }
+          if (v !== null) { sum += v; found = true; return; }
+          // Homophone, last resort for THIS word only — kept per-word
+          // (not a whole-phrase fallback) so a compound like "twenty
+          // two" still adds up correctly even if just the "two" half
+          // came through as "to".
+          if (Object.prototype.hasOwnProperty.call(EN_HOMOPHONES, w)) {
+            sum += EN_HOMOPHONES[w]; found = true;
+          }
         });
         return found ? sum : null;
       }
