@@ -2049,6 +2049,23 @@ def delete_form_student(request, student_id):
 
 
 @academic_required
+@require_POST
+def delete_all_form_students(request, form_num):
+    """Wipe the whole uploaded roster for one form — e.g. to start over
+    with a corrected file, rather than deleting students one at a time."""
+    school = request.user.school
+    if form_num not in (1, 2, 3, 4, 5, 6):
+        messages.error(request, "Form si sahihi.")
+        return redirect('upload_form_students')
+    deleted_count, _ = FormStudent.objects.filter(school=school, form=form_num).delete()
+    if deleted_count:
+        messages.success(request, f"Wanafunzi wote {deleted_count} wa Form {form_num} wameondolewa.")
+    else:
+        messages.info(request, f"Hakuna wanafunzi wa Form {form_num} wa kuondoa.")
+    return redirect(f'{reverse("upload_form_students")}?form={form_num}')
+
+
+@academic_required
 def assign_teacher_form(request):
     """Academic Officer assigns teacher to form + subject."""
     school = request.user.school

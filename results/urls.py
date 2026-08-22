@@ -47,6 +47,7 @@ from .views import (
     exam_share_links,
     upload_form_students,
     delete_form_student,
+    delete_all_form_students,
     assign_teacher_form,
     teacher_performance_report,
 )
@@ -146,6 +147,7 @@ urlpatterns = [
     # Form student lists — Academic Officer uploads students per form
     path('form-students/', upload_form_students, name='upload_form_students'),
     path('form-students/<int:student_id>/delete/', delete_form_student, name='delete_form_student'),
+    path('form-students/<int:form_num>/delete-all/', delete_all_form_students, name='delete_all_form_students'),
     # Assign teacher to form + subject
     path('assign-teacher/', assign_teacher_form, name='assign_teacher_form'),
     # Teacher performance report PDF — all teachers for a form

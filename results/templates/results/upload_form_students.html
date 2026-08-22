@@ -75,9 +75,16 @@
     <div class="card-header d-flex justify-content-between align-items-center" style="background:#F8F9FA;">
       <strong>Wanafunzi wa Form {{ selected_form }} ({{ students|length }})</strong>
       {% if students %}
-      <a href="{% url 'teacher_performance_report' selected_form %}" class="btn btn-sm" style="background:#B8860B;color:#fff;">
-        📊 Ripoti ya Walimu
-      </a>
+      <div class="d-flex gap-2">
+        <a href="{% url 'teacher_performance_report' selected_form %}" class="btn btn-sm" style="background:#B8860B;color:#fff;">
+          📊 Ripoti ya Walimu
+        </a>
+        <form method="post" action="{% url 'delete_all_form_students' selected_form %}" class="d-inline"
+              onsubmit="return confirm('Futa wanafunzi WOTE {{ students|length }} wa Form {{ selected_form }}? Huwezi kurudisha nyuma.');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-danger">🗑 Futa Wote</button>
+        </form>
+      </div>
       {% endif %}
     </div>
     <div class="card-body p-0">
