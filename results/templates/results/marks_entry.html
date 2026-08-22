@@ -385,9 +385,9 @@
           <div class="me-voice-status" id="meVoiceStatus"></div>
           <div class="me-voice-hint" id="meVoiceHint" style="display:none;">
             💡 {% if LANG == 'sw' %}
-              Sauti ikishindwa kutambua, andika alama kwenye kisanduku kilichoangaziwa kisha bonyeza Enter — itaendelea bila sauti.
+              Sema alama kwa Kiingereza (mfano "forty five") kwa usahihi zaidi — Kiswahili mara nyingi hakieleweki vizuri na mfumo. Ikishindwa kutambua, andika alama kwenye kisanduku kilichoangaziwa kisha bonyeza Enter — itaendelea bila sauti.
             {% else %}
-              If voice can't catch it, type the score in the highlighted box and press Enter — it'll move on without the mic.
+              Say the score in English (e.g. "forty five") for best accuracy. If voice can't catch it, type the score in the highlighted box and press Enter — it'll move on without the mic.
             {% endif %}
           </div>
         </div>
@@ -795,7 +795,15 @@
         if (voiceHint) voiceHint.style.display = '';
 
         recognition = new SpeechRecognitionCtor();
-        recognition.lang = LANG === 'sw' ? 'sw-TZ' : 'en-US';
+        // Chrome's Swahili speech model (sw-TZ) is unreliable for this —
+        // confirmed in real use: "thelathini" was transcribed as
+        // completely unrelated words ("Siri Siri"), while English
+        // numbers came through correctly every time. English recognition
+        // is always used for the actual listening, regardless of the
+        // page's display language — parseScore() still understands
+        // Swahili number words too, in case they come through cleanly,
+        // but English is what's actually reliable.
+        recognition.lang = 'en-US';
         recognition.continuous = false;
         recognition.interimResults = false;
         recognition.maxAlternatives = 3;
