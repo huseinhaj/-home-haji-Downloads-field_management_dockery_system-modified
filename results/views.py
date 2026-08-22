@@ -787,8 +787,15 @@ def _save_student(first, middle, last, gender):
     return {'id': student.id, 'name': ' '.join(name_parts)}
 
 
-def _parse_pdf_roster(uploaded_file):
-    """Extract student rows from a PDF roster using pdfplumber."""
+def _parse_pdf_roster(uploaded_file, on_student=_save_student):
+    """Extract student rows from a PDF roster using pdfplumber.
+
+    `on_student(first, middle, last, gender)` is called for each row found
+    and its return value collected — defaults to _save_student (creates/
+    gets a Student, for the per-teacher roster upload), but the Academic's
+    form-wide roster upload passes a FormStudent-saving callback instead so
+    both uploads share this exact same PDF/CSV parsing logic.
+    """
     import pdfplumber, re
     students_out = []
     uploaded_file.seek(0)
@@ -816,7 +823,7 @@ def _parse_pdf_roster(uploaded_file):
                         if parsed:
                             first, middle, last, gender = parsed
                             if first and first.lower() not in ('nan', 'none', ''):
-                                students_out.append(_save_student(first, middle, last, gender))
+                                students_out.append(on_student(first, middle, last, gender))
             else:
                 # Plain text extraction — each line is one student.
                 # Some PDFs contain CSV text (comma-separated) rather than
@@ -907,15 +914,18 @@ def _parse_pdf_roster(uploaded_file):
                         first, middle, last, gender = parsed
 
                     if first and first.lower() not in ('nan', 'none', ''):
-                        students_out.append(_save_student(
+                        students_out.append(on_student(
                             first.strip(), (middle or '').strip(), last.strip() or 'Unknown',
                             normalize_gender(gender)
                         ))
     return students_out
 
 
-def _parse_spreadsheet_roster(uploaded_file):
-    """Parse CSV or Excel roster with flexible column detection."""
+def _parse_spreadsheet_roster(uploaded_file, on_student=_save_student):
+    """Parse CSV or Excel roster with flexible column detection.
+
+    See _parse_pdf_roster for what `on_student` is for.
+    """
     import pandas as pd
     uploaded_file.seek(0)
     fname = uploaded_file.name.lower()
@@ -968,7 +978,7 @@ def _parse_spreadsheet_roster(uploaded_file):
             continue
 
         gender_raw = _pick_col(row, col_lower, ['gender', 'jinsia', 'sex', 'jinsia ya mwanafunzi']) or 'M'
-        students_out.append(_save_student(
+        students_out.append(on_student(
             first.strip().capitalize(),
             (middle or '').strip().capitalize(),
             (last or 'Unknown').strip().capitalize(),
@@ -1944,7 +1954,15 @@ def upload_logos(request):
 @academic_required
 def upload_form_students(request):
     """Academic Officer uploads orodha ya wanafunzi kwa form fulani.
-    Accepts Excel/CSV: columns = Admission No, First Name, Middle Name, Last Name, Gender."""
+
+    Same file formats as the per-teacher roster upload (upload_roster):
+    PDF (one full name + gender per line, e.g. "Halima Ally Mohamed F"),
+    or CSV/Excel with columns First Name | Middle Name | Last Name |
+    Gender — parsed by the exact same _parse_pdf_roster/
+    _parse_spreadsheet_roster used there, just pointed at a FormStudent-
+    saving callback instead of Student, so both uploads accept identically
+    formatted files.
+    """
     school = request.user.school
     if not school:
         messages.error(request, "Hakuna shule iliyowekwa.")
@@ -1959,50 +1977,43 @@ def upload_form_students(request):
             messages.error(request, "Chagua faili la orodha ya wanafunzi.")
             return redirect(f'{reverse("upload_form_students")}?form={selected_form}')
 
-        import csv, io
+        import uuid
         ext = Path(uploaded_file.name).suffix.lower()
-        count = 0
-        skipped = 0
+
+        # FormStudent has no free-text admission number in this bare
+        # "Name Gender" format — synthesize a unique one so rows never
+        # collide on the (school, form, admission_no) constraint, and
+        # dedupe by name so re-uploading the same file doesn't create
+        # duplicate students.
+        def _save_form_student(first, middle, last, gender):
+            existing = FormStudent.objects.filter(
+                school=school, form=selected_form,
+                first_name=first, middle_name=middle, last_name=last,
+            ).first()
+            if existing:
+                if existing.gender != gender:
+                    existing.gender = gender
+                    existing.save(update_fields=['gender'])
+                return {'created': False}
+            FormStudent.objects.create(
+                school=school, form=selected_form,
+                admission_no=f'NA-{uuid.uuid4().hex[:10]}',
+                first_name=first, middle_name=middle, last_name=last, gender=gender,
+            )
+            return {'created': True}
 
         try:
-            if ext in ('.csv', '.txt'):
-                content = uploaded_file.read().decode('utf-8', errors='replace')
-                reader = csv.reader(io.StringIO(content))
-                rows = list(reader)
-            elif ext in ('.xlsx', '.xls'):
-                import pandas as pd
-                df = pd.read_excel(uploaded_file, dtype=str).fillna('')
-                rows = [list(df.columns)] + df.values.tolist()
+            if ext == '.pdf':
+                saved = _parse_pdf_roster(uploaded_file, on_student=_save_form_student)
+            elif ext in ('.csv', '.xlsx', '.xls'):
+                saved = _parse_spreadsheet_roster(uploaded_file, on_student=_save_form_student)
             else:
-                messages.error(request, f"Aina ya faili '{ext}' haijulikani. Tumia CSV au Excel.")
+                messages.error(request, f"Aina ya faili '{ext}' haijulikani. Tumia PDF, CSV au Excel.")
                 return redirect(f'{reverse("upload_form_students")}?form={selected_form}')
 
-            # Skip header row
-            data_rows = rows[1:] if len(rows) > 1 else []
-
-            for row in data_rows:
-                if len(row) < 4:
-                    skipped += 1
-                    continue
-                adm = str(row[0]).strip() if row[0] else ''
-                fn = str(row[1]).strip() if len(row) > 1 else ''
-                mn = str(row[2]).strip() if len(row) > 2 else ''
-                ln = str(row[3]).strip() if len(row) > 3 else ''
-                g = str(row[4]).strip().upper() if len(row) > 4 and row[4] else 'M'
-                if g not in ('M', 'F'):
-                    g = 'M'
-                if not fn or not ln:
-                    skipped += 1
-                    continue
-
-                FormStudent.objects.update_or_create(
-                    school=school, form=selected_form, admission_no=adm,
-                    defaults={'first_name': fn, 'middle_name': mn, 'last_name': ln, 'gender': g},
-                )
-                count += 1
-
+            count = len(saved)
             if count:
-                messages.success(request, f"Wanafunzi {count} wa Form {selected_form} wamehifadhiwa! ({skipped} wameachwa)")
+                messages.success(request, f"Wanafunzi {count} wa Form {selected_form} wamehifadhiwa!")
             else:
                 messages.warning(request, "Hakuna wanafunzi waliohifadhiwa. Angalia muundo wa faili.")
         except Exception as e:
