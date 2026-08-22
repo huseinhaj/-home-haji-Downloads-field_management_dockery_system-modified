@@ -152,7 +152,7 @@ def recompute_processed_results_for_exam(exam):
         # having fewer subjects than the standard count.
         best = graded[:best_n]
         points = sum(p for _, p in best)
-        division = get_division(points)
+        division = get_division(points, form=exam.form)
         counted_subjects = ', '.join(r.subject.name for r, _ in best)
 
         student_data.append(

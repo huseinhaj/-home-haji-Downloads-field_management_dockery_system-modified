@@ -242,23 +242,40 @@ def parse_name_score_sheet(uploaded_file) -> list[tuple[str, int]]:
     return rows
 
 
-def get_division(points):
+def get_division(points, form=None):
     """NECTA division from accumulated grade points.
 
-    CSEE (7 subjects, points range 7–49):
+    CSEE (Form 1/3/4, 7 subjects, points range 7–49):
         I:   ≤ 17   (avg ~B+ or better)
         II:  18–21  (avg ~B to B-)
         III: 22–24  (avg ~C+)
         IV:  25–30  (avg ~C)
         0:   > 30   (avg ~D or worse)
 
-    ACSEE (3 subjects, points range 3–21):
+    ACSEE (Form 5/6, 3 subjects, points range 3–21):
         I:   ≤ 7
         II:  8–10
         III: 11–12
         IV:  13–15
         0:   > 15
+
+    Was previously CSEE-only regardless of form — an A-level student with
+    3 subjects averaging D (12 points) fell under the CSEE "≤17 = Division
+    I" band and was wrongly graded top division; a student who failed all
+    3 (21 points) landed in "18-21 = Division II" instead of the fail
+    division (0). The two scales scale with a completely different number
+    of subjects (3 vs 7) and can't share one set of cutoffs.
     """
+    if form in (5, 6):
+        if points <= 7:
+            return "I"
+        if points <= 10:
+            return "II"
+        if points <= 12:
+            return "III"
+        if points <= 15:
+            return "IV"
+        return "0"
     if points <= 17:
         return "I"
     if points <= 21:
