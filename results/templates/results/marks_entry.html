@@ -662,13 +662,22 @@
           if (!isNaN(n)) return n;
         }
 
-        const words = transcript.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+        let words = transcript.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
         if (!words.length) return null;
 
-        // "mia" (hundred) is only ever exactly 100 for a 0–100 score —
-        // never additive with whatever follows it ("mia moja" means
-        // "one hundred", not "101").
-        if (words.includes('mia')) return 100;
+        // Scores are whole numbers 0–100 — if a decimal slipped in
+        // ("forty five point five"), keep only the whole-number part
+        // before "point"/"nukta" rather than let it corrupt the sum.
+        const pointIdx = Math.max(words.indexOf('point'), words.indexOf('nukta'));
+        if (pointIdx !== -1) words = words.slice(0, pointIdx);
+        if (!words.length) return null;
+
+        // "hundred"/"one hundred" and "mia"/"mia moja" only ever mean
+        // exactly 100 for a 0–100 score — never additive with a
+        // neighbouring word ("one hundred" summed word-by-word gives the
+        // wrong 101, which then fails the 0–100 check and silently
+        // never fills in at all).
+        if (words.includes('hundred') || words.includes('mia')) return 100;
 
         // One combined pass per word: exact Swahili, then exact English,
         // then a fuzzy Swahili near-miss — so a single well-recognised
@@ -683,7 +692,10 @@
           if (Object.prototype.hasOwnProperty.call(EN_NUMBERS, w)) {
             sum += EN_NUMBERS[w]; found = true; return;
           }
-          const v = closestNumberWord(w, SW_NUMBERS);
+          // Fuzzy near-miss against whichever set — English first since
+          // that's the recognizer's actual locale now.
+          let v = closestNumberWord(w, EN_NUMBERS);
+          if (v === null) v = closestNumberWord(w, SW_NUMBERS);
           if (v !== null) { sum += v; found = true; }
         });
         return found ? sum : null;
@@ -806,7 +818,7 @@
         recognition.lang = 'en-US';
         recognition.continuous = false;
         recognition.interimResults = false;
-        recognition.maxAlternatives = 3;
+        recognition.maxAlternatives = 5;
 
         recognition.onstart = () => { recognizing = true; };
 
