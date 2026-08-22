@@ -72,6 +72,34 @@
     display: inline-block; min-width: 30px; text-align: center;
     font-weight: 800; font-size: 0.72rem; border-radius: 2px; padding: 0.12rem 0.35rem;
   }
+  .me-table tbody tr.voice-active {
+    background: #fff3d6 !important; outline: 2px solid #D9A441; outline-offset: -2px;
+  }
+  .me-table tbody tr.voice-done { background: #eafaf1; }
+
+  /* Voice entry bar */
+  .me-voice-bar {
+    display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+    margin-bottom: 0.9rem; padding: 0.6rem 0.8rem;
+    background: #f8f9fa; border: 1.5px solid #dee2e6; border-radius: 2px;
+  }
+  .btn-me-voice {
+    background: #fff; color: #1F7A3D; border: 1.5px solid #1F7A3D;
+    font-weight: 700; padding: 0.45rem 1rem; border-radius: 2px; font-size: 0.82rem;
+    cursor: pointer; white-space: nowrap;
+  }
+  .btn-me-voice:hover { background: #1F7A3D; color: #fff; }
+  .btn-me-voice.listening {
+    background: #c0392b; border-color: #c0392b; color: #fff;
+    animation: me-pulse 1.4s ease-in-out infinite;
+  }
+  .btn-me-voice:disabled { opacity: 0.5; cursor: not-allowed; }
+  @keyframes me-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(192,57,43,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(192,57,43,0); }
+  }
+  .me-voice-status { font-size: 0.82rem; color: #555; font-weight: 600; }
+  .me-voice-status .name { color: #1F7A3D; font-weight: 800; }
 
   /* Review table */
   .me-review .pos-badge {
@@ -345,6 +373,12 @@
         <span class="badge-soft" id="meCountBadge" style="background:#1F7A3D;color:#fff;">0 {% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</span>
       </div>
       <div class="panel-body">
+        <div class="me-voice-bar" id="meVoiceBar">
+          <button type="button" class="btn-me-voice" id="meVoiceBtn">
+            🎙️ {% if LANG == 'sw' %}Jaza kwa Sauti{% else %}Voice Entry{% endif %}
+          </button>
+          <div class="me-voice-status" id="meVoiceStatus"></div>
+        </div>
         <div class="me-table-wrap" id="meTableWrap">
           <table class="me-table">
             <thead>
@@ -536,6 +570,237 @@
     }
 
     students.forEach(addStudent);
+
+    /* ═══ VOICE ENTRY — walks the roster one student at a time.
+       Teacher hears the student's name, says a score, it fills in and
+       the system moves on to the next student automatically. Manual
+       typing (above) keeps working untouched at all times. ═══ */
+    (() => {
+      const voiceBtn = document.getElementById('meVoiceBtn');
+      const voiceStatus = document.getElementById('meVoiceStatus');
+      if (!voiceBtn) return;
+
+      const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognitionCtor) {
+        voiceBtn.disabled = true;
+        voiceStatus.textContent = LANG === 'sw'
+          ? 'Kivinjari hiki hakitumii sauti — tumia Chrome au Edge.'
+          : "This browser doesn't support voice input — try Chrome or Edge.";
+        return;
+      }
+
+      // Swahili number words → value. Compound numbers ("arobaini na tano" =
+      // 45) are parsed by summing every recognised number-word in the phrase.
+      const SW_NUMBERS = {
+        sifuri: 0, moja: 1, mbili: 2, tatu: 3, nne: 4, tano: 5, sita: 6, saba: 7,
+        nane: 8, tisa: 9, kumi: 10, ishirini: 20, thelathini: 30, arobaini: 40,
+        hamsini: 50, sitini: 60, sabini: 70, themanini: 80, tisini: 90, mia: 100,
+      };
+
+      function parseScore(transcript) {
+        const digits = transcript.match(/\d+/);
+        if (digits) {
+          const n = parseInt(digits[0], 10);
+          if (!isNaN(n)) return n;
+        }
+        const words = transcript.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+        let sum = 0, found = false;
+        words.forEach(w => {
+          if (Object.prototype.hasOwnProperty.call(SW_NUMBERS, w)) {
+            sum += SW_NUMBERS[w];
+            found = true;
+          }
+        });
+        return found ? sum : null;
+      }
+
+      let active = false;
+      // `wantListen`  = we WANT the mic on right now (name has finished
+      //                 being announced, we're waiting for a score).
+      // `recognizing` = the SpeechRecognition object is ACTUALLY running.
+      // Restart is only ever attempted through tryStartListening(), which
+      // checks both — this is what the old code got wrong: it called
+      // recognition.start() straight from a fixed setTimeout after TTS
+      // finished, racing against the previous session's own shutdown. If
+      // that race lost, start() threw (silently swallowed by the old
+      // try/catch), the mic never actually turned back on, and the
+      // teacher was left talking to a dead mic until an unrelated onend
+      // eventually fired and recovered it — which reads as the whole
+      // thing "going in circles".
+      let wantListen = false;
+      let recognizing = false;
+      let order = [];   // student ids in table order, snapshotted when voice starts
+      let idx = 0;
+      let retryCount = 0;
+      let recognition = null;
+      let restartTimer = null;
+
+      function currentRow(id) {
+        return rowsBody.querySelector('tr[data-id="' + id + '"]');
+      }
+
+      function highlightRow(id) {
+        rowsBody.querySelectorAll('tr.voice-active').forEach(tr => tr.classList.remove('voice-active'));
+        const row = currentRow(id);
+        if (row) {
+          row.classList.add('voice-active');
+          row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+      }
+
+      function speak(text, onDone) {
+        if (!window.speechSynthesis) { if (onDone) onDone(); return; }
+        try {
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = LANG === 'sw' ? 'sw-TZ' : 'en-US';
+          u.rate = 1.05;
+          u.onend = () => { if (onDone) onDone(); };
+          u.onerror = () => { if (onDone) onDone(); };
+          window.speechSynthesis.speak(u);
+        } catch (e) { if (onDone) onDone(); }
+      }
+
+      // The single place that ever calls recognition.start() — safe to
+      // call as often as we like, from anywhere (onend, TTS callback,
+      // a retry timer): it's a no-op unless we actually want to listen
+      // and the recognizer isn't already running.
+      function tryStartListening() {
+        if (!active || !wantListen || recognizing) return;
+        try { recognition.start(); } catch (e) {
+          // Already starting somehow — onstart/onend will follow and
+          // tryStartListening gets another chance from there.
+        }
+      }
+
+      function goToStudent(newIdx) {
+        idx = newIdx;
+        retryCount = 0;
+        if (idx >= order.length) { finishVoice(); return; }
+        const id = order[idx];
+        const s = byId.get(id);
+        if (!s) { goToStudent(idx + 1); return; }
+        highlightRow(id);
+        wantListen = false; // don't listen while the name is being read out
+        voiceStatus.innerHTML = (LANG === 'sw' ? 'Sema alama ya ' : 'Say the score for ') +
+          '<span class="name">' + escapeHtml(s.name) + '</span> (' + (idx + 1) + '/' + order.length + ')';
+        speak(s.name, () => {
+          if (!active) return;
+          wantListen = true;
+          tryStartListening();
+        });
+      }
+
+      function finishVoice() {
+        stopVoice();
+        voiceStatus.textContent = LANG === 'sw'
+          ? '✅ Umemaliza wanafunzi wote kwa sauti — kagua alama kisha bonyeza Hifadhi & Kagua.'
+          : '✅ Finished all students by voice — check the scores, then hit Save & Review.';
+      }
+
+      function startVoice() {
+        order = [...byId.keys()];
+        if (!order.length) {
+          voiceStatus.textContent = LANG === 'sw'
+            ? 'Hakuna wanafunzi bado — pakia orodha kwanza.'
+            : 'No students yet — upload the roster first.';
+          return;
+        }
+        active = true;
+        voiceBtn.textContent = '⏹ ' + (LANG === 'sw' ? 'Simamisha Sauti' : 'Stop Voice Entry');
+        voiceBtn.classList.add('listening');
+
+        recognition = new SpeechRecognitionCtor();
+        recognition.lang = LANG === 'sw' ? 'sw-TZ' : 'en-US';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 3;
+
+        recognition.onstart = () => { recognizing = true; };
+
+        recognition.onresult = (ev) => {
+          const results = ev.results[ev.results.length - 1];
+          let score = null;
+          for (let i = 0; i < results.length && score === null; i++) {
+            score = parseScore(results[i].transcript);
+          }
+          const id = order[idx];
+          const s = byId.get(id);
+          if (score === null) {
+            retryCount++;
+            voiceStatus.innerHTML = (retryCount >= 3
+              ? (LANG === 'sw'
+                  ? 'Bado nasikiliza... sema namba tu, mfano "45", ya '
+                  : "Still listening... just say the number, e.g. \"45\", for ")
+              : (LANG === 'sw' ? 'Sikuelewa, sema tena alama ya ' : "Didn't catch that, repeat the score for ")) +
+              '<span class="name">' + escapeHtml(s.name) + '</span>';
+            return; // stays on this student — onend below restarts listening
+          }
+          if (score < 0 || score > 100) {
+            retryCount++;
+            voiceStatus.textContent = LANG === 'sw'
+              ? 'Alama lazima iwe kati ya 0–100, jaribu tena.'
+              : 'Score must be 0–100, try again.';
+            return;
+          }
+          applyScore(id, score);
+          goToStudent(idx + 1);
+        };
+
+        recognition.onerror = (ev) => {
+          if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+            voiceStatus.textContent = LANG === 'sw'
+              ? '❌ Ruhusa ya maikrofoni imekataliwa.'
+              : '❌ Microphone permission denied.';
+            stopVoice();
+          }
+          // other errors (no-speech, aborted, network) are recovered by onend's restart
+        };
+
+        recognition.onend = () => {
+          recognizing = false;
+          if (active && wantListen) {
+            // Browser stopped listening after a pause — restart automatically
+            // so the teacher never has to click anything between students.
+            // Routed through tryStartListening so this can never collide
+            // with a start already triggered elsewhere.
+            clearTimeout(restartTimer);
+            restartTimer = setTimeout(tryStartListening, 250);
+          }
+        };
+
+        goToStudent(0);
+      }
+
+      function applyScore(id, score) {
+        const s = byId.get(id);
+        if (!s) return;
+        s.score = score;
+        const input = rowsBody.querySelector('input.score-input[data-id="' + id + '"]');
+        if (input) input.value = score;
+        const row = currentRow(id);
+        if (row) { row.classList.remove('voice-active'); row.classList.add('voice-done'); }
+      }
+
+      function stopVoice() {
+        active = false;
+        wantListen = false;
+        recognizing = false;
+        clearTimeout(restartTimer);
+        if (recognition) {
+          recognition.onend = null;
+          try { recognition.stop(); } catch (e) {}
+          recognition = null;
+        }
+        voiceBtn.textContent = '🎙️ ' + (LANG === 'sw' ? 'Jaza kwa Sauti' : 'Voice Entry');
+        voiceBtn.classList.remove('listening');
+        rowsBody.querySelectorAll('tr.voice-active').forEach(tr => tr.classList.remove('voice-active'));
+      }
+
+      voiceBtn.addEventListener('click', () => {
+        if (active) { stopVoice(); voiceStatus.textContent = ''; }
+        else startVoice();
+      });
+    })();
 
     // Drag & drop
     ['dragenter', 'dragover'].forEach(ev => uploadBox.addEventListener(ev, e => {
