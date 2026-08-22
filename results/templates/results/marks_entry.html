@@ -609,20 +609,82 @@
         nane: 8, tisa: 9, kumi: 10, ishirini: 20, thelathini: 30, arobaini: 40,
         hamsini: 50, sitini: 60, sabini: 70, themanini: 80, tisini: 90, mia: 100,
       };
+      // English fallback — the teacher may say English digits/words even
+      // when the recognizer's locale is set to Swahili.
+      const EN_NUMBERS = {
+        zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+        eight: 8, nine: 9, ten: 10, twenty: 20, thirty: 30, forty: 40, fourty: 40,
+        fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100,
+      };
+
+      // Edit distance so a slightly misheard word ("arubaini" instead of
+      // "arobaini") still matches — ASR on a less-common recognizer
+      // language like Swahili often gets one letter wrong rather than
+      // mangling the whole word.
+      function levenshtein(a, b) {
+        const m = a.length, n = b.length;
+        const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+        for (let i = 0; i <= m; i++) dp[i][0] = i;
+        for (let j = 0; j <= n; j++) dp[0][j] = j;
+        for (let i = 1; i <= m; i++) {
+          for (let j = 1; j <= n; j++) {
+            dp[i][j] = a[i - 1] === b[j - 1]
+              ? dp[i - 1][j - 1]
+              : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+          }
+        }
+        return dp[m][n];
+      }
+
+      // Deliberately strict — fuzzy-matching ordinary conversational
+      // words against number words too loosely causes silent wrong
+      // answers (e.g. "sijui" nearly matching "sifuri"/0), which is far
+      // worse than just not recognising a word at all.
+      function closestNumberWord(word, dict) {
+        if (word.length < 5) return null; // too short to fuzzy-match safely —
+        // 4-letter words (e.g. "sana") collide with real number words
+        // ("saba") at edit-distance 1 too often to risk it
+        let best = null, bestDist = Infinity;
+        Object.keys(dict).forEach(key => {
+          const d = levenshtein(word, key);
+          if (d < bestDist) { bestDist = d; best = key; }
+        });
+        return (best !== null && bestDist <= 1) ? dict[best] : null;
+      }
 
       function parseScore(transcript) {
-        const digits = transcript.match(/\d+/);
-        if (digits) {
-          const n = parseInt(digits[0], 10);
+        // 1. Plain digits — join every digit group so "4 5" (spoken
+        //    digit by digit) and "45" (spoken as one number) both
+        //    resolve the same way.
+        const digitGroups = transcript.match(/\d+/g);
+        if (digitGroups && digitGroups.length) {
+          const n = parseInt(digitGroups.join(''), 10);
           if (!isNaN(n)) return n;
         }
+
         const words = transcript.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+        if (!words.length) return null;
+
+        // "mia" (hundred) is only ever exactly 100 for a 0–100 score —
+        // never additive with whatever follows it ("mia moja" means
+        // "one hundred", not "101").
+        if (words.includes('mia')) return 100;
+
+        // One combined pass per word: exact Swahili, then exact English,
+        // then a fuzzy Swahili near-miss — so a single well-recognised
+        // word elsewhere in the phrase (e.g. "tano" in "arubaini na
+        // tano") can't short-circuit before a misheard word next to it
+        // (e.g. "arubaini") gets its own chance to fuzzy-match.
         let sum = 0, found = false;
         words.forEach(w => {
           if (Object.prototype.hasOwnProperty.call(SW_NUMBERS, w)) {
-            sum += SW_NUMBERS[w];
-            found = true;
+            sum += SW_NUMBERS[w]; found = true; return;
           }
+          if (Object.prototype.hasOwnProperty.call(EN_NUMBERS, w)) {
+            sum += EN_NUMBERS[w]; found = true; return;
+          }
+          const v = closestNumberWord(w, SW_NUMBERS);
+          if (v !== null) { sum += v; found = true; }
         });
         return found ? sum : null;
       }
@@ -750,12 +812,20 @@
           const s = byId.get(id);
           if (score === null) {
             retryCount++;
+            // Show exactly what the recognizer heard once it's failed a
+            // couple of times — the raw transcript is the single most
+            // useful thing for figuring out why a spoken number isn't
+            // landing (mis-hearing vs. not speaking a number at all).
+            const heard = results[0] ? results[0].transcript.trim() : '';
+            const heardHtml = (retryCount >= 2 && heard)
+              ? ' <span style="opacity:0.7;">(' + (LANG === 'sw' ? 'nilisikia' : 'heard') + ': "' + escapeHtml(heard) + '")</span>'
+              : '';
             voiceStatus.innerHTML = (retryCount >= 3
               ? (LANG === 'sw'
                   ? 'Bado nasikiliza... sema namba tu, mfano "45", ya '
                   : "Still listening... just say the number, e.g. \"45\", for ")
               : (LANG === 'sw' ? 'Sikuelewa, sema tena alama ya ' : "Didn't catch that, repeat the score for ")) +
-              '<span class="name">' + escapeHtml(s.name) + '</span>';
+              '<span class="name">' + escapeHtml(s.name) + '</span>' + heardHtml;
             return; // stays on this student — onend below restarts listening
           }
           if (score < 0 || score > 100) {
@@ -805,7 +875,7 @@
             // Routed through tryStartListening so this can never collide
             // with a start already triggered elsewhere.
             clearTimeout(restartTimer);
-            restartTimer = setTimeout(tryStartListening, 250);
+            restartTimer = setTimeout(tryStartListening, 120);
           }
         };
 
