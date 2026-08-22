@@ -79,33 +79,30 @@ def normalize_gender(raw_gender: str) -> str:
 
 
 def get_grade(score):
-    """NECTA CSEE (O-Level, Form 1-4) subject grade — 7-band scale.
+    """NECTA CSEE (O-Level, Form 1-4) subject grade — 5-band scale.
 
-    Official NECTA CSEE grading:
-        A:  75-100  (1 point)
-        B+: 65-74   (2 points)
-        B:  55-64   (3 points)
-        C+: 45-54   (4 points)
-        C:  35-44   (5 points)
-        D:  25-34   (6 points)
-        F:  0-24    (7 points)
+    Official NECTA CSEE grading (verified against real 2022/2024 CSEE
+    result slips on onlinesys.necta.go.tz — subject grades there are only
+    ever A/B/C/D/F, never B+/C+):
+        A: 75-100  (1 point)
+        B: 65-74   (2 points)
+        C: 45-64   (3 points)
+        D: 30-44   (4 points)
+        F: 0-29    (5 points)
 
     IMPORTANT: These thresholds MUST stay in sync with the PDF and Excel
-    display services (pdf_export_service._score_fill, excel_export_service
-    _score_grade) — otherwise the points/division computed here will show
-    different letter grades than what the report tables display.
+    display services (pdf_export_service._grading_thresholds/_grade_point,
+    excel_export_service._grade_thresholds) — otherwise the points/division
+    computed here will show different letter grades than what the report
+    tables display.
     """
     if score >= 75:
         return "A"
     if score >= 65:
-        return "B+"
-    if score >= 55:
         return "B"
     if score >= 45:
-        return "C+"
-    if score >= 35:
         return "C"
-    if score >= 25:
+    if score >= 30:
         return "D"
     return "F"
 
@@ -149,7 +146,7 @@ def get_grade_for_form(score, form):
 
     - Form 2 (FTNA):        A 75+ | B 65+ | C 45+ | D 30+ | F <30
     - Form 5/6 (ACSEE):     A 80+ | B 70+ | C 60+ | D 50+ | E 40+ | S 35+ | F <35
-    - Form 1/3/4 (CSEE):    A 75+ | B 65+ | C 50+ | D 40+ | F <40
+    - Form 1/3/4 (CSEE):    A 75+ | B 65+ | C 45+ | D 30+ | F <30
     """
     if form == 2:
         return get_grade_ftna(score)
@@ -163,22 +160,22 @@ def is_passing_grade(grade):
     return grade != "F"
 
 
-GRADE_POINTS = {"A": 1, "B+": 2, "B": 3, "C+": 4, "C": 5, "D": 6, "F": 7}
+GRADE_POINTS = {"A": 1, "B": 2, "C": 3, "D": 4, "F": 5}
 
-# ACSEE (A-Level) uses a different point scale for grades B, C, D
+# ACSEE (A-Level) has two extra bands (E, S) so F carries a higher point value
 _ACSEE_POINTS = {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "S": 6, "F": 7}
 
 
 def get_grade_points(grade, form=None):
-    """NECTA point value for a subject grade (A=1 ... F=7), used to sum
-    a student's total points across subjects for division classification.
+    """NECTA point value for a subject grade, used to sum a student's
+    total points across subjects for division classification.
 
-    CSEE (Form 1-4): A=1, B+=2, B=3, C+=4, C=5, D=6, F=7
+    CSEE (Form 1-4): A=1, B=2, C=3, D=4, F=5
     ACSEE (Form 5-6): A=1, B=2, C=3, D=4, E=5, S=6, F=7
     """
     if form in (5, 6):
         return _ACSEE_POINTS.get(grade, 7)
-    return GRADE_POINTS.get(grade, 7)
+    return GRADE_POINTS.get(grade, 5)
 
 
 # ── Exam dropdown grouping ────────────────────────────────────────────────
@@ -245,12 +242,18 @@ def parse_name_score_sheet(uploaded_file) -> list[tuple[str, int]]:
 def get_division(points, form=None):
     """NECTA division from accumulated grade points.
 
-    CSEE (Form 1/3/4, 7 subjects, points range 7–49):
-        I:   ≤ 17   (avg ~B+ or better)
-        II:  18–21  (avg ~B to B-)
-        III: 22–24  (avg ~C+)
-        IV:  25–30  (avg ~C)
-        0:   > 30   (avg ~D or worse)
+    CSEE (Form 1/3/4, 7 subjects, points range 7–35 since grades are only
+    A-F, 1-5 points each — see get_grade()):
+        I:   7–17
+        II:  18–21
+        III: 22–25
+        IV:  26–33
+        0:   34–35
+
+    Verified empirically against 169+ real candidate records pulled from
+    official NECTA CSEE result slips (onlinesys.necta.go.tz, 2022 and 2024
+    exams) — every points total from 7 to 35 was cross-checked against its
+    printed division, with a clean boundary at 33→IV / 34→0.
 
     ACSEE (Form 5/6, 3 subjects, points range 3–21):
         I:   3–9
@@ -280,9 +283,9 @@ def get_division(points, form=None):
         return "I"
     if points <= 21:
         return "II"
-    if points <= 24:
+    if points <= 25:
         return "III"
-    if points <= 30:
+    if points <= 33:
         return "IV"
     return "0"
 

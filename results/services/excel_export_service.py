@@ -46,9 +46,10 @@ DARK_GREY  = "FF" + TZ_DARK_GREY
 def _grade_thresholds(form):
     """Return (score-thresholds, grade-ranges) for the exam's NECTA scale.
 
-    Form 2 (FTNA) and Form 5/6 (ACSEE) grade on different scales than
-    Form 1/3/4 (CSEE):
-        CSEE:  A 75+ | B+ 65+ | B 55+ | C+ 45+ | C 35+ | D 25+ | F <25
+    Form 5/6 (ACSEE) grades on a wider scale than Form 1/2/3/4 (CSEE/FTNA
+    share the same 5-band A/B/C/D/F scale — verified against real NECTA
+    CSEE result slips, which never show B+/C+):
+        CSEE:  A 75+ | B 65+ | C 45+ | D 30+ | F <30
         FTNA:  A 75+ | B 65+ | C 45+ | D 30+ | F <30
         ACSEE: A 80+ | B 70+ | C 60+ | D 50+ | E 40+ | S 35+ | F <35
     """
@@ -56,7 +57,7 @@ def _grade_thresholds(form):
         return [75, 65, 45, 30], [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
     if form in (5, 6):
         return [80, 70, 60, 50, 40, 35], [('A', '80-100'), ('B', '70-79'), ('C', '60-69'), ('D', '50-59'), ('E', '40-49'), ('S', '35-39'), ('F', '0-34')]
-    return [75, 65, 55, 45, 35, 25], [('A', '75-100'), ('B+', '65-74'), ('B', '55-64'), ('C+', '45-54'), ('C', '35-44'), ('D', '25-34'), ('F', '0-24')]
+    return [75, 65, 45, 30], [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
 
 
 # Grade colour per letter — shared by score cells and the grading-key legend.

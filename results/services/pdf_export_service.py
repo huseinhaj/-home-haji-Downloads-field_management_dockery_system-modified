@@ -124,11 +124,13 @@ def _styles():
 
 # ── Grading ──────────────────────────────────────────────────────────────────
 def _grading_thresholds(form):
+    """CSEE and FTNA share the same 5-band A/B/C/D/F scale — verified
+    against real NECTA CSEE result slips, which never show B+/C+."""
     if form == 2:
         return [75, 65, 45, 30], [('A','75-100'),('B','65-74'),('C','45-64'),('D','30-44'),('F','0-29')]
     if form in (5, 6):
         return [80, 70, 60, 50, 40, 35], [('A','80-100'),('B','70-79'),('C','60-69'),('D','50-59'),('E','40-49'),('S','35-39'),('F','0-34')]
-    return [75, 65, 55, 45, 35, 25], [('A','75-100'),('B+','65-74'),('B','55-64'),('C+','45-54'),('C','35-44'),('D','25-34'),('F','0-24')]
+    return [75, 65, 45, 30], [('A','75-100'),('B','65-74'),('C','45-64'),('D','30-44'),('F','0-29')]
 
 
 def _grade_for_score(score, form=4):
@@ -141,9 +143,12 @@ def _grade_for_score(score, form=4):
     return gr[-1][0]
 
 
-def _grade_point(grade):
-    gp_map = {'A': 1, 'B+': 2, 'B': 3, 'C+': 4, 'C': 5, 'D': 6, 'E': 7, 'S': 8, 'F': 9}
-    return gp_map.get(grade, 9)
+def _grade_point(grade, form=4):
+    if form in (5, 6):
+        gp_map = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'S': 6, 'F': 7}
+    else:
+        gp_map = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'F': 5}
+    return gp_map.get(grade, max(gp_map.values()))
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -605,24 +610,34 @@ def generate_results_pdf_response(exam):
         scores = [score_lookup[(r.student_id, subj.id)]
                   for r in results if (r.student_id, subj.id) in score_lookup]
         if scores:
-            gp_scores = [_grade_point(_grade_for_score(sc, exam.form)) for sc in scores]
+            gp_scores = [_grade_point(_grade_for_score(sc, exam.form), exam.form) for sc in scores]
             avg_gp = sum(gp_scores) / len(gp_scores)
-            if avg_gp <= 1.5:
-                level = "Grade A (Very Good)"
-            elif avg_gp <= 2.5:
-                level = "Grade B+ (Good)"
-            elif avg_gp <= 3.5:
-                level = "Grade B (Good)"
-            elif avg_gp <= 4.5:
-                level = "Grade C (Satisfactory)"
-            elif avg_gp <= 5.5:
-                level = "Grade D (Satisfactory)"
-            elif avg_gp <= 6.5:
-                level = "Grade E (Satisfactory)"
-            elif avg_gp <= 7.5:
-                level = "Grade S (Satisfactory)"
+            if exam.form in (5, 6):
+                if avg_gp <= 1.5:
+                    level = "Grade A (Very Good)"
+                elif avg_gp <= 2.5:
+                    level = "Grade B (Good)"
+                elif avg_gp <= 3.5:
+                    level = "Grade C (Satisfactory)"
+                elif avg_gp <= 4.5:
+                    level = "Grade D (Satisfactory)"
+                elif avg_gp <= 5.5:
+                    level = "Grade E (Satisfactory)"
+                elif avg_gp <= 6.5:
+                    level = "Grade S (Satisfactory)"
+                else:
+                    level = "Grade F (Fail)"
             else:
-                level = "Grade F (Fail)"
+                if avg_gp <= 1.5:
+                    level = "Grade A (Very Good)"
+                elif avg_gp <= 2.5:
+                    level = "Grade B (Good)"
+                elif avg_gp <= 3.5:
+                    level = "Grade C (Satisfactory)"
+                elif avg_gp <= 4.5:
+                    level = "Grade D (Satisfactory)"
+                else:
+                    level = "Grade F (Fail)"
             subj_gpa.append({
                 'name': subj.name,
                 'registered': N,
