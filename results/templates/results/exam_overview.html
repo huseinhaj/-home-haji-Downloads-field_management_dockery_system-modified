@@ -264,7 +264,8 @@
       {% endif %}
 
       {% if submitted_count > 0 %}
-      <a href="{% url 'generate_results_pdf' exam.id %}" class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;" target="_blank">
+      <a href="{% url 'generate_results_pdf' exam.id %}" class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;" target="_blank"
+         {% if submit_ps_url and all_submitted and not ps_submission %}onclick="revealPsSubmit({{ exam.id }})"{% endif %}>
         📄 {% if LANG == 'sw' %}Pakua PDF ya Matokeo{% else %}Download Results PDF{% endif %}
       </a>
       <a href="{% url 'generate_bulk_student_results_pdf' exam.id %}" class="btn" style="background:#24508a;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;" target="_blank">
@@ -289,12 +290,17 @@
           ⏳ {% if LANG == 'sw' %}Imetumwa kwa PS — Inasubiri Kuchapishwa{% else %}Sent to PS — Awaiting Print{% endif %}
         </span>
         {% else %}
-        <form method="post" action="{{ submit_ps_url }}" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="btn" style="background:#6a4fb0;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;">
-            📨 {% if LANG == 'sw' %}Tuma kwa Katibu wa Uchapishaji (PS){% else %}Submit to Printing Secretary (PS){% endif %}
-          </button>
-        </form>
+        <span id="ps-submit-wrap-{{ exam.id }}" style="display:none;">
+          <form method="post" action="{{ submit_ps_url }}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background:#6a4fb0;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;">
+              📨 {% if LANG == 'sw' %}Tuma kwa Katibu wa Uchapishaji (PS){% else %}Submit to Printing Secretary (PS){% endif %}
+            </button>
+          </form>
+        </span>
+        <span id="ps-hint-{{ exam.id }}" style="font-size:0.78rem;color:var(--ink-500);align-self:center;">
+          {% if LANG == 'sw' %}⬅ Pakua PDF kwanza ndipo utume kwa PS{% else %}⬅ Download the PDF first, then send it to PS{% endif %}
+        </span>
         {% endif %}
       {% endif %}
       {% endif %}
@@ -371,6 +377,24 @@ function submitReturnForm() {
   }
   document.getElementById('returnForm').submit();
 }
+
+// Submit-to-PS only appears once the academic has actually opened the
+// results PDF — sessionStorage remembers this per exam so it survives
+// coming back to this page after downloading.
+function revealPsSubmit(examId) {
+  var btn = document.getElementById('ps-submit-wrap-' + examId);
+  var hint = document.getElementById('ps-hint-' + examId);
+  if (btn) { btn.style.display = 'inline'; }
+  if (hint) { hint.style.display = 'none'; }
+  try { sessionStorage.setItem('ps_pdf_seen_' + examId, '1'); } catch (e) {}
+}
+(function restorePsSubmitVisibility() {
+  try {
+    if (sessionStorage.getItem('ps_pdf_seen_{{ exam.id }}')) {
+      revealPsSubmit({{ exam.id }});
+    }
+  } catch (e) {}
+})();
 </script>
 
 {% endblock %}
