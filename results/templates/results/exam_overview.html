@@ -273,7 +273,7 @@
       <a href="{{ excel_url }}" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
         📊 {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %}
       </a>
-      {% if submit_ps_url %}
+      {% if submit_ps_url and all_submitted %}
         {% if ps_submission.status == 'PRINTED' %}
         <span class="btn" style="background:#1a7a3b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;cursor:default;">
           🖨️ {% if LANG == 'sw' %}Imechapishwa na PS{% else %}Printed by PS{% endif %} ✓
