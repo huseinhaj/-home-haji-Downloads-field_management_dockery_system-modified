@@ -26,7 +26,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 VISION_MODEL_OPENROUTER = "google/gemini-2.5-flash"
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-3.6-flash"
 
 MAX_DIMENSION = 1600
 JPEG_QUALITY = 85
@@ -148,7 +148,7 @@ def _clean_rows(raw_rows: list) -> list[dict]:
     return rows
 
 
-def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str) -> str:
+def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, max_tokens: int = 1200) -> str:
     b64 = base64.b64encode(image_bytes).decode("ascii")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -169,7 +169,7 @@ def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str) ->
             }
         ],
         "temperature": 0.1,
-        "max_tokens": 4096,
+        "max_tokens": max_tokens,
     }
     resp = requests.post(url, json=payload, headers=headers, timeout=120)
     if resp.status_code != 200:
@@ -224,6 +224,23 @@ def _read_page_with_ai(img) -> str:
         except Exception as exc:
             or_error = exc
             logger.warning("[ScoreSheetOCR] OpenRouter failed: %s", exc)
+            # Low account balance: OpenRouter reserves budget for the full
+            # max_tokens ceiling up front, not actual usage — a low-balance
+            # account can still afford this task's genuinely small JSON
+            # output if we ask for a lower ceiling. Retry once with
+            # whatever it says it can afford.
+            afford_match = re.search(r"can only afford (\d+)", str(exc))
+            if afford_match:
+                affordable = int(afford_match.group(1))
+                if affordable >= 200:
+                    try:
+                        logger.info("[ScoreSheetOCR] Retrying OpenRouter with max_tokens=%s", affordable)
+                        text = _call_openrouter_vision(image_bytes, mime_type, OPENROUTER_API_KEY, max_tokens=affordable)
+                        logger.info("[ScoreSheetOCR] OpenRouter retry success")
+                        return text
+                    except Exception as retry_exc:
+                        or_error = retry_exc
+                        logger.warning("[ScoreSheetOCR] OpenRouter retry failed: %s", retry_exc)
 
     if GOOGLE_API_KEY:
         try:
