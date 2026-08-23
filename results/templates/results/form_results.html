@@ -96,9 +96,6 @@
   </div>
   <div class="d-flex gap-2 flex-wrap">
     {% if is_academic %}
-    <a href="{{ excel_url }}" class="btn btn-sm" style="background:#1a7a3b;color:#fff;font-weight:700;border-radius:2px;">
-      📊 {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %} — Form {{ form_num }}
-    </a>
     <a href="{% url 'academic_dashboard' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
       &larr; Academic Dashboard
     </a>
@@ -134,18 +131,59 @@
         </div>
       </div>
       <div class="d-flex gap-2 flex-wrap">
-        <a href="{{ ed.pdf_url }}" class="btn btn-sm" style="background:#c0392b;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;" target="_blank">
+        <a href="{{ ed.pdf_url }}" class="btn btn-sm" style="background:#c0392b;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;" target="_blank"
+           {% if ed.submit_ps_url and ed.all_submitted and not ed.ps_submission %}onclick="revealPsSubmit({{ ed.exam.id }})"{% endif %}>
           📄 PDF
         </a>
         {% if is_academic %}
+          {% if ed.all_submitted and not ed.all_approved %}
+          <form method="post" action="{{ ed.approve_all_url }}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm" style="background:#1a7a3b;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;border:none;">
+              ✓ {% if LANG == 'sw' %}Idhinisha Yote{% else %}Approve All{% endif %}
+            </button>
+          </form>
+          {% endif %}
           <a href="{{ ed.bulk_pdf_url }}" class="btn btn-sm" style="background:#24508a;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;" target="_blank">
             📥 {% if LANG == 'sw' %}Ripoti za Wanafunzi Wote{% else %}All Students' Reports{% endif %}
           </a>
-          <a href="{{ ed.excel_url }}" class="btn btn-sm btn-outline-success" style="font-size:0.72rem;border-radius:2px;">📊 Excel</a>
+          {% if ed.submit_ps_url and ed.all_submitted %}
+            {% if ed.ps_submission.status == 'PRINTED' %}
+            <span class="btn btn-sm" style="background:#1a7a3b;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;cursor:default;">
+              🖨️ {% if LANG == 'sw' %}Imechapishwa{% else %}Printed{% endif %} ✓
+            </span>
+            <form method="post" action="{{ ed.submit_ps_url }}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;font-weight:600;">
+                {% if LANG == 'sw' %}Tuma Tena kwa PS{% else %}Resubmit to PS{% endif %}
+              </button>
+            </form>
+            {% elif ed.ps_submission.status == 'PENDING' %}
+            <span class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-size:0.72rem;border-radius:2px;font-weight:700;cursor:default;">
+              ⏳ {% if LANG == 'sw' %}Kwa PS{% else %}With PS{% endif %}
+            </span>
+            {% else %}
+            <span id="ps-submit-wrap-{{ ed.exam.id }}" style="display:none;">
+              <form method="post" action="{{ ed.submit_ps_url }}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm" style="background:#6a4fb0;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;">
+                  📨 {% if LANG == 'sw' %}Tuma kwa PS{% else %}Submit to PS{% endif %}
+                </button>
+              </form>
+            </span>
+            <span id="ps-hint-{{ ed.exam.id }}" style="font-size:0.68rem;color:#888;align-self:center;">
+              {% if LANG == 'sw' %}⬅ Bonyeza PDF kwanza{% else %}⬅ Click PDF first{% endif %}
+            </span>
+            {% endif %}
+          {% endif %}
           {% if ed.all_approved %}
-          <a href="{{ ed.share_url }}" class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-size:0.72rem;border-radius:2px;font-weight:700;">
-            🔗 {% if LANG == 'sw' %}Viungo{% else %}Share Links{% endif %}
-          </a>
+          <form method="post" action="{{ ed.recompute_url }}" style="display:inline;"
+                onsubmit="return confirm('{% if LANG == "sw" %}Hesabu upya AGGT, GPA na Division za mtihani huu?{% else %}Recompute AGGT, GPA and Division for this exam?{% endif %}');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;font-weight:600;">
+              🔄 {% if LANG == 'sw' %}Hesabu Upya{% else %}Recompute{% endif %}
+            </button>
+          </form>
           {% endif %}
         {% endif %}
         <a href="{{ ed.overview_url }}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">{% if LANG == 'sw' %}Maelezo{% else %}Details{% endif %}</a>
@@ -220,4 +258,23 @@
   <br><a href="{% url 'upload_results' %}">{% if LANG == 'sw' %}Unda mtihani mpya{% else %}Create a new exam{% endif %}</a>
 </div>
 {% endif %}
+
+<script>
+// Submit-to-PS only appears once the academic has actually opened that
+// exam's results PDF — sessionStorage remembers this per exam so it
+// survives coming back to this page after downloading.
+function revealPsSubmit(examId) {
+  var btn = document.getElementById('ps-submit-wrap-' + examId);
+  var hint = document.getElementById('ps-hint-' + examId);
+  if (btn) { btn.style.display = 'inline'; }
+  if (hint) { hint.style.display = 'none'; }
+  try { sessionStorage.setItem('ps_pdf_seen_' + examId, '1'); } catch (e) {}
+}
+document.querySelectorAll('[id^="ps-submit-wrap-"]').forEach(function (el) {
+  var examId = el.id.replace('ps-submit-wrap-', '');
+  try {
+    if (sessionStorage.getItem('ps_pdf_seen_' + examId)) { revealPsSubmit(examId); }
+  } catch (e) {}
+});
+</script>
 {% endblock %}

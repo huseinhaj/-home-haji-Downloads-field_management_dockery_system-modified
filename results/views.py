@@ -522,8 +522,6 @@ def exam_overview(request, exam_id):
     progress_pct = round(submitted_count / total_subjects * 100) if total_subjects else 0
     approval_pct = round(approved_count / total_subjects * 100) if total_subjects else 0
 
-    ps_submission = exam.print_submissions.order_by('-submitted_at').first()
-
     return render(request, 'results/exam_overview.html', {
         'exam': exam,
         'subjects_ctx': subjects_ctx,
@@ -537,11 +535,7 @@ def exam_overview(request, exam_id):
         'approval_pct': approval_pct,
         'is_academic': is_academic,
         'finalize_url': reverse('finalize_exam', args=[exam.id]) if is_academic else None,
-        'approve_all_url': reverse('approve_exam_submissions', args=[exam.id]) if is_academic else None,
-        'excel_url': reverse('export_results_excel', args=[exam.id]) if is_academic else None,
         'form_results_url': reverse('form_results', args=[exam.form]),
-        'ps_submission': ps_submission,
-        'submit_ps_url': reverse('submit_exam_to_ps', args=[exam.id]) if is_academic else None,
     })
 
 
@@ -1480,12 +1474,18 @@ def recompute_exam_results(request, exam_id):
 def form_results(request, form_num):
     """Results for all approved exams of a given form level."""
     exams = Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name')
+    is_academic = getattr(request.user, 'is_academic', False)
 
     exams_ctx = []
     for exam in exams:
         subs = exam.subject_submissions.select_related('subject')
         total_subs = subs.count()
         approved_subs = subs.filter(status=SubjectSubmission.STATUS_APPROVED).count()
+        submitted_subs = subs.filter(
+            status__in=[SubjectSubmission.STATUS_SUBMITTED, SubjectSubmission.STATUS_APPROVED]
+        ).count()
+        all_submitted = total_subs > 0 and submitted_subs == total_subs
+        all_approved = total_subs > 0 and approved_subs == total_subs
         processed = exam.processedresult_set.select_related('student').order_by('position')
 
         # NECTA-style per-subject grades for this exam
@@ -1503,24 +1503,27 @@ def form_results(request, form_num):
             'exam': exam,
             'total_subs': total_subs,
             'approved_subs': approved_subs,
-            'all_approved': total_subs > 0 and approved_subs == total_subs,
+            'submitted_subs': submitted_subs,
+            'all_submitted': all_submitted,
+            'all_approved': all_approved,
             'processed_results': list(processed),
             'subjects': exam_subjects,
             'grade_lookup': grade_lookup,
             'grade_key': grade_key,
-            'excel_url': reverse('export_results_excel', args=[exam.id]),
             'pdf_url': reverse('generate_results_pdf', args=[exam.id]),
             'bulk_pdf_url': reverse('generate_bulk_student_results_pdf', args=[exam.id]),
             'overview_url': reverse('exam_overview', args=[exam.id]),
-            'share_url': reverse('exam_share_links', args=[exam.id]),
+            'approve_all_url': reverse('approve_exam_submissions', args=[exam.id]) if is_academic else None,
+            'recompute_url': reverse('recompute_exam_results', args=[exam.id]) if is_academic else None,
+            'submit_ps_url': reverse('submit_exam_to_ps', args=[exam.id]) if is_academic else None,
+            'ps_submission': exam.print_submissions.order_by('-submitted_at').first(),
         })
 
     return render(request, 'results/form_results.html', {
         'form_num': form_num,
         'exams_ctx': exams_ctx,
         'form_label': f'Form {form_num}' if form_num <= 4 else f'Form {form_num} (Advanced)',
-        'excel_url': reverse('form_results_excel', args=[form_num]),
-        'is_academic': getattr(request.user, 'is_academic', False),
+        'is_academic': is_academic,
     })
 
 

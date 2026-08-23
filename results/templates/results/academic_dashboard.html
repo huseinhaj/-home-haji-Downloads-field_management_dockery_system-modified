@@ -311,9 +311,6 @@
         <div class="all-approved-bar">
           <div class="msg">✅ {% if LANG == 'sw' %}Masomo yote yameidhinishwa{% else %}All subjects approved{% endif %}</div>
           <div class="d-flex gap-2">
-            <a href="{% url 'export_results_excel' ed.exam.id %}" class="btn btn-sm btn-outline-success" style="font-size:0.72rem;border-radius:2px;">
-              {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %}
-            </a>
             <a href="{% url 'generate_results_pdf' ed.exam.id %}" class="btn btn-sm btn-outline-danger" style="font-size:0.72rem;border-radius:2px;">
               {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}
             </a>
