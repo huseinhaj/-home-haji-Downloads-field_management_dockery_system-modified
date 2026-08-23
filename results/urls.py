@@ -53,6 +53,10 @@ from .views import (
     delete_all_form_students,
     assign_teacher_form,
     teacher_performance_report,
+    submit_exam_to_ps,
+    printing_secretary_dashboard,
+    ps_pdf_inline,
+    ps_print_view,
 )
 from .marks_entry import (
     download_scoresheet_names_pdf,
@@ -110,6 +114,11 @@ urlpatterns = [
     path('exam/<int:exam_id>/finalize/', finalize_exam, name='finalize_exam'),
     path('exam/<int:exam_id>/approve-all/', approve_exam_submissions, name='approve_exam_submissions'),
     path('exam/<int:exam_id>/recompute/', recompute_exam_results, name='recompute_exam_results'),
+    path('exam/<int:exam_id>/tuma-kwa-ps/', submit_exam_to_ps, name='submit_exam_to_ps'),
+    # Printing Secretary (PS) — receives submitted results PDFs and prints them
+    path('ps/', printing_secretary_dashboard, name='printing_secretary_dashboard'),
+    path('ps/pdf/<int:submission_id>/', ps_pdf_inline, name='ps_pdf_inline'),
+    path('ps/print/<int:submission_id>/', ps_print_view, name='ps_print_view'),
     # Roster upload (AJAX)
     path('upload-roster/', upload_roster, name='upload_roster'),
     path('download-template/', download_roster_template, name='download_roster_template'),

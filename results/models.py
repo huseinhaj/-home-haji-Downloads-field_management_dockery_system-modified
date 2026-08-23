@@ -295,6 +295,37 @@ class SubjectSubmission(models.Model):
         return bool(self.return_notes and self.return_notes.strip())
 
 
+class PrintSubmission(models.Model):
+    """A results PDF the Academic Officer has handed off to the Printing
+    Secretary. The PDF itself is never stored — it's regenerated on demand
+    from the exam, same as everywhere else in this app; this row just
+    tracks the handoff (who submitted it, who printed it, when)."""
+    STATUS_PENDING = 'PENDING'
+    STATUS_PRINTED = 'PRINTED'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_PRINTED, 'Printed'),
+    ]
+
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='print_submissions')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='print_submissions')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    submitted_by = models.ForeignKey(
+        'TeacherAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    printed_by = models.ForeignKey(
+        'TeacherAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    printed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+
+    def __str__(self):
+        return f"{self.exam} — {self.get_status_display()}"
+
+
 class TeacherAccountManager(BaseUserManager):
     def create_pending(self, email, full_name='', role=None, subjects=None):
         """Academic officer pre-registers a teacher's email; account has no
@@ -311,10 +342,12 @@ class TeacherAccountManager(BaseUserManager):
 class TeacherAccount(AbstractBaseUser):
     ROLE_ACADEMIC = 'ACADEMIC'
     ROLE_TEACHER = 'TEACHER'
+    ROLE_PRINTING_SECRETARY = 'PS'
 
     ROLE_CHOICES = [
         (ROLE_ACADEMIC, 'Academic'),
         (ROLE_TEACHER, 'Teacher'),
+        (ROLE_PRINTING_SECRETARY, 'Printing Secretary'),
     ]
 
     email = models.EmailField(unique=True)
@@ -368,6 +401,10 @@ class TeacherAccount(AbstractBaseUser):
     @property
     def is_teacher(self):
         return self.role == self.ROLE_TEACHER
+
+    @property
+    def is_printing_secretary(self):
+        return self.role == self.ROLE_PRINTING_SECRETARY
 
     @property
     def is_activated(self):

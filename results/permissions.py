@@ -26,3 +26,7 @@ teacher_or_academic_required = _role_required(
     lambda user: getattr(user, 'is_teacher', False) or getattr(user, 'is_academic', False),
     "Teacher or Academic access required.",
 )
+printing_secretary_required = _role_required(
+    lambda user: getattr(user, 'is_printing_secretary', False),
+    "Printing Secretary access required.",
+)

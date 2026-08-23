@@ -279,6 +279,30 @@
       <a href="{% url 'exam_share_links' exam.id %}" class="btn" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;font-size:0.82rem;">
         🔗 {% if LANG == 'sw' %}Viungo vya Matokeo{% else %}Share Links{% endif %}
       </a>
+      {% if submit_ps_url %}
+        {% if ps_submission.status == 'PRINTED' %}
+        <span class="btn" style="background:#1a7a3b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;cursor:default;">
+          🖨️ {% if LANG == 'sw' %}Imechapishwa na PS{% else %}Printed by PS{% endif %} ✓
+        </span>
+        <form method="post" action="{{ submit_ps_url }}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
+            {% if LANG == 'sw' %}Tuma Tena kwa PS{% else %}Resubmit to PS{% endif %}
+          </button>
+        </form>
+        {% elif ps_submission.status == 'PENDING' %}
+        <span class="btn" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;font-size:0.82rem;cursor:default;">
+          ⏳ {% if LANG == 'sw' %}Imetumwa kwa PS — Inasubiri Kuchapishwa{% else %}Sent to PS — Awaiting Print{% endif %}
+        </span>
+        {% else %}
+        <form method="post" action="{{ submit_ps_url }}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn" style="background:#6a4fb0;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;">
+            📨 {% if LANG == 'sw' %}Tuma kwa Katibu wa Uchapishaji (PS){% else %}Submit to Printing Secretary (PS){% endif %}
+          </button>
+        </form>
+        {% endif %}
+      {% endif %}
       <form method="post" action="{% url 'recompute_exam_results' exam.id %}" style="display:inline;"
             onsubmit="return confirm('{% if LANG == "sw" %}Hesabu upya AGGT, GPA na Division za mtihani huu?{% else %}Recompute AGGT, GPA and Division for this exam?{% endif %}');">
         {% csrf_token %}

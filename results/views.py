@@ -14,8 +14,8 @@ from django.views.decorators.http import require_POST, require_GET
 from django.core.exceptions import ValidationError
 
 from .forms import ExamUploadForm, TeacherSelfSubjectsForm
-from .models import Exam, ExamResult, FormStudent, PersonalUpload, PersonalUploadResult, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission, TeacherFormAssignment
-from .permissions import academic_required, results_login_required as login_required, teacher_required
+from .models import Exam, ExamResult, FormStudent, PersonalUpload, PersonalUploadResult, PrintSubmission, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission, TeacherFormAssignment
+from .permissions import academic_required, printing_secretary_required, results_login_required as login_required, teacher_required
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
 from .services.pdf_export_service import (
     generate_bulk_student_results_pdf_response,
@@ -195,6 +195,73 @@ def generate_bulk_student_results_pdf(request, exam_id):
 def export_results_excel(request, exam_id):
     exam = _get_exam_or_404(exam_id, request.user)
     return generate_results_excel_response(exam)
+
+
+# ── Printing Secretary (PS) handoff ────────────────────────────────────────
+# Academic Officer submits the exam's results PDF to the school's Printing
+# Secretary; the secretary sees it on their own dashboard and prints it.
+# The PDF is never stored — it's regenerated on demand from the exam, same
+# as everywhere else in this app; PrintSubmission just tracks the handoff.
+
+@academic_required
+@require_POST
+def submit_exam_to_ps(request, exam_id):
+    exam = _get_exam_or_404(exam_id, request.user)
+    submission, created = PrintSubmission.objects.get_or_create(
+        exam=exam,
+        defaults={'school': exam.school, 'submitted_by': request.user},
+    )
+    if not created:
+        submission.status = PrintSubmission.STATUS_PENDING
+        submission.school = exam.school
+        submission.submitted_by = request.user
+        submission.submitted_at = timezone.now()
+        submission.printed_by = None
+        submission.printed_at = None
+        submission.save()
+    messages.success(request, "Matokeo yametumwa kwa Katibu wa Uchapishaji (PS).")
+    return redirect('exam_overview', exam_id=exam.id)
+
+
+@printing_secretary_required
+def printing_secretary_dashboard(request):
+    submissions = PrintSubmission.objects.filter(
+        school=request.user.school
+    ).select_related('exam', 'submitted_by', 'printed_by')
+    pending = [s for s in submissions if s.status == PrintSubmission.STATUS_PENDING]
+    printed = [s for s in submissions if s.status == PrintSubmission.STATUS_PRINTED]
+    return render(request, 'results/printing_secretary_dashboard.html', {
+        'pending_submissions': pending,
+        'printed_submissions': printed,
+    })
+
+
+@printing_secretary_required
+def ps_pdf_inline(request, submission_id):
+    """Serves the results PDF inline (not as an attachment) so the PS
+    print page can embed it in an <iframe> and trigger the browser's
+    print dialog on it."""
+    submission = get_object_or_404(PrintSubmission, pk=submission_id, school=request.user.school)
+    response = generate_results_pdf_response(submission.exam)
+    filename = f"Matokeo_{submission.exam.id}.pdf"
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
+
+
+@printing_secretary_required
+@require_POST
+def ps_print_view(request, submission_id):
+    """Records the print action and hands back a page that auto-opens the
+    browser print dialog on the embedded PDF."""
+    submission = get_object_or_404(PrintSubmission, pk=submission_id, school=request.user.school)
+    submission.status = PrintSubmission.STATUS_PRINTED
+    submission.printed_by = request.user
+    submission.printed_at = timezone.now()
+    submission.save()
+    return render(request, 'results/ps_print.html', {
+        'submission': submission,
+        'pdf_url': reverse('ps_pdf_inline', args=[submission.id]),
+    })
 
 
 # ── Public Results Portal — Search Page (NECTA-style, no login required) ───
@@ -455,6 +522,8 @@ def exam_overview(request, exam_id):
     progress_pct = round(submitted_count / total_subjects * 100) if total_subjects else 0
     approval_pct = round(approved_count / total_subjects * 100) if total_subjects else 0
 
+    ps_submission = exam.print_submissions.order_by('-submitted_at').first()
+
     return render(request, 'results/exam_overview.html', {
         'exam': exam,
         'subjects_ctx': subjects_ctx,
@@ -471,6 +540,8 @@ def exam_overview(request, exam_id):
         'approve_all_url': reverse('approve_exam_submissions', args=[exam.id]) if is_academic else None,
         'excel_url': reverse('export_results_excel', args=[exam.id]) if is_academic else None,
         'form_results_url': reverse('form_results', args=[exam.form]),
+        'ps_submission': ps_submission,
+        'submit_ps_url': reverse('submit_exam_to_ps', args=[exam.id]) if is_academic else None,
     })
 
 

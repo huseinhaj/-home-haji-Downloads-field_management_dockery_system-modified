@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="sw">
+<head>
+  <meta charset="utf-8">
+  <title>Chapisha Matokeo — {{ submission.exam.name }}</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    #toolbar {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.6rem 1rem; background: #1F497D; color: #fff;
+      font-family: system-ui, sans-serif; font-size: 0.9rem;
+    }
+    #toolbar button {
+      background: #D9A441; color: #1F497D; border: none; border-radius: 2px;
+      padding: 0.4rem 0.9rem; font-weight: 700; cursor: pointer; font-size: 0.85rem;
+    }
+    #pdfFrame { width: 100%; height: calc(100% - 48px); border: none; display: block; }
+    @media print { #toolbar { display: none; } #pdfFrame { height: 100%; } }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <span>🖨️ Matokeo yamewekwa alama "Imechapishwa". Dirisha la kuchapisha (print) litafunguka papo hapo.</span>
+    <button type="button" onclick="printNow()">Chapisha Sasa</button>
+  </div>
+  <iframe id="pdfFrame" src="{{ pdf_url }}"></iframe>
+  <script>
+    function printNow() {
+      var frame = document.getElementById('pdfFrame');
+      try {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      } catch (e) {
+        window.print();
+      }
+    }
+    document.getElementById('pdfFrame').addEventListener('load', function () {
+      printNow();
+    });
+  </script>
+</body>
+</html>

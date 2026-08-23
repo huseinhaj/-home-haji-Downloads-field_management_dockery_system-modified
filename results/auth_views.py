@@ -54,7 +54,11 @@ def _remember_email(request, response, email):
 
 
 def _redirect_for_role(account):
-    return redirect('academic_dashboard' if account.is_academic else 'teacher_dashboard')
+    if account.is_academic:
+        return redirect('academic_dashboard')
+    if account.is_printing_secretary:
+        return redirect('printing_secretary_dashboard')
+    return redirect('teacher_dashboard')
 
 
 def _lookup_account(email):

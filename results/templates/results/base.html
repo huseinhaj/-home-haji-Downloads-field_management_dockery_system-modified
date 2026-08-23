@@ -82,6 +82,8 @@
             <a href="{% url 'teacher_dashboard' %}">{% if LANG == 'sw' %}Walimu{% else %}Dashboard{% endif %}</a>
             <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
             <a href="{% url 'personal_upload' %}">{% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
+          {% elif user.is_printing_secretary %}
+            <a href="{% url 'printing_secretary_dashboard' %}">{% if LANG == 'sw' %}Uchapishaji (PS){% else %}Printing (PS){% endif %}</a>
           {% endif %}
           {% if user.is_teacher or user.is_academic %}
           <a href="{% url 'marks_entry' %}">✏️ {% if LANG == 'sw' %}Jaza Alama{% else %}Marks{% endif %}</a>
@@ -135,6 +137,8 @@
         {% elif user.is_teacher %}
           <a href="{% url 'teacher_dashboard' %}"><i class="fas fa-chalkboard-teacher"></i> {% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}</a>
           <a href="{% url 'personal_upload' %}"><i class="fas fa-file-upload"></i> {% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
+        {% elif user.is_printing_secretary %}
+          <a href="{% url 'printing_secretary_dashboard' %}"><i class="fas fa-print"></i> {% if LANG == 'sw' %}Uchapishaji (PS){% else %}Printing (PS){% endif %}</a>
         {% endif %}
         <a href="{% url 'select_my_subjects' %}"><i class="fas fa-book"></i> {% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
         {% if user.is_teacher or user.is_academic %}
@@ -171,6 +175,10 @@
     {% elif user.is_teacher %}
     <a href="{% url 'teacher_dashboard' %}">
       <i class="fas fa-chalkboard-teacher"></i> {% if LANG == 'sw' %}Dashibodi{% else %}Board{% endif %}
+    </a>
+    {% elif user.is_printing_secretary %}
+    <a href="{% url 'printing_secretary_dashboard' %}">
+      <i class="fas fa-print"></i> PS
     </a>
     {% else %}
     <a href="{% url 'results_login' %}">
