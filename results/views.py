@@ -1512,6 +1512,7 @@ def form_results(request, form_num):
             'pdf_url': reverse('generate_results_pdf', args=[exam.id]),
             'bulk_pdf_url': reverse('generate_bulk_student_results_pdf', args=[exam.id]),
             'overview_url': reverse('exam_overview', args=[exam.id]),
+            'share_url': reverse('exam_share_links', args=[exam.id]),
         })
 
     return render(request, 'results/form_results.html', {

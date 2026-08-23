@@ -142,6 +142,11 @@
             📥 {% if LANG == 'sw' %}Ripoti za Wanafunzi Wote{% else %}All Students' Reports{% endif %}
           </a>
           <a href="{{ ed.excel_url }}" class="btn btn-sm btn-outline-success" style="font-size:0.72rem;border-radius:2px;">📊 Excel</a>
+          {% if ed.all_approved %}
+          <a href="{{ ed.share_url }}" class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-size:0.72rem;border-radius:2px;font-weight:700;">
+            🔗 {% if LANG == 'sw' %}Viungo{% else %}Share Links{% endif %}
+          </a>
+          {% endif %}
         {% endif %}
         <a href="{{ ed.overview_url }}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">{% if LANG == 'sw' %}Maelezo{% else %}Details{% endif %}</a>
       </div>
