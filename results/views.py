@@ -17,7 +17,11 @@ from .forms import ExamUploadForm, TeacherSelfSubjectsForm
 from .models import Exam, ExamResult, FormStudent, PersonalUpload, PersonalUploadResult, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission, TeacherFormAssignment
 from .permissions import academic_required, results_login_required as login_required, teacher_required
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
-from .services.pdf_export_service import generate_results_pdf_response, generate_student_result_pdf_response
+from .services.pdf_export_service import (
+    generate_bulk_student_results_pdf_response,
+    generate_results_pdf_response,
+    generate_student_result_pdf_response,
+)
 from .services.subject_pdf_service import (
     GRADE_KEYS_OLEVEL,
     generate_personal_pdf_response,
@@ -173,6 +177,18 @@ def filter_exams(request):
 def generate_results_pdf(request, exam_id):
     exam = _get_exam_or_404(exam_id, request.user)
     return generate_results_pdf_response(exam)
+
+
+@academic_required
+def generate_bulk_student_results_pdf(request, exam_id):
+    """All students of this exam, each on their own result-slip page(s),
+    merged into one downloadable PDF — the bulk counterpart to the
+    single-student download at /shule/matokeo/<token>/pdf/. Restricted to
+    the Academic Officer since it exposes every student's result in one
+    file (the single-student one is safe to be public because a parent
+    only has their own child's share token)."""
+    exam = _get_exam_or_404(exam_id, request.user)
+    return generate_bulk_student_results_pdf_response(exam)
 
 
 @academic_required
@@ -1423,6 +1439,7 @@ def form_results(request, form_num):
             'grade_key': grade_key,
             'excel_url': reverse('export_results_excel', args=[exam.id]),
             'pdf_url': reverse('generate_results_pdf', args=[exam.id]),
+            'bulk_pdf_url': reverse('generate_bulk_student_results_pdf', args=[exam.id]),
             'overview_url': reverse('exam_overview', args=[exam.id]),
         })
 

@@ -1097,10 +1097,13 @@ def generate_results_pdf_response(exam):
 # /shule/matokeo/<token>/ page, so a parent/student can take a copy home
 # instead of only viewing it online.
 # ══════════════════════════════════════════════════════════════════════════════
-def generate_student_result_pdf_response(result):
+def _build_student_result_pdf_bytes(result):
     """One-page NECTA-style result slip for a single ProcessedResult —
     same official header as the full class report, personalised below it
-    with this student's own subjects, scores, and division/points/position."""
+    with this student's own subjects, scores, and division/points/position.
+    Returns a seeked-to-0 BytesIO — shared by the single-student download
+    and the "all students, one file" bulk download, which merges one of
+    these per student."""
     from reportlab.platypus import SimpleDocTemplate
 
     exam = result.exam
@@ -1198,7 +1201,51 @@ def generate_student_result_pdf_response(result):
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
 
     buf.seek(0)
+    return buf
+
+
+def generate_student_result_pdf_response(result):
+    """Single-student download — see _build_student_result_pdf_bytes."""
+    buf = _build_student_result_pdf_bytes(result)
     resp = HttpResponse(buf, content_type='application/pdf')
-    safe_name = student_name.replace(' ', '_')
+    safe_name = _student_name(result).replace(' ', '_')
     resp['Content-Disposition'] = f'attachment; filename="Matokeo_{safe_name}.pdf"'
+    return resp
+
+
+def generate_bulk_student_results_pdf_response(exam):
+    """All students of this exam (i.e. this form — an Exam is already
+    scoped to one form/year/type), each on their own page(s), merged into
+    ONE downloadable PDF — same slip _build_student_result_pdf_bytes
+    produces for a single student, just all of them together in position
+    order. Mirrors the merge pattern curriculum/views.py's
+    download_all_lesson_plans_pdf already uses for the same "many small
+    PDFs -> one file" need."""
+    import pypdfium2 as pdfium
+
+    results = list(
+        ProcessedResult.objects.filter(exam=exam)
+        .select_related('student')
+        .order_by('position')
+    )
+    if not results:
+        resp = HttpResponse('Hakuna matokeo yaliyokamilika kwa mtihani huu bado.', status=404)
+        return resp
+
+    merged = pdfium.PdfDocument.new()
+    buffers = []
+    for result in results:
+        buf = _build_student_result_pdf_bytes(result)
+        buffers.append(buf)
+        src = pdfium.PdfDocument(buf)  # buffers stay alive until save()
+        merged.import_pages(src)
+        src.close()
+
+    out = io.BytesIO()
+    merged.save(out)
+    merged.close()
+
+    resp = HttpResponse(out.getvalue(), content_type='application/pdf')
+    safe_name = exam.name.replace(' ', '_')
+    resp['Content-Disposition'] = f'attachment; filename="Matokeo_Wote_Form{exam.form}_{safe_name}.pdf"'
     return resp

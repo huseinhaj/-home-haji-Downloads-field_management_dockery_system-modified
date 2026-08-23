@@ -5,7 +5,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 import pandas as pd
 
-from .models import Exam, ExamResult, ProcessedResult, SpeechSubmissionSession, Student, Subject, TeacherAccount
+from .models import Exam, ExamResult, ProcessedResult, School, SpeechSubmissionSession, Student, Subject, TeacherAccount
 from .services.scoresheet_ocr_service import (
     ScoreSheetOCRError,
     _clean_rows,
@@ -438,4 +438,53 @@ class StudentResultPdfTests(TestCase):
 	def test_unknown_token_returns_404(self):
 		import uuid
 		response = self.client.get(reverse('student_result_pdf', args=[uuid.uuid4()]))
+		self.assertEqual(response.status_code, 404)
+
+
+class BulkStudentResultsPdfTests(TestCase):
+	"""'Download all students' reports' — merges one result-slip page per
+	student into a single PDF, restricted to the Academic Officer."""
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
+		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=2, school=self.school)
+		self.subject = Subject.objects.create(name='Mathematics')
+		self.student_one = Student.objects.create(first_name='Amina', middle_name='', last_name='Juma', gender='F')
+		self.student_two = Student.objects.create(first_name='Peter', middle_name='', last_name='Mushi', gender='M')
+		ExamResult.objects.create(exam=self.exam, student=self.student_one, subject=self.subject, score=78)
+		ExamResult.objects.create(exam=self.exam, student=self.student_two, subject=self.subject, score=55)
+		ProcessedResult.objects.create(exam=self.exam, student=self.student_one, total_score=78, average_score=78, points=2, position=1, division='I')
+		ProcessedResult.objects.create(exam=self.exam, student=self.student_two, total_score=55, average_score=55, points=5, position=2, division='III')
+		self.academic = TeacherAccount.objects.create(email='academic@example.com', full_name='Academic One', role=TeacherAccount.ROLE_ACADEMIC, school=self.school)
+		self.teacher = TeacherAccount.objects.create(email='teacher@example.com', full_name='Teacher One', role=TeacherAccount.ROLE_TEACHER, school=self.school)
+
+	def test_merges_one_page_per_student_in_position_order(self):
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		response = client.get(reverse('generate_bulk_student_results_pdf', args=[self.exam.id]))
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response['Content-Type'], 'application/pdf')
+		content = response.content
+		self.assertTrue(content.startswith(b'%PDF'))
+
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(content)) as pdf:
+			self.assertEqual(len(pdf.pages), 2)
+			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+		self.assertIn('AMINA JUMA', text.upper())
+		self.assertIn('PETER MUSHI', text.upper())
+
+	def test_rejects_non_academic_teacher(self):
+		client = Client()
+		client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
+		response = client.get(reverse('generate_bulk_student_results_pdf', args=[self.exam.id]))
+		self.assertEqual(response.status_code, 403)
+
+	def test_no_processed_results_returns_404(self):
+		empty_exam = Exam.objects.create(name='Empty Exam', year=2026, form=1, school=self.school)
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		response = client.get(reverse('generate_bulk_student_results_pdf', args=[empty_exam.id]))
 		self.assertEqual(response.status_code, 404)

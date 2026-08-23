@@ -138,6 +138,9 @@
           📄 PDF
         </a>
         {% if is_academic %}
+          <a href="{{ ed.bulk_pdf_url }}" class="btn btn-sm" style="background:#24508a;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;" target="_blank">
+            📥 {% if LANG == 'sw' %}Ripoti za Wanafunzi Wote{% else %}All Students' Reports{% endif %}
+          </a>
           <a href="{{ ed.excel_url }}" class="btn btn-sm btn-outline-success" style="font-size:0.72rem;border-radius:2px;">📊 Excel</a>
         {% endif %}
         <a href="{{ ed.overview_url }}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">{% if LANG == 'sw' %}Maelezo{% else %}Details{% endif %}</a>

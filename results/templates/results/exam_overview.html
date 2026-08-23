@@ -267,6 +267,9 @@
       <a href="{% url 'generate_results_pdf' exam.id %}" class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;" target="_blank">
         📄 {% if LANG == 'sw' %}Pakua PDF ya Matokeo{% else %}Download Results PDF{% endif %}
       </a>
+      <a href="{% url 'generate_bulk_student_results_pdf' exam.id %}" class="btn" style="background:#24508a;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;" target="_blank">
+        📥 {% if LANG == 'sw' %}Pakua Ripoti za Wanafunzi Wote (Mmoja Mmoja){% else %}Download All Students' Reports (Individual){% endif %}
+      </a>
       <a href="{{ excel_url }}" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
         📊 {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %}
       </a>

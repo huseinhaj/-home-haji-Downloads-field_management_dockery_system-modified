@@ -19,6 +19,7 @@ from .views import (
     download_roster_template,
     upload_logos,
     upload_results,
+    generate_bulk_student_results_pdf,
     generate_results_pdf,
     export_results_excel,
     filter_exams,
@@ -89,6 +90,7 @@ urlpatterns = [
     path('', home, name='home'),
     path('upload/', upload_results, name='upload_results'),
     path('results-pdf/<int:exam_id>/', generate_results_pdf, name='generate_results_pdf'),
+    path('results-pdf/<int:exam_id>/wanafunzi-wote/', generate_bulk_student_results_pdf, name='generate_bulk_student_results_pdf'),
     path('results-excel/<int:exam_id>/', export_results_excel, name='export_results_excel'),
     path('filter_exams/', filter_exams, name='filter_exams'),
     # Public results portal — search page (NECTA-style, no login)
