@@ -273,12 +273,6 @@
       <a href="{{ excel_url }}" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
         📊 {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %}
       </a>
-      {% endif %}
-
-      {% if all_approved and is_academic %}
-      <a href="{% url 'exam_share_links' exam.id %}" class="btn" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;font-size:0.82rem;">
-        🔗 {% if LANG == 'sw' %}Viungo vya Matokeo{% else %}Share Links{% endif %}
-      </a>
       {% if submit_ps_url %}
         {% if ps_submission.status == 'PRINTED' %}
         <span class="btn" style="background:#1a7a3b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;cursor:default;">
@@ -303,6 +297,12 @@
         </form>
         {% endif %}
       {% endif %}
+      {% endif %}
+
+      {% if all_approved and is_academic %}
+      <a href="{% url 'exam_share_links' exam.id %}" class="btn" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;font-size:0.82rem;">
+        🔗 {% if LANG == 'sw' %}Viungo vya Matokeo{% else %}Share Links{% endif %}
+      </a>
       <form method="post" action="{% url 'recompute_exam_results' exam.id %}" style="display:inline;"
             onsubmit="return confirm('{% if LANG == "sw" %}Hesabu upya AGGT, GPA na Division za mtihani huu?{% else %}Recompute AGGT, GPA and Division for this exam?{% endif %}');">
         {% csrf_token %}
