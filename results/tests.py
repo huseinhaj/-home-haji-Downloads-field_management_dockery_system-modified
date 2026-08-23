@@ -1,7 +1,18 @@
-from django.test import TestCase
+import json
+from unittest.mock import patch
+
+from django.test import Client, TestCase
+from django.urls import reverse
 import pandas as pd
 
-from .models import Exam, ExamResult, SpeechSubmissionSession, Student, Subject
+from .models import Exam, ExamResult, SpeechSubmissionSession, Student, Subject, TeacherAccount
+from .services.scoresheet_ocr_service import (
+    ScoreSheetOCRError,
+    _clean_rows,
+    _extract_json_array,
+    _is_pdf,
+    _load_page_images,
+)
 from .services.speech_submission_service import (
     create_or_get_session,
     extract_name_and_score,
@@ -178,3 +189,144 @@ class SpeechSubmissionServiceTests(TestCase):
 		sources = {row['student_id']: row['source'] for row in status['existing_subject_marks']}
 		self.assertEqual(sources[self.student_one.id], 'speech_session')
 		self.assertEqual(sources[self.student_two.id], 'existing_result')
+
+
+class ScoreSheetOCRParsingTests(TestCase):
+	"""No network calls — only the response-parsing helpers, using canned
+	AI-response text shapes (fenced, with surrounding prose, malformed)."""
+
+	def test_extract_json_array_strips_markdown_fence(self):
+		text = '```json\n[{"name": "Amina Juma", "score": 78}]\n```'
+		self.assertEqual(_extract_json_array(text), [{"name": "Amina Juma", "score": 78}])
+
+	def test_extract_json_array_ignores_surrounding_prose(self):
+		text = 'Here are the results:\n[{"name": "Peter Mushi", "score": 55}]\nHope that helps!'
+		self.assertEqual(_extract_json_array(text), [{"name": "Peter Mushi", "score": 55}])
+
+	def test_extract_json_array_raises_on_no_array(self):
+		with self.assertRaises(ScoreSheetOCRError):
+			_extract_json_array('Sorry, I could not read the image.')
+
+	def test_extract_json_array_raises_on_malformed_json(self):
+		with self.assertRaises(ScoreSheetOCRError):
+			_extract_json_array('[{"name": "Amina", "score": }]')
+
+	def test_clean_rows_drops_out_of_range_and_missing_fields(self):
+		raw = [
+			{"name": "Amina Juma", "score": 78},
+			{"name": "", "score": 50},
+			{"name": "No Score"},
+			{"name": "Too High", "score": 150},
+			{"name": "Too Low", "score": -5},
+			{"name": "Not A Number", "score": "abc"},
+		]
+		self.assertEqual(_clean_rows(raw), [{"raw_name": "Amina Juma", "score": 78}])
+
+
+def _build_pdf_bytes(num_pages=1):
+	from io import BytesIO
+	from reportlab.pdfgen import canvas
+
+	buf = BytesIO()
+	c = canvas.Canvas(buf)
+	for i in range(num_pages):
+		c.drawString(100, 700, f"Scoresheet page {i + 1}")
+		c.showPage()
+	c.save()
+	return buf.getvalue()
+
+
+class ScoreSheetDocumentLoadingTests(TestCase):
+	"""Real PDF rendering via pypdfium2 (no network/AI call) — proves a
+	scanned PDF is turned into page images the same way a photo is."""
+
+	def test_is_pdf_detects_pdf_by_magic_bytes(self):
+		from django.core.files.uploadedfile import SimpleUploadedFile
+		pdf_file = SimpleUploadedFile('sheet.pdf', _build_pdf_bytes(), content_type='application/octet-stream')
+		self.assertTrue(_is_pdf(pdf_file))
+
+	def test_is_pdf_false_for_image(self):
+		from django.core.files.uploadedfile import SimpleUploadedFile
+		jpeg_file = SimpleUploadedFile('sheet.jpg', b'\xff\xd8\xff\xe0fake', content_type='image/jpeg')
+		self.assertFalse(_is_pdf(jpeg_file))
+
+	def test_load_page_images_renders_one_image_per_pdf_page(self):
+		from django.core.files.uploadedfile import SimpleUploadedFile
+		pdf_file = SimpleUploadedFile('sheet.pdf', _build_pdf_bytes(num_pages=2), content_type='application/pdf')
+		images = _load_page_images(pdf_file)
+		self.assertEqual(len(images), 2)
+		for img in images:
+			self.assertEqual(img.mode, 'RGB')
+
+	def test_load_page_images_caps_at_max_pages(self):
+		from django.core.files.uploadedfile import SimpleUploadedFile
+		from .services import scoresheet_ocr_service
+		pdf_file = SimpleUploadedFile('sheet.pdf', _build_pdf_bytes(num_pages=8), content_type='application/pdf')
+		images = _load_page_images(pdf_file)
+		self.assertEqual(len(images), scoresheet_ocr_service.MAX_PDF_PAGES)
+
+
+class ScoreSheetPhotoExtractViewTests(TestCase):
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=1)
+		self.subject = Subject.objects.create(name='Mathematics')
+		self.student_one = Student.objects.create(first_name='Amina', middle_name='', last_name='Juma', gender='F')
+		self.student_two = Student.objects.create(first_name='Peter', middle_name='', last_name='Mushi', gender='M')
+		self.teacher = TeacherAccount.objects.create(email='teacher@example.com', full_name='Teacher One', role=TeacherAccount.ROLE_TEACHER)
+		self.teacher.subjects.set([self.subject])
+		self.client = Client()
+		self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
+
+	def _post(self, extracted_rows, roster):
+		with patch('results.marks_entry.extract_scores_from_document', return_value=extracted_rows):
+			from django.core.files.uploadedfile import SimpleUploadedFile
+			photo = SimpleUploadedFile('sheet.jpg', b'fake-bytes', content_type='image/jpeg')
+			return self.client.post(reverse('scoresheet_photo_extract'), {
+				'photo': photo,
+				'exam_id': self.exam.id,
+				'subject_id': self.subject.id,
+				'roster': json.dumps(roster),
+			})
+
+	def test_extracted_rows_are_fuzzy_matched_against_posted_roster(self):
+		roster = [
+			{'id': self.student_one.id, 'name': 'Amina Juma'},
+			{'id': self.student_two.id, 'name': 'Peter Mushi'},
+		]
+		extracted = [
+			{'raw_name': 'Amina Juma', 'score': 78},
+			{'raw_name': 'Peter Mushi', 'score': 55},
+		]
+		response = self._post(extracted, roster)
+		self.assertEqual(response.status_code, 200)
+		data = response.json()
+		self.assertEqual(len(data['matched']), 2)
+		self.assertEqual(data['unmatched'], [])
+		matched_by_id = {row['id']: row['score'] for row in data['matched']}
+		self.assertEqual(matched_by_id[self.student_one.id], 78)
+		self.assertEqual(matched_by_id[self.student_two.id], 55)
+
+	def test_unrecognized_name_is_reported_as_unmatched(self):
+		roster = [{'id': self.student_one.id, 'name': 'Amina Juma'}]
+		extracted = [{'raw_name': 'Completely Different Person', 'score': 60}]
+		response = self._post(extracted, roster)
+		self.assertEqual(response.status_code, 200)
+		data = response.json()
+		self.assertEqual(data['matched'], [])
+		self.assertEqual(len(data['unmatched']), 1)
+		self.assertEqual(data['unmatched'][0]['raw_name'], 'Completely Different Person')
+
+	def test_ocr_error_returns_400(self):
+		with patch('results.marks_entry.extract_scores_from_document', side_effect=ScoreSheetOCRError('Hakuna alama iliyotambulika.')):
+			from django.core.files.uploadedfile import SimpleUploadedFile
+			photo = SimpleUploadedFile('sheet.jpg', b'fake-bytes', content_type='image/jpeg')
+			response = self.client.post(reverse('scoresheet_photo_extract'), {
+				'photo': photo,
+				'exam_id': self.exam.id,
+				'subject_id': self.subject.id,
+				'roster': '[]',
+			})
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('error', response.json())

@@ -21,6 +21,8 @@ from django.views.decorators.http import require_POST
 
 from .models import Exam, ExamResult, FormStudent, Student, StoredRoster, Subject, SubjectSubmission
 from .permissions import teacher_or_academic_required
+from .services.speech_submission_service import fuzzy_match_student_name
+from .services.scoresheet_ocr_service import ScoreSheetOCRError, extract_scores_from_document
 from .services.upload_processing_service import recompute_processed_results_for_exam
 from .utils import get_grade_for_form, group_exams_by_type
 
@@ -316,3 +318,55 @@ def marks_entry_submit(request):
         'overview_url': reverse('exam_overview', args=[exam.id]),
         'revision': new_revision,
     })
+
+
+@teacher_or_academic_required
+@require_POST
+def scoresheet_photo_extract(request):
+    """Mwalimu anapakia picha AU PDF iliyochanganuliwa (scanned) ya
+    scoresheet aliyoijaza kwa mkono — AI inasoma majina na alama, kisha
+    zinalinganishwa (fuzzy match) na orodha ya wanafunzi iliyopo tayari
+    kwenye ukurasa (sawa na hiyo hiyo inayotumika kwa 'Jaza kwa Sauti').
+    Haihifadhi chochote — mwalimu bado anabonyeza 'Hifadhi & Kagua'
+    (marks_entry_save) kama kawaida."""
+    teacher = request.user
+    exam = _teacher_exam(teacher, request.POST.get('exam_id'))
+    if exam is None:
+        return JsonResponse({'error': 'Mtihani haupatikani.'}, status=404)
+    subject = get_object_or_404(Subject, id=request.POST.get('subject_id'))
+    if not teacher.subjects.filter(pk=subject.pk).exists():
+        return JsonResponse({'error': 'Hujapangiwa somo hili.'}, status=403)
+
+    document = request.FILES.get('photo')
+    if not document:
+        return JsonResponse({'error': 'Hakuna faili iliyotumwa.'}, status=400)
+
+    try:
+        roster = json.loads(request.POST.get('roster') or '[]')
+    except json.JSONDecodeError:
+        roster = []
+    roster_ids = [r.get('id') for r in roster if isinstance(r, dict) and r.get('id')]
+    roster_students = list(Student.objects.filter(id__in=roster_ids))
+
+    try:
+        extracted_rows = extract_scores_from_document(document)
+    except ScoreSheetOCRError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+
+    matched = []
+    unmatched = []
+    for row in extracted_rows:
+        student, confidence, _candidates = fuzzy_match_student_name(
+            row['raw_name'], roster_students, threshold=0.80,
+        )
+        if student:
+            matched.append({
+                'id': student.id,
+                'score': row['score'],
+                'raw_name': row['raw_name'],
+                'confidence': round(confidence, 4),
+            })
+        else:
+            unmatched.append({'raw_name': row['raw_name'], 'score': row['score']})
+
+    return JsonResponse({'matched': matched, 'unmatched': unmatched})

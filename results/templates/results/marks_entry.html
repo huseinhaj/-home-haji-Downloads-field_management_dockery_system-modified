@@ -77,6 +77,7 @@
   }
   .me-table tbody tr.voice-done { background: #eafaf1; }
   .me-table tbody tr.voice-skipped { background: #f1f1f1; color: #999; font-style: italic; }
+  .me-table tbody tr.photo-low-confidence { background: #fff3d6 !important; }
 
   /* Voice entry bar */
   .me-voice-bar {
@@ -105,6 +106,14 @@
     font-size: 0.78rem; color: #8a6d1a; background: #fff8e6;
     border: 1px solid #f0dca0; border-radius: 2px; padding: 0.35rem 0.6rem;
     width: 100%; margin-top: 0.4rem;
+  }
+  .btn-me-photo { color: #24508a; border-color: #24508a; }
+  .btn-me-photo:hover { background: #24508a; color: #fff; }
+  #mePhotoHint { display: none; }
+  .me-photo-unmatched {
+    font-size: 0.78rem; color: #8a2a1a; background: #fdeceb;
+    border: 1px solid #f0b8ac; border-radius: 2px; padding: 0.5rem 0.7rem;
+    width: 100%; margin-top: 0.4rem; line-height: 1.6;
   }
 
   /* Review table */
@@ -383,7 +392,12 @@
           <button type="button" class="btn-me-voice" id="meVoiceBtn">
             🎙️ {% if LANG == 'sw' %}Jaza kwa Sauti{% else %}Voice Entry{% endif %}
           </button>
+          <button type="button" class="btn-me-voice btn-me-photo" id="mePhotoBtn">
+            📷 {% if LANG == 'sw' %}Pakia Picha/PDF ya Scoresheet{% else %}Upload Scoresheet Photo/PDF{% endif %}
+          </button>
+          <input type="file" id="mePhotoInput" accept="image/*,.pdf,application/pdf" capture="environment" style="display:none;">
           <div class="me-voice-status" id="meVoiceStatus"></div>
+          <div class="me-voice-status" id="mePhotoStatus"></div>
           <div class="me-voice-hint" id="meVoiceHint" style="display:none;">
             💡 {% if LANG == 'sw' %}
               Sema alama kwa Kiingereza (mfano "forty five") kwa usahihi zaidi — Kiswahili mara nyingi hakieleweki vizuri na mfumo. Mwanafunzi asiyesoma somo hili? Sema "skip" (au bonyeza Enter kwenye kisanduku tupu) kuruka bila kuweka alama. Ikishindwa kutambua namba, andika alama kwenye kisanduku kilichoangaziwa kisha bonyeza Enter.
@@ -391,6 +405,14 @@
               Say the score in English (e.g. "forty five") for best accuracy. Student doesn't take this subject? Say "skip" (or press Enter on an empty box) to move on without a score. If voice can't catch a number, type it in the highlighted box and press Enter.
             {% endif %}
           </div>
+          <div class="me-voice-hint" id="mePhotoHint">
+            💡 {% if LANG == 'sw' %}
+              Pakia picha (piga papo hapo au chagua ya zamani) AU PDF iliyochanganuliwa (scanned) ya scoresheet uliyojaza kwa mkono — jina na alama ya kila mwanafunzi. Mfumo utajaza jedwali hapa chini kiotomatiki; kagua kila alama dhidi ya faili kabla ya kuhifadhi.
+            {% else %}
+              Upload a photo (take one now or pick an existing one) OR a scanned PDF of the scoresheet you filled by hand — each student's name and score. The table below fills in automatically; check every score against the file before saving.
+            {% endif %}
+          </div>
+          <div class="me-photo-unmatched" id="mePhotoUnmatched" style="display:none;"></div>
         </div>
         <div class="me-table-wrap" id="meTableWrap">
           <table class="me-table">
@@ -1012,6 +1034,88 @@
       });
       rowsBody.addEventListener('change', (e) => {
         if (e.target.classList && e.target.classList.contains('score-input')) tryManualOverride(e.target);
+      });
+    })();
+
+    /* ═══ SCORESHEET PHOTO UPLOAD — mwalimu anapiga picha ya scoresheet
+       aliyoijaza kwa mkono; AI inasoma majina+alama, kisha zinalinganishwa
+       na orodha iliyopo (byId) na kujaza jedwali moja kwa moja — sawa na
+       Voice Entry, Hifadhi/Submit haibadiliki kabisa. ═══ */
+    (() => {
+      const photoBtn = document.getElementById('mePhotoBtn');
+      const photoInput = document.getElementById('mePhotoInput');
+      const photoStatus = document.getElementById('mePhotoStatus');
+      const photoHint = document.getElementById('mePhotoHint');
+      const unmatchedBox = document.getElementById('mePhotoUnmatched');
+      if (!photoBtn || !photoInput) return;
+
+      photoBtn.addEventListener('click', () => {
+        if (photoHint) photoHint.style.display = '';
+        photoInput.click();
+      });
+
+      photoInput.addEventListener('change', async () => {
+        const file = photoInput.files[0];
+        photoInput.value = '';
+        if (!file) return;
+        if (!EXAM_ID || !SUBJECT_ID) {
+          toast(LANG === 'sw' ? 'Chagua mtihani na somo kwanza.' : 'Pick an exam and subject first.', true);
+          return;
+        }
+
+        photoBtn.disabled = true;
+        unmatchedBox.style.display = 'none';
+        unmatchedBox.innerHTML = '';
+        photoStatus.innerHTML = '<span style="color:#24508a;">⏳ ' +
+          (LANG === 'sw' ? 'Inasoma picha...' : 'Reading photo...') + '</span>';
+
+        try {
+          const roster = [...byId.values()].map(s => ({ id: s.id, name: s.name }));
+          const fd = new FormData();
+          fd.append('photo', file);
+          fd.append('exam_id', EXAM_ID);
+          fd.append('subject_id', SUBJECT_ID);
+          fd.append('roster', JSON.stringify(roster));
+
+          const res = await fetch("{% url 'scoresheet_photo_extract' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: fd,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+          const matched = data.matched || [];
+          const unmatched = data.unmatched || [];
+
+          matched.forEach(m => {
+            const s = byId.get(m.id);
+            if (s) s.score = m.score;
+          });
+          renderRows();
+          matched.forEach(m => {
+            const row = rowsBody.querySelector('tr[data-id="' + m.id + '"]');
+            if (row && m.confidence < 0.9) row.classList.add('photo-low-confidence');
+          });
+
+          if (unmatched.length) {
+            unmatchedBox.style.display = '';
+            const label = LANG === 'sw'
+              ? '⚠️ Haya hayakulingana na orodha ya wanafunzi — angalia kama jina liko kwenye jedwali kwa tahajia tofauti, kisha jaza alama yake mwenyewe:'
+              : "⚠️ These didn't match anyone on the roster — check if the name is in the table under a different spelling, then fill their score in manually:";
+            unmatchedBox.innerHTML = escapeHtml(label) + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;">' +
+              unmatched.map(u => '<li>' + escapeHtml(u.raw_name) + ' — ' + u.score + '</li>').join('') + '</ul>';
+          }
+
+          photoStatus.innerHTML = matched.length
+            ? '<span style="color:#1a7a3b;">✅ ' + matched.length + ' ' +
+              (LANG === 'sw' ? 'zimejazwa. Kagua kila alama dhidi ya picha kabla ya kuhifadhi.' : 'scores filled in. Check each one against the photo before saving.') + '</span>'
+            : '<span style="color:#c0392b;">⚠️ ' + (LANG === 'sw' ? 'Hakuna alama iliyolingana na orodha.' : 'No scores matched the roster.') + '</span>';
+        } catch (err) {
+          photoStatus.innerHTML = '<span style="color:#c0392b;">❌ ' + escapeHtml(err.message) + '</span>';
+        } finally {
+          photoBtn.disabled = false;
+        }
       });
     })();
 

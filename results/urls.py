@@ -56,6 +56,7 @@ from .marks_entry import (
     marks_entry,
     marks_entry_save,
     marks_entry_submit,
+    scoresheet_photo_extract,
 )
 from .speech_views import (
     confirm_speech_candidate,
@@ -134,6 +135,7 @@ urlpatterns = [
     path('marks/', marks_entry, name='marks_entry'),
     path('marks/save/', marks_entry_save, name='marks_entry_save'),
     path('marks/submit/', marks_entry_submit, name='marks_entry_submit'),
+    path('marks/scoresheet-extract/', scoresheet_photo_extract, name='scoresheet_photo_extract'),
     # Speech entry
     path('speech/', speech_entry_page, name='speech_entry_page'),
     # Guided voice entry — TTS reads name, teacher speaks score
