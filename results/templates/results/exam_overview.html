@@ -274,32 +274,38 @@
       <a href="{{ excel_url }}" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
         📊 {% if LANG == 'sw' %}Pakua Excel{% else %}Download Excel{% endif %}
       </a>
-      {% if submit_ps_url and all_submitted %}
-        {% if ps_submission.status == 'PRINTED' %}
-        <span class="btn" style="background:#1a7a3b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;cursor:default;">
-          🖨️ {% if LANG == 'sw' %}Imechapishwa na PS{% else %}Printed by PS{% endif %} ✓
-        </span>
-        <form method="post" action="{{ submit_ps_url }}" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
-            {% if LANG == 'sw' %}Tuma Tena kwa PS{% else %}Resubmit to PS{% endif %}
-          </button>
-        </form>
-        {% elif ps_submission.status == 'PENDING' %}
-        <span class="btn" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;font-size:0.82rem;cursor:default;">
-          ⏳ {% if LANG == 'sw' %}Imetumwa kwa PS — Inasubiri Kuchapishwa{% else %}Sent to PS — Awaiting Print{% endif %}
-        </span>
-        {% else %}
-        <span id="ps-submit-wrap-{{ exam.id }}" style="display:none;">
+      {% if submit_ps_url %}
+        {% if all_submitted %}
+          {% if ps_submission.status == 'PRINTED' %}
+          <span class="btn" style="background:#1a7a3b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;cursor:default;">
+            🖨️ {% if LANG == 'sw' %}Imechapishwa na PS{% else %}Printed by PS{% endif %} ✓
+          </span>
           <form method="post" action="{{ submit_ps_url }}" style="display:inline;">
             {% csrf_token %}
-            <button type="submit" class="btn" style="background:#6a4fb0;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;">
-              📨 {% if LANG == 'sw' %}Tuma kwa Katibu wa Uchapishaji (PS){% else %}Submit to Printing Secretary (PS){% endif %}
+            <button type="submit" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
+              {% if LANG == 'sw' %}Tuma Tena kwa PS{% else %}Resubmit to PS{% endif %}
             </button>
           </form>
-        </span>
-        <span id="ps-hint-{{ exam.id }}" style="font-size:0.78rem;color:var(--ink-500);align-self:center;">
-          {% if LANG == 'sw' %}⬅ Pakua PDF kwanza ndipo utume kwa PS{% else %}⬅ Download the PDF first, then send it to PS{% endif %}
+          {% elif ps_submission.status == 'PENDING' %}
+          <span class="btn" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;font-size:0.82rem;cursor:default;">
+            ⏳ {% if LANG == 'sw' %}Imetumwa kwa PS — Inasubiri Kuchapishwa{% else %}Sent to PS — Awaiting Print{% endif %}
+          </span>
+          {% else %}
+          <span id="ps-submit-wrap-{{ exam.id }}" style="display:none;">
+            <form method="post" action="{{ submit_ps_url }}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn" style="background:#6a4fb0;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;">
+                📨 {% if LANG == 'sw' %}Tuma kwa Katibu wa Uchapishaji (PS){% else %}Submit to Printing Secretary (PS){% endif %}
+              </button>
+            </form>
+          </span>
+          <span id="ps-hint-{{ exam.id }}" style="font-size:0.78rem;color:var(--ink-500);align-self:center;">
+            {% if LANG == 'sw' %}⬅ Bonyeza "Pakua PDF ya Matokeo" kwanza ndipo utume kwa PS{% else %}⬅ Click "Download Results PDF" first, then send it to PS{% endif %}
+          </span>
+          {% endif %}
+        {% else %}
+        <span style="font-size:0.78rem;color:var(--ink-500);align-self:center;">
+          ⏳ {% if LANG == 'sw' %}Kutuma kwa PS kutapatikana baada ya masomo yote kuwasilishwa ({{ submitted_count }}/{{ total_subjects }} sasa){% else %}Submit to PS unlocks once every subject is submitted ({{ submitted_count }}/{{ total_subjects }} so far){% endif %}
         </span>
         {% endif %}
       {% endif %}
