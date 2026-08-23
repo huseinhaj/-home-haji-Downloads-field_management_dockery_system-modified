@@ -308,15 +308,48 @@ class ScoreSheetPhotoExtractViewTests(TestCase):
 		self.assertEqual(matched_by_id[self.student_one.id], 78)
 		self.assertEqual(matched_by_id[self.student_two.id], 55)
 
-	def test_unrecognized_name_is_reported_as_unmatched(self):
+	def test_name_not_on_roster_creates_a_new_student(self):
+		"""The photo IS the roster — a name that doesn't match anyone
+		already loaded (or an empty/no roster at all) should create a new
+		Student and come back in `matched` with is_new=True, not get
+		silently dropped as 'unmatched'."""
 		roster = [{'id': self.student_one.id, 'name': 'Amina Juma'}]
 		extracted = [{'raw_name': 'Completely Different Person', 'score': 60}]
 		response = self._post(extracted, roster)
 		self.assertEqual(response.status_code, 200)
 		data = response.json()
+		self.assertEqual(data['unmatched'], [])
+		self.assertEqual(len(data['matched']), 1)
+		entry = data['matched'][0]
+		self.assertTrue(entry['is_new'])
+		self.assertEqual(entry['score'], 60)
+		new_student = Student.objects.get(id=entry['id'])
+		self.assertEqual(new_student.first_name, 'Completely')
+		self.assertEqual(new_student.last_name, 'Person')
+
+	def test_empty_roster_still_creates_students_from_photo(self):
+		"""No roster uploaded beforehand is the common case — the photo
+		alone should be enough to populate the table."""
+		extracted = [
+			{'raw_name': 'Amina Juma', 'score': 78},
+			{'raw_name': 'Peter Mushi', 'score': 55},
+		]
+		response = self._post(extracted, roster=[])
+		self.assertEqual(response.status_code, 200)
+		data = response.json()
+		self.assertEqual(data['unmatched'], [])
+		self.assertEqual(len(data['matched']), 2)
+		self.assertTrue(all(row['is_new'] for row in data['matched']))
+
+	def test_unparseable_name_is_reported_as_unmatched(self):
+		roster = [{'id': self.student_one.id, 'name': 'Amina Juma'}]
+		extracted = [{'raw_name': 'x', 'score': 60}]
+		response = self._post(extracted, roster)
+		self.assertEqual(response.status_code, 200)
+		data = response.json()
 		self.assertEqual(data['matched'], [])
 		self.assertEqual(len(data['unmatched']), 1)
-		self.assertEqual(data['unmatched'][0]['raw_name'], 'Completely Different Person')
+		self.assertEqual(data['unmatched'][0]['raw_name'], 'x')
 
 	def test_ocr_error_returns_400(self):
 		with patch('results.marks_entry.extract_scores_from_document', side_effect=ScoreSheetOCRError('Hakuna alama iliyotambulika.')):

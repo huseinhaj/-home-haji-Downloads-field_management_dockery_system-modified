@@ -25,6 +25,7 @@ from .services.speech_submission_service import fuzzy_match_student_name
 from .services.scoresheet_ocr_service import ScoreSheetOCRError, extract_scores_from_document
 from .services.upload_processing_service import recompute_processed_results_for_exam
 from .utils import get_grade_for_form, group_exams_by_type
+from .views import _parse_roster_line, _save_student
 
 
 def _student_from_form_student(fs):
@@ -353,6 +354,15 @@ def scoresheet_photo_extract(request):
     except ScoreSheetOCRError as exc:
         return JsonResponse({'error': str(exc)}, status=400)
 
+    # The whole point of this feature is that the photo *is* the roster —
+    # a teacher shouldn't have to upload a separate class list first just
+    # to match against. So: reuse an existing roster row when the name
+    # matches one confidently (avoids duplicating a student who's already
+    # listed), but for anything that doesn't match — including the common
+    # case where no roster was posted at all — create the student the same
+    # way the existing roster-file upload does (_save_student, same
+    # first/last-name dedup as `upload_roster`), so it lands in the table
+    # as a brand-new row instead of being silently dropped.
     matched = []
     unmatched = []
     for row in extracted_rows:
@@ -365,8 +375,23 @@ def scoresheet_photo_extract(request):
                 'score': row['score'],
                 'raw_name': row['raw_name'],
                 'confidence': round(confidence, 4),
+                'is_new': False,
             })
-        else:
+            continue
+
+        parsed = _parse_roster_line(row['raw_name'])
+        if not parsed:
             unmatched.append({'raw_name': row['raw_name'], 'score': row['score']})
+            continue
+        first, middle, last, gender = parsed
+        saved = _save_student(first, middle, last, gender)
+        matched.append({
+            'id': saved['id'],
+            'name': saved['name'],
+            'score': row['score'],
+            'raw_name': row['raw_name'],
+            'confidence': 0.0,
+            'is_new': True,
+        })
 
     return JsonResponse({'matched': matched, 'unmatched': unmatched})

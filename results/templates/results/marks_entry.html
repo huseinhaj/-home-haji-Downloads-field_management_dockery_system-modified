@@ -1089,20 +1089,24 @@
           const unmatched = data.unmatched || [];
 
           matched.forEach(m => {
-            const s = byId.get(m.id);
-            if (s) s.score = m.score;
+            if (m.is_new) {
+              byId.set(m.id, { id: m.id, name: m.name, score: m.score });
+            } else {
+              const s = byId.get(m.id);
+              if (s) s.score = m.score;
+            }
           });
           renderRows();
           matched.forEach(m => {
             const row = rowsBody.querySelector('tr[data-id="' + m.id + '"]');
-            if (row && m.confidence < 0.9) row.classList.add('photo-low-confidence');
+            if (row && (m.is_new || m.confidence < 0.9)) row.classList.add('photo-low-confidence');
           });
 
           if (unmatched.length) {
             unmatchedBox.style.display = '';
             const label = LANG === 'sw'
-              ? '⚠️ Haya hayakulingana na orodha ya wanafunzi — angalia kama jina liko kwenye jedwali kwa tahajia tofauti, kisha jaza alama yake mwenyewe:'
-              : "⚠️ These didn't match anyone on the roster — check if the name is in the table under a different spelling, then fill their score in manually:";
+              ? '⚠️ Mfumo haukuweza kusoma jina la mstari huu vizuri — jaza mwenyewe:'
+              : "⚠️ The system couldn't clearly read the name on this row — fill it in manually:";
             unmatchedBox.innerHTML = escapeHtml(label) + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;">' +
               unmatched.map(u => '<li>' + escapeHtml(u.raw_name) + ' — ' + u.score + '</li>').join('') + '</ul>';
           }
