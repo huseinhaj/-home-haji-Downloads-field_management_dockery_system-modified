@@ -5,7 +5,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 import pandas as pd
 
-from .models import Exam, ExamResult, SpeechSubmissionSession, Student, Subject, TeacherAccount
+from .models import Exam, ExamResult, ProcessedResult, SpeechSubmissionSession, Student, Subject, TeacherAccount
 from .services.scoresheet_ocr_service import (
     ScoreSheetOCRError,
     _clean_rows,
@@ -404,3 +404,38 @@ class DownloadScoresheetNamesPdfTests(TestCase):
 			'exam_id': self.exam.id, 'subject_id': other_subject.id,
 		})
 		self.assertEqual(response.status_code, 403)
+
+
+class StudentResultPdfTests(TestCase):
+	"""The downloadable version of the public /matokeo/<token>/ page — no
+	login required, same share token a parent already uses to view online."""
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=2)
+		self.subject = Subject.objects.create(name='Mathematics')
+		self.student = Student.objects.create(first_name='Amina', middle_name='', last_name='Juma', gender='F')
+		ExamResult.objects.create(exam=self.exam, student=self.student, subject=self.subject, score=78)
+		self.result = ProcessedResult.objects.create(
+			exam=self.exam, student=self.student,
+			total_score=78, average_score=78, points=2, position=1, division='I',
+		)
+
+	def test_returns_pdf_with_student_name_and_division(self):
+		response = self.client.get(reverse('student_result_pdf', args=[self.result.share_token]))
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response['Content-Type'], 'application/pdf')
+		content = response.content
+		self.assertTrue(content.startswith(b'%PDF'))
+
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(content)) as pdf:
+			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+		self.assertIn('AMINA JUMA', text.upper())
+		self.assertIn('78', text)
+
+	def test_unknown_token_returns_404(self):
+		import uuid
+		response = self.client.get(reverse('student_result_pdf', args=[uuid.uuid4()]))
+		self.assertEqual(response.status_code, 404)

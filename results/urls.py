@@ -44,6 +44,7 @@ from .views import (
     personal_upload_pdf,
     personal_upload_summary,
     student_result_public,
+    student_result_pdf,
     public_results_search,
     exam_share_links,
     upload_form_students,
@@ -94,6 +95,7 @@ urlpatterns = [
     path('matokeo/', public_results_search, name='student_results_search'),
     # Public results lookup by token (NECTA-style, no login)
     path('matokeo/<uuid:token>/', student_result_public, name='student_result_public'),
+    path('matokeo/<uuid:token>/pdf/', student_result_pdf, name='student_result_pdf'),
     # Shareable links management (academic only)
     path('exam/<int:exam_id>/viungo/', exam_share_links, name='exam_share_links'),
     # Exam overview and per-subject flow

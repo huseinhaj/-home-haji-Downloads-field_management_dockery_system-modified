@@ -17,7 +17,7 @@ from .forms import ExamUploadForm, TeacherSelfSubjectsForm
 from .models import Exam, ExamResult, FormStudent, PersonalUpload, PersonalUploadResult, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission, TeacherFormAssignment
 from .permissions import academic_required, results_login_required as login_required, teacher_required
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
-from .services.pdf_export_service import generate_results_pdf_response
+from .services.pdf_export_service import generate_results_pdf_response, generate_student_result_pdf_response
 from .services.subject_pdf_service import (
     GRADE_KEYS_OLEVEL,
     generate_personal_pdf_response,
@@ -324,6 +324,13 @@ def student_result_public(request, token):
         'school_name': exam.school_name or (exam.school.name if exam.school else ''),
         'total_students': ProcessedResult.objects.filter(exam=exam).count(),
     })
+
+
+def student_result_pdf(request, token):
+    """Downloadable version of the public results page — no login required,
+    same share token, so a parent can save/print a copy to take home."""
+    result = get_object_or_404(ProcessedResult, share_token=token)
+    return generate_student_result_pdf_response(result)
 
 
 # ── Shareable Links Management (academic only) ───────────────────────────────

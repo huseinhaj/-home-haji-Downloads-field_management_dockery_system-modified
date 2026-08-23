@@ -239,10 +239,13 @@
   <div class="watermark-bg"></div>
 
   <div class="container print-area">
-    <!-- Print button -->
+    <!-- Print / download buttons -->
     <div class="text-end mb-2 no-print">
-      <button onclick="window.print()" class="btn btn-sm" style="background:var(--navy);color:#fff;font-weight:600;border-radius:2px;border:none;">
-        🖨️ Print / PDF
+      <a href="{% url 'student_result_pdf' result.share_token %}" class="btn btn-sm" style="background:var(--navy);color:#fff;font-weight:600;border-radius:2px;border:none;text-decoration:none;display:inline-block;">
+        📥 {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}
+      </a>
+      <button onclick="window.print()" class="btn btn-sm" style="background:#fff;color:var(--navy);font-weight:600;border-radius:2px;border:1px solid var(--navy);">
+        🖨️ Print
       </button>
     </div>
 
