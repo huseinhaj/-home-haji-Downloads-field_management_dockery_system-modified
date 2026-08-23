@@ -13,11 +13,11 @@ Flow:
 import json
 
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from .models import Exam, ExamResult, FormStudent, Student, StoredRoster, Subject, SubjectSubmission
 from .permissions import teacher_or_academic_required
@@ -46,6 +46,60 @@ def _student_from_form_student(fs):
         student.middle_name = fs.middle_name
         student.save(update_fields=['middle_name'])
     return student
+
+
+def _resolve_class_roster(teacher, exam, subject, existing_marks):
+    """Load students for this exam+subject, in priority order:
+      1. This teacher's own uploaded/edited roster for this exact
+         exam+subject (StoredRoster) — an explicit choice always wins.
+      2. The Academic Officer's class list for this exam's form
+         (FormStudent) — auto-populated, no upload needed, so a teacher
+         can go straight to entering marks the moment the academic has
+         uploaded the class.
+      3. Whichever students already have results for this exam (legacy
+         fallback for older exams).
+    Shared by the Marks Entry page itself and the "download names as a
+    blank scoresheet" PDF — both need the exact same roster."""
+    stored = StoredRoster.objects.filter(
+        teacher=teacher, exam=exam, subject=subject
+    ).first()
+    if stored and stored.students:
+        return [
+            {
+                'id': s['id'],
+                'name': s['name'],
+                'score': existing_marks.get(s['id']),
+            }
+            for s in stored.students
+        ]
+
+    # Insertion order (id), not alphabetical — matches the order the
+    # Academic uploaded the roster in.
+    form_students = FormStudent.objects.filter(
+        school=exam.school, form=exam.form
+    ).order_by('id') if exam.school else FormStudent.objects.none()
+    if form_students.exists():
+        class_students = []
+        for fs in form_students:
+            student = _student_from_form_student(fs)
+            class_students.append({
+                'id': student.id,
+                'name': ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p),
+                'score': existing_marks.get(student.id),
+            })
+        return class_students
+
+    # Wanafunzi wote waliosajiliwa kwenye mtihani huu
+    return [
+        {
+            'id': s.id,
+            'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p),
+            'score': existing_marks.get(s.id),
+        }
+        for s in Student.objects.filter(examresult__exam=exam)
+        .distinct()
+        .order_by('first_name', 'last_name')
+    ]
 
 
 def _parse_payload(request):
@@ -126,56 +180,7 @@ def marks_entry(request):
                 else:
                     pdf_url = reverse('subject_pdf', args=[exam.id, subject.id])
             else:
-                # Load students, in priority order:
-                #  1. This teacher's own uploaded/edited roster for this
-                #     exact exam+subject (StoredRoster) — an explicit
-                #     choice for this exam always wins.
-                #  2. The Academic Officer's class list for this exam's
-                #     form (FormStudent) — auto-populated, no upload
-                #     needed, so a teacher can go straight to entering
-                #     marks the moment the academic has uploaded the class.
-                #  3. Whichever students already have results for this
-                #     exam (legacy fallback for older exams).
-                stored = StoredRoster.objects.filter(
-                    teacher=teacher, exam=exam, subject=subject
-                ).first()
-                if stored and stored.students:
-                    # Reattach existing marks
-                    class_students = [
-                        {
-                            'id': s['id'],
-                            'name': s['name'],
-                            'score': existing_marks.get(s['id']),
-                        }
-                        for s in stored.students
-                    ]
-                else:
-                    # Insertion order (id), not alphabetical — matches the
-                    # order the Academic uploaded the roster in.
-                    form_students = FormStudent.objects.filter(
-                        school=exam.school, form=exam.form
-                    ).order_by('id') if exam.school else FormStudent.objects.none()
-                    if form_students.exists():
-                        class_students = []
-                        for fs in form_students:
-                            student = _student_from_form_student(fs)
-                            class_students.append({
-                                'id': student.id,
-                                'name': ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p),
-                                'score': existing_marks.get(student.id),
-                            })
-                    else:
-                        # Wanafunzi wote waliosajiliwa kwenye mtihani huu
-                        class_students = [
-                            {
-                                'id': s.id,
-                                'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p),
-                                'score': existing_marks.get(s.id),
-                            }
-                            for s in Student.objects.filter(examresult__exam=exam)
-                            .distinct()
-                            .order_by('first_name', 'last_name')
-                        ]
+                class_students = _resolve_class_roster(teacher, exam, subject, existing_marks)
 
     # Wastani na kiwango cha kufaulu kwa ukaguzi
     avg_score = None
@@ -395,3 +400,96 @@ def scoresheet_photo_extract(request):
         })
 
     return JsonResponse({'matched': matched, 'unmatched': unmatched})
+
+
+@teacher_or_academic_required
+@require_GET
+def download_scoresheet_names_pdf(request):
+    """PDF ya majina yaliyokwisha-sajiliwa (na Mtaaluma/StoredRoster) kwa
+    mtihani+somo fulani, yenye safu tupu ya 'Alama' — mwalimu anaipakua,
+    anaichapisha, anajaza alama kwa mkono, kisha anapiga picha/scan na
+    kuipakia kupitia 'Pakia Picha/PDF ya Scoresheet'. Hii inafunga mzunguko:
+    Mtaaluma anasajili wanafunzi -> Mwalimu anapakua majina -> anajaza kwa
+    mkono -> anapakia tena kama picha/PDF."""
+    teacher = request.user
+    exam = _teacher_exam(teacher, request.GET.get('exam_id') or request.GET.get('exam'))
+    if exam is None:
+        return HttpResponse('Mtihani haupatikani.', status=404)
+    subject = get_object_or_404(Subject, id=request.GET.get('subject_id') or request.GET.get('subject'))
+    if not teacher.subjects.filter(pk=subject.pk).exists():
+        return HttpResponse('Hujapangiwa somo hili.', status=403)
+
+    roster = _resolve_class_roster(teacher, exam, subject, existing_marks={})
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm, mm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    import io
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm,
+                             leftMargin=2 * cm, rightMargin=2 * cm)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('T', parent=styles['Title'], fontSize=15, spaceAfter=6,
+                                  textColor=colors.HexColor('#1F7A3D'))
+    sub_style = ParagraphStyle('Sub', parent=styles['Normal'], fontSize=10, spaceAfter=4,
+                                textColor=colors.HexColor('#333333'))
+    hint_style = ParagraphStyle('Hint', parent=styles['Normal'], fontSize=9, spaceAfter=4,
+                                 textColor=colors.HexColor('#555555'))
+
+    GREEN = colors.HexColor('#1F7A3D')
+    GREY = colors.HexColor('#F2F4F7')
+
+    elements = []
+    elements.append(Paragraph('SCORESHEET', title_style))
+    label = f"{exam.name} — {subject.name} — Form {exam.form}"
+    if exam.stream:
+        label += f" {exam.stream}"
+    label += f" ({exam.year})"
+    elements.append(Paragraph(label, sub_style))
+    elements.append(Paragraph(f"Mwalimu / Teacher: {teacher.full_name or teacher.email}", sub_style))
+    elements.append(Spacer(1, 4 * mm))
+    elements.append(Paragraph(
+        '💡 Jaza alama kwa mkono kwenye safu ya "Alama", kisha piga picha au scan '
+        'ukurasa huu, na uupakie kwenye "Pakia Picha/PDF ya Scoresheet" kwenye ukurasa wa Marks Entry.',
+        hint_style,
+    ))
+    elements.append(Spacer(1, 6 * mm))
+
+    hdr = ['Na.', 'Jina la Mwanafunzi', 'Alama']
+    rows = [hdr]
+    if roster:
+        for i, s in enumerate(roster, 1):
+            rows.append([str(i), s['name'], ''])
+    else:
+        rows.append(['', 'Hakuna wanafunzi waliosajiliwa bado.', ''])
+
+    t = Table(rows, colWidths=[1.5 * cm, 11 * cm, 3 * cm])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), GREEN),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+        ('ALIGN', (-1, 1), (-1, -1), 'CENTER'),
+        *[('BACKGROUND', (0, i), (-1, i), GREY) for i in range(2, len(rows), 2)],
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+        ('BOX', (0, 0), (-1, -1), 1.2, GREEN),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 10 * mm))
+    elements.append(Paragraph('Sahihi ya Mwalimu: ______________________', sub_style))
+
+    doc.build(elements)
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    safe_subject = subject.name.replace(' ', '_')
+    response['Content-Disposition'] = f'attachment; filename="Scoresheet_{safe_subject}_{exam.id}.pdf"'
+    return response

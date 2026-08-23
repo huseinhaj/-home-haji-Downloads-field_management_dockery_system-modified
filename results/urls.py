@@ -53,6 +53,7 @@ from .views import (
     teacher_performance_report,
 )
 from .marks_entry import (
+    download_scoresheet_names_pdf,
     marks_entry,
     marks_entry_save,
     marks_entry_submit,
@@ -136,6 +137,7 @@ urlpatterns = [
     path('marks/save/', marks_entry_save, name='marks_entry_save'),
     path('marks/submit/', marks_entry_submit, name='marks_entry_submit'),
     path('marks/scoresheet-extract/', scoresheet_photo_extract, name='scoresheet_photo_extract'),
+    path('marks/scoresheet-names-pdf/', download_scoresheet_names_pdf, name='download_scoresheet_names_pdf'),
     # Speech entry
     path('speech/', speech_entry_page, name='speech_entry_page'),
     # Guided voice entry — TTS reads name, teacher speaks score

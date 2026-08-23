@@ -389,6 +389,9 @@
       </div>
       <div class="panel-body">
         <div class="me-voice-bar" id="meVoiceBar">
+          <a class="btn-me-voice btn-me-photo" href="{% url 'download_scoresheet_names_pdf' %}?exam_id={{ exam.id }}&subject_id={{ subject.id }}" target="_blank">
+            📥 {% if LANG == 'sw' %}Pakua PDF ya Majina{% else %}Download Names PDF{% endif %}
+          </a>
           <button type="button" class="btn-me-voice" id="meVoiceBtn">
             🎙️ {% if LANG == 'sw' %}Jaza kwa Sauti{% else %}Voice Entry{% endif %}
           </button>

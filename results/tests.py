@@ -363,3 +363,44 @@ class ScoreSheetPhotoExtractViewTests(TestCase):
 			})
 		self.assertEqual(response.status_code, 400)
 		self.assertIn('error', response.json())
+
+
+class DownloadScoresheetNamesPdfTests(TestCase):
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=1)
+		self.subject = Subject.objects.create(name='Mathematics')
+		self.student_one = Student.objects.create(first_name='Amina', middle_name='', last_name='Juma', gender='F')
+		self.student_two = Student.objects.create(first_name='Peter', middle_name='', last_name='Mushi', gender='M')
+		# _resolve_class_roster's fallback tier picks up students via
+		# existing ExamResult rows when there's no StoredRoster/FormStudent.
+		ExamResult.objects.create(exam=self.exam, student=self.student_one, subject=self.subject, score=50)
+		ExamResult.objects.create(exam=self.exam, student=self.student_two, subject=self.subject, score=60)
+		self.teacher = TeacherAccount.objects.create(email='teacher@example.com', full_name='Teacher One', role=TeacherAccount.ROLE_TEACHER)
+		self.teacher.subjects.set([self.subject])
+		self.client = Client()
+		self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
+
+	def test_returns_pdf_containing_registered_student_names(self):
+		response = self.client.get(reverse('download_scoresheet_names_pdf'), {
+			'exam_id': self.exam.id, 'subject_id': self.subject.id,
+		})
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response['Content-Type'], 'application/pdf')
+		content = b''.join(response.streaming_content) if response.streaming else response.content
+		self.assertTrue(content.startswith(b'%PDF'))
+
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(content)) as pdf:
+			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+		self.assertIn('Amina Juma', text)
+		self.assertIn('Peter Mushi', text)
+
+	def test_rejects_subject_teacher_is_not_assigned_to(self):
+		other_subject = Subject.objects.create(name='Physics')
+		response = self.client.get(reverse('download_scoresheet_names_pdf'), {
+			'exam_id': self.exam.id, 'subject_id': other_subject.id,
+		})
+		self.assertEqual(response.status_code, 403)
