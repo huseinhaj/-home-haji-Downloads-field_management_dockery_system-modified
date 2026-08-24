@@ -49,11 +49,10 @@ _DEFAULT_DAY_TEMPLATE = [
     ('14:30', '15:00', False, 'Lunch'),
 ]
 
-# Friday template: starts early with Religion (06:30–07:20), then
-# follows the normal schedule from 07:20 onwards.
+# Friday template: same morning as Mon–Thu, but the last 3 teaching
+# periods (12:30–14:30) are replaced by Religion.
 _FRIDAY_TEMPLATE = [
-    ('06:30', '07:20', False, 'Religion'),
-    ('07:20', '08:00', False, 'Cleanliness & Parade'),
+    ('07:00', '07:50', False, 'Cleanliness & Parade'),
     ('08:00', '08:40', True, ''),
     ('08:40', '09:20', True, ''),
     ('09:20', '10:00', True, ''),
@@ -61,16 +60,16 @@ _FRIDAY_TEMPLATE = [
     ('10:40', '11:10', False, 'Break'),
     ('11:10', '11:50', True, ''),
     ('11:50', '12:30', True, ''),
-    ('12:30', '13:10', True, ''),
-    ('13:10', '13:50', True, ''),
-    ('13:50', '14:30', True, ''),
+    ('12:30', '13:10', False, 'Religion'),
+    ('13:10', '13:50', False, 'Religion'),
+    ('13:50', '14:30', False, 'Religion'),
     ('14:30', '15:00', False, 'Lunch'),
 ]
 
 
 def seed_default_time_slots(school):
     """Bulk-creates the generic day template above for Monday–Friday.
-    Friday gets its own template with Religion at 06:30.
+    Friday gets its own template with Religion in the afternoon (12:30-14:30).
     Caller (the view) is responsible for only calling this when the
     school has no TimeSlots yet, so it never overwrites a customised day."""
     from ..models import TimeSlot
