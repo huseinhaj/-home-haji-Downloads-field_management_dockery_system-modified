@@ -1,5 +1,5 @@
 """Deduplicate Subject records before adding unique constraint."""
-from django.db import migrations, models
+from django.db import migrations
 
 
 def deduplicate_subjects(apps, schema_editor):
@@ -40,9 +40,4 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(deduplicate_subjects, reverse_dedup),
-        migrations.AlterField(
-            model_name='subject',
-            name='name',
-            field=models.CharField(max_length=100, unique=True),
-        ),
     ]
