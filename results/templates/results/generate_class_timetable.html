@@ -1,0 +1,81 @@
+{% extends "results/base.html" %}
+{% block title %}Tengeneza Ratiba ya Darasa{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <h2 class="mb-1" style="color:#1A3C6E;">⚡ Tengeneza Ratiba ya Darasa (Class Timetable)</h2>
+  <p class="text-muted mb-4">
+    Mfumo utapanga masomo yote ya
+    <strong>{{ class_keys|length }}</strong> madarasa kwenye vipindi vilivyowekwa, bila mwalimu yeyote
+    kugongana na darasa lingine wakati huohuo. Ukishakagua, bofya "Hifadhi Ratiba".
+  </p>
+
+  {% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  {% if has_existing %}
+  <div class="alert alert-warning">
+    ⚠️ Kuna ratiba iliyopo tayari. Kutengeneza upya kutabadilisha ratiba ya madarasa yote yaliyo na ugawaji wa walimu.
+    <a href="{% url 'class_timetable_view' %}">Angalia ratiba ya sasa →</a>
+  </div>
+  {% endif %}
+
+  <form method="post" class="mb-4">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="generate">
+    <button type="submit" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">⚡ Tengeneza Sasa</button>
+  </form>
+
+  {% if unplaced %}
+  <div class="alert alert-danger">
+    <strong>⚠️ Masomo yasiyoweza kupangwa (mgongano wa vipindi/walimu):</strong>
+    <ul class="mb-0">
+      {% for u in unplaced %}
+      <li>Form {{ u.form }}{{ u.stream }} — {{ u.subject }} ({{ u.teacher }}): vipindi {{ u.missing }} havikupata nafasi.</li>
+      {% endfor %}
+    </ul>
+    <div class="mt-2">Ongeza vipindi zaidi kwenye <a href="{% url 'time_slot_setup' %}">Vipindi vya Siku</a>, au punguza vipindi/wiki vya somo hili.</div>
+  </div>
+  {% endif %}
+
+  {% if preview_rows %}
+  <div class="card shadow-sm">
+    <div class="card-header" style="background:#F8F9FA;"><strong>Muhtasari wa Ratiba ({{ preview_rows|length }} vipindi)</strong></div>
+    <div class="card-body p-0">
+      <form method="post" action="{% url 'save_class_timetable' %}">
+        {% csrf_token %}
+        <div class="table-responsive" style="max-height:60vh;">
+          <table class="table table-sm table-hover mb-0">
+            <thead style="background:#1A3C6E;color:#fff;position:sticky;top:0;">
+              <tr><th>Darasa</th><th>Siku</th><th>Muda</th><th>Somo</th><th>Mwalimu</th></tr>
+            </thead>
+            <tbody>
+              {% for r in preview_rows %}
+              <tr>
+                <td>Form {{ r.form }}{{ r.stream }}</td>
+                <td>{{ r.day }}</td>
+                <td>{{ r.time }}</td>
+                <td>
+                  {{ r.subject.name }}
+                  <input type="hidden" name="form[]" value="{{ r.form }}">
+                  <input type="hidden" name="stream[]" value="{{ r.stream }}">
+                  <input type="hidden" name="time_slot_id[]" value="{{ r.time_slot_id }}">
+                  <input type="hidden" name="subject_id[]" value="{{ r.subject_id }}">
+                  <input type="hidden" name="teacher_id[]" value="{{ r.teacher_id }}">
+                </td>
+                <td>{{ r.teacher.full_name|default:r.teacher.email }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="p-3">
+          <button type="submit" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">💾 Hifadhi Ratiba</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

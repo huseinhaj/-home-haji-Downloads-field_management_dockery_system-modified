@@ -72,15 +72,17 @@
           <a href="{% url 'home' %}">{% if LANG == 'sw' %}Mitihani{% else %}Exams{% endif %}</a>
           {% if user.is_academic %}
             <a href="{% url 'school_setup' %}">{% if LANG == 'sw' %}Shule Yangu{% else %}My School{% endif %}</a>
-            <a href="{% url 'upload_results' %}">{% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}</a>
+            <a href="{% url 'upload_results' %}">{% if LANG == 'sw' %}Simamia Masomo{% else %}Manage Subjects{% endif %}</a>
             <a href="{% url 'academic_dashboard' %}">Academic</a>
             <a href="{% url 'manage_teachers' %}">{% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</a>
             <a href="{% url 'upload_form_students' %}">{% if LANG == 'sw' %}Wanafunzi wa Form{% else %}Form Students{% endif %}</a>
             <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
+            <a href="{% url 'class_timetable_view' %}">{% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>
             <a href="{% url 'choose_plan' %}">{% if LANG == 'sw' %}Malipo{% else %}Billing{% endif %}</a>
           {% elif user.is_teacher %}
             <a href="{% url 'teacher_dashboard' %}">{% if LANG == 'sw' %}Walimu{% else %}Dashboard{% endif %}</a>
             <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
+            <a href="{% url 'class_timetable_view' %}">{% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>
             <a href="{% url 'personal_upload' %}">{% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
           {% elif user.is_printing_secretary %}
             <a href="{% url 'printing_secretary_dashboard' %}">{% if LANG == 'sw' %}Uchapishaji (PS){% else %}Printing (PS){% endif %}</a>
@@ -128,14 +130,16 @@
       <a href="{% url 'home' %}"><i class="fas fa-home"></i> {% if LANG == 'sw' %}Nyumbani{% else %}Home{% endif %}</a>
       {% if user.is_authenticated %}
         {% if user.is_academic %}
-          <a href="{% url 'upload_results' %}"><i class="fas fa-plus-circle"></i> {% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}</a>
+          <a href="{% url 'upload_results' %}"><i class="fas fa-plus-circle"></i> {% if LANG == 'sw' %}Simamia Masomo{% else %}Manage Subjects{% endif %}</a>
           <a href="{% url 'school_setup' %}"><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule Yangu{% else %}My School{% endif %}</a>
           <a href="{% url 'academic_dashboard' %}"><i class="fas fa-chart-bar"></i> Academic</a>
           <a href="{% url 'manage_teachers' %}"><i class="fas fa-users"></i> {% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</a>
           <a href="{% url 'upload_form_students' %}"><i class="fas fa-user-graduate"></i> {% if LANG == 'sw' %}Wanafunzi wa Form{% else %}Form Students{% endif %}</a>
+          <a href="{% url 'class_timetable_view' %}"><i class="fas fa-calendar-alt"></i> {% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>
           <a href="{% url 'choose_plan' %}"><i class="fas fa-coins"></i> {% if LANG == 'sw' %}Malipo{% else %}Billing{% endif %}</a>
         {% elif user.is_teacher %}
           <a href="{% url 'teacher_dashboard' %}"><i class="fas fa-chalkboard-teacher"></i> {% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}</a>
+          <a href="{% url 'class_timetable_view' %}"><i class="fas fa-calendar-alt"></i> {% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>
           <a href="{% url 'personal_upload' %}"><i class="fas fa-file-upload"></i> {% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
         {% elif user.is_printing_secretary %}
           <a href="{% url 'printing_secretary_dashboard' %}"><i class="fas fa-print"></i> {% if LANG == 'sw' %}Uchapishaji (PS){% else %}Printing (PS){% endif %}</a>
@@ -170,7 +174,7 @@
     </a>
     {% if user.is_academic %}
     <a href="{% url 'upload_results' %}">
-      <i class="fas fa-plus-circle"></i> {% if LANG == 'sw' %}Mtihani{% else %}Exam{% endif %}
+      <i class="fas fa-plus-circle"></i> {% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}
     </a>
     {% elif user.is_teacher %}
     <a href="{% url 'teacher_dashboard' %}">

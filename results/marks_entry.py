@@ -11,8 +11,12 @@ Flow:
   5. "Pakua PDF" → download ya matokeo ya somo
 """
 import json
+import logging
+import uuid
 
+from celery.result import AsyncResult
 from django.contrib import messages
+from django.core.files.storage import default_storage
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -21,11 +25,11 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .models import Exam, ExamResult, FormStudent, Student, StoredRoster, Subject, SubjectSubmission
 from .permissions import teacher_or_academic_required
-from .services.speech_submission_service import fuzzy_match_student_name
-from .services.scoresheet_ocr_service import ScoreSheetOCRError, extract_scores_from_document
 from .services.upload_processing_service import recompute_processed_results_for_exam
+from .tasks import process_scoresheet_photo_task
 from .utils import get_grade_for_form, group_exams_by_type
-from .views import _parse_roster_line, _save_student
+
+logger = logging.getLogger(__name__)
 
 
 def _student_from_form_student(fs):
@@ -330,10 +334,11 @@ def marks_entry_submit(request):
 @require_POST
 def scoresheet_photo_extract(request):
     """Mwalimu anapakia picha AU PDF iliyochanganuliwa (scanned) ya
-    scoresheet aliyoijaza kwa mkono — AI inasoma majina na alama, kisha
-    zinalinganishwa (fuzzy match) na orodha ya wanafunzi iliyopo tayari
-    kwenye ukurasa (sawa na hiyo hiyo inayotumika kwa 'Jaza kwa Sauti').
-    Haihifadhi chochote — mwalimu bado anabonyeza 'Hifadhi & Kagua'
+    scoresheet aliyoijaza kwa mkono. Usomaji wa AI (unaoweza kuchukua hadi
+    dakika kadhaa kwa hati za kurasa nyingi) unafanyika nyuma-nyuma
+    (Celery) badala ya ndani ya request hii — hii inarudisha task_id tu;
+    frontend inauliza scoresheet_extract_status mpaka ikamilike. Haihifadhi
+    alama chochote — mwalimu bado anabonyeza 'Hifadhi & Kagua'
     (marks_entry_save) kama kawaida."""
     teacher = request.user
     exam = _teacher_exam(teacher, request.POST.get('exam_id'))
@@ -352,54 +357,41 @@ def scoresheet_photo_extract(request):
     except json.JSONDecodeError:
         roster = []
     roster_ids = [r.get('id') for r in roster if isinstance(r, dict) and r.get('id')]
-    roster_students = list(Student.objects.filter(id__in=roster_ids))
 
-    try:
-        extracted_rows = extract_scores_from_document(document)
-    except ScoreSheetOCRError as exc:
-        return JsonResponse({'error': str(exc)}, status=400)
+    storage_path = default_storage.save(
+        f"scoresheet_tmp/{uuid.uuid4().hex}_{document.name}", document,
+    )
+    # Explicit queue='default': the deployed worker only consumes
+    # --queues=default,emails (see Procfile/docker-compose.yml), not
+    # Celery's own built-in default queue name ("celery"), which is where
+    # a plain .delay() would land since this project sets no
+    # CELERY_TASK_DEFAULT_QUEUE/CELERY_TASK_ROUTES. Without this the task
+    # would sit in the broker forever and never run.
+    task = process_scoresheet_photo_task.apply_async(
+        args=[storage_path, roster_ids], queue='default',
+    )
+    return JsonResponse({'task_id': task.id}, status=202)
 
-    # The whole point of this feature is that the photo *is* the roster —
-    # a teacher shouldn't have to upload a separate class list first just
-    # to match against. So: reuse an existing roster row when the name
-    # matches one confidently (avoids duplicating a student who's already
-    # listed), but for anything that doesn't match — including the common
-    # case where no roster was posted at all — create the student the same
-    # way the existing roster-file upload does (_save_student, same
-    # first/last-name dedup as `upload_roster`), so it lands in the table
-    # as a brand-new row instead of being silently dropped.
-    matched = []
-    unmatched = []
-    for row in extracted_rows:
-        student, confidence, _candidates = fuzzy_match_student_name(
-            row['raw_name'], roster_students, threshold=0.80,
-        )
-        if student:
-            matched.append({
-                'id': student.id,
-                'score': row['score'],
-                'raw_name': row['raw_name'],
-                'confidence': round(confidence, 4),
-                'is_new': False,
-            })
-            continue
 
-        parsed = _parse_roster_line(row['raw_name'])
-        if not parsed:
-            unmatched.append({'raw_name': row['raw_name'], 'score': row['score']})
-            continue
-        first, middle, last, gender = parsed
-        saved = _save_student(first, middle, last, gender)
-        matched.append({
-            'id': saved['id'],
-            'name': saved['name'],
-            'score': row['score'],
-            'raw_name': row['raw_name'],
-            'confidence': 0.0,
-            'is_new': True,
-        })
+@teacher_or_academic_required
+@require_GET
+def scoresheet_extract_status(request, task_id):
+    """Polled by the frontend every couple seconds after
+    scoresheet_photo_extract kicks off the Celery task."""
+    result = AsyncResult(task_id)
 
-    return JsonResponse({'matched': matched, 'unmatched': unmatched})
+    if not result.ready():
+        return JsonResponse({'status': 'processing'})
+
+    if result.failed():
+        logger.error("scoresheet_extract_status: task %s failed: %s", task_id, result.result)
+        return JsonResponse({'error': 'Kuna hitilafu wakati wa kusoma picha. Jaribu tena.'}, status=500)
+
+    payload = result.result or {}
+    if payload.get('error'):
+        return JsonResponse({'error': payload['error']}, status=400)
+
+    return JsonResponse({'status': 'done', 'matched': payload.get('matched', []), 'unmatched': payload.get('unmatched', [])})
 
 
 @teacher_or_academic_required

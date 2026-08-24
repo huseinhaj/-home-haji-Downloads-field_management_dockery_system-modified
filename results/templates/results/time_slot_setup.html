@@ -1,0 +1,92 @@
+{% extends "results/base.html" %}
+{% load results_filters %}
+{% block title %}Vipindi vya Siku | School Results{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <h2 class="mb-1" style="color:#1A3C6E;">🕒 Vipindi vya Siku (Time Slots)</h2>
+  <p class="text-muted mb-4">
+    Weka vipindi vya kufundishia na visivyo vya kufundishia (mapumziko, chakula, usafi/gwaride) kwa kila siku.
+    Hivi ndivyo ratiba ya darasa (Class Timetable) itakavyotumika kupanga masomo.
+  </p>
+
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header" style="background:#1A3C6E;color:#fff;"><strong>Ongeza / Sasisha Kipindi</strong></div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="row g-3 align-items-end">
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Siku</label>
+            <select name="day_of_week" class="form-select" required>
+              {% for val, label in day_choices %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-1">
+            <label class="form-label fw-bold">Namba</label>
+            <input type="number" name="order" class="form-control" min="0" required title="Mpangilio wa kipindi kwa siku hiyo, kuanzia 0">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Anza</label>
+            <input type="time" name="start_time" class="form-control" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Isha</label>
+            <input type="time" name="end_time" class="form-control" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold d-block">Aina</label>
+            <div class="form-check">
+              <input type="checkbox" name="is_teaching_slot" class="form-check-input" id="isTeaching" checked>
+              <label class="form-check-label" for="isTeaching">Kufundishia</label>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Jina (kama si kufundishia)</label>
+            <input type="text" name="label" class="form-control" placeholder="Mapumziko / Chakula / Usafi">
+          </div>
+          <div class="col-md-1">
+            <button type="submit" class="btn w-100 fw-bold" style="background:#1A7B3A;color:#fff;">✅</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% for day_val, day_label in day_choices %}
+  <div class="card mb-3 shadow-sm">
+    <div class="card-header" style="background:#F8F9FA;"><strong>{{ day_label }}</strong></div>
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr><th>Namba</th><th>Muda</th><th>Aina</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for slot in slots_by_day|get_item:day_val %}
+          <tr>
+            <td>{{ slot.order }}</td>
+            <td>{{ slot.start_time|time:"H:i" }} — {{ slot.end_time|time:"H:i" }}</td>
+            <td>{% if slot.is_teaching_slot %}<span class="badge bg-success">Kufundishia</span>{% else %}<span class="badge bg-secondary">{{ slot.label }}</span>{% endif %}</td>
+            <td>
+              <form method="post" style="display:inline;" onsubmit="return confirm('Futa kipindi hiki?');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="slot_id" value="{{ slot.id }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-muted">Hakuna vipindi bado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+
+  <a href="{% url 'teaching_assignment_manage' %}" class="btn btn-outline-primary">Endelea — Ugawaji wa Walimu →</a>
+</div>
+{% endblock %}

@@ -155,6 +155,11 @@ class Exam(models.Model):
         'School', null=True, blank=True, on_delete=models.SET_NULL, related_name='exams'
     )
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['school', 'year', 'form']),
+        ]
+
     def __str__(self):
         label = self.FORM_LABELS.get(self.form, f'Form {self.form}')
         if self.stream:
@@ -249,7 +254,7 @@ class SubjectSubmission(models.Model):
 
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='subject_submissions')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='submissions')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', db_index=True)
     method = models.CharField(max_length=20, choices=METHOD_CHOICES, blank=True)
     submitted_by = models.CharField(max_length=100, blank=True)
     submitted_by_user = models.ForeignKey(
@@ -309,7 +314,7 @@ class PrintSubmission(models.Model):
 
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='print_submissions')
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='print_submissions')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
     submitted_by = models.ForeignKey(
         'TeacherAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
     )
@@ -352,7 +357,7 @@ class TeacherAccount(AbstractBaseUser):
 
     email = models.EmailField(unique=True)
     full_name = models.CharField(max_length=150, blank=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_TEACHER)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_TEACHER, db_index=True)
     school = models.ForeignKey(
         School, on_delete=models.SET_NULL, null=True, blank=True, related_name='teacher_accounts',
         help_text="The school this account belongs to. All exams, subjects and teachers this account "
@@ -600,7 +605,7 @@ class PaymentTransaction(models.Model):
     order_reference = models.CharField(max_length=100, unique=True)
     clickpesa_payment_id = models.CharField(max_length=100, blank=True)
     amount = models.PositiveIntegerField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
     raw_response = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -610,3 +615,85 @@ class PaymentTransaction(models.Model):
 
     def __str__(self):
         return f"{self.school} — {self.amount} TZS ({self.status})"
+
+
+# =============================================================================
+# CLASS TIMETABLE — weekly teaching schedule (generated, then edited as needed)
+# =============================================================================
+
+class TimeSlot(models.Model):
+    """One row of the daily period grid for a school — either a teaching
+    period or a fixed non-teaching block (break, lunch, parade, etc).
+    Every school defines its own, since start times/period lengths differ
+    school to school."""
+    DAY_CHOICES = [
+        (0, 'Jumatatu / Monday'),
+        (1, 'Jumanne / Tuesday'),
+        (2, 'Jumatano / Wednesday'),
+        (3, 'Alhamisi / Thursday'),
+        (4, 'Ijumaa / Friday'),
+    ]
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='time_slots')
+    day_of_week = models.PositiveSmallIntegerField(choices=DAY_CHOICES)
+    order = models.PositiveSmallIntegerField(help_text="Mpangilio wa kipindi kwa siku hiyo, kuanzia 0.")
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    is_teaching_slot = models.BooleanField(
+        default=True,
+        help_text="Zima kwa vipindi visivyo vya kufundisha (mapumziko, chakula, usafi/gwaride).",
+    )
+    label = models.CharField(
+        max_length=50, blank=True,
+        help_text="Kwa vipindi visivyo vya kufundisha tu — mfano 'Mapumziko', 'Chakula', 'Usafi na Gwaride'.",
+    )
+
+    class Meta:
+        unique_together = [('school', 'day_of_week', 'order')]
+        ordering = ['day_of_week', 'order']
+
+    def __str__(self):
+        return f"{self.get_day_of_week_display()} {self.start_time}-{self.end_time}"
+
+
+class TeachingAssignment(models.Model):
+    """Mwalimu fulani anafundisha somo fulani kwa darasa (form+stream)
+    fulani mara ngapi kwa wiki — hii ndiyo 'mahitaji' ambayo generator
+    ya ratiba inayapanga kwenye vipindi visivyogongana."""
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='teaching_assignments')
+    form = models.PositiveIntegerField()
+    stream = models.CharField(max_length=2, blank=True, default='')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    teacher = models.ForeignKey('TeacherAccount', on_delete=models.CASCADE, related_name='teaching_assignments')
+    periods_per_week = models.PositiveSmallIntegerField(default=4)
+
+    class Meta:
+        unique_together = [('school', 'form', 'stream', 'subject')]
+        ordering = ['form', 'stream', 'subject__name']
+
+    def __str__(self):
+        label = f"Form {self.form}{self.stream}" if self.stream else f"Form {self.form}"
+        return f"{label} — {self.subject} ({self.teacher}) x{self.periods_per_week}/wk"
+
+
+class ClassTimetableEntry(models.Model):
+    """One filled cell of the standing weekly timetable — (form, stream,
+    time_slot) -> (subject, teacher). This is the 'constant until changed'
+    schedule itself: generation replaces the rows for the classes it
+    covers; a single cell can also be hand-edited without touching the
+    rest."""
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='class_timetable_entries')
+    form = models.PositiveIntegerField()
+    stream = models.CharField(max_length=2, blank=True, default='')
+    time_slot = models.ForeignKey(TimeSlot, on_delete=models.CASCADE, related_name='timetable_entries')
+    subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True)
+    teacher = models.ForeignKey('TeacherAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('school', 'form', 'stream', 'time_slot')]
+        ordering = ['time_slot__day_of_week', 'time_slot__order', 'form', 'stream']
+
+    def __str__(self):
+        label = f"Form {self.form}{self.stream}" if self.stream else f"Form {self.form}"
+        return f"{label} @ {self.time_slot} — {self.subject or '—'}"

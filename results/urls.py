@@ -1,6 +1,14 @@
 from django.urls import path
 from .pwa import pwa_manifest, pwa_service_worker
 from .auth_views import results_login, results_logout, manage_teachers
+from .class_timetable_views import (
+    class_timetable_cell_edit,
+    class_timetable_view,
+    generate_class_timetable_view,
+    save_class_timetable_view,
+    teaching_assignment_manage,
+    time_slot_setup,
+)
 from .billing_views import (
     choose_plan,
     pay_for_plan,
@@ -63,6 +71,7 @@ from .marks_entry import (
     marks_entry,
     marks_entry_save,
     marks_entry_submit,
+    scoresheet_extract_status,
     scoresheet_photo_extract,
 )
 from .speech_views import (
@@ -150,6 +159,7 @@ urlpatterns = [
     path('marks/save/', marks_entry_save, name='marks_entry_save'),
     path('marks/submit/', marks_entry_submit, name='marks_entry_submit'),
     path('marks/scoresheet-extract/', scoresheet_photo_extract, name='scoresheet_photo_extract'),
+    path('marks/scoresheet-extract/status/<str:task_id>/', scoresheet_extract_status, name='scoresheet_extract_status'),
     path('marks/scoresheet-names-pdf/', download_scoresheet_names_pdf, name='download_scoresheet_names_pdf'),
     # Speech entry
     path('speech/', speech_entry_page, name='speech_entry_page'),
@@ -169,6 +179,13 @@ urlpatterns = [
     path('form-students/<int:form_num>/delete-all/', delete_all_form_students, name='delete_all_form_students'),
     # Assign teacher to form + subject
     path('assign-teacher/', assign_teacher_form, name='assign_teacher_form'),
+
+    path('class-timetable/vipindi/', time_slot_setup, name='time_slot_setup'),
+    path('class-timetable/ugawaji/', teaching_assignment_manage, name='teaching_assignment_manage'),
+    path('class-timetable/tengeneza/', generate_class_timetable_view, name='generate_class_timetable'),
+    path('class-timetable/hifadhi/', save_class_timetable_view, name='save_class_timetable'),
+    path('class-timetable/', class_timetable_view, name='class_timetable_view'),
+    path('class-timetable/badilisha-kipindi/', class_timetable_cell_edit, name='class_timetable_cell_edit'),
     # Teacher performance report PDF — all teachers for a form
     path('report/form-<int:form_num>/teachers/', teacher_performance_report, name='teacher_performance_report'),
 ]

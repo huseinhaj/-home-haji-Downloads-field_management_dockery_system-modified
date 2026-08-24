@@ -47,6 +47,7 @@ class ExamResultAdmin(admin.ModelAdmin):
     list_display = ('student', 'exam', 'subject', 'score')
     list_filter = ('exam', 'subject')
     search_fields = ('student__first_name', 'student__last_name')
+    list_select_related = ('student', 'exam', 'subject')
 
 
 class ProcessedResultAdmin(admin.ModelAdmin):
@@ -54,6 +55,7 @@ class ProcessedResultAdmin(admin.ModelAdmin):
     list_filter = ('exam', 'division')
     search_fields = ('student__first_name', 'student__last_name')
     ordering = ('exam', 'position')
+    list_select_related = ('student', 'exam')
 
 
 class SpeechSubmissionSessionAdmin(admin.ModelAdmin):
@@ -62,6 +64,7 @@ class SpeechSubmissionSessionAdmin(admin.ModelAdmin):
     search_fields = ('teacher_name', 'exam__name', 'subject__name')
     ordering = ('-created_at',)
     readonly_fields = ('access_key', 'created_at', 'finalized_at', 'submitted_count', 'effective_expected_count', 'is_complete')
+    list_select_related = ('exam', 'subject')
 
 
 class SpeechSubmissionEntryAdmin(admin.ModelAdmin):
@@ -69,6 +72,7 @@ class SpeechSubmissionEntryAdmin(admin.ModelAdmin):
     list_filter = ('session__exam', 'session__subject', 'explicit_update')
     search_fields = ('student__first_name', 'student__last_name', 'raw_name_transcript', 'parsed_name')
     ordering = ('-created_at',)
+    list_select_related = ('session', 'student')
 
 
 class SubjectSubmissionAdmin(admin.ModelAdmin):
@@ -76,6 +80,7 @@ class SubjectSubmissionAdmin(admin.ModelAdmin):
     list_filter = ('status', 'exam', 'subject')
     search_fields = ('exam__name', 'subject__name', 'submitted_by', 'approved_by')
     ordering = ('-submitted_at',)
+    list_select_related = ('exam', 'subject')
 
 
 class TeacherAccountAdmin(admin.ModelAdmin):
@@ -86,6 +91,7 @@ class TeacherAccountAdmin(admin.ModelAdmin):
     readonly_fields = ('password', 'last_login')
     autocomplete_fields = ('school',)
     actions = ['reset_password']
+    list_select_related = ('school',)
 
     def save_model(self, request, obj, form, change):
         # New accounts created here (e.g. a school's first Academic, added
@@ -119,6 +125,7 @@ class SchoolSubjectAdmin(admin.ModelAdmin):
     list_display = ('school', 'subject', 'form_levels')
     list_filter = ('school', 'subject')
     search_fields = ('school__name', 'subject__name')
+    list_select_related = ('school', 'subject')
 
 
 class SubscriptionPlanAdmin(admin.ModelAdmin):
@@ -132,6 +139,7 @@ class SchoolSubscriptionAdmin(admin.ModelAdmin):
     list_filter = ('plan',)
     search_fields = ('school__name',)
     autocomplete_fields = ('school',)
+    list_select_related = ('school', 'plan')
 
     @admin.display(boolean=True)
     def is_active(self, obj):
@@ -144,6 +152,7 @@ class PaymentTransactionAdmin(admin.ModelAdmin):
     search_fields = ('school__name', 'phone_number', 'order_reference', 'clickpesa_payment_id')
     readonly_fields = ('order_reference', 'clickpesa_payment_id', 'raw_response', 'created_at', 'updated_at')
     ordering = ('-created_at',)
+    list_select_related = ('school', 'plan')
 
 
 custom_admin_site.register(Exam, ExamAdmin)

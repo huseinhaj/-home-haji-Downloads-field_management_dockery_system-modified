@@ -4,6 +4,7 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.db.models import Case, Count, IntegerField, Q, When
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -75,15 +76,15 @@ COMMON_SUBJECTS = [
 
 @login_required
 def home(request):
-    exams = Exam.objects.filter(school=request.user.school).order_by('-year', 'name')
+    exams = Exam.objects.filter(school=request.user.school).order_by('-year', 'name').annotate(
+        submitted_count=Count(
+            'subject_submissions',
+            filter=Q(subject_submissions__status=SubjectSubmission.STATUS_SUBMITTED),
+        ),
+        total_submissions=Count('subject_submissions'),
+    )
 
-    # Annotate each exam with submission progress
     exams_list = list(exams)
-    for exam in exams_list:
-        submitted = exam.subject_submissions.filter(status=SubjectSubmission.STATUS_SUBMITTED).count()
-        total = exam.subject_submissions.count()
-        exam.submitted_count = submitted
-        exam.total_submissions = total
 
     return render(
         request,
@@ -358,7 +359,9 @@ def public_results_search(request):
 def student_result_public(request, token):
     """Public view — no login required. Look up a student's result by share token.
     Returns a clean, professional results page like NECTA's online portal."""
-    result = get_object_or_404(ProcessedResult, share_token=token)
+    result = get_object_or_404(
+        ProcessedResult.objects.select_related('exam__school', 'student'), share_token=token
+    )
     exam = result.exam
     student = result.student
 
@@ -1283,8 +1286,10 @@ def academic_dashboard(request):
     # Nested: { form_num: { stream: [exam_ctx, …], … }, … }
     forms_map = {}       # form_num → { stream_str: [exam_ctx] }
     form_totals = {}     # form_num → { submitted, approved, total }
+    exam_count = 0
 
     for exam in exams:
+        exam_count += 1
         subs = list(exam.subject_submissions.all())
         total = len(subs)
         submitted = sum(
@@ -1352,7 +1357,7 @@ def academic_dashboard(request):
 
     return render(request, 'results/academic_dashboard.html', {
         'forms_list': forms_list,
-        'total_exams': exams.count(),
+        'total_exams': exam_count,
     })
 
 
@@ -1476,27 +1481,35 @@ def form_results(request, form_num):
     exams = Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name')
     is_academic = getattr(request.user, 'is_academic', False)
 
+    from .services.export_data import get_exam_export_payload
+    from .services.subject_pdf_service import get_grade_keys_for_form
+
     exams_ctx = []
     for exam in exams:
-        subs = exam.subject_submissions.select_related('subject')
-        total_subs = subs.count()
-        approved_subs = subs.filter(status=SubjectSubmission.STATUS_APPROVED).count()
-        submitted_subs = subs.filter(
-            status__in=[SubjectSubmission.STATUS_SUBMITTED, SubjectSubmission.STATUS_APPROVED]
-        ).count()
+        counts = exam.subject_submissions.aggregate(
+            total_subs=Count('id'),
+            approved_subs=Count(Case(
+                When(status=SubjectSubmission.STATUS_APPROVED, then=1),
+                output_field=IntegerField(),
+            )),
+            submitted_subs=Count(Case(
+                When(status__in=[SubjectSubmission.STATUS_SUBMITTED, SubjectSubmission.STATUS_APPROVED], then=1),
+                output_field=IntegerField(),
+            )),
+        )
+        total_subs = counts['total_subs']
+        approved_subs = counts['approved_subs']
+        submitted_subs = counts['submitted_subs']
         all_submitted = total_subs > 0 and submitted_subs == total_subs
         all_approved = total_subs > 0 and approved_subs == total_subs
-        processed = exam.processedresult_set.select_related('student').order_by('position')
 
         # NECTA-style per-subject grades for this exam
-        from .services.export_data import get_exam_export_payload
         payload = get_exam_export_payload(exam)
         exam_subjects = payload['subjects']
         score_lookup = payload['score_lookup']
         grade_lookup = {}
         for (sid, subj_id), score in score_lookup.items():
             grade_lookup.setdefault(sid, {})[subj_id] = get_grade_for_form(score, exam.form)
-        from .services.subject_pdf_service import get_grade_keys_for_form
         grade_key = get_grade_keys_for_form(exam.form)
 
         exams_ctx.append({
@@ -1506,7 +1519,7 @@ def form_results(request, form_num):
             'submitted_subs': submitted_subs,
             'all_submitted': all_submitted,
             'all_approved': all_approved,
-            'processed_results': list(processed),
+            'processed_results': payload['processed_results'],
             'subjects': exam_subjects,
             'grade_lookup': grade_lookup,
             'grade_key': grade_key,
@@ -1815,6 +1828,13 @@ def teacher_dashboard(request):
         'subject_submissions__subject'
     ).order_by('-year', 'form', 'name')
 
+    roster_lookup = {
+        (r.exam_id, r.subject_id): r
+        for r in StoredRoster.objects.filter(teacher=request.user).only(
+            'exam_id', 'subject_id', 'student_count'
+        )
+    }
+
     exams_ctx = []
     for exam in exams:
         subs = [s for s in exam.subject_submissions.all() if s.subject_id in teacher_subject_ids]
@@ -1835,9 +1855,7 @@ def teacher_dashboard(request):
             s.marks_url = reverse('marks_entry') + f'?exam={exam.id}&subject={s.subject_id}'
         # Attach stored roster info for pending subjects
         for s in pending:
-            roster = StoredRoster.objects.filter(
-                teacher=request.user, exam=exam, subject=s.subject
-            ).first()
+            roster = roster_lookup.get((exam.id, s.subject_id))
             s.has_roster = roster is not None
             s.roster_count = roster.student_count if roster else 0
             s.marks_url = reverse('marks_entry') + f'?exam={exam.id}&subject={s.subject_id}'

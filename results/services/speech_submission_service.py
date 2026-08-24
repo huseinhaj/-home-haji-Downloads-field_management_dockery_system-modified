@@ -393,6 +393,7 @@ def submit_speech_entry(
     confirm_student_id: Optional[int] = None,
     confidence_threshold: float = 0.9,
     teacher_name: str = '',
+    roster_students: Optional[List[Student]] = None,
 ) -> dict:
     if session.status == SpeechSubmissionSession.STATUS_FINALIZED:
         raise SpeechSubmissionError("This speech submission session is already finalized.")
@@ -411,10 +412,15 @@ def submit_speech_entry(
 
     student_name, score = extract_name_and_score(transcript)
     roster_ids = session.roster_student_ids or []
-    if roster_ids:
-        roster_students = Student.objects.filter(id__in=roster_ids).order_by("first_name", "last_name")
-    else:
-        roster_students = Student.objects.all().order_by("first_name", "last_name")
+    if roster_students is None:
+        # roster_student_ids is fixed for the life of the session, so a
+        # caller processing many chunks of the same session (see
+        # submit_speech_entries_batch) can fetch this once and pass it in
+        # instead of re-running the same query per chunk.
+        if roster_ids:
+            roster_students = list(Student.objects.filter(id__in=roster_ids).order_by("first_name", "last_name"))
+        else:
+            roster_students = list(Student.objects.all().order_by("first_name", "last_name"))
 
     logger.debug(
         "submit_speech_entry: parsed student_name=%r score=%s roster_student_ids=%s",
@@ -428,16 +434,15 @@ def submit_speech_entry(
     candidates: list[dict] = []
 
     if confirm_student_id is not None:
-        try:
-            matched_student = roster_students.get(id=confirm_student_id)
-        except Student.DoesNotExist as exc:
+        matched_student = next((s for s in roster_students if s.id == confirm_student_id), None)
+        if matched_student is None:
             logger.warning(
                 "submit_speech_entry: confirmed student missing session_id=%s confirm_student_id=%s roster_ids=%s",
                 session.id,
                 confirm_student_id,
                 roster_ids,
             )
-            raise SpeechSubmissionError("Confirmed student does not exist in the roster.") from exc
+            raise SpeechSubmissionError("Confirmed student does not exist in the roster.")
         confidence = 1.0
         candidates = [
             {
@@ -662,6 +667,16 @@ def submit_speech_entries_batch(
     session_finalized = False
     exam_finalized = False
 
+    # Only prefetch once for a fixed roster. In "open mode" (no roster —
+    # students are auto-created from the teacher's speech as it's heard)
+    # a later chunk must still see students an earlier chunk in this same
+    # batch just created, so that path keeps querying fresh per chunk.
+    roster_ids = session.roster_student_ids or []
+    roster_students = (
+        list(Student.objects.filter(id__in=roster_ids).order_by("first_name", "last_name"))
+        if roster_ids else None
+    )
+
     for chunk in data_chunks:
         try:
             result = submit_speech_entry(
@@ -670,6 +685,7 @@ def submit_speech_entries_batch(
                 explicit_update=True,
                 confidence_threshold=confidence_threshold,
                 teacher_name=teacher_name,
+                roster_students=roster_students,
             )
             saved_entries.append(result)
             if result.get("session_finalized"):

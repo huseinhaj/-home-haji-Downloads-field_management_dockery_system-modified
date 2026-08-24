@@ -5,7 +5,8 @@ from django.test import Client, TestCase
 from django.urls import reverse
 import pandas as pd
 
-from .models import Exam, ExamResult, ProcessedResult, School, SpeechSubmissionSession, Student, Subject, TeacherAccount
+from .models import ClassTimetableEntry, Exam, ExamResult, ProcessedResult, School, SpeechSubmissionSession, Student, Subject, TeacherAccount, TeachingAssignment, TimeSlot
+from .services.class_timetable_service import TimetableConflict, generate_class_timetable, save_class_timetable, set_single_cell
 from .services.scoresheet_ocr_service import (
     ScoreSheetOCRError,
     _clean_rows,
@@ -267,7 +268,30 @@ class ScoreSheetDocumentLoadingTests(TestCase):
 
 
 class ScoreSheetPhotoExtractViewTests(TestCase):
+	"""scoresheet_photo_extract now only dispatches a Celery task and
+	returns a task_id — these force the task to run synchronously
+	(task_always_eager) so the tests don't need a real worker/broker, then
+	poll scoresheet_extract_status once for the actual result."""
 	databases = {'default', 'results'}
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		from field_management.celery import app as celery_app
+		cls._celery_app = celery_app
+		cls._orig_conf = {
+			'task_always_eager': celery_app.conf.task_always_eager,
+			'task_eager_propagates': celery_app.conf.task_eager_propagates,
+			'task_store_eager_result': celery_app.conf.task_store_eager_result,
+		}
+		celery_app.conf.task_always_eager = True
+		celery_app.conf.task_eager_propagates = True
+		celery_app.conf.task_store_eager_result = True
+
+	@classmethod
+	def tearDownClass(cls):
+		cls._celery_app.conf.update(cls._orig_conf)
+		super().tearDownClass()
 
 	def setUp(self):
 		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=1)
@@ -280,15 +304,18 @@ class ScoreSheetPhotoExtractViewTests(TestCase):
 		self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
 
 	def _post(self, extracted_rows, roster):
-		with patch('results.marks_entry.extract_scores_from_document', return_value=extracted_rows):
+		with patch('results.tasks.extract_scores_from_document', return_value=extracted_rows):
 			from django.core.files.uploadedfile import SimpleUploadedFile
 			photo = SimpleUploadedFile('sheet.jpg', b'fake-bytes', content_type='image/jpeg')
-			return self.client.post(reverse('scoresheet_photo_extract'), {
+			kickoff = self.client.post(reverse('scoresheet_photo_extract'), {
 				'photo': photo,
 				'exam_id': self.exam.id,
 				'subject_id': self.subject.id,
 				'roster': json.dumps(roster),
 			})
+			self.assertEqual(kickoff.status_code, 202)
+			task_id = kickoff.json()['task_id']
+			return self.client.get(reverse('scoresheet_extract_status', args=[task_id]))
 
 	def test_extracted_rows_are_fuzzy_matched_against_posted_roster(self):
 		roster = [
@@ -352,15 +379,18 @@ class ScoreSheetPhotoExtractViewTests(TestCase):
 		self.assertEqual(data['unmatched'][0]['raw_name'], 'x')
 
 	def test_ocr_error_returns_400(self):
-		with patch('results.marks_entry.extract_scores_from_document', side_effect=ScoreSheetOCRError('Hakuna alama iliyotambulika.')):
+		with patch('results.tasks.extract_scores_from_document', side_effect=ScoreSheetOCRError('Hakuna alama iliyotambulika.')):
 			from django.core.files.uploadedfile import SimpleUploadedFile
 			photo = SimpleUploadedFile('sheet.jpg', b'fake-bytes', content_type='image/jpeg')
-			response = self.client.post(reverse('scoresheet_photo_extract'), {
+			kickoff = self.client.post(reverse('scoresheet_photo_extract'), {
 				'photo': photo,
 				'exam_id': self.exam.id,
 				'subject_id': self.subject.id,
 				'roster': '[]',
 			})
+			self.assertEqual(kickoff.status_code, 202)
+			task_id = kickoff.json()['task_id']
+			response = self.client.get(reverse('scoresheet_extract_status', args=[task_id]))
 		self.assertEqual(response.status_code, 400)
 		self.assertIn('error', response.json())
 
@@ -488,3 +518,138 @@ class BulkStudentResultsPdfTests(TestCase):
 		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
 		response = client.get(reverse('generate_bulk_student_results_pdf', args=[empty_exam.id]))
 		self.assertEqual(response.status_code, 404)
+
+
+class ClassTimetableServiceTests(TestCase):
+	"""The one rule that must never break: a teacher can never be double
+	booked at the same time slot across two different classes."""
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
+		self.teacher = TeacherAccount.objects.create(email='t1@example.com', full_name='Teacher One', role=TeacherAccount.ROLE_TEACHER, school=self.school)
+		self.math = Subject.objects.create(name='Mathematics')
+		self.slot1 = TimeSlot.objects.create(school=self.school, day_of_week=0, order=0, start_time='08:00', end_time='08:40')
+		self.slot2 = TimeSlot.objects.create(school=self.school, day_of_week=0, order=1, start_time='08:40', end_time='09:20')
+
+	def test_generate_never_double_books_a_teacher(self):
+		# One teacher, two classes, each wanting 2 periods/week — but only
+		# 2 slots exist in total, so at most 2 of the 4 needed lessons can
+		# ever be placed without the teacher being in two places at once.
+		TeachingAssignment.objects.create(school=self.school, form=1, stream='A', subject=self.math, teacher=self.teacher, periods_per_week=2)
+		TeachingAssignment.objects.create(school=self.school, form=1, stream='B', subject=self.math, teacher=self.teacher, periods_per_week=2)
+
+		entries, unplaced = generate_class_timetable(self.school)
+
+		teacher_slot_pairs = [(e['teacher_id'], e['time_slot_id']) for e in entries]
+		self.assertEqual(len(teacher_slot_pairs), len(set(teacher_slot_pairs)))
+		self.assertEqual(len(entries), 2)
+		self.assertEqual(sum(u['missing'] for u in unplaced), 2)
+
+	def test_generate_raises_without_time_slots(self):
+		TimeSlot.objects.all().delete()
+		TeachingAssignment.objects.create(school=self.school, form=1, stream='A', subject=self.math, teacher=self.teacher, periods_per_week=1)
+		with self.assertRaises(TimetableConflict):
+			generate_class_timetable(self.school)
+
+	def test_generate_raises_without_assignments(self):
+		with self.assertRaises(TimetableConflict):
+			generate_class_timetable(self.school)
+
+	def test_save_class_timetable_only_replaces_touched_classes(self):
+		untouched = ClassTimetableEntry.objects.create(
+			school=self.school, form=9, stream='Z', time_slot=self.slot1, subject=self.math, teacher=self.teacher,
+		)
+		TeachingAssignment.objects.create(school=self.school, form=1, stream='A', subject=self.math, teacher=self.teacher, periods_per_week=1)
+		entries, _ = generate_class_timetable(self.school, form_streams=[(1, 'A')])
+		saved = save_class_timetable(self.school, entries, form_streams=[(1, 'A')])
+		self.assertEqual(saved, 1)
+		self.assertTrue(ClassTimetableEntry.objects.filter(school=self.school, form=1, stream='A').exists())
+		self.assertTrue(ClassTimetableEntry.objects.filter(id=untouched.id).exists())
+
+	def test_set_single_cell_rejects_double_booking(self):
+		ClassTimetableEntry.objects.create(school=self.school, form=1, stream='A', time_slot=self.slot1, subject=self.math, teacher=self.teacher)
+		with self.assertRaises(TimetableConflict):
+			set_single_cell(self.school, form=1, stream='B', time_slot_id=self.slot1.id, subject_id=self.math.id, teacher_id=self.teacher.id)
+
+	def test_set_single_cell_allows_same_class_update(self):
+		entry = ClassTimetableEntry.objects.create(school=self.school, form=1, stream='A', time_slot=self.slot1, subject=self.math, teacher=self.teacher)
+		other_subject = Subject.objects.create(name='English')
+		set_single_cell(self.school, form=1, stream='A', time_slot_id=self.slot1.id, subject_id=other_subject.id, teacher_id=self.teacher.id)
+		entry.refresh_from_db()
+		self.assertEqual(entry.subject_id, other_subject.id)
+
+
+class ClassTimetableViewTests(TestCase):
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
+		self.academic = TeacherAccount.objects.create(email='academic@example.com', full_name='Academic One', role=TeacherAccount.ROLE_ACADEMIC, school=self.school)
+		self.teacher = TeacherAccount.objects.create(email='teacher@example.com', full_name='Teacher One', role=TeacherAccount.ROLE_TEACHER, school=self.school)
+		self.subject = Subject.objects.create(name='Mathematics')
+		self.client_academic = Client()
+		self.client_academic.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		self.client_teacher = Client()
+		self.client_teacher.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
+
+	def test_non_academic_cannot_manage_time_slots(self):
+		response = self.client_teacher.get(reverse('time_slot_setup'))
+		self.assertEqual(response.status_code, 403)
+
+	def test_academic_can_add_and_delete_time_slot(self):
+		response = self.client_academic.post(reverse('time_slot_setup'), {
+			'day_of_week': '0', 'order': '0', 'start_time': '08:00', 'end_time': '08:40', 'is_teaching_slot': 'on',
+		})
+		self.assertEqual(response.status_code, 302)
+		slot = TimeSlot.objects.get(school=self.school)
+		self.assertTrue(slot.is_teaching_slot)
+
+		response = self.client_academic.post(reverse('time_slot_setup'), {'action': 'delete', 'slot_id': slot.id})
+		self.assertEqual(response.status_code, 302)
+		self.assertFalse(TimeSlot.objects.filter(id=slot.id).exists())
+
+	def test_academic_can_add_teaching_assignment(self):
+		response = self.client_academic.post(reverse('teaching_assignment_manage'), {
+			'teacher_id': self.teacher.id, 'subject_id': self.subject.id, 'form': '1', 'stream': 'A', 'periods_per_week': '3',
+		})
+		self.assertEqual(response.status_code, 302)
+		self.assertTrue(TeachingAssignment.objects.filter(school=self.school, teacher=self.teacher, subject=self.subject).exists())
+
+	def test_generate_view_shows_preview_and_save_persists(self):
+		TimeSlot.objects.create(school=self.school, day_of_week=0, order=0, start_time='08:00', end_time='08:40')
+		TeachingAssignment.objects.create(school=self.school, form=1, stream='A', subject=self.subject, teacher=self.teacher, periods_per_week=1)
+
+		response = self.client_academic.post(reverse('generate_class_timetable'), {'action': 'generate'})
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(len(response.context['preview_rows']), 1)
+
+		row = response.context['preview_rows'][0]
+		save_response = self.client_academic.post(reverse('save_class_timetable'), {
+			'form[]': [str(row['form'])],
+			'stream[]': [row['stream']],
+			'time_slot_id[]': [str(row['time_slot_id'])],
+			'subject_id[]': [str(row['subject_id'])],
+			'teacher_id[]': [str(row['teacher_id'])],
+		})
+		self.assertEqual(save_response.status_code, 302)
+		self.assertTrue(ClassTimetableEntry.objects.filter(school=self.school, form=1, stream='A').exists())
+
+	def test_class_timetable_view_renders_for_teacher_and_academic(self):
+		slot = TimeSlot.objects.create(school=self.school, day_of_week=0, order=0, start_time='08:00', end_time='08:40')
+		ClassTimetableEntry.objects.create(school=self.school, form=1, stream='A', time_slot=slot, subject=self.subject, teacher=self.teacher)
+		TeachingAssignment.objects.create(school=self.school, form=1, stream='A', subject=self.subject, teacher=self.teacher, periods_per_week=1)
+
+		for client in (self.client_academic, self.client_teacher):
+			response = client.get(reverse('class_timetable_view'))
+			self.assertEqual(response.status_code, 200)
+			self.assertContains(response, 'Mathematics')
+
+	def test_cell_edit_rejects_conflicting_teacher(self):
+		slot = TimeSlot.objects.create(school=self.school, day_of_week=0, order=0, start_time='08:00', end_time='08:40')
+		ClassTimetableEntry.objects.create(school=self.school, form=1, stream='A', time_slot=slot, subject=self.subject, teacher=self.teacher)
+
+		response = self.client_academic.post(reverse('class_timetable_cell_edit'), {
+			'form': '1', 'stream': 'B', 'time_slot_id': slot.id, 'subject_id': self.subject.id, 'teacher_id': self.teacher.id,
+		})
+		self.assertEqual(response.status_code, 409)

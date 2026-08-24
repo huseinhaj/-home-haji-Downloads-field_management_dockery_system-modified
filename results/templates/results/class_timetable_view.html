@@ -1,0 +1,162 @@
+{% extends 'results/base.html' %}
+{% block title %}Ratiba ya Darasa | School Results{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<style>
+  .ct-hero {
+    background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+    border: 2px solid #D9A441;
+    border-radius: 2px;
+    padding: 1.5rem 2rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;
+  }
+  .ct-hero h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.15rem; }
+  .ct-day-block { margin-bottom: 1.5rem; overflow-x: auto; }
+  .ct-day-title {
+    background: #1F7A3D; color: #fff; font-weight: 800; padding: 0.4rem 0.8rem;
+    text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.85rem; border-radius: 2px 2px 0 0;
+  }
+  table.ct-table { border-collapse: collapse; font-size: 0.75rem; min-width: 100%; }
+  table.ct-table th, table.ct-table td { border: 1px solid #ddd; padding: 0.3rem 0.4rem; text-align: center; white-space: nowrap; }
+  table.ct-table th { background: #f4f6fb; color: #1F7A3D; font-weight: 700; }
+  table.ct-table td.ct-class-label { background: #fdf6e3; font-weight: 800; color: #1F7A3D; white-space: nowrap; }
+  table.ct-table td.ct-nonteaching { background: #eee; color: #888; font-weight: 700; }
+  table.ct-table td.ct-cell { cursor: default; min-width: 82px; }
+  table.ct-table td.ct-cell.editable { cursor: pointer; }
+  table.ct-table td.ct-cell.editable:hover { background: #eaf7ee; }
+  .ct-subject { font-weight: 700; }
+  .ct-teacher { color: #888; font-size: 0.68rem; }
+
+  #ctEditPanel {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  #ctEditPanel .ct-panel-box {
+    background: #fff; border-radius: 4px; padding: 1.2rem; width: 320px; max-width: 90vw;
+  }
+</style>
+
+<div class="ct-hero">
+  <div>
+    <h1>🗓️ Ratiba ya Darasa (Class Timetable)</h1>
+    <div style="font-size:0.82rem;color:#D9A441;">Ratiba ya kudumu ya wiki — inatumika kila wiki mpaka ibadilishwe.</div>
+  </div>
+  {% if is_academic %}
+  <div class="d-flex gap-2">
+    <a href="{% url 'teaching_assignment_manage' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">👩‍🏫 Ugawaji wa Walimu</a>
+    <a href="{% url 'generate_class_timetable' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">⚡ Tengeneza Upya</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if not has_timetable %}
+<div class="alert alert-warning">
+  Bado hakuna ratiba iliyotengenezwa. {% if is_academic %}Anza kwa <a href="{% url 'time_slot_setup' %}">kuweka vipindi vya siku</a>, kisha <a href="{% url 'teaching_assignment_manage' %}">ugawaji wa walimu</a>, kisha <a href="{% url 'generate_class_timetable' %}">tengeneza ratiba</a>.{% endif %}
+</div>
+{% endif %}
+
+{% for day in grid %}
+<div class="ct-day-block">
+  <div class="ct-day-title">{{ day.day_label }}</div>
+  <table class="ct-table">
+    <thead>
+      <tr>
+        <th>Darasa</th>
+        {% for slot in day.slots %}
+        <th>{{ slot.start_time|time:"H:i" }}<br>{{ slot.end_time|time:"H:i" }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in day.rows %}
+      <tr>
+        <td class="ct-class-label">Form {{ row.form }}{{ row.stream }}</td>
+        {% for cell in row.cells %}
+          {% if cell.slot.is_teaching_slot %}
+            <td class="ct-cell {% if is_academic %}editable{% endif %}"
+                {% if is_academic %}
+                onclick="ctOpenEdit({{ row.form }}, '{{ row.stream }}', {{ cell.slot.id }}, {{ cell.entry.subject_id|default:'null' }}, {{ cell.entry.teacher_id|default:'null' }})"
+                {% endif %}>
+              {% if cell.entry %}
+                <div class="ct-subject">{{ cell.entry.subject.name|default:'?' }}</div>
+                <div class="ct-teacher">{{ cell.entry.teacher.full_name|default:cell.entry.teacher.email|default:'?' }}</div>
+              {% else %}
+                <span style="color:#ccc;">—</span>
+              {% endif %}
+            </td>
+          {% else %}
+            <td class="ct-nonteaching">{{ cell.slot.label }}</td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+
+{% if is_academic %}
+<div id="ctEditPanel">
+  <div class="ct-panel-box">
+    <h5>Badilisha Kipindi</h5>
+    <div class="mb-2">
+      <label class="form-label fw-bold">Somo</label>
+      <select id="ctSubjectSelect" class="form-select">
+        {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-bold">Mwalimu</label>
+      <select id="ctTeacherSelect" class="form-select">
+        {% for t in teachers %}<option value="{{ t.id }}">{{ t.full_name|default:t.email }}</option>{% endfor %}
+      </select>
+    </div>
+    <div id="ctEditError" class="text-danger small mb-2" style="display:none;"></div>
+    <div class="d-flex gap-2 justify-content-end">
+      <button class="btn btn-secondary btn-sm" onclick="ctCloseEdit()">Ghairi</button>
+      <button class="btn btn-sm" style="background:#1F7A3D;color:#fff;" onclick="ctSaveEdit()">Hifadhi</button>
+    </div>
+  </div>
+</div>
+<script>
+const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+let ctCurrent = null;
+function ctOpenEdit(form, stream, slotId, subjectId, teacherId) {
+  ctCurrent = { form, stream, slotId };
+  document.getElementById('ctSubjectSelect').value = subjectId || '';
+  document.getElementById('ctTeacherSelect').value = teacherId || '';
+  document.getElementById('ctEditError').style.display = 'none';
+  document.getElementById('ctEditPanel').style.display = 'flex';
+}
+function ctCloseEdit() {
+  document.getElementById('ctEditPanel').style.display = 'none';
+}
+async function ctSaveEdit() {
+  const subjectId = document.getElementById('ctSubjectSelect').value;
+  const teacherId = document.getElementById('ctTeacherSelect').value;
+  const errBox = document.getElementById('ctEditError');
+  const fd = new FormData();
+  fd.append('form', ctCurrent.form);
+  fd.append('stream', ctCurrent.stream);
+  fd.append('time_slot_id', ctCurrent.slotId);
+  fd.append('subject_id', subjectId);
+  fd.append('teacher_id', teacherId);
+  const res = await fetch("{% url 'class_timetable_cell_edit' %}", {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrfToken },
+    body: fd,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    errBox.textContent = data.error || 'Hitilafu imetokea.';
+    errBox.style.display = '';
+    return;
+  }
+  window.location.reload();
+}
+</script>
+{% endif %}
+{% endblock %}

@@ -1085,8 +1085,38 @@
             headers: { 'X-CSRFToken': csrfToken },
             body: fd,
           });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.error || 'Upload failed');
+          const kickoff = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(kickoff.error || 'Upload failed');
+
+          // OCR runs in the background (can take a while on multi-page
+          // uploads) — poll until it's done, showing elapsed time so a
+          // teacher waiting on a slow read isn't left guessing.
+          const taskId = kickoff.task_id;
+          const statusUrlBase = "{% url 'scoresheet_extract_status' task_id='PLACEHOLDER' %}".replace('PLACEHOLDER', taskId);
+          const POLL_INTERVAL_MS = 2500;
+          const MAX_WAIT_MS = 4 * 60 * 1000;
+          const startedAt = Date.now();
+          let data;
+          while (true) {
+            if (Date.now() - startedAt > MAX_WAIT_MS) {
+              throw new Error(LANG === 'sw'
+                ? 'Muda umeisha kusoma picha. Jaribu tena au tumia picha ndogo zaidi.'
+                : 'Timed out reading the photo. Try again or use a smaller image.');
+            }
+            const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+            photoStatus.innerHTML = '<span style="color:#24508a;">⏳ ' +
+              (LANG === 'sw' ? 'Inasoma picha...' : 'Reading photo...') + ' (' + elapsedSec + 's)</span>';
+
+            const pollRes = await fetch(statusUrlBase);
+            const pollData = await pollRes.json().catch(() => ({}));
+            if (!pollRes.ok) throw new Error(pollData.error || 'Upload failed');
+            if (pollData.status === 'processing') {
+              await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+              continue;
+            }
+            data = pollData;
+            break;
+          }
 
           const matched = data.matched || [];
           const unmatched = data.unmatched || [];

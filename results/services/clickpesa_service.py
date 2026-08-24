@@ -21,8 +21,16 @@ from __future__ import annotations
 
 import requests
 from django.conf import settings
+from django.core.cache import cache
 
 BASE_URL = "https://api.clickpesa.com/third-parties"
+
+# Every payment attempt was fetching a brand-new token (15s round trip) even
+# for back-to-back retries. Cache it well under any plausible real expiry —
+# ClickPesa's token response doesn't tell us the actual TTL — and fall back
+# to a forced refresh on a 401 so a stale cached token never breaks a payment.
+_TOKEN_CACHE_KEY = 'clickpesa:token'
+_TOKEN_CACHE_TTL = 300
 
 
 class ClickPesaError(Exception):
@@ -40,8 +48,7 @@ def _require_credentials():
     return client_id, api_key
 
 
-def get_token() -> str:
-    client_id, api_key = _require_credentials()
+def _fetch_token(client_id, api_key) -> str:
     try:
         resp = requests.post(
             f"{BASE_URL}/generate-token",
@@ -61,24 +68,41 @@ def get_token() -> str:
     return token
 
 
+def get_token(force_refresh: bool = False) -> str:
+    if not force_refresh:
+        cached = cache.get(_TOKEN_CACHE_KEY)
+        if cached:
+            return cached
+    client_id, api_key = _require_credentials()
+    token = _fetch_token(client_id, api_key)
+    cache.set(_TOKEN_CACHE_KEY, token, _TOKEN_CACHE_TTL)
+    return token
+
+
 def initiate_ussd_push(*, amount: int, phone_number: str, order_reference: str) -> dict:
     """phone_number must be in 255XXXXXXXXX format (no leading +/0)."""
-    token = get_token()
     payload = {
         "amount": str(amount),
         "currency": "TZS",
         "orderReference": order_reference,
         "phoneNumber": phone_number,
     }
-    try:
-        resp = requests.post(
-            f"{BASE_URL}/payments/initiate-ussd-push-request",
-            json=payload,
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-            timeout=30,
-        )
-    except requests.RequestException as exc:
-        raise ClickPesaError(f"Imeshindwa kutuma ombi la malipo: {exc}") from exc
+
+    def _post(token):
+        try:
+            return requests.post(
+                f"{BASE_URL}/payments/initiate-ussd-push-request",
+                json=payload,
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                timeout=30,
+            )
+        except requests.RequestException as exc:
+            raise ClickPesaError(f"Imeshindwa kutuma ombi la malipo: {exc}") from exc
+
+    resp = _post(get_token())
+    if resp.status_code == 401:
+        # Cached token had actually expired — refresh once and retry.
+        resp = _post(get_token(force_refresh=True))
 
     if resp.status_code not in (200, 201):
         raise ClickPesaError(f"ClickPesa payment error ({resp.status_code}): {resp.text}")

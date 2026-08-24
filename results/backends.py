@@ -41,6 +41,6 @@ class ResultsAuthBackend(BaseBackend):
 
     def get_user(self, user_id):
         try:
-            return TeacherAccount.objects.using(self.DB).get(pk=user_id)
+            return TeacherAccount.objects.using(self.DB).select_related('school').get(pk=user_id)
         except TeacherAccount.DoesNotExist:
             return None

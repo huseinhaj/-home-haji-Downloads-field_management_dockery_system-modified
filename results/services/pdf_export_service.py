@@ -1097,13 +1097,19 @@ def generate_results_pdf_response(exam):
 # /shule/matokeo/<token>/ page, so a parent/student can take a copy home
 # instead of only viewing it online.
 # ══════════════════════════════════════════════════════════════════════════════
-def _build_student_result_pdf_bytes(result):
+def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=None, scores=None, subjects=None):
     """One-page NECTA-style result slip for a single ProcessedResult —
     same official header as the full class report, personalised below it
     with this student's own subjects, scores, and division/points/position.
     Returns a seeked-to-0 BytesIO — shared by the single-student download
     and the "all students, one file" bulk download, which merges one of
-    these per student."""
+    these per student.
+
+    school_type/total_students/scores/subjects are optional precomputed
+    values — the bulk download passes them in (computed once for the whole
+    exam) so this doesn't re-run the same exam-wide/cross-DB queries once
+    per student; the single-student download leaves them None and this
+    looks them up itself."""
     from reportlab.platypus import SimpleDocTemplate
 
     exam = result.exam
@@ -1114,7 +1120,8 @@ def _build_student_result_pdf_bytes(result):
     etype = exam.get_exam_type_display().upper()
     exam_title = exam.name.upper() if exam.name else etype
     gen_date_short = datetime.now().strftime('%d/%m/%Y')
-    school_type = get_school_type_for_exam(exam)
+    if school_type is None:
+        school_type = get_school_type_for_exam(exam)
     stype = "SECONDARY SCHOOL" if school_type == 'secondary' else "PRIMARY SCHOOL"
 
     slogo_uri = dlogo_uri = coa_uri = ''
@@ -1129,12 +1136,15 @@ def _build_student_result_pdf_bytes(result):
     exam_month = (exam.date.strftime('%B-%Y').upper() if exam.date else datetime.now().strftime('%B-%Y').upper())
 
     student_name = _student_name(result)
-    scores = {
-        er.subject_id: er.score
-        for er in ExamResult.objects.filter(exam=exam, student=student).select_related('subject')
-    }
-    subjects = list(Subject.objects.filter(examresult__exam=exam, examresult__student=student).distinct().order_by('name'))
-    total_students = ProcessedResult.objects.filter(exam=exam).count()
+    if scores is None:
+        scores = {
+            er.subject_id: er.score
+            for er in ExamResult.objects.filter(exam=exam, student=student).select_related('subject')
+        }
+    if subjects is None:
+        subjects = list(Subject.objects.filter(examresult__exam=exam, examresult__student=student).distinct().order_by('name'))
+    if total_students is None:
+        total_students = ProcessedResult.objects.filter(exam=exam).count()
     division_label = dict(ProcessedResult.DIVISION_CHOICES).get(result.division, result.division)
 
     page_w, page_h = A4
@@ -1232,10 +1242,31 @@ def generate_bulk_student_results_pdf_response(exam):
         resp = HttpResponse('Hakuna matokeo yaliyokamilika kwa mtihani huu bado.', status=404)
         return resp
 
+    # Compute exam-wide values once instead of per-student inside the loop
+    # below (school type does a cross-DB lookup; total_students was already
+    # this same queryset's length).
+    total_students = len(results)
+    school_type = get_school_type_for_exam(exam)
+
+    student_ids = [r.student_id for r in results]
+    scores_by_student = {}
+    subjects_by_student = {}
+    for er in ExamResult.objects.filter(exam=exam, student_id__in=student_ids).select_related('subject'):
+        scores_by_student.setdefault(er.student_id, {})[er.subject_id] = er.score
+        subjects_by_student.setdefault(er.student_id, {})[er.subject_id] = er.subject
+    for sid, subj_map in subjects_by_student.items():
+        subjects_by_student[sid] = sorted(subj_map.values(), key=lambda s: s.name)
+
     merged = pdfium.PdfDocument.new()
     buffers = []
     for result in results:
-        buf = _build_student_result_pdf_bytes(result)
+        buf = _build_student_result_pdf_bytes(
+            result,
+            school_type=school_type,
+            total_students=total_students,
+            scores=scores_by_student.get(result.student_id, {}),
+            subjects=subjects_by_student.get(result.student_id, []),
+        )
         buffers.append(buf)
         src = pdfium.PdfDocument(buf)  # buffers stay alive until save()
         merged.import_pages(src)
