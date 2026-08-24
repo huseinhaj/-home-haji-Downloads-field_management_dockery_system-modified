@@ -666,6 +666,12 @@ class TeachingAssignment(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     teacher = models.ForeignKey('TeacherAccount', on_delete=models.CASCADE, related_name='teaching_assignments')
     periods_per_week = models.PositiveSmallIntegerField(default=4)
+    double_period = models.BooleanField(
+        default=True,
+        help_text="Panga vipindi viwili mfululizo kwa kikao kimoja (mfano Chemistry 8:00-9:20), "
+                  "badala ya vipindi vimoja vimoja vilivyotawanyika. Kama periods_per_week ni tasa, "
+                  "kipindi kimoja cha ziada kinabaki peke yake.",
+    )
 
     class Meta:
         unique_together = [('school', 'form', 'stream', 'subject')]

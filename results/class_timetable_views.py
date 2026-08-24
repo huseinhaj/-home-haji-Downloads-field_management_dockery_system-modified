@@ -130,6 +130,7 @@ def teaching_assignment_manage(request):
             periods = max(1, int(request.POST.get('periods_per_week') or 4))
         except ValueError:
             periods = 4
+        double_period = request.POST.get('double_period') == 'on'
 
         if not (teacher and subject and form_num):
             messages.error(request, "Taarifa hazijakamilika — chagua mwalimu, somo na form.")
@@ -137,7 +138,7 @@ def teaching_assignment_manage(request):
 
         TeachingAssignment.objects.update_or_create(
             school=school, form=int(form_num), stream=stream, subject=subject,
-            defaults={'teacher': teacher, 'periods_per_week': periods},
+            defaults={'teacher': teacher, 'periods_per_week': periods, 'double_period': double_period},
         )
         label = f"Form {form_num}{stream}" if stream else f"Form {form_num}"
         messages.success(request, f"{teacher.full_name or teacher.email} amewekwa {label} — {subject.name} ({periods}x/wiki).")

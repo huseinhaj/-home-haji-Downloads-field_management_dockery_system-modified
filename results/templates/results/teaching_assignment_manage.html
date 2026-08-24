@@ -64,6 +64,13 @@
             <label class="form-label fw-bold">Vipindi/Wiki</label>
             <input type="number" name="periods_per_week" class="form-control" min="1" max="20" value="4" required>
           </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold d-block">Aina ya Kipindi</label>
+            <div class="form-check">
+              <input type="checkbox" name="double_period" class="form-check-input" id="doublePeriod" checked>
+              <label class="form-check-label" for="doublePeriod">Vipindi 2 mfululizo</label>
+            </div>
+          </div>
           <div class="col-md-1">
             <button type="submit" class="btn w-100 fw-bold" style="background:#1A7B3A;color:#fff;">✅</button>
           </div>
@@ -80,7 +87,7 @@
         <table class="table table-sm table-hover mb-0">
           <thead style="background:#1A3C6E;color:#fff;">
             <tr>
-              <th>Darasa</th><th>Somo</th><th>Mwalimu</th><th>Vipindi/Wiki</th><th>Action</th>
+              <th>Darasa</th><th>Somo</th><th>Mwalimu</th><th>Vipindi/Wiki</th><th>Aina</th><th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -90,6 +97,7 @@
               <td>{{ a.subject.name }}</td>
               <td>{{ a.teacher.full_name|default:a.teacher.email }}</td>
               <td>{{ a.periods_per_week }}</td>
+              <td>{% if a.double_period %}Mfululizo (2){% else %}Vimoja{% endif %}</td>
               <td>
                 <form method="post" style="display:inline;" onsubmit="return confirm('Futa ugawaji huu?');">
                   {% csrf_token %}

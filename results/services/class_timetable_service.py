@@ -24,25 +24,27 @@ class TimetableConflict(Exception):
     pass
 
 
-# A generic Mon-Fri secondary-school day: cleanliness/parade, 4 teaching
-# periods, a short break, 3 more teaching periods, lunch, then 2 more —
-# close to the common pattern (e.g. the Isingiro Secondary School sample
-# this feature was modelled on). Officers are free to edit or replace this
-# entirely; it only exists to save typing ~60 rows by hand for the common
-# case, not to prescribe how any particular school must run its day.
+# Mon-Fri day structure, matching Isingiro Secondary School's actual
+# timetable (Kyerwa DC) this feature was modelled on: cleanliness/parade,
+# 4 teaching periods, a short break, 5 more teaching periods, then lunch
+# at the end of the day. 9 teaching periods/day, meant to be filled in
+# double periods (2 consecutive periods per subject per session) — see
+# TeachingAssignment.double_period. Officers are free to edit or replace
+# this entirely; it only exists to save typing ~60 rows by hand for the
+# common case, not to prescribe how any particular school must run its day.
 _DEFAULT_DAY_TEMPLATE = [
-    ('07:00', '07:40', False, 'Usafi na Gwaride'),
-    ('07:40', '08:20', True, ''),
-    ('08:20', '09:00', True, ''),
-    ('09:00', '09:40', True, ''),
-    ('09:40', '10:20', True, ''),
-    ('10:20', '10:40', False, 'Mapumziko'),
-    ('10:40', '11:20', True, ''),
-    ('11:20', '12:00', True, ''),
-    ('12:00', '12:40', True, ''),
-    ('12:40', '13:20', False, 'Chakula cha Mchana'),
-    ('13:20', '14:00', True, ''),
-    ('14:00', '14:40', True, ''),
+    ('07:00', '07:50', False, 'Usafi na Gwaride'),
+    ('08:00', '08:40', True, ''),
+    ('08:40', '09:20', True, ''),
+    ('09:20', '10:00', True, ''),
+    ('10:00', '10:40', True, ''),
+    ('10:40', '11:10', False, 'Mapumziko'),
+    ('11:10', '11:50', True, ''),
+    ('11:50', '12:30', True, ''),
+    ('12:30', '13:10', True, ''),
+    ('13:10', '13:50', True, ''),
+    ('13:50', '14:30', True, ''),
+    ('14:30', '15:00', False, 'Chakula cha Mchana'),
 ]
 
 
@@ -116,6 +118,15 @@ def generate_class_timetable(school, *, form_streams=None):
     if not slots:
         raise TimetableConflict("Shule haijaweka vipindi vya kufundishia bado.")
 
+    # Adjacent-in-the-list teaching slots on the same day are, by
+    # construction, back-to-back with nothing (a break, a different day)
+    # between them — exactly what a "double period" needs.
+    consecutive_pairs = [
+        (slots[i], slots[i + 1])
+        for i in range(len(slots) - 1)
+        if slots[i].day_of_week == slots[i + 1].day_of_week
+    ]
+
     qs = TeachingAssignment.objects.filter(school=school).select_related('subject', 'teacher')
     if form_streams is not None:
         wanted = set(form_streams)
@@ -125,49 +136,60 @@ def generate_class_timetable(school, *, form_streams=None):
     if not assignments:
         raise TimetableConflict("Hakuna walimu/masomo yaliyowekwa kwa ajili ya ratiba.")
 
-    # One "lesson unit" per weekly occurrence needed.
-    units = []
+    # A "session" is one sitting: a double period (2 consecutive slots) or
+    # a single period. periods_per_week=5 with double_period=True becomes
+    # 2 double sessions + 1 single (the odd one out) — matching how real
+    # timetables actually run a subject, not 5 scattered single periods.
+    sessions = []  # (assignment, is_double: bool)
     for a in assignments:
-        units.extend([a] * a.periods_per_week)
+        if a.double_period:
+            doubles, remainder = divmod(a.periods_per_week, 2)
+        else:
+            doubles, remainder = 0, a.periods_per_week
+        sessions.extend([(a, True)] * doubles)
+        sessions.extend([(a, False)] * remainder)
 
-    # Most-constrained-first: subjects needing more periods/week are
-    # harder to place without clashes, so seat them before the easy ones.
-    # The shuffle (fixed seed — reproducible previews) breaks ties instead
-    # of always favouring whichever assignment happened to be created first.
+    # Most-constrained-first: double sessions are harder to place than
+    # singles, and within each group, more periods/week means harder to
+    # fit. The shuffle (fixed seed — reproducible previews) breaks ties
+    # instead of always favouring whichever assignment was created first.
     rng = random.Random(42)
-    rng.shuffle(units)
-    units.sort(key=lambda a: -a.periods_per_week)
+    rng.shuffle(sessions)
+    sessions.sort(key=lambda item: (not item[1], -item[0].periods_per_week))
 
     class_slot_used = defaultdict(set)      # (form, stream) -> {slot_id}
     teacher_slot_used = defaultdict(set)    # teacher_id -> {slot_id}
     class_day_subject = defaultdict(set)    # (form, stream, day) -> {subject_id}
     entries = {}                            # (form, stream, slot_id) -> assignment
-    missed = defaultdict(int)               # assignment.id -> unplaced count
+    missed = defaultdict(int)               # assignment.id -> unplaced period count
 
-    for a in units:
+    for a, is_double in sessions:
         key = (a.form, a.stream)
+        candidates = consecutive_pairs if is_double else [(slot,) for slot in slots]
         placed = False
-        # Two passes: first try to avoid a second lesson of the same
+        # Two passes: first try to avoid a second session of the same
         # subject on the same day (nicer for students); if that leaves no
         # option, place it anywhere still valid rather than dropping it.
         for avoid_same_day_repeat in (True, False):
-            for slot in slots:
-                if slot.id in class_slot_used[key]:
+            for slot_group in candidates:
+                if any(s.id in class_slot_used[key] for s in slot_group):
                     continue
-                if slot.id in teacher_slot_used[a.teacher_id]:
+                if any(s.id in teacher_slot_used[a.teacher_id] for s in slot_group):
                     continue
-                if avoid_same_day_repeat and a.subject_id in class_day_subject[(key, slot.day_of_week)]:
+                day = slot_group[0].day_of_week
+                if avoid_same_day_repeat and a.subject_id in class_day_subject[(key, day)]:
                     continue
-                entries[(key[0], key[1], slot.id)] = a
-                class_slot_used[key].add(slot.id)
-                teacher_slot_used[a.teacher_id].add(slot.id)
-                class_day_subject[(key, slot.day_of_week)].add(a.subject_id)
+                for slot in slot_group:
+                    entries[(key[0], key[1], slot.id)] = a
+                    class_slot_used[key].add(slot.id)
+                    teacher_slot_used[a.teacher_id].add(slot.id)
+                class_day_subject[(key, day)].add(a.subject_id)
                 placed = True
                 break
             if placed:
                 break
         if not placed:
-            missed[a.id] += 1
+            missed[a.id] += 2 if is_double else 1
 
     entry_list = [
         {'form': f, 'stream': s, 'time_slot_id': slot_id, 'subject_id': a.subject_id, 'teacher_id': a.teacher_id}

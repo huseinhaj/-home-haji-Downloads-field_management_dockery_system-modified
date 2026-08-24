@@ -546,6 +546,34 @@ class ClassTimetableServiceTests(TestCase):
 		self.assertEqual(len(entries), 2)
 		self.assertEqual(sum(u['missing'] for u in unplaced), 2)
 
+	def test_generate_places_double_periods_on_consecutive_slots(self):
+		# self.slot1/self.slot2 are back-to-back on Monday (setUp); this
+		# Tuesday slot is not adjacent to either of them.
+		tuesday_slot = TimeSlot.objects.create(school=self.school, day_of_week=1, order=0, start_time='08:00', end_time='08:40')
+		TeachingAssignment.objects.create(
+			school=self.school, form=1, stream='A', subject=self.math, teacher=self.teacher,
+			periods_per_week=2, double_period=True,
+		)
+		entries, unplaced = generate_class_timetable(self.school)
+		self.assertEqual(unplaced, [])
+		slot_ids = {e['time_slot_id'] for e in entries}
+		self.assertEqual(slot_ids, {self.slot1.id, self.slot2.id})
+		self.assertNotIn(tuesday_slot.id, slot_ids)
+
+	def test_double_period_goes_unplaced_without_a_consecutive_pair(self):
+		# One slot per day across two separate days — no two slots are
+		# ever adjacent, so a double session can never be seated.
+		TimeSlot.objects.all().delete()
+		TimeSlot.objects.create(school=self.school, day_of_week=0, order=0, start_time='08:00', end_time='08:40')
+		TimeSlot.objects.create(school=self.school, day_of_week=1, order=0, start_time='08:00', end_time='08:40')
+		TeachingAssignment.objects.create(
+			school=self.school, form=1, stream='A', subject=self.math, teacher=self.teacher,
+			periods_per_week=2, double_period=True,
+		)
+		entries, unplaced = generate_class_timetable(self.school)
+		self.assertEqual(entries, [])
+		self.assertEqual(sum(u['missing'] for u in unplaced), 2)
+
 	def test_generate_raises_without_time_slots(self):
 		TimeSlot.objects.all().delete()
 		TeachingAssignment.objects.create(school=self.school, form=1, stream='A', subject=self.math, teacher=self.teacher, periods_per_week=1)
