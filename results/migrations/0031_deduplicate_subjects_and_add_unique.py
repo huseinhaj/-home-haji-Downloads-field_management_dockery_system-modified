@@ -1,5 +1,5 @@
 """Deduplicate Subject records before adding unique constraint."""
-from django.db import migrations
+from django.db import migrations, models
 
 
 def deduplicate_subjects(apps, schema_editor):
