@@ -128,11 +128,11 @@ def generate_timetable_pdf_response(school):
 
     # ── Styles ──
     ministry_style = ParagraphStyle(
-        'Ministry', parent=styles['Normal'], fontSize=9, spaceAfter=1,
+        'Ministry', parent=styles['Normal'], fontSize=13, spaceAfter=1,
         textColor=BLUE_DARK, alignment=TA_CENTER, fontName='Helvetica-Bold',
     )
     district_style = ParagraphStyle(
-        'District', parent=styles['Normal'], fontSize=10, spaceAfter=1,
+        'District', parent=styles['Normal'], fontSize=14, spaceAfter=1,
         textColor=BLUE_MID, alignment=TA_CENTER, fontName='Helvetica-Bold',
     )
     school_style = ParagraphStyle(

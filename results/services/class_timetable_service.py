@@ -52,7 +52,7 @@ _DEFAULT_DAY_TEMPLATE = [
 # Friday template: starts early with Religion (06:30–07:20), then
 # follows the normal schedule from 07:20 onwards.
 _FRIDAY_TEMPLATE = [
-    ('06:30', '07:20', True, 'Religion'),
+    ('06:30', '07:20', False, 'Religion'),
     ('07:20', '08:00', False, 'Cleanliness & Parade'),
     ('08:00', '08:40', True, ''),
     ('08:40', '09:20', True, ''),
