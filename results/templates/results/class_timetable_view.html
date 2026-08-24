@@ -49,7 +49,6 @@
     <a href="{% url 'timetable_download_pdf' %}" class="btn btn-sm" style="background:#2196F3;color:#fff;font-weight:700;">📥 Download PDF</a>
     {% endif %}
     {% if is_academic %}
-    <a href="{% url 'teaching_assignment_manage' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">👩‍🏫 Teacher Assignments</a>
     <a href="{% url 'generate_class_timetable' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">⚡ Regenerate</a>
     {% if has_timetable %}
     <form method="post" action="{% url 'timetable_send_to_ps' %}" style="display:inline;"
