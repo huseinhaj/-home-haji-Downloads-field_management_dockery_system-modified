@@ -34,7 +34,7 @@ from .services.upload_processing_service import (
     process_uploaded_results,
     recompute_processed_results_for_exam,
 )
-from .utils import get_grade, get_grade_for_form, normalize_gender, parse_name_score_sheet, parse_score
+from .utils import get_grade, get_grade_for_form, normalize_gender, parse_name_score_sheet, parse_score, safe_get_or_create_subject
 
 _EXAM_TYPE_CHOICES = Exam.EXAM_TYPE_CHOICES
 
@@ -127,7 +127,7 @@ def upload_results(request):
 
                 # Create subjects + SubjectSubmission (PENDING) for each
                 for sname in subject_names:
-                    subject, _ = Subject.objects.get_or_create(name=sname)
+                    subject = safe_get_or_create_subject(sname)
                     SubjectSubmission.objects.get_or_create(exam=exam, subject=subject)
 
                 # Redirect to exam overview — main hub for teachers
@@ -1924,7 +1924,7 @@ def school_subjects(request):
             subject_name = request.POST.get('subject_name', '').strip()
             form_levels = request.POST.get('form_levels', '1,2,3,4').strip()
             if subject_name:
-                subject, _ = Subject.objects.get_or_create(name=subject_name)
+                subject = safe_get_or_create_subject(subject_name)
                 ss, created = SchoolSubject.objects.get_or_create(
                     school=school,
                     subject=subject,

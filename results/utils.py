@@ -78,6 +78,23 @@ def normalize_gender(raw_gender: str) -> str:
     return "M"
 
 
+def safe_get_or_create_subject(name):
+    """Get-or-create a Subject by name, tolerating pre-existing duplicates.
+
+    If duplicate Subject rows share the same name, ``get_or_create``
+    raises ``MultipleObjectsReturned``.  This helper catches that case,
+    keeps the oldest record, deletes the extras, and returns the winner."""
+    from .models import Subject
+    try:
+        subject, _ = Subject.objects.get_or_create(name=name)
+        return subject
+    except Subject.MultipleObjectsReturned:
+        subject = Subject.objects.filter(name=name).order_by('id').first()
+        # Delete duplicates
+        Subject.objects.filter(name=name).exclude(id=subject.id).delete()
+        return subject
+
+
 def get_grade(score):
     """NECTA CSEE (O-Level, Form 1-4) subject grade — 5-band scale.
 

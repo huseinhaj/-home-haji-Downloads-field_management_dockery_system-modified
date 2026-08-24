@@ -26,7 +26,7 @@ def reverse_translate(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('results', '0029_timetableprintsubmission'),
+        ('results', '0029_alter_school_coat_of_arms_alter_school_district_logo_and_more'),
     ]
 
     operations = [

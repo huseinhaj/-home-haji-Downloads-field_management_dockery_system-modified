@@ -11,6 +11,7 @@ from ..utils import (
     normalize_gender,
     normalize_subject_name,
     parse_score,
+    safe_get_or_create_subject,
 )
 
 
@@ -33,7 +34,7 @@ def process_uploaded_results(exam, uploaded_file):
     subjects_by_column = {}
     for column_name in subject_columns:
         normalized_name = normalize_subject_name(column_name)
-        subject, _ = Subject.objects.get_or_create(name=normalized_name)
+        subject = safe_get_or_create_subject(normalized_name)
         subjects_by_column[column_name] = subject
 
     # Parse every row first, then do the whole upload in a handful of bulk
