@@ -32,8 +32,28 @@ class TimetableConflict(Exception):
 # TeachingAssignment.double_period. Officers are free to edit or replace
 # this entirely; it only exists to save typing ~60 rows by hand for the
 # common case, not to prescribe how any particular school must run its day.
+# Mon–Thu day structure: cleanliness/parade, 4 teaching periods,
+# a short break, 5 more teaching periods, then lunch.
 _DEFAULT_DAY_TEMPLATE = [
     ('07:00', '07:50', False, 'Cleanliness & Parade'),
+    ('08:00', '08:40', True, ''),
+    ('08:40', '09:20', True, ''),
+    ('09:20', '10:00', True, ''),
+    ('10:00', '10:40', True, ''),
+    ('10:40', '11:10', False, 'Break'),
+    ('11:10', '11:50', True, ''),
+    ('11:50', '12:30', True, ''),
+    ('12:30', '13:10', True, ''),
+    ('13:10', '13:50', True, ''),
+    ('13:50', '14:30', True, ''),
+    ('14:30', '15:00', False, 'Lunch'),
+]
+
+# Friday template: starts early with Religion (06:30–07:20), then
+# follows the normal schedule from 07:20 onwards.
+_FRIDAY_TEMPLATE = [
+    ('06:30', '07:20', True, 'Religion'),
+    ('07:20', '08:00', False, 'Cleanliness & Parade'),
     ('08:00', '08:40', True, ''),
     ('08:40', '09:20', True, ''),
     ('09:20', '10:00', True, ''),
@@ -50,19 +70,20 @@ _DEFAULT_DAY_TEMPLATE = [
 
 def seed_default_time_slots(school):
     """Bulk-creates the generic day template above for Monday–Friday.
+    Friday gets its own template with Religion at 06:30.
     Caller (the view) is responsible for only calling this when the
     school has no TimeSlots yet, so it never overwrites a customised day."""
     from ..models import TimeSlot
 
-    slots = [
-        TimeSlot(
-            school=school, day_of_week=day, order=order,
-            start_time=start, end_time=end,
-            is_teaching_slot=is_teaching, label=label,
-        )
-        for day in range(5)
-        for order, (start, end, is_teaching, label) in enumerate(_DEFAULT_DAY_TEMPLATE)
-    ]
+    slots = []
+    for day in range(5):
+        template = _FRIDAY_TEMPLATE if day == 4 else _DEFAULT_DAY_TEMPLATE
+        for order, (start, end, is_teaching, label) in enumerate(template):
+            slots.append(TimeSlot(
+                school=school, day_of_week=day, order=order,
+                start_time=start, end_time=end,
+                is_teaching_slot=is_teaching, label=label,
+            ))
     TimeSlot.objects.bulk_create(slots)
     return len(slots)
 
