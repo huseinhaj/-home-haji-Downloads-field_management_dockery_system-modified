@@ -626,25 +626,19 @@ def subject_upload(request, exam_id, subject_id):
 
             saved_count = 0
             if parsed_rows:
-                from django.db.models import Q
-
-                name_pairs = {(fn, ln) for fn, ln, _, _ in parsed_rows}
-                name_filter = Q()
-                for fn, ln in name_pairs:
-                    name_filter |= Q(first_name=fn, last_name=ln)
-
-                student_map = {(s.first_name, s.last_name): s for s in Student.objects.filter(name_filter)}
-
-                new_students = []
-                seen = set()
-                for fn, ln, gender, _ in parsed_rows:
-                    key = (fn, ln)
-                    if key not in student_map and key not in seen:
-                        seen.add(key)
-                        new_students.append(Student(first_name=fn, last_name=ln, gender=gender))
-                if new_students:
-                    Student.objects.bulk_create(new_students)
-                    student_map = {(s.first_name, s.last_name): s for s in Student.objects.filter(name_filter)}
+                # Bulk-create/get students using the same optimized path
+                # as roster uploads — avoids N+1 get_or_create per row.
+                name_tuples = [(fn, '', ln, g) for fn, ln, g, _ in parsed_rows]
+                students_out = _bulk_save_students(name_tuples)
+                student_id_map = {s['id']: s for s in students_out}
+                # Also build (first, last) -> student for matching scores
+                from .models import Student as _Stu
+                all_first = {fn for fn, _, ln, _ in parsed_rows}
+                all_last = {ln for fn, _, ln, _ in parsed_rows}
+                student_map = {
+                    (s.first_name, s.last_name): s
+                    for s in _Stu.objects.filter(first_name__in=all_first, last_name__in=all_last)
+                }
 
                 exam_results = []
                 for fn, ln, _, score_val in parsed_rows:
@@ -1594,38 +1588,98 @@ def recompute_exam_results(request, exam_id):
 @login_required
 def form_results(request, form_num):
     """Results for all approved exams of a given form level."""
-    exams = Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name')
+    exams = list(Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name'))
     is_academic = getattr(request.user, 'is_academic', False)
 
-    from .services.export_data import get_exam_export_payload
     from .services.subject_pdf_service import get_grade_keys_for_form
+
+    if not exams:
+        return render(request, 'results/form_results.html', {
+            'form_num': form_num,
+            'exams_ctx': [],
+            'form_label': f'Form {form_num}' if form_num <= 4 else f'Form {form_num} (Advanced)',
+            'is_academic': is_academic,
+        })
+
+    exam_ids = [e.id for e in exams]
+
+    # ── Batch-load all submission counts in one query ──
+    sub_counts = SubjectSubmission.objects.filter(
+        exam_id__in=exam_ids
+    ).values('exam_id').annotate(
+        total_subs=Count('id'),
+        approved_subs=Count(Case(
+            When(status=SubjectSubmission.STATUS_APPROVED, then=1),
+            output_field=IntegerField(),
+        )),
+        submitted_subs=Count(Case(
+            When(status__in=[SubjectSubmission.STATUS_SUBMITTED, SubjectSubmission.STATUS_APPROVED], then=1),
+            output_field=IntegerField(),
+        )),
+    )
+    sub_counts_map = {r['exam_id']: r for r in sub_counts}
+
+    # ── Batch-load subjects, processed results, and exam results once ──
+    all_subjects = Subject.objects.filter(
+        examresult__exam_id__in=exam_ids
+    ).distinct().order_by('name')
+    all_subjects_list = list(all_subjects)
+    all_subject_ids = [s.id for s in all_subjects_list]
+
+    processed_qs = ProcessedResult.objects.filter(
+        exam_id__in=exam_ids
+    ).select_related('student').order_by('position')
+    processed_by_exam = {}
+    for pr in processed_qs:
+        processed_by_exam.setdefault(pr.exam_id, []).append(pr)
+
+    # Exam results — build score_lookup keyed by (student_id, subject_id) -> score,
+    # plus per-exam grouping for grade_lookup
+    score_lookup_global = {}
+    for er in ExamResult.objects.filter(
+        exam_id__in=exam_ids, subject_id__in=all_subject_ids
+    ).only('student_id', 'subject_id', 'score', 'exam_id'):
+        score_lookup_global[(er.exam_id, er.student_id, er.subject_id)] = er.score
+
+    # ── Batch-load PS submissions once ──
+    from .models import PrintSubmission
+    ps_map = {}
+    for ps in PrintSubmission.objects.filter(
+        exam_id__in=exam_ids, school=request.user.school
+    ).order_by('exam_id', '-submitted_at'):
+        ps_map.setdefault(ps.exam_id, ps)
+
+    # ── Build per-exam context from preloaded data ──
+    from collections import defaultdict
+    subjects_by_exam = defaultdict(list)
+    for (eid, sid, _), _ in score_lookup_global.items():
+        pass  # just ensuring it's iterated
+    # subjects per exam: which subjects have results
+    _subjects_by_exam = defaultdict(set)
+    for (eid, sid, _), _ in score_lookup_global.items():
+        _subjects_by_exam[eid].add(sid)
+    subjects_by_id = {s.id: s for s in all_subjects_list}
 
     exams_ctx = []
     for exam in exams:
-        counts = exam.subject_submissions.aggregate(
-            total_subs=Count('id'),
-            approved_subs=Count(Case(
-                When(status=SubjectSubmission.STATUS_APPROVED, then=1),
-                output_field=IntegerField(),
-            )),
-            submitted_subs=Count(Case(
-                When(status__in=[SubjectSubmission.STATUS_SUBMITTED, SubjectSubmission.STATUS_APPROVED], then=1),
-                output_field=IntegerField(),
-            )),
-        )
+        counts = sub_counts_map.get(exam.id, {'total_subs': 0, 'approved_subs': 0, 'submitted_subs': 0})
         total_subs = counts['total_subs']
         approved_subs = counts['approved_subs']
         submitted_subs = counts['submitted_subs']
         all_submitted = total_subs > 0 and submitted_subs == total_subs
         all_approved = total_subs > 0 and approved_subs == total_subs
 
-        # NECTA-style per-subject grades for this exam
-        payload = get_exam_export_payload(exam)
-        exam_subjects = payload['subjects']
-        score_lookup = payload['score_lookup']
+        exam_subject_ids = _subjects_by_exam.get(exam.id, set())
+        exam_subjects = [subjects_by_id[sid] for sid in sorted(exam_subject_ids) if sid in subjects_by_id]
+        exam_processed = processed_by_exam.get(exam.id, [])
+
+        # Build score_lookup and grade_lookup for this exam
+        score_lookup = {}
         grade_lookup = {}
-        for (sid, subj_id), score in score_lookup.items():
-            grade_lookup.setdefault(sid, {})[subj_id] = get_grade_for_form(score, exam.form)
+        for (eid, sid, subj_id), score in score_lookup_global.items():
+            if eid == exam.id:
+                score_lookup[(sid, subj_id)] = score
+                grade_lookup.setdefault(sid, {})[subj_id] = get_grade_for_form(score, exam.form)
         grade_key = get_grade_keys_for_form(exam.form)
 
         exams_ctx.append({
@@ -1635,7 +1689,7 @@ def form_results(request, form_num):
             'submitted_subs': submitted_subs,
             'all_submitted': all_submitted,
             'all_approved': all_approved,
-            'processed_results': payload['processed_results'],
+            'processed_results': exam_processed,
             'subjects': exam_subjects,
             'grade_lookup': grade_lookup,
             'grade_key': grade_key,
@@ -1645,7 +1699,7 @@ def form_results(request, form_num):
             'approve_all_url': reverse('approve_exam_submissions', args=[exam.id]) if is_academic else None,
             'recompute_url': reverse('recompute_exam_results', args=[exam.id]) if is_academic else None,
             'submit_ps_url': reverse('submit_exam_to_ps', args=[exam.id]) if is_academic else None,
-            'ps_submission': exam.print_submissions.order_by('-submitted_at').first(),
+            'ps_submission': ps_map.get(exam.id),
         })
 
     return render(request, 'results/form_results.html', {
@@ -1685,16 +1739,38 @@ def form_results_excel(request, form_num):
         if score >= 25: return "FFFDEBD0", "FF784212"   # D
         return "FFFADBD8", "FF922B21"                   # F
 
-    exams = Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name')
+    exams = list(Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name'))
     wb = openpyxl.Workbook()
     wb.remove(wb.active)  # remove default empty sheet
 
+    # ── Batch-load all data upfront (same approach as form_results) ──
+    exam_ids = [e.id for e in exams]
+    all_subjects_list = list(Subject.objects.filter(
+        examresult__exam_id__in=exam_ids
+    ).distinct().order_by('name'))
+    all_subject_ids = [s.id for s in all_subjects_list]
+    subjects_by_id = {s.id: s for s in all_subjects_list}
+
+    processed_by_exam = {}
+    for pr in ProcessedResult.objects.filter(
+        exam_id__in=exam_ids
+    ).select_related('student').order_by('position'):
+        processed_by_exam.setdefault(pr.exam_id, []).append(pr)
+
+    score_lookup_global = {}
+    for er in ExamResult.objects.filter(
+        exam_id__in=exam_ids, subject_id__in=all_subject_ids
+    ).only('exam_id', 'student_id', 'subject_id', 'score'):
+        score_lookup_global[(er.exam_id, er.student_id, er.subject_id)] = er.score
+
+    _subjects_by_exam = defaultdict(set)
+    for (eid, sid, _) in score_lookup_global:
+        _subjects_by_exam[eid].add(sid)
+
     for exam in exams:
-        from .services.export_data import get_exam_export_payload
-        payload = get_exam_export_payload(exam)
-        subjects = payload['subjects']
-        results = payload['processed_results']
-        score_lookup = payload['score_lookup']
+        subjects = [subjects_by_id[sid] for sid in sorted(_subjects_by_exam.get(exam.id, set())) if sid in subjects_by_id]
+        results = processed_by_exam.get(exam.id, [])
+        score_lookup = {(sid, subj_id): score for (eid, sid, subj_id), score in score_lookup_global.items() if eid == exam.id}
 
         sheet_title = f"{exam.name[:25]} {exam.year}"[:31]
         ws = wb.create_sheet(title=sheet_title)
@@ -2255,9 +2331,10 @@ def upload_form_students(request):
     # the Academic uploaded a specific roster order (e.g. matching the
     # school register) and expects to see it back exactly as uploaded.
     students = FormStudent.objects.filter(school=school, form=selected_form).order_by('id') if selected_form else FormStudent.objects.none()
-    counts = {}
-    for f in range(1, 7):
-        counts[f] = FormStudent.objects.filter(school=school, form=f).count()
+    counts = {f: 0 for f in range(1, 7)}
+    for row in FormStudent.objects.filter(school=school).values('form').annotate(cnt=Count('id')):
+        if row['form'] in counts:
+            counts[row['form']] = row['cnt']
 
     return render(request, 'results/upload_form_students.html', {
         'selected_form': selected_form,
@@ -2462,19 +2539,31 @@ def teacher_performance_report(request, form_num):
         story.append(Paragraph(f"<b>{teacher.full_name or teacher.email}</b>", section_s))
         story.append(Paragraph(f"Masomo: {teacher_subjects}", body_s))
 
-        # Performance per subject
+        # Performance per subject — batch-load all data once
+        from django.db.models import Avg
+        _form_exams = list(Exam.objects.filter(school=school, form=form_num).order_by('-year')[:5])
+        _form_exam_ids = [e.id for e in _form_exams]
+        _all_teacher_subject_ids = [a.subject.id for a in teacher_assignments]
+        _perf_agg = ExamResult.objects.filter(
+            exam_id__in=_form_exam_ids, subject_id__in=_all_teacher_subject_ids
+        ).values('exam_id', 'subject_id').annotate(
+            avg_score=Avg('score'),
+            total=Count('id'),
+            passed=Count('id', filter=Q(score__gte=40)),
+        )
+        _perf_map = {}
+        for row in _perf_agg:
+            _perf_map.setdefault(row['subject_id'], {})[row['exam_id']] = row
+
         for ta2 in teacher_assignments:
             subject = ta2.subject
-            from django.db.models import Avg
-            exams = Exam.objects.filter(school=school, form=form_num).order_by('-year')[:5]
             perf_data = [['Mtihani', 'Wastani', 'Kufaulu%', 'Idadi']]
-            for ex in exams:
-                results = ExamResult.objects.filter(exam=ex, subject=subject)
-                if results.exists():
-                    avg = results.aggregate(a=Avg('score'))['a'] or 0
-                    passed = results.filter(score__gte=40).count()
-                    total = results.count()
-                    pr = round(passed/total*100, 1) if total else 0
+            for ex in _form_exams:
+                info = _perf_map.get(subject.id, {}).get(ex.id)
+                if info and info['total']:
+                    avg = info['avg_score'] or 0
+                    total = info['total']
+                    pr = round(info['passed'] / total * 100, 1) if total else 0
                     perf_data.append([ex.name, f'{avg:.1f}', f'{pr}%', str(total)])
 
             if len(perf_data) > 1:
