@@ -67,12 +67,15 @@ _FRIDAY_TEMPLATE = [
 ]
 
 
-def seed_default_time_slots(school):
+def seed_default_time_slots(school, force=False):
     """Bulk-creates the generic day template above for Monday–Friday.
     Friday gets its own template with Religion in the afternoon (12:30-14:30).
-    Caller (the view) is responsible for only calling this when the
-    school has no TimeSlots yet, so it never overwrites a customised day."""
+    If force=True, deletes all existing TimeSlots first so the fresh
+    English labels always take effect."""
     from ..models import TimeSlot
+
+    if force:
+        TimeSlot.objects.filter(school=school).delete()
 
     slots = []
     for day in range(5):

@@ -62,13 +62,7 @@ def time_slot_setup(request):
             return redirect('time_slot_setup')
 
         if request.POST.get('action') == 'default_template':
-            if TimeSlot.objects.filter(school=school).exists():
-                messages.error(
-                    request,
-                    "Time slots already exist. Delete all slots first if you want to start fresh with the default template.",
-                )
-                return redirect('time_slot_setup')
-            created = seed_default_time_slots(school)
+            created = seed_default_time_slots(school, force=True)
             messages.success(request, f"Default template applied — {created} slots for Monday–Friday.")
             return redirect('time_slot_setup')
 
@@ -344,15 +338,21 @@ def class_timetable_view(request):
 @academic_required
 @require_POST
 def delete_class_timetable(request):
-    """Delete ALL ClassTimetableEntry rows for this school — a full reset
-    so the academic officer can regenerate from scratch."""
+    """Delete ALL timetable data for this school — entries AND time slots
+    — so the academic officer can regenerate from scratch with fresh
+    English labels."""
     school = _school_or_none(request)
     if school is None:
         return redirect('school_setup')
 
-    count = ClassTimetableEntry.objects.filter(school=school).delete()[0]
-    messages.success(request, f"All class timetable entries deleted ({count} removed).")
-    return redirect('class_timetable_view')
+    entry_count = ClassTimetableEntry.objects.filter(school=school).delete()[0]
+    slot_count = TimeSlot.objects.filter(school=school).delete()[0]
+    messages.success(
+        request,
+        f"All timetable data deleted ({entry_count} entries + {slot_count} time slots removed). "
+        f"Go to Time Slots to apply the default template.",
+    )
+    return redirect('time_slot_setup')
 
 
 @academic_required
