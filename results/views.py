@@ -566,8 +566,7 @@ def subject_upload(request, exam_id, subject_id):
 
             # ── PDF roster upload (names only — no scores) ──
             if file_name.endswith('.pdf'):
-                from .views import _parse_pdf_roster, _save_student
-                students_out = _parse_pdf_roster(uploaded_file)
+                students_out = _bulk_save_students(_collect_roster_rows(uploaded_file, is_pdf=True))
                 if not students_out:
                     raise UploadProcessingError(
                         "Hakuna wanafunzi waliopatikana kwenye PDF."
@@ -878,6 +877,125 @@ def _save_student(first, middle, last, gender):
     return {'id': student.id, 'name': ' '.join(name_parts)}
 
 
+def _collect_roster_rows(uploaded_file, is_pdf):
+    """Runs the existing PDF/CSV/Excel roster parsing with a no-op
+    callback that just records each (first, middle, last, gender) row
+    instead of hitting the database per row — the actual save happens
+    afterward, once, in bulk (see _bulk_save_students /
+    _bulk_save_form_students below). A 1000-row roster used to mean up
+    to ~2000 sequential round trips to a remote database via
+    get_or_create-per-row; this brings it down to a handful of queries
+    total regardless of roster size."""
+    collected = []
+
+    def _collector(first, middle, last, gender):
+        collected.append((first, middle, last, gender))
+        return None
+
+    if is_pdf:
+        _parse_pdf_roster(uploaded_file, on_student=_collector)
+    else:
+        _parse_spreadsheet_roster(uploaded_file, on_student=_collector)
+    return collected
+
+
+def _bulk_save_students(parsed_rows):
+    """Bulk equivalent of calling _save_student once per row — same
+    create-or-get + middle-name-backfill semantics, same first/last-name
+    dedup (including within the same file — the first occurrence of a
+    name wins, matching get_or_create's per-row behaviour), just as one
+    lookup + one bulk_create for the whole roster."""
+    if not parsed_rows:
+        return []
+
+    rows = [(first, middle, last or 'Unknown', gender) for first, middle, last, gender in parsed_rows]
+
+    first_names = {r[0] for r in rows}
+    last_names = {r[2] for r in rows}
+    existing = {
+        (s.first_name, s.last_name): s
+        for s in Student.objects.filter(first_name__in=first_names, last_name__in=last_names)
+    }
+
+    new_students = []
+    seen = set()
+    for first, middle, last, gender in rows:
+        key = (first, last)
+        if key not in existing and key not in seen:
+            seen.add(key)
+            new_students.append(Student(first_name=first, middle_name=middle, last_name=last, gender=gender))
+    if new_students:
+        Student.objects.bulk_create(new_students)
+        existing = {
+            (s.first_name, s.last_name): s
+            for s in Student.objects.filter(first_name__in=first_names, last_name__in=last_names)
+        }
+
+    to_update = []
+    updated_ids = set()
+    for first, middle, last, gender in rows:
+        student = existing.get((first, last))
+        if student and middle and not student.middle_name and student.id not in updated_ids:
+            student.middle_name = middle
+            to_update.append(student)
+            updated_ids.add(student.id)
+    if to_update:
+        Student.objects.bulk_update(to_update, ['middle_name'])
+
+    out = []
+    for first, middle, last, gender in rows:
+        student = existing[(first, last)]
+        name_parts = [p for p in [student.first_name, student.middle_name, student.last_name] if p]
+        out.append({'id': student.id, 'name': ' '.join(name_parts)})
+    return out
+
+
+def _bulk_save_form_students(school, form_num, parsed_rows):
+    """Bulk equivalent of the per-row _save_form_student closure that
+    used to live inside upload_form_students — same exact-match dedup
+    (first+middle+last, unlike Student which ignores middle) and same
+    synthesized admission_no for rows with no free-text one, just batched."""
+    import uuid as _uuid
+
+    if not parsed_rows:
+        return []
+
+    existing = {
+        (fs.first_name, fs.middle_name, fs.last_name): fs
+        for fs in FormStudent.objects.filter(school=school, form=form_num)
+    }
+
+    new_rows = []
+    to_update = []
+    seen = set()
+    results = []
+    for first, middle, last, gender in parsed_rows:
+        key = (first, middle, last)
+        fs = existing.get(key)
+        if fs:
+            if fs.gender != gender:
+                fs.gender = gender
+                to_update.append(fs)
+            results.append({'created': False})
+        elif key in seen:
+            results.append({'created': False})
+        else:
+            seen.add(key)
+            new_rows.append(FormStudent(
+                school=school, form=form_num,
+                admission_no=f'NA-{_uuid.uuid4().hex[:10]}',
+                first_name=first, middle_name=middle, last_name=last, gender=gender,
+            ))
+            results.append({'created': True})
+
+    if new_rows:
+        FormStudent.objects.bulk_create(new_rows)
+    if to_update:
+        FormStudent.objects.bulk_update(to_update, ['gender'])
+
+    return results
+
+
 def _parse_pdf_roster(uploaded_file, on_student=_save_student):
     """Extract student rows from a PDF roster using pdfplumber.
 
@@ -1092,10 +1210,8 @@ def upload_roster(request):
         return JsonResponse({'error': 'Hakuna faili lililotumwa.'}, status=400)
     try:
         fname = uploaded_file.name.lower()
-        if fname.endswith('.pdf'):
-            students_out = _parse_pdf_roster(uploaded_file)
-        else:
-            students_out = _parse_spreadsheet_roster(uploaded_file)
+        rows = _collect_roster_rows(uploaded_file, is_pdf=fname.endswith('.pdf'))
+        students_out = _bulk_save_students(rows)
 
         if not students_out:
             return JsonResponse({
@@ -2113,40 +2229,18 @@ def upload_form_students(request):
             messages.error(request, "Chagua faili la orodha ya wanafunzi.")
             return redirect(f'{reverse("upload_form_students")}?form={selected_form}')
 
-        import uuid
         ext = Path(uploaded_file.name).suffix.lower()
-
-        # FormStudent has no free-text admission number in this bare
-        # "Name Gender" format — synthesize a unique one so rows never
-        # collide on the (school, form, admission_no) constraint, and
-        # dedupe by name so re-uploading the same file doesn't create
-        # duplicate students.
-        def _save_form_student(first, middle, last, gender):
-            existing = FormStudent.objects.filter(
-                school=school, form=selected_form,
-                first_name=first, middle_name=middle, last_name=last,
-            ).first()
-            if existing:
-                if existing.gender != gender:
-                    existing.gender = gender
-                    existing.save(update_fields=['gender'])
-                return {'created': False}
-            FormStudent.objects.create(
-                school=school, form=selected_form,
-                admission_no=f'NA-{uuid.uuid4().hex[:10]}',
-                first_name=first, middle_name=middle, last_name=last, gender=gender,
-            )
-            return {'created': True}
 
         try:
             if ext == '.pdf':
-                saved = _parse_pdf_roster(uploaded_file, on_student=_save_form_student)
+                rows = _collect_roster_rows(uploaded_file, is_pdf=True)
             elif ext in ('.csv', '.xlsx', '.xls'):
-                saved = _parse_spreadsheet_roster(uploaded_file, on_student=_save_form_student)
+                rows = _collect_roster_rows(uploaded_file, is_pdf=False)
             else:
                 messages.error(request, f"Aina ya faili '{ext}' haijulikani. Tumia PDF, CSV au Excel.")
                 return redirect(f'{reverse("upload_form_students")}?form={selected_form}')
 
+            saved = _bulk_save_form_students(school, selected_form, rows)
             count = len(saved)
             if count:
                 messages.success(request, f"Wanafunzi {count} wa Form {selected_form} wamehifadhiwa!")
