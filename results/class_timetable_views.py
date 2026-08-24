@@ -36,7 +36,7 @@ FORM_CHOICES = [1, 2, 3, 4, 5, 6]
 def _school_or_none(request):
     school = request.user.school
     if not school:
-        messages.error(request, "Hakuna shule iliyowekwa kwenye akaunti yako.")
+        messages.error(request, "No school is linked to your account.")
     return school
 
 
@@ -51,23 +51,23 @@ def time_slot_setup(request):
     if request.method == 'POST':
         if request.POST.get('action') == 'delete':
             TimeSlot.objects.filter(id=request.POST.get('slot_id'), school=school).delete()
-            messages.success(request, "Kipindi kimeondolewa.")
+            messages.success(request, "Time slot removed.")
             return redirect('time_slot_setup')
 
         if request.POST.get('action') == 'delete_all':
             count = TimeSlot.objects.filter(school=school).delete()[0]
-            messages.success(request, f"Vipindi {count} vimefutwa. Sasa unaweza kuweka muundo wa kawaida.")
+            messages.success(request, f"{count} time slot(s) deleted. You can now apply the default template.")
             return redirect('time_slot_setup')
 
         if request.POST.get('action') == 'default_template':
             if TimeSlot.objects.filter(school=school).exists():
                 messages.error(
                     request,
-                    "Tayari una vipindi vilivyowekwa. Futa vipindi vyote kwanza kama unataka kuanza upya na muundo wa kawaida.",
+                    "Time slots already exist. Delete all slots first if you want to start fresh with the default template.",
                 )
                 return redirect('time_slot_setup')
             created = seed_default_time_slots(school)
-            messages.success(request, f"Muundo wa kawaida umewekwa — vipindi {created} vya Jumatatu–Ijumaa.")
+            messages.success(request, f"Default template applied — {created} slots for Monday–Friday.")
             return redirect('time_slot_setup')
 
         try:
@@ -76,7 +76,7 @@ def time_slot_setup(request):
             start_time = datetime.strptime(request.POST.get('start_time', ''), '%H:%M').time()
             end_time = datetime.strptime(request.POST.get('end_time', ''), '%H:%M').time()
         except (TypeError, ValueError):
-            messages.error(request, "Muda au mpangilio wa kipindi si sahihi.")
+            messages.error(request, "Invalid time or period order.")
             return redirect('time_slot_setup')
 
         is_teaching = request.POST.get('is_teaching_slot') == 'on'
@@ -90,7 +90,7 @@ def time_slot_setup(request):
                 'label': '' if is_teaching else label,
             },
         )
-        messages.success(request, "Kipindi kimehifadhiwa.")
+        messages.success(request, "Time slot saved.")
         return redirect('time_slot_setup')
 
     slots_by_day = {}
@@ -114,7 +114,7 @@ def teaching_assignment_manage(request):
     if request.method == 'POST':
         if request.POST.get('action') == 'delete':
             TeachingAssignment.objects.filter(id=request.POST.get('assignment_id'), school=school).delete()
-            messages.success(request, "Ugawaji umeondolewa.")
+            messages.success(request, "Assignment removed.")
             return redirect('teaching_assignment_manage')
 
         if request.POST.get('action') == 'auto_populate':
@@ -122,13 +122,13 @@ def teaching_assignment_manage(request):
             if created:
                 messages.success(
                     request,
-                    f"Ugawaji {created} umejazwa kiotomatiki kutoka 'Assign Mwalimu kwa Form'. "
-                    "Kagua/rekebisha stream na vipindi/wiki kwa kila mmoja kabla ya kutengeneza ratiba.",
+                    f"{created} assignment(s) auto-populated from 'Assign Teacher to Form'. "
+                    "Review and adjust stream/periods for each before generating the timetable.",
                 )
             if skipped:
-                messages.info(request, f"Ugawaji {skipped} tayari ulikuwepo — haukubadilishwa.")
+                messages.info(request, f"{skipped} assignment(s) already existed — unchanged.")
             if not created and not skipped:
-                messages.warning(request, "Hakuna 'Assign Mwalimu kwa Form' ya kujazia — weka angalau moja kwanza.")
+                messages.warning(request, "No 'Assign Teacher to Form' records to populate — add at least one first.")
             return redirect('teaching_assignment_manage')
 
         teacher = TeacherAccount.objects.filter(id=request.POST.get('teacher_id'), school=school).first()
@@ -142,7 +142,7 @@ def teaching_assignment_manage(request):
         double_period = request.POST.get('double_period') == 'on'
 
         if not (teacher and subject and form_num):
-            messages.error(request, "Taarifa hazijakamilika — chagua mwalimu, somo na form.")
+            messages.error(request, "Incomplete information — select a teacher, subject, and form.")
             return redirect('teaching_assignment_manage')
 
         TeachingAssignment.objects.update_or_create(
@@ -150,7 +150,7 @@ def teaching_assignment_manage(request):
             defaults={'teacher': teacher, 'periods_per_week': periods, 'double_period': double_period},
         )
         label = f"Form {form_num}{stream}" if stream else f"Form {form_num}"
-        messages.success(request, f"{teacher.full_name or teacher.email} amewekwa {label} — {subject.name} ({periods}x/wiki).")
+        messages.success(request, f"{teacher.full_name or teacher.email} assigned to {label} — {subject.name} ({periods}x/week).")
         return redirect('teaching_assignment_manage')
 
     teachers = TeacherAccount.objects.filter(school=school, role=TeacherAccount.ROLE_TEACHER).order_by('full_name')
@@ -276,7 +276,7 @@ def save_class_timetable_view(request):
     teacher_ids = request.POST.getlist('teacher_id[]')
 
     if not forms or not (len(forms) == len(streams) == len(slot_ids) == len(subject_ids) == len(teacher_ids)):
-        messages.error(request, "Ratiba haikutumwa vizuri. Jaribu kutengeneza tena.")
+        messages.error(request, "Timetable data was not submitted correctly. Please regenerate.")
         return redirect('generate_class_timetable')
 
     entries = [
@@ -284,7 +284,7 @@ def save_class_timetable_view(request):
         for f, s, slot, subj, t in zip(forms, streams, slot_ids, subject_ids, teacher_ids)
     ]
     saved = save_class_timetable(school, entries)
-    messages.success(request, f"Ratiba imehifadhiwa — vipindi {saved} vimewekwa.")
+    messages.success(request, f"Timetable saved — {saved} entries placed.")
     return redirect('class_timetable_view')
 
 
@@ -343,7 +343,7 @@ def delete_class_timetable(request):
         return redirect('school_setup')
 
     count = ClassTimetableEntry.objects.filter(school=school).delete()[0]
-    messages.success(request, f"Ratiba yote ya darasa imefutwa (vipindi {count} vimeondolewa).")
+    messages.success(request, f"All class timetable entries deleted ({count} removed).")
     return redirect('class_timetable_view')
 
 
@@ -354,7 +354,7 @@ def class_timetable_cell_edit(request):
     swap — without regenerating the rest of the timetable."""
     school = _school_or_none(request)
     if school is None:
-        return JsonResponse({'error': 'Hakuna shule.'}, status=400)
+        return JsonResponse({'error': 'No school.'}, status=400)
 
     try:
         form = int(request.POST.get('form'))
@@ -363,7 +363,7 @@ def class_timetable_cell_edit(request):
         subject_id = int(request.POST.get('subject_id'))
         teacher_id = int(request.POST.get('teacher_id'))
     except (TypeError, ValueError):
-        return JsonResponse({'error': 'Taarifa si sahihi.'}, status=400)
+        return JsonResponse({'error': 'Invalid data.'}, status=400)
 
     try:
         set_single_cell(

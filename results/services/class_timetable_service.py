@@ -33,18 +33,18 @@ class TimetableConflict(Exception):
 # this entirely; it only exists to save typing ~60 rows by hand for the
 # common case, not to prescribe how any particular school must run its day.
 _DEFAULT_DAY_TEMPLATE = [
-    ('07:00', '07:50', False, 'Usafi na Gwaride'),
+    ('07:00', '07:50', False, 'Cleanliness & Parade'),
     ('08:00', '08:40', True, ''),
     ('08:40', '09:20', True, ''),
     ('09:20', '10:00', True, ''),
     ('10:00', '10:40', True, ''),
-    ('10:40', '11:10', False, 'Mapumziko'),
+    ('10:40', '11:10', False, 'Break'),
     ('11:10', '11:50', True, ''),
     ('11:50', '12:30', True, ''),
     ('12:30', '13:10', True, ''),
     ('13:10', '13:50', True, ''),
     ('13:50', '14:30', True, ''),
-    ('14:30', '15:00', False, 'Chakula cha Mchana'),
+    ('14:30', '15:00', False, 'Lunch'),
 ]
 
 
@@ -120,7 +120,7 @@ def generate_class_timetable(school, *, form_streams=None, constraints=None):
         TimeSlot.objects.filter(school=school, is_teaching_slot=True).order_by('day_of_week', 'order')
     )
     if not slots:
-        raise TimetableConflict("Shule haijaweka vipindi vya kufundishia bado.")
+        raise TimetableConflict("No teaching time slots have been set up yet.")
 
     # Adjacent-in-the-list teaching slots on the same day are, by
     # construction, back-to-back with nothing (a break, a different day)
@@ -138,7 +138,7 @@ def generate_class_timetable(school, *, form_streams=None, constraints=None):
     else:
         assignments = list(qs)
     if not assignments:
-        raise TimetableConflict("Hakuna walimu/masomo yaliyowekwa kwa ajili ya ratiba.")
+        raise TimetableConflict("No teacher/subject assignments found for scheduling.")
 
     # A "session" is one sitting: a double period (2 consecutive slots) or
     # a single period. periods_per_week=5 with double_period=True becomes
@@ -325,7 +325,7 @@ def set_single_cell(school, *, form, stream, time_slot_id, subject_id, teacher_i
     if clash:
         clash_label = f"Form {clash.form}{clash.stream}" if clash.stream else f"Form {clash.form}"
         raise TimetableConflict(
-            f"Mwalimu huyu tayari anafundisha {clash.subject} kwa {clash_label} wakati huohuo."
+            f"This teacher is already teaching {clash.subject} for {clash_label} at the same time."
         )
 
     ClassTimetableEntry.objects.update_or_create(

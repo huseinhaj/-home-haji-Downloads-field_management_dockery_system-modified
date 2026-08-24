@@ -1,5 +1,5 @@
 {% extends 'results/base.html' %}
-{% block title %}Ratiba ya Darasa | School Results{% endblock %}
+{% block title %}Class Timetable | School Results{% endblock %}
 
 {% block content %}
 {% csrf_token %}
@@ -41,18 +41,18 @@
 
 <div class="ct-hero">
   <div>
-    <h1>🗓️ Ratiba ya Darasa (Class Timetable)</h1>
-    <div style="font-size:0.82rem;color:#D9A441;">Ratiba ya kudumu ya wiki — inatumika kila wiki mpaka ibadilishwe.</div>
+    <h1>🗓️ Class Timetable</h1>
+    <div style="font-size:0.82rem;color:#D9A441;">Standing weekly schedule — applies every week until changed.</div>
   </div>
   {% if is_academic %}
   <div class="d-flex gap-2">
-    <a href="{% url 'teaching_assignment_manage' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">👩‍🏫 Ugawaji wa Walimu</a>
-    <a href="{% url 'generate_class_timetable' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">⚡ Tengeneza Upya</a>
+    <a href="{% url 'teaching_assignment_manage' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">👩‍🏫 Teacher Assignments</a>
+    <a href="{% url 'generate_class_timetable' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">⚡ Regenerate</a>
     {% if has_timetable %}
     <form method="post" action="{% url 'delete_class_timetable' %}" style="display:inline;"
-          onsubmit="return confirm('Una uhakika unataka KUFUTA ratiba yote? Hii haiwezi kutenduliwa.');">
+          onsubmit="return confirm('Are you sure you want to DELETE the entire timetable? This cannot be undone.');">
       {% csrf_token %}
-      <button type="submit" class="btn btn-sm" style="background:#c0392b;color:#fff;font-weight:700;">🗑️ Futa Ratiba</button>
+      <button type="submit" class="btn btn-sm" style="background:#c0392b;color:#fff;font-weight:700;">🗑️ Delete Timetable</button>
     </form>
     {% endif %}
   </div>
@@ -61,7 +61,7 @@
 
 {% if not has_timetable %}
 <div class="alert alert-warning">
-  Bado hakuna ratiba iliyotengenezwa. {% if is_academic %}Anza kwa <a href="{% url 'time_slot_setup' %}">kuweka vipindi vya siku</a>, kisha <a href="{% url 'teaching_assignment_manage' %}">ugawaji wa walimu</a>, kisha <a href="{% url 'generate_class_timetable' %}">tengeneza ratiba</a>.{% endif %}
+  No timetable has been generated yet. {% if is_academic %}Start by <a href="{% url 'time_slot_setup' %}">setting up daily time slots</a>, then <a href="{% url 'teaching_assignment_manage' %}">teacher assignments</a>, then <a href="{% url 'generate_class_timetable' %}">generate the timetable</a>.{% endif %}
 </div>
 {% endif %}
 
@@ -71,7 +71,7 @@
   <table class="ct-table">
     <thead>
       <tr>
-        <th>Darasa</th>
+        <th>Class</th>
         {% for slot in day.slots %}
         <th>{{ slot.start_time|time:"H:i" }}<br>{{ slot.end_time|time:"H:i" }}</th>
         {% endfor %}
@@ -108,23 +108,23 @@
 {% if is_academic %}
 <div id="ctEditPanel">
   <div class="ct-panel-box">
-    <h5>Badilisha Kipindi</h5>
+    <h5>Edit Lesson</h5>
     <div class="mb-2">
-      <label class="form-label fw-bold">Somo</label>
+      <label class="form-label fw-bold">Subject</label>
       <select id="ctSubjectSelect" class="form-select">
         {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
       </select>
     </div>
     <div class="mb-3">
-      <label class="form-label fw-bold">Mwalimu</label>
+      <label class="form-label fw-bold">Teacher</label>
       <select id="ctTeacherSelect" class="form-select">
         {% for t in teachers %}<option value="{{ t.id }}">{{ t.full_name|default:t.email }}</option>{% endfor %}
       </select>
     </div>
     <div id="ctEditError" class="text-danger small mb-2" style="display:none;"></div>
     <div class="d-flex gap-2 justify-content-end">
-      <button class="btn btn-secondary btn-sm" onclick="ctCloseEdit()">Ghairi</button>
-      <button class="btn btn-sm" style="background:#1F7A3D;color:#fff;" onclick="ctSaveEdit()">Hifadhi</button>
+      <button class="btn btn-secondary btn-sm" onclick="ctCloseEdit()">Cancel</button>
+      <button class="btn btn-sm" style="background:#1F7A3D;color:#fff;" onclick="ctSaveEdit()">Save</button>
     </div>
   </div>
 </div>
@@ -158,7 +158,7 @@ async function ctSaveEdit() {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    errBox.textContent = data.error || 'Hitilafu imetokea.';
+    errBox.textContent = data.error || 'An error occurred.';
     errBox.style.display = '';
     return;
   }

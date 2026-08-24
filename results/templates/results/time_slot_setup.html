@@ -1,28 +1,28 @@
 {% extends "results/base.html" %}
 {% load results_filters %}
-{% block title %}Vipindi vya Siku | School Results{% endblock %}
+{% block title %}Daily Time Slots | School Results{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-  <h2 class="mb-1" style="color:#1A3C6E;">🕒 Vipindi vya Siku (Time Slots)</h2>
+  <h2 class="mb-1" style="color:#1A3C6E;">🕒 Daily Time Slots</h2>
   <p class="text-muted mb-4">
-    Weka vipindi vya kufundishia na visivyo vya kufundishia (mapumziko, chakula, usafi/gwaride) kwa kila siku.
-    Hivi ndivyo ratiba ya darasa (Class Timetable) itakavyotumika kupanga masomo.
+    Set up teaching and non-teaching periods (break, lunch, cleanliness/parade) for each day.
+    These are used by the Class Timetable to schedule lessons.
   </p>
 
   {% if not slots_by_day %}
   <div class="card mb-4 shadow-sm border-success">
     <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
-        <strong>⚡ Hujaweka vipindi bado.</strong>
-        Badala ya kuongeza kila kipindi kwa mkono, bonyeza kitufe hiki kuweka muundo wa kawaida
-        (Usafi/Gwaride, vipindi vya kufundishia, Mapumziko, Chakula) kwa Jumatatu–Ijumaa mara moja —
-        kisha unaweza kurekebisha muda wowote baadaye.
+        <strong>⚡ No time slots set yet.</strong>
+        Instead of adding each slot manually, click this button to apply the default template
+        (Cleanliness/Parade, teaching periods, Break, Lunch) for Monday–Friday in one go —
+        you can adjust any time afterwards.
       </div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="default_template">
-        <button type="submit" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">⚡ Weka Muundo wa Kawaida</button>
+        <button type="submit" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">⚡ Apply Default Template</button>
       </form>
     </div>
   </div>
@@ -30,26 +30,26 @@
   <div class="card mb-4 shadow-sm border-warning">
     <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
-        <strong>⚠️ Kuna vipindi vilivyowekwa.</strong>
-        Kama vipindi hivi ni vya zamani au vya maana, unaweza kuvifuta zote na kuanza upya na muundo wa kawaida.
+        <strong>⚠️ Time slots already exist.</strong>
+        If these slots are outdated, you can delete them all and start fresh with the default template.
       </div>
-      <form method="post" onsubmit="return confirm('Una uhakika unataka KUFUTA vipindi vyote na kuanza upya?');">
+      <form method="post" onsubmit="return confirm('Are you sure you want to DELETE all time slots and start over?');">
         {% csrf_token %}
         <input type="hidden" name="action" value="delete_all">
-        <button type="submit" class="btn fw-bold" style="background:#c0392b;color:#fff;">🗑️ Futa Zote na Anza Upya</button>
+        <button type="submit" class="btn fw-bold" style="background:#c0392b;color:#fff;">🗑️ Delete All &amp; Start Over</button>
       </form>
     </div>
   </div>
   {% endif %}
 
   <div class="card mb-4 shadow-sm">
-    <div class="card-header" style="background:#1A3C6E;color:#fff;"><strong>Ongeza / Sasisha Kipindi</strong></div>
+    <div class="card-header" style="background:#1A3C6E;color:#fff;"><strong>Add / Update Slot</strong></div>
     <div class="card-body">
       <form method="post">
         {% csrf_token %}
         <div class="row g-3 align-items-end">
           <div class="col-md-2">
-            <label class="form-label fw-bold">Siku</label>
+            <label class="form-label fw-bold">Day</label>
             <select name="day_of_week" class="form-select" required>
               {% for val, label in day_choices %}
               <option value="{{ val }}">{{ label }}</option>
@@ -57,27 +57,27 @@
             </select>
           </div>
           <div class="col-md-1">
-            <label class="form-label fw-bold">Namba</label>
-            <input type="number" name="order" class="form-control" min="0" required title="Mpangilio wa kipindi kwa siku hiyo, kuanzia 0">
+            <label class="form-label fw-bold">Order</label>
+            <input type="number" name="order" class="form-control" min="0" required title="Period order for the day, starting from 0">
           </div>
           <div class="col-md-2">
-            <label class="form-label fw-bold">Anza</label>
+            <label class="form-label fw-bold">Start</label>
             <input type="time" name="start_time" class="form-control" required>
           </div>
           <div class="col-md-2">
-            <label class="form-label fw-bold">Isha</label>
+            <label class="form-label fw-bold">End</label>
             <input type="time" name="end_time" class="form-control" required>
           </div>
           <div class="col-md-2">
-            <label class="form-label fw-bold d-block">Aina</label>
+            <label class="form-label fw-bold d-block">Type</label>
             <div class="form-check">
               <input type="checkbox" name="is_teaching_slot" class="form-check-input" id="isTeaching" checked>
-              <label class="form-check-label" for="isTeaching">Kufundishia</label>
+              <label class="form-check-label" for="isTeaching">Teaching</label>
             </div>
           </div>
           <div class="col-md-2">
-            <label class="form-label fw-bold">Jina (kama si kufundishia)</label>
-            <input type="text" name="label" class="form-control" placeholder="Mapumziko / Chakula / Usafi">
+            <label class="form-label fw-bold">Label (if non-teaching)</label>
+            <input type="text" name="label" class="form-control" placeholder="Break / Lunch / Cleanliness">
           </div>
           <div class="col-md-1">
             <button type="submit" class="btn w-100 fw-bold" style="background:#1A7B3A;color:#fff;">✅</button>
@@ -93,16 +93,16 @@
     <div class="card-body p-0">
       <table class="table table-sm mb-0">
         <thead>
-          <tr><th>Namba</th><th>Muda</th><th>Aina</th><th>Action</th></tr>
+          <tr><th>Order</th><th>Time</th><th>Type</th><th>Action</th></tr>
         </thead>
         <tbody>
           {% for slot in slots_by_day|get_item:day_val %}
           <tr>
             <td>{{ slot.order }}</td>
             <td>{{ slot.start_time|time:"H:i" }} — {{ slot.end_time|time:"H:i" }}</td>
-            <td>{% if slot.is_teaching_slot %}<span class="badge bg-success">Kufundishia</span>{% else %}<span class="badge bg-secondary">{{ slot.label }}</span>{% endif %}</td>
+            <td>{% if slot.is_teaching_slot %}<span class="badge bg-success">Teaching</span>{% else %}<span class="badge bg-secondary">{{ slot.label }}</span>{% endif %}</td>
             <td>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Futa kipindi hiki?');">
+              <form method="post" style="display:inline;" onsubmit="return confirm('Delete this time slot?');">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="slot_id" value="{{ slot.id }}">
@@ -111,7 +111,7 @@
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="4" class="text-muted">Hakuna vipindi bado.</td></tr>
+          <tr><td colspan="4" class="text-muted">No time slots yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -119,6 +119,6 @@
   </div>
   {% endfor %}
 
-  <a href="{% url 'teaching_assignment_manage' %}" class="btn btn-outline-primary">Endelea — Ugawaji wa Walimu →</a>
+  <a href="{% url 'teaching_assignment_manage' %}" class="btn btn-outline-primary">Continue — Teacher Assignments →</a>
 </div>
 {% endblock %}

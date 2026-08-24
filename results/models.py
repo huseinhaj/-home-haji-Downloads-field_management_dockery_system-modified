@@ -13,15 +13,15 @@ class School(models.Model):
     region = models.CharField(max_length=100)
     district = models.CharField(max_length=100)
     school_logo = models.ImageField(upload_to='school_logos/', blank=True, null=True,
-        help_text="Logo ya shule — inaonekana kushoto kwenye PDF header")
+        help_text="School logo — appears on the left side of the PDF header")
     district_logo = models.ImageField(upload_to='district_logos/', blank=True, null=True,
-        help_text="Logo ya halmashauri — inaonekana kulia kwenye PDF header")
+        help_text="District logo — appears on the right side of the PDF header")
     school_logo_b64 = models.TextField(blank=True, default='',
         help_text="School logo stored as base64 — persists on Railway")
     district_logo_b64 = models.TextField(blank=True, default='',
         help_text="District logo stored as base64 — persists on Railway")
     coat_of_arms = models.ImageField(upload_to='coat_of_arms/', blank=True, null=True,
-        help_text="Nembo ya Coat of Arms — inaonekana katikati ya header")
+        help_text="Coat of Arms logo — appears in the center of the header")
     coat_of_arms_b64 = models.TextField(blank=True, default='',
         help_text="Coat of arms stored as base64 — persists on Railway")
     source_school_id = models.PositiveIntegerField(
@@ -44,7 +44,7 @@ class Subject(models.Model):
 
 
 class SchoolSubject(models.Model):
-    """Masomo yanayofundishwa katika shule fulani."""
+    """Subjects taught at a particular school."""
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_subjects')
     subject = models.ForeignKey('Subject', on_delete=models.CASCADE)
     form_levels = models.CharField(max_length=20, default='1,2,3,4')  # e.g. "1,2,3,4" or "5,6"
@@ -57,9 +57,9 @@ class SchoolSubject(models.Model):
 
 
 class FormStudent(models.Model):
-    """Mwanafunzi wa form fulani shuleni.
-    Orodha hii ni ya shule yote — si kwa mtihani fulani.
-    Academic Officer anaupload orodha, kila mwalimu anaona wanafunzi wake."""
+    """A student in a particular form at a school.
+    This is a school-wide list — not tied to a specific exam.
+    The Academic Officer uploads the list; every teacher sees their own students."""
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='form_students')
     form = models.PositiveIntegerField()  # 1, 2, 3, 4, 5, 6
     admission_no = models.CharField(max_length=50, blank=True)
@@ -82,8 +82,8 @@ class FormStudent(models.Model):
 
 
 class TeacherFormAssignment(models.Model):
-    """Mwalimu anayefundisha somo fulani kwa form fulani.
-    Academic Officer anaassign mwalimu kwa form + subject."""
+    """A teacher assigned to teach a specific subject for a specific form.
+    The Academic Officer assigns teachers to form + subject."""
     teacher = models.ForeignKey('TeacherAccount', on_delete=models.CASCADE, related_name='form_assignments')
     form = models.PositiveIntegerField()
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
@@ -632,25 +632,25 @@ class TimeSlot(models.Model):
     Every school defines its own, since start times/period lengths differ
     school to school."""
     DAY_CHOICES = [
-        (0, 'Jumatatu / Monday'),
-        (1, 'Jumanne / Tuesday'),
-        (2, 'Jumatano / Wednesday'),
-        (3, 'Alhamisi / Thursday'),
-        (4, 'Ijumaa / Friday'),
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
     ]
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='time_slots')
     day_of_week = models.PositiveSmallIntegerField(choices=DAY_CHOICES)
-    order = models.PositiveSmallIntegerField(help_text="Mpangilio wa kipindi kwa siku hiyo, kuanzia 0.")
+    order = models.PositiveSmallIntegerField(help_text="Period order for the day, starting from 0.")
     start_time = models.TimeField()
     end_time = models.TimeField()
     is_teaching_slot = models.BooleanField(
         default=True,
-        help_text="Zima kwa vipindi visivyo vya kufundisha (mapumziko, chakula, usafi/gwaride).",
+        help_text="Turn off for non-teaching periods (break, lunch, cleanliness/parade).",
     )
     label = models.CharField(
         max_length=50, blank=True,
-        help_text="Kwa vipindi visivyo vya kufundisha tu — mfano 'Mapumziko', 'Chakula', 'Usafi na Gwaride'.",
+        help_text="For non-teaching periods only — e.g. 'Break', 'Lunch', 'Cleanliness & Parade'.",
     )
 
     class Meta:
@@ -662,9 +662,9 @@ class TimeSlot(models.Model):
 
 
 class TeachingAssignment(models.Model):
-    """Mwalimu fulani anafundisha somo fulani kwa darasa (form+stream)
-    fulani mara ngapi kwa wiki — hii ndiyo 'mahitaji' ambayo generator
-    ya ratiba inayapanga kwenye vipindi visivyogongana."""
+    """A teacher teaches a particular subject for a particular class (form+stream)
+    a set number of times per week — this is the 'demand' that the timetable
+    generator places into clash-free slots."""
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='teaching_assignments')
     form = models.PositiveIntegerField()
     stream = models.CharField(max_length=2, blank=True, default='')
@@ -673,9 +673,9 @@ class TeachingAssignment(models.Model):
     periods_per_week = models.PositiveSmallIntegerField(default=4)
     double_period = models.BooleanField(
         default=True,
-        help_text="Panga vipindi viwili mfululizo kwa kikao kimoja (mfano Chemistry 8:00-9:20), "
-                  "badala ya vipindi vimoja vimoja vilivyotawanyika. Kama periods_per_week ni tasa, "
-                  "kipindi kimoja cha ziada kinabaki peke yake.",
+        help_text="Schedule 2 consecutive periods per session (e.g. Chemistry 8:00-9:20), "
+                  "instead of scattered single periods. If periods_per_week is odd, "
+                  "one extra single period remains on its own.",
     )
 
     class Meta:

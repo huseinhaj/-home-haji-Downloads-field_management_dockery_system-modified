@@ -1,8 +1,9 @@
 """ai_timetable_service.py — Natural language → timetable constraints.
 
 Uses OpenRouter (Gemini flash) to parse plain-English instructions like
-"Weka Math asubuhi" or "Chemistry ishirini siku ya Ijumaa" into structured
-JSON constraints that the deterministic timetable generator can consume.
+"Place Mathematics in the morning" or "Chemistry should not be on Friday"
+into structured JSON constraints that the deterministic timetable generator
+can consume.
 
 The AI only *parses* the instruction — it never generates the timetable
 itself.  The actual scheduling is still done by the constraint-satisfaction
@@ -27,60 +28,61 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 MODEL = "google/gemini-2.5-flash"
 
 PARSER_PROMPT = """\
-Wekea mfumo wa ratiba ya shule.  Mtu ameandika maagizo kwa lugha ya kawaida
-(kiingereza au kiswahili).  Anisha JSON yenye constraints ambazo algorithm
-ya ratiba itatumia.
+You are a school timetable parser. A person has written instructions in plain language
+(English or Swahili). Return JSON containing constraints that a timetable
+scheduling algorithm will use.
 
-Muundo wa JSON:
+JSON structure:
 {
   "constraints": [
     {
       "type": "prefer_time",
       "subject": "Mathematics",
       "period_indices": [0, 1, 2, 3],
-      "reason": "Weka Math asubuhi"
+      "reason": "Place Mathematics in the morning"
     },
     {
       "type": "avoid_time",
       "subject": "Chemistry",
       "period_indices": [10, 11],
-      "reason": "Chemistry isiwe baada ya chakula"
+      "reason": "Chemistry should not be after lunch"
     },
     {
       "type": "avoid_day",
       "subject": "History",
       "day_indices": [4],
-      "reason": "History ishirini siku ya Ijumaa"
+      "reason": "History should not be on Friday"
     },
     {
       "type": "spread",
       "subject": "Biology",
       "min_days_apart": 1,
-      "reason": "Sambaza Biology angalau siku 2 tofauti"
+      "reason": "Spread Biology across at least 2 different days"
     },
     {
       "type": "group_double",
       "subject": "English",
       "enabled": true,
-      "reason": "English iwe na double period"
+      "reason": "English should have double periods"
     }
   ]
 }
 
-Aina za constraints:
-- "prefer_time": Weka somo hili kwenye vipindi vilivyoperiod_indices (0=kwanza).
-  period_indices ni orodha ya namba za kipindi (teaching slots tu — usafi, mapumziko na chakula havijumuishwa).
-- "avoid_time": Epuka kuweka somo hili kwenye vipindi vilivyoperiod_indices.
-- "avoid_day": Epuka siku hii (0=Jumatatu, 1=Jumanne, 2=Jumatano, 3=Alhamisi, 4=Ijumaa).
-- "spread": Sambaza somo hili angalau siku tofauti.
-- "group_double": Weka somo hili kama double period (vipindi 2 mfululizo).
+Constraint types:
+- "prefer_time": Place this subject in the periods listed in period_indices (0=first).
+  period_indices is a list of period numbers (teaching slots only — cleanliness,
+  break, and lunch are not included).
+- "avoid_time": Avoid placing this subject in the periods listed in period_indices.
+- "avoid_day": Avoid this day (0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday).
+- "spread": Spread this subject across at least this many different days.
+- "group_double": Schedule this subject as a double period (2 consecutive periods).
 
-Siku: 0=Jumatatu, 1=Jumanne, 2=Jumatano, 3=Alhamisi, 4=Ijumaa
+Days: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday
 
-UISHO:
-- Rudisha JSON TU, bila maelezo mengine.
-- Kama maagizo ni tupu au hayana maana ya ratiba, rudisha {"constraints": []}.
-- Usibuni constraints zisizoombwa — tega kile kilichoandikwa tu.
+RULES:
+- Return ONLY JSON, no other text.
+- If the instruction is empty or has no scheduling meaning, return {"constraints": []}.
+- Do not invent constraints — only reflect what was written.
 """
 
 
@@ -99,11 +101,11 @@ def parse_natural_language_instructions(text: str, *, available_subjects: list[s
     subject_hint = ""
     if available_subjects:
         subject_hint = (
-            f"\nMasomo yanayopatikana shuleni hii: {', '.join(available_subjects)}.\n"
-            "Tumia majina sahihi ya masomo haya katika constraints.\n"
+            f"\nSubjects available at this school: {', '.join(available_subjects)}.\n"
+            "Use the correct subject names in constraints.\n"
         )
 
-    user_msg = f"{subject_hint}\nMaagizo ya mtumiaji:\n{text}"
+    user_msg = f"{subject_hint}\nUser instructions:\n{text}"
 
     result = _call_llm(PARSER_PROMPT + "\n" + user_msg)
     if result is None:
@@ -144,7 +146,7 @@ def generate_ai_suggestion(school, current_entries: list[dict]) -> dict:
     teachers = {t.id: t.full_name or t.email for t in TeacherAccount.objects.filter(school=school)}
 
     # Build a compact representation
-    day_names = ['Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', 'Ijumaa']
+    day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     lines = []
     for entry in current_entries[:50]:  # Limit for prompt size
         slot = next((s for s in slots if s.id == entry.get('time_slot_id')), None)
@@ -157,15 +159,15 @@ def generate_ai_suggestion(school, current_entries: list[dict]) -> dict:
     timetable_summary = "\n".join(lines)
 
     suggestion_prompt = f"""\
-Umeona ratiba ya shule.  Mapendekezo ya uboreshaji:
+You have reviewed a school timetable. Suggest improvements:
 
-Ratiba ya sasa:
+Current timetable:
 {timetable_summary}
 
-Toa mapendekezo 1-3 ya uboreshaji kwa lugha rahisi (Kiswahili).
-Kila recommendation iwe fupi (sentensi 1-2).
+Provide 1-3 improvement suggestions in plain English.
+Each recommendation should be short (1-2 sentences).
 
-Rudisha JSON:
+Return JSON:
 {{"suggestions": ["Recommendation 1", "Recommendation 2"]}}
 """
     result = _call_llm(suggestion_prompt)

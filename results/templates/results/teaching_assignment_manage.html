@@ -1,48 +1,48 @@
 {% extends "results/base.html" %}
-{% block title %}Ugawaji wa Walimu — Class Timetable{% endblock %}
+{% block title %}Teacher Assignments — Class Timetable{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-  <h2 class="mb-1" style="color:#1A3C6E;">👩‍🏫 Ugawaji wa Walimu kwa Ratiba ya Darasa</h2>
+  <h2 class="mb-1" style="color:#1A3C6E;">👩‍🏫 Teacher Assignments for Class Timetable</h2>
   <p class="text-muted mb-4">
-    Weka mwalimu anayefundisha somo fulani kwa darasa (Form + Stream) fulani, na mara ngapi kwa wiki.
-    Hii ndiyo taarifa ambayo ratiba (Class Timetable) itaipanga kiotomatiki.
+    Assign a teacher to teach a subject for a specific class (Form + Stream), and how many periods per week.
+    This is the data the timetable generator will schedule automatically.
   </p>
 
   <div class="card mb-4 shadow-sm border-success">
     <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
-        <strong>⚡ Jaza Kiotomatiki</strong> — soma walimu ulioshawapanga kwenye
-        <a href="{% url 'assign_teacher_form' %}">"Assign Mwalimu kwa Form"</a> na uwatengenezee ugawaji hapa moja kwa moja
-        (vipindi 5/wiki kwa chaguo-msingi). Ikiwa shule yako ina zaidi ya stream moja kwa form, rekebisha stream/vipindi baada ya hapo.
+        <strong>⚡ Auto-Populate</strong> — read the teacher/subject pairings you already entered in
+        <a href="{% url 'assign_teacher_form' %}">"Assign Teacher to Form"</a> and create assignments here directly
+        (5 periods/week by default). If your school has more than one stream per form, adjust the stream/periods afterwards.
       </div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="auto_populate">
-        <button type="submit" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">⚡ Jaza Kiotomatiki</button>
+        <button type="submit" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">⚡ Auto-Populate</button>
       </form>
     </div>
   </div>
 
   <div class="card mb-4 shadow-sm">
-    <div class="card-header" style="background:#1A3C6E;color:#fff;"><strong>Ongeza / Sasisha Ugawaji</strong></div>
+    <div class="card-header" style="background:#1A3C6E;color:#fff;"><strong>Add / Update Assignment</strong></div>
     <div class="card-body">
       <form method="post">
         {% csrf_token %}
         <div class="row g-3 align-items-end">
           <div class="col-md-3">
-            <label class="form-label fw-bold">Mwalimu</label>
+            <label class="form-label fw-bold">Teacher</label>
             <select name="teacher_id" class="form-select" required>
-              <option value="">— Chagua Mwalimu —</option>
+              <option value="">— Select Teacher —</option>
               {% for t in teachers %}
               <option value="{{ t.id }}">{{ t.full_name|default:t.email }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="col-md-3">
-            <label class="form-label fw-bold">Somo</label>
+            <label class="form-label fw-bold">Subject</label>
             <select name="subject_id" class="form-select" required>
-              <option value="">— Chagua Somo —</option>
+              <option value="">— Select Subject —</option>
               {% for s in subjects %}
               <option value="{{ s.id }}">{{ s.name }}</option>
               {% endfor %}
@@ -61,14 +61,14 @@
             <input type="text" name="stream" class="form-control" maxlength="2" placeholder="A">
           </div>
           <div class="col-md-2">
-            <label class="form-label fw-bold">Vipindi/Wiki</label>
+            <label class="form-label fw-bold">Periods/Week</label>
             <input type="number" name="periods_per_week" class="form-control" min="1" max="20" value="4" required>
           </div>
           <div class="col-md-2">
-            <label class="form-label fw-bold d-block">Aina ya Kipindi</label>
+            <label class="form-label fw-bold d-block">Period Type</label>
             <div class="form-check">
               <input type="checkbox" name="double_period" class="form-check-input" id="doublePeriod" checked>
-              <label class="form-check-label" for="doublePeriod">Vipindi 2 mfululizo</label>
+              <label class="form-check-label" for="doublePeriod">Double (2 consecutive)</label>
             </div>
           </div>
           <div class="col-md-1">
@@ -80,14 +80,14 @@
   </div>
 
   <div class="card shadow-sm">
-    <div class="card-header" style="background:#F8F9FA;"><strong>Ugawaji Uliopo ({{ assignments|length }})</strong></div>
+    <div class="card-header" style="background:#F8F9FA;"><strong>Current Assignments ({{ assignments|length }})</strong></div>
     <div class="card-body p-0">
       {% if assignments %}
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0">
           <thead style="background:#1A3C6E;color:#fff;">
             <tr>
-              <th>Darasa</th><th>Somo</th><th>Mwalimu</th><th>Vipindi/Wiki</th><th>Aina</th><th>Action</th>
+              <th>Class</th><th>Subject</th><th>Teacher</th><th>Periods/Week</th><th>Type</th><th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -97,9 +97,9 @@
               <td>{{ a.subject.name }}</td>
               <td>{{ a.teacher.full_name|default:a.teacher.email }}</td>
               <td>{{ a.periods_per_week }}</td>
-              <td>{% if a.double_period %}Mfululizo (2){% else %}Vimoja{% endif %}</td>
+              <td>{% if a.double_period %}Double (2){% else %}Single{% endif %}</td>
               <td>
-                <form method="post" style="display:inline;" onsubmit="return confirm('Futa ugawaji huu?');">
+                <form method="post" style="display:inline;" onsubmit="return confirm('Delete this assignment?');">
                   {% csrf_token %}
                   <input type="hidden" name="action" value="delete">
                   <input type="hidden" name="assignment_id" value="{{ a.id }}">
@@ -112,14 +112,14 @@
         </table>
       </div>
       {% else %}
-      <p class="text-muted p-3 mb-0">Hakuna ugawaji bado.</p>
+      <p class="text-muted p-3 mb-0">No assignments yet.</p>
       {% endif %}
     </div>
   </div>
 
   <div class="mt-3">
     <a href="{% url 'generate_class_timetable' %}" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">
-      ⚡ Tengeneza Ratiba →
+      ⚡ Generate Timetable →
     </a>
   </div>
 </div>

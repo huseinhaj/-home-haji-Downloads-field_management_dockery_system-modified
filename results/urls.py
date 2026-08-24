@@ -181,13 +181,13 @@ urlpatterns = [
     # Assign teacher to form + subject
     path('assign-teacher/', assign_teacher_form, name='assign_teacher_form'),
 
-    path('class-timetable/vipindi/', time_slot_setup, name='time_slot_setup'),
-    path('class-timetable/ugawaji/', teaching_assignment_manage, name='teaching_assignment_manage'),
-    path('class-timetable/tengeneza/', generate_class_timetable_view, name='generate_class_timetable'),
-    path('class-timetable/hifadhi/', save_class_timetable_view, name='save_class_timetable'),
+    path('class-timetable/time-slots/', time_slot_setup, name='time_slot_setup'),
+    path('class-timetable/assignments/', teaching_assignment_manage, name='teaching_assignment_manage'),
+    path('class-timetable/generate/', generate_class_timetable_view, name='generate_class_timetable'),
+    path('class-timetable/save/', save_class_timetable_view, name='save_class_timetable'),
     path('class-timetable/', class_timetable_view, name='class_timetable_view'),
-    path('class-timetable/futa/', delete_class_timetable, name='delete_class_timetable'),
-    path('class-timetable/badilisha-kipindi/', class_timetable_cell_edit, name='class_timetable_cell_edit'),
+    path('class-timetable/delete/', delete_class_timetable, name='delete_class_timetable'),
+    path('class-timetable/edit-cell/', class_timetable_cell_edit, name='class_timetable_cell_edit'),
     # Teacher performance report PDF — all teachers for a form
     path('report/form-<int:form_num>/teachers/', teacher_performance_report, name='teacher_performance_report'),
 ]
