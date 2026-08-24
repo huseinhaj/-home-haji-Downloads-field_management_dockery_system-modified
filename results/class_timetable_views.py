@@ -19,8 +19,10 @@ from .models import ClassTimetableEntry, Subject, TeacherAccount, TeachingAssign
 from .permissions import academic_required, teacher_or_academic_required
 from .services.class_timetable_service import (
     TimetableConflict,
+    auto_populate_teaching_assignments,
     generate_class_timetable,
     save_class_timetable,
+    seed_default_time_slots,
     set_single_cell,
 )
 
@@ -46,6 +48,17 @@ def time_slot_setup(request):
         if request.POST.get('action') == 'delete':
             TimeSlot.objects.filter(id=request.POST.get('slot_id'), school=school).delete()
             messages.success(request, "Kipindi kimeondolewa.")
+            return redirect('time_slot_setup')
+
+        if request.POST.get('action') == 'default_template':
+            if TimeSlot.objects.filter(school=school).exists():
+                messages.error(
+                    request,
+                    "Tayari una vipindi vilivyowekwa. Futa vipindi vyote kwanza kama unataka kuanza upya na muundo wa kawaida.",
+                )
+                return redirect('time_slot_setup')
+            created = seed_default_time_slots(school)
+            messages.success(request, f"Muundo wa kawaida umewekwa — vipindi {created} vya Jumatatu–Ijumaa.")
             return redirect('time_slot_setup')
 
         try:
@@ -93,6 +106,20 @@ def teaching_assignment_manage(request):
         if request.POST.get('action') == 'delete':
             TeachingAssignment.objects.filter(id=request.POST.get('assignment_id'), school=school).delete()
             messages.success(request, "Ugawaji umeondolewa.")
+            return redirect('teaching_assignment_manage')
+
+        if request.POST.get('action') == 'auto_populate':
+            created, skipped = auto_populate_teaching_assignments(school)
+            if created:
+                messages.success(
+                    request,
+                    f"Ugawaji {created} umejazwa kiotomatiki kutoka 'Assign Mwalimu kwa Form'. "
+                    "Kagua/rekebisha stream na vipindi/wiki kwa kila mmoja kabla ya kutengeneza ratiba.",
+                )
+            if skipped:
+                messages.info(request, f"Ugawaji {skipped} tayari ulikuwepo — haukubadilishwa.")
+            if not created and not skipped:
+                messages.warning(request, "Hakuna 'Assign Mwalimu kwa Form' ya kujazia — weka angalau moja kwanza.")
             return redirect('teaching_assignment_manage')
 
         teacher = TeacherAccount.objects.filter(id=request.POST.get('teacher_id'), school=school).first()

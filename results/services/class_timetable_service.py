@@ -24,6 +24,77 @@ class TimetableConflict(Exception):
     pass
 
 
+# A generic Mon-Fri secondary-school day: cleanliness/parade, 4 teaching
+# periods, a short break, 3 more teaching periods, lunch, then 2 more —
+# close to the common pattern (e.g. the Isingiro Secondary School sample
+# this feature was modelled on). Officers are free to edit or replace this
+# entirely; it only exists to save typing ~60 rows by hand for the common
+# case, not to prescribe how any particular school must run its day.
+_DEFAULT_DAY_TEMPLATE = [
+    ('07:00', '07:40', False, 'Usafi na Gwaride'),
+    ('07:40', '08:20', True, ''),
+    ('08:20', '09:00', True, ''),
+    ('09:00', '09:40', True, ''),
+    ('09:40', '10:20', True, ''),
+    ('10:20', '10:40', False, 'Mapumziko'),
+    ('10:40', '11:20', True, ''),
+    ('11:20', '12:00', True, ''),
+    ('12:00', '12:40', True, ''),
+    ('12:40', '13:20', False, 'Chakula cha Mchana'),
+    ('13:20', '14:00', True, ''),
+    ('14:00', '14:40', True, ''),
+]
+
+
+def seed_default_time_slots(school):
+    """Bulk-creates the generic day template above for Monday–Friday.
+    Caller (the view) is responsible for only calling this when the
+    school has no TimeSlots yet, so it never overwrites a customised day."""
+    from ..models import TimeSlot
+
+    slots = [
+        TimeSlot(
+            school=school, day_of_week=day, order=order,
+            start_time=start, end_time=end,
+            is_teaching_slot=is_teaching, label=label,
+        )
+        for day in range(5)
+        for order, (start, end, is_teaching, label) in enumerate(_DEFAULT_DAY_TEMPLATE)
+    ]
+    TimeSlot.objects.bulk_create(slots)
+    return len(slots)
+
+
+def auto_populate_teaching_assignments(school, *, default_periods_per_week=5):
+    """Bootstraps TeachingAssignment rows from the teacher/subject/form
+    pairings an academic officer already entered under 'Assign Mwalimu
+    kwa Form' (TeacherFormAssignment) — so setting up the class timetable
+    doesn't mean re-typing information already in the system.
+
+    Created rows get stream='' (i.e. "whole form, one stream") since
+    TeacherFormAssignment doesn't record streams at all; a school with
+    multiple streams per form still needs to split/adjust these by hand
+    afterwards — there's no existing data this could correctly infer that
+    split from. Never touches an assignment that already exists (by
+    school+form+stream+subject), so re-running this is always safe.
+
+    Returns (created_count, skipped_count)."""
+    from ..models import TeacherFormAssignment, TeachingAssignment
+
+    created = 0
+    skipped = 0
+    for a in TeacherFormAssignment.objects.filter(school=school).select_related('teacher', 'subject'):
+        _, was_created = TeachingAssignment.objects.get_or_create(
+            school=school, form=a.form, stream='', subject=a.subject,
+            defaults={'teacher': a.teacher, 'periods_per_week': default_periods_per_week},
+        )
+        if was_created:
+            created += 1
+        else:
+            skipped += 1
+    return created, skipped
+
+
 def generate_class_timetable(school, *, form_streams=None):
     """form_streams: optional iterable of (form, stream) tuples to
     (re)generate — None means every (form, stream) that has at least one

@@ -9,6 +9,21 @@
     Hii ndiyo taarifa ambayo ratiba (Class Timetable) itaipanga kiotomatiki.
   </p>
 
+  <div class="card mb-4 shadow-sm border-success">
+    <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <strong>⚡ Jaza Kiotomatiki</strong> — soma walimu ulioshawapanga kwenye
+        <a href="{% url 'assign_teacher_form' %}">"Assign Mwalimu kwa Form"</a> na uwatengenezee ugawaji hapa moja kwa moja
+        (vipindi 5/wiki kwa chaguo-msingi). Ikiwa shule yako ina zaidi ya stream moja kwa form, rekebisha stream/vipindi baada ya hapo.
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="auto_populate">
+        <button type="submit" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">⚡ Jaza Kiotomatiki</button>
+      </form>
+    </div>
+  </div>
+
   <div class="card mb-4 shadow-sm">
     <div class="card-header" style="background:#1A3C6E;color:#fff;"><strong>Ongeza / Sasisha Ugawaji</strong></div>
     <div class="card-body">

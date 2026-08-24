@@ -653,3 +653,32 @@ class ClassTimetableViewTests(TestCase):
 			'form': '1', 'stream': 'B', 'time_slot_id': slot.id, 'subject_id': self.subject.id, 'teacher_id': self.teacher.id,
 		})
 		self.assertEqual(response.status_code, 409)
+
+	def test_default_template_creates_slots_only_when_none_exist(self):
+		response = self.client_academic.post(reverse('time_slot_setup'), {'action': 'default_template'})
+		self.assertEqual(response.status_code, 302)
+		count_after_first = TimeSlot.objects.filter(school=self.school).count()
+		self.assertGreater(count_after_first, 0)
+
+		# Second call must not duplicate — refuses instead of stacking a second template.
+		response = self.client_academic.post(reverse('time_slot_setup'), {'action': 'default_template'})
+		self.assertEqual(response.status_code, 302)
+		self.assertEqual(TimeSlot.objects.filter(school=self.school).count(), count_after_first)
+
+	def test_auto_populate_bootstraps_from_teacher_form_assignment(self):
+		from .models import TeacherFormAssignment
+		TeacherFormAssignment.objects.create(teacher=self.teacher, form=2, subject=self.subject, school=self.school)
+
+		response = self.client_academic.post(reverse('teaching_assignment_manage'), {'action': 'auto_populate'})
+		self.assertEqual(response.status_code, 302)
+		ta = TeachingAssignment.objects.get(school=self.school, form=2, subject=self.subject)
+		self.assertEqual(ta.teacher_id, self.teacher.id)
+		self.assertEqual(ta.stream, '')
+		self.assertEqual(ta.periods_per_week, 5)
+
+		# Re-running must not clobber a since-edited row.
+		ta.periods_per_week = 3
+		ta.save(update_fields=['periods_per_week'])
+		self.client_academic.post(reverse('teaching_assignment_manage'), {'action': 'auto_populate'})
+		ta.refresh_from_db()
+		self.assertEqual(ta.periods_per_week, 3)
