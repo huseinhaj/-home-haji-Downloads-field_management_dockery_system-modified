@@ -1,10 +1,10 @@
 {% extends "results/base.html" %}
-{% block title %}Orodha ya Wanafunzi{% endblock %}
+{% block title %}Form Students{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-  <h2 class="mb-3" style="color:#1A3C6E;">📋 Orodha ya Wanafunzi kwa Form</h2>
-  <p class="text-muted mb-4">Upload orodha ya wanafunzi kwa kila form (PDF, Excel au CSV). Wanafunzi wataonekana kwenye dashibodi ya kila mwalimu.</p>
+  <h2 class="mb-3" style="color:#1A3C6E;">📋 Form Students</h2>
+  <p class="text-muted mb-4">Upload the student roster for each form (PDF, Excel or CSV). Students will appear on each teacher's dashboard.</p>
 
   <!-- Form Tabs -->
   <ul class="nav nav-tabs mb-4">
@@ -15,8 +15,6 @@
          href="?form={{ f }}"
          style="{% if selected_form == fn %}background:#1A3C6E;color:#fff;{% endif %}">
         Form {{ f }}
-        {% with cnt=form_counts|dictsort:0 %}
-        {% endwith %}
         <span class="badge bg-secondary ms-1">{{ form_counts|default_if_none:"" }}</span>
       </a>
     </li>
@@ -33,7 +31,7 @@
           <div class="card-body py-2 px-1">
             <div class="fw-bold" style="color:{% if selected_form == f %}#1A3C6E{% else %}#555{% endif %};">Form {{ f }}</div>
             <div class="fs-4 fw-bold" style="color:{% if selected_form == f %}#B8860B{% else %}#999{% endif %};">{{ cnt }}</div>
-            <small class="text-muted">wanafunzi</small>
+            <small class="text-muted">students</small>
           </div>
         </div>
       </a>
@@ -45,7 +43,7 @@
   <!-- Upload Section -->
   <div class="card mb-4 shadow-sm">
     <div class="card-header" style="background:#1A3C6E;color:#fff;">
-      <strong>Pakia Orodha — Form {{ selected_form }}</strong>
+      <strong>Upload Roster — Form {{ selected_form }}</strong>
     </div>
     <div class="card-body">
       <form method="post" enctype="multipart/form-data">
@@ -53,16 +51,16 @@
         <input type="hidden" name="form" value="{{ selected_form }}">
         <div class="row align-items-end">
           <div class="col-md-8">
-            <label class="form-label fw-bold">Faili la Orodha (PDF, Excel au CSV)</label>
+            <label class="form-label fw-bold">Roster File (PDF, Excel or CSV)</label>
             <input type="file" name="student_file" class="form-control" accept=".pdf,.csv,.xlsx,.xls" required>
             <small class="text-muted">
-              Mstari mmoja kwa kila mwanafunzi. PDF: jina kamili + jinsia (mfano "Halima Ally Mohamed F").
+              One line per student. PDF: full name + gender (e.g. "Halima Ally Mohamed F").
               Excel/CSV: columns First Name | Middle Name | Last Name | Gender.
             </small>
           </div>
           <div class="col-md-4">
             <button type="submit" class="btn w-100 fw-bold" style="background:#1A7B3A;color:#fff;">
-              📤 Pakia Wanafunzi
+              📤 Upload Students
             </button>
           </div>
         </div>
@@ -73,16 +71,16 @@
   <!-- Students Table -->
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center" style="background:#F8F9FA;">
-      <strong>Wanafunzi wa Form {{ selected_form }} ({{ students|length }})</strong>
+      <strong>Form {{ selected_form }} Students ({{ students|length }})</strong>
       {% if students %}
       <div class="d-flex gap-2">
         <a href="{% url 'teacher_performance_report' selected_form %}" class="btn btn-sm" style="background:#B8860B;color:#fff;">
-          📊 Ripoti ya Walimu
+          📊 Teacher Report
         </a>
         <form method="post" action="{% url 'delete_all_form_students' selected_form %}" class="d-inline"
-              onsubmit="return confirm('Futa wanafunzi WOTE {{ students|length }} wa Form {{ selected_form }}? Huwezi kurudisha nyuma.');">
+              onsubmit="return confirm('Delete ALL {{ students|length }} students from Form {{ selected_form }}? This cannot be undone.');">
           {% csrf_token %}
-          <button type="submit" class="btn btn-sm btn-outline-danger">🗑 Futa Wote</button>
+          <button type="submit" class="btn btn-sm btn-outline-danger">🗑 Delete All</button>
         </form>
       </div>
       {% endif %}
@@ -94,9 +92,9 @@
           <thead style="background:#1A3C6E;color:#fff;">
             <tr>
               <th>#</th>
-              <th>No. ya Usajili</th>
-              <th>Jina</th>
-              <th>Jinsia</th>
+              <th>Admission No.</th>
+              <th>Name</th>
+              <th>Gender</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -128,7 +126,7 @@
       {% else %}
       <div class="text-center py-5 text-muted">
         <div class="fs-1">📭</div>
-        <p>Hakuna wanafunzi bado. Upload faili ya orodha hapo juu.</p>
+        <p>No students yet. Upload a roster file above.</p>
       </div>
       {% endif %}
     </div>
@@ -136,7 +134,7 @@
   {% else %}
   <div class="text-center py-5 text-muted">
     <div class="fs-1">👆</div>
-    <p>Chagua form hapo juu kuona na kuupload orodha ya wanafunzi.</p>
+    <p>Select a form above to view and upload the student roster.</p>
   </div>
   {% endif %}
 </div>
