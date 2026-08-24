@@ -47,11 +47,12 @@ def _load_logo_b64(field, b64_field_value=''):
 
 
 def _logo_image(b64_uri, max_width=50, max_height=50):
-    """Convert a base64 data URI to a ReportLab Image, or return None."""
+    """Convert a base64 data URI to a ReportLab Image flowable, or return None."""
     if not b64_uri:
         return None
     try:
         from reportlab.lib.utils import ImageReader
+        from reportlab.platypus import Image as RLImage
         import base64 as b64mod
         # Strip data URI prefix
         if ',' in b64_uri:
@@ -63,7 +64,7 @@ def _logo_image(b64_uri, max_width=50, max_height=50):
         # Scale to fit
         iw, ih = img.getSize()
         scale = min(max_width / iw, max_height / ih)
-        return img, iw * scale, ih * scale
+        return RLImage(io.BytesIO(img_bytes), width=iw * scale, height=ih * scale)
     except Exception:
         return None
 
