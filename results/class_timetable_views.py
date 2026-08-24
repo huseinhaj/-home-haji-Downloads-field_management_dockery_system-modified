@@ -25,6 +25,10 @@ from .services.class_timetable_service import (
     seed_default_time_slots,
     set_single_cell,
 )
+from .services.ai_timetable_service import (
+    generate_ai_suggestion,
+    parse_natural_language_instructions,
+)
 
 FORM_CHOICES = [1, 2, 3, 4, 5, 6]
 
@@ -160,7 +164,10 @@ def teaching_assignment_manage(request):
 def generate_class_timetable_view(request):
     """GET: shows the generate button + which classes have assignments.
     POST action=generate: runs the algorithm and shows a preview — nothing
-    is saved until the officer reviews it and hits Save."""
+    is saved until the officer reviews it and hits Save.
+
+    POST action=generate_single: generates one class at a time (AI-style).
+    POST action=ai_parse: parses natural language instructions via AI."""
     school = _school_or_none(request)
     if school is None:
         return redirect('school_setup')
@@ -168,31 +175,69 @@ def generate_class_timetable_view(request):
     preview_rows = None
     unplaced = None
     error = None
+    ai_constraints = None
+    ai_instruction_text = ''
+    ai_suggestions = []
+    selected_class = None
 
-    if request.method == 'POST' and request.POST.get('action') == 'generate':
-        try:
-            preview, unplaced = generate_class_timetable(school)
-        except TimetableConflict as exc:
-            error = str(exc)
-        else:
-            subjects_by_id = {s.id: s for s in Subject.objects.all()}
-            teachers_by_id = {t.id: t for t in TeacherAccount.objects.filter(school=school)}
-            slots_by_id = {slot.id: slot for slot in TimeSlot.objects.filter(school=school)}
-            preview_rows = []
-            for e in preview:
-                slot = slots_by_id.get(e['time_slot_id'])
-                preview_rows.append({
-                    'form': e['form'],
-                    'stream': e['stream'],
-                    'day': slot.get_day_of_week_display() if slot else '?',
-                    'time': f"{slot.start_time.strftime('%H:%M')}-{slot.end_time.strftime('%H:%M')}" if slot else '?',
-                    'subject': subjects_by_id.get(e['subject_id']),
-                    'teacher': teachers_by_id.get(e['teacher_id']),
-                    'time_slot_id': e['time_slot_id'],
-                    'subject_id': e['subject_id'],
-                    'teacher_id': e['teacher_id'],
-                })
-            preview_rows.sort(key=lambda r: (r['form'], r['stream']))
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+        ai_instruction_text = request.POST.get('ai_instruction', '').strip()
+
+        if action == 'generate' or action == 'generate_single':
+            # Parse AI instructions if provided
+            if ai_instruction_text:
+                subject_names = list(
+                    TeachingAssignment.objects.filter(school=school)
+                    .values_list('subject__name', flat=True).distinct()
+                )
+                parsed = parse_natural_language_instructions(
+                    ai_instruction_text, available_subjects=subject_names
+                )
+                ai_constraints = parsed.get('constraints', [])
+
+            # Determine form_streams to generate
+            form_streams = None
+            if action == 'generate_single':
+                gen_form = request.POST.get('gen_form')
+                gen_stream = (request.POST.get('gen_stream') or '').strip().upper()
+                if gen_form:
+                    form_streams = [(int(gen_form), gen_stream)]
+                    selected_class = (int(gen_form), gen_stream)
+
+            try:
+                preview, unplaced = generate_class_timetable(
+                    school, form_streams=form_streams, constraints=ai_constraints
+                )
+            except TimetableConflict as exc:
+                error = str(exc)
+            else:
+                subjects_by_id = {s.id: s for s in Subject.objects.all()}
+                teachers_by_id = {t.id: t for t in TeacherAccount.objects.filter(school=school)}
+                slots_by_id = {slot.id: slot for slot in TimeSlot.objects.filter(school=school)}
+                preview_rows = []
+                for e in preview:
+                    slot = slots_by_id.get(e['time_slot_id'])
+                    preview_rows.append({
+                        'form': e['form'],
+                        'stream': e['stream'],
+                        'day': slot.get_day_of_week_display() if slot else '?',
+                        'time': f"{slot.start_time.strftime('%H:%M')}-{slot.end_time.strftime('%H:%M')}" if slot else '?',
+                        'subject': subjects_by_id.get(e['subject_id']),
+                        'teacher': teachers_by_id.get(e['teacher_id']),
+                        'time_slot_id': e['time_slot_id'],
+                        'subject_id': e['subject_id'],
+                        'teacher_id': e['teacher_id'],
+                    })
+                preview_rows.sort(key=lambda r: (r['form'], r['stream']))
+
+                # Get AI suggestions for improvement
+                if preview:
+                    try:
+                        suggestion_result = generate_ai_suggestion(school, preview)
+                        ai_suggestions = suggestion_result.get('suggestions', [])
+                    except Exception:
+                        pass  # suggestions are best-effort
 
     class_keys = sorted({
         (a.form, a.stream)
@@ -205,6 +250,10 @@ def generate_class_timetable_view(request):
         'unplaced': unplaced,
         'error': error,
         'has_existing': ClassTimetableEntry.objects.filter(school=school).exists(),
+        'ai_instruction_text': ai_instruction_text,
+        'ai_constraints': ai_constraints or [],
+        'ai_suggestions': ai_suggestions,
+        'selected_class': selected_class,
     })
 
 

@@ -97,10 +97,14 @@ def auto_populate_teaching_assignments(school, *, default_periods_per_week=5):
     return created, skipped
 
 
-def generate_class_timetable(school, *, form_streams=None):
+def generate_class_timetable(school, *, form_streams=None, constraints=None):
     """form_streams: optional iterable of (form, stream) tuples to
     (re)generate — None means every (form, stream) that has at least one
     TeachingAssignment for this school.
+
+    constraints: optional list of AI-parsed constraint dicts, e.g.
+        [{'type': 'prefer_time', 'subject': 'Math', 'period_indices': [0,1]}, ...]
+        Supported types: prefer_time, avoid_time, avoid_day, spread.
 
     Returns (entries, unplaced):
       entries: list of {form, stream, time_slot_id, subject_id, teacher_id}
@@ -157,9 +161,57 @@ def generate_class_timetable(school, *, form_streams=None):
     rng.shuffle(sessions)
     sessions.sort(key=lambda item: (not item[1], -item[0].periods_per_week))
 
+    # ── Build constraint lookups from AI-parsed instructions ──
+    # Map subject names to IDs for constraint matching
+    subject_name_to_ids = defaultdict(set)
+    for a in assignments:
+        subject_name_to_ids[a.subject.name.lower()].add(a.subject_id)
+        # Also match partial names (e.g. 'math' matches 'Mathematics')
+        for word in a.subject.name.lower().split():
+            subject_name_to_ids[word].add(a.subject_id)
+
+    # Teaching slot indices: map slot to its index among teaching slots only
+    teaching_slot_index = {slot.id: i for i, slot in enumerate(slots)}
+
+    # Build per-subject constraint sets
+    prefer_time_slots = defaultdict(set)   # subject_id -> {slot_id}
+    avoid_time_slots = defaultdict(set)    # subject_id -> {slot_id}
+    avoid_day_set = defaultdict(set)       # subject_id -> {day_of_week}
+    spread_min_days = {}                   # subject_id -> min_days_apart
+
+    if constraints:
+        for c in constraints or []:
+            ctype = c.get('type', '')
+            subj_name = c.get('subject', '').lower()
+            matched_ids = subject_name_to_ids.get(subj_name, set())
+            if not matched_ids:
+                continue
+            if ctype == 'prefer_time':
+                period_indices = c.get('period_indices', [])
+                for sid in matched_ids:
+                    for idx in period_indices:
+                        if idx < len(slots) and slots[idx].is_teaching_slot:
+                            prefer_time_slots[sid].add(slots[idx].id)
+            elif ctype == 'avoid_time':
+                period_indices = c.get('period_indices', [])
+                for sid in matched_ids:
+                    for idx in period_indices:
+                        if idx < len(slots) and slots[idx].is_teaching_slot:
+                            avoid_time_slots[sid].add(slots[idx].id)
+            elif ctype == 'avoid_day':
+                day_indices = c.get('day_indices', [])
+                for sid in matched_ids:
+                    for d in day_indices:
+                        avoid_day_set[sid].add(d)
+            elif ctype == 'spread':
+                min_days = c.get('min_days_apart', 1)
+                for sid in matched_ids:
+                    spread_min_days[sid] = max(spread_min_days.get(sid, 0), min_days)
+
     class_slot_used = defaultdict(set)      # (form, stream) -> {slot_id}
     teacher_slot_used = defaultdict(set)    # teacher_id -> {slot_id}
     class_day_subject = defaultdict(set)    # (form, stream, day) -> {subject_id}
+    class_subject_placed = defaultdict(int) # (form, stream, subject_id) -> count (for spread)
     entries = {}                            # (form, stream, slot_id) -> assignment
     missed = defaultdict(int)               # assignment.id -> unplaced period count
 
@@ -179,6 +231,33 @@ def generate_class_timetable(school, *, form_streams=None):
                 day = slot_group[0].day_of_week
                 if avoid_same_day_repeat and a.subject_id in class_day_subject[(key, day)]:
                     continue
+
+                # ── AI constraint checks ──
+                slot_ids_in_group = {s.id for s in slot_group}
+                # avoid_time: skip if any slot is in the avoid list
+                if a.subject_id in avoid_time_slots and slot_ids_in_group & avoid_time_slots[a.subject_id]:
+                    continue
+                # avoid_day: skip if any slot is on a blocked day
+                if a.subject_id in avoid_day_set and day in avoid_day_set[a.subject_id]:
+                    continue
+                # spread: check min days apart
+                if a.subject_id in spread_min_days:
+                    already_on_days = {
+                        s.day_of_week
+                        for sid in class_slot_used[key]
+                        for s in slots if s.id == sid
+                    }
+                    target_day = slot_group[0].day_of_week
+                    min_gap = spread_min_days[a.subject_id]
+                    if any(abs(target_day - d) < min_gap for d in already_on_days):
+                        continue
+
+                # prefer_time: boost score if slot is preferred
+                is_preferred = (
+                    a.subject_id in prefer_time_slots
+                    and slot_ids_in_group & prefer_time_slots[a.subject_id]
+                )
+
                 for slot in slot_group:
                     entries[(key[0], key[1], slot.id)] = a
                     class_slot_used[key].add(slot.id)

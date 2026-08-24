@@ -2,12 +2,37 @@
 {% block title %}Tengeneza Ratiba ya Darasa{% endblock %}
 
 {% block content %}
+<style>
+  .ai-box {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px; padding: 1.2rem; color: #fff; margin-bottom: 1rem;
+  }
+  .ai-box h5 { color: #fff; font-weight: 800; margin-bottom: 0.5rem; }
+  .ai-box textarea { border-radius: 6px; border: none; }
+  .ai-box .form-text { color: rgba(255,255,255,0.7); }
+  .ai-constraint-tag {
+    display: inline-block; background: rgba(255,255,255,0.2); color: #fff;
+    border-radius: 12px; padding: 2px 10px; font-size: 0.75rem; margin: 2px;
+  }
+  .ai-suggestion-card {
+    background: #f0f7ff; border-left: 4px solid #2196F3; border-radius: 4px;
+    padding: 0.6rem 1rem; margin-bottom: 0.5rem; font-size: 0.88rem;
+  }
+  .ai-suggestion-card .ai-icon { font-size: 1.1rem; margin-right: 6px; }
+  .class-chip {
+    display: inline-block; padding: 6px 14px; border-radius: 20px;
+    border: 2px solid #ddd; cursor: pointer; font-weight: 600; font-size: 0.85rem;
+    margin: 3px; transition: all 0.15s;
+  }
+  .class-chip:hover { border-color: #1F7A3D; background: #e8f5e9; }
+  .class-chip.active { border-color: #1F7A3D; background: #1F7A3D; color: #fff; }
+</style>
+
 <div class="container-fluid py-4">
-  <h2 class="mb-1" style="color:#1A3C6E;">⚡ Tengeneza Ratiba ya Darasa (Class Timetable)</h2>
-  <p class="text-muted mb-4">
-    Mfumo utapanga masomo yote ya
-    <strong>{{ class_keys|length }}</strong> madarasa kwenye vipindi vilivyowekwa, bila mwalimu yeyote
-    kugongana na darasa lingine wakati huohuo. Ukishakagua, bofya "Hifadhi Ratiba".
+  <h2 class="mb-1" style="color:#1A3C6E;">⚡ Tengeneza Ratiba ya Darasa</h2>
+  <p class="text-muted mb-3">
+    Tengeneza ratiba kwa njia ya AI — andika maagizo kwa lugha ya kawaida,
+    au tengeneza madarasa yote kiotomatiki.
   </p>
 
   {% if error %}
@@ -16,32 +41,110 @@
 
   {% if has_existing %}
   <div class="alert alert-warning">
-    ⚠️ Kuna ratiba iliyopo tayari. Kutengeneza upya kutabadilisha ratiba ya madarasa yote yaliyo na ugawaji wa walimu.
+    ⚠️ Kuna ratiba iliyopo. Kutengeneza upya kutabadilisha madarasa yaliyochaguliwa.
     <a href="{% url 'class_timetable_view' %}">Angalia ratiba ya sasa →</a>
   </div>
   {% endif %}
 
-  <form method="post" class="mb-4">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="generate">
-    <button type="submit" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">⚡ Tengeneza Sasa</button>
-  </form>
+  <!-- ── AI Instruction Panel ── -->
+  <div class="ai-box">
+    <h5>🤖 Maagizo ya AI (Natural Language)</h5>
+    <p class="mb-2" style="font-size:0.85rem;">
+      Andika kwa lugha ya kawaida jinsi unavyotaka ratiba iwe. Mfumo wa AI utasoma na kupanga kulingana na maagizo yako.
+    </p>
+    <form method="post" id="aiGenForm">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="generate">
 
+      <div class="mb-2">
+        <textarea name="ai_instruction" class="form-control" rows="3"
+                  placeholder="Mfano: Weka Mathematics asubuhi vipindi vya kwanza. Chemistry na Biology ishirini siku tofauti. History isijumuishwe Ijumaa. English iwe na double period asubuhi.">{{ ai_instruction_text }}</textarea>
+        <div class="form-text">Uandishi ni hiari — kama hauna maagizo, bofya "Tengeneza" bila kuingiza chochote.</div>
+      </div>
+
+      <!-- One-class-at-a-time selector -->
+      <div class="mb-2">
+        <label class="fw-bold" style="font-size:0.85rem;">Chagua darasa (hiari — kama huchagui, madarasa yote yatatengenezwa):</label>
+        <div id="classChips">
+          <span class="class-chip {% if not selected_class %}active{% endif %}" data-form="" data-stream=""
+                onclick="selectClass(this, '', '')">📋 Yote</span>
+          {% for form_num, stream in class_keys %}
+          <span class="class-chip {% if selected_class == form_num and selected_class.1 == stream %}active{% endif %}"
+                data-form="{{ form_num }}" data-stream="{{ stream }}"
+                onclick="selectClass(this, '{{ form_num }}', '{{ stream }}')">
+            Form {{ form_num }}{{ stream }}
+          </span>
+          {% endfor %}
+        </div>
+        <input type="hidden" name="gen_form" id="genFormInput" value="">
+        <input type="hidden" name="gen_stream" id="genStreamInput" value="">
+      </div>
+
+      <button type="submit" class="btn fw-bold" style="background:#D9A441;color:#1F7A3D;">
+        ⚡ Tengeneza kwa AI
+      </button>
+    </form>
+  </div>
+
+  <!-- ── AI Constraints Detected ── -->
+  {% if ai_constraints %}
+  <div class="card mb-3">
+    <div class="card-header" style="background:#f3e5f5;">
+      <strong>🧠 AI Imegundua Constraints:</strong>
+    </div>
+    <div class="card-body">
+      {% for c in ai_constraints %}
+      <span class="ai-constraint-tag">
+        {% if c.type == 'prefer_time' %}✅ Weka {{ c.subject }} kipindi {{ c.period_indices }}
+        {% elif c.type == 'avoid_time' %}🚫 Epuka {{ c.subject }} kipindi {{ c.period_indices }}
+        {% elif c.type == 'avoid_day' %}📅 Epuka {{ c.subject }} siku {{ c.day_indices }}
+        {% elif c.type == 'spread' %}📆 Sambaza {{ c.subject }} (siku {{ c.min_days_apart }}+)
+        {% else %}{{ c.type }}: {{ c.subject }}{% endif %}
+        <small style="opacity:0.7;"> — {{ c.reason|default:"" }}</small>
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Unplaced Lessons ── -->
   {% if unplaced %}
   <div class="alert alert-danger">
-    <strong>⚠️ Masomo yasiyoweza kupangwa (mgongano wa vipindi/walimu):</strong>
+    <strong>⚠️ Masomo yasiyoweza kupangwa:</strong>
     <ul class="mb-0">
       {% for u in unplaced %}
       <li>Form {{ u.form }}{{ u.stream }} — {{ u.subject }} ({{ u.teacher }}): vipindi {{ u.missing }} havikupata nafasi.</li>
       {% endfor %}
     </ul>
-    <div class="mt-2">Ongeza vipindi zaidi kwenye <a href="{% url 'time_slot_setup' %}">Vipindi vya Siku</a>, au punguza vipindi/wiki vya somo hili.</div>
+    <div class="mt-2">Ongeza vipindi kwenye <a href="{% url 'time_slot_setup' %}">Vipindi vya Siku</a>, au punguza vipindi/wiki.</div>
   </div>
   {% endif %}
 
+  <!-- ── AI Suggestions ── -->
+  {% if ai_suggestions %}
+  <div class="card mb-3">
+    <div class="card-header" style="background:#e3f2fd;">
+      <strong>💡 Mapendekezo ya AI ya Uboreshaji:</strong>
+    </div>
+    <div class="card-body">
+      {% for s in ai_suggestions %}
+      <div class="ai-suggestion-card">
+        <span class="ai-icon">💡</span> {{ s }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Preview Table ── -->
   {% if preview_rows %}
   <div class="card shadow-sm">
-    <div class="card-header" style="background:#F8F9FA;"><strong>Muhtasari wa Ratiba ({{ preview_rows|length }} vipindi)</strong></div>
+    <div class="card-header" style="background:#F8F9FA;">
+      <strong>Muhtasari wa Ratiba ({{ preview_rows|length }} vipindi)</strong>
+      {% if selected_class %}
+      <span class="badge bg-info ms-2">Form {{ selected_class.0 }}{{ selected_class.1 }}</span>
+      {% endif %}
+    </div>
     <div class="card-body p-0">
       <form method="post" action="{% url 'save_class_timetable' %}">
         {% csrf_token %}
@@ -70,12 +173,22 @@
             </tbody>
           </table>
         </div>
-        <div class="p-3">
+        <div class="p-3 d-flex gap-2">
           <button type="submit" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">💾 Hifadhi Ratiba</button>
+          <a href="{% url 'generate_class_timetable' %}" class="btn btn-outline-secondary">🔄 Tengeneza Tena</a>
         </div>
       </form>
     </div>
   </div>
   {% endif %}
 </div>
+
+<script>
+function selectClass(el, form, stream) {
+  document.querySelectorAll('.class-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('genFormInput').value = form;
+  document.getElementById('genStreamInput').value = stream;
+}
+</script>
 {% endblock %}
