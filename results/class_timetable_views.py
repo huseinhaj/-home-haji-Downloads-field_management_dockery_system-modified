@@ -54,6 +54,11 @@ def time_slot_setup(request):
             messages.success(request, "Kipindi kimeondolewa.")
             return redirect('time_slot_setup')
 
+        if request.POST.get('action') == 'delete_all':
+            count = TimeSlot.objects.filter(school=school).delete()[0]
+            messages.success(request, f"Vipindi {count} vimefutwa. Sasa unaweza kuweka muundo wa kawaida.")
+            return redirect('time_slot_setup')
+
         if request.POST.get('action') == 'default_template':
             if TimeSlot.objects.filter(school=school).exists():
                 messages.error(
