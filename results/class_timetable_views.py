@@ -12,11 +12,13 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import ClassTimetableEntry, Subject, TeacherAccount, TeachingAssignment, TimeSlot
-from .permissions import academic_required, teacher_or_academic_required
+from .models import ClassTimetableEntry, Subject, TeacherAccount, TeachingAssignment, TimeSlot, TimetablePrintSubmission
+from .permissions import academic_required, printing_secretary_required, teacher_or_academic_required
 from .services.class_timetable_service import (
     TimetableConflict,
     auto_populate_teaching_assignments,
@@ -324,12 +326,18 @@ def class_timetable_view(request):
     subjects = Subject.objects.all().order_by('name')
     teachers = TeacherAccount.objects.filter(school=school).order_by('full_name')
 
+    # Check if there's a pending timetable PS submission
+    timetable_ps_pending = TimetablePrintSubmission.objects.filter(
+        school=school, status=TimetablePrintSubmission.STATUS_PENDING,
+    ).first()
+
     return render(request, 'results/class_timetable_view.html', {
         'grid': grid,
         'has_timetable': entries.exists(),
         'is_academic': getattr(request.user, 'is_academic', False),
         'subjects': subjects,
         'teachers': teachers,
+        'timetable_ps_pending': timetable_ps_pending,
     })
 
 
@@ -374,3 +382,69 @@ def class_timetable_cell_edit(request):
         return JsonResponse({'error': str(exc)}, status=409)
 
     return JsonResponse({'success': True})
+
+
+@academic_required
+def timetable_download_pdf(request):
+    """Download the class timetable as a PDF file."""
+    school = _school_or_none(request)
+    if school is None:
+        return redirect('school_setup')
+
+    from .services.timetable_pdf_service import generate_timetable_pdf_response
+    response = generate_timetable_pdf_response(school)
+    # Force download
+    filename = f"Timetable_{school.name.replace(' ', '_')}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@academic_required
+@require_POST
+def timetable_send_to_ps(request):
+    """Send the timetable PDF to the Printing Secretary for printing."""
+    school = _school_or_none(request)
+    if school is None:
+        return redirect('school_setup')
+
+    submission, created = TimetablePrintSubmission.objects.get_or_create(
+        school=school,
+        defaults={'submitted_by': request.user},
+    )
+    if not created:
+        submission.status = TimetablePrintSubmission.STATUS_PENDING
+        submission.submitted_by = request.user
+        submission.printed_by = None
+        submission.printed_at = None
+        submission.save()
+    messages.success(request, "Timetable sent to the Printing Secretary (PS).")
+    return redirect('class_timetable_view')
+
+
+@printing_secretary_required
+def timetable_ps_pdf_inline(request, submission_id):
+    """Serve the timetable PDF inline for the PS print page."""
+    submission = get_object_or_404(
+        TimetablePrintSubmission, pk=submission_id, school=request.user.school,
+    )
+    from .services.timetable_pdf_service import generate_timetable_pdf_inline_response
+    response = generate_timetable_pdf_inline_response(submission.school)
+    return response
+
+
+@printing_secretary_required
+@require_POST
+def timetable_ps_print_view(request, submission_id):
+    """Mark timetable as printed and show the print dialog page."""
+    submission = get_object_or_404(
+        TimetablePrintSubmission, pk=submission_id, school=request.user.school,
+    )
+    submission.status = TimetablePrintSubmission.STATUS_PRINTED
+    submission.printed_by = request.user
+    submission.printed_at = timezone.now()
+    submission.save()
+    return render(request, 'results/ps_print.html', {
+        'submission': submission,
+        'pdf_url': reverse('timetable_ps_pdf_inline', args=[submission.id]),
+        'doc_type': 'timetable',
+    })

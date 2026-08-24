@@ -9,6 +9,10 @@ from .class_timetable_views import (
     save_class_timetable_view,
     teaching_assignment_manage,
     time_slot_setup,
+    timetable_download_pdf,
+    timetable_send_to_ps,
+    timetable_ps_pdf_inline,
+    timetable_ps_print_view,
 )
 from .billing_views import (
     choose_plan,
@@ -188,6 +192,10 @@ urlpatterns = [
     path('class-timetable/', class_timetable_view, name='class_timetable_view'),
     path('class-timetable/delete/', delete_class_timetable, name='delete_class_timetable'),
     path('class-timetable/edit-cell/', class_timetable_cell_edit, name='class_timetable_cell_edit'),
+    path('class-timetable/pdf/', timetable_download_pdf, name='timetable_download_pdf'),
+    path('class-timetable/send-to-ps/', timetable_send_to_ps, name='timetable_send_to_ps'),
+    path('class-timetable/ps/<int:submission_id>/pdf/', timetable_ps_pdf_inline, name='timetable_ps_pdf_inline'),
+    path('class-timetable/ps/<int:submission_id>/print/', timetable_ps_print_view, name='timetable_ps_print_view'),
     # Teacher performance report PDF — all teachers for a form
     path('report/form-<int:form_num>/teachers/', teacher_performance_report, name='teacher_performance_report'),
 ]

@@ -336,6 +336,35 @@ class PrintSubmission(models.Model):
         return f"{self.exam} — {self.get_status_display()}"
 
 
+class TimetablePrintSubmission(models.Model):
+    """A timetable PDF the Academic Officer has handed off to the Printing
+    Secretary. The PDF itself is regenerated on demand; this row just
+    tracks the handoff."""
+    STATUS_PENDING = 'PENDING'
+    STATUS_PRINTED = 'PRINTED'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_PRINTED, 'Printed'),
+    ]
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='timetable_print_submissions')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    submitted_by = models.ForeignKey(
+        'TeacherAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    printed_by = models.ForeignKey(
+        'TeacherAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    printed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+
+    def __str__(self):
+        return f"Timetable — {self.get_status_display()}"
+
+
 class TeacherAccountManager(BaseUserManager):
     def create_pending(self, email, full_name='', role=None, subjects=None):
         """Academic officer pre-registers a teacher's email; account has no

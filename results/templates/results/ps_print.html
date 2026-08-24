@@ -2,7 +2,7 @@
 <html lang="sw">
 <head>
   <meta charset="utf-8">
-  <title>Chapisha Matokeo — {{ submission.exam.name }}</title>
+  <title>{% if doc_type == 'timetable' %}Print Timetable{% else %}Print Results — {{ submission.exam.name }}{% endif %}</title>
   <style>
     html, body { margin: 0; padding: 0; height: 100%; }
     #toolbar {
@@ -20,8 +20,8 @@
 </head>
 <body>
   <div id="toolbar">
-    <span>🖨️ Matokeo yamewekwa alama "Imechapishwa". Dirisha la kuchapisha (print) litafunguka papo hapo.</span>
-    <button type="button" onclick="printNow()">Chapisha Sasa</button>
+    <span>🖨️ {% if doc_type == 'timetable' %}Timetable marked as "Printed". The print dialog will open automatically.{% else %}Results marked as "Printed". The print dialog will open automatically.{% endif %}</span>
+    <button type="button" onclick="printNow()">{% if doc_type == 'timetable' %}Print Now{% else %}Chapisha Sasa{% endif %}</button>
   </div>
   <iframe id="pdfFrame" src="{{ pdf_url }}"></iframe>
   <script>

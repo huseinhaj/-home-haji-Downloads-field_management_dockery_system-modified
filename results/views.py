@@ -231,9 +231,20 @@ def printing_secretary_dashboard(request):
     ).select_related('exam', 'submitted_by', 'printed_by')
     pending = [s for s in submissions if s.status == PrintSubmission.STATUS_PENDING]
     printed = [s for s in submissions if s.status == PrintSubmission.STATUS_PRINTED]
+
+    # Timetable submissions
+    from .models import TimetablePrintSubmission
+    timetable_subs = TimetablePrintSubmission.objects.filter(
+        school=request.user.school
+    ).select_related('submitted_by', 'printed_by')
+    timetable_pending = [s for s in timetable_subs if s.status == TimetablePrintSubmission.STATUS_PENDING]
+    timetable_printed = [s for s in timetable_subs if s.status == TimetablePrintSubmission.STATUS_PRINTED]
+
     return render(request, 'results/printing_secretary_dashboard.html', {
         'pending_submissions': pending,
         'printed_submissions': printed,
+        'timetable_pending': timetable_pending,
+        'timetable_printed': timetable_printed,
     })
 
 

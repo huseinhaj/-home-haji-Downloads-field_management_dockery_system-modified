@@ -44,24 +44,41 @@
     <h1>🗓️ Class Timetable</h1>
     <div style="font-size:0.82rem;color:#D9A441;">Standing weekly schedule — applies every week until changed.</div>
   </div>
-  {% if is_academic %}
-  <div class="d-flex gap-2">
+  <div class="d-flex gap-2 flex-wrap">
+    {% if has_timetable %}
+    <a href="{% url 'timetable_download_pdf' %}" class="btn btn-sm" style="background:#2196F3;color:#fff;font-weight:700;">📥 Download PDF</a>
+    {% endif %}
+    {% if is_academic %}
     <a href="{% url 'teaching_assignment_manage' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">👩‍🏫 Teacher Assignments</a>
     <a href="{% url 'generate_class_timetable' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">⚡ Regenerate</a>
     {% if has_timetable %}
+    <form method="post" action="{% url 'timetable_send_to_ps' %}" style="display:inline;"
+          onsubmit="return confirm('Send this timetable to the Printing Secretary (PS) for printing?');">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm" style="background:#9C27B0;color:#fff;font-weight:700;">🖨️ Send to PS</button>
+    </form>
     <form method="post" action="{% url 'delete_class_timetable' %}" style="display:inline;"
           onsubmit="return confirm('Are you sure you want to DELETE the entire timetable? This cannot be undone.');">
       {% csrf_token %}
       <button type="submit" class="btn btn-sm" style="background:#c0392b;color:#fff;font-weight:700;">🗑️ Delete Timetable</button>
     </form>
     {% endif %}
+    {% endif %}
   </div>
-  {% endif %}
 </div>
 
 {% if not has_timetable %}
 <div class="alert alert-warning">
   No timetable has been generated yet. {% if is_academic %}Start by <a href="{% url 'time_slot_setup' %}">setting up daily time slots</a>, then <a href="{% url 'teaching_assignment_manage' %}">teacher assignments</a>, then <a href="{% url 'generate_class_timetable' %}">generate the timetable</a>.{% endif %}
+</div>
+{% endif %}
+
+{% if timetable_ps_pending %}
+<div class="alert alert-info d-flex justify-content-between align-items-center">
+  <div>
+    <strong>🖨️ Sent to Printing Secretary (PS)</strong> — submitted {{ timetable_ps_pending.submitted_at|date:"d M Y, H:i" }}.
+  </div>
+  <a href="{% url 'timetable_ps_pdf_inline' timetable_ps_pending.id %}" target="_blank" class="btn btn-sm" style="background:#9C27B0;color:#fff;">View PDF</a>
 </div>
 {% endif %}
 
