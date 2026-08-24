@@ -281,6 +281,20 @@ def class_timetable_view(request):
 
 @academic_required
 @require_POST
+def delete_class_timetable(request):
+    """Delete ALL ClassTimetableEntry rows for this school — a full reset
+    so the academic officer can regenerate from scratch."""
+    school = _school_or_none(request)
+    if school is None:
+        return redirect('school_setup')
+
+    count = ClassTimetableEntry.objects.filter(school=school).delete()[0]
+    messages.success(request, f"Ratiba yote ya darasa imefutwa (vipindi {count} vimeondolewa).")
+    return redirect('class_timetable_view')
+
+
+@academic_required
+@require_POST
 def class_timetable_cell_edit(request):
     """Hand-edit one lesson — the common case for a single teacher/subject
     swap — without regenerating the rest of the timetable."""

@@ -4,6 +4,7 @@ from .auth_views import results_login, results_logout, manage_teachers
 from .class_timetable_views import (
     class_timetable_cell_edit,
     class_timetable_view,
+    delete_class_timetable,
     generate_class_timetable_view,
     save_class_timetable_view,
     teaching_assignment_manage,
@@ -185,6 +186,7 @@ urlpatterns = [
     path('class-timetable/tengeneza/', generate_class_timetable_view, name='generate_class_timetable'),
     path('class-timetable/hifadhi/', save_class_timetable_view, name='save_class_timetable'),
     path('class-timetable/', class_timetable_view, name='class_timetable_view'),
+    path('class-timetable/futa/', delete_class_timetable, name='delete_class_timetable'),
     path('class-timetable/badilisha-kipindi/', class_timetable_cell_edit, name='class_timetable_cell_edit'),
     # Teacher performance report PDF — all teachers for a form
     path('report/form-<int:form_num>/teachers/', teacher_performance_report, name='teacher_performance_report'),

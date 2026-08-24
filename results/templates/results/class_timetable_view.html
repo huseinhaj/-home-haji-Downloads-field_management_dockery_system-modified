@@ -48,6 +48,13 @@
   <div class="d-flex gap-2">
     <a href="{% url 'teaching_assignment_manage' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">👩‍🏫 Ugawaji wa Walimu</a>
     <a href="{% url 'generate_class_timetable' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;">⚡ Tengeneza Upya</a>
+    {% if has_timetable %}
+    <form method="post" action="{% url 'delete_class_timetable' %}" style="display:inline;"
+          onsubmit="return confirm('Una uhakika unataka KUFUTA ratiba yote? Hii haiwezi kutenduliwa.');">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm" style="background:#c0392b;color:#fff;font-weight:700;">🗑️ Futa Ratiba</button>
+    </form>
+    {% endif %}
   </div>
   {% endif %}
 </div>
