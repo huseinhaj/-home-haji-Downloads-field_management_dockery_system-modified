@@ -64,14 +64,12 @@ def _grade_thresholds(form):
 # Must stay in sync with utils.get_grade_for_form / get_grade_points.
 _FILL_BY_LETTER = {
     'A':  ("FFC6F4D6", "FF145A32"),
-    'B+': ("FFD5F5E3", "FF1E8449"),
     'B':  ("FFD5F5E3", "FF1E8449"),
-    'C+': ("FFFFF9C4", "FF7D6608"),
     'C':  ("FFFFF9C4", "FF7D6608"),
     'D':  ("FFFDEBD0", "FF784212"),
     'E':  ("FFF0B27A", "FF9C640C"),
     'S':  ("FFF9E79F", "FFB9770B"),
-    'F': ("FFFADBD8", "FF922B21"),
+    'F':  ("FFFADBD8", "FF922B21"),
 }
 
 

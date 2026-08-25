@@ -287,15 +287,15 @@
   // ── Grade helper ──
   function getGrade(score, form) {
     if (form == 2) {
-      if (score >= 75) return 'A'; if (score >= 65) return 'B+'; if (score >= 55) return 'B'; if (score >= 45) return 'C+'; if (score >= 35) return 'C'; if (score >= 25) return 'D'; return 'F';
+      if (score >= 75) return 'A'; if (score >= 65) return 'B'; if (score >= 45) return 'C'; if (score >= 30) return 'D'; return 'F';
     }
     if (form >= 5) {
       if (score >= 80) return 'A'; if (score >= 70) return 'B'; if (score >= 60) return 'C'; if (score >= 50) return 'D'; if (score >= 40) return 'E'; if (score >= 35) return 'S'; return 'F';
     }
-    if (score >= 75) return 'A'; if (score >= 65) return 'B+'; if (score >= 55) return 'B'; if (score >= 45) return 'C+'; if (score >= 35) return 'C'; if (score >= 25) return 'D'; return 'F';
+    if (score >= 75) return 'A'; if (score >= 65) return 'B'; if (score >= 45) return 'C'; if (score >= 30) return 'D'; return 'F';
   }
   function gradeColor(g) {
-    const m = {'A':'#e6f7ec;color:#1a7a3b','B+':'#eafaf1;color:#27ae60','B':'#eafaf1;color:#2d7d46','C+':'#fff9e6;color:#b7950b','C':'#fff9e6;color:#8a6f00','D':'#fdf2e9;color:#ca6f1e','E':'#fff3e0;color:#e65100','S':'#fffde7;color:#f9a825','F':'#fdecea;color:#c0392b'};
+    const m = {'A':'#e6f7ec;color:#1a7a3b','B':'#eafaf1;color:#2d7d46','C':'#fff9e6;color:#8a6f00','D':'#fdf2e9;color:#ca6f1e','E':'#fff3e0;color:#e65100','S':'#fffde7;color:#f9a825','F':'#fdecea;color:#c0392b'};
     return m[g] || '#f0f0f0;color:#333';
   }
 

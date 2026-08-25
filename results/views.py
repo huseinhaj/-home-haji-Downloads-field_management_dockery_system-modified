@@ -1743,11 +1743,9 @@ def form_results_excel(request, form_num):
         if score is None:
             return None, None
         if score >= 75: return "FFC6F4D6", "FF145A32"   # A
-        if score >= 65: return "FFD5F5E3", "FF1E8449"   # B+
-        if score >= 55: return "FFD5F5E3", "FF2D7D46"   # B
-        if score >= 45: return "FFFFF9C4", "FF7D6608"   # C+
-        if score >= 35: return "FFFFF9C4", "FF8A6F00"   # C
-        if score >= 25: return "FFFDEBD0", "FF784212"   # D
+        if score >= 65: return "FFD5F5E3", "FF1E8449"   # B
+        if score >= 45: return "FFFFF9C4", "FF7D6608"   # C
+        if score >= 30: return "FFFDEBD0", "FF784212"   # D
         return "FFFADBD8", "FF922B21"                   # F
 
     exams = list(Exam.objects.filter(form=form_num, school=request.user.school).order_by('-year', 'name'))

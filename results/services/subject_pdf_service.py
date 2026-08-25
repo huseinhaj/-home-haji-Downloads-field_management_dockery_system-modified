@@ -36,9 +36,7 @@ def _grade_color(grade: str):
     """Return a reportlab color for the grade."""
     palette = {
         'A':  colors.HexColor('#1a7a3b'),
-        'B+': colors.HexColor('#27ae60'),
         'B':  colors.HexColor('#2d7d46'),
-        'C+': colors.HexColor('#d4a017'),
         'C':  colors.HexColor('#8a6f00'),
         'D':  colors.HexColor('#b35c00'),
         'E':  colors.HexColor('#b35c00'),
@@ -55,7 +53,7 @@ WHITE = colors.white
 LIGHT_GREY = colors.HexColor('#F0F2F5')
 DARK_GREY = colors.HexColor('#444444')
 
-GRADE_KEYS_OLEVEL = [('A', '75-100'), ('B+', '65-74'), ('B', '55-64'), ('C+', '45-54'), ('C', '35-44'), ('D', '25-34'), ('F', '0-24')]
+GRADE_KEYS_OLEVEL = [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
 GRADE_KEYS_FTNA = [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
 GRADE_KEYS_ALEVEL = [('A', '80-100'), ('B', '70-79'), ('C', '60-69'), ('D', '50-59'), ('E', '40-49'), ('S', '35-39'), ('F', '0-34')]
 

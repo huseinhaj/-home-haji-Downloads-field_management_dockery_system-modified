@@ -49,16 +49,18 @@ TZ_BLACK  = colors.black
 TZ_BLUE   = colors.HexColor("#00A3DD")
 
 GRADE_BG = {
-    'A':  colors.HexColor("#DCFCE7"), 'B+': colors.HexColor("#DCFCE7"),
-    'B':  colors.HexColor("#D1FAE5"), 'C+': colors.HexColor("#FEF3C7"),
-    'C':  colors.HexColor("#FEF3C7"), 'D':  colors.HexColor("#FFEDD5"),
+    'A':  colors.HexColor("#DCFCE7"),
+    'B':  colors.HexColor("#D1FAE5"),
+    'C':  colors.HexColor("#FEF3C7"),
+    'D':  colors.HexColor("#FFEDD5"),
     'E':  colors.HexColor("#FFEDD5"), 'S':  colors.HexColor("#FEF3C7"),
     'F':  colors.HexColor("#FEE2E2"),
 }
 GRADE_FG = {
-    'A':  colors.HexColor("#15803D"), 'B+': colors.HexColor("#15803D"),
-    'B':  colors.HexColor("#047857"), 'C+': colors.HexColor("#B45309"),
-    'C':  colors.HexColor("#B45309"), 'D':  colors.HexColor("#C2410C"),
+    'A':  colors.HexColor("#15803D"),
+    'B':  colors.HexColor("#047857"),
+    'C':  colors.HexColor("#B45309"),
+    'D':  colors.HexColor("#C2410C"),
     'E':  colors.HexColor("#C2410C"), 'S':  colors.HexColor("#B45309"),
     'F':  colors.HexColor("#B91C1C"),
 }
@@ -75,9 +77,7 @@ DIV_FG = {
 
 GRADE_COLORS = {
     'A':  ('#15803D', '#DCFCE7'),
-    'B+': ('#15803D', '#DCFCE7'),
     'B':  ('#047857', '#D1FAE5'),
-    'C+': ('#B45309', '#FEF3C7'),
     'C':  ('#B45309', '#FEF3C7'),
     'D':  ('#C2410C', '#FFEDD5'),
     'E':  ('#C2410C', '#FFEDD5'),
@@ -88,7 +88,6 @@ GRADE_COLORS = {
 
 LEVEL_COLORS = {
     'Grade A': ('#15803D', '#DCFCE7'),
-    'Grade B+': ('#15803D', '#DCFCE7'),
     'Grade B': ('#047857', '#D1FAE5'),
     'Grade C': ('#B45309', '#FEF3C7'),
     'Grade D': ('#C2410C', '#FFEDD5'),

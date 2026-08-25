@@ -296,7 +296,7 @@
             <td class="student-name">{{ row.student.first_name }} {{ row.student.middle_name }} {{ row.student.last_name }}</td>
             <td style="font-weight:800;color:#1F7A3D;">{{ row.score }}</td>
             <td>
-              <span class="grade-chip" style="background:{% if row.grade == 'A' %}#e6f7ec;color:#1a7a3b{% elif row.grade == 'B+' %}#eafaf1;color:#27ae60{% elif row.grade == 'B' %}#eafaf1;color:#2d7d46{% elif row.grade == 'C+' %}#fff9e6;color:#b7950b{% elif row.grade == 'C' %}#fff9e6;color:#8a6f00{% elif row.grade == 'D' %}#fdf2e9;color:#ca6f1e{% else %}#fdecea;color:#c0392b{% endif %};">
+              <span class="grade-chip" style="background:{% if row.grade == 'A' %}#e6f7ec;color:#1a7a3b{% elif row.grade == 'B' %}#eafaf1;color:#2d7d46{% elif row.grade == 'C' %}#fff9e6;color:#8a6f00{% elif row.grade == 'D' %}#fdf2e9;color:#ca6f1e{% else %}#fdecea;color:#c0392b{% endif %};">
                 {{ row.grade }}
               </span>
             </td>
