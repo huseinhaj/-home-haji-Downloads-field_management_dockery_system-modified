@@ -117,15 +117,20 @@ class Student(models.Model):
 
 class Exam(models.Model):
     EXAM_TYPE_CHOICES = [
+        ('PRE_NECTA', 'Pre NECTA Exam'),
+        ('MOCK', 'Mock Exam'),
+        ('PRE_MOCK', 'Pre Mock Exam'),
+        ('INTERSCHOOL', 'Interschool Exam'),
+        ('JOINT', 'Joint Exam'),
+        ('DISTRICT_JOINT', 'District Joint Exam'),
+        ('REGION_JOINT', 'Region Joint Exam'),
+        ('ZONE_JOINT', 'Zone Joint Exam'),
         ('TEST', 'Test'),
         ('MONTHLY', 'Monthly Test'),
         ('QUIZ', 'Quiz'),
         ('MIDTERM', 'Midterm'),
         ('TERMINAL', 'Terminal'),
-        ('MOCK', 'Mock'),
         ('ANNUAL', 'Annual'),
-        ('DECEMBER', 'December'),
-        ('COMPETITION', 'Competition'),
         ('OTHER', 'Other'),
     ]
 

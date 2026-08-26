@@ -200,8 +200,10 @@ def get_grade_points(grade, form=None):
 # anatarajia kuona Terminal → Midterm → Test → Quiz → Annual → Mock →
 # Monthly → (December/Competition) → Other, si mpangilio wa alphabet.
 EXAM_TYPE_ORDER = [
-    'TERMINAL', 'MIDTERM', 'TEST', 'QUIZ', 'ANNUAL', 'MOCK', 'MONTHLY',
-    'DECEMBER', 'COMPETITION', 'OTHER',
+    'PRE_NECTA', 'MOCK', 'PRE_MOCK', 'INTERSCHOOL',
+    'JOINT', 'DISTRICT_JOINT', 'REGION_JOINT', 'ZONE_JOINT',
+    'TERMINAL', 'MIDTERM', 'TEST', 'QUIZ', 'ANNUAL', 'MONTHLY',
+    'OTHER',
 ]
 
 

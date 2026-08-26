@@ -124,12 +124,23 @@
         <form method="post">
           {% csrf_token %}
           <div class="mb-3">
+            <label class="form-label-sm">{% if LANG == 'sw' %}Aina ya Mtihani{% else %}Exam Type{% endif %} *</label>
+            <select name="exam_type" class="form-control-styled" id="exam_type_select" required>
+              <option value="">— {% if LANG == 'sw' %}Chagua Aina ya Mtihani{% else %}Select Exam Type{% endif %} —</option>
+              {% for val, label in exam_type_choices %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
             <label class="form-label-sm">{% if LANG == 'sw' %}Jina la Mtihani{% else %}Exam Name{% endif %}</label>
             <input type="text" name="exam_name" class="form-control-styled"
-                   placeholder="Mid-term 2026" required>
+                   id="exam_name_input" readonly
+                   style="background:#f4f6fb; cursor:not-allowed;"
+                   placeholder="{% if LANG == 'sw' %}Chagua aina ya mtihani hapo juu{% else %}Select exam type above{% endif %}">
           </div>
           <div class="row g-3 mb-3">
-            <div class="col-sm-3">
+            <div class="col-sm-4">
               <label class="form-label-sm">{% if LANG == 'sw' %}Mwaka (Year){% else %}Year{% endif %}</label>
               <select name="exam_year" class="form-control-styled">
                 {% for yr in year_range %}
@@ -137,7 +148,7 @@
                 {% endfor %}
               </select>
             </div>
-            <div class="col-sm-3">
+            <div class="col-sm-4">
               <label class="form-label-sm">{% if LANG == 'sw' %}Darasa (Form){% else %}Form{% endif %}</label>
               <select name="exam_form" class="form-control-styled">
                 <option value="1">Form I</option>
@@ -148,7 +159,7 @@
                 <option value="6">Form VI</option>
               </select>
             </div>
-            <div class="col-sm-3">
+            <div class="col-sm-4">
               <label class="form-label-sm">{% if LANG == 'sw' %}Darasa (Stream){% else %}Stream{% endif %}</label>
               <select name="exam_stream" class="form-control-styled">
                 <option value="">— {% if LANG == 'sw' %}Chagua{% else %}Select{% endif %} —</option>
@@ -158,14 +169,6 @@
                 <option value="D">D</option>
                 <option value="E">E</option>
                 <option value="F">F</option>
-              </select>
-            </div>
-            <div class="col-sm-3">
-              <label class="form-label-sm">{% if LANG == 'sw' %}Aina ya Mtihani{% else %}Exam Type{% endif %}</label>
-              <select name="exam_type" class="form-control-styled">
-                {% for val, label in exam_type_choices %}
-                <option value="{{ val }}">{{ label }}</option>
-                {% endfor %}
               </select>
             </div>
           </div>
@@ -214,16 +217,17 @@
 
 {% block scripts %}
 <script>
-// ── Auto-generate exam name from type + year (bado anaweza kubadilisha) ──
+// ── Auto-generate exam name from type + year (read-only, no manual typing) ──
 (() => {
-  const nameInput = document.querySelector('[name=exam_name]');
-  const typeSel = document.querySelector('[name=exam_type]');
+  const nameInput = document.getElementById('exam_name_input');
+  const typeSel = document.getElementById('exam_type_select');
   const yearSel = document.querySelector('[name=exam_year]');
   function autoName() {
     if (!nameInput || !typeSel) return;
     const label = typeSel.options[typeSel.selectedIndex]?.text || '';
     const year = yearSel ? yearSel.value : new Date().getFullYear();
-    if (label) nameInput.value = `${label} ${year}`;
+    nameInput.value = label ? `${label} ${year}` : '';
+    nameInput.placeholder = label ? '' : '{% if LANG == "sw" %}Chagua aina ya mtihani hapo juu{% else %}Select exam type above{% endif %}';
   }
   if (typeSel) typeSel.addEventListener('change', autoName);
   if (yearSel) yearSel.addEventListener('change', autoName);
