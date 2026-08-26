@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 from django.conf import settings
@@ -1134,16 +1135,131 @@ def _parse_pdf_roster(uploaded_file, on_student=_save_student):
                         ))
     return students_out
 
+# Header detection keywords — a row containing any of these is
+# considered the actual column-header row (not a title row).
+_HEADER_KEYWORDS = frozenset({
+    's/n', 'sn', '#', 'no', 'no.', 'namba',  # serial number
+    'name', 'jina', 'majina', 'mwanafunzi',    # name
+    'gender', 'sex', 'jinsia', 'jinsia ya',     # gender
+    'signature', 'sahihi',                       # signature
+    'score', 'alama', 'mistaari',               # score/marks
+    'admission', 'reg no', 'register',           # admission no
+})
+
+
+def _find_header_row(raw_df, max_scan=10):
+    """Scan the first *max_scan* rows of a headless DataFrame to find
+    the actual header row.  Returns the integer index of that row.
+
+    Many Tanzanian school spreadsheets start with a title row like
+    "FORM ONE ATTENDANCE LIST SEPT,2026" before the real header
+    (S/N | NAME | ... | SEX).  pandas treats row 0 as column names
+    by default, which breaks column detection.
+    """
+    n_rows = min(len(raw_df), max_scan)
+    best_idx = -1
+    best_score = 0
+    for i in range(n_rows):
+        vals = ' '.join(str(v).strip().lower() for v in raw_df.iloc[i] if pd.notna(v))
+        if not vals.strip():
+            continue
+        tokens = set(vals.split())
+        hits = sum(1 for kw in _HEADER_KEYWORDS if kw in tokens or kw in vals)
+        if hits >= 2 and hits > best_score:  # need at least 2 keyword hits
+            best_score = hits
+            best_idx = i
+    return best_idx if best_idx >= 0 else 0
+
+
+_GENDER_COL_KEYWORDS = frozenset({'gender', 'sex', 'jinsia', 'jinsia ya'})
+_NAME_COL_KEYWORDS = frozenset({'name', 'jina', 'majina', 'mwanafunzi', 'names'})
+
+
+def _read_best_excel_sheet(uploaded_file):
+    """For multi-sheet Excel files, find the sheet that looks most like a
+    student roster (has both a name column AND a gender/sex column).
+
+    Many Tanzanian school Excel files contain 10-20+ sheets: marks per
+    subject, attendance lists per room, etc.  pandas reads only the first
+    sheet by default, which may be a marks sheet with no SEX column —
+    causing all students to default to gender='M' and the first name
+    to be garbled.
+
+    Returns a cleaned DataFrame ready for column-name detection.
+    """
+    uploaded_file.seek(0)
+    xls = pd.ExcelFile(uploaded_file)
+    sheet_names = xls.sheet_names
+
+    best_df = None
+    best_score = -1
+    best_header_idx = -1
+
+    for sname in sheet_names:
+        uploaded_file.seek(0)
+        raw = pd.read_excel(xls, sheet_name=sname, header=None)
+        if raw.empty or len(raw) < 2:
+            continue
+
+        header_idx = _find_header_row(raw)
+        if header_idx < 0:
+            header_idx = 0
+
+        # Peek at column names from the detected header row
+        row_vals = [str(v).strip().lower() for v in raw.iloc[header_idx] if pd.notna(v)]
+        all_text = ' '.join(row_vals)
+
+        has_name = any(kw in all_text for kw in _NAME_COL_KEYWORDS)
+        has_gender = any(kw in all_text for kw in _GENDER_COL_KEYWORDS)
+
+        # Score: +10 for name, +15 for gender, +2 for each extra header keyword
+        score = 0
+        if has_name:
+            score += 10
+        if has_gender:
+            score += 15
+        score += sum(2 for kw in _HEADER_KEYWORDS if kw in all_text)
+
+        # Prefer sheets with both name AND gender columns
+        if score > best_score:
+            best_score = score
+            best_header_idx = header_idx
+            # Build a small temp df to return later
+            raw.columns = [str(c).strip() for c in raw.iloc[header_idx]]
+            best_df = raw.iloc[header_idx + 1:].reset_index(drop=True)
+
+    xls.close()
+
+    if best_df is not None and best_score >= 10:  # at least has a name column
+        return best_df
+
+    # Fallback: read the first sheet with default pandas behaviour
+    uploaded_file.seek(0)
+    return pd.read_excel(uploaded_file)
+
 
 def _parse_spreadsheet_roster(uploaded_file, on_student=_save_student):
     """Parse CSV or Excel roster with flexible column detection.
 
     See _parse_pdf_roster for what `on_student` is for.
+
+    Handles Excel/CSV files that have a **title row** before the actual
+    header (e.g. "FORM ONE ATTENDANCE LIST SEPT,2026" followed by
+    S/N | NAME | SIGNATURE | SCORE | SEX).  pandas normally treats
+    the first row as column headers, which breaks column detection.
     """
     import pandas as pd
     uploaded_file.seek(0)
     fname = uploaded_file.name.lower()
-    df = pd.read_csv(uploaded_file) if fname.endswith('.csv') else pd.read_excel(uploaded_file)
+
+    if fname.endswith('.csv'):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = _read_best_excel_sheet(uploaded_file)
+
+    # Clean up column names: strip extra whitespace runs and trailing
+    # annotations that some templates add (e.g. "NAME     ROOM A" → "NAME")
+    df.columns = [re.sub(r'\s{2,}.*$', '', c).strip() for c in df.columns]
     df.columns = [str(c).strip() for c in df.columns]
     col_lower = {c.lower(): c for c in df.columns}
 
