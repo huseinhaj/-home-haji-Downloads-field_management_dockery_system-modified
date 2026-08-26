@@ -885,7 +885,7 @@ def _save_student(first, middle, last, gender):
     return {'id': student.id, 'name': ' '.join(name_parts)}
 
 
-def _collect_roster_rows(uploaded_file, is_pdf):
+def _collect_roster_rows(uploaded_file, is_pdf, form_num=None):
     """Runs the existing PDF/CSV/Excel roster parsing with a no-op
     callback that just records each (first, middle, last, gender) row
     instead of hitting the database per row — the actual save happens
@@ -903,7 +903,7 @@ def _collect_roster_rows(uploaded_file, is_pdf):
     if is_pdf:
         _parse_pdf_roster(uploaded_file, on_student=_collector)
     else:
-        _parse_spreadsheet_roster(uploaded_file, on_student=_collector)
+        _parse_spreadsheet_roster(uploaded_file, on_student=_collector, form_num=form_num)
     return collected
 
 
@@ -1185,7 +1185,7 @@ _GENDER_COL_KEYWORDS = frozenset({'gender', 'sex', 'jinsia', 'jinsia ya'})
 _NAME_COL_KEYWORDS = frozenset({'name', 'jina', 'majina', 'mwanafunzi', 'names'})
 
 
-def _read_best_excel_sheet(uploaded_file):
+def _read_best_excel_sheet(uploaded_file, form_num=None):
     """For multi-sheet Excel files, find the sheet that looks most like a
     student roster (has both a name column AND a gender/sex column).
 
@@ -1195,11 +1195,26 @@ def _read_best_excel_sheet(uploaded_file):
     causing all students to default to gender='M' and the first name
     to be garbled.
 
+    When *form_num* is provided (1-6), sheets whose title row mentions
+    that form (e.g. "FORM THREE ATTENDANCE LIST") get a large score
+    bonus so the correct form's roster is selected.
+
     Returns a cleaned DataFrame ready for column-name detection.
     """
     uploaded_file.seek(0)
     xls = pd.ExcelFile(uploaded_file)
     sheet_names = xls.sheet_names
+
+    # Map form numbers to title keywords for matching
+    _FORM_TITLE_MAP = {
+        1: ('form one', 'form 1', 'fomu 1', 'fomu ya 1'),
+        2: ('form two', 'form 2', 'fomu 2', 'fomu ya 2'),
+        3: ('form three', 'form 3', 'fomu 3', 'fomu ya 3'),
+        4: ('form four', 'form 4', 'fomu 4', 'fomu ya 4'),
+        5: ('form five', 'form 5', 'fomu 5', 'fomu ya 5'),
+        6: ('form six', 'form 6', 'fomu 6', 'fomu ya 6'),
+    }
+    form_keywords = _FORM_TITLE_MAP.get(form_num, ()) if form_num else ()
 
     best_df = None
     best_score = -1
@@ -1230,6 +1245,14 @@ def _read_best_excel_sheet(uploaded_file):
             score += 15
         score += sum(2 for kw in _HEADER_KEYWORDS if kw in all_text)
 
+        # Big bonus if the title row matches the requested form number
+        if form_keywords and header_idx >= 0:
+            title_row = ' '.join(str(v).strip().lower() for v in raw.iloc[header_idx - 1] if pd.notna(v)) if header_idx > 0 else ''
+            # Also check sheet name itself
+            title_text = title_row + ' ' + sname.lower()
+            if any(kw in title_text for kw in form_keywords):
+                score += 50  # large bonus to prefer this sheet
+
         # Prefer sheets with both name AND gender columns
         if score > best_score:
             best_score = score
@@ -1248,7 +1271,7 @@ def _read_best_excel_sheet(uploaded_file):
     return pd.read_excel(uploaded_file)
 
 
-def _parse_spreadsheet_roster(uploaded_file, on_student=_save_student):
+def _parse_spreadsheet_roster(uploaded_file, on_student=_save_student, form_num=None):
     """Parse CSV or Excel roster with flexible column detection.
 
     See _parse_pdf_roster for what `on_student` is for.
@@ -1265,7 +1288,7 @@ def _parse_spreadsheet_roster(uploaded_file, on_student=_save_student):
     if fname.endswith('.csv'):
         df = pd.read_csv(uploaded_file)
     else:
-        df = _read_best_excel_sheet(uploaded_file)
+        df = _read_best_excel_sheet(uploaded_file, form_num=form_num)
 
     # Clean up column names: strip extra whitespace runs and trailing
     # annotations that some templates add (e.g. "NAME     ROOM A" → "NAME")
@@ -2461,9 +2484,9 @@ def upload_form_students(request):
 
         try:
             if ext == '.pdf':
-                rows = _collect_roster_rows(uploaded_file, is_pdf=True)
+                rows = _collect_roster_rows(uploaded_file, is_pdf=True, form_num=selected_form)
             elif ext in ('.csv', '.xlsx', '.xls'):
-                rows = _collect_roster_rows(uploaded_file, is_pdf=False)
+                rows = _collect_roster_rows(uploaded_file, is_pdf=False, form_num=selected_form)
             else:
                 messages.error(request, f"Aina ya faili '{ext}' haijulikani. Tumia PDF, CSV au Excel.")
                 return redirect(f'{reverse("upload_form_students")}?form={selected_form}')
