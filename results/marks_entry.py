@@ -24,7 +24,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import Exam, ExamResult, FormStudent, Student, StoredRoster, Subject, SubjectSubmission
-from .permissions import teacher_or_academic_required
+from .permissions import academic_required, teacher_or_academic_required
 from .services.upload_processing_service import recompute_processed_results_for_exam
 from .tasks import process_scoresheet_photo_task
 from .utils import get_grade_for_form, group_exams_by_type
@@ -392,6 +392,51 @@ def scoresheet_extract_status(request, task_id):
         return JsonResponse({'error': payload['error']}, status=400)
 
     return JsonResponse({'status': 'done', 'matched': payload.get('matched', []), 'unmatched': payload.get('unmatched', [])})
+
+
+@teacher_or_academic_required
+@require_POST
+def marks_entry_add_student(request):
+    """Add a single student inline from the Marks Entry page.
+
+    The teacher may realise a student is missing after uploading the
+    roster. This endpoint creates the Student record (or finds an
+    existing one by name) and returns the new student's id + name so
+    the frontend can add a row to the marks table immediately.
+    """
+    payload = _parse_payload(request)
+    teacher = request.user
+    exam = _teacher_exam(teacher, payload.get('exam_id'))
+    if exam is None:
+        return JsonResponse({'error': 'Mtihani haupatikani.'}, status=404)
+
+    first_name = (payload.get('first_name') or '').strip()
+    last_name = (payload.get('last_name') or '').strip()
+    middle_name = (payload.get('middle_name') or '').strip()
+    gender = (payload.get('gender') or 'M').strip().upper()[:1]
+
+    if not first_name or not last_name:
+        return JsonResponse({'error': 'Jina la kwanza na jina la mwisho lazima wekwe.'}, status=400)
+
+    if gender not in ('M', 'F'):
+        gender = 'M'
+
+    # get_or_create — same dedup as _save_student / _bulk_save_students
+    student, created = Student.objects.get_or_create(
+        first_name=first_name,
+        last_name=last_name,
+        defaults={'middle_name': middle_name, 'gender': gender},
+    )
+    if middle_name and not student.middle_name:
+        student.middle_name = middle_name
+        student.save(update_fields=['middle_name'])
+
+    name = ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p)
+    return JsonResponse({
+        'id': student.id,
+        'name': name,
+        'created': created,
+    })
 
 
 @teacher_or_academic_required

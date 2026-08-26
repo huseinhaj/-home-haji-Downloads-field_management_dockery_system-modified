@@ -431,7 +431,12 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4">
-          <a href="{% url 'marks_entry' %}" class="btn-me-ghost">← {% if LANG == 'sw' %}Badilisha{% else %}Change{% endif %}</a>
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'marks_entry' %}" class="btn-me-ghost">← {% if LANG == 'sw' %}Badilisha{% else %}Change{% endif %}</a>
+            <button type="button" class="btn-me-ghost" id="meAddStudentBtn" style="border-color:#D9A441;color:#7a5200;">
+              + {% if LANG == 'sw' %}Ongeza Mwanafunzi{% else %}Add Student{% endif %}
+            </button>
+          </div>
           <div class="d-flex gap-2 flex-wrap">
             <a href="{% url 'marks_entry' %}?exam={{ exam.id }}&subject={{ subject.id }}&review=1" class="btn-me-ghost" id="meViewReviewLink">
               {% if LANG == 'sw' %}Tazama Alama Zilizohifadhiwa{% else %}View Saved Scores{% endif %}
@@ -449,6 +454,53 @@
 {% endif %}
 
 {% if exam %}
+<!-- Add Student modal -->
+<div class="modal fade" id="addStudentModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:2px;">
+      <div class="modal-header" style="background:#D9A441;color:#1F7A3D;border-radius:0;">
+        <h5 class="modal-title">+ {% if LANG == 'sw' %}Ongeza Mwanafunzi{% else %}Add Student{% endif %}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem;color:#555;margin-bottom:0.8rem;">
+          {% if LANG == 'sw' %}Weka jina la mwanafunzi mpya. Ataongezwa kwenye orodha ya alama mara moja.{% else %}Enter the new student's name. They will appear in the marks table immediately.{% endif %}
+        </p>
+        <form id="addStudentForm">
+          <div class="row g-2">
+            <div class="col-12">
+              <label style="font-size:0.8rem;font-weight:700;">{% if LANG == 'sw' %}Jina la Kwanza *{% else %}First Name *{% endif %}</label>
+              <input type="text" name="first_name" class="form-control" required placeholder="{% if LANG == 'sw' %}mfano: Amina{% else %}e.g. Amina{% endif %}">
+            </div>
+            <div class="col-12">
+              <label style="font-size:0.8rem;font-weight:700;">{% if LANG == 'sw' %}Jina la Kati{% else %}Middle Name{% endif %}</label>
+              <input type="text" name="middle_name" class="form-control" placeholder="{% if LANG == 'sw' %}hiyo ni hiari{% else %}optional{% endif %}">
+            </div>
+            <div class="col-8">
+              <label style="font-size:0.8rem;font-weight:700;">{% if LANG == 'sw' %}Jina la Mwisho *{% else %}Last Name *{% endif %}</label>
+              <input type="text" name="last_name" class="form-control" required placeholder="{% if LANG == 'sw' %}mfano: Hassan{% else %}e.g. Hassan{% endif %}">
+            </div>
+            <div class="col-4">
+              <label style="font-size:0.8rem;font-weight:700;">{% if LANG == 'sw' %}Jinsia{% else %}Gender{% endif %}</label>
+              <select name="gender" class="form-select">
+                <option value="M">M</option>
+                <option value="F">F</option>
+              </select>
+            </div>
+          </div>
+        </form>
+        <div id="addStudentError" style="display:none;color:#c0392b;font-size:0.82rem;margin-top:0.5rem;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
+        <button type="button" class="btn" id="addStudentConfirm" style="background:#1F7A3D;color:#fff;font-weight:700;border-radius:2px;">
+          ✓ {% if LANG == 'sw' %}Ongeza{% else %}Add{% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Confirm submit modal -->
 <div class="modal fade" id="meConfirmModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
@@ -1229,6 +1281,68 @@
       } catch (err) {
         toast(err.message, true);
         saveBtn.disabled = false;
+      }
+    });
+  }
+
+  /* ═══ ADD STUDENT — inline + modal ═══ */
+  const addStudentBtn = document.getElementById('meAddStudentBtn');
+  const addStudentModal = document.getElementById('addStudentModal');
+  const addStudentForm = document.getElementById('addStudentForm');
+  const addStudentConfirm = document.getElementById('addStudentConfirm');
+  const addStudentError = document.getElementById('addStudentError');
+  if (addStudentBtn && addStudentModal) {
+    addStudentBtn.addEventListener('click', () => {
+      addStudentError.style.display = 'none';
+      addStudentForm.reset();
+      new bootstrap.Modal(addStudentModal).show();
+    });
+    addStudentConfirm.addEventListener('click', async () => {
+      const formData = new FormData(addStudentForm);
+      const firstName = (formData.get('first_name') || '').trim();
+      const lastName = (formData.get('last_name') || '').trim();
+      const middleName = (formData.get('middle_name') || '').trim();
+      const gender = formData.get('gender') || 'M';
+
+      if (!firstName || !lastName) {
+        addStudentError.textContent = LANG === 'sw'
+          ? 'Jina la kwanza na jina la mwisho lazima wekwe.'
+          : 'First name and last name are required.';
+        addStudentError.style.display = '';
+        return;
+      }
+
+      addStudentConfirm.disabled = true;
+      addStudentConfirm.textContent = LANG === 'sw' ? 'Inaongeza...' : 'Adding...';
+
+      try {
+        const data = await postJSON("{% url 'marks_entry_add_student' %}", {
+          exam_id: EXAM_ID,
+          first_name: firstName,
+          middle_name: middleName,
+          last_name: lastName,
+          gender: gender,
+        });
+        // Add to the table
+        if (!byId.has(data.id)) {
+          byId.set(data.id, { id: data.id, name: data.name, score: null });
+          renderRows();
+        }
+        toast(data.created
+          ? (LANG === 'sw' ? '✅ ' + data.name + ' ameongezwa.' : '✅ ' + data.name + ' added.')
+          : (LANG === 'sw' ? 'ℹ️ ' + data.name + ' tayari yupo — ameongezwa kwenye jedwali.' : 'ℹ️ ' + data.name + ' already exists — added to table.'));
+        bootstrap.Modal.getInstance(addStudentModal).hide();
+        // Scroll to the new row
+        setTimeout(() => {
+          const row = rowsBody.querySelector('tr[data-id="' + data.id + '"]');
+          if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }, 200);
+      } catch (err) {
+        addStudentError.textContent = err.message;
+        addStudentError.style.display = '';
+      } finally {
+        addStudentConfirm.disabled = false;
+        addStudentConfirm.textContent = '\u2713 ' + (LANG === 'sw' ? 'Ongeza' : 'Add');
       }
     });
   }

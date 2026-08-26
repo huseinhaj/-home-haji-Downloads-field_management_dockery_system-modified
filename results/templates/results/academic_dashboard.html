@@ -276,6 +276,10 @@
             <a href="{% url 'exam_overview' ed.exam.id %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">
               {% if LANG == 'sw' %}Tazama{% else %}View{% endif %}
             </a>
+            <button type="button" class="btn btn-sm" style="background:#c0392b;color:#fff;font-size:0.72rem;border-radius:2px;border:none;"
+              onclick="openDeleteModal('{{ ed.exam.id }}', '{{ ed.exam.name|escapejs }}')">
+              🗑 {% if LANG == 'sw' %}Futa{% else %}Delete{% endif %}
+            </button>
           </div>
         </div>
 
@@ -450,6 +454,36 @@
   </div>
 </div>
 
+<!-- Delete Exam Modal -->
+<div class="modal fade" id="deleteExamModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:2px;">
+      <div class="modal-header" style="background:#c0392b;color:#fff;border-radius:0;">
+        <h5 class="modal-title">🗑 {% if LANG == 'sw' %}Futa Mtihani{% else %}Delete Exam{% endif %}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.9rem;margin-bottom:0.5rem;">
+          {% if LANG == 'sw' %}Una uhakika unataka kufuta mtihani huu?{% else %}Are you sure you want to delete this exam?{% endif %}
+        </p>
+        <p style="font-size:0.95rem;font-weight:700;color:#c0392b;margin-bottom:0.5rem;" id="deleteExamLabel"></p>
+        <p style="font-size:0.82rem;color:#888;">
+          ⚠️ {% if LANG == 'sw' %}Kitendo hiki hakiwezi kutendwa — alama zote, matokeo na usajili wa masomo kwa mtihani huu vitaondolewa kabisa.{% else %}This action cannot be undone — all scores, results and subject submissions for this exam will be permanently removed.{% endif %}
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
+        <form method="post" id="deleteExamForm" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px;">
+            🗑 {% if LANG == 'sw' %}Ndio, Futa{% else %}Yes, Delete{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ── Stream tabs switching ── */
 document.querySelectorAll('.stream-tab').forEach(tab => {
@@ -464,6 +498,11 @@ document.querySelectorAll('.stream-tab').forEach(tab => {
   });
 });
 
+function openDeleteModal(examId, examName) {
+  document.getElementById('deleteExamLabel').textContent = examName;
+  document.getElementById('deleteExamForm').action = '/shule/exam/' + examId + '/futa/';
+  new bootstrap.Modal(document.getElementById('deleteExamModal')).show();
+}
 function openReturnModal(subjectId, subjectName, returnUrl) {
   document.getElementById('returnSubjectLabel').textContent = subjectName;
   document.getElementById('returnForm').action = returnUrl;

@@ -2016,6 +2016,23 @@ def create_exam_for_school(request):
     })
 
 
+# ── Delete Exam ──────────────────────────────────────────────────────────────
+
+@academic_required
+@require_POST
+def delete_exam(request, exam_id):
+    """Delete an exam and all its related data (results, submissions, etc.).
+
+    Only the Academic Officer for the same school can delete. This is
+    irreversible — we show a confirmation modal on the frontend.
+    """
+    exam = _get_exam_or_404(exam_id, request.user)
+    exam_name = exam.name
+    exam.delete()  # CASCADE deletes ExamResult, SubjectSubmission, ProcessedResult, etc.
+    messages.success(request, f"Mtihani '{exam_name}' umefutwa.")
+    return redirect(reverse('academic_dashboard'))
+
+
 # ── Teacher Dashboard ─────────────────────────────────────────────────────────
 
 @teacher_required

@@ -52,6 +52,7 @@ from .views import (
     school_setup,
     school_subjects,
     create_exam_for_school,
+    delete_exam,
     teacher_dashboard,
     select_my_subjects,
     personal_upload,
@@ -74,6 +75,7 @@ from .views import (
 from .marks_entry import (
     download_scoresheet_names_pdf,
     marks_entry,
+    marks_entry_add_student,
     marks_entry_save,
     marks_entry_submit,
     scoresheet_extract_status,
@@ -146,6 +148,7 @@ urlpatterns = [
     path('school/', school_setup, name='school_setup'),
     path('school/masomo/', school_subjects, name='school_subjects'),
     path('school/unda-mtihani/', create_exam_for_school, name='create_exam_for_school'),
+    path('exam/<int:exam_id>/futa/', delete_exam, name='delete_exam'),
     # Teacher dashboard
     path('teacher/', teacher_dashboard, name='teacher_dashboard'),
     path('masomo-yangu/', select_my_subjects, name='select_my_subjects'),
@@ -162,6 +165,7 @@ urlpatterns = [
     # Marks Entry — mbadala wa Speech Entry: pakia orodha → jaza alama → review → tuma
     path('marks/', marks_entry, name='marks_entry'),
     path('marks/save/', marks_entry_save, name='marks_entry_save'),
+    path('marks/add-student/', marks_entry_add_student, name='marks_entry_add_student'),
     path('marks/submit/', marks_entry_submit, name='marks_entry_submit'),
     path('marks/scoresheet-extract/', scoresheet_photo_extract, name='scoresheet_photo_extract'),
     path('marks/scoresheet-extract/status/<str:task_id>/', scoresheet_extract_status, name='scoresheet_extract_status'),
