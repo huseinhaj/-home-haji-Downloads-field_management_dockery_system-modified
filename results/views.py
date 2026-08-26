@@ -2,6 +2,8 @@ import os
 import re
 from pathlib import Path
 
+import pandas as pd
+
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -1030,7 +1032,11 @@ def _parse_pdf_roster(uploaded_file, on_student=_save_student):
                             continue
                         # Skip header rows — note: 'no' removed (too aggressive;
                         # matches real names like Noel/Norah).
-                        if any(h in ' '.join(cells).lower() for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'jinsia ya', '#')):
+                        _cell_text = ' '.join(cells).lower()
+                        if any(h in _cell_text for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'jinsia ya', '#')):
+                            continue
+                        # Skip title rows (e.g. "FORM ONE ATTENDANCE LIST SEPT,2026")
+                        if any(h in _cell_text for h in ('attendance', 'list', 'sept', 'march', 'may')):
                             continue
                         # Try joining all cells as one line
                         line = ' '.join(cells)
@@ -1085,7 +1091,11 @@ def _parse_pdf_roster(uploaded_file, on_student=_save_student):
                     if not line:
                         continue
                     # Skip obvious header lines (safety net for CSV-detected data too)
-                    if any(h in line.lower() for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'student')):
+                    _line_lower = line.lower()
+                    if any(h in _line_lower for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'student')):
+                        continue
+                    # Skip title lines (e.g. "FORM ONE ATTENDANCE LIST SEPT,2026")
+                    if any(h in _line_lower for h in ('attendance', 'list', 'sept', 'march', 'may')):
                         continue
 
                     if _is_csv:
