@@ -595,8 +595,9 @@ def generate_results_pdf_response(exam):
     # Subject stats
     subj_stats = []
     for subj in subjects:
-        scores = [score_lookup[(r.student_id, subj.id)]
+        raw_scores = [score_lookup[(r.student_id, subj.id)]
                   for r in results if (r.student_id, subj.id) in score_lookup]
+        scores = [s for s in raw_scores if s is not None]
         if scores:
             subj_stats.append({
                 'name': subj.name,
@@ -609,8 +610,9 @@ def generate_results_pdf_response(exam):
     # Subject GPA
     subj_gpa = []
     for subj in subjects:
-        scores = [score_lookup[(r.student_id, subj.id)]
+        raw_scores = [score_lookup[(r.student_id, subj.id)]
                   for r in results if (r.student_id, subj.id) in score_lookup]
+        scores = [s for s in raw_scores if s is not None]
         if scores:
             gp_scores = [_grade_point(_grade_for_score(sc, exam.form), exam.form) for sc in scores]
             avg_gp = sum(gp_scores) / len(gp_scores)

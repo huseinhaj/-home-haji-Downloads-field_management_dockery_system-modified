@@ -139,6 +139,8 @@ def get_grade(score):
     computed here will show different letter grades than what the report
     tables display.
     """
+    if score is None:
+        return "X"
     if score >= 75:
         return "A"
     if score >= 65:
@@ -152,6 +154,8 @@ def get_grade(score):
 
 def get_grade_alevel(score):
     """NECTA ACSEE (A-Level, Form 5-6) subject grade — wider 7-band scale."""
+    if score is None:
+        return "X"
     if score >= 80:
         return "A"
     if score >= 70:
@@ -173,6 +177,8 @@ def get_grade_ftna(score):
     Official FTNA scale differs from CSEE: C starts at 45, D at 30, F below 30.
         A: 75-100  B: 65-74  C: 45-64  D: 30-44  F: 0-29
     """
+    if score is None:
+        return "X"
     if score >= 75:
         return "A"
     if score >= 65:
@@ -191,6 +197,8 @@ def get_grade_for_form(score, form):
     - Form 5/6 (ACSEE):     A 80+ | B 70+ | C 60+ | D 50+ | E 40+ | S 35+ | F <35
     - Form 1/3/4 (CSEE):    A 75+ | B 65+ | C 45+ | D 30+ | F <30
     """
+    if score is None:
+        return "X"
     if form == 2:
         return get_grade_ftna(score)
     if form in (5, 6):

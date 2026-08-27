@@ -386,11 +386,12 @@ def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict):
     cur_row += 1
 
     for subject in subjects:
-        scores = [
+        raw_scores = [
             score_lookup[(r.student_id, subject.id)]
             for r in results
             if (r.student_id, subject.id) in score_lookup
         ]
+        scores = [s for s in raw_scores if s is not None]
         if not scores:
             continue
         avg = round(sum(scores) / len(scores), 1)

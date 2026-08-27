@@ -17,25 +17,33 @@ GRADE_ORDER = ['A', 'B', 'C', 'D', 'E', 'S', 'F']
 
 
 def compute_subject_stats(rows: list[dict]) -> dict:
-    """rows: [{'name', 'score', 'grade', 'gender' (optional 'M'/'F')}, ...]"""
+    """rows: [{'name', 'score', 'grade', 'gender' (optional 'M'/'F')}, ...]
+    
+    Note: 'score' may be None for absent students. These are excluded
+    from averages and rankings.
+    """
     total = len(rows)
     grade_counts = Counter(r['grade'] for r in rows)
     pass_count = sum(1 for r in rows if is_passing_grade(r['grade']))
     pass_rate = round(pass_count / total * 100, 1) if total else 0.0
-    class_avg = round(sum(r['score'] for r in rows) / total, 1) if total else 0.0
+    
+    # Filter out None scores for numeric calculations
+    scored_rows = [r for r in rows if r.get('score') is not None]
+    class_avg = round(sum(r['score'] for r in scored_rows) / len(scored_rows), 1) if scored_rows else 0.0
 
     gender_stats = {}
     for g in ('M', 'F'):
         g_rows = [r for r in rows if r.get('gender') == g]
+        g_scored = [r for r in g_rows if r.get('score') is not None]
         if g_rows:
             g_pass = sum(1 for r in g_rows if is_passing_grade(r['grade']))
             gender_stats[g] = {
                 'count': len(g_rows),
                 'pass_rate': round(g_pass / len(g_rows) * 100, 1),
-                'avg': round(sum(r['score'] for r in g_rows) / len(g_rows), 1),
+                'avg': round(sum(r['score'] for r in g_scored) / len(g_scored), 1) if g_scored else 0.0,
             }
 
-    ranked = sorted(rows, key=lambda r: r['score'])
+    ranked = sorted(scored_rows, key=lambda r: r['score'])
     weakest = ranked[:5]
     strongest = list(reversed(ranked[-3:])) if len(ranked) >= 3 else list(reversed(ranked))
 
@@ -114,7 +122,7 @@ def generate_recommendations(stats: dict, subject_name: str = 'somo hili', lang:
 
         weakest = stats.get('weakest') or []
         if weakest and stats['pass_rate'] < 100:
-            names = ', '.join(r['name'] for r in weakest if not is_passing_grade(r['grade']) or r['score'] < 45)
+            names = ', '.join(r['name'] for r in weakest if not is_passing_grade(r['grade']) or (r.get('score') is not None and r['score'] < 45))
             if names:
                 recs.append(f"Wanafunzi wa kufuatiliwa kwa karibu (alama za chini kabisa): {names}.")
 
@@ -165,7 +173,7 @@ def generate_recommendations(stats: dict, subject_name: str = 'somo hili', lang:
 
         weakest = stats.get('weakest') or []
         if weakest and stats['pass_rate'] < 100:
-            names = ', '.join(r['name'] for r in weakest if not is_passing_grade(r['grade']) or r['score'] < 45)
+            names = ', '.join(r['name'] for r in weakest if not is_passing_grade(r['grade']) or (r.get('score') is not None and r['score'] < 45))
             if names:
                 recs.append(f"Students to follow up with closely (lowest scores): {names}.")
 
