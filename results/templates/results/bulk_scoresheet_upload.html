@@ -1,5 +1,5 @@
 {% extends 'results/base.html' %}
-{% block title %}Bulk Upload — {{ exam.name }} | School Results{% endblock %}
+{% block title %}PakiaScoresheets — {{ exam.name }} | School Results{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -14,118 +14,86 @@
 .bulk-hero h1 { font-size: 1.3rem; font-weight: 800; margin-bottom: 0.2rem; }
 .bulk-hero .meta { font-size: 0.82rem; color: #D9A441; letter-spacing: 0.04em; text-transform: uppercase; }
 
-.bulk-card {
-  background: #fff;
-  border: 1.5px solid #dee2e6;
-  border-radius: 2px;
-  margin-bottom: 1rem;
-  overflow: hidden;
-}
-.bulk-card-head {
-  background: #f4f6fb;
-  border-bottom: 1px solid #e9ecef;
-  padding: 0.75rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.bulk-card-head h3 { font-size: 1rem; font-weight: 800; color: #1F7A3D; margin: 0; }
-.bulk-card-body { padding: 1rem; }
-
-/* Upload zones */
-.upload-zone {
-  border: 2px dashed #D9A441;
-  border-radius: 2px;
-  padding: 2rem 1.5rem;
-  text-align: center;
-  background: #fffbf0;
-  cursor: pointer;
-  transition: all 0.15s;
-  margin-bottom: 1rem;
-}
-.upload-zone:hover { background: #fff3d6; border-color: #1F7A3D; }
-.upload-zone.dragover { background: #e6f7ec; border-color: #1F7A3D; }
-.upload-zone .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
-.upload-zone .label { font-weight: 700; color: #1F7A3D; font-size: 1rem; }
-.upload-zone .hint { font-size: 0.78rem; color: #888; margin-top: 0.3rem; }
-
-/* Subject cards */
-.subject-upload-card {
-  background: #fff;
-  border: 1.5px solid #e9ecef;
-  border-radius: 2px;
-  padding: 0.8rem 1rem;
-  margin-bottom: 0.6rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  transition: all 0.2s;
-}
-.subject-upload-card:hover { border-color: #1F7A3D; background: #f0faf4; }
-.subject-upload-card.uploaded { border-color: #1a7a3b; background: #e6f7ec; }
-.subject-upload-card.uploading { border-color: #D9A441; background: #fff8e6; }
-
-.subject-name { font-weight: 700; font-size: 0.95rem; color: #1F7A3D; min-width: 140px; }
-.subject-status { font-size: 0.78rem; color: #888; }
-.subject-status.done { color: #1a7a3b; font-weight: 700; }
-.subject-status.error { color: #c0392b; }
-
-.btn-upload-subject {
-  background: #1F7A3D;
-  color: #fff;
-  border: none;
-  font-size: 0.78rem;
-  font-weight: 700;
-  padding: 0.35rem 0.9rem;
-  border-radius: 2px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.btn-upload-subject:hover { background: #145226; }
-.btn-upload-subject:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* Progress */
-.progress-bar-mini {
-  background: #e9ecef;
-  border-radius: 3px;
-  height: 6px;
-  overflow: hidden;
-  width: 100%;
-  max-width: 200px;
-}
-.progress-bar-mini .fill {
-  height: 100%;
-  background: #1F7A3D;
-  border-radius: 3px;
-  transition: width 0.3s;
-}
-
 /* Summary stats */
 .summary-strip {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-  padding: 0.8rem 1rem;
-  background: #f8f9fb;
-  border-radius: 2px;
-  border: 1px solid #e9ecef;
+  display: flex; gap: 1.5rem; flex-wrap: wrap; padding: 0.8rem 1rem;
+  background: #f8f9fb; border-radius: 2px; border: 1px solid #e9ecef; margin-bottom: 1rem;
+}
+.summary-item { text-align: center; flex: 1; min-width: 80px; }
+.summary-item .val { font-size: 1.4rem; font-weight: 800; }
+.summary-item .lbl { font-size: 0.68rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+.val-green { color: #1F7A3D; }
+.val-gold { color: #D9A441; }
+
+/* Big upload zone */
+.big-upload-zone {
+  border: 3px dashed #D9A441; border-radius: 4px; padding: 3rem 2rem;
+  text-align: center; background: #fffbf0; cursor: pointer; transition: all 0.2s;
+  margin-bottom: 1.5rem; position: relative;
+}
+.big-upload-zone:hover { background: #fff3d6; border-color: #1F7A3D; transform: scale(1.005); }
+.big-upload-zone.dragover { background: #e6f7ec; border-color: #1F7A3D; }
+.big-upload-zone .icon { font-size: 3rem; margin-bottom: 0.5rem; }
+.big-upload-zone .label { font-weight: 800; color: #1F7A3D; font-size: 1.1rem; }
+.big-upload-zone .hint { font-size: 0.82rem; color: #888; margin-top: 0.4rem; max-width: 500px; margin-left: auto; margin-right: auto; }
+
+/* File queue */
+.file-queue { margin-bottom: 1.5rem; }
+.file-queue-title { font-size: 0.9rem; font-weight: 800; color: #1F7A3D; margin-bottom: 0.6rem; }
+.file-row {
+  display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.8rem;
+  background: #fff; border: 1.5px solid #e9ecef; border-radius: 2px;
+  margin-bottom: 0.4rem; flex-wrap: wrap; transition: all 0.2s;
+}
+.file-row:hover { border-color: #1F7A3D; }
+.file-row.processing { border-color: #D9A441; background: #fff8e6; }
+.file-row.done { border-color: #1a7a3b; background: #e6f7ec; }
+.file-row.error { border-color: #c0392b; background: #fdecea; }
+
+.file-icon { font-size: 1.3rem; flex-shrink: 0; }
+.file-name { font-weight: 600; font-size: 0.85rem; color: #333; flex: 1; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-subject {
+  min-width: 150px;
+}
+.file-subject select {
+  font-size: 0.78rem; padding: 0.25rem 0.5rem; border: 1.5px solid #ced4da;
+  border-radius: 2px; background: #fff; font-weight: 600; color: #1F7A3D;
+}
+.file-subject select:focus { border-color: #1F7A3D; outline: none; }
+.file-status { font-size: 0.78rem; color: #888; min-width: 100px; text-align: right; }
+.file-status.done { color: #1a7a3b; font-weight: 700; }
+.file-status.error { color: #c0392b; }
+.file-remove {
+  background: none; border: none; color: #c0392b; cursor: pointer;
+  font-size: 1rem; padding: 0.2rem; opacity: 0.6;
+}
+.file-remove:hover { opacity: 1; }
+
+/* Progress bar */
+.progress-global {
+  background: #e9ecef; border-radius: 4px; height: 8px; overflow: hidden;
   margin-bottom: 1rem;
 }
-.summary-item { text-align: center; }
-.summary-item .val { font-size: 1.3rem; font-weight: 800; color: #1F7A3D; }
-.summary-item .lbl { font-size: 0.68rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
-
-/* Toast */
-.bulk-toast {
-  position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-120%);
-  z-index: 1200; padding: 0.75rem 1.4rem; border-radius: 2px; font-weight: 600; font-size: 0.85rem;
-  color: #fff; box-shadow: 0 6px 24px rgba(0,0,0,0.2); transition: transform 0.3s ease; max-width: 92vw;
+.progress-global .fill {
+  height: 100%; background: linear-gradient(90deg, #1F7A3D, #D9A441);
+  border-radius: 4px; transition: width 0.4s;
 }
-.bulk-toast.show { transform: translateX(-50%) translateY(0); }
-.bulk-toast.error { background: #c0392b; }
-.bulk-toast.success { background: #1a7a3b; }
+
+/* Subject status chips */
+.subjects-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.5rem; margin-bottom: 1.5rem;
+}
+.subject-chip {
+  padding: 0.5rem 0.7rem; border-radius: 2px; font-size: 0.78rem;
+  font-weight: 700; border: 1.5px solid #e9ecef; background: #fff;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.subject-chip.done { border-color: #1a7a3b; background: #e6f7ec; color: #1a7a3b; }
+.subject-chip.pending { color: #888; }
+.subject-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.subject-chip.done .dot { background: #1a7a3b; }
+.subject-chip.pending .dot { background: #dee2e6; }
 
 /* Final actions */
 .final-actions {
@@ -140,6 +108,17 @@
 .btn-final.primary:hover { background: #145226; color: #fff; }
 .btn-final.secondary { background: #fff; color: #1F7A3D; }
 .btn-final.secondary:hover { background: #f0faf4; color: #1F7A3D; }
+.btn-final:disabled { opacity: 0.4; pointer-events: none; }
+
+/* Toast */
+.bulk-toast {
+  position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-120%);
+  z-index: 1200; padding: 0.75rem 1.4rem; border-radius: 2px; font-weight: 600; font-size: 0.85rem;
+  color: #fff; box-shadow: 0 6px 24px rgba(0,0,0,0.2); transition: transform 0.3s ease; max-width: 92vw;
+}
+.bulk-toast.show { transform: translateX(-50%) translateY(0); }
+.bulk-toast.error { background: #c0392b; }
+.bulk-toast.success { background: #1a7a3b; }
 </style>
 {% endblock %}
 
@@ -148,7 +127,7 @@
 <div class="bulk-hero">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
     <div>
-      <h1>📦 {% if LANG == 'sw' %}PakiaScoresheets kwa Masomo Yote{% else %}Bulk Scoresheet Upload{% endif %}</h1>
+      <h1>📦 {% if LANG == 'sw' %}PakiaScoresheets — Masomo Yote{% else %}Bulk Scoresheet Upload{% endif %}</h1>
       <div class="meta">
         {{ exam.name }} &nbsp;|&nbsp; Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} &nbsp;|&nbsp; {{ exam.year }}
       </div>
@@ -162,78 +141,93 @@
 <!-- Summary -->
 <div class="summary-strip">
   <div class="summary-item">
-    <div class="val">{{ subjects|length }}</div>
-    <div class="lbl">{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}</div>
+    <div class="val val-green" id="doneCount">{{ subject_status_done }}</div>
+    <div class="lbl">{% if LANG == 'sw' %}Yamekamilika{% else %}Done{% endif %}</div>
   </div>
   <div class="summary-item">
-    <div class="val">{{ student_count }}</div>
+    <div class="val val-gold" id="pendingCount">{{ subject_status_pending }}</div>
+    <div class="lbl">{% if LANG == 'sw' %}Bado{% else %}Pending{% endif %}</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color:#555;">{{ subjects|length }}</div>
+    <div class="lbl">{% if LANG == 'sw' %}Jumla Masomo{% else %}Total Subjects{% endif %}</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color:#24508a;">{{ student_count }}</div>
     <div class="lbl">{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</div>
   </div>
-  <div class="summary-item">
-    <div class="val" id="uploadedCount">0</div>
-    <div class="lbl">{% if LANG == 'sw' %}Yamepakiwa{% else %}Uploaded{% endif %}</div>
-  </div>
 </div>
 
-<!-- Instructions -->
-<div class="bulk-card" style="border-left:4px solid #D9A441;">
-  <div class="bulk-card-body" style="padding:0.8rem 1rem;">
-    <p style="font-size:0.85rem;margin:0;color:#555;">
-      📌 {% if LANG == 'sw' %}
-      Pakia kila scoresheet (PDF au picha) kwa somo lake. Mfumo utasoma alama na kuziweka moja kwa moja.
-      Baada ya kupakia masomo yote, bofya <strong>"Generate Results"</strong> ili kupata matokeo.
-      {% else %}
-      Upload each scoresheet (PDF or photo) for its subject. The system will read scores and save them automatically.
-      After uploading all subjects, click <strong>"Generate Results"</strong> to get the results.
-      {% endif %}
-    </p>
+<!-- Subject Status Grid -->
+<div style="margin-bottom:1rem;">
+  <div style="font-size:0.85rem;font-weight:800;color:#1F7A3D;margin-bottom:0.5rem;">
+    📊 {% if LANG == 'sw' %}Hali ya Masomo{% else %}Subject Status{% endif %}
   </div>
-</div>
-
-<!-- Subject Upload Cards -->
-<div class="bulk-card">
-  <div class="bulk-card-head">
-    <h3>📝 {% if LANG == 'sw' %}Masomo na Scoresheets{% else %}Subjects & Scoresheets{% endif %}</h3>
-    <span style="font-size:0.78rem;color:#888;">{{ subjects|length }} {% if LANG == 'sw' %}masomo{% else %}subjects{% endif %}</span>
-  </div>
-  <div class="bulk-card-body">
-    {% for subject in subjects %}
-    <div class="subject-upload-card" id="subject-{{ subject.id }}" data-subject-id="{{ subject.id }}">
-      <div style="display:flex;align-items:center;gap:0.75rem;flex:1;min-width:200px;">
-        <div class="subject-name">{{ subject.name }}</div>
-        <div class="subject-status" id="status-{{ subject.id }}">
-          {% if LANG == 'sw' %}Inasubiri{% else %}Waiting{% endif %}
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:0.5rem;">
-        <input type="file" id="file-{{ subject.id }}" accept=".pdf,.png,.jpg,.jpeg,.webp"
-               style="display:none;" data-subject-id="{{ subject.id }}">
-        <button type="button" class="btn-upload-subject" onclick="document.getElementById('file-{{ subject.id }}').click();">
-          📤 {% if LANG == 'sw' %}Pakia{% else %}Upload{% endif %}
-        </button>
-      </div>
+  <div class="subjects-grid">
+    {% for s in subject_status %}
+    <div class="subject-chip {% if s.is_done %}done{% else %}pending{% endif %}" id="chip-{{ s.subject.id }}">
+      <span class="dot"></span>
+      {{ s.subject.name }}
     </div>
     {% endfor %}
   </div>
 </div>
 
+<!-- Global progress -->
+<div class="progress-global">
+  <div class="fill" id="globalProgress" style="width:0%"></div>
+</div>
+
+<!-- Big Upload Zone -->
+<div class="big-upload-zone" id="uploadZone">
+  <div class="icon">📂</div>
+  <div class="label">{% if LANG == 'sw' %}Bonyeza au dondosha scoresheets hapa{% else %}Click or drag scoresheets here{% endif %}</div>
+  <div class="hint">
+    {% if LANG == 'sw' %}
+    Pakia PDF au picha za scoresheet za masomo yote kwa wakati mmoja. Kila faili litalinganishwa na somo lililo chaguliwa.
+    Unaweza kupakia <strong>faili nyingi kwa wakati mmoja</strong>.
+    {% else %}
+    Upload PDFs or photos of scoresheets for all subjects at once. Each file will be matched to the selected subject.
+    You can upload <strong>multiple files at once</strong>.
+    {% endif %}
+  </div>
+  <input type="file" id="bulkFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple style="display:none;">
+</div>
+
+<!-- File Queue -->
+<div class="file-queue" id="fileQueue" style="display:none;">
+  <div class="file-queue-title">📋 {% if LANG == 'sw' %}Faili Zilizopakiwa{% else %}Uploaded Files{% endif %}</div>
+  <div id="fileQueueList"></div>
+  <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+    <button type="button" class="btn-final secondary" id="clearAllBtn" style="font-size:0.78rem;padding:0.4rem 1rem;">
+      🗑 {% if LANG == 'sw' %}Futa Zote{% else %}Clear All{% endif %}
+    </button>
+    <button type="button" class="btn-final primary" id="uploadAllBtn" style="font-size:0.85rem;">
+      🚀 {% if LANG == 'sw' %}Pakia Masomo Yote{% else %}Upload All Subjects{% endif %}
+    </button>
+  </div>
+</div>
+
 <!-- Final Actions -->
-{% if subjects %}
 <div class="final-actions">
   <a href="{% url 'exam_overview' exam.id %}" class="btn-final secondary">
     📊 {% if LANG == 'sw' %}Tazama Muhtasari{% else %}View Overview{% endif %}
   </a>
-  <a href="{% url 'generate_results_pdf' exam.id %}" class="btn-final primary" id="generateResultsBtn" style="opacity:0.5;pointer-events:none;">
+  <a href="{% url 'generate_results_pdf' exam.id %}" class="btn-final primary" id="generateResultsBtn" style="opacity:0.4;pointer-events:none;">
     📄 {% if LANG == 'sw' %}Generate Results PDF{% else %}Generate Results PDF{% endif %}
   </a>
-  <a href="{% url 'export_results_excel' exam.id %}" class="btn-final secondary" id="exportExcelBtn" style="opacity:0.5;pointer-events:none;">
+  <a href="{% url 'export_results_excel' exam.id %}" class="btn-final secondary" id="exportExcelBtn" style="opacity:0.4;pointer-events:none;">
     📊 {% if LANG == 'sw' %}Export Excel{% else %}Export Excel{% endif %}
   </a>
 </div>
-{% endif %}
 
 <!-- Toast -->
 <div class="bulk-toast" id="bulkToast"></div>
+
+<!-- Subjects JSON for JS -->
+<script type="application/json" id="subjectsData">
+  [{% for s in subjects %}{"id":{{ s.id }},"name":"{{ s.name|escapejs }}","done":{{ s.id|yesno:"true,false" }}}{% if not forloop.last %},{% endif %}{% endfor %}]
+</script>
 
 {% endblock %}
 
@@ -243,9 +237,16 @@
   const LANG = '{{ LANG }}';
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
   const csrfToken = csrf ? csrf.value : '';
-  let uploadedCount = 0;
-  const totalSubjects = {{ subjects|length }};
   const STATUS_URL = '{% url "bulk_upload_status" "PLACEHOLDER" %}';
+  const totalSubjects = {{ subjects|length }};
+  let uploadedCount = {{ subject_status_done }};
+  let pendingUploads = [];  // [{file, subjectId, subjectName}]
+  let queueId = 0;
+
+  // Parse subjects data
+  const subjectsData = JSON.parse(document.getElementById('subjectsData').textContent);
+  const subjectMap = {};
+  subjectsData.forEach(s => { subjectMap[s.id] = s; });
 
   function toast(msg, isError) {
     const el = document.getElementById('bulkToast');
@@ -255,103 +256,155 @@
     el._t = setTimeout(() => el.classList.remove('show'), 4000);
   }
 
-  function updateProgress() {
-    document.getElementById('uploadedCount').textContent = uploadedCount;
-    if (uploadedCount > 0) {
-      const btn = document.getElementById('generateResultsBtn');
-      if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
-      const excelBtn = document.getElementById('exportExcelBtn');
-      if (excelBtn) { excelBtn.style.opacity = '1'; excelBtn.style.pointerEvents = 'auto'; }
+  function updateGlobalProgress() {
+    const pct = Math.round((uploadedCount / totalSubjects) * 100);
+    document.getElementById('globalProgress').style.width = pct + '%';
+    document.getElementById('doneCount').textContent = uploadedCount;
+    document.getElementById('pendingCount').textContent = totalSubjects - uploadedCount;
+    if (uploadedCount >= totalSubjects) {
+      document.getElementById('generateResultsBtn').style.opacity = '1';
+      document.getElementById('generateResultsBtn').style.pointerEvents = 'auto';
+      document.getElementById('exportExcelBtn').style.opacity = '1';
+      document.getElementById('exportExcelBtn').style.pointerEvents = 'auto';
     }
   }
 
-  function enableReupload(subjectId) {
-    const input = document.getElementById('file-' + subjectId);
-    if (input) {
-      input.disabled = false;
+  function autoDetectSubject(filename) {
+    const lower = filename.toLowerCase().replace(/[_\-\.]/g, ' ');
+    // Try to match filename to a subject name
+    for (const s of subjectsData) {
+      const sLower = s.name.toLowerCase();
+      if (lower.includes(sLower) || sLower.includes(lower.split(' ')[0])) {
+        return s.id;
+      }
+    }
+    return '';
+  }
+
+  function addFilesToQueue(files) {
+    const queue = document.getElementById('fileQueue');
+    const list = document.getElementById('fileQueueList');
+    if (!queue || !list) return;
+
+    queue.style.display = '';
+
+    for (const file of files) {
+      const qid = queueId++;
+      const subjectId = autoDetectSubject(file.name);
+      const icon = file.type.includes('pdf') ? '📄' : '🖼️';
+
+      pendingUploads.push({ qid, file, subjectId, subjectName: '' });
+
+      const row = document.createElement('div');
+      row.className = 'file-row';
+      row.id = 'file-' + qid;
+      row.innerHTML = `
+        <span class="file-icon">${icon}</span>
+        <span class="file-name">${file.name}</span>
+        <div class="file-subject">
+          <select data-qid="${qid}">
+            <option value="">— ${LANG === 'sw' ? 'Chagua Somo' : 'Select Subject'} —</option>
+            {% for s in subjects %}<option value="{{ s.id }}" ${subjectId == {{ s.id }} ? 'selected' : ''}>{{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <span class="file-status" id="fstatus-${qid}"></span>
+        <button type="button" class="file-remove" onclick="removeFile(${qid})">✕</button>
+      `;
+
+      // Subject change handler
+      const sel = row.querySelector('select');
+      sel.addEventListener('change', () => {
+        const upload = pendingUploads.find(u => u.qid === qid);
+        if (upload) {
+          upload.subjectId = sel.value;
+          upload.subjectName = sel.options[sel.selectedIndex].text;
+        }
+      });
+
+      // Set initial subject name
+      if (subjectId) {
+        const upload = pendingUploads.find(u => u.qid === qid);
+        if (upload) {
+          upload.subjectName = sel.options[sel.selectedIndex].text;
+        }
+      }
+
+      list.appendChild(row);
+    }
+  }
+
+  // Global removeFile
+  window.removeFile = function(qid) {
+    pendingUploads = pendingUploads.filter(u => u.qid !== qid);
+    const row = document.getElementById('file-' + qid);
+    if (row) row.remove();
+    if (!pendingUploads.length) document.getElementById('fileQueue').style.display = 'none';
+  };
+
+  // Upload zone click
+  const zone = document.getElementById('uploadZone');
+  const input = document.getElementById('bulkFileInput');
+  if (zone && input) {
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) addFilesToQueue(e.dataTransfer.files);
+    });
+    input.addEventListener('change', () => {
+      if (input.files.length) addFilesToQueue(input.files);
       input.value = '';
-    }
+    });
   }
 
-  function pollStatus(taskId, subjectId, subjectName) {
-    const card = document.getElementById('subject-' + subjectId);
-    const status = document.getElementById('status-' + subjectId);
-    const url = STATUS_URL.replace('PLACEHOLDER', taskId);
-    const POLL_INTERVAL = 2000;
-    const MAX_WAIT = 4 * 60 * 1000;
-    const startedAt = Date.now();
+  // Clear all
+  const clearBtn = document.getElementById('clearAllBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      pendingUploads = [];
+      document.getElementById('fileQueueList').innerHTML = '';
+      document.getElementById('fileQueue').style.display = 'none';
+    });
+  }
 
-    function poll() {
-      if (Date.now() - startedAt > MAX_WAIT) {
-        card.classList.remove('uploading');
-        status.className = 'subject-status error';
-        status.innerHTML = '❌ {% if LANG == "sw" %}Muda umeisha{% else %}Timed out{% endif %}';
-        enableReupload(subjectId);
-        toast(subjectName + ': {% if LANG == "sw" %}Muda umeisha — jaribu tena{% else %}Timed out — try again{% endif %}', true);
+  // Upload all
+  const uploadAllBtn = document.getElementById('uploadAllBtn');
+  if (uploadAllBtn) {
+    uploadAllBtn.addEventListener('click', async () => {
+      // Validate all have subjects selected
+      const missing = pendingUploads.filter(u => !u.subjectId);
+      if (missing.length) {
+        toast(LANG === 'sw'
+          ? 'Kila faili lazima lichague somo.'
+          : 'Each file must have a subject selected.', true);
         return;
       }
 
-      fetch(url).then(r => r.json()).then(data => {
-        if (data.status === 'processing') {
-          const elapsed = Math.round((Date.now() - startedAt) / 1000);
-          status.innerHTML = '⏳ {% if LANG == "sw" %}Inasoma...{% else %}Reading...{% endif %} (' + elapsed + 's)';
-          setTimeout(poll, POLL_INTERVAL);
+      // Check for duplicate subjects
+      const seenSubjects = {};
+      for (const u of pendingUploads) {
+        if (seenSubjects[u.subjectId]) {
+          toast(LANG === 'sw'
+            ? 'Somo ' + u.subjectName + ' lina faili zaidi ya moja.'
+            : 'Subject ' + u.subjectName + ' has more than one file.', true);
           return;
         }
+        seenSubjects[u.subjectId] = true;
+      }
 
-        // Done!
-        card.classList.remove('uploading');
-        if (data.error) {
-          card.classList.add('');
-          status.className = 'subject-status error';
-          status.innerHTML = '❌ ' + data.error;
-          enableReupload(subjectId);
-          toast(subjectName + ': ' + data.error, true);
-        } else {
-          card.classList.add('uploaded');
-          status.className = 'subject-status done';
-          const matched = data.matched || 0;
-          const unmatched = data.unmatched_count || 0;
-          let msg = '✅ ' + matched + ' {% if LANG == "sw" %}wanafunzi{% else %}students{% endif %}';
-          if (unmatched > 0) msg += ', ' + unmatched + ' {% if LANG == "sw" %}hawjatambulika{% else %}unmatched{% endif %}';
-          status.innerHTML = msg;
-          uploadedCount++;
-          updateProgress();
-          toast('✅ ' + subjectName + ' — ' + matched + ' {% if LANG == "sw" %}wanafunzi{% else %}students{% endif %}');
-          input.disabled = true;
-        }
-      }).catch(err => {
-        card.classList.remove('uploading');
-        status.className = 'subject-status error';
-        status.innerHTML = '❌ {% if LANG == "sw" %}Hitilafu ya mtandao{% else %}Network error{% endif %}';
-        enableReupload(subjectId);
-        toast(subjectName + ': ' + err.message, true);
-      });
-    }
+      uploadAllBtn.disabled = true;
+      uploadAllBtn.textContent = LANG === 'sw' ? '⏳ Inapakia...' : '⏳ Uploading...';
 
-    poll();
-  }
-
-  // File input handlers
-  document.querySelectorAll('input[type=file][id^="file-"]').forEach(input => {
-    input.addEventListener('change', async () => {
-      const subjectId = input.dataset.subjectId;
-      const file = input.files[0];
-      if (!file) return;
-
-      const card = document.getElementById('subject-' + subjectId);
-      const status = document.getElementById('status-' + subjectId);
-      const subjectName = card.querySelector('.subject-name').textContent.trim();
-
-      // Set uploading state
-      card.classList.add('uploading');
-      card.classList.remove('uploaded');
-      status.className = 'subject-status';
-      status.innerHTML = '⏳ {% if LANG == "sw" %}Inapakia...{% else %}Uploading...{% endif %}';
-
+      // Build FormData with all files and their subject IDs
       const fd = new FormData();
-      fd.append('subject_id', subjectId);
-      fd.append('scoresheet', file);
+      const subjectIds = [];
+      for (const u of pendingUploads) {
+        fd.append('scoresheet', u.file);
+        subjectIds.push(u.subjectId);
+      }
+      subjectIds.forEach(id => fd.append('subject_ids', id));
 
       try {
         const res = await fetch(window.location.href, {
@@ -362,20 +415,108 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Upload failed');
 
-        // Got task_id — start polling
-        status.innerHTML = '⏳ {% if LANG == "sw" %}Inasoma kwa AI...{% else %}Reading with AI...{% endif %}';
-        pollStatus(data.task_id, subjectId, subjectName);
+        const tasks = data.tasks || [];
+        let completed = 0;
+
+        // Update file rows to processing state
+        for (const u of pendingUploads) {
+          const row = document.getElementById('file-' + u.qid);
+          if (row) {
+            row.classList.add('processing');
+            const status = document.getElementById('fstatus-' + u.qid);
+            if (status) status.innerHTML = '⏳ ' + (LANG === 'sw' ? 'Inasoma...' : 'Reading...');
+          }
+        }
+
+        // Poll each task
+        for (const task of tasks) {
+          pollTask(task.task_id, task.subject_id, task.subject_name, () => {
+            completed++;
+            if (completed >= tasks.length) {
+              uploadAllBtn.disabled = false;
+              uploadAllBtn.textContent = '🚀 ' + (LANG === 'sw' ? 'Pakia Masomo Yote' : 'Upload All Subjects');
+              toast(LANG === 'sw'
+                ? '✅ Masomo ' + tasks.length + ' yamekamilika!'
+                : '✅ ' + tasks.length + ' subjects uploaded!');
+            }
+          });
+        }
       } catch (err) {
-        card.classList.remove('uploading');
-        status.className = 'subject-status error';
-        status.innerHTML = '❌ ' + err.message;
-        enableReupload(subjectId);
+        uploadAllBtn.disabled = false;
+        uploadAllBtn.textContent = '🚀 ' + (LANG === 'sw' ? 'Pakia Masomo Yote' : 'Upload All Subjects');
         toast(err.message, true);
       }
-
-      input.value = '';
     });
-  });
+  }
+
+  function pollTask(taskId, subjectId, subjectName, onDone) {
+    const url = STATUS_URL.replace('PLACEHOLDER', taskId);
+    const POLL_INTERVAL = 2000;
+    const MAX_WAIT = 4 * 60 * 1000;
+    const startedAt = Date.now();
+
+    // Find the upload entry
+    const upload = pendingUploads.find(u => u.subjectId == subjectId);
+
+    function poll() {
+      if (Date.now() - startedAt > MAX_WAIT) {
+        markFileError(upload, subjectName + ': Timed out');
+        if (onDone) onDone();
+        return;
+      }
+
+      fetch(url).then(r => r.json()).then(data => {
+        if (data.status === 'processing') {
+          const elapsed = Math.round((Date.now() - startedAt) / 1000);
+          if (upload) {
+            const status = document.getElementById('fstatus-' + upload.qid);
+            if (status) status.innerHTML = '⏳ ' + (LANG === 'sw' ? 'Inasoma...' : 'Reading...') + ' (' + elapsed + 's)';
+          }
+          setTimeout(poll, POLL_INTERVAL);
+          return;
+        }
+
+        if (data.error) {
+          markFileError(upload, data.error);
+        } else {
+          markFileDone(upload, data.matched || 0, data.unmatched_count || 0);
+          // Update subject chip
+          const chip = document.getElementById('chip-' + subjectId);
+          if (chip) { chip.classList.remove('pending'); chip.classList.add('done'); }
+          uploadedCount++;
+          updateGlobalProgress();
+        }
+        if (onDone) onDone();
+      }).catch(err => {
+        markFileError(upload, err.message);
+        if (onDone) onDone();
+      });
+    }
+
+    poll();
+  }
+
+  function markFileDone(upload, matched, unmatched) {
+    if (!upload) return;
+    const row = document.getElementById('file-' + upload.qid);
+    if (row) { row.classList.remove('processing'); row.classList.add('done'); }
+    const status = document.getElementById('fstatus-' + upload.qid);
+    if (status) {
+      let msg = '✅ ' + matched + ' ' + (LANG === 'sw' ? 'wanafunzi' : 'students');
+      if (unmatched > 0) msg += ', ' + unmatched + ' ' + (LANG === 'sw' ? 'hawjatambulika' : 'unmatched');
+      status.className = 'file-status done';
+      status.innerHTML = msg;
+    }
+  }
+
+  function markFileError(upload, errorMsg) {
+    if (!upload) return;
+    const row = document.getElementById('file-' + upload.qid);
+    if (row) { row.classList.remove('processing'); row.classList.add('error'); }
+    const status = document.getElementById('fstatus-' + upload.qid);
+    if (status) { status.className = 'file-status error'; status.innerHTML = '❌ ' + errorMsg; }
+    toast(upload.subjectName + ': ' + errorMsg, true);
+  }
 })();
 </script>
 {% endblock %}

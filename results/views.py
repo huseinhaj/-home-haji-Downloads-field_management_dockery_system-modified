@@ -2838,33 +2838,81 @@ def bulk_scoresheet_upload(request, exam_id):
     roster_students = list(Student.objects.filter(id__in=student_ids))
     roster_ids = [s.id for s in roster_students]
 
+    # Build per-subject status for the dashboard
+    subject_status = []
+    for sub in subjects:
+        try:
+            sub = Subject.objects.get(id=sub.id)
+        except Subject.DoesNotExist:
+            pass
+        submission = SubjectSubmission.objects.filter(
+            exam=exam, subject=sub
+        ).first()
+        has_results = ExamResult.objects.filter(
+            exam=exam, subject=sub
+        ).exists()
+        subject_status.append({
+            'subject': sub,
+            'submission': submission,
+            'has_results': has_results,
+            'is_done': has_results or (submission and submission.status in ('SUBMITTED', 'APPROVED')),
+        })
+
     if request.method == 'POST':
         import uuid as _uuid
         from django.core.files.storage import default_storage
 
+        # Support both single and multiple file upload
         subject_id = request.POST.get('subject_id')
-        file = request.FILES.get('scoresheet')
+        files = request.FILES.getlist('scoresheet')
+        subject_ids_raw = request.POST.getlist('subject_ids')
 
-        if not subject_id or not file:
-            return JsonResponse({'error': 'Chagua somo na upakie faili.'}, status=400)
+        # Multi-file upload: each file matched to a subject_id
+        if subject_ids_raw and files and len(files) == len(subject_ids_raw):
+            tasks_started = []
+            for idx, (file, sid) in enumerate(zip(files, subject_ids_raw)):
+                if not sid or not file:
+                    continue
+                try:
+                    subject = Subject.objects.get(id=int(sid))
+                except (Subject.DoesNotExist, ValueError):
+                    continue
+                ext = os.path.splitext(file.name)[1].lower() or '.pdf'
+                storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
+                default_storage.save(storage_path, file)
+                from .tasks import process_bulk_upload_task
+                task = process_bulk_upload_task.apply_async(
+                    args=[storage_path, exam.id, subject.id, roster_ids],
+                    queue='default',
+                )
+                tasks_started.append({'task_id': task.id, 'subject_id': subject.id, 'subject_name': subject.name})
+            return JsonResponse({'tasks': tasks_started})
 
-        subject = get_object_or_404(Subject, id=subject_id)
+        # Single file upload (legacy)
+        if subject_id and files:
+            file = files[0]
+            subject = get_object_or_404(Subject, id=int(subject_id))
+            ext = os.path.splitext(file.name)[1].lower() or '.pdf'
+            storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
+            default_storage.save(storage_path, file)
+            from .tasks import process_bulk_upload_task
+            task = process_bulk_upload_task.apply_async(
+                args=[storage_path, exam.id, subject.id, roster_ids],
+                queue='default',
+            )
+            return JsonResponse({'task_id': task.id, 'subject_id': subject.id})
 
-        # Save file temporarily and dispatch async OCR task
-        ext = os.path.splitext(file.name)[1].lower() or '.pdf'
-        storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
-        default_storage.save(storage_path, file)
+        return JsonResponse({'error': 'Tafadhali weka somo na upakie faili.'}, status=400)
 
-        from .tasks import process_bulk_upload_task
-        task = process_bulk_upload_task.apply_async(
-            args=[storage_path, exam.id, subject.id, roster_ids],
-            queue='default',
-        )
-        return JsonResponse({'task_id': task.id, 'subject_id': subject.id})
+    done_count = sum(1 for s in subject_status if s['is_done'])
+    pending_count = len(subject_status) - done_count
 
     return render(request, 'results/bulk_scoresheet_upload.html', {
         'exam': exam,
         'subjects': subjects,
+        'subject_status': subject_status,
+        'subject_status_done': done_count,
+        'subject_status_pending': pending_count,
         'student_count': len(roster_students),
     })
 
