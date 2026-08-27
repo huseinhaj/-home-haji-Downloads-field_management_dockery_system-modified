@@ -379,23 +379,43 @@ def student_result_public(request, token):
     exam = result.exam
     student = result.student
 
-    # Get all subjects and scores for this exam+student
-    subjects = list(Subject.objects.filter(examresult__exam=exam).distinct().order_by('name'))
-    scores = {
-        er.subject_id: er.score
-        for er in ExamResult.objects.filter(exam=exam, student=student)
-    }
+    # Get all subjects, scores and absent markers for this exam+student
+    # Only subjects the student is enrolled in (has an ExamResult entry)
+    student_results = ExamResult.objects.filter(exam=exam, student=student)
+    enrolled_subject_ids = set()
+    scores = {}
+    absent_subjects = set()
+    for er in student_results:
+        enrolled_subject_ids.add(er.subject_id)
+        if er.is_absent:
+            absent_subjects.add(er.subject_id)
+        else:
+            scores[er.subject_id] = er.score
+
+    subjects = list(
+        Subject.objects.filter(id__in=enrolled_subject_ids).order_by('name')
+    )
 
     # Prepare row data for each subject
     subject_rows = []
     for subj in subjects:
-        score = scores.get(subj.id)
-        if score is not None:
+        if subj.id in absent_subjects:
+            # Student studies this subject but was absent
             subject_rows.append({
                 'subject': subj.name,
-                'score': score,
-                'grade': get_grade_for_form(score, exam.form),
+                'score': None,
+                'grade': 'X',
+                'is_absent': True,
             })
+        else:
+            score = scores.get(subj.id)
+            if score is not None:
+                subject_rows.append({
+                    'subject': subj.name,
+                    'score': score,
+                    'grade': get_grade_for_form(score, exam.form),
+                    'is_absent': False,
+                })
 
     student_name = ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p)
     location = ''
@@ -632,41 +652,47 @@ def subject_upload(request, exam_id, subject_id):
                 if not first_name or first_name in ('nan', 'None'):
                     continue
 
-                score_val = parse_score(row.get(score_col))
-                if score_val is None:
+                raw_val = row.get(score_col)
+                score_val = parse_score(raw_val)
+                from .utils import is_absent_marker
+                is_absent = is_absent_marker(raw_val)
+                if score_val is None and not is_absent:
                     continue
 
-                parsed_rows.append((first_name, last_name or 'Unknown', normalize_gender(gender_raw), score_val))
+                parsed_rows.append((first_name, last_name or 'Unknown', normalize_gender(gender_raw), score_val, is_absent))
 
             saved_count = 0
             if parsed_rows:
                 # Bulk-create/get students using the same optimized path
                 # as roster uploads — avoids N+1 get_or_create per row.
-                name_tuples = [(fn, '', ln, g) for fn, ln, g, _ in parsed_rows]
+                name_tuples = [(fn, '', ln, g) for fn, ln, g, _, _ in parsed_rows]
                 students_out = _bulk_save_students(name_tuples)
                 student_id_map = {s['id']: s for s in students_out}
                 # Also build (first, last) -> student for matching scores
                 from .models import Student as _Stu
-                all_first = {fn for fn, _, ln, _ in parsed_rows}
-                all_last = {ln for fn, _, ln, _ in parsed_rows}
+                all_first = {fn for fn, _, ln, _, _ in parsed_rows}
+                all_last = {ln for fn, _, ln, _, _ in parsed_rows}
                 student_map = {
                     (s.first_name, s.last_name): s
                     for s in _Stu.objects.filter(first_name__in=all_first, last_name__in=all_last)
                 }
 
                 exam_results = []
-                for fn, ln, _, score_val in parsed_rows:
+                for fn, ln, _, score_val, is_abs in parsed_rows:
                     student = student_map.get((fn, ln))
                     if not student:
                         continue
-                    exam_results.append(ExamResult(exam=exam, student=student, subject=subject, score=score_val))
+                    exam_results.append(ExamResult(
+                        exam=exam, student=student, subject=subject,
+                        score=score_val, is_absent=is_abs,
+                    ))
                     saved_count += 1
 
                 ExamResult.objects.bulk_create(
                     exam_results,
                     update_conflicts=True,
                     unique_fields=['exam', 'student', 'subject'],
-                    update_fields=['score'],
+                    update_fields=['score', 'is_absent'],
                 )
 
             if saved_count == 0:

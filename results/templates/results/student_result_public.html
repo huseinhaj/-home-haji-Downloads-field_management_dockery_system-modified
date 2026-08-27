@@ -159,6 +159,7 @@
     .score-E  { background: #F0B27A !important; color: #9C640C; }
     .score-S  { background: #F9E79F !important; color: #B9770B; }
     .score-F  { background: #FADBD8 !important; color: #922B21; }
+    .score-X  { background: #F1F5F9 !important; color: #475569; }
 
     .summary-strip {
       display: flex;
@@ -297,7 +298,9 @@
             {% for sr in subject_rows %}
             <tr>
               <td class="subject-cell">{{ sr.subject }}</td>
-              <td class="score-cell score-{{ sr.grade }}">{{ sr.score }}</td>
+              <td class="score-cell score-{{ sr.grade }}">
+                {% if sr.is_absent %}X{% else %}{{ sr.score }}{% endif %}
+              </td>
               <td class="score-cell score-{{ sr.grade }}">{{ sr.grade }}</td>
             </tr>
             {% endfor %}

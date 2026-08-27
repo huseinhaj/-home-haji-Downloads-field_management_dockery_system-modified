@@ -158,13 +158,17 @@ def marks_entry(request):
             exam = Exam.objects.filter(id=exam_id).first()
         subject = teacher_subjects.filter(id=subject_id).first()
         if exam and subject:
-            existing_marks = {
-                r.student_id: r.score
-                for r in ExamResult.objects.filter(exam=exam, subject=subject)
-            }
+            existing_marks = {}
+            existing_absent = set()
+            for r in ExamResult.objects.filter(exam=exam, subject=subject):
+                if r.is_absent:
+                    existing_absent.add(r.student_id)
+                    existing_marks[r.student_id] = 'X'
+                else:
+                    existing_marks[r.student_id] = r.score
             if review_mode:
                 results = list(
-                    ExamResult.objects.filter(exam=exam, subject=subject)
+                    ExamResult.objects.filter(exam=exam, subject=subject, is_absent=False)
                     .select_related('student')
                     .order_by('-score', 'student__first_name')
                 )
@@ -172,11 +176,26 @@ def marks_entry(request):
                     {
                         'position': i,
                         'student': r.student,
-                        'score': r.score,
-                        'grade': get_grade_for_form(r.score, exam.form),
+                        'score': r.score or 0,
+                        'grade': get_grade_for_form(r.score or 0, exam.form),
+                        'is_absent': False,
                     }
                     for i, r in enumerate(results, 1)
                 ]
+                # Add absent students at the end
+                absent_results = list(
+                    ExamResult.objects.filter(exam=exam, subject=subject, is_absent=True)
+                    .select_related('student')
+                    .order_by('student__first_name')
+                )
+                for r in absent_results:
+                    review_rows.append({
+                        'position': len(review_rows) + 1,
+                        'student': r.student,
+                        'score': 0,
+                        'grade': 'X',
+                        'is_absent': True,
+                    })
                 submission = SubjectSubmission.objects.filter(exam=exam, subject=subject).first()
                 if not results:
                     messages.info(request, "Hakuna alama zilizohifadhiwa kwa somo hili bado.")
@@ -238,31 +257,51 @@ def marks_entry_save(request):
     if not entries:
         return JsonResponse({'error': 'Hakuna alama zilizotumwa.'}, status=400)
 
-    parsed = []
+    parsed = []       # [(student_id, score)]
+    absent_ids = []   # [student_id] — marked absent (X)
     for e in entries:
         try:
             sid = int(e.get('student_id'))
-            score = int(e.get('score'))
         except (TypeError, ValueError):
             continue
-        if score < 0 or score > 100:
-            return JsonResponse({'error': f'Alama ya mwanafunzi #{sid} si sahihi (0-100).'}, status=400)
-        parsed.append((sid, score))
+        raw_score = e.get('score')
+        raw_str = str(raw_score).strip().upper() if raw_score is not None else ''
+        if raw_str in ('X', 'ABS', 'ABSENT'):
+            absent_ids.append(sid)
+        else:
+            try:
+                score = int(raw_score)
+            except (TypeError, ValueError):
+                continue
+            if score < 0 or score > 100:
+                return JsonResponse({'error': f'Alama ya mwanafunzi #{sid} si sahihi (0-100).'}, status=400)
+            parsed.append((sid, score))
 
-    if not parsed:
+    if not parsed and not absent_ids:
         return JsonResponse({'error': 'Hakuna alama sahihi zilizotumwa.'}, status=400)
 
-    student_ids = [sid for sid, _ in parsed]
-    student_map = {s.id: s for s in Student.objects.filter(id__in=student_ids)}
-    if len(student_map) != len(student_ids):
+    all_ids = [sid for sid, _ in parsed] + absent_ids
+    student_map = {s.id: s for s in Student.objects.filter(id__in=all_ids)}
+    if len(student_map) != len(all_ids):
         return JsonResponse({'error': 'Baadhi ya wanafunzi hawapo kwenye mfumo. Pakia orodha tena.'}, status=400)
 
+    exam_results = []
+    for sid, score in parsed:
+        exam_results.append(ExamResult(
+            exam=exam, student=student_map[sid], subject=subject,
+            score=score, is_absent=False,
+        ))
+    for sid in absent_ids:
+        exam_results.append(ExamResult(
+            exam=exam, student=student_map[sid], subject=subject,
+            score=None, is_absent=True,
+        ))
+
     ExamResult.objects.bulk_create(
-        [ExamResult(exam=exam, student=student_map[sid], subject=subject, score=score)
-         for sid, score in parsed],
+        exam_results,
         update_conflicts=True,
         unique_fields=['exam', 'student', 'subject'],
-        update_fields=['score'],
+        update_fields=['score', 'is_absent'],
     )
 
     return JsonResponse({

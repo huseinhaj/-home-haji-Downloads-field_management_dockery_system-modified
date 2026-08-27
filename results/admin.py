@@ -24,6 +24,7 @@ from .models import (
 
 class ExamAdmin(admin.ModelAdmin):
     list_display = ('name', 'year', 'form', 'exam_type', 'date')
+    list_editable = ('exam_type',)
     list_filter = ('exam_type', 'year', 'form')
     search_fields = ('name',)
     ordering = ('-year', '-date')

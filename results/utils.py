@@ -63,12 +63,38 @@ def extract_subject_columns(data_frame: pd.DataFrame) -> list[str]:
 
 
 def parse_score(raw_score) -> Optional[int]:
+    """Parse a score value from a scoresheet cell.
+
+    Returns:
+        int   — numeric score (0–100+)
+        None  — empty / missing cell (student does NOT study this subject)
+
+    Special handling:
+        'X', 'ABS', 'absent', '-' → treated as empty (None)
+        We do NOT return a score for absent — instead, the caller
+        checks for 'X' separately via ``is_absent_marker``.
+    """
     if pd.isna(raw_score):
         return None
+    raw_str = str(raw_score).strip()
+    if raw_str.upper() in ('X', 'ABS', 'ABSENT', '-'):
+        return None  # caller should check is_absent_marker()
     try:
-        return int(float(raw_score))
+        return int(float(raw_str))
     except (TypeError, ValueError):
         return None
+
+
+def is_absent_marker(raw_score) -> bool:
+    """Check if a raw scoresheet value is an absent marker (X, ABS, etc.).
+
+    Returns True when the teacher explicitly marked a student as absent
+    for this subject — meaning the student studies the subject but did
+    not sit for this particular exam.
+    """
+    if pd.isna(raw_score):
+        return False
+    return str(raw_score).strip().upper() in ('X', 'ABS', 'ABSENT')
 
 
 def normalize_gender(raw_gender: str) -> str:

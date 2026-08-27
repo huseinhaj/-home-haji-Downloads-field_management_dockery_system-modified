@@ -93,14 +93,13 @@ _LABELS = {
 
 def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: str = 'sw') -> HttpResponse:
     """Generate an A4 PDF for ONE subject: position, name, score, grade,
-    grade distribution, gender comparison, and teacher recommendations."""
-
+    grade distribution, gender comparison, and teacher recommendations."""    # Only include students who actually sat for the exam (not absent)
     results = list(
-        ExamResult.objects.filter(exam=exam, subject=subject)
+        ExamResult.objects.filter(exam=exam, subject=subject, is_absent=False)
         .select_related('student')
         .order_by('-score', 'student__first_name')
     )
-    results.sort(key=lambda r: r.score, reverse=True)
+    results.sort(key=lambda r: r.score or 0, reverse=True)
 
     is_alevel = exam.form in (5, 6)
     rows_data = []
@@ -112,8 +111,8 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: s
         rows_data.append({
             'position': pos,
             'name': full_name,
-            'score': result.score,
-            'grade': get_grade_for_form(result.score, exam.form),
+            'score': result.score or 0,
+            'grade': get_grade_for_form(result.score or 0, exam.form),
             'gender': student.gender,
         })
 

@@ -7,6 +7,7 @@ from ..utils import (
     get_division,
     get_grade_for_form,
     get_grade_points,
+    is_absent_marker,
     load_results_dataframe,
     normalize_gender,
     normalize_subject_name,
@@ -50,13 +51,17 @@ def process_uploaded_results(exam, uploaded_file):
             continue
 
         gender = normalize_gender(row.get('Gender', ''))
-        row_scores = {}
+        row_scores = {}      # {column_name: score}
+        row_absent = {}      # {column_name: True} — student is absent for this subject
         for column_name, subject in subjects_by_column.items():
-            score = parse_score(row.get(column_name))
+            raw_val = row.get(column_name)
+            score = parse_score(raw_val)
             if score is not None:
                 row_scores[column_name] = score
+            elif is_absent_marker(raw_val):
+                row_absent[column_name] = True
 
-        parsed_students.append((first_name, middle_name, last_name, gender, row_scores))
+        parsed_students.append((first_name, middle_name, last_name, gender, row_scores, row_absent))
 
     if parsed_students:
         from django.db.models import Q
@@ -70,7 +75,7 @@ def process_uploaded_results(exam, uploaded_file):
 
         new_students = []
         seen = set()
-        for fn, mn, ln, gender, _ in parsed_students:
+        for fn, mn, ln, gender, _, _ in parsed_students:
             key = (fn, ln)
             if key not in student_map and key not in seen:
                 seen.add(key)
@@ -80,13 +85,17 @@ def process_uploaded_results(exam, uploaded_file):
             student_map = {(s.first_name, s.last_name): s for s in Student.objects.filter(name_filter)}
 
         exam_results = []
-        for fn, mn, ln, gender, row_scores in parsed_students:
+        for fn, mn, ln, gender, row_scores, row_absent in parsed_students:
             student = student_map.get((fn, ln))
             if not student:
                 continue
             for column_name, score in row_scores.items():
                 exam_results.append(
-                    ExamResult(exam=exam, student=student, subject=subjects_by_column[column_name], score=score)
+                    ExamResult(exam=exam, student=student, subject=subjects_by_column[column_name], score=score, is_absent=False)
+                )
+            for column_name in row_absent:
+                exam_results.append(
+                    ExamResult(exam=exam, student=student, subject=subjects_by_column[column_name], score=None, is_absent=True)
                 )
 
         if exam_results:
@@ -94,7 +103,7 @@ def process_uploaded_results(exam, uploaded_file):
                 exam_results,
                 update_conflicts=True,
                 unique_fields=['exam', 'student', 'subject'],
-                update_fields=['score'],
+                update_fields=['score', 'is_absent'],
             )
 
     recompute_processed_results_for_exam(exam)
@@ -136,7 +145,12 @@ def recompute_processed_results_for_exam(exam):
     student_data = []
 
     for student in students:
-        results = list(student.examresult_set.all())
+        all_results = list(student.examresult_set.all())
+        if not all_results:
+            continue
+
+        # Only count subjects the student actually sat for (not absent)
+        results = [r for r in all_results if not r.is_absent and r.score is not None]
         if not results:
             continue
 

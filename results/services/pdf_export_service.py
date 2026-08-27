@@ -537,6 +537,8 @@ def generate_results_pdf_response(exam):
     subjects = payload['subjects']
     results = payload['processed_results']
     score_lookup = payload['score_lookup']
+    absent_lookup = payload['absent_lookup']
+    student_subjects = payload['student_subjects']
     N = len(results)
     n_subj = max(len(subjects), 1)
 
@@ -861,11 +863,20 @@ def generate_results_pdf_response(exam):
         nm = _student_name(r)
         stu_gpa = r.points / counted if counted else 0
 
-        # Build COLOURED inline subjects
+        # Build COLOURED inline subjects — only for subjects this student
+        # is enrolled in (has an ExamResult entry for).  Subjects the
+        # student does NOT study are omitted entirely from their row.
+        enrolled_ids = student_subjects.get(r.student_id, set())
         subj_parts = []
         for sub in subjects:
+            if sub.id not in enrolled_ids:
+                continue  # student does not study this subject — skip
             sc = score_lookup.get((r.student_id, sub.id))
-            g = _grade_for_score(sc, exam.form) if sc is not None else 'X'
+            is_abs = (r.student_id, sub.id) in absent_lookup
+            if is_abs or sc is None:
+                g = 'X'
+            else:
+                g = _grade_for_score(sc, exam.form)
             abbr = sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
             fg, bg = GRADE_COLORS.get(g, ('#555555', '#E8E8E8'))
             subj_parts.append(

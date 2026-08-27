@@ -145,6 +145,8 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
     subjects = payload['subjects']
     results = payload['processed_results']
     score_lookup = payload['score_lookup']
+    absent_lookup = payload['absent_lookup']
+    student_subjects = payload['student_subjects']
 
     total_cols = 3 + len(subjects) + 4  # POS + NAME + SEX + subjects + TOTAL + AVG + DIV + PTS
 
@@ -210,20 +212,29 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
             if col_idx == 2:
                 cell.alignment = Alignment(horizontal='left', vertical='center')
 
-        # Subject scores
+        # Subject scores — only show subjects the student is enrolled in
+        enrolled_ids = student_subjects.get(student.id, set())
         for sub_col_offset, subject in enumerate(subjects):
-            score = score_lookup.get((student.id, subject.id))
             col_idx = subject_start_col + sub_col_offset
             cell = ws.cell(row=data_row, column=col_idx)
-            if score is not None:
-                cell.value = score
-                fill_hex, font_hex = _score_fill(score, exam.form)
-                if fill_hex:
-                    cell.fill = _make_fill(fill_hex)
-                if font_hex:
-                    cell.font = Font(color=font_hex, bold=True, name='Calibri', size=9)
+            if subject.id not in enrolled_ids:
+                # Student does not study this subject — leave blank
+                cell.value = ''
+            elif (student.id, subject.id) in absent_lookup:
+                # Student studies this subject but was absent
+                cell.value = 'X'
+                cell.font = Font(color='FF475569', bold=True, name='Calibri', size=9)
             else:
-                cell.value = '-'
+                score = score_lookup.get((student.id, subject.id))
+                if score is not None:
+                    cell.value = score
+                    fill_hex, font_hex = _score_fill(score, exam.form)
+                    if fill_hex:
+                        cell.fill = _make_fill(fill_hex)
+                    if font_hex:
+                        cell.font = Font(color=font_hex, bold=True, name='Calibri', size=9)
+                else:
+                    cell.value = '-'
 
         # Totals columns
         total_col = subject_start_col + len(subjects)

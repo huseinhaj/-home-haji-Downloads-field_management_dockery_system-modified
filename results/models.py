@@ -204,12 +204,19 @@ class ExamResult(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-    score = models.PositiveIntegerField()
+    score = models.PositiveIntegerField(null=True, blank=True,
+        help_text="Alama ya mwanafunzi. None = alikuwa absent (X kwenye scoresheet)."
+    )
+    is_absent = models.BooleanField(default=False,
+        help_text="True = mwanafunzi alikuwa absent kwenye mtihani huu."
+    )
 
     class Meta:
         unique_together = ('exam', 'student', 'subject')
 
     def __str__(self):
+        if self.is_absent:
+            return f"{self.student} - {self.subject}: X (absent)"
         return f"{self.student} - {self.subject}: {self.score}"
 
 

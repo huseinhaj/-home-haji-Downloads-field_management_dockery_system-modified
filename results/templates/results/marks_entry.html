@@ -291,12 +291,14 @@
         </thead>
         <tbody>
           {% for row in review_rows %}
-          <tr>
+          <tr{% if row.is_absent %} style="background:#f8f9fb;"{% endif %}>
             <td><span class="pos-badge">{{ row.position }}</span></td>
             <td class="student-name">{{ row.student.first_name }} {{ row.student.middle_name }} {{ row.student.last_name }}</td>
-            <td style="font-weight:800;color:#1F7A3D;">{{ row.score }}</td>
+            <td style="font-weight:800;{% if row.is_absent %}color:#475569;{% else %}color:#1F7A3D;{% endif %}">
+              {% if row.is_absent %}X{% else %}{{ row.score }}{% endif %}
+            </td>
             <td>
-              <span class="grade-chip" style="background:{% if row.grade == 'A' %}#e6f7ec;color:#1a7a3b{% elif row.grade == 'B' %}#eafaf1;color:#2d7d46{% elif row.grade == 'C' %}#fff9e6;color:#8a6f00{% elif row.grade == 'D' %}#fdf2e9;color:#ca6f1e{% else %}#fdecea;color:#c0392b{% endif %};">
+              <span class="grade-chip" style="background:{% if row.grade == 'A' %}#e6f7ec;color:#1a7a3b{% elif row.grade == 'B' %}#eafaf1;color:#2d7d46{% elif row.grade == 'C' %}#fff9e6;color:#8a6f00{% elif row.grade == 'D' %}#fdf2e9;color:#ca6f1e{% elif row.grade == 'X' %}#f1f5f9;color:#475569{% else %}#fdecea;color:#c0392b{% endif %};">
                 {{ row.grade }}
               </span>
             </td>
@@ -424,6 +426,7 @@
                 <th style="width:44px;">#</th>
                 <th>{% if LANG == 'sw' %}Jina la Mwanafunzi{% else %}Student Name{% endif %}</th>
                 <th style="width:110px;">{% if LANG == 'sw' %}Alama (0–100){% else %}Score (0–100){% endif %}</th>
+                <th style="width:50px;">{% if LANG == 'sw' %}Absent{% else %}Absent{% endif %}</th>
               </tr>
             </thead>
             <tbody id="meRowsBody"></tbody>
@@ -632,17 +635,20 @@
     function renderRows() {
       const arr = [...byId.values()];
       if (!arr.length) {
-        rowsBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;padding:1.4rem;">' +
+        rowsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;padding:1.4rem;">' +
           (LANG === 'sw'
             ? 'Hakuna wanafunzi bado — pakia orodha ya darasa upande wa kushoto, au wasiliana na mtaaluma ikiwa orodha haijapakiwa.'
             : 'No students yet — upload the class list on the left, or ask the academic officer if the roster is missing.') +
           '</td></tr>';
       } else {
         rowsBody.innerHTML = arr.map((s, i) => `
-          <tr data-id="${s.id}">
+          <tr data-id="${s.id}" ${s.is_absent ? 'style="background:#f8f9fb;"' : ''}>
             <td class="row-no">${i + 1}</td>
             <td class="student-name">${escapeHtml(s.name)}</td>
-            <td><input type="number" class="score-input" min="0" max="100" value="${scoreVal(s)}" data-id="${s.id}" inputmode="numeric"></td>
+            <td><input type="number" class="score-input" min="0" max="100" value="${s.is_absent ? '' : scoreVal(s)}" data-id="${s.id}" inputmode="numeric" ${s.is_absent ? 'disabled style="opacity:0.5;"' : ''}></td>
+            <td><button type="button" class="btn btn-sm me-absent-btn ${s.is_absent ? 'active' : ''}" data-id="${s.id}" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:2px;border:1.5px solid #dee2e6;background:${s.is_absent ? '#475569' : '#fff'};color:${s.is_absent ? '#fff' : '#475569'};font-weight:600;cursor:pointer;">
+              ${s.is_absent ? '✓ X' : 'X'}
+            </button></td>
           </tr>
         `).join('');
       }
@@ -650,7 +656,24 @@
       rowsBody.querySelectorAll('.score-input').forEach(inp => {
         inp.addEventListener('input', () => {
           const s = byId.get(parseInt(inp.dataset.id, 10));
-          if (s) s.score = inp.value === '' ? null : Math.max(0, Math.min(100, parseInt(inp.value, 10) || 0));
+          if (s) {
+            s.score = inp.value === '' ? null : Math.max(0, Math.min(100, parseInt(inp.value, 10) || 0));
+            if (s.is_absent && inp.value !== '') {
+              s.is_absent = false;
+              renderRows();
+            }
+          }
+        });
+      });
+      rowsBody.querySelectorAll('.me-absent-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.id, 10);
+          const s = byId.get(id);
+          if (s) {
+            s.is_absent = !s.is_absent;
+            if (s.is_absent) s.score = null;
+            renderRows();
+          }
         });
       });
     }
@@ -1240,7 +1263,7 @@
         if (!res.ok) throw new Error(data.error || 'Upload failed');
         let added = 0;
         (data.students || []).forEach(s => {
-          if (!byId.has(s.id)) { byId.set(s.id, { id: s.id, name: s.name, score: null }); added++; }
+          if (!byId.has(s.id)) { byId.set(s.id, { id: s.id, name: s.name, score: null, is_absent: false }); added++; }
         });
         renderRows();
         uploadStatus.innerHTML = added
@@ -1258,9 +1281,14 @@
     saveBtn.addEventListener('click', async () => {
       const entries = [];
       byId.forEach(s => {
-        const v = s.score;
-        if (v !== null && v !== undefined && v !== '' && !isNaN(v)) {
-          entries.push({ student_id: s.id, score: Math.max(0, Math.min(100, parseInt(v, 10))) });
+        if (s.is_absent) {
+          // Mark student as absent (X)
+          entries.push({ student_id: s.id, score: 'X' });
+        } else {
+          const v = s.score;
+          if (v !== null && v !== undefined && v !== '' && !isNaN(v)) {
+            entries.push({ student_id: s.id, score: Math.max(0, Math.min(100, parseInt(v, 10))) });
+          }
         }
       });
       if (!entries.length) {
@@ -1325,7 +1353,7 @@
         });
         // Add to the table
         if (!byId.has(data.id)) {
-          byId.set(data.id, { id: data.id, name: data.name, score: null });
+          byId.set(data.id, { id: data.id, name: data.name, score: null, is_absent: false });
           renderRows();
         }
         toast(data.created
