@@ -72,6 +72,7 @@ from .views import (
     ps_pdf_inline,
     ps_print_view,
     bulk_scoresheet_upload,
+    bulk_upload_status,
 )
 from .marks_entry import (
     download_scoresheet_names_pdf,
