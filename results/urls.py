@@ -130,6 +130,7 @@ urlpatterns = [
     path('exam/<int:exam_id>/subject/<int:subject_id>/return/', return_submission, name='return_submission'),
     path('exam/<int:exam_id>/finalize/', finalize_exam, name='finalize_exam'),
     path('exam/<int:exam_id>/bulk-upload/', bulk_scoresheet_upload, name='bulk_scoresheet_upload'),
+    path('bulk-upload/status/<str:task_id>/', bulk_upload_status, name='bulk_upload_status'),
     path('exam/<int:exam_id>/approve-all/', approve_exam_submissions, name='approve_exam_submissions'),
     path('exam/<int:exam_id>/recompute/', recompute_exam_results, name='recompute_exam_results'),
     path('exam/<int:exam_id>/tuma-kwa-ps/', submit_exam_to_ps, name='submit_exam_to_ps'),

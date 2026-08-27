@@ -15,7 +15,7 @@ import logging
 from celery import shared_task
 from django.core.files.storage import default_storage
 
-from .models import Student
+from .models import ExamResult, Student, Subject, SubjectSubmission
 from .services.scoresheet_ocr_service import ScoreSheetOCRError, extract_scores_from_document
 
 logger = logging.getLogger(__name__)
@@ -82,3 +82,101 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
         })
 
     return {'matched': matched, 'unmatched': unmatched}
+
+
+@shared_task(bind=True, time_limit=280, soft_time_limit=260)
+def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids):
+    """Background task: OCR a scoresheet, match students, save results,
+    and auto-approve the SubjectSubmission.  Used by the academic
+    officer's bulk upload flow (one file per subject at a time)."""
+    from django.utils import timezone
+    from .services.upload_processing_service import recompute_processed_results_for_exam
+    from .views import _parse_roster_line, _save_student
+
+    try:
+        with default_storage.open(storage_path) as document:
+            extracted_rows = extract_scores_from_document(document)
+    except ScoreSheetOCRError as exc:
+        return {'error': str(exc)}
+    finally:
+        try:
+            default_storage.delete(storage_path)
+        except Exception:
+            logger.warning("bulk_upload: could not delete temp file %s", storage_path, exc_info=True)
+
+    # Match extracted names to roster students
+    roster_students = list(Student.objects.filter(id__in=roster_ids))
+    exam = ExamResult.objects.filter(exam_id=exam_id).select_related('exam').first()
+    if not exam:
+        return {'error': 'Mtihani haupatikana.'}
+    exam_obj = exam.exam
+    subject = Subject.objects.filter(id=subject_id).first()
+    if not subject:
+        return {'error': 'Somo halipatikani.'}
+
+    matched = []
+    unmatched = []
+    for row in extracted_rows:
+        student, confidence, _candidates = fuzzy_match_student_name(
+            row['raw_name'], roster_students, threshold=0.80,
+        )
+        if student:
+            matched.append({
+                'student': student,
+                'score': row['score'],
+                'raw_name': row['raw_name'],
+                'confidence': round(confidence, 4),
+            })
+            continue
+        parsed = _parse_roster_line(row['raw_name'])
+        if not parsed:
+            unmatched.append({'raw_name': row['raw_name'], 'score': row['score']})
+            continue
+        first, middle, last, gender = parsed
+        saved = _save_student(first, middle, last, gender)
+        student = Student.objects.get(id=saved['id'])
+        matched.append({
+            'student': student,
+            'score': row['score'],
+            'raw_name': row['raw_name'],
+            'confidence': 0.0,
+        })
+
+    # Save ExamResult entries
+    exam_results = []
+    for m in matched:
+        exam_results.append(ExamResult(
+            exam=exam_obj, student=m['student'], subject=subject,
+            score=m['score'], is_absent=False,
+        ))
+
+    if exam_results:
+        ExamResult.objects.bulk_create(
+            exam_results,
+            update_conflicts=True,
+            unique_fields=['exam', 'student', 'subject'],
+            update_fields=['score', 'is_absent'],
+        )
+
+    # Mark SubjectSubmission as SUBMITTED + APPROVED (academic uploaded it)
+    SubjectSubmission.objects.update_or_create(
+        exam=exam_obj, subject=subject,
+        defaults={
+            'status': SubjectSubmission.STATUS_APPROVED,
+            'method': 'UPLOAD',
+            'submitted_by': 'Academic Officer (Bulk Upload)',
+            'submitted_at': timezone.now(),
+            'approved_by': 'Academic Officer (Bulk Upload)',
+            'approved_at': timezone.now(),
+            'student_count': len(matched),
+        },
+    )
+
+    # Recompute processed results
+    recompute_processed_results_for_exam(exam_obj)
+
+    return {
+        'matched_count': len(matched),
+        'unmatched_count': len(unmatched),
+        'unmatched': unmatched,
+    }

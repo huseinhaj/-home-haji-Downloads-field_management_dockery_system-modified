@@ -245,6 +245,7 @@
   const csrfToken = csrf ? csrf.value : '';
   let uploadedCount = 0;
   const totalSubjects = {{ subjects|length }};
+  const STATUS_URL = '{% url "bulk_upload_status" "PLACEHOLDER" %}';
 
   function toast(msg, isError) {
     const el = document.getElementById('bulkToast');
@@ -264,6 +265,73 @@
     }
   }
 
+  function enableReupload(subjectId) {
+    const input = document.getElementById('file-' + subjectId);
+    if (input) {
+      input.disabled = false;
+      input.value = '';
+    }
+  }
+
+  function pollStatus(taskId, subjectId, subjectName) {
+    const card = document.getElementById('subject-' + subjectId);
+    const status = document.getElementById('status-' + subjectId);
+    const url = STATUS_URL.replace('PLACEHOLDER', taskId);
+    const POLL_INTERVAL = 2000;
+    const MAX_WAIT = 4 * 60 * 1000;
+    const startedAt = Date.now();
+
+    function poll() {
+      if (Date.now() - startedAt > MAX_WAIT) {
+        card.classList.remove('uploading');
+        status.className = 'subject-status error';
+        status.innerHTML = '❌ {% if LANG == "sw" %}Muda umeisha{% else %}Timed out{% endif %}';
+        enableReupload(subjectId);
+        toast(subjectName + ': {% if LANG == "sw" %}Muda umeisha — jaribu tena{% else %}Timed out — try again{% endif %}', true);
+        return;
+      }
+
+      fetch(url).then(r => r.json()).then(data => {
+        if (data.status === 'processing') {
+          const elapsed = Math.round((Date.now() - startedAt) / 1000);
+          status.innerHTML = '⏳ {% if LANG == "sw" %}Inasoma...{% else %}Reading...{% endif %} (' + elapsed + 's)';
+          setTimeout(poll, POLL_INTERVAL);
+          return;
+        }
+
+        // Done!
+        card.classList.remove('uploading');
+        if (data.error) {
+          card.classList.add('');
+          status.className = 'subject-status error';
+          status.innerHTML = '❌ ' + data.error;
+          enableReupload(subjectId);
+          toast(subjectName + ': ' + data.error, true);
+        } else {
+          card.classList.add('uploaded');
+          status.className = 'subject-status done';
+          const matched = data.matched || 0;
+          const unmatched = data.unmatched_count || 0;
+          let msg = '✅ ' + matched + ' {% if LANG == "sw" %}wanafunzi{% else %}students{% endif %}';
+          if (unmatched > 0) msg += ', ' + unmatched + ' {% if LANG == "sw" %}hawjatambulika{% else %}unmatched{% endif %}';
+          status.innerHTML = msg;
+          uploadedCount++;
+          updateProgress();
+          toast('✅ ' + subjectName + ' — ' + matched + ' {% if LANG == "sw" %}wanafunzi{% else %}students{% endif %}');
+          input.disabled = true;
+        }
+      }).catch(err => {
+        card.classList.remove('uploading');
+        status.className = 'subject-status error';
+        status.innerHTML = '❌ {% if LANG == "sw" %}Hitilafu ya mtandao{% else %}Network error{% endif %}';
+        enableReupload(subjectId);
+        toast(subjectName + ': ' + err.message, true);
+      });
+    }
+
+    poll();
+  }
+
   // File input handlers
   document.querySelectorAll('input[type=file][id^="file-"]').forEach(input => {
     input.addEventListener('change', async () => {
@@ -273,11 +341,13 @@
 
       const card = document.getElementById('subject-' + subjectId);
       const status = document.getElementById('status-' + subjectId);
+      const subjectName = card.querySelector('.subject-name').textContent.trim();
 
       // Set uploading state
       card.classList.add('uploading');
+      card.classList.remove('uploaded');
       status.className = 'subject-status';
-      status.innerHTML = '⏳ {% if LANG == "sw" %}Inasoma...{% else %}Reading...{% endif %}';
+      status.innerHTML = '⏳ {% if LANG == "sw" %}Inapakia...{% else %}Uploading...{% endif %}';
 
       const fd = new FormData();
       fd.append('subject_id', subjectId);
@@ -289,25 +359,17 @@
           headers: { 'X-CSRFToken': csrfToken },
           body: fd,
         });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
 
-        // Check if redirect (success)
-        if (res.redirected || res.ok) {
-          card.classList.remove('uploading');
-          card.classList.add('uploaded');
-          status.className = 'subject-status done';
-          status.innerHTML = '✅ {% if LANG == "sw" %}Imepakiwa!{% else %}Uploaded!{% endif %}';
-          uploadedCount++;
-          updateProgress();
-          toast('✅ ' + status.closest('.subject-upload-card').querySelector('.subject-name').textContent + ' — {% if LANG == "sw" %}Imekamilika{% else %}Done{% endif %}');
-          input.disabled = true;
-        } else {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || 'Upload failed');
-        }
+        // Got task_id — start polling
+        status.innerHTML = '⏳ {% if LANG == "sw" %}Inasoma kwa AI...{% else %}Reading with AI...{% endif %}';
+        pollStatus(data.task_id, subjectId, subjectName);
       } catch (err) {
         card.classList.remove('uploading');
         status.className = 'subject-status error';
         status.innerHTML = '❌ ' + err.message;
+        enableReupload(subjectId);
         toast(err.message, true);
       }
 

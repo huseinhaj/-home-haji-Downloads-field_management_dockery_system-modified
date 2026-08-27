@@ -2813,8 +2813,8 @@ def teacher_performance_report(request, form_num):
 @academic_required
 def bulk_scoresheet_upload(request, exam_id):
     """Academic officer uploads multiple scoresheets (PDFs/images) for
-    different subjects at once.  Each file is OCR'd, matched to students,
-    and saved to the correct subject."""
+    different subjects at once.  Each file is OCR'd via a background
+    Celery task, matched to students, and saved to the correct subject."""
     exam = _get_exam_or_404(exam_id, request.user)
     school = request.user.school
 
@@ -2836,121 +2836,58 @@ def bulk_scoresheet_upload(request, exam_id):
         .distinct()
     )
     roster_students = list(Student.objects.filter(id__in=student_ids))
+    roster_ids = [s.id for s in roster_students]
 
     if request.method == 'POST':
-        import json as _json
         import uuid as _uuid
         from django.core.files.storage import default_storage
-        from .services.scoresheet_ocr_service import (
-            extract_scores_from_document,
-            ScoreSheetOCRError,
-        )
-        from .services.speech_submission_service import fuzzy_match_student_name
 
         subject_id = request.POST.get('subject_id')
         file = request.FILES.get('scoresheet')
 
         if not subject_id or not file:
-            messages.error(request, "Chagua somo na upakie faili.")
-            return redirect(request.path)
+            return JsonResponse({'error': 'Chagua somo na upakie faili.'}, status=400)
 
         subject = get_object_or_404(Subject, id=subject_id)
 
-        # Save file temporarily
+        # Save file temporarily and dispatch async OCR task
         ext = os.path.splitext(file.name)[1].lower() or '.pdf'
-        storage_path = f"bulk_upload/{exam.id}/{_uuid.uuid4().hex}{ext}"
+        storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
         default_storage.save(storage_path, file)
 
-        try:
-            with default_storage.open(storage_path) as doc:
-                extracted_rows = extract_scores_from_document(doc)
-        except ScoreSheetOCRError as exc:
-            messages.error(request, f"Hitilafu ya OCR: {exc}")
-            return redirect(request.path)
-        finally:
-            try:
-                default_storage.delete(storage_path)
-            except Exception:
-                pass
-
-        # Match extracted names to students
-        matched = []
-        unmatched = []
-        from .views import _parse_roster_line, _save_student
-        for row in extracted_rows:
-            student, confidence, _candidates = fuzzy_match_student_name(
-                row['raw_name'], roster_students, threshold=0.80,
-            )
-            if student:
-                matched.append({
-                    'student': student,
-                    'score': row['score'],
-                    'raw_name': row['raw_name'],
-                    'confidence': round(confidence, 4),
-                })
-                continue
-            parsed = _parse_roster_line(row['raw_name'])
-            if not parsed:
-                unmatched.append({'raw_name': row['raw_name'], 'score': row['score']})
-                continue
-            first, middle, last, gender = parsed
-            saved = _save_student(first, middle, last, gender)
-            student = Student.objects.get(id=saved['id'])
-            matched.append({
-                'student': student,
-                'score': row['score'],
-                'raw_name': row['raw_name'],
-                'confidence': 0.0,
-            })
-
-        # Save ExamResult entries
-        from .utils import is_absent_marker
-        exam_results = []
-        for m in matched:
-            score = m['score']
-            exam_results.append(ExamResult(
-                exam=exam, student=m['student'], subject=subject,
-                score=score, is_absent=False,
-            ))
-
-        if exam_results:
-            ExamResult.objects.bulk_create(
-                exam_results,
-                update_conflicts=True,
-                unique_fields=['exam', 'student', 'subject'],
-                update_fields=['score', 'is_absent'],
-            )
-
-        # Mark SubjectSubmission as SUBMITTED + APPROVED (academic uploaded it)
-        submission, _ = SubjectSubmission.objects.update_or_create(
-            exam=exam, subject=subject,
-            defaults={
-                'status': SubjectSubmission.STATUS_APPROVED,
-                'method': 'UPLOAD',
-                'submitted_by': request.user.full_name or request.user.email,
-                'submitted_by_user': request.user,
-                'submitted_at': timezone.now(),
-                'approved_by': request.user.full_name or request.user.email,
-                'approved_by_user': request.user,
-                'approved_at': timezone.now(),
-                'student_count': len(matched),
-            },
+        from .tasks import process_bulk_upload_task
+        task = process_bulk_upload_task.apply_async(
+            args=[storage_path, exam.id, subject.id, roster_ids],
+            queue='default',
         )
-
-        # Recompute processed results
-        from .services.upload_processing_service import recompute_processed_results_for_exam
-        recompute_processed_results_for_exam(exam)
-
-        unmatched_count = len(unmatched)
-        messages.success(
-            request,
-            f"✅ {subject.name}: wanafunzi {len(matched)} wamesajiliwa"
-            + (f", {unmatched_count} hawjatambulika" if unmatched_count else '')
-        )
-        return redirect(reverse('bulk_scoresheet_upload', args=[exam.id]))
+        return JsonResponse({'task_id': task.id, 'subject_id': subject.id})
 
     return render(request, 'results/bulk_scoresheet_upload.html', {
         'exam': exam,
         'subjects': subjects,
         'student_count': len(roster_students),
+    })
+
+
+@academic_required
+def bulk_upload_status(request, task_id):
+    """Polled by the frontend every 2s after bulk upload kicks off."""
+    from celery.result import AsyncResult
+    result = AsyncResult(task_id)
+
+    if not result.ready():
+        return JsonResponse({'status': 'processing'})
+
+    if result.failed():
+        return JsonResponse({'error': 'Kuna hitilafu wakati wa kusoma scoresheet.'}, status=500)
+
+    payload = result.result or {}
+    if payload.get('error'):
+        return JsonResponse({'error': payload['error']}, status=400)
+
+    return JsonResponse({
+        'status': 'done',
+        'matched': payload.get('matched_count', 0),
+        'unmatched_count': payload.get('unmatched_count', 0),
+        'unmatched': payload.get('unmatched', []),
     })
