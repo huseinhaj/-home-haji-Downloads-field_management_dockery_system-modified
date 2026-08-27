@@ -2820,7 +2820,7 @@ def bulk_scoresheet_upload(request, exam_id):
 
     # Get all subjects that have submissions for this exam
     subjects = list(
-        Subject.objects.filter(subjectsubmission__exam=exam)
+        Subject.objects.filter(submissions__exam=exam)
         .order_by('name')
     )
     if not subjects:
