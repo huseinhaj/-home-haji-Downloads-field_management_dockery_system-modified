@@ -273,6 +273,9 @@
             </div>
           </div>
           <div class="d-flex gap-2 align-items-center flex-wrap">
+            <a href="{% url 'bulk_scoresheet_upload' ed.exam.id %}" class="btn btn-sm" style="background:#24508a;color:#fff;font-size:0.72rem;border-radius:2px;border:none;font-weight:700;">
+              📦 {% if LANG == 'sw' %}PakiaScoresheets{% else %}Bulk Upload{% endif %}
+            </a>
             <a href="{% url 'exam_overview' ed.exam.id %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">
               {% if LANG == 'sw' %}Tazama{% else %}View{% endif %}
             </a>

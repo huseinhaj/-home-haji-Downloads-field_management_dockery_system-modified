@@ -1,0 +1,319 @@
+{% extends 'results/base.html' %}
+{% block title %}Bulk Upload — {{ exam.name }} | School Results{% endblock %}
+
+{% block extra_css %}
+<style>
+.bulk-hero {
+  background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+  border: 2px solid #D9A441;
+  border-radius: 2px;
+  padding: 1.4rem 1.8rem;
+  color: #fff;
+  margin-bottom: 1.2rem;
+}
+.bulk-hero h1 { font-size: 1.3rem; font-weight: 800; margin-bottom: 0.2rem; }
+.bulk-hero .meta { font-size: 0.82rem; color: #D9A441; letter-spacing: 0.04em; text-transform: uppercase; }
+
+.bulk-card {
+  background: #fff;
+  border: 1.5px solid #dee2e6;
+  border-radius: 2px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.bulk-card-head {
+  background: #f4f6fb;
+  border-bottom: 1px solid #e9ecef;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.bulk-card-head h3 { font-size: 1rem; font-weight: 800; color: #1F7A3D; margin: 0; }
+.bulk-card-body { padding: 1rem; }
+
+/* Upload zones */
+.upload-zone {
+  border: 2px dashed #D9A441;
+  border-radius: 2px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background: #fffbf0;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 1rem;
+}
+.upload-zone:hover { background: #fff3d6; border-color: #1F7A3D; }
+.upload-zone.dragover { background: #e6f7ec; border-color: #1F7A3D; }
+.upload-zone .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.upload-zone .label { font-weight: 700; color: #1F7A3D; font-size: 1rem; }
+.upload-zone .hint { font-size: 0.78rem; color: #888; margin-top: 0.3rem; }
+
+/* Subject cards */
+.subject-upload-card {
+  background: #fff;
+  border: 1.5px solid #e9ecef;
+  border-radius: 2px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  transition: all 0.2s;
+}
+.subject-upload-card:hover { border-color: #1F7A3D; background: #f0faf4; }
+.subject-upload-card.uploaded { border-color: #1a7a3b; background: #e6f7ec; }
+.subject-upload-card.uploading { border-color: #D9A441; background: #fff8e6; }
+
+.subject-name { font-weight: 700; font-size: 0.95rem; color: #1F7A3D; min-width: 140px; }
+.subject-status { font-size: 0.78rem; color: #888; }
+.subject-status.done { color: #1a7a3b; font-weight: 700; }
+.subject-status.error { color: #c0392b; }
+
+.btn-upload-subject {
+  background: #1F7A3D;
+  color: #fff;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.35rem 0.9rem;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-upload-subject:hover { background: #145226; }
+.btn-upload-subject:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Progress */
+.progress-bar-mini {
+  background: #e9ecef;
+  border-radius: 3px;
+  height: 6px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 200px;
+}
+.progress-bar-mini .fill {
+  height: 100%;
+  background: #1F7A3D;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+/* Summary stats */
+.summary-strip {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 0.8rem 1rem;
+  background: #f8f9fb;
+  border-radius: 2px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 1rem;
+}
+.summary-item { text-align: center; }
+.summary-item .val { font-size: 1.3rem; font-weight: 800; color: #1F7A3D; }
+.summary-item .lbl { font-size: 0.68rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Toast */
+.bulk-toast {
+  position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-120%);
+  z-index: 1200; padding: 0.75rem 1.4rem; border-radius: 2px; font-weight: 600; font-size: 0.85rem;
+  color: #fff; box-shadow: 0 6px 24px rgba(0,0,0,0.2); transition: transform 0.3s ease; max-width: 92vw;
+}
+.bulk-toast.show { transform: translateX(-50%) translateY(0); }
+.bulk-toast.error { background: #c0392b; }
+.bulk-toast.success { background: #1a7a3b; }
+
+/* Final actions */
+.final-actions {
+  display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+  margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid #e9ecef;
+}
+.btn-final {
+  font-weight: 700; padding: 0.6rem 1.6rem; border-radius: 2px; font-size: 0.9rem;
+  border: 2px solid #D9A441; cursor: pointer; text-decoration: none; display: inline-block;
+}
+.btn-final.primary { background: #1F7A3D; color: #fff; }
+.btn-final.primary:hover { background: #145226; color: #fff; }
+.btn-final.secondary { background: #fff; color: #1F7A3D; }
+.btn-final.secondary:hover { background: #f0faf4; color: #1F7A3D; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="bulk-hero">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h1>📦 {% if LANG == 'sw' %}PakiaScoresheets kwa Masomo Yote{% else %}Bulk Scoresheet Upload{% endif %}</h1>
+      <div class="meta">
+        {{ exam.name }} &nbsp;|&nbsp; Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} &nbsp;|&nbsp; {{ exam.year }}
+      </div>
+    </div>
+    <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
+      ← {% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}
+    </a>
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="summary-strip">
+  <div class="summary-item">
+    <div class="val">{{ subjects|length }}</div>
+    <div class="lbl">{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}</div>
+  </div>
+  <div class="summary-item">
+    <div class="val">{{ student_count }}</div>
+    <div class="lbl">{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" id="uploadedCount">0</div>
+    <div class="lbl">{% if LANG == 'sw' %}Yamepakiwa{% else %}Uploaded{% endif %}</div>
+  </div>
+</div>
+
+<!-- Instructions -->
+<div class="bulk-card" style="border-left:4px solid #D9A441;">
+  <div class="bulk-card-body" style="padding:0.8rem 1rem;">
+    <p style="font-size:0.85rem;margin:0;color:#555;">
+      📌 {% if LANG == 'sw' %}
+      Pakia kila scoresheet (PDF au picha) kwa somo lake. Mfumo utasoma alama na kuziweka moja kwa moja.
+      Baada ya kupakia masomo yote, bofya <strong>"Generate Results"</strong> ili kupata matokeo.
+      {% else %}
+      Upload each scoresheet (PDF or photo) for its subject. The system will read scores and save them automatically.
+      After uploading all subjects, click <strong>"Generate Results"</strong> to get the results.
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<!-- Subject Upload Cards -->
+<div class="bulk-card">
+  <div class="bulk-card-head">
+    <h3>📝 {% if LANG == 'sw' %}Masomo na Scoresheets{% else %}Subjects & Scoresheets{% endif %}</h3>
+    <span style="font-size:0.78rem;color:#888;">{{ subjects|length }} {% if LANG == 'sw' %}masomo{% else %}subjects{% endif %}</span>
+  </div>
+  <div class="bulk-card-body">
+    {% for subject in subjects %}
+    <div class="subject-upload-card" id="subject-{{ subject.id }}" data-subject-id="{{ subject.id }}">
+      <div style="display:flex;align-items:center;gap:0.75rem;flex:1;min-width:200px;">
+        <div class="subject-name">{{ subject.name }}</div>
+        <div class="subject-status" id="status-{{ subject.id }}">
+          {% if LANG == 'sw' %}Inasubiri{% else %}Waiting{% endif %}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <input type="file" id="file-{{ subject.id }}" accept=".pdf,.png,.jpg,.jpeg,.webp"
+               style="display:none;" data-subject-id="{{ subject.id }}">
+        <button type="button" class="btn-upload-subject" onclick="document.getElementById('file-{{ subject.id }}').click();">
+          📤 {% if LANG == 'sw' %}Pakia{% else %}Upload{% endif %}
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Final Actions -->
+{% if subjects %}
+<div class="final-actions">
+  <a href="{% url 'exam_overview' exam.id %}" class="btn-final secondary">
+    📊 {% if LANG == 'sw' %}Tazama Muhtasari{% else %}View Overview{% endif %}
+  </a>
+  <a href="{% url 'generate_results_pdf' exam.id %}" class="btn-final primary" id="generateResultsBtn" style="opacity:0.5;pointer-events:none;">
+    📄 {% if LANG == 'sw' %}Generate Results PDF{% else %}Generate Results PDF{% endif %}
+  </a>
+  <a href="{% url 'export_results_excel' exam.id %}" class="btn-final secondary" id="exportExcelBtn" style="opacity:0.5;pointer-events:none;">
+    📊 {% if LANG == 'sw' %}Export Excel{% else %}Export Excel{% endif %}
+  </a>
+</div>
+{% endif %}
+
+<!-- Toast -->
+<div class="bulk-toast" id="bulkToast"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const LANG = '{{ LANG }}';
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+  const csrfToken = csrf ? csrf.value : '';
+  let uploadedCount = 0;
+  const totalSubjects = {{ subjects|length }};
+
+  function toast(msg, isError) {
+    const el = document.getElementById('bulkToast');
+    el.textContent = msg;
+    el.className = 'bulk-toast ' + (isError ? 'error' : 'success') + ' show';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
+  function updateProgress() {
+    document.getElementById('uploadedCount').textContent = uploadedCount;
+    if (uploadedCount > 0) {
+      const btn = document.getElementById('generateResultsBtn');
+      if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+      const excelBtn = document.getElementById('exportExcelBtn');
+      if (excelBtn) { excelBtn.style.opacity = '1'; excelBtn.style.pointerEvents = 'auto'; }
+    }
+  }
+
+  // File input handlers
+  document.querySelectorAll('input[type=file][id^="file-"]').forEach(input => {
+    input.addEventListener('change', async () => {
+      const subjectId = input.dataset.subjectId;
+      const file = input.files[0];
+      if (!file) return;
+
+      const card = document.getElementById('subject-' + subjectId);
+      const status = document.getElementById('status-' + subjectId);
+
+      // Set uploading state
+      card.classList.add('uploading');
+      status.className = 'subject-status';
+      status.innerHTML = '⏳ {% if LANG == "sw" %}Inasoma...{% else %}Reading...{% endif %}';
+
+      const fd = new FormData();
+      fd.append('subject_id', subjectId);
+      fd.append('scoresheet', file);
+
+      try {
+        const res = await fetch(window.location.href, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrfToken },
+          body: fd,
+        });
+
+        // Check if redirect (success)
+        if (res.redirected || res.ok) {
+          card.classList.remove('uploading');
+          card.classList.add('uploaded');
+          status.className = 'subject-status done';
+          status.innerHTML = '✅ {% if LANG == "sw" %}Imepakiwa!{% else %}Uploaded!{% endif %}';
+          uploadedCount++;
+          updateProgress();
+          toast('✅ ' + status.closest('.subject-upload-card').querySelector('.subject-name').textContent + ' — {% if LANG == "sw" %}Imekamilika{% else %}Done{% endif %}');
+          input.disabled = true;
+        } else {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || 'Upload failed');
+        }
+      } catch (err) {
+        card.classList.remove('uploading');
+        status.className = 'subject-status error';
+        status.innerHTML = '❌ ' + err.message;
+        toast(err.message, true);
+      }
+
+      input.value = '';
+    });
+  });
+})();
+</script>
+{% endblock %}

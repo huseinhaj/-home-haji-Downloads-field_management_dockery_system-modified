@@ -71,6 +71,7 @@ from .views import (
     printing_secretary_dashboard,
     ps_pdf_inline,
     ps_print_view,
+    bulk_scoresheet_upload,
 )
 from .marks_entry import (
     download_scoresheet_names_pdf,
@@ -128,6 +129,7 @@ urlpatterns = [
     path('exam/<int:exam_id>/subject/<int:subject_id>/approve/', approve_subject, name='approve_subject'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/return/', return_submission, name='return_submission'),
     path('exam/<int:exam_id>/finalize/', finalize_exam, name='finalize_exam'),
+    path('exam/<int:exam_id>/bulk-upload/', bulk_scoresheet_upload, name='bulk_scoresheet_upload'),
     path('exam/<int:exam_id>/approve-all/', approve_exam_submissions, name='approve_exam_submissions'),
     path('exam/<int:exam_id>/recompute/', recompute_exam_results, name='recompute_exam_results'),
     path('exam/<int:exam_id>/tuma-kwa-ps/', submit_exam_to_ps, name='submit_exam_to_ps'),
