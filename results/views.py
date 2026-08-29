@@ -2576,6 +2576,48 @@ def assign_form_student_subjects(request, student_id):
 
 @academic_required
 @require_POST
+def bulk_assign_form_student_subjects(request):
+    """Bulk-assign subjects to multiple FormStudents at once.
+    POST: student_ids=<id>&student_ids=<id>... subjects=<id>&subjects=<id>...
+    action=add|set|remove
+      add    — add selected subjects to each student (default)
+      set    — replace all subjects with the selected ones
+      remove — remove selected subjects from each student
+    """
+    school = request.user.school
+    if not school:
+        messages.error(request, "Hakuna shule.")
+        return redirect('upload_form_students')
+
+    student_ids = request.POST.getlist('student_ids')
+    subject_ids = request.POST.getlist('subjects')
+    action = request.POST.get('action', 'add')
+    form_num = request.POST.get('form') or request.GET.get('form') or ''
+
+    if not student_ids:
+        messages.warning(request, "Chagua wanafunzi kwanza.")
+        return redirect(f'{reverse("upload_form_students")}?form={form_num}')
+
+    students = FormStudent.objects.filter(id__in=student_ids, school=school)
+    subjects = Subject.objects.filter(id__in=subject_ids)
+
+    count = 0
+    for fs in students:
+        if action == 'set':
+            fs.subjects.set(subjects)
+        elif action == 'remove':
+            fs.subjects.remove(*subjects)
+        else:  # add
+            fs.subjects.add(*subjects)
+        count += 1
+
+    subj_names = ', '.join(s.name for s in subjects) or 'Hakuna somo'
+    messages.success(request, f"Masomo yamewekwa kwa wanafunzi {count}: {subj_names}")
+    return redirect(f'{reverse("upload_form_students")}?form={form_num}')
+
+
+@academic_required
+@require_POST
 def delete_form_student(request, student_id):
     """Delete a single form student."""
     school = request.user.school

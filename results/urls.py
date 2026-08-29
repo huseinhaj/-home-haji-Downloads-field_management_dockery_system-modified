@@ -66,6 +66,7 @@ from .views import (
     delete_form_student,
     delete_all_form_students,
     assign_form_student_subjects,
+    bulk_assign_form_student_subjects,
     assign_teacher_form,
     teacher_performance_report,
     submit_exam_to_ps,
@@ -192,6 +193,7 @@ urlpatterns = [
     path('form-students/<int:student_id>/delete/', delete_form_student, name='delete_form_student'),
     path('form-students/<int:form_num>/delete-all/', delete_all_form_students, name='delete_all_form_students'),
     path('form-students/<int:student_id>/assign-subjects/', assign_form_student_subjects, name='assign_form_student_subjects'),
+    path('form-students/bulk-assign-subjects/', bulk_assign_form_student_subjects, name='bulk_assign_form_student_subjects'),
     # Assign teacher to form + subject
     path('assign-teacher/', assign_teacher_form, name='assign_teacher_form'),
 

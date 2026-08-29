@@ -95,7 +95,15 @@
     <div class="card-header d-flex justify-content-between align-items-center" style="background:#F8F9FA;">
       <strong>Form {{ selected_form }} Students ({{ students|length }})</strong>
       {% if students %}
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-sm" style="background:#1A3C6E;color:#fff;"
+                onclick="document.getElementById('bulkAssignModal').style.display='block'">
+          📚 Weka Masomo kwa Wote
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="bulkActionBtn" style="display:none;"
+                onclick="document.getElementById('bulkSubjectModal').style.display='block'">
+          ✏️ Weka Masomo kwa Selected
+        </button>
         <a href="{% url 'teacher_performance_report' selected_form %}" class="btn btn-sm" style="background:#B8860B;color:#fff;">
           📊 Teacher Report
         </a>
@@ -110,11 +118,11 @@
     <div class="card-body p-0">
       {% if students %}
       <div class="table-responsive">
-        <table class="table table-sm table-hover mb-0">
+        <table class="table table-sm table-hover mb-0" id="studentTable">
           <thead style="background:#1A3C6E;color:#fff;">
             <tr>
+              <th style="width:30px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
               <th>#</th>
-              <th>Admission No.</th>
               <th>Name</th>
               <th>Gender</th>
               <th>Subjects</th>
@@ -124,31 +132,28 @@
           <tbody>
             {% for s in students %}
             <tr>
+              <td><input type="checkbox" name="student_check" value="{{ s.id }}" class="student-cb" onchange="updateBulkBtn()"></td>
               <td>{{ forloop.counter }}</td>
-              <td>{{ s.admission_no|default:"—" }}</td>
               <td>{{ s.first_name }} {{ s.middle_name }} {{ s.last_name }}</td>
               <td>
                 {% if s.gender == 'F' %}
-                <span style="color:#C0392B;">♀ Female</span>
+                <span style="color:#C0392B;">♀ F</span>
                 {% else %}
-                <span style="color:#2980B9;">♂ Male</span>
+                <span style="color:#2980B9;">♂ M</span>
                 {% endif %}
               </td>
               <td>
-                <!-- Current subjects as badges -->
                 {% for subj in s.subjects.all %}
                 <span class="badge" style="background:#1A3C6E;color:#fff;font-size:0.7rem;">{{ subj.name }}</span>
                 {% empty %}
                 <span class="text-muted" style="font-size:0.75rem;">—</span>
                 {% endfor %}
-
-                <!-- Assign subjects button -->
                 <button type="button" class="btn btn-sm btn-outline-primary ms-1" style="font-size:0.7rem;padding:2px 6px;"
                         data-bs-toggle="modal" data-bs-target="#assignModal{{ s.id }}">
                   ✏️
                 </button>
 
-                <!-- Assign Subjects Modal -->
+                <!-- Per-student Assign Modal -->
                 <div class="modal fade" id="assignModal{{ s.id }}" tabindex="-1">
                   <div class="modal-dialog modal-sm">
                     <div class="modal-content">
@@ -159,20 +164,15 @@
                           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                          <p class="text-muted" style="font-size:0.8rem;">Chagua masomo ambayo mwanafunzi huyu anasoma:</p>
+                          <p class="text-muted" style="font-size:0.8rem;">Chagua masomo:</p>
                           {% for subj in all_subjects %}
                           <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="subjects" value="{{ subj.id }}"
                                    id="subj_{{ s.id }}_{{ subj.id }}"
                                    {% if subj in s.subjects.all %}checked{% endif %}>
-                            <label class="form-check-label" for="subj_{{ s.id }}_{{ subj.id }}" style="font-size:0.85rem;">
-                              {{ subj.name }}
-                            </label>
+                            <label class="form-check-label" for="subj_{{ s.id }}_{{ subj.id }}" style="font-size:0.85rem;">{{ subj.name }}</label>
                           </div>
                           {% endfor %}
-                          {% if not all_subjects %}
-                          <p class="text-muted">Hakuna masomo yaliyosajiliwa bado.</p>
-                          {% endif %}
                         </div>
                         <div class="modal-footer">
                           <button type="submit" class="btn btn-sm" style="background:#1A7B3A;color:#fff;">💾 Hifadhi</button>
@@ -202,6 +202,88 @@
       {% endif %}
     </div>
   </div>
+
+  <!-- ═══ BULK ASSIGN MODAL — Assign to ALL students ═══ -->
+  <div id="bulkAssignModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;">
+      <div style="background:#1A3C6E;color:#fff;padding:12px 16px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;">
+        <strong>📚 Weka Masomo kwa Wanafunzi Wote ({{ students|length }})</strong>
+        <button onclick="this.closest('div[id=bulkAssignModal]').style.display='none'" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+      <form method="post" action="{% url 'bulk_assign_form_student_subjects' %}" style="padding:16px;">
+        {% csrf_token %}
+        <input type="hidden" name="form" value="{{ selected_form }}">
+        <input type="hidden" name="action" value="set">
+        {% for s in students %}
+        <input type="hidden" name="student_ids" value="{{ s.id }}">
+        {% endfor %}
+
+        <p class="text-muted" style="font-size:0.85rem;">Chagua masomo yote ambayo wanafunzi wanafanyia mtihani huu. Masomo ya option (Physics, Agriculture n.k.) weka kwa kila mwanafunzi kwa mkono baadaye.</p>
+
+        <div class="mb-2"><strong style="font-size:0.85rem;">Masomo ya Lazima (Core):</strong></div>
+        {% for subj in all_subjects %}
+        <div class="form-check">
+          <input class="form-check-input bulk-subject" type="checkbox" name="subjects" value="{{ subj.id }}" id="bulk_subj_{{ subj.id }}">
+          <label class="form-check-label" for="bulk_subj_{{ subj.id }}" style="font-size:0.85rem;">{{ subj.name }}</label>
+        </div>
+        {% endfor %}
+
+        {% if not all_subjects %}
+        <p class="text-muted">Hakuna masomo yaliyosajiliwa bado.</p>
+        {% endif %}
+
+        <div class="mt-3 d-flex gap-2">
+          <button type="submit" class="btn flex-fill" style="background:#1A7B3A;color:#fff;">💾 Weka kwa Wote</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="this.closest('div[id=bulkAssignModal]').style.display='none'">Ghairi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══ BULK SUBJECT MODAL — Assign to SELECTED students ═══ -->
+  <div id="bulkSubjectModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;">
+      <div style="background:#1A3C6E;color:#fff;padding:12px 16px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;">
+        <strong>✏️ Weka Masomo kwa Wanafunzi Waliochaguliwa</strong>
+        <button onclick="this.closest('div[id=bulkSubjectModal]').style.display='none'" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+      <form method="post" action="{% url 'bulk_assign_form_student_subjects' %}" style="padding:16px;" id="bulkSubjectForm">
+        {% csrf_token %}
+        <input type="hidden" name="form" value="{{ selected_form }}">
+        <div id="bulkStudentIdsContainer"></div>
+
+        <div class="mb-2"><strong style="font-size:0.85rem;">Chagua kitendo:</strong></div>
+        <div class="d-flex gap-3 mb-3">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="action" value="add" id="actAdd" checked>
+            <label class="form-check-label" for="actAdd" style="font-size:0.85rem;">Ongeza (+)</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="action" value="set" id="actSet">
+            <label class="form-check-label" for="actSet" style="font-size:0.85rem;">Badilisha (=)</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="action" value="remove" id="actRemove">
+            <label class="form-check-label" for="actRemove" style="font-size:0.85rem;">Ondoa (−)</label>
+          </div>
+        </div>
+
+        <p class="text-muted" style="font-size:0.8rem;">Chagua masomo ya kuweka:</p>
+        {% for subj in all_subjects %}
+        <div class="form-check">
+          <input class="form-check-input bulk-subject" type="checkbox" name="subjects" value="{{ subj.id }}" id="bulksel_subj_{{ subj.id }}">
+          <label class="form-check-label" for="bulksel_subj_{{ subj.id }}" style="font-size:0.85rem;">{{ subj.name }}</label>
+        </div>
+        {% endfor %}
+
+        <div class="mt-3 d-flex gap-2">
+          <button type="submit" class="btn flex-fill" style="background:#1A3C6E;color:#fff;">💾 Thibitisha</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="this.closest('div[id=bulkSubjectModal]').style.display='none'">Ghairi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   {% else %}
   <div class="text-center py-5 text-muted">
     <div class="fs-1">👆</div>
@@ -209,4 +291,42 @@
   </div>
   {% endif %}
 </div>
+
+<script>
+function toggleSelectAll(el) {
+  document.querySelectorAll('.student-cb').forEach(cb => { cb.checked = el.checked; });
+  updateBulkBtn();
+}
+function updateBulkBtn() {
+  var checked = document.querySelectorAll('.student-cb:checked').length;
+  var btn = document.getElementById('bulkActionBtn');
+  if (btn) btn.style.display = checked > 0 ? '' : 'none';
+}
+// When opening the "selected" modal, inject hidden student_ids
+document.getElementById('bulkSubjectModal').addEventListener('click', function(e) {
+  if (e.target === this) { this.style.display = 'none'; return; }
+  // Pre-populate student IDs
+  var container = document.getElementById('bulkStudentIdsContainer');
+  container.innerHTML = '';
+  document.querySelectorAll('.student-cb:checked').forEach(cb => {
+    var inp = document.createElement('input');
+    inp.type = 'hidden';
+    inp.name = 'student_ids';
+    inp.value = cb.value;
+    container.appendChild(inp);
+  });
+}, false);
+// Also inject IDs on button click
+document.getElementById('bulkActionBtn').addEventListener('click', function() {
+  var container = document.getElementById('bulkStudentIdsContainer');
+  container.innerHTML = '';
+  document.querySelectorAll('.student-cb:checked').forEach(cb => {
+    var inp = document.createElement('input');
+    inp.type = 'hidden';
+    inp.name = 'student_ids';
+    inp.value = cb.value;
+    container.appendChild(inp);
+  });
+}, false);
+</script>
 {% endblock %}
