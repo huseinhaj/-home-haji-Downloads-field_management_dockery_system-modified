@@ -173,17 +173,20 @@ def recompute_processed_results_for_exam(exam):
 
         # ── NECTA minimum-pass rule (O-Level / CSEE) ──────────────────
         # Official NECTA rule: a candidate with FEWER than 7 subjects can
-        # still receive Division IV if they have:
+        # only receive Division IV — never I, II, or III — if they have:
         #   - at least 1 subject in Grade A, B, or C,  OR
         #   - at least 2 subjects in Grade D.
         # Without either, they receive Division 0 (fail).
-        # Students with 7+ subjects use the standard points-based division.
+        # Division I-III require 7+ subjects because the points scale
+        # (7–17 = Div I) assumes 7 subjects are counted.
         # ACSEE (Form 5-6): best-3 already enforces the minimum.
         if exam.form in (1, 2, 3, 4) and count < best_n:
             grades = [get_grade_for_form(r.score, exam.form) for r, _ in best]
             passing_a_bc = sum(1 for g in grades if g in ('A', 'B', 'C'))
             passing_d = sum(1 for g in grades if g == 'D')
-            if not (passing_a_bc >= 1 or passing_d >= 2):
+            if passing_a_bc >= 1 or passing_d >= 2:
+                division = 'IV'  # max division for < 7 subjects
+            else:
                 division = '0'
 
         student_data.append(
