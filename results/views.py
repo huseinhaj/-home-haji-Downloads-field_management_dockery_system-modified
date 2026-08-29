@@ -180,6 +180,7 @@ def filter_exams(request):
 @academic_required
 def generate_results_pdf(request, exam_id):
     exam = _get_exam_or_404(exam_id, request.user)
+    recompute_processed_results_for_exam(exam)
     return generate_results_pdf_response(exam)
 
 
@@ -192,12 +193,14 @@ def generate_bulk_student_results_pdf(request, exam_id):
     file (the single-student one is safe to be public because a parent
     only has their own child's share token)."""
     exam = _get_exam_or_404(exam_id, request.user)
+    recompute_processed_results_for_exam(exam)
     return generate_bulk_student_results_pdf_response(exam)
 
 
 @academic_required
 def export_results_excel(request, exam_id):
     exam = _get_exam_or_404(exam_id, request.user)
+    recompute_processed_results_for_exam(exam)
     return generate_results_excel_response(exam)
 
 
