@@ -8,6 +8,7 @@ from ..utils import (
     get_grade_for_form,
     get_grade_points,
     is_absent_marker,
+    is_passing_grade,
     load_results_dataframe,
     normalize_gender,
     normalize_subject_name,
@@ -169,6 +170,21 @@ def recompute_processed_results_for_exam(exam):
         points = sum(p for _, p in best)
         division = get_division(points, form=exam.form)
         counted_subjects = ', '.join(r.subject.name for r, _ in best)
+
+        # ── NECTA minimum-pass rule (O-Level / CSEE) ──────────────────
+        # Official NECTA rule: a candidate with FEWER than 7 subjects can
+        # still receive Division IV if they have:
+        #   - at least 1 subject in Grade A, B, or C,  OR
+        #   - at least 2 subjects in Grade D.
+        # Without either, they receive Division 0 (fail).
+        # Students with 7+ subjects use the standard points-based division.
+        # ACSEE (Form 5-6): best-3 already enforces the minimum.
+        if exam.form in (1, 2, 3, 4) and count < best_n:
+            grades = [get_grade_for_form(r.score, exam.form) for r, _ in best]
+            passing_a_bc = sum(1 for g in grades if g in ('A', 'B', 'C'))
+            passing_d = sum(1 for g in grades if g == 'D')
+            if not (passing_a_bc >= 1 or passing_d >= 2):
+                division = '0'
 
         student_data.append(
             {
