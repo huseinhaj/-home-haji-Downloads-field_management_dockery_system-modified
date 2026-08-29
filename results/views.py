@@ -2540,11 +2540,38 @@ def upload_form_students(request):
         if row['form'] in counts:
             counts[row['form']] = row['cnt']
 
+    # Subject filter — when ?subject=<id> is provided, show only
+    # students who study that subject (option subjects).
+    subject_filter_id = request.GET.get('subject')
+    subjects_qs = Subject.objects.filter(school=school).order_by('name') if school else Subject.objects.none()
+    if selected_form and subject_filter_id:
+        students = students.filter(subjects__id=subject_filter_id)
+
+    # All subjects for the assign-subjects modal
+    all_subjects = Subject.objects.filter(school=school).order_by('name') if school else Subject.objects.none()
+
     return render(request, 'results/upload_form_students.html', {
         'selected_form': selected_form,
         'students': students,
         'form_counts': counts,
+        'subjects_list': subjects_qs,
+        'selected_subject': int(subject_filter_id) if subject_filter_id and subject_filter_id.isdigit() else None,
+        'all_subjects': all_subjects,
     })
+
+
+@academic_required
+@require_POST
+def assign_form_student_subjects(request, student_id):
+    """Assign subjects to a FormStudent (option subjects like Physics, Agriculture)."""
+    school = request.user.school
+    student = get_object_or_404(FormStudent, id=student_id, school=school)
+    subject_ids = request.POST.getlist('subjects')
+    subjects = Subject.objects.filter(id__in=subject_ids)
+    student.subjects.set(subjects)
+    names = ', '.join(s.name for s in subjects) or 'Hakuna somo'
+    messages.success(request, f"Masomo ya {student.full_name} yamewekwa: {names}")
+    return redirect(f'{reverse("upload_form_students")}?form={student.form}')
 
 
 @academic_required

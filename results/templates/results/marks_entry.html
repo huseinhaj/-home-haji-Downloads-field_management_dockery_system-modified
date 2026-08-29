@@ -314,9 +314,9 @@
       </a>
       <div class="d-flex gap-2 flex-wrap">
         {% if pdf_url %}
-        <a href="{{ pdf_url }}" class="btn-me-submit" target="_blank" style="background:#24508a;border-color:#24508a;">
+        <button type="button" class="btn-me-submit" onclick="window._dlPdf('{{ pdf_url }}')" style="background:#24508a;border-color:#24508a;">
           &#128196; {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}
-        </a>
+        </button>
         {% endif %}
         {% if submission and submission.status == 'SUBMITTED' %}
         <a href="{% url 'exam_overview' exam.id %}" class="btn-me-ghost">{% if LANG == 'sw' %}Rudi kwenye Mtihani{% else %}Back to Exam{% endif %} →</a>
@@ -391,9 +391,9 @@
       </div>
       <div class="panel-body">
         <div class="me-voice-bar" id="meVoiceBar">
-          <a class="btn-me-voice btn-me-photo" href="{% url 'download_scoresheet_names_pdf' %}?exam_id={{ exam.id }}&subject_id={{ subject.id }}" target="_blank">
+          <button type="button" class="btn-me-voice btn-me-photo" onclick="window._dlPdf('{% url 'download_scoresheet_names_pdf' %}?exam_id={{ exam.id }}&subject_id={{ subject.id }}')">
             📥 {% if LANG == 'sw' %}Pakua PDF ya Majina{% else %}Download Names PDF{% endif %}
-          </a>
+          </button>
           <button type="button" class="btn-me-voice" id="meVoiceBtn">
             🎙️ {% if LANG == 'sw' %}Jaza kwa Sauti{% else %}Voice Entry{% endif %}
           </button>
@@ -546,7 +546,7 @@
           </p>
           <div class="d-flex gap-2 justify-content-center flex-wrap">
             {% if pdf_url %}
-            <a href="{{ pdf_url }}" class="btn-me-submit" target="_blank" style="background:#24508a;border-color:#24508a;">&#128196; {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}</a>
+            <button type="button" class="btn-me-submit" onclick="window._dlPdf('{{ pdf_url }}')" style="background:#24508a;border-color:#24508a;">&#128196; {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}</button>
             {% endif %}
             <a href="{% url 'exam_overview' exam.id %}" class="btn-me-ghost">{% if LANG == 'sw' %}Rudi kwenye Mtihani{% else %}Back to Exam{% endif %} →</a>
           </div>
@@ -563,6 +563,18 @@
 
 {% block scripts %}
 <script>
+// PDF download helper — fetches file and triggers download without leaving the page
+function _dlPdf(url) {
+  fetch(url).then(r => r.blob()).then(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  }).catch(() => { window.location.href = url; });
+}
 (() => {
   const LANG = '{{ LANG }}';
   const EXAM_ID = '{{ exam.id|default:"" }}';

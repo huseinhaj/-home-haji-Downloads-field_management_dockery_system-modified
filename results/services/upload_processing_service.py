@@ -152,7 +152,20 @@ def recompute_processed_results_for_exam(exam):
 
         # Only count subjects the student actually sat for (not absent)
         results = [r for r in all_results if not r.is_absent and r.score is not None]
+
+        # Students with ALL subjects absent/blank still appear in results
+        # with Division 0 (fail) — they must not be skipped so the PDF
+        # shows every registered student.
         if not results:
+            student_data.append({
+                'student': student,
+                'total': 0,
+                'average': 0.0,
+                'points': 0,
+                'division': '0',
+                'counted_subjects': '',
+                'subject_count': 0,
+            })
             continue
 
         total = sum(result.score for result in results)

@@ -67,6 +67,8 @@ class FormStudent(models.Model):
     middle_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100)
     gender = models.CharField(max_length=1, choices=[('F', 'Female'), ('M', 'Male')])
+    subjects = models.ManyToManyField('Subject', blank=True, related_name='form_students',
+        help_text='Subjects this student studies (option subjects like Physics, Agriculture etc.).')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

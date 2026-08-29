@@ -4,7 +4,7 @@
 {% block content %}
 <div class="container-fluid py-4">
   <h2 class="mb-3" style="color:#1A3C6E;">📋 Form Students</h2>
-  <p class="text-muted mb-4">Upload the student roster for each form (PDF, Excel or CSV). Students will appear on each teacher's dashboard.</p>
+  <p class="text-muted mb-4">Upload the student roster for each form (PDF, Excel or CSV). Students will appear on each teacher's dashboard. Assign subjects so teachers only see their students.</p>
 
   <!-- Form Tabs -->
   <ul class="nav nav-tabs mb-4">
@@ -12,7 +12,7 @@
     {% with fn=f|add:"0" %}
     <li class="nav-item">
       <a class="nav-link {% if selected_form == fn %}active{% endif %}"
-         href="?form={{ f }}"
+         href="?form={{ f }}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}"
          style="{% if selected_form == fn %}background:#1A3C6E;color:#fff;{% endif %}">
         Form {{ f }}
         <span class="badge bg-secondary ms-1">{{ form_counts|default_if_none:"" }}</span>
@@ -68,6 +68,28 @@
     </div>
   </div>
 
+  <!-- Subject Filter -->
+  {% if subjects_list %}
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body py-2">
+      <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+        <input type="hidden" name="form" value="{{ selected_form }}">
+        <strong style="color:#1A3C6E;">🔍 Filter by Subject:</strong>
+        <select name="subject" class="form-select form-select-sm" style="max-width:300px;" onchange="this.form.submit()">
+          <option value="">— Wote / All Students —</option>
+          {% for s in subjects_list %}
+          <option value="{{ s.id }}" {% if selected_subject == s.id %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+        {% if selected_subject %}
+        <a href="?form={{ selected_form }}" class="btn btn-sm btn-outline-secondary">✕ Clear Filter</a>
+        {% endif %}
+        <small class="text-muted">{{ students|length }} wanafunzi</small>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Students Table -->
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center" style="background:#F8F9FA;">
@@ -95,6 +117,7 @@
               <th>Admission No.</th>
               <th>Name</th>
               <th>Gender</th>
+              <th>Subjects</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -110,6 +133,54 @@
                 {% else %}
                 <span style="color:#2980B9;">♂ Male</span>
                 {% endif %}
+              </td>
+              <td>
+                <!-- Current subjects as badges -->
+                {% for subj in s.subjects.all %}
+                <span class="badge" style="background:#1A3C6E;color:#fff;font-size:0.7rem;">{{ subj.name }}</span>
+                {% empty %}
+                <span class="text-muted" style="font-size:0.75rem;">—</span>
+                {% endfor %}
+
+                <!-- Assign subjects button -->
+                <button type="button" class="btn btn-sm btn-outline-primary ms-1" style="font-size:0.7rem;padding:2px 6px;"
+                        data-bs-toggle="modal" data-bs-target="#assignModal{{ s.id }}">
+                  ✏️
+                </button>
+
+                <!-- Assign Subjects Modal -->
+                <div class="modal fade" id="assignModal{{ s.id }}" tabindex="-1">
+                  <div class="modal-dialog modal-sm">
+                    <div class="modal-content">
+                      <form method="post" action="{% url 'assign_form_student_subjects' s.id %}">
+                        {% csrf_token %}
+                        <div class="modal-header" style="background:#1A3C6E;color:#fff;">
+                          <h6 class="modal-title">Masomo — {{ s.first_name }} {{ s.last_name }}</h6>
+                          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                          <p class="text-muted" style="font-size:0.8rem;">Chagua masomo ambayo mwanafunzi huyu anasoma:</p>
+                          {% for subj in all_subjects %}
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="subjects" value="{{ subj.id }}"
+                                   id="subj_{{ s.id }}_{{ subj.id }}"
+                                   {% if subj in s.subjects.all %}checked{% endif %}>
+                            <label class="form-check-label" for="subj_{{ s.id }}_{{ subj.id }}" style="font-size:0.85rem;">
+                              {{ subj.name }}
+                            </label>
+                          </div>
+                          {% endfor %}
+                          {% if not all_subjects %}
+                          <p class="text-muted">Hakuna masomo yaliyosajiliwa bado.</p>
+                          {% endif %}
+                        </div>
+                        <div class="modal-footer">
+                          <button type="submit" class="btn btn-sm" style="background:#1A7B3A;color:#fff;">💾 Hifadhi</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
               </td>
               <td>
                 <form method="post" action="{% url 'delete_form_student' s.id %}" class="d-inline"

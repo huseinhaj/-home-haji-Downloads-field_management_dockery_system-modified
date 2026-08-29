@@ -79,12 +79,20 @@ def _resolve_class_roster(teacher, exam, subject, existing_marks):
 
     # Insertion order (id), not alphabetical — matches the order the
     # Academic uploaded the roster in.
+    # If the Academic has assigned subjects to FormStudents, filter
+    # so a Physics teacher only sees students who study Physics.
     form_students = FormStudent.objects.filter(
         school=exam.school, form=exam.form
     ).order_by('id') if exam.school else FormStudent.objects.none()
     if form_students.exists():
         class_students = []
         for fs in form_students:
+            # Subject filter: if this FormStudent has subjects assigned,
+            # only include them if the current subject is in their list.
+            # Students with no subjects assigned appear for ALL subjects
+            # (backward-compatible: old rosters without subjects still work).
+            if fs.subjects.exists() and not fs.subjects.filter(pk=subject.pk).exists():
+                continue
             student = _student_from_form_student(fs)
             class_students.append({
                 'id': student.id,
