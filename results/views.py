@@ -2543,12 +2543,13 @@ def upload_form_students(request):
     # Subject filter — when ?subject=<id> is provided, show only
     # students who study that subject (option subjects).
     subject_filter_id = request.GET.get('subject')
-    subjects_qs = Subject.objects.filter(school=school).order_by('name') if school else Subject.objects.none()
+    # Subject is global (no school FK); use SchoolSubject for school-specific list.
+    subjects_qs = Subject.objects.filter(schoolsubject__school=school).order_by('name').distinct() if school else Subject.objects.none()
     if selected_form and subject_filter_id:
         students = students.filter(subjects__id=subject_filter_id)
 
     # All subjects for the assign-subjects modal
-    all_subjects = Subject.objects.filter(school=school).order_by('name') if school else Subject.objects.none()
+    all_subjects = Subject.objects.filter(schoolsubject__school=school).order_by('name').distinct() if school else Subject.objects.none()
 
     return render(request, 'results/upload_form_students.html', {
         'selected_form': selected_form,
