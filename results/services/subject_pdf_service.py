@@ -93,28 +93,97 @@ _LABELS = {
 
 def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: str = 'sw') -> HttpResponse:
     """Generate an A4 PDF for ONE subject: position, name, score, grade,
-    grade distribution, gender comparison, and teacher recommendations."""    # Only include students who actually sat for the exam (not absent)
-    results = list(
-        ExamResult.objects.filter(exam=exam, subject=subject, is_absent=False)
-        .select_related('student')
-        .order_by('-score', 'student__first_name')
-    )
-    results.sort(key=lambda r: r.score or 0, reverse=True)
+    grade distribution, gender comparison, and teacher recommendations.
 
-    is_alevel = exam.form in (5, 6)
+    Includes ALL registered students:
+    - Students with marks → show score + grade
+    - Students with X (absent) → show X
+    - Students with blank (no marks entered) → show blank
+    """
+    from .models import FormStudent, Student
+
+    # ── Step 1: All ExamResult entries (scored + absent) ──
+    all_results = list(
+        ExamResult.objects.filter(exam=exam, subject=subject)
+        .select_related('student')
+    )
+    result_by_student = {r.student_id: r for r in all_results}
+
+    # ── Step 2: Students from roster who have NO ExamResult (blank) ──
+    roster_student_ids = set()
+    if exam.school:
+        form_students = FormStudent.objects.filter(
+            school=exam.school, form=exam.form
+        ).select_related()
+        for fs in form_students:
+            # Subject filter: if FormStudent has subjects assigned,
+            # only include if this subject is in their list
+            if fs.subjects.exists() and not fs.subjects.filter(pk=subject.pk).exists():
+                continue
+            # Bridge to Student model (same logic as _student_from_form_student)
+            stu, _ = Student.objects.get_or_create(
+                first_name=fs.first_name,
+                last_name=fs.last_name or 'Unknown',
+                defaults={'middle_name': fs.middle_name, 'gender': fs.gender},
+            )
+            roster_student_ids.add(stu.id)
+    # Fallback: if no FormStudent roster, use students who have ExamResults
+    if not roster_student_ids:
+        roster_student_ids = {r.student_id for r in all_results}
+
+    # ── Step 3: Build rows for ALL students ──
+    scored_rows = []
+    absent_rows = []
+    blank_rows = []
+
+    for stu_id in roster_student_ids:
+        result = result_by_student.get(stu_id)
+        if result is None:
+            # Student in roster but no ExamResult at all → blank
+            stu = Student.objects.filter(id=stu_id).first()
+            if stu:
+                full_name = ' '.join(p for p in [stu.first_name, stu.middle_name, stu.last_name] if p)
+                blank_rows.append({
+                    'name': full_name,
+                    'score': None,
+                    'grade': '',
+                    'gender': stu.gender,
+                })
+        elif result.is_absent:
+            # Student marked absent → X
+            full_name = ' '.join(p for p in [result.student.first_name, result.student.middle_name, result.student.last_name] if p)
+            absent_rows.append({
+                'name': full_name,
+                'score': None,
+                'grade': 'X',
+                'gender': result.student.gender,
+            })
+        else:
+            # Student with marks → score + grade
+            full_name = ' '.join(p for p in [result.student.first_name, result.student.middle_name, result.student.last_name] if p)
+            scored_rows.append({
+                'name': full_name,
+                'score': result.score or 0,
+                'grade': get_grade_for_form(result.score or 0, exam.form),
+                'gender': result.student.gender,
+            })
+
+    # Sort scored by score descending, then name
+    scored_rows.sort(key=lambda r: (-r['score'], r['name']))
+    absent_rows.sort(key=lambda r: r['name'])
+    blank_rows.sort(key=lambda r: r['name'])
+
+    # Combine: scored first (ranked), then absent (X), then blank
     rows_data = []
-    for pos, result in enumerate(results, 1):
-        student = result.student
-        full_name = ' '.join(
-            part for part in [student.first_name, student.middle_name, student.last_name] if part
-        )
-        rows_data.append({
-            'position': pos,
-            'name': full_name,
-            'score': result.score or 0,
-            'grade': get_grade_for_form(result.score or 0, exam.form),
-            'gender': student.gender,
-        })
+    for pos, row in enumerate(scored_rows, 1):
+        row['position'] = pos
+        rows_data.append(row)
+    for row in absent_rows:
+        row['position'] = ''
+        rows_data.append(row)
+    for row in blank_rows:
+        row['position'] = ''
+        rows_data.append(row)
 
     labels = _LABELS.get(lang, _LABELS['sw'])
     safe_subject = subject.name.replace(' ', '_').replace('/', '-')
@@ -233,7 +302,9 @@ def _render_results_pdf(
     col_widths = [1.5 * cm, 9.5 * cm, 2.5 * cm, 2.5 * cm]
     table_data = [['POS', labels['name'], labels['score'], labels['grade']]]
     for row in rows_data:
-        table_data.append([str(row['position']), row['name'], str(row['score']), row['grade']])
+        score_str = str(row['score']) if row['score'] is not None else '—'
+        pos_str = str(row['position']) if row['position'] != '' else '—'
+        table_data.append([pos_str, row['name'], score_str, row['grade']])
 
     table = Table(table_data, colWidths=col_widths, repeatRows=1)
     grade_styles = []
