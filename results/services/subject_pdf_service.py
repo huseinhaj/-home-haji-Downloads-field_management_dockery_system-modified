@@ -100,7 +100,7 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: s
     - Students with X (absent) → show X
     - Students with blank (no marks entered) → show blank
     """
-    from results.models import FormStudent, Student
+    from ..models import FormStudent, Student
 
     # ── Step 1: All ExamResult entries (scored + absent) ──
     all_results = list(
