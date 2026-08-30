@@ -1,6 +1,9 @@
+import logging
 import os
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 import pandas as pd
 
@@ -2954,11 +2957,26 @@ def bulk_scoresheet_upload(request, exam_id):
                 storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
                 default_storage.save(storage_path, file)
                 from .tasks import process_bulk_upload_task
-                task = process_bulk_upload_task.apply_async(
-                    args=[storage_path, exam.id, subject.id, roster_ids],
-                    queue='default',
-                )
-                tasks_started.append({'task_id': task.id, 'subject_id': subject.id, 'subject_name': subject.name})
+                try:
+                    task = process_bulk_upload_task.apply_async(
+                        args=[storage_path, exam.id, subject.id, roster_ids],
+                        queue='default',
+                    )
+                    tasks_started.append({'task_id': task.id, 'subject_id': subject.id, 'subject_name': subject.name})
+                except Exception as celery_err:
+                    # Celery broker may be down — run synchronously as fallback
+                    logger.warning('Celery apply_async failed for subject %s, running synchronously: %s', subject.name, celery_err)
+                    try:
+                        result = process_bulk_upload_task(
+                            storage_path, exam.id, subject.id, roster_ids
+                        )
+                        if result and result.get('error'):
+                            tasks_started.append({'error': result['error'], 'subject_id': subject.id, 'subject_name': subject.name})
+                        else:
+                            tasks_started.append({'task_id': None, 'subject_id': subject.id, 'subject_name': subject.name, 'sync_done': True, 'matched': result.get('matched_count', 0)})
+                    except Exception as sync_err:
+                        logger.error('Synchronous bulk upload also failed for subject %s: %s', subject.name, sync_err)
+                        tasks_started.append({'error': str(sync_err), 'subject_id': subject.id, 'subject_name': subject.name})
             return JsonResponse({'tasks': tasks_started})
 
         # Single file upload (legacy)
@@ -2969,11 +2987,24 @@ def bulk_scoresheet_upload(request, exam_id):
             storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
             default_storage.save(storage_path, file)
             from .tasks import process_bulk_upload_task
-            task = process_bulk_upload_task.apply_async(
-                args=[storage_path, exam.id, subject.id, roster_ids],
-                queue='default',
-            )
-            return JsonResponse({'task_id': task.id, 'subject_id': subject.id})
+            try:
+                task = process_bulk_upload_task.apply_async(
+                    args=[storage_path, exam.id, subject.id, roster_ids],
+                    queue='default',
+                )
+                return JsonResponse({'task_id': task.id, 'subject_id': subject.id})
+            except Exception as celery_err:
+                logger.warning('Celery apply_async failed for subject %s, running synchronously: %s', subject_id, celery_err)
+                try:
+                    result = process_bulk_upload_task(
+                        storage_path, exam.id, subject.id, roster_ids
+                    )
+                    if result and result.get('error'):
+                        return JsonResponse({'error': result['error']}, status=400)
+                    return JsonResponse({'task_id': None, 'subject_id': subject.id, 'sync_done': True, 'matched': result.get('matched_count', 0)})
+                except Exception as sync_err:
+                    logger.error('Synchronous bulk upload also failed for subject %s: %s', subject_id, sync_err)
+                    return JsonResponse({'error': str(sync_err)}, status=500)
 
         return JsonResponse({'error': 'Tafadhali weka somo na upakie faili.'}, status=400)
 

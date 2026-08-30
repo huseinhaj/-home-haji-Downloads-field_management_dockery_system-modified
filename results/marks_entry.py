@@ -414,10 +414,22 @@ def scoresheet_photo_extract(request):
     # a plain .delay() would land since this project sets no
     # CELERY_TASK_DEFAULT_QUEUE/CELERY_TASK_ROUTES. Without this the task
     # would sit in the broker forever and never run.
-    task = process_scoresheet_photo_task.apply_async(
-        args=[storage_path, roster_ids], queue='default',
-    )
-    return JsonResponse({'task_id': task.id}, status=202)
+    try:
+        task = process_scoresheet_photo_task.apply_async(
+            args=[storage_path, roster_ids], queue='default',
+        )
+        return JsonResponse({'task_id': task.id}, status=202)
+    except Exception as celery_err:
+        # Celery broker may be down — run synchronously as fallback
+        logger.warning('Celery apply_async failed for scoresheet OCR, running synchronously: %s', celery_err)
+        try:
+            result = process_scoresheet_photo_task(storage_path, roster_ids)
+            if result and result.get('error'):
+                return JsonResponse({'error': result['error']}, status=400)
+            return JsonResponse({'task_id': None, 'sync_done': True, 'matched': result.get('matched', []), 'unmatched': result.get('unmatched', [])}, status=200)
+        except Exception as sync_err:
+            logger.error('Synchronous scoresheet OCR also failed: %s', sync_err)
+            return JsonResponse({'error': str(sync_err)}, status=500)
 
 
 @teacher_or_academic_required

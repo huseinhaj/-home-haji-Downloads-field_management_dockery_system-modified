@@ -428,9 +428,16 @@
           }
         }
 
-        // Poll each task
+        // Poll each task (or mark sync-done tasks immediately)
         for (const task of tasks) {
-          pollTask(task.task_id, task.subject_id, task.subject_name, () => {
+          if (task.sync_done) {
+            // Task ran synchronously (Celery was unavailable) — mark done now
+            const upload = pendingUploads.find(u => u.subjectId == task.subject_id);
+            markFileDone(upload, task.matched || 0, 0);
+            const chip = document.getElementById('chip-' + task.subject_id);
+            if (chip) { chip.classList.remove('pending'); chip.classList.add('done'); }
+            uploadedCount++;
+            updateGlobalProgress();
             completed++;
             if (completed >= tasks.length) {
               uploadAllBtn.disabled = false;
@@ -439,7 +446,23 @@
                 ? '✅ Masomo ' + tasks.length + ' yamekamilika!'
                 : '✅ ' + tasks.length + ' subjects uploaded!');
             }
-          });
+          } else if (task.error) {
+            // Error from server
+            const upload = pendingUploads.find(u => u.subjectId == task.subject_id);
+            markFileError(upload, task.error);
+            completed++;
+          } else {
+            pollTask(task.task_id, task.subject_id, task.subject_name, () => {
+              completed++;
+              if (completed >= tasks.length) {
+                uploadAllBtn.disabled = false;
+                uploadAllBtn.textContent = '🚀 ' + (LANG === 'sw' ? 'Pakia Masomo Yote' : 'Upload All Subjects');
+                toast(LANG === 'sw'
+                  ? '✅ Masomo ' + tasks.length + ' yamekamilika!'
+                  : '✅ ' + tasks.length + ' subjects uploaded!');
+              }
+            });
+          }
         }
       } catch (err) {
         uploadAllBtn.disabled = false;

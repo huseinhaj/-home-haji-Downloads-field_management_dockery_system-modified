@@ -1175,6 +1175,11 @@ function _dlPdf(url) {
           const kickoff = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(kickoff.error || 'Upload failed');
 
+          // If task ran synchronously (Celery was unavailable), use result directly
+          let data;
+          if (kickoff.sync_done) {
+            data = kickoff;
+          } else {
           // OCR runs in the background (can take a while on multi-page
           // uploads) — poll until it's done, showing elapsed time so a
           // teacher waiting on a slow read isn't left guessing.
@@ -1183,7 +1188,6 @@ function _dlPdf(url) {
           const POLL_INTERVAL_MS = 2500;
           const MAX_WAIT_MS = 4 * 60 * 1000;
           const startedAt = Date.now();
-          let data;
           while (true) {
             if (Date.now() - startedAt > MAX_WAIT_MS) {
               throw new Error(LANG === 'sw'
@@ -1203,6 +1207,7 @@ function _dlPdf(url) {
             }
             data = pollData;
             break;
+          }
           }
 
           const matched = data.matched || [];
