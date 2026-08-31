@@ -45,7 +45,11 @@ PROMPT = (
     "CRITICAL RULES — follow exactly:\n"
     "1. SCORES: Read the exact number. '00' = 0, '08' = 8, '05' = 5, '10' = 10. "
     "NEVER change the number — write EXACTLY what is written.\n"
-    "2. If the score shows 'X' or 'XX', set score to 'X' (meaning absent/did not take exam).\n"
+    "2. ABSENT MARKS: If you see 'X', 'XX', 'x', 'xx', a cross mark (✕), "
+    "a checkmark, or any non-numeric symbol in the SCORE cell, "
+    "set score to 'X' (meaning absent — student did not take the exam). "
+    "This applies EVERYWHERE you see it: score column, next to the name, "
+    "or anywhere on the row that indicates absence.\n"
     "3. If the score cell is EMPTY, BLANK, or has a dash '-', SKIP that row entirely "
     "— that student does NOT study this subject.\n"
     "4. IGNORE headers, dates, signatures, ID numbers, and any row without a name+score.\n"
@@ -55,7 +59,11 @@ PROMPT = (
     "8. A score of '0' (zero) is a valid score — include it.\n"
     "9. For handwritten scores: look very carefully at each digit. "
     "A '1' can look like '7', a '6' can look like '8', a '3' can look like '8'. "
-    "Double-check each digit against its neighbors."
+    "Double-check each digit against its neighbors.\n"
+    "10. COMMON CONFUSIONS to watch for:\n"
+    "    - '0' vs 'O' (letter O) — if it's in the score column, it's 0\n"
+    "    - '1' vs 'l' (lowercase L) vs 'I' (uppercase i) — in scores it's 1\n"
+    "    - 'X' vs 'x' vs '✕' vs '✗' vs a cross/tick mark — all mean ABSENT"
 )
 
 
@@ -206,8 +214,11 @@ def _clean_rows(raw_rows: list) -> list[dict]:
         if raw_str in ('', '-', '--', 'null', 'None'):
             continue
 
-        # ── X / XX → absent ──────────────────────────────────────────
-        if raw_str.upper() in ('x', 'xx', 'xxx'):
+        # ── X / XX / cross marks → absent ──────────────────────────
+        # Handle all variations: X, x, XX, xx, ✕, ✗, ✓, ✓✓, tick, cross
+        absent_patterns = ('x', 'xx', 'xxx', '✕', '✗', '✗✗', '✓', '✓✓',
+                           'tick', 'cross', 'absent', 'abs')
+        if raw_str.lower() in absent_patterns or raw_str in ('✕', '✗', '✓'):
             is_absent = True
             score = 0
         else:
