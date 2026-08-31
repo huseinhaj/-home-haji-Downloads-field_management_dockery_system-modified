@@ -28,32 +28,34 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 VISION_MODEL_OPENROUTER = "google/gemini-2.5-flash"
 GEMINI_MODEL = "gemini-3.6-flash"
 
-MAX_DIMENSION = 1600
-JPEG_QUALITY = 85
-PDF_RENDER_SCALE = 2.0  # ~144 DPI — clear enough for handwriting without huge files
+MAX_DIMENSION = 2400
+JPEG_QUALITY = 95
+PDF_RENDER_SCALE = 3.0  # ~216 DPI — much clearer for handwriting recognition
 MAX_PDF_PAGES = 5  # a single subject's scoresheet is never a 20-page document
 
 PROMPT = (
-    "Hii ni picha ya scoresheet — jedwali la wanafunzi na alama zao "
-    "walizoandika mwalimu kwa mkono au kuchapa. Soma kila mstari kwa "
-    "ukaribu mkubwa na utoe JINA na ALAMA ya kila mwanafunzi.\n\n"
-    "Rudisha JSON array TU, bila maelezo mengine, kwa muundo huu hasa:\n"
-    '[{"name": "Jina Kamili", "score": 78}, '
-    '{"name": "Jina Lingine", "score": 8}, '
-    '{"name": "Mwanafunzi Absent", "score": "X"}, '
-    '{"name": "Mwanafunzi Mwingine", "score": 0}]\n\n'
-    "KANUNI MUHIMU — fuata kwa ustadi:\n"
-    "- Alama: Soma nambari sahihi. '00' ni 0, '08' ni 8, '05' ni 5, '10' ni 10."
-    " Usibadilisha nambari — andika kile kilichoandikwa HASA.\n"
-    "- Ikiwa alama ni 'X' au 'XX', weka score kama 'X' (maana: mwanafunzi "
-    "alikuwa absent / hakufanya mtihani).\n"
-    "- Ikiwa kwenye seli ya alama kuna dash '-' au ni tupu/blank, usiandike "
-    "row hiyo kabisa — mwanafunzi huyo hasomi somo hilo.\n"
-    "- Puuza vichwa vya habari, sahihi, tarehe, nambari za kitambulisho, "
-    "na mistari isiyo na jina+alama.\n"
-    "- Alama lazima iwe nambari kati ya 0 na 100, au 'X' kwa absent.\n"
-    "- Usibuni majina au alama — andika kile kilichoandikwa tu.\n"
-    "- Kila jina lazima lionekane kamili — usikate majina."
+    "This is a PHOTO of a scoresheet — a table with student names and "
+    "their marks written by a teacher (handwritten or typed). Read EVERY "
+    "row carefully and extract the NAME and SCORE for each student.\n\n"
+    "Return ONLY a JSON array — no explanations — in this exact format:\n"
+    '[{"name": "Full Name", "score": 78}, '
+    '{"name": "Another Name", "score": 8}, '
+    '{"name": "Absent Student", "score": "X"}, '
+    '{"name": "Zero Score", "score": 0}]\n\n'
+    "CRITICAL RULES — follow exactly:\n"
+    "1. SCORES: Read the exact number. '00' = 0, '08' = 8, '05' = 5, '10' = 10. "
+    "NEVER change the number — write EXACTLY what is written.\n"
+    "2. If the score shows 'X' or 'XX', set score to 'X' (meaning absent/did not take exam).\n"
+    "3. If the score cell is EMPTY, BLANK, or has a dash '-', SKIP that row entirely "
+    "— that student does NOT study this subject.\n"
+    "4. IGNORE headers, dates, signatures, ID numbers, and any row without a name+score.\n"
+    "5. Scores must be integers between 0 and 100, or 'X' for absent.\n"
+    "6. NEVER invent names or scores — write ONLY what you see.\n"
+    "7. Read each name COMPLETELY — do NOT cut off or abbreviate names.\n"
+    "8. A score of '0' (zero) is a valid score — include it.\n"
+    "9. For handwritten scores: look very carefully at each digit. "
+    "A '1' can look like '7', a '6' can look like '8', a '3' can look like '8'. "
+    "Double-check each digit against its neighbors."
 )
 
 
@@ -377,15 +379,20 @@ def extract_scores_from_document(uploaded_file) -> list[dict]:
     all_rows: list[dict] = []
     last_error = None
     any_page_succeeded = False
-    for page_img in pages:
+    for page_num, page_img in enumerate(pages, 1):
         try:
             text = _read_page_with_ai(page_img)
+            logger.info("[ScoreSheetOCR] Page %d AI response (first 500 chars): %s", page_num, text[:500])
         except Exception as exc:
             last_error = exc
+            logger.warning("[ScoreSheetOCR] Page %d failed: %s", page_num, exc)
             continue
         any_page_succeeded = True
         raw_rows = _extract_json_array(text)
-        all_rows.extend(_clean_rows(raw_rows))
+        logger.info("[ScoreSheetOCR] Page %d extracted %d raw rows", page_num, len(raw_rows))
+        cleaned = _clean_rows(raw_rows)
+        logger.info("[ScoreSheetOCR] Page %d cleaned rows: %s", page_num, cleaned)
+        all_rows.extend(cleaned)
 
     if not any_page_succeeded:
         err_detail = str(last_error) if last_error else 'unknown error'
@@ -404,4 +411,7 @@ def extract_scores_from_document(uploaded_file) -> list[dict]:
         raise ScoreSheetOCRError(
             "Hakuna jina/alama iliyotambulika kwenye faili. Hakikisha picha/PDF iko wazi na jaribu tena."
         )
+    logger.info("[ScoreSheetOCR] FINAL: %d rows total", len(all_rows))
+    for i, r in enumerate(all_rows[:10], 1):  # Log first 10 rows
+        logger.info("[ScoreSheetOCR] Row %d: name=%r score=%s absent=%s", i, r['raw_name'], r['score'], r.get('is_absent'))
     return all_rows

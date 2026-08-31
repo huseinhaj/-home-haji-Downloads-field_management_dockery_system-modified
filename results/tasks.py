@@ -123,11 +123,13 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
     unmatched = []
     for row in extracted_rows:
         is_absent = row.get('is_absent', False)
-        student, confidence, _candidates = fuzzy_match_student_name(
+        student, confidence, candidates = fuzzy_match_student_name(
             row['raw_name'], roster_students, threshold=0.80,
         )
         if student:
             student_name = ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p)
+            logger.info("[BulkUpload] Matched '%s' -> '%s' (confidence=%.4f) score=%s absent=%s",
+                row['raw_name'], student_name, confidence, row['score'], is_absent)
             matched.append({
                 'student_id': student.id,
                 'student_name': student_name,
@@ -139,6 +141,8 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
             continue
         parsed = _parse_roster_line(row['raw_name'])
         if not parsed:
+            logger.warning("[BulkUpload] UNMATCHED '%s' score=%s absent=%s",
+                row['raw_name'], row['score'], is_absent)
             unmatched.append({'raw_name': row['raw_name'], 'score': row['score'], 'is_absent': is_absent})
             continue
         first, middle, last, gender = parsed
