@@ -1229,10 +1229,13 @@ function _dlPdf(url) {
 
           matched.forEach(m => {
             if (m.is_new) {
-              byId.set(m.id, { id: m.id, name: m.name, score: m.score });
+              byId.set(m.id, { id: m.id, name: m.name, score: m.score, is_absent: m.is_absent || false });
             } else {
               const s = byId.get(m.id);
-              if (s) s.score = m.score;
+              if (s) {
+                s.score = m.score;
+                s.is_absent = m.is_absent || false;
+              }
             }
           });
           renderRows();

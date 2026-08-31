@@ -60,6 +60,7 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
             matched.append({
                 'id': student.id,
                 'score': row['score'],
+                'is_absent': row.get('is_absent', False),
                 'raw_name': row['raw_name'],
                 'confidence': round(confidence, 4),
                 'is_new': False,
@@ -68,7 +69,7 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
 
         parsed = _parse_roster_line(row['raw_name'])
         if not parsed:
-            unmatched.append({'raw_name': row['raw_name'], 'score': row['score']})
+            unmatched.append({'raw_name': row['raw_name'], 'score': row['score'], 'is_absent': row.get('is_absent', False)})
             continue
         first, middle, last, gender = parsed
         saved = _save_student(first, middle, last, gender)
@@ -76,6 +77,7 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
             'id': saved['id'],
             'name': saved['name'],
             'score': row['score'],
+            'is_absent': row.get('is_absent', False),
             'raw_name': row['raw_name'],
             'confidence': 0.0,
             'is_new': True,
