@@ -119,6 +119,76 @@
 .bulk-toast.show { transform: translateX(-50%) translateY(0); }
 .bulk-toast.error { background: #c0392b; }
 .bulk-toast.success { background: #1a7a3b; }
+
+/* Review modal */
+.review-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto;
+  padding: 2rem 1rem;
+}
+.review-overlay.active { display: flex; justify-content: center; align-items: flex-start; }
+.review-panel {
+  background: #fff; border-radius: 4px; border: 2px solid #1F7A3D;
+  max-width: 900px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.review-header {
+  background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+  padding: 1rem 1.4rem; color: #fff; border-radius: 2px 2px 0 0;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.review-header h2 { font-size: 1.1rem; margin: 0; font-weight: 800; }
+.review-header .close-btn {
+  background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer;
+  padding: 0 0.3rem; line-height: 1;
+}
+.review-header .close-btn:hover { color: #D9A441; }
+.review-body { padding: 1rem 1.4rem; }
+.review-info {
+  background: #f0f7f2; border: 1px solid #c3e6cb; border-radius: 2px;
+  padding: 0.6rem 1rem; margin-bottom: 1rem; font-size: 0.82rem; color: #155724;
+}
+.review-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.review-table th {
+  background: #f8f9fb; border-bottom: 2px solid #1F7A3D; padding: 0.5rem 0.6rem;
+  text-align: left; font-weight: 700; color: #1F7A3D; font-size: 0.78rem;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.review-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #e9ecef; vertical-align: middle; }
+.review-table tr:hover { background: #f8f9fb; }
+.review-table .score-input {
+  width: 70px; padding: 0.3rem 0.5rem; border: 1.5px solid #ced4da; border-radius: 2px;
+  font-weight: 700; font-size: 0.85rem; text-align: center; color: #1F7A3D;
+}
+.review-table .score-input:focus { border-color: #1F7A3D; outline: none; background: #f0faf4; }
+.review-table .score-input.error { border-color: #c0392b; background: #fdecea; }
+.review-table .confidence {
+  font-size: 0.72rem; padding: 0.15rem 0.4rem; border-radius: 2px; font-weight: 600;
+}
+.review-table .confidence.high { background: #e6f7ec; color: #1a7a3b; }
+.review-table .confidence.medium { background: #fff3cd; color: #856404; }
+.review-table .confidence.low { background: #fdecea; color: #721c24; }
+.review-table .student-select {
+  font-size: 0.78rem; padding: 0.25rem 0.5rem; border: 1.5px solid #ced4da;
+  border-radius: 2px; background: #fff; max-width: 200px;
+}
+.review-table .student-select:focus { border-color: #1F7A3D; outline: none; }
+.review-table .row-remove {
+  background: none; border: none; color: #c0392b; cursor: pointer;
+  font-size: 1rem; opacity: 0.5; padding: 0.2rem;
+}
+.review-table .row-remove:hover { opacity: 1; }
+.review-table tr.removed { opacity: 0.3; text-decoration: line-through; }
+.review-table tr.removed .score-input, .review-table tr.removed .student-select { pointer-events: none; }
+.review-footer {
+  padding: 1rem 1.4rem; border-top: 2px solid #e9ecef;
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;
+}
+.review-stats { font-size: 0.82rem; color: #666; }
+.review-stats strong { color: #1F7A3D; }
+.review-actions { display: flex; gap: 0.8rem; }
+.review-actions .btn-final { font-size: 0.85rem; padding: 0.5rem 1.4rem; }
 </style>
 {% endblock %}
 
@@ -225,6 +295,45 @@
   </a>
 </div>
 
+<!-- Review Modal -->
+<div class="review-overlay" id="reviewOverlay">
+  <div class="review-panel">
+    <div class="review-header">
+      <h2>🔍 <span id="reviewTitle">Kagua Alama</span></h2>
+      <button class="close-btn" id="reviewCloseBtn">&times;</button>
+    </div>
+    <div class="review-body">
+      <div class="review-info" id="reviewInfo"></div>
+      <div style="overflow-x:auto;">
+        <table class="review-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>{% if LANG == 'sw' %}Jina la OCR{% else %}OCR Name{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Mwanafunzi{% else %}Student{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Alama{% else %}Score{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Uhusiano{% else %}Confidence{% endif %}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="reviewTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="review-footer">
+      <div class="review-stats" id="reviewStats"></div>
+      <div class="review-actions">
+        <button class="btn-final secondary" id="reviewCancelBtn">
+          ❌ {% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}
+        </button>
+        <button class="btn-final primary" id="reviewSaveBtn">
+          ✅ {% if LANG == 'sw' %}Hifadhi Alama{% else %}Save Scores{% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="bulk-toast" id="bulkToast"></div>
 
@@ -246,6 +355,8 @@
   let uploadedCount = {{ subject_status_done }};
   let pendingUploads = [];  // [{file, subjectId, subjectName}]
   let queueId = 0;
+
+  const SAVE_URL = '{% url "save_confirmed_scores" exam.id %}';
 
   // Parse subjects data
   const subjectsData = JSON.parse(document.getElementById('subjectsData').textContent);
@@ -432,24 +543,21 @@
           }
         }
 
-        // Poll each task (or mark sync-done tasks immediately)
+        // Poll each task (or handle sync-done tasks immediately)
         for (const task of tasks) {
           if (task.sync_done) {
-            // Task ran synchronously (Celery was unavailable) — mark done now
-            const upload = pendingUploads.find(u => u.subjectId == task.subject_id);
-            markFileDone(upload, task.matched || 0, 0);
-            const chip = document.getElementById('chip-' + task.subject_id);
-            if (chip) { chip.classList.remove('pending'); chip.classList.add('done'); }
-            uploadedCount++;
-            updateGlobalProgress();
-            completed++;
-            if (completed >= tasks.length) {
-              uploadAllBtn.disabled = false;
-              uploadAllBtn.textContent = '🚀 ' + (LANG === 'sw' ? 'Pakia Masomo Yote' : 'Upload All Subjects');
-              toast(LANG === 'sw'
-                ? '✅ Masomo ' + tasks.length + ' yamekamilika!'
-                : '✅ ' + tasks.length + ' subjects uploaded!');
+            // Task ran synchronously — show review modal if preview data exists
+            if (task.preview) {
+              openReviewModal(task.preview);
+            } else {
+              const upload = pendingUploads.find(u => u.subjectId == task.subject_id);
+              markFileDone(upload, task.matched || 0, 0);
+              const chip = document.getElementById('chip-' + task.subject_id);
+              if (chip) { chip.classList.remove('pending'); chip.classList.add('done'); }
+              uploadedCount++;
+              updateGlobalProgress();
             }
+            completed++;
           } else if (task.error) {
             // Error from server
             const upload = pendingUploads.find(u => u.subjectId == task.subject_id);
@@ -505,6 +613,9 @@
 
         if (data.error) {
           markFileError(upload, data.error);
+        } else if (data.status === 'preview') {
+          // Show review modal for this subject
+          openReviewModal(data.preview);
         } else {
           markFileDone(upload, data.matched || 0, data.unmatched_count || 0);
           // Update subject chip
@@ -544,6 +655,217 @@
     if (status) { status.className = 'file-status error'; status.innerHTML = '❌ ' + errorMsg; }
     toast(upload.subjectName + ': ' + errorMsg, true);
   }
+
+  // ── Review Modal ──────────────────────────────────────────────────
+  let currentPreview = null;  // {subject_id, subject_name, matched, unmatched, roster}
+
+  function openReviewModal(preview) {
+    currentPreview = preview;
+    const overlay = document.getElementById('reviewOverlay');
+    const title = document.getElementById('reviewTitle');
+    const info = document.getElementById('reviewInfo');
+    const tbody = document.getElementById('reviewTableBody');
+    const stats = document.getElementById('reviewStats');
+
+    title.textContent = (LANG === 'sw' ? 'Kagua Alama — ' : 'Review Scores — ') + preview.subject_name;
+
+    const matchCount = preview.matched ? preview.matched.length : 0;
+    const unmatchCount = preview.unmatched ? preview.unmatched.length : 0;
+    info.innerHTML = (LANG === 'sw'
+      ? '🗣️ AI imesoma <strong>' + matchCount + '</strong> wanafunzi waliofanikiwa'
+      : '🗣️ OCR read <strong>' + matchCount + '</strong> matched students')
+      + (unmatchCount > 0
+        ? (LANG === 'sw' ? ', <strong>' + unmatchCount + '</strong> hawjatambulika' : ', <strong>' + unmatchCount + '</strong> unmatched')
+        : '')
+      + (LANG === 'sw' ? '<br>⚠️ Tafadhali kagua alama kabla ya kuhifadhi. Bonyeza kwenye alama au somo la mwanafunzi kurekebisha.'
+        : '<br>⚠️ Please review scores before saving. Click on score or student name to correct.');
+
+    tbody.innerHTML = '';
+    if (preview.matched && preview.matched.length) {
+      preview.matched.forEach((row, idx) => {
+        const conf = row.confidence || 0;
+        let confClass = 'high';
+        let confLabel = Math.round(conf * 100) + '%';
+        if (conf < 0.85) { confClass = 'low'; confLabel = (LANG === 'sw' ? 'Chini' : 'Low') + ' ' + confLabel; }
+        else if (conf < 0.95) { confClass = 'medium'; confLabel = (LANG === 'sw' ? 'Wastani' : 'Med') + ' ' + confLabel; }
+        else { confLabel = (LANG === 'sw' ? 'Juu' : 'High') + ' ' + confLabel; }
+
+        // Build student dropdown
+        let studentOptions = '<option value="">— ' + (LANG === 'sw' ? 'Haijaunganishwa' : 'Unmatched') + ' —</option>';
+        if (preview.roster && preview.roster.length) {
+          preview.roster.forEach(s => {
+            const selected = (s.id == row.student_id) ? ' selected' : '';
+            studentOptions += '<option value="' + s.id + '"' + selected + '>' + s.name + '</option>';
+          });
+        }
+
+        const tr = document.createElement('tr');
+        tr.id = 'review-row-' + idx;
+        tr.innerHTML = '
+          <td style="color:#888;font-size:0.75rem;">' + (idx + 1) + '</td>
+          <td style="font-style:italic;color:#666;">' + escapeHtml(row.raw_name || '') + '</td>
+          <td><select class="student-select" data-idx="' + idx + '">' + studentOptions + '</select></td>
+          <td><input type="number" class="score-input" min="0" max="100" value="' + row.score + '" data-idx="' + idx + '"></td>
+          <td><span class="confidence ' + confClass + '">' + confLabel + '</span></td>
+          <td><button class="row-remove" data-idx="' + idx + '" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button></td>
+        ';
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Also show unmatched rows as editable
+    if (preview.unmatched && preview.unmatched.length) {
+      preview.unmatched.forEach((row, idx) => {
+        const globalIdx = (preview.matched ? preview.matched.length : 0) + idx;
+        let studentOptions = '<option value="">— ' + (LANG === 'sw' ? 'Haijaunganishwa' : 'Unmatched') + ' —</option>';
+        if (preview.roster && preview.roster.length) {
+          preview.roster.forEach(s => {
+            studentOptions += '<option value="' + s.id + '">' + s.name + '</option>';
+          });
+        }
+        const tr = document.createElement('tr');
+        tr.id = 'review-row-' + globalIdx;
+        tr.style.background = '#fff8e6';
+        tr.innerHTML = '
+          <td style="color:#888;font-size:0.75rem;">' + (globalIdx + 1) + '</td>
+          <td style="font-style:italic;color:#856404;">' + escapeHtml(row.raw_name || '') + '</td>
+          <td><select class="student-select" data-idx="' + globalIdx + '">' + studentOptions + '</select></td>
+          <td><input type="number" class="score-input" min="0" max="100" value="' + row.score + '" data-idx="' + globalIdx + '"></td>
+          <td><span class="confidence low">' + (LANG === 'sw' ? 'Haijaunganishwa' : 'Unmatched') + '</span></td>
+          <td><button class="row-remove" data-idx="' + globalIdx + '" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button></td>
+        ';
+        tbody.appendChild(tr);
+      });
+    }
+
+    updateReviewStats();
+    overlay.classList.add('active');
+
+    // Event: remove row
+    tbody.querySelectorAll('.row-remove').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const tr = this.closest('tr');
+        if (tr) tr.classList.toggle('removed');
+        updateReviewStats();
+      });
+    });
+
+    // Event: score input validation
+    tbody.querySelectorAll('.score-input').forEach(input => {
+      input.addEventListener('input', function() {
+        const val = parseInt(this.value);
+        if (isNaN(val) || val < 0 || val > 100) {
+          this.classList.add('error');
+        } else {
+          this.classList.remove('error');
+        }
+      });
+    });
+  }
+
+  function updateReviewStats() {
+    const tbody = document.getElementById('reviewTableBody');
+    const total = tbody.querySelectorAll('tr').length;
+    const removed = tbody.querySelectorAll('tr.removed').length;
+    const active = total - removed;
+    document.getElementById('reviewStats').innerHTML = (LANG === 'sw'
+      ? 'Jumla: <strong>' + total + '</strong> | Zinazohifadhiwa: <strong>' + active + '</strong> | Zimeondolewa: <strong>' + removed + '</strong>'
+      : 'Total: <strong>' + total + '</strong> | Saving: <strong>' + active + '</strong> | Removed: <strong>' + removed + '</strong>');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // Close review modal
+  document.getElementById('reviewCloseBtn').addEventListener('click', () => {
+    document.getElementById('reviewOverlay').classList.remove('active');
+    currentPreview = null;
+  });
+  document.getElementById('reviewCancelBtn').addEventListener('click', () => {
+    document.getElementById('reviewOverlay').classList.remove('active');
+    currentPreview = null;
+  });
+
+  // Save confirmed scores
+  document.getElementById('reviewSaveBtn').addEventListener('click', async () => {
+    if (!currentPreview) return;
+    const tbody = document.getElementById('reviewTableBody');
+    const scores = [];
+
+    tbody.querySelectorAll('tr').forEach(tr => {
+      if (tr.classList.contains('removed')) return;
+      const scoreInput = tr.querySelector('.score-input');
+      const studentSelect = tr.querySelector('.student-select');
+      if (!scoreInput || !studentSelect) return;
+      const score = parseInt(scoreInput.value);
+      const studentId = parseInt(studentSelect.value);
+      if (isNaN(score) || score < 0 || score > 100 || isNaN(studentId) || !studentId) return;
+      scores.push({ student_id: studentId, score: score });
+    });
+
+    if (!scores.length) {
+      toast(LANG === 'sw' ? 'Hakuna alama ya kuhifadhi.' : 'No valid scores to save.', true);
+      return;
+    }
+
+    const saveBtn = document.getElementById('reviewSaveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '⏳ ' + (LANG === 'sw' ? 'Inahifadhi...' : 'Saving...');
+
+    try {
+      const res = await fetch(SAVE_URL, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrfToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subject_id: currentPreview.subject_id,
+          scores: scores,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+
+      // Mark subject as done
+      const chip = document.getElementById('chip-' + currentPreview.subject_id);
+      if (chip) { chip.classList.remove('pending'); chip.classList.add('done'); }
+      uploadedCount++;
+      updateGlobalProgress();
+
+      // Update file row
+      const upload = pendingUploads.find(u => u.subjectId == currentPreview.subject_id);
+      if (upload) {
+        const status = document.getElementById('fstatus-' + upload.qid);
+        if (status) {
+          status.className = 'file-status done';
+          status.innerHTML = '✅ ' + data.saved_count + ' ' + (LANG === 'sw' ? 'wanafunzi' : 'students');
+        }
+        const row = document.getElementById('file-' + upload.qid);
+        if (row) { row.classList.remove('processing'); row.classList.add('done'); }
+      }
+
+      toast((LANG === 'sw' ? '✅ Alama ' + data.saved_count + ' zimehifadhiwa!' : '✅ ' + data.saved_count + ' scores saved!'), false);
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '✅ ' + (LANG === 'sw' ? 'Hifadhi Alama' : 'Save Scores');
+      document.getElementById('reviewOverlay').classList.remove('active');
+      currentPreview = null;
+    }
+  });
+
+  // Close modal on overlay click
+  document.getElementById('reviewOverlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      e.currentTarget.classList.remove('active');
+      currentPreview = null;
+    }
+  });
 
   // Check OCR health on page load
   (function checkOCR() {

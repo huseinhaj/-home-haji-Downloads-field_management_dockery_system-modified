@@ -2960,6 +2960,7 @@ def bulk_scoresheet_upload(request, exam_id):
                 try:
                     task = process_bulk_upload_task.apply_async(
                         args=[storage_path, exam.id, subject.id, roster_ids],
+                        kwargs={'preview_only': True},
                         queue='default',
                     )
                     tasks_started.append({'task_id': task.id, 'subject_id': subject.id, 'subject_name': subject.name})
@@ -2968,12 +2969,12 @@ def bulk_scoresheet_upload(request, exam_id):
                     logger.warning('Celery apply_async failed for subject %s, running synchronously: %s', subject.name, celery_err)
                     try:
                         result = process_bulk_upload_task(
-                            storage_path, exam.id, subject.id, roster_ids
+                            storage_path, exam.id, subject.id, roster_ids, preview_only=True
                         )
                         if result and result.get('error'):
                             tasks_started.append({'error': result['error'], 'subject_id': subject.id, 'subject_name': subject.name})
                         else:
-                            tasks_started.append({'task_id': None, 'subject_id': subject.id, 'subject_name': subject.name, 'sync_done': True, 'matched': result.get('matched_count', 0)})
+                            tasks_started.append({'task_id': None, 'subject_id': subject.id, 'subject_name': subject.name, 'sync_done': True, 'preview': result})
                     except Exception as sync_err:
                         logger.error('Synchronous bulk upload also failed for subject %s: %s', subject.name, sync_err)
                         tasks_started.append({'error': str(sync_err), 'subject_id': subject.id, 'subject_name': subject.name})
@@ -2990,6 +2991,7 @@ def bulk_scoresheet_upload(request, exam_id):
             try:
                 task = process_bulk_upload_task.apply_async(
                     args=[storage_path, exam.id, subject.id, roster_ids],
+                    kwargs={'preview_only': True},
                     queue='default',
                 )
                 return JsonResponse({'task_id': task.id, 'subject_id': subject.id})
@@ -2997,11 +2999,11 @@ def bulk_scoresheet_upload(request, exam_id):
                 logger.warning('Celery apply_async failed for subject %s, running synchronously: %s', subject_id, celery_err)
                 try:
                     result = process_bulk_upload_task(
-                        storage_path, exam.id, subject.id, roster_ids
+                        storage_path, exam.id, subject.id, roster_ids, preview_only=True
                     )
                     if result and result.get('error'):
                         return JsonResponse({'error': result['error']}, status=400)
-                    return JsonResponse({'task_id': None, 'subject_id': subject.id, 'sync_done': True, 'matched': result.get('matched_count', 0)})
+                    return JsonResponse({'task_id': None, 'subject_id': subject.id, 'sync_done': True, 'preview': result})
                 except Exception as sync_err:
                     logger.error('Synchronous bulk upload also failed for subject %s: %s', subject_id, sync_err)
                     return JsonResponse({'error': str(sync_err)}, status=500)
@@ -3045,9 +3047,93 @@ def bulk_upload_status(request, task_id):
     if payload.get('error'):
         return JsonResponse({'error': payload['error']}, status=400)
 
+    # Preview mode: task returned matched/unmatched without saving
+    if payload.get('preview'):
+        return JsonResponse({
+            'status': 'preview',
+            'preview': payload,
+        })
+
     return JsonResponse({
         'status': 'done',
         'matched': payload.get('matched_count', 0),
         'unmatched_count': payload.get('unmatched_count', 0),
         'unmatched': payload.get('unmatched', []),
+    })
+
+
+@academic_required
+@require_POST
+def save_confirmed_scores(request, exam_id):
+    """Save scores that the academic officer reviewed and confirmed.
+    Called after the preview/OCR step — the frontend sends the final
+    student_id + score pairs per subject."""
+    import json as _json
+    from django.utils import timezone as _tz
+    from .services.upload_processing_service import recompute_processed_results_for_exam
+
+    exam = _get_exam_or_404(exam_id, request.user)
+
+    try:
+        payload = _json.loads(request.body)
+    except (ValueError, _json.JSONDecodeError):
+        return JsonResponse({'error': 'Data ya ombi si sahihi.'}, status=400)
+
+    subject_id = payload.get('subject_id')
+    scores = payload.get('scores', [])  # [{student_id, score}, ...]
+
+    if not subject_id or not scores:
+        return JsonResponse({'error': 'Somo na alama lazima ziwe.'}, status=400)
+
+    try:
+        subject = Subject.objects.get(id=int(subject_id))
+    except (Subject.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'Somo halipatikani.'}, status=400)
+
+    # Build ExamResult entries from confirmed data
+    exam_results = []
+    for entry in scores:
+        student_id = entry.get('student_id')
+        score = entry.get('score')
+        if student_id is None or score is None:
+            continue
+        try:
+            score = int(score)
+        except (TypeError, ValueError):
+            continue
+        if score < 0 or score > 100:
+            continue
+        exam_results.append(ExamResult(
+            exam=exam, student_id=int(student_id), subject=subject,
+            score=score, is_absent=False,
+        ))
+
+    if exam_results:
+        ExamResult.objects.bulk_create(
+            exam_results,
+            update_conflicts=True,
+            unique_fields=['exam', 'student', 'subject'],
+            update_fields=['score', 'is_absent'],
+        )
+
+    # Mark SubjectSubmission as SUBMITTED + APPROVED
+    SubjectSubmission.objects.update_or_create(
+        exam=exam, subject=subject,
+        defaults={
+            'status': SubjectSubmission.STATUS_APPROVED,
+            'method': 'UPLOAD',
+            'submitted_by': 'Academic Officer (Bulk Upload)',
+            'submitted_at': _tz.now(),
+            'approved_by': 'Academic Officer (Bulk Upload)',
+            'approved_at': _tz.now(),
+            'student_count': len(exam_results),
+        },
+    )
+
+    # Recompute processed results
+    recompute_processed_results_for_exam(exam)
+
+    return JsonResponse({
+        'status': 'done',
+        'saved_count': len(exam_results),
     })

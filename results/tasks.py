@@ -85,10 +85,15 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
 
 
 @shared_task(bind=True, time_limit=280, soft_time_limit=260)
-def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids):
+def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids, preview_only=False):
     """Background task: OCR a scoresheet, match students, save results,
     and auto-approve the SubjectSubmission.  Used by the academic
-    officer's bulk upload flow (one file per subject at a time)."""
+    officer's bulk upload flow (one file per subject at a time).
+
+    When *preview_only* is True the task returns the matched/unmatched
+    rows but does NOT write them to the database — the frontend shows
+    them in a review table so the teacher can correct scores before
+    the final save."""
     from django.utils import timezone
     from .services.upload_processing_service import recompute_processed_results_for_exam
     from .views import _parse_roster_line, _save_student
@@ -121,8 +126,10 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
             row['raw_name'], roster_students, threshold=0.80,
         )
         if student:
+            student_name = ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p)
             matched.append({
-                'student': student,
+                'student_id': student.id,
+                'student_name': student_name,
                 'score': row['score'],
                 'raw_name': row['raw_name'],
                 'confidence': round(confidence, 4),
@@ -134,19 +141,32 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
             continue
         first, middle, last, gender = parsed
         saved = _save_student(first, middle, last, gender)
-        student = Student.objects.get(id=saved['id'])
         matched.append({
-            'student': student,
+            'student_id': saved['id'],
+            'student_name': saved['name'],
             'score': row['score'],
             'raw_name': row['raw_name'],
             'confidence': 0.0,
         })
 
-    # Save ExamResult entries
+    # ── Preview mode: return data without saving ──────────────────────
+    if preview_only:
+        # Build roster list for the frontend dropdown
+        roster_list = [{'id': s.id, 'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p)} for s in roster_students]
+        return {
+            'preview': True,
+            'subject_id': subject.id,
+            'subject_name': subject.name,
+            'matched': matched,
+            'unmatched': unmatched,
+            'roster': roster_list,
+        }
+
+    # ── Save mode: write to DB ───────────────────────────────────────
     exam_results = []
     for m in matched:
         exam_results.append(ExamResult(
-            exam=exam_obj, student=m['student'], subject=subject,
+            exam=exam_obj, student_id=m['student_id'], subject=subject,
             score=m['score'], is_absent=False,
         ))
 
