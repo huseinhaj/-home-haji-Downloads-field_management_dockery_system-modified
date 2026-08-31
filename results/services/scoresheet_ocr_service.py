@@ -28,9 +28,9 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 VISION_MODEL_OPENROUTER = "google/gemini-2.5-flash"
 GEMINI_MODEL = "gemini-3.6-flash"
 
-MAX_DIMENSION = 2400
-JPEG_QUALITY = 95
-PDF_RENDER_SCALE = 3.0  # ~216 DPI — much clearer for handwriting recognition
+MAX_DIMENSION = 1800
+JPEG_QUALITY = 90
+PDF_RENDER_SCALE = 2.5  # ~180 DPI — good balance of clarity and speed
 MAX_PDF_PAGES = 5  # a single subject's scoresheet is never a 20-page document
 
 PROMPT = (
@@ -266,7 +266,7 @@ def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, ma
         "temperature": 0.1,
         "max_tokens": max_tokens,
     }
-    resp = requests.post(url, json=payload, headers=headers, timeout=120)
+    resp = requests.post(url, json=payload, headers=headers, timeout=180)
     if resp.status_code != 200:
         raise RuntimeError(f"OpenRouter vision error {resp.status_code}: {resp.text[:300]}")
     data = resp.json()
@@ -290,7 +290,7 @@ def _call_gemini_vision(image_bytes: bytes, mime_type: str, api_key: str) -> str
         ],
         "generationConfig": {"temperature": 0.1, "maxOutputTokens": 16384},
     }
-    resp = requests.post(url, json=payload, timeout=120)
+    resp = requests.post(url, json=payload, timeout=180)
     if resp.status_code != 200:
         raise RuntimeError(f"Gemini vision error {resp.status_code}: {resp.text[:300]}")
     data = resp.json()

@@ -21,7 +21,7 @@ from .services.scoresheet_ocr_service import ScoreSheetOCRError, extract_scores_
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, time_limit=280, soft_time_limit=260)
+@shared_task(bind=True, time_limit=360, soft_time_limit=340)
 def process_scoresheet_photo_task(self, storage_path, roster_ids):
     """storage_path: where scoresheet_photo_extract saved the upload
     (default_storage-relative) — this task owns deleting it once done.
@@ -86,7 +86,7 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
     return {'matched': matched, 'unmatched': unmatched}
 
 
-@shared_task(bind=True, time_limit=280, soft_time_limit=260)
+@shared_task(bind=True, time_limit=360, soft_time_limit=340)
 def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids, preview_only=False):
     """Background task: OCR a scoresheet, match students, save results,
     and auto-approve the SubjectSubmission.  Used by the academic
