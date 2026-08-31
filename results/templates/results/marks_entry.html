@@ -78,6 +78,8 @@
   .me-table tbody tr.voice-done { background: #eafaf1; }
   .me-table tbody tr.voice-skipped { background: #f1f1f1; color: #999; font-style: italic; }
   .me-table tbody tr.photo-low-confidence { background: #fff3d6 !important; }
+  .me-insert-btn { opacity: 0.4; transition: opacity 0.15s; }
+  .me-insert-btn:hover { opacity: 1 !important; background: #fff3d6 !important; }
 
   /* Voice entry bar */
   .me-voice-bar {
@@ -427,6 +429,7 @@
                 <th>{% if LANG == 'sw' %}Jina la Mwanafunzi{% else %}Student Name{% endif %}</th>
                 <th style="width:110px;">{% if LANG == 'sw' %}Alama (0–100){% else %}Score (0–100){% endif %}</th>
                 <th style="width:50px;">{% if LANG == 'sw' %}Absent{% else %}Absent{% endif %}</th>
+                <th style="width:40px;"></th>
               </tr>
             </thead>
             <tbody id="meRowsBody"></tbody>
@@ -661,6 +664,7 @@ function _dlPdf(url) {
             <td><button type="button" class="btn btn-sm me-absent-btn ${s.is_absent ? 'active' : ''}" data-id="${s.id}" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:2px;border:1.5px solid #dee2e6;background:${s.is_absent ? '#475569' : '#fff'};color:${s.is_absent ? '#fff' : '#475569'};font-weight:600;cursor:pointer;">
               ${s.is_absent ? '✓ X' : 'X'}
             </button></td>
+            <td><button type="button" class="me-insert-btn" data-pos="${i}" title="${LANG === 'sw' ? 'Ongeza mwanafunzi hapa' : 'Insert student here'}" style="background:none;border:1.5px solid #D9A441;color:#D9A441;font-size:0.85rem;padding:0.1rem 0.4rem;border-radius:2px;cursor:pointer;font-weight:700;line-height:1;opacity:0.5;">+</button></td>
           </tr>
         `).join('');
       }
@@ -686,6 +690,16 @@ function _dlPdf(url) {
             if (s.is_absent) s.score = null;
             renderRows();
           }
+        });
+      });
+      // Insert button: opens modal to add student at this position
+      rowsBody.querySelectorAll('.me-insert-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pos = parseInt(btn.dataset.pos, 10);
+          window._insertAtPosition = pos;
+          addStudentError.style.display = 'none';
+          addStudentForm.reset();
+          new bootstrap.Modal(addStudentModal).show();
         });
       });
     }
@@ -1368,9 +1382,20 @@ function _dlPdf(url) {
           last_name: lastName,
           gender: gender,
         });
-        // Add to the table
+        // Insert at specific position or append to end
+        const insertPos = window._insertAtPosition;
+        window._insertAtPosition = null;
         if (!byId.has(data.id)) {
-          byId.set(data.id, { id: data.id, name: data.name, score: null, is_absent: false });
+          const newStudent = { id: data.id, name: data.name, score: null, is_absent: false };
+          if (insertPos !== undefined && insertPos !== null && !isNaN(insertPos)) {
+            // Rebuild Map: insert at position
+            const arr = [...byId.entries()];
+            arr.splice(insertPos, 0, [data.id, newStudent]);
+            byId.clear();
+            arr.forEach(([k, v]) => byId.set(k, v));
+          } else {
+            byId.set(data.id, newStudent);
+          }
           renderRows();
         }
         toast(data.created
