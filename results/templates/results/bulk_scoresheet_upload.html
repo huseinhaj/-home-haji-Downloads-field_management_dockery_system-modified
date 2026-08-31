@@ -807,23 +807,22 @@
       });
     });
 
-    // Event: insert row (+) button — insert a new empty row below
+    // Event: insert row (+) button — insert a new empty row ABOVE
     tbody.querySelectorAll('.row-insert').forEach(btn => {
       btn.addEventListener('click', function() {
         const currentTr = this.closest('tr');
         if (!currentTr) return;
-        insertNewRowAfter(currentTr);
+        insertNewRowBefore(currentTr);
       });
     });
   }
 
-  // ── Insert a new empty row after a given <tr> ────────────────────
-  function insertNewRowAfter(afterTr) {
+  // ── Insert a new empty row BEFORE a given <tr> ───────────────────
+  function insertNewRowBefore(beforeTr) {
     const tbody = document.getElementById('reviewTableBody');
     const newTr = document.createElement('tr');
     newTr.className = 'added-row';
 
-    // Build student options with roster data
     let opts = '<option value="">— ' + (LANG === 'sw' ? 'Chagua Mwanafunzi' : 'Select Student') + ' —</option>';
     if (currentPreview && currentPreview.roster && currentPreview.roster.length) {
       currentPreview.roster.forEach(s => {
@@ -831,7 +830,7 @@
       });
     }
 
-    const rowNum = afterTr ? (Array.from(tbody.children).indexOf(afterTr) + 2) : (tbody.children.length + 1);
+    const rowNum = Array.from(tbody.children).indexOf(beforeTr) + 1;
     newTr.innerHTML = '
       <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">' + rowNum + '</td>
       <td style="font-style:italic;color:#1a7a3b;">' + (LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]') + '</td>
@@ -840,26 +839,22 @@
       <td style="text-align:center;"><input type="checkbox" class="absent-check"></td>
       <td><span class="confidence" style="background:#e6f7ec;color:#1a7a3b;">' + (LANG === 'sw' ? 'Mpya' : 'New') + '</span></td>
       <td style="white-space:nowrap;">
-        <button class="row-insert" data-action="insert-after" title="' + (LANG === 'sw' ? 'Ongeza chini' : 'Insert below') + '">+</button>
+        <button class="row-insert" data-action="insert-above" title="' + (LANG === 'sw' ? 'Ongeza juu' : 'Insert above') + '">+</button>
         <button class="row-remove" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button>
       </td>
     ';
 
-    // Insert after the current row
-    if (afterTr) {
-      afterTr.parentNode.insertBefore(newTr, afterTr.nextSibling);
-    } else {
-      tbody.appendChild(newTr);
-    }
+    // Insert BEFORE the current row
+    tbody.insertBefore(newTr, beforeTr);
 
-    // Re-attach events on the new row
+    // Re-attach events
     newTr.querySelector('.row-remove').addEventListener('click', function() {
       newTr.classList.toggle('removed');
       renumberRows();
       updateReviewStats();
     });
     newTr.querySelector('.row-insert').addEventListener('click', function() {
-      insertNewRowAfter(newTr);
+      insertNewRowBefore(newTr);
     });
     newTr.querySelector('.absent-check').addEventListener('change', function() {
       const scoreInput = newTr.querySelector('.score-input');
@@ -1004,59 +999,54 @@
   // Add Student button — append new row at the end of the table
   document.getElementById('addStudentBtn').addEventListener('click', () => {
     const tbody = document.getElementById('reviewTableBody');
-    const lastRow = tbody.lastElementChild;
-    if (lastRow) {
-      insertNewRowAfter(lastRow);
-    } else {
-      // No rows yet — create the first one directly
-      const newTr = document.createElement('tr');
-      newTr.className = 'added-row';
-      let opts = '<option value="">— ' + (LANG === 'sw' ? 'Chagua Mwanafunzi' : 'Select Student') + ' —</option>';
-      if (currentPreview && currentPreview.roster && currentPreview.roster.length) {
-        currentPreview.roster.forEach(s => {
-          opts += '<option value="' + s.id + '">' + s.name + '</option>';
-        });
-      }
-      newTr.innerHTML = '
-        <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">1</td>
-        <td style="font-style:italic;color:#1a7a3b;">' + (LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]') + '</td>
-        <td><select class="student-select">' + opts + '</select></td>
-        <td><input type="number" class="score-input" min="0" max="100" value=""></td>
-        <td style="text-align:center;"><input type="checkbox" class="absent-check"></td>
-        <td><span class="confidence" style="background:#e6f7ec;color:#1a7a3b;">' + (LANG === 'sw' ? 'Mpya' : 'New') + '</span></td>
-        <td style="white-space:nowrap;">
-          <button class="row-insert" data-action="insert-after" title="' + (LANG === 'sw' ? 'Ongeza chini' : 'Insert below') + '">+</button>
-          <button class="row-remove" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button>
-        </td>
-      ';
-      tbody.appendChild(newTr);
-      // Re-attach events
-      newTr.querySelector('.row-remove').addEventListener('click', function() {
-        newTr.classList.toggle('removed');
-        renumberRows();
-        updateReviewStats();
+    const newTr = document.createElement('tr');
+    newTr.className = 'added-row';
+    let opts = '<option value="">— ' + (LANG === 'sw' ? 'Chagua Mwanafunzi' : 'Select Student') + ' —</option>';
+    if (currentPreview && currentPreview.roster && currentPreview.roster.length) {
+      currentPreview.roster.forEach(s => {
+        opts += '<option value="' + s.id + '">' + s.name + '</option>';
       });
-      newTr.querySelector('.row-insert').addEventListener('click', function() {
-        insertNewRowAfter(newTr);
-      });
-      newTr.querySelector('.absent-check').addEventListener('change', function() {
-        const scoreInput = newTr.querySelector('.score-input');
-        if (scoreInput) {
-          scoreInput.disabled = this.checked;
-          if (this.checked) scoreInput.value = '';
-        }
-      });
-      newTr.querySelector('.score-input').addEventListener('input', function() {
-        const val = parseInt(this.value);
-        if (isNaN(val) || val < 0 || val > 100) {
-          this.classList.add('error');
-        } else {
-          this.classList.remove('error');
-        }
-      });
+    }
+    const rowNum = tbody.children.length + 1;
+    newTr.innerHTML = '
+      <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">' + rowNum + '</td>
+      <td style="font-style:italic;color:#1a7a3b;">' + (LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]') + '</td>
+      <td><select class="student-select">' + opts + '</select></td>
+      <td><input type="number" class="score-input" min="0" max="100" value=""></td>
+      <td style="text-align:center;"><input type="checkbox" class="absent-check"></td>
+      <td><span class="confidence" style="background:#e6f7ec;color:#1a7a3b;">' + (LANG === 'sw' ? 'Mpya' : 'New') + '</span></td>
+      <td style="white-space:nowrap;">
+        <button class="row-insert" data-action="insert-above" title="' + (LANG === 'sw' ? 'Ongeza juu' : 'Insert above') + '">+</button>
+        <button class="row-remove" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button>
+      </td>
+    ';
+    tbody.appendChild(newTr);
+    // Re-attach events
+    newTr.querySelector('.row-remove').addEventListener('click', function() {
+      newTr.classList.toggle('removed');
       renumberRows();
       updateReviewStats();
-    }
+    });
+    newTr.querySelector('.row-insert').addEventListener('click', function() {
+      insertNewRowBefore(newTr);
+    });
+    newTr.querySelector('.absent-check').addEventListener('change', function() {
+      const scoreInput = newTr.querySelector('.score-input');
+      if (scoreInput) {
+        scoreInput.disabled = this.checked;
+        if (this.checked) scoreInput.value = '';
+      }
+    });
+    newTr.querySelector('.score-input').addEventListener('input', function() {
+      const val = parseInt(this.value);
+      if (isNaN(val) || val < 0 || val > 100) {
+        this.classList.add('error');
+      } else {
+        this.classList.remove('error');
+      }
+    });
+    renumberRows();
+    updateReviewStats();
   });
 
   // Check OCR health on page load
