@@ -831,8 +831,9 @@
       });
     }
 
+    const rowNum = afterTr ? (Array.from(tbody.children).indexOf(afterTr) + 2) : (tbody.children.length + 1);
     newTr.innerHTML = '
-      <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">+</td>
+      <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">' + rowNum + '</td>
       <td style="font-style:italic;color:#1a7a3b;">' + (LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]') + '</td>
       <td><select class="student-select">' + opts + '</select></td>
       <td><input type="number" class="score-input" min="0" max="100" value=""></td>
@@ -845,11 +846,16 @@
     ';
 
     // Insert after the current row
-    afterTr.parentNode.insertBefore(newTr, afterTr.nextSibling);
+    if (afterTr) {
+      afterTr.parentNode.insertBefore(newTr, afterTr.nextSibling);
+    } else {
+      tbody.appendChild(newTr);
+    }
 
     // Re-attach events on the new row
     newTr.querySelector('.row-remove').addEventListener('click', function() {
       newTr.classList.toggle('removed');
+      renumberRows();
       updateReviewStats();
     });
     newTr.querySelector('.row-insert').addEventListener('click', function() {
@@ -999,9 +1005,10 @@
   document.getElementById('addStudentBtn').addEventListener('click', () => {
     const tbody = document.getElementById('reviewTableBody');
     const lastRow = tbody.lastElementChild;
-    insertNewRowAfter(lastRow || null);
-    // If no existing rows, insert directly
-    if (!lastRow) {
+    if (lastRow) {
+      insertNewRowAfter(lastRow);
+    } else {
+      // No rows yet — create the first one directly
       const newTr = document.createElement('tr');
       newTr.className = 'added-row';
       let opts = '<option value="">— ' + (LANG === 'sw' ? 'Chagua Mwanafunzi' : 'Select Student') + ' —</option>';
@@ -1026,6 +1033,7 @@
       // Re-attach events
       newTr.querySelector('.row-remove').addEventListener('click', function() {
         newTr.classList.toggle('removed');
+        renumberRows();
         updateReviewStats();
       });
       newTr.querySelector('.row-insert').addEventListener('click', function() {
