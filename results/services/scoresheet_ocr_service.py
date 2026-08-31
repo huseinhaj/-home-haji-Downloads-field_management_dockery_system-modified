@@ -118,17 +118,54 @@ def _extract_json_array(text: str) -> list:
     if not text:
         raise ScoreSheetOCRError("AI haikurudisha jibu.")
     cleaned = text.strip()
+    # Strip markdown code fences (```json ... ``` or ``` ... ```)
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.MULTILINE).strip()
+    # Try to find a JSON array [...]
     match = re.search(r"\[.*\]", cleaned, flags=re.DOTALL)
-    if not match:
-        raise ScoreSheetOCRError("AI haikurudisha muundo sahihi wa JSON.")
-    try:
-        data = json.loads(match.group(0))
-    except json.JSONDecodeError as exc:
-        raise ScoreSheetOCRError("AI haikurudisha JSON sahihi.") from exc
-    if not isinstance(data, list):
-        raise ScoreSheetOCRError("AI haikurudisha orodha (list).")
-    return data
+    if match:
+        try:
+            data = json.loads(match.group(0))
+            if isinstance(data, list):
+                return data
+        except json.JSONDecodeError:
+            pass  # Try other strategies below
+
+    # Fallback: try to find individual {"name":..., "score":...} objects
+    objects = re.findall(r'\{[^{}]*"name"[^{}]*"score"[^{}]*\}', cleaned, re.DOTALL)
+    if objects:
+        parsed = []
+        for obj_str in objects:
+            try:
+                obj = json.loads(obj_str)
+                if isinstance(obj, dict) and "name" in obj and "score" in obj:
+                    parsed.append(obj)
+            except json.JSONDecodeError:
+                continue
+        if parsed:
+            return parsed
+
+    # Last resort: AI returned conversational text — try to extract any numbers
+    # near names (e.g., "John Doe 85" or "John Doe: 85")
+    lines = text.split('\n')
+    fallback_rows = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        # Match patterns like: "Name Score" or "Name: Score" or "Name - Score"
+        m = re.match(r'^([A-Za-z\s\.]+?)\s*[:\-]?\s*(\d{1,3})\s*$', line)
+        if m:
+            name = m.group(1).strip()
+            score = int(m.group(2))
+            if 0 <= score <= 100 and len(name) >= 3:
+                fallback_rows.append({"name": name, "score": score})
+    if fallback_rows:
+        return fallback_rows
+
+    raise ScoreSheetOCRError(
+        f"AI haikurudisha muundo sahihi wa JSON.\n"
+        f"Jibu la AI: {text[:500]}"
+    )
 
 
 def _clean_rows(raw_rows: list) -> list[dict]:
