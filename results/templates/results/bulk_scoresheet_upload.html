@@ -189,6 +189,8 @@
 .review-stats strong { color: #1F7A3D; }
 .review-actions { display: flex; gap: 0.8rem; }
 .review-actions .btn-final { font-size: 0.85rem; padding: 0.5rem 1.4rem; }
+.review-table .absent-check { width: 18px; height: 18px; cursor: pointer; accent-color: #D9A441; }
+.review-table .score-input:disabled { background: #f0f0f0; color: #999; border-color: #ddd; cursor: not-allowed; }
 </style>
 {% endblock %}
 
@@ -312,6 +314,7 @@
               <th>{% if LANG == 'sw' %}Jina la OCR{% else %}OCR Name{% endif %}</th>
               <th>{% if LANG == 'sw' %}Mwanafunzi{% else %}Student{% endif %}</th>
               <th>{% if LANG == 'sw' %}Alama{% else %}Score{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Absent{% else %}Absent{% endif %}</th>
               <th>{% if LANG == 'sw' %}Uhusiano{% else %}Confidence{% endif %}</th>
               <th></th>
             </tr>
@@ -701,11 +704,16 @@
 
         const tr = document.createElement('tr');
         tr.id = 'review-row-' + idx;
+        const isAbsent = row.is_absent || false;
+        const absentChecked = isAbsent ? ' checked' : '';
+        const scoreDisabled = isAbsent ? ' disabled' : '';
+        const scoreVal = isAbsent ? '' : row.score;
         tr.innerHTML = '
           <td style="color:#888;font-size:0.75rem;">' + (idx + 1) + '</td>
           <td style="font-style:italic;color:#666;">' + escapeHtml(row.raw_name || '') + '</td>
           <td><select class="student-select" data-idx="' + idx + '">' + studentOptions + '</select></td>
-          <td><input type="number" class="score-input" min="0" max="100" value="' + row.score + '" data-idx="' + idx + '"></td>
+          <td><input type="number" class="score-input" min="0" max="100" value="' + scoreVal + '" data-idx="' + idx + '"' + scoreDisabled + '></td>
+          <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="' + idx + '"' + absentChecked + '></td>
           <td><span class="confidence ' + confClass + '">' + confLabel + '</span></td>
           <td><button class="row-remove" data-idx="' + idx + '" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button></td>
         ';
@@ -726,11 +734,16 @@
         const tr = document.createElement('tr');
         tr.id = 'review-row-' + globalIdx;
         tr.style.background = '#fff8e6';
+        const uAbsent = row.is_absent || false;
+        const uAbsentChecked = uAbsent ? ' checked' : '';
+        const uScoreDisabled = uAbsent ? ' disabled' : '';
+        const uScoreVal = uAbsent ? '' : row.score;
         tr.innerHTML = '
           <td style="color:#888;font-size:0.75rem;">' + (globalIdx + 1) + '</td>
           <td style="font-style:italic;color:#856404;">' + escapeHtml(row.raw_name || '') + '</td>
           <td><select class="student-select" data-idx="' + globalIdx + '">' + studentOptions + '</select></td>
-          <td><input type="number" class="score-input" min="0" max="100" value="' + row.score + '" data-idx="' + globalIdx + '"></td>
+          <td><input type="number" class="score-input" min="0" max="100" value="' + uScoreVal + '" data-idx="' + globalIdx + '"' + uScoreDisabled + '></td>
+          <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="' + globalIdx + '"' + uAbsentChecked + '></td>
           <td><span class="confidence low">' + (LANG === 'sw' ? 'Haijaunganishwa' : 'Unmatched') + '</span></td>
           <td><button class="row-remove" data-idx="' + globalIdx + '" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button></td>
         ';
@@ -758,6 +771,19 @@
           this.classList.add('error');
         } else {
           this.classList.remove('error');
+        }
+      });
+    });
+
+    // Event: absent checkbox — toggle score input enabled/disabled
+    tbody.querySelectorAll('.absent-check').forEach(cb => {
+      cb.addEventListener('change', function() {
+        const tr = this.closest('tr');
+        if (!tr) return;
+        const scoreInput = tr.querySelector('.score-input');
+        if (scoreInput) {
+          scoreInput.disabled = this.checked;
+          if (this.checked) scoreInput.value = '';
         }
       });
     });
@@ -799,11 +825,18 @@
       if (tr.classList.contains('removed')) return;
       const scoreInput = tr.querySelector('.score-input');
       const studentSelect = tr.querySelector('.student-select');
-      if (!scoreInput || !studentSelect) return;
-      const score = parseInt(scoreInput.value);
+      const absentCheck = tr.querySelector('.absent-check');
+      if (!studentSelect) return;
       const studentId = parseInt(studentSelect.value);
-      if (isNaN(score) || score < 0 || score > 100 || isNaN(studentId) || !studentId) return;
-      scores.push({ student_id: studentId, score: score });
+      if (isNaN(studentId) || !studentId) return;
+      const isAbsent = absentCheck ? absentCheck.checked : false;
+      if (isAbsent) {
+        scores.push({ student_id: studentId, score: 0, is_absent: true });
+      } else {
+        const score = parseInt(scoreInput ? scoreInput.value : '');
+        if (isNaN(score) || score < 0 || score > 100) return;
+        scores.push({ student_id: studentId, score: score, is_absent: false });
+      }
     });
 
     if (!scores.length) {

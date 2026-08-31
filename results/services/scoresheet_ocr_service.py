@@ -35,15 +35,25 @@ MAX_PDF_PAGES = 5  # a single subject's scoresheet is never a 20-page document
 
 PROMPT = (
     "Hii ni picha ya scoresheet — jedwali la wanafunzi na alama zao "
-    "walizoandika mwalimu kwa mkono au kuchapa. Soma kila mstari na "
-    "utoe JINA na ALAMA (0-100) ya kila mwanafunzi.\n\n"
+    "walizoandika mwalimu kwa mkono au kuchapa. Soma kila mstari kwa "
+    "ukaribu mkubwa na utoe JINA na ALAMA ya kila mwanafunzi.\n\n"
     "Rudisha JSON array TU, bila maelezo mengine, kwa muundo huu hasa:\n"
-    '[{"name": "Jina Kamili", "score": 78}, {"name": "Jina Lingine", "score": 55}]\n\n'
-    "Kanuni:\n"
-    "- Puuza vichwa vya habari, sahihi, tarehe, na mistari isiyo na jina+alama.\n"
-    "- Alama lazima iwe nambari kati ya 0 na 100.\n"
-    "- Kama huwezi kusoma alama ya mstari fulani kwa uhakika, ruka mstari huo.\n"
-    "- Usibuni majina au alama — andika kile kilichoandikwa tu."
+    '[{"name": "Jina Kamili", "score": 78}, '
+    '{"name": "Jina Lingine", "score": 8}, '
+    '{"name": "Mwanafunzi Absent", "score": "X"}, '
+    '{"name": "Mwanafunzi Mwingine", "score": 0}]\n\n'
+    "KANUNI MUHIMU — fuata kwa ustadi:\n"
+    "- Alama: Soma nambari sahihi. '00' ni 0, '08' ni 8, '05' ni 5, '10' ni 10."
+    " Usibadilisha nambari — andika kile kilichoandikwa HASA.\n"
+    "- Ikiwa alama ni 'X' au 'XX', weka score kama 'X' (maana: mwanafunzi "
+    "alikuwa absent / hakufanya mtihani).\n"
+    "- Ikiwa kwenye seli ya alama kuna dash '-' au ni tupu/blank, usiandike "
+    "row hiyo kabisa — mwanafunzi huyo hasomi somo hilo.\n"
+    "- Puuza vichwa vya habari, sahihi, tarehe, nambari za kitambulisho, "
+    "na mistari isiyo na jina+alama.\n"
+    "- Alama lazima iwe nambari kati ya 0 na 100, au 'X' kwa absent.\n"
+    "- Usibuni majina au alama — andika kile kilichoandikwa tu.\n"
+    "- Kila jina lazima lionekane kamili — usikate majina."
 )
 
 
@@ -169,19 +179,54 @@ def _extract_json_array(text: str) -> list:
 
 
 def _clean_rows(raw_rows: list) -> list[dict]:
+    """Normalise raw OCR rows into [{raw_name, score, is_absent}, ...].
+
+    Handles:
+    - Numeric scores (including leading zeros like '00' → 0, '08' → 8)
+    - 'X' / 'XX' → is_absent=True, score=0
+    - Blank / dash / empty → skipped entirely (student doesn't study subject)
+    """
     rows = []
     for item in raw_rows:
         if not isinstance(item, dict):
             continue
         name = str(item.get("name") or "").strip()
-        score = item.get("score")
-        try:
-            score = int(score)
-        except (TypeError, ValueError):
+        if not name:
             continue
-        if not name or score < 0 or score > 100:
+
+        raw_score = item.get("score")
+        is_absent = False
+
+        # ── Blank / dash / empty → skip entirely ──────────────────────
+        if raw_score is None:
             continue
-        rows.append({"raw_name": name, "score": score})
+        raw_str = str(raw_score).strip()
+        if raw_str in ('', '-', '--', 'null', 'None'):
+            continue
+
+        # ── X / XX → absent ──────────────────────────────────────────
+        if raw_str.upper() in ('x', 'xx', 'xxx'):
+            is_absent = True
+            score = 0
+        else:
+            # ── Numeric score (may have leading zeros) ────────────────
+            try:
+                # int('00') → 0, int('08') → 8, int('10') → 10
+                score = int(raw_str)
+            except (TypeError, ValueError):
+                # Last resort: strip non-numeric chars (e.g. '78.' → '78')
+                cleaned = re.sub(r'[^\d]', '', raw_str)
+                if not cleaned:
+                    continue
+                try:
+                    score = int(cleaned)
+                except ValueError:
+                    continue
+
+        if score < 0 or score > 100:
+            continue
+
+        rows.append({"raw_name": name, "score": score, "is_absent": is_absent})
     return rows
 
 

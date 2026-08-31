@@ -122,6 +122,7 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
     matched = []
     unmatched = []
     for row in extracted_rows:
+        is_absent = row.get('is_absent', False)
         student, confidence, _candidates = fuzzy_match_student_name(
             row['raw_name'], roster_students, threshold=0.80,
         )
@@ -131,13 +132,14 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
                 'student_id': student.id,
                 'student_name': student_name,
                 'score': row['score'],
+                'is_absent': is_absent,
                 'raw_name': row['raw_name'],
                 'confidence': round(confidence, 4),
             })
             continue
         parsed = _parse_roster_line(row['raw_name'])
         if not parsed:
-            unmatched.append({'raw_name': row['raw_name'], 'score': row['score']})
+            unmatched.append({'raw_name': row['raw_name'], 'score': row['score'], 'is_absent': is_absent})
             continue
         first, middle, last, gender = parsed
         saved = _save_student(first, middle, last, gender)
@@ -145,6 +147,7 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
             'student_id': saved['id'],
             'student_name': saved['name'],
             'score': row['score'],
+            'is_absent': is_absent,
             'raw_name': row['raw_name'],
             'confidence': 0.0,
         })
@@ -167,7 +170,8 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
     for m in matched:
         exam_results.append(ExamResult(
             exam=exam_obj, student_id=m['student_id'], subject=subject,
-            score=m['score'], is_absent=False,
+            score=m['score'] if not m.get('is_absent') else None,
+            is_absent=m.get('is_absent', False),
         ))
 
     if exam_results:

@@ -3095,17 +3095,25 @@ def save_confirmed_scores(request, exam_id):
     for entry in scores:
         student_id = entry.get('student_id')
         score = entry.get('score')
-        if student_id is None or score is None:
+        is_absent = entry.get('is_absent', False)
+        if student_id is None:
             continue
-        try:
-            score = int(score)
-        except (TypeError, ValueError):
-            continue
-        if score < 0 or score > 100:
-            continue
+        # For absent students, score can be None/0; for present, score must be valid
+        if is_absent:
+            score = None
+        else:
+            if score is None:
+                continue
+            try:
+                score = int(score)
+            except (TypeError, ValueError):
+                continue
+            if score < 0 or score > 100:
+                continue
         exam_results.append(ExamResult(
             exam=exam, student_id=int(student_id), subject=subject,
-            score=score, is_absent=False,
+            score=score if not is_absent else None,
+            is_absent=bool(is_absent),
         ))
 
     if exam_results:
