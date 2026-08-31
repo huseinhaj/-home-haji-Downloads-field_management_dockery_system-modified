@@ -178,6 +178,10 @@
   <div class="fill" id="globalProgress" style="width:0%"></div>
 </div>
 
+<!-- OCR Health Check -->
+<div id="ocrHealth" style="padding:0.6rem 1rem;border-radius:2px;font-size:0.82rem;margin-bottom:1rem;display:none;">
+</div>
+
 <!-- Big Upload Zone -->
 <div class="big-upload-zone" id="uploadZone">
   <div class="icon">📂</div>
@@ -226,7 +230,7 @@
 
 <!-- Subjects JSON for JS -->
 <script type="application/json" id="subjectsData">
-  [{% for s in subjects %}{"id":{{ s.id }},"name":"{{ s.name|escapejs }}","done":{{ s.id|yesno:"true,false" }}}{% if not forloop.last %},{% endif %}{% endfor %}]
+  [{% for s in subjects %}{"id":{{ s.id }},"name":"{{ s.name|escapejs }}","done":{{ s.is_done|yesno:"true,false" }}}{% if not forloop.last %},{% endif %}{% endfor %}]
 </script>
 
 {% endblock %}
@@ -540,6 +544,31 @@
     if (status) { status.className = 'file-status error'; status.innerHTML = '❌ ' + errorMsg; }
     toast(upload.subjectName + ': ' + errorMsg, true);
   }
+
+  // Check OCR health on page load
+  (function checkOCR() {
+    var el = document.getElementById('ocrHealth');
+    if (!el) return;
+    fetch("{% url 'ocr_health_check' %}")
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        el.style.display = 'block';
+        if (data.openrouter_ok === false) {
+          el.style.background = '#fff3cd';
+          el.style.color = '#856404';
+          el.style.border = '1px solid #ffc107';
+          el.innerHTML = '⚠️ OpenRouter API haifanyi kazi — Gemini itatumika kama fallback.';
+        } else if (!data.openrouter && !data.gemini) {
+          el.style.background = '#f8d7da';
+          el.style.color = '#721c24';
+          el.style.border = '1px solid #f5c6cb';
+          el.innerHTML = '❌ Hakuna AI API key iliyowekwa — OCR haiwezi kufanya kazi!';
+        } else {
+          el.style.display = 'none';
+        }
+      })
+      .catch(function() { el.style.display = 'none'; });
+  })();
 })();
 </script>
 {% endblock %}

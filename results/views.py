@@ -3022,6 +3022,14 @@ def bulk_scoresheet_upload(request, exam_id):
 
 
 @academic_required
+def ocr_health_check(request):
+    """Check if OCR API keys are configured and working."""
+    from .services.scoresheet_ocr_service import check_ocr_health
+    health = check_ocr_health()
+    return JsonResponse(health)
+
+
+@academic_required
 def bulk_upload_status(request, task_id):
     """Polled by the frontend every 2s after bulk upload kicks off."""
     from celery.result import AsyncResult

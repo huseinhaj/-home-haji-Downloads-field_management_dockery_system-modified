@@ -193,7 +193,7 @@ def _call_gemini_vision(image_bytes: bytes, mime_type: str, api_key: str) -> str
                 ]
             }
         ],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 4096},
+        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 16384},
     }
     resp = requests.post(url, json=payload, timeout=120)
     if resp.status_code != 200:
@@ -232,7 +232,10 @@ def _read_page_with_ai(img) -> str:
             afford_match = re.search(r"can only afford (\d+)", str(exc))
             if afford_match:
                 affordable = int(afford_match.group(1))
-                if affordable >= 200:
+                # Retry with whatever OpenRouter says it can afford — even 18
+                # tokens is enough for a tiny JSON response.  The vision
+                # request is the expensive part (input); the output is tiny.
+                if affordable >= 10:
                     try:
                         logger.info("[ScoreSheetOCR] Retrying OpenRouter with max_tokens=%s", affordable)
                         text = _call_openrouter_vision(image_bytes, mime_type, OPENROUTER_API_KEY, max_tokens=affordable)
@@ -253,6 +256,29 @@ def _read_page_with_ai(img) -> str:
             raise RuntimeError(str(exc)) from (or_error or exc)
 
     raise RuntimeError(str(or_error) if or_error else "No AI provider configured")
+
+
+def check_ocr_health() -> dict:
+    """Quick check: are API keys set and do they work?"""
+    status = {
+        'openrouter': bool(OPENROUTER_API_KEY),
+        'gemini': bool(GOOGLE_API_KEY),
+    }
+    # Quick OpenRouter ping
+    if OPENROUTER_API_KEY:
+        try:
+            resp = requests.get(
+                'https://openrouter.ai/api/v1/models',
+                headers={'Authorization': f'Bearer {OPENROUTER_API_KEY}'},
+                timeout=10,
+            )
+            status['openrouter_ok'] = resp.status_code == 200
+            if resp.status_code != 200:
+                status['openrouter_error'] = f'HTTP {resp.status_code}'
+        except Exception as e:
+            status['openrouter_ok'] = False
+            status['openrouter_error'] = str(e)
+    return status
 
 
 def extract_scores_from_document(uploaded_file) -> list[dict]:
@@ -280,8 +306,16 @@ def extract_scores_from_document(uploaded_file) -> list[dict]:
         all_rows.extend(_clean_rows(raw_rows))
 
     if not any_page_succeeded:
+        err_detail = str(last_error) if last_error else 'unknown error'
+        logger.error(
+            "[ScoreSheetOCR] ALL pages failed. Last error: %s | API keys: OPENROUTER=%s, GEMINI=%s",
+            err_detail,
+            'set' if OPENROUTER_API_KEY else 'MISSING',
+            'set' if GOOGLE_API_KEY else 'MISSING',
+        )
         raise ScoreSheetOCRError(
-            "Imeshindwa kusoma faili — jaribu tena au jaza alama mwenyewe."
+            f"Imeshindwa kusoma faili — jaribu tena au jaza alama mwenyewe.\n"
+            f"Sababu: {err_detail}"
         ) from last_error
 
     if not all_rows:
