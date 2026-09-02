@@ -175,11 +175,19 @@ def marks_entry(request):
                 else:
                     existing_marks[r.student_id] = r.score
             if review_mode:
+                # Only show students who are in the current class roster —
+                # prevents stale ExamResult rows (from students who were
+                # removed from FormStudent/StoredRoster) from appearing.
+                roster = _resolve_class_roster(teacher, exam, subject, existing_marks)
+                roster_student_ids = {s['id'] for s in roster}
+
                 results = list(
                     ExamResult.objects.filter(exam=exam, subject=subject, is_absent=False)
                     .select_related('student')
                     .order_by('-score', 'student__first_name')
                 )
+                # Filter to only students in the current roster
+                results = [r for r in results if r.student_id in roster_student_ids]
                 review_rows = [
                     {
                         'position': i,
@@ -190,20 +198,21 @@ def marks_entry(request):
                     }
                     for i, r in enumerate(results, 1)
                 ]
-                # Add absent students at the end
+                # Add absent students at the end (only if in roster)
                 absent_results = list(
                     ExamResult.objects.filter(exam=exam, subject=subject, is_absent=True)
                     .select_related('student')
                     .order_by('student__first_name')
                 )
                 for r in absent_results:
-                    review_rows.append({
-                        'position': len(review_rows) + 1,
-                        'student': r.student,
-                        'score': 0,
-                        'grade': 'X',
-                        'is_absent': True,
-                    })
+                    if r.student_id in roster_student_ids:
+                        review_rows.append({
+                            'position': len(review_rows) + 1,
+                            'student': r.student,
+                            'score': 0,
+                            'grade': 'X',
+                            'is_absent': True,
+                        })
                 submission = SubjectSubmission.objects.filter(exam=exam, subject=subject).first()
                 if not results:
                     messages.info(request, "Hakuna alama zilizohifadhiwa kwa somo hili bado.")
@@ -311,6 +320,19 @@ def marks_entry_save(request):
         unique_fields=['exam', 'student', 'subject'],
         update_fields=['score', 'is_absent'],
     )
+
+    # Clean up stale ExamResults for students who are no longer in the
+    # submitted roster — prevents ghost students from appearing in review.
+    submitted_ids = set(all_ids)
+    stale = ExamResult.objects.filter(
+        exam=exam, subject=subject,
+    ).exclude(student_id__in=submitted_ids)
+    if stale.exists():
+        logger.info(
+            'marks_entry_save: removing %d stale ExamResult(s) for exam=%s subject=%s',
+            stale.count(), exam.id, subject.id,
+        )
+        stale.delete()
 
     return JsonResponse({
         'success': True,
