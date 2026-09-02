@@ -1345,106 +1345,106 @@ function _dlPdf(url) {
         saveBtn.disabled = false;
       }
     });
-  }
 
-  /* ═══ ADD STUDENT — inline + modal ═══ */
-  const addStudentBtn = document.getElementById('meAddStudentBtn');
-  const addStudentModal = document.getElementById('addStudentModal');
-  const addStudentForm = document.getElementById('addStudentForm');
-  const addStudentConfirm = document.getElementById('addStudentConfirm');
-  const addStudentError = document.getElementById('addStudentError');
-  if (addStudentBtn && addStudentModal) {
-    addStudentBtn.addEventListener('click', () => {
-      addStudentError.style.display = 'none';
-      addStudentForm.reset();
-      new bootstrap.Modal(addStudentModal).show();
-    });
-    addStudentConfirm.addEventListener('click', async () => {
-      const formData = new FormData(addStudentForm);
-      const firstName = (formData.get('first_name') || '').trim();
-      const lastName = (formData.get('last_name') || '').trim();
-      const middleName = (formData.get('middle_name') || '').trim();
-      const gender = formData.get('gender') || 'M';
+    /* ═══ ADD STUDENT — inline + modal ═══ */
+    const addStudentBtn = document.getElementById('meAddStudentBtn');
+    const addStudentModal = document.getElementById('addStudentModal');
+    const addStudentForm = document.getElementById('addStudentForm');
+    const addStudentConfirm = document.getElementById('addStudentConfirm');
+    const addStudentError = document.getElementById('addStudentError');
+    if (addStudentBtn && addStudentModal) {
+      addStudentBtn.addEventListener('click', () => {
+        addStudentError.style.display = 'none';
+        addStudentForm.reset();
+        new bootstrap.Modal(addStudentModal).show();
+      });
+      addStudentConfirm.addEventListener('click', async () => {
+        const formData = new FormData(addStudentForm);
+        const firstName = (formData.get('first_name') || '').trim();
+        const lastName = (formData.get('last_name') || '').trim();
+        const middleName = (formData.get('middle_name') || '').trim();
+        const gender = formData.get('gender') || 'M';
 
-      if (!firstName || !lastName) {
-        addStudentError.textContent = LANG === 'sw'
-          ? 'Jina la kwanza na jina la mwisho lazima wekwe.'
-          : 'First name and last name are required.';
-        addStudentError.style.display = '';
-        return;
-      }
-
-      addStudentConfirm.disabled = true;
-      addStudentConfirm.textContent = LANG === 'sw' ? 'Inaongeza...' : 'Adding...';
-
-      try {
-        const data = await postJSON("{% url 'marks_entry_add_student' %}", {
-          exam_id: EXAM_ID,
-          first_name: firstName,
-          middle_name: middleName,
-          last_name: lastName,
-          gender: gender,
-        });
-        // Insert at specific position or append to end
-        const insertPos = window._insertAtPosition;
-        window._insertAtPosition = null;
-        if (!byId.has(data.id)) {
-          const newStudent = { id: data.id, name: data.name, score: null, is_absent: false };
-          if (insertPos !== undefined && insertPos !== null && !isNaN(insertPos)) {
-            // Rebuild Map: insert at position
-            const arr = [...byId.entries()];
-            arr.splice(insertPos, 0, [data.id, newStudent]);
-            byId.clear();
-            arr.forEach(([k, v]) => byId.set(k, v));
-          } else {
-            byId.set(data.id, newStudent);
-          }
-          renderRows();
+        if (!firstName || !lastName) {
+          addStudentError.textContent = LANG === 'sw'
+            ? 'Jina la kwanza na jina la mwisho lazima wekwe.'
+            : 'First name and last name are required.';
+          addStudentError.style.display = '';
+          return;
         }
-        toast(data.created
-          ? (LANG === 'sw' ? '✅ ' + data.name + ' ameongezwa.' : '✅ ' + data.name + ' added.')
-          : (LANG === 'sw' ? 'ℹ️ ' + data.name + ' tayari yupo — ameongezwa kwenye jedwali.' : 'ℹ️ ' + data.name + ' already exists — added to table.'));
-        bootstrap.Modal.getInstance(addStudentModal).hide();
-        // Scroll to the new row
-        setTimeout(() => {
-          const row = rowsBody.querySelector('tr[data-id="' + data.id + '"]');
-          if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        }, 200);
-      } catch (err) {
-        addStudentError.textContent = err.message;
-        addStudentError.style.display = '';
-      } finally {
-        addStudentConfirm.disabled = false;
-        addStudentConfirm.textContent = '\u2713 ' + (LANG === 'sw' ? 'Ongeza' : 'Add');
-      }
-    });
-  }
 
-  /* ═══ STEP 3: submit to academic ═══ */
-  const submitBtn = document.getElementById('meSubmitBtn');
-  const confirmBtn = document.getElementById('meConfirmSubmit');
-  if (submitBtn && confirmBtn) {
-    let modalEl = document.getElementById('meConfirmModal');
-    const modal = new bootstrap.Modal(modalEl);
+        addStudentConfirm.disabled = true;
+        addStudentConfirm.textContent = LANG === 'sw' ? 'Inaongeza...' : 'Adding...';
 
-    submitBtn.addEventListener('click', () => modal.show());
-    confirmBtn.addEventListener('click', async () => {
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = LANG === 'sw' ? 'Inatuma...' : 'Submitting...';
-      try {
-        await postJSON("{% url 'marks_entry_submit' %}", {
-          exam_id: EXAM_ID, subject_id: SUBJECT_ID,
-        });
-        modal.hide();
-        new bootstrap.Modal(document.getElementById('meSuccessModal')).show();
-      } catch (err) {
-        modal.hide();
-        toast(err.message, true);
-      } finally {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = '✓ ' + (LANG === 'sw' ? 'Ndio, Submit' : 'Yes, Submit');
-      }
-    });
+        try {
+          const data = await postJSON("{% url 'marks_entry_add_student' %}", {
+            exam_id: EXAM_ID,
+            first_name: firstName,
+            middle_name: middleName,
+            last_name: lastName,
+            gender: gender,
+          });
+          // Insert at specific position or append to end
+          const insertPos = window._insertAtPosition;
+          window._insertAtPosition = null;
+          if (!byId.has(data.id)) {
+            const newStudent = { id: data.id, name: data.name, score: null, is_absent: false };
+            if (insertPos !== undefined && insertPos !== null && !isNaN(insertPos)) {
+              // Rebuild Map: insert at position
+              const arr = [...byId.entries()];
+              arr.splice(insertPos, 0, [data.id, newStudent]);
+              byId.clear();
+              arr.forEach(([k, v]) => byId.set(k, v));
+            } else {
+              byId.set(data.id, newStudent);
+            }
+            renderRows();
+          }
+          toast(data.created
+            ? (LANG === 'sw' ? '✅ ' + data.name + ' ameongezwa.' : '✅ ' + data.name + ' added.')
+            : (LANG === 'sw' ? 'ℹ️ ' + data.name + ' tayari yupo — ameongezwa kwenye jedwali.' : 'ℹ️ ' + data.name + ' already exists — added to table.'));
+          bootstrap.Modal.getInstance(addStudentModal).hide();
+          // Scroll to the new row
+          setTimeout(() => {
+            const row = rowsBody.querySelector('tr[data-id="' + data.id + '"]');
+            if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          }, 200);
+        } catch (err) {
+          addStudentError.textContent = err.message;
+          addStudentError.style.display = '';
+        } finally {
+          addStudentConfirm.disabled = false;
+          addStudentConfirm.textContent = '\u2713 ' + (LANG === 'sw' ? 'Ongeza' : 'Add');
+        }
+      });
+    }
+
+    /* ═══ STEP 3: submit to academic ═══ */
+    const submitBtn = document.getElementById('meSubmitBtn');
+    const confirmBtn = document.getElementById('meConfirmSubmit');
+    if (submitBtn && confirmBtn) {
+      let modalEl = document.getElementById('meConfirmModal');
+      const modal = new bootstrap.Modal(modalEl);
+
+      submitBtn.addEventListener('click', () => modal.show());
+      confirmBtn.addEventListener('click', async () => {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = LANG === 'sw' ? 'Inatuma...' : 'Submitting...';
+        try {
+          await postJSON("{% url 'marks_entry_submit' %}", {
+            exam_id: EXAM_ID, subject_id: SUBJECT_ID,
+          });
+          modal.hide();
+          new bootstrap.Modal(document.getElementById('meSuccessModal')).show();
+        } catch (err) {
+          modal.hide();
+          toast(err.message, true);
+        } finally {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = '✓ ' + (LANG === 'sw' ? 'Ndio, Submit' : 'Yes, Submit');
+        }
+      });
+    }
   }
 })();
 </script>
