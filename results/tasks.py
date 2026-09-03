@@ -31,7 +31,7 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
     Returns a dict — either {'error': ...} (OCR couldn't read the
     document) or {'matched': [...], 'unmatched': [...]} in exactly the
     shape the view used to return synchronously."""
-    from .services.speech_submission_service import fuzzy_match_student_name
+    from .services.speech_submission_service import match_rows_to_roster_exclusive
     from .views import _parse_roster_line, _save_student
 
     try:
@@ -47,16 +47,20 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
 
     roster_students = list(Student.objects.filter(id__in=roster_ids))
 
-    # Same matching logic scoresheet_photo_extract used to run inline —
-    # see marks_entry.py's docstring on _save_student for why an unmatched
-    # name becomes a brand-new student rather than being dropped.
+    # Exclusive matching: each roster student can only be claimed by ONE
+    # row, so two similarly-named students (same surname, or a name OCR
+    # misread as another student's) can't both collapse onto the same
+    # person — see match_rows_to_roster_exclusive's docstring.
+    assignments, _unmatched_indices = match_rows_to_roster_exclusive(
+        extracted_rows, roster_students, threshold=0.80,
+    )
+
     matched = []
     unmatched = []
-    for row in extracted_rows:
-        student, confidence, _candidates = fuzzy_match_student_name(
-            row['raw_name'], roster_students, threshold=0.80,
-        )
-        if student:
+    for row_index, row in enumerate(extracted_rows):
+        assignment = assignments.get(row_index)
+        if assignment:
+            student, confidence = assignment
             matched.append({
                 'id': student.id,
                 'score': row['score'],
@@ -97,6 +101,7 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
     them in a review table so the teacher can correct scores before
     the final save."""
     from django.utils import timezone
+    from .services.speech_submission_service import match_rows_to_roster_exclusive
     from .services.upload_processing_service import recompute_processed_results_for_exam
     from .views import _parse_roster_line, _save_student
 
@@ -121,14 +126,21 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
     if not subject:
         return {'error': 'Somo halipatikani.'}
 
+    # Exclusive matching: each roster student can only be claimed by ONE
+    # row, so two similarly-named students (same surname, or a name OCR
+    # misread as another student's) can't both collapse onto the same
+    # person — see match_rows_to_roster_exclusive's docstring.
+    assignments, _unmatched_indices = match_rows_to_roster_exclusive(
+        extracted_rows, roster_students, threshold=0.80,
+    )
+
     matched = []
     unmatched = []
-    for row in extracted_rows:
+    for row_index, row in enumerate(extracted_rows):
         is_absent = row.get('is_absent', False)
-        student, confidence, candidates = fuzzy_match_student_name(
-            row['raw_name'], roster_students, threshold=0.80,
-        )
-        if student:
+        assignment = assignments.get(row_index)
+        if assignment:
+            student, confidence = assignment
             student_name = ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p)
             logger.info("[BulkUpload] Matched '%s' -> '%s' (confidence=%.4f) score=%s absent=%s",
                 row['raw_name'], student_name, confidence, row['score'], is_absent)

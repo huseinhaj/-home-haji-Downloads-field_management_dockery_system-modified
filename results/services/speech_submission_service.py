@@ -347,6 +347,56 @@ def fuzzy_match_student_name(raw_name: str, roster_students: Iterable[Student], 
     return matched_student, best_candidate["confidence"], top_candidates
 
 
+def match_rows_to_roster_exclusive(
+    rows: List[dict],
+    roster_students: Iterable[Student],
+    threshold: float = 0.80,
+) -> Tuple[dict, list]:
+    """Match a BATCH of scoresheet rows (name -> score) against a roster,
+    exclusively — each roster student is claimed by at most ONE row, and
+    each row is matched to at most ONE student.
+
+    Matching each row independently against the whole roster (the old
+    approach) lets two rows for similarly-named students — e.g. same
+    surname, or a name the OCR misread as another student's — both pick
+    the SAME "best" student, silently giving one student the wrong score
+    and leaving the other with none. This picks the globally best-scoring
+    (row, student) pairs first, so a near-exact name match always wins its
+    student before a weaker, merely-similar match can steal them.
+
+    Returns (assignments, unmatched_row_indices) where assignments maps
+    row_index -> (student, confidence) for every confidently, exclusively
+    matched row; unmatched_row_indices lists the row indices left over
+    (below threshold, or whose best candidates were already claimed by a
+    stronger match) for the caller's existing "create new student" or
+    "leave unmatched" fallback.
+    """
+    roster_students = list(roster_students)
+    student_names = {student.id: normalize_student_name(student) for student in roster_students}
+
+    pairs = []  # (confidence, row_index, student)
+    for row_index, row in enumerate(rows):
+        normalized_name = normalize_text(row.get('raw_name') or '')
+        for student in roster_students:
+            confidence = _compare_names(normalized_name, student_names[student.id])
+            if confidence >= threshold:
+                pairs.append((confidence, row_index, student))
+
+    # Highest confidence first; stable tie-break keeps results deterministic.
+    pairs.sort(key=lambda p: (-p[0], p[1], p[2].id))
+
+    assignments: dict = {}
+    claimed_students: set = set()
+    for confidence, row_index, student in pairs:
+        if row_index in assignments or student.id in claimed_students:
+            continue
+        assignments[row_index] = (student, confidence)
+        claimed_students.add(student.id)
+
+    unmatched_row_indices = [i for i in range(len(rows)) if i not in assignments]
+    return assignments, unmatched_row_indices
+
+
 @transaction.atomic
 def create_or_get_session(
     *,
