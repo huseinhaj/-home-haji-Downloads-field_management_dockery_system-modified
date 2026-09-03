@@ -323,11 +323,10 @@
         {% endif %}
         {% if submission and submission.status == 'SUBMITTED' %}
         <a href="{% url 'exam_overview' exam.id %}" class="btn-me-ghost">{% if LANG == 'sw' %}Rudi kwenye Mtihani{% else %}Back to Exam{% endif %} →</a>
-        {% else %}
-        <button class="btn-me-submit" id="meSubmitBtn">
-          &#8679; {% if LANG == 'sw' %}Submit kwa Mtaaluma{% else %}Submit to Academic{% endif %}
-        </button>
         {% endif %}
+        <button class="btn-me-submit" id="meSubmitBtn">
+          &#8679; {% if submission and submission.status == 'SUBMITTED' %}{% if LANG == 'sw' %}Wasilisha Tena{% else %}Re-submit{% endif %}{% else %}{% if LANG == 'sw' %}Submit kwa Mtaaluma{% else %}Submit to Academic{% endif %}{% endif %}
+        </button>
       </div>
     </div>
     <p class="me-hint mt-2 mb-0">
@@ -337,11 +336,17 @@
         {% else %}
         ✅ Scores were already approved. Click "Back & Edit" to modify scores, then "Submit" to re-submit.
         {% endif %}
+      {% elif submission and submission.status == 'SUBMITTED' %}
+        {% if LANG == 'sw' %}
+        ⏳ Alama hizi zimeshawasilishwa na zinasubiri idhini ya Mtaaluma. Bado unaweza "Rudi na Rekebisha" kisha "Wasilisha Tena" mpaka Mtaaluma achukue hatua.
+        {% else %}
+        ⏳ These scores are already submitted and awaiting the academic officer's approval. You can still "Back & Edit" then "Re-submit" until the academic officer acts on them.
+        {% endif %}
       {% else %}
         {% if LANG == 'sw' %}
-        ⚠️ Ukisubmit, mtaaluma (Academic Officer) atapokea alama hizi na kwenda kwenye mfumo wa idhini. Utakapofanya hivyo hutaweza kuzibadilisha bila idhini yake.
+        ⚠️ Ukisubmit, mtaaluma (Academic Officer) atapokea alama hizi na kwenda kwenye mfumo wa idhini. Utaendelea kuweza kuhariri na kuwasilisha tena mpaka aidhinishe.
         {% else %}
-        ⚠️ Once submitted, the academic officer receives these scores for approval. You won't be able to change them without their approval.
+        ⚠️ Once submitted, the academic officer receives these scores for approval. You can still edit and re-submit until they act on it.
         {% endif %}
       {% endif %}
     </p>
