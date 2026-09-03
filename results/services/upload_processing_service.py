@@ -241,3 +241,12 @@ def recompute_processed_results_for_exam(exam):
             unique_fields=['exam', 'student'],
             update_fields=['total_score', 'average_score', 'points', 'division', 'position', 'counted_subjects'],
         )
+
+    # Stale cleanup: a student whose ExamResult rows were all removed
+    # (roster correction, ghost-student fix, resubmission) after their
+    # ProcessedResult was first computed would otherwise keep showing up
+    # in results/rankings forever — bulk_create above only ever
+    # creates/updates rows for students who currently qualify, it never
+    # removes ones who no longer do.
+    current_student_ids = [data['student'].id for data in student_data]
+    ProcessedResult.objects.filter(exam=exam).exclude(student_id__in=current_student_ids).delete()
