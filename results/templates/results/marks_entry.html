@@ -271,6 +271,7 @@
       </div>
       {% elif submission.status == 'APPROVED' %}
       <span class="badge-soft" style="background:#e6f7ec;color:var(--ok-500);">&#10003; {% if LANG == 'sw' %}Imeidhinishwa na Mtaaluma{% else %}Approved by Academic{% endif %}</span>
+      <span class="badge-soft" style="background:#fff3cd;color:#856404;margin-left:0.4rem;">&#9998; {% if LANG == 'sw' %}Unaweza kurekebisha na kuwasilisha tena{% else %}You can edit and re-submit{% endif %}</span>
       {% endif %}
     {% endif %}
   </div>
@@ -330,10 +331,18 @@
       </div>
     </div>
     <p class="me-hint mt-2 mb-0">
-      {% if LANG == 'sw' %}
-      ⚠️ Ukisubmit, mtaaluma (Academic Officer) atapokea alama hizi na kwenda kwenye mfumo wa idhini. Utakapofanya hivyo hutaweza kuzibadilisha bila idhini yake.
+      {% if submission and submission.status == 'APPROVED' %}
+        {% if LANG == 'sw' %}
+        ✅ Alama zilikuwa tayari zimeidhinishwa. Bonyeza "Rudi na Rekebisha" kurekebisha alama, kisha "Submit" tena kuwasilisha mpya.
+        {% else %}
+        ✅ Scores were already approved. Click "Back & Edit" to modify scores, then "Submit" to re-submit.
+        {% endif %}
       {% else %}
-      ⚠️ Once submitted, the academic officer receives these scores for approval. You won't be able to change them without their approval.
+        {% if LANG == 'sw' %}
+        ⚠️ Ukisubmit, mtaaluma (Academic Officer) atapokea alama hizi na kwenda kwenye mfumo wa idhini. Utakapofanya hivyo hutaweza kuzibadilisha bila idhini yake.
+        {% else %}
+        ⚠️ Once submitted, the academic officer receives these scores for approval. You won't be able to change them without their approval.
+        {% endif %}
       {% endif %}
     </p>
   </div>
@@ -1437,6 +1446,7 @@ function _dlPdf(url) {
         }
       });
     }
+  } /* end if (tableWrap && !REVIEW) */
 
     /* ═══ STEP 3: submit to academic ═══ */
     const submitBtn = document.getElementById('meSubmitBtn');
@@ -1464,7 +1474,6 @@ function _dlPdf(url) {
         }
       });
     }
-  }
 })();
 </script>
 {% endblock %}

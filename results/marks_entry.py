@@ -365,12 +365,15 @@ def marks_entry_submit(request):
 
     student_count = ExamResult.objects.filter(exam=exam, subject=subject).count()
 
-    # ── Check if existing submission was RETURNED — if so, delete old + create new revision ──
+    # ── Check if existing submission was RETURNED or APPROVED — if so, handle revision ──
     existing = SubjectSubmission.objects.filter(exam=exam, subject=subject).first()
     new_revision = 1
     if existing and existing.status == SubjectSubmission.STATUS_RETURNED:
         new_revision = existing.revision_number + 1
         existing.delete()
+    elif existing and existing.status == SubjectSubmission.STATUS_APPROVED:
+        # Allow re-submission after approval — bump revision
+        new_revision = existing.revision_number + 1
 
     SubjectSubmission.objects.update_or_create(
         exam=exam,
