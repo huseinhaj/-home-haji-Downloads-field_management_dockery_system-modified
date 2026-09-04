@@ -211,6 +211,37 @@ def is_passing_grade(grade):
     return grade != "F"
 
 
+# ── ACSEE subsidiary subjects ────────────────────────────────────────────
+# General Studies and Basic Applied Mathematics (BAM) are the compulsory
+# SUBSIDIARY subjects at A-Level. NECTA never counts them toward the ACSEE
+# division — that is built from the three PRINCIPAL subjects only. (They do
+# count toward a student's TCU university-admission points, but that is a
+# separate calculation this system does not do.)
+#
+# Verified against real ACSEE 2025 result slips (onlinesys.necta.go.tz):
+# a candidate with BAM-C (3 pts) outscoring Biology-E (5 pts) still had
+# Physics + Chemistry + Biology counted for the division (AGGT 13, Div III)
+# — BAM and General Studies ignored.
+_ACSEE_SUBSIDIARY_SUBJECTS = {
+    "general studies", "generalstudies", "general study",
+    "gs", "g/studies", "g studies", "g/study",
+    "basic applied mathematics", "basic applied maths",
+    "basic applied math", "applied mathematics", "applied maths",
+    "bam",
+}
+
+
+def is_acsee_subsidiary_subject(subject_name) -> bool:
+    """True for General Studies / Basic Applied Mathematics — the A-Level
+    subsidiary subjects NECTA excludes from the ACSEE division points.
+
+    Note: "Advanced Mathematics" (a real principal subject) is deliberately
+    NOT matched — only the "applied"/"basic applied" forms are subsidiary.
+    """
+    key = " ".join(str(subject_name or "").strip().lower().split())
+    return key in _ACSEE_SUBSIDIARY_SUBJECTS
+
+
 GRADE_POINTS = {"A": 1, "B": 2, "C": 3, "D": 4, "F": 5}
 
 # ACSEE (A-Level) has two extra bands (E, S) so F carries a higher point value

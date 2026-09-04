@@ -8,7 +8,7 @@ from ..utils import (
     get_grade_for_form,
     get_grade_points,
     is_absent_marker,
-    is_passing_grade,
+    is_acsee_subsidiary_subject,
     load_results_dataframe,
     normalize_gender,
     normalize_subject_name,
@@ -126,7 +126,7 @@ def recompute_processed_results_for_exam(exam):
     the student's BEST subjects (best_n = 7 for CSEE, 3 for ACSEE), sum
     those grades' point values, then map the total to a division.
 
-    Fewer-subjects fairness:
+    Fewer-subjects fairness (CSEE / Form 1-4):
         - Division and points are computed ONLY from the subjects a student
           actually has (minimum 1). A student with 4 CSEE subjects uses all
           4 for their points/division — they are NOT penalised for missing
@@ -137,6 +137,16 @@ def recompute_processed_results_for_exam(exam):
           (7 points) — which matches real NECTA practice where the
           division is what matters, not a competitive position across
           different subject counts.
+
+    ACSEE / Form 5-6 is different (verified against real 2025 result slips):
+        - Only the 3 PRINCIPAL subjects count. General Studies and Basic
+          Applied Mathematics are subsidiary and are excluded from the
+          division points (see is_acsee_subsidiary_subject).
+        - NECTA classifies every A-Level candidate on a FULL set of 3
+          principal subjects. A candidate short of that has the empty
+          slots scored as F (7 points) in the aggregate — so one lone A
+          is 1 + 7 + 7 = 15 → Division III, not Division I, and such a
+          candidate can never outrank a genuine 3-subject candidate.
     """
     students = Student.objects.filter(examresult__exam=exam).distinct().prefetch_related(
         Prefetch('examresult_set', queryset=ExamResult.objects.filter(exam=exam).select_related('subject'))
@@ -172,15 +182,37 @@ def recompute_processed_results_for_exam(exam):
         count = len(results)
         average = (total / count) if count else 0.0
 
-        # Grade every subject, then sort by points (ascending = better)
+        # ACSEE division counts PRINCIPAL subjects only — drop General
+        # Studies / BAM. (Fall back to all subjects if a scoresheet somehow
+        # carries nothing but subsidiaries, so we never build an empty
+        # division.)
+        if exam.form in (5, 6):
+            division_results = [
+                r for r in results if not is_acsee_subsidiary_subject(r.subject.name)
+            ] or results
+        else:
+            division_results = results
+
+        # Grade every counted subject, then sort by points (ascending = better)
         graded = sorted(
-            ((r, get_grade_points(get_grade_for_form(r.score, exam.form), form=exam.form)) for r in results),
+            ((r, get_grade_points(get_grade_for_form(r.score, exam.form), form=exam.form)) for r in division_results),
             key=lambda pair: pair[1],
         )
-        # Use best N subjects (or all if fewer than N) — no penalty for
-        # having fewer subjects than the standard count.
+        # Use best N subjects (or all if fewer than N).
         best = graded[:best_n]
         points = sum(p for _, p in best)
+        counted_principal = len(graded)
+
+        # ── ACSEE: pad a short combination up to best_n with F ────────
+        # NECTA classifies every A-Level candidate on a FULL set of 3
+        # principal subjects. Slots the candidate is short — absent, or
+        # never entered — count as F (the ACSEE fail point value) in the
+        # aggregate, exactly as on the real result slip. Without this a
+        # lone A scores 1 point and lands in Division I (ranking first);
+        # with it that candidate is 1 + 7 + 7 = 15 → Division III.
+        if exam.form in (5, 6) and counted_principal < best_n:
+            points += get_grade_points('F', form=exam.form) * (best_n - counted_principal)
+
         division = get_division(points, form=exam.form)
         counted_subjects = ', '.join(r.subject.name for r, _ in best)
 
@@ -192,7 +224,6 @@ def recompute_processed_results_for_exam(exam):
         # Without either, they receive Division 0 (fail).
         # Division I-III require 7+ subjects because the points scale
         # (7–17 = Div I) assumes 7 subjects are counted.
-        # ACSEE (Form 5-6): best-3 already enforces the minimum.
         if exam.form in (1, 2, 3, 4) and count < best_n:
             grades = [get_grade_for_form(r.score, exam.form) for r, _ in best]
             passing_a_bc = sum(1 for g in grades if g in ('A', 'B', 'C'))

@@ -710,3 +710,139 @@ class ClassTimetableViewTests(TestCase):
 		self.client_academic.post(reverse('teaching_assignment_manage'), {'action': 'auto_populate'})
 		ta.refresh_from_db()
 		self.assertEqual(ta.periods_per_week, 3)
+
+
+class AcseeSubsidiarySubjectTests(TestCase):
+	def test_general_studies_and_bam_are_subsidiary(self):
+		from .utils import is_acsee_subsidiary_subject
+		for name in (
+			'General Studies', 'general studies', 'GS', 'G/Studies', 'G Studies',
+			'Basic Applied Mathematics', 'basic applied maths', 'BAM',
+			'Applied Mathematics', '  General   Studies  ',
+		):
+			self.assertTrue(is_acsee_subsidiary_subject(name), name)
+
+	def test_principal_subjects_are_not_subsidiary(self):
+		from .utils import is_acsee_subsidiary_subject
+		for name in ('Physics', 'Advanced Mathematics', 'History', 'Economics', 'Mathematics', ''):
+			self.assertFalse(is_acsee_subsidiary_subject(name), name)
+
+
+class RecomputeAcseeDivisionTests(TestCase):
+	"""ACSEE (Form 5-6) division: best 3 PRINCIPAL subjects only, and a
+	combination short of 3 is padded with F (7 pts) the way NECTA does."""
+
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.exam = Exam.objects.create(name='Mock ACSEE', year=2026, form=5)
+		self._subjects = {}
+
+	def _subject(self, name):
+		if name not in self._subjects:
+			self._subjects[name] = Subject.objects.create(name=name)
+		return self._subjects[name]
+
+	def _student(self, first, last):
+		return Student.objects.create(first_name=first, middle_name='', last_name=last, gender='M')
+
+	def _enter(self, student, **scores):
+		for subject_name, score in scores.items():
+			ExamResult.objects.create(
+				exam=self.exam, student=student,
+				subject=self._subject(subject_name.replace('_', ' ')), score=score,
+			)
+
+	def _processed(self, student):
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		recompute_processed_results_for_exam(self.exam)
+		return ProcessedResult.objects.get(exam=self.exam, student=student)
+
+	def test_general_studies_and_bam_excluded_from_division(self):
+		# Grades: Physics D(4), Chemistry D(4), Biology E(5) -> 13 -> Div III.
+		# BAM C(3) is better than Biology but must NOT be counted.
+		student = self._student('Asha', 'Kimaro')
+		self._enter(student, Physics=52, Chemistry=55, Biology=45,
+			Basic_Applied_Mathematics=65, General_Studies=42)
+		result = self._processed(student)
+		self.assertEqual(result.points, 13)
+		self.assertEqual(result.division, 'III')
+		self.assertNotIn('Basic Applied Mathematics', result.counted_subjects)
+		self.assertNotIn('General Studies', result.counted_subjects)
+
+	def test_single_principal_subject_A_is_padded_to_division_III(self):
+		# One A (1 pt) + two missing slots scored F (7) each = 15 -> Div III.
+		student = self._student('Baraka', 'Mushi')
+		self._enter(student, Physics=85)
+		result = self._processed(student)
+		self.assertEqual(result.points, 15)
+		self.assertEqual(result.division, 'III')
+
+	def test_single_principal_subject_F_is_division_0(self):
+		student = self._student('Neema', 'Paul')
+		self._enter(student, Physics=20)
+		result = self._processed(student)
+		self.assertEqual(result.points, 21)
+		self.assertEqual(result.division, '0')
+
+	def test_two_principal_subjects_are_padded_once(self):
+		# A(1) + B(2) + one F(7) = 10 -> Div II.
+		student = self._student('Juma', 'Ally')
+		self._enter(student, Physics=85, Chemistry=75)
+		result = self._processed(student)
+		self.assertEqual(result.points, 10)
+		self.assertEqual(result.division, 'II')
+
+	def test_padded_candidate_ranks_below_a_full_three_subject_candidate(self):
+		full = self._student('Full', 'Combination')
+		self._enter(full, Physics=85, Chemistry=85, Biology=85)  # 3 pts, Div I
+		partial = self._student('One', 'Subject')
+		self._enter(partial, History=85)  # padded to 15 pts, Div III
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		recompute_processed_results_for_exam(self.exam)
+		full_r = ProcessedResult.objects.get(exam=self.exam, student=full)
+		partial_r = ProcessedResult.objects.get(exam=self.exam, student=partial)
+		self.assertEqual(full_r.division, 'I')
+		self.assertLess(full_r.position, partial_r.position)
+
+	def test_three_full_principals_are_not_padded(self):
+		student = self._student('Grace', 'Mena')
+		self._enter(student, Physics=62, Chemistry=55, Geography=45)  # C,D,E = 3+4+5
+		result = self._processed(student)
+		self.assertEqual(result.points, 12)
+		self.assertEqual(result.division, 'II')
+
+	def test_only_subsidiary_subjects_falls_back_without_crashing(self):
+		student = self._student('Said', 'Omary')
+		self._enter(student, General_Studies=65, Basic_Applied_Mathematics=70)
+		result = self._processed(student)
+		# B(2) + C(3) + one padded F(7) = 12 -> Div II
+		self.assertEqual(result.points, 12)
+		self.assertEqual(result.division, 'II')
+
+
+class RecomputeCseeMinimumSubjectRuleTests(TestCase):
+	"""The existing CSEE (<7 subjects) rule must be untouched by the
+	ACSEE changes."""
+
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.exam = Exam.objects.create(name='Terminal', year=2026, form=4)
+
+	def _run(self, **scores):
+		student = Student.objects.create(first_name='Test', middle_name='', last_name='Pupil', gender='F')
+		for name, score in scores.items():
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=self.exam, student=student, subject=subject, score=score)
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		recompute_processed_results_for_exam(self.exam)
+		return ProcessedResult.objects.get(exam=self.exam, student=student)
+
+	def test_fewer_than_seven_with_a_pass_is_capped_at_division_IV(self):
+		result = self._run(Physics=90, Chemistry=88, Biology=85)  # 3x A
+		self.assertEqual(result.division, 'IV')
+
+	def test_fewer_than_seven_without_a_real_pass_is_division_0(self):
+		result = self._run(Physics=20, Chemistry=25)  # 2x F
+		self.assertEqual(result.division, '0')
