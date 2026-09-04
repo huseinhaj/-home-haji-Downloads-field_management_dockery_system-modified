@@ -743,6 +743,45 @@ class HistoriaYaTanzaniaNaMaadiliTests(TestCase):
 		subject = safe_get_or_create_subject('Historia ya Tanzania na Maadili')
 		self.assertEqual(subject.code, 'HIST/M')
 
+	def test_safe_get_or_create_normalises_raw_aliases(self):
+		from .utils import safe_get_or_create_subject
+		a = safe_get_or_create_subject('HIST/M')
+		b = safe_get_or_create_subject('Maadili')
+		self.assertEqual(a.pk, b.pk)
+		self.assertEqual(a.name, 'Historia ya Tanzania na Maadili')
+
+	def test_resolve_subject_columns_splits_two_history_columns(self):
+		from .utils import resolve_subject_columns
+		# pandas renames a duplicate "HIST" header to "HIST.1"
+		resolved = resolve_subject_columns(['GEOG', 'HIST', 'HIST.1'])
+		self.assertEqual(resolved, [
+			('GEOG', 'Geography'),
+			('HIST', 'History'),
+			('HIST.1', 'Historia ya Tanzania na Maadili'),
+		])
+
+	def test_resolve_subject_columns_leaves_distinct_headers_alone(self):
+		from .utils import resolve_subject_columns
+		resolved = resolve_subject_columns(['History', 'HIST/M'])
+		self.assertEqual(resolved, [
+			('History', 'History'),
+			('HIST/M', 'Historia ya Tanzania na Maadili'),
+		])
+
+	def test_upload_with_two_history_columns_creates_two_subjects(self):
+		import io
+		from django.core.files.uploadedfile import SimpleUploadedFile
+		from .services.upload_processing_service import process_uploaded_results
+		exam = Exam.objects.create(name='Mock', year=2026, form=4)
+		csv = (
+			"First Name,Last Name,Gender,HIST,HIST\n"
+			"Asha,Juma,F,80,55\n"
+		)
+		process_uploaded_results(exam, SimpleUploadedFile(
+			'r.csv', csv.encode('utf-8'), content_type='text/csv'))
+		names = set(ExamResult.objects.filter(exam=exam).values_list('subject__name', flat=True))
+		self.assertEqual(names, {'History', 'Historia ya Tanzania na Maadili'})
+
 	def test_historia_ya_tanzania_never_enters_an_acsee_combination(self):
 		from .combinations import detect_acsee_combination
 		# Student's real combination is HGK; HIST/M is just an extra subject.

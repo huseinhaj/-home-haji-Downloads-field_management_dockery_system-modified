@@ -12,8 +12,8 @@ from ..utils import (
     is_acsee_subsidiary_subject,
     load_results_dataframe,
     normalize_gender,
-    normalize_subject_name,
     parse_score,
+    resolve_subject_columns,
     safe_get_or_create_subject,
 )
 
@@ -35,9 +35,8 @@ def process_uploaded_results(exam, uploaded_file):
         raise UploadProcessingError("No subject columns found. Please check your file.")
 
     subjects_by_column = {}
-    for column_name in subject_columns:
-        normalized_name = normalize_subject_name(column_name)
-        subject = safe_get_or_create_subject(normalized_name)
+    for column_name, subject_name in resolve_subject_columns(subject_columns):
+        subject = safe_get_or_create_subject(subject_name)
         subjects_by_column[column_name] = subject
 
     # Parse every row first, then do the whole upload in a handful of bulk
@@ -68,7 +67,7 @@ def process_uploaded_results(exam, uploaded_file):
     if parsed_students:
         from django.db.models import Q
 
-        name_pairs = {(fn, ln) for fn, _, ln, _, _ in parsed_students}
+        name_pairs = {(fn, ln) for fn, _mn, ln, *_rest in parsed_students}
         name_filter = Q()
         for fn, ln in name_pairs:
             name_filter |= Q(first_name=fn, last_name=ln)

@@ -43,6 +43,7 @@ SUBJECT_NAME_MAP = {
     "htm": "Historia ya Tanzania na Maadili",
     "hte": "Historia ya Tanzania na Maadili",
     "geo": "Geography",
+    "geog": "Geography",
     "geography": "Geography",
     "cre": "CRE",
     "civics": "Civics",
@@ -83,6 +84,51 @@ def load_results_dataframe(uploaded_file) -> pd.DataFrame:
 
 def normalize_subject_name(subject_name: str) -> str:
     return SUBJECT_NAME_MAP.get(subject_name.strip().lower(), subject_name.strip())
+
+
+# When one upload carries the SAME subject twice (a school that teaches
+# both History and Historia ya Tanzania na Maadili exports two columns,
+# often both headed "HIST" — pandas then reads them as "HIST" / "HIST.1"),
+# the second occurrence is renamed. Known pair first, then a plain "(2)".
+_REPEATED_SUBJECT_SECOND_NAME = {
+    "History": "Historia ya Tanzania na Maadili",
+}
+
+_DEDUP_SUFFIX = None  # compiled lazily to keep import time light
+
+
+def _strip_pandas_dedup_suffix(column_name: str) -> str:
+    """`"HIST.1"` / `"History.2"` (pandas' rename of duplicate headers) → base."""
+    global _DEDUP_SUFFIX
+    if _DEDUP_SUFFIX is None:
+        import re
+        _DEDUP_SUFFIX = re.compile(r"\.\d+$")
+    return _DEDUP_SUFFIX.sub("", str(column_name)).strip()
+
+
+def resolve_subject_columns(subject_columns):
+    """Map raw scoresheet column headers to distinct subject names.
+
+    Returns ``[(column_name, subject_name), ...]`` preserving input order.
+    A subject that appears more than once in the same file is disambiguated
+    so its columns never collapse onto one Subject row:
+        - the 2nd "History" column  → "Historia ya Tanzania na Maadili"
+        - any other repeat          → "<name> (2)", "(3)", …
+    """
+    resolved = []
+    counts = {}
+    for column_name in subject_columns:
+        base = _strip_pandas_dedup_suffix(column_name)
+        name = normalize_subject_name(base)
+        counts[name] = counts.get(name, 0) + 1
+        occurrence = counts[name]
+        if occurrence >= 2:
+            if occurrence == 2 and name in _REPEATED_SUBJECT_SECOND_NAME:
+                name = _REPEATED_SUBJECT_SECOND_NAME[name]
+            else:
+                name = f"{name} ({occurrence})"
+        resolved.append((column_name, name))
+    return resolved
 
 
 def extract_subject_columns(data_frame: pd.DataFrame) -> list[str]:
@@ -138,9 +184,12 @@ def safe_get_or_create_subject(name):
     raises ``MultipleObjectsReturned``.  This helper catches that case,
     keeps the oldest record, deletes the extras, and returns the winner.
 
-    Also stamps the known short code (SUBJECT_CODES) on the row, filling
-    it in on rows that pre-date the code."""
+    The name is run through ``normalize_subject_name`` first, so callers
+    that pass a raw alias ("HIST/M", "Maadili", "phy") land on the same
+    canonical Subject. Also stamps the known short code (SUBJECT_CODES) on
+    the row, filling it in on rows that pre-date the code."""
     from .models import Subject
+    name = normalize_subject_name(str(name))
     try:
         subject, _ = Subject.objects.get_or_create(name=name)
     except Subject.MultipleObjectsReturned:
