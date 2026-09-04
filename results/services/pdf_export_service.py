@@ -151,6 +151,24 @@ def _grade_point(grade, form=4):
     return gp_map.get(grade, max(gp_map.values()))
 
 
+def _centre_counted_subjects(results, form):
+    """How many subjects the division counts, for the centre GPA line.
+
+    NECTA fixes this: best 7 for CSEE / FTNA (Form 1-4), best 3 (the
+    combination) for ACSEE (Form 5-6). Use the real per-candidate count
+    when the ProcessedResult rows carry it (widest across candidates — a
+    full candidate has them all), else fall back to the NECTA standard.
+    Never 0 — an empty first row used to zero out every GPA on the sheet.
+    """
+    necta_standard = 3 if form in (5, 6) else 7
+    widest = max(
+        (len([s for s in (r.counted_subjects or '').split(',') if s.strip()])
+         for r in results),
+        default=0,
+    )
+    return widest or necta_standard
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def _load_logo_b64(field, b64_field_value=''):
     """Load logo — first try base64 stored in DB, then fallback to ImageField.
@@ -572,13 +590,12 @@ def generate_results_pdf_response(exam):
     stype = "SECONDARY SCHOOL" if school_type == 'secondary' else "PRIMARY SCHOOL"
 
     # ── Compute stats ──
-    counted = n_subj
+    counted = _centre_counted_subjects(results, exam.form)
     if N:
         avg_total = sum(r.total_score for r in results) / N
         avg_average = sum(float(r.average_score) for r in results) / N
         avg_points = sum(r.points for r in results) / N
         div_counts = Counter(r.division for r in results)
-        counted = len([s for s in (results[0].counted_subjects or '').split(',') if s.strip()]) if results else n_subj
         centre_gpa = avg_points / counted if counted else 0
     else:
         avg_total = avg_average = avg_points = centre_gpa = 0

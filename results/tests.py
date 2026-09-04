@@ -1111,3 +1111,31 @@ class MarksEntryAddStudentTests(TestCase):
 		stored = self.StoredRoster.objects.get(
 			teacher=self.teacher, exam=self.exam, subject=self.subject)
 		self.assertEqual([s['id'] for s in stored.students].count(first_id), 1)
+
+
+class CentreCountedSubjectsTests(TestCase):
+	"""The class-results PDF 'Subjects Counted' / centre GPA divisor."""
+
+	def _counted(self, form, *counted_subjects):
+		from types import SimpleNamespace
+		from .services.pdf_export_service import _centre_counted_subjects
+		rows = [SimpleNamespace(counted_subjects=cs) for cs in counted_subjects]
+		return _centre_counted_subjects(rows, form)
+
+	def test_olevel_falls_back_to_seven_when_rows_have_no_counted_subjects(self):
+		self.assertEqual(self._counted(4, '', None), 7)
+		self.assertEqual(self._counted(4), 7)          # no results at all
+
+	def test_alevel_falls_back_to_three(self):
+		self.assertEqual(self._counted(5, ''), 3)
+
+	def test_uses_the_widest_real_count_when_present(self):
+		# one partial candidate (4 subjects), one full (7)
+		self.assertEqual(self._counted(
+			4,
+			'Maths, Eng, Kisw, Bio',
+			'Maths, Eng, Kisw, Bio, Chem, Phys, Geo',
+		), 7)
+
+	def test_alevel_combination_prefix_still_counts_three(self):
+		self.assertEqual(self._counted(5, 'PCB: Physics, Chemistry, Biology'), 3)
