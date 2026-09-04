@@ -173,12 +173,17 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
     sub_cell.alignment = Alignment(horizontal='center', vertical='center')
     ws.row_dimensions[2].height = 18
 
-    # Header row
+    # Header row — use the subject's short code when it has one so that,
+    # e.g., History and Historia ya Tanzania na Maadili read as HIST and
+    # HIST/M instead of two identical-looking headers.
+    def _subj_header(s):
+        return (s.code or '').strip().upper() or s.name.upper()
+
     header_row = 3
     if lang == 'sw':
-        headers = ["POS", "JINA", "JINSIA"] + [s.name.upper() for s in subjects] + ["JUMLA", "WASTANI", "DARAJA", "POINTI"]
+        headers = ["POS", "JINA", "JINSIA"] + [_subj_header(s) for s in subjects] + ["JUMLA", "WASTANI", "DARAJA", "POINTI"]
     else:
-        headers = ["POS", "NAME", "SEX"] + [s.name.upper() for s in subjects] + ["TOTAL", "AVG", "DIV.", "PTS"]
+        headers = ["POS", "NAME", "SEX"] + [_subj_header(s) for s in subjects] + ["TOTAL", "AVG", "DIV.", "PTS"]
     for col_idx, title in enumerate(headers, 1):
         cell = ws.cell(row=header_row, column=col_idx, value=title)
         _green_header_style(cell)

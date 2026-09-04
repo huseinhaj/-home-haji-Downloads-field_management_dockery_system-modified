@@ -879,7 +879,9 @@ def generate_results_pdf_response(exam):
                 g = 'X'
             else:
                 g = _grade_for_score(sc, exam.form)
-            abbr = sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
+            abbr = (sub.code or '').strip().upper() or (
+                sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
+            )
             fg, bg = GRADE_COLORS.get(g, ('#555555', '#E8E8E8'))
             subj_parts.append(
                 f"<font color='{fg}'><b>{abbr}-{g}</b></font>"

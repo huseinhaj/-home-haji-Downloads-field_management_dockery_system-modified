@@ -23,7 +23,25 @@ SUBJECT_NAME_MAP = {
     "biology": "Biology",
     "math": "Mathematics",
     "mathematics": "Mathematics",
+    "hist": "History",
     "history": "History",
+    # "Historia ya Tanzania na Maadili" (new O-Level curriculum subject) is
+    # a SEPARATE subject from plain History — keep the two apart so they do
+    # not both collapse to "History" (and both abbreviate to "HIST").
+    "historia ya tanzania na maadili": "Historia ya Tanzania na Maadili",
+    "historia ya tanzania na maadili ya uraia": "Historia ya Tanzania na Maadili",
+    "historia ya tanzania": "Historia ya Tanzania na Maadili",
+    "history of tanzania and ethics": "Historia ya Tanzania na Maadili",
+    "history of tanzania & ethics": "Historia ya Tanzania na Maadili",
+    "maadili": "Historia ya Tanzania na Maadili",
+    "maadili ya uraia": "Historia ya Tanzania na Maadili",
+    "hist/m": "Historia ya Tanzania na Maadili",
+    "hist / m": "Historia ya Tanzania na Maadili",
+    "hist-m": "Historia ya Tanzania na Maadili",
+    "hist m": "Historia ya Tanzania na Maadili",
+    "histm": "Historia ya Tanzania na Maadili",
+    "htm": "Historia ya Tanzania na Maadili",
+    "hte": "Historia ya Tanzania na Maadili",
     "geo": "Geography",
     "geography": "Geography",
     "cre": "CRE",
@@ -35,6 +53,15 @@ SUBJECT_NAME_MAP = {
     "agriculture": "Agriculture",
     "business": "Business Studies",
     "further math": "Further Mathematics",
+}
+
+# Short code shown in the compact results grid (the PDF truncates a bare
+# name to 4 letters, which makes "History" and "Historia ya Tanzania na
+# Maadili" both read as "HIST"). A subject with a code here renders by its
+# code instead; add entries as new clashes appear.
+SUBJECT_CODES = {
+    "History": "HIST",
+    "Historia ya Tanzania na Maadili": "HIST/M",
 }
 
 SUPPORTED_EXTENSIONS = (".xlsx", ".xls", ".csv")
@@ -109,16 +136,23 @@ def safe_get_or_create_subject(name):
 
     If duplicate Subject rows share the same name, ``get_or_create``
     raises ``MultipleObjectsReturned``.  This helper catches that case,
-    keeps the oldest record, deletes the extras, and returns the winner."""
+    keeps the oldest record, deletes the extras, and returns the winner.
+
+    Also stamps the known short code (SUBJECT_CODES) on the row, filling
+    it in on rows that pre-date the code."""
     from .models import Subject
     try:
         subject, _ = Subject.objects.get_or_create(name=name)
-        return subject
     except Subject.MultipleObjectsReturned:
         subject = Subject.objects.filter(name=name).order_by('id').first()
         # Delete duplicates
         Subject.objects.filter(name=name).exclude(id=subject.id).delete()
-        return subject
+
+    code = SUBJECT_CODES.get(name)
+    if code and (subject.code or '') != code:
+        subject.code = code
+        subject.save(update_fields=['code'])
+    return subject
 
 
 def get_grade(score):

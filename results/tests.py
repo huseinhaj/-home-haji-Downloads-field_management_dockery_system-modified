@@ -712,6 +712,48 @@ class ClassTimetableViewTests(TestCase):
 		self.assertEqual(ta.periods_per_week, 3)
 
 
+class HistoriaYaTanzaniaNaMaadiliTests(TestCase):
+	"""History and Historia ya Tanzania na Maadili must stay distinct."""
+
+	databases = {'default', 'results'}
+
+	def test_normalize_keeps_the_two_history_subjects_apart(self):
+		from .utils import normalize_subject_name
+		for raw in ('History', 'HIST', 'hist'):
+			self.assertEqual(normalize_subject_name(raw), 'History')
+		for raw in ('HIST/M', 'hist-m', 'HISTM', 'Historia ya Tanzania na Maadili',
+					'Maadili', 'History of Tanzania and Ethics', 'HTE'):
+			self.assertEqual(normalize_subject_name(raw), 'Historia ya Tanzania na Maadili')
+
+	def test_canon_subject_keeps_them_apart(self):
+		from .combinations import canon_subject
+		self.assertEqual(canon_subject('HIST'), 'History')
+		self.assertEqual(canon_subject('HIST/M'), 'Historia ya Tanzania na Maadili')
+		self.assertNotEqual(canon_subject('History'), canon_subject('Historia ya Tanzania na Maadili'))
+
+	def test_safe_get_or_create_stamps_short_code(self):
+		from .utils import safe_get_or_create_subject
+		self.assertEqual(safe_get_or_create_subject('History').code, 'HIST')
+		self.assertEqual(
+			safe_get_or_create_subject('Historia ya Tanzania na Maadili').code, 'HIST/M')
+
+	def test_code_is_backfilled_on_a_pre_existing_row(self):
+		from .utils import safe_get_or_create_subject
+		Subject.objects.create(name='Historia ya Tanzania na Maadili')  # no code
+		subject = safe_get_or_create_subject('Historia ya Tanzania na Maadili')
+		self.assertEqual(subject.code, 'HIST/M')
+
+	def test_historia_ya_tanzania_never_enters_an_acsee_combination(self):
+		from .combinations import detect_acsee_combination
+		# Student's real combination is HGK; HIST/M is just an extra subject.
+		code, subs = detect_acsee_combination(
+			['History', 'Geography', 'Kiswahili', 'Historia ya Tanzania na Maadili'],
+			lambda n: 1,
+		)
+		self.assertEqual(code, 'HGK')
+		self.assertNotIn('Historia ya Tanzania na Maadili', subs)
+
+
 class AcseeSubsidiarySubjectTests(TestCase):
 	def test_general_studies_and_bam_are_subsidiary(self):
 		from .utils import is_acsee_subsidiary_subject
