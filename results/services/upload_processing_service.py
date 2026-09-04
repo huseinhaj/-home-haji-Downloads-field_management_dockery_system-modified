@@ -153,6 +153,11 @@ def recompute_processed_results_for_exam(exam):
         - When no registered combination fits (unusual subject mix, or
           fewer than 3 principals) it falls back to the best 3 principal
           subjects, General Studies / BAM removed.
+        - Position ranking tiebreaker is the total of the combination
+          subjects only (not General Studies / a 4th subject).
+
+    Ranking (both levels): ascending points, then descending
+    counted-subject total; students who sat nothing are placed last.
     """
     students = Student.objects.filter(examresult__exam=exam).distinct().prefetch_related(
         Prefetch('examresult_set', queryset=ExamResult.objects.filter(exam=exam).select_related('subject'))
@@ -181,6 +186,7 @@ def recompute_processed_results_for_exam(exam):
                 'division': '0',
                 'counted_subjects': '',
                 'subject_count': 0,
+                'rank_total': 0,
             })
             continue
 
@@ -246,6 +252,15 @@ def recompute_processed_results_for_exam(exam):
         if combo_code:
             counted_subjects = f"{combo_code}: {counted_subjects}"
 
+        # Tiebreaker for position ranking. For ACSEE this is the total of
+        # the COMBINATION subjects only (what actually set the division) —
+        # not General Studies / a 4th subject. For CSEE it stays the full
+        # total, unchanged.
+        if exam.form in (5, 6):
+            rank_total = sum(r.score for r, _ in best)
+        else:
+            rank_total = total
+
         # ── NECTA minimum-pass rule (O-Level / CSEE) ──────────────────
         # Official NECTA rule: a candidate with FEWER than 7 subjects can
         # only receive Division IV — never I, II, or III — if they have:
@@ -272,12 +287,16 @@ def recompute_processed_results_for_exam(exam):
                 'division': division,
                 'counted_subjects': counted_subjects,
                 'subject_count': count,
+                'rank_total': rank_total,
             }
         )
 
-    # NECTA ranking: sort by points ascending (lower points = better),
-    # then by total score descending as tiebreaker
-    student_data.sort(key=lambda item: (item['points'], -item['total']))
+    # NECTA ranking: students who sat nothing (Division 0, points forced
+    # to 0) go last; then points ascending (lower = better), then
+    # counted-subject total descending as tiebreaker.
+    student_data.sort(
+        key=lambda item: (item['subject_count'] == 0, item['points'], -item['rank_total'])
+    )
 
     # One bulk upsert instead of one update_or_create per student — the
     # remote DB's per-query latency made this the slowest part of an

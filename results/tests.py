@@ -854,6 +854,36 @@ class RecomputeAcseeDivisionTests(TestCase):
 		self.assertTrue(result.counted_subjects.startswith('PCB:'), result.counted_subjects)
 		self.assertNotIn('General Studies', result.counted_subjects)
 
+	def test_ranking_tiebreak_uses_combination_total_not_general_studies(self):
+		# Both are PCB with 3 points. A's combination marks total less than
+		# B's, but A also has a huge General Studies mark. Ranking must go
+		# by the combination total only -> B first.
+		a = self._student('Aled', 'One')
+		self._enter(a, Physics=80, Chemistry=80, Biology=80, General_Studies=99)
+		b = self._student('Bex', 'Two')
+		self._enter(b, Physics=83, Chemistry=83, Biology=83)
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		recompute_processed_results_for_exam(self.exam)
+		a_r = ProcessedResult.objects.get(exam=self.exam, student=a)
+		b_r = ProcessedResult.objects.get(exam=self.exam, student=b)
+		self.assertEqual((a_r.points, b_r.points), (3, 3))
+		self.assertLess(b_r.position, a_r.position)
+
+	def test_student_absent_in_all_subjects_ranks_last(self):
+		good = self._student('Good', 'Student')
+		self._enter(good, Physics=90, Chemistry=90, Biology=90)
+		absent = self._student('Absent', 'Student')
+		ExamResult.objects.create(
+			exam=self.exam, student=absent, subject=self._subject('Physics'),
+			score=None, is_absent=True,
+		)
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		recompute_processed_results_for_exam(self.exam)
+		good_r = ProcessedResult.objects.get(exam=self.exam, student=good)
+		absent_r = ProcessedResult.objects.get(exam=self.exam, student=absent)
+		self.assertEqual(absent_r.division, '0')
+		self.assertGreater(absent_r.position, good_r.position)
+
 	def test_single_principal_subject_A_is_padded_to_division_III(self):
 		# One A (1 pt) + two missing slots scored F (7) each = 15 -> Div III.
 		student = self._student('Baraka', 'Mushi')
