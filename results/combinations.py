@@ -51,13 +51,17 @@ _CANONICAL = {
     "adv maths": "Advanced Mathematics",
     "a-level mathematics": "Advanced Mathematics",
     "pure mathematics": "Advanced Mathematics",
-    # ── English Language / Literature in English ──
+    # ── English Language vs Literature in English ──
+    # These are TWO distinct A-Level subjects. "L" in HGL / HKL / KLF is
+    # English Language; "Li" in HGLi is Literature in English.
     "english": "English Language",
     "english language": "English Language",
-    "literature": "English Language",
-    "literature in english": "English Language",
-    "lit in english": "English Language",
-    "english literature": "English Language",
+    "eng language": "English Language",
+    "literature": "Literature in English",
+    "literature in english": "Literature in English",
+    "lit in english": "Literature in English",
+    "english literature": "Literature in English",
+    "lit": "Literature in English",
     # ── the rest ──
     "kiswahili": "Kiswahili",
     "kisw": "Kiswahili",
@@ -136,6 +140,7 @@ ACSEE_COMBINATIONS = {
     "PGE": ("Physical Education", "Geography", "Economics"),
     # ── Arts / humanities ───────────────────────────────────────────
     "HGL": ("History", "Geography", "English Language"),
+    "HGLi": ("History", "Geography", "Literature in English"),
     "HGK": ("History", "Geography", "Kiswahili"),
     "HGE": ("History", "Geography", "Economics"),
     "HKL": ("History", "Kiswahili", "English Language"),

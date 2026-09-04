@@ -734,7 +734,8 @@ class AcseeCombinationDetectionTests(TestCase):
 		self.assertEqual(canon_subject('Maths'), 'Advanced Mathematics')
 		self.assertEqual(canon_subject('  mathematics '), 'Advanced Mathematics')
 		self.assertEqual(canon_subject('ENGLISH'), 'English Language')
-		self.assertEqual(canon_subject('Literature in English'), 'English Language')
+		self.assertEqual(canon_subject('Literature in English'), 'Literature in English')
+		self.assertEqual(canon_subject('Literature'), 'Literature in English')
 		self.assertEqual(canon_subject('Phy'), 'Physics')
 		self.assertEqual(canon_subject('BAM'), 'Basic Applied Mathematics')
 		self.assertEqual(canon_subject('Nutmeg Studies'), 'Nutmeg Studies')
@@ -753,6 +754,16 @@ class AcseeCombinationDetectionTests(TestCase):
 		from .combinations import detect_acsee_combination
 		self.assertIsNone(detect_acsee_combination(
 			['Physics', 'History', 'Kiswahili'], lambda n: 1))
+
+	def test_hgl_and_hgli_are_distinguished(self):
+		from .combinations import detect_acsee_combination
+		code, _ = detect_acsee_combination(
+			['History', 'Geography', 'English Language'], lambda n: 1)
+		self.assertEqual(code, 'HGL')
+		code, subs = detect_acsee_combination(
+			['History', 'Geography', 'Literature'], lambda n: 1)
+		self.assertEqual(code, 'HGLi')
+		self.assertIn('Literature in English', subs)
 
 	def test_ambiguous_match_drops_the_best_extra_subject(self):
 		from .combinations import detect_acsee_combination
