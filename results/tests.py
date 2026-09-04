@@ -728,9 +728,48 @@ class AcseeSubsidiarySubjectTests(TestCase):
 			self.assertFalse(is_acsee_subsidiary_subject(name), name)
 
 
+class AcseeCombinationDetectionTests(TestCase):
+	def test_canon_subject_normalises_aliases(self):
+		from .combinations import canon_subject
+		self.assertEqual(canon_subject('Maths'), 'Advanced Mathematics')
+		self.assertEqual(canon_subject('  mathematics '), 'Advanced Mathematics')
+		self.assertEqual(canon_subject('ENGLISH'), 'English Language')
+		self.assertEqual(canon_subject('Literature in English'), 'English Language')
+		self.assertEqual(canon_subject('Phy'), 'Physics')
+		self.assertEqual(canon_subject('BAM'), 'Basic Applied Mathematics')
+		self.assertEqual(canon_subject('Nutmeg Studies'), 'Nutmeg Studies')
+
+	def test_detects_unambiguous_combination(self):
+		from .combinations import detect_acsee_combination
+		code, subs = detect_acsee_combination(
+			['Physics', 'Chemistry', 'Biology'], lambda n: 1)
+		self.assertEqual(code, 'PCB')
+		self.assertEqual(set(subs), {'Physics', 'Chemistry', 'Biology'})
+		code, _ = detect_acsee_combination(
+			['History', 'Geography', 'Kiswahili'], lambda n: 1)
+		self.assertEqual(code, 'HGK')
+
+	def test_no_match_returns_none(self):
+		from .combinations import detect_acsee_combination
+		self.assertIsNone(detect_acsee_combination(
+			['Physics', 'History', 'Kiswahili'], lambda n: 1))
+
+	def test_ambiguous_match_drops_the_best_extra_subject(self):
+		from .combinations import detect_acsee_combination
+		# Physics/Chemistry/Biology/Advanced Mathematics satisfies PCB, PCM
+		# and CBM. Maths is the student's best subject (1 pt), the rest 5.
+		# The conservative pick is the combination totalling the MOST
+		# points — PCB — so the strong Maths is left uncounted.
+		points = {'Advanced Mathematics': 1, 'Physics': 5, 'Chemistry': 5, 'Biology': 5}
+		code, subs = detect_acsee_combination(
+			['Physics', 'Chemistry', 'Biology', 'Mathematics'], lambda n: points[n])
+		self.assertEqual(code, 'PCB')
+		self.assertNotIn('Advanced Mathematics', subs)
+
+
 class RecomputeAcseeDivisionTests(TestCase):
-	"""ACSEE (Form 5-6) division: best 3 PRINCIPAL subjects only, and a
-	combination short of 3 is padded with F (7 pts) the way NECTA does."""
+	"""ACSEE (Form 5-6) division: the student's COMBINATION subjects only,
+	extras dropped, and a combination short of 3 padded with F (7 pts)."""
 
 	databases = {'default', 'results'}
 
@@ -759,15 +798,49 @@ class RecomputeAcseeDivisionTests(TestCase):
 		return ProcessedResult.objects.get(exam=self.exam, student=student)
 
 	def test_general_studies_and_bam_excluded_from_division(self):
-		# Grades: Physics D(4), Chemistry D(4), Biology E(5) -> 13 -> Div III.
-		# BAM C(3) is better than Biology but must NOT be counted.
+		# PCB combination: Physics D(4), Chemistry D(4), Biology E(5) -> 13
+		# -> Div III. BAM C(3) is better than Biology but must NOT count.
 		student = self._student('Asha', 'Kimaro')
 		self._enter(student, Physics=52, Chemistry=55, Biology=45,
 			Basic_Applied_Mathematics=65, General_Studies=42)
 		result = self._processed(student)
 		self.assertEqual(result.points, 13)
 		self.assertEqual(result.division, 'III')
+		self.assertTrue(result.counted_subjects.startswith('PCB:'), result.counted_subjects)
 		self.assertNotIn('Basic Applied Mathematics', result.counted_subjects)
+		self.assertNotIn('General Studies', result.counted_subjects)
+
+	def test_extra_fourth_principal_subject_is_not_counted_even_if_better(self):
+		# PCB student who also sat Advanced Mathematics and aced it.
+		# Combination subjects: Physics C(3), Chemistry C(3), Biology E(5)
+		# -> 11 -> Div II. A naive best-3 would take Maths A(1) instead of
+		# Biology -> 7 -> Div I, which is wrong.
+		student = self._student('Deo', 'Marwa')
+		self._enter(student, Physics=62, Chemistry=62, Biology=42,
+			Advanced_Mathematics=95, General_Studies=80)
+		result = self._processed(student)
+		self.assertEqual(result.points, 11)
+		self.assertEqual(result.division, 'II')
+		self.assertTrue(result.counted_subjects.startswith('PCB:'), result.counted_subjects)
+		self.assertNotIn('Advanced Mathematics', result.counted_subjects)
+
+	def test_arts_combination_is_detected(self):
+		# HGL: English C(3), History D(4), Geography E(5) -> 12 -> Div II.
+		student = self._student('Rehema', 'Kato')
+		self._enter(student, History=55, Geography=45, English_Language=62)
+		result = self._processed(student)
+		self.assertEqual(result.points, 12)
+		self.assertEqual(result.division, 'II')
+		self.assertTrue(result.counted_subjects.startswith('HGL:'), result.counted_subjects)
+
+	def test_three_subject_combination_with_subsidiaries_is_division_I(self):
+		student = self._student('Frank', 'Noel')
+		self._enter(student, Physics=85, Chemistry=78, Biology=70,
+			General_Studies=55, Basic_Applied_Mathematics=60)
+		result = self._processed(student)
+		self.assertEqual(result.points, 5)          # A(1) + B(2) + B(2)
+		self.assertEqual(result.division, 'I')
+		self.assertTrue(result.counted_subjects.startswith('PCB:'), result.counted_subjects)
 		self.assertNotIn('General Studies', result.counted_subjects)
 
 	def test_single_principal_subject_A_is_padded_to_division_III(self):
