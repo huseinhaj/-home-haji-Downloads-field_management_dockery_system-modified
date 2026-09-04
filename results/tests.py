@@ -1041,3 +1041,73 @@ class RecomputeCseeMinimumSubjectRuleTests(TestCase):
 	def test_fewer_than_seven_without_a_real_pass_is_division_0(self):
 		result = self._run(Physics=20, Chemistry=25)  # 2x F
 		self.assertEqual(result.division, '0')
+
+
+class MarksEntryAddStudentTests(TestCase):
+	"""A student added inline on the Marks Entry page must stick — the
+	review page filters marks to the roster, so the new student has to be
+	written into the teacher's StoredRoster or the row vanishes."""
+
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		from .models import FormStudent, StoredRoster
+		self.StoredRoster = StoredRoster
+		self.school = School.objects.create(name='Mfano Sekondari', region='Dodoma', district='Dodoma')
+		self.exam = Exam.objects.create(name='Terminal', year=2026, form=4, school=self.school)
+		self.subject = Subject.objects.create(name='History')
+		self.teacher = TeacherAccount.objects.create(
+			email='t@example.com', full_name='Mwalimu', role=TeacherAccount.ROLE_TEACHER,
+			school=self.school)
+		self.teacher.subjects.set([self.subject])
+		FormStudent.objects.create(
+			school=self.school, form=4, first_name='Asha', last_name='Kimaro', gender='F')
+		self.client = Client()
+		self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
+
+	def _add(self, first, last):
+		return self.client.post(
+			reverse('marks_entry_add_student'),
+			data=json.dumps({
+				'exam_id': self.exam.id, 'subject_id': self.subject.id,
+				'first_name': first, 'last_name': last, 'gender': 'M',
+			}),
+			content_type='application/json',
+		)
+
+	def test_added_student_is_written_into_the_stored_roster(self):
+		resp = self._add('Baraka', 'Mushi')
+		self.assertEqual(resp.status_code, 200)
+		new_id = resp.json()['id']
+
+		stored = self.StoredRoster.objects.get(
+			teacher=self.teacher, exam=self.exam, subject=self.subject)
+		names = {s['name'] for s in stored.students}
+		ids = {s['id'] for s in stored.students}
+		self.assertIn(new_id, ids)                       # the new student
+		self.assertIn('Asha Kimaro', names)              # seeded from FormStudent
+		self.assertEqual(stored.student_count, len(stored.students))
+
+	def test_added_student_survives_into_the_review_page(self):
+		new_id = self._add('Baraka', 'Mushi').json()['id']
+
+		save = self.client.post(
+			reverse('marks_entry_save'),
+			data=json.dumps({
+				'exam_id': self.exam.id, 'subject_id': self.subject.id,
+				'entries': [{'student_id': new_id, 'score': 72}],
+			}),
+			content_type='application/json',
+		)
+		self.assertEqual(save.status_code, 200)
+
+		review = self.client.get(
+			reverse('marks_entry') + f'?exam={self.exam.id}&subject={self.subject.id}&review=1')
+		self.assertContains(review, 'Baraka')
+
+	def test_adding_twice_does_not_duplicate_the_roster_row(self):
+		first_id = self._add('Baraka', 'Mushi').json()['id']
+		self._add('Baraka', 'Mushi')
+		stored = self.StoredRoster.objects.get(
+			teacher=self.teacher, exam=self.exam, subject=self.subject)
+		self.assertEqual([s['id'] for s in stored.students].count(first_id), 1)

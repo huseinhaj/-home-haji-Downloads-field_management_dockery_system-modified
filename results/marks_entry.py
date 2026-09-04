@@ -494,6 +494,8 @@ def marks_entry_add_student(request):
     if exam is None:
         return JsonResponse({'error': 'Mtihani haupatikani.'}, status=404)
 
+    subject = Subject.objects.filter(id=payload.get('subject_id')).first()
+
     first_name = (payload.get('first_name') or '').strip()
     last_name = (payload.get('last_name') or '').strip()
     middle_name = (payload.get('middle_name') or '').strip()
@@ -516,11 +518,47 @@ def marks_entry_add_student(request):
         student.save(update_fields=['middle_name'])
 
     name = ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p)
+
+    # Persist the new student into THIS teacher's roster for this
+    # exam+subject. The roster (FormStudent / an uploaded StoredRoster)
+    # otherwise never knows about an inline-added student, so the review
+    # page — which filters displayed marks to the roster — drops them,
+    # and the row vanishes on every reload even though the mark is saved.
+    if subject is not None:
+        try:
+            _add_student_to_stored_roster(teacher, exam, subject, student.id, name)
+        except Exception:  # never block the add on a roster hiccup
+            logger.exception(
+                'marks_entry_add_student: could not update StoredRoster '
+                '(teacher=%s exam=%s subject=%s student=%s)',
+                getattr(teacher, 'id', None), exam.id, subject.id, student.id,
+            )
+
     return JsonResponse({
         'id': student.id,
         'name': name,
         'created': created,
     })
+
+
+def _add_student_to_stored_roster(teacher, exam, subject, student_id, name):
+    """Append a student to the teacher's StoredRoster for this exam+subject,
+    creating the roster (seeded from whatever roster currently resolves) if
+    it does not exist yet. Idempotent."""
+    stored = StoredRoster.objects.filter(
+        teacher=teacher, exam=exam, subject=subject,
+    ).first()
+    if stored is None:
+        seed = _resolve_class_roster(teacher, exam, subject, existing_marks={})
+        stored = StoredRoster(
+            teacher=teacher, exam=exam, subject=subject,
+            students=[{'id': s['id'], 'name': s['name']} for s in seed],
+            source_format='manual',
+        )
+    if student_id not in {s.get('id') for s in stored.students}:
+        stored.students = list(stored.students) + [{'id': student_id, 'name': name}]
+    stored.student_count = len(stored.students)
+    stored.save()
 
 
 @teacher_or_academic_required

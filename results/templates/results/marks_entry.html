@@ -1412,6 +1412,7 @@ function _dlPdf(url) {
         try {
           const data = await postJSON("{% url 'marks_entry_add_student' %}", {
             exam_id: EXAM_ID,
+            subject_id: SUBJECT_ID,
             first_name: firstName,
             middle_name: middleName,
             last_name: lastName,
