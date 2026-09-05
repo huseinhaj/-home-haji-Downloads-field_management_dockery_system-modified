@@ -288,6 +288,69 @@ class ScoreSheetDocumentLoadingTests(TestCase):
 		self.assertEqual(len(images), scoresheet_ocr_service.MAX_PDF_PAGES)
 
 
+class ScoreSheetMultiPageExtractionTests(TestCase):
+	"""extract_scores_from_document reads a multi-page document's pages
+	CONCURRENTLY (one slow ~180s vision call per page, so a 3-5 page
+	scoresheet must not wait on them one at a time) -- these prove that
+	stays correct: page order is preserved regardless of which finishes
+	first, and one page's failure doesn't discard the others' rows.
+
+	_load_page_images is patched to return plain sentinel strings instead
+	of real rendered pages -- _read_page_with_ai is mocked too, so nothing
+	downstream ever needs an actual PIL image, and using distinct sentinels
+	lets fake_read tell pages apart deterministically instead of relying on
+	call order, which the ThreadPoolExecutor doesn't guarantee."""
+
+	def setUp(self):
+		from .services import scoresheet_ocr_service
+		self._service = scoresheet_ocr_service
+		patcher = patch.object(scoresheet_ocr_service, 'OPENROUTER_API_KEY', 'test-key')
+		patcher.start()
+		self.addCleanup(patcher.stop)
+
+	def _upload(self):
+		from django.core.files.uploadedfile import SimpleUploadedFile
+		return SimpleUploadedFile('sheet.pdf', b'%PDF-fake', content_type='application/pdf')
+
+	def test_page_order_preserved_regardless_of_completion_order(self):
+		import time as _time
+
+		# 'page1' is slower than 'page2' -- if results were assembled in
+		# completion order instead of page order, page 2's row would land
+		# before page 1's.
+		def fake_read(img):
+			if img == 'page1':
+				_time.sleep(0.15)
+				return '[{"row": 1, "name": "Page One Student", "score": 50}]'
+			return '[{"row": 2, "name": "Page Two Student", "score": 60}]'
+
+		with patch.object(self._service, '_load_page_images', return_value=['page1', 'page2']), \
+				patch.object(self._service, '_read_page_with_ai', side_effect=fake_read):
+			rows = self._service.extract_scores_from_document(self._upload())
+
+		names = [r['raw_name'] for r in rows]
+		self.assertEqual(names, ['Page One Student', 'Page Two Student'])
+
+	def test_one_failed_page_does_not_discard_others(self):
+		def fake_read(img):
+			if img == 'page1':
+				raise RuntimeError('vision API timed out')
+			return '[{"row": 2, "name": "Survivor", "score": 70}]'
+
+		with patch.object(self._service, '_load_page_images', return_value=['page1', 'page2']), \
+				patch.object(self._service, '_read_page_with_ai', side_effect=fake_read):
+			rows = self._service.extract_scores_from_document(self._upload())
+
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0]['raw_name'], 'Survivor')
+
+	def test_all_pages_failing_raises(self):
+		with patch.object(self._service, '_load_page_images', return_value=['page1', 'page2']), \
+				patch.object(self._service, '_read_page_with_ai', side_effect=RuntimeError('down')):
+			with self.assertRaises(ScoreSheetOCRError):
+				self._service.extract_scores_from_document(self._upload())
+
+
 class ScoreSheetPhotoExtractViewTests(TestCase):
 	"""scoresheet_photo_extract now only dispatches a Celery task and
 	returns a task_id — these force the task to run synchronously
@@ -498,6 +561,25 @@ class MarksEntryPreviewPdfTests(TestCase):
 		self.assertIn('AMINA JUMA', text.upper())
 		self.assertIn('78', text)
 		self.assertIn('ZAWADI RAMA', text.upper())
+
+	def test_exam_or_subject_name_with_angle_bracket_is_not_silently_dropped(self):
+		"""ReportLab's Paragraph treats unescaped '<...>' as markup and
+		swallows it silently (no error) -- an exam/subject name containing
+		one must still render in full, not vanish from the header."""
+		exam = Exam.objects.create(name='Mock <Series 1>', year=2026, form=1)
+		response = self.client.post(
+			reverse('marks_entry_preview_pdf'),
+			data=json.dumps({'exam_id': exam.id, 'subject_name': 'Civics & Ethics', 'rows': []}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 200)
+
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+		self.assertIn('Series 1', text)
+		self.assertIn('Civics & Ethics', text)
 
 	def test_missing_exam_returns_404(self):
 		response = self.client.post(

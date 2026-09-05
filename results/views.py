@@ -3161,12 +3161,19 @@ def bulk_scoresheet_preview_pdf(request, exam_id):
     manual corrections already made), not from ExamResult."""
     import io as _io
     import json as _json
+    from xml.sax.saxutils import escape as _xml_escape
 
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm, mm
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    def _pdf_escape(text):
+        # Paragraph() parses its text as a small XML/HTML-like markup — an
+        # unescaped '<' doesn't error, it silently swallows everything up
+        # to the next '>'. Escape dynamic text before it reaches Paragraph().
+        return _xml_escape(str(text or ''))
 
     exam = _get_exam_or_404(exam_id, request.user)
 
@@ -3194,7 +3201,7 @@ def bulk_scoresheet_preview_pdf(request, exam_id):
 
     elements = [
         Paragraph('KAGUA KABLA YA KUHIFADHI / REVIEW BEFORE SAVING', title_style),
-        Paragraph(f"{exam.name} — {subject_name} — Form {exam.form} ({exam.year})", sub_style),
+        Paragraph(f"{_pdf_escape(exam.name)} — {_pdf_escape(subject_name)} — Form {exam.form} ({exam.year})", sub_style),
         Spacer(1, 4 * mm),
     ]
 

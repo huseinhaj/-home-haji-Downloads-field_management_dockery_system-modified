@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from dotenv import load_dotenv
@@ -407,7 +408,12 @@ def check_ocr_health() -> dict:
 def extract_scores_from_document(uploaded_file) -> list[dict]:
     """Returns [{"raw_name": str, "score": int}, ...] read from the upload —
     a single photo, or every page of a scanned PDF (each page's rows are
-    concatenated, since a multi-page scoresheet just continues the list)."""
+    concatenated, since a multi-page scoresheet just continues the list).
+
+    Pages are sent to the vision API concurrently — each is an independent,
+    slow (up to 180s) HTTP call, so a 3-5 page scoresheet reading pages one
+    at a time could take minutes; reading them in parallel bounds the wait
+    to roughly the slowest single page instead of the sum of all of them."""
     if not (OPENROUTER_API_KEY or GOOGLE_API_KEY):
         raise ScoreSheetOCRError(
             "Hakuna AI provider iliyosanidiwa. Weka OPENROUTER_API_KEY au GOOGLE_API_KEY kwenye .env"
@@ -415,17 +421,25 @@ def extract_scores_from_document(uploaded_file) -> list[dict]:
 
     pages = _load_page_images(uploaded_file)
 
+    page_results: list[tuple[str | None, Exception | None]] = [(None, None)] * len(pages)
+    with ThreadPoolExecutor(max_workers=min(len(pages), MAX_PDF_PAGES)) as pool:
+        future_to_index = {pool.submit(_read_page_with_ai, img): i for i, img in enumerate(pages)}
+        for future in as_completed(future_to_index):
+            i = future_to_index[future]
+            try:
+                page_results[i] = (future.result(), None)
+            except Exception as exc:
+                page_results[i] = (None, exc)
+
     all_rows: list[dict] = []
     last_error = None
     any_page_succeeded = False
-    for page_num, page_img in enumerate(pages, 1):
-        try:
-            text = _read_page_with_ai(page_img)
-            logger.info("[ScoreSheetOCR] Page %d AI response (first 500 chars): %s", page_num, text[:500])
-        except Exception as exc:
+    for page_num, (text, exc) in enumerate(page_results, 1):
+        if exc is not None:
             last_error = exc
             logger.warning("[ScoreSheetOCR] Page %d failed: %s", page_num, exc)
             continue
+        logger.info("[ScoreSheetOCR] Page %d AI response (first 500 chars): %s", page_num, text[:500])
         any_page_succeeded = True
         raw_rows = _extract_json_array(text)
         logger.info("[ScoreSheetOCR] Page %d extracted %d raw rows", page_num, len(raw_rows))

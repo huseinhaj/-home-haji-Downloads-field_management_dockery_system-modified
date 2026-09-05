@@ -13,6 +13,7 @@ Flow:
 import json
 import logging
 import uuid
+from xml.sax.saxutils import escape as _xml_escape
 
 from celery.result import AsyncResult
 from django.contrib import messages
@@ -30,6 +31,15 @@ from .tasks import process_scoresheet_photo_task
 from .utils import get_grade_for_form, group_exams_by_type
 
 logger = logging.getLogger(__name__)
+
+
+def _pdf_escape(text):
+    """ReportLab's Paragraph parses its text as a small XML/HTML-like
+    markup — an unescaped '<' in a name (or any bracket that isn't a real
+    tag) doesn't error, it just silently swallows everything up to the
+    next '>'. Escape any dynamic text (exam/subject/student names) before
+    it reaches Paragraph()."""
+    return _xml_escape(str(text or ''))
 
 
 def _student_from_form_student(fs):
@@ -525,7 +535,7 @@ def marks_entry_preview_pdf(request):
 
     elements = [
         Paragraph('KAGUA KABLA YA KUHIFADHI / REVIEW BEFORE SAVING', title_style),
-        Paragraph(f"{exam.name} — {subject_name} — Form {exam.form} ({exam.year})", sub_style),
+        Paragraph(f"{_pdf_escape(exam.name)} — {_pdf_escape(subject_name)} — Form {exam.form} ({exam.year})", sub_style),
         Spacer(1, 4 * mm),
     ]
 
@@ -710,12 +720,12 @@ def download_scoresheet_names_pdf(request):
 
     elements = []
     elements.append(Paragraph('SCORESHEET', title_style))
-    label = f"{exam.name} — {subject.name} — Form {exam.form}"
+    label = f"{_pdf_escape(exam.name)} — {_pdf_escape(subject.name)} — Form {exam.form}"
     if exam.stream:
-        label += f" {exam.stream}"
+        label += f" {_pdf_escape(exam.stream)}"
     label += f" ({exam.year})"
     elements.append(Paragraph(label, sub_style))
-    elements.append(Paragraph(f"Mwalimu / Teacher: {teacher.full_name or teacher.email}", sub_style))
+    elements.append(Paragraph(f"Mwalimu / Teacher: {_pdf_escape(teacher.full_name or teacher.email)}", sub_style))
     elements.append(Spacer(1, 4 * mm))
     elements.append(Paragraph(
         '💡 Jaza alama kwa mkono kwenye safu ya "Alama", kisha piga picha au scan '
