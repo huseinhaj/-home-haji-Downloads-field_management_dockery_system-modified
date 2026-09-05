@@ -900,6 +900,55 @@ class SubjectPdfPerformanceTests(TestCase):
 		self.assertNotIn('EXCLUDED PERSON', text_upper)
 
 
+class UploadFormStudentsPageQueryCountTests(TestCase):
+	"""The Upload Form Students page renders an assign-subjects checkbox
+	grid: {% for s in students %}{% for subj in all_subjects %}{% if subj
+	in s.subjects.all %}. Without prefetching, `s.subjects.all()` re-runs
+	as a fresh query on EVERY (student, subject) pair -- for a form with
+	S students and N subjects that's S*N queries, not S+N. Against a
+	remote database this was slow enough to trip the gunicorn worker
+	timeout and surface as a 500 / upstream error to the user."""
+	databases = {'default', 'results'}
+
+	def test_query_count_does_not_multiply_students_by_subjects(self):
+		from django.db import connections
+		from django.test.utils import CaptureQueriesContext
+		from .models import SchoolSubject
+
+		school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
+		academic = TeacherAccount.objects.create(
+			email='academic3@example.com', full_name='Academic Three',
+			role=TeacherAccount.ROLE_ACADEMIC, school=school,
+		)
+		# 15 subjects offered at this school, 25 students on the form --
+		# small enough to run fast in tests but large enough that an
+		# S*N query pattern (375) would dwarf a flat S+N pattern (40).
+		for i in range(15):
+			subject = Subject.objects.create(name=f'Subject{i}')
+			SchoolSubject.objects.create(school=school, subject=subject)
+		for i in range(25):
+			fs = FormStudent.objects.create(
+				school=school, form=1, first_name=f'Student{i}', last_name='Test',
+				gender='M', admission_no=f'ADM{i}',
+			)
+			# Every student has a couple of subjects assigned, so the
+			# `{% if subj in s.subjects.all %}` branch actually evaluates
+			# `True` sometimes too, not just the (cheap) False path.
+			fs.subjects.set(Subject.objects.filter(name__in=['Subject0', 'Subject1']))
+
+		client = Client()
+		client.force_login(academic, backend='results.backends.ResultsAuthBackend')
+
+		with CaptureQueriesContext(connections['results']) as ctx:
+			response = client.get(reverse('upload_form_students'), {'form': '1'})
+
+		self.assertEqual(response.status_code, 200)
+		self.assertLess(
+			len(ctx.captured_queries), 25,
+			f'query count scaled with students*subjects: {len(ctx.captured_queries)} queries',
+		)
+
+
 class ClassTimetableServiceTests(TestCase):
 	"""The one rule that must never break: a teacher can never be double
 	booked at the same time slot across two different classes."""

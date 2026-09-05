@@ -2724,7 +2724,14 @@ def upload_form_students(request):
     # GET — show form. Ordered by insertion order (id), not alphabetically —
     # the Academic uploaded a specific roster order (e.g. matching the
     # school register) and expects to see it back exactly as uploaded.
-    students = FormStudent.objects.filter(school=school, form=selected_form).order_by('id') if selected_form else FormStudent.objects.none()
+    # prefetch_related('subjects') is load-bearing, not an optimisation:
+    # the template checks `{% if subj in s.subjects.all %}` for every
+    # (student, subject) pair to render the assign-subjects checkboxes.
+    # Without prefetching, `s.subjects.all()` re-queries the DB on every
+    # single evaluation -- for a 231-student form with ~20 subjects that
+    # was 4,600+ queries rendering one page, slow enough over a remote DB
+    # to trip the gunicorn worker timeout and return an upstream error.
+    students = FormStudent.objects.filter(school=school, form=selected_form).order_by('id').prefetch_related('subjects') if selected_form else FormStudent.objects.none()
     counts = {f: 0 for f in range(1, 7)}
     for row in FormStudent.objects.filter(school=school).values('form').annotate(cnt=Count('id')):
         if row['form'] in counts:
