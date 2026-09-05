@@ -117,6 +117,11 @@ def process_uploaded_results(exam, uploaded_file):
 # accumulation, regardless of how well they actually performed.
 _DIVISION_SUBJECT_COUNT = {1: 7, 2: 7, 3: 7, 4: 7, 5: 3, 6: 3}
 
+# CSEE position ranking sorts by DIVISION first, then raw points within it —
+# see the "fewer-subjects" note in recompute_processed_results_for_exam for
+# why raw points alone can't be the primary key.
+_CSEE_DIVISION_ORDER = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, '0': 5}
+
 
 def recompute_processed_results_for_exam(exam):
     """Recompute each student's total/average/points/division for this exam.
@@ -131,12 +136,18 @@ def recompute_processed_results_for_exam(exam):
           actually has (minimum 1). A student with 4 CSEE subjects uses all
           4 for their points/division — they are NOT penalised for missing
           subjects they were never tested in.
-        - Position ranking still uses the same NECTA sort (ascending points,
-          then descending total-score as tiebreaker). This means a student
-          with 4 A's (4 points) will rank above a student with 7 A's
-          (7 points) — which matches real NECTA practice where the
-          division is what matters, not a competitive position across
-          different subject counts.
+        - Position ranking sorts by DIVISION first, then points within it
+          (both ascending — better division/fewer points first), then
+          total score descending as the final tiebreaker. Division must
+          come before raw points: a student with only 4 subjects, all A's,
+          has just 4 points — fewer than a 7-subject student with straight
+          A's (7 points) — so sorting on points alone would rank the
+          4-subject student above the genuinely stronger 7-subject one, even
+          though NECTA's own minimum-subject rule already caps that
+          4-subject student at Division IV. Sorting by division first keeps
+          "Top performers" meaning what it says: real Division I/II
+          students never get displaced by someone who simply sat fewer
+          exams.
 
     ACSEE / Form 5-6 is different (verified against real 2025 result slips):
         - Division counts the student's COMBINATION subjects only (PCB,
@@ -155,8 +166,10 @@ def recompute_processed_results_for_exam(exam):
         - Position ranking tiebreaker is the total of the combination
           subjects only (not General Studies / a 4th subject).
 
-    Ranking (both levels): ascending points, then descending
-    counted-subject total; students who sat nothing are placed last.
+    Ranking: students who sat nothing are placed last; CSEE then sorts by
+    division first, ACSEE goes straight to points (its F-padding already
+    prevents the same fewer-subjects advantage) — both then break ties by
+    ascending points, then descending counted-subject total.
     """
     students = Student.objects.filter(examresult__exam=exam).distinct().prefetch_related(
         Prefetch('examresult_set', queryset=ExamResult.objects.filter(exam=exam).select_related('subject'))
@@ -291,11 +304,25 @@ def recompute_processed_results_for_exam(exam):
         )
 
     # NECTA ranking: students who sat nothing (Division 0, points forced
-    # to 0) go last; then points ascending (lower = better), then
-    # counted-subject total descending as tiebreaker.
-    student_data.sort(
-        key=lambda item: (item['subject_count'] == 0, item['points'], -item['rank_total'])
-    )
+    # to 0) go last. CSEE sorts by division BEFORE points -- a 4-subject
+    # straight-A student (4 points) must not outrank a 7-subject
+    # straight-A student (7 points) just because they sat fewer exams;
+    # division already accounts for that (see docstring above). ACSEE's
+    # combination is always padded to exactly best_n subjects, so its
+    # points are already directly comparable without a division key.
+    if exam.form in (1, 2, 3, 4):
+        student_data.sort(
+            key=lambda item: (
+                item['subject_count'] == 0,
+                _CSEE_DIVISION_ORDER.get(item['division'], 5),
+                item['points'],
+                -item['rank_total'],
+            )
+        )
+    else:
+        student_data.sort(
+            key=lambda item: (item['subject_count'] == 0, item['points'], -item['rank_total'])
+        )
 
     # One bulk upsert instead of one update_or_create per student — the
     # remote DB's per-query latency made this the slowest part of an

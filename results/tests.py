@@ -1364,6 +1364,104 @@ class RecomputeCseeMinimumSubjectRuleTests(TestCase):
 		result = self._run(Physics=20, Chemistry=25)  # 2x F
 		self.assertEqual(result.division, '0')
 
+	def test_fewer_subjects_straight_As_does_not_outrank_full_subject_straight_As(self):
+		"""Raw points alone would rank a 4-subject straight-A student (4
+		points) above a 7-subject straight-A student (7 points), even
+		though NECTA's own rule caps the 4-subject student at Division IV.
+		Position must reflect division first so 'top performers' are the
+		students who are actually strongest, not just the ones who sat
+		fewer exams."""
+		partial = Student.objects.create(first_name='Partial', last_name='Subjects', gender='F')
+		for name, score in [('Physics', 90), ('Chemistry', 88), ('Biology', 85), ('Mathematics', 92)]:
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=self.exam, student=partial, subject=subject, score=score)
+
+		full = Student.objects.create(first_name='Full', last_name='Subjects', gender='M')
+		for name, score in [
+			('Physics', 90), ('Chemistry', 88), ('Biology', 85), ('Mathematics', 92),
+			('English', 91), ('Kiswahili', 90), ('Civics', 93),
+		]:
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=self.exam, student=full, subject=subject, score=score)
+
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		recompute_processed_results_for_exam(self.exam)
+		partial_r = ProcessedResult.objects.get(exam=self.exam, student=partial)
+		full_r = ProcessedResult.objects.get(exam=self.exam, student=full)
+
+		self.assertEqual(partial_r.points, 4)
+		self.assertEqual(partial_r.division, 'IV')
+		self.assertEqual(full_r.points, 7)
+		self.assertEqual(full_r.division, 'I')
+		self.assertLess(full_r.position, partial_r.position)
+
+	def test_within_same_division_lower_points_still_ranks_first(self):
+		better = Student.objects.create(first_name='Better', last_name='Points', gender='F')
+		worse = Student.objects.create(first_name='Worse', last_name='Points', gender='M')
+		subjects = ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'English', 'Kiswahili', 'Civics']
+		# Both Division I (points <= 17), but `better` scores higher overall.
+		for name, score in zip(subjects, [90, 90, 90, 90, 90, 90, 90]):  # 7x A = 7 pts
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=self.exam, student=better, subject=subject, score=score)
+		for name, score in zip(subjects, [70, 70, 70, 70, 70, 70, 70]):  # 7x B = 14 pts
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=self.exam, student=worse, subject=subject, score=score)
+
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		recompute_processed_results_for_exam(self.exam)
+		better_r = ProcessedResult.objects.get(exam=self.exam, student=better)
+		worse_r = ProcessedResult.objects.get(exam=self.exam, student=worse)
+
+		self.assertEqual((better_r.division, worse_r.division), ('I', 'I'))
+		self.assertLess(better_r.position, worse_r.position)
+
+
+class RecomputeCseePositionRankingMigrationTests(TestCase):
+	"""Data migration 0036 backfills the division-first ranking fix onto
+	every existing CSEE exam's already-cached ProcessedResult rows."""
+	databases = {'default', 'results'}
+
+	def _run_migration(self):
+		import importlib
+		module = importlib.import_module('results.migrations.0036_recompute_csee_position_ranking')
+		from django.apps import apps
+		module.recompute_csee_exams(apps, None)
+
+	def test_recomputes_stale_position_for_existing_csee_exam(self):
+		exam = Exam.objects.create(name='Terminal', year=2026, form=4)
+		partial = Student.objects.create(first_name='Partial', last_name='Subjects', gender='F')
+		full = Student.objects.create(first_name='Full', last_name='Subjects', gender='M')
+		for name, score in [('Physics', 90), ('Chemistry', 88), ('Biology', 85), ('Mathematics', 92)]:
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=exam, student=partial, subject=subject, score=score)
+		for name, score in [
+			('Physics', 90), ('Chemistry', 88), ('Biology', 85), ('Mathematics', 92),
+			('English', 91), ('Kiswahili', 90), ('Civics', 93),
+		]:
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=exam, student=full, subject=subject, score=score)
+
+		# Simulate the OLD (buggy) cached ranking: partial (fewer subjects,
+		# lower raw points) was stored as position 1.
+		ProcessedResult.objects.create(exam=exam, student=partial, total_score=355, average_score=88.75, points=4, position=1, division='IV')
+		ProcessedResult.objects.create(exam=exam, student=full, total_score=629, average_score=89.86, points=7, position=2, division='I')
+
+		self._run_migration()
+
+		partial_r = ProcessedResult.objects.get(exam=exam, student=partial)
+		full_r = ProcessedResult.objects.get(exam=exam, student=full)
+		self.assertLess(full_r.position, partial_r.position)
+
+	def test_non_csee_exams_are_left_alone(self):
+		"""ACSEE (form 5-6) exams aren't touched by this backfill."""
+		exam = Exam.objects.create(name='Mock ACSEE', year=2026, form=5)
+		student = Student.objects.create(first_name='Asha', last_name='Kimaro', gender='F')
+		for name, score in [('Physics', 85), ('Chemistry', 85), ('Biology', 85)]:
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=exam, student=student, subject=subject, score=score)
+		self._run_migration()  # must not raise on an ACSEE exam
+		self.assertFalse(ProcessedResult.objects.filter(exam=exam).exists())
+
 
 class MarksEntryAddStudentTests(TestCase):
 	"""A student added inline on the Marks Entry page must stick — the
