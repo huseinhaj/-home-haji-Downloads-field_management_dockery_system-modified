@@ -917,8 +917,8 @@ def _save_student(first, middle, last, gender):
     return {'id': student.id, 'name': ' '.join(name_parts)}
 
 
-def _collect_roster_rows(uploaded_file, is_pdf, form_num=None):
-    """Runs the existing PDF/CSV/Excel roster parsing with a no-op
+def _collect_roster_rows(uploaded_file, is_pdf, form_num=None, is_docx=False):
+    """Runs the existing PDF/DOCX/CSV/Excel roster parsing with a no-op
     callback that just records each (first, middle, last, gender) row
     instead of hitting the database per row — the actual save happens
     afterward, once, in bulk (see _bulk_save_students /
@@ -934,6 +934,8 @@ def _collect_roster_rows(uploaded_file, is_pdf, form_num=None):
 
     if is_pdf:
         _parse_pdf_roster(uploaded_file, on_student=_collector)
+    elif is_docx:
+        _parse_docx_roster(uploaded_file, on_student=_collector)
     else:
         _parse_spreadsheet_roster(uploaded_file, on_student=_collector, form_num=form_num)
     return collected
@@ -1036,6 +1038,139 @@ def _bulk_save_form_students(school, form_num, parsed_rows):
     return results
 
 
+def _process_roster_table_rows(table, on_student):
+    """One table's rows (list of cell strings) → student rows. Shared by
+    the PDF and DOCX table-extraction paths, since both hand over the
+    exact same shape (a list of rows, each a list of cell strings)."""
+    students_out = []
+    for row in table:
+        if not row:
+            continue
+        cells = [str(c).strip() for c in row if c and str(c).strip()]
+        if len(cells) < 2:
+            continue
+        # Skip header rows — note: 'no' removed (too aggressive;
+        # matches real names like Noel/Norah).
+        _cell_text = ' '.join(cells).lower()
+        if any(h in _cell_text for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'jinsia ya', '#')):
+            continue
+        # Skip title rows (e.g. "FORM ONE ATTENDANCE LIST SEPT,2026")
+        if any(h in _cell_text for h in ('attendance', 'list', 'sept', 'march', 'may')):
+            continue
+        # Try joining all cells as one line
+        line = ' '.join(cells)
+        parsed = _parse_roster_line(line)
+        if parsed:
+            first, middle, last, gender = parsed
+            if first and first.lower() not in ('nan', 'none', ''):
+                students_out.append(on_student(first, middle, last, gender))
+    return students_out
+
+
+def _process_roster_text_lines(lines, on_student):
+    """Plain text lines (one student per line, or CSV-style) → student
+    rows. Shared by PDF plain-text extraction and DOCX paragraph
+    extraction, since both reduce to "a list of lines" once the file's
+    own format has been read off disk."""
+    import re
+
+    students_out = []
+    if not lines:
+        return students_out
+
+    # Some files contain CSV text (comma-separated) rather than plain
+    # text with spaces.  Detect this by checking whether the first
+    # non-empty line contains commas.
+    first_data_line = re.sub(r'^\d+[.)]\s*', '', lines[0]).strip()
+    _is_csv = ',' in first_data_line and len(first_data_line.split(',')) >= 2
+
+    # If CSV, detect which column is which from the header
+    _col_map = {}  # role → column index
+    if _is_csv:
+        header_cells = [c.strip().lower() for c in lines[0].split(',')]
+        for ci, hc in enumerate(header_cells):
+            if hc in ('firstname', 'first name', 'jina la kwanza'):
+                _col_map.setdefault('first', ci)
+            elif hc in ('middlename', 'middle name', 'jina la kati'):
+                _col_map.setdefault('middle', ci)
+            elif hc in ('lastname', 'last name', 'surname', 'jina la mwisho'):
+                _col_map.setdefault('last', ci)
+            elif hc in ('gender', 'jinsia', 'sex'):
+                _col_map.setdefault('gender', ci)
+            elif hc in ('name', 'full name', 'jina', 'student name', 'jina la mwanafunzi'):
+                _col_map.setdefault('full', ci)
+        # If no explicit columns, treat as: name,gender or name...
+        if not _col_map and len(header_cells) >= 2:
+            # Guess: first non-trivial column = name, last = gender
+            for ci, hc in enumerate(header_cells):
+                if hc and hc not in ('namba', 'no', 'no.', '#', 'id'):
+                    _col_map.setdefault('full', ci)
+                    break
+        _start_row = 1  # skip header
+    else:
+        _start_row = 0
+
+    for line in lines[_start_row:]:
+        # Remove leading numbering like "1." "1)" "01."
+        line = re.sub(r'^\d+[.)]\s*', '', line).strip()
+        if not line:
+            continue
+        # Skip obvious header lines (safety net for CSV-detected data too)
+        _line_lower = line.lower()
+        if any(h in _line_lower for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'student')):
+            continue
+        # Skip title lines (e.g. "FORM ONE ATTENDANCE LIST SEPT,2026")
+        if any(h in _line_lower for h in ('attendance', 'list', 'sept', 'march', 'may')):
+            continue
+
+        if _is_csv:
+            cells = [c.strip() for c in line.split(',')]
+            if len(cells) < 2:
+                continue
+            first = middle = last = ''
+            gender = 'M'
+            if 'first' in _col_map and _col_map['first'] < len(cells):
+                first = cells[_col_map['first']]
+            if 'middle' in _col_map and _col_map['middle'] < len(cells):
+                middle = cells[_col_map['middle']]
+            if 'last' in _col_map and _col_map['last'] < len(cells):
+                last = cells[_col_map['last']]
+            if 'gender' in _col_map and _col_map['gender'] < len(cells):
+                gender = cells[_col_map['gender']]
+            if 'full' in _col_map and _col_map['full'] < len(cells):
+                full_val = cells[_col_map['full']]
+                parts = full_val.split()
+                if not first and len(parts) >= 3:
+                    first = parts[0]
+                    middle = ' '.join(parts[1:-1])
+                    last = parts[-1]
+                elif not first and len(parts) == 2:
+                    first = parts[0]
+                    last = parts[1]
+                elif not first and parts:
+                    first = parts[0]
+            if not first and cells:
+                # Last resort: first non-empty cell
+                for c in cells:
+                    if c and c.lower() not in ('nan', 'none', ''):
+                        parsed = _parse_roster_line(c)
+                        if parsed:
+                            first, middle, last, gender = parsed
+                            break
+        else:
+            parsed = _parse_roster_line(line)
+            if not parsed:
+                continue
+            first, middle, last, gender = parsed
+
+        if first and first.lower() not in ('nan', 'none', ''):
+            students_out.append(on_student(
+                first.strip(), (middle or '').strip(), last.strip() or 'Unknown',
+                normalize_gender(gender)
+            ))
+    return students_out
+
+
 def _parse_pdf_roster(uploaded_file, on_student=_save_student):
     """Extract student rows from a PDF roster using pdfplumber.
 
@@ -1045,7 +1180,7 @@ def _parse_pdf_roster(uploaded_file, on_student=_save_student):
     form-wide roster upload passes a FormStudent-saving callback instead so
     both uploads share this exact same PDF/CSV parsing logic.
     """
-    import pdfplumber, re
+    import pdfplumber
     students_out = []
     uploaded_file.seek(0)
     raw_bytes = uploaded_file.read()
@@ -1056,125 +1191,34 @@ def _parse_pdf_roster(uploaded_file, on_student=_save_student):
             tables = page.extract_tables()
             if tables:
                 for table in tables:
-                    for row in table:
-                        if not row:
-                            continue
-                        cells = [str(c).strip() for c in row if c and str(c).strip()]
-                        if len(cells) < 2:
-                            continue
-                        # Skip header rows — note: 'no' removed (too aggressive;
-                        # matches real names like Noel/Norah).
-                        _cell_text = ' '.join(cells).lower()
-                        if any(h in _cell_text for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'jinsia ya', '#')):
-                            continue
-                        # Skip title rows (e.g. "FORM ONE ATTENDANCE LIST SEPT,2026")
-                        if any(h in _cell_text for h in ('attendance', 'list', 'sept', 'march', 'may')):
-                            continue
-                        # Try joining all cells as one line
-                        line = ' '.join(cells)
-                        parsed = _parse_roster_line(line)
-                        if parsed:
-                            first, middle, last, gender = parsed
-                            if first and first.lower() not in ('nan', 'none', ''):
-                                students_out.append(on_student(first, middle, last, gender))
+                    students_out.extend(_process_roster_table_rows(table, on_student))
             else:
                 # Plain text extraction — each line is one student.
-                # Some PDFs contain CSV text (comma-separated) rather than
-                # plain text with spaces.  Detect this by checking whether
-                # the first non-empty line contains commas.
                 text = page.extract_text() or ''
                 lines = [l.strip() for l in text.splitlines() if l.strip()]
-                if not lines:
-                    continue
+                students_out.extend(_process_roster_text_lines(lines, on_student))
+    return students_out
 
-                # Detect CSV-style: first line has commas and looks like a header
-                first_data_line = re.sub(r'^\d+[.)]\s*', '', lines[0]).strip()
-                _is_csv = ',' in first_data_line and len(first_data_line.split(',')) >= 2
 
-                # If CSV, detect which column is which from the header
-                _col_map = {}  # role → column index
-                if _is_csv:
-                    header_cells = [c.strip().lower() for c in lines[0].split(',')]
-                    for ci, hc in enumerate(header_cells):
-                        if hc in ('firstname', 'first name', 'jina la kwanza'):
-                            _col_map.setdefault('first', ci)
-                        elif hc in ('middlename', 'middle name', 'jina la kati'):
-                            _col_map.setdefault('middle', ci)
-                        elif hc in ('lastname', 'last name', 'surname', 'jina la mwisho'):
-                            _col_map.setdefault('last', ci)
-                        elif hc in ('gender', 'jinsia', 'sex'):
-                            _col_map.setdefault('gender', ci)
-                        elif hc in ('name', 'full name', 'jina', 'student name', 'jina la mwanafunzi'):
-                            _col_map.setdefault('full', ci)
-                    # If no explicit columns, treat as: name,gender or name...
-                    if not _col_map and len(header_cells) >= 2:
-                        # Guess: first non-trivial column = name, last = gender
-                        for ci, hc in enumerate(header_cells):
-                            if hc and hc not in ('namba', 'no', 'no.', '#', 'id'):
-                                _col_map.setdefault('full', ci)
-                                break
-                    _start_row = 1  # skip header
-                else:
-                    _start_row = 0
+def _parse_docx_roster(uploaded_file, on_student=_save_student):
+    """Extract student rows from a .docx roster (Word document).
 
-                for line in lines[_start_row:]:
-                    # Remove leading numbering like "1." "1)" "01."
-                    line = re.sub(r'^\d+[.)]\s*', '', line).strip()
-                    if not line:
-                        continue
-                    # Skip obvious header lines (safety net for CSV-detected data too)
-                    _line_lower = line.lower()
-                    if any(h in _line_lower for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'student')):
-                        continue
-                    # Skip title lines (e.g. "FORM ONE ATTENDANCE LIST SEPT,2026")
-                    if any(h in _line_lower for h in ('attendance', 'list', 'sept', 'march', 'may')):
-                        continue
+    Tables first (a class list pasted/typed as a Word table — most
+    common), falling back to one student per paragraph line, otherwise
+    identical in shape to _parse_pdf_roster so both share
+    _process_roster_table_rows / _process_roster_text_lines."""
+    from docx import Document
 
-                    if _is_csv:
-                        cells = [c.strip() for c in line.split(',')]
-                        if len(cells) < 2:
-                            continue
-                        first = middle = last = ''
-                        gender = 'M'
-                        if 'first' in _col_map and _col_map['first'] < len(cells):
-                            first = cells[_col_map['first']]
-                        if 'middle' in _col_map and _col_map['middle'] < len(cells):
-                            middle = cells[_col_map['middle']]
-                        if 'last' in _col_map and _col_map['last'] < len(cells):
-                            last = cells[_col_map['last']]
-                        if 'gender' in _col_map and _col_map['gender'] < len(cells):
-                            gender = cells[_col_map['gender']]
-                        if 'full' in _col_map and _col_map['full'] < len(cells):
-                            full_val = cells[_col_map['full']]
-                            parts = full_val.split()
-                            if not first and len(parts) >= 3:
-                                first = parts[0]
-                                middle = ' '.join(parts[1:-1])
-                                last = parts[-1]
-                            elif not first and len(parts) == 2:
-                                first = parts[0]
-                                last = parts[1]
-                            elif not first and parts:
-                                first = parts[0]
-                        if not first and cells:
-                            # Last resort: first non-empty cell
-                            for c in cells:
-                                if c and c.lower() not in ('nan', 'none', ''):
-                                    parsed = _parse_roster_line(c)
-                                    if parsed:
-                                        first, middle, last, gender = parsed
-                                        break
-                    else:
-                        parsed = _parse_roster_line(line)
-                        if not parsed:
-                            continue
-                        first, middle, last, gender = parsed
-
-                    if first and first.lower() not in ('nan', 'none', ''):
-                        students_out.append(on_student(
-                            first.strip(), (middle or '').strip(), last.strip() or 'Unknown',
-                            normalize_gender(gender)
-                        ))
+    uploaded_file.seek(0)
+    doc = Document(uploaded_file)
+    students_out = []
+    if doc.tables:
+        for table in doc.tables:
+            rows = [[cell.text for cell in row.cells] for row in table.rows]
+            students_out.extend(_process_roster_table_rows(rows, on_student))
+    else:
+        lines = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+        students_out.extend(_process_roster_text_lines(lines, on_student))
     return students_out
 
 # Header detection keywords — a row containing any of these is
@@ -1385,7 +1429,7 @@ def _parse_spreadsheet_roster(uploaded_file, on_student=_save_student, form_num=
 @login_required
 @require_POST
 def upload_roster(request):
-    """Accept PDF, CSV, or Excel roster → create/get Student objects → return IDs.
+    """Accept PDF, DOCX, CSV, or Excel roster → create/get Student objects → return IDs.
 
     When exam_id + subject_id are passed, the roster is saved to StoredRoster
     so the teacher can reload it later from the dashboard.
@@ -1396,12 +1440,14 @@ def upload_roster(request):
         return JsonResponse({'error': 'Hakuna faili lililotumwa.'}, status=400)
     try:
         fname = uploaded_file.name.lower()
-        rows = _collect_roster_rows(uploaded_file, is_pdf=fname.endswith('.pdf'))
+        rows = _collect_roster_rows(
+            uploaded_file, is_pdf=fname.endswith('.pdf'), is_docx=fname.endswith('.docx'),
+        )
         students_out = _bulk_save_students(rows)
 
         if not students_out:
             return JsonResponse({
-                'error': 'Hakuna wanafunzi waliopatikana. Muundo unaoeleweka: (a) PDF/CSV ya maneno kwa mstari: Halima Ally Mohamed F \n (b) CSV/Excel zenye column: First Name, Middle Name, Last Name, Gender \n (c) CSV/Excel yenye column moja ya jina kamili: Name, Gender'
+                'error': 'Hakuna wanafunzi waliopatikana. Muundo unaoeleweka: (a) PDF/DOCX/CSV ya maneno kwa mstari: Halima Ally Mohamed F \n (b) CSV/Excel/DOCX zenye column: First Name, Middle Name, Last Name, Gender \n (c) CSV/Excel/DOCX yenye column moja ya jina kamili: Name, Gender'
             }, status=400)
 
         # Optionally persist roster for later access
@@ -1420,7 +1466,7 @@ def upload_roster(request):
                             'students': students_out,
                             'student_count': len(students_out),
                             'source_file': uploaded_file.name,
-                            'source_format': 'pdf' if fname.endswith('.pdf') else 'csv',
+                            'source_format': 'pdf' if fname.endswith('.pdf') else ('docx' if fname.endswith('.docx') else 'csv'),
                         },
                     )
             except Exception:
@@ -2517,10 +2563,12 @@ def upload_form_students(request):
         try:
             if ext == '.pdf':
                 rows = _collect_roster_rows(uploaded_file, is_pdf=True, form_num=selected_form)
+            elif ext == '.docx':
+                rows = _collect_roster_rows(uploaded_file, is_docx=True, form_num=selected_form)
             elif ext in ('.csv', '.xlsx', '.xls'):
                 rows = _collect_roster_rows(uploaded_file, is_pdf=False, form_num=selected_form)
             else:
-                messages.error(request, f"Aina ya faili '{ext}' haijulikani. Tumia PDF, CSV au Excel.")
+                messages.error(request, f"Aina ya faili '{ext}' haijulikani. Tumia PDF, DOCX, CSV au Excel.")
                 return redirect(f'{reverse("upload_form_students")}?form={selected_form}')
 
             saved = _bulk_save_form_students(school, selected_form, rows)

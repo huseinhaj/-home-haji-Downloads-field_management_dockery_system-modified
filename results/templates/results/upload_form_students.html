@@ -4,7 +4,7 @@
 {% block content %}
 <div class="container-fluid py-4">
   <h2 class="mb-3" style="color:#1A3C6E;">📋 Form Students</h2>
-  <p class="text-muted mb-4">Upload the student roster for each form (PDF, Excel or CSV). Students will appear on each teacher's dashboard. Assign subjects so teachers only see their students.</p>
+  <p class="text-muted mb-4">Upload the student roster for each form (PDF, DOCX, Excel or CSV). Students will appear on each teacher's dashboard. Assign subjects so teachers only see their students.</p>
 
   <!-- Form Tabs -->
   <ul class="nav nav-tabs mb-4">
@@ -51,8 +51,8 @@
         <input type="hidden" name="form" value="{{ selected_form }}">
         <div class="row align-items-end">
           <div class="col-md-8">
-            <label class="form-label fw-bold">Roster File (PDF, Excel or CSV)</label>
-            <input type="file" name="student_file" class="form-control" accept=".pdf,.csv,.xlsx,.xls" required>
+            <label class="form-label fw-bold">Roster File (PDF, DOCX, Excel or CSV)</label>
+            <input type="file" name="student_file" class="form-control" accept=".pdf,.docx,.csv,.xlsx,.xls" required>
             <small class="text-muted">
               One line per student. PDF: full name + gender (e.g. "Halima Ally Mohamed F").
               Excel/CSV: columns First Name | Middle Name | Last Name | Gender.

@@ -369,9 +369,9 @@
             {% if LANG == 'sw' %}Bonyeza au dondosha faili hapa{% else %}Click or drag &amp; drop a file here{% endif %}
           </div>
           <div class="me-hint mt-1">
-            {% if LANG == 'sw' %}PDF, Excel au CSV — orodha ya wanafunzi wa Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %}{% else %}PDF, Excel or CSV — Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} class list{% endif %}
+            {% if LANG == 'sw' %}PDF, DOCX, Excel au CSV — orodha ya wanafunzi wa Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %}{% else %}PDF, DOCX, Excel or CSV — Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} class list{% endif %}
           </div>
-          <input type="file" id="meRosterInput" accept=".pdf,.xlsx,.xls,.csv">
+          <input type="file" id="meRosterInput" accept=".pdf,.docx,.xlsx,.xls,.csv">
         </div>
         <div class="me-hint mt-2" style="line-height:1.7;">
           {% if LANG == 'sw' %}

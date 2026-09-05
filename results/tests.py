@@ -1463,6 +1463,82 @@ class RecomputeCseePositionRankingMigrationTests(TestCase):
 		self.assertFalse(ProcessedResult.objects.filter(exam=exam).exists())
 
 
+def _build_docx_bytes(*, table_rows=None, paragraph_lines=None):
+	from io import BytesIO
+	from docx import Document
+
+	doc = Document()
+	if table_rows:
+		table = doc.add_table(rows=0, cols=len(table_rows[0]))
+		for row in table_rows:
+			cells = table.add_row().cells
+			for i, value in enumerate(row):
+				cells[i].text = value
+	if paragraph_lines:
+		for line in paragraph_lines:
+			doc.add_paragraph(line)
+	buf = BytesIO()
+	doc.save(buf)
+	return buf.getvalue()
+
+
+class DocxRosterUploadTests(TestCase):
+	"""Roster upload also accepts a .docx (Word) class list -- a table
+	first, falling back to one student per paragraph line, sharing the
+	exact same row/line parsing as the PDF roster path."""
+
+	databases = {'default', 'results'}
+
+	def _docx_file(self, name='roster.docx', **kwargs):
+		from django.core.files.uploadedfile import SimpleUploadedFile
+		content = _build_docx_bytes(**kwargs)
+		return SimpleUploadedFile(
+			name, content,
+			content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+		)
+
+	def test_parses_students_from_a_docx_table(self):
+		from .views import _parse_docx_roster
+		docx_file = self._docx_file(table_rows=[
+			['Jina la Mwanafunzi', 'Jinsia'],
+			['Amina Juma', 'F'],
+			['Peter Mushi', 'M'],
+		])
+		collected = []
+		_parse_docx_roster(docx_file, on_student=lambda f, m, l, g: collected.append((f, m, l, g)))
+		names = {(row[0], row[2]) for row in collected}
+		self.assertEqual(names, {('Amina', 'Juma'), ('Peter', 'Mushi')})
+
+	def test_parses_students_from_docx_paragraph_lines_when_no_table(self):
+		from .views import _parse_docx_roster
+		docx_file = self._docx_file(paragraph_lines=[
+			'Halima Ally Mohamed F',
+			'John Peter Komba M',
+		])
+		collected = []
+		_parse_docx_roster(docx_file, on_student=lambda f, m, l, g: collected.append((f, m, l, g)))
+		self.assertEqual(len(collected), 2)
+		self.assertIn(('Halima', 'Ally', 'Mohamed', 'F'), collected)
+		self.assertIn(('John', 'Peter', 'Komba', 'M'), collected)
+
+	def test_collect_roster_rows_dispatches_docx_by_flag(self):
+		from .views import _collect_roster_rows
+		docx_file = self._docx_file(paragraph_lines=['Amina Juma F'])
+		rows = _collect_roster_rows(docx_file, is_pdf=False, is_docx=True)
+		self.assertEqual(rows, [('Amina', '', 'Juma', 'F')])
+
+	def test_upload_roster_view_accepts_docx(self):
+		teacher = TeacherAccount.objects.create(email='t2@example.com', full_name='Teacher Two', role=TeacherAccount.ROLE_TEACHER)
+		client = Client()
+		client.force_login(teacher, backend='results.backends.ResultsAuthBackend')
+		docx_file = self._docx_file(paragraph_lines=['Amina Juma F', 'Peter Mushi M'])
+		response = client.post(reverse('upload_roster'), {'file': docx_file})
+		self.assertEqual(response.status_code, 200)
+		data = response.json()
+		names = {s['name'] for s in data.get('students', [])}
+		self.assertEqual(names, {'Amina Juma', 'Peter Mushi'})
+
+
 class MarksEntryAddStudentTests(TestCase):
 	"""A student added inline on the Marks Entry page must stick — the
 	review page filters marks to the roster, so the new student has to be
