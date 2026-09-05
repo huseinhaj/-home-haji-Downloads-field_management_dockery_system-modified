@@ -29,9 +29,12 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
     loaded client-side, used to fuzzy-match extracted names against.
 
     Returns a dict — either {'error': ...} (OCR couldn't read the
-    document) or {'matched': [...], 'unmatched': [...]} in exactly the
-    shape the view used to return synchronously."""
-    from .services.speech_submission_service import match_rows_to_roster_exclusive
+    document) or {'matched': [...], 'unmatched': [...], 'missing': [...]}.
+    'missing' lists roster students the OCR gave us NO signal for at all
+    (not a score, not an X, not even an explicit blank row) — these are
+    almost always a mark the AI failed to read, not a student who simply
+    doesn't study the subject, and need a manual check against the photo."""
+    from .services.speech_submission_service import match_rows_to_roster_by_position, match_rows_to_roster_exclusive
     from .views import _parse_roster_line, _save_student
 
     try:
@@ -45,19 +48,42 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
         except Exception:
             logger.warning("process_scoresheet_photo_task: could not delete temp file %s", storage_path, exc_info=True)
 
-    roster_students = list(Student.objects.filter(id__in=roster_ids))
+    # Preserve the order roster_ids arrived in — it mirrors the order the
+    # frontend's marks table (and therefore download_scoresheet_names_pdf's
+    # "Na." column) was in, which position-based matching depends on.
+    # Student.objects.filter(id__in=...) does NOT preserve list order.
+    students_by_id = {s.id: s for s in Student.objects.filter(id__in=roster_ids)}
+    roster_students = [students_by_id[rid] for rid in roster_ids if rid in students_by_id]
+
+    content_rows = [r for r in extracted_rows if not r.get('blank')]
+    blank_rows = [r for r in extracted_rows if r.get('blank')]
+
+    # Position first: the row's printed "Na." number is stronger evidence
+    # than a re-typed name, since we generated the sheet from this exact
+    # roster order ourselves. Anything without a usable row number (or
+    # whose position candidate fails a loose sanity check) falls back to
+    # name-only exclusive matching below.
+    position_assignments, unresolved_indices = match_rows_to_roster_by_position(
+        content_rows, roster_students,
+    )
+    remaining_rows = [content_rows[i] for i in unresolved_indices]
+    claimed_ids = {student.id for student, _ in position_assignments.values()}
+    remaining_roster = [s for s in roster_students if s.id not in claimed_ids]
 
     # Exclusive matching: each roster student can only be claimed by ONE
     # row, so two similarly-named students (same surname, or a name OCR
     # misread as another student's) can't both collapse onto the same
     # person — see match_rows_to_roster_exclusive's docstring.
-    assignments, _unmatched_indices = match_rows_to_roster_exclusive(
-        extracted_rows, roster_students, threshold=0.80,
+    name_assignments, _unmatched_local = match_rows_to_roster_exclusive(
+        remaining_rows, remaining_roster, threshold=0.80,
     )
+    assignments = dict(position_assignments)
+    for local_index, assignment in name_assignments.items():
+        assignments[unresolved_indices[local_index]] = assignment
 
     matched = []
     unmatched = []
-    for row_index, row in enumerate(extracted_rows):
+    for row_index, row in enumerate(content_rows):
         assignment = assignments.get(row_index)
         if assignment:
             student, confidence = assignment
@@ -87,7 +113,22 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
             'is_new': True,
         })
 
-    return {'matched': matched, 'unmatched': unmatched}
+    # Anyone left over is either confirmed blank-on-the-sheet (fine, no
+    # action needed) or never showed up in the OCR output at all (needs a
+    # manual check — most likely a mark the AI missed).
+    matched_ids = {m['id'] for m in matched if not m.get('is_new')}
+    blank_ids = set()
+    for br in blank_rows:
+        row_no = br.get('row')
+        if row_no and 1 <= row_no <= len(roster_students):
+            blank_ids.add(roster_students[row_no - 1].id)
+    missing = [
+        {'id': s.id, 'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p)}
+        for s in roster_students
+        if s.id not in matched_ids and s.id not in blank_ids
+    ]
+
+    return {'matched': matched, 'unmatched': unmatched, 'missing': missing}
 
 
 @shared_task(bind=True, time_limit=360, soft_time_limit=340)
@@ -125,6 +166,10 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
     subject = Subject.objects.filter(id=subject_id).first()
     if not subject:
         return {'error': 'Somo halipatikani.'}
+
+    # Blank rows (student on the sheet but no mark written) carry no score
+    # to save — drop them here rather than trying to match/save them.
+    extracted_rows = [r for r in extracted_rows if not r.get('blank')]
 
     # Exclusive matching: each roster student can only be claimed by ONE
     # row, so two similarly-named students (same surname, or a name OCR
@@ -174,6 +219,14 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
     if preview_only:
         # Build roster list for the frontend dropdown
         roster_list = [{'id': s.id, 'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p)} for s in roster_students]
+        # Roster students the OCR gave no row for at all — could be a
+        # student who doesn't take this subject, or a mark it missed
+        # entirely; there's no reliable way to tell the two apart here
+        # (unlike the teacher's own photo upload, this file has no known
+        # print order to anchor blank rows to), so surface them for the
+        # academic officer to confirm rather than silently dropping them.
+        matched_ids = {m['student_id'] for m in matched}
+        missing = [s for s in roster_list if s['id'] not in matched_ids]
         return {
             'preview': True,
             'subject_id': subject.id,
@@ -181,6 +234,7 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
             'matched': matched,
             'unmatched': unmatched,
             'roster': roster_list,
+            'missing': missing,
         }
 
     # ── Save mode: write to DB ───────────────────────────────────────

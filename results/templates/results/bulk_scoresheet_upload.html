@@ -313,6 +313,15 @@
     </div>
     <div class="review-body">
       <div class="review-info" id="reviewInfo"></div>
+      <div id="reviewPdfSection" style="margin-bottom:0.8rem;">
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.4rem;">
+          <button type="button" class="btn-final secondary" id="reviewPdfRefreshBtn" style="font-size:0.78rem;padding:0.3rem 0.8rem;">
+            🔄 {% if LANG == 'sw' %}Sasisha PDF ya Kukagua{% else %}Refresh review PDF{% endif %}
+          </button>
+          <span id="reviewPdfStatus" style="font-size:0.78rem;color:#666;"></span>
+        </div>
+        <iframe id="reviewPdfFrame" title="Scoresheet review PDF" style="width:100%;height:360px;border:1px solid #ccc;border-radius:4px;display:none;"></iframe>
+      </div>
       <div style="overflow-x:auto;">
         <table class="review-table">
           <thead>
@@ -372,6 +381,7 @@
   let queueId = 0;
 
   const SAVE_URL = '{% url "save_confirmed_scores" exam.id %}';
+  const PREVIEW_PDF_URL = '{% url "bulk_scoresheet_preview_pdf" exam.id %}';
 
   // Parse subjects data
   const subjectsData = JSON.parse(document.getElementById('subjectsData').textContent);
@@ -673,6 +683,65 @@
 
   // ── Review Modal ──────────────────────────────────────────────────
   let currentPreview = null;  // {subject_id, subject_name, matched, unmatched, roster}
+  let reviewPdfBlobUrl = null;
+
+  // Reads the review table's CURRENT state (including any manual fixes
+  // already made) and shapes it for bulk_scoresheet_preview_pdf — this is
+  // what lets the preview PDF reflect corrections, not just the raw OCR.
+  function collectReviewRowsForPdf() {
+    const tbody = document.getElementById('reviewTableBody');
+    const out = [];
+    tbody.querySelectorAll('tr').forEach(tr => {
+      if (tr.classList.contains('removed')) return;
+      const select = tr.querySelector('.student-select');
+      const scoreInput = tr.querySelector('.score-input');
+      const absentCheck = tr.querySelector('.absent-check');
+      const nameCell = tr.children[1];
+      let name = '';
+      if (select && select.selectedIndex > 0) {
+        name = select.options[select.selectedIndex].textContent;
+      } else if (nameCell) {
+        name = nameCell.textContent;
+      }
+      const isAbsent = absentCheck ? absentCheck.checked : false;
+      let score = null;
+      if (!isAbsent && scoreInput && scoreInput.value !== '') {
+        const parsed = parseInt(scoreInput.value);
+        if (!isNaN(parsed)) score = parsed;
+      }
+      out.push({ name: name, score: score, is_absent: isAbsent, status: tr.dataset.status || 'matched' });
+    });
+    return out;
+  }
+
+  // Builds a PDF from the review table's current state and shows it
+  // inline (top of the modal) so whoever uploaded the file can eyeball
+  // it against the paper scoresheet before saving anything to the DB.
+  async function refreshReviewPdf() {
+    if (!currentPreview) return;
+    const statusEl = document.getElementById('reviewPdfStatus');
+    const frame = document.getElementById('reviewPdfFrame');
+    statusEl.textContent = LANG === 'sw' ? '⏳ Inatengeneza PDF...' : '⏳ Building PDF...';
+    try {
+      const rows = collectReviewRowsForPdf();
+      const res = await fetch(PREVIEW_PDF_URL, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject_name: currentPreview.subject_name, rows: rows }),
+      });
+      if (!res.ok) throw new Error('PDF request failed');
+      const blob = await res.blob();
+      if (reviewPdfBlobUrl) URL.revokeObjectURL(reviewPdfBlobUrl);
+      reviewPdfBlobUrl = URL.createObjectURL(blob);
+      frame.src = reviewPdfBlobUrl;
+      frame.style.display = '';
+      statusEl.textContent = '';
+    } catch (err) {
+      statusEl.textContent = LANG === 'sw' ? '⚠️ Imeshindwa kutengeneza PDF ya kukagua.' : '⚠️ Failed to build the review PDF.';
+    }
+  }
+
+  document.getElementById('reviewPdfRefreshBtn').addEventListener('click', refreshReviewPdf);
 
   function openReviewModal(preview) {
     currentPreview = preview;
@@ -686,11 +755,17 @@
 
     const matchCount = preview.matched ? preview.matched.length : 0;
     const unmatchCount = preview.unmatched ? preview.unmatched.length : 0;
+    const missingCount = preview.missing ? preview.missing.length : 0;
     info.innerHTML = (LANG === 'sw'
       ? '🗣️ AI imesoma <strong>' + matchCount + '</strong> wanafunzi waliofanikiwa'
       : '🗣️ OCR read <strong>' + matchCount + '</strong> matched students')
       + (unmatchCount > 0
         ? (LANG === 'sw' ? ', <strong>' + unmatchCount + '</strong> hawjatambulika' : ', <strong>' + unmatchCount + '</strong> unmatched')
+        : '')
+      + (missingCount > 0
+        ? (LANG === 'sw'
+          ? ', <strong style="color:#8a6d1a;">' + missingCount + '</strong> hawakuonekana kabisa kwenye faili (safu za manjano — huenda hawasomi somo hili, AU alama yao ilikosekana)'
+          : ', <strong style="color:#8a6d1a;">' + missingCount + '</strong> not found in the file at all (yellow rows — could be a non-taker, or a missed mark)')
         : '')
       + (LANG === 'sw' ? '<br>⚠️ Tafadhali kagua alama kabla ya kuhifadhi. Bonyeza kwenye alama au somo la mwanafunzi kurekebisha.'
         : '<br>⚠️ Please review scores before saving. Click on score or student name to correct.');
@@ -720,22 +795,23 @@
 
         const tr = document.createElement('tr');
         tr.id = 'review-row-' + idx;
+        tr.dataset.status = 'matched';
         const isAbsent = row.is_absent || false;
         const absentChecked = isAbsent ? ' checked' : '';
         const scoreDisabled = isAbsent ? ' disabled' : '';
         const scoreVal = isAbsent ? '' : row.score;
-        tr.innerHTML = '
-          <td style="color:#888;font-size:0.75rem;">' + (idx + 1) + '</td>
-          <td style="font-style:italic;color:#666;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(row.raw_name || (LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]')) + '</td>
-          <td><select class="student-select" data-idx="' + idx + '">' + buildStudentOptions(row.student_id) + '</select></td>
-          <td><input type="number" class="score-input" min="0" max="100" value="' + scoreVal + '" data-idx="' + idx + '"' + scoreDisabled + '></td>
-          <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="' + idx + '"' + absentChecked + '></td>
-          <td><span class="confidence ' + confClass + '">' + confLabel + '</span></td>
+        tr.innerHTML = `
+          <td style="color:#888;font-size:0.75rem;">${idx + 1}</td>
+          <td style="font-style:italic;color:#666;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(row.raw_name || (LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]'))}</td>
+          <td><select class="student-select" data-idx="${idx}">${buildStudentOptions(row.student_id)}</select></td>
+          <td><input type="number" class="score-input" min="0" max="100" value="${scoreVal}" data-idx="${idx}"${scoreDisabled}></td>
+          <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="${idx}"${absentChecked}></td>
+          <td><span class="confidence ${confClass}">${confLabel}</span></td>
           <td style="white-space:nowrap;">
-            <button class="row-insert" data-action="insert-after" title="' + (LANG === 'sw' ? 'Ongeza chini' : 'Insert below') + '">+</button>
-            <button class="row-remove" data-idx="' + idx + '" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button>
+            <button class="row-insert" data-action="insert-after" title="${LANG === 'sw' ? 'Ongeza chini' : 'Insert below'}">+</button>
+            <button class="row-remove" data-idx="${idx}" title="${LANG === 'sw' ? 'Ondoa' : 'Remove'}">&#x2715;</button>
           </td>
-        ';
+        `;
         tbody.appendChild(tr);
       });
     }
@@ -747,28 +823,59 @@
         const tr = document.createElement('tr');
         tr.id = 'review-row-' + globalIdx;
         tr.style.background = '#fff8e6';
+        tr.dataset.status = 'unmatched';
         const uAbsent = row.is_absent || false;
         const uAbsentChecked = uAbsent ? ' checked' : '';
         const uScoreDisabled = uAbsent ? ' disabled' : '';
         const uScoreVal = uAbsent ? '' : row.score;
-        tr.innerHTML = '
-          <td style="color:#888;font-size:0.75rem;">' + (globalIdx + 1) + '</td>
-          <td style="font-style:italic;color:#856404;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(row.raw_name || '') + '</td>
-          <td><select class="student-select" data-idx="' + globalIdx + '">' + buildStudentOptions('') + '</select></td>
-          <td><input type="number" class="score-input" min="0" max="100" value="' + uScoreVal + '" data-idx="' + globalIdx + '"' + uScoreDisabled + '></td>
-          <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="' + globalIdx + '"' + uAbsentChecked + '></td>
-          <td><span class="confidence low">' + (LANG === 'sw' ? 'Haijaunganishwa' : 'Unmatched') + '</span></td>
+        tr.innerHTML = `
+          <td style="color:#888;font-size:0.75rem;">${globalIdx + 1}</td>
+          <td style="font-style:italic;color:#856404;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(row.raw_name || '')}</td>
+          <td><select class="student-select" data-idx="${globalIdx}">${buildStudentOptions('')}</select></td>
+          <td><input type="number" class="score-input" min="0" max="100" value="${uScoreVal}" data-idx="${globalIdx}"${uScoreDisabled}></td>
+          <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="${globalIdx}"${uAbsentChecked}></td>
+          <td><span class="confidence low">${LANG === 'sw' ? 'Haijaunganishwa' : 'Unmatched'}</span></td>
           <td style="white-space:nowrap;">
-            <button class="row-insert" data-action="insert-after" title="' + (LANG === 'sw' ? 'Ongeza chini' : 'Insert below') + '">+</button>
-            <button class="row-remove" data-idx="' + globalIdx + '" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button>
+            <button class="row-insert" data-action="insert-after" title="${LANG === 'sw' ? 'Ongeza chini' : 'Insert below'}">+</button>
+            <button class="row-remove" data-idx="${globalIdx}" title="${LANG === 'sw' ? 'Ondoa' : 'Remove'}">&#x2715;</button>
           </td>
-        ';
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Roster students the file gave NO row for at all — not matched, not
+    // unmatched, nothing. Could be a genuine non-taker, or a mark the OCR
+    // missed entirely; either way it's invisible unless we show it, so
+    // list them as pre-linked, editable rows (score left blank — an
+    // untouched row simply won't be saved, same as before).
+    if (preview.missing && preview.missing.length) {
+      const baseIdx = (preview.matched ? preview.matched.length : 0) + (preview.unmatched ? preview.unmatched.length : 0);
+      preview.missing.forEach((s, idx) => {
+        const globalIdx = baseIdx + idx;
+        const tr = document.createElement('tr');
+        tr.id = 'review-row-' + globalIdx;
+        tr.style.background = '#fff8e6';
+        tr.dataset.status = 'missing';
+        tr.innerHTML = `
+          <td style="color:#888;font-size:0.75rem;">${globalIdx + 1}</td>
+          <td style="font-style:italic;color:#8a6d1a;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.name)}</td>
+          <td><select class="student-select" data-idx="${globalIdx}">${buildStudentOptions(s.id)}</select></td>
+          <td><input type="number" class="score-input" min="0" max="100" value="" data-idx="${globalIdx}"></td>
+          <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="${globalIdx}"></td>
+          <td><span class="confidence low">${LANG === 'sw' ? 'Hakuna alama' : 'No mark found'}</span></td>
+          <td style="white-space:nowrap;">
+            <button class="row-insert" data-action="insert-after" title="${LANG === 'sw' ? 'Ongeza chini' : 'Insert below'}">+</button>
+            <button class="row-remove" data-idx="${globalIdx}" title="${LANG === 'sw' ? 'Ondoa' : 'Remove'}">&#x2715;</button>
+          </td>
+        `;
         tbody.appendChild(tr);
       });
     }
 
     updateReviewStats();
     overlay.classList.add('active');
+    refreshReviewPdf();
 
     // Event: remove row
     tbody.querySelectorAll('.row-remove').forEach(btn => {
@@ -822,6 +929,7 @@
     const tbody = document.getElementById('reviewTableBody');
     const newTr = document.createElement('tr');
     newTr.className = 'added-row';
+    newTr.dataset.status = 'matched';
 
     let opts = '<option value="">— ' + (LANG === 'sw' ? 'Chagua Mwanafunzi' : 'Select Student') + ' —</option>';
     if (currentPreview && currentPreview.roster && currentPreview.roster.length) {
@@ -831,18 +939,18 @@
     }
 
     const rowNum = Array.from(tbody.children).indexOf(beforeTr) + 1;
-    newTr.innerHTML = '
-      <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">' + rowNum + '</td>
-      <td style="font-style:italic;color:#1a7a3b;">' + (LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]') + '</td>
-      <td><select class="student-select">' + opts + '</select></td>
+    newTr.innerHTML = `
+      <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">${rowNum}</td>
+      <td style="font-style:italic;color:#1a7a3b;">${LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]'}</td>
+      <td><select class="student-select">${opts}</select></td>
       <td><input type="number" class="score-input" min="0" max="100" value=""></td>
       <td style="text-align:center;"><input type="checkbox" class="absent-check"></td>
-      <td><span class="confidence" style="background:#e6f7ec;color:#1a7a3b;">' + (LANG === 'sw' ? 'Mpya' : 'New') + '</span></td>
+      <td><span class="confidence" style="background:#e6f7ec;color:#1a7a3b;">${LANG === 'sw' ? 'Mpya' : 'New'}</span></td>
       <td style="white-space:nowrap;">
-        <button class="row-insert" data-action="insert-above" title="' + (LANG === 'sw' ? 'Ongeza juu' : 'Insert above') + '">+</button>
-        <button class="row-remove" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button>
+        <button class="row-insert" data-action="insert-above" title="${LANG === 'sw' ? 'Ongeza juu' : 'Insert above'}">+</button>
+        <button class="row-remove" title="${LANG === 'sw' ? 'Ondoa' : 'Remove'}">&#x2715;</button>
       </td>
-    ';
+    `;
 
     // Insert BEFORE the current row
     tbody.insertBefore(newTr, beforeTr);
@@ -1001,6 +1109,7 @@
     const tbody = document.getElementById('reviewTableBody');
     const newTr = document.createElement('tr');
     newTr.className = 'added-row';
+    newTr.dataset.status = 'matched';
     let opts = '<option value="">— ' + (LANG === 'sw' ? 'Chagua Mwanafunzi' : 'Select Student') + ' —</option>';
     if (currentPreview && currentPreview.roster && currentPreview.roster.length) {
       currentPreview.roster.forEach(s => {
@@ -1008,18 +1117,18 @@
       });
     }
     const rowNum = tbody.children.length + 1;
-    newTr.innerHTML = '
-      <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">' + rowNum + '</td>
-      <td style="font-style:italic;color:#1a7a3b;">' + (LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]') + '</td>
-      <td><select class="student-select">' + opts + '</select></td>
+    newTr.innerHTML = `
+      <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">${rowNum}</td>
+      <td style="font-style:italic;color:#1a7a3b;">${LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]'}</td>
+      <td><select class="student-select">${opts}</select></td>
       <td><input type="number" class="score-input" min="0" max="100" value=""></td>
       <td style="text-align:center;"><input type="checkbox" class="absent-check"></td>
-      <td><span class="confidence" style="background:#e6f7ec;color:#1a7a3b;">' + (LANG === 'sw' ? 'Mpya' : 'New') + '</span></td>
+      <td><span class="confidence" style="background:#e6f7ec;color:#1a7a3b;">${LANG === 'sw' ? 'Mpya' : 'New'}</span></td>
       <td style="white-space:nowrap;">
-        <button class="row-insert" data-action="insert-above" title="' + (LANG === 'sw' ? 'Ongeza juu' : 'Insert above') + '">+</button>
-        <button class="row-remove" title="' + (LANG === 'sw' ? 'Ondoa' : 'Remove') + '">&#x2715;</button>
+        <button class="row-insert" data-action="insert-above" title="${LANG === 'sw' ? 'Ongeza juu' : 'Insert above'}">+</button>
+        <button class="row-remove" title="${LANG === 'sw' ? 'Ondoa' : 'Remove'}">&#x2715;</button>
       </td>
-    ';
+    `;
     tbody.appendChild(newTr);
     // Re-attach events
     newTr.querySelector('.row-remove').addEventListener('click', function() {

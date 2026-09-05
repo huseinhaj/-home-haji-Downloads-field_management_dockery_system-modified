@@ -3145,3 +3145,116 @@ def save_confirmed_scores(request, exam_id):
         'status': 'done',
         'saved_count': len(exam_results),
     })
+
+
+@academic_required
+@require_POST
+def bulk_scoresheet_preview_pdf(request, exam_id):
+    """Renders the CURRENT review-table state (before anything is saved)
+    as a PDF laid out just like the blank scoresheet the teacher printed —
+    Na. | Jina | Alama | Hali — so whoever uploaded the file can eyeball
+    it against the paper sheet and confirm every row landed on the right
+    student before hitting the final save.
+
+    Nothing here touches the database — rows come straight from the
+    frontend's in-memory review table (matched/unmatched/missing, plus any
+    manual corrections already made), not from ExamResult."""
+    import io as _io
+    import json as _json
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm, mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    exam = _get_exam_or_404(exam_id, request.user)
+
+    try:
+        payload = _json.loads(request.body)
+    except (ValueError, _json.JSONDecodeError):
+        return HttpResponse('Data si sahihi.', status=400)
+
+    subject_name = (payload.get('subject_name') or '').strip() or '—'
+    rows = payload.get('rows') or []
+
+    buf = _io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm,
+                             leftMargin=2 * cm, rightMargin=2 * cm)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('T', parent=styles['Title'], fontSize=15, spaceAfter=6,
+                                  textColor=colors.HexColor('#1F7A3D'))
+    sub_style = ParagraphStyle('Sub', parent=styles['Normal'], fontSize=10, spaceAfter=4,
+                                textColor=colors.HexColor('#333333'))
+
+    GREEN = colors.HexColor('#1F7A3D')
+    ROW_OK = colors.HexColor('#F2F4F7')
+    ROW_MISSING = colors.HexColor('#FFF3D6')
+    ROW_UNMATCHED = colors.HexColor('#FDECEB')
+
+    elements = [
+        Paragraph('KAGUA KABLA YA KUHIFADHI / REVIEW BEFORE SAVING', title_style),
+        Paragraph(f"{exam.name} — {subject_name} — Form {exam.form} ({exam.year})", sub_style),
+        Spacer(1, 4 * mm),
+    ]
+
+    hdr = ['Na.', 'Jina la Mwanafunzi', 'Alama', 'Hali']
+    table_rows = [hdr]
+    row_bg = []
+    for i, r in enumerate(rows, 1):
+        name = str(r.get('name') or r.get('raw_name') or '').strip() or '—'
+        status = r.get('status') or 'matched'
+        if r.get('is_absent'):
+            alama = 'X'
+        elif r.get('score') is not None and r.get('score') != '':
+            alama = str(r.get('score'))
+        else:
+            alama = '-'
+        hali = {
+            'matched': 'Sawa',
+            'unmatched': 'Haijatambulika — kagua',
+            'missing': 'Hakuna alama — kagua',
+        }.get(status, status)
+        table_rows.append([str(i), name, alama, hali])
+        row_bg.append(
+            ROW_MISSING if status == 'missing'
+            else ROW_UNMATCHED if status == 'unmatched'
+            else (ROW_OK if i % 2 == 0 else colors.white)
+        )
+
+    if len(table_rows) == 1:
+        table_rows.append(['', 'Hakuna safu za kuonyesha.', '', ''])
+        row_bg.append(colors.white)
+
+    t = Table(table_rows, colWidths=[1.3 * cm, 8.5 * cm, 2.2 * cm, 4.5 * cm])
+    style_cmds = [
+        ('BACKGROUND', (0, 0), (-1, 0), GREEN),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9.5),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+        ('ALIGN', (2, 1), (2, -1), 'CENTER'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+        ('BOX', (0, 0), (-1, -1), 1.2, GREEN),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+    ]
+    for i, bg in enumerate(row_bg, 1):
+        style_cmds.append(('BACKGROUND', (0, i), (-1, i), bg))
+    t.setStyle(TableStyle(style_cmds))
+    elements.append(t)
+    elements.append(Spacer(1, 6 * mm))
+    elements.append(Paragraph(
+        'Njano = hakuna alama iliyopatikana kwenye faili kabisa (huenda ilikosekana). '
+        'Nyekundu = jina halikutambuliwa (bado halijaunganishwa na mwanafunzi).',
+        sub_style,
+    ))
+
+    doc.build(elements)
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = 'inline; filename="Kagua_Kabla_ya_Kuhifadhi.pdf"'
+    return response

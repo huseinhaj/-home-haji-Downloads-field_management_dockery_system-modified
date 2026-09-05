@@ -34,33 +34,42 @@ PDF_RENDER_SCALE = 2.5  # ~180 DPI — good balance of clarity and speed
 MAX_PDF_PAGES = 5  # a single subject's scoresheet is never a 20-page document
 
 PROMPT = (
-    "This is a PHOTO of a scoresheet — a table with student names and "
-    "their marks written by a teacher (handwritten or typed). Read EVERY "
-    "row carefully and extract the NAME and SCORE for each student.\n\n"
+    "This is a PHOTO of a scoresheet — a table with a row number column "
+    "('Na.'), student names, and their marks written by a teacher "
+    "(handwritten or typed). Read EVERY row carefully and extract the ROW "
+    "NUMBER, NAME and SCORE for each student.\n\n"
     "Return ONLY a JSON array — no explanations — in this exact format:\n"
-    '[{"name": "Full Name", "score": 78}, '
-    '{"name": "Another Name", "score": 8}, '
-    '{"name": "Absent Student", "score": "X"}, '
-    '{"name": "Zero Score", "score": 0}]\n\n'
+    '[{"row": 1, "name": "Full Name", "score": 78}, '
+    '{"row": 2, "name": "Another Name", "score": 8}, '
+    '{"row": 3, "name": "Absent Student", "score": "X"}, '
+    '{"row": 4, "name": "Zero Score", "score": 0}, '
+    '{"row": 5, "name": "Does Not Sit Subject", "score": "BLANK"}]\n\n'
     "CRITICAL RULES — follow exactly:\n"
-    "1. SCORES: Read the exact number. '00' = 0, '08' = 8, '05' = 5, '10' = 10. "
+    "1. ROW NUMBER: Copy the printed number from the 'Na.' column exactly. "
+    "EVERY printed row must appear exactly once in your output, in order, "
+    "even if its score cell is empty — see rule 3.\n"
+    "2. SCORES: Read the exact number. '00' = 0, '08' = 8, '05' = 5, '10' = 10. "
     "NEVER change the number — write EXACTLY what is written.\n"
-    "2. ABSENT MARKS: If you see 'X', 'XX', 'x', 'xx', a cross mark (✕), "
+    "3. ABSENT MARKS: If you see 'X', 'XX', 'x', 'xx', a cross mark (✕), "
     "a checkmark, or any non-numeric symbol in the SCORE cell, "
     "set score to 'X' (meaning absent — student did not take the exam). "
     "This applies EVERYWHERE you see it: score column, next to the name, "
     "or anywhere on the row that indicates absence.\n"
-    "3. If the score cell is EMPTY, BLANK, or has a dash '-', SKIP that row entirely "
-    "— that student does NOT study this subject.\n"
-    "4. IGNORE headers, dates, signatures, ID numbers, and any row without a name+score.\n"
-    "5. Scores must be integers between 0 and 100, or 'X' for absent.\n"
-    "6. NEVER invent names or scores — write ONLY what you see.\n"
-    "7. Read each name COMPLETELY — do NOT cut off or abbreviate names.\n"
-    "8. A score of '0' (zero) is a valid score — include it.\n"
-    "9. For handwritten scores: look very carefully at each digit. "
+    "4. If the score cell is EMPTY, BLANK, or has a dash '-', set score to "
+    "'BLANK' — do NOT skip or omit the row. Every printed row must be "
+    "reported, blank ones included, so the row count always matches the "
+    "printed sheet.\n"
+    "5. IGNORE headers, dates, signatures, and ID numbers — but never a row "
+    "that has a printed row number and a name, even with a blank score.\n"
+    "6. Scores must be integers between 0 and 100, 'X' for absent, or "
+    "'BLANK' for empty.\n"
+    "7. NEVER invent names or scores — write ONLY what you see.\n"
+    "8. Read each name COMPLETELY — do NOT cut off or abbreviate names.\n"
+    "9. A score of '0' (zero) is a valid score — include it.\n"
+    "10. For handwritten scores: look very carefully at each digit. "
     "A '1' can look like '7', a '6' can look like '8', a '3' can look like '8'. "
     "Double-check each digit against its neighbors.\n"
-    "10. COMMON CONFUSIONS to watch for:\n"
+    "11. COMMON CONFUSIONS to watch for:\n"
     "    - '0' vs 'O' (letter O) — if it's in the score column, it's 0\n"
     "    - '1' vs 'l' (lowercase L) vs 'I' (uppercase i) — in scores it's 1\n"
     "    - 'X' vs 'x' vs '✕' vs '✗' vs a cross/tick mark — all mean ABSENT"
@@ -188,13 +197,29 @@ def _extract_json_array(text: str) -> list:
     )
 
 
+def _clean_row_number(raw_row) -> "int | None":
+    try:
+        n = int(str(raw_row).strip())
+        return n if n > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _clean_rows(raw_rows: list) -> list[dict]:
-    """Normalise raw OCR rows into [{raw_name, score, is_absent}, ...].
+    """Normalise raw OCR rows into [{raw_name, score, is_absent, row, blank}, ...].
 
     Handles:
     - Numeric scores (including leading zeros like '00' → 0, '08' → 8)
     - 'X' / 'XX' → is_absent=True, score=0
-    - Blank / dash / empty → skipped entirely (student doesn't study subject)
+    - Blank / dash / empty → blank=True, score=None (student doesn't study
+      this subject) — kept, NOT dropped, so callers can tell "this printed
+      row was genuinely empty" apart from "the AI never reported this row
+      at all" (the latter usually means a mark was missed, not that the
+      student doesn't take the subject).
+    - 'row': the printed "Na." serial number, when the AI reported one —
+      lets callers anchor a row back to the exact roster position the
+      scoresheet PDF was generated from, instead of relying only on a
+      re-typed name matching back to the roster.
     """
     rows = []
     for item in raw_rows:
@@ -204,14 +229,17 @@ def _clean_rows(raw_rows: list) -> list[dict]:
         if not name:
             continue
 
+        row_no = _clean_row_number(item.get("row"))
         raw_score = item.get("score")
         is_absent = False
 
-        # ── Blank / dash / empty → skip entirely ──────────────────────
+        # ── Blank / dash / empty → keep as an explicit blank row ───────
         if raw_score is None:
+            rows.append({"raw_name": name, "score": None, "is_absent": False, "row": row_no, "blank": True})
             continue
         raw_str = str(raw_score).strip()
-        if raw_str in ('', '-', '--', 'null', 'None'):
+        if raw_str in ('', '-', '--', 'null', 'None') or raw_str.upper() == 'BLANK':
+            rows.append({"raw_name": name, "score": None, "is_absent": False, "row": row_no, "blank": True})
             continue
 
         # ── X / XX / cross marks → absent ──────────────────────────
@@ -239,7 +267,7 @@ def _clean_rows(raw_rows: list) -> list[dict]:
         if score < 0 or score > 100:
             continue
 
-        rows.append({"raw_name": name, "score": score, "is_absent": is_absent})
+        rows.append({"raw_name": name, "score": score, "is_absent": is_absent, "row": row_no, "blank": False})
     return rows
 
 

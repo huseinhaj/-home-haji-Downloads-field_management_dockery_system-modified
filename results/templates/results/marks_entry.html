@@ -117,6 +117,7 @@
     border: 1px solid #f0b8ac; border-radius: 2px; padding: 0.5rem 0.7rem;
     width: 100%; margin-top: 0.4rem; line-height: 1.6;
   }
+  tr.photo-missing-row { outline: 2px dashed #c9971f; outline-offset: -2px; background: #fffaf0 !important; }
 
   /* Review table */
   .me-review .pos-badge {
@@ -434,6 +435,16 @@
             {% endif %}
           </div>
           <div class="me-photo-unmatched" id="mePhotoUnmatched" style="display:none;"></div>
+          <div class="me-photo-unmatched" id="mePhotoMissing" style="display:none; color:#8a6d1a; background:#fff8e6; border-color:#f0dca0;"></div>
+        </div>
+        <div id="mePdfPreviewSection" style="margin-bottom:0.6rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.4rem;">
+            <button type="button" class="btn-me-ghost" id="mePdfPreviewBtn" style="font-size:0.78rem;padding:0.3rem 0.8rem;">
+              👁️ {% if LANG == 'sw' %}Angalia PDF ya Kukagua{% else %}Preview review PDF{% endif %}
+            </button>
+            <span id="mePdfPreviewStatus" style="font-size:0.78rem;color:#666;"></span>
+          </div>
+          <iframe id="mePdfPreviewFrame" title="Scoresheet review PDF" style="width:100%;height:360px;border:1px solid #ccc;border-radius:4px;display:none;"></iframe>
         </div>
         <div class="me-table-wrap" id="meTableWrap">
           <table class="me-table">
@@ -597,6 +608,7 @@ function _dlPdf(url) {
   const LANG = '{{ LANG }}';
   const EXAM_ID = '{{ exam.id|default:"" }}';
   const SUBJECT_ID = '{{ subject.id|default:"" }}';
+  const SUBJECT_NAME = '{{ subject.name|default:""|escapejs }}';
   const REVIEW = {{ review_mode|yesno:"true,false" }};
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
   const csrfToken = csrf ? csrf.value : '';
@@ -740,6 +752,42 @@ function _dlPdf(url) {
     function escapeHtml(str) {
       return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
+
+    // Students the photo upload gave NO signal for at all (set after each
+    // OCR run) — flagged in the review PDF so they don't slip through
+    // looking identical to a legitimate blank ("doesn't take this subject").
+    let mePdfFlaggedIds = new Set();
+    let mePdfBlobUrl = null;
+
+    async function refreshMarksPreviewPdf() {
+      if (!EXAM_ID) return;
+      const statusEl = document.getElementById('mePdfPreviewStatus');
+      const frame = document.getElementById('mePdfPreviewFrame');
+      statusEl.textContent = LANG === 'sw' ? '⏳ Inatengeneza PDF...' : '⏳ Building PDF...';
+      try {
+        const rows = [...byId.values()].map(s => ({
+          name: s.name, score: s.is_absent ? null : scoreVal(s), is_absent: !!s.is_absent,
+          flagged: mePdfFlaggedIds.has(s.id),
+        }));
+        const res = await fetch("{% url 'marks_entry_preview_pdf' %}", {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exam_id: EXAM_ID, subject_name: SUBJECT_NAME, rows: rows }),
+        });
+        if (!res.ok) throw new Error('PDF request failed');
+        const blob = await res.blob();
+        if (mePdfBlobUrl) URL.revokeObjectURL(mePdfBlobUrl);
+        mePdfBlobUrl = URL.createObjectURL(blob);
+        frame.src = mePdfBlobUrl;
+        frame.style.display = '';
+        statusEl.textContent = '';
+      } catch (err) {
+        statusEl.textContent = LANG === 'sw' ? '⚠️ Imeshindwa kutengeneza PDF.' : '⚠️ Failed to build the PDF.';
+      }
+    }
+
+    const mePdfPreviewBtn = document.getElementById('mePdfPreviewBtn');
+    if (mePdfPreviewBtn) mePdfPreviewBtn.addEventListener('click', refreshMarksPreviewPdf);
 
     students.forEach(addStudent);
 
@@ -1184,6 +1232,7 @@ function _dlPdf(url) {
       const photoStatus = document.getElementById('mePhotoStatus');
       const photoHint = document.getElementById('mePhotoHint');
       const unmatchedBox = document.getElementById('mePhotoUnmatched');
+      const missingBox = document.getElementById('mePhotoMissing');
       if (!photoBtn || !photoInput) return;
 
       photoBtn.addEventListener('click', () => {
@@ -1203,6 +1252,9 @@ function _dlPdf(url) {
         photoBtn.disabled = true;
         unmatchedBox.style.display = 'none';
         unmatchedBox.innerHTML = '';
+        missingBox.style.display = 'none';
+        missingBox.innerHTML = '';
+        document.querySelectorAll('tr.photo-missing-row').forEach(tr => tr.classList.remove('photo-missing-row'));
         photoStatus.innerHTML = '<span style="color:#24508a;">⏳ ' +
           (LANG === 'sw' ? 'Inasoma picha...' : 'Reading photo...') + '</span>';
 
@@ -1259,6 +1311,7 @@ function _dlPdf(url) {
 
           const matched = data.matched || [];
           const unmatched = data.unmatched || [];
+          const missing = data.missing || [];
 
           matched.forEach(m => {
             if (m.is_new) {
@@ -1285,6 +1338,22 @@ function _dlPdf(url) {
             unmatchedBox.innerHTML = escapeHtml(label) + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;">' +
               unmatched.map(u => '<li>' + escapeHtml(u.raw_name) + ' — ' + u.score + '</li>').join('') + '</ul>';
           }
+
+          if (missing.length) {
+            missingBox.style.display = '';
+            const label = LANG === 'sw'
+              ? '🟡 Wanafunzi hawa WAKO kwenye orodha lakini mfumo hakuona alama yao kabisa kwenye picha (si "hasomi somo" — huenda alama yao ilikosekana). Wamewekewa mstari wa manjano hapo chini — thibitisha dhidi ya karatasi:'
+              : "🟡 These students ARE on the roster but the system found NO mark for them at all in the photo (this is different from \"doesn't take the subject\" — their mark was likely missed). Their rows are outlined in yellow below — double-check against the paper sheet:";
+            missingBox.innerHTML = escapeHtml(label) + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;">' +
+              missing.map(m => '<li>' + escapeHtml(m.name) + '</li>').join('') + '</ul>';
+            missing.forEach(m => {
+              const row = rowsBody.querySelector('tr[data-id="' + m.id + '"]');
+              if (row) row.classList.add('photo-missing-row');
+            });
+          }
+
+          mePdfFlaggedIds = new Set(missing.map(m => m.id));
+          refreshMarksPreviewPdf();
 
           photoStatus.innerHTML = matched.length
             ? '<span style="color:#1a7a3b;">✅ ' + matched.length + ' ' +

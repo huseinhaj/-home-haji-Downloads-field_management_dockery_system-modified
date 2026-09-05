@@ -397,6 +397,54 @@ def match_rows_to_roster_exclusive(
     return assignments, unmatched_row_indices
 
 
+def match_rows_to_roster_by_position(
+    rows: List[dict],
+    ordered_roster: List[Student],
+    min_confidence: float = 0.35,
+) -> Tuple[dict, List[int]]:
+    """Match scoresheet rows to the roster using the PRINTED ROW NUMBER
+    the AI read off the sheet's "Na." column, instead of re-deriving a
+    student's identity purely from a re-typed name.
+
+    ``ordered_roster`` MUST be in the exact order the scoresheet PDF was
+    generated in — row 1 on the sheet is ``ordered_roster[0]`` — since we
+    printed that sheet from this same roster ourselves
+    (download_scoresheet_names_pdf). A row's printed number is strong
+    evidence of who it belongs to even when the handwritten mark sits
+    close to a neighbouring line and confuses a global name search, so a
+    much lower name-similarity bar is enough here than in
+    match_rows_to_roster_exclusive — it only guards against the roster
+    having changed since the sheet was printed, or the AI misreading the
+    row number, not against genuine ambiguity.
+
+    Returns (assignments, unresolved_row_indices) — same shape as
+    match_rows_to_roster_exclusive, so the caller can feed the leftovers
+    (rows with no usable row number, or whose position candidate flunked
+    the sanity check) into that function as a name-only fallback.
+    """
+    assignments: dict = {}
+    unresolved: list = []
+    claimed_students: set = set()
+    for row_index, row in enumerate(rows):
+        row_no = row.get('row')
+        if not row_no or not (1 <= row_no <= len(ordered_roster)):
+            unresolved.append(row_index)
+            continue
+        candidate = ordered_roster[row_no - 1]
+        if candidate.id in claimed_students:
+            unresolved.append(row_index)
+            continue
+        confidence = _compare_names(
+            normalize_text(row.get('raw_name') or ''), normalize_student_name(candidate),
+        )
+        if confidence >= min_confidence:
+            assignments[row_index] = (candidate, max(confidence, 0.90))
+            claimed_students.add(candidate.id)
+        else:
+            unresolved.append(row_index)
+    return assignments, unresolved
+
+
 @transaction.atomic
 def create_or_get_session(
     *,

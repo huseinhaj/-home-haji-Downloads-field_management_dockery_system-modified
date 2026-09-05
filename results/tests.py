@@ -212,16 +212,37 @@ class ScoreSheetOCRParsingTests(TestCase):
 		with self.assertRaises(ScoreSheetOCRError):
 			_extract_json_array('[{"name": "Amina", "score": }]')
 
-	def test_clean_rows_drops_out_of_range_and_missing_fields(self):
+	def test_clean_rows_drops_out_of_range_and_garbage_fields(self):
 		raw = [
-			{"name": "Amina Juma", "score": 78},
+			{"row": 1, "name": "Amina Juma", "score": 78},
 			{"name": "", "score": 50},
-			{"name": "No Score"},
-			{"name": "Too High", "score": 150},
-			{"name": "Too Low", "score": -5},
-			{"name": "Not A Number", "score": "abc"},
+			{"row": 3, "name": "No Score"},
+			{"row": 4, "name": "Too High", "score": 150},
+			{"row": 5, "name": "Too Low", "score": -5},
+			{"row": 6, "name": "Not A Number", "score": "abc"},
 		]
-		self.assertEqual(_clean_rows(raw), [{"raw_name": "Amina Juma", "score": 78}])
+		self.assertEqual(_clean_rows(raw), [
+			{"raw_name": "Amina Juma", "score": 78, "is_absent": False, "row": 1, "blank": False},
+			{"raw_name": "No Score", "score": None, "is_absent": False, "row": 3, "blank": True},
+		])
+
+	def test_clean_rows_keeps_blank_rows_instead_of_dropping_them(self):
+		"""A blank/dash score cell means 'student doesn't study this
+		subject' — the row must be KEPT (blank=True, score=None) so a
+		caller can tell it apart from a row the AI never reported at all
+		(which usually means a mark was missed, not a non-taker)."""
+		raw = [
+			{"row": 1, "name": "Blank Cell", "score": "BLANK"},
+			{"row": 2, "name": "Dash Cell", "score": "-"},
+			{"row": 3, "name": "Null Cell", "score": None},
+		]
+		cleaned = _clean_rows(raw)
+		self.assertEqual(len(cleaned), 3)
+		self.assertTrue(all(r["blank"] and r["score"] is None and not r["is_absent"] for r in cleaned))
+
+	def test_clean_rows_parses_row_number(self):
+		raw = [{"row": "7", "name": "Amina Juma", "score": 78}]
+		self.assertEqual(_clean_rows(raw)[0]["row"], 7)
 
 
 def _build_pdf_bytes(num_pages=1):
@@ -436,6 +457,57 @@ class DownloadScoresheetNamesPdfTests(TestCase):
 		self.assertEqual(response.status_code, 403)
 
 
+class MarksEntryPreviewPdfTests(TestCase):
+	"""The teacher's own review-before-save PDF — posted from the Marks
+	Entry table's in-memory state after a photo/PDF scoresheet upload, so
+	the teacher can check every row against the paper sheet before hitting
+	'Hifadhi & Kagua'."""
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=1)
+		self.subject = Subject.objects.create(name='Mathematics')
+		self.teacher = TeacherAccount.objects.create(email='teacher@example.com', full_name='Teacher One', role=TeacherAccount.ROLE_TEACHER)
+		self.teacher.subjects.set([self.subject])
+		self.client = Client()
+		self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
+
+	def test_renders_pdf_with_scores_absent_and_flagged_rows(self):
+		payload = {
+			'exam_id': self.exam.id,
+			'subject_name': 'Mathematics',
+			'rows': [
+				{'name': 'Amina Juma', 'score': 78, 'is_absent': False, 'flagged': False},
+				{'name': 'Peter Mushi', 'score': None, 'is_absent': True, 'flagged': False},
+				{'name': 'Zawadi Rama', 'score': None, 'is_absent': False, 'flagged': True},
+			],
+		}
+		response = self.client.post(
+			reverse('marks_entry_preview_pdf'),
+			data=json.dumps(payload), content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response['Content-Type'], 'application/pdf')
+		content = response.content
+		self.assertTrue(content.startswith(b'%PDF'))
+
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(content)) as pdf:
+			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+		self.assertIn('AMINA JUMA', text.upper())
+		self.assertIn('78', text)
+		self.assertIn('ZAWADI RAMA', text.upper())
+
+	def test_missing_exam_returns_404(self):
+		response = self.client.post(
+			reverse('marks_entry_preview_pdf'),
+			data=json.dumps({'exam_id': 999999, 'subject_name': 'Mathematics', 'rows': []}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 404)
+
+
 class StudentResultPdfTests(TestCase):
 	"""The downloadable version of the public /matokeo/<token>/ page — no
 	login required, same share token a parent already uses to view online."""
@@ -518,6 +590,66 @@ class BulkStudentResultsPdfTests(TestCase):
 		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
 		response = client.get(reverse('generate_bulk_student_results_pdf', args=[empty_exam.id]))
 		self.assertEqual(response.status_code, 404)
+
+
+class BulkScoresheetPreviewPdfTests(TestCase):
+    """Review-before-save PDF: the academic officer's bulk-upload review
+    screen posts the CURRENT (possibly hand-corrected) table state here and
+    gets back a PDF laid out like the paper scoresheet, so they can check
+    every row landed on the right student before anything is saved."""
+    databases = {'default', 'results'}
+
+    def setUp(self):
+        self.school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
+        self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=2, school=self.school)
+        self.academic = TeacherAccount.objects.create(email='academic@example.com', full_name='Academic One', role=TeacherAccount.ROLE_ACADEMIC, school=self.school)
+        self.teacher = TeacherAccount.objects.create(email='teacher@example.com', full_name='Teacher One', role=TeacherAccount.ROLE_TEACHER, school=self.school)
+        self.client = Client()
+
+    def test_renders_pdf_with_scores_absent_and_missing_rows(self):
+        self.client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+        payload = {
+            'subject_name': 'Mathematics',
+            'rows': [
+                {'name': 'Amina Juma', 'score': 78, 'is_absent': False, 'status': 'matched'},
+                {'name': 'Peter Mushi', 'score': None, 'is_absent': True, 'status': 'matched'},
+                {'name': 'Zawadi Rama', 'score': None, 'is_absent': False, 'status': 'missing'},
+            ],
+        }
+        response = self.client.post(
+            reverse('bulk_scoresheet_preview_pdf', args=[self.exam.id]),
+            data=json.dumps(payload), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        content = response.content
+        self.assertTrue(content.startswith(b'%PDF'))
+
+        import io
+        import pdfplumber
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+        self.assertIn('AMINA JUMA', text.upper())
+        self.assertIn('78', text)
+        self.assertIn('PETER MUSHI', text.upper())
+        self.assertIn('ZAWADI RAMA', text.upper())
+
+    def test_rejects_non_academic_teacher(self):
+        self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
+        response = self.client.post(
+            reverse('bulk_scoresheet_preview_pdf', args=[self.exam.id]),
+            data=json.dumps({'subject_name': 'Mathematics', 'rows': []}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_bad_json_returns_400(self):
+        self.client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+        response = self.client.post(
+            reverse('bulk_scoresheet_preview_pdf', args=[self.exam.id]),
+            data='not json', content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
 
 
 class ClassTimetableServiceTests(TestCase):
