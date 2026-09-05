@@ -5,7 +5,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 import pandas as pd
 
-from .models import ClassTimetableEntry, Exam, ExamResult, ProcessedResult, School, SpeechSubmissionSession, Student, Subject, TeacherAccount, TeachingAssignment, TimeSlot
+from .models import ClassTimetableEntry, Exam, ExamResult, FormStudent, ProcessedResult, School, SchoolSubject, SpeechSubmissionSession, Student, Subject, TeacherAccount, TeachingAssignment, TimeSlot
 from .services.class_timetable_service import TimetableConflict, generate_class_timetable, save_class_timetable, set_single_cell
 from .services.scoresheet_ocr_service import (
     ScoreSheetOCRError,
@@ -732,6 +732,114 @@ class BulkScoresheetPreviewPdfTests(TestCase):
             data='not json', content_type='application/json',
         )
         self.assertEqual(response.status_code, 400)
+
+
+class MergeDuplicateHistorySubjectsMigrationTests(TestCase):
+	"""Data migration 0035: production had ended up with several
+	differently-cased/typo'd 'Historia ya Tanzania na Maadili' Subject rows
+	(created by an old path that bypassed normalize_subject_name), each
+	with a blank `code` -- so on the results PDF both History and Historia
+	fell back to the same 4-letter truncation ("HIST") and were
+	indistinguishable. This exercises the actual migration function
+	against real data, including a genuine FK conflict, to make sure the
+	merge is safe to run against production."""
+	databases = {'default', 'results'}
+
+	def _run_migration(self):
+		import importlib
+		module = importlib.import_module('results.migrations.0035_merge_duplicate_history_subjects')
+		from django.apps import apps
+		module.merge_and_backfill(apps, None)
+
+	def test_merges_variants_repoints_fks_and_backfills_codes(self):
+		history = Subject.objects.create(name='History')
+		canonical = Subject.objects.create(name='Historia ya Tanzania na Maadili')
+		variant_lower_t = Subject.objects.create(name='Historia ya tanzania na Maadili')
+		variant_upper = Subject.objects.create(name='HISTORIA YA TANZANIA NA MAADILI')
+		variant_typo = Subject.objects.create(name='Historian ya Tanzania na maadili')
+
+		school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
+		exam = Exam.objects.create(name='Midterm 1', year=2026, form=1, school=school)
+		student_a = Student.objects.create(first_name='Amina', last_name='Juma', gender='F')
+		student_b = Student.objects.create(first_name='Peter', last_name='Mushi', gender='M')
+
+		# Straightforward re-point: only exists under a variant.
+		ExamResult.objects.create(exam=exam, student=student_a, subject=variant_lower_t, score=60)
+		# Genuine conflict: student_b already has a result under the
+		# CANONICAL subject for this exam -- the variant's row must be
+		# dropped, not crash the migration with a unique-constraint error.
+		ExamResult.objects.create(exam=exam, student=student_b, subject=canonical, score=70)
+		ExamResult.objects.create(exam=exam, student=student_b, subject=variant_upper, score=99)
+
+		SchoolSubject.objects.create(school=school, subject=variant_typo)
+
+		self._run_migration()
+
+		# Only the canonical Historia row (and plain History) survive.
+		remaining = set(Subject.objects.filter(name__icontains='hist').values_list('name', flat=True))
+		self.assertEqual(remaining, {'History', 'Historia ya Tanzania na Maadili'})
+
+		# Codes backfilled so the PDF/Excel can tell them apart.
+		history.refresh_from_db()
+		canonical.refresh_from_db()
+		self.assertEqual(history.code, 'HIST')
+		self.assertEqual(canonical.code, 'HIST/M')
+
+		# Straightforward case re-pointed to canonical.
+		result_a = ExamResult.objects.get(exam=exam, student=student_a)
+		self.assertEqual(result_a.subject_id, canonical.id)
+		self.assertEqual(result_a.score, 60)
+
+		# Conflict case: canonical's pre-existing result (70) survives;
+		# the variant's conflicting result (99) was dropped, not merged.
+		self.assertEqual(ExamResult.objects.filter(exam=exam, student=student_b).count(), 1)
+		result_b = ExamResult.objects.get(exam=exam, student=student_b)
+		self.assertEqual(result_b.subject_id, canonical.id)
+		self.assertEqual(result_b.score, 70)
+
+		# M2M-free single-FK model with no conflict risk re-pointed too.
+		self.assertTrue(SchoolSubject.objects.filter(school=school, subject=canonical).exists())
+
+	def test_merges_m2m_subject_references(self):
+		canonical = Subject.objects.create(name='Historia ya Tanzania na Maadili')
+		variant = Subject.objects.create(name='HISTORIA YA TANZANIA NA MAADILI')
+		other_subject = Subject.objects.create(name='Geography')
+
+		school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
+		student = FormStudent.objects.create(school=school, form=5, first_name='Amina', last_name='Juma', gender='F')
+		student.subjects.set([variant, other_subject])
+
+		teacher = TeacherAccount.objects.create(email='t1@example.com', full_name='Teacher One', role=TeacherAccount.ROLE_TEACHER)
+		teacher.subjects.set([variant])
+
+		self._run_migration()
+
+		self.assertEqual(set(student.subjects.values_list('name', flat=True)), {'Historia ya Tanzania na Maadili', 'Geography'})
+		self.assertEqual(set(teacher.subjects.values_list('name', flat=True)), {'Historia ya Tanzania na Maadili'})
+		self.assertFalse(Subject.objects.filter(id=variant.id).exists())
+
+	def test_no_duplicates_is_a_safe_no_op(self):
+		Subject.objects.create(name='History')
+		Subject.objects.create(name='Historia ya Tanzania na Maadili')
+		self._run_migration()  # must not raise
+		self.assertEqual(Subject.objects.filter(name__icontains='hist').count(), 2)
+
+	def test_no_history_subjects_at_all_creates_nothing(self):
+		"""A school that doesn't teach History/Historia must not end up
+		with a spurious Subject row just because the migration ran."""
+		Subject.objects.create(name='Geography')
+		self._run_migration()
+		self.assertFalse(Subject.objects.filter(name__icontains='hist').exists())
+
+	def test_promotes_oldest_row_when_no_row_is_exactly_canonical(self):
+		"""If the correctly-spelled canonical name doesn't exist at all
+		(every row is a case/typo variant), the oldest variant is renamed
+		to canonical rather than being discarded."""
+		only_variant = Subject.objects.create(name='HISTORIA YA TANZANIA NA MAADILI')
+		self._run_migration()
+		only_variant.refresh_from_db()
+		self.assertEqual(only_variant.name, 'Historia ya Tanzania na Maadili')
+		self.assertEqual(only_variant.code, 'HIST/M')
 
 
 class ClassTimetableServiceTests(TestCase):
