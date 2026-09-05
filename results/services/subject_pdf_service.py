@@ -110,23 +110,53 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: s
     result_by_student = {r.student_id: r for r in all_results}
 
     # ── Step 2: Students from roster who have NO ExamResult (blank) ──
+    # Bulk-resolved (one query for the roster, one for the subject-M2M
+    # prefetch, one or two to bridge to Student) instead of the 3-4
+    # queries-per-FormStudent this used to run (.exists() x2 + get_or_create)
+    # — a 300-student form previously meant ~900 queries just to render
+    # one subject's PDF.
     roster_student_ids = set()
     if exam.school:
-        form_students = FormStudent.objects.filter(
-            school=exam.school, form=exam.form
-        ).select_related()
+        form_students = list(
+            FormStudent.objects.filter(school=exam.school, form=exam.form)
+            .prefetch_related('subjects')
+        )
+        eligible = []
         for fs in form_students:
-            # Subject filter: if FormStudent has subjects assigned,
-            # only include if this subject is in their list
-            if fs.subjects.exists() and not fs.subjects.filter(pk=subject.pk).exists():
+            # .all() on a prefetched M2M reuses the prefetch cache;
+            # .exists()/.filter() would each re-query per row instead.
+            subject_ids = {s.id for s in fs.subjects.all()}
+            if subject_ids and subject.id not in subject_ids:
                 continue
-            # Bridge to Student model (same logic as _student_from_form_student)
-            stu, _ = Student.objects.get_or_create(
-                first_name=fs.first_name,
-                last_name=fs.last_name or 'Unknown',
-                defaults={'middle_name': fs.middle_name, 'gender': fs.gender},
-            )
-            roster_student_ids.add(stu.id)
+            eligible.append(fs)
+
+        if eligible:
+            first_names = {fs.first_name for fs in eligible}
+            last_names = {fs.last_name or 'Unknown' for fs in eligible}
+            existing_students = {
+                (s.first_name, s.last_name): s
+                for s in Student.objects.filter(first_name__in=first_names, last_name__in=last_names)
+            }
+            new_students = []
+            seen = set()
+            for fs in eligible:
+                key = (fs.first_name, fs.last_name or 'Unknown')
+                if key not in existing_students and key not in seen:
+                    seen.add(key)
+                    new_students.append(Student(
+                        first_name=fs.first_name, middle_name=fs.middle_name,
+                        last_name=fs.last_name or 'Unknown', gender=fs.gender,
+                    ))
+            if new_students:
+                Student.objects.bulk_create(new_students)
+                existing_students = {
+                    (s.first_name, s.last_name): s
+                    for s in Student.objects.filter(first_name__in=first_names, last_name__in=last_names)
+                }
+            for fs in eligible:
+                stu = existing_students.get((fs.first_name, fs.last_name or 'Unknown'))
+                if stu:
+                    roster_student_ids.add(stu.id)
     # Fallback: if no FormStudent roster, use students who have ExamResults
     if not roster_student_ids:
         roster_student_ids = {r.student_id for r in all_results}
@@ -136,11 +166,13 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: s
     absent_rows = []
     blank_rows = []
 
+    students_by_id = {s.id: s for s in Student.objects.filter(id__in=roster_student_ids)}
+
     for stu_id in roster_student_ids:
         result = result_by_student.get(stu_id)
         if result is None:
             # Student in roster but no ExamResult at all → blank
-            stu = Student.objects.filter(id=stu_id).first()
+            stu = students_by_id.get(stu_id)
             if stu:
                 full_name = ' '.join(p for p in [stu.first_name, stu.middle_name, stu.last_name] if p)
                 blank_rows.append({

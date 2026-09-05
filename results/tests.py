@@ -842,6 +842,64 @@ class MergeDuplicateHistorySubjectsMigrationTests(TestCase):
 		self.assertEqual(only_variant.code, 'HIST/M')
 
 
+class SubjectPdfPerformanceTests(TestCase):
+	"""generate_subject_pdf_response used to run 3-4 queries PER
+	FormStudent (fs.subjects.exists() x2 + Student.get_or_create, then a
+	Student.objects.filter(id=...).first() per blank row) -- a 300-student
+	form meant ~900 queries to render one subject's PDF. Locks in the
+	bulk-resolved fix: query count must stay flat regardless of roster
+	size, subject-restricted students must still be excluded correctly,
+	and blank/scored/absent rows must still come out right."""
+	databases = {'default', 'results'}
+
+	def test_query_count_flat_and_rows_still_correct(self):
+		from django.db import connections
+		from django.test.utils import CaptureQueriesContext
+		from .services.subject_pdf_service import generate_subject_pdf_response
+
+		school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
+		exam = Exam.objects.create(name='Midterm', year=2026, form=2, school=school)
+		subject = Subject.objects.create(name='Mathematics')
+		other_subject = Subject.objects.create(name='Physics')
+
+		# 15 scored, 15 absent, 10 with no ExamResult at all (blank rows)
+		# -- all three paths used to issue queries per row.
+		for i in range(40):
+			fs = FormStudent.objects.create(
+				school=school, form=2, first_name=f'Student{i}', last_name='Test',
+				gender='F' if i % 2 else 'M', admission_no=f'ADM{i}',
+			)
+			if i < 30:
+				student, _ = Student.objects.get_or_create(
+					first_name=f'Student{i}', last_name='Test', defaults={'gender': fs.gender},
+				)
+				if i < 15:
+					ExamResult.objects.create(exam=exam, student=student, subject=subject, score=60 + (i % 30))
+				else:
+					ExamResult.objects.create(exam=exam, student=student, subject=subject, score=None, is_absent=True)
+
+		# Explicitly does NOT take this subject -- must be excluded, not
+		# just left unscored.
+		excluded = FormStudent.objects.create(school=school, form=2, first_name='Excluded', last_name='Person', gender='M', admission_no='ADM-EXC')
+		excluded.subjects.set([other_subject])
+
+		with CaptureQueriesContext(connections['results']) as ctx:
+			response = generate_subject_pdf_response(exam, subject)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertLess(len(ctx.captured_queries), 15, 'query count must not scale with roster size')
+
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+		text_upper = text.upper()
+		self.assertIn('STUDENT0 TEST', text_upper)   # scored
+		self.assertIn('STUDENT15 TEST', text_upper)  # absent
+		self.assertIn('STUDENT30 TEST', text_upper)  # blank row (in roster, no ExamResult)
+		self.assertNotIn('EXCLUDED PERSON', text_upper)
+
+
 class ClassTimetableServiceTests(TestCase):
 	"""The one rule that must never break: a teacher can never be double
 	booked at the same time slot across two different classes."""
@@ -1576,6 +1634,36 @@ class DocxRosterUploadTests(TestCase):
 		data = response.json()
 		names = {s['name'] for s in data.get('students', [])}
 		self.assertEqual(names, {'Amina Juma', 'Peter Mushi'})
+
+	def test_upload_form_students_view_accepts_docx(self):
+		"""End-to-end HTTP test for the Academic Officer's 'Upload Form
+		Students' page with a .docx file -- catches wiring bugs (like a
+		missing is_pdf=False) that a direct call to the parsing helpers
+		would not."""
+		from .models import FormStudent
+
+		school = School.objects.create(name='Malinyi Secondary', region='Njombe', district='Kilolo')
+		academic = TeacherAccount.objects.create(
+			email='academic2@example.com', full_name='Academic Two',
+			role=TeacherAccount.ROLE_ACADEMIC, school=school,
+		)
+		client = Client()
+		client.force_login(academic, backend='results.backends.ResultsAuthBackend')
+		docx_file = self._docx_file(table_rows=[
+			['C/NO.', 'NAME', 'SCORE', 'SIGNATURE'],
+			['S2475/0001', 'AGNES ANDREW MALEMA', '', ''],
+		])
+		response = client.post(
+			f"{reverse('upload_form_students')}?form=2",
+			{'form': '2', 'student_file': docx_file},
+		)
+		self.assertEqual(response.status_code, 302)
+		# The view swallows exceptions into a Django message and still
+		# redirects (302) either way -- the real proof the upload worked
+		# is that the student actually got saved, not the status code.
+		fs = FormStudent.objects.get(school=school, form=2, first_name='Agnes')
+		self.assertEqual(fs.last_name, 'Malema')
+		self.assertEqual(fs.admission_no, 'S2475/0001')
 
 
 class MarksEntryAddStudentTests(TestCase):

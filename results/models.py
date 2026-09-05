@@ -36,7 +36,14 @@ class School(models.Model):
 
 
 class Subject(models.Model):
-    name = models.CharField(max_length=100)
+    # Not unique=True: migration 0031 deduplicated exact-name matches, but
+    # case/typo variants of the same real subject have shown up since (see
+    # migration 0035) -- a hard uniqueness constraint would reject a fix
+    # that first has to look up which existing row is the right one to
+    # keep. db_index is enough: Subject.objects.get_or_create(name=...)
+    # runs on every roster/scoresheet upload and was doing a full table
+    # scan without it.
+    name = models.CharField(max_length=100, db_index=True)
     code = models.CharField(max_length=20, blank=True)
 
     def __str__(self):
@@ -215,6 +222,14 @@ class ExamResult(models.Model):
 
     class Meta:
         unique_together = ('exam', 'student', 'subject')
+        # ('exam', 'student', 'subject') from unique_together only helps
+        # queries filtered on all three (or 'exam' alone, the leftmost
+        # prefix). Subject reports and bulk-upload dedup filter on
+        # (exam, subject) without a student — a very common query that
+        # unique_together's index doesn't serve well.
+        indexes = [
+            models.Index(fields=['exam', 'subject'], name='examresult_exam_subject_idx'),
+        ]
 
     def __str__(self):
         if self.is_absent:

@@ -921,7 +921,7 @@ def _save_student(first, middle, last, gender, candidate_no=''):
     return {'id': student.id, 'name': ' '.join(name_parts)}
 
 
-def _collect_roster_rows(uploaded_file, is_pdf, form_num=None, is_docx=False):
+def _collect_roster_rows(uploaded_file, is_pdf=False, form_num=None, is_docx=False):
     """Runs the existing PDF/DOCX/CSV/Excel roster parsing with a no-op
     callback that just records each (first, middle, last, gender,
     candidate_no) row instead of hitting the database per row — the
@@ -2703,7 +2703,7 @@ def upload_form_students(request):
             if ext == '.pdf':
                 rows = _collect_roster_rows(uploaded_file, is_pdf=True, form_num=selected_form)
             elif ext == '.docx':
-                rows = _collect_roster_rows(uploaded_file, is_docx=True, form_num=selected_form)
+                rows = _collect_roster_rows(uploaded_file, is_pdf=False, is_docx=True, form_num=selected_form)
             elif ext in ('.csv', '.xlsx', '.xls'):
                 rows = _collect_roster_rows(uploaded_file, is_pdf=False, form_num=selected_form)
             else:
