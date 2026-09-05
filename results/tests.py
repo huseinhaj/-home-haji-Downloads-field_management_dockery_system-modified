@@ -1505,7 +1505,7 @@ class DocxRosterUploadTests(TestCase):
 			['Peter Mushi', 'M'],
 		])
 		collected = []
-		_parse_docx_roster(docx_file, on_student=lambda f, m, l, g: collected.append((f, m, l, g)))
+		_parse_docx_roster(docx_file, on_student=lambda f, m, l, g, c='': collected.append((f, m, l, g)))
 		names = {(row[0], row[2]) for row in collected}
 		self.assertEqual(names, {('Amina', 'Juma'), ('Peter', 'Mushi')})
 
@@ -1516,7 +1516,7 @@ class DocxRosterUploadTests(TestCase):
 			'John Peter Komba M',
 		])
 		collected = []
-		_parse_docx_roster(docx_file, on_student=lambda f, m, l, g: collected.append((f, m, l, g)))
+		_parse_docx_roster(docx_file, on_student=lambda f, m, l, g, c='': collected.append((f, m, l, g)))
 		self.assertEqual(len(collected), 2)
 		self.assertIn(('Halima', 'Ally', 'Mohamed', 'F'), collected)
 		self.assertIn(('John', 'Peter', 'Komba', 'M'), collected)
@@ -1525,7 +1525,46 @@ class DocxRosterUploadTests(TestCase):
 		from .views import _collect_roster_rows
 		docx_file = self._docx_file(paragraph_lines=['Amina Juma F'])
 		rows = _collect_roster_rows(docx_file, is_pdf=False, is_docx=True)
-		self.assertEqual(rows, [('Amina', '', 'Juma', 'F')])
+		self.assertEqual(rows, [('Amina', '', 'Juma', 'F', '')])
+
+	def test_docx_table_with_candidate_number_score_and_signature_columns(self):
+		"""The real-world 'C/NO. | NAME | SCORE | SIGNATURE' class-list
+		layout: candidate number must be captured (not merged into the
+		name), Score/Signature columns must never contaminate the name,
+		blank padding rows and a repeated page-title row (duplicated
+		across every column) must be skipped."""
+		from .views import _parse_docx_roster
+		docx_file = self._docx_file(table_rows=[
+			['C/NO.', 'NAME', 'SCORE', 'SIGNATURE'],
+			['S2475/0001', 'AGNES ANDREW MALEMA', '', ''],
+			['', '', '', ''],  # blank padding row
+			['REPEAT', 'REPEAT', 'REPEAT', 'REPEAT'],  # simulated repeated title row
+			['S2475/0002', 'PETER MUSHI', '78', 'x'],
+		])
+		collected = []
+		_parse_docx_roster(docx_file, on_student=lambda f, m, l, g, c='': collected.append((f, m, l, g, c)))
+		self.assertEqual(collected, [
+			('Agnes', 'Andrew', 'Malema', 'M', 'S2475/0001'),
+			('Peter', '', 'Mushi', 'M', 'S2475/0002'),
+		])
+
+	def test_docx_table_candidate_number_flows_into_form_student_admission_no(self):
+		"""End to end: Upload Form Students with a C/NO.-column docx must
+		store the real candidate number as admission_no, not a random
+		placeholder."""
+		from .models import FormStudent
+		from .views import _bulk_save_form_students, _collect_roster_rows
+
+		school = School.objects.create(name='Malinyi Secondary', region='Njombe', district='Kilolo')
+		docx_file = self._docx_file(table_rows=[
+			['C/NO.', 'NAME', 'SCORE', 'SIGNATURE'],
+			['S2475/0001', 'AGNES ANDREW MALEMA', '', ''],
+		])
+		rows = _collect_roster_rows(docx_file, is_pdf=False, is_docx=True, form_num=1)
+		_bulk_save_form_students(school, 1, rows)
+
+		fs = FormStudent.objects.get(school=school, form=1, first_name='Agnes')
+		self.assertEqual(fs.admission_no, 'S2475/0001')
 
 	def test_upload_roster_view_accepts_docx(self):
 		teacher = TeacherAccount.objects.create(email='t2@example.com', full_name='Teacher Two', role=TeacherAccount.ROLE_TEACHER)

@@ -904,7 +904,11 @@ def _parse_roster_line(line):
     return parts[0].capitalize(), ' '.join(p.capitalize() for p in parts[1:-1]), parts[-1].capitalize(), gender
 
 
-def _save_student(first, middle, last, gender):
+def _save_student(first, middle, last, gender, candidate_no=''):
+    # candidate_no is accepted for signature-compatibility with the other
+    # on_student callbacks (see _bulk_save_form_students) but Student has
+    # no such field — only FormStudent (the Academic's official roster)
+    # tracks admission/candidate numbers.
     student, _ = Student.objects.get_or_create(
         first_name=first,
         last_name=last or 'Unknown',
@@ -919,17 +923,17 @@ def _save_student(first, middle, last, gender):
 
 def _collect_roster_rows(uploaded_file, is_pdf, form_num=None, is_docx=False):
     """Runs the existing PDF/DOCX/CSV/Excel roster parsing with a no-op
-    callback that just records each (first, middle, last, gender) row
-    instead of hitting the database per row — the actual save happens
-    afterward, once, in bulk (see _bulk_save_students /
-    _bulk_save_form_students below). A 1000-row roster used to mean up
+    callback that just records each (first, middle, last, gender,
+    candidate_no) row instead of hitting the database per row — the
+    actual save happens afterward, once, in bulk (see _bulk_save_students
+    / _bulk_save_form_students below). A 1000-row roster used to mean up
     to ~2000 sequential round trips to a remote database via
     get_or_create-per-row; this brings it down to a handful of queries
     total regardless of roster size."""
     collected = []
 
-    def _collector(first, middle, last, gender):
-        collected.append((first, middle, last, gender))
+    def _collector(first, middle, last, gender, candidate_no=''):
+        collected.append((first, middle, last, gender, candidate_no))
         return None
 
     if is_pdf:
@@ -950,7 +954,9 @@ def _bulk_save_students(parsed_rows):
     if not parsed_rows:
         return []
 
-    rows = [(first, middle, last or 'Unknown', gender) for first, middle, last, gender in parsed_rows]
+    # Rows may come in as 4-tuples (older callers) or 5-tuples (candidate_no
+    # included) — Student has no field for it, so just drop it here.
+    rows = [(first, middle, last or 'Unknown', gender) for first, middle, last, gender, *_ in parsed_rows]
 
     first_names = {r[0] for r in rows}
     last_names = {r[2] for r in rows}
@@ -995,8 +1001,13 @@ def _bulk_save_students(parsed_rows):
 def _bulk_save_form_students(school, form_num, parsed_rows):
     """Bulk equivalent of the per-row _save_form_student closure that
     used to live inside upload_form_students — same exact-match dedup
-    (first+middle+last, unlike Student which ignores middle) and same
-    synthesized admission_no for rows with no free-text one, just batched."""
+    (first+middle+last, unlike Student which ignores middle), just
+    batched. Rows may carry a 5th element (candidate/admission number,
+    e.g. "S2475/0001" read off a "C/NO." column) — used as admission_no
+    when present; a placeholder ("NA-...") is synthesized only when the
+    file had none. An existing student's placeholder is backfilled with
+    a real candidate_no on re-upload, but a genuine admission_no already
+    on file is never overwritten."""
     import uuid as _uuid
 
     if not parsed_rows:
@@ -1006,26 +1017,42 @@ def _bulk_save_form_students(school, form_num, parsed_rows):
         (fs.first_name, fs.middle_name, fs.last_name): fs
         for fs in FormStudent.objects.filter(school=school, form=form_num)
     }
+    # admission_no is unique per (school, form) — track everything already
+    # taken so two rows sharing a mis-typed candidate_no (or one colliding
+    # with an existing student's number) fall back to a placeholder
+    # instead of crashing the whole batch on a unique-constraint error.
+    seen_admission_nos = {fs.admission_no for fs in existing.values()}
 
     new_rows = []
     to_update = []
     seen = set()
     results = []
-    for first, middle, last, gender in parsed_rows:
+    for first, middle, last, gender, *rest in parsed_rows:
+        candidate_no = (rest[0] if rest else '') or ''
         key = (first, middle, last)
         fs = existing.get(key)
         if fs:
+            changed = False
             if fs.gender != gender:
                 fs.gender = gender
+                changed = True
+            if (candidate_no and fs.admission_no.startswith('NA-')
+                    and fs.admission_no != candidate_no and candidate_no not in seen_admission_nos):
+                fs.admission_no = candidate_no
+                seen_admission_nos.add(candidate_no)
+                changed = True
+            if changed:
                 to_update.append(fs)
             results.append({'created': False})
         elif key in seen:
             results.append({'created': False})
         else:
             seen.add(key)
+            admission_no = candidate_no if candidate_no and candidate_no not in seen_admission_nos else f'NA-{_uuid.uuid4().hex[:10]}'
+            seen_admission_nos.add(admission_no)
             new_rows.append(FormStudent(
                 school=school, form=form_num,
-                admission_no=f'NA-{_uuid.uuid4().hex[:10]}',
+                admission_no=admission_no,
                 first_name=first, middle_name=middle, last_name=last, gender=gender,
             ))
             results.append({'created': True})
@@ -1033,24 +1060,136 @@ def _bulk_save_form_students(school, form_num, parsed_rows):
     if new_rows:
         FormStudent.objects.bulk_create(new_rows)
     if to_update:
-        FormStudent.objects.bulk_update(to_update, ['gender'])
+        FormStudent.objects.bulk_update(to_update, ['gender', 'admission_no'])
 
     return results
+
+
+# Column-header → role, for tables that have real headers (the common
+# Tanzanian "C/NO. | NAME | SCORE | SIGNATURE" scoresheet/class-list
+# layout, among others). Matched against a whole cell's text (stripped,
+# lowercased, trailing '.'/':' removed) — NOT a substring check, so a
+# student named e.g. "Score" or "Signature" in a headerless table can
+# never accidentally match. First role whose keyword set contains the
+# cell wins.
+_ROSTER_COLUMN_ROLES = [
+    ('candidate_no', (
+        'c/no', 'candidate no', 'candidate number', 'candidate\'s number',
+        'namba ya mtahiniwa', 'index no', 'index number',
+        'admission no', 'admission number', 'reg no', 'registration number',
+        'namba ya usajili',
+    )),
+    ('first', ('first name', 'firstname', 'jina la kwanza')),
+    ('middle', ('middle name', 'middlename', 'jina la kati', 'jina la pili')),
+    ('last', ('last name', 'lastname', 'surname', 'jina la mwisho', 'ukoo')),
+    ('gender', ('gender', 'sex', 'jinsia', 'jinsia ya')),
+    ('full', (
+        'name', 'jina', 'majina', 'names', 'jina kamili', 'mwanafunzi',
+        'student name', 'jina la mwanafunzi',
+    )),
+    # Present in the document's layout but never part of a student's
+    # identity — recognised so they're skipped, not merged into the name.
+    ('ignore', (
+        's/n', 'sn', 'no', 'no.', '#',
+        'score', 'alama', 'marks', 'jumla', 'total',
+        'signature', 'sahihi', 'saini',
+        'remark', 'remarks', 'maoni', 'comment', 'grade', 'daraja',
+    )),
+]
+
+
+def _detect_roster_column_roles(header_cells):
+    """Maps column index → role for a would-be header row. Requires at
+    least 2 recognised columns (a single hit is too easy to trigger on a
+    genuine data row that happens to contain e.g. a lone "No" cell)."""
+    roles = {}
+    for idx, raw in enumerate(header_cells):
+        cell = re.sub(r'[.:]+$', '', str(raw or '').strip().lower()).strip()
+        if not cell:
+            continue
+        for role, keywords in _ROSTER_COLUMN_ROLES:
+            if cell in keywords:
+                roles[idx] = role
+                break
+    return roles if len(roles) >= 2 else None
 
 
 def _process_roster_table_rows(table, on_student):
     """One table's rows (list of cell strings) → student rows. Shared by
     the PDF and DOCX table-extraction paths, since both hand over the
-    exact same shape (a list of rows, each a list of cell strings)."""
+    exact same shape (a list of rows, each a list of cell strings).
+
+    When the first row looks like a real header (e.g. "C/NO. | NAME |
+    SCORE | SIGNATURE"), columns are matched by role so a candidate/
+    admission number is captured correctly and Score/Signature columns
+    are never merged into the student's name. Tables without a
+    recognisable header fall back to the old behaviour: join every cell
+    into one line and parse it as "Name [Gender]"."""
+    if not table:
+        return []
+
+    header_roles = _detect_roster_column_roles(table[0]) if table[0] else None
+    data_rows = table[1:] if header_roles else table
+
     students_out = []
+    if header_roles:
+        for row in data_rows:
+            if not row:
+                continue
+            cells = [str(c).strip() if c else '' for c in row]
+            # Long tables sometimes repeat a merged title row at each page
+            # break (e.g. "SCHOOL NAME ... SCORE SHEET ... SUBJECT: ...")
+            # duplicated across every column — a real student never has
+            # identical text in their candidate-no/name/score/signature
+            # cells, so this is a safe, keyword-free way to skip it.
+            non_empty = [c for c in cells if c]
+            if len(non_empty) > 1 and len(set(non_empty)) == 1:
+                continue
+            candidate_no = first = middle = last = full = ''
+            gender = 'M'
+            for idx, role in header_roles.items():
+                if idx >= len(cells) or role == 'ignore':
+                    continue
+                val = cells[idx].strip()
+                if role == 'candidate_no':
+                    candidate_no = val
+                elif role == 'first':
+                    first = val
+                elif role == 'middle':
+                    middle = val
+                elif role == 'last':
+                    last = val
+                elif role == 'gender':
+                    gender = val or gender
+                elif role == 'full':
+                    full = val
+
+            if not first and full:
+                parsed_name = _parse_roster_line(full)
+                if not parsed_name:
+                    continue
+                first, middle, last, name_gender = parsed_name
+                if 'gender' not in header_roles.values():
+                    gender = name_gender
+
+            if not first or first.lower() in ('nan', 'none', ''):
+                continue
+            students_out.append(on_student(
+                first.strip().capitalize(), (middle or '').strip().capitalize(),
+                (last or 'Unknown').strip().capitalize(), normalize_gender(gender),
+                candidate_no,
+            ))
+        return students_out
+
     for row in table:
         if not row:
             continue
         cells = [str(c).strip() for c in row if c and str(c).strip()]
         if len(cells) < 2:
             continue
-        # Skip header rows — note: 'no' removed (too aggressive;
-        # matches real names like Noel/Norah).
+        # Skip header rows that _detect_roster_column_roles didn't
+        # confidently recognise (fewer than 2 known columns) — note: 'no'
+        # removed (too aggressive; matches real names like Noel/Norah).
         _cell_text = ' '.join(cells).lower()
         if any(h in _cell_text for h in ('jina la', 'first name', 'last name', 'gender', 'jinsia', 'jinsia ya', '#')):
             continue
