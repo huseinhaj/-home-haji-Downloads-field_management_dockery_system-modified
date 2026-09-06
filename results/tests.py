@@ -283,7 +283,8 @@ class ScoreSheetDocumentLoadingTests(TestCase):
 	def test_load_page_images_caps_at_max_pages(self):
 		from django.core.files.uploadedfile import SimpleUploadedFile
 		from .services import scoresheet_ocr_service
-		pdf_file = SimpleUploadedFile('sheet.pdf', _build_pdf_bytes(num_pages=8), content_type='application/pdf')
+		over_cap = scoresheet_ocr_service.MAX_PDF_PAGES + 5
+		pdf_file = SimpleUploadedFile('sheet.pdf', _build_pdf_bytes(num_pages=over_cap), content_type='application/pdf')
 		images = _load_page_images(pdf_file)
 		self.assertEqual(len(images), scoresheet_ocr_service.MAX_PDF_PAGES)
 
@@ -418,6 +419,38 @@ class ScoreSheetPhotoExtractViewTests(TestCase):
 		matched_by_id = {row['id']: row['score'] for row in data['matched']}
 		self.assertEqual(matched_by_id[self.student_one.id], 78)
 		self.assertEqual(matched_by_id[self.student_two.id], 55)
+
+	def test_clean_numbered_sheet_aligns_by_position_not_name(self):
+		"""The scoresheet PDF is generated from this exact roster, in this
+		exact order, with a continuous 'Na.' column. When the OCR returns a
+		clean 1..N run of row numbers matching the roster size, each row is
+		aligned to the roster BY POSITION — a handwritten name the vision
+		model re-typed imperfectly must not veto that, flag the student as
+		'missing', or spawn a duplicate new student."""
+		third = Student.objects.create(first_name='Grace', middle_name='', last_name='Kimaro', gender='F')
+		roster = [
+			{'id': self.student_one.id, 'name': 'Amina Juma'},
+			{'id': self.student_two.id, 'name': 'Peter Mushi'},
+			{'id': third.id, 'name': 'Grace Kimaro'},
+		]
+		# Row numbers present but shuffled; names garbled the way OCR of
+		# handwriting is; row 2 left blank on the sheet.
+		extracted = [
+			{'raw_name': 'Amna Juuma', 'score': 78, 'row': 1, 'blank': False},
+			{'raw_name': 'Grsce Kimuro', 'score': 41, 'row': 3, 'blank': False},
+			{'raw_name': 'Ptr Mshi', 'score': None, 'row': 2, 'blank': True},
+		]
+		before = Student.objects.count()
+		response = self._post(extracted, roster)
+		self.assertEqual(response.status_code, 200)
+		data = response.json()
+		self.assertEqual(Student.objects.count(), before)  # no new students spawned
+		self.assertEqual(data['unmatched'], [])
+		self.assertEqual(data['missing'], [])  # row 2 is a real blank, not a miss
+		matched_by_id = {row['id']: row['score'] for row in data['matched']}
+		self.assertEqual(matched_by_id[self.student_one.id], 78)
+		self.assertEqual(matched_by_id[third.id], 41)
+		self.assertNotIn(self.student_two.id, matched_by_id)  # blank row carries no score
 
 	def test_name_not_on_roster_creates_a_new_student(self):
 		"""The photo IS the roster — a name that doesn't match anyone

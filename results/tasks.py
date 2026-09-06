@@ -58,13 +58,72 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
     content_rows = [r for r in extracted_rows if not r.get('blank')]
     blank_rows = [r for r in extracted_rows if r.get('blank')]
 
+    # ── Strict positional alignment (the normal, happy case) ──────────
+    # We generated this scoresheet ourselves (download_scoresheet_names_pdf)
+    # straight from *this* roster, in *this* order, with a continuous "Na."
+    # column printed on it. So when the OCR hands back a clean, gap-free
+    # 1..N run of printed row numbers with N == the roster size — every
+    # printed line read exactly once, nobody skipped — the faithful match
+    # is simply: row 1 -> student 1, row 2 -> student 2, ... to the end.
+    # NO name-similarity gate here: a name the teacher wrote by hand and a
+    # vision model then re-typed very often scores low against the roster's
+    # own spelling even when the row is unmistakably the right student, and
+    # that gate is exactly what was dumping correctly-read marks into
+    # "missing" / spawning duplicate "new" students.
+    row_numbers = [r.get('row') for r in extracted_rows]
+    aligned_rows = None
+    if (len(roster_students)
+            and len(extracted_rows) == len(roster_students)
+            and all(isinstance(n, int) for n in row_numbers)
+            and sorted(row_numbers) == list(range(1, len(roster_students) + 1))):
+        # Sort by the printed "Na." number in case the pages came back
+        # slightly out of order.
+        aligned_rows = sorted(extracted_rows, key=lambda r: r['row'])
+
+    if aligned_rows is not None:
+        matched = []
+        blank_ids = set()
+        for student, row in zip(roster_students, aligned_rows):
+            if row.get('blank'):
+                blank_ids.add(student.id)
+                continue
+            matched.append({
+                'id': student.id,
+                'score': row['score'],
+                'is_absent': row.get('is_absent', False),
+                'raw_name': row['raw_name'],
+                'confidence': 1.0,
+                'is_new': False,
+            })
+        matched_ids = {m['id'] for m in matched}
+        missing = [
+            {'id': s.id, 'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p)}
+            for s in roster_students
+            if s.id not in matched_ids and s.id not in blank_ids
+        ]
+        logger.info(
+            "[ScoreSheetPhoto] Strict positional alignment: %d rows == %d roster students "
+            "(%d scored, %d blank, %d missing)",
+            len(aligned_rows), len(roster_students), len(matched), len(blank_ids), len(missing),
+        )
+        return {'matched': matched, 'unmatched': [], 'missing': missing}
+
+    logger.info(
+        "[ScoreSheetPhoto] Not a clean 1..N sheet (rows=%d, roster=%d) — "
+        "falling back to position+fuzzy matching",
+        len(extracted_rows), len(roster_students),
+    )
+
     # Position first: the row's printed "Na." number is stronger evidence
     # than a re-typed name, since we generated the sheet from this exact
-    # roster order ourselves. Anything without a usable row number (or
-    # whose position candidate fails a loose sanity check) falls back to
+    # roster order ourselves. min_confidence=0.0 -> when the AI gives us a
+    # printed row number at all, trust it (align student N with row N); the
+    # teacher has already told us the sheet is complete and in order, so a
+    # handwritten-then-OCR'd name diverging from the roster spelling must
+    # not veto that. Only rows with NO usable row number fall through to
     # name-only exclusive matching below.
     position_assignments, unresolved_indices = match_rows_to_roster_by_position(
-        content_rows, roster_students,
+        content_rows, roster_students, min_confidence=0.0,
     )
     remaining_rows = [content_rows[i] for i in unresolved_indices]
     claimed_ids = {student.id for student, _ in position_assignments.values()}

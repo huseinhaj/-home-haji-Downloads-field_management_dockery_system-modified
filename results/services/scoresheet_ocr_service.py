@@ -32,7 +32,13 @@ GEMINI_MODEL = "gemini-3.6-flash"
 MAX_DIMENSION = 1800
 JPEG_QUALITY = 90
 PDF_RENDER_SCALE = 2.5  # ~180 DPI — good balance of clarity and speed
-MAX_PDF_PAGES = 5  # a single subject's scoresheet is never a 20-page document
+# One subject's scoresheet for a big class runs 8-10 A4 pages (~25-30
+# names/page). Capping at 5 silently dropped every page past the 5th, so
+# a 230-student sheet only ever reached the AI for its first ~140 names —
+# the rest came back flagged "no mark found". Keep a ceiling (a runaway
+# upload shouldn't fan out to hundreds of vision calls) but a realistic one.
+MAX_PDF_PAGES = 25
+MAX_OCR_WORKERS = 8  # concurrent vision calls — bound API load / rate limits
 
 PROMPT = (
     "This is a PHOTO of a scoresheet — a table with a row number column "
@@ -422,7 +428,7 @@ def extract_scores_from_document(uploaded_file) -> list[dict]:
     pages = _load_page_images(uploaded_file)
 
     page_results: list[tuple[str | None, Exception | None]] = [(None, None)] * len(pages)
-    with ThreadPoolExecutor(max_workers=min(len(pages), MAX_PDF_PAGES)) as pool:
+    with ThreadPoolExecutor(max_workers=min(len(pages), MAX_OCR_WORKERS)) as pool:
         future_to_index = {pool.submit(_read_page_with_ai, img): i for i, img in enumerate(pages)}
         for future in as_completed(future_to_index):
             i = future_to_index[future]
