@@ -94,12 +94,18 @@ def pwa_manifest(request):
 
 def pwa_service_worker(request):
     """Serve the Service Worker for offline caching & PWA install."""
-    sw_code = '''const CACHE_NAME = "school-results-v2";
+    sw_code = '''const CACHE_NAME = "school-results-v3";
 const STATIC_ASSETS = [
   "/static/results/img/srs-icon-192.png",
   "/static/results/img/srs-icon-512.png",
   "/static/results/img/srs-icon.svg",
 ];
+
+// Never cache these — always go to the network so a new deploy is picked
+// up immediately (stale copies of these were serving an old scanner
+// build and breaking the PDF step).
+const NO_CACHE = [/\\/static\\/results\\/js\\//, /\\/static\\/results\\/vendor\\//,
+                  /\\/shule\\/.*marks/, /bulk-upload/, /scoresheet/];
 
 // ── Install: cache static assets ──
 self.addEventListener("install", function(event) {
@@ -128,6 +134,16 @@ self.addEventListener("activate", function(event) {
 self.addEventListener("fetch", function(event) {
   if (event.request.method !== "GET") return;
   if (!event.request.url.startsWith("http")) return;
+
+  var url = event.request.url;
+  var noCache = NO_CACHE.some(function(re) { return re.test(url); });
+
+  if (noCache) {
+    // Network-only: no cache write, no stale fallback. Guarantees the
+    // latest scanner JS / vendored libs and marks pages after a deploy.
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)
