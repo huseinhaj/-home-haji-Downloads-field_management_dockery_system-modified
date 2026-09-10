@@ -1388,6 +1388,7 @@ function _dlPdf(url) {
           window.ScoresheetScanner.open({
             lang: LANG,
             filename: 'scoresheet',
+            jspdfUrl: "{% static 'results/vendor/jspdf.umd.min.js' %}",
             onComplete: processScoresheetFile,
           });
         });

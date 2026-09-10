@@ -523,6 +523,7 @@
       window.ScoresheetScanner.open({
         lang: LANG,
         filename: 'scan',
+        jspdfUrl: "{% static 'results/vendor/jspdf.umd.min.js' %}",
         onComplete: (file) => {
           addFilesToQueue([file]);
           toast(LANG === 'sw'

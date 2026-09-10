@@ -1,125 +1,146 @@
 /* Scoresheet Scanner — in-app multi-page document capture.
  *
- * Opens the phone camera inside the dashboard, lets the user snap one
- * scoresheet page after another, then stitches every captured page into a
- * SINGLE PDF (jsPDF) and hands that File to a callback. The rest of the
- * flow is unchanged: that PDF goes to the same upload endpoint / OCR
- * pipeline that already reads multi-page scanned PDFs.
+ * Lets the user photograph one scoresheet page after another using the
+ * phone's REAL camera app (full resolution, autofocus), collects the
+ * pages, then stitches every page into a SINGLE PDF (jsPDF, served from
+ * this app's own static files — no external CDN) and hands that File to
+ * a callback. From there the flow is unchanged: the PDF goes to the same
+ * upload endpoint / OCR pipeline that already reads multi-page scanned
+ * PDFs.
  *
  * Usage:
  *   ScoresheetScanner.open({
  *     lang: 'sw',                 // 'sw' | 'en'  (default 'sw')
  *     filename: 'scoresheet',     // base name for the produced PDF
- *     onComplete: function (file) { ... }   // file: PDF File object
+ *     jspdfUrl: '/static/.../jspdf.umd.min.js',   // REQUIRED — local path
+ *     onComplete: function (file) { ... }         // file: PDF File object
  *   });
- *
- * jsPDF is loaded lazily from the CDN only the first time a scan is
- * finished, so the ~350KB library never costs anything to a user who
- * doesn't scan.
  */
 (function () {
   'use strict';
   if (window.ScoresheetScanner) return;
 
-  var JSPDF_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
   var STYLE_ID = 'scoresheet-scanner-style';
-  var MAX_EDGE = 2000; // cap the long edge of each captured page (px)
+  var MAX_EDGE = 2200;     // cap the long edge of each page image (px)
+  var JPEG_QUALITY = 0.85; // per-page JPEG quality inside the PDF
 
   var STR = {
     sw: {
-      title: 'Scan Scoresheet',
-      hint: 'Weka ukurasa mzima ndani ya fremu, kisha bonyeza "Piga ukurasa". Rudia kwa kila ukurasa wa somo hili.',
-      capture: 'Piga ukurasa',
+      title: 'Scan Scoresheet (kurasa nyingi)',
+      hint: 'Bonyeza "Piga picha ya ukurasa" — kamera ya simu yako itafunguka. Piga picha ya ukurasa MZIMA ukiwa kwenye mwanga wa kutosha na maandishi yaonekane wazi. Rudia kwa kila ukurasa, kisha bonyeza "Maliza".',
+      capture: '📸 Piga picha ya ukurasa',
+      addMore: '📸 Ongeza ukurasa mwingine',
       finish: 'Maliza',
       cancel: 'Ghairi',
       pagesLabel: 'Kurasa',
+      empty: 'Bado hakuna ukurasa. Bonyeza kitufe hapo juu upige picha ya ukurasa wa kwanza.',
       building: 'Inaunganisha kurasa kuwa PDF moja…',
       needPage: 'Piga angalau ukurasa mmoja kwanza.',
-      grayscale: 'Nyeusi–nyeupe',
-      camError: 'Imeshindwa kufungua kamera. Hakikisha umeruhusu kamera kwenye kivinjari na upo kwenye tovuti ya HTTPS. Bado unaweza kutumia kitufe cha kupakia picha/PDF.',
       close: 'Funga',
-      pdfError: 'Imeshindwa kuandaa PDF. Angalia mtandao kisha jaribu tena.',
-      deletePage: 'Futa ukurasa huu'
+      pdfError: 'Imeshindwa kuandaa PDF. Jaribu tena.',
+      imgError: 'Picha moja haikusomeka — imeachwa.',
+      deletePage: 'Futa ukurasa huu',
+      tip: '💡 Shikilia simu sawa juu ya karatasi, subiri kamera i-focus, epuka kivuli.'
     },
     en: {
-      title: 'Scan Scoresheet',
-      hint: 'Fit the whole page inside the frame, then tap "Capture page". Repeat for every page of this subject.',
-      capture: 'Capture page',
+      title: 'Scan Scoresheet (multi-page)',
+      hint: 'Tap "Capture page" — your phone camera opens. Photograph the WHOLE page in good light so the text is sharp. Repeat for every page, then tap "Done".',
+      capture: '📸 Capture page',
+      addMore: '📸 Add another page',
       finish: 'Done',
       cancel: 'Cancel',
       pagesLabel: 'Pages',
+      empty: 'No pages yet. Tap the button above to photograph the first page.',
       building: 'Combining pages into one PDF…',
       needPage: 'Capture at least one page first.',
-      grayscale: 'Black & white',
-      camError: 'Could not open the camera. Make sure you allowed camera access and are on an HTTPS site. You can still use the upload photo/PDF button.',
       close: 'Close',
-      pdfError: 'Could not build the PDF. Check your connection and try again.',
-      deletePage: 'Delete this page'
+      pdfError: 'Could not build the PDF. Please try again.',
+      imgError: 'One image could not be read — skipped.',
+      deletePage: 'Delete this page',
+      tip: '💡 Hold the phone flat above the paper, let the camera focus, avoid shadows.'
     }
   };
 
-  function loadJsPDF() {
-    return new Promise(function (resolve, reject) {
-      if (window.jspdf && window.jspdf.jsPDF) { resolve(window.jspdf.jsPDF); return; }
+  var jspdfPromise = null;
+  function loadJsPDF(url) {
+    if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+    if (jspdfPromise) return jspdfPromise;
+    jspdfPromise = new Promise(function (resolve, reject) {
+      if (!url) { reject(new Error('jspdfUrl not provided')); return; }
       var s = document.createElement('script');
-      s.src = JSPDF_SRC;
+      s.src = url;
       s.async = true;
       s.onload = function () {
         if (window.jspdf && window.jspdf.jsPDF) resolve(window.jspdf.jsPDF);
         else reject(new Error('jsPDF loaded but global missing'));
       };
-      s.onerror = function () { reject(new Error('jsPDF network error')); };
+      s.onerror = function () { jspdfPromise = null; reject(new Error('jsPDF failed to load')); };
       document.head.appendChild(s);
     });
+    return jspdfPromise;
   }
 
   function injectStyle() {
     if (document.getElementById(STYLE_ID)) return;
     var css = '' +
-      '.ssc-overlay{position:fixed;inset:0;z-index:2147483000;background:#0b0f14;display:flex;flex-direction:column;color:#fff;font-family:inherit;}' +
-      '.ssc-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#111820;border-bottom:1px solid #223;}' +
-      '.ssc-head h3{margin:0;font-size:1rem;font-weight:700;}' +
-      '.ssc-x{background:none;border:none;color:#fff;font-size:1.4rem;line-height:1;padding:4px 8px;cursor:pointer;}' +
-      '.ssc-stage{position:relative;flex:1;min-height:0;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;}' +
-      '.ssc-stage video{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;background:#000;}' +
-      '.ssc-hint{position:absolute;left:0;right:0;bottom:0;padding:8px 12px;font-size:0.8rem;background:linear-gradient(transparent,rgba(0,0,0,0.75));text-align:center;}' +
-      '.ssc-camerr{padding:22px;max-width:520px;margin:auto;text-align:center;font-size:0.92rem;line-height:1.5;}' +
-      '.ssc-strip{display:flex;gap:8px;padding:8px 10px;overflow-x:auto;background:#0e141b;min-height:74px;align-items:center;}' +
-      '.ssc-strip:empty::after{content:attr(data-empty);color:#5f7183;font-size:0.8rem;padding-left:6px;}' +
-      '.ssc-thumb{position:relative;flex:0 0 auto;width:54px;height:66px;border-radius:4px;overflow:hidden;border:1px solid #2a3a49;background:#000;}' +
-      '.ssc-thumb img{width:100%;height:100%;object-fit:cover;}' +
-      '.ssc-thumb span{position:absolute;left:2px;bottom:2px;font-size:0.62rem;background:rgba(0,0,0,0.65);padding:0 4px;border-radius:3px;}' +
-      '.ssc-thumb button{position:absolute;top:1px;right:1px;width:16px;height:16px;border:none;border-radius:50%;background:rgba(192,57,43,0.92);color:#fff;font-size:0.7rem;line-height:16px;padding:0;cursor:pointer;}' +
-      '.ssc-controls{display:flex;align-items:center;gap:10px;padding:12px;background:#111820;border-top:1px solid #223;flex-wrap:wrap;justify-content:center;}' +
-      '.ssc-btn{border:none;border-radius:4px;padding:12px 18px;font-size:0.92rem;font-weight:700;cursor:pointer;}' +
+      '.ssc-overlay{position:fixed;inset:0;z-index:2147483000;background:rgba(8,12,18,0.92);display:flex;align-items:stretch;justify-content:center;padding:0;font-family:inherit;}' +
+      '.ssc-panel{background:#fff;color:#1a1a1a;width:100%;max-width:620px;display:flex;flex-direction:column;max-height:100%;}' +
+      '.ssc-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1F7A3D;color:#fff;}' +
+      '.ssc-head h3{margin:0;font-size:0.98rem;font-weight:700;}' +
+      '.ssc-x{background:none;border:none;color:#fff;font-size:1.5rem;line-height:1;padding:2px 6px;cursor:pointer;}' +
+      '.ssc-body{padding:14px 16px;overflow-y:auto;flex:1;}' +
+      '.ssc-hint{font-size:0.86rem;line-height:1.5;color:#333;margin-bottom:12px;}' +
+      '.ssc-tip{font-size:0.78rem;color:#666;margin:10px 0 0;}' +
+      '.ssc-cap{display:block;width:100%;border:none;border-radius:6px;padding:15px;font-size:1rem;font-weight:700;background:#24508a;color:#fff;cursor:pointer;}' +
+      '.ssc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px;margin-top:14px;}' +
+      '.ssc-empty{margin-top:14px;font-size:0.82rem;color:#888;text-align:center;padding:18px 8px;border:1px dashed #ccc;border-radius:6px;}' +
+      '.ssc-thumb{position:relative;border:1px solid #d5dbe0;border-radius:6px;overflow:hidden;background:#f4f6f8;aspect-ratio:3/4;}' +
+      '.ssc-thumb img{width:100%;height:100%;object-fit:cover;display:block;}' +
+      '.ssc-thumb .n{position:absolute;left:3px;bottom:3px;font-size:0.7rem;font-weight:700;color:#fff;background:rgba(0,0,0,0.6);padding:0 6px;border-radius:3px;}' +
+      '.ssc-thumb .del{position:absolute;top:2px;right:2px;width:20px;height:20px;border:none;border-radius:50%;background:rgba(192,57,43,0.95);color:#fff;font-size:0.8rem;line-height:20px;padding:0;cursor:pointer;}' +
+      '.ssc-foot{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid #e6e6e6;flex-wrap:wrap;}' +
+      '.ssc-count{font-size:0.88rem;font-weight:700;color:#333;flex:1;}' +
+      '.ssc-btn{border:none;border-radius:6px;padding:11px 18px;font-size:0.9rem;font-weight:700;cursor:pointer;}' +
       '.ssc-btn[disabled]{opacity:0.45;cursor:default;}' +
-      '.ssc-cap{background:#fff;color:#111;min-width:150px;}' +
-      '.ssc-done{background:#1F7A3D;color:#fff;}' +
-      '.ssc-cancel{background:#2a3a49;color:#fff;}' +
-      '.ssc-toggle{display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#cdd8e2;}' +
-      '.ssc-count{font-size:0.85rem;color:#cdd8e2;min-width:78px;text-align:center;}' +
-      '.ssc-busy{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);font-size:0.95rem;text-align:center;padding:20px;}';
+      '.ssc-ok{background:#1F7A3D;color:#fff;}' +
+      '.ssc-no{background:#eceff1;color:#333;}' +
+      '.ssc-busy{margin-top:14px;font-size:0.9rem;color:#24508a;font-weight:700;text-align:center;}';
     var st = document.createElement('style');
     st.id = STYLE_ID;
     st.textContent = css;
     document.head.appendChild(st);
   }
 
-  function grabFrame(video, grayscale) {
-    var vw = video.videoWidth || 1280;
-    var vh = video.videoHeight || 720;
-    var scale = Math.min(1, MAX_EDGE / Math.max(vw, vh));
-    var cw = Math.max(1, Math.round(vw * scale));
-    var ch = Math.max(1, Math.round(vh * scale));
-    var c = document.createElement('canvas');
-    c.width = cw;
-    c.height = ch;
-    var ctx = c.getContext('2d');
-    if (grayscale) {
-      try { ctx.filter = 'grayscale(1) contrast(1.18) brightness(1.06)'; } catch (e) { /* older browser */ }
-    }
-    ctx.drawImage(video, 0, 0, cw, ch);
-    return { dataUrl: c.toDataURL('image/jpeg', 0.9), w: cw, h: ch };
+  // Downscale a captured photo so a 10-page PDF stays a few MB (the OCR
+  // step downsizes to ~1800px anyway, so full-sensor resolution is wasted
+  // bytes on mobile data).
+  function downscale(dataUrl) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () {
+        var w = img.naturalWidth || img.width;
+        var h = img.naturalHeight || img.height;
+        if (!w || !h) { reject(new Error('empty image')); return; }
+        var scale = Math.min(1, MAX_EDGE / Math.max(w, h));
+        var cw = Math.max(1, Math.round(w * scale));
+        var ch = Math.max(1, Math.round(h * scale));
+        var c = document.createElement('canvas');
+        c.width = cw; c.height = ch;
+        c.getContext('2d').drawImage(img, 0, 0, cw, ch);
+        resolve({ dataUrl: c.toDataURL('image/jpeg', JPEG_QUALITY), w: cw, h: ch });
+      };
+      img.onerror = function () { reject(new Error('decode failed')); };
+      img.src = dataUrl;
+    });
+  }
+
+  function readFile(file) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onload = function () { resolve(fr.result); };
+      fr.onerror = function () { reject(new Error('read failed')); };
+      fr.readAsDataURL(file);
+    });
   }
 
   function buildPdf(jsPDF, pages) {
@@ -142,51 +163,58 @@
     var lang = opts.lang === 'en' ? 'en' : 'sw';
     var t = STR[lang];
     var baseName = (opts.filename || 'scoresheet').replace(/[^\w.-]+/g, '_');
+    var jspdfUrl = opts.jspdfUrl || (window.ScoresheetScanner && window.ScoresheetScanner.jspdfUrl);
     var onComplete = typeof opts.onComplete === 'function' ? opts.onComplete : function () {};
 
     injectStyle();
+    // Warm the PDF library early so "Done" is instant and any load
+    // problem surfaces before the user has captured 10 pages.
+    loadJsPDF(jspdfUrl).catch(function () {});
+
     var pages = [];
-    var stream = null;
     var prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     var overlay = document.createElement('div');
     overlay.className = 'ssc-overlay';
     overlay.innerHTML = '' +
-      '<div class="ssc-head"><h3>' + t.title + '</h3>' +
-        '<button type="button" class="ssc-x" aria-label="' + t.close + '">&times;</button></div>' +
-      '<div class="ssc-stage">' +
-        '<video playsinline autoplay muted></video>' +
-        '<div class="ssc-hint">' + t.hint + '</div>' +
-        '<div class="ssc-busy" hidden></div>' +
-      '</div>' +
-      '<div class="ssc-strip"></div>' +
-      '<div class="ssc-controls">' +
-        '<button type="button" class="ssc-btn ssc-cancel">' + t.cancel + '</button>' +
-        '<label class="ssc-toggle"><input type="checkbox" class="ssc-gray"> ' + t.grayscale + '</label>' +
-        '<button type="button" class="ssc-btn ssc-cap">' + t.capture + '</button>' +
-        '<span class="ssc-count"></span>' +
-        '<button type="button" class="ssc-btn ssc-done" disabled>' + t.finish + '</button>' +
+      '<div class="ssc-panel">' +
+        '<div class="ssc-head"><h3>' + t.title + '</h3>' +
+          '<button type="button" class="ssc-x" aria-label="' + t.close + '">&times;</button></div>' +
+        '<div class="ssc-body">' +
+          '<p class="ssc-hint">' + t.hint + '</p>' +
+          '<button type="button" class="ssc-cap">' + t.capture + '</button>' +
+          '<p class="ssc-tip">' + t.tip + '</p>' +
+          '<div class="ssc-empty">' + t.empty + '</div>' +
+          '<div class="ssc-grid" hidden></div>' +
+          '<div class="ssc-busy" hidden></div>' +
+        '</div>' +
+        '<div class="ssc-foot">' +
+          '<span class="ssc-count"></span>' +
+          '<button type="button" class="ssc-btn ssc-no">' + t.cancel + '</button>' +
+          '<button type="button" class="ssc-btn ssc-ok" disabled>' + t.finish + '</button>' +
+        '</div>' +
       '</div>';
     document.body.appendChild(overlay);
 
-    var video = overlay.querySelector('video');
-    var stage = overlay.querySelector('.ssc-stage');
-    var hintEl = overlay.querySelector('.ssc-hint');
-    var busyEl = overlay.querySelector('.ssc-busy');
-    var strip = overlay.querySelector('.ssc-strip');
+    var fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.setAttribute('capture', 'environment');
+    fileInput.multiple = true;
+    fileInput.style.display = 'none';
+    overlay.appendChild(fileInput);
+
     var capBtn = overlay.querySelector('.ssc-cap');
-    var doneBtn = overlay.querySelector('.ssc-done');
-    var cancelBtn = overlay.querySelector('.ssc-cancel');
-    var grayCb = overlay.querySelector('.ssc-gray');
+    var grid = overlay.querySelector('.ssc-grid');
+    var emptyEl = overlay.querySelector('.ssc-empty');
+    var busyEl = overlay.querySelector('.ssc-busy');
     var countEl = overlay.querySelector('.ssc-count');
+    var okBtn = overlay.querySelector('.ssc-ok');
+    var noBtn = overlay.querySelector('.ssc-no');
     var closeX = overlay.querySelector('.ssc-x');
 
-    function stopStream() {
-      if (stream) { stream.getTracks().forEach(function (tr) { tr.stop(); }); stream = null; }
-    }
     function close() {
-      stopStream();
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
@@ -194,98 +222,85 @@
     function onKey(e) { if (e.key === 'Escape') close(); }
     document.addEventListener('keydown', onKey);
 
-    function refresh() {
-      strip.setAttribute('data-empty', t.pagesLabel + ': 0');
-      countEl.textContent = t.pagesLabel + ': ' + pages.length;
-      doneBtn.disabled = pages.length === 0;
-      doneBtn.textContent = t.finish + (pages.length ? ' (' + pages.length + ')' : '');
-    }
-    function addThumb(page, idx) {
-      var d = document.createElement('div');
-      d.className = 'ssc-thumb';
-      d.innerHTML = '<img alt=""><span></span><button type="button" title="' + t.deletePage + '">&times;</button>';
-      d.querySelector('img').src = page.dataUrl;
-      d.querySelector('span').textContent = idx + 1;
-      d.querySelector('button').addEventListener('click', function () {
-        var i = pages.indexOf(page);
-        if (i > -1) pages.splice(i, 1);
-        redrawStrip();
+    function redraw() {
+      grid.innerHTML = '';
+      pages.forEach(function (p, i) {
+        var d = document.createElement('div');
+        d.className = 'ssc-thumb';
+        d.innerHTML = '<img alt=""><span class="n"></span>' +
+          '<button type="button" class="del" title="' + t.deletePage + '">&times;</button>';
+        d.querySelector('img').src = p.dataUrl;
+        d.querySelector('.n').textContent = i + 1;
+        d.querySelector('.del').addEventListener('click', function () {
+          var idx = pages.indexOf(p);
+          if (idx > -1) pages.splice(idx, 1);
+          redraw();
+        });
+        grid.appendChild(d);
       });
-      strip.appendChild(d);
-    }
-    function redrawStrip() {
-      strip.innerHTML = '';
-      pages.forEach(function (p, i) { addThumb(p, i); });
-      refresh();
+      var has = pages.length > 0;
+      grid.hidden = !has;
+      emptyEl.hidden = has;
+      countEl.textContent = t.pagesLabel + ': ' + pages.length;
+      okBtn.disabled = !has;
+      okBtn.textContent = t.finish + (has ? ' (' + pages.length + ')' : '');
+      capBtn.textContent = has ? t.addMore : t.capture;
     }
 
-    capBtn.addEventListener('click', function () {
-      if (!video.videoWidth) return;
-      var page = grabFrame(video, grayCb.checked);
-      pages.push(page);
-      addThumb(page, pages.length - 1);
-      refresh();
-      strip.scrollLeft = strip.scrollWidth;
+    capBtn.addEventListener('click', function () { fileInput.click(); });
+
+    fileInput.addEventListener('change', function () {
+      var files = Array.prototype.slice.call(fileInput.files || []);
+      fileInput.value = '';
+      if (!files.length) return;
+      capBtn.disabled = true;
+      busyEl.hidden = false;
+      busyEl.textContent = '…';
+      var chain = Promise.resolve();
+      var failed = 0;
+      files.forEach(function (f) {
+        chain = chain
+          .then(function () { return readFile(f); })
+          .then(downscale)
+          .then(function (page) { pages.push(page); })
+          .catch(function () { failed++; });
+      });
+      chain.then(function () {
+        busyEl.hidden = true;
+        capBtn.disabled = false;
+        redraw();
+        if (failed) alert(t.imgError);
+      });
     });
 
-    cancelBtn.addEventListener('click', close);
+    noBtn.addEventListener('click', close);
     closeX.addEventListener('click', close);
 
-    doneBtn.addEventListener('click', function () {
-      if (!pages.length) return;
+    okBtn.addEventListener('click', function () {
+      if (!pages.length) { alert(t.needPage); return; }
       busyEl.hidden = false;
       busyEl.textContent = t.building;
       capBtn.disabled = true;
-      doneBtn.disabled = true;
-      loadJsPDF()
+      okBtn.disabled = true;
+      noBtn.disabled = true;
+      loadJsPDF(jspdfUrl)
         .then(function (jsPDF) {
           var blob = buildPdf(jsPDF, pages);
-          var file = new File(
-            [blob],
-            baseName + '_' + Date.now() + '.pdf',
-            { type: 'application/pdf' }
-          );
+          var file = new File([blob], baseName + '_' + Date.now() + '.pdf', { type: 'application/pdf' });
           close();
           onComplete(file);
         })
         .catch(function (err) {
           busyEl.hidden = true;
           capBtn.disabled = false;
-          doneBtn.disabled = false;
+          okBtn.disabled = false;
+          noBtn.disabled = false;
           alert(t.pdfError + '\n\n' + (err && err.message ? err.message : err));
         });
     });
 
-    function showCamError() {
-      stopStream();
-      stage.innerHTML = '<div class="ssc-camerr">' + t.camError +
-        '<div style="margin-top:16px;"><button type="button" class="ssc-btn ssc-cancel">' + t.close + '</button></div></div>';
-      stage.querySelector('button').addEventListener('click', close);
-      capBtn.disabled = true;
-    }
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      showCamError();
-      return;
-    }
-    navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 2560 },
-        height: { ideal: 1440 }
-      },
-      audio: false
-    }).then(function (s) {
-      stream = s;
-      video.srcObject = s;
-      var play = video.play();
-      if (play && play.catch) play.catch(function () {});
-    }).catch(function () {
-      showCamError();
-    });
-
-    refresh();
+    redraw();
   }
 
-  window.ScoresheetScanner = { open: open };
+  window.ScoresheetScanner = { open: open, jspdfUrl: null };
 })();
