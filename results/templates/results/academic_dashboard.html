@@ -3,200 +3,171 @@
 
 {% block content %}
 <style>
-.acad-hero {
-  background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
-  border: 2px solid #D9A441;
-  border-radius: 2px;
-  padding: 1.5rem 2rem;
-  color: #fff;
-  margin-bottom: 1.5rem;
+/* Academic Dashboard — plain institutional styling.
+   One accent (institutional green), neutral greys, no gradients, no gold. */
+:root{
+  --ad-green:#15653a; --ad-green-d:#0f4c2b;
+  --ad-ink:#1f2937; --ad-muted:#6b7280; --ad-faint:#9aa3af;
+  --ad-line:#dfe3e8; --ad-surface:#ffffff; --ad-grey:#f4f6f8;
+  --ad-danger:#a83232;
 }
-.acad-hero h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.2rem; }
-.acad-hero .sub { font-size: 0.82rem; color: #D9A441; text-transform: uppercase; letter-spacing: 0.05em; }
+.acad-hero{
+  background:var(--ad-green); color:#fff;
+  border:1px solid var(--ad-green-d); border-radius:3px;
+  padding:1.1rem 1.4rem; margin-bottom:1rem;
+}
+.acad-hero h1{ font-size:1.15rem; font-weight:700; margin:0 0 .15rem; }
+.acad-hero .sub{ font-size:.76rem; color:rgba(255,255,255,.8); letter-spacing:.02em; text-transform:none; }
 
-/* ── Form-level cards ── */
-.form-level-card {
-  background: #fff;
-  border: 1.5px solid #dee2e6;
-  border-radius: 2px;
-  margin-bottom: 1.2rem;
-  overflow: hidden;
-  border-left: 5px solid #1F7A3D;
+/* Buttons — one system */
+.ad-btn{
+  display:inline-flex; align-items:center; gap:.3rem;
+  font-size:.78rem; font-weight:600; line-height:1;
+  padding:.45rem .8rem; border-radius:3px; border:1px solid transparent;
+  cursor:pointer; text-decoration:none; white-space:nowrap;
 }
-.form-level-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.8rem 1.1rem;
-  background: #f4f6fb;
-  border-bottom: 1px solid #e9ecef;
-  cursor: pointer;
-}
-.form-level-head .form-label {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: #1F7A3D;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.form-level-head .form-stats {
-  font-size: 0.75rem;
-  color: #777;
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-.form-level-body { padding: 0; }
+.ad-btn--primary{ background:var(--ad-green); color:#fff; border-color:var(--ad-green-d); }
+.ad-btn--primary:hover{ background:var(--ad-green-d); color:#fff; }
+.ad-btn--ghost{ background:#fff; color:var(--ad-ink); border-color:var(--ad-line); }
+.ad-btn--ghost:hover{ background:var(--ad-grey); color:var(--ad-ink); }
+.ad-btn--danger{ background:#fff; color:var(--ad-danger); border-color:#e4c2c2; }
+.ad-btn--danger:hover{ background:var(--ad-danger); color:#fff; }
+.ad-btn--sm{ font-size:.72rem; padding:.32rem .6rem; }
 
-/* ── Stream tabs ── */
-.stream-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 2px solid #e9ecef;
-  background: #f8f9fb;
-  overflow-x: auto;
+/* Form-level navigation (Form 1 / Form 2 / ...) */
+.form-nav{
+  display:flex; gap:.35rem; flex-wrap:wrap;
+  padding-bottom:.6rem; margin-bottom:1rem;
+  border-bottom:1px solid var(--ad-line);
 }
-.stream-tab {
-  padding: 0.5rem 1.2rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #777;
-  border-bottom: 3px solid transparent;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-  background: none;
-  border-top: none;
-  border-left: none;
-  border-right: none;
+.form-nav-btn{
+  font-size:.82rem; font-weight:600; color:var(--ad-muted);
+  background:var(--ad-grey); border:1px solid var(--ad-line);
+  border-radius:3px; padding:.5rem .9rem; cursor:pointer;
+  display:inline-flex; align-items:center; gap:.4rem;
 }
-.stream-tab:hover { color: #1F7A3D; background: #eef2f9; }
-.stream-tab.active {
-  color: #1F7A3D;
-  border-bottom-color: #1F7A3D;
-  background: #fff;
+.form-nav-btn:hover{ color:var(--ad-ink); }
+.form-nav-btn.active{ background:var(--ad-green); border-color:var(--ad-green-d); color:#fff; }
+.form-nav-count{
+  font-size:.68rem; font-weight:700;
+  background:rgba(0,0,0,.08); color:inherit;
+  padding:.05rem .4rem; border-radius:2px;
 }
-.stream-tab .tab-count {
-  background: #D9A441;
-  color: #1F7A3D;
-  font-size: 0.65rem;
-  font-weight: 800;
-  padding: 0.05rem 0.4rem;
-  border-radius: 10px;
-  margin-left: 0.3rem;
+.form-nav-btn.active .form-nav-count{ background:rgba(255,255,255,.22); }
+
+/* Form-level card */
+.form-level-card{
+  background:var(--ad-surface); border:1px solid var(--ad-line);
+  border-radius:3px; margin-bottom:1rem; overflow:hidden;
+}
+.form-level-head{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:.75rem; flex-wrap:wrap;
+  padding:.7rem 1rem; background:var(--ad-grey);
+  border-bottom:1px solid var(--ad-line);
+}
+.form-level-head .form-label{
+  font-size:.95rem; font-weight:700; color:var(--ad-ink);
+  letter-spacing:.02em; text-transform:uppercase;
+}
+.form-level-head .form-stats{ font-size:.74rem; color:var(--ad-muted); display:flex; gap:.6rem; align-items:center; }
+.form-level-body{ padding:0; }
+
+/* Stream tabs */
+.stream-tabs{
+  display:flex; gap:0; border-bottom:1px solid var(--ad-line);
+  background:var(--ad-grey); overflow-x:auto;
+}
+.stream-tab{
+  padding:.5rem 1rem; font-size:.78rem; font-weight:600; color:var(--ad-muted);
+  border:none; border-bottom:2px solid transparent;
+  background:none; cursor:pointer; white-space:nowrap;
+}
+.stream-tab:hover{ color:var(--ad-ink); }
+.stream-tab.active{ color:var(--ad-green); border-bottom-color:var(--ad-green); background:#fff; }
+.stream-tab .tab-count{
+  font-size:.66rem; font-weight:700; color:var(--ad-muted);
+  background:rgba(0,0,0,.06); padding:.03rem .35rem; border-radius:2px; margin-left:.3rem;
+}
+.stream-panel{ display:none; padding:.5rem 0; }
+.stream-panel.active{ display:block; }
+
+/* Exam cards */
+.exam-card{
+  background:#fff; border:1px solid var(--ad-line); border-radius:3px;
+  margin:.5rem .75rem; overflow:hidden;
+}
+.exam-card-head{
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:.6rem; padding:.7rem .9rem;
+  background:var(--ad-grey); border-bottom:1px solid var(--ad-line);
+}
+.exam-card-head .exam-name{ font-weight:700; font-size:.9rem; color:var(--ad-ink); }
+.exam-card-head .exam-meta{ font-size:.73rem; color:var(--ad-muted); }
+
+.progress-mini-wrap{ margin:0 .9rem .5rem; }
+.progress-mini-row{ display:flex; justify-content:space-between; font-size:.71rem; color:var(--ad-muted); margin-bottom:.15rem; }
+.progress-mini-track{ background:#e9ecef; height:5px; border-radius:2px; overflow:hidden; margin-bottom:.1rem; }
+.progress-mini-fill{ height:100%; border-radius:2px; transition:width .4s; }
+.fill-submitted{ background:var(--ad-faint); }
+.fill-approved{ background:var(--ad-green); }
+
+.subjects-table{ width:100%; border-collapse:collapse; font-size:.79rem; }
+.subjects-table th{
+  background:var(--ad-grey); padding:.4rem .75rem; font-size:.67rem;
+  text-transform:uppercase; letter-spacing:.05em; color:var(--ad-muted);
+  font-weight:700; border-bottom:1px solid var(--ad-line); text-align:left;
+}
+.subjects-table td{ padding:.45rem .75rem; border-bottom:1px solid #eef1f4; vertical-align:middle; }
+.subjects-table tr:last-child td{ border-bottom:none; }
+
+.badge-pending  { background:#f7f7f5; color:#7a5200; border:1px solid #e6dcbf; }
+.badge-submitted{ background:#eef4fb; color:#1f5591; border:1px solid #cfe0f2; }
+.badge-approved { background:#eef6f0; color:#15653a; border:1px solid #cfe6d8; }
+.badge-returned { background:#f9efef; color:#a83232; border:1px solid #e8cccc; }
+.badge-pending,.badge-submitted,.badge-approved,.badge-returned{
+  font-size:.64rem; padding:.15rem .5rem; border-radius:2px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.05em;
 }
 
-.stream-panel { display: none; padding: 0.6rem 0; }
-.stream-panel.active { display: block; }
+.approve-form-inline{ display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
+.approve-form-inline input[type=text]{ font-size:.75rem; padding:.25rem .5rem; border:1px solid var(--ad-line); border-radius:3px; width:130px; }
+.btn-approve{ background:var(--ad-green); color:#fff; border:1px solid var(--ad-green-d); font-size:.72rem; padding:.3rem .7rem; border-radius:3px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.btn-approve:hover{ background:var(--ad-green-d); }
+.btn-return{ background:#fff; color:var(--ad-danger); border:1px solid #e4c2c2; font-size:.72rem; padding:.3rem .7rem; border-radius:3px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.btn-return:hover{ background:var(--ad-danger); color:#fff; }
 
-/* ── Exam cards ── */
-.exam-card {
-  background: #fff;
-  border: 1.5px solid #dee2e6;
-  border-radius: 2px;
-  margin: 0.5rem 0.75rem 0.5rem;
-  overflow: hidden;
+.bulk-approve-bar{
+  background:var(--ad-grey); border:1px solid var(--ad-line); border-radius:3px;
+  padding:.6rem .9rem; display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:.7rem; margin:0 .75rem .5rem;
 }
-.exam-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: #f8f9fb;
-  border-bottom: 1px solid #e9ecef;
+.bulk-approve-bar .bulk-msg{ font-size:.8rem; color:var(--ad-green); font-weight:600; }
+.bulk-approve-bar .bulk-form{ display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+.bulk-approve-bar input[type=text]{ font-size:.75rem; padding:.25rem .6rem; border:1px solid var(--ad-line); border-radius:3px; width:160px; }
+.btn-bulk-approve{ background:var(--ad-green); color:#fff; border:1px solid var(--ad-green-d); font-size:.78rem; font-weight:600; padding:.35rem 1rem; border-radius:3px; cursor:pointer; }
+.btn-bulk-approve:hover{ background:var(--ad-green-d); }
+
+.all-approved-bar{
+  background:#eef6f0; border:1px solid #cfe6d8; border-radius:3px;
+  padding:.5rem .9rem; display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:.5rem; margin:0 .75rem .5rem;
 }
-.exam-card-head .exam-name { font-weight: 700; font-size: 0.95rem; color: #1F7A3D; }
-.exam-card-head .exam-meta { font-size: 0.75rem; color: #777; }
+.all-approved-bar .msg{ font-size:.8rem; color:var(--ad-green); font-weight:600; }
 
-.progress-mini-wrap { margin: 0 1rem 0.5rem; }
-.progress-mini-row { display: flex; justify-content: space-between; font-size: 0.72rem; color: #666; margin-bottom: 0.15rem; }
-.progress-mini-track { background: #e9ecef; height: 5px; border-radius: 3px; overflow: hidden; margin-bottom: 0.1rem; }
-.progress-mini-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
-.fill-submitted { background: #D9A441; }
-.fill-approved { background: #1a7a3b; }
-
-.subjects-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-.subjects-table th {
-  background: #f4f6fb;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #888;
-  font-weight: 700;
-  border-bottom: 1.5px solid #e9ecef;
-  text-align: left;
+.form-results-link{
+  background:#fff; color:var(--ad-green); border:1px solid var(--ad-line);
+  font-weight:600; font-size:.72rem; padding:.28rem .6rem; border-radius:3px;
+  text-decoration:none; white-space:nowrap;
 }
-.subjects-table td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
-.subjects-table tr:last-child td { border-bottom: none; }
+.form-results-link:hover{ background:var(--ad-green); color:#fff; }
 
-.badge-pending   { background:#fff8e6; color:#7a5200; border:1px solid #f0d07a; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
-.badge-submitted  { background:#e8f4ff; color:#0056b3; border:1px solid #b3d4f5; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
-.badge-approved   { background:#e6f7ec; color:#1a7a3b; border:1px solid #a3d9b4; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
-.badge-returned   { background:#fdecea; color:#c0392b; border:1px solid #f1948a; font-size:.65rem; padding:.15rem .55rem; border-radius:2px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
-.btn-return { background:#c0392b; color:#fff; border:none; font-size:0.72rem; padding:0.25rem 0.7rem; border-radius:2px; font-weight:700; cursor:pointer; white-space:nowrap; }
-.btn-return:hover { background:#96281b; }
+.empty-state{ text-align:center; padding:3rem 1rem; color:var(--ad-faint); font-size:.9rem; }
 
-.approve-form-inline { display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; }
-.approve-form-inline input[type=text] { font-size:0.75rem; padding:0.2rem 0.5rem; border:1px solid #ccc; border-radius:2px; width:130px; }
-.btn-approve { background:#1a7a3b; color:#fff; border:none; font-size:0.72rem; padding:0.25rem 0.7rem; border-radius:2px; font-weight:700; cursor:pointer; white-space:nowrap; }
-.btn-approve:hover { background:#155e2e; }
-
-.bulk-approve-bar {
-  background: linear-gradient(90deg, #e6f7ec, #f0faf4);
-  border: 1.5px solid #a3d9b4;
-  border-radius: 2px;
-  padding: 0.65rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 0 0.75rem 0.5rem;
-}
-.bulk-approve-bar .bulk-msg { font-size: 0.82rem; color: #1a7a3b; font-weight: 600; }
-.bulk-approve-bar .bulk-form { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
-.bulk-approve-bar input[type=text] { font-size:0.75rem; padding:0.25rem 0.6rem; border:1px solid #a3d9b4; border-radius:2px; width:160px; }
-.btn-bulk-approve { background:#1F7A3D; color:#fff; border:2px solid #D9A441; font-size:0.78rem; font-weight:700; padding:0.3rem 1rem; border-radius:2px; cursor:pointer; }
-.btn-bulk-approve:hover { background:#145226; }
-
-.all-approved-bar {
-  background: #e6f7ec;
-  border: 1.5px solid #a3d9b4;
-  border-radius: 2px;
-  padding: 0.5rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0 0.75rem 0.5rem;
-}
-.all-approved-bar .msg { font-size: 0.82rem; color: #1a7a3b; font-weight: 700; }
-
-.form-results-link {
-  background: #D9A441; color: #1F7A3D; font-weight: 700;
-  font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 2px;
-  text-decoration: none; white-space: nowrap;
-}
-.form-results-link:hover { background: #b8973a; color: #1F7A3D; }
-
-.empty-state { text-align:center; padding:3rem 1rem; color:#999; font-size:0.9rem; }
-
-/* ── Stream badge ── */
-.stream-badge {
-  display:inline-block;
-  background:#1F7A3D;
-  color:#fff;
-  font-size:0.65rem;
-  font-weight:800;
-  padding:0.1rem 0.45rem;
-  border-radius:2px;
-  margin-left:0.4rem;
-  letter-spacing:0.05em;
-  vertical-align:middle;
+.stream-badge{
+  display:inline-block; background:var(--ad-green); color:#fff;
+  font-size:.63rem; font-weight:700; padding:.1rem .4rem; border-radius:2px;
+  margin-left:.4rem; letter-spacing:.04em; vertical-align:middle;
 }
 </style>
 
@@ -211,23 +182,32 @@
       </div>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-      <a href="{% url 'upload_form_students' %}" class="btn btn-sm" style="background:#1F7A3D;color:#fff;font-weight:700;border-radius:2px;">
-        📥 {% if LANG == 'sw' %}Wanafunzi wa Form{% else %}Form Students{% endif %}
+      <a href="{% url 'upload_form_students' %}" class="ad-btn ad-btn--ghost">
+        {% if LANG == 'sw' %}Wanafunzi wa Kidato{% else %}Form Students{% endif %}
       </a>
-      <a href="{% url 'upload_results' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
-        + {% if LANG == 'sw' %}Mtihani Mpya{% else %}New Exam{% endif %}
+      <a href="{% url 'upload_results' %}" class="ad-btn ad-btn--ghost">
+        {% if LANG == 'sw' %}+ Mtihani Mpya{% else %}+ New Exam{% endif %}
       </a>
     </div>
   </div>
 </div>
 
 {% if forms_list %}
+  <div class="form-nav" id="formNav">
+    {% for fd in forms_list %}
+    <button type="button" class="form-nav-btn {% if forloop.first %}active{% endif %}" data-form="{{ fd.form_num }}">
+      {{ fd.form_label }}
+      <span class="form-nav-count">{{ fd.total_approved }}/{{ fd.total_all }}</span>
+    </button>
+    {% endfor %}
+  </div>
+
   {% for fd in forms_list %}
-  <div class="form-level-card" id="form-{{ fd.form_num }}">
+  <div class="form-level-card" id="form-{{ fd.form_num }}" data-form="{{ fd.form_num }}"{% if not forloop.first %} hidden{% endif %}>
     <div class="form-level-head">
       <div>
         <span class="form-label">{{ fd.form_label }}</span>
-        <span style="font-size:0.78rem;color:#888;margin-left:0.5rem;">
+        <span class="form-stats">
           {{ fd.total_submitted }}/{{ fd.total_all }} {% if LANG == 'sw' %}yamewasilishwa{% else %}submitted{% endif %}
           &nbsp;&bull;&nbsp; {{ fd.total_approved }}/{{ fd.total_all }} {% if LANG == 'sw' %}yameidhinishwa{% else %}approved{% endif %}
         </span>
@@ -273,15 +253,15 @@
             </div>
           </div>
           <div class="d-flex gap-2 align-items-center flex-wrap">
-            <a href="{% url 'bulk_scoresheet_upload' ed.exam.id %}" class="btn btn-sm" style="background:#24508a;color:#fff;font-size:0.72rem;border-radius:2px;border:none;font-weight:700;">
-              📦 {% if LANG == 'sw' %}PakiaScoresheets{% else %}Bulk Upload{% endif %}
+            <a href="{% url 'bulk_scoresheet_upload' ed.exam.id %}" class="ad-btn ad-btn--primary ad-btn--sm">
+              {% if LANG == 'sw' %}Pakia Scoresheets{% else %}Upload Scoresheets{% endif %}
             </a>
-            <a href="{% url 'exam_overview' ed.exam.id %}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">
+            <a href="{% url 'exam_overview' ed.exam.id %}" class="ad-btn ad-btn--ghost ad-btn--sm">
               {% if LANG == 'sw' %}Tazama{% else %}View{% endif %}
             </a>
-            <button type="button" class="btn btn-sm" style="background:#c0392b;color:#fff;font-size:0.72rem;border-radius:2px;border:none;"
+            <button type="button" class="ad-btn ad-btn--danger ad-btn--sm"
               onclick="openDeleteModal('{{ ed.exam.id }}', '{{ ed.exam.name|escapejs }}')">
-              🗑 {% if LANG == 'sw' %}Futa{% else %}Delete{% endif %}
+              {% if LANG == 'sw' %}Futa{% else %}Delete{% endif %}
             </button>
           </div>
         </div>
@@ -488,6 +468,21 @@
 </div>
 
 <script>
+/* ── Form-level switching: show one Form at a time ── */
+(function () {
+  var nav = document.getElementById('formNav');
+  if (!nav) return;
+  var cards = document.querySelectorAll('.form-level-card');
+  nav.querySelectorAll('.form-nav-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var f = this.dataset.form;
+      nav.querySelectorAll('.form-nav-btn').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      cards.forEach(function (c) { c.hidden = (c.dataset.form !== f); });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+})();
+
 /* ── Stream tabs switching ── */
 document.querySelectorAll('.stream-tab').forEach(tab => {
   tab.addEventListener('click', function() {
