@@ -87,7 +87,7 @@
       b.addEventListener('click', function () {
         var url = withStyle(href, b.dataset.style);
         close();
-        window.open(url, '_blank');
+        window.location.href = url;   // same tab — never popup-blocked
       });
     });
   }
