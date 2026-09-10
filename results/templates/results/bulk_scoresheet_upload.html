@@ -1,4 +1,5 @@
 {% extends 'results/base.html' %}
+{% load static %}
 {% block title %}PakiaScoresheets — {{ exam.name }} | School Results{% endblock %}
 
 {% block extra_css %}
@@ -277,6 +278,19 @@
   <input type="file" id="bulkFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple style="display:none;">
 </div>
 
+<div style="text-align:center;margin:-0.4rem 0 1rem;">
+  <button type="button" id="bulkScanBtn" class="btn-final primary" style="font-size:0.85rem;">
+    🖨️ {% if LANG == 'sw' %}Scan Scoresheet kwa Kamera (kurasa nyingi){% else %}Scan Scoresheet with Camera (multi-page){% endif %}
+  </button>
+  <div style="font-size:0.76rem;color:#666;margin-top:0.35rem;">
+    {% if LANG == 'sw' %}
+    Fungua kamera, piga kurasa zote za somo moja, mfumo unaziunganisha kuwa PDF moja — kisha chagua somo lake.
+    {% else %}
+    Open the camera, capture every page of one subject's scoresheet, and the system combines them into a single PDF — then pick its subject.
+    {% endif %}
+  </div>
+</div>
+
 <!-- File Queue -->
 <div class="file-queue" id="fileQueue" style="display:none;">
   <div class="file-queue-title">📋 {% if LANG == 'sw' %}Faili Zilizopakiwa{% else %}Uploaded Files{% endif %}</div>
@@ -369,6 +383,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'results/js/scoresheet_scanner.js' %}"></script>
 <script>
 (() => {
   const LANG = '{{ LANG }}';
@@ -497,6 +512,27 @@
       if (input.files.length) addFilesToQueue(input.files);
       input.value = '';
     });
+  }
+
+  // Multi-page in-app scanner — capture each page of one subject's
+  // scoresheet with the camera; the widget stitches them into a single
+  // PDF and drops it into the same queue as an uploaded PDF.
+  const scanBtn = document.getElementById('bulkScanBtn');
+  if (scanBtn && window.ScoresheetScanner) {
+    scanBtn.addEventListener('click', () => {
+      window.ScoresheetScanner.open({
+        lang: LANG,
+        filename: 'scan',
+        onComplete: (file) => {
+          addFilesToQueue([file]);
+          toast(LANG === 'sw'
+            ? 'Kurasa zimeunganishwa kuwa PDF moja. Sasa chagua somo lake kwenye orodha hapa chini.'
+            : 'Pages combined into one PDF. Now pick its subject in the list below.');
+        },
+      });
+    });
+  } else if (scanBtn) {
+    scanBtn.style.display = 'none';
   }
 
   // Clear all

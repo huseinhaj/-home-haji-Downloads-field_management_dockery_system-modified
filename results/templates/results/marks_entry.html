@@ -1,4 +1,5 @@
 {% extends 'results/base.html' %}
+{% load static %}
 {% block title %}{% if LANG == 'sw' %}Jaza Alama — Marks Entry{% else %}Marks Entry{% endif %} | School Results{% endblock %}
 
 {% block extra_css %}
@@ -417,6 +418,9 @@
           <button type="button" class="btn-me-voice btn-me-photo" id="mePhotoBtn">
             📷 {% if LANG == 'sw' %}Pakia Picha/PDF ya Scoresheet{% else %}Upload Scoresheet Photo/PDF{% endif %}
           </button>
+          <button type="button" class="btn-me-voice btn-me-photo" id="meScanBtn">
+            🖨️ {% if LANG == 'sw' %}Scan Scoresheet (kurasa nyingi){% else %}Scan Scoresheet (multi-page){% endif %}
+          </button>
           <input type="file" id="mePhotoInput" accept="image/*,.pdf,application/pdf" capture="environment" style="display:none;">
           <div class="me-voice-status" id="meVoiceStatus"></div>
           <div class="me-voice-status" id="mePhotoStatus"></div>
@@ -591,6 +595,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'results/js/scoresheet_scanner.js' %}"></script>
 <script>
 // PDF download helper — fetches file and triggers download without leaving the page
 function _dlPdf(url) {
@@ -1240,9 +1245,7 @@ function _dlPdf(url) {
         photoInput.click();
       });
 
-      photoInput.addEventListener('change', async () => {
-        const file = photoInput.files[0];
-        photoInput.value = '';
+      async function processScoresheetFile(file) {
         if (!file) return;
         if (!EXAM_ID || !SUBJECT_ID) {
           toast(LANG === 'sw' ? 'Chagua mtihani na somo kwanza.' : 'Pick an exam and subject first.', true);
@@ -1364,7 +1367,33 @@ function _dlPdf(url) {
         } finally {
           photoBtn.disabled = false;
         }
+      }
+
+      photoInput.addEventListener('change', () => {
+        const f = photoInput.files[0];
+        photoInput.value = '';
+        processScoresheetFile(f);
       });
+
+      // Multi-page in-app scanner: capture each page with the camera, the
+      // widget stitches them into one PDF, then it runs through the exact
+      // same OCR path as an uploaded PDF.
+      const scanBtn = document.getElementById('meScanBtn');
+      if (scanBtn && window.ScoresheetScanner) {
+        scanBtn.addEventListener('click', () => {
+          if (!EXAM_ID || !SUBJECT_ID) {
+            toast(LANG === 'sw' ? 'Chagua mtihani na somo kwanza.' : 'Pick an exam and subject first.', true);
+            return;
+          }
+          window.ScoresheetScanner.open({
+            lang: LANG,
+            filename: 'scoresheet',
+            onComplete: processScoresheetFile,
+          });
+        });
+      } else if (scanBtn) {
+        scanBtn.style.display = 'none';
+      }
     })();
 
     // Drag & drop
