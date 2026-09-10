@@ -1,4 +1,5 @@
 {% extends 'results/base.html' %}
+{% load static %}
 {% block title %}Academic Dashboard | School Results{% endblock %}
 
 {% block content %}
@@ -467,6 +468,8 @@
   </div>
 </div>
 
+<script>window.PDF_PICKER_LANG = '{{ LANG }}';</script>
+<script src="{% static 'results/js/pdf_style_picker.js' %}"></script>
 <script>
 /* ── Form-level switching: show one Form at a time ── */
 (function () {

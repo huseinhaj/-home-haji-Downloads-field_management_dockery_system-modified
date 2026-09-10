@@ -184,7 +184,13 @@ def filter_exams(request):
 def generate_results_pdf(request, exam_id):
     exam = _get_exam_or_404(exam_id, request.user)
     recompute_processed_results_for_exam(exam)
-    return generate_results_pdf_response(exam)
+    # ?style= : 'normal' (default, unchanged) | 'rank' (TEC school-rank
+    # colours) | 'necta' (NECTA CSEE lavender layout). Content/structure
+    # are identical — only the palette / row styling differs.
+    style = (request.GET.get('style') or 'normal').lower()
+    if style not in ('normal', 'rank', 'necta'):
+        style = 'normal'
+    return generate_results_pdf_response(exam, style=style)
 
 
 @academic_required

@@ -97,6 +97,49 @@ LEVEL_COLORS = {
 }
 
 
+# ── Output themes ───────────────────────────────────────────────────────────
+# Same content and structure everywhere — only the palette / row styling
+# changes. 'normal' keeps the exact colours the system has always used.
+#   normal : the system's own blue/gold official look
+#   rank   : the TEC "School GPA Ranks" sheet — peach headers, black text,
+#            periwinkle accent rows
+#   necta  : the NECTA CSEE results page — pale-lavender page, purple
+#            headings, pale-blue table headers, white / pale-yellow bands
+_THEMES = {
+    'normal': {
+        'header_bg':  NAVY,
+        'header_fg':  WHITE,
+        'band_bg':    CREAM,
+        'accent_bg':  GOLD,
+        'accent_fg':  WHITE,
+        'section_fg': NAVY,
+        'page_bg':    None,
+    },
+    'rank': {
+        'header_bg':  colors.HexColor("#FCE4D6"),
+        'header_fg':  BLACK,
+        'band_bg':    colors.HexColor("#FDF3EE"),
+        'accent_bg':  colors.HexColor("#8EA9DB"),
+        'accent_fg':  BLACK,
+        'section_fg': colors.HexColor("#375623"),
+        'page_bg':    None,
+    },
+    'necta': {
+        'header_bg':  colors.HexColor("#DDEBF7"),
+        'header_fg':  colors.HexColor("#1F3864"),
+        'band_bg':    colors.HexColor("#FFFFCC"),
+        'accent_bg':  colors.HexColor("#B4C7E7"),
+        'accent_fg':  colors.HexColor("#1F3864"),
+        'section_fg': colors.HexColor("#7030A0"),
+        'page_bg':    colors.HexColor("#E9E4F2"),
+    },
+}
+
+
+def _resolve_theme(style):
+    return _THEMES.get((style or 'normal').lower(), _THEMES['normal'])
+
+
 # ── Styles ───────────────────────────────────────────────────────────────────
 def _styles():
     ss = getSampleStyleSheet()
@@ -245,11 +288,13 @@ def _safe_b64_img(data_uri, x, y, w, h, canvas):
         pass
 
 
-def _std_table_style(n_rows, header_bg=None):
+def _std_table_style(n_rows, header_bg=None, header_fg=None, band_bg=None):
     hdr = header_bg or NAVY
+    hfg = header_fg or WHITE
+    band = band_bg or CREAM
     s = [
         ('BACKGROUND', (0, 0), (-1, 0), hdr),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('TEXTCOLOR', (0, 0), (-1, 0), hfg),
         ('GRID', (0, 0), (-1, -1), 0.5, LGRAY),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('TOPPADDING', (0, 0), (-1, -1), 4),
@@ -259,7 +304,7 @@ def _std_table_style(n_rows, header_bg=None):
     ]
     for i in range(1, n_rows):
         if i % 2 == 0:
-            s.append(('BACKGROUND', (0, i), (-1, i), CREAM))
+            s.append(('BACKGROUND', (0, i), (-1, i), band))
     return s
 
 
@@ -432,6 +477,13 @@ def _footer(canvas, doc):
     except Exception:
         w, h = A4
 
+    # Themed page background (e.g. the NECTA CSEE pale lavender) — painted
+    # behind everything, before the border/content.
+    page_bg = getattr(doc, '_page_bg', None)
+    if page_bg is not None:
+        canvas.setFillColor(page_bg)
+        canvas.rect(0, 0, w, h, fill=1, stroke=0)
+
     # Page border — navy outer
     canvas.setStrokeColor(NAVY)
     canvas.setLineWidth(1.0)
@@ -543,8 +595,15 @@ def _make_numbered_canvas(doc):
 # ══════════════════════════════════════════════════════════════════════════════
 # BUILD PDF
 # ══════════════════════════════════════════════════════════════════════════════
-def generate_results_pdf_response(exam):
+def generate_results_pdf_response(exam, style='normal'):
     st = _styles()
+    theme = _resolve_theme(style)
+    # Re-tint the shared paragraph styles for this theme. _styles() returns
+    # fresh objects every call, so mutating them here is local to this PDF.
+    st['th'].textColor = theme['header_fg']
+    st['th_sm'].textColor = theme['header_fg']
+    st['section'].textColor = theme['section_fg']
+    _HB, _HF, _BB = theme['header_bg'], theme['header_fg'], theme['band_bg']
     school_disp = get_full_school_name(exam)
     lang = get_report_language(exam)
     etype = exam.get_exam_type_display().upper()
@@ -723,7 +782,7 @@ def generate_results_pdf_response(exam):
 
     cw_div = [content_w * w for w in [0.12, 0.176, 0.176, 0.176, 0.176, 0.176]]
     div_table = Table(div_data, colWidths=cw_div)
-    ds = _std_table_style(len(div_data))
+    ds = _std_table_style(len(div_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)
     ds.append(('ALIGN', (1, 0), (-1, -1), 'CENTER'))
     div_table.setStyle(TableStyle(ds))
     story.append(div_table)
@@ -742,7 +801,7 @@ def generate_results_pdf_response(exam):
         perf_data.append([_p(k, st['td']), _p(f"<b>{v}</b>", st['td_bold'])])
     cw_perf = [content_w * 0.55, content_w * 0.45]
     perf_table = Table(perf_data, colWidths=cw_perf)
-    perf_table.setStyle(TableStyle(_std_table_style(len(perf_data))))
+    perf_table.setStyle(TableStyle(_std_table_style(len(perf_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
 
     _, grades = _grading_thresholds(exam.form)
     gk_title = "GRADING KEY" if lang == 'en' else "UFUNGUO WA DARAJA"
@@ -768,7 +827,7 @@ def generate_results_pdf_response(exam):
     )
     gk_outer.setStyle(TableStyle([
         ('SPAN', (0, 0), (1, 0)),
-        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('BACKGROUND', (0, 0), (-1, 0), _HB),
     ]))
 
     side_data = [[perf_table, '', gk_outer]]
@@ -798,7 +857,7 @@ def generate_results_pdf_response(exam):
             ])
         cw_s = [content_w * 0.36] + [content_w * 0.16] * 4
         s_table = Table(s_data, colWidths=cw_s)
-        s_table.setStyle(TableStyle(_std_table_style(len(s_data))))
+        s_table.setStyle(TableStyle(_std_table_style(len(s_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
         story.append(s_table)
         story.append(Spacer(1, 4))
 
@@ -823,9 +882,9 @@ def generate_results_pdf_response(exam):
             ])
         cw_t5 = [content_w * w for w in [0.06, 0.30, 0.10, 0.10, 0.10, 0.10, 0.14]]
         t_table = Table(t_data, colWidths=cw_t5)
-        ts = _std_table_style(len(t_data))
-        ts.append(('BACKGROUND', (0, 1), (-1, 1), GOLD))
-        ts.append(('TEXTCOLOR', (0, 1), (-1, 1), WHITE))
+        ts = _std_table_style(len(t_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)
+        ts.append(('BACKGROUND', (0, 1), (-1, 1), theme['accent_bg']))
+        ts.append(('TEXTCOLOR', (0, 1), (-1, 1), theme['accent_fg']))
         t_table.setStyle(TableStyle(ts))
         story.append(t_table)
 
@@ -954,7 +1013,7 @@ def generate_results_pdf_response(exam):
     tail_flowables.append(_p("<b>EXAMINATION CENTRE OVERALL PERFORMANCE</b>", st['section']))
     div_perf_hdrs = ["", "REGIST", "ABSENT", "SAT", "CLEAN", "DIV I", "DIV II", "DIV III", "DIV IV", "DIV 0"]
     absent_count = sum(1 for r in results if r.total_score == 0)
-    dp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('dph', parent=cell_st, fontSize=6, textColor=WHITE, fontName='Helvetica-Bold')) for h in div_perf_hdrs]]
+    dp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('dph', parent=cell_st, fontSize=6, textColor=_HF, fontName='Helvetica-Bold')) for h in div_perf_hdrs]]
     dp_row = [_p("<b>TOTAL</b>", ParagraphStyle('dpt', parent=cell_st, fontSize=6, fontName='Helvetica-Bold'))]
     dp_row += [
         _p(str(N), cell_st), _p(str(absent_count), cell_st),
@@ -967,8 +1026,8 @@ def generate_results_pdf_response(exam):
     cw_dp = [content_w / len(div_perf_hdrs)] * len(div_perf_hdrs)
     dp_table = Table(dp_data, colWidths=cw_dp)
     dp_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('BACKGROUND', (0, 0), (-1, 0), _HB),
+        ('TEXTCOLOR', (0, 0), (-1, 0), _HF),
         ('GRID', (0, 0), (-1, -1), 0.3, LGRAY),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('TOPPADDING', (0, 0), (-1, -1), 3),
@@ -983,7 +1042,7 @@ def generate_results_pdf_response(exam):
     if subj_gpa:
         tail_flowables.append(_p("<b>SUBJECT PERFORMANCE</b>", st['section']))
         sp_hdrs = ["#", "SUBJECT", "SAT", "PASS", "GPA", "LEVEL"]
-        sp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('sph', parent=cell_st, fontSize=6, textColor=WHITE, fontName='Helvetica-Bold')) for h in sp_hdrs]]
+        sp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('sph', parent=cell_st, fontSize=6, textColor=_HF, fontName='Helvetica-Bold')) for h in sp_hdrs]]
         for idx, sg in enumerate(subj_gpa, 1):
             level_key = sg['level'].split(' (')[0] if sg['level'] else ''
             fg, bg = LEVEL_COLORS.get(level_key, ('#555555', '#E8E8E8'))
@@ -1000,7 +1059,7 @@ def generate_results_pdf_response(exam):
             ])
         cw_sp = [content_w * w for w in [0.04, 0.22, 0.08, 0.08, 0.12, 0.46]]
         sp_table = Table(sp_data, colWidths=cw_sp)
-        sp_table.setStyle(TableStyle(_std_table_style(len(sp_data))))
+        sp_table.setStyle(TableStyle(_std_table_style(len(sp_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
         tail_flowables.append(sp_table)
         tail_flowables.append(Spacer(1, 6))
 
@@ -1073,8 +1132,8 @@ def generate_results_pdf_response(exam):
 
             r_table = Table(data, colWidths=cw)
             rs = [
-                ('BACKGROUND', (0, 0), (-1, 0), NAVY),
-                ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+                ('BACKGROUND', (0, 0), (-1, 0), _HB),
+                ('TEXTCOLOR', (0, 0), (-1, 0), _HF),
                 ('GRID', (0, 0), (-1, -1), 0.3, DARK_LINE),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('TOPPADDING', (0, 0), (-1, -1), 2),
@@ -1084,7 +1143,7 @@ def generate_results_pdf_response(exam):
             ]
             for i in range(1, len(data)):
                 if i % 2 == 0:
-                    rs.append(('BACKGROUND', (0, i), (-1, i), CREAM))
+                    rs.append(('BACKGROUND', (0, i), (-1, i), _BB))
             r_table.setStyle(TableStyle(rs))
             story.append(r_table)
 
@@ -1111,6 +1170,7 @@ def generate_results_pdf_response(exam):
     doc._exam = exam
     doc._gen_date_short = gen_date_short
     doc._content_w = content_w
+    doc._page_bg = theme['page_bg']
 
     # NumberedCanvas draws "Page X of Y" + signature after all pages are laid
     # out, once the true total page count is known — no second build needed.
