@@ -306,14 +306,21 @@
 
 <!-- File Queue -->
 <div class="file-queue" id="fileQueue" style="display:none;">
-  <div class="file-queue-title">📋 {% if LANG == 'sw' %}Faili Zilizopakiwa{% else %}Uploaded Files{% endif %}</div>
+  <div class="file-queue-title">📋 {% if LANG == 'sw' %}Faili za Kupakia{% else %}Files to upload{% endif %}</div>
+  <div style="font-size:0.76rem;color:#666;margin-bottom:0.5rem;">
+    {% if LANG == 'sw' %}
+    Unaweza kupakia <strong>somo moja au machache</strong> — si lazima masomo yote. Yatakayopakiwa ni yale yaliyo kwenye orodha hapa chini tu.
+    {% else %}
+    You can upload <strong>one subject or a few</strong> — you don't need all subjects. Only the ones listed below will be uploaded.
+    {% endif %}
+  </div>
   <div id="fileQueueList"></div>
   <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
     <button type="button" class="btn-final secondary" id="clearAllBtn" style="font-size:0.78rem;padding:0.4rem 1rem;">
       🗑 {% if LANG == 'sw' %}Futa Zote{% else %}Clear All{% endif %}
     </button>
     <button type="button" class="btn-final primary" id="uploadAllBtn" style="font-size:0.85rem;">
-      🚀 {% if LANG == 'sw' %}Pakia Masomo Yote{% else %}Upload All Subjects{% endif %}
+      🚀 {% if LANG == 'sw' %}Pakia Zilizopo{% else %}Upload These{% endif %}
     </button>
   </div>
 </div>
@@ -437,6 +444,16 @@
     }
   }
 
+  // The upload button acts on whatever is in the queue — one subject or
+  // several. It never needs all exam subjects.
+  function updateUploadBtn() {
+    const btn = document.getElementById('uploadAllBtn');
+    if (!btn) return;
+    const n = pendingUploads.length;
+    btn.disabled = n === 0;
+    btn.textContent = '🚀 ' + (LANG === 'sw' ? 'Pakia Zilizopo' : 'Upload These') + (n ? ' (' + n + ')' : '');
+  }
+
   function autoDetectSubject(filename) {
     const lower = filename.toLowerCase().replace(/[_\-\.]/g, ' ');
     // Try to match filename to a subject name
@@ -507,6 +524,7 @@
 
       list.appendChild(row);
     }
+    updateUploadBtn();
   }
 
   // Global removeFile
@@ -516,6 +534,7 @@
     pendingUploads = pendingUploads.filter(x => x.qid !== qid);
     const row = document.getElementById('file-' + qid);
     if (row) row.remove();
+    updateUploadBtn();
     if (!pendingUploads.length) document.getElementById('fileQueue').style.display = 'none';
   };
 
@@ -654,9 +673,11 @@
   const clearBtn = document.getElementById('clearAllBtn');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
+      pendingUploads.forEach(u => { if (u._previewUrl) URL.revokeObjectURL(u._previewUrl); });
       pendingUploads = [];
       document.getElementById('fileQueueList').innerHTML = '';
       document.getElementById('fileQueue').style.display = 'none';
+      updateUploadBtn();
     });
   }
 
@@ -747,7 +768,7 @@
               completed++;
               if (completed >= tasks.length) {
                 uploadAllBtn.disabled = false;
-                uploadAllBtn.textContent = '🚀 ' + (LANG === 'sw' ? 'Pakia Masomo Yote' : 'Upload All Subjects');
+                updateUploadBtn();
                 toast(LANG === 'sw'
                   ? '✅ Masomo ' + tasks.length + ' yamekamilika!'
                   : '✅ ' + tasks.length + ' subjects uploaded!');
@@ -757,7 +778,7 @@
         }
       } catch (err) {
         uploadAllBtn.disabled = false;
-        uploadAllBtn.textContent = '🚀 ' + (LANG === 'sw' ? 'Pakia Masomo Yote' : 'Upload All Subjects');
+        updateUploadBtn();
         toast(err.message, true);
       }
     });
