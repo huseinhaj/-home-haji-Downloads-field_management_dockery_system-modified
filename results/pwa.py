@@ -94,73 +94,63 @@ def pwa_manifest(request):
 
 def pwa_service_worker(request):
     """Serve the Service Worker for offline caching & PWA install."""
-    sw_code = '''const CACHE_NAME = "school-results-v3";
-const STATIC_ASSETS = [
-  "/static/results/img/srs-icon-192.png",
-  "/static/results/img/srs-icon-512.png",
-  "/static/results/img/srs-icon.svg",
-];
+    sw_code = '''const CACHE_NAME = "school-results-v4";
 
-// Never cache these — always go to the network so a new deploy is picked
-// up immediately (stale copies of these were serving an old scanner
-// build and breaking the PDF step).
-const NO_CACHE = [/\\/static\\/results\\/js\\//, /\\/static\\/results\\/vendor\\//,
-                  /\\/shule\\/.*marks/, /bulk-upload/, /scoresheet/];
-
-// ── Install: cache static assets ──
+// ── Install ──
 self.addEventListener("install", function(event) {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(STATIC_ASSETS);
-    })
-  );
   self.skipWaiting();
 });
 
-// ── Activate: clean old caches ──
+// ── Activate: wipe every old cache, take control now ──
 self.addEventListener("activate", function(event) {
   event.waitUntil(
-    caches.keys().then(function(keys) {
-      return Promise.all(
-        keys.filter(function(k) { return k !== CACHE_NAME; })
-            .map(function(k) { return caches.delete(k); })
-      );
-    })
+    caches.keys()
+      .then(function(keys) { return Promise.all(keys.map(function(k) { return caches.delete(k); })); })
+      .then(function() { return self.clients.claim(); })
   );
-  self.clients.claim();
 });
 
-// ── Fetch: network-first, fallback to cache ──
+// ── Fetch ──
+// HTML pages (navigations): NETWORK-ONLY. Never serve a cached page — a
+// stale HTML kept pointing at an old hashed script and shipped an old
+// scanner build. Only if the network is truly unreachable do we show a
+// minimal offline notice.
+// Everything else (images, css, fonts): network-first with a cache
+// fallback, so the app still opens offline but a new deploy always wins
+// while online.
 self.addEventListener("fetch", function(event) {
-  if (event.request.method !== "GET") return;
-  if (!event.request.url.startsWith("http")) return;
+  var req = event.request;
+  if (req.method !== "GET" || !req.url.startsWith("http")) return;
 
-  var url = event.request.url;
-  var noCache = NO_CACHE.some(function(re) { return re.test(url); });
+  var isNavigation = req.mode === "navigate" ||
+    (req.headers.get("accept") || "").indexOf("text/html") !== -1;
 
-  if (noCache) {
-    // Network-only: no cache write, no stale fallback. Guarantees the
-    // latest scanner JS / vendored libs and marks pages after a deploy.
-    event.respondWith(fetch(event.request));
+  if (isNavigation) {
+    event.respondWith(
+      fetch(req).catch(function() {
+        return new Response(
+          "<meta charset=utf-8><meta name=viewport content='width=device-width'>" +
+          "<body style='font-family:sans-serif;padding:2rem;text-align:center;color:#333'>" +
+          "<h3>Huna mtandao</h3><p>Tafadhali angalia intaneti kisha jaribu tena.</p>",
+          { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 503 }
+        );
+      })
+    );
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
-      .then(function(response) {
-        if (response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(event.request, clone);
-          });
-        }
-        return response;
-      })
-      .catch(function() {
-        return caches.match(event.request).then(function(cached) {
-          return cached || new Response("Offline", { status: 503 });
-        });
-      })
+    fetch(req).then(function(response) {
+      if (response && response.status === 200 && response.type === "basic") {
+        var clone = response.clone();
+        caches.open(CACHE_NAME).then(function(cache) { cache.put(req, clone); });
+      }
+      return response;
+    }).catch(function() {
+      return caches.match(req).then(function(cached) {
+        return cached || new Response("", { status: 504 });
+      });
+    })
   );
 });
 '''

@@ -8,9 +8,23 @@
 
   // ── Register Service Worker (scoped to /shule/) ──
   if ('serviceWorker' in navigator) {
+    // If this page is already controlled by a SW, a later controller
+    // change means a NEW service worker just took over — reload once so
+    // the fresh HTML (and its up-to-date hashed scripts) is used. This
+    // auto-recovers phones stuck on an old cached build.
+    var _reloadedForSW = false;
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (_reloadedForSW) return;
+        _reloadedForSW = true;
+        window.location.reload();
+      });
+    }
+
     navigator.serviceWorker.register('/shule/sw.js', { scope: '/shule/' })
       .then(function(reg) {
         console.log('[PWA] ✅ SW registered: ', reg.scope);
+        reg.update();
       })
       .catch(function(err) {
         console.warn('[PWA] ❌ SW registration failed: ', err);
