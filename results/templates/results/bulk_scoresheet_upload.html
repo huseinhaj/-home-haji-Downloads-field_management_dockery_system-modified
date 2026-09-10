@@ -407,6 +407,10 @@
 {% endblock %}
 
 {% block scripts %}
+{# The style picker only affects the "Generate Results PDF" link (the
+   final results output). The scan/upload widget is untouched. #}
+<script>window.PDF_PICKER_LANG = '{{ LANG }}';</script>
+<script src="{% static 'results/js/pdf_style_picker.js' %}"></script>
 <script src="{% static 'results/js/scoresheet_scanner.js' %}"></script>
 <script>
 (() => {
