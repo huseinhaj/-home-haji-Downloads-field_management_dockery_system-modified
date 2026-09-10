@@ -27,6 +27,8 @@ ALLOWED_HOSTS = [
     'home-haji-downloads-fieldmanagementdockerysy-production.up.railway.app',
     'internshipmanagementsystem.online',
     'www.internshipmanagementsystem.online',
+    'studentschoolresultsystem.online',
+    'www.studentschoolresultsystem.online',
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -35,6 +37,8 @@ CSRF_TRUSTED_ORIGINS = [
     'https://home-haji-downloads-fieldmanagementdockerysy-production.up.railway.app',
     'https://internshipmanagementsystem.online',
     'https://www.internshipmanagementsystem.online',
+    'https://studentschoolresultsystem.online',
+    'https://www.studentschoolresultsystem.online',
     'http://localhost',
     'http://localhost:8000',
     'http://127.0.0.1',
@@ -92,6 +96,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'field_management.middleware.ResultsDomainRedirectMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.gzip.GZipMiddleware',          # Compress responses - punguza bandwidth 70%
     'django.contrib.sessions.middleware.SessionMiddleware',
