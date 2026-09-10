@@ -524,7 +524,6 @@
         lang: LANG,
         filename: 'scan',
         jspdfUrl: "{% static 'results/vendor/jspdf.umd.min.js' %}",
-        opencvUrl: "{% static 'results/vendor/opencv.js' %}",
         onComplete: (file) => {
           addFilesToQueue([file]);
           toast(LANG === 'sw'
