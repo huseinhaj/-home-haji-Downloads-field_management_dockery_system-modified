@@ -293,8 +293,9 @@
       '.ssc-x{background:none;border:none;color:#fff;font-size:1.5rem;line-height:1;padding:2px 6px;cursor:pointer;}' +
       '.ssc-body{padding:14px 16px;overflow-y:auto;flex:1;}' +
       '.ssc-hint{font-size:0.86rem;line-height:1.5;color:#333;margin-bottom:12px;}' +
-      '.ssc-cap{position:relative;display:block;width:100%;border:none;border-radius:6px;padding:15px;font-size:1rem;font-weight:700;background:#24508a;color:#fff;text-align:center;cursor:pointer;overflow:hidden;-webkit-tap-highlight-color:rgba(0,0,0,0.15);}' +
-      '.ssc-cap input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:0;cursor:pointer;}' +
+      '.ssc-cap{position:relative;display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;box-sizing:border-box;border:none;border-radius:6px;padding:15px;font-size:1rem;font-weight:700;background:#24508a;color:#fff;text-align:center;cursor:pointer;overflow:hidden;-webkit-tap-highlight-color:rgba(0,0,0,0.15);}' +
+      '.ssc-cap input[type=file]{position:absolute;top:0;left:0;width:100%;height:100%;margin:0;padding:0;opacity:0;font-size:0;cursor:pointer;z-index:2;}' +
+      '.ssc-cap .ssc-cap-t{position:relative;z-index:1;pointer-events:none;}' +
       '.ssc-cap.is-busy{opacity:0.5;pointer-events:none;}' +
       '.ssc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px;margin-top:14px;}' +
       '.ssc-empty{margin-top:14px;font-size:0.82rem;color:#888;text-align:center;padding:18px 8px;border:1px dashed #ccc;border-radius:6px;}' +
@@ -562,12 +563,26 @@
     var capBtn = overlay.querySelector('.ssc-cap');          // the <label>
     var capText = overlay.querySelector('.ssc-cap-t');       // its text span
     var fileInput = overlay.querySelector('.ssc-cap input'); // real, tap-through
+    var capBusyTimer = null;
 
-    // Keep a helper so "capBtn.disabled = true/false" style code still works
-    // via a class + the input's own disabled flag (a <label> has no disabled).
+    // A <label> has no "disabled"; use a class for the visual/blocking
+    // state. Auto-clears after 45s so the button can never latch stuck.
     function setCapBusy(busy) {
       capBtn.classList.toggle('is-busy', !!busy);
-      fileInput.disabled = !!busy;
+      if (capBusyTimer) { clearTimeout(capBusyTimer); capBusyTimer = null; }
+      if (busy) capBusyTimer = setTimeout(function () { capBtn.classList.remove('is-busy'); }, 45000);
+    }
+
+    // Swap the file input for a fresh clone after every pick. Some mobile
+    // browsers will not re-open the camera for a second tap on the same
+    // <input> element even after value='' — a pristine node always works.
+    function armInput() {
+      var fresh = fileInput.cloneNode(false);
+      fresh.value = '';
+      fresh.disabled = false;
+      fileInput.parentNode.replaceChild(fresh, fileInput);
+      fileInput = fresh;
+      fileInput.addEventListener('change', onPick);
     }
     var grid = overlay.querySelector('.ssc-grid');
     var emptyEl = overlay.querySelector('.ssc-empty');
@@ -624,17 +639,16 @@
 
     // The real <input> sits transparently on top of the label, so the
     // user's tap opens the camera natively — no programmatic .click(),
-    // which several mobile browsers ignore on a hidden input.
-    fileInput.addEventListener('change', function () {
-      var file = fileInput.files && fileInput.files[0];
-      fileInput.value = '';
-      if (!file) return;
+    // which several mobile browsers ignore on a hidden input. After each
+    // pick the input is swapped for a fresh clone (see armInput).
+    function onPick() {
+      var file = this.files && this.files[0];
+      if (!file) { armInput(); return; }
       setCapBusy(true);
       busyEl.hidden = false;
       busyEl.textContent = t.processing;
 
       cvReady.then(function (cv) { return cv; }, function () {
-        // engine failed — tell the user once, keep going without it
         if (!open._warnedCv) { open._warnedCv = true; alert(t.cvFailed); }
         return null;
       }).then(function (cv) {
@@ -645,13 +659,17 @@
         showMain();
         if (page) { lastBw = !!page.bw; pages.push(page); }
         redraw();
+        armInput();
       }).catch(function (err) {
         setCapBusy(false);
         busyEl.hidden = true;
         showMain();
+        redraw();
+        armInput();
         alert(t.imgError + '\n\n' + (err && err.message ? err.message : err));
       });
-    });
+    }
+    fileInput.addEventListener('change', onPick);
 
     cancelBtn.addEventListener('click', close);
     closeX.addEventListener('click', close);
