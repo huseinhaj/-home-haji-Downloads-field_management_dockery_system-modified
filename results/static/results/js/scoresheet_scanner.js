@@ -293,8 +293,9 @@
       '.ssc-x{background:none;border:none;color:#fff;font-size:1.5rem;line-height:1;padding:2px 6px;cursor:pointer;}' +
       '.ssc-body{padding:14px 16px;overflow-y:auto;flex:1;}' +
       '.ssc-hint{font-size:0.86rem;line-height:1.5;color:#333;margin-bottom:12px;}' +
-      '.ssc-cap{display:block;width:100%;border:none;border-radius:6px;padding:15px;font-size:1rem;font-weight:700;background:#24508a;color:#fff;cursor:pointer;}' +
-      '.ssc-cap[disabled]{opacity:0.5;}' +
+      '.ssc-cap{position:relative;display:block;width:100%;border:none;border-radius:6px;padding:15px;font-size:1rem;font-weight:700;background:#24508a;color:#fff;text-align:center;cursor:pointer;overflow:hidden;-webkit-tap-highlight-color:rgba(0,0,0,0.15);}' +
+      '.ssc-cap input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:0;cursor:pointer;}' +
+      '.ssc-cap.is-busy{opacity:0.5;pointer-events:none;}' +
       '.ssc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px;margin-top:14px;}' +
       '.ssc-empty{margin-top:14px;font-size:0.82rem;color:#888;text-align:center;padding:18px 8px;border:1px dashed #ccc;border-radius:6px;}' +
       '.ssc-thumb{position:relative;border:1px solid #d5dbe0;border-radius:6px;overflow:hidden;background:#f4f6f8;aspect-ratio:3/4;}' +
@@ -540,7 +541,8 @@
         '<div class="ssc-body">' +
           '<div class="ssc-main">' +
             '<p class="ssc-hint">' + t.hint + '</p>' +
-            '<button type="button" class="ssc-cap">' + t.capture + '</button>' +
+            '<label class="ssc-cap"><span class="ssc-cap-t">' + t.capture + '</span>' +
+              '<input type="file" accept="image/*" capture="environment"></label>' +
             '<div class="ssc-empty">' + t.empty + '</div>' +
             '<div class="ssc-grid" hidden></div>' +
             '<div class="ssc-busy" hidden></div>' +
@@ -555,16 +557,18 @@
       '</div>';
     document.body.appendChild(overlay);
 
-    var fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.setAttribute('capture', 'environment');
-    fileInput.style.display = 'none';
-    overlay.appendChild(fileInput);
-
     var mainSec = overlay.querySelector('.ssc-main');
     var editSec = overlay.querySelector('.ssc-edit');
-    var capBtn = overlay.querySelector('.ssc-cap');
+    var capBtn = overlay.querySelector('.ssc-cap');          // the <label>
+    var capText = overlay.querySelector('.ssc-cap-t');       // its text span
+    var fileInput = overlay.querySelector('.ssc-cap input'); // real, tap-through
+
+    // Keep a helper so "capBtn.disabled = true/false" style code still works
+    // via a class + the input's own disabled flag (a <label> has no disabled).
+    function setCapBusy(busy) {
+      capBtn.classList.toggle('is-busy', !!busy);
+      fileInput.disabled = !!busy;
+    }
     var grid = overlay.querySelector('.ssc-grid');
     var emptyEl = overlay.querySelector('.ssc-empty');
     var busyEl = mainSec.querySelector('.ssc-busy');
@@ -604,7 +608,7 @@
       countEl.textContent = t.pagesLabel + ': ' + pages.length;
       doneBtn.disabled = !has;
       doneBtn.textContent = t.finish + (has ? ' (' + pages.length + ')' : '');
-      capBtn.textContent = has ? t.addMore : t.capture;
+      capText.textContent = has ? t.addMore : t.capture;
     }
 
     function showMain() { editSec.hidden = true; editSec.innerHTML = ''; mainSec.hidden = false; }
@@ -618,13 +622,14 @@
       requestAnimationFrame(function () { afterMount(); });
     };
 
-    capBtn.addEventListener('click', function () { fileInput.click(); });
-
+    // The real <input> sits transparently on top of the label, so the
+    // user's tap opens the camera natively — no programmatic .click(),
+    // which several mobile browsers ignore on a hidden input.
     fileInput.addEventListener('change', function () {
       var file = fileInput.files && fileInput.files[0];
       fileInput.value = '';
       if (!file) return;
-      capBtn.disabled = true;
+      setCapBusy(true);
       busyEl.hidden = false;
       busyEl.textContent = t.processing;
 
@@ -636,12 +641,12 @@
         busyEl.hidden = true;
         return editPage(cv, file, t, lastBw);
       }).then(function (page) {
-        capBtn.disabled = false;
+        setCapBusy(false);
         showMain();
         if (page) { lastBw = !!page.bw; pages.push(page); }
         redraw();
       }).catch(function (err) {
-        capBtn.disabled = false;
+        setCapBusy(false);
         busyEl.hidden = true;
         showMain();
         alert(t.imgError + '\n\n' + (err && err.message ? err.message : err));
@@ -655,7 +660,7 @@
       if (!pages.length) { alert(t.needPage); return; }
       busyEl.hidden = false;
       busyEl.textContent = t.building;
-      capBtn.disabled = true;
+      setCapBusy(true);
       doneBtn.disabled = true;
       cancelBtn.disabled = true;
       loadJsPDF(jspdfUrl).then(function (jsPDF) {
@@ -665,7 +670,7 @@
         onComplete(f);
       }).catch(function (err) {
         busyEl.hidden = true;
-        capBtn.disabled = false;
+        setCapBusy(false);
         doneBtn.disabled = false;
         cancelBtn.disabled = false;
         alert(t.pdfError + '\n\n' + (err && err.message ? err.message : err));
