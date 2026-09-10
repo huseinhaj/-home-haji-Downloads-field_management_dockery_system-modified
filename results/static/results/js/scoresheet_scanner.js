@@ -307,10 +307,9 @@
       '.ssc-body{padding:14px 16px;overflow-y:auto;flex:1;}' +
       '.ssc-hint{font-size:0.86rem;line-height:1.5;color:#333;margin:0 0 12px;}' +
       '.ssc-toggle{display:flex;align-items:center;gap:7px;font-size:0.86rem;color:#333;margin:0 0 12px;}' +
-      '.ssc-cap{position:relative;display:flex;align-items:center;justify-content:center;width:100%;min-height:56px;box-sizing:border-box;border:none;border-radius:6px;padding:15px;font-size:1rem;font-weight:700;background:#24508a;color:#fff;text-align:center;cursor:pointer;overflow:hidden;-webkit-tap-highlight-color:rgba(0,0,0,0.15);}' +
-      '.ssc-cap input[type=file]{position:absolute;top:0;left:0;width:100%;height:100%;margin:0;padding:0;opacity:0;font-size:0;cursor:pointer;z-index:2;}' +
-      '.ssc-cap .ssc-cap-t{position:relative;z-index:1;pointer-events:none;}' +
+      '.ssc-cap{display:block;width:100%;min-height:56px;box-sizing:border-box;border:none;border-radius:6px;padding:15px;font-size:1rem;font-weight:700;background:#24508a;color:#fff;text-align:center;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0.15);}' +
       '.ssc-cap.is-busy{opacity:0.5;pointer-events:none;}' +
+      '.ssc-file{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}' +
       '.ssc-note{font-size:0.8rem;color:#24508a;font-weight:700;margin:10px 0 0;text-align:center;}' +
       '.ssc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px;margin-top:14px;}' +
       '.ssc-empty{margin-top:14px;font-size:0.82rem;color:#888;text-align:center;padding:18px 8px;border:1px dashed #ccc;border-radius:6px;}' +
@@ -365,8 +364,8 @@
         '<div class="ssc-body">' +
           '<p class="ssc-hint">' + t.hint + '</p>' +
           '<label class="ssc-toggle"><input type="checkbox" class="ssc-bw"> ' + t.bw + '</label>' +
-          '<label class="ssc-cap"><span class="ssc-cap-t">' + t.capture + '</span>' +
-            '<input type="file" accept="image/*" capture="environment"></label>' +
+          '<button type="button" class="ssc-cap"><span class="ssc-cap-t">' + t.capture + '</span></button>' +
+          '<input type="file" class="ssc-file" accept="image/*" capture="environment">' +
           '<div class="ssc-note" hidden></div>' +
           '<div class="ssc-busy" hidden></div>' +
           '<div class="ssc-empty">' + t.empty + '</div>' +
@@ -382,7 +381,7 @@
 
     var capBtn = overlay.querySelector('.ssc-cap');
     var capText = overlay.querySelector('.ssc-cap-t');
-    var fileInput = overlay.querySelector('.ssc-cap input');
+    var fileInput = overlay.querySelector('.ssc-file');
     var bwCb = overlay.querySelector('.ssc-bw');
     var noteEl = overlay.querySelector('.ssc-note');
     var busyEl = overlay.querySelector('.ssc-busy');
@@ -468,6 +467,14 @@
       });
     }
     fileInput.addEventListener('change', onPick);
+
+    // The input is visually hidden (clipped, not display:none) but still
+    // rendered, so a programmatic click inside this user gesture opens
+    // the camera on every mobile browser.
+    capBtn.addEventListener('click', function () {
+      if (capBtn.classList.contains('is-busy')) return;
+      try { fileInput.click(); } catch (e) {}
+    });
 
     cancelBtn.addEventListener('click', close);
     closeX.addEventListener('click', close);
