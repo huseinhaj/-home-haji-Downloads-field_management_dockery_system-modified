@@ -278,15 +278,28 @@
   <input type="file" id="bulkFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple style="display:none;">
 </div>
 
-<div style="text-align:center;margin:-0.4rem 0 1rem;">
-  <button type="button" id="bulkScanBtn" class="btn-final primary" style="font-size:0.85rem;">
-    🖨️ {% if LANG == 'sw' %}Scan Scoresheet kwa Kamera (kurasa nyingi){% else %}Scan Scoresheet with Camera (multi-page){% endif %}
-  </button>
-  <div style="font-size:0.76rem;color:#666;margin-top:0.35rem;">
+<div style="background:#fffbf0;border:2px dashed #D9A441;border-radius:4px;padding:1rem;margin:-0.4rem 0 1.2rem;">
+  <div style="font-weight:800;color:#1F7A3D;font-size:0.9rem;margin-bottom:0.55rem;">
+    ➕ {% if LANG == 'sw' %}Ongeza scoresheet ya somo moja{% else %}Add one subject's scoresheet{% endif %}
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <select id="addSubjectSel" style="font-size:0.82rem;padding:0.45rem 0.6rem;border:1.5px solid #ced4da;border-radius:2px;font-weight:700;color:#1F7A3D;min-width:170px;">
+      <option value="">— {% if LANG == 'sw' %}Chagua somo{% else %}Select subject{% endif %} —</option>
+      {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+    </select>
+    <button type="button" id="addScanBtn" class="btn-final primary" style="font-size:0.82rem;padding:0.45rem 1rem;">
+      📷 {% if LANG == 'sw' %}Scan kwa Kamera{% else %}Scan with camera{% endif %}
+    </button>
+    <button type="button" id="addGalleryBtn" class="btn-final secondary" style="font-size:0.82rem;padding:0.45rem 1rem;">
+      🖼️ {% if LANG == 'sw' %}Chagua kutoka Galari{% else %}Choose from gallery{% endif %}
+    </button>
+    <input type="file" id="addGalleryInput" accept="image/*,application/pdf,.pdf" multiple style="display:none;">
+  </div>
+  <div style="font-size:0.75rem;color:#666;margin-top:0.5rem;">
     {% if LANG == 'sw' %}
-    Fungua kamera, piga kurasa zote za somo moja, mfumo unaziunganisha kuwa PDF moja — kisha chagua somo lake.
+    Chagua <strong>somo</strong> kwanza, kisha <strong>Scan</strong> (kurasa nyingi kwa kamera) au <strong>chagua picha/PDF kutoka galari</strong>. Faili litawekwa kwa somo hilo moja kwa moja, na unaweza kuliangalia kabla ya kupakia.
     {% else %}
-    Open the camera, capture every page of one subject's scoresheet, and the system combines them into a single PDF — then pick its subject.
+    Pick a <strong>subject</strong> first, then <strong>Scan</strong> (multi-page with the camera) or <strong>choose photos/PDF from the gallery</strong>. The file is attached to that subject automatically and you can preview it before uploading.
     {% endif %}
   </div>
 </div>
@@ -462,9 +475,17 @@
             {% for s in subjects %}<option value="{{ s.id }}" ${subjectId == {{ s.id }} ? 'selected' : ''}>{{ s.name }}</option>{% endfor %}
           </select>
         </div>
+        <button type="button" class="btn-final secondary file-preview-btn" data-qid="${qid}" style="font-size:0.72rem;padding:0.3rem 0.7rem;">
+          👁️ ${LANG === 'sw' ? 'Angalia' : 'Preview'}
+        </button>
         <span class="file-status" id="fstatus-${qid}"></span>
         <button type="button" class="file-remove" onclick="removeFile(${qid})">✕</button>
+        <div class="file-preview" id="fpreview-${qid}" style="display:none;flex-basis:100%;margin-top:0.5rem;"></div>
       `;
+
+      // Preview toggle — closable, client-side only
+      const pvBtn = row.querySelector('.file-preview-btn');
+      pvBtn.addEventListener('click', () => togglePreview(qid));
 
       // Subject change handler
       const sel = row.querySelector('select');
@@ -490,11 +511,43 @@
 
   // Global removeFile
   window.removeFile = function(qid) {
-    pendingUploads = pendingUploads.filter(u => u.qid !== qid);
+    const u = pendingUploads.find(x => x.qid === qid);
+    if (u && u._previewUrl) { URL.revokeObjectURL(u._previewUrl); u._previewUrl = null; }
+    pendingUploads = pendingUploads.filter(x => x.qid !== qid);
     const row = document.getElementById('file-' + qid);
     if (row) row.remove();
     if (!pendingUploads.length) document.getElementById('fileQueue').style.display = 'none';
   };
+
+  // Per-file preview — opens the picked photo / PDF inline so the
+  // academic officer can check it before uploading. Fully closable so it
+  // doesn't clutter the page.
+  function togglePreview(qid) {
+    const u = pendingUploads.find(x => x.qid === qid);
+    const box = document.getElementById('fpreview-' + qid);
+    if (!u || !box) return;
+    if (box.style.display !== 'none') {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      if (u._previewUrl) { URL.revokeObjectURL(u._previewUrl); u._previewUrl = null; }
+      return;
+    }
+    u._previewUrl = URL.createObjectURL(u.file);
+    const isPdf = (u.file.type || '').includes('pdf') || /\.pdf$/i.test(u.file.name);
+    box.innerHTML =
+      '<div style="border:1px solid #ccc;border-radius:4px;overflow:hidden;background:#fff;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0.6rem;background:#f2f4f7;font-size:0.75rem;font-weight:700;color:#333;">' +
+          '<span>' + (u.file.name || 'preview') + '</span>' +
+          '<button type="button" class="btn-final secondary" style="font-size:0.7rem;padding:0.2rem 0.6rem;" onclick="togglePreview(' + qid + ')">✕ ' +
+            (LANG === 'sw' ? 'Funga' : 'Close') + '</button>' +
+        '</div>' +
+        (isPdf
+          ? '<iframe src="' + u._previewUrl + '" style="width:100%;height:60vh;border:0;display:block;"></iframe>'
+          : '<img src="' + u._previewUrl + '" style="max-width:100%;max-height:60vh;display:block;margin:0 auto;">') +
+      '</div>';
+    box.style.display = '';
+  }
+  window.togglePreview = togglePreview;
 
   // Upload zone click
   const zone = document.getElementById('uploadZone');
@@ -514,26 +567,87 @@
     });
   }
 
-  // Multi-page in-app scanner — capture each page of one subject's
-  // scoresheet with the camera; the widget stitches them into a single
-  // PDF and drops it into the same queue as an uploaded PDF.
-  const scanBtn = document.getElementById('bulkScanBtn');
-  if (scanBtn && window.ScoresheetScanner) {
-    scanBtn.addEventListener('click', () => {
+  // ── Per-subject add: pick the subject, then Scan (camera) or Gallery ──
+  const JSPDF_URL = "{% static 'results/vendor/jspdf.umd.min.js' %}";
+  const addSubjectSel = document.getElementById('addSubjectSel');
+  const addScanBtn = document.getElementById('addScanBtn');
+  const addGalleryBtn = document.getElementById('addGalleryBtn');
+  const addGalleryInput = document.getElementById('addGalleryInput');
+
+  function pickedSubject() {
+    const id = addSubjectSel ? addSubjectSel.value : '';
+    if (!id) {
+      toast(LANG === 'sw' ? 'Chagua somo kwanza.' : 'Pick a subject first.', true);
+      return null;
+    }
+    if (pendingUploads.some(u => String(u.subjectId) === String(id))) {
+      toast(LANG === 'sw'
+        ? 'Somo hili tayari lina faili kwenye foleni — liondoe kwanza kama unataka kubadilisha.'
+        : 'This subject already has a file queued — remove it first to replace.', true);
+      return null;
+    }
+    return { id: id, name: addSubjectSel.options[addSubjectSel.selectedIndex].text };
+  }
+
+  function attachForSubject(file, subj) {
+    addFilesToQueue([file]);
+    const u = pendingUploads[pendingUploads.length - 1];
+    if (u) {
+      u.subjectId = subj.id;
+      u.subjectName = subj.name;
+      const row = document.getElementById('file-' + u.qid);
+      const sel = row && row.querySelector('select');
+      if (sel) sel.value = subj.id;
+    }
+    if (addSubjectSel) addSubjectSel.value = '';
+    toast((LANG === 'sw' ? '✅ Imewekwa kwa somo: ' : '✅ Attached to subject: ') + subj.name);
+  }
+
+  if (addScanBtn && window.ScoresheetScanner) {
+    addScanBtn.addEventListener('click', () => {
+      const subj = pickedSubject();
+      if (!subj) return;
       window.ScoresheetScanner.open({
         lang: LANG,
-        filename: 'scan',
-        jspdfUrl: "{% static 'results/vendor/jspdf.umd.min.js' %}",
-        onComplete: (file) => {
-          addFilesToQueue([file]);
-          toast(LANG === 'sw'
-            ? 'Kurasa zimeunganishwa kuwa PDF moja. Sasa chagua somo lake kwenye orodha hapa chini.'
-            : 'Pages combined into one PDF. Now pick its subject in the list below.');
-        },
+        filename: subj.name.replace(/\s+/g, '_'),
+        jspdfUrl: JSPDF_URL,
+        onComplete: (file) => attachForSubject(file, subj),
       });
     });
-  } else if (scanBtn) {
-    scanBtn.style.display = 'none';
+  } else if (addScanBtn) {
+    addScanBtn.disabled = true;
+  }
+
+  if (addGalleryBtn && addGalleryInput) {
+    addGalleryBtn.addEventListener('click', () => {
+      if (!pickedSubject()) return;
+      addGalleryInput.click();
+    });
+    addGalleryInput.addEventListener('change', async () => {
+      const subj = pickedSubject();
+      const files = Array.from(addGalleryInput.files || []);
+      addGalleryInput.value = '';
+      if (!subj || !files.length) return;
+
+      const images = files.filter(f => (f.type || '').startsWith('image/') || /\.(png|jpe?g|webp|heic)$/i.test(f.name));
+      if (files.length === 1) {
+        attachForSubject(files[0], subj);           // one photo or one PDF — use as-is
+      } else if (images.length === files.length && window.ScoresheetScanner && window.ScoresheetScanner.bundleImages) {
+        addGalleryBtn.disabled = true;
+        try {
+          const pdf = await window.ScoresheetScanner.bundleImages(files, { jspdfUrl: JSPDF_URL, filename: subj.name.replace(/\s+/g, '_') });
+          attachForSubject(pdf, subj);
+        } catch (e) {
+          toast(LANG === 'sw' ? 'Imeshindwa kuunganisha picha kuwa PDF.' : 'Could not combine the images.', true);
+        } finally {
+          addGalleryBtn.disabled = false;
+        }
+      } else {
+        toast(LANG === 'sw'
+          ? 'Chagua PDF moja, au picha za somo moja tu (zitaunganishwa kuwa PDF).'
+          : 'Choose a single PDF, or only images for one subject (they will be combined into a PDF).', true);
+      }
+    });
   }
 
   // Clear all
@@ -590,7 +704,10 @@
           body: fd,
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Upload failed');
+        if (!res.ok) {
+          throw new Error(data.error
+            || ((LANG === 'sw' ? 'Upload imeshindwa' : 'Upload failed') + ' (HTTP ' + res.status + ')'));
+        }
 
         const tasks = data.tasks || [];
         let completed = 0;

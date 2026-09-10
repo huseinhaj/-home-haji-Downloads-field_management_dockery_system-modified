@@ -348,5 +348,28 @@
     redraw();
   }
 
-  window.ScoresheetScanner = { open: open, jspdfUrl: null, opencvUrl: null };
+  // Combine already-taken photos (e.g. picked from the gallery) into one
+  // PDF, same output as a scan. Images only — a PDF file should be used
+  // directly, not passed here.
+  function bundleImages(files, opts) {
+    opts = opts || {};
+    var S = window.ScoresheetScanner;
+    var jspdfUrl = opts.jspdfUrl || (S && S.jspdfUrl);
+    var baseName = (opts.filename || 'scoresheet').replace(/[^\w.-]+/g, '_');
+    var bw = !!opts.bw;
+    var arr = Array.prototype.slice.call(files || []);
+    if (!arr.length) return Promise.reject(new Error('no files'));
+    return arr.reduce(function (chain, f) {
+      return chain.then(function (pages) {
+        return processPage(f, bw).then(function (p) { pages.push(p); return pages; });
+      });
+    }, Promise.resolve([])).then(function (pages) {
+      return loadJsPDF(jspdfUrl).then(function (jsPDF) {
+        var blob = buildPdf(jsPDF, pages);
+        return new File([blob], baseName + '_' + Date.now() + '.pdf', { type: 'application/pdf' });
+      });
+    });
+  }
+
+  window.ScoresheetScanner = { open: open, bundleImages: bundleImages, jspdfUrl: null, opencvUrl: null };
 })();
