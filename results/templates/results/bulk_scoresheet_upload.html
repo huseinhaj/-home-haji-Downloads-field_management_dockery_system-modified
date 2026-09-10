@@ -203,6 +203,10 @@
 {% endblock %}
 
 {% block content %}
+{# Renders the hidden csrfmiddlewaretoken input AND forces the csrftoken
+   cookie to be set on this page — the uploads POST via fetch and were
+   getting HTTP 403 without a token. #}
+<form style="display:none">{% csrf_token %}</form>
 <!-- Hero -->
 <div class="bulk-hero">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -407,8 +411,15 @@
 <script>
 (() => {
   const LANG = '{{ LANG }}';
+  // CSRF token: prefer a rendered hidden field, fall back to the cookie
+  // (this page renders no {% csrf_token %}, so the cookie is the real
+  // source — an empty token was causing HTTP 403 on upload).
+  function getCookie(name) {
+    const m = document.cookie.match('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\\/\+^])/g, '\\$1') + '=([^;]*)');
+    return m ? decodeURIComponent(m[1]) : '';
+  }
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
-  const csrfToken = csrf ? csrf.value : '';
+  const csrfToken = (csrf && csrf.value) || getCookie('csrftoken') || '{{ csrf_token }}';
   const STATUS_URL = '{% url "bulk_upload_status" "PLACEHOLDER" %}';
   const totalSubjects = {{ subjects|length }};
   let uploadedCount = {{ subject_status_done }};
