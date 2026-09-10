@@ -1389,6 +1389,7 @@ function _dlPdf(url) {
             lang: LANG,
             filename: 'scoresheet',
             jspdfUrl: "{% static 'results/vendor/jspdf.umd.min.js' %}",
+            opencvUrl: "{% static 'results/vendor/opencv.js' %}",
             onComplete: processScoresheetFile,
           });
         });
