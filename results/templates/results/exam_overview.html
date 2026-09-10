@@ -1,4 +1,5 @@
 {% extends 'results/base.html' %}
+{% load static %}
 
 {% block title %}{{ exam.name }} — {% if LANG == 'sw' %}Muhtasari{% else %}Overview{% endif %} | School Results{% endblock %}
 
@@ -300,6 +301,8 @@
   </div>
 </div>
 
+<script>window.PDF_PICKER_LANG = '{{ LANG }}';</script>
+<script src="{% static 'results/js/pdf_style_picker.js' %}"></script>
 <script>
 function openReturnModal(subjectId, subjectName, returnUrl) {
   document.getElementById('returnSubjectLabel').textContent = subjectName;

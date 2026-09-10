@@ -92,11 +92,15 @@
     });
   }
 
+  // Only the exam results PDF: /shule/results-pdf/<id>/  — NOT the
+  // per-student slips at /results-pdf/<id>/wanafunzi-wote/.
+  var RESULTS_PDF = /\/results-pdf\/\d+\/?(?:$|\?)/;
+
   document.addEventListener('click', function (e) {
     var a = e.target.closest && e.target.closest('a[href]');
     if (!a) return;
     var href = a.getAttribute('href') || '';
-    if (href.indexOf('/results-pdf/') === -1) return;
+    if (!RESULTS_PDF.test(href)) return;
     if (/[?&]style=/.test(href)) return;               // already chosen
     if (a.hasAttribute('data-no-style-picker')) return;
     e.preventDefault();
