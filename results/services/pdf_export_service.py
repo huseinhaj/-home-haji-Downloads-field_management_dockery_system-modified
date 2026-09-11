@@ -87,6 +87,13 @@ GRADE_COLORS = {
     'X':  ('#475569', '#F1F5F9'),
 }
 
+# Single flat text colour used for every subject-grade chip and the
+# Division cell under the rank/necta styles, instead of GRADE_COLORS'/
+# DIV_BG's/DIV_FG's per-grade rainbow (that pass/fail colour-coding is
+# specific to this system's own 'normal' look) — matches each theme's own
+# header colour so results read as part of that theme, not the default one.
+_UNIFORM_GRADE_TEXT_HEX = {'rank': '#000000', 'necta': '#1F3864'}
+
 LEVEL_COLORS = {
     'Grade A': ('#15803D', '#DCFCE7'),
     'Grade B': ('#047857', '#D1FAE5'),
@@ -607,12 +614,18 @@ def _make_numbered_canvas(doc):
 # ══════════════════════════════════════════════════════════════════════════════
 def generate_results_pdf_response(exam, style='normal'):
     st = _styles()
+    style_key = (style or 'normal').lower()
+    is_normal_style = style_key == 'normal'
     theme = _resolve_theme(style)
     # Re-tint the shared paragraph styles for this theme. _styles() returns
     # fresh objects every call, so mutating them here is local to this PDF.
     st['th'].textColor = theme['header_fg']
     st['th_sm'].textColor = theme['header_fg']
-    st['section'].textColor = theme['section_fg']
+    # necta keeps the system's own section-title colour (navy) rather than
+    # NECTA's purple — only the results table itself should look like the
+    # NECTA reference sheet, not the surrounding headings.
+    if style_key != 'necta':
+        st['section'].textColor = theme['section_fg']
     _HB, _HF, _BB = theme['header_bg'], theme['header_fg'], theme['band_bg']
     school_disp = get_full_school_name(exam)
     lang = get_report_language(exam)
@@ -968,14 +981,24 @@ def generate_results_pdf_response(exam, style='normal'):
             abbr = (sub.code or '').strip().upper() or (
                 sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
             )
-            fg, bg = GRADE_COLORS.get(g, ('#555555', '#E8E8E8'))
+            if is_normal_style:
+                fg = GRADE_COLORS.get(g, ('#555555', '#E8E8E8'))[0]
+            else:
+                # rank/necta mimic a specific reference sheet that doesn't
+                # colour-code individual grades (no red for a fail, etc.)
+                # — the pass/fail rainbow is the 'normal' system look only.
+                fg = _UNIFORM_GRADE_TEXT_HEX.get(style_key, '#1F1F1F')
             subj_parts.append(
                 f"<font color='{fg}'><b>{abbr}-{g}</b></font>"
             )
         subj_text = '&nbsp;'.join(subj_parts)
 
-        div_bg = DIV_BG.get(r.division, WHITE)
-        div_fg = DIV_FG.get(r.division, BLACK)
+        if is_normal_style:
+            div_bg = DIV_BG.get(r.division, WHITE)
+            div_fg = DIV_FG.get(r.division, BLACK)
+        else:
+            div_bg = theme['band_bg']
+            div_fg = theme['header_fg']
         dv_st = ParagraphStyle(f'dv4_{r.student_id}', parent=cell_st,
                                backColor=div_bg, textColor=div_fg,
                                fontName='Helvetica-Bold')
