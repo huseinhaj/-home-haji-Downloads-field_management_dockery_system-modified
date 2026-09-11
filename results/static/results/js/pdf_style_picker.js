@@ -1,4 +1,5 @@
-/* Results-PDF style picker.
+/* BUILD_MARKER: 2026-09-11-v3 — used to verify this exact deploy is live.
+ * Results-PDF style picker.
  *
  * Intercepts clicks on any link to a results PDF (href contains
  * "/results-pdf/") and first asks which output style to generate:
