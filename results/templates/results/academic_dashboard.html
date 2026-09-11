@@ -265,6 +265,9 @@
             <a href="{% url 'exam_overview' ed.exam.id %}" class="ad-btn ad-btn--ghost ad-btn--sm">
               {% if LANG == 'sw' %}Tazama{% else %}View{% endif %}
             </a>
+            <a href="{% url 'set_class_teacher' ed.exam.id %}" class="ad-btn ad-btn--ghost ad-btn--sm" title="{% if LANG == 'sw' %}Mwalimu wa darasa, maoni ya mkuu wa shule, tarehe za muhula{% else %}Class teacher, headmaster's comment, term dates{% endif %}">
+              ⚙️ {% if LANG == 'sw' %}Ripoti{% else %}Report{% endif %}
+            </a>
             <button type="button" class="ad-btn ad-btn--danger ad-btn--sm"
               onclick="openDeleteModal('{{ ed.exam.id }}', '{{ ed.exam.name|escapejs }}')">
               {% if LANG == 'sw' %}Futa{% else %}Delete{% endif %}

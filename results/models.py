@@ -174,6 +174,20 @@ class Exam(models.Model):
         'School', null=True, blank=True, on_delete=models.SET_NULL, related_name='exams'
     )
 
+    # ── Full report-card extras (class-teacher/headmaster sign-off) ────
+    # One value per exam, shared by every student's report card — not
+    # per-student data, so these live here rather than on ProcessedResult.
+    class_teacher = models.ForeignKey(
+        'TeacherAccount', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='class_teacher_exams',
+        help_text="Teacher responsible for this class's conduct grades and "
+                  "comment on the report card (set by the Academic Officer).",
+    )
+    class_teacher_comment = models.TextField(blank=True, default='')
+    headmaster_comment = models.TextField(blank=True, default='')
+    term_closing_date = models.DateField(null=True, blank=True)
+    term_opening_date = models.DateField(null=True, blank=True)
+
     class Meta:
         indexes = [
             models.Index(fields=['school', 'year', 'form']),
@@ -260,6 +274,11 @@ class ProcessedResult(models.Model):
     share_token = models.UUIDField(
         default=uuid.uuid4, unique=True, editable=False,
         help_text="Unique token for anonymous public access to this student's result.",
+    )
+    conduct_grade = models.CharField(
+        max_length=1, blank=True, default='',
+        help_text="A-F, set by the exam's class_teacher. Printed against every "
+                  "TABIA NA MWENENDO (conduct) category on the report card.",
     )
 
     class Meta:

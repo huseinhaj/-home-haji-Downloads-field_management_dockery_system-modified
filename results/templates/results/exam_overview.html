@@ -269,6 +269,12 @@
     </a>
     {% endif %}
 
+    {% if is_academic or request.user.id == exam.class_teacher_id %}
+    <a href="{% url 'set_conduct_and_comments' exam.id %}" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
+      📝 {% if LANG == 'sw' %}Tabia na Maoni{% else %}Conduct &amp; Comment{% endif %}
+    </a>
+    {% endif %}
+
     {% if submitted_count > 0 %}
     <a href="{{ form_results_url }}" class="btn btn-outline-primary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
       {% if is_academic %}

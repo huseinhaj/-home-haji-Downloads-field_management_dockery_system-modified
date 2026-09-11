@@ -1,0 +1,173 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Tabia na Mwenendo{% else %}Conduct{% endif %} — {{ exam.name }}{% endblock %}
+
+{% block content %}
+<style>
+  .tc-hero {
+    background: linear-gradient(135deg, #1F497D 0%, #24508a 100%);
+    border: 2px solid #D9A441; border-radius: 2px;
+    padding: 1.4rem 2rem; color: #fff; margin-bottom: 1.5rem;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 1rem;
+  }
+  .tc-hero h1 { font-size: 1.3rem; font-weight: 800; margin: 0; }
+  .tc-hero .sub { font-size: 0.78rem; color: #D9A441; text-transform: uppercase; letter-spacing: 0.05em; }
+  .tc-card {
+    background: #fff; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 1.5rem; margin-bottom: 1.2rem;
+  }
+  .tc-field label { display: block; font-size: 0.8rem; font-weight: 700; color: #333; margin-bottom: 0.3rem; }
+  .tc-field select, .tc-field textarea {
+    width: 100%; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 0.5rem 0.7rem; font-size: 0.85rem; box-sizing: border-box; font-family: inherit;
+  }
+  .tc-field textarea { min-height: 80px; resize: vertical; margin-top: 0.5rem; }
+  table.tc-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  table.tc-table th {
+    background: #f8f9fb; padding: 0.5rem 0.75rem; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.04em; color: #666;
+    border-bottom: 1.5px solid #dee2e6; text-align: left;
+  }
+  table.tc-table td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #eef1f4; }
+  table.tc-table select.conduct-grade { padding: 0.3rem 0.5rem; font-size: 0.82rem; border-radius: 2px; border: 1.5px solid #dee2e6; }
+  .btn-tc-save {
+    background: #1F7A3D; color: #fff; border: none; font-weight: 700;
+    font-size: 0.85rem; padding: 0.55rem 1.4rem; border-radius: 2px; cursor: pointer;
+  }
+  .btn-tc-save:hover { background: #145226; }
+  .btn-tc-save:disabled { opacity: 0.5; cursor: default; }
+  .tc-toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    background: #1F7A3D; color: #fff; padding: 0.6rem 1.5rem; border-radius: 2px;
+    font-weight: 600; font-size: 0.82rem; z-index: 9999; opacity: 0;
+    transition: opacity 0.3s; pointer-events: none;
+  }
+  .tc-toast.show { opacity: 1; }
+  .tc-toast.error { background: #a83232; }
+</style>
+
+<div class="tc-hero">
+  <div>
+    <h1>{% if LANG == 'sw' %}Tabia na Mwenendo{% else %}Conduct &amp; Class Comment{% endif %}</h1>
+    <div class="sub">{{ exam.name }} — {% if LANG == 'sw' %}Fomu{% else %}Form{% endif %} {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} ({{ exam.year }})</div>
+  </div>
+  <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;">
+    &larr; {% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}
+  </a>
+</div>
+
+<form style="display:none">{% csrf_token %}</form>
+
+<div class="tc-card">
+  <div class="tc-field">
+    <label for="classComment">{% if LANG == 'sw' %}Maoni ya Mwalimu wa Darasa{% else %}Class Teacher's Comment{% endif %}</label>
+    <select id="commentPreset" style="margin-bottom:0.5rem;">
+      <option value="">{% if LANG == 'sw' %}— Chagua kutoka orodha (hiari) —{% else %}— Pick from a list (optional) —{% endif %}</option>
+      <option value="Ufaulu ni mzuri, aendelee hivyo hivyo.">Ufaulu ni mzuri, aendelee hivyo hivyo.</option>
+      <option value="Ufaulu si mzuri, aongeze bidii ya kujisomea.">Ufaulu si mzuri, aongeze bidii ya kujisomea.</option>
+      <option value="Anahitaji msaada zaidi wa kujisomea nyumbani.">Anahitaji msaada zaidi wa kujisomea nyumbani.</option>
+      <option value="Anafanya vizuri sana, hongera.">Anafanya vizuri sana, hongera.</option>
+      <option value="Ashirikiane zaidi na walimu darasani.">Ashirikiane zaidi na walimu darasani.</option>
+    </select>
+    <textarea id="classComment" placeholder="{% if LANG == 'sw' %}Itaonekana kwenye ripoti za wanafunzi wote wa darasa hili — andika hapa au chagua kwenye orodha juu.{% else %}Will appear on every student's report card in this class — type here or pick from the list above.{% endif %}">{{ class_teacher_comment }}</textarea>
+  </div>
+</div>
+
+<div class="tc-card">
+  <table class="tc-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>{% if LANG == 'sw' %}Mwanafunzi{% else %}Student{% endif %}</th>
+        <th>{% if LANG == 'sw' %}Tabia na Mwenendo (A-F){% else %}Conduct Grade (A-F){% endif %}</th>
+      </tr>
+    </thead>
+    <tbody id="tcRowsBody"></tbody>
+  </table>
+</div>
+
+<button type="button" class="btn-tc-save" id="tcSaveBtn">
+  💾 {% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}
+</button>
+
+<div id="tcToast" class="tc-toast"></div>
+
+<script>
+(() => {
+  const LANG = '{{ LANG }}';
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const SAVE_URL = window.location.href;
+  let students = [];
+  try { students = JSON.parse('{{ students_json|escapejs }}'); } catch (e) {}
+
+  const GRADES = ['A', 'B', 'C', 'D', 'E', 'S', 'F'];
+  const rowsBody = document.getElementById('tcRowsBody');
+  const commentBox = document.getElementById('classComment');
+  const commentPreset = document.getElementById('commentPreset');
+  const saveBtn = document.getElementById('tcSaveBtn');
+  const toastEl = document.getElementById('tcToast');
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  function toast(msg, isError) {
+    toastEl.textContent = msg;
+    toastEl.className = 'tc-toast ' + (isError ? 'error' : '') + ' show';
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2500);
+  }
+
+  function renderRows() {
+    if (!students.length) {
+      rowsBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;padding:1.4rem;">' +
+        (LANG === 'sw'
+          ? 'Hakuna matokeo yaliyokamilika bado kwa mtihani huu.'
+          : 'No processed results yet for this exam.') + '</td></tr>';
+      return;
+    }
+    rowsBody.innerHTML = students.map((s, i) => `
+      <tr data-result-id="${s.result_id}">
+        <td>${i + 1}</td>
+        <td>${escapeHtml(s.name)}</td>
+        <td>
+          <select class="conduct-grade" data-result-id="${s.result_id}">
+            <option value="">—</option>
+            ${GRADES.map(g => `<option value="${g}" ${s.conduct_grade === g ? 'selected' : ''}>${g}</option>`).join('')}
+          </select>
+        </td>
+      </tr>
+    `).join('');
+  }
+  renderRows();
+
+  commentPreset.addEventListener('change', () => {
+    if (commentPreset.value) commentBox.value = commentPreset.value;
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    const conduct = Array.from(rowsBody.querySelectorAll('.conduct-grade')).map(sel => ({
+      result_id: parseInt(sel.dataset.resultId, 10),
+      grade: sel.value,
+    }));
+    saveBtn.disabled = true;
+    try {
+      const res = await fetch(SAVE_URL, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conduct, class_teacher_comment: commentBox.value }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || (LANG === 'sw' ? 'Imeshindwa kuhifadhi.' : 'Failed to save.'));
+      toast(LANG === 'sw' ? '✅ Imehifadhiwa!' : '✅ Saved!');
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+})();
+</script>
+{% endblock %}

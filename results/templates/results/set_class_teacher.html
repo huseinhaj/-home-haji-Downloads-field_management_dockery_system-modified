@@ -1,0 +1,84 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Mipangilio ya Ripoti{% else %}Report Card Settings{% endif %} — {{ exam.name }}{% endblock %}
+
+{% block content %}
+<style>
+  .ct-hero {
+    background: linear-gradient(135deg, #1F497D 0%, #24508a 100%);
+    border: 2px solid #D9A441; border-radius: 2px;
+    padding: 1.4rem 2rem; color: #fff; margin-bottom: 1.5rem;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 1rem;
+  }
+  .ct-hero h1 { font-size: 1.3rem; font-weight: 800; margin: 0; }
+  .ct-hero .sub { font-size: 0.78rem; color: #D9A441; text-transform: uppercase; letter-spacing: 0.05em; }
+  .ct-card {
+    background: #fff; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 1.5rem; max-width: 640px;
+  }
+  .ct-field { margin-bottom: 1.1rem; }
+  .ct-field label { display: block; font-size: 0.8rem; font-weight: 700; color: #333; margin-bottom: 0.3rem; }
+  .ct-field select, .ct-field textarea, .ct-field input[type=date] {
+    width: 100%; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 0.5rem 0.7rem; font-size: 0.85rem; box-sizing: border-box;
+  }
+  .ct-field textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+  .ct-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .ct-row .ct-field { flex: 1; min-width: 180px; }
+  .btn-ct-save {
+    background: #1F7A3D; color: #fff; border: none; font-weight: 700;
+    font-size: 0.85rem; padding: 0.55rem 1.4rem; border-radius: 2px; cursor: pointer;
+  }
+  .btn-ct-save:hover { background: #145226; }
+</style>
+
+<div class="ct-hero">
+  <div>
+    <h1>{% if LANG == 'sw' %}Mipangilio ya Ripoti ya Mwanafunzi{% else %}Report Card Settings{% endif %}</h1>
+    <div class="sub">{{ exam.name }} — {% if LANG == 'sw' %}Fomu{% else %}Form{% endif %} {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} ({{ exam.year }})</div>
+  </div>
+  <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;">
+    &larr; {% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}
+  </a>
+</div>
+
+<div class="ct-card">
+  <form method="post">
+    {% csrf_token %}
+    <div class="ct-field">
+      <label for="class_teacher_id">
+        {% if LANG == 'sw' %}Mwalimu wa Darasa{% else %}Class Teacher{% endif %}
+      </label>
+      <select name="class_teacher_id" id="class_teacher_id">
+        <option value="">{% if LANG == 'sw' %}— Chagua mwalimu —{% else %}— Select a teacher —{% endif %}</option>
+        {% for t in teachers %}
+        <option value="{{ t.id }}" {% if exam.class_teacher_id == t.id %}selected{% endif %}>{{ t.full_name|default:t.email }}</option>
+        {% endfor %}
+      </select>
+      <small style="color:#888;font-size:0.72rem;">
+        {% if LANG == 'sw' %}Huyu ndiye atakayeweka daraja za tabia/mwenendo na maoni ya darasa kwenye ripoti za wanafunzi.{% else %}This teacher will set conduct grades and the class comment on students' report cards.{% endif %}
+      </small>
+    </div>
+
+    <div class="ct-row">
+      <div class="ct-field">
+        <label for="term_closing_date">{% if LANG == 'sw' %}Shule Imefungwa Tarehe{% else %}Term Closing Date{% endif %}</label>
+        <input type="date" name="term_closing_date" id="term_closing_date" value="{{ exam.term_closing_date|date:'Y-m-d' }}">
+      </div>
+      <div class="ct-field">
+        <label for="term_opening_date">{% if LANG == 'sw' %}Shule Itafunguliwa Tarehe{% else %}Term Opening Date{% endif %}</label>
+        <input type="date" name="term_opening_date" id="term_opening_date" value="{{ exam.term_opening_date|date:'Y-m-d' }}">
+      </div>
+    </div>
+
+    <div class="ct-field">
+      <label for="headmaster_comment">{% if LANG == 'sw' %}Maoni ya Mkuu wa Shule{% else %}Headmaster's Comment{% endif %}</label>
+      <textarea name="headmaster_comment" id="headmaster_comment" placeholder="{% if LANG == 'sw' %}Itaonekana kwenye ripoti za wanafunzi wote wa darasa hili.{% else %}Will appear on every student's report card in this class.{% endif %}">{{ exam.headmaster_comment }}</textarea>
+    </div>
+
+    <button type="submit" class="btn-ct-save">
+      💾 {% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}
+    </button>
+  </form>
+</div>
+{% endblock %}

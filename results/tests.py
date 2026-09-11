@@ -707,6 +707,95 @@ class BulkStudentResultsPdfTests(TestCase):
 		self.assertEqual(response.status_code, 404)
 
 
+class SetClassTeacherAndConductTests(TestCase):
+	"""The two new report-card sign-off screens: the Academic Officer
+	assigns a class teacher (+ headmaster comment + term dates), and that
+	class teacher then sets a conduct grade per student + one class-wide
+	comment."""
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
+		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=2, school=self.school)
+		self.subject = Subject.objects.create(name='Mathematics')
+		self.student_one = Student.objects.create(first_name='Amina', last_name='Juma', gender='F')
+		self.student_two = Student.objects.create(first_name='Peter', last_name='Mushi', gender='M')
+		ExamResult.objects.create(exam=self.exam, student=self.student_one, subject=self.subject, score=78)
+		ExamResult.objects.create(exam=self.exam, student=self.student_two, subject=self.subject, score=55)
+		self.result_one = ProcessedResult.objects.create(exam=self.exam, student=self.student_one, total_score=78, average_score=78, points=2, position=1, division='I')
+		self.result_two = ProcessedResult.objects.create(exam=self.exam, student=self.student_two, total_score=55, average_score=55, points=5, position=2, division='III')
+		self.academic = TeacherAccount.objects.create(email='academic@example.com', full_name='Academic One', role=TeacherAccount.ROLE_ACADEMIC, school=self.school)
+		self.class_teacher = TeacherAccount.objects.create(email='classteacher@example.com', full_name='Class Teacher One', role=TeacherAccount.ROLE_TEACHER, school=self.school)
+		self.other_teacher = TeacherAccount.objects.create(email='other@example.com', full_name='Other Teacher', role=TeacherAccount.ROLE_TEACHER, school=self.school)
+
+	def test_academic_can_assign_class_teacher_and_headmaster_comment(self):
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		response = client.post(reverse('set_class_teacher', args=[self.exam.id]), {
+			'class_teacher_id': str(self.class_teacher.id),
+			'headmaster_comment': 'Hongera kwa juhudi.',
+			'term_closing_date': '2026-11-01',
+			'term_opening_date': '2027-01-05',
+		})
+		self.assertEqual(response.status_code, 302)
+		self.exam.refresh_from_db()
+		self.assertEqual(self.exam.class_teacher_id, self.class_teacher.id)
+		self.assertEqual(self.exam.headmaster_comment, 'Hongera kwa juhudi.')
+		self.assertEqual(str(self.exam.term_closing_date), '2026-11-01')
+
+	def test_non_academic_cannot_assign_class_teacher(self):
+		client = Client()
+		client.force_login(self.class_teacher, backend='results.backends.ResultsAuthBackend')
+		response = client.get(reverse('set_class_teacher', args=[self.exam.id]))
+		self.assertEqual(response.status_code, 403)
+
+	def test_assigned_class_teacher_can_save_conduct_and_comment(self):
+		self.exam.class_teacher = self.class_teacher
+		self.exam.save(update_fields=['class_teacher'])
+
+		client = Client()
+		client.force_login(self.class_teacher, backend='results.backends.ResultsAuthBackend')
+		get_response = client.get(reverse('set_conduct_and_comments', args=[self.exam.id]))
+		self.assertEqual(get_response.status_code, 200)
+
+		post_response = client.post(
+			reverse('set_conduct_and_comments', args=[self.exam.id]),
+			data=json.dumps({
+				'conduct': [
+					{'result_id': self.result_one.id, 'grade': 'A'},
+					{'result_id': self.result_two.id, 'grade': 'C'},
+				],
+				'class_teacher_comment': 'Ufaulu ni mzuri, aendelee hivyo hivyo.',
+			}),
+			content_type='application/json',
+		)
+		self.assertEqual(post_response.status_code, 200)
+		self.result_one.refresh_from_db()
+		self.result_two.refresh_from_db()
+		self.exam.refresh_from_db()
+		self.assertEqual(self.result_one.conduct_grade, 'A')
+		self.assertEqual(self.result_two.conduct_grade, 'C')
+		self.assertEqual(self.exam.class_teacher_comment, 'Ufaulu ni mzuri, aendelee hivyo hivyo.')
+
+	def test_unrelated_teacher_cannot_set_conduct(self):
+		self.exam.class_teacher = self.class_teacher
+		self.exam.save(update_fields=['class_teacher'])
+
+		client = Client()
+		client.force_login(self.other_teacher, backend='results.backends.ResultsAuthBackend')
+		response = client.get(reverse('set_conduct_and_comments', args=[self.exam.id]))
+		self.assertEqual(response.status_code, 403)
+
+	def test_academic_can_set_conduct_even_if_not_the_class_teacher(self):
+		self.exam.class_teacher = self.class_teacher
+		self.exam.save(update_fields=['class_teacher'])
+
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		response = client.get(reverse('set_conduct_and_comments', args=[self.exam.id]))
+		self.assertEqual(response.status_code, 200)
+
+
 class BulkScoresheetPreviewPdfTests(TestCase):
     """Review-before-save PDF: the academic officer's bulk-upload review
     screen posts the CURRENT (possibly hand-corrected) table state here and

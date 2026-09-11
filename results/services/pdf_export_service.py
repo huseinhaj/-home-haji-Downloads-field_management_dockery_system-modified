@@ -8,6 +8,7 @@ import os
 import base64
 from collections import Counter, defaultdict
 from datetime import datetime
+from xml.sax.saxutils import escape as _xml_escape
 
 from django.http import HttpResponse
 from reportlab.lib import colors
@@ -174,6 +175,15 @@ def _grading_thresholds(form):
     if form in (5, 6):
         return [80, 70, 60, 50, 40, 35], [('A','80-100'),('B','70-79'),('C','60-69'),('D','50-59'),('E','40-49'),('S','35-39'),('F','0-34')]
     return [75, 65, 45, 30], [('A','75-100'),('B','65-74'),('C','45-64'),('D','30-44'),('F','0-29')]
+
+
+# Short Swahili "how did they do" label for a letter grade — used in the
+# per-subject MAONI column and the MCHANGANUO legend on the full report
+# card. Purely derived from the grade, no stored data.
+GRADE_MEANING_SW = {
+    'A': 'Vizuri sana', 'B': 'Vizuri', 'C': 'Wastani',
+    'D': 'Dhaifu', 'E': 'Dhaifu', 'S': 'Hafifu', 'F': 'Mbaya sana',
+}
 
 
 def _grade_for_score(score, form=4):
@@ -1188,19 +1198,24 @@ def generate_results_pdf_response(exam, style='normal'):
 # /shule/matokeo/<token>/ page, so a parent/student can take a copy home
 # instead of only viewing it online.
 # ══════════════════════════════════════════════════════════════════════════════
-def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=None, scores=None, subjects=None):
-    """One-page NECTA-style result slip for a single ProcessedResult —
-    same official header as the full class report, personalised below it
-    with this student's own subjects, scores, and division/points/position.
-    Returns a seeked-to-0 BytesIO — shared by the single-student download
-    and the "all students, one file" bulk download, which merges one of
-    these per student.
+def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=None,
+                                     scores=None, subjects=None, subject_ranks=None):
+    """Full NECTA-style report card for a single ProcessedResult — same
+    official header as the full class report, personalised below it with
+    this student's own subjects/scores/grades (each with its own
+    within-subject rank and an auto-derived comment), a conduct table, a
+    grading-key legend, the class teacher's / headmaster's comments, term
+    dates, and a parent sign-off block. Returns a seeked-to-0 BytesIO —
+    shared by the single-student download and the "all students, one
+    file" bulk download, which merges one of these per student.
 
-    school_type/total_students/scores/subjects are optional precomputed
-    values — the bulk download passes them in (computed once for the whole
-    exam) so this doesn't re-run the same exam-wide/cross-DB queries once
-    per student; the single-student download leaves them None and this
-    looks them up itself."""
+    school_type/total_students/scores/subjects/subject_ranks are optional
+    precomputed values — the bulk download passes them in (computed once
+    for the whole exam) so this doesn't re-run the same exam-wide/cross-DB
+    queries once per student; the single-student download leaves them
+    None and this looks up what it can itself (subject_ranks is simply
+    skipped — a single-slip download doesn't need to compute an entire
+    exam's rankings for one student's NAFASI column)."""
     from reportlab.platypus import SimpleDocTemplate
 
     exam = result.exam
@@ -1254,16 +1269,27 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         Spacer(1, 10),
     ]
 
-    # ── Subjects table ──
-    subj_hdrs = ["SOMO / SUBJECT", "ALAMA / SCORE", "DARAJA / GRADE"]
-    subj_rows = [[_p(f"<b>{h}</b>", st['th']) for h in subj_hdrs]]
+    # ── Subjects table (NAFASI = rank within that subject, MAONI = a
+    #    short comment auto-derived from the grade — no stored data for
+    #    either) ──
+    subj_hdrs = ["SOMO / SUBJECT", "ALAMA", "DARAJA", "NAFASI", "MAONI"]
+    subj_rows = [[_p(f"<b>{h}</b>", st['th_sm']) for h in subj_hdrs]]
     for subj in subjects:
         score = scores.get(subj.id)
         if score is None:
             continue
         grade = _grade_for_score(score, exam.form)
-        subj_rows.append([_p(subj.name, st['td_name']), _p(str(score), st['td']), _p(grade or '-', st['td_bold'])])
-    subj_table = Table(subj_rows, colWidths=[content_w * 0.55, content_w * 0.22, content_w * 0.23])
+        rank = (subject_ranks or {}).get(subj.id, {}).get(student.id)
+        subj_rows.append([
+            _p(subj.name, st['td_name']),
+            _p(str(score), st['td']),
+            _p(grade or '-', st['td_bold']),
+            _p(str(rank) if rank else '-', st['td']),
+            _p(GRADE_MEANING_SW.get(grade, '-'), st['td_sm']),
+        ])
+    subj_table = Table(subj_rows, colWidths=[
+        content_w * 0.32, content_w * 0.13, content_w * 0.13, content_w * 0.14, content_w * 0.28,
+    ])
     subj_table.setStyle(TableStyle(_std_table_style(len(subj_rows))))
     story.append(subj_table)
     story.append(Spacer(1, 14))
@@ -1284,7 +1310,75 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     )
     summary_table.setStyle(TableStyle(_std_table_style(2, header_bg=GREEN)))
     story.append(summary_table)
-    story.append(Spacer(1, 16))
+    story.append(Spacer(1, 10))
+
+    # ── TABIA NA MWENENDO / CONDUCT ──
+    # One grade (set by the exam's class_teacher) applies to every
+    # category — there's no per-category breakdown collected, per how the
+    # class teacher actually enters this (see set_conduct_and_comments).
+    # Laid out as one compact row (like the grading key below) rather than
+    # 6 near-identical rows, which alone was pushing every slip onto a
+    # second, near-empty page.
+    story.append(_p("<b>TABIA NA MWENENDO / CONDUCT</b>", st['section']))
+    conduct_grade = result.conduct_grade or '-'
+    conduct_cats = ["UAMINIFU", "KUJITOLEA", "KUFANYA KAZI", "NIDHAMU", "USAFI", "MICHEZO"]
+    conduct_table = Table(
+        [[_p(f"<b>{c}</b>", st['th_sm']) for c in conduct_cats],
+         [_p(conduct_grade, st['td_bold']) for _ in conduct_cats]],
+        colWidths=[content_w / len(conduct_cats)] * len(conduct_cats),
+    )
+    conduct_table.setStyle(TableStyle(_std_table_style(2)))
+    story.append(conduct_table)
+    story.append(Spacer(1, 10))
+
+    # ── MCHANGANUO / GRADING KEY ──
+    story.append(_p("<b>MCHANGANUO / GRADING KEY</b>", st['section']))
+    _, grade_bands = _grading_thresholds(exam.form)
+    mchanganuo_rows = [[_p(f"<b>{h}</b>", st['th_sm']) for h in ["ALAMA", "DARAJA", "MAANA"]]]
+    for g, rng in grade_bands:
+        mchanganuo_rows.append([_p(rng, st['td']), _p(g, st['td_bold']), _p(GRADE_MEANING_SW.get(g, '-'), st['td'])])
+    mchanganuo_table = Table(mchanganuo_rows, colWidths=[content_w * 0.3, content_w * 0.2, content_w * 0.5])
+    mchanganuo_table.setStyle(TableStyle(_std_table_style(len(mchanganuo_rows))))
+    story.append(mchanganuo_table)
+    story.append(Spacer(1, 10))
+
+    # ── Term dates + comments + parent sign-off ──
+    # class_teacher_comment/headmaster_comment are free text set once for
+    # the whole exam (see set_class_teacher / set_conduct_and_comments) —
+    # escape before handing to Paragraph, which parses its text as a small
+    # XML-like markup (an unescaped '<' or '&' would otherwise corrupt or
+    # silently truncate the printed comment).
+    def _fmt_term_date(d):
+        return d.strftime('%d/%m/%Y') if d else '.......................'
+
+    story.append(_p(
+        f"<b>SHULE IMEFUNGWA TAREHE:</b> {_fmt_term_date(exam.term_closing_date)}"
+        f"&nbsp;&nbsp;&nbsp;&nbsp;<b>SHULE ITAFUNGULIWA TAREHE:</b> {_fmt_term_date(exam.term_opening_date)}",
+        st['td_name'],
+    ))
+    story.append(Spacer(1, 8))
+    story.append(_p(
+        f"<b>MAONI YA MWALIMU WA DARASA:</b> "
+        f"{_xml_escape(exam.class_teacher_comment) if exam.class_teacher_comment else '.......................................................'}",
+        st['td_name'],
+    ))
+    story.append(Spacer(1, 6))
+    story.append(_p(
+        f"<b>MAONI YA MKUU WA SHULE:</b> "
+        f"{_xml_escape(exam.headmaster_comment) if exam.headmaster_comment else '.......................................................'}",
+        st['td_name'],
+    ))
+    story.append(Spacer(1, 8))
+    story.append(_p("<b>MAONI YA MZAZI/MLEZI:</b>", st['td_name']))
+    story.append(Spacer(1, 10))
+    story.append(_p(".................................................................................", st['td_name']))
+    story.append(Spacer(1, 6))
+    story.append(_p(
+        "JINA LA MZAZI/MLEZI: ......................................... "
+        "SIMU: ..................... SAHIHI: .....................",
+        st['sig'],
+    ))
+    story.append(Spacer(1, 6))
     story.append(_p(
         "Haya ni matokeo rasmi yaliyotolewa na mfumo wa shule. / "
         "These are official results generated by the school system.",
@@ -1326,7 +1420,7 @@ def generate_bulk_student_results_pdf_response(exam):
 
     results = list(
         ProcessedResult.objects.filter(exam=exam)
-        .select_related('student')
+        .select_related('student', 'exam', 'exam__school')
         .order_by('position')
     )
     if not results:
@@ -1342,11 +1436,22 @@ def generate_bulk_student_results_pdf_response(exam):
     student_ids = [r.student_id for r in results]
     scores_by_student = {}
     subjects_by_student = {}
+    # {subject_id: [(score, student_id), ...]} — for the per-subject NAFASI
+    # column; absent/no-score entries don't get ranked, same as
+    # subject_pdf_service.py's existing single-subject ranking.
+    scored_by_subject = defaultdict(list)
     for er in ExamResult.objects.filter(exam=exam, student_id__in=student_ids).select_related('subject'):
         scores_by_student.setdefault(er.student_id, {})[er.subject_id] = er.score
         subjects_by_student.setdefault(er.student_id, {})[er.subject_id] = er.subject
+        if er.score is not None and not er.is_absent:
+            scored_by_subject[er.subject_id].append((er.score, er.student_id))
     for sid, subj_map in subjects_by_student.items():
         subjects_by_student[sid] = sorted(subj_map.values(), key=lambda s: s.name)
+
+    subject_ranks = {}  # {subject_id: {student_id: rank}}
+    for subject_id, pairs in scored_by_subject.items():
+        pairs.sort(key=lambda p: -p[0])
+        subject_ranks[subject_id] = {sid: i + 1 for i, (_score, sid) in enumerate(pairs)}
 
     merged = pdfium.PdfDocument.new()
     buffers = []
@@ -1357,6 +1462,7 @@ def generate_bulk_student_results_pdf_response(exam):
             total_students=total_students,
             scores=scores_by_student.get(result.student_id, {}),
             subjects=subjects_by_student.get(result.student_id, []),
+            subject_ranks=subject_ranks,
         )
         buffers.append(buf)
         src = pdfium.PdfDocument(buf)  # buffers stay alive until save()

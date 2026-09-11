@@ -21,8 +21,8 @@ from django.views.decorators.http import require_POST, require_GET
 from django.core.exceptions import ValidationError
 
 from .forms import ExamUploadForm, TeacherSelfSubjectsForm
-from .models import Exam, ExamResult, FormStudent, PersonalUpload, PersonalUploadResult, PrintSubmission, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission, TeacherFormAssignment
-from .permissions import academic_required, printing_secretary_required, results_login_required as login_required, teacher_required
+from .models import Exam, ExamResult, FormStudent, PersonalUpload, PersonalUploadResult, PrintSubmission, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission, TeacherAccount, TeacherFormAssignment
+from .permissions import academic_required, printing_secretary_required, results_login_required as login_required, teacher_or_academic_required, teacher_required
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
 from .services.pdf_export_service import (
     generate_bulk_student_results_pdf_response,
@@ -1949,6 +1949,92 @@ def approve_exam_submissions(request, exam_id):
         messages.success(request, f"Masomo {updated} yameidhinishwa. Matokeo yamehesabiwa upya.")
 
     return redirect(reverse('exam_overview', args=[exam.id]))
+
+
+# ── Full report card: class teacher + headmaster sign-off ───────────────────
+# Two exam-wide singletons (who the class teacher is, the headmaster's
+# comment, term dates) set once by the Academic Officer, plus a per-student
+# conduct grade + a class-wide comment set by whoever that class teacher is.
+
+@academic_required
+def set_class_teacher(request, exam_id):
+    exam = _get_exam_or_404(exam_id, request.user)
+    teachers = TeacherAccount.objects.filter(
+        school=exam.school, role=TeacherAccount.ROLE_TEACHER,
+    ).order_by('full_name')
+
+    if request.method == 'POST':
+        class_teacher_id = request.POST.get('class_teacher_id') or ''
+        exam.class_teacher_id = int(class_teacher_id) if class_teacher_id.isdigit() else None
+        exam.headmaster_comment = request.POST.get('headmaster_comment', '').strip()
+        exam.term_closing_date = request.POST.get('term_closing_date') or None
+        exam.term_opening_date = request.POST.get('term_opening_date') or None
+        exam.save(update_fields=[
+            'class_teacher', 'headmaster_comment', 'term_closing_date', 'term_opening_date',
+        ])
+        messages.success(request, "Mipangilio ya ripoti ya mwanafunzi imehifadhiwa.")
+        return redirect(reverse('exam_overview', args=[exam.id]))
+
+    return render(request, 'results/set_class_teacher.html', {
+        'exam': exam, 'teachers': teachers,
+    })
+
+
+@teacher_or_academic_required
+def set_conduct_and_comments(request, exam_id):
+    import json as _json
+
+    exam = _get_exam_or_404(exam_id, request.user)
+    if not (request.user.is_academic or request.user.id == exam.class_teacher_id):
+        raise PermissionDenied("Wewe si mwalimu wa darasa aliyeteuliwa kwa mtihani huu.")
+
+    results_qs = list(
+        ProcessedResult.objects.filter(exam=exam).select_related('student').order_by('position')
+    )
+
+    if request.method == 'POST':
+        try:
+            payload = _json.loads(request.body or b'{}')
+        except _json.JSONDecodeError:
+            return JsonResponse({'error': 'Data ya ombi si sahihi.'}, status=400)
+
+        valid_grades = {'A', 'B', 'C', 'D', 'E', 'S', 'F'}
+        grade_by_result_id = {}
+        for entry in payload.get('conduct') or []:
+            try:
+                rid = int(entry.get('result_id'))
+            except (TypeError, ValueError):
+                continue
+            grade = str(entry.get('grade') or '').strip().upper()
+            if grade and grade not in valid_grades:
+                continue
+            grade_by_result_id[rid] = grade
+
+        result_ids = list(grade_by_result_id.keys())
+        rows = ProcessedResult.objects.filter(id__in=result_ids, exam=exam)
+        if len(rows) != len(result_ids):
+            return JsonResponse({'error': 'Baadhi ya matokeo hayapo kwenye mtihani huu.'}, status=400)
+        for row in rows:
+            row.conduct_grade = grade_by_result_id[row.id]
+        ProcessedResult.objects.bulk_update(rows, ['conduct_grade'])
+
+        exam.class_teacher_comment = str(payload.get('class_teacher_comment') or '').strip()
+        exam.save(update_fields=['class_teacher_comment'])
+        return JsonResponse({'success': True, 'updated_count': len(rows)})
+
+    students_payload = [
+        {
+            'result_id': r.id,
+            'name': ' '.join(p for p in [r.student.first_name, r.student.middle_name or '', r.student.last_name] if p),
+            'conduct_grade': r.conduct_grade,
+        }
+        for r in results_qs
+    ]
+    return render(request, 'results/set_conduct.html', {
+        'exam': exam,
+        'students_json': _json.dumps(students_payload),
+        'class_teacher_comment': exam.class_teacher_comment,
+    })
 
 
 # ── Recompute Results (for exams already fully approved) ────────────────────
