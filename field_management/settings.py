@@ -188,8 +188,20 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'field_app/static'),
 ]
 
-# WhiteNoise compression
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# WhiteNoise compression + content-hashed filenames (cache-busting).
+# NOTE: Django 4.2+ ignores the legacy STATICFILES_STORAGE string unless
+# STORAGES is also set — without this dict, static files were served
+# under their plain names with no hash, so browsers cached them for a
+# year (WhiteNoise/edge immutable caching) and never picked up new JS/CSS
+# after a deploy.
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
