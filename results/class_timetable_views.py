@@ -75,6 +75,14 @@ def time_slot_setup(request):
             messages.error(request, "Invalid time or period order.")
             return redirect('time_slot_setup')
 
+        if end_time <= start_time:
+            messages.error(
+                request,
+                "End time must be AFTER the start time (mf. Start 07:40, End 08:20). "
+                "A period cannot start and end at the same minute.",
+            )
+            return redirect('time_slot_setup')
+
         is_teaching = request.POST.get('is_teaching_slot') == 'on'
         label = request.POST.get('label', '').strip()
         TimeSlot.objects.update_or_create(

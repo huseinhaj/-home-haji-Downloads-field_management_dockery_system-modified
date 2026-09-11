@@ -45,6 +45,11 @@
   <div class="card mb-4 shadow-sm">
     <div class="card-header" style="background:#1A3C6E;color:#fff;"><strong>Add / Update Slot</strong></div>
     <div class="card-body">
+      <div class="alert alert-light border mb-3" style="font-size:0.8rem;">
+        💡 <strong>Order</strong> = namba ya saha siku hiyo (si muda!): 0 = saha ya kwanza, 1 = ya pili, 2 = ya tatu…
+        &nbsp;•&nbsp; <strong>Start</strong> = saa saha inayoanza (mf. 07:40) &nbsp;•&nbsp; <strong>End</strong> = saa inayoisha (mf. 08:20 — lazima iwe BAADA ya Start).
+        &nbsp;•&nbsp; Saha zisizo za kufundishia (Break/Lunch/Cleanliness): ondoa chek cha <em>Teaching</em> kisha andika Label yake.
+      </div>
       <form method="post">
         {% csrf_token %}
         <div class="row g-3 align-items-end">
@@ -58,15 +63,18 @@
           </div>
           <div class="col-md-1">
             <label class="form-label fw-bold">Order</label>
-            <input type="number" name="order" class="form-control" min="0" required title="Period order for the day, starting from 0">
+            <input type="number" name="order" class="form-control" min="0" required title="Namba ya saha siku hiyo, kuanzia 0 (0 = saha ya kwanza, 1 = ya pili...)">
+            <div class="form-text" style="font-size:0.68rem;">0 = ya kwanza, 1 = ya pili… (si muda)</div>
           </div>
           <div class="col-md-2">
             <label class="form-label fw-bold">Start</label>
-            <input type="time" name="start_time" class="form-control" required>
+            <input type="time" name="start_time" class="form-control" required title="Saa saha inayoanza, mf. 07:40">
+            <div class="form-text" style="font-size:0.68rem;">mf. 07:40</div>
           </div>
           <div class="col-md-2">
             <label class="form-label fw-bold">End</label>
-            <input type="time" name="end_time" class="form-control" required>
+            <input type="time" name="end_time" class="form-control" required title="Saa saha inayoisha, mf. 08:20 — lazima iwe baada ya Start">
+            <div class="form-text" style="font-size:0.68rem;">mf. 08:20 (baada ya Start)</div>
           </div>
           <div class="col-md-2">
             <label class="form-label fw-bold d-block">Type</label>
@@ -77,7 +85,8 @@
           </div>
           <div class="col-md-2">
             <label class="form-label fw-bold">Label (if non-teaching)</label>
-            <input type="text" name="label" class="form-control" placeholder="Break / Lunch / Cleanliness">
+            <input type="text" name="label" class="form-control" placeholder="Break / Lunch / Cleanliness" title="Tumia tu kama Type si Teaching — mf. Break, Lunch, Cleanliness">
+            <div class="form-text" style="font-size:0.68rem;">Teaching haihitaji label</div>
           </div>
           <div class="col-md-1">
             <button type="submit" class="btn w-100 fw-bold" style="background:#1A7B3A;color:#fff;">✅</button>
