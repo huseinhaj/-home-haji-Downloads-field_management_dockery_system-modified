@@ -85,6 +85,14 @@
 
 .pos-badge { background:#1F7A3D; color:#fff; font-weight:700; padding:.1rem .55rem; border-radius:2px; font-size:.75rem; }
 
+.exam-actions { display:flex; flex-direction:column; align-items:flex-end; gap:0.4rem; }
+.action-group { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; justify-content:flex-end; }
+.group-label { font-size:0.6rem; font-weight:800; letter-spacing:0.08em; color:#666; text-transform:uppercase; border-bottom:2px solid #1b1b1b; padding-bottom:1px; white-space:nowrap; }
+.group-btns { display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; }
+.btn-black { background:#1b1b1b; color:#fff; font-size:0.72rem; border-radius:2px; font-weight:700; border:none; }
+.btn-black:hover, .btn-black:focus { background:#000; color:#fff; }
+@media (max-width: 768px) { .exam-actions { align-items:stretch; } .action-group { justify-content:flex-start; } }
+
 .empty-notice { padding:1.5rem; text-align:center; color:#aaa; font-size:0.85rem; }
 </style>
 
@@ -130,22 +138,36 @@
           &bull; {% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}: {{ ed.approved_subs }}/{{ ed.total_subs }} {% if LANG == 'sw' %}yameidhinishwa{% else %}approved{% endif %}
         </div>
       </div>
-      <div class="d-flex gap-2 flex-wrap">
-    {% if is_academic %}
-    <a href="{% url 'bulk_scoresheet_upload' ed.exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-size:0.72rem;border-radius:2px;font-weight:700;">
-      📑 {% if LANG == 'sw' %}Matokeo{% else %}Results{% endif %}
-    </a>
-    <a href="{{ ed.pdf_url }}" class="btn btn-sm" style="background:#c0392b;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;" target="_blank"
-       {% if ed.submit_ps_url and ed.all_submitted and not ed.ps_submission %}onclick="revealPsSubmit({{ ed.exam.id }})"{% endif %}>
-      📄 {% if LANG == 'sw' %}PDF{% else %}Report{% endif %}
-    </a>
-    {% else %}
-    <a href="{{ ed.pdf_url }}" class="btn btn-sm" style="background:#c0392b;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;" target="_blank"
-       {% if ed.submit_ps_url and ed.all_submitted and not ed.ps_submission %}onclick="revealPsSubmit({{ ed.exam.id }})"{% endif %}>
-      📄 PDF
-    </a>
-    {% endif %}
+      <div class="exam-actions">
         {% if is_academic %}
+        <div class="action-group">
+          <span class="group-label">{% if LANG == 'sw' %}Ripoti (PDF){% else %}Reports (PDF){% endif %}</span>
+          <div class="group-btns">
+            <a href="{{ ed.pdf_url }}" class="btn btn-sm btn-black" target="_blank" title="{% if LANG == 'sw' %}Orodha kamili ya wanafunzi wote na nafasi zao (broadsheet){% else %}Full list of all students and their positions (broadsheet){% endif %}"
+               {% if ed.submit_ps_url and ed.all_submitted and not ed.ps_submission %}onclick="revealPsSubmit({{ ed.exam.id }})"{% endif %}>
+              📄 {% if LANG == 'sw' %}Ripoti ya Mtihani{% else %}Exam Report{% endif %}
+            </a>
+            <a href="{{ ed.bulk_pdf_url }}" class="btn btn-sm btn-black" target="_blank" title="{% if LANG == 'sw' %}Slip moja-moja ya kila mwanafunzi (report cards){% else %}One slip per student (report cards){% endif %}">
+              📥 {% if LANG == 'sw' %}Ripoti za Wanafunzi Wote{% else %}All Students' Reports{% endif %}
+            </a>
+            <div class="btn-group">
+              <button type="button" class="btn btn-sm btn-black dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="{% if LANG == 'sw' %}Chagua muonekano wa slip za wanafunzi{% else %}Choose the look of the student slips{% endif %}">
+                🎨 {% if LANG == 'sw' %}Formati{% else %}Format{% endif %}
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=normal" target="_blank">📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}</a></li>
+                <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=rank" target="_blank">🏅 Rank</a></li>
+                <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=necta" target="_blank">🎓 NECTA</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="action-group">
+          <span class="group-label">{% if LANG == 'sw' %}Usimamizi{% else %}Manage{% endif %}</span>
+          <div class="group-btns">
+            <a href="{% url 'bulk_scoresheet_upload' ed.exam.id %}" class="btn btn-sm btn-outline-secondary" title="{% if LANG == 'sw' %}Pakia karatasi za alama — button tatu za matokeo (Kawaida/Rank/NECTA) zipo chini ya ukurasa huo{% else %}Upload scoresheets — the three results buttons (Normal/Rank/NECTA) are at the bottom of that page{% endif %}">
+              📑 {% if LANG == 'sw' %}Matokeo (Pakia){% else %}Results (Upload){% endif %}
+            </a>
           {% if ed.all_submitted and not ed.all_approved %}
           <form method="post" action="{{ ed.approve_all_url }}" style="display:inline;">
             {% csrf_token %}
@@ -154,19 +176,6 @@
             </button>
           </form>
           {% endif %}
-          <a href="{{ ed.bulk_pdf_url }}" class="btn btn-sm" style="background:#24508a;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;" target="_blank">
-            📥 {% if LANG == 'sw' %}Ripoti za Wanafunzi Wote{% else %}All Students' Reports{% endif %}
-          </a>
-          <div class="btn-group" style="font-size:0.72rem;">
-            <button type="button" class="btn btn-sm dropdown-toggle" style="background:#6a4fb0;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;" data-bs-toggle="dropdown" aria-expanded="false">
-              📑 Results Format
-            </button>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=normal" target="_blank">📄 Format ya Kawaida</a></li>
-              <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=rank" target="_blank">🏅 Rank Format</a></li>
-              <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=necta" target="_blank">🎓 NECTA Format</a></li>
-            </ul>
-          </div>
           {% if ed.submit_ps_url and ed.all_submitted %}
             {% if ed.ps_submission.status == 'PRINTED' %}
             <span class="btn btn-sm" style="background:#1a7a3b;color:#fff;font-size:0.72rem;border-radius:2px;font-weight:700;cursor:default;">
@@ -192,7 +201,7 @@
               </form>
             </span>
             <span id="ps-hint-{{ ed.exam.id }}" style="font-size:0.68rem;color:#888;align-self:center;">
-              {% if LANG == 'sw' %}⬅ Bonyeza PDF kwanza{% else %}⬅ Click PDF first{% endif %}
+              {% if LANG == 'sw' %}⬅ Fungua "Ripoti ya Mtihani" kwanza{% else %}⬅ Open "Exam Report" first{% endif %}
             </span>
             {% endif %}
           {% endif %}
@@ -205,10 +214,23 @@
             </button>
           </form>
           {% endif %}
+            <a href="{{ ed.overview_url }}" class="btn btn-sm btn-outline-secondary" title="{% if LANG == 'sw' %}Kina cha mtihani: masomo, walimu, idhini{% else %}Exam internals: subjects, teachers, approvals{% endif %}">ℹ️ {% if LANG == 'sw' %}Maelezo{% else %}Details{% endif %}</a>
+          </div>
+        </div>
+        {% else %}
+        <a href="{{ ed.pdf_url }}" class="btn btn-sm btn-black" target="_blank"
+           {% if ed.submit_ps_url and ed.all_submitted and not ed.ps_submission %}onclick="revealPsSubmit({{ ed.exam.id }})"{% endif %}>
+          📄 PDF
+        </a>
         {% endif %}
-        <a href="{{ ed.overview_url }}" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;border-radius:2px;">{% if LANG == 'sw' %}Maelezo{% else %}Details{% endif %}</a>
       </div>
     </div>
+
+    {% if is_academic %}
+    <div style="font-size:0.68rem;color:#666;padding:0.4rem 1rem;background:#fbfaf6;border-bottom:1px solid #f0f2f5;">
+      💡 {% if LANG == 'sw' %}<strong>Ripoti ya Mtihani</strong> = orodha ya wanafunzi wote na nafasi &bull; <strong>Ripoti za Wanafunzi Wote</strong> = slip kwa kila mwanafunzi &bull; <strong>Formati</strong> = muonekano wa slip (Kawaida/Rank/NECTA) &bull; <strong>Matokeo (Pakia)</strong> = kupakia karatasi za alama &bull; <strong>Maelezo</strong> = kina cha mtihani{% else %}<strong>Exam Report</strong> = full student list with positions &bull; <strong>All Students' Reports</strong> = one slip per student &bull; <strong>Format</strong> = slip look (Normal/Rank/NECTA) &bull; <strong>Results (Upload)</strong> = upload scoresheets &bull; <strong>Details</strong> = exam internals{% endif %}
+    </div>
+    {% endif %}
 
     {% if not ed.all_approved %}
     <div class="not-approved-notice">
