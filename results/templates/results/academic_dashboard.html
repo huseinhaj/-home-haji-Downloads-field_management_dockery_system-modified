@@ -113,7 +113,12 @@
 .fill-submitted{ background:var(--ad-faint); }
 .fill-approved{ background:var(--ad-green); }
 
-.subjects-table{ width:100%; border-collapse:collapse; font-size:.79rem; }
+/* The table has 6 columns (incl. action buttons) which don't all fit on
+   a phone screen — .form-level-card clips overflow (for its rounded
+   corners), so without this the extra columns were simply unreachable,
+   not just requiring a scroll. */
+.subjects-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.subjects-table{ width:100%; min-width:640px; border-collapse:collapse; font-size:.79rem; }
 .subjects-table th{
   background:var(--ad-grey); padding:.4rem .75rem; font-size:.67rem;
   text-transform:uppercase; letter-spacing:.05em; color:var(--ad-muted);
@@ -329,6 +334,7 @@
 
         <!-- Subjects table -->
         {% if ed.submissions %}
+        <div class="subjects-table-wrap">
         <table class="subjects-table">
           <thead>
             <tr>
@@ -394,6 +400,7 @@
             {% endfor %}
           </tbody>
         </table>
+        </div>
 
         {% if ed.pending_subs %}
         <div style="background:#f8f9fb;border-top:1px solid #e9ecef;padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
