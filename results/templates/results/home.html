@@ -16,7 +16,7 @@
       </p>
     </div>
     {% if user.is_academic %}
-    <a href="{% url 'upload_results' %}" class="btn btn-brand">+ {% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}New Exam{% endif %}</a>
+    <a href="{% url 'upload_results' %}" class="btn btn-brand">+ {% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}Create New Exam{% endif %}</a>
     {% elif user.is_teacher %}
     <a href="{% url 'teacher_dashboard' %}" class="btn btn-brand">{% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}</a>
     {% endif %}
