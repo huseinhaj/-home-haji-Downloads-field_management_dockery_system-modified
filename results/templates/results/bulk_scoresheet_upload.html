@@ -338,8 +338,10 @@
      on a JS click-interceptor to show a style-picker modal — plain
      server-rendered links can't fail to "come up" the way a script that
      has to load/execute/attach a listener can. The group is still
-     enabled/disabled as one unit by generateResultsBtn's JS below. #}
-  <div class="btn-final primary d-flex gap-1 flex-wrap" id="generateResultsBtn" style="opacity:0.4;pointer-events:none;background:none;padding:0;">
+     Not gated on every subject being "Done" -- the academic officer may
+     legitimately want a partial results PDF before the last few subjects
+     are in; generate_results_pdf just prints whatever ExamResults exist. #}
+  <div class="btn-final primary d-flex gap-1 flex-wrap" id="generateResultsBtn" style="background:none;padding:0;">
     <a href="{% url 'generate_results_pdf' exam.id %}?style=normal" data-no-style-picker class="btn-final primary" style="font-size:0.8rem;">
       📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}
     </a>
