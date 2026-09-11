@@ -1984,6 +1984,8 @@ def set_class_teacher(request, exam_id):
 def set_conduct_and_comments(request, exam_id):
     import json as _json
 
+    from .services.pdf_export_service import _grade_for_score
+
     exam = _get_exam_or_404(exam_id, request.user)
     if not (request.user.is_academic or request.user.id == exam.class_teacher_id):
         raise PermissionDenied("Wewe si mwalimu wa darasa aliyeteuliwa kwa mtihani huu.")
@@ -1991,6 +1993,8 @@ def set_conduct_and_comments(request, exam_id):
     results_qs = list(
         ProcessedResult.objects.filter(exam=exam).select_related('student').order_by('position')
     )
+    valid_grades = {'A', 'B', 'C', 'D', 'E', 'S', 'F'}
+    categories = ProcessedResult.CONDUCT_CATEGORIES
 
     if request.method == 'POST':
         try:
@@ -1998,40 +2002,54 @@ def set_conduct_and_comments(request, exam_id):
         except _json.JSONDecodeError:
             return JsonResponse({'error': 'Data ya ombi si sahihi.'}, status=400)
 
-        valid_grades = {'A', 'B', 'C', 'D', 'E', 'S', 'F'}
-        grade_by_result_id = {}
+        grades_by_result_id = {}
         for entry in payload.get('conduct') or []:
             try:
                 rid = int(entry.get('result_id'))
             except (TypeError, ValueError):
                 continue
-            grade = str(entry.get('grade') or '').strip().upper()
-            if grade and grade not in valid_grades:
-                continue
-            grade_by_result_id[rid] = grade
+            raw_grades = entry.get('grades') or {}
+            cleaned = {}
+            for cat in categories:
+                g = str(raw_grades.get(cat) or '').strip().upper()
+                if g and g not in valid_grades:
+                    continue
+                if g:
+                    cleaned[cat] = g
+            grades_by_result_id[rid] = cleaned
 
-        result_ids = list(grade_by_result_id.keys())
+        result_ids = list(grades_by_result_id.keys())
         rows = ProcessedResult.objects.filter(id__in=result_ids, exam=exam)
         if len(rows) != len(result_ids):
             return JsonResponse({'error': 'Baadhi ya matokeo hayapo kwenye mtihani huu.'}, status=400)
         for row in rows:
-            row.conduct_grade = grade_by_result_id[row.id]
-        ProcessedResult.objects.bulk_update(rows, ['conduct_grade'])
+            row.conduct_grades = grades_by_result_id[row.id]
+        ProcessedResult.objects.bulk_update(rows, ['conduct_grades'])
 
         exam.class_teacher_comment = str(payload.get('class_teacher_comment') or '').strip()
         exam.save(update_fields=['class_teacher_comment'])
         return JsonResponse({'success': True, 'updated_count': len(rows)})
 
-    students_payload = [
-        {
+    # Every category defaults to a grade suggested from the student's own
+    # average score (same bands as their academic grade) — a real starting
+    # point instead of a blank/uniform one, since a class teacher grading
+    # 100+ students by hand tended to just give everyone the same letter
+    # out of fatigue. Only used where nothing has been saved yet; the
+    # teacher can (and often should — a weak-academic student can still be
+    # strong on Michezo/Nidhamu) override any single category per student.
+    students_payload = []
+    for r in results_qs:
+        suggested = _grade_for_score(float(r.average_score), exam.form) or 'C'
+        grades = {cat: r.conduct_grades.get(cat, suggested) for cat in categories}
+        students_payload.append({
             'result_id': r.id,
             'name': ' '.join(p for p in [r.student.first_name, r.student.middle_name or '', r.student.last_name] if p),
-            'conduct_grade': r.conduct_grade,
-        }
-        for r in results_qs
-    ]
+            'grades': grades,
+        })
+
     return render(request, 'results/set_conduct.html', {
         'exam': exam,
+        'categories_json': _json.dumps(categories),
         'students_json': _json.dumps(students_payload),
         'class_teacher_comment': exam.class_teacher_comment,
     })

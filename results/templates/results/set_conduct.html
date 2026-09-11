@@ -22,14 +22,28 @@
     padding: 0.5rem 0.7rem; font-size: 0.85rem; box-sizing: border-box; font-family: inherit;
   }
   .tc-field textarea { min-height: 80px; resize: vertical; margin-top: 0.5rem; }
-  table.tc-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  table.tc-table th {
-    background: #f8f9fb; padding: 0.5rem 0.75rem; font-size: 0.72rem;
-    text-transform: uppercase; letter-spacing: 0.04em; color: #666;
-    border-bottom: 1.5px solid #dee2e6; text-align: left;
+  .tc-bulkbar {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    background: #f8f9fb; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.82rem;
   }
-  table.tc-table td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #eef1f4; }
-  table.tc-table select.conduct-grade { padding: 0.3rem 0.5rem; font-size: 0.82rem; border-radius: 2px; border: 1.5px solid #dee2e6; }
+  .tc-bulkbar select { border: 1.5px solid #dee2e6; border-radius: 2px; padding: 0.3rem 0.5rem; font-size: 0.82rem; }
+  .btn-tc-bulk-apply, .btn-tc-checkall {
+    background: #24508a; color: #fff; border: none; font-weight: 700;
+    font-size: 0.78rem; padding: 0.4rem 0.8rem; border-radius: 2px; cursor: pointer;
+  }
+  .btn-tc-checkall { background: #fff; color: #24508a; border: 1.5px solid #24508a; }
+  .tc-hint { font-size: 0.72rem; color: #888; width: 100%; }
+  table.tc-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  table.tc-table th {
+    background: #f8f9fb; padding: 0.5rem 0.4rem; font-size: 0.66rem;
+    text-transform: uppercase; letter-spacing: 0.03em; color: #666;
+    border-bottom: 1.5px solid #dee2e6; text-align: center;
+  }
+  table.tc-table th.tc-name-col { text-align: left; }
+  table.tc-table td { padding: 0.4rem; border-bottom: 1px solid #eef1f4; text-align: center; }
+  table.tc-table td.tc-name-cell { text-align: left; }
+  table.tc-table select.conduct-grade { padding: 0.25rem 0.3rem; font-size: 0.8rem; border-radius: 2px; border: 1.5px solid #dee2e6; width: 100%; }
   .btn-tc-save {
     background: #1F7A3D; color: #fff; border: none; font-weight: 700;
     font-size: 0.85rem; padding: 0.55rem 1.4rem; border-radius: 2px; cursor: pointer;
@@ -74,16 +88,41 @@
 </div>
 
 <div class="tc-card">
+  <p style="font-size:0.82rem;color:#555;margin-top:0;">
+    {% if LANG == 'sw' %}
+      Kila daraja limejazwa kiotomatiki kulingana na ufaulu wa mwanafunzi (mfano: aliyefanya vizuri anapata "A" wastani) — badilisha kila mstari/safu kadri unavyomjua mwanafunzi (mfano: wa mwisho kitaaluma anaweza kuwa bora kwenye Michezo/Usafi/Nidhamu).
+    {% else %}
+      Every grade starts pre-filled from the student's own average score (e.g. a strong student defaults to "A") — adjust any cell as you actually know the student (e.g. a weak-academic student can still be strong on Michezo/Usafi/Nidhamu).
+    {% endif %}
+  </p>
+
+  <div class="tc-bulkbar">
+    <button type="button" class="btn-tc-checkall" id="tcCheckAll">{% if LANG == 'sw' %}Chagua Wote{% else %}Select All{% endif %}</button>
+    <button type="button" class="btn-tc-checkall" id="tcUncheckAll">{% if LANG == 'sw' %}Ondoa Wote{% else %}Clear{% endif %}</button>
+    <span>{% if LANG == 'sw' %}Kwa waliochaguliwa, weka{% else %}For selected, set{% endif %}</span>
+    <select id="bulkCategory"></select>
+    <span>=</span>
+    <select id="bulkGrade">
+      <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+      <option value="D">D</option><option value="E">E</option><option value="S">S</option><option value="F">F</option>
+    </select>
+    <button type="button" class="btn-tc-bulk-apply" id="tcBulkApply">{% if LANG == 'sw' %}Tumia{% else %}Apply{% endif %}</button>
+    <span class="tc-hint">{% if LANG == 'sw' %}Weka tiki mstari kadhaa, chagua kipengele na daraja hapo juu, kisha "Tumia" — badala ya kujaza mstari mmoja mmoja.{% else %}Tick several rows, pick a category and grade above, then "Apply" — instead of setting one row at a time.{% endif %}</span>
+  </div>
+
+  <div style="overflow-x:auto;">
   <table class="tc-table">
     <thead>
-      <tr>
+      <tr id="tcHeadRow">
+        <th style="width:2rem;"><input type="checkbox" id="tcHeadCheck" title="{% if LANG == 'sw' %}Chagua wote{% else %}Select all{% endif %}"></th>
         <th>#</th>
-        <th>{% if LANG == 'sw' %}Mwanafunzi{% else %}Student{% endif %}</th>
-        <th>{% if LANG == 'sw' %}Tabia na Mwenendo (A-F){% else %}Conduct Grade (A-F){% endif %}</th>
+        <th class="tc-name-col">{% if LANG == 'sw' %}Mwanafunzi{% else %}Student{% endif %}</th>
+        <!-- conduct category columns injected by JS -->
       </tr>
     </thead>
     <tbody id="tcRowsBody"></tbody>
   </table>
+  </div>
 </div>
 
 <button type="button" class="btn-tc-save" id="tcSaveBtn">
@@ -99,13 +138,21 @@
   const SAVE_URL = window.location.href;
   let students = [];
   try { students = JSON.parse('{{ students_json|escapejs }}'); } catch (e) {}
-
+  let CATEGORIES = [];
+  try { CATEGORIES = JSON.parse('{{ categories_json|escapejs }}'); } catch (e) {}
+  const CAT_LABELS = {
+    uaminifu: 'UAMINIFU', kujitolea: 'KUJITOLEA', kufanya_kazi: 'KUFANYA KAZI',
+    nidhamu: 'NIDHAMU', usafi: 'USAFI', michezo: 'MICHEZO',
+  };
   const GRADES = ['A', 'B', 'C', 'D', 'E', 'S', 'F'];
+
+  const headRow = document.getElementById('tcHeadRow');
   const rowsBody = document.getElementById('tcRowsBody');
   const commentBox = document.getElementById('classComment');
   const commentPreset = document.getElementById('commentPreset');
   const saveBtn = document.getElementById('tcSaveBtn');
   const toastEl = document.getElementById('tcToast');
+  const headCheck = document.getElementById('tcHeadCheck');
 
   function escapeHtml(s) {
     const d = document.createElement('div');
@@ -120,9 +167,27 @@
     toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2500);
   }
 
+  // Category columns are the same for every student — build the header and
+  // the bulk-apply dropdown once.
+  const bulkCategorySel = document.getElementById('bulkCategory');
+  CATEGORIES.forEach(cat => {
+    const th = document.createElement('th');
+    th.textContent = CAT_LABELS[cat] || cat.toUpperCase();
+    headRow.appendChild(th);
+
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = CAT_LABELS[cat] || cat.toUpperCase();
+    bulkCategorySel.appendChild(opt);
+  });
+
+  function gradeOptions(selected) {
+    return GRADES.map(g => `<option value="${g}" ${selected === g ? 'selected' : ''}>${g}</option>`).join('');
+  }
+
   function renderRows() {
     if (!students.length) {
-      rowsBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;padding:1.4rem;">' +
+      rowsBody.innerHTML = `<tr><td colspan="${3 + CATEGORIES.length}" style="text-align:center;color:#999;padding:1.4rem;">` +
         (LANG === 'sw'
           ? 'Hakuna matokeo yaliyokamilika bado kwa mtihani huu.'
           : 'No processed results yet for this exam.') + '</td></tr>';
@@ -130,28 +195,55 @@
     }
     rowsBody.innerHTML = students.map((s, i) => `
       <tr data-result-id="${s.result_id}">
+        <td><input type="checkbox" class="tc-row-check"></td>
         <td>${i + 1}</td>
-        <td>${escapeHtml(s.name)}</td>
-        <td>
-          <select class="conduct-grade" data-result-id="${s.result_id}">
-            <option value="">—</option>
-            ${GRADES.map(g => `<option value="${g}" ${s.conduct_grade === g ? 'selected' : ''}>${g}</option>`).join('')}
-          </select>
-        </td>
+        <td class="tc-name-cell">${escapeHtml(s.name)}</td>
+        ${CATEGORIES.map(cat => `
+          <td><select class="conduct-grade" data-category="${cat}">${gradeOptions((s.grades || {})[cat])}</select></td>
+        `).join('')}
       </tr>
     `).join('');
   }
   renderRows();
+
+  headCheck.addEventListener('change', () => {
+    rowsBody.querySelectorAll('.tc-row-check').forEach(cb => { cb.checked = headCheck.checked; });
+  });
+  document.getElementById('tcCheckAll').addEventListener('click', () => {
+    rowsBody.querySelectorAll('.tc-row-check').forEach(cb => { cb.checked = true; });
+    headCheck.checked = true;
+  });
+  document.getElementById('tcUncheckAll').addEventListener('click', () => {
+    rowsBody.querySelectorAll('.tc-row-check').forEach(cb => { cb.checked = false; });
+    headCheck.checked = false;
+  });
+
+  document.getElementById('tcBulkApply').addEventListener('click', () => {
+    const category = document.getElementById('bulkCategory').value;
+    const grade = document.getElementById('bulkGrade').value;
+    const checkedRows = Array.from(rowsBody.querySelectorAll('tr[data-result-id]'))
+      .filter(tr => { const cb = tr.querySelector('.tc-row-check'); return cb && cb.checked; });
+    if (!checkedRows.length) {
+      toast(LANG === 'sw' ? 'Chagua angalau mwanafunzi mmoja kwanza.' : 'Select at least one student first.', true);
+      return;
+    }
+    checkedRows.forEach(tr => {
+      const sel = tr.querySelector(`select.conduct-grade[data-category="${category}"]`);
+      if (sel) sel.value = grade;
+    });
+    toast(LANG === 'sw' ? `Imewekwa kwa wanafunzi ${checkedRows.length}` : `Applied to ${checkedRows.length} students`);
+  });
 
   commentPreset.addEventListener('change', () => {
     if (commentPreset.value) commentBox.value = commentPreset.value;
   });
 
   saveBtn.addEventListener('click', async () => {
-    const conduct = Array.from(rowsBody.querySelectorAll('.conduct-grade')).map(sel => ({
-      result_id: parseInt(sel.dataset.resultId, 10),
-      grade: sel.value,
-    }));
+    const conduct = Array.from(rowsBody.querySelectorAll('tr[data-result-id]')).map(tr => {
+      const grades = {};
+      tr.querySelectorAll('select.conduct-grade').forEach(sel => { grades[sel.dataset.category] = sel.value; });
+      return { result_id: parseInt(tr.dataset.resultId, 10), grades };
+    });
     saveBtn.disabled = true;
     try {
       const res = await fetch(SAVE_URL, {

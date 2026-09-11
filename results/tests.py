@@ -762,8 +762,8 @@ class SetClassTeacherAndConductTests(TestCase):
 			reverse('set_conduct_and_comments', args=[self.exam.id]),
 			data=json.dumps({
 				'conduct': [
-					{'result_id': self.result_one.id, 'grade': 'A'},
-					{'result_id': self.result_two.id, 'grade': 'C'},
+					{'result_id': self.result_one.id, 'grades': {'uaminifu': 'A', 'michezo': 'B'}},
+					{'result_id': self.result_two.id, 'grades': {'uaminifu': 'C', 'michezo': 'A'}},
 				],
 				'class_teacher_comment': 'Ufaulu ni mzuri, aendelee hivyo hivyo.',
 			}),
@@ -773,8 +773,10 @@ class SetClassTeacherAndConductTests(TestCase):
 		self.result_one.refresh_from_db()
 		self.result_two.refresh_from_db()
 		self.exam.refresh_from_db()
-		self.assertEqual(self.result_one.conduct_grade, 'A')
-		self.assertEqual(self.result_two.conduct_grade, 'C')
+		self.assertEqual(self.result_one.conduct_grades, {'uaminifu': 'A', 'michezo': 'B'})
+		# A weak-academic student can still score well on a specific
+		# category — categories are independent, not one grade for all six.
+		self.assertEqual(self.result_two.conduct_grades, {'uaminifu': 'C', 'michezo': 'A'})
 		self.assertEqual(self.exam.class_teacher_comment, 'Ufaulu ni mzuri, aendelee hivyo hivyo.')
 
 	def test_unrelated_teacher_cannot_set_conduct(self):
@@ -794,6 +796,22 @@ class SetClassTeacherAndConductTests(TestCase):
 		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
 		response = client.get(reverse('set_conduct_and_comments', args=[self.exam.id]))
 		self.assertEqual(response.status_code, 200)
+
+	def test_unsaved_conduct_defaults_from_average_score(self):
+		# result_one averages 78 (Division I) -> should default to 'A' on
+		# every category; result_two averages 55 (Division III) -> 'C'.
+		# This is only ever a starting point shown in the form — nothing is
+		# written to the DB until the teacher actually saves.
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		response = client.get(reverse('set_conduct_and_comments', args=[self.exam.id]))
+		self.assertEqual(response.status_code, 200)
+		payload = json.loads(response.context['students_json'])
+		by_id = {row['result_id']: row for row in payload}
+		self.assertEqual(by_id[self.result_one.id]['grades']['uaminifu'], 'A')
+		self.assertEqual(by_id[self.result_two.id]['grades']['michezo'], 'C')
+		self.result_one.refresh_from_db()
+		self.assertEqual(self.result_one.conduct_grades, {})
 
 
 class BulkScoresheetPreviewPdfTests(TestCase):

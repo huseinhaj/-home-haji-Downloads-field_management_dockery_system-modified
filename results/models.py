@@ -275,10 +275,14 @@ class ProcessedResult(models.Model):
         default=uuid.uuid4, unique=True, editable=False,
         help_text="Unique token for anonymous public access to this student's result.",
     )
-    conduct_grade = models.CharField(
-        max_length=1, blank=True, default='',
-        help_text="A-F, set by the exam's class_teacher. Printed against every "
-                  "TABIA NA MWENENDO (conduct) category on the report card.",
+    CONDUCT_CATEGORIES = ['uaminifu', 'kujitolea', 'kufanya_kazi', 'nidhamu', 'usafi', 'michezo']
+    conduct_grades = models.JSONField(
+        default=dict, blank=True,
+        help_text="{'uaminifu': 'A', 'kujitolea': 'B', ...} — one A-F grade per "
+                  "TABIA NA MWENENDO (conduct) category, set by the exam's "
+                  "class_teacher. Categories deliberately differ per student "
+                  "(a weak-academic student can still be strong on Michezo/"
+                  "Nidhamu) rather than one grade applied to all of them.",
     )
 
     class Meta:
