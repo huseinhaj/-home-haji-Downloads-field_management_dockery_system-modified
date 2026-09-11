@@ -223,7 +223,7 @@
           {% if stream_key %}<span class="stream-badge">{{ stream_key }}</span>{% endif %}
         {% endfor %}
         <a href="{% url 'form_results' fd.form_num %}" class="form-results-link">
-          {% if LANG == 'sw' %}Matokeo{% else %}Results{% endif %} {{ fd.form_label }}
+          {% if LANG == 'sw' %}Ripoti{% else %}Report{% endif %} {{ fd.form_label }}
         </a>
       </div>
     </div>
