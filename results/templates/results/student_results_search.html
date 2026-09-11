@@ -309,6 +309,10 @@
           </div>
           <div style="display:flex;align-items:center;gap:0.6rem;">
             <span class="div-badge div-{{ r.division }}">{{ r.division }}</span>
+            {% if is_academic_user %}
+            <a href="{% url 'edit_processed_result' r.result_id %}" class="btn-view"
+               style="background:#B8860B;" title="Hariri alama za mwanafunzi huyu">✏️ Edit</a>
+            {% endif %}
             <a href="{% url 'student_result_public' token=r.share_token %}" class="btn-view">
               Angalia &rarr;
             </a>

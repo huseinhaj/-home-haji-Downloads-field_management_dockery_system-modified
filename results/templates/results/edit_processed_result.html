@@ -1,0 +1,80 @@
+{% extends 'results/base.html' %}
+
+{% block content %}
+<div style="max-width:760px;margin:0 auto;">
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background:#1A3C6E;color:#fff;">
+      <strong>✏️ Hariri Alama — {{ student_name }}</strong>
+      <a href="{% url 'student_results_search' %}?q={{ student_name|urlencode }}" class="btn btn-sm btn-outline-light" style="font-size:0.72rem;">← Search Results</a>
+    </div>
+    <div class="card-body">
+      <div class="mb-3" style="font-size:0.85rem;color:#555;">
+        <strong>{{ exam.get_exam_type_display }} — {{ exam.name }}</strong>
+        &bull; Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %}
+        &bull; {{ exam.year }}
+        <br>
+        <span class="text-muted">
+          {% if LANG == 'sw' %}
+            Andika alama mpya kwenye kisanduku, au tika <strong>X</strong> kama alikuwa absent. Seli tupu = alama itaondolewa.
+            Baada ya hifadhi, matokeo yote (nafasi, daraja, PDF) yatahesabiwa upya.
+          {% else %}
+            Type the new score in each box, or tick <strong>X</strong> if the student was absent.
+            An empty box removes the score. After saving, all results (positions, divisions, PDFs) are recomputed.
+          {% endif %}
+        </span>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <table class="table table-sm table-hover">
+          <thead style="background:#F8F9FA;">
+            <tr>
+              <th>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+              <th style="width:120px;">Alama</th>
+              <th style="width:80px;">X (Absent)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for er in exam_results %}
+            <tr>
+              <td>{{ er.subject.name }}</td>
+              <td>
+                <input type="number" min="0" max="100" step="1"
+                       class="form-control form-control-sm score-input"
+                       name="score_{{ er.pk }}"
+                       value="{% if er.score is not None %}{{ er.score }}{% endif %}"
+                       {% if er.is_absent %}disabled{% endif %}>
+              </td>
+              <td class="text-center">
+                <input type="checkbox" class="form-check-input absent-cb"
+                       name="absent_{{ er.pk }}"
+                       data-score-input="score_{{ er.pk }}"
+                       {% if er.is_absent %}checked{% endif %}>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn" style="background:#1A7B3A;color:#fff;">💾 Apply Changes</button>
+          <a href="{% url 'student_results_search' %}" class="btn btn-outline-secondary">Ghairi</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.absent-cb').forEach(function(cb) {
+  cb.addEventListener('change', function() {
+    var input = document.getElementById(this.dataset.scoreInput) ||
+                document.querySelector('[name="' + this.dataset.scoreInput + '"]');
+    if (input) {
+      input.disabled = this.checked;
+      if (this.checked) { input.value = ''; }
+    }
+  });
+});
+</script>
+{% endblock %}

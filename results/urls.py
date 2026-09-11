@@ -63,12 +63,15 @@ from .views import (
     student_result_public,
     student_result_pdf,
     public_results_search,
+    edit_processed_result,
     exam_share_links,
     upload_form_students,
     delete_form_student,
     delete_all_form_students,
     assign_form_student_subjects,
     bulk_assign_form_student_subjects,
+    edit_form_student,
+    bulk_edit_form_student_gender,
     assign_teacher_form,
     teacher_performance_report,
     submit_exam_to_ps,
@@ -125,6 +128,7 @@ urlpatterns = [
     path('filter_exams/', filter_exams, name='filter_exams'),
     # Public results portal — search page (NECTA-style, no login)
     path('matokeo/', public_results_search, name='student_results_search'),
+    path('matokeo/<int:result_id>/hariri/', edit_processed_result, name='edit_processed_result'),
     # Public results lookup by token (NECTA-style, no login)
     path('matokeo/<uuid:token>/', student_result_public, name='student_result_public'),
     path('matokeo/<uuid:token>/pdf/', student_result_pdf, name='student_result_pdf'),
@@ -205,6 +209,8 @@ urlpatterns = [
     path('form-students/<int:student_id>/delete/', delete_form_student, name='delete_form_student'),
     path('form-students/<int:form_num>/delete-all/', delete_all_form_students, name='delete_all_form_students'),
     path('form-students/<int:student_id>/assign-subjects/', assign_form_student_subjects, name='assign_form_student_subjects'),
+    path('form-students/<int:student_id>/edit/', edit_form_student, name='edit_form_student'),
+    path('form-students/bulk-edit-gender/', bulk_edit_form_student_gender, name='bulk_edit_form_student_gender'),
     path('form-students/bulk-assign-subjects/', bulk_assign_form_student_subjects, name='bulk_assign_form_student_subjects'),
     # Assign teacher to form + subject
     path('assign-teacher/', assign_teacher_form, name='assign_teacher_form'),

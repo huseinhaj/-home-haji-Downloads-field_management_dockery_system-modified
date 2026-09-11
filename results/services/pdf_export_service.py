@@ -1222,7 +1222,8 @@ def generate_results_pdf_response(exam, style='normal'):
 # instead of only viewing it online.
 # ══════════════════════════════════════════════════════════════════════════════
 def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=None,
-                                     scores=None, subjects=None, subject_ranks=None):
+                                     scores=None, subjects=None, subject_ranks=None,
+                                     style='normal'):
     """Full NECTA-style report card for a single ProcessedResult — same
     official header as the full class report, personalised below it with
     this student's own subjects/scores/grades (each with its own
@@ -1244,6 +1245,16 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     exam = result.exam
     student = result.student
     st = _styles()
+    # ── Theme (normal | rank | necta) — same treatment as the full class
+    #    report in generate_results_pdf_response: palette/row styling only,
+    #    content identical. ──
+    style_key = (style or 'normal').lower()
+    theme = _resolve_theme(style)
+    st['th'].textColor = theme['header_fg']
+    st['th_sm'].textColor = theme['header_fg']
+    if style_key != 'necta':
+        st['section'].textColor = theme['section_fg']
+    _HB, _HF, _BB = theme['header_bg'], theme['header_fg'], theme['band_bg']
     school_disp = get_full_school_name(exam)
     lang = get_report_language(exam)
     etype = exam.get_exam_type_display().upper()
@@ -1320,7 +1331,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     subj_table = Table(subj_rows, colWidths=[
         content_w * 0.32, content_w * 0.13, content_w * 0.13, content_w * 0.14, content_w * 0.28,
     ])
-    subj_table.setStyle(TableStyle(_std_table_style(len(subj_rows))))
+    subj_table.setStyle(TableStyle(_std_table_style(len(subj_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
     story.append(subj_table)
     story.append(Spacer(1, 14))
 
@@ -1338,7 +1349,12 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         [[_p(f"<b>{h}</b>", st['th_sm']) for h in summary_hdrs], [_p(v, st['td_bold']) for v in summary_row]],
         colWidths=[content_w / 5] * 5,
     )
-    summary_table.setStyle(TableStyle(_std_table_style(2, header_bg=GREEN)))
+    summary_table.setStyle(TableStyle(_std_table_style(
+        2,
+        header_bg=GREEN if style_key == 'normal' else _HB,
+        header_fg=WHITE if style_key == 'normal' else _HF,
+        band_bg=_BB,
+    )))
     story.append(summary_table)
     story.append(Spacer(1, 10))
 
@@ -1361,7 +1377,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
          [_p(conduct_grades.get(key, '-'), st['td_bold']) for key, _label in conduct_cats]],
         colWidths=[content_w / len(conduct_cats)] * len(conduct_cats),
     )
-    conduct_table.setStyle(TableStyle(_std_table_style(2)))
+    conduct_table.setStyle(TableStyle(_std_table_style(2, header_bg=_HB, header_fg=_HF, band_bg=_BB)))
     story.append(conduct_table)
     story.append(Spacer(1, 10))
 
@@ -1372,7 +1388,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     for g, rng in grade_bands:
         mchanganuo_rows.append([_p(rng, st['td']), _p(g, st['td_bold']), _p(GRADE_MEANING_SW.get(g, '-'), st['td'])])
     mchanganuo_table = Table(mchanganuo_rows, colWidths=[content_w * 0.3, content_w * 0.2, content_w * 0.5])
-    mchanganuo_table.setStyle(TableStyle(_std_table_style(len(mchanganuo_rows))))
+    mchanganuo_table.setStyle(TableStyle(_std_table_style(len(mchanganuo_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
     story.append(mchanganuo_table)
     story.append(Spacer(1, 10))
 
@@ -1423,6 +1439,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     )
     doc._exam = exam
     doc._gen_date_short = gen_date_short
+    doc._page_bg = theme['page_bg']
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
 
     buf.seek(0)
@@ -1438,7 +1455,7 @@ def generate_student_result_pdf_response(result):
     return resp
 
 
-def generate_bulk_student_results_pdf_response(exam):
+def generate_bulk_student_results_pdf_response(exam, style='normal'):
     """All students of this exam (i.e. this form — an Exam is already
     scoped to one form/year/type), each on their own page(s), merged into
     ONE downloadable PDF — same slip _build_student_result_pdf_bytes
@@ -1493,6 +1510,7 @@ def generate_bulk_student_results_pdf_response(exam):
             scores=scores_by_student.get(result.student_id, {}),
             subjects=subjects_by_student.get(result.student_id, []),
             subject_ranks=subject_ranks,
+            style=style,
         )
         buffers.append(buf)
         src = pdfium.PdfDocument(buf)  # buffers stay alive until save()

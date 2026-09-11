@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Case, Count, IntegerField, Q, When
+from django.db import transaction
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -200,10 +201,16 @@ def generate_bulk_student_results_pdf(request, exam_id):
     single-student download at /shule/matokeo/<token>/pdf/. Restricted to
     the Academic Officer since it exposes every student's result in one
     file (the single-student one is safe to be public because a parent
-    only has their own child's share token)."""
+    only has their own child's share token).
+
+    ?style= : 'normal' (kawaida) | 'rank' | 'necta' — palette tu
+    inabadilika, maudhui ni hayo hayo."""
     exam = _get_exam_or_404(exam_id, request.user)
     recompute_processed_results_for_exam(exam)
-    return generate_bulk_student_results_pdf_response(exam)
+    style = (request.GET.get('style') or 'normal').lower()
+    if style not in ('normal', 'rank', 'necta'):
+        style = 'normal'
+    return generate_bulk_student_results_pdf_response(exam, style=style)
 
 
 @academic_required
@@ -366,7 +373,12 @@ def public_results_search(request):
                 'division': r.division,
                 'position': r.position,
                 'share_token': str(r.share_token),
+                'result_id': r.pk,
             })
+
+    # Academic Officer anaweza kubadilisha alama kutoka hapa — is_authenticated
+    # inashughulikia AnonymousUser kabla ya kuangalia is_academic.
+    is_academic_user = request.user.is_authenticated and getattr(request.user, 'is_academic', False)
 
     return render(request, 'results/student_results_search.html', {
         'query': query,
@@ -377,6 +389,63 @@ def public_results_search(request):
         'form_choices': form_choices,
         'year_choices': year_choices,
         'lang': lang,
+        'is_academic_user': is_academic_user,
+    })
+
+
+@academic_required
+def edit_processed_result(request, result_id):
+    """Academic Officer anahariri alama za mwanafunzi mmoja kwenye mtihani.
+
+    Inafunguliwa kutoka Search Results ("✏️ Edit"). Inabadilisha ExamResult
+    (source of truth) kisha inarecompute exam nzima — totals, positions,
+    divisions na PDF zote zinazopakua baadaye zinaonyesha mabadiliko."""
+    result = get_object_or_404(
+        ProcessedResult.objects.select_related('student', 'exam'), pk=result_id
+    )
+    exam = _get_exam_or_404(result.exam_id, request.user)
+    student = result.student
+
+    exam_results = list(
+        ExamResult.objects.filter(exam=exam, student=student)
+        .select_related('subject').order_by('subject__name')
+    )
+
+    if request.method == 'POST':
+        with transaction.atomic():
+            for er in exam_results:
+                raw_score = (request.POST.get(f'score_{er.pk}') or '').strip()
+                absent = bool(request.POST.get(f'absent_{er.pk}'))
+                if absent:
+                    er.score = None
+                    er.is_absent = True
+                elif raw_score == '':
+                    # Seli tupu bila X — ondoa alama (subiri kuwekwa tena)
+                    er.score = None
+                    er.is_absent = False
+                else:
+                    try:
+                        er.score = max(0, min(100, int(float(raw_score))))
+                    except ValueError:
+                        continue  # value batili — ruka
+                    er.is_absent = False
+                er.save(update_fields=['score', 'is_absent'])
+            recompute_processed_results_for_exam(exam)
+        messages.success(
+            request,
+            f"Alama za {student.first_name} {student.last_name} zimehifadhiwa "
+            f"na matokeo yamehesabiwa upya."
+        )
+        return redirect('student_results_search')
+
+    student_name = ' '.join(
+        p for p in [student.first_name, student.middle_name or '', student.last_name] if p
+    )
+    return render(request, 'results/edit_processed_result.html', {
+        'result': result,
+        'exam': exam,
+        'student_name': student_name,
+        'exam_results': exam_results,
     })
 
 
@@ -2880,6 +2949,105 @@ def assign_form_student_subjects(request, student_id):
     names = ', '.join(s.name for s in subjects) or 'Hakuna somo'
     messages.success(request, f"Masomo ya {student.full_name} yamewekwa: {names}")
     return redirect(f'{reverse("upload_form_students")}?form={student.form}')
+
+
+@academic_required
+@require_POST
+def edit_form_student(request, student_id):
+    """Edit a FormStudent's name and/or gender (Academic Officer).
+
+    Mabadiliko ya jina yanaenea kwenye Student record inayolingana
+    (record inayobeba results/ExamResult), kwa hivyo report cards,
+    general results na dashboards za walimu zinaonyesha jina jipya
+    mara moja."""
+    school = request.user.school
+    student = get_object_or_404(FormStudent, id=student_id, school=school)
+    form_num = student.form
+
+    first_name = (request.POST.get('first_name') or '').strip()
+    middle_name = (request.POST.get('middle_name') or '').strip()
+    last_name = (request.POST.get('last_name') or '').strip()
+    gender = normalize_gender(request.POST.get('gender') or '')
+
+    if not first_name or not last_name:
+        messages.error(request, "Jina la kwanza na la mwisho vinahitajika.")
+        return redirect(f'{reverse("upload_form_students")}?form={form_num}')
+
+    old_first = student.first_name
+    old_middle = student.middle_name
+    old_last = student.last_name
+
+    with transaction.atomic():
+        student.first_name = first_name
+        student.middle_name = middle_name
+        student.last_name = last_name
+        student.gender = gender
+        student.save(update_fields=['first_name', 'middle_name', 'last_name', 'gender'])
+
+        # Eneza kwenye Student record (inayobeba results) — case-insensitive
+        # match ya majina matatu yote ya zamani. Pia sasisha gender, ili
+        # report cards zionyeshe jinsia sahihi.
+        linked_count = Student.objects.filter(
+            first_name__iexact=old_first,
+            middle_name__iexact=old_middle,
+            last_name__iexact=old_last,
+        ).update(
+            first_name=first_name,
+            middle_name=middle_name,
+            last_name=last_name,
+            gender=gender,
+        )
+
+    if linked_count:
+        messages.success(
+            request,
+            f"Amehifadhiwa: {first_name} {middle_name} {last_name} ({gender}) "
+            f"— pia kwenye results ({linked_count} record).",
+        )
+    else:
+        messages.success(request, f"Amehifadhiwa: {first_name} {middle_name} {last_name} ({gender}).")
+    return redirect(f'{reverse("upload_form_students")}?form={form_num}')
+
+
+@academic_required
+@require_POST
+def bulk_edit_form_student_gender(request):
+    """Bulk-set gender for multiple FormStudents (Academic Officer).
+
+    POST: student_ids=<id>&... gender=F|M. Pia huenza gender kwenye
+    Student records zinazolingana ili report cards zisibaki na M/F
+    potofu."""
+    school = request.user.school
+    if not school:
+        messages.error(request, "Hakuna shule.")
+        return redirect('upload_form_students')
+
+    student_ids = request.POST.getlist('student_ids')
+    gender = normalize_gender(request.POST.get('gender') or '')
+    form_num = request.POST.get('form') or request.GET.get('form') or ''
+
+    if not student_ids:
+        messages.warning(request, "Chagua wanafunzi kwanza.")
+        return redirect(f'{reverse("upload_form_students")}?form={form_num}')
+
+    students = list(FormStudent.objects.filter(id__in=student_ids, school=school))
+    linked_count = 0
+    with transaction.atomic():
+        for fs in students:
+            fs.gender = gender
+            fs.save(update_fields=['gender'])
+            linked_count += Student.objects.filter(
+                first_name__iexact=fs.first_name,
+                middle_name__iexact=fs.middle_name,
+                last_name__iexact=fs.last_name,
+            ).update(gender=gender)
+
+    messages.success(
+        request,
+        f"Gender '{gender}' imewekwa kwa wanafunzi {len(students)} "
+        f"(pamoja na records za results: {linked_count}).",
+    )
+    return redirect(f'{reverse("upload_form_students")}?form={form_num}')
 
 
 @academic_required
