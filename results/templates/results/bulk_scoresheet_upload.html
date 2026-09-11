@@ -334,9 +334,22 @@
   <a href="{% url 'exam_overview' exam.id %}" class="btn-final secondary">
     📊 {% if LANG == 'sw' %}Tazama Muhtasari{% else %}View Overview{% endif %}
   </a>
-  <a href="{% url 'generate_results_pdf' exam.id %}" class="btn-final primary" id="generateResultsBtn" style="opacity:0.4;pointer-events:none;">
-    📄 {% if LANG == 'sw' %}Generate Results PDF{% else %}Generate Results PDF{% endif %}
-  </a>
+  {# Three direct ?style= links in a group, instead of one link relying
+     on a JS click-interceptor to show a style-picker modal — plain
+     server-rendered links can't fail to "come up" the way a script that
+     has to load/execute/attach a listener can. The group is still
+     enabled/disabled as one unit by generateResultsBtn's JS below. #}
+  <div class="btn-final primary d-flex gap-1 flex-wrap" id="generateResultsBtn" style="opacity:0.4;pointer-events:none;background:none;padding:0;">
+    <a href="{% url 'generate_results_pdf' exam.id %}?style=normal" data-no-style-picker class="btn-final primary" style="font-size:0.8rem;">
+      📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}
+    </a>
+    <a href="{% url 'generate_results_pdf' exam.id %}?style=rank" data-no-style-picker class="btn-final primary" style="font-size:0.8rem;">
+      📄 {% if LANG == 'sw' %}Ranki{% else %}Rank{% endif %}
+    </a>
+    <a href="{% url 'generate_results_pdf' exam.id %}?style=necta" data-no-style-picker class="btn-final primary" style="font-size:0.8rem;">
+      📄 NECTA
+    </a>
+  </div>
   <a href="{% url 'export_results_excel' exam.id %}" class="btn-final secondary" id="exportExcelBtn" style="opacity:0.4;pointer-events:none;">
     📊 {% if LANG == 'sw' %}Export Excel{% else %}Export Excel{% endif %}
   </a>
