@@ -722,6 +722,16 @@
       }
 
       uploadAllBtn.disabled = true;
+      // AI kusoma kila scoresheet inachukua muda halisi (sekunde chache
+      // hadi dakika kadhaa kwa masomo mengi kwa pamoja) — kitufe
+      // kinaonyesha muda unaopita ili isionekane imekwama.
+      const uploadStartedAt = Date.now();
+      const uploadTimer = setInterval(() => {
+        const secs = Math.floor((Date.now() - uploadStartedAt) / 1000);
+        uploadAllBtn.textContent = (LANG === 'sw'
+          ? '⏳ Inasoma masomo ' + pendingUploads.length + '... (' + secs + 's)'
+          : '⏳ Reading ' + pendingUploads.length + ' subject(s)... (' + secs + 's)');
+      }, 1000);
       uploadAllBtn.textContent = LANG === 'sw' ? '⏳ Inapakia...' : '⏳ Uploading...';
 
       // Build FormData with all files and their subject IDs
@@ -745,8 +755,15 @@
             || ((LANG === 'sw' ? 'Upload imeshindwa' : 'Upload failed') + ' (HTTP ' + res.status + ')'));
         }
 
+        // The response only arrives once every subject's OCR is fully
+        // done (they ran concurrently server-side, but this is still one
+        // request/response) — the "elapsed seconds" ticker was only ever
+        // needed until here.
+        clearInterval(uploadTimer);
+
         const tasks = data.tasks || [];
         let completed = 0;
+        let anyAsync = false;
 
         // Update file rows to processing state
         for (const u of pendingUploads) {
@@ -779,6 +796,7 @@
             markFileError(upload, task.error);
             completed++;
           } else {
+            anyAsync = true;
             pollTask(task.task_id, task.subject_id, task.subject_name, () => {
               completed++;
               if (completed >= tasks.length) {
@@ -791,7 +809,23 @@
             });
           }
         }
+
+        // No task went the Celery/poll route (the normal case without a
+        // worker deployed) — every result is already in hand, so re-enable
+        // the button right away instead of leaving it stuck on
+        // "Uploading..." forever waiting for a poll loop that will never
+        // start.
+        if (!anyAsync) {
+          uploadAllBtn.disabled = false;
+          updateUploadBtn();
+          if (tasks.length) {
+            toast(LANG === 'sw'
+              ? '✅ Masomo ' + tasks.length + ' yamekamilika!'
+              : '✅ ' + tasks.length + ' subjects uploaded!');
+          }
+        }
       } catch (err) {
+        clearInterval(uploadTimer);
         uploadAllBtn.disabled = false;
         updateUploadBtn();
         toast(err.message, true);

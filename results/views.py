@@ -3145,7 +3145,10 @@ def bulk_scoresheet_upload(request, exam_id):
 
         # Multi-file upload: each file matched to a subject_id
         if subject_ids_raw and files and len(files) == len(subject_ids_raw):
-            tasks_started = []
+            from .tasks import process_bulk_upload_task
+
+            results_by_index = {}
+            sync_jobs = []  # [(index, subject, storage_path), ...]
             for idx, (file, sid) in enumerate(zip(files, subject_ids_raw)):
                 if not sid or not file:
                     continue
@@ -3156,28 +3159,56 @@ def bulk_scoresheet_upload(request, exam_id):
                 ext = os.path.splitext(file.name)[1].lower() or '.pdf'
                 storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
                 default_storage.save(storage_path, file)
-                from .tasks import process_bulk_upload_task
                 try:
                     task = process_bulk_upload_task.apply_async(
                         args=[storage_path, exam.id, subject.id, roster_ids],
                         kwargs={'preview_only': True},
                         queue='default',
                     )
-                    tasks_started.append({'task_id': task.id, 'subject_id': subject.id, 'subject_name': subject.name})
+                    results_by_index[idx] = {'task_id': task.id, 'subject_id': subject.id, 'subject_name': subject.name}
                 except Exception as celery_err:
-                    # Celery broker may be down — run synchronously as fallback
+                    # Celery broker may be down — queue it to run inline instead
                     logger.warning('Celery apply_async failed for subject %s, running synchronously: %s', subject.name, celery_err)
+                    sync_jobs.append((idx, subject, storage_path))
+
+            # No Celery worker consuming the queue here (no REDIS_URL), so
+            # every file normally lands in sync_jobs. Running them ONE AT A
+            # TIME in this same request — as before — meant uploading
+            # several subjects' scoresheets together could sail well past
+            # gunicorn's request timeout even though each file alone is
+            # fine. Run them concurrently instead so the wait is roughly
+            # the slowest single file, not the sum of all of them. Capped
+            # at 4 at once — each file already parallelises its own pages
+            # internally (MAX_OCR_WORKERS), so this bounds how many vision
+            # API calls can be in flight simultaneously.
+            if sync_jobs:
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+                from django.db import close_old_connections
+
+                def _run_sync(subject, storage_path):
+                    close_old_connections()
                     try:
                         result = process_bulk_upload_task(
                             storage_path, exam.id, subject.id, roster_ids, preview_only=True
                         )
                         if result and result.get('error'):
-                            tasks_started.append({'error': result['error'], 'subject_id': subject.id, 'subject_name': subject.name})
-                        else:
-                            tasks_started.append({'task_id': None, 'subject_id': subject.id, 'subject_name': subject.name, 'sync_done': True, 'preview': result})
+                            return {'error': result['error'], 'subject_id': subject.id, 'subject_name': subject.name}
+                        return {'task_id': None, 'subject_id': subject.id, 'subject_name': subject.name, 'sync_done': True, 'preview': result}
                     except Exception as sync_err:
                         logger.error('Synchronous bulk upload also failed for subject %s: %s', subject.name, sync_err)
-                        tasks_started.append({'error': str(sync_err), 'subject_id': subject.id, 'subject_name': subject.name})
+                        return {'error': str(sync_err), 'subject_id': subject.id, 'subject_name': subject.name}
+                    finally:
+                        close_old_connections()
+
+                with ThreadPoolExecutor(max_workers=min(len(sync_jobs), 4)) as pool:
+                    future_to_idx = {
+                        pool.submit(_run_sync, subject, storage_path): idx
+                        for idx, subject, storage_path in sync_jobs
+                    }
+                    for future in as_completed(future_to_idx):
+                        results_by_index[future_to_idx[future]] = future.result()
+
+            tasks_started = [results_by_index[i] for i in sorted(results_by_index)]
             return JsonResponse({'tasks': tasks_started})
 
         # Single file upload (legacy)

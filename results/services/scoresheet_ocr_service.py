@@ -39,6 +39,15 @@ PDF_RENDER_SCALE = 2.5  # ~180 DPI — good balance of clarity and speed
 # upload shouldn't fan out to hundreds of vision calls) but a realistic one.
 MAX_PDF_PAGES = 25
 MAX_OCR_WORKERS = 8  # concurrent vision calls — bound API load / rate limits
+# Without a Celery worker deployed (no REDIS_URL on Railway), every upload
+# runs THIS call synchronously inside the web request, bounded by gunicorn's
+# --timeout 300. At the old 180s-per-provider, one page failing on BOTH
+# OpenRouter and Gemini alone burned 360s — past the gunicorn limit, killing
+# the request with no error shown to the teacher (looked like an endless
+# "Uploading..."). 60s comfortably covers a real vision response (usually
+# a few seconds to ~20s) while keeping the worst single-page case (both
+# providers failing) at 120s, safely inside the request timeout.
+VISION_TIMEOUT_S = 60
 
 PROMPT = (
     "This is a PHOTO of a scoresheet — a table with a row number column "
@@ -301,7 +310,7 @@ def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, ma
         "temperature": 0.1,
         "max_tokens": max_tokens,
     }
-    resp = requests.post(url, json=payload, headers=headers, timeout=180)
+    resp = requests.post(url, json=payload, headers=headers, timeout=VISION_TIMEOUT_S)
     if resp.status_code != 200:
         raise RuntimeError(f"OpenRouter vision error {resp.status_code}: {resp.text[:300]}")
     data = resp.json()
@@ -325,7 +334,7 @@ def _call_gemini_vision(image_bytes: bytes, mime_type: str, api_key: str) -> str
         ],
         "generationConfig": {"temperature": 0.1, "maxOutputTokens": 16384},
     }
-    resp = requests.post(url, json=payload, timeout=180)
+    resp = requests.post(url, json=payload, timeout=VISION_TIMEOUT_S)
     if resp.status_code != 200:
         raise RuntimeError(f"Gemini vision error {resp.status_code}: {resp.text[:300]}")
     data = resp.json()
