@@ -255,9 +255,7 @@
   </div>
   <div class="d-flex gap-2 flex-wrap">
     {% if not is_academic and submitted_count > 0 %}
-    {# Three direct ?style= links instead of one link + a JS-shown style
-       picker modal — plain server-rendered links always work, regardless
-       of whether a separate script loads/executes on this device. #}
+    {# Three direct ?style= links instead of one link + a JS-shown style picker modal — plain server-rendered links always work regardless of script loading. #}
     <a href="{% url 'generate_results_pdf' exam.id %}?style=normal" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;" target="_blank">
       📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}
     </a>

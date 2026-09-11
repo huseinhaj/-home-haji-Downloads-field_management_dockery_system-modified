@@ -306,10 +306,7 @@
         {% elif ed.all_approved %}
         <div class="all-approved-bar">
           <div class="msg">✅ {% if LANG == 'sw' %}Masomo yote yameidhinishwa{% else %}All subjects approved{% endif %}</div>
-          {# Three direct links instead of one link + a JS-shown style
-             picker modal — plain server-rendered ?style= links can never
-             fail to "come up" the way a click-interceptor script can
-             (blocked, slow to load, cached stale, etc.). #}
+          {# Three direct links instead of one link + a JS-shown style picker modal — plain server-rendered ?style= links can never fail to come up. #}
           <div class="d-flex gap-1 flex-wrap">
             <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=normal" data-no-style-picker class="btn btn-sm btn-outline-danger" style="font-size:0.65rem;border-radius:2px;">
               📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}
