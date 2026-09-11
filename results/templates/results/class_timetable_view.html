@@ -27,10 +27,19 @@
   table.ct-table td.ct-cell { cursor: default; min-width: 82px; }
   table.ct-table td.ct-cell.editable { cursor: pointer; }
   table.ct-table td.ct-cell.editable:hover { background: #eaf7ee; }
+  th.ct-slot-head { cursor: default; }
+  th.ct-slot-head.editable { cursor: pointer; }
+  th.ct-slot-head.editable:hover { background: #eaf7ee; }
+  th.ct-slot-head .ct-slot-edit { font-size: 0.6rem; opacity: 0.6; }
+  th.ct-slot-head.editable:hover .ct-slot-edit { opacity: 1; }
   .ct-subject { font-weight: 700; }
   .ct-teacher { color: #888; font-size: 0.68rem; }
 
   #ctEditPanel {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  #ctSlotEditPanel {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000;
     align-items: center; justify-content: center;
   }
@@ -89,7 +98,10 @@
       <tr>
         <th>Class</th>
         {% for slot in day.slots %}
-        <th>{{ slot.start_time|time:"H:i" }}<br>{{ slot.end_time|time:"H:i" }}</th>
+        <th class="ct-slot-head {% if is_academic %}editable{% endif %}" title="{% if is_academic %}Bonyeza kubadilisha muda wa saha hii (Start/End/Order){% else %}{{ slot.get_is_teaching_slot_display|default:'' }}{% endif %}"
+            {% if is_academic %}onclick="ctOpenSlotEdit({{ slot.id }}, '{{ slot.start_time|time:"H:i" }}', '{{ slot.end_time|time:"H:i" }}', {{ slot.order }})"{% endif %}>
+          {{ slot.start_time|time:"H:i" }}<br>{{ slot.end_time|time:"H:i" }}{% if is_academic %} <span class="ct-slot-edit">✏️</span>{% endif %}
+        </th>
         {% endfor %}
       </tr>
     </thead>
@@ -122,6 +134,31 @@
 {% endfor %}
 
 {% if is_academic %}
+<div id="ctSlotEditPanel">
+  <div class="ct-panel-box">
+    <h5>Edit Time Slot</h5>
+    <p class="text-muted small mb-2">Badilisha muda (na mpangilio) wa saha hii kwa <strong>siku zote</strong> — ratiba na PDF zitasasisha moja kwa moja.</p>
+    <div class="row g-2 mb-2">
+      <div class="col-4">
+        <label class="form-label fw-bold small mb-1">Start</label>
+        <input type="time" id="ctSlotStart" class="form-control form-control-sm">
+      </div>
+      <div class="col-4">
+        <label class="form-label fw-bold small mb-1">End</label>
+        <input type="time" id="ctSlotEnd" class="form-control form-control-sm">
+      </div>
+      <div class="col-4">
+        <label class="form-label fw-bold small mb-1">Order</label>
+        <input type="number" min="0" id="ctSlotOrder" class="form-control form-control-sm" title="Namba ya saha siku hiyo (0 = ya kwanza)">
+      </div>
+    </div>
+    <div id="ctSlotEditError" class="text-danger small mb-2" style="display:none;"></div>
+    <div class="d-flex gap-2 justify-content-end">
+      <button class="btn btn-secondary btn-sm" onclick="ctCloseSlotEdit()">Cancel</button>
+      <button class="btn btn-sm" style="background:#1F7A3D;color:#fff;" onclick="ctSaveSlotEdit()">Save</button>
+    </div>
+  </div>
+</div>
 <div id="ctEditPanel">
   <div class="ct-panel-box">
     <h5>Edit Lesson</h5>
@@ -168,6 +205,38 @@ async function ctSaveEdit() {
   fd.append('subject_id', subjectId);
   fd.append('teacher_id', teacherId);
   const res = await fetch("{% url 'class_timetable_cell_edit' %}", {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrfToken },
+    body: fd,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    errBox.textContent = data.error || 'An error occurred.';
+    errBox.style.display = '';
+    return;
+  }
+  window.location.reload();
+}
+let ctSlotCurrent = null;
+function ctOpenSlotEdit(slotId, start, end, order) {
+  ctSlotCurrent = slotId;
+  document.getElementById('ctSlotStart').value = start;
+  document.getElementById('ctSlotEnd').value = end;
+  document.getElementById('ctSlotOrder').value = order;
+  document.getElementById('ctSlotEditError').style.display = 'none';
+  document.getElementById('ctSlotEditPanel').style.display = 'flex';
+}
+function ctCloseSlotEdit() {
+  document.getElementById('ctSlotEditPanel').style.display = 'none';
+}
+async function ctSaveSlotEdit() {
+  const errBox = document.getElementById('ctSlotEditError');
+  const fd = new FormData();
+  fd.append('slot_id', ctSlotCurrent);
+  fd.append('start_time', document.getElementById('ctSlotStart').value);
+  fd.append('end_time', document.getElementById('ctSlotEnd').value);
+  fd.append('order', document.getElementById('ctSlotOrder').value);
+  const res = await fetch("{% url 'class_timetable_slot_edit' %}", {
     method: 'POST',
     headers: { 'X-CSRFToken': csrfToken },
     body: fd,

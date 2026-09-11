@@ -393,6 +393,47 @@ def class_timetable_cell_edit(request):
 
 
 @academic_required
+@require_POST
+def class_timetable_slot_edit(request):
+    """Hand-edit a time slot's clock times (and optionally its order)
+    straight from the timetable header — the refinement case after
+    generation, without regenerating the timetable."""
+    school = _school_or_none(request)
+    if school is None:
+        return JsonResponse({'error': 'No school.'}, status=400)
+
+    try:
+        slot = TimeSlot.objects.get(id=int(request.POST.get('slot_id')), school=school)
+    except (TypeError, ValueError, TimeSlot.DoesNotExist):
+        return JsonResponse({'error': 'Time slot not found.'}, status=404)
+
+    try:
+        start_time = datetime.strptime(request.POST.get('start_time', ''), '%H:%M').time()
+        end_time = datetime.strptime(request.POST.get('end_time', ''), '%H:%M').time()
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Invalid time format (use HH:MM).'}, status=400)
+
+    if end_time <= start_time:
+        return JsonResponse({'error': 'End time must be AFTER the start time.'}, status=400)
+
+    new_order = request.POST.get('order')
+    if new_order not in (None, ''):
+        try:
+            new_order = int(new_order)
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid order.'}, status=400)
+        if new_order != slot.order:
+            if TimeSlot.objects.filter(school=school, day_of_week=slot.day_of_week, order=new_order).exists():
+                return JsonResponse({'error': f'Order {new_order} is already used by another slot that day.'}, status=409)
+            slot.order = new_order
+
+    slot.start_time = start_time
+    slot.end_time = end_time
+    slot.save()
+    return JsonResponse({'success': True})
+
+
+@academic_required
 def timetable_download_pdf(request):
     """Download the class timetable as a PDF file."""
     school = _school_or_none(request)

@@ -3,6 +3,7 @@ from .pwa import pwa_manifest, pwa_service_worker
 from .auth_views import results_login, results_logout, manage_teachers
 from .class_timetable_views import (
     class_timetable_cell_edit,
+    class_timetable_slot_edit,
     class_timetable_view,
     delete_class_timetable,
     generate_class_timetable_view,
@@ -222,6 +223,7 @@ urlpatterns = [
     path('class-timetable/', class_timetable_view, name='class_timetable_view'),
     path('class-timetable/delete/', delete_class_timetable, name='delete_class_timetable'),
     path('class-timetable/edit-cell/', class_timetable_cell_edit, name='class_timetable_cell_edit'),
+    path('class-timetable/edit-slot/', class_timetable_slot_edit, name='class_timetable_slot_edit'),
     path('class-timetable/pdf/', timetable_download_pdf, name='timetable_download_pdf'),
     path('class-timetable/send-to-ps/', timetable_send_to_ps, name='timetable_send_to_ps'),
     path('class-timetable/ps/<int:submission_id>/pdf/', timetable_ps_pdf_inline, name='timetable_ps_pdf_inline'),
