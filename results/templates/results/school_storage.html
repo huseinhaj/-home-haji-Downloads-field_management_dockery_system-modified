@@ -12,7 +12,7 @@
     <div class="card-body">
 
       <p style="font-size:0.85rem;color:#555;">
-        Hapa kuna wanafunzi wa miaka iliyopita — waliohudumia (Form 4/6) na rosti zilizobaki za zamani.
+        Hapa kuna wanafunzi wa miaka iliyopita — waliohudumia na rosti zilizobaki za zamani.
         Data zao <strong>zipo kwenye mfumo</strong> na matokeo yao yanaendelea kupatikana Search Results,
         lakini <strong>hawaingiliani na intake mpya</strong>: hawaonekani kwenye marks entry, rosti au scoresheets.
       </p>
@@ -39,7 +39,7 @@
             <tr>
               <td>{{ forloop.counter }}</td>
               <td>{{ s.first_name }} {{ s.middle_name }} {{ s.last_name }}</td>
-              <td>Form {{ s.form }}</td>
+              <td>{{ class_prefix }} {{ s.form }}</td>
               <td>{{ s.gender }}</td>
               <td>{{ s.academic_year }}</td>
               <td>
@@ -51,7 +51,7 @@
               </td>
               <td>
                 <form method="post" action="{% url 'restore_storage_student' s.id %}" class="d-inline"
-                      onsubmit="return confirm('Mrudishe {{ s.first_name }} kwenye rosti ya mwaka {{ current_year }} (Form {{ s.form }})?');">
+                      onsubmit="return confirm('Mrudishe {{ s.first_name }} kwenye rosti ya mwaka {{ current_year }} ({{ class_prefix }} {{ s.form }})?');">
                   {% csrf_token %}
                   <button type="submit" class="btn btn-sm btn-outline-primary" style="font-size:0.72rem;"
                           title="Amrudishe kwenye rosti hai ya mwaka {{ current_year }}">

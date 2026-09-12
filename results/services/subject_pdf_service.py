@@ -11,7 +11,7 @@ from __future__ import annotations
 from django.http import HttpResponse
 
 from ..models import ExamResult
-from ..utils import get_grade, get_grade_for_form, is_passing_grade
+from ..utils import get_grade, get_grade_for_exam, get_grade_for_form, is_passing_grade
 from .results_analytics import GRADE_ORDER, compute_subject_stats, generate_recommendations
 
 try:
@@ -56,15 +56,19 @@ DARK_GREY = colors.HexColor('#444444')
 GRADE_KEYS_OLEVEL = [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
 GRADE_KEYS_FTNA = [('A', '75-100'), ('B', '65-74'), ('C', '45-64'), ('D', '30-44'), ('F', '0-29')]
 GRADE_KEYS_ALEVEL = [('A', '80-100'), ('B', '70-79'), ('C', '60-69'), ('D', '50-59'), ('E', '40-49'), ('S', '35-39'), ('F', '0-34')]
+GRADE_KEYS_PRIMARY = [('A', '80-100'), ('B', '65-79'), ('C', '45-64'), ('D', '30-44'), ('E', '0-29')]
 
 
-def get_grade_keys_for_form(form):
+def get_grade_keys_for_form(form, primary=False):
     """Return the correct NECTA grade key for an exam's form level.
 
+    - Primary (Darasa 1-7): A-E scale, E ndiyo kushindwa
     - Form 2 (FTNA) uses its own scale (C 45+, D 30+, F <30)
     - Form 5/6 (ACSEE) uses the 7-band scale
     - Form 1/3/4 (CSEE) uses the standard O-Level scale
     """
+    if primary:
+        return GRADE_KEYS_PRIMARY
     if form == 2:
         return GRADE_KEYS_FTNA
     if form in (5, 6):
@@ -202,7 +206,7 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: s
             scored_rows.append({
                 'name': full_name,
                 'score': result.score or 0,
-                'grade': get_grade_for_form(result.score or 0, exam.form),
+                'grade': get_grade_for_exam(result.score or 0, exam),
                 'gender': result.student.gender,
             })
 
@@ -233,7 +237,7 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: s
         rows_data=rows_data,
         filename_stub=f"{safe_subject}_{exam.id}_results",
         subject_name=subject.name,
-        grade_keys=get_grade_keys_for_form(exam.form),
+        grade_keys=get_grade_keys_for_form(exam.form, primary=bool(exam.school and exam.school.is_primary)),
         lang=lang,
     )
 

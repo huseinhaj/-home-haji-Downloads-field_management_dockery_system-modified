@@ -175,7 +175,13 @@ def recompute_processed_results_for_exam(exam):
         Prefetch('examresult_set', queryset=ExamResult.objects.filter(exam=exam).select_related('subject'))
     )
 
-    best_n = _DIVISION_SUBJECT_COUNT.get(exam.form, 7)
+    # ── Primary school (Darasa 1-7) ───────────────────────────────────
+    # Msingi hauna division wala best-N: kila somo mwanafunzi anachokifanya
+    # kinaingia kwenye jumla (kama PSLE — Wanafunzi wanapangwa kwa Jumla ya
+    # alama, Wastani ndio inaonyeshwa). Division inabaki BLANK '' na
+    # templates za msingi hazioniyesha.
+    is_primary = bool(exam.school and exam.school.is_primary)
+    best_n = 999 if is_primary else _DIVISION_SUBJECT_COUNT.get(exam.form, 7)
     student_data = []
 
     for student in students:
@@ -195,7 +201,7 @@ def recompute_processed_results_for_exam(exam):
                 'total': 0,
                 'average': 0.0,
                 'points': 0,
-                'division': '0',
+                'division': '' if is_primary else '0',
                 'counted_subjects': '',
                 'subject_count': 0,
                 'rank_total': 0,
@@ -240,7 +246,7 @@ def recompute_processed_results_for_exam(exam):
                 graded = sorted(principal, key=lambda pair: pair[1])[:best_n]
         else:
             graded = sorted(
-                ((r, get_grade_points(get_grade_for_form(r.score, exam.form), form=exam.form)) for r in results),
+                ((r, get_grade_points(get_grade_for_form(r.score, exam.form, primary=is_primary), form=exam.form)) for r in results),
                 key=lambda pair: pair[1],
             )
 
@@ -259,7 +265,7 @@ def recompute_processed_results_for_exam(exam):
         if exam.form in (5, 6) and counted_principal < best_n:
             points += get_grade_points('F', form=exam.form) * (best_n - counted_principal)
 
-        division = get_division(points, form=exam.form)
+        division = '' if is_primary else get_division(points, form=exam.form)
         counted_subjects = ', '.join(r.subject.name for r, _ in best)
         if combo_code:
             counted_subjects = f"{combo_code}: {counted_subjects}"
@@ -281,7 +287,7 @@ def recompute_processed_results_for_exam(exam):
         # Without either, they receive Division 0 (fail).
         # Division I-III require 7+ subjects because the points scale
         # (7–17 = Div I) assumes 7 subjects are counted.
-        if exam.form in (1, 2, 3, 4) and count < best_n:
+        if exam.form in (1, 2, 3, 4) and not is_primary and count < best_n:
             grades = [get_grade_for_form(r.score, exam.form) for r, _ in best]
             passing_a_bc = sum(1 for g in grades if g in ('A', 'B', 'C'))
             passing_d = sum(1 for g in grades if g == 'D')
@@ -310,7 +316,14 @@ def recompute_processed_results_for_exam(exam):
     # division already accounts for that (see docstring above). ACSEE's
     # combination is always padded to exactly best_n subjects, so its
     # points are already directly comparable without a division key.
-    if exam.form in (1, 2, 3, 4):
+    # PRIMARY ranking: hakuna division — jumla ya alama ndio kipimo (juu
+    # kwanza), Wastani ndio tiebreaker. Waliosajiliwa wasiokwepo huishia
+    # mwisho kama sekondari.
+    if is_primary:
+        student_data.sort(
+            key=lambda item: (item['subject_count'] == 0, -item['total'], -item['average'])
+        )
+    elif exam.form in (1, 2, 3, 4):
         student_data.sort(
             key=lambda item: (
                 item['subject_count'] == 0,

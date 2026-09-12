@@ -19,12 +19,11 @@
           <tr><th>Darasa la sasa ({{ current_year }})</th><th>Kitakachofanyika</th></tr>
         </thead>
         <tbody>
-          <tr><td>Form 1 ({{ counts.1|default:0 }} wanafunzi)</td><td>→ <strong>Form 2</strong> ya {{ new_year }}</td></tr>
-          <tr><td>Form 2 ({{ counts.2|default:0 }} wanafunzi)</td><td>→ <strong>Form 3</strong> ya {{ new_year }}</td></tr>
-          <tr><td>Form 3 ({{ counts.3|default:0 }} wanafunzi)</td><td>→ <strong>Form 4</strong> ya {{ new_year }}</td></tr>
-          <tr><td>Form 5 ({{ counts.5|default:0 }} wanafunzi)</td><td>→ <strong>Form 6</strong> ya {{ new_year }}</td></tr>
+          {% for from_lbl, to_lbl, cnt in promotion_rows %}
+          <tr><td>{{ from_lbl }} ({{ cnt }} wanafunzi)</td><td>→ <strong>{{ to_lbl }}</strong> ya {{ new_year }}</td></tr>
+          {% endfor %}
           <tr style="background:#FDF6EC;">
-            <td>Form 4 ({{ counts.4|default:0 }}) na Form 6 ({{ counts.6|default:0 }})</td>
+            <td>{% for exit_lbl, cnt in exit_rows %}{{ exit_lbl }} ({{ cnt }}){% if not forloop.last %} na {% endif %}{% endfor %}</td>
             <td>→ <strong>School Storage</strong> (wanabaki kwenye mfumo, historia yao haiishi)</td>
           </tr>
         </tbody>
@@ -38,7 +37,7 @@
 
       {% if intake_exists %}
       <div class="alert alert-warning" style="font-size:0.83rem;">
-        ⚠️ Form 1 ya mwaka {{ new_year }} imekuwa ipo tayari (labda ulisajili intake mpya mapema).
+        ⚠️ {{ school.class_prefix }} 1 ya mwaka {{ new_year }} imekuwa ipo tayari (labda ulisajili intake mpya mapema).
         Rollover <strong>haitaigusa</strong> — itaongeza tu waliopandishwa.
       </div>
       {% endif %}

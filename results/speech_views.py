@@ -429,6 +429,7 @@ def guided_voice_entry(request):
     return render(request, 'results/guided_voice_entry.html', {
         'exam_groups': exam_groups,
         'teacher_subjects': teacher.subjects.all().order_by('name'),
+        'class_prefix': teacher.school.class_prefix if teacher.school else 'Form',
     })
 
 

@@ -174,9 +174,12 @@ def _styles():
 
 
 # ── Grading ──────────────────────────────────────────────────────────────────
-def _grading_thresholds(form):
+def _grading_thresholds(form, primary=False):
     """CSEE and FTNA share the same 5-band A/B/C/D/F scale — verified
-    against real NECTA CSEE result slips, which never show B+/C+."""
+    against real NECTA CSEE result slips, which never show B+/C+.
+    Primary (Darasa 1-7): A-E scale, E (si F) ndiyo kushindwa."""
+    if primary:
+        return [80, 65, 45, 30], [('A','80-100'),('B','65-79'),('C','45-64'),('D','30-44'),('E','0-29')]
     if form == 2:
         return [75, 65, 45, 30], [('A','75-100'),('B','65-74'),('C','45-64'),('D','30-44'),('F','0-29')]
     if form in (5, 6):
@@ -193,18 +196,20 @@ GRADE_MEANING_SW = {
 }
 
 
-def _grade_for_score(score, form=4):
+def _grade_for_score(score, form=4, primary=False):
     if score is None or not isinstance(score, (int, float)):
         return None
-    th, gr = _grading_thresholds(form)
+    th, gr = _grading_thresholds(form, primary=primary)
     for i, t in enumerate(th):
         if score >= t:
             return gr[i][0]
     return gr[-1][0]
 
 
-def _grade_point(grade, form=4):
-    if form in (5, 6):
+def _grade_point(grade, form=4, primary=False):
+    if primary:
+        gp_map = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
+    elif form in (5, 6):
         gp_map = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'S': 6, 'F': 7}
     else:
         gp_map = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'F': 5}
@@ -670,6 +675,7 @@ def generate_results_pdf_response(exam, style='normal'):
                 pass
     school_type = get_school_type_for_exam(exam)
     stype = "SECONDARY SCHOOL" if school_type == 'secondary' else "PRIMARY SCHOOL"
+    is_primary = school_type == 'primary'
 
     # ── Compute stats ──
     counted = _centre_counted_subjects(results, exam.form)
@@ -713,7 +719,7 @@ def generate_results_pdf_response(exam, style='normal'):
                   for r in results if (r.student_id, subj.id) in score_lookup]
         scores = [s for s in raw_scores if s is not None]
         if scores:
-            gp_scores = [_grade_point(_grade_for_score(sc, exam.form), exam.form) for sc in scores]
+            gp_scores = [_grade_point(_grade_for_score(sc, exam.form, primary=is_primary), exam.form, primary=is_primary) for sc in scores]
             avg_gp = sum(gp_scores) / len(gp_scores)
             if exam.form in (5, 6):
                 if avg_gp <= 1.5:
@@ -790,18 +796,42 @@ def generate_results_pdf_response(exam, style='normal'):
     story.append(Spacer(1, 8))
 
     # ── DIVISION PERFORMANCE SUMMARY ──
-    story.append(_p("<b>DIVISION PERFORMANCE SUMMARY</b>", st['section']))
-    div_hdrs = ["SEX", "I", "II", "III", "IV", "0"]
-    div_data = [[_p(f"<b>{h}</b>", st['th']) for h in div_hdrs]]
-    for sex_label in ('F', 'M', 'T'):
-        if sex_label == 'T':
-            row_counts = [div_counts.get(d, 0) for d in ('I', 'II', 'III', 'IV', '0')]
-        else:
-            row_counts = [sex_div[sex_label].get(d, 0) for d in ('I', 'II', 'III', 'IV', '0')]
-        row = [_p(f"<b>{sex_label}</b>", st['td_bold'])]
-        for dc in row_counts:
-            row.append(_p(str(dc), st['td']))
-        div_data.append(row)
+    # Msingi: badala ya madivisheni, onyesha ugawaji wa gredi za wastani
+    # (Average Grade A-E) — PSLE haipo division.
+    if is_primary:
+        avg_grade_lookup = {
+            r.student_id: _grade_for_score(float(r.average_score), exam.form, primary=True)
+            for r in results
+        }
+        story.append(_p("<b>GAWA LA GREDI ZA WASTANI</b>", st['section']))
+        div_hdrs = ["SEX", "A", "B", "C", "D", "E"]
+        div_data = [[_p(f"<b>{h}</b>", st['th']) for h in div_hdrs]]
+        for sex_label in ('F', 'M', 'T'):
+            def _cnt(sex, grade):
+                if sex == 'T':
+                    return sum(1 for r in results if avg_grade_lookup.get(r.student_id) == grade)
+                return sum(
+                    1 for r in results
+                    if (r.student.gender or 'M').upper() == sex
+                    and avg_grade_lookup.get(r.student_id) == grade
+                )
+            row = [_p(f"<b>{sex_label}</b>", st['td_bold'])]
+            for grade in ('A', 'B', 'C', 'D', 'E'):
+                row.append(_p(str(_cnt(sex_label, grade)), st['td']))
+            div_data.append(row)
+    else:
+        story.append(_p("<b>DIVISION PERFORMANCE SUMMARY</b>", st['section']))
+        div_hdrs = ["SEX", "I", "II", "III", "IV", "0"]
+        div_data = [[_p(f"<b>{h}</b>", st['th']) for h in div_hdrs]]
+        for sex_label in ('F', 'M', 'T'):
+            if sex_label == 'T':
+                row_counts = [div_counts.get(d, 0) for d in ('I', 'II', 'III', 'IV', '0')]
+            else:
+                row_counts = [sex_div[sex_label].get(d, 0) for d in ('I', 'II', 'III', 'IV', '0')]
+            row = [_p(f"<b>{sex_label}</b>", st['td_bold'])]
+            for dc in row_counts:
+                row.append(_p(str(dc), st['td']))
+            div_data.append(row)
 
     cw_div = [content_w * w for w in [0.12, 0.176, 0.176, 0.176, 0.176, 0.176]]
     div_table = Table(div_data, colWidths=cw_div)
@@ -826,7 +856,7 @@ def generate_results_pdf_response(exam, style='normal'):
     perf_table = Table(perf_data, colWidths=cw_perf)
     perf_table.setStyle(TableStyle(_std_table_style(len(perf_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
 
-    _, grades = _grading_thresholds(exam.form)
+    _, grades = _grading_thresholds(exam.form, primary=is_primary)
     gk_title = "GRADING KEY" if lang == 'en' else "UFUNGUO WA DARAJA"
     gk_cells = [_p(f"<b>{g} ({rng})</b>", ParagraphStyle(
         f'gk_{g}', parent=st['td'], textColor=GRADE_FG.get(g, BLACK),
@@ -924,7 +954,9 @@ def generate_results_pdf_response(exam, style='normal'):
     subj_st = ParagraphStyle('lss', parent=st['td'], fontSize=6.5, leading=8,
                              wordWrap='CJK')
 
-    r_hdr = ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"]
+    r_hdr = (["CNO", "NAME", "SEX", "JUMLA", "WASTANI", "GREDI", "DETAILED SUBJECTS"]
+             if is_primary else
+             ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"])
     # NAME and DETAILED SUBJECTS are the columns most prone to wrapping onto
     # extra lines (driving up row height, and so page count) — give them as
     # much of the row as the narrow fixed columns can spare.
@@ -977,7 +1009,7 @@ def generate_results_pdf_response(exam, style='normal'):
             if is_abs or sc is None:
                 g = 'X'
             else:
-                g = _grade_for_score(sc, exam.form)
+                g = _grade_for_score(sc, exam.form, primary=is_primary)
             abbr = (sub.code or '').strip().upper() or (
                 sub.name.upper()[:4] if len(sub.name) > 4 else sub.name.upper()
             )
@@ -1003,15 +1035,27 @@ def generate_results_pdf_response(exam, style='normal'):
                                backColor=div_bg, textColor=div_fg,
                                fontName='Helvetica-Bold')
 
-        all_rows.append([
-            _p(cno, cell_st),
-            _p(nm, name_st),
-            _p(r.student.gender or 'M', cell_st),
-            _p(str(r.points), cell_bold),
-            _p(f"{stu_gpa:.2f}", cell_bold),
-            _p(str(r.division), dv_st),
-            _p(subj_text, subj_st),
-        ])
+        if is_primary:
+            avg_g = _grade_for_score(float(r.average_score), exam.form, primary=True)
+            all_rows.append([
+                _p(cno, cell_st),
+                _p(nm, name_st),
+                _p(r.student.gender or 'M', cell_st),
+                _p(str(r.total_score), cell_bold),
+                _p(f"{float(r.average_score):.1f}", cell_bold),
+                _p(avg_g or '-', dv_st),
+                _p(subj_text, subj_st),
+            ])
+        else:
+            all_rows.append([
+                _p(cno, cell_st),
+                _p(nm, name_st),
+                _p(r.student.gender or 'M', cell_st),
+                _p(str(r.points), cell_bold),
+                _p(f"{stu_gpa:.2f}", cell_bold),
+                _p(str(r.division), dv_st),
+                _p(subj_text, subj_st),
+            ])
 
     row_heights = [_row_cells_height(cells) for cells in all_rows]
 
@@ -1044,18 +1088,33 @@ def generate_results_pdf_response(exam, style='normal'):
 
     # Centre performance summary
     tail_flowables.append(_p("<b>EXAMINATION CENTRE OVERALL PERFORMANCE</b>", st['section']))
-    div_perf_hdrs = ["", "REGIST", "ABSENT", "SAT", "CLEAN", "DIV I", "DIV II", "DIV III", "DIV IV", "DIV 0"]
-    absent_count = sum(1 for r in results if r.total_score == 0)
-    dp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('dph', parent=cell_st, fontSize=6, textColor=_HF, fontName='Helvetica-Bold')) for h in div_perf_hdrs]]
-    dp_row = [_p("<b>TOTAL</b>", ParagraphStyle('dpt', parent=cell_st, fontSize=6, fontName='Helvetica-Bold'))]
-    dp_row += [
-        _p(str(N), cell_st), _p(str(absent_count), cell_st),
-        _p(str(N - absent_count), cell_st), _p(str(N - absent_count), cell_st),
-        _p(str(div_counts.get('I', 0)), cell_st), _p(str(div_counts.get('II', 0)), cell_st),
-        _p(str(div_counts.get('III', 0)), cell_st), _p(str(div_counts.get('IV', 0)), cell_st),
-        _p(str(div_counts.get('0', 0)), cell_st),
-    ]
-    dp_data.append(dp_row)
+    # Centre overall performance — msingi inagredi za wastani (A-E),
+    # sekondari madivisheni (I-0).
+    if is_primary:
+        div_perf_hdrs = ["", "REGIST", "ABSENT", "SAT", "CLEAN", "A", "B", "C", "D", "E"]
+        absent_count = sum(1 for r in results if r.total_score == 0)
+        dp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('dph', parent=cell_st, fontSize=6, textColor=_HF, fontName='Helvetica-Bold')) for h in div_perf_hdrs]]
+        dp_row = [_p("<b>TOTAL</b>", ParagraphStyle('dpt', parent=cell_st, fontSize=6, fontName='Helvetica-Bold'))]
+        dp_row += [
+            _p(str(N), cell_st), _p(str(absent_count), cell_st),
+            _p(str(N - absent_count), cell_st), _p(str(N - absent_count), cell_st),
+        ]
+        for grade in ('A', 'B', 'C', 'D', 'E'):
+            dp_row.append(_p(str(sum(1 for r in results if avg_grade_lookup.get(r.student_id) == grade)), cell_st))
+        dp_data.append(dp_row)
+    else:
+        div_perf_hdrs = ["", "REGIST", "ABSENT", "SAT", "CLEAN", "DIV I", "DIV II", "DIV III", "DIV IV", "DIV 0"]
+        absent_count = sum(1 for r in results if r.total_score == 0)
+        dp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('dph', parent=cell_st, fontSize=6, textColor=_HF, fontName='Helvetica-Bold')) for h in div_perf_hdrs]]
+        dp_row = [_p("<b>TOTAL</b>", ParagraphStyle('dpt', parent=cell_st, fontSize=6, fontName='Helvetica-Bold'))]
+        dp_row += [
+            _p(str(N), cell_st), _p(str(absent_count), cell_st),
+            _p(str(N - absent_count), cell_st), _p(str(N - absent_count), cell_st),
+            _p(str(div_counts.get('I', 0)), cell_st), _p(str(div_counts.get('II', 0)), cell_st),
+            _p(str(div_counts.get('III', 0)), cell_st), _p(str(div_counts.get('IV', 0)), cell_st),
+            _p(str(div_counts.get('0', 0)), cell_st),
+        ]
+        dp_data.append(dp_row)
     cw_dp = [content_w / len(div_perf_hdrs)] * len(div_perf_hdrs)
     dp_table = Table(dp_data, colWidths=cw_dp)
     dp_table.setStyle(TableStyle([
@@ -1263,6 +1322,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     if school_type is None:
         school_type = get_school_type_for_exam(exam)
     stype = "SECONDARY SCHOOL" if school_type == 'secondary' else "PRIMARY SCHOOL"
+    is_primary = school_type == 'primary'
 
     slogo_uri = dlogo_uri = coa_uri = ''
     if exam.school:
@@ -1285,7 +1345,11 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         subjects = list(Subject.objects.filter(examresult__exam=exam, examresult__student=student).distinct().order_by('name'))
     if total_students is None:
         total_students = ProcessedResult.objects.filter(exam=exam).count()
-    division_label = dict(ProcessedResult.DIVISION_CHOICES).get(result.division, result.division)
+    division_label = (
+        _grade_for_score(float(result.average_score), exam.form, primary=True)
+        if is_primary
+        else dict(ProcessedResult.DIVISION_CHOICES).get(result.division, result.division)
+    )
 
     page_w, page_h = A4
     margin_lr = 1.6 * cm
@@ -1319,7 +1383,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         score = scores.get(subj.id)
         if score is None:
             continue
-        grade = _grade_for_score(score, exam.form)
+        grade = _grade_for_score(score, exam.form, primary=is_primary)
         rank = (subject_ranks or {}).get(subj.id, {}).get(student.id)
         subj_rows.append([
             _p(subj.name, st['td_name']),
@@ -1337,17 +1401,27 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
 
     # ── Summary box ──
     story.append(_p("<b>MUHTASARI</b>", st['section']))
-    summary_hdrs = ["JUMLA", "WASTANI", "POINTS", "DIVISION", "NAFASI"]
-    summary_row = [
-        str(result.total_score),
-        str(result.average_score),
-        str(result.points),
-        division_label,
-        f"{result.position} / {total_students}",
-    ]
+    summary_hdrs = (["JUMLA", "WASTANI", "GREDI YA WASTANI", "NAFASI"]
+                    if is_primary else
+                    ["JUMLA", "WASTANI", "POINTS", "DIVISION", "NAFASI"])
+    if is_primary:
+        summary_row = [
+            str(result.total_score),
+            str(result.average_score),
+            division_label,
+            f"{result.position} / {total_students}",
+        ]
+    else:
+        summary_row = [
+            str(result.total_score),
+            str(result.average_score),
+            str(result.points),
+            division_label,
+            f"{result.position} / {total_students}",
+        ]
     summary_table = Table(
         [[_p(f"<b>{h}</b>", st['th_sm']) for h in summary_hdrs], [_p(v, st['td_bold']) for v in summary_row]],
-        colWidths=[content_w / 5] * 5,
+        colWidths=[content_w / len(summary_hdrs)] * len(summary_hdrs),
     )
     summary_table.setStyle(TableStyle(_std_table_style(
         2,
@@ -1383,7 +1457,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
 
     # ── MCHANGANUO (grading key) ──
     story.append(_p("<b>MCHANGANUO</b>", st['section']))
-    _, grade_bands = _grading_thresholds(exam.form)
+    _, grade_bands = _grading_thresholds(exam.form, primary=is_primary)
     mchanganuo_rows = [[_p(f"<b>{h}</b>", st['th_sm']) for h in ["ALAMA", "DARAJA", "MAANA"]]]
     for g, rng in grade_bands:
         mchanganuo_rows.append([_p(rng, st['td']), _p(g, st['td_bold']), _p(GRADE_MEANING_SW.get(g, '-'), st['td'])])

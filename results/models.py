@@ -35,11 +35,67 @@ class School(models.Model):
                   "'Anza Mwaka Mpya' (rollover) ndio unaouongeza; intake mpya "
                   "inaandikishwa mwaka huu.",
     )
+    LEVEL_CHOICES = [
+        ('secondary', 'Sekondari (Form 1-6)'),
+        ('primary', 'Msingi (Darasa 1-7)'),
+    ]
+    level = models.CharField(
+        max_length=10, choices=LEVEL_CHOICES, blank=True, db_index=True,
+        help_text="Aina ya shule — inaamua madarasa (Form 1-6 vs Darasa 1-7), "
+                  "grading (CSEE/ACSEE vs A-E) na rollover. Auto-detected kutoka "
+                  "orodha kuu ya field_app (level ya shule); shule zisizolinkiwa "
+                  "zinaanza 'secondary' na zinaweza kubadilishwa Shule Yangu.",
+    )
+    primary_last_class = models.PositiveIntegerField(
+        default=7,
+        help_text="Darasa la MWISHO la msingi kwa mtaala huu (7 leo; mtaala mpya "
+                  "unaokaribia — Darasa 6 ndilo mwisho). Rollover ya msingi "
+                  "ina-archive darasa hili kwenda School Storage.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
 
+
+    # ── Primary vs Secondary (school-type awareness) ─────────────────
+    @property
+    def is_primary(self):
+        if self.level == 'primary':
+            return True
+        if self.level == 'secondary':
+            return False
+        # Blank level (legacy rows): fall back to the nationwide master
+        # list, then default to secondary — every school created before
+        # primary support behaved as secondary and must keep doing so.
+        if self.source_school_id:
+            from field_app.models import School as MasterSchool
+            master = MasterSchool.objects.filter(pk=self.source_school_id).values_list('level', flat=True).first()
+            if master == 'Primary':
+                return True
+            if master in ('Secondary', 'Technical'):
+                return False
+        return False
+
+    @property
+    def last_class(self):
+        """Kidato/darasa cha mwisho kabla mwanafunzi haondoki shuleni.
+        Secondary: Form 4 (O-Level) NA Form 6 (A-Level) zote mbili ni
+        exit points; primary: darasa moja tu (primary_last_class)."""
+        return self.primary_last_class if self.is_primary else 6
+
+    @property
+    def class_noun(self):
+        """'Darasa' kwa msingi, 'Form'/'Kidato' kwa sekondari — kwa lebo
+        kama "{{ noun }} 3" kwenye templates na messages."""
+        return 'Darasa' if self.is_primary else 'Form'
+
+    @property
+    def class_prefix(self):
+        """Prefix ya lebo ya kiwango: 'Form' (sekondari) au 'Darasa la'
+        (msingi) — templates/views ziweke `{{ class_prefix }} {{ n }}` au
+        f'{school.class_prefix} {n}' kupata 'Form 3' / 'Darasa la 3'."""
+        return 'Darasa la' if self.is_primary else 'Form'
 
 class Subject(models.Model):
     # Not unique=True: migration 0031 deduplicated exact-name matches, but
@@ -54,6 +110,7 @@ class Subject(models.Model):
 
     def __str__(self):
         return self.name
+
 
 
 class SchoolSubject(models.Model):
@@ -185,6 +242,19 @@ class Exam(models.Model):
         1: 'Form I', 2: 'Form II', 3: 'Form III',
         4: 'Form IV', 5: 'Form V', 6: 'Form VI',
     }
+    PRIMARY_CLASS_LABELS = {
+        1: 'Darasa la Kwanza', 2: 'Darasa la Pili', 3: 'Darasa la Tatu',
+        4: 'Darasa la Nne', 5: 'Darasa la Tano', 6: 'Darasa la Sita',
+        7: 'Darasa la Saba',
+    }
+
+    def class_label(self):
+        """Lebo ya kiwango cha mtihani huu: 'Form II' kwa sekondari,
+        'Darasa la Tatu' kwa msingi. Kila sehemu inayoonyesha "Form X"
+        kwenye PDF/ripoti/ujumbe itumie hii."""
+        if self.school and self.school.is_primary:
+            return self.PRIMARY_CLASS_LABELS.get(self.form, f'Darasa {self.form}')
+        return self.FORM_LABELS.get(self.form, f'Form {self.form}')
 
     name = models.CharField(max_length=100)
     year = models.PositiveIntegerField()
@@ -296,7 +366,9 @@ class ProcessedResult(models.Model):
     average_score = models.DecimalField(max_digits=5, decimal_places=2)
     position = models.PositiveIntegerField()
     points = models.PositiveIntegerField()
-    division = models.CharField(max_length=3, choices=DIVISION_CHOICES)
+    division = models.CharField(max_length=3, choices=DIVISION_CHOICES, blank=True,
+        help_text="CSEE/ACSEE division (sekondari). BLANK kwa shule za msingi "
+                  "— msingi hauna division, unaonekana kwa jumla/wastani/nafasi.")
     counted_subjects = models.CharField(
         max_length=500, blank=True,
         help_text="Masomo bora yaliyotumika kuhesabu Daraja (mf. 7 bora kwa CSEE, 3 kwa ACSEE).",

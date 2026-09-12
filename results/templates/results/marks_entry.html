@@ -221,7 +221,7 @@
         <optgroup label="{{ type_label }}">
           {% for e in group_exams %}
           <option value="{{ e.id }}" {% if e.id|stringformat:"s" == preselect_exam_id %}selected{% endif %}>
-            {{ e.name }} — Form {{ e.form }}{% if e.stream %} {{ e.stream }}{% endif %} ({{ e.year }})
+            {{ e.name }} — {{ e.school.class_prefix|default:'Form' }} {{ e.form }}{% if e.stream %} {{ e.stream }}{% endif %} ({{ e.year }})
           </option>
           {% endfor %}
         </optgroup>

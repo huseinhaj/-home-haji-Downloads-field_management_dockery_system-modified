@@ -72,7 +72,7 @@
           <span class="class-chip {% if selected_class == form_num and selected_class.1 == stream %}active{% endif %}"
                 data-form="{{ form_num }}" data-stream="{{ stream }}"
                 onclick="selectClass(this, '{{ form_num }}', '{{ stream }}')">
-            Form {{ form_num }}{{ stream }}
+            {{ class_prefix }} {{ form_num }}{{ stream }}
           </span>
           {% endfor %}
         </div>
@@ -113,7 +113,7 @@
     <strong>⚠️ Unplaced Lessons:</strong>
     <ul class="mb-0">
       {% for u in unplaced %}
-      <li>Form {{ u.form }}{{ u.stream }} — {{ u.subject }} ({{ u.teacher }}): {{ u.missing }} period(s) could not be placed.</li>
+      <li>{{ class_prefix }} {{ u.form }}{{ u.stream }} — {{ u.subject }} ({{ u.teacher }}): {{ u.missing }} period(s) could not be placed.</li>
       {% endfor %}
     </ul>
     <div class="mt-2">Add more time slots in <a href="{% url 'time_slot_setup' %}">Daily Time Slots</a>, or reduce periods/week.</div>
@@ -142,7 +142,7 @@
     <div class="card-header" style="background:#F8F9FA;">
       <strong>Timetable Preview ({{ preview_rows|length }} entries)</strong>
       {% if selected_class %}
-      <span class="badge bg-info ms-2">Form {{ selected_class.0 }}{{ selected_class.1 }}</span>
+      <span class="badge bg-info ms-2">{{ class_prefix }} {{ selected_class.0 }}{{ selected_class.1 }}</span>
       {% endif %}
     </div>
     <div class="card-body p-0">
@@ -156,7 +156,7 @@
             <tbody>
               {% for r in preview_rows %}
               <tr>
-                <td>Form {{ r.form }}{{ r.stream }}</td>
+                <td>{{ class_prefix }} {{ r.form }}{{ r.stream }}</td>
                 <td>{{ r.day }}</td>
                 <td>{{ r.time }}</td>
                 <td>

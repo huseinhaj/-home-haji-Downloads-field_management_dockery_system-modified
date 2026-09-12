@@ -1,24 +1,22 @@
 {% extends "results/base.html" %}
-{% block title %}Form Students{% endblock %}
+{% block title %}{{ class_prefix }} Students{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-  <h2 class="mb-3" style="color:#1A3C6E;">📋 Form Students</h2>
+  <h2 class="mb-3" style="color:#1A3C6E;">📋 Rosti ya Wanafunzi</h2>
   <p class="text-muted mb-4">Upload the student roster for each form (PDF, DOCX, Excel or CSV). Students will appear on each teacher's dashboard. Assign subjects so teachers only see their students.</p>
 
-  <!-- Form Tabs -->
+  <!-- Class/Form Tabs -->
   <ul class="nav nav-tabs mb-4">
-    {% for f in "123456" %}
-    {% with fn=f|add:"0" %}
+    {% for val, lbl in class_options %}
     <li class="nav-item">
-      <a class="nav-link {% if selected_form == fn %}active{% endif %}"
-         href="?form={{ f }}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}"
-         style="{% if selected_form == fn %}background:#1A3C6E;color:#fff;{% endif %}">
-        Form {{ f }}
+      <a class="nav-link {% if selected_form == val %}active{% endif %}"
+         href="?form={{ val }}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}"
+         style="{% if selected_form == val %}background:#1A3C6E;color:#fff;{% endif %}">
+        {{ lbl }}
         <span class="badge bg-secondary ms-1">{{ form_counts|default_if_none:"" }}</span>
       </a>
     </li>
-    {% endwith %}
     {% endfor %}
   </ul>
 
@@ -29,7 +27,7 @@
       <a href="?form={{ f }}" class="text-decoration-none">
         <div class="card text-center {% if selected_form == f %}border-primary shadow{% else %}border-light{% endif %}">
           <div class="card-body py-2 px-1">
-            <div class="fw-bold" style="color:{% if selected_form == f %}#1A3C6E{% else %}#555{% endif %};">Form {{ f }}</div>
+            <div class="fw-bold" style="color:{% if selected_form == f %}#1A3C6E{% else %}#555{% endif %};">{{ class_prefix }} {{ f }}</div>
             <div class="fs-4 fw-bold" style="color:{% if selected_form == f %}#B8860B{% else %}#999{% endif %};">{{ cnt }}</div>
             <small class="text-muted">students</small>
           </div>
@@ -43,7 +41,7 @@
   <!-- Upload Section -->
   <div class="card mb-4 shadow-sm">
     <div class="card-header" style="background:#1A3C6E;color:#fff;">
-      <strong>Upload Roster — Form {{ selected_form }}</strong>
+      <strong>Upload Roster — {{ class_prefix }} {{ selected_form }}</strong>
     </div>
     <div class="card-body">
       <form method="post" enctype="multipart/form-data">
@@ -93,7 +91,7 @@
   <!-- Students Table -->
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center" style="background:#F8F9FA;">
-      <strong>Form {{ selected_form }} Students ({{ students|length }})</strong>
+      <strong>{{ class_prefix }} {{ selected_form }} Students ({{ students|length }})</strong>
       {% if students %}
       <div class="d-flex gap-2 flex-wrap">
         <button type="button" class="btn btn-sm" style="background:#1A3C6E;color:#fff;"
@@ -112,7 +110,7 @@
           📊 Teacher Report
         </a>
         <form method="post" action="{% url 'delete_all_form_students' selected_form %}" class="d-inline"
-              onsubmit="return confirm('Delete ALL {{ students|length }} students from Form {{ selected_form }}? This cannot be undone.');">
+              onsubmit="return confirm('Delete ALL {{ students|length }} students from {{ class_prefix }} {{ selected_form }}? This cannot be undone.');">
           {% csrf_token %}
           <button type="submit" class="btn btn-sm btn-outline-danger">🗑 Delete All</button>
         </form>

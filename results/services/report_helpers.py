@@ -30,10 +30,17 @@ def get_school_type_for_exam(exam):
 
     Returns 'secondary' by default (most schools using this system are
     secondary).  Checks, in order:
+    0. results.School.level — authoritative, set at School Setup
+       (auto-detected from the master list; the academic officer can
+       correct it). Wins over every heuristic.
     1. The exam.school_name text for keywords
     2. The linked field_app.models.School (via results.School.source_school_id)
     3. The exam.form number (≥5 suggests advanced secondary, not primary)
     """
+    # 0. results.School.level — the school's own declaration
+    if exam.school_id and exam.school and exam.school.level in ('primary', 'secondary'):
+        return exam.school.level
+
     # 1. Check school_name text
     name = (exam.school_name or '').lower()
     if any(kw in name for kw in ('primary', 'msingi', 'standard')):

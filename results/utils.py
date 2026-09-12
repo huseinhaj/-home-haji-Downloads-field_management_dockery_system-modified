@@ -273,15 +273,21 @@ def get_grade_ftna(score):
     return "F"
 
 
-def get_grade_for_form(score, form):
+def get_grade_for_form(score, form, primary=False):
     """Pick the right NECTA scale for the exam's form level:
 
+    - Primary (Darasa 1-7): A 80+ | B 65+ | C 45+ | D 30+ | E <30
     - Form 2 (FTNA):        A 75+ | B 65+ | C 45+ | D 30+ | F <30
     - Form 5/6 (ACSEE):     A 80+ | B 70+ | C 60+ | D 50+ | E 40+ | S 35+ | F <35
     - Form 1/3/4 (CSEE):    A 75+ | B 65+ | C 45+ | D 30+ | F <30
+
+    `primary=True` ina-shika msingi (A-E, E = fail); sekondari inapuuza
+    parameter hiyo na kutumia mtiririko wake wa kawaida.
     """
     if score is None:
         return "X"
+    if primary:
+        return get_grade_primary(score)
     if form == 2:
         return get_grade_ftna(score)
     if form in (5, 6):
@@ -289,8 +295,40 @@ def get_grade_for_form(score, form):
     return get_grade(score)
 
 
-def is_passing_grade(grade):
-    """Under both CSEE and ACSEE, F is the only failing grade."""
+def get_grade_for_exam(score, exam):
+    """Convenience wrapper: gredi sahihi kwa exam yenyewe — inakagua
+    exam.school.is_primary (shule ya msingi → A-E) badala ya kuitaja
+    manual kila call site."""
+    primary = bool(getattr(exam, 'school', None) and exam.school.is_primary)
+    return get_grade_for_form(score, exam.form, primary=primary)
+
+
+def get_grade_primary(score):
+    """Primary (Darasa 1-7) scale, NECTA PSLE style:
+
+    A 80+ | B 65+ | C 45+ | D 30+ | E <30   (alama kwa % /50 max exam)
+
+    Unlike secondary, E (si F) ndiyo gredi ya kushindwa — PSLE result
+    slips print A-E with "Average Grade" kwa mwanafunzi.
+    """
+    if score is None:
+        return "X"
+    if score >= 80:
+        return "A"
+    if score >= 65:
+        return "B"
+    if score >= 45:
+        return "C"
+    if score >= 30:
+        return "D"
+    return "E"
+
+
+def is_passing_grade(grade, primary=False):
+    """Secondary (CSEE/ACSEE): F is the only failing grade.
+    Primary (Darasa 1-7): E ndiyo gredi ya kushindwa (A-D ni faulu)."""
+    if primary:
+        return grade not in ("E", "X")
     return grade != "F"
 
 

@@ -27,6 +27,7 @@ from django.views.decorators.http import require_GET, require_POST
 from .models import Exam, ExamResult, FormStudent, Student, StoredRoster, Subject, SubjectSubmission
 from .permissions import academic_required, teacher_or_academic_required
 from .services.upload_processing_service import recompute_processed_results_for_exam
+from .utils import get_grade_for_exam, is_passing_grade
 from .tasks import process_scoresheet_photo_task
 from .utils import get_grade_for_form, group_exams_by_type
 
@@ -209,7 +210,7 @@ def marks_entry(request):
                         'position': i,
                         'student': r.student,
                         'score': r.score or 0,
-                        'grade': get_grade_for_form(r.score or 0, exam.form),
+                        'grade': get_grade_for_exam(r.score or 0, exam),
                         'is_absent': False,
                     }
                     for i, r in enumerate(results, 1)
@@ -244,7 +245,10 @@ def marks_entry(request):
     if review_rows:
         scores = [r['score'] for r in review_rows]
         avg_score = round(sum(scores) / len(scores), 1)
-        pass_rate = round(sum(1 for s in scores if get_grade_for_form(s, exam.form) != 'F') / len(scores) * 100)
+        pass_rate = round(sum(
+            1 for s in scores
+            if is_passing_grade(get_grade_for_exam(s, exam), primary=bool(exam.school and exam.school.is_primary))
+        ) / len(scores) * 100)
 
     return render(request, 'results/marks_entry.html', {
         'exam_groups': exam_groups,
@@ -252,6 +256,7 @@ def marks_entry(request):
         'preselect_exam_id': exam_id,
         'preselect_subject_id': subject_id,
         'review_mode': review_mode,
+        'class_prefix': teacher.school.class_prefix if teacher.school else 'Form',
         'exam': exam,
         'subject': subject,
         'review_rows': review_rows,

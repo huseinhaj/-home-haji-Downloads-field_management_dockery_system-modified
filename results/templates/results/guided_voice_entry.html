@@ -99,7 +99,7 @@
         {% for code, type_label, group_exams in exam_groups %}
         <optgroup label="{{ type_label }}">
           {% for e in group_exams %}
-          <option value="{{ e.id }}">{{ e.name }} — Form {{ e.form }} ({{ e.year }})</option>
+          <option value="{{ e.id }}">{{ e.name }} — {{ class_prefix }} {{ e.form }} ({{ e.year }})</option>
           {% endfor %}
         </optgroup>
         {% endfor %}

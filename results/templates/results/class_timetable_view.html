@@ -108,7 +108,7 @@
     <tbody>
       {% for row in day.rows %}
       <tr>
-        <td class="ct-class-label">Form {{ row.form }}{{ row.stream }}</td>
+        <td class="ct-class-label">{{ class_prefix }} {{ row.form }}{{ row.stream }}</td>
         {% for cell in row.cells %}
           {% if cell.slot.is_teaching_slot %}
             <td class="ct-cell {% if is_academic %}editable{% endif %}"

@@ -264,7 +264,7 @@
             <select id="form" name="form" class="form-select">
               <option value="">— Darasa / Form yoyote —</option>
               {% for f in form_choices %}
-              <option value="{{ f }}" {% if selected_form == f|stringformat:'i' %}selected{% endif %}>Form {{ f }}</option>
+              <option value="{{ f }}" {% if selected_form == f|stringformat:'i' %}selected{% endif %}>{% if f <= 7 %}Darasa/Form {{ f }}{% else %}Form {{ f }}{% endif %}</option>
               {% endfor %}
             </select>
           </div>
@@ -302,13 +302,17 @@
             <div class="student-name">{{ r.student_name }}</div>
             <div class="student-meta">
               <span class="exam-badge">{{ r.exam_type }}</span>
-              <span class="exam-badge">Form {{ r.form }}</span>
+              <span class="exam-badge">{% if r.school_is_primary %}Darasa {{ r.form }}{% else %}Form {{ r.form }}{% endif %}</span>
               <span class="exam-badge">{{ r.year }}</span>
               {{ r.school_name }} &bull; #{{ r.position }}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:0.6rem;">
+            {% if r.school_is_primary %}
+            <span class="div-badge" title="Jumla {{ r.total }} / Wastani {{ r.avg }}">{{ r.avg }}</span>
+            {% else %}
             <span class="div-badge div-{{ r.division }}">{{ r.division }}</span>
+            {% endif %}
             {% if is_academic_user %}
             <a href="{% url 'edit_processed_result' r.result_id %}" class="btn-view"
                style="background:#B8860B;" title="Hariri alama za mwanafunzi huyu">✏️ Edit</a>

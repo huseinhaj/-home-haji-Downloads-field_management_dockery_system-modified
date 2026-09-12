@@ -255,6 +255,7 @@ def generate_class_timetable_view(request):
 
     return render(request, 'results/generate_class_timetable.html', {
         'class_keys': class_keys,
+        'class_prefix': school.class_prefix if school else 'Form',
         'preview_rows': preview_rows,
         'unplaced': unplaced,
         'error': error,
@@ -335,6 +336,7 @@ def class_timetable_view(request):
 
     return render(request, 'results/class_timetable_view.html', {
         'grid': grid,
+        'class_prefix': school.class_prefix if school else 'Form',
         'has_timetable': entries.exists(),
         'is_academic': getattr(request.user, 'is_academic', False),
         'subjects': subjects,

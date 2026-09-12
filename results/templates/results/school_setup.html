@@ -20,6 +20,38 @@
     {% if school %}
     <h3 style="font-family:'Sora',sans-serif;color:var(--accent-500);">{{ school.name }}</h3>
     <p class="text-secondary mb-3">{{ school.region }} &mdash; {{ school.district }}</p>
+
+    <!-- Aina ya shule: inaamua madarasa (Form/Darasa), grading na rollover -->
+    <form method="post" class="mb-3">
+      {% csrf_token %}
+      <label class="form-label fw-bold">{% if LANG == 'sw' %}Aina ya Shule{% else %}School Type{% endif %}</label>
+      <div class="d-flex gap-3 align-items-center flex-wrap mb-2">
+        <select name="level" class="form-select" style="max-width:320px;">
+          <option value="secondary" {% if school.level != 'primary' %}selected{% endif %}>
+            {% if LANG == 'sw' %}Sekondari (Form 1-6){% else %}Secondary (Form 1-6){% endif %}
+          </option>
+          <option value="primary" {% if school.level == 'primary' %}selected{% endif %}>
+            {% if LANG == 'sw' %}Msingi (Darasa 1-7){% else %}Primary (Darasa 1-7){% endif %}
+          </option>
+        </select>
+        <span id="primaryLastClassWrap" style="{% if school.level != 'primary' %}display:none;{% endif %}">
+          <label class="form-label-sm">{% if LANG == 'sw' %}Darasa la mwisho{% else %}Last class{% endif %}</label>
+          <select name="primary_last_class" class="form-select" style="max-width:140px;">
+            <option value="7" {% if school.primary_last_class != 6 %}selected{% endif %}>Darasa 7</option>
+            <option value="6" {% if school.primary_last_class == 6 %}selected{% endif %}>Darasa 6 (mtaala mpya)</option>
+          </select>
+        </span>
+        <button type="submit" class="btn btn-brand btn-sm">{% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}</button>
+      </div>
+      <small class="text-secondary">
+        {% if LANG == 'sw' %}
+        Inaamua madarasa (Kidato 1-6 au Darasa 1-7), mtiririko wa alama (gredi A-F au A-E, division au jumla/wastani) na "Anza Mwaka Mpya". Mfumo umeipima shule yako kutoka orodha kuu — badilisha hapa kama imekosea.
+        {% else %}
+        Determines class levels (Form 1-6 vs Standard 1-7), grading flow (A-F with divisions vs A-E with totals) and "New Year" rollover. Auto-detected from the master school list — correct it here if wrong.
+        {% endif %}
+      </small>
+    </form>
+
     <div class="d-flex gap-2 flex-wrap">
       <a href="{% url 'school_subjects' %}" class="btn btn-brand">{% if LANG == 'sw' %}Masomo ya Shule{% else %}School Subjects{% endif %}</a>
       <a href="{% url 'create_exam_for_school' %}" class="btn btn-outline-secondary">{% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}</a>

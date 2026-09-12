@@ -279,8 +279,13 @@
             </div>
           </div>
           <div class="division-box">
+            {% if is_primary_school %}
+            <div class="div-label">Gredi ya Wastani / Average Grade</div>
+            <div class="div-value">{{ avg_grade }}</div>
+            {% else %}
             <div class="div-label">Division / Daraja</div>
             <div class="div-value">{{ result.division }}</div>
+            {% endif %}
           </div>
         </div>
 
@@ -322,6 +327,12 @@
             <div class="label">Average / Wastani</div>
             <div class="value">{{ result.average_score }}</div>
           </div>
+          {% if is_primary_school %}
+          <div class="summary-item">
+            <div class="label">Gredi ya Wastani</div>
+            <div class="value">{{ avg_grade }}</div>
+          </div>
+          {% else %}
           <div class="summary-item">
             <div class="label">Points / Pointi</div>
             <div class="value">{{ result.points }}</div>
@@ -330,6 +341,7 @@
             <div class="label">Division / Daraja</div>
             <div class="value">{{ result.division }}</div>
           </div>
+          {% endif %}
         </div>
 
         <!-- Grade Key -->
@@ -339,7 +351,7 @@
           {% endfor %}
         </div>
 
-        {% if result.counted_subjects %}
+        {% if result.counted_subjects and not is_primary_school %}
         <div style="font-size:0.75rem;color:#888;text-align:center;margin-top:0.75rem;">
           Subjects counted for division: {{ result.counted_subjects }}
         </div>

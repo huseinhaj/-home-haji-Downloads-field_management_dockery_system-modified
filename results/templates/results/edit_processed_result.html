@@ -10,7 +10,7 @@
     <div class="card-body">
       <div class="mb-3" style="font-size:0.85rem;color:#555;">
         <strong>{{ exam.get_exam_type_display }} — {{ exam.name }}</strong>
-        &bull; Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %}
+        &bull; {{ class_prefix }} {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %}
         &bull; {{ exam.year }}
         <br>
         <span class="text-muted">
@@ -27,6 +27,12 @@
       {% if preview %}
       <div class="mb-3 p-3 rounded" style="background:#F4F7FB;border:1px solid #D5DEE8;">
         <div class="d-flex flex-wrap gap-4 text-center">
+          {% if is_primary_school %}
+          <div>
+            <div style="font-size:0.72rem;color:#667;" class="text-uppercase">{% if LANG == 'sw' %}Gredi ya Wastani{% else %}Average Grade{% endif %}</div>
+            <strong style="font-size:1.35rem;">{{ avg_grade }}</strong>
+          </div>
+          {% else %}
           <div>
             <div style="font-size:0.72rem;color:#667;" class="text-uppercase">{% if LANG == 'sw' %}Daraja sasa{% else %}Current division{% endif %}</div>
             <strong style="font-size:1.35rem;">{{ result.division }}</strong>
@@ -35,6 +41,7 @@
             <div style="font-size:0.72rem;color:#667;" class="text-uppercase">{% if LANG == 'sw' %}Alama (points){% else %}Points{% endif %}</div>
             <strong style="font-size:1.35rem;">{{ result.points }}</strong>
           </div>
+          {% endif %}
           <div>
             <div style="font-size:0.72rem;color:#667;" class="text-uppercase">{% if LANG == 'sw' %}Nafasi{% else %}Position{% endif %}</div>
             <strong style="font-size:1.35rem;">{{ result.position }}</strong>

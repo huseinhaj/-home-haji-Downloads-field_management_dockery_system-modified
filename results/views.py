@@ -41,7 +41,7 @@ from .services.upload_processing_service import (
     process_uploaded_results,
     recompute_processed_results_for_exam,
 )
-from .utils import get_grade, get_grade_for_form, normalize_gender, parse_name_score_sheet, parse_score, safe_get_or_create_subject
+from .utils import get_grade, get_grade_for_exam, get_grade_for_form, get_grade_primary, normalize_gender, parse_name_score_sheet, parse_score, safe_get_or_create_subject
 
 _EXAM_TYPE_CHOICES = Exam.EXAM_TYPE_CHOICES
 
@@ -167,6 +167,7 @@ def upload_results(request):
         'exam_type_choices': _EXAM_TYPE_CHOICES,
         'common_subjects': COMMON_SUBJECTS,
         'form': ExamUploadForm(school=school),
+        'class_options': _class_options(school),
     })
 
 
@@ -317,7 +318,7 @@ def public_results_search(request):
     if 'en' in accept_lang and 'sw' not in accept_lang:
         lang = 'en'
 
-    form_choices = range(1, 7)
+    form_choices = range(1, 8)
     current_year = timezone.now().year
     year_choices = range(current_year, current_year - 5, -1)
 
@@ -364,13 +365,19 @@ def public_results_search(request):
             st = r.student
             name = ' '.join(p for p in [st.first_name, st.middle_name or '', st.last_name] if p)
             school_name = r.exam.school_name or (r.exam.school.name if r.exam.school else '')
+            _exam_is_primary = bool(r.exam.school and r.exam.school.is_primary)
             results.append({
                 'student_name': name,
                 'school_name': school_name,
                 'exam_type': r.exam.get_exam_type_display(),
                 'form': r.exam.form,
+                'school_is_primary': _exam_is_primary,
+                'total': r.total_score,
+                'avg': r.average_score,
                 'year': r.exam.year,
                 'division': r.division,
+                # Msingi: PSLE-style "Average Grade" badala ya division
+                'avg_grade': get_grade_primary(float(r.average_score)) if _exam_is_primary else '',
                 'position': r.position,
                 'share_token': str(r.share_token),
                 'result_id': r.pk,
@@ -419,7 +426,7 @@ def _preview_csee_division(exam, exam_results):
 
     graded = sorted(
         (
-            (er, get_grade_points(get_grade_for_form(er.score, exam.form), form=exam.form))
+            (er, get_grade_points(get_grade_for_form(er.score, exam.form, primary=bool(exam.school and exam.school.is_primary)), form=exam.form))
             for er in results
         ),
         key=lambda pair: pair[1],
@@ -430,7 +437,7 @@ def _preview_csee_division(exam, exam_results):
 
     capped = len(results) < best_n
     if capped:
-        grades = [get_grade_for_form(er.score, exam.form) for er, _ in best]
+        grades = [get_grade_for_form(er.score, exam.form, primary=bool(exam.school and exam.school.is_primary)) for er, _ in best]
         passing_a_bc = sum(1 for g in grades if g in ('A', 'B', 'C'))
         passing_d = sum(1 for g in grades if g == 'D')
         division = 'IV' if (passing_a_bc >= 1 or passing_d >= 2) else '0'
@@ -489,13 +496,21 @@ def edit_processed_result(request, result_id):
             p for p in [student.first_name, student.middle_name or '', student.last_name] if p
         )
         if fresh:
-            messages.success(
-                request,
-                f"Alama za {name} zimehifadhiwa. Matokeo mapya: "
-                f"Division {fresh.division}, Alama {fresh.points}, "
-                f"Nafasi {fresh.position} kati ya {class_size}."
-            )
-            if exam.form in (1, 2, 3, 4):
+            if exam.school and exam.school.is_primary:
+                messages.success(
+                    request,
+                    f"Alama za {name} zimehifadhiwa. Matokeo mapya: "
+                    f"Jumla {fresh.total_score}, Wastani {fresh.average_score}, "
+                    f"Nafasi {fresh.position} kati ya {class_size}."
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Alama za {name} zimehifadhiwa. Matokeo mapya: "
+                    f"Division {fresh.division}, Alama {fresh.points}, "
+                    f"Nafasi {fresh.position} kati ya {class_size}."
+                )
+            if exam.form in (1, 2, 3, 4) and not (exam.school and exam.school.is_primary):
                 # exam_results zimehaririwa hapo juu — helper inazisoma
                 # kama zilivyo sasa (source of truth iliyohifadhiwa).
                 snapshot = _preview_csee_division(exam, exam_results)
@@ -517,12 +532,22 @@ def edit_processed_result(request, result_id):
     student_name = ' '.join(
         p for p in [student.first_name, student.middle_name or '', student.last_name] if p
     )
+    _edit_primary = bool(exam.school and exam.school.is_primary)
+    preview = _preview_csee_division(exam, exam_results)
+    if _edit_primary:
+        # Msingi: hakuna division/NECTA-cap — onyesha idadi ya masomo tu.
+        _sat = sum(1 for er in exam_results if not er.is_absent and er.score is not None)
+        preview = {'counted': _sat, 'best_n': 0, 'capped': False,
+                   'points': 0, 'division': '', 'missing': 0}
     return render(request, 'results/edit_processed_result.html', {
         'result': result,
         'exam': exam,
         'student_name': student_name,
         'exam_results': exam_results,
-        'preview': _preview_csee_division(exam, exam_results),
+        'preview': preview,
+        'class_prefix': exam.school.class_prefix if exam.school else 'Form',
+        'is_primary_school': _edit_primary,
+        'avg_grade': get_grade_primary(float(result.average_score)) if _edit_primary else '',
     })
 
 
@@ -571,7 +596,7 @@ def student_result_public(request, token):
                 subject_rows.append({
                     'subject': subj.name,
                     'score': score,
-                    'grade': get_grade_for_form(score, exam.form),
+                    'grade': get_grade_for_exam(score, exam),
                     'is_absent': False,
                 })
 
@@ -585,10 +610,15 @@ def student_result_public(request, token):
             parts.append(exam.school.region)
         location = ', '.join(parts)
 
-    division_label = dict(ProcessedResult.DIVISION_CHOICES).get(result.division, result.division)
+    _primary = bool(exam.school and exam.school.is_primary)
+    division_label = (
+        get_grade_for_exam(float(result.average_score), exam)
+        if _primary
+        else dict(ProcessedResult.DIVISION_CHOICES).get(result.division, result.division)
+    )
 
     from .services.subject_pdf_service import get_grade_keys_for_form
-    grade_key = get_grade_keys_for_form(exam.form)
+    grade_key = get_grade_keys_for_form(exam.form, primary=_primary)
 
     return render(request, 'results/student_result_public.html', {
         'result': result,
@@ -597,6 +627,8 @@ def student_result_public(request, token):
         'student_name': student_name,
         'subject_rows': subject_rows,
         'division_label': division_label,
+        'is_primary_school': _primary,
+        'avg_grade': division_label,
         'grade_key': grade_key,
         'location': location,
         'school_name': exam.school_name or (exam.school.name if exam.school else ''),
@@ -950,7 +982,7 @@ def subject_summary(request, exam_id, subject_id):
             'position': pos,
             'name': full_name,
             'score': result.score,
-            'grade': get_grade_for_form(result.score, exam.form),
+            'grade': get_grade_for_exam(result.score, exam),
             'gender': student.gender,
         })
 
@@ -958,7 +990,7 @@ def subject_summary(request, exam_id, subject_id):
     stats = compute_subject_stats(rows_data)
     recommendations = generate_recommendations(stats, subject_name=subject.name, lang=lang)
     from .services.subject_pdf_service import get_grade_keys_for_form
-    grade_keys = get_grade_keys_for_form(exam.form)
+    grade_keys = get_grade_keys_for_form(exam.form, primary=bool(exam.school and exam.school.is_primary))
     distribution = _build_distribution(stats, grade_keys)
     teacher_label = 'Mwalimu' if lang == 'sw' else 'Teacher'
 
@@ -1925,6 +1957,20 @@ def finalize_exam(request, exam_id):
 ROLLOVER_PROMOTIONS = [(1, 2), (2, 3), (3, 4), (5, 6)]  # Form 4 → archive (O-Level out)
 
 
+def _school_class_numbers(school):
+    """Valid class numbers kwa shule hii: Form 1-6 (sekondari) au
+    Darasa 1-7 (msingi). Kila validation ya form_num inaitumia."""
+    return range(1, 8) if school.is_primary else range(1, 7)
+
+
+def _class_options(school):
+    """[(value, label), ...] kwa dropdown ya "Chagua Darasa/Form" kwenye
+    kuunda mtihani: Darasa 1-7 kwa msingi, Form I-VI kwa sekondari."""
+    if school.is_primary:
+        return [(n, f'Darasa la {n}') for n in range(1, 8)]
+    return [(n, Exam.FORM_LABELS.get(n, f'Form {n}')) for n in range(1, 7)]
+
+
 def _do_year_rollover(school, new_year):
     """Fungua mwaka mpya wa masomo kwa shule moja.
 
@@ -1940,16 +1986,28 @@ def _do_year_rollover(school, new_year):
     """
     old_year = school.current_academic_year or (new_year - 1)
     promoted = archived = 0
+    is_primary = school.is_primary
+    if is_primary:
+        # Msingi: Darasa 1→2 … (L-1)→L. Darasa la mwisho (primary_last_class,
+        # 7 kwa mtaala wa sasa) linaisha shuleni — School Storage.
+        last_class = school.primary_last_class
+        promotions = [(f, f + 1) for f in range(1, last_class)]
+        exit_forms = (last_class,)
+    else:
+        promotions = ROLLOVER_PROMOTIONS
+        exit_forms = (4, 6)
     with transaction.atomic():
-        # 1. Pandisha Form 1-3 na 5 (wote wanaobaki, wakiwemo "dinners").
-        for src, dst in ROLLOVER_PROMOTIONS:
+        # 1. Pandisha madarasa yote ya katikati (wote wanaobaki, wakiwemo
+        #    "dinners").
+        for src, dst in promotions:
             promoted += FormStudent.objects.filter(
                 school=school, form=src, is_active=True, academic_year=old_year,
             ).update(form=dst, academic_year=new_year)
 
-        # 2. Form 4 na 6 zinaisha — School Storage (archive, bila kufuta).
+        # 2. Kidato cha Nne/Sita (au darasa la mwisho la msingi) kinaisha —
+        #    School Storage (archive, bila kufuta).
         archived += FormStudent.objects.filter(
-            school=school, form__in=(4, 6), is_active=True, academic_year=old_year,
+            school=school, form__in=exit_forms, is_active=True, academic_year=old_year,
         ).update(is_active=False)
 
         school.current_academic_year = new_year
@@ -1976,6 +2034,17 @@ def year_rollover(request):
         school=school, is_active=True, academic_year=new_year, form=1,
     ).exists()
 
+    cls = school.class_prefix
+    if school.is_primary:
+        _last = school.primary_last_class
+        promotion_rows = [(f'{cls} {f}', f'{cls} {f + 1}', counts.get(f, 0))
+                          for f in range(1, _last)]
+        exit_rows = [(f'{cls} {_last}', counts.get(_last, 0))]
+    else:
+        promotion_rows = [(f'{cls} {f}', f'{cls} {f + 1}', counts.get(f, 0))
+                          for f in (1, 2, 3, 5)]
+        exit_rows = [(f'{cls} 4', counts.get(4, 0)), (f'{cls} 6', counts.get(6, 0))]
+
     if request.method == 'POST':
         confirm = (request.POST.get('confirm') or '').strip().upper()
         if confirm != 'HAMISHA':
@@ -1985,19 +2054,26 @@ def year_rollover(request):
             )
             return redirect('year_rollover')
 
+        noun = school.class_noun
         if intake_exists:
             messages.warning(
                 request,
-                f"Form 1 ya mwaka {new_year} ilikuwa ipo tayari — rollover haikugusa "
+                f"{noun} 1 ya mwaka {new_year} ilikuwa ipo tayari — rollover haikugusa "
                 f"intiake uliyosajili mwenyewe."
             )
         promoted, archived = _do_year_rollover(school, new_year)
+        if school.is_primary:
+            promotion_text = (f"Darasa 1→2 … {school.primary_last_class - 1}→{school.primary_last_class}, "
+                              f"wakiwemo waliokosa")
+            exit_text = f"Darasa la {school.primary_last_class} ({archived})"
+        else:
+            promotion_text = "Form 1→2, 2→3, 3→4, 5→6, wakiwemo waliokosa"
+            exit_text = f"Form 4/6 ({archived})"
         messages.success(
             request,
             f"Mwaka {new_year} umefunguliwa. Wanafunzi {promoted} wamepandishwa "
-            f"(Form 1→2, 2→3, 3→4, 5→6, wakiwemo waliokosa) na Form 4/6 "
-            f"({archived}) wamehifadhiwa School Storage. Matokeo ya "
-            f"{current_year} hayagusiwi."
+            f"({promotion_text}) na {exit_text} wamehifadhiwa School Storage. "
+            f"Matokeo ya {current_year} hayagusiwi."
         )
         return redirect('school_storage')
 
@@ -2007,6 +2083,8 @@ def year_rollover(request):
         'new_year': new_year,
         'counts': counts,
         'intake_exists': intake_exists,
+        'promotion_rows': promotion_rows,
+        'exit_rows': exit_rows,
     })
 
 
@@ -2042,6 +2120,7 @@ def school_storage(request):
         'selected_year': shown_year,
         'students': students,
         'current_year': current_year,
+        'class_prefix': school.class_prefix,
     })
 
 
@@ -2054,6 +2133,7 @@ def restore_storage_student(request, student_id):
     fs = get_object_or_404(FormStudent, id=student_id, school=school)
     current_year = school.current_academic_year or timezone.now().year
     old_year = fs.academic_year
+    cls = f"Darasa la {fs.form}" if school.is_primary else f"Form {fs.form}"
     fs.is_active = True
     fs.academic_year = current_year
     try:
@@ -2066,12 +2146,12 @@ def restore_storage_student(request, student_id):
             request,
             f"Imeshindikana kumrudisha: namba ya mtahajiki "
             f"({fs.admission_no or 'hakuna'}) imetumika na mwanafunzi mwingine "
-            f"wa Form {fs.form} mwaka huu. Badilisha namba kwanza."
+            f"wa {cls} mwaka huu. Badilisha namba kwanza."
         )
         return redirect(f'{reverse("school_storage")}?year={old_year}')
     messages.success(
         request,
-        f"{fs.first_name} {fs.last_name} amerudishwa Form {fs.form} (mwaka {current_year})."
+        f"{fs.first_name} {fs.last_name} amerudishwa {cls} (mwaka {current_year})."
     )
     return redirect(f'{reverse("school_storage")}?year={old_year}')
 
@@ -2144,11 +2224,16 @@ def academic_dashboard(request):
         ft['total'] += total
 
     # Build sorted structure for template: [(form_num, { stream: [exams] })]
-    FORM_LABELS = Exam.FORM_LABELS
+    _dash_school = getattr(request.user, 'school', None)
+    _is_primary = bool(_dash_school and _dash_school.is_primary)
+    _class_prefix = _dash_school.class_prefix if _dash_school else 'Form'
     forms_list = []
     for form_num in sorted(forms_map.keys()):
         streams = forms_map[form_num]
-        form_label = FORM_LABELS.get(form_num, f'Form {form_num}')
+        if _is_primary:
+            form_label = f'Darasa la {form_num}'
+        else:
+            form_label = Exam.FORM_LABELS.get(form_num, f'Form {form_num}')
         ft = form_totals.get(form_num, {'submitted': 0, 'approved': 0, 'total': 0})
         forms_list.append({
             'form_num': form_num,
@@ -2391,12 +2476,19 @@ def form_results(request, form_num):
 
     from .services.subject_pdf_service import get_grade_keys_for_form
 
+    school = getattr(request.user, 'school', None)
+    is_primary_school = bool(school and school.is_primary)
+    class_options = _class_options(school) if school else [(n, f'Form {n}') for n in range(1, 7)]
+
     if not exams:
+        form_label = (f'Darasa la {form_num}' if is_primary_school
+                      else (f'Form {form_num}' if form_num <= 4 else f'Form {form_num} (Advanced)'))
         return render(request, 'results/form_results.html', {
             'form_num': form_num,
             'exams_ctx': [],
-            'form_label': f'Form {form_num}' if form_num <= 4 else f'Form {form_num} (Advanced)',
+            'form_label': form_label,
             'is_academic': is_academic,
+            'class_options': class_options,
         })
 
     exam_ids = [e.id for e in exams]
@@ -2477,11 +2569,21 @@ def form_results(request, form_num):
         for (eid, sid, subj_id), score in score_lookup_global.items():
             if eid == exam.id:
                 score_lookup[(sid, subj_id)] = score
-                grade_lookup.setdefault(sid, {})[subj_id] = get_grade_for_form(score, exam.form)
-        grade_key = get_grade_keys_for_form(exam.form)
+                grade_lookup.setdefault(sid, {})[subj_id] = get_grade_for_exam(score, exam)
+        grade_key = get_grade_keys_for_form(exam.form, primary=bool(exam.school and exam.school.is_primary))
+
+        _is_primary = bool(exam.school and exam.school.is_primary)
+        # Msingi: hakuna division — PSLE slip inaonyesha "Average Grade"
+        # (gredi ya wastani) kwa kila mwanafunzi.
+        avg_grade_lookup = {}
+        if _is_primary:
+            for pr in exam_processed:
+                avg_grade_lookup[pr.student_id] = get_grade_primary(pr.average_score)
 
         exams_ctx.append({
             'exam': exam,
+            'is_primary': _is_primary,
+            'avg_grade_lookup': avg_grade_lookup,
             'total_subs': total_subs,
             'approved_subs': approved_subs,
             'submitted_subs': submitted_subs,
@@ -2503,8 +2605,10 @@ def form_results(request, form_num):
     return render(request, 'results/form_results.html', {
         'form_num': form_num,
         'exams_ctx': exams_ctx,
-        'form_label': f'Form {form_num}' if form_num <= 4 else f'Form {form_num} (Advanced)',
+        'form_label': (f'Darasa la {form_num}' if is_primary_school
+                       else (f'Form {form_num}' if form_num <= 4 else f'Form {form_num} (Advanced)')),
         'is_academic': is_academic,
+        'class_options': class_options,
     })
 
 
@@ -2571,13 +2675,15 @@ def form_results_excel(request, form_num):
         sheet_title = f"{exam.name[:25]} {exam.year}"[:31]
         ws = wb.create_sheet(title=sheet_title)
 
-        total_cols = 3 + len(subjects) + 4  # POS JINA JINSIA + subjects + JUMLA WASTANI DARAJA POINTI
+        _xl_primary = bool(exam.school and exam.school.is_primary)
+        _class_word = (exam.school.class_prefix.upper() if exam.school else 'FORM')
+        total_cols = 3 + len(subjects) + (3 if _xl_primary else 4)  # POS JINA JINSIA + subjects + JUMLA WASTANI GREDI YA WASTANI (+POINTI sekondari)
 
         # Title
         ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=total_cols)
         c = ws.cell(row=1, column=1)
         school = exam.school_name or 'SHULE'
-        c.value = f"{school.upper()} — {exam.get_exam_type_display().upper()} {exam.year} — FORM {exam.form}"
+        c.value = f"{school.upper()} — {exam.get_exam_type_display().upper()} {exam.year} — {_class_word} {exam.form}"
         c.font = Font(bold=True, size=13, color=WHITE, name='Calibri')
         c.fill = _fill(NAVY)
         c.alignment = Alignment(horizontal='center', vertical='center')
@@ -2592,7 +2698,9 @@ def form_results_excel(request, form_num):
         ws.row_dimensions[2].height = 16
 
         # Header row
-        headers = ['POS', 'JINA', 'JINSIA'] + [s.name.upper() for s in subjects] + ['JUMLA', 'WASTANI', 'DARAJA', 'POINTI']
+        tail_headers = (['JUMLA', 'WASTANI', 'GREDI YA WASTANI'] if _xl_primary
+                        else ['JUMLA', 'WASTANI', 'DARAJA', 'POINTI'])
+        headers = ['POS', 'JINA', 'JINSIA'] + [s.name.upper() for s in subjects] + tail_headers
         for ci, h in enumerate(headers, 1):
             cell = ws.cell(row=3, column=ci, value=h)
             cell.font = Font(color=WHITE, bold=True, name='Calibri', size=9)
@@ -2630,8 +2738,11 @@ def form_results_excel(request, form_num):
             ws.cell(row=row, column=base).font = Font(bold=True, name='Calibri', size=9, color=NAVY)
             avg_cell = ws.cell(row=row, column=base + 1, value=float(result.average_score))
             avg_cell.number_format = '0.00'
-            ws.cell(row=row, column=base + 2, value=result.division)
-            ws.cell(row=row, column=base + 3, value=result.points)
+            if _xl_primary:
+                ws.cell(row=row, column=base + 2, value=get_grade_primary(float(result.average_score)))
+            else:
+                ws.cell(row=row, column=base + 2, value=result.division)
+                ws.cell(row=row, column=base + 3, value=result.points)
 
             for ci in range(1, total_cols + 1):
                 cell = ws.cell(row=row, column=ci)
@@ -2682,13 +2793,37 @@ def form_results_excel(request, form_num):
 
 @academic_required
 def school_setup(request):
-    """Read-only info about the academic officer's own school."""
+    """Info za shule ya academic officer + kuchagua aina ya shule
+    (Sekondari/Msingi) — inaamua madarasa (Form 1-6 vs Darasa 1-7),
+    grading (CSEE/ACSEE vs A-E) na rollover. Read-only kwa taarifa nyingine:
+    shule mpya husajiliwa na msimamizi wa mfumo."""
     school = request.user.school
     if not school:
         messages.error(
             request,
             "Akaunti yako haijapangiwa shule. Wasiliana na msimamizi wa mfumo (system admin)."
         )
+        return render(request, 'results/school_setup.html', {'school': None})
+
+    if request.method == 'POST':
+        level = (request.POST.get('level') or '').strip()
+        if level in ('primary', 'secondary'):
+            school.level = level
+            if level == 'primary':
+                try:
+                    last_class = int(request.POST.get('primary_last_class', 7))
+                except ValueError:
+                    last_class = 7
+                if last_class in (6, 7):
+                    school.primary_last_class = last_class
+            school.save(update_fields=['level', 'primary_last_class'])
+            messages.success(
+                request,
+                "Aina ya shule imehifadhiwa: %s" % school.get_level_display()
+            )
+            return redirect('school_setup')
+        messages.error(request, "Chagua aina ya shule sahihi (Msingi au Sekondari).")
+
     return render(request, 'results/school_setup.html', {'school': school})
 
 
@@ -2800,6 +2935,7 @@ def create_exam_for_school(request):
         'exam_type_choices': _EXAM_TYPE_CHOICES,
         'current_year': current_year,
         'year_range': range(current_year - 2, current_year + 3),
+        'class_options': _class_options(school),
     })
 
 
@@ -3110,7 +3246,8 @@ def upload_form_students(request):
         return redirect('home')
 
     form_num = request.GET.get('form') or request.POST.get('form') or ''
-    selected_form = int(form_num) if form_num.isdigit() and int(form_num) in (1,2,3,4,5,6) else None
+    valid_classes = _school_class_numbers(school)
+    selected_form = int(form_num) if form_num.isdigit() and int(form_num) in valid_classes else None
 
     # Year rollover: this page edits the CURRENT intake only. Archived
     # (School Storage) rows and previous years are viewed/restored from
@@ -3186,6 +3323,8 @@ def upload_form_students(request):
         'subjects_list': subjects_qs,
         'selected_subject': int(subject_filter_id) if subject_filter_id and subject_filter_id.isdigit() else None,
         'all_subjects': all_subjects,
+        'class_options': _class_options(school),
+        'class_prefix': school.class_prefix,
     })
 
 
@@ -3362,8 +3501,8 @@ def delete_all_form_students(request, form_num):
     """Wipe the whole uploaded roster for one form — e.g. to start over
     with a corrected file, rather than deleting students one at a time."""
     school = request.user.school
-    if form_num not in (1, 2, 3, 4, 5, 6):
-        messages.error(request, "Form si sahihi.")
+    if form_num not in _school_class_numbers(school):
+        messages.error(request, "Darasa/Form si sahihi.")
         return redirect('upload_form_students')
     # Year rollover: NEVER touch archived (School Storage) rows or other
     # years' intakes — this wipes only the active roster of the current
@@ -3400,7 +3539,7 @@ def assign_teacher_form(request):
                 TeacherFormAssignment.objects.get_or_create(
                     teacher=teacher, form=int(form_num), subject=subject, school=school,
                 )
-                messages.success(request, f"{teacher.full_name} ameassignwa Form {form_num} — {subject.name}")
+                messages.success(request, f"{teacher.full_name} ameassignwa {school.class_prefix} {form_num} — {subject.name}")
             else:
                 messages.error(request, "Taarifa hazijakamilika.")
         return redirect('assign_teacher_form')
@@ -3414,6 +3553,7 @@ def assign_teacher_form(request):
         'teachers': teachers,
         'subjects': subjects,
         'assignments': assignments,
+        'class_options': _class_options(school),
     })
 
 

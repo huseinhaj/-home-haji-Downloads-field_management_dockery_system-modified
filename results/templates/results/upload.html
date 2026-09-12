@@ -43,12 +43,9 @@
               <div class="field">
                 <label>{% if LANG == 'sw' %}Darasa (Form){% else %}Form{% endif %}</label>
                 <select name="exam_form" class="form-select" required>
-                  <option value="1">Form I</option>
-                  <option value="2">Form II</option>
-                  <option value="3">Form III</option>
-                  <option value="4" selected>Form IV</option>
-                  <option value="5">Form V</option>
-                  <option value="6">Form VI</option>
+                  {% for val, label in class_options %}
+                  <option value="{{ val }}" {% if val == 4 %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
                 </select>
               </div>
             </div>
