@@ -194,6 +194,12 @@
       <a href="{% url 'upload_results' %}" class="ad-btn ad-btn--ghost">
         {% if LANG == 'sw' %}+ Unda Mtihani Mpya{% else %}+ Create New Exam{% endif %}
       </a>
+      <a href="{% url 'school_storage' %}" class="ad-btn ad-btn--ghost">
+        🗄️ {% if LANG == 'sw' %}School Storage{% else %}School Storage{% endif %}
+      </a>
+      <a href="{% url 'year_rollover' %}" class="ad-btn ad-btn--primary">
+        🎓 {% if LANG == 'sw' %}Anza Mwaka Mpya{% else %}Start New Year{% endif %}
+      </a>
     </div>
   </div>
 </div>

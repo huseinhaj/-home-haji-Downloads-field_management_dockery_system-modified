@@ -91,8 +91,14 @@ def _resolve_class_roster(teacher, exam, subject, existing_marks):
     # Academic uploaded the roster in.
     # If the Academic has assigned subjects to FormStudents, filter
     # so a Physics teacher only sees students who study Physics.
+    # Year rollover: only the ACTIVE roster of the exam's academic year
+    # feeds marks entry — archived (School Storage) rows and other years'
+    # intakes never mix in. An old-year exam therefore finds no live
+    # roster here and falls through to the ExamResults fallback below,
+    # which is exactly the students who sat it.
     form_students = FormStudent.objects.filter(
-        school=exam.school, form=exam.form
+        school=exam.school, form=exam.form,
+        is_active=True, academic_year=exam.year,
     ).order_by('id') if exam.school else FormStudent.objects.none()
     if form_students.exists():
         class_students = []

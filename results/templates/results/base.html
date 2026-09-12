@@ -78,7 +78,6 @@
             <a href="{% url 'upload_form_students' %}">{% if LANG == 'sw' %}Wanafunzi wa Kidato{% else %}Form Students{% endif %}</a>
             <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
             <a href="{% url 'class_timetable_view' %}">{% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>
-            <a href="{% url 'choose_plan' %}">{% if LANG == 'sw' %}Malipo{% else %}Billing{% endif %}</a>
           {% elif user.is_teacher %}
             <a href="{% url 'teacher_dashboard' %}">{% if LANG == 'sw' %}Walimu{% else %}Dashboard{% endif %}</a>
             <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
@@ -136,7 +135,6 @@
           <a href="{% url 'manage_teachers' %}"><i class="fas fa-users"></i> {% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</a>
           <a href="{% url 'upload_form_students' %}"><i class="fas fa-user-graduate"></i> {% if LANG == 'sw' %}Wanafunzi wa Kidato{% else %}Form Students{% endif %}</a>
           <a href="{% url 'class_timetable_view' %}"><i class="fas fa-calendar-alt"></i> {% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>
-          <a href="{% url 'choose_plan' %}"><i class="fas fa-coins"></i> {% if LANG == 'sw' %}Malipo{% else %}Billing{% endif %}</a>
         {% elif user.is_teacher %}
           <a href="{% url 'teacher_dashboard' %}"><i class="fas fa-chalkboard-teacher"></i> {% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}</a>
           <a href="{% url 'class_timetable_view' %}"><i class="fas fa-calendar-alt"></i> {% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>

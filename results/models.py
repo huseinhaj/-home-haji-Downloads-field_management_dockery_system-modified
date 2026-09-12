@@ -29,6 +29,12 @@ class School(models.Model):
         help_text="PK of the matching field_app.School record (nationwide master list). "
                   "Used so self-registration never creates a duplicate row for the same school.",
     )
+    current_academic_year = models.PositiveIntegerField(
+        null=True,  # backfilled by migration 0043
+        help_text="Mwaka wa masomo UNAOFANYIKA SASA kwenye shule hii. "
+                  "'Anza Mwaka Mpya' (rollover) ndio unaouongeza; intake mpya "
+                  "inaandikishwa mwaka huu.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -66,9 +72,30 @@ class SchoolSubject(models.Model):
 class FormStudent(models.Model):
     """A student in a particular form at a school.
     This is a school-wide list — not tied to a specific exam.
-    The Academic Officer uploads the list; every teacher sees their own students."""
+    The Academic Officer uploads the list; every teacher sees their own students.
+
+    Year rollover: `academic_year` stamps the intake/school year this roster
+    row belongs to and `is_active=False` archives the row (School Storage).
+    Archived rows stay in the DB — old results keep resolving through
+    Student/ProcessedResult — but they NEVER mix with the new intake:
+    every roster read filters is_active=True and the (school, form,
+    admission_no) uniqueness is scoped to academic_year, so re-using a
+    candidate number for a new Form 1 kid can't collide with an archived
+    one and a re-upload of the same file can't dedup against last year's
+    roster."""
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='form_students')
     form = models.PositiveIntegerField()  # 1, 2, 3, 4, 5, 6
+    academic_year = models.PositiveIntegerField(
+        null=True,  # backfilled by migration 0043 for pre-rollover rows
+        db_index=True,
+        help_text="Mwaka wa masomo (intake year) rosti hii ilisajiliwa. "
+                  "Rollover inaweka mwaka mpya kwa waliopandishwa.",
+    )
+    is_active = models.BooleanField(
+        default=True, db_index=True,
+        help_text="False = ameahifadhiwa (School Storage) — haoi kwenye rosti, "
+                  "marks entry wala blank scoresheets. Historia yake inabaki.",
+    )
     admission_no = models.CharField(max_length=50, blank=True)
     first_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True)
@@ -79,7 +106,10 @@ class FormStudent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = [('school', 'form', 'admission_no')]
+        # admission_no scoped per academic year — archived (is_active=False)
+        # rows keep their numbers without blocking a new intake that reuses
+        # the same numbering scheme (S2475/0001 again in the new year).
+        unique_together = [('school', 'academic_year', 'form', 'admission_no')]
         ordering = ['form', 'last_name', 'first_name']
 
     def __str__(self):

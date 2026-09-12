@@ -1,0 +1,83 @@
+{% extends 'results/base.html' %}
+
+{% block title %}School Storage | School Results{% endblock %}
+
+{% block content %}
+<div style="max-width:960px;margin:0 auto;">
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2" style="background:#37474F;color:#fff;">
+      <strong>🗄️ School Storage — Rosti za Miaka Iliyopita</strong>
+      <a href="{% url 'academic_dashboard' %}" class="btn btn-sm btn-outline-light" style="font-size:0.72rem;">← Dashboard</a>
+    </div>
+    <div class="card-body">
+
+      <p style="font-size:0.85rem;color:#555;">
+        Hapa kuna wanafunzi wa miaka iliyopita — waliohudumia (Form 4/6) na rosti zilizobaki za zamani.
+        Data zao <strong>zipo kwenye mfumo</strong> na matokeo yao yanaendelea kupatikana Search Results,
+        lakini <strong>hawaingiliani na intake mpya</strong>: hawaonekani kwenye marks entry, rosti au scoresheets.
+      </p>
+
+      {% if years %}
+      <div class="d-flex gap-2 flex-wrap mb-3">
+        {% for y in years %}
+        <a href="?year={{ y }}"
+           class="btn btn-sm {% if y == selected_year %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+          Mwaka {{ y }}
+        </a>
+        {% endfor %}
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm table-hover" style="font-size:0.85rem;">
+          <thead style="background:#F4F7FB;">
+            <tr>
+              <th>#</th><th>Jina</th><th>Darasa</th><th>Jinsia</th><th>Mwaka</th><th>Hali</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in students %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ s.first_name }} {{ s.middle_name }} {{ s.last_name }}</td>
+              <td>Form {{ s.form }}</td>
+              <td>{{ s.gender }}</td>
+              <td>{{ s.academic_year }}</td>
+              <td>
+                {% if s.is_active %}
+                  <span class="badge bg-success">Hai</span>
+                {% else %}
+                  <span class="badge bg-secondary">Amehifadhiwa</span>
+                {% endif %}
+              </td>
+              <td>
+                <form method="post" action="{% url 'restore_storage_student' s.id %}" class="d-inline"
+                      onsubmit="return confirm('Mrudishe {{ s.first_name }} kwenye rosti ya mwaka {{ current_year }} (Form {{ s.form }})?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-primary" style="font-size:0.72rem;"
+                          title="Amrudishe kwenye rosti hai ya mwaka {{ current_year }}">
+                    ↩️ Rudisha
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if students %}
+      <p style="font-size:0.78rem;color:#888;">Wanafunzi {{ students|length }} wa mwaka {{ selected_year }}.</p>
+      {% else %}
+      <div class="alert alert-info" style="font-size:0.85rem;">Hakuna rosti ya mwaka {{ selected_year }}.</div>
+      {% endif %}
+
+      {% else %}
+      <div class="alert alert-info" style="font-size:0.85rem;">
+        Hakuna rosti za miaka iliyopita bado. Baada ya "Anza Mwaka Mpya", rosti za mwaka uliopita
+        na waliohudumia wataonekana hapa.
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

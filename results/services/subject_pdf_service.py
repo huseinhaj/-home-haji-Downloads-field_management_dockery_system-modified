@@ -117,8 +117,14 @@ def generate_subject_pdf_response(exam, subject, teacher_name: str = '', lang: s
     # one subject's PDF.
     roster_student_ids = set()
     if exam.school:
+        # Year rollover: only the exam-year's ACTIVE roster feeds the
+        # blank-scoresheet rows — archived (School Storage) students and
+        # other intakes never appear on a printed sheet.
         form_students = list(
-            FormStudent.objects.filter(school=exam.school, form=exam.form)
+            FormStudent.objects.filter(
+                school=exam.school, form=exam.form,
+                is_active=True, academic_year=exam.year,
+            )
             .prefetch_related('subjects')
         )
         eligible = []

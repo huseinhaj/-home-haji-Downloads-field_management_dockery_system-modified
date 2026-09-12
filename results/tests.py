@@ -1008,6 +1008,7 @@ class SubjectPdfPerformanceTests(TestCase):
 			fs = FormStudent.objects.create(
 				school=school, form=2, first_name=f'Student{i}', last_name='Test',
 				gender='F' if i % 2 else 'M', admission_no=f'ADM{i}',
+				academic_year=exam.year,
 			)
 			if i < 30:
 				student, _ = Student.objects.get_or_create(
@@ -1069,7 +1070,7 @@ class UploadFormStudentsPageQueryCountTests(TestCase):
 		for i in range(25):
 			fs = FormStudent.objects.create(
 				school=school, form=1, first_name=f'Student{i}', last_name='Test',
-				gender='M', admission_no=f'ADM{i}',
+				gender='M', admission_no=f'ADM{i}', academic_year=2026,
 			)
 			# Every student has a couple of subjects assigned, so the
 			# `{% if subj in s.subjects.all %}` branch actually evaluates
@@ -1873,7 +1874,8 @@ class MarksEntryAddStudentTests(TestCase):
 			school=self.school)
 		self.teacher.subjects.set([self.subject])
 		FormStudent.objects.create(
-			school=self.school, form=4, first_name='Asha', last_name='Kimaro', gender='F')
+			school=self.school, form=4, first_name='Asha', last_name='Kimaro', gender='F',
+			academic_year=self.exam.year)
 		self.client = Client()
 		self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
 

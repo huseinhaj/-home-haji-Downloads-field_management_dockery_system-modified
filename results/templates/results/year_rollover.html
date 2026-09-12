@@ -1,0 +1,61 @@
+{% extends 'results/base.html' %}
+
+{% block title %}Anza Mwaka Mpya | School Results{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:0 auto;">
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background:#15653a;color:#fff;">
+      <strong>🎓 Anza Mwaka Mpya — {{ current_year }} → {{ new_year }}</strong>
+      <a href="{% url 'academic_dashboard' %}" class="btn btn-sm btn-outline-light" style="font-size:0.72rem;">← Dashboard</a>
+    </div>
+    <div class="card-body">
+      <p style="font-size:0.9rem;color:#444;">
+        Kitufe hiki kinafungua mwaka wa masomo <strong>{{ new_year }}</strong>. Hii ndiyo itakayofanyika:
+      </p>
+
+      <table class="table table-sm" style="font-size:0.88rem;">
+        <thead style="background:#F4F7FB;">
+          <tr><th>Darasa la sasa ({{ current_year }})</th><th>Kitakachofanyika</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Form 1 ({{ counts.1|default:0 }} wanafunzi)</td><td>→ <strong>Form 2</strong> ya {{ new_year }}</td></tr>
+          <tr><td>Form 2 ({{ counts.2|default:0 }} wanafunzi)</td><td>→ <strong>Form 3</strong> ya {{ new_year }}</td></tr>
+          <tr><td>Form 3 ({{ counts.3|default:0 }} wanafunzi)</td><td>→ <strong>Form 4</strong> ya {{ new_year }}</td></tr>
+          <tr><td>Form 5 ({{ counts.5|default:0 }} wanafunzi)</td><td>→ <strong>Form 6</strong> ya {{ new_year }}</td></tr>
+          <tr style="background:#FDF6EC;">
+            <td>Form 4 ({{ counts.4|default:0 }}) na Form 6 ({{ counts.6|default:0 }})</td>
+            <td>→ <strong>School Storage</strong> (wanabaki kwenye mfumo, historia yao haiishi)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="alert alert-info" style="font-size:0.83rem;">
+        ℹ️ <strong>Matokeo ya mwaka {{ current_year }} hayagusiwi kabisa</strong> — yataendelea kuonekana
+        kwenye Search Results, PDFs na ripoti zote za zamani. Wanafunzi waliokosa kuendelea
+        (waliachisha) wanaenda mwaka mpya pamoja na wenzao; ukirekebisha, tumia School Storage.
+      </div>
+
+      {% if intake_exists %}
+      <div class="alert alert-warning" style="font-size:0.83rem;">
+        ⚠️ Form 1 ya mwaka {{ new_year }} imekuwa ipo tayari (labda ulisajili intake mpya mapema).
+        Rollover <strong>haitaigusa</strong> — itaongeza tu waliopandishwa.
+      </div>
+      {% endif %}
+
+      <form method="post" class="mt-3">
+        {% csrf_token %}
+        <label class="form-label" style="font-size:0.88rem;">
+          Andika <strong>HAMISHA</strong> kuthibitisha:
+        </label>
+        <input type="text" name="confirm" class="form-control mb-3" placeholder="HAMISHA"
+               autocomplete="off" required style="max-width:220px;">
+        <button type="submit" class="btn" style="background:#15653a;color:#fff;">
+          🎓 Fungua Mwaka {{ new_year }}
+        </button>
+        <a href="{% url 'academic_dashboard' %}" class="btn btn-outline-secondary">Ghairi</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

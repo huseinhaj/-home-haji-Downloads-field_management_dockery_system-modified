@@ -24,6 +24,42 @@
         </span>
       </div>
 
+      {% if preview %}
+      <div class="mb-3 p-3 rounded" style="background:#F4F7FB;border:1px solid #D5DEE8;">
+        <div class="d-flex flex-wrap gap-4 text-center">
+          <div>
+            <div style="font-size:0.72rem;color:#667;" class="text-uppercase">{% if LANG == 'sw' %}Daraja sasa{% else %}Current division{% endif %}</div>
+            <strong style="font-size:1.35rem;">{{ result.division }}</strong>
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#667;" class="text-uppercase">{% if LANG == 'sw' %}Alama (points){% else %}Points{% endif %}</div>
+            <strong style="font-size:1.35rem;">{{ result.points }}</strong>
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#667;" class="text-uppercase">{% if LANG == 'sw' %}Nafasi{% else %}Position{% endif %}</div>
+            <strong style="font-size:1.35rem;">{{ result.position }}</strong>
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:#667;" class="text-uppercase">{% if LANG == 'sw' %}Masomo yaliyopimwa{% else %}Subjects sat{% endif %}</div>
+            <strong style="font-size:1.35rem;">{{ preview.counted }} / {{ preview.best_n }}</strong>
+          </div>
+        </div>
+        {% if preview.capped %}
+        <div class="alert alert-warning mt-3 mb-0" style="font-size:0.82rem;">
+          {% if LANG == 'sw' %}
+            ⚠️ <strong>Mwanafunzi ana masomo {{ preview.counted }} tu yaliyopimwa</strong> kwenye mtihani huu (NECTA inahitaji {{ preview.best_n }}).
+            Kwa mtindo wa NECTA, daraja lake <strong>juu zaidi ni Division IV</strong> hata kama alama zote ni nzuri.
+            Badilisha alama ukipenda — lakini daraja haitapanda zaidi ya IV hadi masomo mengine yatajazwa.
+          {% else %}
+            ⚠️ <strong>This student has only {{ preview.counted }} subject(s) sat</strong> in this exam (NECTA requires {{ preview.best_n }}).
+            Under NECTA rules their division is <strong>capped at Division IV</strong> even if every mark is excellent.
+            You can still edit marks, but the division cannot rise above IV until more subjects are filled in.
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
       <form method="post">
         {% csrf_token %}
         <table class="table table-sm table-hover">

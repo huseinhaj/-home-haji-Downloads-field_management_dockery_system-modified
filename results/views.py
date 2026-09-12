@@ -393,6 +393,54 @@ def public_results_search(request):
     })
 
 
+def _preview_csee_division(exam, exam_results):
+    """Kokotoa division/points zinazotarajiwa kutoka kwa ExamResult rows
+    zilizopo SASA (CSEE / Form 1-4 tu) — ile ile mantiki ya
+    recompute_processed_results_for_exam, ili ukurasa wa edit uonyeshe
+    mwanafunzi hali yake ya sasa na SABABU daraja linaweza kubaki IV/0
+    hata baada ya kubadilisha alama (NECTA: < masomo 7 → juu ni IV).
+
+    ACSEE (Form 5-6) ina mantiki ya combination ngumu — inarudi None na
+    template inaonyesha stored values tu.
+    """
+    if exam.form not in (1, 2, 3, 4):
+        return None
+
+    from .services.upload_processing_service import _DIVISION_SUBJECT_COUNT
+    from .utils import get_division, get_grade_for_form, get_grade_points
+
+    best_n = _DIVISION_SUBJECT_COUNT.get(exam.form, 7)
+    results = [er for er in exam_results if not er.is_absent and er.score is not None]
+    if not results:
+        return {
+            'points': 0, 'division': '0', 'counted': 0, 'best_n': best_n,
+            'capped': True, 'missing': best_n,
+        }
+
+    graded = sorted(
+        (
+            (er, get_grade_points(get_grade_for_form(er.score, exam.form), form=exam.form))
+            for er in results
+        ),
+        key=lambda pair: pair[1],
+    )
+    best = graded[:best_n]
+    points = sum(p for _, p in best)
+    division = get_division(points, form=exam.form)
+
+    capped = len(results) < best_n
+    if capped:
+        grades = [get_grade_for_form(er.score, exam.form) for er, _ in best]
+        passing_a_bc = sum(1 for g in grades if g in ('A', 'B', 'C'))
+        passing_d = sum(1 for g in grades if g == 'D')
+        division = 'IV' if (passing_a_bc >= 1 or passing_d >= 2) else '0'
+
+    return {
+        'points': points, 'division': division, 'counted': len(results),
+        'best_n': best_n, 'capped': capped, 'missing': best_n - len(results),
+    }
+
+
 @academic_required
 def edit_processed_result(request, result_id):
     """Academic Officer anahariri alama za mwanafunzi mmoja kwenye mtihani.
@@ -431,11 +479,39 @@ def edit_processed_result(request, result_id):
                     er.is_absent = False
                 er.save(update_fields=['score', 'is_absent'])
             recompute_processed_results_for_exam(exam)
-        messages.success(
-            request,
-            f"Alama za {student.first_name} {student.last_name} zimehifadhiwa "
-            f"na matokeo yamehesabiwa upya."
+
+        # Matokeo MAPYA ya mwanafunzi huyu — ujumbe uonyeshe kilichotoka,
+        # si "yamehesabiwa upya" tupu iliyomfanya mwalimu adhani division
+        # haikubadilika wakati nayo ni halali (mf. NECTA <7 subjects → IV).
+        fresh = ProcessedResult.objects.filter(exam=exam, student=student).first()
+        class_size = ProcessedResult.objects.filter(exam=exam).count()
+        name = ' '.join(
+            p for p in [student.first_name, student.middle_name or '', student.last_name] if p
         )
+        if fresh:
+            messages.success(
+                request,
+                f"Alama za {name} zimehifadhiwa. Matokeo mapya: "
+                f"Division {fresh.division}, Alama {fresh.points}, "
+                f"Nafasi {fresh.position} kati ya {class_size}."
+            )
+            if exam.form in (1, 2, 3, 4):
+                # exam_results zimehaririwa hapo juu — helper inazisoma
+                # kama zilivyo sasa (source of truth iliyohifadhiwa).
+                snapshot = _preview_csee_division(exam, exam_results)
+                if snapshot and snapshot['capped']:
+                    messages.warning(
+                        request,
+                        f"{name} ana masomo {snapshot['counted']} tu yaliyopimwa kwenye mtihani huu "
+                        f"(NECTA inahitaji {snapshot['best_n']}). Kwa hiyo daraja lake juu zaidi ni "
+                        f"Division IV hata kama alama zote ni nzuri. Jaza alama za masomo mengine "
+                        f"kupitia upload/marks entry ili daraja likokotwe kikamilifu."
+                    )
+        else:
+            messages.success(
+                request,
+                f"Alama za {name} zimehifadhiwa na matokeo yamehesabiwa upya."
+            )
         return redirect('student_results_search')
 
     student_name = ' '.join(
@@ -446,6 +522,7 @@ def edit_processed_result(request, result_id):
         'exam': exam,
         'student_name': student_name,
         'exam_results': exam_results,
+        'preview': _preview_csee_division(exam, exam_results),
     })
 
 
@@ -1088,9 +1165,17 @@ def _bulk_save_form_students(school, form_num, parsed_rows):
     if not parsed_rows:
         return []
 
+    # Year rollover: dedup against the ACTIVE roster of the school's
+    # current academic year only — a re-upload can never merge into an
+    # archived (School Storage) or previous-year row, and the new intake
+    # starting fresh means every name is created anew.
+    upload_year = school.current_academic_year or timezone.now().year
     existing = {
         (fs.first_name, fs.middle_name, fs.last_name): fs
-        for fs in FormStudent.objects.filter(school=school, form=form_num)
+        for fs in FormStudent.objects.filter(
+            school=school, form=form_num,
+            is_active=True, academic_year=upload_year,
+        )
     }
     # admission_no is unique per (school, form) — track everything already
     # taken so two rows sharing a mis-typed candidate_no (or one colliding
@@ -1127,6 +1212,7 @@ def _bulk_save_form_students(school, form_num, parsed_rows):
             seen_admission_nos.add(admission_no)
             new_rows.append(FormStudent(
                 school=school, form=form_num,
+                academic_year=upload_year,
                 admission_no=admission_no,
                 first_name=first, middle_name=middle, last_name=last, gender=gender,
             ))
@@ -1833,6 +1919,162 @@ def finalize_exam(request, exam_id):
 
 
 # ── Academic Dashboard ────────────────────────────────────────────────────────
+
+# ── Year Rollover + School Storage ──────────────────────────────────
+
+ROLLOVER_PROMOTIONS = [(1, 2), (2, 3), (3, 4), (5, 6)]  # Form 4 → archive (O-Level out)
+
+
+def _do_year_rollover(school, new_year):
+    """Fungua mwaka mpya wa masomo kwa shule moja.
+
+    - Form 1→2, 2→3, 3→4, 5→6: rosti inasogeza form +1 na inabeba mwaka
+      mpya (wanafunzi wenyewe wanabaki — identity ni wao, "dinners"
+      wakiwemo).
+    - Form 4 (O-Level) na Form 6 (A-Level): is_active=False — School
+      Storage. Historia zao (mitihani, divisions) haigusiwi kabisa.
+    - Kila aliyebaki rostini anaenda na mwaka mpya, wakiwemo wanaojirudia.
+
+    Results haziguswi: zimefungamana na Exam.year — matokeo ya mwaka
+    uliopita yanaendelea kupatikana Search Results / PDFs za zamani.
+    """
+    old_year = school.current_academic_year or (new_year - 1)
+    promoted = archived = 0
+    with transaction.atomic():
+        # 1. Pandisha Form 1-3 na 5 (wote wanaobaki, wakiwemo "dinners").
+        for src, dst in ROLLOVER_PROMOTIONS:
+            promoted += FormStudent.objects.filter(
+                school=school, form=src, is_active=True, academic_year=old_year,
+            ).update(form=dst, academic_year=new_year)
+
+        # 2. Form 4 na 6 zinaisha — School Storage (archive, bila kufuta).
+        archived += FormStudent.objects.filter(
+            school=school, form__in=(4, 6), is_active=True, academic_year=old_year,
+        ).update(is_active=False)
+
+        school.current_academic_year = new_year
+        school.save(update_fields=['current_academic_year'])
+    return promoted, archived
+
+
+@academic_required
+def year_rollover(request):
+    """Confirm page ya 'Anza Mwaka Mpya' — GET inaonyesha muhtasari wa
+    kitakachofanyika (form counts), POST inafanya rollover."""
+    school = request.user.school
+    if not school:
+        messages.error(request, "Hakuna shule iliyowekwa.")
+        return redirect('home')
+
+    current_year = school.current_academic_year or timezone.now().year
+    new_year = current_year + 1
+    counts = dict(
+        FormStudent.objects.filter(school=school, is_active=True)
+        .values_list('form').annotate(c=Count('id'))
+    )
+    intake_exists = FormStudent.objects.filter(
+        school=school, is_active=True, academic_year=new_year, form=1,
+    ).exists()
+
+    if request.method == 'POST':
+        confirm = (request.POST.get('confirm') or '').strip().upper()
+        if confirm != 'HAMISHA':
+            messages.error(
+                request,
+                "Andika HAMISHA kwenye kisanduku kuthibitisha — hakuna kilichofanyika."
+            )
+            return redirect('year_rollover')
+
+        if intake_exists:
+            messages.warning(
+                request,
+                f"Form 1 ya mwaka {new_year} ilikuwa ipo tayari — rollover haikugusa "
+                f"intiake uliyosajili mwenyewe."
+            )
+        promoted, archived = _do_year_rollover(school, new_year)
+        messages.success(
+            request,
+            f"Mwaka {new_year} umefunguliwa. Wanafunzi {promoted} wamepandishwa "
+            f"(Form 1→2, 2→3, 3→4, 5→6, wakiwemo waliokosa) na Form 4/6 "
+            f"({archived}) wamehifadhiwa School Storage. Matokeo ya "
+            f"{current_year} hayagusiwi."
+        )
+        return redirect('school_storage')
+
+    return render(request, 'results/year_rollover.html', {
+        'school': school,
+        'current_year': current_year,
+        'new_year': new_year,
+        'counts': counts,
+        'intake_exists': intake_exists,
+    })
+
+
+@academic_required
+def school_storage(request):
+    """School Storage — rosti za miaka iliyopita (is_active=False za
+    walioondoka + za mwaka uliopita ambazo hazikupandishwa). Group kwa
+    mwaka; rosti hai ya mwaka wa sasa haionyeshwi hapa.
+    """
+    school = request.user.school
+    if not school:
+        messages.error(request, "Hakuna shule iliyowekwa.")
+        return redirect('home')
+
+    current_year = school.current_academic_year or timezone.now().year
+    selected_year = request.GET.get('year')
+    if selected_year and selected_year.isdigit():
+        selected_year = int(selected_year)
+
+    years = list(
+        FormStudent.objects.filter(school=school)
+        .exclude(academic_year=current_year)
+        .values_list('academic_year', flat=True)
+        .distinct().order_by('-academic_year')
+    )
+    shown_year = selected_year or (years[0] if years else None)
+    students = FormStudent.objects.filter(
+        school=school, academic_year=shown_year,
+    ).exclude(academic_year=current_year).order_by('form', 'last_name', 'first_name') if shown_year else FormStudent.objects.none()
+
+    return render(request, 'results/school_storage.html', {
+        'years': years,
+        'selected_year': shown_year,
+        'students': students,
+        'current_year': current_year,
+    })
+
+
+@academic_required
+@require_POST
+def restore_storage_student(request, student_id):
+    """Rudisha mwanafunzi mmoja kutoka School Storage kwenye rosti hai ya
+    mwaka wa sasa (form ileile) — mfano alirudi shule."""
+    school = request.user.school
+    fs = get_object_or_404(FormStudent, id=student_id, school=school)
+    current_year = school.current_academic_year or timezone.now().year
+    old_year = fs.academic_year
+    fs.is_active = True
+    fs.academic_year = current_year
+    try:
+        with transaction.atomic():
+            fs.save(update_fields=['is_active', 'academic_year'])
+    except Exception:
+        # (school, year, form, admission_no) imepigwa na mwanafunzi mwingine
+        # hai — mfano namba ileile ilisajiliwa upya mwaka huu.
+        messages.error(
+            request,
+            f"Imeshindikana kumrudisha: namba ya mtahajiki "
+            f"({fs.admission_no or 'hakuna'}) imetumika na mwanafunzi mwingine "
+            f"wa Form {fs.form} mwaka huu. Badilisha namba kwanza."
+        )
+        return redirect(f'{reverse("school_storage")}?year={old_year}')
+    messages.success(
+        request,
+        f"{fs.first_name} {fs.last_name} amerudishwa Form {fs.form} (mwaka {current_year})."
+    )
+    return redirect(f'{reverse("school_storage")}?year={old_year}')
+
 
 @academic_required
 def academic_dashboard(request):
@@ -2870,6 +3112,11 @@ def upload_form_students(request):
     form_num = request.GET.get('form') or request.POST.get('form') or ''
     selected_form = int(form_num) if form_num.isdigit() and int(form_num) in (1,2,3,4,5,6) else None
 
+    # Year rollover: this page edits the CURRENT intake only. Archived
+    # (School Storage) rows and previous years are viewed/restored from
+    # School Storage, never mixed in here.
+    current_academic_year = school.current_academic_year or timezone.now().year
+
     if request.method == 'POST' and selected_form:
         uploaded_file = request.FILES.get('student_file')
         if not uploaded_file:
@@ -2910,9 +3157,14 @@ def upload_form_students(request):
     # single evaluation -- for a 231-student form with ~20 subjects that
     # was 4,600+ queries rendering one page, slow enough over a remote DB
     # to trip the gunicorn worker timeout and return an upstream error.
-    students = FormStudent.objects.filter(school=school, form=selected_form).order_by('id').prefetch_related('subjects') if selected_form else FormStudent.objects.none()
+    students = FormStudent.objects.filter(
+        school=school, form=selected_form,
+        is_active=True, academic_year=current_academic_year,
+    ).order_by('id').prefetch_related('subjects') if selected_form else FormStudent.objects.none()
     counts = {f: 0 for f in range(1, 7)}
-    for row in FormStudent.objects.filter(school=school).values('form').annotate(cnt=Count('id')):
+    for row in FormStudent.objects.filter(
+        school=school, is_active=True, academic_year=current_academic_year,
+    ).values('form').annotate(cnt=Count('id')):
         if row['form'] in counts:
             counts[row['form']] = row['cnt']
 
@@ -3030,7 +3282,7 @@ def bulk_edit_form_student_gender(request):
         messages.warning(request, "Chagua wanafunzi kwanza.")
         return redirect(f'{reverse("upload_form_students")}?form={form_num}')
 
-    students = list(FormStudent.objects.filter(id__in=student_ids, school=school))
+    students = list(FormStudent.objects.filter(id__in=student_ids, school=school, is_active=True))
     linked_count = 0
     with transaction.atomic():
         for fs in students:
@@ -3074,7 +3326,7 @@ def bulk_assign_form_student_subjects(request):
         messages.warning(request, "Chagua wanafunzi kwanza.")
         return redirect(f'{reverse("upload_form_students")}?form={form_num}')
 
-    students = FormStudent.objects.filter(id__in=student_ids, school=school)
+    students = FormStudent.objects.filter(id__in=student_ids, school=school, is_active=True)
     subjects = Subject.objects.filter(id__in=subject_ids)
 
     count = 0
@@ -3113,7 +3365,14 @@ def delete_all_form_students(request, form_num):
     if form_num not in (1, 2, 3, 4, 5, 6):
         messages.error(request, "Form si sahihi.")
         return redirect('upload_form_students')
-    deleted_count, _ = FormStudent.objects.filter(school=school, form=form_num).delete()
+    # Year rollover: NEVER touch archived (School Storage) rows or other
+    # years' intakes — this wipes only the active roster of the current
+    # academic year, the one visible on the page right now.
+    current_academic_year = school.current_academic_year or timezone.now().year
+    deleted_count, _ = FormStudent.objects.filter(
+        school=school, form=form_num,
+        is_active=True, academic_year=current_academic_year,
+    ).delete()
     if deleted_count:
         messages.success(request, f"Wanafunzi wote {deleted_count} wa Form {form_num} wameondolewa.")
     else:

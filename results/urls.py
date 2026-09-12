@@ -45,6 +45,9 @@ from .views import (
     upload_roster,
     academic_dashboard,
     approve_subject,
+    year_rollover,
+    school_storage,
+    restore_storage_student,
     approve_exam_submissions,
     recompute_exam_results,
     set_class_teacher,
@@ -162,6 +165,9 @@ urlpatterns = [
     path('download-template/', download_roster_template, name='download_roster_template'),
     # Academic dashboard & form results
     path('academic/', academic_dashboard, name='academic_dashboard'),
+    path('academic/year-rollover/', year_rollover, name='year_rollover'),
+    path('academic/school-storage/', school_storage, name='school_storage'),
+    path('academic/school-storage/<int:student_id>/restore/', restore_storage_student, name='restore_storage_student'),
     path('form/<int:form_num>/results/', form_results, name='form_results'),
     path('form/<int:form_num>/excel/', form_results_excel, name='form_results_excel'),
     # Logo upload for PDF header
