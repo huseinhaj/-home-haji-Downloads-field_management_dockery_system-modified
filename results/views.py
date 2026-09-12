@@ -304,10 +304,17 @@ def ps_print_view(request, submission_id):
 def public_results_search(request):
     """Public search portal — no login required.
     Parents can search for their child's results by name.
-    Like NECTA's online results portal."""
+    Like NECTA's online results portal.
+
+    Utendaji (scaling): search inafanyika NDANI ya shule moja tu — mzazi
+    anachagua shule kwanza, kisha jina. Bila hiyo, kila utafutaji unapiga
+    ProcessedResult za shule ZOTE (icontains hairuhisi index) — haiwezi
+    kumudu shule 100+.
+    """
     query = request.GET.get('q', '').strip()
     selected_form = request.GET.get('form', '').strip()
     selected_year = request.GET.get('year', '').strip()
+    selected_school = request.GET.get('school', '').strip()
 
     results = []
     has_searched = bool(query)
@@ -322,6 +329,23 @@ def public_results_search(request):
     current_year = timezone.now().year
     year_choices = range(current_year, current_year - 5, -1)
 
+    # Orodha ya shule zilizo hai kwenye mfumo — dropdown ya kuchagua shule
+    # kabla ya kutafuta jina (NECTA-style). ina idadi ya matokeo ili
+    # shule tupu zisioneshwe.
+    school_options = (
+        School.objects
+        .filter(exams__processedresult__isnull=False)
+        .distinct()
+        .order_by('name')
+    )
+
+    search_school = None
+    if selected_school:
+        try:
+            search_school = School.objects.get(pk=int(selected_school))
+        except (ValueError, School.DoesNotExist):
+            search_school = None
+
     if has_searched:
         # Build query for ProcessedResult, filtering by student name
         from django.db.models import Q
@@ -330,15 +354,13 @@ def public_results_search(request):
             'student', 'exam', 'exam__school'
         ).all()
 
-        # Filter by form
-        if selected_form:
-            try:
-                qs = qs.filter(exam__form=int(selected_form))
-            except ValueError:
-                pass
-
-        # Filter by year
-        if selected_year:
+        # ── Filter ya SHULE — lazima. Inazuia ku-scan DB nzima. ──
+        # Kama shule haijachaguliwa, tunabana kwa mwaka ULIOPITA NA HUU
+        # (scoping ya dharura — bado tunazuia full-table scan ya historia
+        # yote), lakini tunaweka onyo la kuchagua shule kwa utafutaji sahihi.
+        if search_school:
+            qs = qs.filter(exam__school=search_school)
+        elif selected_year:
             try:
                 qs = qs.filter(exam__year=int(selected_year))
             except ValueError:
@@ -391,6 +413,9 @@ def public_results_search(request):
         'query': query,
         'selected_form': selected_form,
         'selected_year': selected_year,
+        'selected_school': selected_school,
+        'search_school': search_school,
+        'school_options': school_options,
         'results': results,
         'has_searched': has_searched,
         'form_choices': form_choices,

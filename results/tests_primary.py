@@ -214,13 +214,50 @@ class PrimaryPageTests(TestCase):
         self.assertNotContains(resp, 'Points')          # hakuna column ya points/division
 
     def test_public_search_shows_darasa_and_avg_grade(self):
+        # Search ya umma inafanyika ndani ya SHULE ILIYOCHAGUA — mzazi
+        # anachagua shule kwanza (NECTA-style), kisha jina.
         resp = self.client.get(
-            reverse('student_results_search'), {'q': 'Mtoto Mmoja'}
+            reverse('student_results_search'),
+            {'q': 'Mtoto Mmoja', 'school': self.school.pk},
         )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Mtoto Mmoja')
         self.assertContains(resp, 'Darasa 4')           # badge ya kiwango
         self.assertContains(resp, 'A')                   # gredi ya wastani (90 → A)
+
+    def test_public_search_scopes_to_selected_school_only(self):
+        # Shule ya pili yenye mwanafunzi wa jina LILEILE — isimwone.
+        other_school = School.objects.create(
+            name='Shule Nyingine', region='Dodoma', district='Dodoma',
+            level='primary', current_academic_year=2026,
+        )
+        other_exam = Exam.objects.create(
+            name='Midterm 2026', year=2026, form=4, school=other_school,
+        )
+        other_student = Student.objects.create(
+            first_name='Mtoto', last_name='Mmoja', gender='M',
+        )
+        ExamResult.objects.create(
+            exam=other_exam, student=other_student, subject=self.subject, score=50,
+        )
+        ProcessedResult.objects.create(
+            exam=other_exam, student=other_student,
+            total_score=50, average_score=Decimal('50.00'),
+            position=1, points=0, division='',
+        )
+
+        resp = self.client.get(
+            reverse('student_results_search'),
+            {'q': 'Mtoto Mmoja', 'school': self.school.pk},
+        )
+        content = resp.content.decode()
+        # Matokeo ya shule ya pili hayatoki kwenye search ya shule hii
+        self.assertNotIn('50', content.split('Mtoto Mmoja')[1][:200] if 'Mtoto Mmoja' in content else '')
+
+    def test_school_dropdown_lists_schools_with_results(self):
+        resp = self.client.get(reverse('student_results_search'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Shule ya Msingi Pages')
 
     def test_edit_page_primary_hides_division(self):
         resp = self.client.get(

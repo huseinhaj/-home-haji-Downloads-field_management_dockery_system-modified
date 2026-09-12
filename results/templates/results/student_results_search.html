@@ -253,6 +253,15 @@
     <div class="search-card">
       <form method="GET" action="{% url 'student_results_search' %}" id="searchForm">
         <div class="mb-3">
+          <label class="form-label" for="school">🏫 Shule / School</label>
+          <select id="school" name="school" class="form-select">
+            <option value="">— {% if lang == 'sw' %}Chagua shule kwanza{% else %}Select school first{% endif %} —</option>
+            {% for s in school_options %}
+            <option value="{{ s.pk }}" {% if selected_school == s.pk|stringformat:'i' %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
           <label class="form-label" for="q">👤 Jina la Mwanafunzi / Student Name</label>
           <input type="text" id="q" name="q" class="form-control"
                  placeholder="Ingiza jina la mtoto wako… e.g. Juma Mohamed"
@@ -288,6 +297,11 @@
   <!-- Results -->
   <div class="results-container">
     {% if has_searched %}
+      {% if not search_school %}
+      <div class="result-count" style="color:#8a6d00;">
+        ⚠️ {% if lang == 'sw' %}Hukuuchagua shule — chagua shule hapo juu kwanza kwa utafutaji sahihi na wa haraka.{% else %}No school selected — pick the school above first for accurate, fast results.{% endif %}
+      </div>
+      {% endif %}
       {% if results %}
         <div class="result-count">
           {% if lang == 'sw' %}
