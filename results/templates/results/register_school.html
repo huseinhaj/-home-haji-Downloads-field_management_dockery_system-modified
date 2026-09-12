@@ -8,9 +8,9 @@
     <h1 class="mb-1">{% if LANG == 'sw' %}Tafuta Shule Yako{% else %}Find Your School{% endif %}</h1>
     <p class="mb-0 text-secondary">
       {% if LANG == 'sw' %}
-      Chagua Mkoa, Wilaya, kisha Shule yako ya Sekondari kuona kama tayari ipo kwenye mfumo.
+      Chagua Mkoa, Wilaya, kisha Shule yako (Msingi au Sekondari) kuona kama tayari ipo kwenye mfumo.
       {% else %}
-      Pick your Region, District, then your Secondary School to see if it's already set up in the system.
+      Pick your Region, District, then your school (Primary or Secondary) to see if it's already set up in the system.
       {% endif %}
     </p>
   </div>
@@ -52,7 +52,7 @@
         </div>
         <div class="col-md-4">
           <div class="field">
-            <label>{% if LANG == 'sw' %}Shule (Sekondari){% else %}School (Secondary){% endif %}</label>
+            <label>{% if LANG == 'sw' %}Shule{% else %}School{% endif %}</label>
             <input type="text" id="schoolSearch" class="form-control mb-2"
                    placeholder="{% if LANG == 'sw' %}Tafuta shule hapa...{% else %}Search school here...{% endif %}"
                    autocomplete="off" disabled>
@@ -127,7 +127,14 @@
     const resp = await fetch(`{% url 'ajax_schools' %}?district_id=${districtSelect.value}`);
     const data = await resp.json();
     schoolSelect.innerHTML = `<option value="">-- {% if LANG == 'sw' %}Chagua Shule{% else %}Select School{% endif %} --</option>` +
-      data.schools.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      data.schools.map(s => {
+        // Onyesha aina ya shule ili shule za msingi na sekondari zitofautishwe
+        const tag = s.level === 'Primary' ? ' (Msingi)'
+                  : s.level === 'Secondary' ? ' (Sekondari)'
+                  : s.level === 'Technical' ? ' (Technical)'
+                  : '';
+        return `<option value="${s.id}">${s.name}${tag}</option>`;
+      }).join('');
     schoolSelect.disabled = false;
     schoolSearch.disabled = false;
     updateSchoolCount();

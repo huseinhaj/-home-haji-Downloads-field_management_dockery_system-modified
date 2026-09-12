@@ -47,10 +47,14 @@ def ajax_districts(request):
 def ajax_schools(request):
     district_id = request.GET.get('district_id')
     schools = (
-        SourceSchool.objects.filter(district_id=district_id, level='Secondary').order_by('name')
+        SourceSchool.objects.filter(district_id=district_id).order_by('name')
         if district_id else []
     )
-    return JsonResponse({'schools': [{'id': s.id, 'name': s.name} for s in schools]})
+    # Msingi na sekondari zote zinaonekana — shule ya msingi pia inahitaji
+    # kujiunga. Level inapelekwa ili UI iweze kuonyesha aina ya shule.
+    return JsonResponse({'schools': [
+        {'id': s.id, 'name': s.name, 'level': s.level or ''} for s in schools
+    ]})
 
 
 def _mask_email(email: str) -> str:
@@ -64,15 +68,24 @@ def _get_or_create_school(source_school):
     """Mirror a field_app.School into the results app's own School table,
     keyed by source_school_id so repeat lookups never duplicate it. This
     makes the school immediately available for the admin to pick in
-    Django admin, without waiting for anyone to have registered yet."""
+    Django admin, without waiting for anyone to have registered yet.
+    Level (msingi/sekondari) inakopiwa pia — shule ya msingi inaanza
+    na Darasa 1-7, grading A-E, bila ku-subiri Academic aweweke."""
+    level_map = {'Primary': 'primary', 'Secondary': 'secondary', 'Technical': 'secondary'}
     school, _ = School.objects.get_or_create(
         source_school_id=source_school.id,
         defaults={
             'name': source_school.name.strip().title(),
             'region': source_school.district.region.name,
             'district': source_school.district.name,
+            'level': level_map.get(source_school.level, 'secondary'),
         },
     )
+    # Row ya zamani (kabla ya primary support) inaweza kuwa bila level —
+    # jaza kutoka kwa orodha kuu.
+    if not school.level and source_school.level:
+        school.level = level_map.get(source_school.level, 'secondary')
+        school.save(update_fields=['level'])
     return school
 
 
@@ -93,7 +106,8 @@ def register_school_confirm(request):
         })
 
     source_school_id = request.POST.get('school_id')
-    source_school = get_object_or_404(SourceSchool, id=source_school_id, level='Secondary')
+    # Msingi au sekondari — vyote vinakubalika.
+    source_school = get_object_or_404(SourceSchool, id=source_school_id)
     school = _get_or_create_school(source_school)
 
     existing = TeacherAccount.objects.filter(school=school, role=TeacherAccount.ROLE_ACADEMIC).first()
