@@ -3613,6 +3613,97 @@ def upload_form_students(request):
 
 
 @academic_required
+def scan_roster(request):
+    """Scan (piga picha / pakia picha-PDF ya) orodha ya wanafunzi badala ya
+    ku-upload faili. AI vision inasoma majina → uhakiki kwenye preview →
+    hafadhi. Reuses the scoresheet vision chain (roster_scan_service) and
+    the same name-splitting rules as the file upload parsers, so scanned
+    and uploaded rosters land in FormStudent identically.
+
+    POST: picha/PDF (field 'scan_file') + form number → JSON preview rows
+    (nothing saved yet). The Academic edits/removes rows in the UI, then
+    posts the confirmed rows to save_scanned_roster."""
+    from .services.roster_scan_service import RosterScanError, extract_students_from_document
+
+    school = request.user.school
+    if not school:
+        return JsonResponse({'error': 'Hakuna shule iliyowekwa.'}, status=400)
+
+    form_num = request.POST.get('form') or request.GET.get('form') or ''
+    valid_classes = _school_class_numbers(school)
+    if not (str(form_num).isdigit() and int(form_num) in valid_classes):
+        return JsonResponse({'error': 'Chagua darasa sahihi kwanza.'}, status=400)
+
+    uploaded_file = request.FILES.get('scan_file')
+    if not uploaded_file:
+        return JsonResponse({'error': 'Hakuna picha au faili lililotumwa.'}, status=400)
+
+    try:
+        students = extract_students_from_document(uploaded_file)
+    except RosterScanError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+    except Exception as exc:
+        logger.error("[RosterScan] Unexpected failure: %s", exc)
+        return JsonResponse({'error': f'Hitilafu ya usomaji: {exc}'}, status=500)
+
+    return JsonResponse({'status': 'preview', 'count': len(students), 'students': students})
+
+
+@academic_required
+@require_POST
+def save_scanned_roster(request):
+    """Hifadhi wanafunzi waliothibitishwa baada ya preview ya scan. Frontend
+    inatuma JSON: {form: 2, students: [{first, middle, last, gender}, ...]}.
+    Kila mwanafunzi anaweza kuwa amehaririwa/kufutwa kwenye UI kabla —
+    tunahifadhi TU aliyeletwa hapa. Dedup/placeholder logic ni ile ile ya
+    _bulk_save_form_students (upload path), kwa hivyo matokeo ni yanayofanana
+    regardless of how the roster arrived."""
+    import json as _json
+
+    school = request.user.school
+    if not school:
+        return JsonResponse({'error': 'Hakuna shule iliyowekwa.'}, status=400)
+
+    try:
+        payload = _json.loads(request.body)
+    except (ValueError, _json.JSONDecodeError):
+        return JsonResponse({'error': 'Data ya ombi si sahihi.'}, status=400)
+
+    form_num = payload.get('form')
+    valid_classes = _school_class_numbers(school)
+    if not (str(form_num).isdigit() and int(form_num) in valid_classes):
+        return JsonResponse({'error': 'Chagua darasa sahihi kwanza.'}, status=400)
+    form_num = int(form_num)
+
+    raw_students = payload.get('students') or []
+    parsed_rows = []
+    for s in raw_students:
+        if not isinstance(s, dict):
+            continue
+        first = str(s.get('first') or '').strip()
+        if not first:
+            continue
+        parsed_rows.append((
+            first,
+            str(s.get('middle') or '').strip(),
+            str(s.get('last') or '').strip() or 'Unknown',
+            normalize_gender(s.get('gender')),
+        ))
+
+    if not parsed_rows:
+        return JsonResponse({'error': 'Hakuna mwanafunzi sahihi kwenye orodha iliyotumwa.'}, status=400)
+
+    saved = _bulk_save_form_students(school, form_num, parsed_rows)
+    created = sum(1 for r in saved if r.get('created', True))
+    return JsonResponse({
+        'status': 'ok',
+        'saved': len(saved),
+        'created': created,
+        'existing': len(saved) - created,
+    })
+
+
+@academic_required
 @require_POST
 def assign_form_student_subjects(request, student_id):
     """Assign subjects to a FormStudent (option subjects like Physics, Agriculture)."""

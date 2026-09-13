@@ -1,10 +1,19 @@
 {% extends "results/base.html" %}
-{% block title %}{{ class_prefix }} Students{% endblock %}
+{% block title %}{% if LANG == 'sw' %}Orodha ya Wanafunzi{% else %}Student Roster{% endif %} | {{ class_prefix }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-  <h2 class="mb-3" style="color:#1A3C6E;">📋 Rosti ya Wanafunzi</h2>
-  <p class="text-muted mb-4">Upload the student roster for each form (PDF, DOCX, Excel or CSV). Students will appear on each teacher's dashboard. Assign subjects so teachers only see their students.</p>
+  <h2 class="mb-1" style="color:var(--accent-600);">📋 {% if LANG == 'sw' %}Orodha ya Wanafunzi (Rosti ya Darasa){% else %}Student Roster (Class Lists){% endif %}</h2>
+  <p class="text-muted mb-1" style="font-size:0.92rem;">
+    {% if LANG == 'sw' %}
+    Hapa ndipo unasajili wanafunzi wa shule — pakia orodha ya kila darasa (PDF, DOCX, Excel au CSV), hariri majina, na chagua masomo ya kila mwanafunzi. Wanafunzi hawa ndio wanaotokea kwenye Marks Entry, scoresheets na ripoti zote.
+    {% else %}
+    This is where you register your school's students — upload each class's list (PDF, DOCX, Excel or CSV), edit names, and choose each student's subjects. These students appear in Marks Entry, scoresheets and all reports.
+    {% endif %}
+  </p>
+  <p class="text-muted mb-4" style="font-size:0.82rem;">
+    💡 {% if LANG == 'sw' %}Mwanafunzi mmoja mmoja aliesahaulika kwenye mtihani? Tumia {% else %}One student missed during registration? Use {% endif %}<a href="{% url 'academic_add_student_marks' %}" style="font-weight:700;">{% if LANG == 'sw' %}➕ Ongeza Mwanafunzi Mpya{% else %}➕ Add New Student{% endif %}</a>{% if LANG == 'sw' %} kwenye Academic Dashboard.{% else %} on the Academic Dashboard.{% endif %}
+  </p>
 
   <!-- Class/Form Tabs -->
   <ul class="nav nav-tabs mb-4">
@@ -12,7 +21,7 @@
     <li class="nav-item">
       <a class="nav-link {% if selected_form == val %}active{% endif %}"
          href="?form={{ val }}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}"
-         style="{% if selected_form == val %}background:#1A3C6E;color:#fff;{% endif %}">
+         style="{% if selected_form == val %}background:var(--accent-600);color:#fff;{% endif %}">
         {{ lbl }}
         <span class="badge bg-secondary ms-1">{{ form_counts|default_if_none:"" }}</span>
       </a>
@@ -27,9 +36,9 @@
       <a href="?form={{ f }}" class="text-decoration-none">
         <div class="card text-center {% if selected_form == f %}border-primary shadow{% else %}border-light{% endif %}">
           <div class="card-body py-2 px-1">
-            <div class="fw-bold" style="color:{% if selected_form == f %}#1A3C6E{% else %}#555{% endif %};">{{ class_prefix }} {{ f }}</div>
-            <div class="fs-4 fw-bold" style="color:{% if selected_form == f %}#B8860B{% else %}#999{% endif %};">{{ cnt }}</div>
-            <small class="text-muted">students</small>
+            <div class="fw-bold" style="color:{% if selected_form == f %}var(--accent-600){% else %}var(--ink-500){% endif %};">{{ class_prefix }} {{ f }}</div>
+            <div class="fs-4 fw-bold" style="color:{% if selected_form == f %}var(--secondary-500){% else %}var(--ink-500){% endif %};">{{ cnt }}</div>
+            <small class="text-muted">{% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</small>
           </div>
         </div>
       </a>
@@ -40,8 +49,8 @@
   {% if selected_form %}
   <!-- Upload Section -->
   <div class="card mb-4 shadow-sm">
-    <div class="card-header" style="background:#1A3C6E;color:#fff;">
-      <strong>Upload Roster — {{ class_prefix }} {{ selected_form }}</strong>
+    <div class="card-header" style="background:var(--accent-600);color:#fff;">
+      <strong>{% if LANG == 'sw' %}Pakia Rosti — {{ class_prefix }} {{ selected_form }}{% else %}Upload Roster — {{ class_prefix }} {{ selected_form }}{% endif %}</strong>
     </div>
     <div class="card-body">
       <form method="post" enctype="multipart/form-data">
@@ -49,20 +58,80 @@
         <input type="hidden" name="form" value="{{ selected_form }}">
         <div class="row align-items-end">
           <div class="col-md-8">
-            <label class="form-label fw-bold">Roster File (PDF, DOCX, Excel or CSV)</label>
+            <label class="form-label fw-bold">{% if LANG == 'sw' %}Faili la Rosti (PDF, DOCX, Excel au CSV){% else %}Roster File (PDF, DOCX, Excel or CSV){% endif %}</label>
             <input type="file" name="student_file" class="form-control" accept=".pdf,.docx,.csv,.xlsx,.xls" required>
             <small class="text-muted">
-              One line per student. PDF: full name + gender (e.g. "Halima Ally Mohamed F").
-              Excel/CSV: columns First Name | Middle Name | Last Name | Gender.
+              {% if LANG == 'sw' %}Mstari mmoja kwa mwanafunzi. PDF: jina kamili + jinsia (mf. "Halima Ally Mohamed F"). Excel/CSV: safu — Jina la Kwanza | Jina la Kati | Jina la Mwisho | Jinsia.{% else %}One line per student. PDF: full name + gender (e.g. "Halima Ally Mohamed F"). Excel/CSV: columns — First Name | Middle Name | Last Name | Gender.{% endif %}
             </small>
           </div>
           <div class="col-md-4">
-            <button type="submit" class="btn w-100 fw-bold" style="background:#1A7B3A;color:#fff;">
-              📤 Upload Students
+            <button type="submit" class="btn w-100 fw-bold" style="background:var(--accent-500);color:#fff;">
+              📤 {% if LANG == 'sw' %}Pakia Wanafunzi{% else %}Upload Students{% endif %}
             </button>
           </div>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Scan Section — piga picha ya orodha, AI inasoma majina -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header" style="background:#5B3E90;color:#fff;">
+      <strong>📸 {% if LANG == 'sw' %}Scan Orodha — Piga Picha ya Orodha{% else %}Scan Roster — Photograph the List{% endif %}</strong>
+    </div>
+    <div class="card-body">
+      <p class="mb-2" style="font-size:0.85rem;color:#555;">
+        {% if LANG == 'sw' %}Hitaji ku-upload faili? Piga picha ya orodha iliyochapwa au kwandikwa kwenye ubao — mfumo utaisoma kwa AI, kukuonyesha wanafunzi waliopatikana kwa uhakiki, kisha uhifadhi.{% else %}No file needed? Photograph a printed or chalkboard list — the system reads it with AI, shows the students for review, then saves them.{% endif %}
+      </p>
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+        <button type="button" class="btn fw-bold" style="background:#5B3E90;color:#fff;" onclick="document.getElementById('scanCameraInput').click()">
+          📷 {% if LANG == 'sw' %}Piga Picha Sasa{% else %}Take Photo Now{% endif %}
+        </button>
+        <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('scanFileInput').click()">
+          🖼️ {% if LANG == 'sw' %}Chagua Picha/PDF{% else %}Choose Photo/PDF{% endif %}
+        </button>
+        <input type="file" id="scanCameraInput" accept="image/*" capture="environment" style="display:none;">
+        <input type="file" id="scanFileInput" accept="image/*,.pdf" style="display:none;">
+        <span id="scanStatus" style="font-size:0.8rem;color:#555;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scan Preview Modal — uhakiki kabla ya kuhifadhi -->
+  <div id="scanPreviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;overflow:auto;">
+    <div style="background:#fff;max-width:720px;margin:2rem auto;border-radius:8px;overflow:hidden;">
+      <div class="d-flex justify-content-between align-items-center p-3" style="background:#5B3E90;color:#fff;">
+        <strong>🔍 {% if LANG == 'sw' %}Uhakiki — Wanafunzi Waliosomwa ({{ class_prefix }} {{ selected_form }}){% else %}Review — Scanned Students ({{ class_prefix }} {{ selected_form }}){% endif %}</strong>
+        <button type="button" class="btn-close btn-close-white" onclick="closeScanPreview()"></button>
+      </div>
+      <div class="p-3">
+        <p style="font-size:0.8rem;color:#555;" class="mb-2">
+          {% if LANG == 'sw' %}Hariri majina yaliyokosewa, ondoa waliotambuliwa vibaya, au ongeza waliokosekana. Kisha hifadhi.{% else %}Fix misread names, remove bad rows, or add missing ones. Then save.{% endif %}
+        </p>
+        <div class="table-responsive" style="max-height:55vh;overflow:auto;">
+          <table class="table table-sm mb-0" id="scanPreviewTable">
+            <thead style="background:#F3EFFA;">
+              <tr>
+                <th>#</th>
+                <th>{% if LANG == 'sw' %}Jina la Kwanza{% else %}First{% endif %}</th>
+                <th>{% if LANG == 'sw' %}Kati{% else %}Middle{% endif %}</th>
+                <th>{% if LANG == 'sw' %}Mwisho{% else %}Last{% endif %}</th>
+                <th>{% if LANG == 'sw' %}Jinsia{% else %}Gender{% endif %}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="scanPreviewBody"></tbody>
+          </table>
+        </div>
+        <div class="d-flex gap-2 mt-3 flex-wrap">
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addScanRow()">➕ {% if LANG == 'sw' %}Ongeza Mwenyewe{% else %}Add Manually{% endif %}</button>
+          <span class="flex-fill"></span>
+          <button type="button" class="btn btn-outline-secondary" onclick="closeScanPreview()">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
+          <button type="button" class="btn fw-bold" style="background:var(--accent-500);color:#fff;" onclick="saveScannedRoster()" id="scanSaveBtn">
+            💾 {% if LANG == 'sw' %}Hifadhi Wanafunzi Wote{% else %}Save All Students{% endif %}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -72,7 +141,7 @@
     <div class="card-body py-2">
       <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
         <input type="hidden" name="form" value="{{ selected_form }}">
-        <strong style="color:#1A3C6E;">🔍 Filter by Subject:</strong>
+        <strong style="color:var(--accent-600);">🔍 {% if LANG == 'sw' %}Chuja kwa Somo:{% else %}Filter by Subject:{% endif %}</strong>
         <select name="subject" class="form-select form-select-sm" style="max-width:300px;" onchange="this.form.submit()">
           <option value="">— Wote / All Students —</option>
           {% for s in subjects_list %}
@@ -82,7 +151,7 @@
         {% if selected_subject %}
         <a href="?form={{ selected_form }}" class="btn btn-sm btn-outline-secondary">✕ Clear Filter</a>
         {% endif %}
-        <small class="text-muted">{{ students|length }} wanafunzi</small>
+        <small class="text-muted">{{ students|length }} {% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</small>
       </form>
     </div>
   </div>
@@ -91,28 +160,30 @@
   <!-- Students Table -->
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center" style="background:#F8F9FA;">
-      <strong>{{ class_prefix }} {{ selected_form }} Students ({{ students|length }})</strong>
+      <strong>{{ class_prefix }} {{ selected_form }} — {% if LANG == 'sw' %}Wanafunzi ({{ students|length }}){% else %}Students ({{ students|length }}){% endif %}</strong>
       {% if students %}
       <div class="d-flex gap-2 flex-wrap">
-        <button type="button" class="btn btn-sm" style="background:#1A3C6E;color:#fff;"
-                onclick="document.getElementById('bulkAssignModal').style.display='block'">
-          📚 Weka Masomo kwa Wote
+        <button type="button" class="btn btn-sm" style="background:var(--accent-500);color:#fff;"
+                onclick="document.getElementById('bulkAssignModal').style.display='block'"
+                title="{% if LANG == 'sw' %}Chagua masomo ambayo wanafunzi WOTE wa darasa hili wanafanya{% else %}Pick the subjects ALL students in this class take{% endif %}">
+          📚 {% if LANG == 'sw' %}Masomo ya Darasa Lote{% else %}Subjects for Whole Class{% endif %}
         </button>
         <button type="button" class="btn btn-sm btn-outline-primary" id="bulkActionBtn" style="display:none;"
                 onclick="document.getElementById('bulkSubjectModal').style.display='block'">
-          ✏️ Weka Masomo kwa Selected
+          ✏️ {% if LANG == 'sw' %}Masomo kwa Waliochaguliwa{% else %}Subjects for Selected{% endif %}
         </button>
         <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkGenderBtn" style="display:none;"
                 onclick="openBulkGenderModal()">
-          ⚧ Badilisha Gender
+          ⚧ {% if LANG == 'sw' %}Badilisha Jinsia{% else %}Edit Gender{% endif %}
         </button>
-        <a href="{% url 'teacher_performance_report' selected_form %}" class="btn btn-sm" style="background:#B8860B;color:#fff;">
-          📊 Teacher Report
+        <a href="{% url 'teacher_performance_report' selected_form %}" class="btn btn-sm" style="background:var(--secondary-500);color:#fff;"
+           title="{% if LANG == 'sw' %}Pakua PDF ya utendaji na mapendekezo ya kila mwalimu wa darasa hili{% else %}Download a PDF of each teacher's performance and recommendations for this class{% endif %}">
+          📊 {% if LANG == 'sw' %}Ripoti ya Walimu (PDF){% else %}Teachers' Performance PDF{% endif %}
         </a>
         <form method="post" action="{% url 'delete_all_form_students' selected_form %}" class="d-inline"
               onsubmit="return confirm('Delete ALL {{ students|length }} students from {{ class_prefix }} {{ selected_form }}? This cannot be undone.');">
           {% csrf_token %}
-          <button type="submit" class="btn btn-sm btn-outline-danger">🗑 Delete All</button>
+          <button type="submit" class="btn btn-sm btn-outline-danger">🗑 {% if LANG == 'sw' %}Futa Zote{% else %}Delete All{% endif %}</button>
         </form>
       </div>
       {% endif %}
@@ -121,14 +192,14 @@
       {% if students %}
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0" id="studentTable">
-          <thead style="background:#1A3C6E;color:#fff;">
+          <thead style="background:var(--accent-600);color:#fff;">
             <tr>
               <th style="width:30px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
               <th>#</th>
-              <th>Name</th>
-              <th>Gender</th>
-              <th>Subjects</th>
-              <th>Action</th>
+              <th>{% if LANG == 'sw' %}Jina{% else %}Name{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Jinsia{% else %}Gender{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Hatua{% else %}Action{% endif %}</th>
             </tr>
           </thead>
           <tbody>
@@ -148,34 +219,34 @@
                     <div class="modal-content">
                       <form method="post" action="{% url 'edit_form_student' s.id %}">
                         {% csrf_token %}
-                        <div class="modal-header" style="background:#1A3C6E;color:#fff;">
-                          <h6 class="modal-title">Hariri — {{ s.first_name }} {{ s.last_name }}</h6>
+                        <div class="modal-header" style="background:var(--accent-600);color:#fff;">
+                          <h6 class="modal-title">{% if LANG == 'sw' %}Hariri{% else %}Edit{% endif %} — {{ s.first_name }} {{ s.last_name }}</h6>
                           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
                           <div class="mb-2">
-                            <label class="form-label" style="font-size:0.8rem;">Jina la kwanza</label>
+                            <label class="form-label" style="font-size:0.8rem;">{% if LANG == 'sw' %}Jina la kwanza{% else %}First name{% endif %}</label>
                             <input class="form-control form-control-sm" name="first_name" value="{{ s.first_name }}" required>
                           </div>
                           <div class="mb-2">
-                            <label class="form-label" style="font-size:0.8rem;">Jina la kati</label>
+                            <label class="form-label" style="font-size:0.8rem;">{% if LANG == 'sw' %}Jina la kati{% else %}Middle name{% endif %}</label>
                             <input class="form-control form-control-sm" name="middle_name" value="{{ s.middle_name }}">
                           </div>
                           <div class="mb-2">
-                            <label class="form-label" style="font-size:0.8rem;">Jina la mwisho</label>
+                            <label class="form-label" style="font-size:0.8rem;">{% if LANG == 'sw' %}Jina la mwisho{% else %}Last name{% endif %}</label>
                             <input class="form-control form-control-sm" name="last_name" value="{{ s.last_name }}" required>
                           </div>
                           <div class="mb-1">
-                            <label class="form-label" style="font-size:0.8rem;">Gender</label>
+                            <label class="form-label" style="font-size:0.8rem;">{% if LANG == 'sw' %}Jinsia{% else %}Gender{% endif %}</label>
                             <select class="form-select form-select-sm" name="gender">
                               <option value="M" {% if s.gender == 'M' %}selected{% endif %}>♂ M</option>
                               <option value="F" {% if s.gender == 'F' %}selected{% endif %}>♀ F</option>
                             </select>
                           </div>
-                          <small class="text-muted">Mabadiliko ya jina/gender yataenea pia kwenye results zilizopo (report cards).</small>
+                          <small class="text-muted">{% if LANG == 'sw' %}Mabadiliko ya jina/jinsia yataenea pia kwenye results zilizopo (report cards).{% else %}Name/gender changes also apply to existing results (report cards).{% endif %}</small>
                         </div>
                         <div class="modal-footer">
-                          <button type="submit" class="btn btn-sm" style="background:#1A7B3A;color:#fff;">💾 Apply Changes</button>
+                          <button type="submit" class="btn btn-sm" style="background:var(--accent-500);color:#fff;">💾 {% if LANG == 'sw' %}Hifadhi Mabadiliko{% else %}Apply Changes{% endif %}</button>
                         </div>
                       </form>
                     </div>
@@ -184,14 +255,14 @@
               </td>
               <td>
                 {% if s.gender == 'F' %}
-                <span style="color:#C0392B;">♀ F</span>
+                <span style="color:var(--danger-500);">♀ F</span>
                 {% else %}
-                <span style="color:#2980B9;">♂ M</span>
+                <span style="color:var(--accent-500);">♂ M</span>
                 {% endif %}
               </td>
               <td>
                 {% for subj in s.subjects.all %}
-                <span class="badge" style="background:#1A3C6E;color:#fff;font-size:0.7rem;">{{ subj.name }}</span>
+                <span class="badge" style="background:var(--accent-600);color:#fff;font-size:0.7rem;">{{ subj.name }}</span>
                 {% empty %}
                 <span class="text-muted" style="font-size:0.75rem;">—</span>
                 {% endfor %}
@@ -206,12 +277,12 @@
                     <div class="modal-content">
                       <form method="post" action="{% url 'assign_form_student_subjects' s.id %}">
                         {% csrf_token %}
-                        <div class="modal-header" style="background:#1A3C6E;color:#fff;">
-                          <h6 class="modal-title">Masomo — {{ s.first_name }} {{ s.last_name }}</h6>
+                        <div class="modal-header" style="background:var(--accent-600);color:#fff;">
+                          <h6 class="modal-title">{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %} — {{ s.first_name }} {{ s.last_name }}</h6>
                           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                          <p class="text-muted" style="font-size:0.8rem;">Chagua masomo:</p>
+                          <p class="text-muted" style="font-size:0.8rem;">{% if LANG == 'sw' %}Chagua masomo:{% else %}Choose subjects:{% endif %}</p>
                           {% for subj in all_subjects %}
                           <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="subjects" value="{{ subj.id }}"
@@ -222,7 +293,7 @@
                           {% endfor %}
                         </div>
                         <div class="modal-footer">
-                          <button type="submit" class="btn btn-sm" style="background:#1A7B3A;color:#fff;">💾 Hifadhi</button>
+                          <button type="submit" class="btn btn-sm" style="background:var(--accent-500);color:#fff;">💾 {% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}</button>
                         </div>
                       </form>
                     </div>
@@ -244,7 +315,7 @@
       {% else %}
       <div class="text-center py-5 text-muted">
         <div class="fs-1">📭</div>
-        <p>No students yet. Upload a roster file above.</p>
+        <p>{% if LANG == 'sw' %}Hakuna wanafunzi bado. Pakia orodha ya wanafunzi hapo juu.{% else %}No students yet. Upload a roster file above.{% endif %}</p>
       </div>
       {% endif %}
     </div>
@@ -253,8 +324,8 @@
   <!-- ═══ BULK ASSIGN MODAL — Assign to ALL students ═══ -->
   <div id="bulkAssignModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;">
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;">
-      <div style="background:#1A3C6E;color:#fff;padding:12px 16px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;">
-        <strong>📚 Weka Masomo kwa Wanafunzi Wote ({{ students|length }})</strong>
+      <div style="background:var(--accent-600);color:#fff;padding:12px 16px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;">
+        <strong>📚 {% if LANG == 'sw' %}Weka Masomo kwa Wanafunzi Wote ({{ students|length }}){% else %}Set Subjects for All Students ({{ students|length }}){% endif %}</strong>
         <button onclick="this.closest('div[id=bulkAssignModal]').style.display='none'" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">✕</button>
       </div>
       <form method="post" action="{% url 'bulk_assign_form_student_subjects' %}" style="padding:16px;">
@@ -265,9 +336,9 @@
         <input type="hidden" name="student_ids" value="{{ s.id }}">
         {% endfor %}
 
-        <p class="text-muted" style="font-size:0.85rem;">Chagua masomo yote ambayo wanafunzi wanafanyia mtihani huu. Masomo ya option (Physics, Agriculture n.k.) weka kwa kila mwanafunzi kwa mkono baadaye.</p>
+        <p class="text-muted" style="font-size:0.85rem;">{% if LANG == 'sw' %}Chagua masomo yote ambayo wanafunzi wanafanyia mtihani huu. Masomo ya option (Physics, Agriculture n.k.) weka kwa kila mwanafunzi kwa mkono baadaye.{% else %}Pick the subjects all students in this class sit for. Optional subjects (Physics, Agriculture, etc.) assign to individual students later.{% endif %}</p>
 
-        <div class="mb-2"><strong style="font-size:0.85rem;">Masomo ya Lazima (Core):</strong></div>
+        <div class="mb-2"><strong style="font-size:0.85rem;">{% if LANG == 'sw' %}Masomo ya Lazima (Core):{% else %}Core Subjects:{% endif %}</strong></div>
         {% for subj in all_subjects %}
         <div class="form-check">
           <input class="form-check-input bulk-subject" type="checkbox" name="subjects" value="{{ subj.id }}" id="bulk_subj_{{ subj.id }}">
@@ -276,12 +347,12 @@
         {% endfor %}
 
         {% if not all_subjects %}
-        <p class="text-muted">Hakuna masomo yaliyosajiliwa bado.</p>
+        <p class="text-muted">{% if LANG == 'sw' %}Hakuna masomo yaliyosajiliwa bado.{% else %}No subjects registered yet.{% endif %}</p>
         {% endif %}
 
         <div class="mt-3 d-flex gap-2">
-          <button type="submit" class="btn flex-fill" style="background:#1A7B3A;color:#fff;">💾 Weka kwa Wote</button>
-          <button type="button" class="btn btn-outline-secondary" onclick="this.closest('div[id=bulkAssignModal]').style.display='none'">Ghairi</button>
+          <button type="submit" class="btn flex-fill" style="background:var(--accent-500);color:#fff;">💾 {% if LANG == 'sw' %}Weka kwa Wote{% else %}Apply to All{% endif %}</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="this.closest('div[id=bulkAssignModal]').style.display='none'">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
         </div>
       </form>
     </div>
@@ -290,8 +361,8 @@
   <!-- ═══ BULK SUBJECT MODAL — Assign to SELECTED students ═══ -->
   <div id="bulkSubjectModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;">
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;">
-      <div style="background:#1A3C6E;color:#fff;padding:12px 16px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;">
-        <strong>✏️ Weka Masomo kwa Wanafunzi Waliochaguliwa</strong>
+      <div style="background:var(--accent-600);color:#fff;padding:12px 16px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;">
+        <strong>✏️ {% if LANG == 'sw' %}Weka Masomo kwa Wanafunzi Waliochaguliwa{% else %}Set Subjects for Selected Students{% endif %}</strong>
         <button onclick="this.closest('div[id=bulkSubjectModal]').style.display='none'" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">✕</button>
       </div>
       <form method="post" action="{% url 'bulk_assign_form_student_subjects' %}" style="padding:16px;" id="bulkSubjectForm">
@@ -299,7 +370,7 @@
         <input type="hidden" name="form" value="{{ selected_form }}">
         <div id="bulkStudentIdsContainer"></div>
 
-        <div class="mb-2"><strong style="font-size:0.85rem;">Chagua kitendo:</strong></div>
+        <div class="mb-2"><strong style="font-size:0.85rem;">{% if LANG == 'sw' %}Chagua kitendo:{% else %}Choose action:{% endif %}</strong></div>
         <div class="d-flex gap-3 mb-3">
           <div class="form-check">
             <input class="form-check-input" type="radio" name="action" value="add" id="actAdd" checked>
@@ -315,7 +386,7 @@
           </div>
         </div>
 
-        <p class="text-muted" style="font-size:0.8rem;">Chagua masomo ya kuweka:</p>
+        <p class="text-muted" style="font-size:0.8rem;">{% if LANG == 'sw' %}Chagua masomo ya kuweka:{% else %}Pick the subjects to apply:{% endif %}</p>
         {% for subj in all_subjects %}
         <div class="form-check">
           <input class="form-check-input bulk-subject" type="checkbox" name="subjects" value="{{ subj.id }}" id="bulksel_subj_{{ subj.id }}">
@@ -324,8 +395,8 @@
         {% endfor %}
 
         <div class="mt-3 d-flex gap-2">
-          <button type="submit" class="btn flex-fill" style="background:#1A3C6E;color:#fff;">💾 Thibitisha</button>
-          <button type="button" class="btn btn-outline-secondary" onclick="this.closest('div[id=bulkSubjectModal]').style.display='none'">Ghairi</button>
+          <button type="submit" class="btn flex-fill" style="background:var(--accent-500);color:#fff;">💾 {% if LANG == 'sw' %}Thibitisha{% else %}Confirm{% endif %}</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="this.closest('div[id=bulkSubjectModal]').style.display='none'">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
         </div>
       </form>
     </div>
@@ -334,28 +405,28 @@
   <!-- ═══ BULK GENDER MODAL — set gender for SELECTED students ═══ -->
   <div id="bulkGenderModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;">
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;max-width:380px;width:90%;">
-      <div style="background:#1A3C6E;color:#fff;padding:12px 16px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;">
-        <strong>⚧ Badilisha Gender kwa Waliochaguliwa</strong>
+      <div style="background:var(--accent-600);color:#fff;padding:12px 16px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;">
+        <strong>⚧ {% if LANG == 'sw' %}Badilisha Jinsia kwa Waliochaguliwa{% else %}Edit Gender for Selected Students{% endif %}</strong>
         <button onclick="document.getElementById('bulkGenderModal').style.display='none'" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">✕</button>
       </div>
       <form method="post" action="{% url 'bulk_edit_form_student_gender' %}" style="padding:16px;" id="bulkGenderForm">
         {% csrf_token %}
         <input type="hidden" name="form" value="{{ selected_form }}">
         <div id="bulkGenderIdsContainer"></div>
-        <p class="text-muted" style="font-size:0.85rem;">Gender itawekwa kwa wanafunzi <strong>wote waliochaguliwa</strong> — pia kwenye records za results zao (report cards).</p>
+        <p class="text-muted" style="font-size:0.85rem;">{% if LANG == 'sw' %}Jinsia itawekwa kwa wanafunzi <strong>wote waliochaguliwa</strong> — pia kwenye records za results zao (report cards).{% else %}The gender will be set for <strong>all selected students</strong> — including their existing results records (report cards).{% endif %}</p>
         <div class="d-flex gap-3 mb-3">
           <div class="form-check">
             <input class="form-check-input" type="radio" name="gender" value="M" id="genderM" checked>
-            <label class="form-check-label" for="genderM" style="font-size:0.85rem;">♂ M (Wanaume)</label>
+            <label class="form-check-label" for="genderM" style="font-size:0.85rem;">♂ M ({% if LANG == 'sw' %}Kiume{% else %}Male{% endif %})</label>
           </div>
           <div class="form-check">
             <input class="form-check-input" type="radio" name="gender" value="F" id="genderF">
-            <label class="form-check-label" for="genderF" style="font-size:0.85rem;">♀ F (Wanawake)</label>
+            <label class="form-check-label" for="genderF" style="font-size:0.85rem;">♀ F ({% if LANG == 'sw' %}Kike{% else %}Female{% endif %})</label>
           </div>
         </div>
         <div class="d-flex gap-2">
-          <button type="submit" class="btn flex-fill" style="background:#1A7B3A;color:#fff;">💾 Apply Changes</button>
-          <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('bulkGenderModal').style.display='none'">Ghairi</button>
+          <button type="submit" class="btn flex-fill" style="background:var(--accent-500);color:#fff;">💾 {% if LANG == 'sw' %}Hifadhi Mabadiliko{% else %}Apply Changes{% endif %}</button>
+          <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('bulkGenderModal').style.display='none'">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
         </div>
       </form>
     </div>
@@ -364,7 +435,7 @@
   {% else %}
   <div class="text-center py-5 text-muted">
     <div class="fs-1">👆</div>
-    <p>Select a form above to view and upload the student roster.</p>
+    <p>{% if LANG == 'sw' %}Chagua darasa hapo juu ili kuona na kupakia orodha ya wanafunzi.{% else %}Select a form above to view and upload the student roster.{% endif %}</p>
   </div>
   {% endif %}
 </div>
@@ -421,5 +492,119 @@ document.getElementById('bulkActionBtn').addEventListener('click', function() {
     container.appendChild(inp);
   });
 }, false);
+
+// ── Scan Roster (photo → AI → preview → save) ────────────────
+function getCsrfToken() {
+  var m = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
+  return m ? m[2] : '';
+}
+function setScanStatus(msg) {
+  var el = document.getElementById('scanStatus');
+  if (el) el.textContent = msg || '';
+}
+function initScanInput(inputId) {
+  var inp = document.getElementById(inputId);
+  if (!inp) return;
+  inp.addEventListener('change', function() {
+    if (!inp.files || !inp.files[0]) return;
+    scanRosterFile(inp.files[0]);
+    inp.value = '';  // allow re-selecting the same file
+  });
+}
+initScanInput('scanCameraInput');
+initScanInput('scanFileInput');
+
+function scanRosterFile(file) {
+  var formNum = '{{ selected_form }}';
+  if (!formNum) { alert('{% if LANG == "sw" %}Chagua darasa kwanza.{% else %}Select a form first.{% endif %}'); return; }
+  var fd = new FormData();
+  fd.append('form', formNum);
+  fd.append('scan_file', file);
+  setScanStatus('⏳ {% if LANG == "sw" %}Inasoma picha kwa AI... subiri kidogo{% else %}Reading the photo with AI... please wait{% endif %}');
+  fetch("{% url 'scan_roster' %}", {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrfToken() },
+    body: fd,
+  })
+  .then(r => r.json().then(data => ({ok: r.ok, data})))
+  .then(({ok, data}) => {
+    if (!ok || data.error) {
+      setScanStatus('');
+      alert(data.error || 'Scan failed.');
+      return;
+    }
+    setScanStatus('✅ ' + data.count + ' {% if LANG == "sw" %}wanafunzi waliosomwa{% else %}students read{% endif %}');
+    showScanPreview(data.students || []);
+  })
+  .catch(err => { setScanStatus(''); alert('Hitilafu: ' + err); });
+}
+
+function showScanPreview(students) {
+  var tbody = document.getElementById('scanPreviewBody');
+  tbody.innerHTML = '';
+  students.forEach(s => addScanRow(s));
+  document.getElementById('scanPreviewModal').style.display = 'block';
+}
+
+function addScanRow(s) {
+  s = s || {first: '', middle: '', last: '', gender: 'M'};
+  var tbody = document.getElementById('scanPreviewBody');
+  var tr = document.createElement('tr');
+  var g = (s.gender === 'F') ? 'F' : 'M';
+  tr.innerHTML =
+    '<td class="scan-idx"></td>' +
+    '<td><input class="form-control form-control-sm scan-first" value="" required></td>' +
+    '<td><input class="form-control form-control-sm scan-middle" value=""></td>' +
+    '<td><input class="form-control form-control-sm scan-last" value=""></td>' +
+    '<td><select class="form-select form-select-sm scan-gender">' +
+      '<option value="M"' + (g === 'M' ? ' selected' : '') + '>M</option>' +
+      '<option value="F"' + (g === 'F' ? ' selected' : '') + '>F</option>' +
+    '</select></td>' +
+    '<td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove(); renumberScanRows();">✕</button></td>';
+  tr.querySelector('.scan-first').value = s.first || '';
+  tr.querySelector('.scan-middle').value = s.middle || '';
+  tr.querySelector('.scan-last').value = s.last || '';
+  tbody.appendChild(tr);
+  renumberScanRows();
+}
+
+function renumberScanRows() {
+  document.querySelectorAll('#scanPreviewBody .scan-idx').forEach((td, i) => { td.textContent = i + 1; });
+}
+
+function closeScanPreview() {
+  document.getElementById('scanPreviewModal').style.display = 'none';
+}
+
+function saveScannedRoster() {
+  var rows = [];
+  document.querySelectorAll('#scanPreviewBody tr').forEach(tr => {
+    var first = tr.querySelector('.scan-first').value.trim();
+    if (!first) return;
+    rows.push({
+      first: first,
+      middle: tr.querySelector('.scan-middle').value.trim(),
+      last: tr.querySelector('.scan-last').value.trim(),
+      gender: tr.querySelector('.scan-gender').value,
+    });
+  });
+  if (rows.length === 0) { alert('{% if LANG == "sw" %}Hakuna mwanafunzi sahihi kwenye orodha.{% else %}No valid students in the list.{% endif %}'); return; }
+  var btn = document.getElementById('scanSaveBtn');
+  btn.disabled = true;
+  fetch("{% url 'save_scanned_roster' %}", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    body: JSON.stringify({ form: '{{ selected_form }}', students: rows }),
+  })
+  .then(r => r.json().then(data => ({ok: r.ok, data})))
+  .then(({ok, data}) => {
+    btn.disabled = false;
+    if (!ok || data.error) { alert(data.error || 'Save failed.'); return; }
+    alert('{% if LANG == "sw" %}Wamehifadhiwa: {% else %}Saved: {% endif %}' + data.saved +
+          ' ({% if LANG == "sw" %}wapya{% else %}new{% endif %}: ' + data.created + ', {% if LANG == "sw" %}walikuwepo{% else %}already existed{% endif %}: ' + data.existing + ')');
+    window.location.reload();
+  })
+  .catch(err => { btn.disabled = false; alert('Hitilafu: ' + err); });
+}
 </script>
 {% endblock %}

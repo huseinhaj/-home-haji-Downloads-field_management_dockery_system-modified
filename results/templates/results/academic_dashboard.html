@@ -168,6 +168,15 @@
 }
 .form-results-link:hover{ background:var(--ad-green); color:#fff; }
 
+/* PDF download buttons — a download action is neutral/positive, never red
+   (red is reserved for Delete / Return across the system). */
+.pdf-dl{
+  background:#fff; color:var(--ad-green); border:1px solid #cfe6d8;
+  font-size:0.68rem; font-weight:700; padding:.3rem .7rem; border-radius:2px;
+  text-decoration:none; white-space:nowrap; display:inline-block;
+}
+.pdf-dl:hover{ background:var(--ad-green); color:#fff; border-color:var(--ad-green-d); }
+
 .empty-state{ text-align:center; padding:3rem 1rem; color:var(--ad-faint); font-size:.9rem; }
 
 .stream-badge{
@@ -175,6 +184,16 @@
   font-size:.63rem; font-weight:700; padding:.1rem .4rem; border-radius:2px;
   margin-left:.4rem; letter-spacing:.04em; vertical-align:middle;
 }
+
+/* One-line explanations of the hero quick-action buttons — the system
+   should explain itself to a first-time user (official requirement). */
+.ad-btn-hints{
+  margin-top:.7rem; padding-top:.6rem;
+  border-top:1px solid rgba(255,255,255,.25);
+  display:flex; flex-direction:column; gap:.2rem;
+}
+.ad-btn-hints span{ font-size:.72rem; color:rgba(255,255,255,.85); line-height:1.5; }
+.ad-btn-hints strong{ color:#fff; font-weight:700; }
 </style>
 
 <div class="acad-hero">
@@ -189,21 +208,28 @@
     </div>
     <div class="d-flex gap-2 flex-wrap">
       <a href="{% url 'upload_form_students' %}" class="ad-btn ad-btn--ghost">
-        {% if LANG == 'sw' %}Wanafunzi wa Kidato{% else %}Form Students{% endif %}
+        {% if LANG == 'sw' %}📋 Orodha ya Wanafunzi{% else %}📋 Student Roster{% endif %}
       </a>
-      <a href="{% url 'academic_add_student_marks' %}" class="ad-btn ad-btn--ghost" style="border-color:#1F7A3D;color:#15653a;">
+      <a href="{% url 'academic_add_student_marks' %}" class="ad-btn ad-btn--ghost">
         ➕ {% if LANG == 'sw' %}Ongeza Mwanafunzi & Alama{% else %}Add Student & Marks{% endif %}
       </a>
       <a href="{% url 'upload_results' %}" class="ad-btn ad-btn--ghost">
-        {% if LANG == 'sw' %}+ Unda Mtihani Mpya{% else %}+ Create New Exam{% endif %}
+        {% if LANG == 'sw' %}🧾 Unda Mtihani Mpya{% else %}🧾 Create New Exam{% endif %}
       </a>
       <a href="{% url 'school_storage' %}" class="ad-btn ad-btn--ghost">
-        🗄️ {% if LANG == 'sw' %}School Storage{% else %}School Storage{% endif %}
+        🗄️ {% if LANG == 'sw' %}Hifadhi ya Shule (Backup){% else %}School Storage (Backup){% endif %}
       </a>
       <a href="{% url 'year_rollover' %}" class="ad-btn ad-btn--primary">
-        🎓 {% if LANG == 'sw' %}Anza Mwaka Mpya{% else %}Start New Year{% endif %}
+        🎓 {% if LANG == 'sw' %}Anza Mwaka Mpya wa Masomo{% else %}Start New Academic Year{% endif %}
       </a>
     </div>
+  </div>
+  <div class="ad-btn-hints">
+    <span><strong>📋 {% if LANG == 'sw' %}Orodha ya Wanafunzi{% else %}Student Roster{% endif %}</strong> — {% if LANG == 'sw' %}pakiwa na jaza orodha ya wanafunzi wa kila darasa{% else %}upload &amp; manage each class's student list{% endif %}</span>
+    <span><strong>➕ {% if LANG == 'sw' %}Ongeza Mwanafunzi & Alama{% else %}Add Student & Marks{% endif %}</strong> — {% if LANG == 'sw' %}mwanafunzi aliesahaulika: muingize na jaza alama zake mara moja{% else %}a missed student: enroll them &amp; enter their marks in one go{% endif %}</span>
+    <span><strong>🧾 {% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}Create New Exam{% endif %}</strong> — {% if LANG == 'sw' %}fungua mtihani mpya (Midterm, Terminal n.k.){% else %}open a new exam (Midterm, Terminal, etc.){% endif %}</span>
+    <span><strong>🗄️ {% if LANG == 'sw' %}Hifadhi ya Shule{% else %}School Storage{% endif %}</strong> — {% if LANG == 'sw' %}pakua nakala rudufu ya taarifa za shule{% else %}download a backup of your school's data{% endif %}</span>
+    <span><strong>🎓 {% if LANG == 'sw' %}Anza Mwaka Mpya{% else %}Start New Year{% endif %}</strong> — {% if LANG == 'sw' %}hamisha wanafunzi darasa linalofuata mwaka unapoanza{% else %}promote students to the next class when the year begins{% endif %}</span>
   </div>
 </div>
 
@@ -231,8 +257,8 @@
         {% for stream_key, exams in fd.streams.items %}
           {% if stream_key %}<span class="stream-badge">{{ stream_key }}</span>{% endif %}
         {% endfor %}
-        <a href="{% url 'form_results' fd.form_num %}" class="form-results-link">
-          {% if LANG == 'sw' %}Ripoti{% else %}Report{% endif %} {{ fd.form_label }}
+        <a href="{% url 'form_results' fd.form_num %}" class="form-results-link" title="{% if LANG == 'sw' %}Tazama na pakua ripoti kamili ya matokeo ya darasa hili{% else %}View & download this class's full results report{% endif %}">
+          {% if LANG == 'sw' %}📄 Ripoti ya Matokeo{% else %}📄 Results Report{% endif %} — {{ fd.form_label }}
         </a>
       </div>
     </div>
@@ -274,8 +300,8 @@
             <a href="{% url 'exam_overview' ed.exam.id %}" class="ad-btn ad-btn--ghost ad-btn--sm">
               {% if LANG == 'sw' %}Tazama{% else %}View{% endif %}
             </a>
-            <a href="{% url 'set_class_teacher' ed.exam.id %}" class="ad-btn ad-btn--ghost ad-btn--sm" title="{% if LANG == 'sw' %}Mwalimu wa darasa, maoni ya mkuu wa shule, tarehe za muhula{% else %}Class teacher, headmaster's comment, term dates{% endif %}">
-              ⚙️ {% if LANG == 'sw' %}Ripoti{% else %}Report{% endif %}
+            <a href="{% url 'set_class_teacher' ed.exam.id %}" class="ad-btn ad-btn--ghost ad-btn--sm" title="{% if LANG == 'sw' %}Mwalimu wa darasa, maoni ya mkuu wa shule, tarehe za muhula — vitu vinavyoonekana kwenye ripoti{% else %}Class teacher, headmaster's comment, term dates — the details shown on the report{% endif %}">
+              ⚙️ {% if LANG == 'sw' %}Taarifa za Ripoti{% else %}Report Details{% endif %}
             </a>
             <button type="button" class="ad-btn ad-btn--danger ad-btn--sm"
               onclick="openDeleteModal('{{ ed.exam.id }}', '{{ ed.exam.name|escapejs }}')">
@@ -317,14 +343,14 @@
           <div class="msg">✅ {% if LANG == 'sw' %}Masomo yote yameidhinishwa{% else %}All subjects approved{% endif %}</div>
           {# Three direct links instead of one link + a JS-shown style picker modal — plain server-rendered ?style= links can never fail to come up. #}
           <div class="d-flex gap-1 flex-wrap">
-            <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=normal" data-no-style-picker class="btn btn-sm btn-outline-danger" style="font-size:0.65rem;border-radius:2px;">
-              📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}
+            <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=normal" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti kamili ya matokeo ya mtihani huu (PDF){% else %}Download this exam's full results report (PDF){% endif %}">
+              ⬇️ {% if LANG == 'sw' %}Ripoti ya Kawaida{% else %}Normal Report{% endif %}
             </a>
-            <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=rank" data-no-style-picker class="btn btn-sm btn-outline-danger" style="font-size:0.65rem;border-radius:2px;">
-              📄 {% if LANG == 'sw' %}Ranki{% else %}Rank{% endif %}
+            <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=rank" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya matokeo na nafasi (PDF){% else %}Download the results report with ranks (PDF){% endif %}">
+              ⬇️ {% if LANG == 'sw' %}Ripoti ya Ranki{% else %}Rank Report{% endif %}
             </a>
-            <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=necta" data-no-style-picker class="btn btn-sm btn-outline-danger" style="font-size:0.65rem;border-radius:2px;">
-              📄 NECTA
+            <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=necta" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti kwa muundo wa NECTA (PDF){% else %}Download the report in NECTA format (PDF){% endif %}">
+              ⬇️ {% if LANG == 'sw' %}Ripoti ya NECTA{% else %}NECTA Report{% endif %}
             </a>
           </div>
         </div>

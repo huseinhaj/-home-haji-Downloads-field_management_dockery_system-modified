@@ -287,7 +287,7 @@ def _clean_rows(raw_rows: list) -> list[dict]:
     return rows
 
 
-def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, max_tokens: int = 1200) -> str:
+def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, max_tokens: int = 1200, prompt: str = PROMPT) -> str:
     b64 = base64.b64encode(image_bytes).decode("ascii")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -302,7 +302,7 @@ def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, ma
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": PROMPT},
+                    {"type": "text", "text": prompt},
                     {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64}"}},
                 ],
             }
@@ -320,14 +320,14 @@ def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, ma
     return content
 
 
-def _call_gemini_vision(image_bytes: bytes, mime_type: str, api_key: str) -> str:
+def _call_gemini_vision(image_bytes: bytes, mime_type: str, api_key: str, prompt: str = PROMPT) -> str:
     b64 = base64.b64encode(image_bytes).decode("ascii")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={api_key}"
     payload = {
         "contents": [
             {
                 "parts": [
-                    {"text": PROMPT},
+                    {"text": prompt},
                     {"inlineData": {"mimeType": mime_type, "data": b64}},
                 ]
             }
@@ -347,9 +347,11 @@ def _call_gemini_vision(image_bytes: bytes, mime_type: str, api_key: str) -> str
     return text
 
 
-def _read_page_with_ai(img) -> str:
+def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
     """OpenRouter first, Gemini fallback — one rendered page/photo in, raw
-    model text out. Raises RuntimeError if both providers fail."""
+    model text out. Raises RuntimeError if both providers fail.
+    `prompt` lets other vision tasks (roster scan) reuse this provider
+    chain with their own instructions."""
     image_bytes = _encode_jpeg(img)
     mime_type = "image/jpeg"
 
@@ -357,7 +359,7 @@ def _read_page_with_ai(img) -> str:
     if OPENROUTER_API_KEY:
         try:
             logger.info("[ScoreSheetOCR] Trying OpenRouter (%s)", VISION_MODEL_OPENROUTER)
-            text = _call_openrouter_vision(image_bytes, mime_type, OPENROUTER_API_KEY)
+            text = _call_openrouter_vision(image_bytes, mime_type, OPENROUTER_API_KEY, prompt=prompt)
             logger.info("[ScoreSheetOCR] OpenRouter success")
             return text
         except Exception as exc:
@@ -377,7 +379,7 @@ def _read_page_with_ai(img) -> str:
                 if affordable >= 10:
                     try:
                         logger.info("[ScoreSheetOCR] Retrying OpenRouter with max_tokens=%s", affordable)
-                        text = _call_openrouter_vision(image_bytes, mime_type, OPENROUTER_API_KEY, max_tokens=affordable)
+                        text = _call_openrouter_vision(image_bytes, mime_type, OPENROUTER_API_KEY, max_tokens=affordable, prompt=prompt)
                         logger.info("[ScoreSheetOCR] OpenRouter retry success")
                         return text
                     except Exception as retry_exc:
@@ -387,7 +389,7 @@ def _read_page_with_ai(img) -> str:
     if GOOGLE_API_KEY:
         try:
             logger.info("[ScoreSheetOCR] Trying Gemini (fallback)")
-            text = _call_gemini_vision(image_bytes, mime_type, GOOGLE_API_KEY)
+            text = _call_gemini_vision(image_bytes, mime_type, GOOGLE_API_KEY, prompt=prompt)
             logger.info("[ScoreSheetOCR] Gemini success")
             return text
         except Exception as exc:
