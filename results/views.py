@@ -2648,12 +2648,19 @@ def _academic_add_student_ajax(request, school):
             )
             fs_message = 'Haikuweza kuandikishwa orodha ya darasa — alama zitaingia tu.'
 
-        subjects = Subject.objects.filter(
-            id__in=exam.subject_submissions.values_list('subject_id', flat=True),
-        ).order_by('name') | Subject.objects.filter(
-            examresult__exam=exam,
-        ).order_by('name')
-        subjects = subjects.order_by('name').distinct()
+        # Masomo ya mtihani: submissions + masomo yenye alama tayari;
+        # mtihani mpya usio na submissions bado unaonyesha masomo ya shule
+        # (fallback ile ile ya GET render hapo juu).
+        subject_ids = set(
+            exam.subject_submissions.values_list('subject_id', flat=True)
+        ) | set(
+            ExamResult.objects.filter(exam=exam).values_list('subject_id', flat=True)
+        )
+        subjects = Subject.objects.filter(id__in=subject_ids).order_by('name')
+        if not subjects:
+            subjects = Subject.objects.filter(
+                schoolsubject__school=school,
+            ).order_by('name')
 
         return JsonResponse({
             'student': {'id': student.id, 'name': f'{student.first_name} {student.middle_name} {student.last_name}'.strip()},

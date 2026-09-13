@@ -11,6 +11,8 @@ Inathibitisha:
     zinahifadhiwa → mwanafunzi anaonekana kwenye matokeo ya exam type
     na level (Form/Darasa).
 """
+import re
+
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -178,6 +180,19 @@ class AcademicAddStudentMarksTests(TestCase):
         content = resp.content.decode()
         self.assertIn('Midterm 2026', content)
         self.assertIn('Darasa la', content)  # primary class label
+
+    def test_page_renders_non_empty_csrf_token_for_ajax(self):
+        """Regression: base.html haina hidden CSRF input, so the page's
+        fetch() calls found no token and every 'Add Student' POST died
+        with a 403 before reaching the view. The page must render its own
+        non-empty csrfmiddlewaretoken (same pattern as marks_entry)."""
+        resp = self.client.get(self.add_url + f'?exam={self.exam.id}')
+        content = resp.content.decode()
+        match = re.search(
+            r'name="csrfmiddlewaretoken" value="([^"]+)"', content,
+        )
+        self.assertIsNotNone(match, 'Page must render a csrfmiddlewaretoken input for its AJAX calls.')
+        self.assertTrue(match.group(1).strip(), 'CSRF token value must not be empty.')
 
     def test_add_student_returns_subjects(self):
         resp = self.client.post(

@@ -3,6 +3,9 @@
 {% block title %}{% if LANG == 'sw' %}Ongeza Mwanafunzi & Jaza Alama{% else %}Add Student & Marks{% endif %} | School Results{% endblock %}
 
 {% block content %}
+<!-- CSRF token for the AJAX calls below — base.html haina hidden input, so
+     the JS must find one on this page itself (same pattern as marks_entry). -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 <style>
   /* ── Academic: Ongeza Mwanafunzi + Jaza Alama ─────────────────────── */
   .aam-hero {
