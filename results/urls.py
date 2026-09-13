@@ -50,6 +50,7 @@ from .views import (
     restore_storage_student,
     approve_exam_submissions,
     recompute_exam_results,
+    academic_add_student_marks,
     set_class_teacher,
     set_conduct_and_comments,
     return_submission,
@@ -153,6 +154,8 @@ urlpatterns = [
     path('ocr-health/', ocr_health_check, name='ocr_health_check'),
     path('exam/<int:exam_id>/approve-all/', approve_exam_submissions, name='approve_exam_submissions'),
     path('exam/<int:exam_id>/recompute/', recompute_exam_results, name='recompute_exam_results'),
+    # Academic: ongeza mwanafunzi aliyekosekana + jaza alama zake masomo yote
+    path('academic/ongeza-mwanafunzi/', academic_add_student_marks, name='academic_add_student_marks'),
     path('exam/<int:exam_id>/class-teacher/', set_class_teacher, name='set_class_teacher'),
     path('exam/<int:exam_id>/tabia/', set_conduct_and_comments, name='set_conduct_and_comments'),
     path('exam/<int:exam_id>/tuma-kwa-ps/', submit_exam_to_ps, name='submit_exam_to_ps'),

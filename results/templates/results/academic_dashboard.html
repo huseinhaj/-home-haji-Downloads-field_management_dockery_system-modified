@@ -191,6 +191,9 @@
       <a href="{% url 'upload_form_students' %}" class="ad-btn ad-btn--ghost">
         {% if LANG == 'sw' %}Wanafunzi wa Kidato{% else %}Form Students{% endif %}
       </a>
+      <a href="{% url 'academic_add_student_marks' %}" class="ad-btn ad-btn--ghost" style="border-color:#1F7A3D;color:#15653a;">
+        ➕ {% if LANG == 'sw' %}Ongeza Mwanafunzi & Alama{% else %}Add Student & Marks{% endif %}
+      </a>
       <a href="{% url 'upload_results' %}" class="ad-btn ad-btn--ghost">
         {% if LANG == 'sw' %}+ Unda Mtihani Mpya{% else %}+ Create New Exam{% endif %}
       </a>

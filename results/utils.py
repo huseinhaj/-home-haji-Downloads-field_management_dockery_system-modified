@@ -4,6 +4,7 @@ from typing import Optional
 
 import pandas as pd
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 
 KNOWN_STUDENT_COLUMNS = {
@@ -493,4 +494,32 @@ def get_division(points, form=None):
     if points <= 33:
         return "IV"
     return "0"
+
+
+# ── School-type-aware subject lists ──────────────────────────────────────
+# Masomo ya shule ya msingi (Darasa 1-7) na sekondari (Form 1-6) ni tofauti
+# kabisa — msingi hufundisha Kiswahili/Hisabati/Sayansi n.k. (Kiswahili),
+# sekondari Physics/Chemistry n.k. (English). Kila mahali panapoonyesha
+# orodha ya masomo (dropdowns, checkboxes, modals) panatumia hii, hivyo
+# shule ya msingi haiwahi kuona Physics — na sekondari haiwahi kuona Hisabati.
+def subjects_for_school(school):
+    """Subject queryset scoped to a school's type (primary vs secondary).
+
+    Subject.level is 'primary' | 'secondary' | 'both' | '' (blank = legacy
+    rows that pre-date the level field, always shown for compatibility).
+    A primary school sees primary + both + blank; secondary sees secondary
+    + both + blank. Falls back to ALL subjects when school is None so
+    legacy/no-school callers keep the old behaviour.
+    """
+    from .models import Subject
+
+    if school is None:
+        return Subject.objects.all().order_by('name')
+    if school.is_primary:
+        return Subject.objects.filter(
+            Q(level='primary') | Q(level='both') | Q(level=''),
+        ).order_by('name')
+    return Subject.objects.filter(
+        Q(level='secondary') | Q(level='both') | Q(level=''),
+    ).order_by('name')
 

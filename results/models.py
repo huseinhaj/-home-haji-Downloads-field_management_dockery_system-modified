@@ -107,6 +107,18 @@ class Subject(models.Model):
     # scan without it.
     name = models.CharField(max_length=100, db_index=True)
     code = models.CharField(max_length=20, blank=True)
+    LEVEL_CHOICES = [
+        ('primary', 'Msingi'),
+        ('secondary', 'Sekondari'),
+        ('both', 'Zote (Msingi na Sekondari)'),
+    ]
+    level = models.CharField(
+        max_length=10, choices=LEVEL_CHOICES, blank=True, db_index=True,
+        help_text="Kiwango ambacho somo hili hufundishwa: 'primary' (msingi), "
+                  "'secondary' (sekondari) au 'both' (zote). Shule ya msingi "
+                  "iona masomo ya sekondari pekee kwenye dropdown — na kinyume "
+                  "chake. BLANK = linaweza kufundishwa popote (legacy rows).",
+    )
 
     def __str__(self):
         return self.name

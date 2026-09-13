@@ -1,0 +1,424 @@
+{% extends 'results/base.html' %}
+{% load static %}
+{% block title %}{% if LANG == 'sw' %}Ongeza Mwanafunzi & Jaza Alama{% else %}Add Student & Marks{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Academic: Ongeza Mwanafunzi + Jaza Alama ─────────────────────── */
+  .aam-hero {
+    background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+    border: 2px solid #D9A441; border-radius: 2px;
+    padding: 1.4rem 1.8rem; color: #fff; margin-bottom: 1.2rem;
+  }
+  .aam-hero h1 { font-size: 1.3rem; font-weight: 800; margin-bottom: 0.2rem; }
+  .aam-hero .meta { font-size: 0.8rem; color: #D9A441; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  .aam-panel {
+    background: #fff; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 1.2rem 1.4rem; margin-bottom: 1.2rem;
+  }
+  .aam-panel h2 { font-size: 1rem; font-weight: 800; color: #1F7A3D; margin-bottom: 0.8rem; }
+  .aam-panel .hint { font-size: 0.8rem; color: #667; margin-bottom: 0.9rem; }
+
+  .aam-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem; }
+  .aam-field label { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #556; margin-bottom: 0.25rem; }
+  .aam-field input, .aam-field select {
+    width: 100%; border: 1.5px solid #ced4da; border-radius: 2px;
+    padding: 0.5rem 0.6rem; font-size: 0.9rem;
+  }
+  .aam-field input:focus, .aam-field select:focus { border-color: #1F7A3D; outline: none; box-shadow: 0 0 0 2px rgba(31,122,61,0.15); }
+
+  .btn-aam {
+    background: #1F7A3D; color: #fff; border: none; border-radius: 2px;
+    font-weight: 700; letter-spacing: 0.03em; padding: 0.55rem 1.3rem;
+    font-size: 0.85rem; cursor: pointer;
+  }
+  .btn-aam:hover { background: #145226; }
+  .btn-aam:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-aam-secondary {
+    background: #fff; color: #1F7A3D; border: 1.5px solid #1F7A3D;
+    font-weight: 700; padding: 0.45rem 1rem; border-radius: 2px; font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .btn-aam-secondary:hover { background: #1F7A3D; color: #fff; }
+
+  .aam-alert { display: none; border-radius: 2px; padding: 0.55rem 0.8rem; font-size: 0.82rem; margin-top: 0.7rem; }
+  .aam-alert.error { background: #fdecea; color: #c0392b; border: 1px solid #f1948a; }
+  .aam-alert.info { background: #e8f4ff; color: #0056b3; border: 1px solid #b3d4f5; }
+  .aam-alert.success { background: #e6f7ec; color: #1a7a3b; border: 1px solid #a3d9b4; }
+
+  /* Subject marks table */
+  .aam-table-wrap { overflow-x: auto; border: 1.5px solid #dee2e6; border-radius: 2px; background: #fff; }
+  .aam-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .aam-table thead th {
+    background: #1F7A3D; color: #fff; font-size: 0.7rem; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 0.55rem 0.7rem; text-align: left;
+    position: sticky; top: 0; z-index: 2;
+  }
+  .aam-table tbody td { padding: 0.45rem 0.7rem; border-bottom: 1px solid #f0f0f0; }
+  .aam-table tbody tr:nth-child(even) { background: #fafbfc; }
+  .aam-table tbody tr:hover { background: #f0f7f2; }
+  .aam-table .row-no { width: 44px; color: #999; font-weight: 700; }
+  .aam-table .subject-name { font-weight: 600; color: #222; }
+  .aam-table input.score-input {
+    width: 74px; border: 1.5px solid #ced4da; border-radius: 2px;
+    padding: 0.3rem 0.5rem; font-weight: 700; text-align: center; color: #1F7A3D;
+  }
+  .aam-table input.score-input:focus { border-color: #1F7A3D; outline: none; box-shadow: 0 0 0 2px rgba(31,122,61,0.15); }
+  .aam-grade-chip {
+    display: inline-block; min-width: 30px; text-align: center;
+    font-weight: 800; font-size: 0.72rem; border-radius: 2px; padding: 0.12rem 0.35rem;
+  }
+
+  .aam-badge {
+    display: inline-block; padding: 0.15rem 0.55rem; border-radius: 2px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .aam-badge.gold { background: #fff3d6; color: #7a5200; border: 1px solid #f0d07a; }
+  .aam-badge.green { background: #e6f7ec; color: #1a7a3b; border: 1px solid #a3d9b4; }
+
+  .aam-empty { text-align: center; padding: 2.2rem 1rem; color: #9aa3af; font-size: 0.9rem; }
+
+  @media (max-width: 640px) {
+    .aam-hero { padding: 1rem 1.1rem; }
+    .aam-panel { padding: 0.9rem 0.9rem; }
+  }
+</style>
+
+<div class="aam-hero">
+  <h1>{% if LANG == 'sw' %}➕ Ongeza Mwanafunzi &amp; Jaza Alama{% else %}➕ Add Student &amp; Enter Marks{% endif %}</h1>
+  <div class="meta">
+    {% if LANG == 'sw' %}Mwanafunzi aliyesusahaulika — ongeza na jaza alama zake mara moja{% else %}A forgotten student — add them and enter their marks in one go{% endif %}
+  </div>
+</div>
+
+<!-- ── Step 1: Chagua Mtihani (kwa Exam Type) ── -->
+<div class="aam-panel" id="aamStep1">
+  <h2>{% if LANG == 'sw' %}1. Chagua Mtihani{% else %}1. Choose the Exam{% endif %}</h2>
+  <p class="hint">
+    {% if LANG == 'sw' %}
+    Chagua aina ya mtihani, kisha mtihani mwenyewe. Masomo yataonekana kulingana na mtihani uliochagua.
+    {% else %}
+    Pick the exam type, then the exam itself. The subject list follows the exam you choose.
+    {% endif %}
+  </p>
+  <form method="get" class="aam-form-grid">
+    <div class="aam-field">
+      <label>{% if LANG == 'sw' %}Aina ya Mtihani{% else %}Exam Type{% endif %}</label>
+      <select id="aamExamType" onchange="window.location='{% url 'academic_add_student_marks' %}?exam='+this.value">
+        <option value="">{% if LANG == 'sw' %}-- Chagua Aina --{% else %}-- Select Type --{% endif %}</option>
+        {% for code, type_label, group_exams in exam_groups %}
+        <optgroup label="{{ type_label }}">
+          {% for e in group_exams %}
+          <option value="{{ e.id }}" {% if e.id|stringformat:"s" == preselect_exam_id %}selected{% endif %}>
+            {{ e.name }} — {{ e.school.class_prefix|default:'Form' }} {{ e.form }}{% if e.stream %} {{ e.stream }}{% endif %} ({{ e.year }})
+          </option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+</div>
+
+{% if exam %}
+<!-- ── Step 2: Taarifa za Mwanafunzi ── -->
+<div class="aam-panel" id="aamStep2">
+  <h2>
+    {% if LANG == 'sw' %}2. Taarifa za Mwanafunzi{% else %}2. Student Details{% endif %}
+    <span class="aam-badge gold">{{ class_label }}</span>
+  </h2>
+  <p class="hint">
+    {% if LANG == 'sw' %}
+    Jaza jina kamili kama lilivyo kwenye daftari la shule. Mwanafunzi ataandikishwa kwenye orodha ya {{ class_prefix }} {{ exam.form }} na kuonekana kwenye matokeo ya mtihani huu.
+    {% else %}
+    Enter the full name exactly as in the school register. The student is enrolled into {{ class_prefix }} {{ exam.form }} and appears in this exam's results.
+    {% endif %}
+  </p>
+  <div class="aam-form-grid">
+    <div class="aam-field">
+      <label>{% if LANG == 'sw' %}Jina la Kwanza *{% else %}First Name *{% endif %}</label>
+      <input type="text" id="aamFirstName" placeholder="{% if LANG == 'sw' %}mf. Amina{% else %}e.g. Amina{% endif %}">
+    </div>
+    <div class="aam-field">
+      <label>{% if LANG == 'sw' %}Jina la Kati{% else %}Middle Name{% endif %}</label>
+      <input type="text" id="aamMiddleName" placeholder="{% if LANG == 'sw' %}hiari{% else %}optional{% endif %}">
+    </div>
+    <div class="aam-field">
+      <label>{% if LANG == 'sw' %}Jina la Mwisho *{% else %}Last Name *{% endif %}</label>
+      <input type="text" id="aamLastName" placeholder="{% if LANG == 'sw' %}mf. Hassan{% else %}e.g. Hassan{% endif %}">
+    </div>
+    <div class="aam-field">
+      <label>{% if LANG == 'sw' %}Jinsia *{% else %}Gender *{% endif %}</label>
+      <select id="aamGender">
+        <option value="M">M</option>
+        <option value="F">F</option>
+      </select>
+    </div>
+  </div>
+  <div style="margin-top:0.9rem;">
+    <button type="button" class="btn-aam" id="aamAddStudentBtn">
+      ✓ {% if LANG == 'sw' %}Ongeza Mwanafunzi{% else %}Add Student{% endif %}
+    </button>
+    <button type="button" class="btn-aam-secondary" style="display:none;" id="aamChangeStudentBtn">
+      ✎ {% if LANG == 'sw' %}Badilisha Mwanafunzi{% else %}Change Student{% endif %}
+    </button>
+  </div>
+  <div class="aam-alert" id="aamStudentAlert"></div>
+</div>
+
+<!-- ── Step 3: Alama za Masomo Yote ── -->
+<div class="aam-panel" id="aamStep3" style="display:none;">
+  <h2>
+    {% if LANG == 'sw' %}3. Alama za Masomo Yote{% else %}3. Marks for All Subjects{% endif %}
+    <span class="aam-badge green" id="aamStudentBadge"></span>
+  </h2>
+  <p class="hint">
+    {% if LANG == 'sw' %}
+    Hii ni orodha yote ya masomo ya mtihani huu. Weka alama (0–100) au X kama alikuwa hajapo. Kisha bonyeza "Hifadhi Alama Zote".
+    {% else %}
+    This is every subject on this exam. Enter marks (0–100) or X if absent, then click "Save All Marks".
+    {% endif %}
+  </p>
+  <div class="aam-table-wrap" style="max-height:52vh;overflow-y:auto;">
+    <table class="aam-table">
+      <thead>
+        <tr>
+          <th>Na.</th>
+          <th>{% if LANG == 'sw' %}Somo{% else %}Subject{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Alama{% else %}Score{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Daraja{% else %}Grade{% endif %}</th>
+        </tr>
+      </thead>
+      <tbody id="aamSubjectsBody"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:0.9rem;display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
+    <button type="button" class="btn-aam" id="aamSaveMarksBtn">
+      💾 {% if LANG == 'sw' %}Hifadhi Alama Zote{% else %}Save All Marks{% endif %}
+    </button>
+    <span style="font-size:0.8rem;color:#667;" id="aamSaveHint"></span>
+  </div>
+  <div class="aam-alert" id="aamMarksAlert"></div>
+</div>
+{% else %}
+<div class="aam-panel">
+  <div class="aam-empty">
+    {% if LANG == 'sw' %}
+    Chagua mtihani hapo juu kuanza. Hakuna mitihani? Tengeneza moja kwanza kutoka <a href="{% url 'create_exam_for_school' %}">Shule Yangu → Unda Mtihani</a>.
+    {% else %}
+    Choose an exam above to begin. No exams yet? Create one first from <a href="{% url 'create_exam_for_school' %}">My School → Create Exam</a>.
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<script>
+(() => {
+  const LANG = '{{ LANG }}';
+  const EXAM_ID = '{{ exam.id|default:"" }}';
+  const IS_PRIMARY = {{ is_primary|yesno:"true,false" }};
+  const ADD_URL = "{% url 'academic_add_student_marks' %}";
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+  const csrfToken = csrf ? csrf.value : '';
+
+  function postJSON(url, payload) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify(payload),
+    }).then(async res => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      return data;
+    });
+  }
+
+  function showAlert(el, msg, kind) {
+    el.textContent = msg;
+    el.className = 'aam-alert ' + kind;
+    el.style.display = 'block';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.display = 'none'; }, 6000);
+  }
+
+  // ── Grade chip (A–E msingi, A–F sekondari) — consistent na utils.py ──
+  function gradeFor(score) {
+    if (IS_PRIMARY) {
+      if (score >= 80) return 'A';
+      if (score >= 65) return 'B';
+      if (score >= 45) return 'C';
+      if (score >= 30) return 'D';
+      return 'E';
+    }
+    if (score >= 75) return 'A';
+    if (score >= 65) return 'B';
+    if (score >= 50) return 'C';
+    if (score >= 30) return 'D';
+    return 'F';
+  }
+
+  function gradeColor(g) {
+    if (g === 'A') return '#1a7a3b';
+    if (g === 'B') return '#2e7d32';
+    if (g === 'C') return '#b8860b';
+    if (g === 'D') return '#d35400';
+    return '#c0392b';
+  }
+
+  const addBtn = document.getElementById('aamAddStudentBtn');
+  const changeBtn = document.getElementById('aamChangeStudentBtn');
+  const studentAlert = document.getElementById('aamStudentAlert');
+  const marksAlert = document.getElementById('aamMarksAlert');
+  const step3 = document.getElementById('aamStep3');
+  const subjectsBody = document.getElementById('aamSubjectsBody');
+  const saveBtn = document.getElementById('aamSaveMarksBtn');
+  const studentBadge = document.getElementById('aamStudentBadge');
+  const saveHint = document.getElementById('aamSaveHint');
+
+  let STUDENT = null;   // {id, name}
+
+  // ── Step 2: add student ──
+  if (addBtn) {
+    addBtn.addEventListener('click', async () => {
+      const first = document.getElementById('aamFirstName').value.trim();
+      const middle = document.getElementById('aamMiddleName').value.trim();
+      const last = document.getElementById('aamLastName').value.trim();
+      const gender = document.getElementById('aamGender').value;
+
+      if (!first || !last) {
+        showAlert(studentAlert, LANG === 'sw' ? 'Jina la kwanza na jina la mwisho lazima wekwe.' : 'First name and last name are required.', 'error');
+        return;
+      }
+
+      addBtn.disabled = true;
+      addBtn.textContent = LANG === 'sw' ? 'Inaongeza...' : 'Adding...';
+
+      try {
+        const data = await postJSON(ADD_URL, {
+          action: 'add_student',
+          exam_id: EXAM_ID,
+          first_name: first,
+          middle_name: middle,
+          last_name: last,
+          gender: gender,
+        });
+        STUDENT = data.student;
+
+        const existsMsg = data.created
+          ? (LANG === 'sw' ? 'Mwanafunzi ameingizwa.' : 'Student registered.')
+          : (LANG === 'sw' ? 'Mwanafunzi alikuwepo tayari — alama zitaandikwa juu yake.' : 'Student already existed — marks will be recorded on them.');
+        const rosterMsg = data.roster_message ? ' ' + data.roster_message : '';
+        showAlert(studentAlert, '✓ ' + existsMsg + rosterMsg, 'success');
+
+        // Show student badge + subject rows
+        studentBadge.textContent = STUDENT.name;
+        renderSubjects(data.subjects);
+        step3.style.display = 'block';
+        addBtn.style.display = 'none';
+        changeBtn.style.display = 'inline-flex';
+        step3.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (err) {
+        showAlert(studentAlert, err.message, 'error');
+      } finally {
+        addBtn.disabled = false;
+        addBtn.textContent = '✓ ' + (LANG === 'sw' ? 'Ongeza Mwanafunzi' : 'Add Student');
+      }
+    });
+
+    changeBtn.addEventListener('click', () => {
+      STUDENT = null;
+      step3.style.display = 'none';
+      addBtn.style.display = 'inline-flex';
+      changeBtn.style.display = 'none';
+      document.getElementById('aamFirstName').focus();
+    });
+  }
+
+  function renderSubjects(subjects) {
+    subjectsBody.innerHTML = '';
+    if (!subjects.length) {
+      subjectsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#9aa3af;padding:1.4rem;">' +
+        (LANG === 'sw' ? 'Hakuna masomo kwenye mtihani huu bado.' : 'No subjects on this exam yet.') +
+        '</td></tr>';
+      return;
+    }
+    subjects.forEach((s, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td class="row-no">' + (i + 1) + '</td>' +
+        '<td class="subject-name">' + s.name + '</td>' +
+        '<td><input type="number" min="0" max="100" class="score-input" data-subject-id="' + s.id + '" placeholder="—"></td>' +
+        '<td><span class="aam-grade-chip" data-chip="' + s.id + '"></span></td>';
+      subjectsBody.appendChild(tr);
+    });
+    subjectsBody.querySelectorAll('input.score-input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const chip = subjectsBody.querySelector('[data-chip="' + inp.dataset.subjectId + '"]');
+        const v = inp.value.trim().toUpperCase();
+        if (v === 'X' || v === 'ABS') {
+          inp.type = 'text';
+          inp.value = 'X';
+          chip.textContent = 'X';
+          chip.style.color = '#6b7280';
+        } else if (inp.value !== '' && !isNaN(Number(inp.value))) {
+          const n = Number(inp.value);
+          chip.textContent = gradeFor(n);
+          chip.style.color = gradeColor(gradeFor(n));
+        } else {
+          chip.textContent = '';
+        }
+      });
+    });
+    saveHint.textContent = LANG === 'sw'
+      ? subjects.length + ' masomo yameonyeshwa.'
+      : subjects.length + ' subjects listed.';
+  }
+
+  // ── Step 3: save marks ──
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      if (!STUDENT) {
+        showAlert(marksAlert, LANG === 'sw' ? 'Ongeza mwanafunzi kwanza.' : 'Add the student first.', 'error');
+        return;
+      }
+      const entries = [];
+      subjectsBody.querySelectorAll('input.score-input').forEach(inp => {
+        const v = inp.value.trim();
+        if (!v) return;
+        entries.push({ subject_id: inp.dataset.subjectId, score: v });
+      });
+      if (!entries.length) {
+        showAlert(marksAlert, LANG === 'sw' ? 'Weka alama angalau somo moja.' : 'Enter a mark for at least one subject.', 'error');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = LANG === 'sw' ? 'Inahifadhi...' : 'Saving...';
+
+      try {
+        const data = await postJSON(ADD_URL, {
+          action: 'save_marks',
+          exam_id: EXAM_ID,
+          student_id: STUDENT.id,
+          entries: entries,
+        });
+        showAlert(marksAlert,
+          '✓ ' + (LANG === 'sw'
+            ? 'Alama ' + data.saved_count + ' zimehifadhiwa. Mwanafunzi anaonekana sasa kwenye matokeo ya mtihani huu.'
+            : data.saved_count + ' marks saved. The student now appears in this exam\'s results.'),
+          'success');
+        saveHint.innerHTML = '<a href="' + data.overview_url + '" style="color:#1F7A3D;font-weight:700;">' +
+          (LANG === 'sw' ? 'Angalia Muhtasari wa Mtihani →' : 'View Exam Overview →') + '</a>';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err) {
+        showAlert(marksAlert, err.message, 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 ' + (LANG === 'sw' ? 'Hifadhi Alama Zote' : 'Save All Marks');
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

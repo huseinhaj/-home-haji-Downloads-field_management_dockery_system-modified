@@ -27,6 +27,7 @@ from .services.class_timetable_service import (
     seed_default_time_slots,
     set_single_cell,
 )
+from .utils import subjects_for_school
 from .services.ai_timetable_service import (
     generate_ai_suggestion,
     parse_natural_language_instructions,
@@ -158,7 +159,8 @@ def teaching_assignment_manage(request):
         return redirect('teaching_assignment_manage')
 
     teachers = TeacherAccount.objects.filter(school=school, role=TeacherAccount.ROLE_TEACHER).order_by('full_name')
-    subjects = Subject.objects.all().order_by('name')
+    # Masomo ya aina hii ya shule tu (msingi/sekondari)
+    subjects = subjects_for_school(school)
     assignments = TeachingAssignment.objects.filter(school=school).select_related('teacher', 'subject').order_by('form', 'stream', 'subject__name')
 
     return render(request, 'results/teaching_assignment_manage.html', {
@@ -326,7 +328,8 @@ def class_timetable_view(request):
             rows.append({'form': form, 'stream': stream, 'cells': cells})
         grid.append({'day_label': day_label, 'slots': day_slots, 'rows': rows})
 
-    subjects = Subject.objects.all().order_by('name')
+    # Masomo ya aina hii ya shule tu (msingi/sekondari)
+    subjects = subjects_for_school(school)
     teachers = TeacherAccount.objects.filter(school=school).order_by('full_name')
 
     # Check if there's a pending timetable PS submission

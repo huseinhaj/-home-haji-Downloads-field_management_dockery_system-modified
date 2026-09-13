@@ -10,7 +10,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import render
 
 from .models import Exam, ExamResult, ProcessedResult, SpeechSubmissionSession, Student, Subject, SubjectSubmission
-from .utils import group_exams_by_type
+from .utils import group_exams_by_type, subjects_for_school
 from .permissions import results_login_required as login_required
 from .services.speech_asr_service import transcribe_uploaded_audio, SpeechTranscriptionError
 from .services.speech_submission_service import (
@@ -33,7 +33,8 @@ logger = logging.getLogger(__name__)
 def speech_entry_page(request):
     exams = Exam.objects.filter(school=request.user.school).order_by('-year', 'name')
     exam_groups = group_exams_by_type(exams, dict(Exam.EXAM_TYPE_CHOICES))
-    subjects = Subject.objects.all().order_by('name')
+    # Masomo ya aina hii ya shule tu (msingi/sekondari)
+    subjects = subjects_for_school(request.user.school)
     students = Student.objects.all().order_by('first_name', 'last_name')
 
     # Pre-select exam/subject from URL params

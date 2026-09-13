@@ -309,9 +309,12 @@ def manage_teachers(request):
         form = TeacherAccountForm()
 
     teachers = TeacherAccount.objects.filter(school=school).prefetch_related('subjects').order_by('-created_at')
-    teachers_with_forms = [(t, TeacherSubjectsForm(instance=t)) for t in teachers]
+    # Orodha ya masomo kwenye fomu zote hapa inafuata aina ya shule —
+    # msingi anaona masomo ya msingi tu, sekondari ya sekondari tu.
+    teachers_with_forms = [(t, TeacherSubjectsForm(instance=t, school=school)) for t in teachers]
+    create_form = TeacherAccountForm(school=school)
     return render(request, 'results/manage_teachers.html', {
-        'form': form,
+        'form': create_form,
         'teachers_with_forms': teachers_with_forms,
         'school': school,
     })

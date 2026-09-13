@@ -83,6 +83,12 @@ class ExamUploadForm(forms.Form):
 
 
 class TeacherAccountForm(forms.ModelForm):
+    def __init__(self, *args, school=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .utils import subjects_for_school
+        if 'subjects' in self.fields:
+            self.fields['subjects'].queryset = subjects_for_school(school)
+
     class Meta:
         model = TeacherAccount
         fields = ['email', 'full_name', 'role', 'subjects']
@@ -102,6 +108,12 @@ class TeacherAccountForm(forms.ModelForm):
 
 class TeacherSubjectsForm(forms.ModelForm):
     """Edit role + subjects for an existing teacher account."""
+    def __init__(self, *args, school=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .utils import subjects_for_school
+        if 'subjects' in self.fields:
+            self.fields['subjects'].queryset = subjects_for_school(school)
+
     class Meta:
         model = TeacherAccount
         fields = ['role', 'subjects']
@@ -116,7 +128,18 @@ class TeacherSelfSubjectsForm(forms.ModelForm):
 
     Deliberately excludes 'role' — a teacher must never be able to grant
     themselves academic access through this form.
+
+    Masomo yanayoonekana yanalingana na aina ya shule (primary/secondary)
+    kupitia subjects_for_school — msingi haoni Physics, sekondari haoni
+    Hisabati. Shule bila level (None) inaona yote kama zamani.
     """
+
+    def __init__(self, *args, school=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .utils import subjects_for_school
+        if 'subjects' in self.fields:
+            self.fields['subjects'].queryset = subjects_for_school(school)
+
     class Meta:
         model = TeacherAccount
         fields = ['subjects']

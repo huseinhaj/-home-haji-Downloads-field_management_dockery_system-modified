@@ -885,6 +885,13 @@ class MergeDuplicateHistorySubjectsMigrationTests(TestCase):
 	merge is safe to run against production."""
 	databases = {'default', 'results'}
 
+	def setUp(self):
+		"""These tests exercise migration 0035 in isolation, but migration
+		0043 seeds the full standard subject sets into the test DB before
+		any test runs. Wipe whatever is pre-seeded so assertions about
+		which Subject rows exist only see this test's own fixtures."""
+		Subject.objects.all().delete()
+
 	def _run_migration(self):
 		import importlib
 		module = importlib.import_module('results.migrations.0035_merge_duplicate_history_subjects')
