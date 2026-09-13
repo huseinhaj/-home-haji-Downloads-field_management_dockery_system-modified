@@ -1,0 +1,352 @@
+{% extends "results/base.html" %}
+{% block title %}{% if LANG == 'sw' %}Mwongozo wa Matumizi{% else %}User Guide{% endif %}{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:0 auto;">
+
+  <h2 class="mb-1" style="color:var(--accent-600);">📖 {% if LANG == 'sw' %}Mwongozo wa Matumizi ya Mfumo{% else %}System User Guide{% endif %}</h2>
+  <p class="text-muted mb-4" style="font-size:0.9rem;">
+    {% if LANG == 'sw' %}Maelekezo ya hatua kwa hatua kwa kila jukumu — Academic Officer, Mwalimu, na Katibu wa Uchapishaji.{% else %}Step-by-step instructions for every role — Academic Officer, Teacher, and Printing Secretary.{% endif %}
+  </p>
+
+  <!-- ═══════════ ROLE SELECTOR ═══════════ -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100 guide-role-card" onclick="showGuide('academic')" style="cursor:pointer;border-left:5px solid var(--accent-600);">
+        <div class="card-body">
+          <h5 class="mb-1">🏫 {% if LANG == 'sw' %}Academic Officer{% else %}Academic Officer{% endif %}</h5>
+          <small class="text-muted">{% if LANG == 'sw' %}Madarasa, mitihani, matokeo, rollover{% else %}Classes, exams, results, rollover{% endif %}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100 guide-role-card" onclick="showGuide('teacher')" style="cursor:pointer;border-left:5px solid var(--secondary-500);">
+        <div class="card-body">
+          <h5 class="mb-1">👩‍🏫 {% if LANG == 'sw' %}Mwalimu{% else %}Teacher{% endif %}</h5>
+          <small class="text-muted">{% if LANG == 'sw' %}Alama, rosti, ripoti za binafsi{% else %}Marks, rosters, personal reports{% endif %}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100 guide-role-card" onclick="showGuide('ps')" style="cursor:pointer;border-left:5px solid #5B3E90;">
+        <div class="card-body">
+          <h5 class="mb-1">🖨️ {% if LANG == 'sw' %}Katibu Uchapishaji{% else %}Printing Secretary{% endif %}</h5>
+          <small class="text-muted">{% if LANG == 'sw' %}Kupokea na kuchapisha ripoti{% else %}Receiving and printing reports{% endif %}</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ ACADEMIC ═══════════ -->
+  <div id="guide-academic" class="guide-section" style="display:none;">
+
+    <div class="accordion" id="accAcademic">
+
+      <!-- Kuanza -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#ac1">
+            🚀 {% if LANG == 'sw' %}Kuanza — Usanidi wa Shule{% else %}Getting Started — School Setup{% endif %}
+          </button>
+        </h2>
+        <div id="ac1" class="accordion-collapse collapse show" data-bs-parent="#accAcademic">
+          <div class="accordion-body">
+            <ol>
+              <li>Ingia kwenye mfumo kwa barua pepe na neno la siri lako.</li>
+              <li>Nenda <strong>Shule Yangu</strong> — hakikisha jina, mkoa, wilaya, na <strong>aina ya shule</strong> (Sekondari Form 1–6 au Msingi Darasa 1–7) ziko sahihi. Aina ya shule inaamua madarasa, grading (CSEE/ACSEE au A–E), na rollover.</li>
+              <li>Kwenye <strong>Shule Yangu</strong> pakia <strong>logo ya shule</strong> na logo ya wilaya — zinaonekana kichwa cha ripoti zote za PDF. (Pakia picha ndogo, wazi — hakuna haja kubwa.)</li>
+              <li>Kama shule yako haipo kwenye orodha, mimi (Academic) naweza kuiandikisha kupitia <strong>Jiunge</strong> kwenye ukurasa wa kuingia.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Walimu -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ac2">
+            👩‍🏫 {% if LANG == 'sw' %}Kuweka Walimu na Masomo Yao{% else %}Adding Teachers and Their Subjects{% endif %}
+          </button>
+        </h2>
+        <div id="ac2" class="accordion-collapse collapse" data-bs-parent="#accAcademic">
+          <div class="accordion-body">
+            <ol>
+              <li>Nenda <strong>Simamia Walimu</strong> — ongeza kila mwalimu kwa jina kamili na barua pepe. Mfumo utamtengeneza akaunti na kutuma neno la siri kwa barua pepe.</li>
+              <li>Kila mwalimu akishaingia, atajichagulia masomo yake kwenye <strong>Masomo Yangu</strong>.</li>
+              <li>Utakapoamba tanbi na mwalimu kwa darasa na somo, tumia <strong>Assign Teacher</strong> ili atoke kwenye ripoti sahihi.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orodha ya wanafunzi -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ac3">
+            📋 {% if LANG == 'sw' %}Orodha ya Wanafunzi — Upload au Scan{% else %}Student Roster — Upload or Scan{% endif %}
+          </button>
+        </h2>
+        <div id="ac3" class="accordion-collapse collapse" data-bs-parent="#accAcademic">
+          <div class="accordion-body">
+            <p><strong>Njia 1 — Pakia faili (PDF, Excel, CSV, DOCX):</strong></p>
+            <ol>
+              <li>Nenda <strong>Orodha ya Wanafunzi</strong> → chagua darasa.</li>
+              <li>Andaa faili: mstari mmoja kwa mwanafunzi — <em>First Name | Middle Name | Last Name | Gender</em> (au PDF yenye jina kamili + jinsia kwa mstari, mf. "Halima Ally Mohamed F").</li>
+              <li>Chagua faili → <strong>Pakia Wanafunzi</strong>.</li>
+            </ol>
+            <p class="mb-1"><strong>Njia 2 — 📸 Scan (piga picha ya orodha, hakuna faili):</strong></p>
+            <ol>
+              <li>Bonyeza <strong>📄 Pakua Fomu ya Kujaza</strong> — print, jaza kwa mkono (au tumia orodha yoyote iliyochapwa iliyo na mstari mmoja kwa mwanafunzi).</li>
+              <li>Bonyeza <strong>📷 Piga Picha Sasa</strong> — camera ya simu itafunguka. Piga picha: simu iwe sawa juu ya karatasi, mwanga unatosha, orodha ijaze picha.</li>
+              <li>Subiri sekunde 10–20 — AI itasoma majina na kukuonyesha <strong>uhakiki (preview)</strong>.</li>
+              <li>Hariri jina lolote lililokosewa, badilisha jinsia, ondoa mistari migi, ongeza waliokosekana (➕).</li>
+              <li>Bonyeza <strong>💾 Hifadhi Wanafunzi Wote</strong> — wanafunzi wanaingia rostini. <em>Hakuna haja ya ku-upload faili kabisa.</em></li>
+            </ol>
+            <p class="mb-0"><strong>Vidokezo:</strong> Orodha ndefu — scan ukurasa mmoja, hifadhi, kisha scan ukurasa mwingine; mfumo hautengeneze duplicates. Kama AI inashindwa kusoma, piga picha karibu zaidi au tumia Njia 1.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Masomo -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ac4">
+            📚 {% if LANG == 'sw' %}Masomo ya Shule{% else %}School Subjects{% endif %}
+          </button>
+        </h2>
+        <div id="ac4" class="accordion-collapse collapse" data-bs-parent="#accAcademic">
+          <div class="accordion-body">
+            <ol>
+              <li>Nenda <strong>Shule Yangu → Masomo</strong> — chagua masomo yote shule yako inayofanya (Core na Option).</li>
+              <li>Masomo haya ndiyo yataonekana kwa walimu na mitihani yote. Shule za msingi zinaona masomo ya msingi tu; sekondari zinaona ya sekondari.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mitihani -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ac5">
+            🧾 {% if LANG == 'sw' %}Kuunda Mtihani na Kupokea Alama{% else %}Creating an Exam and Receiving Marks{% endif %}
+          </button>
+        </h2>
+        <div id="ac5" class="accordion-collapse collapse" data-bs-parent="#accAcademic">
+          <div class="accordion-body">
+            <ol>
+              <li>Nenda <strong>Unda Mtihani Mpya</strong> (au Academic dashboard → 🧾) — jina, mwaka, darasa, na aina (Midterm, Terminal, n.k.).</li>
+              <li>Ukurasa wa mtihani unaonyesha masomo yote. Bonyeza somo kumpa mwalimu wake ruhusa ya kuingiza alama, au upload scoresheet iliyochanganuliwa (OCR).</li>
+              <li>Alama zikishawekwa na mwalimu, <strong>Idhinisha (Approve)</strong> somo — matokeo yanachakatwa (position, points, division).</li>
+              <li>Kama kuna kosa: <strong>Return</strong> kwa mwalimu arekebishe, au hariri mwenyewe kwenye <strong>matokeo/</strong>hariri.</li>
+              <li>Malipo ya kila somo yakikamilika → <strong>Finalize</strong> mtihani → ripoti zinafunguliwa kwa PS na wanafunzi.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ripoti -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ac6">
+            🖨️ {% if LANG == 'sw' %}Ripoti — PDF na Excel{% else %}Reports — PDF and Excel{% endif %}
+          </button>
+        </h2>
+        <div id="ac6" class="accordion-collapse collapse" data-bs-parent="#accAcademic">
+          <div class="accordion-body">
+            <ol>
+              <li><strong>Ripoti ya darasa:</strong> Academic dashboard → 📄 Ripoti ya Matokeo — Darasa → PDF kamili yenye positions, divisions, na maoni ya mwalimu wa darasa.</li>
+              <li><strong>Ripoti ya mwanafunzi mmoja:</strong> tafuta mwanafunzi → PDF yake. Unaweza kupakua za wanafunzi WOTE kwa pamoja (bulk PDF).</li>
+              <li><strong>Excel:</strong> kila ukurasa wa ripoti una kitufe cha Excel kwa uchambuzi nje ya mfumo.</li>
+              <li><strong>Kushirikisha wanafunzi:</strong> kitufe cha Viungo (share links) kinatengeneza link ya siri kwa kila mwanafunzi — akipokea link, anaona matokeo yake tu, wala si ya mwenzie.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rollover -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ac7">
+            🎓 {% if LANG == 'sw' %}Anza Mwaka Mpya (Rollover) na School Storage{% else %}Start New Year (Rollover) and School Storage{% endif %}
+          </button>
+        </h2>
+        <div id="ac7" class="accordion-collapse collapse" data-bs-parent="#accAcademic">
+          <div class="accordion-body">
+            <p><strong>Mwisho wa mwaka wa masomo:</strong></p>
+            <ol>
+              <li>Nenda <strong>Academic → 🎓 Anza Mwaka Mpya</strong> — ukurasa utaonyesha muhtasari: Form 1→2, 2→3, 3→4, 5→6 (sekondari) au Darasa 1→2 … 6→7 (msingi).</li>
+              <li>Andika <strong>HAMISHA</strong> kuthibitisha. Wanafunzi WOTE wanapandishwa ndani ya mfumo — <strong>hakuna ku-upload tena</strong> (wapo tayari). Form 4 na 6 (au darasa la mwisho la msingi) wanaenda <strong>School Storage</strong> — hawafutwi, historia yao inabaki.</li>
+              <li>Matokeo ya mwaka uliopita hayagusiwi — yanaendelea kupatikana kwa search na PDF.</li>
+              <li>Intake mpya: ingiza Form 1 mpya (wanafunzi wa Darasa la 7) — upload MARA MOJA, kisha kila mwaka wanashift automatic.</li>
+              <li>⚠️ Rollover ni hatua kubwa — hakuna Undo ndani ya mfumo. Hakikisha mwaka wa sasa kwenye Shule Yangu uko sahihi kabla ya kubonyeza.</li>
+            </ol>
+            <p class="mb-0"><strong>School Storage:</strong> kuhifadhi/kurejesha wanafunzi walioisha shule, kupakua backup ya taarifa za shule, na kuangalia rosti za miaka iliyopita.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Malipo -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ac8">
+            💳 {% if LANG == 'sw' %}Malipo ya Usajili{% else %}Subscription Payments{% endif %}
+          </button>
+        </h2>
+        <div id="ac8" class="accordion-collapse collapse" data-bs-parent="#accAcademic">
+          <div class="accordion-body">
+            <ol>
+              <li>Nenda <strong>Malipo</strong> — chagua mpango (mwezi/mwaka).</li>
+              <li>Lipa kwa M-Pesa/TigoPesa/Airtel Money kwa namba zilizoonyeshwa; mfumo unathibitisha malipo automatic.</li>
+              <li>Kama malipo yamechelewa kuthibitishwa, subiri dakika chache au wasiliana na msaada: <strong>{{ SUPPORT_PHONE }}</strong>.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════ TEACHER ═══════════ -->
+  <div id="guide-teacher" class="guide-section" style="display:none;">
+    <div class="accordion" id="accTeacher">
+
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#tc1">
+            🚀 {% if LANG == 'sw' %}Kuanza{% else %}Getting Started{% endif %}
+          </button>
+        </h2>
+        <div id="tc1" class="accordion-collapse collapse show" data-bs-parent="#accTeacher">
+          <div class="accordion-body">
+            <ol>
+              <li>Academic ataongeza akaunti yako; neno la siri linakuja kwa barua pepe.</li>
+              <li>Ingia → <strong>Masomo Yangu</strong> → chagua masomo unayofundisha.</li>
+              <li>Kwenye <strong>Walimu (Dashboard)</strong> utaona madarasa/masomo yaliyopewa.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#tc2">
+            ✏️ {% if LANG == 'sw' %}Kuingiza Alama{% else %}Entering Marks{% endif %}
+          </button>
+        </h2>
+        <div id="tc2" class="accordion-collapse collapse" data-bs-parent="#accTeacher">
+          <div class="accordion-body">
+            <ol>
+              <li>Nenda <strong>✏️ Jaza Alama</strong> — chagua mtihani na somo chako.</li>
+              <li>Orodha ya wanafunzi inaonyeshwa moja kwa moja kutoka rosti ya shule — jaza alama kwenye boxes, <strong>X</strong> = hakufunga (absent).</li>
+              <li>Unaweza pia <strong>ku-scan scoresheet</strong> iliyojaa mkono au kupakia faili la Excel — mfumo unasoma alama kwa AI, kisha unathibitisha.</li>
+              <li>Hifadhi → matokeo yanakwenda kwa Academic kuidhinishwa. Kama yarudishwa (Returned), rekebisha na tuma tena.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#tc3">
+            🗂️ {% if LANG == 'sw' %}Ripoti za Binafsi{% else %}Personal Records{% endif %}
+          </button>
+        </h2>
+        <div id="tc3" class="accordion-collapse collapse" data-bs-parent="#accTeacher">
+          <div class="accordion-body">
+            <ol>
+              <li><strong>Binafsi</strong> ni nafasi yako ya kibinafsi — rekodi za majaribio madogo (tests) zisizo rasmi za shule.</li>
+              <li>Pakia orodha ya wanafunzi, jaza alama, toa PDF ya kibinafsi. Hazionekani na Academic wala PS.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#tc4">
+            🗓️ {% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}
+          </button>
+        </h2>
+        <div id="tc4" class="accordion-collapse collapse" data-bs-parent="#accTeacher">
+          <div class="accordion-body">
+            <ol>
+              <li><strong>Ratiba ya Darasa</strong> — ona mapahali unayofundisha kila siku.</li>
+              <li>Academic ndiye anatengeneza ratiba; kama kuna kosa wasiliana naye.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════ PRINTING SECRETARY ═══════════ -->
+  <div id="guide-ps" class="guide-section" style="display:none;">
+    <div class="accordion" id="accPS">
+
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#pc1">
+            🖨️ {% if LANG == 'sw' %}Kupokea na Kuchapisha Ripoti{% else %}Receiving and Printing Reports{% endif %}
+          </button>
+        </h2>
+        <div id="pc1" class="accordion-collapse collapse show" data-bs-parent="#accPS">
+          <div class="accordion-body">
+            <ol>
+              <li>Ingia → <strong>Uchapishaji (PS)</strong> — utaona mitihani yote iliyotumwa kwa uchapishaji.</li>
+              <li>Bonyeza ripoti → ona PDF kabla ya kuchapisha. <strong>Print</strong> inatumia mpangilio rasmi wa shule (logo, nembo, sahihi).</li>
+              <li>Ripoti iliyochapishwa inawekwa alama ili isirudishwe kwa Ajali.</li>
+              <li>Kama ripoti ina kosa — rugia Academic arekebishe na kutuma tena; usihariri mwenyewe.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════ FAQ ═══════════ -->
+  <div class="card mt-4 shadow-sm">
+    <div class="card-header" style="background:var(--accent-600);color:#fff;">
+      <strong>❓ {% if LANG == 'sw' %}Maswali Yanayoulizwa Sana{% else %}Frequently Asked Questions{% endif %}</strong>
+    </div>
+    <div class="card-body">
+      <p class="mb-1"><strong>{% if LANG == 'sw' %}Nimekosea alama za mwanafunzi — nifanye nini?{% else %}I entered a wrong mark — what do I do?{% endif %}</strong><br>
+        {% if LANG == 'sw' %}Kama mtihani bado haujaidhinishwa, rekebisha ukurasa wa alama. Kama umeshaidhinishwa, wasiliana na Academic ahariri kwenye Matokeo.{% else %}Before approval, just edit on the marks page. After approval, ask the Academic to edit under Results.{% endif %}</p>
+      <p class="mb-1"><strong>{% if LANG == 'sw' %}Mwanafunzi hakufunga mtihani?{% else %}Student was absent?{% endif %}</strong><br>
+        {% if LANG == 'sw' %}Andika <strong>X</strong> kwenye alama zake — ripoti itaonyesha "X" (siyo 0), na division haisumbuliwi.{% else %}Enter <strong>X</strong> — the report shows "X" (not 0), and the division calculation handles it.{% endif %}</p>
+      <p class="mb-1"><strong>{% if LANG == 'sw' %}Scan imesoma majina kwa makosa?{% else %}Scan misread some names?{% endif %}</strong><br>
+        {% if LANG == 'sw' %}Hakuna shida — kwenye uhakiki (preview), hariri kila jina kabla ya kuhifadhi. Unaweza pia kuongza/kutoa mistari.{% else %}No problem — in the review preview, edit any name before saving. You can also add/remove rows.{% endif %}</p>
+      <p class="mb-1"><strong>{% if LANG == 'sw' %}Naweza ku-upload orodha mara mbili?{% else %}Can I upload the same roster twice?{% endif %}</strong><br>
+        {% if LANG == 'sw' %}Ndiyo — mfumo unatambua majina yaliyopo na HAUTengeneze duplicates.{% else %}Yes — the system recognizes existing names and will NOT create duplicates.{% endif %}</p>
+      <p class="mb-0"><strong>{% if LANG == 'sw' %}Msaada zaidi?{% else %}Need more help?{% endif %}</strong><br>
+        {% if LANG == 'sw' %}Piga simu: <strong>{{ SUPPORT_PHONE }}</strong>{% else %}Call support: <strong>{{ SUPPORT_PHONE }}</strong>{% endif %}</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .guide-role-card:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,.12); transition: all .15s; }
+  .guide-section { animation: guideFade .18s ease-out; }
+  @keyframes guideFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+<script>
+function showGuide(role) {
+  document.querySelectorAll('.guide-section').forEach(el => el.style.display = 'none');
+  var el = document.getElementById('guide-' + role);
+  if (el) el.style.display = 'block';
+}
+// Auto-open the section matching the logged-in user's role (falls back to Academic)
+document.addEventListener('DOMContentLoaded', function() {
+  var role = 'academic';
+  {% if user.is_authenticated %}
+    {% if user.is_teacher %}role = 'teacher';
+    {% elif user.is_printing_secretary %}role = 'ps';{% endif %}
+  {% endif %}
+  showGuide(role);
+});
+</script>
+{% endblock %}

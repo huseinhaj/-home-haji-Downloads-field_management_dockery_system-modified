@@ -73,6 +73,7 @@ from .views import (
     upload_form_students,
     scan_roster,
     save_scanned_roster,
+    user_guide,
     delete_form_student,
     delete_all_form_students,
     assign_form_student_subjects,
@@ -243,4 +244,6 @@ urlpatterns = [
     path('class-timetable/ps/<int:submission_id>/print/', timetable_ps_print_view, name='timetable_ps_print_view'),
     # Teacher performance report PDF — all teachers for a form
     path('report/form-<int:form_num>/teachers/', teacher_performance_report, name='teacher_performance_report'),
+    # In-system user guide — how to use the system, per role
+    path('mwongozo/', user_guide, name='user_guide'),
 ]

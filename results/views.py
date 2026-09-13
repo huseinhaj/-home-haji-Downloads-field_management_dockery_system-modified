@@ -2183,6 +2183,15 @@ def restore_storage_student(request, student_id):
 
 
 @academic_required
+def user_guide(request):
+    """Mwongozo wa matumizi — documentation ndani ya system. Inafunguka
+    kwa mtumiaji yeyote aliyeingia (academic/teacher/PS); kila jukumu
+    linaona sehemu yake. Hakuna data inayogusiwa — ni statiki.
+    """
+    return render(request, 'results/user_guide.html')
+
+
+@academic_required
 def academic_dashboard(request):
     """Dashboard for academic officer: exams grouped by Form → Stream.
 
@@ -2192,7 +2201,6 @@ def academic_dashboard(request):
     exams = Exam.objects.filter(school=request.user.school).prefetch_related(
         'subject_submissions__subject'
     ).select_related('school').order_by('form', 'stream', '-year', 'name')
-
     # Nested: { form_num: { stream: [exam_ctx, …], … }, … }
     forms_map = {}       # form_num → { stream_str: [exam_ctx] }
     form_totals = {}     # form_num → { submitted, approved, total }
