@@ -68,6 +68,12 @@
     padding: 0.3rem 0.5rem; font-weight: 700; text-align: center; color: #1F7A3D;
   }
   .aam-table input.score-input:focus { border-color: #1F7A3D; outline: none; box-shadow: 0 0 0 2px rgba(31,122,61,0.15); }
+  .aam-table .absent-toggle {
+    margin-left: 0.3rem; border: 1.5px solid #ced4da; background: #fff; color: #6b7280;
+    font-weight: 800; font-size: 0.72rem; border-radius: 2px; padding: 0.28rem 0.45rem; cursor: pointer;
+  }
+  .aam-table .absent-toggle:hover { border-color: #6b7280; }
+  .aam-table .absent-toggle.active { background: #6b7280; border-color: #6b7280; color: #fff; }
   .aam-grade-chip {
     display: inline-block; min-width: 30px; text-align: center;
     font-weight: 800; font-size: 0.72rem; border-radius: 2px; padding: 0.12rem 0.35rem;
@@ -178,9 +184,9 @@
   </h2>
   <p class="hint">
     {% if LANG == 'sw' %}
-    Hii ni orodha yote ya masomo ya mtihani huu. Weka alama (0–100) au X kama alikuwa hajapo. Kisha bonyeza "Hifadhi Alama Zote".
+    Hii ni orodha yote ya masomo ya mtihani huu. Weka alama (0–100) au bonyeza X kwa mwanafunzi aliyekosa. Kisha bonyeza "Hifadhi Alama Zote".
     {% else %}
-    This is every subject on this exam. Enter marks (0–100) or X if absent, then click "Save All Marks".
+    This is every subject on this exam. Enter marks (0–100) or tap X if the student was absent, then click "Save All Marks".
     {% endif %}
   </p>
   <div class="aam-table-wrap" style="max-height:52vh;overflow-y:auto;">
@@ -351,30 +357,51 @@
       tr.innerHTML =
         '<td class="row-no">' + (i + 1) + '</td>' +
         '<td class="subject-name">' + s.name + '</td>' +
-        '<td><input type="number" min="0" max="100" class="score-input" data-subject-id="' + s.id + '" placeholder="—"></td>' +
+        '<td><input type="text" maxlength="6" class="score-input" data-subject-id="' + s.id + '" placeholder="0–100 / X">' +
+        '<button type="button" class="absent-toggle" data-subject-id="' + s.id + '" title="' +
+          (LANG === 'sw' ? 'Mwanafunzi hajafanya (X)' : 'Student absent (X)') + '">X</button></td>' +
         '<td><span class="aam-grade-chip" data-chip="' + s.id + '"></span></td>';
       subjectsBody.appendChild(tr);
     });
+
+    function updateRow(inp) {
+      const chip = subjectsBody.querySelector('[data-chip="' + inp.dataset.subjectId + '"]');
+      const btn = subjectsBody.querySelector('button.absent-toggle[data-subject-id="' + inp.dataset.subjectId + '"]');
+      const v = inp.value.trim().toUpperCase();
+      if (v === 'X' || v === 'ABS' || v === 'ABSENT') {
+        // Mwanafunzi hajafanya — normalize hadi X (input ni type=text
+        // sasa; kwenye type=number browser ilikataa herufi X kabla).
+        inp.value = 'X';
+        chip.textContent = 'X';
+        chip.style.color = '#6b7280';
+        inp.style.borderColor = '';
+        btn.classList.add('active');
+      } else if (v !== '' && !isNaN(Number(v)) && Number(v) >= 0 && Number(v) <= 100) {
+        const n = Number(v);
+        chip.textContent = gradeFor(n);
+        chip.style.color = gradeColor(gradeFor(n));
+        inp.style.borderColor = '';
+        btn.classList.remove('active');
+      } else {
+        chip.textContent = '';
+        inp.style.borderColor = (v === '') ? '' : '#c0392b';
+        btn.classList.remove('active');
+      }
+    }
+
     subjectsBody.querySelectorAll('input.score-input').forEach(inp => {
-      inp.addEventListener('input', () => {
-        const chip = subjectsBody.querySelector('[data-chip="' + inp.dataset.subjectId + '"]');
-        const v = inp.value.trim().toUpperCase();
-        if (v === 'X' || v === 'ABS') {
-          inp.type = 'text';
-          inp.value = 'X';
-          chip.textContent = 'X';
-          chip.style.color = '#6b7280';
-        } else if (inp.value !== '' && !isNaN(Number(inp.value))) {
-          const n = Number(inp.value);
-          chip.textContent = gradeFor(n);
-          chip.style.color = gradeColor(gradeFor(n));
-        } else {
-          chip.textContent = '';
-        }
+      inp.addEventListener('input', () => updateRow(inp));
+    });
+    subjectsBody.querySelectorAll('button.absent-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inp = subjectsBody.querySelector('input.score-input[data-subject-id="' + btn.dataset.subjectId + '"]');
+        if (!inp) return;
+        inp.value = (inp.value.trim().toUpperCase() === 'X') ? '' : 'X';
+        updateRow(inp);
       });
     });
     saveHint.textContent = LANG === 'sw'
-      ? subjects.length + ' masomo yameonyeshwa.'
+      ? subjects.length + ' masomo yameonyeshawa.'
       : subjects.length + ' subjects listed.';
   }
 
@@ -386,11 +413,26 @@
         return;
       }
       const entries = [];
+      let invalidInput = null;
       subjectsBody.querySelectorAll('input.score-input').forEach(inp => {
-        const v = inp.value.trim();
+        const v = inp.value.trim().toUpperCase();
         if (!v) return;
-        entries.push({ subject_id: inp.dataset.subjectId, score: v });
+        if (v === 'X' || v === 'ABS' || v === 'ABSENT') {
+          entries.push({ subject_id: inp.dataset.subjectId, score: 'X' });
+        } else if (!isNaN(Number(v)) && Number(v) >= 0 && Number(v) <= 100) {
+          entries.push({ subject_id: inp.dataset.subjectId, score: Number(v) });
+        } else if (invalidInput === null) {
+          invalidInput = inp;
+        }
       });
+      if (invalidInput) {
+        invalidInput.style.borderColor = '#c0392b';
+        invalidInput.focus();
+        showAlert(marksAlert, LANG === 'sw'
+          ? 'Alama si sahihi: weka namba 0–100 au X kwa mwanafunzi hajapo.'
+          : 'Invalid mark: enter a number 0–100, or X if the student was absent.', 'error');
+        return;
+      }
       if (!entries.length) {
         showAlert(marksAlert, LANG === 'sw' ? 'Weka alama angalau somo moja.' : 'Enter a mark for at least one subject.', 'error');
         return;
