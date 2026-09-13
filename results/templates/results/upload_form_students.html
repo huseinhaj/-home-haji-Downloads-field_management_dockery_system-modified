@@ -90,6 +90,10 @@
         <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('scanFileInput').click()">
           🖼️ {% if LANG == 'sw' %}Chagua Picha/PDF{% else %}Choose Photo/PDF{% endif %}
         </button>
+        <a href="{% url 'download_roster_template' %}?fmt=pdf" class="btn btn-outline-secondary"
+           title="{% if LANG == 'sw' %}Pakua fomu rasmi ya orodha — print, jaza kwa mkono, kisha piga picha hapa{% else %}Download the official roster form — print, fill by hand, then photograph it here{% endif %}">
+          📄 {% if LANG == 'sw' %}Pakua Fomu ya Kujaza{% else %}Download Blank Form{% endif %}
+        </a>
         <input type="file" id="scanCameraInput" accept="image/*" capture="environment" style="display:none;">
         <input type="file" id="scanFileInput" accept="image/*,.pdf" style="display:none;">
         <span id="scanStatus" style="font-size:0.8rem;color:#555;"></span>
