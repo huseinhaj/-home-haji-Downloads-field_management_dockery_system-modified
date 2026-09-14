@@ -538,6 +538,119 @@ class NECTAHeader(Flowable):
 
 
 # ── Footer (per-page, without page numbers) ─────────────────────────────────
+# ── Themed page decorations (creative backgrounds per output style) ──────
+def _draw_creative_background(canvas, w, h, style_key):
+    """Per-style full-page backdrop painted behind everything.
+
+    normal : warm ivory canvas with a navy top ribbon + gold pinstripes,
+             art-deco corner fans, gold side rails and a soft ivory footer
+             band — the school's own 'official & elegant' certificate look.
+    rank   : mint canvas with peach header/footer bands, periwinkle
+             pinstripes and soft periwinkle corner arcs — the TEC sheet's
+             fresh pastel look.
+    necta  : handled elsewhere (flat light-blue + double frame).
+    """
+    if style_key == 'normal':
+        IVORY   = colors.HexColor("#FBF7EC")
+        IVORY_D = colors.HexColor("#F3EBD8")
+        NAVY_D  = colors.HexColor("#1E3A8A")
+        GOLD_D  = colors.HexColor("#D9A441")
+
+        # Warm ivory page with subtle darker top/bottom strips.
+        canvas.setFillColor(IVORY)
+        canvas.rect(0, 0, w, h, fill=1, stroke=0)
+        canvas.setFillColor(IVORY_D)
+        canvas.rect(0, 0, w, h * 0.045, fill=1, stroke=0)
+        canvas.rect(0, h * 0.955, w, h * 0.045, fill=1, stroke=0)
+
+        # Navy top ribbon + gold pinstripes (the 'flag edge' identity).
+        canvas.setFillColor(NAVY_D)
+        canvas.rect(0, h - 1.05 * cm, w, 1.05 * cm, fill=1, stroke=0)
+        canvas.setFillColor(GOLD_D)
+        canvas.rect(0, h - 1.05 * cm, w, 0.06 * cm, fill=1, stroke=0)
+        canvas.rect(0, h - 0.92 * cm, w, 0.03 * cm, fill=1, stroke=0)
+
+        # Art-deco corner fans: concentric quarter-arcs in gold/navy —
+        # echoes the decorative rays of the header crest.
+        fan_r = 1.15 * cm
+        for cx0, cy0, start in (
+            (1.0 * cm, h - 1.05 * cm, 0),           # top-left, under ribbon
+            (w - 1.0 * cm, h - 1.05 * cm, 90),      # top-right
+            (1.0 * cm, 0.8 * cm, 180),              # bottom-left
+            (w - 1.0 * cm, 0.8 * cm, 270),          # bottom-right
+        ):
+            for rr, col, lw in (
+                (fan_r, GOLD_D, 1.1),
+                (fan_r * 0.62, NAVY_D, 0.8),
+                (fan_r * 0.30, GOLD_D, 0.8),
+            ):
+                canvas.setStrokeColor(col)
+                canvas.setLineWidth(lw)
+                canvas.arc(cx0 - rr, cy0 - rr, cx0 + rr, cy0 + rr, start, 90)
+
+        # Gold side rails — thin double rules down each margin.
+        for x in (1.0 * cm, w - 1.0 * cm):
+            canvas.setStrokeColor(GOLD_D)
+            canvas.setLineWidth(1.0)
+            canvas.line(x, 0.8 * cm, x, h - 1.05 * cm)
+            canvas.setLineWidth(0.3)
+            canvas.line(x + 0.12 * cm, 0.8 * cm, x + 0.12 * cm, h - 1.05 * cm)
+
+        # Content frame — navy double box, the 'certificate' edge.
+        canvas.setStrokeColor(NAVY_D)
+        canvas.setLineWidth(1.4)
+        canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, h - 1.85 * cm)
+        canvas.setLineWidth(0.4)
+        canvas.rect(1.15 * cm, 0.95 * cm, w - 2.3 * cm, h - 2.15 * cm)
+
+        # Footer band + gold hairline above it.
+        canvas.setFillColor(IVORY_D)
+        canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, 0.55 * cm, fill=1, stroke=0)
+        canvas.setStrokeColor(GOLD_D)
+        canvas.setLineWidth(0.5)
+        canvas.line(1.0 * cm, 1.35 * cm, w - 1.0 * cm, 1.35 * cm)
+
+    elif style_key == 'rank':
+        MINT    = colors.HexColor("#F2FAF6")
+        PEACH   = colors.HexColor("#FCE4D6")
+        PERI    = colors.HexColor("#8EA9DB")
+        GREEN_D = colors.HexColor("#375623")
+
+        canvas.setFillColor(MINT)
+        canvas.rect(0, 0, w, h, fill=1, stroke=0)
+
+        # Peach header + footer bands with periwinkle pinstripes.
+        canvas.setFillColor(PEACH)
+        canvas.rect(0, h - 1.0 * cm, w, 1.0 * cm, fill=1, stroke=0)
+        canvas.rect(0, 0.8 * cm, w, 0.5 * cm, fill=1, stroke=0)
+        canvas.setStrokeColor(PERI)
+        canvas.setLineWidth(0.5)
+        canvas.line(0, h - 1.06 * cm, w, h - 1.06 * cm)
+        canvas.setLineWidth(0.25)
+        canvas.line(0, h - 1.12 * cm, w, h - 1.12 * cm)
+        canvas.line(0, 1.36 * cm, w, 1.36 * cm)
+
+        # Soft periwinkle corner arcs (quarter circles, outside-in).
+        for cx0, cy0, start in (
+            (0.95 * cm, h - 1.06 * cm, 0),
+            (w - 0.95 * cm, h - 1.06 * cm, 90),
+            (0.95 * cm, 1.36 * cm, 180),
+            (w - 0.95 * cm, 1.36 * cm, 270),
+        ):
+            for rr, lw in ((0.85 * cm, 1.0), (0.5 * cm, 0.6)):
+                canvas.setStrokeColor(PERI)
+                canvas.setLineWidth(lw)
+                canvas.arc(cx0 - rr, cy0 - rr, cx0 + rr, cy0 + rr, start, 90)
+
+        # Content frame — periwinkle box with a green hairline inside.
+        canvas.setStrokeColor(PERI)
+        canvas.setLineWidth(1.2)
+        canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, h - 1.8 * cm)
+        canvas.setStrokeColor(GREEN_D)
+        canvas.setLineWidth(0.4)
+        canvas.rect(1.13 * cm, 0.93 * cm, w - 2.26 * cm, h - 2.06 * cm)
+
+
 def _footer(canvas, doc):
     canvas.saveState()
     try:
@@ -545,32 +658,27 @@ def _footer(canvas, doc):
     except Exception:
         w, h = A4
 
-    # Themed page background (e.g. the NECTA CSEE light blue) — painted
-    # behind everything, before the border/content.
+    # Themed page background. necta: flat light blue (authentic NECTA
+    # sheet). normal/rank: creative per-style backdrop (ivory certificate /
+    # mint TEC look) painted behind everything, before the border/content.
+    style_key_bg = getattr(doc, '_style_key', 'normal')
     page_bg = getattr(doc, '_page_bg', None)
     if page_bg is not None:
         canvas.setFillColor(page_bg)
         canvas.rect(0, 0, w, h, fill=1, stroke=0)
 
+    _draw_creative_background(canvas, w, h, style_key_bg)
+
     if getattr(doc, '_necta_frame', False):
         # NECTA sheet frame: a DOUBLE line (mistari miwili myembili) running
         # around the whole page — outer thin + inner thick, like the printed
-        # NECTA results sheet's boxed edge.
+        # NECTA results sheet's boxed edge. (normal/rank already got their
+        # own content frames inside _draw_creative_background.)
         canvas.setStrokeColor(NECTA_TEXT_NAVY)
         canvas.setLineWidth(2.0)
         canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, h - 1.6 * cm)
         canvas.setLineWidth(0.6)
         canvas.rect(1.14 * cm, 0.94 * cm, w - 2.28 * cm, h - 1.88 * cm)
-    else:
-        # Page border — navy outer
-        canvas.setStrokeColor(NAVY)
-        canvas.setLineWidth(1.0)
-        canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, h - 1.6 * cm)
-
-        # Inner decorative line — gold
-        canvas.setStrokeColor(GOLD)
-        canvas.setLineWidth(0.3)
-        canvas.rect(1.15 * cm, 0.95 * cm, w - 2.3 * cm, h - 1.9 * cm)
 
     # Footer text (without page numbers — added later by NumberedCanvas)
     canvas.setFont('Helvetica', 6)
@@ -1411,6 +1519,7 @@ def generate_results_pdf_response(exam, style='normal'):
     doc._gen_date_short = gen_date_short
     doc._content_w = content_w
     doc._page_bg = theme['page_bg']
+    doc._style_key = style_key
     # necta: swap the navy+gold page border for the NECTA double-line frame
     doc._necta_frame = is_necta
 
@@ -1670,6 +1779,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     doc._exam = exam
     doc._gen_date_short = gen_date_short
     doc._page_bg = theme['page_bg']
+    doc._style_key = style_key
     # necta: swap the navy+gold page border for the NECTA double-line frame
     doc._necta_frame = is_necta
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
