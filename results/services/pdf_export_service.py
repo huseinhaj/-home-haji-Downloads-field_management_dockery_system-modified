@@ -542,113 +542,149 @@ class NECTAHeader(Flowable):
 def _draw_creative_background(canvas, w, h, style_key):
     """Per-style full-page backdrop painted behind everything.
 
-    normal : warm ivory canvas with a navy top ribbon + gold pinstripes,
-             art-deco corner fans, gold side rails and a soft ivory footer
-             band — the school's own 'official & elegant' certificate look.
-    rank   : mint canvas with peach header/footer bands, periwinkle
-             pinstripes and soft periwinkle corner arcs — the TEC sheet's
-             fresh pastel look.
+    normal : full CHALKBOARD (chokaa) green-black page — white 'chalk'
+             doodles (corner sketches, star sprinkles, chalk frame) around
+             a clean white results panel, like a classroom board presenting
+             the results.
+    rank   : full DEEP GREEN page with white chalk-style frame and
+             gold-lime celebratory accents (star burst corners, ribbon
+             rule) around a bright white results panel.
     necta  : handled elsewhere (flat light-blue + double frame).
     """
     if style_key == 'normal':
-        IVORY   = colors.HexColor("#FBF7EC")
-        IVORY_D = colors.HexColor("#F3EBD8")
-        NAVY_D  = colors.HexColor("#1E3A8A")
-        GOLD_D  = colors.HexColor("#D9A441")
+        BOARD   = colors.HexColor("#2E4638")   # chalkboard green-black
+        BOARD_D = colors.HexColor("#263B2F")   # board edge shading
+        CHALK   = colors.HexColor("#F5F2E8")   # chalk white
+        CHALK_S = colors.HexColor("#D8D4C4")   # chalk shadow
+        WOOD    = colors.HexColor("#B98A4E")   # wooden board frame
+        WOOD_D  = colors.HexColor("#9A6F3C")
+        PANEL   = colors.white                 # clean results panel
+        PANEL_E = colors.HexColor("#2E4638")   # panel edge
 
-        # Warm ivory page with subtle darker top/bottom strips.
-        canvas.setFillColor(IVORY)
+        # 1. Full chalkboard page.
+        canvas.setFillColor(BOARD)
         canvas.rect(0, 0, w, h, fill=1, stroke=0)
-        canvas.setFillColor(IVORY_D)
-        canvas.rect(0, 0, w, h * 0.045, fill=1, stroke=0)
-        canvas.rect(0, h * 0.955, w, h * 0.045, fill=1, stroke=0)
+        canvas.setFillColor(BOARD_D)
+        canvas.rect(0, 0, w, h * 0.02, fill=1, stroke=0)
+        canvas.rect(0, h * 0.98, w, h * 0.02, fill=1, stroke=0)
 
-        # Navy top ribbon + gold pinstripes (the 'flag edge' identity).
-        canvas.setFillColor(NAVY_D)
-        canvas.rect(0, h - 1.05 * cm, w, 1.05 * cm, fill=1, stroke=0)
-        canvas.setFillColor(GOLD_D)
-        canvas.rect(0, h - 1.05 * cm, w, 0.06 * cm, fill=1, stroke=0)
-        canvas.rect(0, h - 0.92 * cm, w, 0.03 * cm, fill=1, stroke=0)
+        # 2. Wooden board frame around the page edge.
+        canvas.setFillColor(WOOD)
+        canvas.rect(0, h - 0.55 * cm, w, 0.55 * cm, fill=1, stroke=0)
+        canvas.rect(0, 0, w, 0.55 * cm, fill=1, stroke=0)
+        canvas.rect(0, 0, 0.55 * cm, h, fill=1, stroke=0)
+        canvas.rect(w - 0.55 * cm, 0, 0.55 * cm, h, fill=1, stroke=0)
+        canvas.setStrokeColor(WOOD_D)
+        canvas.setLineWidth(0.7)
+        canvas.rect(0.55 * cm, 0.55 * cm, w - 1.1 * cm, h - 1.1 * cm)
 
-        # Art-deco corner fans: concentric quarter-arcs in gold/navy —
-        # echoes the decorative rays of the header crest.
-        fan_r = 1.15 * cm
-        for cx0, cy0, start in (
-            (1.0 * cm, h - 1.05 * cm, 0),           # top-left, under ribbon
-            (w - 1.0 * cm, h - 1.05 * cm, 90),      # top-right
-            (1.0 * cm, 0.8 * cm, 180),              # bottom-left
-            (w - 1.0 * cm, 0.8 * cm, 270),          # bottom-right
-        ):
-            for rr, col, lw in (
-                (fan_r, GOLD_D, 1.1),
-                (fan_r * 0.62, NAVY_D, 0.8),
-                (fan_r * 0.30, GOLD_D, 0.8),
-            ):
-                canvas.setStrokeColor(col)
-                canvas.setLineWidth(lw)
-                canvas.arc(cx0 - rr, cy0 - rr, cx0 + rr, cy0 + rr, start, 90)
+        # 3. Chalk dust doodles — chalk stars sprinkled on the visible
+        #    board margin (drawn before the panel so the panel overlaps
+        #    cleanly).
+        canvas.setStrokeColor(CHALK)
+        canvas.setLineWidth(0.8)
+        seed = 7
+        def _chalk_star(cx0, cy0, rr, alpha_w=0.8):
+            canvas.setStrokeColor(CHALK)
+            canvas.setLineWidth(alpha_w)
+            for k in range(4):
+                import math
+                ang = math.pi / 4 + k * math.pi / 2
+                x1 = cx0 + rr * math.cos(ang)
+                y1 = cy0 + rr * math.sin(ang)
+                x2 = cx0 - rr * math.cos(ang)
+                y2 = cy0 - rr * math.sin(ang)
+                canvas.line(x1, y1, x2, y2)
+        # sprinkle along left/right board margins
+        positions = []
+        for i in range(14):
+            seed = (seed * 37 + 11) % 97
+            fx = seed / 97.0
+            seed = (seed * 41 + 23) % 97
+            fy = seed / 97.0
+            positions.append((0.28 * cm + fx * (w - 0.56 * cm),
+                              0.8 * cm + fy * (h - 1.6 * cm)))
+        for (sx, sy) in positions:
+            # keep stars only near page edges (outside the panel zone)
+            if sx < w * 0.085 or sx > w * 0.915:
+                _chalk_star(sx, sy, 0.09 * cm)
+        # big chalk stars at the four corners of the board area
+        for cx0, cy0 in ((1.05 * cm, h - 1.05 * cm), (w - 1.05 * cm, h - 1.05 * cm),
+                         (1.05 * cm, 1.05 * cm), (w - 1.05 * cm, 1.05 * cm)):
+            _chalk_star(cx0, cy0, 0.28 * cm, 1.2)
+            _chalk_star(cx0, cy0, 0.16 * cm, 0.8)
 
-        # Gold side rails — thin double rules down each margin.
-        for x in (1.0 * cm, w - 1.0 * cm):
-            canvas.setStrokeColor(GOLD_D)
-            canvas.setLineWidth(1.0)
-            canvas.line(x, 0.8 * cm, x, h - 1.05 * cm)
-            canvas.setLineWidth(0.3)
-            canvas.line(x + 0.12 * cm, 0.8 * cm, x + 0.12 * cm, h - 1.05 * cm)
-
-        # Content frame — navy double box, the 'certificate' edge.
-        canvas.setStrokeColor(NAVY_D)
-        canvas.setLineWidth(1.4)
-        canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, h - 1.85 * cm)
-        canvas.setLineWidth(0.4)
-        canvas.rect(1.15 * cm, 0.95 * cm, w - 2.3 * cm, h - 2.15 * cm)
-
-        # Footer band + gold hairline above it.
-        canvas.setFillColor(IVORY_D)
-        canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, 0.55 * cm, fill=1, stroke=0)
-        canvas.setStrokeColor(GOLD_D)
+        # 4. White results panel — the 'board writing zone', inner shadow
+        #    for depth, then a hand-drawn feel double chalk border.
+        px0, py0 = 1.05 * cm, 1.05 * cm
+        pw, ph = w - 2.1 * cm, h - 2.1 * cm
+        canvas.setFillColor(CHALK_S)
+        canvas.rect(px0 - 0.07 * cm, py0 - 0.07 * cm, pw + 0.14 * cm, ph + 0.14 * cm, fill=1, stroke=0)
+        canvas.setFillColor(PANEL)
+        canvas.rect(px0, py0, pw, ph, fill=1, stroke=0)
+        canvas.setStrokeColor(PANEL_E)
+        canvas.setLineWidth(1.3)
+        canvas.rect(px0 + 0.06 * cm, py0 + 0.06 * cm, pw - 0.12 * cm, ph - 0.12 * cm)
+        canvas.setStrokeColor(CHALK_S)
         canvas.setLineWidth(0.5)
-        canvas.line(1.0 * cm, 1.35 * cm, w - 1.0 * cm, 1.35 * cm)
+        canvas.rect(px0 + 0.16 * cm, py0 + 0.16 * cm, pw - 0.32 * cm, ph - 0.32 * cm)
+
+        # 5. Chalk tray — small wooden ledge at the bottom edge of the board.
+        canvas.setFillColor(WOOD_D)
+        canvas.rect(0.55 * cm, 0.42 * cm, w - 1.1 * cm, 0.13 * cm, fill=1, stroke=0)
 
     elif style_key == 'rank':
-        MINT    = colors.HexColor("#F2FAF6")
-        PEACH   = colors.HexColor("#FCE4D6")
-        PERI    = colors.HexColor("#8EA9DB")
-        GREEN_D = colors.HexColor("#375623")
+        GREEN_BG  = colors.HexColor("#1F7A3D")   # full deep school green
+        GREEN_D   = colors.HexColor("#155C2C")   # darker edge shading
+        LIME      = colors.HexColor("#C8E06B")   # celebratory gold-lime
+        CREAM_W   = colors.HexColor("#F8FAF2")   # warm white panel
+        PANEL_E   = colors.HexColor("#1F7A3D")
 
-        canvas.setFillColor(MINT)
+        # 1. Full green page with darker top/bottom shading strips.
+        canvas.setFillColor(GREEN_BG)
         canvas.rect(0, 0, w, h, fill=1, stroke=0)
+        canvas.setFillColor(GREEN_D)
+        canvas.rect(0, 0, w, h * 0.03, fill=1, stroke=0)
+        canvas.rect(0, h * 0.97, w, h * 0.03, fill=1, stroke=0)
 
-        # Peach header + footer bands with periwinkle pinstripes.
-        canvas.setFillColor(PEACH)
-        canvas.rect(0, h - 1.0 * cm, w, 1.0 * cm, fill=1, stroke=0)
-        canvas.rect(0, 0.8 * cm, w, 0.5 * cm, fill=1, stroke=0)
-        canvas.setStrokeColor(PERI)
-        canvas.setLineWidth(0.5)
-        canvas.line(0, h - 1.06 * cm, w, h - 1.06 * cm)
-        canvas.setLineWidth(0.25)
-        canvas.line(0, h - 1.12 * cm, w, h - 1.12 * cm)
-        canvas.line(0, 1.36 * cm, w, 1.36 * cm)
-
-        # Soft periwinkle corner arcs (quarter circles, outside-in).
-        for cx0, cy0, start in (
-            (0.95 * cm, h - 1.06 * cm, 0),
-            (w - 0.95 * cm, h - 1.06 * cm, 90),
-            (0.95 * cm, 1.36 * cm, 180),
-            (w - 0.95 * cm, 1.36 * cm, 270),
+        # 2. Celebratory star-burst corners — radiating gold-lime rays.
+        import math
+        for cx0, cy0, base in (
+            (0.9 * cm, h - 0.9 * cm, 0),
+            (w - 0.9 * cm, h - 0.9 * cm, 45),
+            (0.9 * cm, 0.9 * cm, 90),
+            (w - 0.9 * cm, 0.9 * cm, 135),
         ):
-            for rr, lw in ((0.85 * cm, 1.0), (0.5 * cm, 0.6)):
-                canvas.setStrokeColor(PERI)
-                canvas.setLineWidth(lw)
-                canvas.arc(cx0 - rr, cy0 - rr, cx0 + rr, cy0 + rr, start, 90)
+            for k in range(5):
+                ang = math.radians(base + k * 22.5)
+                r1, r2 = 0.18 * cm, (0.62 if k % 2 == 0 else 0.44) * cm
+                canvas.setStrokeColor(LIME)
+                canvas.setLineWidth(1.1 if k % 2 == 0 else 0.7)
+                canvas.line(cx0 + r1 * math.cos(ang), cy0 + r1 * math.sin(ang),
+                            cx0 + r2 * math.cos(ang), cy0 + r2 * math.sin(ang))
 
-        # Content frame — periwinkle box with a green hairline inside.
-        canvas.setStrokeColor(PERI)
+        # 3. Lime ribbon rules across the top and bottom margins.
+        canvas.setStrokeColor(LIME)
         canvas.setLineWidth(1.2)
-        canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, h - 1.8 * cm)
-        canvas.setStrokeColor(GREEN_D)
-        canvas.setLineWidth(0.4)
-        canvas.rect(1.13 * cm, 0.93 * cm, w - 2.26 * cm, h - 2.06 * cm)
+        canvas.line(0.9 * cm, h - 1.5 * cm, w - 0.9 * cm, h - 1.5 * cm)
+        canvas.setLineWidth(0.5)
+        canvas.line(0.9 * cm, h - 1.58 * cm, w - 0.9 * cm, h - 1.58 * cm)
+        canvas.setLineWidth(1.2)
+        canvas.line(0.9 * cm, 1.5 * cm, w - 0.9 * cm, 1.5 * cm)
+        canvas.setLineWidth(0.5)
+        canvas.line(0.9 * cm, 1.42 * cm, w - 0.9 * cm, 1.42 * cm)
+
+        # 4. White results panel with green double border + inner lime line.
+        px0, py0 = 1.0 * cm, 1.0 * cm
+        pw, ph = w - 2.0 * cm, h - 2.0 * cm
+        canvas.setFillColor(CREAM_W)
+        canvas.rect(px0, py0, pw, ph, fill=1, stroke=0)
+        canvas.setStrokeColor(PANEL_E)
+        canvas.setLineWidth(1.5)
+        canvas.rect(px0 + 0.07 * cm, py0 + 0.07 * cm, pw - 0.14 * cm, ph - 0.14 * cm)
+        canvas.setStrokeColor(LIME)
+        canvas.setLineWidth(0.6)
+        canvas.rect(px0 + 0.18 * cm, py0 + 0.18 * cm, pw - 0.36 * cm, ph - 0.36 * cm)
 
 
 def _footer(canvas, doc):
