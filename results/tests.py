@@ -1960,3 +1960,70 @@ class CentreCountedSubjectsTests(TestCase):
 
 	def test_alevel_combination_prefix_still_counts_three(self):
 		self.assertEqual(self._counted(5, 'PCB: Physics, Chemistry, Biology'), 3)
+
+
+class TeacherScanNoWorkerFallbackTests(TestCase):
+	"""A teacher's scoresheet scan must still work when NO Celery worker is
+	running (local docker starts web+redis+db without the celery container).
+	Before, the task was queued into redis and never consumed — the frontend
+	polled for 4 minutes and died with a generic 'failed to read photo',
+	while the academic bulk-upload flow worked because it inspects the queue
+	and falls back to synchronous OCR. The teacher flow now does the same.
+
+	These tests deliberately do NOT touch celery conf (no eager toggling) —
+	only the worker-probe is patched, so they can't leak state into the
+	eager-polling tests above."""
+
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.exam = Exam.objects.create(name='Terminal 1', year=2026, form=1)
+		self.subject = Subject.objects.create(name='Biology')
+		self.student = Student.objects.create(first_name='Amina', middle_name='', last_name='Juma', gender='F')
+		self.teacher = TeacherAccount.objects.create(email='fallback@example.com', full_name='Teacher Two', role=TeacherAccount.ROLE_TEACHER)
+		self.teacher.subjects.set([self.subject])
+		self.client = Client()
+		self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
+
+	def test_no_worker_runs_ocr_synchronously(self):
+		# Patch the task itself (the name the view looks up) — no real celery
+		# machinery runs at all, so these tests can't leak state anywhere.
+		task = patch('results.marks_entry.process_scoresheet_photo_task').start()
+		task.return_value = {'matched': [{'id': self.student.id, 'score': 64, 'is_absent': False, 'raw_name': 'Amina Juma', 'confidence': 1.0, 'is_new': False}], 'unmatched': [], 'missing': []}
+		with patch('results.marks_entry._celery_worker_consuming', return_value=False):
+			from django.core.files.uploadedfile import SimpleUploadedFile
+			photo = SimpleUploadedFile('sheet.jpg', b'fake-bytes', content_type='image/jpeg')
+			resp = self.client.post(reverse('scoresheet_photo_extract'), {
+				'photo': photo,
+				'exam_id': self.exam.id,
+				'subject_id': self.subject.id,
+				'roster': json.dumps([{'id': self.student.id, 'name': 'Amina Juma'}]),
+			})
+		patch.stopall()
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertTrue(data.get('sync_done'))
+		self.assertEqual(len(data.get('matched', [])), 1)
+		self.assertEqual(data['matched'][0]['id'], self.student.id)
+		self.assertEqual(data['matched'][0]['score'], 64)
+
+	def test_worker_present_returns_task_id(self):
+		task = patch('results.marks_entry.process_scoresheet_photo_task').start()
+		task.apply_async.return_value.id = 'test-task-id'
+		with patch('results.marks_entry._celery_worker_consuming', return_value=True):
+			from django.core.files.uploadedfile import SimpleUploadedFile
+			photo = SimpleUploadedFile('sheet.jpg', b'fake-bytes', content_type='image/jpeg')
+			resp = self.client.post(reverse('scoresheet_photo_extract'), {
+				'photo': photo,
+				'exam_id': self.exam.id,
+				'subject_id': self.subject.id,
+				'roster': json.dumps([{'id': self.student.id, 'name': 'Amina Juma'}]),
+			})
+		patch.stopall()
+		self.assertEqual(resp.status_code, 202)
+		self.assertEqual(resp.json().get('task_id'), 'test-task-id')
+
+	def test_status_unknown_task_returns_processing_not_error(self):
+		resp = self.client.get(reverse('scoresheet_extract_status', args=['ghost-task-id']))
+		self.assertEqual(resp.status_code, 200)
+		self.assertEqual(resp.json().get('status'), 'processing')

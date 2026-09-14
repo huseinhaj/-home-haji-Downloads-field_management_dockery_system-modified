@@ -1363,7 +1363,12 @@ function _dlPdf(url) {
               (LANG === 'sw' ? 'zimejazwa. Kagua kila alama dhidi ya picha kabla ya kuhifadhi.' : 'scores filled in. Check each one against the photo before saving.') + '</span>'
             : '<span style="color:#c0392b;">⚠️ ' + (LANG === 'sw' ? 'Hakuna alama iliyolingana na orodha.' : 'No scores matched the roster.') + '</span>';
         } catch (err) {
-          photoStatus.innerHTML = '<span style="color:#c0392b;">❌ ' + escapeHtml(err.message) + '</span>';
+          const msg = (err && err.message) || '';
+          const hint = LANG === 'sw'
+            ? ' — Jaribu tena: piga picha karibu zaidi, mwanga unuso, karatasi ijaze fremu. Au jaza alama mwenyewe kwenye jedwali hapa chini.'
+            : ' — Try again: shoot closer with good light, fill the frame with the sheet. Or type the marks manually in the table below.';
+          photoStatus.innerHTML = '<span style="color:#c0392b;">❌ ' +
+            escapeHtml(msg || (LANG === 'sw' ? 'Imeshindwa kusoma picha.' : 'Failed to read the photo.')) + hint + '</span>';
         } finally {
           photoBtn.disabled = false;
         }

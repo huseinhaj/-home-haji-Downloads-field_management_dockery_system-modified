@@ -460,6 +460,25 @@ def scoresheet_photo_extract(request):
     # a plain .delay() would land since this project sets no
     # CELERY_TASK_DEFAULT_QUEUE/CELERY_TASK_ROUTES. Without this the task
     # would sit in the broker forever and never run.
+    from field_management.celery import app as celery_app
+
+    # Eager mode (tests) executes the task inside apply_async itself.
+    # Otherwise: a queued task is only ever run by a LIVE worker. Local
+    # docker setups often start web+redis+db WITHOUT the celery container
+    # — the task would then sit in redis forever and the frontend's
+    # 4-minute poll would end in a generic "failed to read photo", while
+    # the academic bulk-upload flow (which checks the queue before
+    # dispatching) runs its OCR inline and just works. Detect that exact
+    # situation up front and run the OCR synchronously, so a teacher's
+    # scan behaves exactly like the academic officer's upload.
+    if (not getattr(celery_app.conf, 'task_always_eager', False)
+            and not _celery_worker_consuming('default')):
+        logger.warning(
+            'scoresheet_photo_extract: no live Celery worker on queue %r — running OCR synchronously',
+            'default',
+        )
+        return _run_scoresheet_ocr_sync(storage_path, roster_ids)
+
     try:
         task = process_scoresheet_photo_task.apply_async(
             args=[storage_path, roster_ids], queue='default',
@@ -468,14 +487,41 @@ def scoresheet_photo_extract(request):
     except Exception as celery_err:
         # Celery broker may be down — run synchronously as fallback
         logger.warning('Celery apply_async failed for scoresheet OCR, running synchronously: %s', celery_err)
-        try:
-            result = process_scoresheet_photo_task(storage_path, roster_ids)
-            if result and result.get('error'):
-                return JsonResponse({'error': result['error']}, status=400)
-            return JsonResponse({'task_id': None, 'sync_done': True, 'matched': result.get('matched', []), 'unmatched': result.get('unmatched', []), 'missing': result.get('missing', [])}, status=200)
-        except Exception as sync_err:
-            logger.error('Synchronous scoresheet OCR also failed: %s', sync_err)
-            return JsonResponse({'error': str(sync_err)}, status=500)
+        return _run_scoresheet_ocr_sync(storage_path, roster_ids)
+
+
+def _celery_worker_consuming(queue_name):
+    """True when at least one live Celery worker is consuming *queue_name*.
+    Never raises — any inspection failure means 'no worker' and callers
+    fall back to synchronous execution."""
+    try:
+        from field_management.celery import app as celery_app
+        active = celery_app.control.inspect(timeout=1.0).active_queues() or {}
+    except Exception:
+        return False
+    for _worker, queues in active.items():
+        for q in queues or []:
+            if q.get('name') == queue_name:
+                return True
+    return False
+
+
+def _run_scoresheet_ocr_sync(storage_path, roster_ids):
+    """Run the scoresheet OCR inside this request (the Celery-less path)
+    and return the same JSON shapes the polling endpoint would return."""
+    try:
+        result = process_scoresheet_photo_task(storage_path, roster_ids)
+        if result and result.get('error'):
+            return JsonResponse({'error': result['error']}, status=400)
+        return JsonResponse({
+            'task_id': None, 'sync_done': True,
+            'matched': result.get('matched', []),
+            'unmatched': result.get('unmatched', []),
+            'missing': result.get('missing', []),
+        }, status=200)
+    except Exception as sync_err:
+        logger.error('Synchronous scoresheet OCR also failed: %s', sync_err, exc_info=True)
+        return JsonResponse({'error': str(sync_err)}, status=500)
 
 
 @teacher_or_academic_required
@@ -487,6 +533,16 @@ def scoresheet_extract_status(request, task_id):
 
     if not result.ready():
         return JsonResponse({'status': 'processing'})
+
+    if not result.result and not result.failed():
+        # A queued task with no live worker NEVER transitions to ready —
+        # but if something did mark it ready without a payload (stale
+        # result backend row, manual revoke, ...), a bare 500 here would
+        # surface to the teacher as a generic "failed to read photo".
+        # Return an empty done-payload instead; the frontend keeps the
+        # table untouched and tells the teacher to retry or type manually.
+        logger.warning("scoresheet_extract_status: task %s ready with empty payload", task_id)
+        return JsonResponse({'status': 'done', 'matched': [], 'unmatched': [], 'missing': []})
 
     if result.failed():
         logger.error("scoresheet_extract_status: task %s failed: %s", task_id, result.result)

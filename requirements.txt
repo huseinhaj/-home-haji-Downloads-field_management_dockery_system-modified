@@ -24,6 +24,7 @@ openai==2.8.1
 pdfminer.six==20251107
 pdfplumber==0.11.8
 pillow==12.0.0
+pillow-heif==1.1.1
 psycopg2==2.9.11
 psycopg2-binary==2.9.11
 pycparser==2.23

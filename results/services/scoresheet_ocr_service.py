@@ -143,8 +143,31 @@ def _load_page_images(uploaded_file) -> list:
         img = Image.open(uploaded_file)
         img = img.convert("RGB")
     except Exception as exc:
+        # iPhones and newer Androids save camera photos as HEIC/HEIF, which
+        # PIL cannot open on its own — pillow-heif registers the format
+        # when available. Without this, a teacher photographing a
+        # scoresheet on such a phone gets "Picha haikusomeka" every time.
+        heif_img = _open_with_pillow_heif(uploaded_file)
+        if heif_img is not None:
+            return [heif_img]
         raise ScoreSheetOCRError("Picha haikusomeka. Jaribu picha nyingine.") from exc
     return [img]
+
+
+def _open_with_pillow_heif(uploaded_file):
+    """Best-effort HEIC/HEIF decode via pillow-heif. Returns the RGB image
+    or None when the library is missing or the file isn't HEIF at all."""
+    try:
+        from pillow_heif import register_heif_opener
+    except ImportError:
+        return None
+    try:
+        register_heif_opener()
+        uploaded_file.seek(0)
+        img = Image.open(uploaded_file)
+        return img.convert("RGB")
+    except Exception:
+        return None
 
 
 def _encode_jpeg(img) -> bytes:
