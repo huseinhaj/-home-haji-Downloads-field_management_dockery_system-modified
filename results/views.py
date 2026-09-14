@@ -4353,10 +4353,23 @@ def bulk_upload_status(request, task_id):
 def save_confirmed_scores(request, exam_id):
     """Save scores that the academic officer reviewed and confirmed.
     Called after the preview/OCR step — the frontend sends the final
-    student_id + score pairs per subject."""
+    student_id + score pairs per subject.
+
+    Defensive on purpose: this is the last click after the officer has
+    already OCR'd and reviewed everything. Any duplicated row (the same
+    student picked twice in the review table — Postgres refuses an
+    ON CONFLICT upsert that touches one row twice) or junk score used to
+    bubble up as a bare HTML 500, which the review modal showed as the
+    generic red 'Save failed' toast. Now duplicates are dropped (first
+    occurrence wins, matching how the officer sees the rows) and a real
+    server fault returns a JSON error the toast can display verbatim.
+    """
     import json as _json
+    import logging as _logging
     from django.utils import timezone as _tz
     from .services.upload_processing_service import recompute_processed_results_for_exam
+
+    _log = _logging.getLogger(__name__)
 
     exam = _get_exam_or_404(exam_id, request.user)
 
@@ -4378,11 +4391,23 @@ def save_confirmed_scores(request, exam_id):
 
     # Build ExamResult entries from confirmed data
     exam_results = []
+    seen_student_ids = set()
+    duplicates_dropped = 0
     for entry in scores:
         student_id = entry.get('student_id')
         score = entry.get('score')
         is_absent = entry.get('is_absent', False)
         if student_id is None:
+            continue
+        student_id = int(student_id)
+        # Dedup: the review table allows picking the same student twice
+        # (manual 'Add Student' row, re-added OCR row, …). ON CONFLICT
+        # can't update the same row twice in one statement — drop the
+        # later occurrences, first VALID row wins. The dedup slot is
+        # claimed only when the row actually survives validation, so a
+        # junk-score row can't block the student's real one below it.
+        if student_id in seen_student_ids:
+            duplicates_dropped += 1
             continue
         # For absent students, score can be None/0; for present, score must be valid
         if is_absent:
@@ -4396,19 +4421,29 @@ def save_confirmed_scores(request, exam_id):
                 continue
             if score < 0 or score > 100:
                 continue
+        seen_student_ids.add(student_id)
         exam_results.append(ExamResult(
-            exam=exam, student_id=int(student_id), subject=subject,
+            exam=exam, student_id=student_id, subject=subject,
             score=score if not is_absent else None,
             is_absent=bool(is_absent),
         ))
 
     if exam_results:
-        ExamResult.objects.bulk_create(
-            exam_results,
-            update_conflicts=True,
-            unique_fields=['exam', 'student', 'subject'],
-            update_fields=['score', 'is_absent'],
-        )
+        try:
+            ExamResult.objects.bulk_create(
+                exam_results,
+                update_conflicts=True,
+                unique_fields=['exam', 'student', 'subject'],
+                update_fields=['score', 'is_absent'],
+            )
+        except Exception as exc:
+            # Last-resort guard: never surface a bare HTML 500 to the
+            # review modal — the frontend can only display JSON errors.
+            _log.exception("save_confirmed_scores: bulk upsert failed for exam=%s subject=%s", exam_id, subject_id)
+            return JsonResponse(
+                {'error': f'Hifadhi imeshindikana: {type(exc).__name__} — jaribu tena au wasiliana na msaada.'},
+                status=500,
+            )
 
     # Mark SubjectSubmission as SUBMITTED + APPROVED
     SubjectSubmission.objects.update_or_create(
@@ -4425,12 +4460,26 @@ def save_confirmed_scores(request, exam_id):
     )
 
     # Recompute processed results
-    recompute_processed_results_for_exam(exam)
+    try:
+        recompute_processed_results_for_exam(exam)
+    except Exception as exc:
+        # Scores ARE saved — don't report a total failure to the officer;
+        # tell them the truth and let them hit the results buttons again.
+        _log.exception("save_confirmed_scores: recompute failed for exam=%s", exam_id)
+        return JsonResponse({
+            'status': 'done',
+            'saved_count': len(exam_results),
+            'warning': f'Alama zimehifadhiwa, ila kuhesabu upya kwa madaraja kulikwama: {type(exc).__name__}.',
+            **({'duplicates_dropped': duplicates_dropped} if duplicates_dropped else {}),
+        })
 
-    return JsonResponse({
+    response = {
         'status': 'done',
         'saved_count': len(exam_results),
-    })
+    }
+    if duplicates_dropped:
+        response['duplicates_dropped'] = duplicates_dropped
+    return JsonResponse(response)
 
 
 @academic_required

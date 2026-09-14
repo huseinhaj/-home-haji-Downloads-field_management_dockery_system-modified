@@ -1283,6 +1283,19 @@
       return;
     }
 
+    // Warn about the same student appearing in more than one row — the
+    // server keeps the FIRST row and drops the rest, so surface that
+    // before the officer commits.
+    const idCounts = {};
+    scores.forEach(s => { idCounts[s.student_id] = (idCounts[s.student_id] || 0) + 1; });
+    const dupCount = Object.values(idCounts).filter(c => c > 1).length;
+    if (dupCount > 0) {
+      const msg = LANG === 'sw'
+        ? 'Mwanafunzi ' + dupCount + ' amechaguliwa mara mbili+ — mstari wa KWANZA ndio utakahifadhiwa, wengine wataondolewa. Endelea?'
+        : dupCount + ' student(s) appear in more than one row — only the FIRST row will be saved, the rest dropped. Continue?';
+      if (!confirm(msg)) return;
+    }
+
     const saveBtn = document.getElementById('reviewSaveBtn');
     saveBtn.disabled = true;
     saveBtn.textContent = '⏳ ' + (LANG === 'sw' ? 'Inahifadhi...' : 'Saving...');
@@ -1300,7 +1313,7 @@
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Save failed');
+      if (!res.ok) throw new Error(data.error || ('Save failed (HTTP ' + res.status + ')'));
 
       // Mark subject as done
       const chip = document.getElementById('chip-' + currentPreview.subject_id);
