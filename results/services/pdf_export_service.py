@@ -102,7 +102,11 @@ GRADE_COLORS = {
 # specific to this system's own 'normal' look) — matches each theme's own
 # header colour so results read as part of that theme, not the default one.
 # necta: BODY TEXT="#000080" — every cell prints navy, exactly like the sheet.
-_UNIFORM_GRADE_TEXT_HEX = {'rank': '#000000', 'necta': '#000080'}
+# royal: deep aubergine ink. acsee: charcoal on white panel, gold headings.
+_UNIFORM_GRADE_TEXT_HEX = {
+    'rank': '#000000', 'necta': '#000080',
+    'royal': '#4A1D6E', 'acsee': '#2B2B2B',
+}
 
 LEVEL_COLORS = {
     'Grade A': ('#15803D', '#DCFCE7'),
@@ -152,6 +156,28 @@ _THEMES = {
         'accent_fg':  NECTA_TEXT_NAVY,
         'section_fg': NECTA_HEADING,
         'page_bg':    NECTA_PAGE_BG,
+    },
+    'royal': {
+        # Form Five — ROYAL AMETHYST: luminous lavender page, purple-silk
+        # table headers, gold laurel framing. Regal and unmistakable.
+        'header_bg':  colors.HexColor("#6B2FA0"),
+        'header_fg':  WHITE,
+        'band_bg':    colors.HexColor("#F4EFFA"),
+        'accent_bg':  colors.HexColor("#E9DFF7"),
+        'accent_fg':  colors.HexColor("#4A1D6E"),
+        'section_fg': colors.HexColor("#6B2FA0"),
+        'page_bg':    colors.HexColor("#EFE7F9"),
+    },
+    'acsee': {
+        # Form Six — BLACK & GOLD PRESTIGE: onyx page, champagne-gold
+        # framing, cream panels. The 'graduation gala' certificate look.
+        'header_bg':  colors.HexColor("#1A1A1A"),
+        'header_fg':  colors.HexColor("#E5C96B"),
+        'band_bg':    colors.HexColor("#FBF6E8"),
+        'accent_bg':  colors.HexColor("#F0E4BC"),
+        'accent_fg':  colors.HexColor("#5A4713"),
+        'section_fg': colors.HexColor("#8A6D1F"),
+        'page_bg':    colors.HexColor("#141414"),
     },
 }
 
@@ -322,10 +348,28 @@ def _safe_b64_img(data_uri, x, y, w, h, canvas):
         pass
 
 
-def _std_table_style(n_rows, header_bg=None, header_fg=None, band_bg=None, necta=False):
+def _std_table_style(n_rows, header_bg=None, header_fg=None, band_bg=None, necta=False, prestige=False):
     hdr = header_bg or NAVY
     hfg = header_fg or WHITE
     band = band_bg or CREAM
+    if prestige:
+        # royal/acsee: white/cream panel cells, silk or onyx header, thin
+        # coloured grid + gold (acsee) / purple (royal) outer box.
+        line_c = NECTA_GRID if False else (colors.HexColor("#C9A227") if hfg == colors.HexColor("#E5C96B") else colors.HexColor("#6B2FA0"))
+        s = [
+            ('BACKGROUND', (0, 0), (-1, 0), hdr),
+            ('TEXTCOLOR', (0, 0), (-1, 0), hfg),
+            ('BACKGROUND', (0, 1), (-1, -1), band),
+            ('GRID', (0, 0), (-1, -1), 0.4, line_c),
+            ('BOX', (0, 0), (-1, -1), 1.0, line_c),
+            ('BOX', (0, 0), (-1, -1), 2.0, hdr),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ]
+        return s
     if necta:
         # NECTA sheet: every table cell is light yellow and the outer frame
         # is a DOUBLE line (mistari miwili) — the "table border + spacing"
@@ -376,7 +420,7 @@ class NECTAHeader(Flowable):
     LOGOS_H = 44
     BELOW_H = 68
 
-    def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang, exam_title='', form_num=4, exam_month='', district='', coa_uri='', card_color=None, heading_color=None):
+    def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang, exam_title='', form_num=4, exam_month='', district='', coa_uri='', card_color=None, heading_color=None, card_border_color=None):
         Flowable.__init__(self)
         self.exam = exam
         self.school_disp = school_disp
@@ -395,6 +439,7 @@ class NECTAHeader(Flowable):
         # own CSEE results HTML).
         self.card_color = card_color or TINT
         self.heading_color = heading_color or NAVY
+        self.card_border_color = card_border_color
         self.width = A4[0] - 3.2 * cm
         self.height = self.BANNER_H + self.LOGOS_H + self.BELOW_H  # 145pt
 
@@ -420,7 +465,7 @@ class NECTAHeader(Flowable):
         c.setFillColor(self.card_color)
         if self.card_color is not None:
             c.rect(0, 0, w, logos_y, fill=1, stroke=0)
-            c.setStrokeColor(NECTA_TEXT_NAVY)
+            c.setStrokeColor(self.card_border_color or NECTA_TEXT_NAVY)
             c.setLineWidth(2.0)
             c.rect(0, 0, w, logos_y, fill=0, stroke=1)
             c.setLineWidth(0.6)
@@ -633,7 +678,156 @@ def _draw_creative_background(canvas, w, h, style_key):
         canvas.setFillColor(WOOD_D)
         canvas.rect(0.55 * cm, 0.42 * cm, w - 1.1 * cm, 0.13 * cm, fill=1, stroke=0)
 
-    elif style_key == 'rank':
+    elif style_key == 'royal':
+        # ═ FORM FIVE — ROYAL AMETHYST ═══════════════════════════════
+        # Luminous lavender page; silk purple header band with a gold
+        # medallion sunburst centred above the frame; gold laurel
+        # half-wreaths in the corners; lavender silk side rails.
+        ROY_BG    = colors.HexColor("#EFE7F9")   # luminous lavender
+        ROY_ROYAL = colors.HexColor("#6B2FA0")   # royal purple silk
+        ROY_DEEP  = colors.HexColor("#4A1D6E")   # deep aubergine
+        ROY_GOLD  = colors.HexColor("#C9A227")   # heraldic gold
+        ROY_GOLD2 = colors.HexColor("#E5C96B")   # light gold
+        PANEL     = colors.white
+
+        canvas.setFillColor(ROY_BG)
+        canvas.rect(0, 0, w, h, fill=1, stroke=0)
+
+        # Purple silk bands top & bottom (double-tone).
+        canvas.setFillColor(ROY_ROYAL)
+        canvas.rect(0, h - 1.35 * cm, w, 1.35 * cm, fill=1, stroke=0)
+        canvas.setFillColor(ROY_DEEP)
+        canvas.rect(0, h - 0.45 * cm, w, 0.45 * cm, fill=1, stroke=0)
+        canvas.setFillColor(ROY_GOLD)
+        canvas.rect(0, h - 1.42 * cm, w, 0.07 * cm, fill=1, stroke=0)
+        canvas.setFillColor(ROY_ROYAL)
+        canvas.rect(0, 0.9 * cm, w, 0.45 * cm, fill=1, stroke=0)
+        canvas.setFillColor(ROY_DEEP)
+        canvas.rect(0, 0, w, 0.9 * cm, fill=1, stroke=0)
+
+        # Gold medallion sunburst top-centre — radiating regal rays.
+        import math
+        mcx, mcy, mr = w / 2, h - 1.35 * cm, 0.55 * cm
+        for k in range(12):
+            ang = math.pi * 2 * k / 12
+            canvas.setStrokeColor(ROY_GOLD if k % 2 == 0 else ROY_GOLD2)
+            canvas.setLineWidth(1.0)
+            canvas.line(mcx + 0.18 * cm * math.cos(ang), mcy + 0.18 * cm * math.sin(ang),
+                        mcx + mr * math.cos(ang), mcy + mr * math.sin(ang))
+        canvas.setFillColor(ROY_GOLD)
+        canvas.circle(mcx, mcy, 0.16 * cm, fill=1, stroke=0)
+        canvas.setStrokeColor(ROY_GOLD2)
+        canvas.setLineWidth(0.8)
+        canvas.circle(mcx, mcy, 0.22 * cm, fill=0, stroke=1)
+
+        # Laurel half-wreaths in all four corners — paired gold arcs with
+        # leaf ticks, the classic 'academic honour' mark.
+        def _laurel(cx0, cy0, flip):
+            for rr in (0.85 * cm, 0.62 * cm):
+                canvas.setStrokeColor(ROY_GOLD)
+                canvas.setLineWidth(1.0)
+                canvas.arc(cx0 - rr, cy0 - rr, cx0 + rr, cy0 + rr,
+                           0 if flip else 90, 90)
+                canvas.setStrokeColor(ROY_GOLD2)
+                canvas.setLineWidth(0.55)
+                canvas.arc(cx0 - rr * 0.8, cy0 - rr * 0.8,
+                           cx0 + rr * 0.8, cy0 + rr * 0.8,
+                           8 if flip else 98, 74)
+        for cx0, cy0, flip in (
+            (1.3 * cm, h - 2.2 * cm, True), (w - 1.3 * cm, h - 2.2 * cm, False),
+            (1.3 * cm, 2.2 * cm, False), (w - 1.3 * cm, 2.2 * cm, True),
+        ):
+            _laurel(cx0, cy0, flip)
+
+        # Silk side rails — purple double rules with gold tips.
+        for x in (0.9 * cm, w - 0.9 * cm):
+            canvas.setStrokeColor(ROY_ROYAL)
+            canvas.setLineWidth(1.1)
+            canvas.line(x, 1.4 * cm, x, h - 1.9 * cm)
+            canvas.setLineWidth(0.4)
+            canvas.line(x + 0.1 * cm, 1.4 * cm, x + 0.1 * cm, h - 1.9 * cm)
+            canvas.setFillColor(ROY_GOLD)
+            canvas.circle(x, h - 1.9 * cm, 0.07 * cm, fill=1, stroke=0)
+            canvas.circle(x, 1.4 * cm, 0.07 * cm, fill=1, stroke=0)
+
+        # White results panel with purple double frame + inner gold line.
+        px0, py0 = 1.0 * cm, 1.0 * cm
+        pw, ph = w - 2.0 * cm, h - 2.0 * cm
+        canvas.setFillColor(PANEL)
+        canvas.rect(px0, py0, pw, ph, fill=1, stroke=0)
+        canvas.setStrokeColor(ROY_ROYAL)
+        canvas.setLineWidth(1.6)
+        canvas.rect(px0 + 0.07 * cm, py0 + 0.07 * cm, pw - 0.14 * cm, ph - 0.14 * cm)
+        canvas.setStrokeColor(ROY_GOLD)
+        canvas.setLineWidth(0.6)
+        canvas.rect(px0 + 0.2 * cm, py0 + 0.2 * cm, pw - 0.4 * cm, ph - 0.4 * cm)
+
+    elif style_key == 'acsee':
+        # ═ FORM SIX — BLACK & GOLD PRESTIGE ═════════════════════════
+        # Onyx page; champagne-gold double frame with corner fleurons; a
+        # gold 'tassel' drop top-centre; cream results panel. The
+        # graduation-gala certificate look.
+        ONYX     = colors.HexColor("#141414")
+        ONYX_2   = colors.HexColor("#1F1F1F")
+        GOLD_L   = colors.HexColor("#D4B14A")   # champagne gold line
+        GOLD_L2  = colors.HexColor("#E5C96B")
+        CREAM_P  = colors.HexColor("#FBF6E8")   # warm cream panel
+        PANEL_E  = colors.HexColor("#8A6D1F")   # gold-bronze panel edge
+
+        canvas.setFillColor(ONYX)
+        canvas.rect(0, 0, w, h, fill=1, stroke=0)
+        canvas.setFillColor(ONYX_2)
+        canvas.rect(0, 0, w, h * 0.025, fill=1, stroke=0)
+        canvas.rect(0, h * 0.975, w, h * 0.025, fill=1, stroke=0)
+
+        # Champagne double frame — outer heavy, inner hairline.
+        canvas.setStrokeColor(GOLD_L)
+        canvas.setLineWidth(1.8)
+        canvas.rect(0.8 * cm, 0.8 * cm, w - 1.6 * cm, h - 1.6 * cm)
+        canvas.setStrokeColor(GOLD_L2)
+        canvas.setLineWidth(0.5)
+        canvas.rect(0.95 * cm, 0.95 * cm, w - 1.9 * cm, h - 1.9 * cm)
+
+        # Corner fleurons — diamond clusters in the frame corners.
+        import math
+        def _fleuron(cx0, cy0):
+            canvas.setFillColor(GOLD_L)
+            for dx, dy, sz in ((0, 0, 0.11 * cm), (0.16 * cm, 0.16 * cm, 0.06 * cm),
+                               (-0.16 * cm, 0.16 * cm, 0.06 * cm),
+                               (0.16 * cm, -0.16 * cm, 0.06 * cm),
+                               (-0.16 * cm, -0.16 * cm, 0.06 * cm)):
+                canvas.saveState()
+                canvas.translate(cx0 + dx, cy0 + dy)
+                canvas.rotate(45)
+                canvas.rect(-sz / 2, -sz / 2, sz, sz, fill=1, stroke=0)
+                canvas.restoreState()
+        for cx0, cy0 in ((0.8 * cm, h - 0.8 * cm), (w - 0.8 * cm, h - 0.8 * cm),
+                         (0.8 * cm, 0.8 * cm), (w - 0.8 * cm, 0.8 * cm)):
+            _fleuron(cx0, cy0)
+
+        # Gold tassel drop — centred cord + tassel head at the top edge.
+        tcx = w / 2
+        canvas.setStrokeColor(GOLD_L)
+        canvas.setLineWidth(1.0)
+        canvas.line(tcx, h - 0.8 * cm, tcx, h - 1.5 * cm)
+        canvas.setFillColor(GOLD_L2)
+        canvas.circle(tcx, h - 1.55 * cm, 0.09 * cm, fill=1, stroke=0)
+        canvas.setLineWidth(0.7)
+        for k in (-1, 0, 1):
+            canvas.line(tcx + k * 0.06 * cm, h - 1.62 * cm,
+                        tcx + k * 0.09 * cm, h - 1.85 * cm)
+
+        # Cream results panel with gold double border.
+        px0, py0 = 1.05 * cm, 1.05 * cm
+        pw, ph = w - 2.1 * cm, h - 2.1 * cm
+        canvas.setFillColor(CREAM_P)
+        canvas.rect(px0, py0, pw, ph, fill=1, stroke=0)
+        canvas.setStrokeColor(PANEL_E)
+        canvas.setLineWidth(1.5)
+        canvas.rect(px0 + 0.07 * cm, py0 + 0.07 * cm, pw - 0.14 * cm, ph - 0.14 * cm)
+        canvas.setStrokeColor(GOLD_L)
+        canvas.setLineWidth(0.6)
+        canvas.rect(px0 + 0.2 * cm, py0 + 0.2 * cm, pw - 0.4 * cm, ph - 0.4 * cm)
         GREEN_BG  = colors.HexColor("#1F7A3D")   # full deep school green
         GREEN_D   = colors.HexColor("#155C2C")   # darker edge shading
         LIME      = colors.HexColor("#C8E06B")   # celebratory gold-lime
@@ -822,6 +1016,7 @@ def generate_results_pdf_response(exam, style='normal'):
     style_key = (style or 'normal').lower()
     is_normal_style = style_key == 'normal'
     is_necta = style_key == 'necta'
+    is_prestige = style_key in ('royal', 'acsee')
     theme = _resolve_theme(style)
     # Re-tint the shared paragraph styles for this theme. _styles() returns
     # fresh objects every call, so mutating them here is local to this PDF.
@@ -835,6 +1030,9 @@ def generate_results_pdf_response(exam, style='normal'):
         # NECTA prints everything navy on the sheet (BODY TEXT="#000080").
         st['title_lg'].textColor = NECTA_TEXT_NAVY
         st['title_md'].textColor = NECTA_TEXT_NAVY
+    if is_prestige:
+        st['title_lg'].textColor = theme['section_fg']
+        st['title_md'].textColor = theme['section_fg']
     _HB, _HF, _BB = theme['header_bg'], theme['header_fg'], theme['band_bg']
     school_disp = get_full_school_name(exam)
     lang = get_report_language(exam)
@@ -996,8 +1194,9 @@ def generate_results_pdf_response(exam, style='normal'):
         exam_title=exam_title, form_num=exam.form,
         exam_month=exam_month, district=district,
         coa_uri=coa_uri,
-        card_color=_BB if is_necta else None,
-        heading_color=NECTA_TEXT_NAVY if is_necta else None,
+        card_color=theme['band_bg'] if (is_necta or is_prestige) else None,
+        heading_color=NECTA_TEXT_NAVY if is_necta else (theme['header_bg'] if is_prestige else None),
+        card_border_color=colors.HexColor('#C9A227') if style_key == 'royal' else (colors.HexColor('#8A6D1F') if style_key == 'acsee' else None),
     ))
     story.append(Spacer(1, 8))
 
@@ -1041,7 +1240,7 @@ def generate_results_pdf_response(exam, style='normal'):
 
     cw_div = [content_w * w for w in [0.12, 0.176, 0.176, 0.176, 0.176, 0.176]]
     div_table = Table(div_data, colWidths=cw_div)
-    ds = _std_table_style(len(div_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)
+    ds = _std_table_style(len(div_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_prestige)
     ds.append(('ALIGN', (1, 0), (-1, -1), 'CENTER'))
     div_table.setStyle(TableStyle(ds))
     story.append(div_table)
@@ -1060,7 +1259,7 @@ def generate_results_pdf_response(exam, style='normal'):
         perf_data.append([_p(k, st['td']), _p(f"<b>{v}</b>", st['td_bold'])])
     cw_perf = [content_w * 0.55, content_w * 0.45]
     perf_table = Table(perf_data, colWidths=cw_perf)
-    perf_table.setStyle(TableStyle(_std_table_style(len(perf_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
+    perf_table.setStyle(TableStyle(_std_table_style(len(perf_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_prestige)))
 
     _, grades = _grading_thresholds(exam.form, primary=is_primary)
     gk_title = "GRADING KEY" if lang == 'en' else "UFUNGUO WA DARAJA"
@@ -1116,7 +1315,7 @@ def generate_results_pdf_response(exam, style='normal'):
             ])
         cw_s = [content_w * 0.36] + [content_w * 0.16] * 4
         s_table = Table(s_data, colWidths=cw_s)
-        s_table.setStyle(TableStyle(_std_table_style(len(s_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
+        s_table.setStyle(TableStyle(_std_table_style(len(s_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_prestige)))
         story.append(s_table)
         story.append(Spacer(1, 4))
 
@@ -1141,7 +1340,7 @@ def generate_results_pdf_response(exam, style='normal'):
             ])
         cw_t5 = [content_w * w for w in [0.06, 0.30, 0.10, 0.10, 0.10, 0.10, 0.14]]
         t_table = Table(t_data, colWidths=cw_t5)
-        ts = _std_table_style(len(t_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)
+        ts = _std_table_style(len(t_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_prestige)
         ts.append(('BACKGROUND', (0, 1), (-1, 1), theme['accent_bg']))
         ts.append(('TEXTCOLOR', (0, 1), (-1, 1), theme['accent_fg']))
         t_table.setStyle(TableStyle(ts))
@@ -1263,23 +1462,38 @@ def generate_results_pdf_response(exam, style='normal'):
                 _p(str(r.division), dv_st),
                 _p(subj_text, subj_st),
             ]
-        if is_necta:
-            # NECTA-style per-student frame: wrap this row's cells in its own
-            # mini-table with a double-line box (mistari miwili) — the same
-            # "bordered row" look the printed NECTA sheet gives every
-            # candidate. Stored parallel to all_rows and swapped in when the
-            # page tables are assembled, so the real measured heights below
-            # already include the frame.
+        if is_necta or is_prestige:
+            # Framed per-student rows (NECTA double frame; prestige gets a
+            # single elegant box in the theme's accent colour). Stored
+            # parallel to all_rows and swapped in when the page tables are
+            # assembled, so the real measured heights below already include
+            # the frame.
             mini = Table([row_cells], colWidths=cw)
-            mini.setStyle(TableStyle([
-                ('BOX', (0, 0), (-1, -1), 1.0, NECTA_GRID),
-                ('BOX', (0, 0), (-1, -1), 2.2, NECTA_TEXT_NAVY),
+            if is_necta:
+                mini_style = [
+                    ('BOX', (0, 0), (-1, -1), 1.0, NECTA_GRID),
+                    ('BOX', (0, 0), (-1, -1), 2.2, NECTA_TEXT_NAVY),
+                ]
+            elif style_key == 'royal':
+                mini_style = [
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F4EFFA")),
+                    ('BOX', (0, 0), (-1, -1), 1.1, colors.HexColor("#6B2FA0")),
+                    ('LINEBELOW', (0, -1), (-1, -1), 0.5, colors.HexColor("#C9A227")),
+                ]
+            else:  # acsee
+                mini_style = [
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#FBF6E8")),
+                    ('BOX', (0, 0), (-1, -1), 1.1, colors.HexColor("#8A6D1F")),
+                    ('LINEBELOW', (0, -1), (-1, -1), 0.5, colors.HexColor("#D4B14A")),
+                ]
+            mini_style += [
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('TOPPADDING', (0, 0), (-1, -1), 2),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
                 ('LEFTPADDING', (0, 0), (-1, -1), 3),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-            ]))
+            ]
+            mini.setStyle(TableStyle(mini_style))
             necta_frames.append(mini)
             all_rows.append(row_cells)
         else:
@@ -1401,7 +1615,7 @@ def generate_results_pdf_response(exam, style='normal'):
             ])
         cw_sp = [content_w * w for w in [0.04, 0.22, 0.08, 0.08, 0.12, 0.46]]
         sp_table = Table(sp_data, colWidths=cw_sp)
-        sp_table.setStyle(TableStyle(_std_table_style(len(sp_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
+        sp_table.setStyle(TableStyle(_std_table_style(len(sp_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_prestige)))
         tail_flowables.append(sp_table)
         tail_flowables.append(Spacer(1, 6))
 
@@ -1441,7 +1655,7 @@ def generate_results_pdf_response(exam, style='normal'):
     chunks = []
     idx = 0
     n_rows = len(all_rows)
-    safety = SAFETY_MARGIN + 12 if is_necta else 0
+    safety = SAFETY_MARGIN + 12 if (is_necta or is_prestige) else 0
     while idx < n_rows:
         cum = header_h
         j = idx
@@ -1467,8 +1681,9 @@ def generate_results_pdf_response(exam, style='normal'):
             exam_title=exam_title, form_num=exam.form,
             exam_month=exam_month, district=district,
             coa_uri=coa_uri,
-            card_color=_BB if is_necta else None,
-            heading_color=NECTA_TEXT_NAVY if is_necta else None,
+            card_color=theme['band_bg'] if (is_necta or is_prestige) else None,
+            heading_color=NECTA_TEXT_NAVY if is_necta else (theme['header_bg'] if is_prestige else None),
+            card_border_color=colors.HexColor('#C9A227') if style_key == 'royal' else (colors.HexColor('#8A6D1F') if style_key == 'acsee' else None),
         ))
         story.append(Spacer(1, 6))
 
@@ -1477,12 +1692,11 @@ def generate_results_pdf_response(exam, style='normal'):
         # previous page and got bumped to a page of its own — skip the
         # table entirely rather than render one with just a header row.
         if c_end > c_start:
-            if is_necta:
-                # NECTA: each candidate's row IS a mini-table with its own
-                # double-line frame (mistari miwili), nested inside the page
-                # table and SPANned across all columns — the bordered-
-                # candidate look of the printed sheet. Each cell is a LIST
-                # of flowables (ReportLab's format for nested content).
+            if is_necta or is_prestige:
+                # Framed-row themes: each candidate's row IS a mini-table
+                # nested inside the page table and SPANned across all
+                # columns. Each cell is a LIST of flowables (ReportLab's
+                # format for nested content).
                 data = [_new_header_row()] + [
                     [[f]] for f in necta_frames[c_start:c_end]
                 ]
@@ -1500,12 +1714,16 @@ def generate_results_pdf_response(exam, style='normal'):
                 ('LEFTPADDING', (0, 0), (-1, -1), 3),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 3),
             ]
-            if is_necta:
+            if is_necta or is_prestige:
                 # Body rows are single SPANned cells holding the framed
-                # mini-table: yellow behind them, zero side padding so the
-                # mini-table's columns line up 1:1 with the header's, and
-                # no inner grid (the mini-tables draw their own double
-                # frames). Double outer frame around the whole table.
+                # mini-table: theme band behind them, zero side padding so
+                # the mini-table's columns line up 1:1 with the header's,
+                # and no inner grid (the mini-tables draw their own frames).
+                # Double outer frame around the whole table.
+                _outer = (NECTA_GRID, NECTA_TEXT_NAVY) if is_necta else (
+                    (colors.HexColor("#C9A227"), colors.HexColor("#4A1D6E")) if style_key == 'royal'
+                    else (colors.HexColor("#8A6D1F"), colors.HexColor("#1A1A1A"))
+                )
                 rs = [
                     ('BACKGROUND', (0, 0), (-1, 0), _HB),
                     ('TEXTCOLOR', (0, 0), (-1, 0), _HF),
@@ -1523,10 +1741,10 @@ def generate_results_pdf_response(exam, style='normal'):
                 ]
                 for i in range(1, len(data)):
                     rs.append(('SPAN', (0, i), (-1, i)))
-                rs.append(('BOX', (0, 0), (-1, -1), 1.0, NECTA_GRID))
-                rs.append(('BOX', (0, 0), (-1, -1), 2.2, NECTA_TEXT_NAVY))
+                rs.append(('BOX', (0, 0), (-1, -1), 1.0, _outer[0]))
+                rs.append(('BOX', (0, 0), (-1, -1), 2.2, _outer[1]))
             for i in range(1, len(data)):
-                if i % 2 == 0 and not is_necta:
+                if i % 2 == 0 and not (is_necta or is_prestige):
                     rs.append(('BACKGROUND', (0, i), (-1, i), _BB))
             r_table.setStyle(TableStyle(rs))
             story.append(r_table)
@@ -1599,11 +1817,12 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     exam = result.exam
     student = result.student
     st = _styles()
-    # ── Theme (normal | rank | necta) — same treatment as the full class
-    #    report in generate_results_pdf_response: palette/row styling only,
-    #    content identical. ──
+    # ── Theme (normal | rank | necta | royal | acsee) — same treatment as
+    #    the full class report in generate_results_pdf_response: palette/row
+    #    styling only, content identical. ──
     style_key = (style or 'normal').lower()
     is_necta = style_key == 'necta'
+    is_prestige = style_key in ('royal', 'acsee')
     theme = _resolve_theme(style)
     st['th'].textColor = theme['header_fg']
     st['th_sm'].textColor = theme['header_fg']
@@ -1611,6 +1830,9 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     if is_necta:
         st['title_lg'].textColor = NECTA_TEXT_NAVY
         st['title_md'].textColor = NECTA_TEXT_NAVY
+    if is_prestige:
+        st['title_lg'].textColor = theme['section_fg']
+        st['title_md'].textColor = theme['section_fg']
     _HB, _HF, _BB = theme['header_bg'], theme['header_fg'], theme['band_bg']
     school_disp = get_full_school_name(exam)
     lang = get_report_language(exam)
@@ -1658,8 +1880,9 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
             exam, school_disp, slogo_uri, dlogo_uri, stype, lang,
             exam_title=exam_title, form_num=exam.form,
             exam_month=exam_month, district=district, coa_uri=coa_uri,
-            card_color=_BB if is_necta else None,
-            heading_color=NECTA_TEXT_NAVY if is_necta else None,
+            card_color=theme['band_bg'] if (is_necta or is_prestige) else None,
+            heading_color=NECTA_TEXT_NAVY if is_necta else (theme['header_bg'] if is_prestige else None),
+            card_border_color=colors.HexColor('#C9A227') if style_key == 'royal' else (colors.HexColor('#8A6D1F') if style_key == 'acsee' else None),
         ),
         Spacer(1, 10),
         _p(f"<b>JINA LA MWANAFUNZI:</b> {student_name.upper()}", st['title_md']),
@@ -1695,7 +1918,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     subj_table = Table(subj_rows, colWidths=[
         content_w * 0.32, content_w * 0.13, content_w * 0.13, content_w * 0.14, content_w * 0.28,
     ])
-    subj_table.setStyle(TableStyle(_std_table_style(len(subj_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
+    subj_table.setStyle(TableStyle(_std_table_style(len(subj_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_prestige)))
     story.append(subj_table)
     story.append(Spacer(1, 14))
 
@@ -1728,7 +1951,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         header_bg=GREEN if style_key == 'normal' else _HB,
         header_fg=WHITE if style_key == 'normal' else _HF,
         band_bg=_BB,
-        necta=is_necta,
+        necta=is_necta, prestige=is_prestige,
     )))
     story.append(summary_table)
     story.append(Spacer(1, 10))
@@ -1752,7 +1975,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
          [_p(conduct_grades.get(key, '-'), st['td_bold']) for key, _label in conduct_cats]],
         colWidths=[content_w / len(conduct_cats)] * len(conduct_cats),
     )
-    conduct_table.setStyle(TableStyle(_std_table_style(2, header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
+    conduct_table.setStyle(TableStyle(_std_table_style(2, header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_prestige)))
     story.append(conduct_table)
     story.append(Spacer(1, 10))
 
@@ -1763,7 +1986,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     for g, rng in grade_bands:
         mchanganuo_rows.append([_p(rng, st['td']), _p(g, st['td_bold']), _p(GRADE_MEANING_SW.get(g, '-'), st['td'])])
     mchanganuo_table = Table(mchanganuo_rows, colWidths=[content_w * 0.3, content_w * 0.2, content_w * 0.5])
-    mchanganuo_table.setStyle(TableStyle(_std_table_style(len(mchanganuo_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
+    mchanganuo_table.setStyle(TableStyle(_std_table_style(len(mchanganuo_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_prestige)))
     story.append(mchanganuo_table)
     story.append(Spacer(1, 10))
 

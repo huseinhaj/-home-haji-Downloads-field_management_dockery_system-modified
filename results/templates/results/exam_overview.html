@@ -265,6 +265,16 @@
     <a href="{% url 'generate_results_pdf' exam.id %}?style=necta" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px;font-size:0.82rem;" target="_blank">
       📄 NECTA
     </a>
+    {% if exam.form == 5 %}
+    <a href="{% url 'generate_results_pdf' exam.id %}?style=royal" data-no-style-picker class="btn" style="background:linear-gradient(135deg,#6B2FA0,#4A1D6E);color:#E5C96B;font-weight:700;border-radius:2px;font-size:0.82rem;border:1px solid #C9A227;" target="_blank">
+      👑 Form Five Royal
+    </a>
+    {% endif %}
+    {% if exam.form == 6 %}
+    <a href="{% url 'generate_results_pdf' exam.id %}?style=acsee" data-no-style-picker class="btn" style="background:linear-gradient(135deg,#1A1A1A,#3A3A3A);color:#E5C96B;font-weight:700;border-radius:2px;font-size:0.82rem;border:1px solid #D4B14A;" target="_blank">
+      🎓 Form Six Prestige
+    </a>
+    {% endif %}
     {% endif %}
 
     {% if is_academic or request.user.id == exam.class_teacher_id %}

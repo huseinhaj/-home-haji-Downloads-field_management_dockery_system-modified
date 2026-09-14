@@ -187,11 +187,13 @@ def filter_exams(request):
 def generate_results_pdf(request, exam_id):
     exam = _get_exam_or_404(exam_id, request.user)
     recompute_processed_results_for_exam(exam)
-    # ?style= : 'normal' (default, unchanged) | 'rank' (TEC school-rank
-    # colours) | 'necta' (NECTA CSEE lavender layout). Content/structure
-    # are identical — only the palette / row styling differs.
+    # ?style= : 'normal' (default) | 'rank' (TEC school-rank colours) |
+    # 'necta' (authentic NECTA CSEE sheet) | 'royal' (Form Five — purple
+    # amethyst prestige) | 'acsee' (Form Six — black & gold prestige).
+    # Content/structure are identical — only the palette / row styling
+    # differs.
     style = (request.GET.get('style') or 'normal').lower()
-    if style not in ('normal', 'rank', 'necta'):
+    if style not in ('normal', 'rank', 'necta', 'royal', 'acsee'):
         style = 'normal'
     return generate_results_pdf_response(exam, style=style)
 
@@ -205,12 +207,12 @@ def generate_bulk_student_results_pdf(request, exam_id):
     file (the single-student one is safe to be public because a parent
     only has their own child's share token).
 
-    ?style= : 'normal' (kawaida) | 'rank' | 'necta' — palette tu
-    inabadilika, maudhui ni hayo hayo."""
+    ?style= : 'normal' (kawaida) | 'rank' | 'necta' | 'royal' (Form Five)
+    | 'acsee' (Form Six) — palette tu inabadilika, maudhui ni hayo hayo."""
     exam = _get_exam_or_404(exam_id, request.user)
     recompute_processed_results_for_exam(exam)
     style = (request.GET.get('style') or 'normal').lower()
-    if style not in ('normal', 'rank', 'necta'):
+    if style not in ('normal', 'rank', 'necta', 'royal', 'acsee'):
         style = 'normal'
     return generate_bulk_student_results_pdf_response(exam, style=style)
 

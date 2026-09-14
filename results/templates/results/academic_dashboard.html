@@ -352,6 +352,16 @@
             <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=necta" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti kwa muundo wa NECTA (PDF){% else %}Download the report in NECTA format (PDF){% endif %}">
               ⬇️ {% if LANG == 'sw' %}Ripoti ya NECTA{% else %}NECTA Report{% endif %}
             </a>
+            {% if ed.exam.form == 5 %}
+            <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=royal" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya kifahari ya Form Five (PDF){% else %}Download the Form Five Royal report (PDF){% endif %}" style="color:#6B2FA0;font-weight:700;">
+              👑 {% if LANG == 'sw' %}Form Five Royal{% else %}Form Five Royal{% endif %}
+            </a>
+            {% endif %}
+            {% if ed.exam.form == 6 %}
+            <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=acsee" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya kifahari ya Form Six (PDF){% else %}Download the Form Six Prestige report (PDF){% endif %}" style="color:#8A6D1F;font-weight:700;">
+              🎓 {% if LANG == 'sw' %}Form Six Prestige{% else %}Form Six Prestige{% endif %}
+            </a>
+            {% endif %}
           </div>
         </div>
         {% endif %}
