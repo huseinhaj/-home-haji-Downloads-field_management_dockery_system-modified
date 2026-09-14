@@ -85,6 +85,36 @@ DIV_FG = {
     '0':   colors.HexColor("#B91C1C"),
 }
 
+# Per-theme Division chip palettes — the DIV cell must POP against the row
+# background each theme paints, so the pastel 'normal' chips don't work for
+# the prestige/lavender/onyx sheets. royal: purple-tinted chips with aubergine
+# ink (Division I gets a gold honour chip). acsee: cream chips on the onyx
+# sheet with bronze ink (Division I gets the champagne honour chip).
+DIV_BG_THEME = {
+    'royal': {
+        'I':   colors.HexColor("#E5C96B"), 'II':  colors.HexColor("#DCCBF2"),
+        'III': colors.HexColor("#EADDF8"), 'IV':  colors.HexColor("#F2EBFA"),
+        '0':   colors.HexColor("#F4EFFA"),
+    },
+    'acsee': {
+        'I':   colors.HexColor("#D4B14A"), 'II':  colors.HexColor("#E5C96B"),
+        'III': colors.HexColor("#F0E4BC"), 'IV':  colors.HexColor("#F6ECD0"),
+        '0':   colors.HexColor("#FBF6E8"),
+    },
+}
+DIV_FG_THEME = {
+    'royal': {
+        'I':   colors.HexColor("#3D2A08"), 'II':  colors.HexColor("#4A1D6E"),
+        'III': colors.HexColor("#5B2E85"), 'IV':  colors.HexColor("#6B4FA0"),
+        '0':   colors.HexColor("#7A5AAE"),
+    },
+    'acsee': {
+        'I':   colors.HexColor("#2B2410"), 'II':  colors.HexColor("#4A3D10"),
+        'III': colors.HexColor("#5A4713"), 'IV':  colors.HexColor("#6E5A1E"),
+        '0':   colors.HexColor("#7E6B2A"),
+    },
+}
+
 GRADE_COLORS = {
     'A':  ('#15803D', '#DCFCE7'),
     'B':  ('#047857', '#D1FAE5'),
@@ -1434,6 +1464,12 @@ def generate_results_pdf_response(exam, style='normal'):
         if is_normal_style:
             div_bg = DIV_BG.get(r.division, WHITE)
             div_fg = DIV_FG.get(r.division, BLACK)
+        elif style_key in DIV_BG_THEME:
+            # royal/acsee: themed honour chips — Division I shines gold /
+            # champagne, lower divisions step down through the theme's tint
+            # ladder so every division reads clearly on the panel.
+            div_bg = DIV_BG_THEME[style_key].get(r.division, theme['band_bg'])
+            div_fg = DIV_FG_THEME[style_key].get(r.division, theme['section_fg'])
         else:
             div_bg = theme['band_bg']
             div_fg = theme['header_fg']
