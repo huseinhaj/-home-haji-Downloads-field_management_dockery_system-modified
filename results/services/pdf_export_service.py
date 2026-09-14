@@ -35,6 +35,15 @@ NAVY      = colors.HexColor("#1D4ED8")  # vivid modern blue (was muted navy)
 DARK_NAVY = colors.HexColor("#1E3A8A")  # deep blue for contrast accents
 GREEN     = colors.HexColor("#15803D")  # clean modern green (PMO banner)
 GOLD      = colors.HexColor("#F59E0B")  # vivid amber (was dull goldenrod)
+
+# ── Authentic NECTA colours — verified against NECTA's own CSEE results HTML
+# (onlinesys.necta.go.tz): BODY BGCOLOR="LIGHTBLUE", table BGCOLOR="LIGHTYELLOW",
+# BODY TEXT="#000080" (navy), headings FONT COLOR="#800080" (purple).
+NECTA_PAGE_BG   = colors.HexColor("#87CEEB")  # sky blue — whole-page background (deepened per user: "ikolee kweli")
+NECTA_TABLE_BG  = colors.HexColor("#FFFFE0")  # "lightyellow" — table cell background
+NECTA_TEXT_NAVY = colors.HexColor("#000080")  # navy body text
+NECTA_HEADING   = colors.HexColor("#800080")  # purple section headings
+NECTA_GRID      = colors.HexColor("#7A8BA8")  # slate-blue grid/frame lines
 CREAM     = colors.HexColor("#F8FAFC")  # cool neutral row tint (was warm cream)
 SLATE     = colors.HexColor("#475569")  # modern slate gray for muted text
 LGRAY     = colors.HexColor("#CBD5E1")  # light slate — grid lines
@@ -92,7 +101,8 @@ GRADE_COLORS = {
 # DIV_BG's/DIV_FG's per-grade rainbow (that pass/fail colour-coding is
 # specific to this system's own 'normal' look) — matches each theme's own
 # header colour so results read as part of that theme, not the default one.
-_UNIFORM_GRADE_TEXT_HEX = {'rank': '#000000', 'necta': '#1F3864'}
+# necta: BODY TEXT="#000080" — every cell prints navy, exactly like the sheet.
+_UNIFORM_GRADE_TEXT_HEX = {'rank': '#000000', 'necta': '#000080'}
 
 LEVEL_COLORS = {
     'Grade A': ('#15803D', '#DCFCE7'),
@@ -133,13 +143,15 @@ _THEMES = {
         'page_bg':    None,
     },
     'necta': {
-        'header_bg':  colors.HexColor("#DDEBF7"),
-        'header_fg':  colors.HexColor("#1F3864"),
-        'band_bg':    colors.HexColor("#FFFFCC"),
-        'accent_bg':  colors.HexColor("#B4C7E7"),
-        'accent_fg':  colors.HexColor("#1F3864"),
-        'section_fg': colors.HexColor("#7030A0"),
-        'page_bg':    colors.HexColor("#E9E4F2"),
+        # Authentic NECTA CSEE look: light-yellow tables on a light-blue page,
+        # navy text, purple headings (verified against NECTA's own results HTML).
+        'header_bg':  NECTA_TABLE_BG,
+        'header_fg':  NECTA_TEXT_NAVY,
+        'band_bg':    NECTA_TABLE_BG,
+        'accent_bg':  colors.HexColor("#FFF9B8"),  # slightly deeper yellow — TOP-5 highlight row
+        'accent_fg':  NECTA_TEXT_NAVY,
+        'section_fg': NECTA_HEADING,
+        'page_bg':    NECTA_PAGE_BG,
     },
 }
 
@@ -310,10 +322,28 @@ def _safe_b64_img(data_uri, x, y, w, h, canvas):
         pass
 
 
-def _std_table_style(n_rows, header_bg=None, header_fg=None, band_bg=None):
+def _std_table_style(n_rows, header_bg=None, header_fg=None, band_bg=None, necta=False):
     hdr = header_bg or NAVY
     hfg = header_fg or WHITE
     band = band_bg or CREAM
+    if necta:
+        # NECTA sheet: every table cell is light yellow and the outer frame
+        # is a DOUBLE line (mistari miwili) — the "table border + spacing"
+        # look of NECTA's printed sheet. Header row keeps the same yellow.
+        s = [
+            ('BACKGROUND', (0, 0), (-1, 0), hdr),
+            ('TEXTCOLOR', (0, 0), (-1, 0), hfg),
+            ('BACKGROUND', (0, 1), (-1, -1), band),
+            ('GRID', (0, 0), (-1, -1), 0.4, NECTA_GRID),
+            ('BOX', (0, 0), (-1, -1), 1.0, NECTA_GRID),
+            ('BOX', (0, 0), (-1, -1), 2.2, NECTA_TEXT_NAVY),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ]
+        return s
     s = [
         ('BACKGROUND', (0, 0), (-1, 0), hdr),
         ('TEXTCOLOR', (0, 0), (-1, 0), hfg),
@@ -346,7 +376,7 @@ class NECTAHeader(Flowable):
     LOGOS_H = 44
     BELOW_H = 68
 
-    def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang, exam_title='', form_num=4, exam_month='', district='', coa_uri=''):
+    def __init__(self, exam, school_disp, slogo_uri, dlogo_uri, stype, lang, exam_title='', form_num=4, exam_month='', district='', coa_uri='', card_color=None, heading_color=None):
         Flowable.__init__(self)
         self.exam = exam
         self.school_disp = school_disp
@@ -359,6 +389,12 @@ class NECTAHeader(Flowable):
         self.exam_month = exam_month
         self.district = district
         self.coa_uri = coa_uri
+        # Theme-aware palette: the tint card behind the district/title/school
+        # block and the navy accents switch with the output theme (necta
+        # paints them light-yellow / NECTA navy — verified against NECTA's
+        # own CSEE results HTML).
+        self.card_color = card_color or TINT
+        self.heading_color = heading_color or NAVY
         self.width = A4[0] - 3.2 * cm
         self.height = self.BANNER_H + self.LOGOS_H + self.BELOW_H  # 145pt
 
@@ -378,9 +414,19 @@ class NECTAHeader(Flowable):
 
         # Light tint card behind the district/title/school-name block below
         # the flag strip, so that block reads as a distinct panel rather
-        # than plain white page background.
-        c.setFillColor(TINT)
-        c.rect(0, 0, w, logos_y, fill=1, stroke=0)
+        # than plain white page background (necta theme: light yellow with
+        # a double-line border, so it reads as a sticker PASTED onto the
+        # blue page rather than just a colour change).
+        c.setFillColor(self.card_color)
+        if self.card_color is not None:
+            c.rect(0, 0, w, logos_y, fill=1, stroke=0)
+            c.setStrokeColor(NECTA_TEXT_NAVY)
+            c.setLineWidth(2.0)
+            c.rect(0, 0, w, logos_y, fill=0, stroke=1)
+            c.setLineWidth(0.6)
+            c.rect(1.6, 1.6, w - 3.2, logos_y - 3.2, fill=0, stroke=1)
+        else:
+            c.rect(0, 0, w, logos_y, fill=1, stroke=0)
 
         c.setFillColor(GREEN)
         c.roundRect(0, strip_top, w, h - strip_top, 3, fill=1, stroke=0)
@@ -450,7 +496,7 @@ class NECTAHeader(Flowable):
 
         # ── 4. DISTRICT COUNCIL ──
         y = strip_y - 14
-        c.setFillColor(NAVY)
+        c.setFillColor(self.heading_color)
         c.setFont('Helvetica-Bold', 9)
         district_text = self.district.upper() + " DISTRICT COUNCIL" if self.district else "DISTRICT COUNCIL"
         c.drawCentredString(cx, y, district_text)
@@ -468,7 +514,7 @@ class NECTAHeader(Flowable):
         result_line = f"FORM {form_word} {self.exam_title} EXAMINATION RESULTS"
         c.setFont('Helvetica-Bold', 11)
         badge_w = c.stringWidth(result_line, 'Helvetica-Bold', 11) + 24
-        c.setFillColor(NAVY)
+        c.setFillColor(self.heading_color)
         c.roundRect(cx - badge_w / 2, y - 4, badge_w, 16, 3, fill=1, stroke=0)
         c.setFillColor(colors.white)
         c.drawCentredString(cx, y, result_line)
@@ -481,7 +527,7 @@ class NECTAHeader(Flowable):
 
         # ── 7. SCHOOL NAME ──
         y -= 14
-        c.setFillColor(NAVY)
+        c.setFillColor(self.heading_color)
         c.setFont('Helvetica-Bold', 12)
         c.drawCentredString(cx, y, self.school_disp)
 
@@ -499,22 +545,32 @@ def _footer(canvas, doc):
     except Exception:
         w, h = A4
 
-    # Themed page background (e.g. the NECTA CSEE pale lavender) — painted
+    # Themed page background (e.g. the NECTA CSEE light blue) — painted
     # behind everything, before the border/content.
     page_bg = getattr(doc, '_page_bg', None)
     if page_bg is not None:
         canvas.setFillColor(page_bg)
         canvas.rect(0, 0, w, h, fill=1, stroke=0)
 
-    # Page border — navy outer
-    canvas.setStrokeColor(NAVY)
-    canvas.setLineWidth(1.0)
-    canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, h - 1.6 * cm)
+    if getattr(doc, '_necta_frame', False):
+        # NECTA sheet frame: a DOUBLE line (mistari miwili myembili) running
+        # around the whole page — outer thin + inner thick, like the printed
+        # NECTA results sheet's boxed edge.
+        canvas.setStrokeColor(NECTA_TEXT_NAVY)
+        canvas.setLineWidth(2.0)
+        canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, h - 1.6 * cm)
+        canvas.setLineWidth(0.6)
+        canvas.rect(1.14 * cm, 0.94 * cm, w - 2.28 * cm, h - 1.88 * cm)
+    else:
+        # Page border — navy outer
+        canvas.setStrokeColor(NAVY)
+        canvas.setLineWidth(1.0)
+        canvas.rect(1.0 * cm, 0.8 * cm, w - 2.0 * cm, h - 1.6 * cm)
 
-    # Inner decorative line — gold
-    canvas.setStrokeColor(GOLD)
-    canvas.setLineWidth(0.3)
-    canvas.rect(1.15 * cm, 0.95 * cm, w - 2.3 * cm, h - 1.9 * cm)
+        # Inner decorative line — gold
+        canvas.setStrokeColor(GOLD)
+        canvas.setLineWidth(0.3)
+        canvas.rect(1.15 * cm, 0.95 * cm, w - 2.3 * cm, h - 1.9 * cm)
 
     # Footer text (without page numbers — added later by NumberedCanvas)
     canvas.setFont('Helvetica', 6)
@@ -621,16 +677,20 @@ def generate_results_pdf_response(exam, style='normal'):
     st = _styles()
     style_key = (style or 'normal').lower()
     is_normal_style = style_key == 'normal'
+    is_necta = style_key == 'necta'
     theme = _resolve_theme(style)
     # Re-tint the shared paragraph styles for this theme. _styles() returns
     # fresh objects every call, so mutating them here is local to this PDF.
     st['th'].textColor = theme['header_fg']
     st['th_sm'].textColor = theme['header_fg']
-    # necta keeps the system's own section-title colour (navy) rather than
-    # NECTA's purple — only the results table itself should look like the
-    # NECTA reference sheet, not the surrounding headings.
-    if style_key != 'necta':
-        st['section'].textColor = theme['section_fg']
+    # necta: NECTA prints its own headings purple ("FONT COLOR=\"#800080\""
+    # in their results HTML) — so here the section titles DO take the
+    # theme's purple, unlike before.
+    st['section'].textColor = theme['section_fg']
+    if is_necta:
+        # NECTA prints everything navy on the sheet (BODY TEXT="#000080").
+        st['title_lg'].textColor = NECTA_TEXT_NAVY
+        st['title_md'].textColor = NECTA_TEXT_NAVY
     _HB, _HF, _BB = theme['header_bg'], theme['header_fg'], theme['band_bg']
     school_disp = get_full_school_name(exam)
     lang = get_report_language(exam)
@@ -792,6 +852,8 @@ def generate_results_pdf_response(exam, style='normal'):
         exam_title=exam_title, form_num=exam.form,
         exam_month=exam_month, district=district,
         coa_uri=coa_uri,
+        card_color=_BB if is_necta else None,
+        heading_color=NECTA_TEXT_NAVY if is_necta else None,
     ))
     story.append(Spacer(1, 8))
 
@@ -835,7 +897,7 @@ def generate_results_pdf_response(exam, style='normal'):
 
     cw_div = [content_w * w for w in [0.12, 0.176, 0.176, 0.176, 0.176, 0.176]]
     div_table = Table(div_data, colWidths=cw_div)
-    ds = _std_table_style(len(div_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)
+    ds = _std_table_style(len(div_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)
     ds.append(('ALIGN', (1, 0), (-1, -1), 'CENTER'))
     div_table.setStyle(TableStyle(ds))
     story.append(div_table)
@@ -854,7 +916,7 @@ def generate_results_pdf_response(exam, style='normal'):
         perf_data.append([_p(k, st['td']), _p(f"<b>{v}</b>", st['td_bold'])])
     cw_perf = [content_w * 0.55, content_w * 0.45]
     perf_table = Table(perf_data, colWidths=cw_perf)
-    perf_table.setStyle(TableStyle(_std_table_style(len(perf_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
+    perf_table.setStyle(TableStyle(_std_table_style(len(perf_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
 
     _, grades = _grading_thresholds(exam.form, primary=is_primary)
     gk_title = "GRADING KEY" if lang == 'en' else "UFUNGUO WA DARAJA"
@@ -910,7 +972,7 @@ def generate_results_pdf_response(exam, style='normal'):
             ])
         cw_s = [content_w * 0.36] + [content_w * 0.16] * 4
         s_table = Table(s_data, colWidths=cw_s)
-        s_table.setStyle(TableStyle(_std_table_style(len(s_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
+        s_table.setStyle(TableStyle(_std_table_style(len(s_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
         story.append(s_table)
         story.append(Spacer(1, 4))
 
@@ -935,7 +997,7 @@ def generate_results_pdf_response(exam, style='normal'):
             ])
         cw_t5 = [content_w * w for w in [0.06, 0.30, 0.10, 0.10, 0.10, 0.10, 0.14]]
         t_table = Table(t_data, colWidths=cw_t5)
-        ts = _std_table_style(len(t_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)
+        ts = _std_table_style(len(t_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)
         ts.append(('BACKGROUND', (0, 1), (-1, 1), theme['accent_bg']))
         ts.append(('TEXTCOLOR', (0, 1), (-1, 1), theme['accent_fg']))
         t_table.setStyle(TableStyle(ts))
@@ -991,6 +1053,7 @@ def generate_results_pdf_response(exam, style='normal'):
     # Build every result row ONCE, up front, so its real height can be
     # measured before deciding how many rows fit on each page.
     all_rows = []
+    necta_frames = []  # parallel to all_rows: per-row mini-table (necta) or None
     for r in results:
         cno = f"{r.position:03d}"
         nm = _student_name(r)
@@ -1037,7 +1100,7 @@ def generate_results_pdf_response(exam, style='normal'):
 
         if is_primary:
             avg_g = _grade_for_score(float(r.average_score), exam.form, primary=True)
-            all_rows.append([
+            row_cells = [
                 _p(cno, cell_st),
                 _p(nm, name_st),
                 _p(r.student.gender or 'M', cell_st),
@@ -1045,9 +1108,9 @@ def generate_results_pdf_response(exam, style='normal'):
                 _p(f"{float(r.average_score):.1f}", cell_bold),
                 _p(avg_g or '-', dv_st),
                 _p(subj_text, subj_st),
-            ])
+            ]
         else:
-            all_rows.append([
+            row_cells = [
                 _p(cno, cell_st),
                 _p(nm, name_st),
                 _p(r.student.gender or 'M', cell_st),
@@ -1055,9 +1118,40 @@ def generate_results_pdf_response(exam, style='normal'):
                 _p(f"{stu_gpa:.2f}", cell_bold),
                 _p(str(r.division), dv_st),
                 _p(subj_text, subj_st),
-            ])
+            ]
+        if is_necta:
+            # NECTA-style per-student frame: wrap this row's cells in its own
+            # mini-table with a double-line box (mistari miwili) — the same
+            # "bordered row" look the printed NECTA sheet gives every
+            # candidate. Stored parallel to all_rows and swapped in when the
+            # page tables are assembled, so the real measured heights below
+            # already include the frame.
+            mini = Table([row_cells], colWidths=cw)
+            mini.setStyle(TableStyle([
+                ('BOX', (0, 0), (-1, -1), 1.0, NECTA_GRID),
+                ('BOX', (0, 0), (-1, -1), 2.2, NECTA_TEXT_NAVY),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ('LEFTPADDING', (0, 0), (-1, -1), 3),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ]))
+            necta_frames.append(mini)
+            all_rows.append(row_cells)
+        else:
+            necta_frames.append(None)
+            all_rows.append(row_cells)
 
-    row_heights = [_row_cells_height(cells) for cells in all_rows]
+    row_heights = []
+    for frame, cells in zip(necta_frames, all_rows):
+        if frame is not None:
+            # NECTA: the frame itself adds ~3pt of border + the outer
+            # table's 2+2pt padding — measure the real mini-table height so
+            # page packing doesn't underestimate and overflow a page.
+            _, fh = frame.wrap(content_w, 10000)
+            row_heights.append(fh + 4)
+        else:
+            row_heights.append(_row_cells_height(cells))
 
     # ── Tail block (grading key + centre performance + subject performance) ──
     # Built once — it only ever lands on the true last page, right after the
@@ -1082,6 +1176,11 @@ def generate_results_pdf_response(exam, style='normal'):
     for i, (g, _) in enumerate(grades):
         gk_s2.append(('BACKGROUND', (i, 0), (i, 0), GRADE_BG.get(g, WHITE)))
     gk_table_pg.setStyle(TableStyle(gk_s2))
+    if is_necta:
+        gk_table_pg.setStyle(TableStyle([
+            ('BOX', (0, 0), (-1, -1), 1.0, NECTA_GRID),
+            ('BOX', (0, 0), (-1, -1), 2.2, NECTA_TEXT_NAVY),
+        ]))
     tail_flowables.append(Spacer(1, 6))
     tail_flowables.append(gk_table_pg)
     tail_flowables.append(Spacer(1, 5))
@@ -1117,7 +1216,7 @@ def generate_results_pdf_response(exam, style='normal'):
         dp_data.append(dp_row)
     cw_dp = [content_w / len(div_perf_hdrs)] * len(div_perf_hdrs)
     dp_table = Table(dp_data, colWidths=cw_dp)
-    dp_table.setStyle(TableStyle([
+    dp_style = [
         ('BACKGROUND', (0, 0), (-1, 0), _HB),
         ('TEXTCOLOR', (0, 0), (-1, 0), _HF),
         ('GRID', (0, 0), (-1, -1), 0.3, LGRAY),
@@ -1126,7 +1225,14 @@ def generate_results_pdf_response(exam, style='normal'):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
         ('LEFTPADDING', (0, 0), (-1, -1), 2),
         ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-    ]))
+    ]
+    if is_necta:
+        dp_style += [
+            ('BACKGROUND', (0, 1), (-1, -1), _BB),
+            ('BOX', (0, 0), (-1, -1), 1.0, NECTA_GRID),
+            ('BOX', (0, 0), (-1, -1), 2.2, NECTA_TEXT_NAVY),
+        ]
+    dp_table.setStyle(TableStyle(dp_style))
     tail_flowables.append(dp_table)
     tail_flowables.append(Spacer(1, 4))
 
@@ -1151,7 +1257,7 @@ def generate_results_pdf_response(exam, style='normal'):
             ])
         cw_sp = [content_w * w for w in [0.04, 0.22, 0.08, 0.08, 0.12, 0.46]]
         sp_table = Table(sp_data, colWidths=cw_sp)
-        sp_table.setStyle(TableStyle(_std_table_style(len(sp_data), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
+        sp_table.setStyle(TableStyle(_std_table_style(len(sp_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
         tail_flowables.append(sp_table)
         tail_flowables.append(Spacer(1, 6))
 
@@ -1184,13 +1290,18 @@ def generate_results_pdf_response(exam, style='normal'):
     # that final page, or — if it doesn't fit there — gets a page of its
     # own. Rows are never pulled off an already-packed page to make room
     # for it, so no results page ends up smaller than it needs to be.
+    # (Under necta each row is a framed mini-table that renders a few points
+    # taller than its bare cells, so a safety margin keeps ReportLab's own
+    # wrapping from spilling a framed row onto its own page. 'normal' keeps
+    # its original packing behaviour untouched — margin 0, exactly as before.)
     chunks = []
     idx = 0
     n_rows = len(all_rows)
+    safety = SAFETY_MARGIN + 12 if is_necta else 0
     while idx < n_rows:
         cum = header_h
         j = idx
-        while j < n_rows and (j == idx or cum + row_heights[j] <= available_h):
+        while j < n_rows and (j == idx or cum + row_heights[j] <= available_h - safety):
             cum += row_heights[j]
             j += 1
         chunks.append((idx, j))
@@ -1200,7 +1311,7 @@ def generate_results_pdf_response(exam, style='normal'):
 
     c_start, c_end = chunks[-1]
     last_page_used = header_h + sum(row_heights[c_start:c_end])
-    if last_page_used + tail_reserve > available_h:
+    if last_page_used + tail_reserve > available_h - safety:
         chunks.append((n_rows, n_rows))  # tail doesn't fit here — give it its own page
 
     total_pages = len(chunks)
@@ -1212,6 +1323,8 @@ def generate_results_pdf_response(exam, style='normal'):
             exam_title=exam_title, form_num=exam.form,
             exam_month=exam_month, district=district,
             coa_uri=coa_uri,
+            card_color=_BB if is_necta else None,
+            heading_color=NECTA_TEXT_NAVY if is_necta else None,
         ))
         story.append(Spacer(1, 6))
 
@@ -1220,7 +1333,17 @@ def generate_results_pdf_response(exam, style='normal'):
         # previous page and got bumped to a page of its own — skip the
         # table entirely rather than render one with just a header row.
         if c_end > c_start:
-            data = [_new_header_row()] + all_rows[c_start:c_end]
+            if is_necta:
+                # NECTA: each candidate's row IS a mini-table with its own
+                # double-line frame (mistari miwili), nested inside the page
+                # table and SPANned across all columns — the bordered-
+                # candidate look of the printed sheet. Each cell is a LIST
+                # of flowables (ReportLab's format for nested content).
+                data = [_new_header_row()] + [
+                    [[f]] for f in necta_frames[c_start:c_end]
+                ]
+            else:
+                data = [_new_header_row()] + all_rows[c_start:c_end]
 
             r_table = Table(data, colWidths=cw)
             rs = [
@@ -1233,8 +1356,33 @@ def generate_results_pdf_response(exam, style='normal'):
                 ('LEFTPADDING', (0, 0), (-1, -1), 3),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 3),
             ]
+            if is_necta:
+                # Body rows are single SPANned cells holding the framed
+                # mini-table: yellow behind them, zero side padding so the
+                # mini-table's columns line up 1:1 with the header's, and
+                # no inner grid (the mini-tables draw their own double
+                # frames). Double outer frame around the whole table.
+                rs = [
+                    ('BACKGROUND', (0, 0), (-1, 0), _HB),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), _HF),
+                    ('GRID', (0, 0), (-1, 0), 0.3, DARK_LINE),
+                    ('BACKGROUND', (0, 1), (-1, -1), _BB),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('TOPPADDING', (0, 0), (-1, 0), 2),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 2),
+                    ('LEFTPADDING', (0, 0), (-1, 0), 3),
+                    ('RIGHTPADDING', (0, 0), (-1, 0), 3),
+                    ('TOPPADDING', (0, 1), (-1, -1), 2),
+                    ('BOTTOMPADDING', (0, 1), (-1, -1), 2),
+                    ('LEFTPADDING', (0, 1), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 1), (-1, -1), 0),
+                ]
+                for i in range(1, len(data)):
+                    rs.append(('SPAN', (0, i), (-1, i)))
+                rs.append(('BOX', (0, 0), (-1, -1), 1.0, NECTA_GRID))
+                rs.append(('BOX', (0, 0), (-1, -1), 2.2, NECTA_TEXT_NAVY))
             for i in range(1, len(data)):
-                if i % 2 == 0:
+                if i % 2 == 0 and not is_necta:
                     rs.append(('BACKGROUND', (0, i), (-1, i), _BB))
             r_table.setStyle(TableStyle(rs))
             story.append(r_table)
@@ -1263,6 +1411,8 @@ def generate_results_pdf_response(exam, style='normal'):
     doc._gen_date_short = gen_date_short
     doc._content_w = content_w
     doc._page_bg = theme['page_bg']
+    # necta: swap the navy+gold page border for the NECTA double-line frame
+    doc._necta_frame = is_necta
 
     # NumberedCanvas draws "Page X of Y" + signature after all pages are laid
     # out, once the true total page count is known — no second build needed.
@@ -1308,11 +1458,14 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     #    report in generate_results_pdf_response: palette/row styling only,
     #    content identical. ──
     style_key = (style or 'normal').lower()
+    is_necta = style_key == 'necta'
     theme = _resolve_theme(style)
     st['th'].textColor = theme['header_fg']
     st['th_sm'].textColor = theme['header_fg']
-    if style_key != 'necta':
-        st['section'].textColor = theme['section_fg']
+    st['section'].textColor = theme['section_fg']
+    if is_necta:
+        st['title_lg'].textColor = NECTA_TEXT_NAVY
+        st['title_md'].textColor = NECTA_TEXT_NAVY
     _HB, _HF, _BB = theme['header_bg'], theme['header_fg'], theme['band_bg']
     school_disp = get_full_school_name(exam)
     lang = get_report_language(exam)
@@ -1360,6 +1513,8 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
             exam, school_disp, slogo_uri, dlogo_uri, stype, lang,
             exam_title=exam_title, form_num=exam.form,
             exam_month=exam_month, district=district, coa_uri=coa_uri,
+            card_color=_BB if is_necta else None,
+            heading_color=NECTA_TEXT_NAVY if is_necta else None,
         ),
         Spacer(1, 10),
         _p(f"<b>JINA LA MWANAFUNZI:</b> {student_name.upper()}", st['title_md']),
@@ -1395,7 +1550,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     subj_table = Table(subj_rows, colWidths=[
         content_w * 0.32, content_w * 0.13, content_w * 0.13, content_w * 0.14, content_w * 0.28,
     ])
-    subj_table.setStyle(TableStyle(_std_table_style(len(subj_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
+    subj_table.setStyle(TableStyle(_std_table_style(len(subj_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
     story.append(subj_table)
     story.append(Spacer(1, 14))
 
@@ -1428,6 +1583,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         header_bg=GREEN if style_key == 'normal' else _HB,
         header_fg=WHITE if style_key == 'normal' else _HF,
         band_bg=_BB,
+        necta=is_necta,
     )))
     story.append(summary_table)
     story.append(Spacer(1, 10))
@@ -1451,7 +1607,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
          [_p(conduct_grades.get(key, '-'), st['td_bold']) for key, _label in conduct_cats]],
         colWidths=[content_w / len(conduct_cats)] * len(conduct_cats),
     )
-    conduct_table.setStyle(TableStyle(_std_table_style(2, header_bg=_HB, header_fg=_HF, band_bg=_BB)))
+    conduct_table.setStyle(TableStyle(_std_table_style(2, header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
     story.append(conduct_table)
     story.append(Spacer(1, 10))
 
@@ -1462,7 +1618,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     for g, rng in grade_bands:
         mchanganuo_rows.append([_p(rng, st['td']), _p(g, st['td_bold']), _p(GRADE_MEANING_SW.get(g, '-'), st['td'])])
     mchanganuo_table = Table(mchanganuo_rows, colWidths=[content_w * 0.3, content_w * 0.2, content_w * 0.5])
-    mchanganuo_table.setStyle(TableStyle(_std_table_style(len(mchanganuo_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB)))
+    mchanganuo_table.setStyle(TableStyle(_std_table_style(len(mchanganuo_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta)))
     story.append(mchanganuo_table)
     story.append(Spacer(1, 10))
 
@@ -1514,6 +1670,8 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     doc._exam = exam
     doc._gen_date_short = gen_date_short
     doc._page_bg = theme['page_bg']
+    # necta: swap the navy+gold page border for the NECTA double-line frame
+    doc._necta_frame = is_necta
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
 
     buf.seek(0)
