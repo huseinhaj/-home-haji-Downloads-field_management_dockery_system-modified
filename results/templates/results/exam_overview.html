@@ -204,6 +204,8 @@
       {% if not ctx.is_approved and not is_academic %}
       <a href="{{ ctx.marks_url }}" class="btn btn-speech">✏️ {% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</a>
       <a href="{{ ctx.upload_url }}" class="btn btn-upload-sm">{% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
+      <a href="{% url 'scan_upload' exam.pk ctx.subject.pk %}" class="btn btn-upload-sm" title="Sahishi Scan — piga picha karatasi, mfumo usahihishe moja kwa moja">📷 Sahishi Scan</a>
+      <a href="{% url 'scan_scheme_upload' exam.pk ctx.subject.pk %}" class="btn btn-upload-sm" title="Pakia marking scheme ya somo hili">📋 Scheme</a>
       {% endif %}
       {% if ctx.is_returned and not is_academic %}
       <a href="{{ ctx.marks_url }}" class="btn" style="background:#c0392b;color:#fff;font-size:.72rem;padding:.28rem .7rem;border-radius:2px;font-weight:700;border:none;">

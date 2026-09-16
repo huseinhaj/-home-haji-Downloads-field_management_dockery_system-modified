@@ -1,0 +1,154 @@
+{% extends "results/base.html" %}
+{% block title %}Sahishi — Review | {{ exam.name }}{% endblock %}
+{% block content %}
+<div style="max-width:1000px;margin:0 auto;padding:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <h1 style="font-size:1.3rem;">📝 Review — {{ subject.name }}</h1>
+    <div>
+      <a href="{% url 'scan_upload' exam.pk subject.pk %}"
+         style="background:#fff;color:#1a56db;border:1.5px solid #1a56db;text-decoration:none;padding:7px 14px;border-radius:4px;font-weight:700;">
+        ← Scan nyingine
+      </a>
+      {% if graded_count_total > 0 %}
+      <form method="post" action="{% url 'scan_import' exam.pk subject.pk %}" style="display:inline;"
+            onsubmit="return confirm('Ingiza matokeo yote yaliyosahihishwa kwenye mtihani?');">
+        {% csrf_token %}
+        <button type="submit" style="background:#1F7A3D;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-weight:700;cursor:pointer;">
+          ✅ Ingiza kwenye Matokeo
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  <p style="color:#555;">
+    <strong>{{ exam.name }}</strong> |
+    Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} | {{ exam.year }}
+  </p>
+
+  {% if scheme %}
+  <div style="background:#f5f0fa;border:1px solid #d9cbee;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.88rem;">
+    📋 <strong>Marking Scheme ya {{ subject.name }} ipo</strong>
+    ({{ scheme.parsed_count }} maswali{% if scheme.is_choice %} — auto-grade{% else %} — marejeleo ya calculation{% endif %}).
+    {% for p in scheme.pages.all %}
+      <a href="{{ p.image.url }}" target="_blank" style="color:#6b3fa0;font-weight:600;">Ukurasa {{ p.page_number }}</a>{% if not forloop.last %} · {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if sheets %}
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;font-size:.88rem;">
+      <thead>
+        <tr style="background:#f7f7f7;text-align:left;">
+          <th style="padding:10px 12px;border-bottom:2px solid #e0e0e0;">Mwanafunzi</th>
+          <th style="padding:10px 12px;border-bottom:2px solid #e0e0e0;">Alama</th>
+          <th style="padding:10px 12px;border-bottom:2px solid #e0e0e0;">Hali</th>
+          <th style="padding:10px 12px;border-bottom:2px solid #e0e0e0;">Vitendo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sheet in sheets %}
+        <tr>
+          <td style="padding:10px 12px;border-bottom:1px solid #eee;">
+            {% if sheet.student %}
+              {{ sheet.student.full_name }}
+              {% if sheet.student.admission_no %}
+                <span style="color:#999;">({{ sheet.student.admission_no }})</span>
+              {% endif %}
+            {% else %}
+              <span style="color:#c0392b;">Haitambuliki</span>
+            {% endif %}
+            <div style="color:#999;font-size:.78rem;">uk. {{ sheet.page_number }}</div>
+          </td>
+          <td style="padding:10px 12px;border-bottom:1px solid #eee;">
+            <strong>{{ sheet.score|default_if_none:"—" }}</strong>
+            {% if sheet.total %}/ {{ sheet.total }}{% endif %}
+          </td>
+          <td style="padding:10px 12px;border-bottom:1px solid #eee;">
+            {% if sheet.status == "IMPORTED" %}
+              <span style="background:#e8f1fb;color:#1a56db;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:700;">IMEINGIZWA</span>
+            {% elif sheet.status == "GRADED" %}
+              <span style="background:#eef7f0;color:#1F7A3D;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:700;">IMESAHIHISHWA</span>
+            {% elif sheet.status == "NEEDS_REVIEW" %}
+              <span style="background:#fdecea;color:#c0392b;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:700;">UKAGUZI</span>
+              {% if sheet.needs_review_reason %}
+                <div style="color:#999;font-size:.75rem;">{{ sheet.needs_review_reason }}</div>
+              {% endif %}
+            {% else %}
+              <span style="background:#f5f5f5;color:#666;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:700;">INASUBIRI</span>
+            {% endif %}
+          </td>
+          <td style="padding:10px 12px;border-bottom:1px solid #eee;">
+            <button onclick="toggleReview({{ sheet.pk }})"
+                    style="background:#fff;color:#c27803;border:1.5px solid #c27803;padding:4px 12px;border-radius:4px;font-weight:700;cursor:pointer;font-size:.8rem;">
+              👁️ Kagua
+            </button>
+            {% if sheet.status != "IMPORTED" %}
+            <form method="post" action="{% url 'scan_sheet_delete' sheet.pk %}" style="display:inline;"
+                  onsubmit="return confirm('Futa karatasi hii?');">
+              {% csrf_token %}
+              <button type="submit" style="background:#fff;color:#c0392b;border:1.5px solid #c0392b;padding:4px 12px;border-radius:4px;font-weight:700;cursor:pointer;font-size:.8rem;">
+                🗑️ Futa
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        <tr id="review-row-{{ sheet.pk }}" style="display:none;background:#fafafa;">
+          <td colspan="4" style="padding:14px;">
+            <div style="display:grid;grid-template-columns:1fr 280px;gap:14px;">
+              <img src="{% url 'scan_sheet_image' sheet.pk %}" alt="Karatasi"
+                   style="max-width:100%;border:1px solid #ddd;border-radius:6px;">
+              <div>
+                {% if sheet.result.answers %}
+                <h3 style="font-size:.9rem;margin:0 0 6px;">Majibu yaliyosomwa:</h3>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
+                  {% for q, a in sheet.result.answers.items %}
+                    {% if a %}
+                    <span style="background:#eef7f0;border-radius:4px;padding:2px 8px;font-size:.78rem;">
+                      {{ q }}: <strong>{{ a }}</strong>
+                    </span>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+                {% endif %}
+                <form method="post" action="{% url 'scan_sheet_confirm' sheet.pk %}">
+                  {% csrf_token %}
+                  <label style="font-size:.85rem;font-weight:600;">Alama:</label>
+                  <input type="number" name="score" min="0" value="{{ sheet.score|default_if_none:0 }}"
+                         style="width:80px;padding:6px;border:1px solid #ccc;border-radius:4px;margin:4px 0 10px;">
+                  {% if not sheet.student %}
+                  <label style="font-size:.85rem;font-weight:600;">Mwanafunzi:</label>
+                  <select name="student" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;margin:4px 0 10px;">
+                    <option value="">— Chagua mwanafunzi —</option>
+                    {% for fs in roster %}
+                    <option value="{{ fs.pk }}">{{ fs.full_name }}{% if fs.admission_no %} ({{ fs.admission_no }}){% endif %}</option>
+                    {% endfor %}
+                  </select>
+                  {% endif %}
+                  <button type="submit" style="background:#1F7A3D;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-weight:700;cursor:pointer;width:100%;">
+                    ✓ Thibitisha
+                  </button>
+                </form>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="background:#fff;border:1px dashed #ccc;border-radius:8px;padding:30px;text-align:center;color:#999;">
+    Hakuna karatasi bado. <a href="{% url 'scan_upload' exam.pk subject.pk %}" style="color:#1a56db;font-weight:700;">Pakia scans →</a>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function toggleReview(id) {
+  const row = document.getElementById('review-row-' + id);
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+</script>
+{% endblock %}

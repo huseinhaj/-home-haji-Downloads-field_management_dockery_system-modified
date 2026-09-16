@@ -1,0 +1,57 @@
+{% extends "results/base.html" %}
+{% block title %}Marking Scheme — {{ subject.name }} | {{ exam.name }}{% endblock %}
+{% block content %}
+<div style="max-width:820px;margin:0 auto;padding:16px;">
+  <h1 style="font-size:1.3rem;">📋 Marking Scheme — {{ subject.name }}</h1>
+  <p style="color:#555;">
+    <strong>{{ exam.name }}</strong> |
+    Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} | {{ exam.year }}
+  </p>
+
+  {% if scheme %}
+  <div style="background:#eef7f0;border:1px solid #cfe8d6;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+    ✓ <strong>Scheme ipo:</strong>
+    {{ scheme.parsed_count }} maswali yamesomwa
+    · Aina: {{ scheme.get_kind_display }}
+    {% if scheme.uploaded_by %}· Mwalimu: {{ scheme.uploaded_by }}{% endif %}
+    · <a href="{% url 'scan_upload' exam.pk subject.pk %}">Endelea kusahihisha →</a>
+  </div>
+  {% endif %}
+
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px;margin-bottom:14px;">
+    <h2 style="font-size:1rem;margin:0 0 6px;">Hatua ya 1: Chapisha karatasi za scheme</h2>
+    <p style="color:#555;font-size:.88rem;margin:0 0 10px;">
+      Karatasi za scheme zina QR maalum + bubbles za maswali 90 (kurasa 3).
+      Jaza <strong>jibu sahihi</strong> kwenye duara kwa pen ya blu.
+    </p>
+    <a href="{% url 'scan_scheme_print' exam.pk subject.pk %}?pages=3" target="_blank"
+       style="background:#1a56db;color:#fff;text-decoration:none;padding:8px 16px;border-radius:4px;font-weight:700;">
+      🖨️ Chapisha Karatasi za Scheme (PDF)
+    </a>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px;">
+    <h2 style="font-size:1rem;margin:0 0 6px;">Hatua ya 2: Scan au Pakia scheme</h2>
+    <p style="color:#555;font-size:.88rem;margin:0 0 10px;">
+      Scan kurasa zilizojazwa (au pakia picha/PDF). Mfumo unazisoma kwa OMR
+      — <strong>bila AI</strong>:
+    </p>
+    <ul style="color:#555;font-size:.85rem;margin:0 0 12px;padding-left:20px;">
+      <li><strong>Masomo ya kuchagua</strong> (History, Civics, Geography, Biology...):
+        majibu yanakuwa answer key moja kwa moja → usahihishaji ni full-auto.</li>
+      <li><strong>Masomo ya calculation</strong> (Math, Physics, Chemistry...):
+        scheme inabaki kama <strong>marejeleo</strong> — mwalimu anathibitisha
+        alama kwenye review (mfumo unasoma bubbles za jibu fupi, kisha mwalimu
+        anakaguaworking step by step kwenye picha).</li>
+    </ul>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="file" name="files" multiple accept="application/pdf,image/*"
+             style="margin-bottom:10px;display:block;">
+      <button type="submit" style="background:#1F7A3D;color:#fff;border:none;padding:9px 20px;border-radius:4px;font-weight:700;cursor:pointer;">
+        📤 Pakia Scheme
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

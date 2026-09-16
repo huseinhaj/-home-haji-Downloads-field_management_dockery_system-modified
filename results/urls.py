@@ -247,3 +247,44 @@ urlpatterns = [
     # In-system user guide — how to use the system, per role
     path('mwongozo/', user_guide, name='user_guide'),
 ]
+
+# ---------------- Sahishi (scan & auto-grade) ----------------
+from .scan_views import (  # noqa: E402
+    scan_answer_key,
+    scan_import,
+    scan_print,
+    scan_review,
+    scan_sheet_confirm,
+    scan_sheet_delete,
+    scan_sheet_image,
+    scan_upload,
+)
+
+urlpatterns += [
+    path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/key/',
+         scan_answer_key, name='scan_answer_key'),
+    path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/chapisha/',
+         scan_print, name='scan_print'),
+    path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/upload/',
+         scan_upload, name='scan_upload'),
+    path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/review/',
+         scan_review, name='scan_review'),
+    path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/ingiza/',
+         scan_import, name='scan_import'),
+    path('sahishi/karatasi/<int:sheet_id>/picha/',
+         scan_sheet_image, name='scan_sheet_image'),
+    path('sahishi/karatasi/<int:sheet_id>/thibitisha/',
+         scan_sheet_confirm, name='scan_sheet_confirm'),
+    path('sahishi/karatasi/<int:sheet_id>/futa/',
+         scan_sheet_delete, name='scan_sheet_delete'),
+]
+
+# ---------------- Sahishi: Marking Scheme ----------------
+from .scan_scheme_views import scheme_print, scheme_upload  # noqa: E402
+
+urlpatterns += [
+    path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/scheme/chapisha/',
+         scheme_print, name='scan_scheme_print'),
+    path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/scheme/pakia/',
+         scheme_upload, name='scan_scheme_upload'),
+]

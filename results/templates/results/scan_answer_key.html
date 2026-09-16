@@ -1,0 +1,35 @@
+{% extends "results/base.html" %}
+{% block title %}Sahishi — Answer Key | {{ exam.name }}{% endblock %}
+{% block content %}
+<div style="max-width:720px;margin:0 auto;padding:16px;">
+  <h1 style="font-size:1.3rem;">📝 Sahishi — Answer Key</h1>
+  <p style="color:#555;">
+    <strong>{{ exam.name }}</strong> — {{ subject.name }} |
+    Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} | {{ exam.year }}
+  </p>
+
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px;margin-top:12px;">
+    <p style="margin:0 0 8px;color:#555;font-size:.9rem;">
+      Weka jibu sahihi kwa kila swali (A–D). Mfano:
+      <code>{"1": "A", "2": "C", "3": "B"}</code>
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.key }}
+      {% if form.errors %}
+        <div style="color:#c0392b;font-size:.85rem;margin:4px 0;">
+          {{ form.key.errors }}
+        </div>
+      {% endif %}
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button type="submit" style="background:#1F7A3D;color:#fff;border:none;padding:8px 18px;border-radius:4px;font-weight:700;cursor:pointer;">
+          Hifadhi Answer Key
+        </button>
+        <a href="{% url 'exam_overview' exam.pk %}" style="color:#1F7A3D;text-decoration:none;padding:8px 12px;">
+          Rudi kwenye mtihani
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -903,3 +903,7 @@ class ClassTimetableEntry(models.Model):
     def __str__(self):
         label = f"Form {self.form}{self.stream}" if self.stream else f"Form {self.form}"
         return f"{label} @ {self.time_slot} — {self.subject or '—'}"
+
+
+# Kazi za Sahishi (scan & auto-grade) ziko kwenye scan_models.py
+from .scan_models import ScanAnswerKey, ScanSheet, ScanSheetBatch  # noqa: E402,F401

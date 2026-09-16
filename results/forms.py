@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 from django.core.exceptions import ValidationError
 import pandas as pd
@@ -147,3 +149,48 @@ class TeacherSelfSubjectsForm(forms.ModelForm):
             'subjects': forms.CheckboxSelectMultiple(),
         }
 
+
+
+class MultiFileInput(forms.FileInput):
+    """FileInput inayokubali files nyingi kwa wakati mmoja (Django 5+)."""
+    allow_multiple_selected = True
+
+
+class ScanUploadForm(forms.Form):
+    """Picha za karatasi zilizoscaniwa (kutoka ADF au folder)."""
+    images = forms.FileField(
+        label='Picha za karatasi',
+        widget=MultiFileInput(attrs={'accept': 'image/*'}),
+    )
+    note = forms.CharField(
+        label='Maelezo (hiari)', max_length=200, required=False,
+        widget=forms.TextInput(attrs={'class': 'input',
+                                      'placeholder': 'Mf: Stack ya 1'}),
+    )
+
+
+class ScanKeyForm(forms.Form):
+    """Answer key kwa muundo wa JSON: {"1": "A", "2": "C", ...}"""
+    key = forms.CharField(
+        label='Answer key (JSON)',
+        widget=forms.Textarea(attrs={'rows': 10, 'style': 'font-family:monospace'}),
+    )
+
+    def clean_key(self):
+        raw = self.cleaned_data['key'].strip()
+        if not raw:
+            return {}
+        try:
+            obj = json.loads(raw)
+        except json.JSONDecodeError:
+            raise forms.ValidationError('Muundo wa JSON si sahihi.')
+        if not isinstance(obj, dict):
+            raise forms.ValidationError('Inabidi kuwa dictionary: {"1": "A", ...}')
+        clean = {}
+        for k, v in obj.items():
+            v = str(v).strip().upper()
+            if v not in ('A', 'B', 'C', 'D'):
+                raise forms.ValidationError(
+                    f'Swali {k}: jibu linabidi liwe A, B, C au D (limewekwa: {v})')
+            clean[str(k).strip()] = v
+        return clean
