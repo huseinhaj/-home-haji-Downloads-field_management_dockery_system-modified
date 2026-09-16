@@ -17,6 +17,11 @@
           ✅ Ingiza kwenye Matokeo
         </button>
       </form>
+      <a href="{% url 'scan_review_pdf' exam.pk subject.pk %}" target="blank"
+         style="background:#c0392b;color:#fff;text-decoration:none;padding:8px 16px;border-radius:4px;font-weight:700;"
+         title="PDF ya karatasi zote zenye alama nyekundu — chapisha kwa wanafunzi">
+        🖨️ PDF ya Alama (red pen)
+      </a>
       {% endif %}
     </div>
   </div>
@@ -97,8 +102,9 @@
         <tr id="review-row-{{ sheet.pk }}" style="display:none;background:#fafafa;">
           <td colspan="4" style="padding:14px;">
             <div style="display:grid;grid-template-columns:1fr 280px;gap:14px;">
-              <img src="{% url 'scan_sheet_image' sheet.pk %}" alt="Karatasi"
-                   style="max-width:100%;border:1px solid #ddd;border-radius:6px;">
+              <img src="{% url 'scan_sheet_annotated' sheet.pk %}" alt="Karatasi yenye alama"
+                   style="max-width:100%;border:1px solid #ddd;border-radius:6px;"
+                   title="✓ sahihi · ✗ kosa (jibu sahihi chini) · ○ haijajazwa — jumla juu-kulia">
               <div>
                 {% if sheet.result.answers %}
                 <h3 style="font-size:.9rem;margin:0 0 6px;">Majibu yaliyosomwa:</h3>

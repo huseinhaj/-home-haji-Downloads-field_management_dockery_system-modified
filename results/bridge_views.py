@@ -23,7 +23,7 @@ from django.views.decorators.http import require_GET, require_POST
 from .models import Exam, FormStudent, School, Subject
 from .permissions import teacher_or_academic_required
 from .scan_models import ScanAnswerKey, ScanSheet, ScanSheetBatch
-from .scan_views import _class_roster, _get_exam_or_404
+from .scan_views import _annotate_sheet, _class_roster, _get_exam_or_404
 from .services.scan_grader import process_sheet
 from .services.upload_processing_service import recompute_processed_results_for_exam
 from .bridge_models import SahishiBridge, ScanJob, generate_bridge_token
@@ -171,6 +171,9 @@ def bridge_upload(request, job_id):
         if sheet.status == ScanSheet.Status.NEEDS_REVIEW:
             review += 1
         sheet.save()
+        # Alama nyekundu (✓/✗/○ + jumla) kwenye karatasi
+        if sheet.score is not None and answer_key:
+            _annotate_sheet(sheet, answer_key)
 
     job.status = ScanJob.Status.DONE
     job.completed_at = timezone.now()

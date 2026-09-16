@@ -19,6 +19,7 @@ from .marks_entry import _student_from_form_student
 from .models import Exam, ExamResult, FormStudent, Subject, SubjectSubmission
 from .scan_models import MarkingScheme, ScanAnswerKey, ScanSheet, ScanSheetBatch
 from .permissions import teacher_or_academic_required
+from .services.scan_annotate import annotate_full_sheet
 from .services.scan_grader import process_sheet
 from .services.scan_pdf import build_answer_sheets_pdf
 from .services.upload_processing_service import recompute_processed_results_for_exam
@@ -44,6 +45,27 @@ def _get_subject_or_404(subject_id):
 def _get_or_create_key(exam, subject):
     key, _ = ScanAnswerKey.objects.get_or_create(exam=exam, subject=subject)
     return key
+
+
+def _annotate_sheet(sheet, answer_key):
+    """Chora alama nyekundu (✓/✗/○ + jumla) kwenye karatasi iliyosahihishwa."""
+    try:
+        if not sheet.image or not answer_key:
+            return
+        with sheet.image.open('rb') as fh:
+            data = fh.read()
+        answers = (sheet.result or {}).get('answers', {})
+        annotated = annotate_full_sheet(
+            data, answers, answer_key,
+            page_number=sheet.page_number or 1,
+            total_score=sheet.score,
+            total_questions=sheet.total,
+        )
+        if annotated:
+            name = f'annotated_{sheet.pk}.png'
+            sheet.annotated_image.save(name, ContentFile(annotated), save=False)
+    except Exception:
+        logger.exception('Annotation imeshindikana sheet=%s', sheet.pk)
 
 
 def _class_roster(exam, subject):
@@ -164,6 +186,9 @@ def scan_upload(request, exam_id, subject_id):
                 if sheet.status == ScanSheet.Status.NEEDS_REVIEW:
                     review += 1
                 sheet.save()
+                # Alama nyekundu (✓/✗/○ + jumla) — kwa zilizopata score
+                if sheet.score is not None:
+                    _annotate_sheet(sheet, key.key)
 
             messages.success(
                 request,
@@ -259,6 +284,70 @@ def scan_sheet_delete(request, sheet_id):
 def scan_sheet_image(request, sheet_id):
     sheet = get_object_or_404(ScanSheet, pk=sheet_id)
     return FileResponse(sheet.image.open('rb'))
+
+
+@teacher_or_academic_required
+def scan_sheet_annotated(request, sheet_id):
+    """Picha ya karatasi yenye alama nyekundu (✓/✗/○ + jumla)."""
+    sheet = get_object_or_404(ScanSheet, pk=sheet_id)
+    if not sheet.annotated_image:
+        _annotate_sheet(sheet, _get_or_create_key(sheet.exam, sheet.subject).key)
+        sheet.refresh_from_db()
+    if sheet.annotated_image:
+        return FileResponse(sheet.annotated_image.open('rb'))
+    return FileResponse(sheet.image.open('rb'))
+
+
+@teacher_or_academic_required
+def scan_review_pdf(request, exam_id, subject_id):
+    """PDF ya karatasi ZOTE zilizoalama nyekundu — mwalimu anachapisha
+    au kutuma kwa wanafunzi/parents kama 'marked script'."""
+    import io
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas
+
+    exam = _get_exam_or_404(exam_id, request.user)
+    subject = get_object_or_404(Subject, pk=subject_id)
+    sheets = ScanSheet.objects.filter(
+        exam=exam, subject=subject,
+        status__in=[ScanSheet.Status.GRADED, ScanSheet.Status.IMPORTED],
+        student__isnull=False,
+    ).select_related('student').order_by('student__first_name', 'page_number')
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    width, height = A4
+    count = 0
+    for sheet in sheets:
+        img_source = sheet.annotated_image or sheet.image
+        if not img_source:
+            continue
+        try:
+            with img_source.open('rb') as fh:
+                img_data = fh.read()
+        except Exception:
+            continue
+        # Header ndogo
+        c.setFont('Helvetica-Bold', 9)
+        c.drawString(15 * 28.35, height - 20, f'{sheet.student.full_name} — {subject.name} (uk. {sheet.page_number})')
+        c.setFont('Helvetica', 8)
+        c.drawRightString(width - 15 * 28.35, height - 20,
+                          f'{sheet.score if sheet.score is not None else "—"}/{sheet.total or ""}')
+        try:
+            c.drawImage(ImageReader(io.BytesIO(img_data)),
+                        15 * 28.35, 30, width - 30 * 28.35, height - 60,
+                        preserveAspectRatio=True, anchor='c')
+        except Exception:
+            continue
+        c.showPage()
+        count += 1
+    c.save()
+
+    resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="marked_{exam.pk}_{subject.pk}.pdf"'
+    return resp
 
 
 # ---------------- Import kwenye matokeo ----------------

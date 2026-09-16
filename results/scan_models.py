@@ -69,6 +69,10 @@ class ScanSheet(models.Model):
     )
     page_number = models.PositiveIntegerField(default=1)
     image = models.ImageField(upload_to='scan_sheets/%Y/%m/%d/')
+    # Picha yenye alama nyekundu (✓/✗/○ + jumla) — inaundwa baada ya grading
+    annotated_image = models.ImageField(
+        upload_to='scan_sheets_annotated/%Y/%m/%d/', blank=True, null=True,
+    )
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.SCANNED, db_index=True,
     )
