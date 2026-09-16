@@ -129,16 +129,40 @@ def claim_job():
 
 
 def do_job(job):
-    device_env = os.environ.get('SAHISHI_SCANNER', '')
-    device = device_env or None
-    if not device:
-        devices = list_scanners()
-        if not devices:
-            raise RuntimeError('Hakuna scanner (scanimage -L haina device)')
-        device = devices[0][0]
+    mock_dir = os.environ.get('SAHISHI_MOCK_DIR', '')
+    if mock_dir:
+        # MOCK MODE: hakuna scanner inahitajika — tumia picha za folder
+        # (nzuri ya kutesa pipeline bila printer)
+        mock_path = Path(mock_dir).expanduser()
+        images = sorted(
+            list(mock_path.glob('*.png')) + list(mock_path.glob('*.jpg'))
+            + list(mock_path.glob('*.jpeg'))
+        )
+        if not images:
+            raise RuntimeError(f'MOCK_DIR haina picha: {mock_path}')
+        out_dir = SCAN_DIR / f'job_{job["id"]}'
+        out_dir.mkdir(parents=True, exist_ok=True)
+        files = []
+        for i in range(job['pages']):
+            src = images[i % len(images)]  # zirudie kama pages > images
+            dst = out_dir / f'scan_{i:04d}.png'
+            dst.write_bytes(src.read_bytes())
+            files.append(dst)
+            if i + 1 >= len(images) and job['pages'] > len(images):
+                break  # usizidishe zaidi ya picha zilizopo
+        print(f'  MOCK scan: kurasa {len(files)} kutoka {mock_path}')
+    else:
+        device_env = os.environ.get('SAHISHI_SCANNER', '')
+        device = device_env or None
+        if not device:
+            devices = list_scanners()
+            if not devices:
+                raise RuntimeError('Hakuna scanner (scanimage -L haina device). '
+                                   'Tumia SAHISHI_MOCK_DIR kwa test bila printer')
+            device = devices[0][0]
 
-    print(f'  Scanner: {device}')
-    files = scan_adf(device, job['pages'], job['duplex'], job['dpi'], job['id'])
+        print(f'  Scanner: {device}')
+        files = scan_adf(device, job['pages'], job['duplex'], job['dpi'], job['id'])
     if not files:
         raise RuntimeError('ADF haikutoa kurasa yoyote — angalia karatasi')
 

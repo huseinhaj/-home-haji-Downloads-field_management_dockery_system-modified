@@ -173,18 +173,48 @@ custom_admin_site.register(SchoolSubscription, SchoolSubscriptionAdmin)
 custom_admin_site.register(PaymentTransaction, PaymentTransactionAdmin)
 
 
-# ---------------- Sahishi Bridge ----------------
+# ---------------- Sahishi (scan & auto-grade) ----------------
 from .bridge_models import SahishiBridge, ScanJob  # noqa: E402
+from .scan_models import MarkingScheme, ScanAnswerKey, ScanSheet, ScanSheetBatch  # noqa: E402
 
 
-@admin.register(SahishiBridge)
 class SahishiBridgeAdmin(admin.ModelAdmin):
     list_display = ('name', 'school', 'scanner_name', 'last_seen', 'active')
     list_filter = ('active', 'school')
     readonly_fields = ('token', 'last_seen', 'last_ip')
 
 
-@admin.register(ScanJob)
 class ScanJobAdmin(admin.ModelAdmin):
     list_display = ('pk', 'exam', 'subject', 'status', 'bridge', 'created_at', 'result_message')
     list_filter = ('status',)
+
+
+class ScanAnswerKeyAdmin(admin.ModelAdmin):
+    list_display = ('exam', 'subject', 'n_questions', 'updated_at')
+
+    @admin.display(description='Maswali')
+    def n_questions(self, obj):
+        return len(obj.key)
+
+
+class MarkingSchemeAdmin(admin.ModelAdmin):
+    list_display = ('exam', 'subject', 'kind', 'parsed_count', 'uploaded_by', 'updated_at')
+    list_filter = ('kind',)
+
+
+class ScanSheetBatchAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'exam', 'subject', 'image_count', 'scanned_at', 'note')
+
+
+class ScanSheetAdmin(admin.ModelAdmin):
+    list_display = ('exam', 'subject', 'student', 'page_number', 'status', 'score', 'total')
+    list_filter = ('status', 'exam')
+    search_fields = ('student__first_name', 'student__last_name')
+
+
+custom_admin_site.register(SahishiBridge, SahishiBridgeAdmin)
+custom_admin_site.register(ScanJob, ScanJobAdmin)
+custom_admin_site.register(ScanAnswerKey, ScanAnswerKeyAdmin)
+custom_admin_site.register(MarkingScheme, MarkingSchemeAdmin)
+custom_admin_site.register(ScanSheetBatch, ScanSheetBatchAdmin)
+custom_admin_site.register(ScanSheet, ScanSheetAdmin)
