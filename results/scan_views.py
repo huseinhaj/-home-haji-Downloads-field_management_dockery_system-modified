@@ -68,6 +68,63 @@ def _annotate_sheet(sheet, answer_key):
         logger.exception('Annotation imeshindikana sheet=%s', sheet.pk)
 
 
+def _sheet_question_rows(sheet, answer_key):
+    """Mistari ya kila swali kwa sheet: (namba, jibu la mwanafunzi, jibu sahihi, hali).
+    hali: 'ok' | 'wrong' | 'blank' | 'unknown' (swali nje ya key)."""
+    answers = (sheet.result or {}).get('answers', {})
+    rows = []
+    for qnum in sorted(answer_key, key=lambda x: int(x) if str(x).isdigit() else 0):
+        given = answers.get(qnum)
+        key_ans = str(answer_key[qnum]).upper()
+        if given is None:
+            state = 'blank'
+        elif str(given).upper() == key_ans:
+            state = 'ok'
+        else:
+            state = 'wrong'
+        rows.append((qnum, given or '—', key_ans, state))
+    return rows
+
+
+def _build_student_results(exam, subject, answer_key):
+    """Kundi la karatasi kwa mwanafunzi → matokeo ya mtihani mzima.
+    Inarudi orodha ya dicts: student, sheets (na rows za maswali), score, total."""
+    sheets = ScanSheet.objects.filter(
+        exam=exam, subject=subject,
+        status__in=[ScanSheet.Status.GRADED, ScanSheet.Status.IMPORTED],
+        student__isnull=False,
+    ).select_related('student', 'batch').order_by('student__first_name', 'page_number')
+
+    by_student = {}
+    for sheet in sheets:
+        entry = by_student.setdefault(sheet.student_id, {
+            'student': sheet.student,
+            'sheets': [],
+            'score': 0,
+            'total': 0,
+            'pages': 0,
+        })
+        entry['sheets'].append({
+            'sheet': sheet,
+            'rows': _sheet_question_rows(sheet, answer_key),
+        })
+        if sheet.score is not None:
+            entry['score'] += sheet.score
+            entry['total'] = max(entry['total'], sheet.total or 0)
+            entry['pages'] += 1
+
+    results = sorted(by_student.values(), key=lambda e: -(e['score']))
+    # Position (nafasi) — wanafunzi wenye alama sawa wanapata nafasi sawa
+    position = 0
+    last_score = None
+    for i, entry in enumerate(results, start=1):
+        if entry['score'] != last_score:
+            position = i
+            last_score = entry['score']
+        entry['position'] = position
+    return results
+
+
 def _class_roster(exam, subject):
     """Rosti ya wanafunzi wa darasa hili kwa somo hili (kama marks_entry)."""
     qs = FormStudent.objects.filter(
@@ -348,6 +405,26 @@ def scan_review_pdf(request, exam_id, subject_id):
     resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
     resp['Content-Disposition'] = f'inline; filename="marked_{exam.pk}_{subject.pk}.pdf"'
     return resp
+
+
+# ---------------- Matokeo (tick kwa kila swali + score) ----------------
+
+@teacher_or_academic_required
+def scan_results(request, exam_id, subject_id):
+    """Matokeo ya usahihishaji: kila mwanafunzi — ✓✗○ kwa kila swali + jumla."""
+    exam = _get_exam_or_404(exam_id, request.user)
+    subject = get_object_or_404(Subject, pk=subject_id)
+    key = _get_or_create_key(exam, subject)
+    results = _build_student_results(exam, subject, key.key)
+
+    context = {
+        'exam': exam, 'subject': subject,
+        'results': results,
+        'key_count': len(key.key),
+        'has_key': bool(key.key),
+        'scheme': MarkingScheme.objects.filter(exam=exam, subject=subject).first(),
+    }
+    return render(request, 'results/scan_results.html', context)
 
 
 # ---------------- Import kwenye matokeo ----------------

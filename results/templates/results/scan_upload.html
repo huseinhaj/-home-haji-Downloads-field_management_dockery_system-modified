@@ -29,19 +29,24 @@
 
   {% if not has_key %}
   <div style="background:#fdecea;border:1px solid #f5c6cb;border-radius:8px;padding:14px;margin-bottom:14px;">
-    ⚠️ <strong>Answer key haijawekwa.</strong>
+    ⚠️ <strong>Marking scheme bado haijapakiwa.</strong>
     <a href="{% url 'scan_scheme_upload' exam.pk subject.pk %}" style="color:#c0392b;font-weight:700;">
-      Pakia Marking Scheme kwanza →
+      Pakia/scan marking scheme kwanza →
     </a>
     <span style="color:#999;font-size:.85rem;">au</span>
     <a href="{% url 'scan_answer_key' exam.pk subject.pk %}" style="color:#c0392b;font-weight:700;">iandike mkono</a>
   </div>
   {% else %}
-  <div style="background:#eef7f0;border:1px solid #cfe8d6;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.9rem;">
-    ✓ Answer key ipo (maswali <strong>{{ key_count }}</strong>)
-    {% if scheme %}· kutoka <strong>Marking Scheme</strong> ({{ scheme.get_kind_display }}){% endif %}
-    · <a href="{% url 'scan_scheme_upload' exam.pk subject.pk %}">Pakia scheme nyingine</a>
-    · <a href="{% url 'scan_answer_key' exam.pk subject.pk %}">Badilisha mkono</a>
+  <div style="background:#eef7f0;border:1px solid #cfe8d6;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.9rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <div>
+      ✓ <strong>Marking scheme ipo</strong> (maswali <strong>{{ key_count }}</strong>)
+      {% if scheme %}· {{ scheme.get_kind_display }}{% endif %}
+      · <a href="{% url 'scan_scheme_upload' exam.pk subject.pk %}">Badilisha scheme</a>
+    </div>
+    <a href="{% url 'scan_results' exam.pk subject.pk %}"
+       style="background:#1F7A3D;color:#fff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:800;font-size:1rem;">
+      ✅ SAHISHA SASA — ona matokeo →
+    </a>
   </div>
   {% endif %}
 

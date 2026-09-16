@@ -1,0 +1,94 @@
+{% extends "results/base.html" %}
+{% block title %}Matokeo — {{ subject.name }} | {{ exam.name }}{% endblock %}
+{% block content %}
+<div style="max-width:1100px;margin:0 auto;padding:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <h1 style="font-size:1.3rem;">📊 Matokeo — {{ subject.name }}</h1>
+    <div>
+      <a href="{% url 'scan_review' exam.pk subject.pk %}"
+         style="background:#fff;color:#1a56db;border:1.5px solid #1a56db;text-decoration:none;padding:7px 14px;border-radius:4px;font-weight:700;">
+        ← Review
+      </a>
+      <a href="{% url 'scan_review_pdf' exam.pk subject.pk %}" target="_blank"
+         style="background:#c0392b;color:#fff;text-decoration:none;padding:7px 14px;border-radius:4px;font-weight:700;">
+        🖨️ PDF ya Alama
+      </a>
+    </div>
+  </div>
+  <p style="color:#555;">
+    <strong>{{ exam.name }}</strong> |
+    Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} | {{ exam.year }}
+    {% if has_key %} · Maswali: <strong>{{ key_count }}</strong>{% endif %}
+  </p>
+
+  {% if results %}
+    {% for r in results %}
+    <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <div>
+          <strong style="font-size:1.05rem;">{{ r.student.full_name }}</strong>
+          {% if r.student.admission_no %}
+            <span style="color:#999;">({{ r.student.admission_no }})</span>
+          {% endif %}
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;">
+          <div style="text-align:center;">
+            <div style="font-size:1.5rem;font-weight:800;color:#1F7A3D;">{{ r.score }}<span style="color:#999;font-size:.9rem;">/{{ r.total }}</span></div>
+            <div style="font-size:.7rem;color:#777;">JUMLA</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.5rem;font-weight:800;color:#1a56db;">#{{ r.position }}</div>
+            <div style="font-size:.7rem;color:#777;">NAFASI</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.2rem;font-weight:800;color:#6b3fa0;">{{ r.pages }}</div>
+            <div style="font-size:.7rem;color:#777;">KARATASI</div>
+          </div>
+        </div>
+      </div>
+
+      {% for s in r.sheets %}
+      <div style="margin-bottom:8px;">
+        <div style="font-size:.75rem;color:#888;margin-bottom:4px;">Karatasi ya {{ s.sheet.page_number }}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          {% for qnum, given, key_ans, state in s.rows %}
+            {% if state == "ok" %}
+              <span style="background:#eef7f0;color:#1F7A3D;border-radius:4px;padding:2px 8px;font-size:.78rem;" title="Sahihi">
+                ✓ {{ qnum }}. {{ given }}
+              </span>
+            {% elif state == "wrong" %}
+              <span style="background:#fdecea;color:#c0392b;border-radius:4px;padding:2px 8px;font-size:.78rem;" title="Kosa — jibu sahihi: {{ key_ans }}">
+                ✗ {{ qnum }}. {{ given }}→{{ key_ans }}
+              </span>
+            {% elif state == "blank" %}
+              <span style="background:#fdf3e7;color:#c27803;border-radius:4px;padding:2px 8px;font-size:.78rem;" title="Haijajazwa">
+                ○ {{ qnum }}. —
+              </span>
+            {% else %}
+              <span style="background:#f5f5f5;color:#666;border-radius:4px;padding:2px 8px;font-size:.78rem;">
+                {{ qnum }}. {{ given }}
+              </span>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <div style="margin-top:8px;">
+        {% for s in r.sheets %}
+          <a href="{% url 'scan_sheet_annotated' s.sheet.pk %}" target="_blank"
+             style="color:#1a56db;font-size:.82rem;text-decoration:none;font-weight:600;">
+            🖼️ Karatasi yenye alama nyekundu (uk. {{ s.sheet.page_number }})
+          </a>{% if not forloop.last %} · {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="background:#fff;border:1px dashed #ccc;border-radius:8px;padding:30px;text-align:center;color:#999;">
+      Hakuna matokeo bado.
+      <a href="{% url 'scan_upload' exam.pk subject.pk %}" style="color:#1a56db;font-weight:700;">Sahihisha karatasi →</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
