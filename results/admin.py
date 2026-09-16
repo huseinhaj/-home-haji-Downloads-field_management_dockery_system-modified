@@ -182,11 +182,16 @@ class SahishiBridgeAdmin(admin.ModelAdmin):
     list_display = ('name', 'school', 'scanner_name', 'last_seen', 'active')
     list_filter = ('active', 'school')
     readonly_fields = ('token', 'last_seen', 'last_ip')
+    # Shule nyingi → search badala ya dropdown
+    autocomplete_fields = ('school',)
+    search_fields = ('name', 'school__name')
 
 
 class ScanJobAdmin(admin.ModelAdmin):
     list_display = ('pk', 'exam', 'subject', 'status', 'bridge', 'created_at', 'result_message')
     list_filter = ('status',)
+    autocomplete_fields = ('exam', 'subject', 'bridge')
+    search_fields = ('exam__name',)
 
 
 class ScanAnswerKeyAdmin(admin.ModelAdmin):
@@ -200,6 +205,7 @@ class ScanAnswerKeyAdmin(admin.ModelAdmin):
 class MarkingSchemeAdmin(admin.ModelAdmin):
     list_display = ('exam', 'subject', 'kind', 'parsed_count', 'uploaded_by', 'updated_at')
     list_filter = ('kind',)
+    autocomplete_fields = ('exam', 'subject')
 
 
 class ScanSheetBatchAdmin(admin.ModelAdmin):
@@ -210,6 +216,7 @@ class ScanSheetAdmin(admin.ModelAdmin):
     list_display = ('exam', 'subject', 'student', 'page_number', 'status', 'score', 'total')
     list_filter = ('status', 'exam')
     search_fields = ('student__first_name', 'student__last_name')
+    autocomplete_fields = ('exam', 'subject')
 
 
 custom_admin_site.register(SahishiBridge, SahishiBridgeAdmin)
