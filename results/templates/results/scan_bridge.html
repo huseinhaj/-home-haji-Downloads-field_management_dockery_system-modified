@@ -1,0 +1,139 @@
+{% extends "results/base.html" %}
+{% block title %}Scan kwa Bridge — {{ subject.name }}{% endblock %}
+{% block content %}
+<div style="max-width:820px;margin:0 auto;padding:16px;">
+  <h1 style="font-size:1.3rem;">🖨️ Scan kwa Bridge — {{ subject.name }}</h1>
+  <p style="color:#555;">
+    <strong>{{ exam.name }}</strong> |
+    Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} | {{ exam.year }}
+  </p>
+
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px;margin-bottom:14px;">
+    <h2 style="font-size:1rem;margin:0 0 6px;">Anza scan (printer ya shule — ADF)</h2>
+    <p style="color:#555;font-size:.88rem;margin:0 0 10px;">
+      Hakikisha Bridge inaendelea kwenye PC iliyounganishwa na printer,
+      kisha weka karatasi za wanafunzi kwenye ADF na bonyeza kitufe.
+      Ukurasa huu utaonyesha hali moja kwa moja.
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <label style="font-size:.85rem;">Kuratasi:
+        <input type="number" id="pages" value="40" min="1" max="200"
+               style="width:70px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+      </label>
+      <label style="font-size:.85rem;display:flex;align-items:center;gap:4px;">
+        <input type="checkbox" id="duplex"> Upande mbili
+      </label>
+      <button id="btn-start" onclick="startJob()"
+              style="background:#1F7A3D;color:#fff;border:none;padding:9px 20px;border-radius:4px;font-weight:700;cursor:pointer;">
+        🖨️ Anza Scan
+      </button>
+      <span id="msg" style="font-size:.85rem;color:#555;"></span>
+    </div>
+  </div>
+
+  <div id="progress" style="display:none;background:#fff;border:2px solid #1F7A3D;border-radius:8px;padding:16px;margin-bottom:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <strong id="p-status" style="font-size:1rem;">Inasubiri bridge...</strong>
+      <span id="p-counts" style="color:#555;font-size:.9rem;"></span>
+    </div>
+    <div style="background:#eee;border-radius:999px;height:14px;overflow:hidden;">
+      <div id="p-bar" style="background:#1F7A3D;height:100%;width:0%;transition:width .5s;"></div>
+    </div>
+    <div id="p-note" style="color:#777;font-size:.82rem;margin-top:6px;"></div>
+  </div>
+
+  <div style="background:#f5f5f5;border-radius:8px;padding:12px 14px;font-size:.85rem;color:#555;">
+    <strong>Hali za kazi:</strong>
+    Inasubiri bridge → Bridge inascan → Inatuma picha → Imekamilika.
+    Kama inaeba "Inasubiri bridge" kwa muda mrefu, angalia PC ya bridge:
+    <code>python3 bridge.py --status</code>
+  </div>
+
+  {% if jobs %}
+  <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:14px;margin-top:14px;">
+    <h2 style="font-size:.95rem;margin:0 0 8px;">Kazi za hivi karibuni</h2>
+    <table style="width:100%;font-size:.85rem;border-collapse:collapse;">
+      <tr style="text-align:left;color:#777;">
+        <th style="padding:4px 8px;">#</th><th style="padding:4px 8px;">Muda</th>
+        <th style="padding:4px 8px;">Hali</th><th style="padding:4px 8px;">Matokeo</th>
+      </tr>
+      {% for job in jobs %}
+      <tr>
+        <td style="padding:4px 8px;">{{ job.pk }}</td>
+        <td style="padding:4px 8px;">{{ job.created_at|date:"d/m H:i" }}</td>
+        <td style="padding:4px 8px;">{{ job.get_status_display }}</td>
+        <td style="padding:4px 8px;">{{ job.result_message|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+let pollTimer = null;
+
+async function startJob() {
+  const btn = document.getElementById('btn-start');
+  const msg = document.getElementById('msg');
+  btn.disabled = true; btn.textContent = 'Inatuma...';
+  try {
+    const formData = new FormData();
+    formData.append('pages', document.getElementById('pages').value);
+    if (document.getElementById('duplex').checked) formData.append('duplex', 'on');
+    const resp = await fetch("{% url 'bridge_start_job' exam.pk subject.pk %}", {
+      method: 'POST',
+      headers: {'X-CSRFToken': '{{ csrf_token }}'},
+      body: formData,
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      msg.textContent = 'Kazi #' + data.job_id + imetumwa kwa bridge.';
+      watchJob(data.job_id);
+    } else {
+      msg.textContent = 'Imeshindikana kuanza.';
+      btn.disabled = false;
+    }
+  } catch (e) {
+    msg.textContent = 'Kosa la mtandao.';
+    btn.disabled = false;
+  }
+}
+
+function watchJob(jobId) {
+  document.getElementById('progress').style.display = 'block';
+  document.getElementById('btn-start').disabled = true;
+  pollTimer = setInterval(() => pollStatus(jobId), 2000);
+  pollStatus(jobId);
+}
+
+async function pollStatus(jobId) {
+  try {
+    const resp = await fetch(
+      "{% url 'bridge_job_status' exam.pk subject.pk 0 %}".replace('/hali/0/', '/hali/' + jobId + '/')
+    );
+    const d = await resp.json();
+    document.getElementById('p-status').textContent = d.status_display;
+    document.getElementById('p-counts').textContent =
+      d.graded ? (d.graded + ' graded · ' + d.review + ' review') : '';
+    document.getElementById('p-note').textContent = d.result_message || '';
+
+    let pct = 0;
+    if (d.status === 'CLAIMED') pct = 30;
+    else if (d.status === 'UPLOADING') pct = 60;
+    else if (d.status === 'DONE') pct = 100;
+    document.getElementById('p-bar').style.width = pct + '%';
+
+    if (d.status === 'DONE') {
+      clearInterval(pollTimer);
+      document.getElementById('btn-start').disabled = false;
+      document.getElementById('btn-start').textContent = '🖨️ Scan nyingine';
+      setTimeout(() => { window.location = "{% url 'scan_review' exam.pk subject.pk %}"; }, 1500);
+    } else if (d.status === 'FAILED' || d.status === 'CANCELLED') {
+      clearInterval(pollTimer);
+      document.getElementById('btn-start').disabled = false;
+    }
+  } catch (e) { /* polling inaendelea */ }
+}
+</script>
+{% endblock %}

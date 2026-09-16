@@ -171,3 +171,20 @@ custom_admin_site.register(PersonalUpload)
 custom_admin_site.register(SubscriptionPlan, SubscriptionPlanAdmin)
 custom_admin_site.register(SchoolSubscription, SchoolSubscriptionAdmin)
 custom_admin_site.register(PaymentTransaction, PaymentTransactionAdmin)
+
+
+# ---------------- Sahishi Bridge ----------------
+from .bridge_models import SahishiBridge, ScanJob  # noqa: E402
+
+
+@admin.register(SahishiBridge)
+class SahishiBridgeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'school', 'scanner_name', 'last_seen', 'active')
+    list_filter = ('active', 'school')
+    readonly_fields = ('token', 'last_seen', 'last_ip')
+
+
+@admin.register(ScanJob)
+class ScanJobAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'exam', 'subject', 'status', 'bridge', 'created_at', 'result_message')
+    list_filter = ('status',)

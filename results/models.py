@@ -907,3 +907,6 @@ class ClassTimetableEntry(models.Model):
 
 # Kazi za Sahishi (scan & auto-grade) ziko kwenye scan_models.py
 from .scan_models import ScanAnswerKey, ScanSheet, ScanSheetBatch  # noqa: E402,F401
+
+# Sahishi Bridge (ADF scanner bridge) ziko kwenye bridge_models.py
+from .bridge_models import SahishiBridge, ScanJob  # noqa: E402,F401
