@@ -26,7 +26,11 @@ class SahishiBridge(models.Model):
         School, on_delete=models.CASCADE, related_name='sahishi_bridges',
     )
     name = models.CharField(max_length=100, help_text='Mf: Ofisi ya walimu')
-    token = models.CharField(max_length=80, unique=True, db_index=True)
+    token = models.CharField(
+        max_length=80, unique=True, db_index=True,
+        default=generate_bridge_token,
+        help_text='Inajitengeneza yenyewe. Badilisha kwa rotate_token().',
+    )
     # Scanner iliyochaguliwa kwenye PC hiyo (scanimage device name)
     scanner_name = models.CharField(max_length=255, blank=True)
     last_seen = models.DateTimeField(null=True, blank=True)
@@ -45,6 +49,12 @@ class SahishiBridge(models.Model):
         self.token = generate_bridge_token()
         self.save(update_fields=['token'])
         return self.token
+
+    def save(self, *args, **kwargs):
+        # Hakikisha token haipo tupu hata kama default haikutumika
+        if not self.token:
+            self.token = generate_bridge_token()
+        super().save(*args, **kwargs)
 
 
 class ScanJob(models.Model):
