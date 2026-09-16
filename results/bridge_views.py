@@ -103,6 +103,10 @@ def bridge_claim(request):
             'pages': job.pages,
             'duplex': job.duplex,
             'dpi': job.dpi,
+            'print_marked': job.print_marked,
+            'marked_url': request.build_absolute_uri(
+                f'/shule/sahishi/bridge/api/marked/{job.pk}/'
+            ) if job.print_marked else None,
             'upload_url': request.build_absolute_uri(
                 f'/shule/sahishi/bridge/api/upload/{job.pk}/'
             ),
@@ -181,11 +185,16 @@ def bridge_upload(request, job_id):
     job.save(update_fields=['status', 'batch', 'completed_at', 'result_message'])
     logger.info('Bridge job #%s done: %s', job.pk, job.result_message)
 
+    # Ripoti ya uchapishaji itasasishwa na bridge
     return JsonResponse({
         'ok': True,
         'graded': graded,
         'review': review,
         'total': len(images),
+        'print_marked': job.print_marked,
+        'marked_url': request.build_absolute_uri(
+            f'/shule/sahishi/bridge/api/marked/{job.pk}/'
+        ) if job.print_marked else None,
     })
 
 
@@ -221,6 +230,7 @@ def bridge_start_job(request, exam_id, subject_id):
     job = ScanJob.objects.create(
         school=school, exam=exam, subject=subject,
         pages=pages, duplex=duplex,
+        print_marked=request.POST.get('print_marked') == 'on',
         note=request.POST.get('note', '')[:200],
     )
     return JsonResponse({'ok': True, 'job_id': job.pk})

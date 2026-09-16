@@ -23,6 +23,9 @@
       <label style="font-size:.85rem;display:flex;align-items:center;gap:4px;">
         <input type="checkbox" id="duplex"> Upande mbili
       </label>
+      <label style="font-size:.85rem;display:flex;align-items:center;gap:4px;" title="Printer itatoa nakala zenye alama nyekundu moja kwa moja">
+        <input type="checkbox" id="print_marked" checked> 🖊️ Chapisha alama nyekundu
+      </label>
       <button id="btn-start" onclick="startJob()"
               style="background:#1F7A3D;color:#fff;border:none;padding:9px 20px;border-radius:4px;font-weight:700;cursor:pointer;">
         🖨️ Anza Scan
@@ -81,6 +84,7 @@ async function startJob() {
     const formData = new FormData();
     formData.append('pages', document.getElementById('pages').value);
     if (document.getElementById('duplex').checked) formData.append('duplex', 'on');
+    if (document.getElementById('print_marked').checked) formData.append('print_marked', 'on');
     const resp = await fetch("{% url 'bridge_start_job' exam.pk subject.pk %}", {
       method: 'POST',
       headers: {'X-CSRFToken': '{{ csrf_token }}'},

@@ -296,20 +296,23 @@ urlpatterns += [
 ]
 
 # ---------------- Sahishi Bridge (ADF scanner) ----------------
+from .bridge_marked_views import bridge_marked_zip  # noqa: E402
 from .bridge_views import (  # noqa: E402
+    bridge_claim,
+    bridge_fail,
     bridge_job_status,
     bridge_page,
     bridge_ping,
     bridge_start_job,
     bridge_upload,
 )
-from .bridge_views import bridge_claim, bridge_fail  # noqa: E402
 
 urlpatterns += [
     path('sahishi/bridge/api/ping/', bridge_ping, name='bridge_ping'),
     path('sahishi/bridge/api/claim/', bridge_claim, name='bridge_claim'),
     path('sahishi/bridge/api/upload/<int:job_id>/', bridge_upload, name='bridge_upload'),
     path('sahishi/bridge/api/fail/<int:job_id>/', bridge_fail, name='bridge_fail'),
+    path('sahishi/bridge/api/marked/<int:job_id>/', bridge_marked_zip, name='bridge_marked_zip'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/bridge/',
          bridge_page, name='bridge_page'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/bridge/anaza/',

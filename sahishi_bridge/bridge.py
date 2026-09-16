@@ -112,6 +112,37 @@ def upload_images(job_id, files):
     return r.json()
 
 
+def download_marked_zip(job_id, marked_url):
+    """Pakua ZIP ya karatasi zilizoalama nyekundu → folder ya job."""
+    r = requests.get(marked_url, headers=HEADERS, timeout=600)
+    r.raise_for_status()
+    out_dir = SCAN_DIR / f'job_{job_id}' / 'marked'
+    out_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = out_dir / 'marked.zip'
+    zip_path.write_bytes(r.content)
+
+    import zipfile
+    with zipfile.ZipFile(zip_path) as zf:
+        zf.extractall(out_dir)
+    zip_path.unlink()
+    files = sorted(out_dir.glob('*.png'))
+    return files
+
+
+def print_marked_pages(files, printer=None):
+    """Chapisha kila ukurasa kwa CUPS (`lp`). Inarudi (printed, failed)."""
+    printed = failed = 0
+    for f in files:
+        cmd = ['lp'] + (['-d', printer] if printer else []) + [str(f)]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if proc.returncode == 0:
+            printed += 1
+        else:
+            failed += 1
+            print(f'  ⚠ Print imeshindikana {f.name}: {proc.stderr.strip()[:120]}')
+    return printed, failed
+
+
 def report_failure(job_id, reason):
     try:
         requests.post(
@@ -170,6 +201,19 @@ def do_job(job):
     result = upload_images(job['id'], files)
     print(f"  ✓ {result.get('total')} picha: {result.get('graded')} graded, {result.get('review')} review")
     print(f"  → Fungua review: {SERVER}/shule/exam/{job['exam_id']}/subject/{job['subject_id']}/sahishi/review/")
+
+    # Red-pen printing: pakua karatasi zenye alama + chapisha
+    if job.get('print_marked') and job.get('marked_url'):
+        try:
+            print('  🖊️ Inapakua karatasi zenye alama nyekundu...')
+            marked_files = download_marked_zip(job['id'], job['marked_url'])
+            print(f'  ✐ Kurasa {len(marked_files)} zenye alama. Zinachapisha...')
+            printed, failed = print_marked_pages(
+                marked_files, os.environ.get('SAHISHI_PRINTER') or None,
+            )
+            print(f'  🖨️ Imechapisha {printed}/{printed + failed}')
+        except Exception as e:
+            print(f'  ⚠ Uchapishaji umeshindikana: {e}')
 
     # Safisha files za job hii (acha directory tupu)
     for f in files:

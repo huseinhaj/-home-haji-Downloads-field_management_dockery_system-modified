@@ -82,6 +82,13 @@ class ScanJob(models.Model):
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True)
     pages = models.PositiveIntegerField(default=40, help_text='Idadi ya kurasa za ADF')
     duplex = models.BooleanField(default=False)
+    # Mwalimu anataka nakala zenye alama nyekundu zichapishwe moja kwa moja
+    print_marked = models.BooleanField(
+        default=False,
+        help_text='Bridge ichapishe nakala zenye alama nyekundu baada ya grading',
+    )
+    # Ripoti ya uchapishaji (mf. "Imechapisha kurasa 38/40")
+    print_report = models.CharField(max_length=255, blank=True)
     dpi = models.PositiveIntegerField(default=300)
     note = models.CharField(max_length=200, blank=True)
     # Matokeo: "Karatasi 38: 35 graded, 3 review"
