@@ -1277,19 +1277,17 @@ function _dlPdf(url) {
           const kickoff = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(kickoff.error || 'Upload failed');
 
-          // If task ran synchronously (Celery was unavailable), use result directly
+          // OCR always runs in the background now (Celery task, or a
+          // background thread when no worker is live) — poll until it's
+          // done, showing elapsed time so a teacher waiting on a slow
+          // read isn't left guessing.
           let data;
-          if (kickoff.sync_done) {
-            data = kickoff;
-          } else {
-          // OCR runs in the background (can take a while on multi-page
-          // uploads) — poll until it's done, showing elapsed time so a
-          // teacher waiting on a slow read isn't left guessing.
           const taskId = kickoff.task_id;
           const statusUrlBase = "{% url 'scoresheet_extract_status' task_id='PLACEHOLDER' %}".replace('PLACEHOLDER', taskId);
           const POLL_INTERVAL_MS = 2500;
           const MAX_WAIT_MS = 4 * 60 * 1000;
           const startedAt = Date.now();
+          let consecutiveNetworkErrors = 0;
           while (true) {
             if (Date.now() - startedAt > MAX_WAIT_MS) {
               throw new Error(LANG === 'sw'
@@ -1300,8 +1298,21 @@ function _dlPdf(url) {
             photoStatus.innerHTML = '<span style="color:#24508a;">⏳ ' +
               (LANG === 'sw' ? 'Inasoma picha...' : 'Reading photo...') + ' (' + elapsedSec + 's)</span>';
 
-            const pollRes = await fetch(statusUrlBase);
-            const pollData = await pollRes.json().catch(() => ({}));
+            // A poll can fail at the network level (flaky mobile data
+            // during a multi-minute wait) without the OCR itself having
+            // failed server-side — retry a few times before giving up,
+            // instead of surfacing a bare "Failed to fetch" immediately.
+            let pollRes, pollData;
+            try {
+              pollRes = await fetch(statusUrlBase);
+              pollData = await pollRes.json().catch(() => ({}));
+              consecutiveNetworkErrors = 0;
+            } catch (networkErr) {
+              consecutiveNetworkErrors++;
+              if (consecutiveNetworkErrors >= 5) throw networkErr;
+              await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+              continue;
+            }
             if (!pollRes.ok) throw new Error(pollData.error || 'Upload failed');
             if (pollData.status === 'processing') {
               await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
@@ -1309,7 +1320,6 @@ function _dlPdf(url) {
             }
             data = pollData;
             break;
-          }
           }
 
           const matched = data.matched || [];

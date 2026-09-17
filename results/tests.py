@@ -676,10 +676,11 @@ class BulkStudentResultsPdfTests(TestCase):
 		self.academic = TeacherAccount.objects.create(email='academic@example.com', full_name='Academic One', role=TeacherAccount.ROLE_ACADEMIC, school=self.school)
 		self.teacher = TeacherAccount.objects.create(email='teacher@example.com', full_name='Teacher One', role=TeacherAccount.ROLE_TEACHER, school=self.school)
 
-	def test_merges_one_page_per_student_in_az_name_order(self):
-		"""Rows/pages follow the same A-Z (surname, then first name) order
-		as the registration roster, not exam rank — Juma sorts before Mushi
-		regardless of their `.position` (rank) values."""
+	def test_merges_one_page_per_student_in_registration_order(self):
+		"""Rows/pages follow registration order (Student.id — Amina was
+		created first), not exam rank — see ResultsExportRegistrationOrderAndExcelStylesTests
+		for a fixture that disambiguates registration order from both rank
+		and alphabetical order."""
 		client = Client()
 		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
 		response = client.get(reverse('generate_bulk_student_results_pdf', args=[self.exam.id]))
@@ -711,40 +712,61 @@ class BulkStudentResultsPdfTests(TestCase):
 		self.assertEqual(response.status_code, 404)
 
 
-class ResultsExportAzOrderAndExcelStylesTests(TestCase):
-	"""The main results exports (PDF and Excel) list students A-Z (surname,
-	then first name) — the same order as the registration roster — instead
-	of ranked by exam position. Each PDF ?style= (normal/rank/necta/royal/
-	acsee) has a matching Excel export at the same ?style= on
-	export_results_excel."""
+class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
+	"""The main results exports (PDF and Excel) list students in the same
+	order they were registered into the system (Student.id — see
+	get_exam_export_payload), instead of ranked by exam position or sorted
+	alphabetically. "Top 5 Performers" is the one section that must still
+	rank by actual score regardless of that row order. Each PDF ?style=
+	(normal/rank/necta/royal/acsee) has a matching Excel export at the
+	same ?style= on export_results_excel."""
 	databases = {'default', 'results'}
 
 	def setUp(self):
 		self.school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
 		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=2, school=self.school)
 		self.subject = Subject.objects.create(name='Mathematics')
-		# Zawadi ranks 1st (highest score) but should sort AFTER Amina in the
-		# A-Z export order — proves ordering no longer follows position.
-		self.zawadi = Student.objects.create(first_name='Zawadi', last_name='Ally', gender='F')
-		self.amina = Student.objects.create(first_name='Amina', last_name='Juma', gender='F')
-		ExamResult.objects.create(exam=self.exam, student=self.zawadi, subject=self.subject, score=90)
-		ExamResult.objects.create(exam=self.exam, student=self.amina, subject=self.subject, score=50)
-		ProcessedResult.objects.create(exam=self.exam, student=self.zawadi, total_score=90, average_score=90, points=1, position=1, division='I')
-		ProcessedResult.objects.create(exam=self.exam, student=self.amina, total_score=50, average_score=50, points=5, position=2, division='III')
+		# Registered FIRST (lower Student.id) but the WORSE performer, and
+		# alphabetically AFTER the other student (surname Zuberi > Ally) —
+		# disambiguates "registration order" from both "by position" and
+		# "alphabetical", which would each put Amina first instead.
+		self.zawadi = Student.objects.create(first_name='Zawadi', last_name='Zuberi', gender='F')
+		self.amina = Student.objects.create(first_name='Amina', last_name='Ally', gender='F')
+		ExamResult.objects.create(exam=self.exam, student=self.zawadi, subject=self.subject, score=50)
+		ExamResult.objects.create(exam=self.exam, student=self.amina, subject=self.subject, score=90)
+		ProcessedResult.objects.create(exam=self.exam, student=self.zawadi, total_score=50, average_score=50, points=5, position=2, division='III')
+		ProcessedResult.objects.create(exam=self.exam, student=self.amina, total_score=90, average_score=90, points=1, position=1, division='I')
 		self.academic = TeacherAccount.objects.create(email='academic@example.com', full_name='Academic One', role=TeacherAccount.ROLE_ACADEMIC, school=self.school)
 		self.client = Client()
 		self.client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
 
-	def test_pdf_lists_students_az_not_by_position(self):
+	def test_pdf_lists_students_in_registration_order(self):
 		import io
 		import pdfplumber
 		response = self.client.get(reverse('generate_results_pdf', args=[self.exam.id]))
 		self.assertEqual(response.status_code, 200)
 		with pdfplumber.open(io.BytesIO(response.content)) as pdf:
 			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
-		self.assertLess(text.index('Ally'), text.index('Juma'))
+		# Both names also appear earlier in the TOP 5 PERFORMERS section
+		# (ranked by position) — use the LAST occurrence of each, which is
+		# the main per-student results table, to check registration order:
+		# Zawadi (registered first) before Amina.
+		self.assertLess(text.rindex('Zuberi'), text.rindex('Ally'))
 
-	def test_excel_lists_students_az_not_by_position(self):
+	def test_pdf_top5_still_ranked_by_actual_position(self):
+		import io
+		import pdfplumber
+		response = self.client.get(reverse('generate_results_pdf', args=[self.exam.id]))
+		with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+		top5_start = text.index('TOP 5 PERFORMERS')
+		top5_section = text[top5_start:top5_start + 400]
+		# Amina (position 1, the actual best performer) must lead the Top 5
+		# table even though she's listed second in the main registration-
+		# order table.
+		self.assertLess(top5_section.index('Ally'), top5_section.index('Zuberi'))
+
+	def test_excel_lists_students_in_registration_order(self):
 		import io
 		import openpyxl
 		response = self.client.get(reverse('export_results_excel', args=[self.exam.id]))
@@ -752,7 +774,20 @@ class ResultsExportAzOrderAndExcelStylesTests(TestCase):
 		wb = openpyxl.load_workbook(io.BytesIO(response.content))
 		ws = wb.active
 		names = [ws.cell(row=r, column=2).value for r in (4, 5)]
-		self.assertEqual(names, ['Zawadi Ally', 'Amina Juma'])
+		self.assertEqual(names, ['Zawadi Zuberi', 'Amina Ally'])
+
+	def test_excel_top5_still_ranked_by_actual_position(self):
+		import io
+		import openpyxl
+		response = self.client.get(reverse('export_results_excel', args=[self.exam.id]))
+		wb = openpyxl.load_workbook(io.BytesIO(response.content))
+		ws = wb['Summary'] if 'Summary' in wb.sheetnames else wb['Muhtasari']
+		header_row = next(
+			r for r in range(1, ws.max_row + 1)
+			if ws.cell(row=r, column=1).value in ('POS.', 'NAFASI')
+		)
+		first_name_in_top5 = ws.cell(row=header_row + 1, column=2).value
+		self.assertEqual(first_name_in_top5, 'Amina Ally')
 
 	def test_excel_accepts_same_style_param_as_pdf(self):
 		for style in ('normal', 'rank', 'necta', 'royal', 'acsee'):
@@ -2021,11 +2056,19 @@ class CentreCountedSubjectsTests(TestCase):
 
 class TeacherScanNoWorkerFallbackTests(TestCase):
 	"""A teacher's scoresheet scan must still work when NO Celery worker is
-	running (local docker starts web+redis+db without the celery container).
+	running (local docker starts web+redis+db without the celery container,
+	or a production deploy is missing the separate `worker` service).
 	Before, the task was queued into redis and never consumed — the frontend
-	polled for 4 minutes and died with a generic 'failed to read photo',
-	while the academic bulk-upload flow worked because it inspects the queue
-	and falls back to synchronous OCR. The teacher flow now does the same.
+	polled for 4 minutes and died with a generic 'failed to read photo'.
+
+	It was then fixed by running the OCR INLINE in this request as a
+	Celery-less fallback — but that blocked the request for as long as the
+	vision-model call took (up to several minutes on a multi-page scan),
+	which every reverse proxy in front of gunicorn kills long before it
+	finishes: the browser saw that as a bare "Failed to fetch". The
+	fallback now runs the OCR in a background thread and returns a task_id
+	immediately, exactly like the real Celery path, so the request itself
+	never blocks — see _run_scoresheet_ocr_background in marks_entry.py.
 
 	These tests deliberately do NOT touch celery conf (no eager toggling) —
 	only the worker-probe is patched, so they can't leak state into the
@@ -2042,12 +2085,19 @@ class TeacherScanNoWorkerFallbackTests(TestCase):
 		self.client = Client()
 		self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
 
-	def test_no_worker_runs_ocr_synchronously(self):
+	def test_no_worker_runs_ocr_in_background_thread_not_inline(self):
 		# Patch the task itself (the name the view looks up) — no real celery
 		# machinery runs at all, so these tests can't leak state anywhere.
-		task = patch('results.marks_entry.process_scoresheet_photo_task').start()
-		task.return_value = {'matched': [{'id': self.student.id, 'score': 64, 'is_absent': False, 'raw_name': 'Amina Juma', 'confidence': 1.0, 'is_new': False}], 'unmatched': [], 'missing': []}
-		with patch('results.marks_entry._celery_worker_consuming', return_value=False):
+		# The patches must stay active until the background thread has
+		# actually run process_scoresheet_photo_task (it looks the name up
+		# from module globals at execution time, not when the thread was
+		# spawned) — stopping them right after the POST races the thread
+		# and can let it call the REAL task against fake bytes, leaking a
+		# stray thread into later tests. So the poll loop below runs INSIDE
+		# both `with` blocks, and they only exit once status != 'processing'.
+		with patch('results.marks_entry.process_scoresheet_photo_task') as task, \
+				patch('results.marks_entry._celery_worker_consuming', return_value=False):
+			task.return_value = {'matched': [{'id': self.student.id, 'score': 64, 'is_absent': False, 'raw_name': 'Amina Juma', 'confidence': 1.0, 'is_new': False}], 'unmatched': [], 'missing': []}
 			from django.core.files.uploadedfile import SimpleUploadedFile
 			photo = SimpleUploadedFile('sheet.jpg', b'fake-bytes', content_type='image/jpeg')
 			resp = self.client.post(reverse('scoresheet_photo_extract'), {
@@ -2056,10 +2106,23 @@ class TeacherScanNoWorkerFallbackTests(TestCase):
 				'subject_id': self.subject.id,
 				'roster': json.dumps([{'id': self.student.id, 'name': 'Amina Juma'}]),
 			})
-		patch.stopall()
-		self.assertEqual(resp.status_code, 200)
-		data = resp.json()
-		self.assertTrue(data.get('sync_done'))
+			# The request returns immediately with a task_id (202) — it
+			# must NOT block waiting for the OCR result inline.
+			self.assertEqual(resp.status_code, 202)
+			task_id = resp.json().get('task_id')
+			self.assertTrue(task_id and task_id.startswith('localocr-'))
+
+			import time
+			poll = data = None
+			for _ in range(50):
+				poll = self.client.get(reverse('scoresheet_extract_status', args=[task_id]))
+				data = poll.json()
+				if data.get('status') != 'processing':
+					break
+				time.sleep(0.05)
+			else:
+				self.fail('background OCR thread never finished')
+		self.assertEqual(poll.status_code, 200)
 		self.assertEqual(len(data.get('matched', [])), 1)
 		self.assertEqual(data['matched'][0]['id'], self.student.id)
 		self.assertEqual(data['matched'][0]['score'], 64)

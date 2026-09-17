@@ -1350,11 +1350,15 @@ def generate_results_pdf_response(exam, style='normal'):
         story.append(Spacer(1, 4))
 
     # ── TOP 5 ──
+    # results is in registration order (see get_exam_export_payload), NOT
+    # ranked by score — sort a copy by position here so "Top 5" is always
+    # the 5 actual best performers, regardless of the main table's order.
     if results:
         story.append(_p("<b>TOP 5 PERFORMERS</b>", st['section']))
         th5 = ["POS", "NAME", "TOTAL", "AVG", "GPA", "PTS", "DIV"]
         t_data = [[_p(f"<b>{h}</b>", st['th']) for h in th5]]
-        for idx, r in enumerate(results[:5]):
+        top5 = sorted(results, key=lambda r: r.position)[:5]
+        for idx, r in enumerate(top5):
             nm = _student_name(r)
             if len(nm) > 28:
                 nm = nm[:26] + '..'
@@ -2097,16 +2101,16 @@ def generate_bulk_student_results_pdf_response(exam, style='normal'):
     scoped to one form/year/type), each on their own page(s), merged into
     ONE downloadable PDF — same slip _build_student_result_pdf_bytes
     produces for a single student, just all of them together in the same
-    A-Z (last name, then first name) order used for the registration/
-    roster list elsewhere in the system, not ranked by position. Mirrors
-    the merge pattern curriculum/views.py's download_all_lesson_plans_pdf
-    already uses for the same "many small PDFs -> one file" need."""
+    registration order (Student.id) used for the roster list elsewhere in
+    the system, not ranked by position. Mirrors the merge pattern
+    curriculum/views.py's download_all_lesson_plans_pdf already uses for
+    the same "many small PDFs -> one file" need."""
     import pypdfium2 as pdfium
 
     results = list(
         ProcessedResult.objects.filter(exam=exam)
         .select_related('student', 'exam', 'exam__school')
-        .order_by('student__last_name', 'student__first_name')
+        .order_by('student_id')
     )
     if not results:
         resp = HttpResponse('Hakuna matokeo yaliyokamilika kwa mtihani huu bado.', status=404)

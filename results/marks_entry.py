@@ -12,11 +12,13 @@ Flow:
 """
 import json
 import logging
+import threading
 import uuid
 from xml.sax.saxutils import escape as _xml_escape
 
 from celery.result import AsyncResult
 from django.contrib import messages
+from django.core.cache import cache
 from django.core.files.storage import default_storage
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -464,20 +466,28 @@ def scoresheet_photo_extract(request):
 
     # Eager mode (tests) executes the task inside apply_async itself.
     # Otherwise: a queued task is only ever run by a LIVE worker. Local
-    # docker setups often start web+redis+db WITHOUT the celery container
-    # — the task would then sit in redis forever and the frontend's
-    # 4-minute poll would end in a generic "failed to read photo", while
-    # the academic bulk-upload flow (which checks the queue before
-    # dispatching) runs its OCR inline and just works. Detect that exact
-    # situation up front and run the OCR synchronously, so a teacher's
-    # scan behaves exactly like the academic officer's upload.
+    # docker setups (and a production deploy missing the separate `worker`
+    # service from the Procfile) often run web+redis+db WITHOUT a celery
+    # worker — the task would then sit in redis forever. Detect that exact
+    # situation up front and fall back to _run_scoresheet_ocr_background,
+    # so a teacher's scan/upload still works.
+    #
+    # That fallback used to run the OCR call INLINE in this request instead
+    # — but a multi-page vision-model read can take 1-6 minutes (see
+    # tasks.py's time_limit=360), and every reverse proxy in front of
+    # gunicorn (Railway's edge, nginx, ...) kills a request long before
+    # that, which the browser surfaces as a bare "Failed to fetch" with no
+    # useful detail. Running it in a background thread instead means this
+    # request returns immediately with a task_id, exactly like the Celery
+    # path — the frontend's existing polling (scoresheet_extract_status)
+    # doesn't need to know which path it came from.
     if (not getattr(celery_app.conf, 'task_always_eager', False)
             and not _celery_worker_consuming('default')):
         logger.warning(
-            'scoresheet_photo_extract: no live Celery worker on queue %r — running OCR synchronously',
+            'scoresheet_photo_extract: no live Celery worker on queue %r — running OCR in a background thread',
             'default',
         )
-        return _run_scoresheet_ocr_sync(storage_path, roster_ids)
+        return _run_scoresheet_ocr_background(storage_path, roster_ids)
 
     try:
         task = process_scoresheet_photo_task.apply_async(
@@ -485,9 +495,9 @@ def scoresheet_photo_extract(request):
         )
         return JsonResponse({'task_id': task.id}, status=202)
     except Exception as celery_err:
-        # Celery broker may be down — run synchronously as fallback
-        logger.warning('Celery apply_async failed for scoresheet OCR, running synchronously: %s', celery_err)
-        return _run_scoresheet_ocr_sync(storage_path, roster_ids)
+        # Celery broker may be down — background-thread fallback
+        logger.warning('Celery apply_async failed for scoresheet OCR, falling back to a background thread: %s', celery_err)
+        return _run_scoresheet_ocr_background(storage_path, roster_ids)
 
 
 def _celery_worker_consuming(queue_name):
@@ -506,29 +516,72 @@ def _celery_worker_consuming(queue_name):
     return False
 
 
-def _run_scoresheet_ocr_sync(storage_path, roster_ids):
-    """Run the scoresheet OCR inside this request (the Celery-less path)
-    and return the same JSON shapes the polling endpoint would return."""
-    try:
-        result = process_scoresheet_photo_task(storage_path, roster_ids)
-        if result and result.get('error'):
-            return JsonResponse({'error': result['error']}, status=400)
-        return JsonResponse({
-            'task_id': None, 'sync_done': True,
-            'matched': result.get('matched', []),
-            'unmatched': result.get('unmatched', []),
-            'missing': result.get('missing', []),
-        }, status=200)
-    except Exception as sync_err:
-        logger.error('Synchronous scoresheet OCR also failed: %s', sync_err, exc_info=True)
-        return JsonResponse({'error': str(sync_err)}, status=500)
+# Prefix marking a task_id as a local (non-Celery) background thread, so
+# scoresheet_extract_status knows to check the cache instead of Celery's
+# AsyncResult. cache is Redis in production (settings.CACHES) — shared
+# across gunicorn worker processes, so a poll landing on a different
+# worker than the one that started the thread still sees the result.
+_LOCAL_TASK_PREFIX = 'localocr-'
+_LOCAL_TASK_CACHE_TIMEOUT = 600  # >= tasks.py's time_limit=360, plus margin
+
+
+def _run_scoresheet_ocr_background(storage_path, roster_ids):
+    """Celery-less fallback: run the OCR in a background thread instead of
+    blocking this request (see the long comment in scoresheet_photo_extract
+    for why). Returns a task_id immediately; scoresheet_extract_status
+    polls its progress from the cache."""
+    from django.db import connection
+
+    task_id = f'{_LOCAL_TASK_PREFIX}{uuid.uuid4().hex}'
+    cache_key = f'scoresheet_ocr:{task_id}'
+    cache.set(cache_key, {'status': 'processing'}, timeout=_LOCAL_TASK_CACHE_TIMEOUT)
+
+    def _run():
+        try:
+            result = process_scoresheet_photo_task(storage_path, roster_ids)
+            cache.set(cache_key, {'status': 'done', 'result': result}, timeout=_LOCAL_TASK_CACHE_TIMEOUT)
+        except Exception as bg_err:
+            logger.error('Background scoresheet OCR failed: %s', bg_err, exc_info=True)
+            cache.set(cache_key, {'status': 'failed', 'error': str(bg_err)}, timeout=_LOCAL_TASK_CACHE_TIMEOUT)
+        finally:
+            # This thread opened its own DB connection (Student lookups in
+            # process_scoresheet_photo_task) — Django won't close it on
+            # thread exit by itself, so do it here to avoid leaking one
+            # per upload.
+            connection.close()
+
+    threading.Thread(target=_run, daemon=True).start()
+    return JsonResponse({'task_id': task_id}, status=202)
 
 
 @teacher_or_academic_required
 @require_GET
 def scoresheet_extract_status(request, task_id):
     """Polled by the frontend every couple seconds after
-    scoresheet_photo_extract kicks off the Celery task."""
+    scoresheet_photo_extract kicks off the OCR (Celery task or, when no
+    worker is live, the _run_scoresheet_ocr_background thread)."""
+    if task_id.startswith(_LOCAL_TASK_PREFIX):
+        entry = cache.get(f'scoresheet_ocr:{task_id}')
+        if entry is None:
+            # Not found yet (cache backend hiccup, or a poll that raced
+            # the very first cache.set) — tell the frontend to keep
+            # waiting; its own MAX_WAIT_MS cap still applies.
+            return JsonResponse({'status': 'processing'})
+        if entry['status'] == 'processing':
+            return JsonResponse({'status': 'processing'})
+        if entry['status'] == 'failed':
+            logger.error("scoresheet_extract_status: local task %s failed: %s", task_id, entry.get('error'))
+            return JsonResponse({'error': 'Kuna hitilafu wakati wa kusoma picha. Jaribu tena.'}, status=500)
+        payload = entry.get('result') or {}
+        if payload.get('error'):
+            return JsonResponse({'error': payload['error']}, status=400)
+        return JsonResponse({
+            'status': 'done',
+            'matched': payload.get('matched', []),
+            'unmatched': payload.get('unmatched', []),
+            'missing': payload.get('missing', []),
+        })
+
     result = AsyncResult(task_id)
 
     if not result.ready():

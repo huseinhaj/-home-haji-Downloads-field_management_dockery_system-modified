@@ -453,7 +453,10 @@ def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict, theme: di
         _gold_header_style(cell, theme)
     cur_row += 1
 
-    for result in results[:5]:
+    # results is in registration order (see get_exam_export_payload), NOT
+    # ranked by score — sort a copy by position so "Top 5" is always the 5
+    # actual best performers, regardless of the main sheet's row order.
+    for result in sorted(results, key=lambda r: r.position)[:5]:
         student = result.student
         full_name = ' '.join(
             part for part in [student.first_name, student.middle_name or '', student.last_name] if part
