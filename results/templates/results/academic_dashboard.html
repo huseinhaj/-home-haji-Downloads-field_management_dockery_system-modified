@@ -341,25 +341,40 @@
         {% elif ed.all_approved %}
         <div class="all-approved-bar">
           <div class="msg">✅ {% if LANG == 'sw' %}Masomo yote yameidhinishwa{% else %}All subjects approved{% endif %}</div>
-          {# Three direct links instead of one link + a JS-shown style picker modal — plain server-rendered ?style= links can never fail to come up. #}
+          {# Three direct links instead of one link + a JS-shown style picker modal — plain server-rendered ?style= links can never fail to come up. Each style offers both a PDF and an Excel (📊) download, same ?style= palette in both. #}
           <div class="d-flex gap-1 flex-wrap">
             <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=normal" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti kamili ya matokeo ya mtihani huu (PDF){% else %}Download this exam's full results report (PDF){% endif %}">
-              ⬇️ {% if LANG == 'sw' %}Ripoti ya Kawaida{% else %}Normal Report{% endif %}
+              ⬇️ {% if LANG == 'sw' %}Ripoti ya Kawaida{% else %}Normal Report{% endif %} (PDF)
+            </a>
+            <a href="{% url 'export_results_excel' ed.exam.id %}?style=normal" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti kamili ya matokeo ya mtihani huu (Excel){% else %}Download this exam's full results report (Excel){% endif %}">
+              📊 {% if LANG == 'sw' %}Ripoti ya Kawaida{% else %}Normal Report{% endif %} (Excel)
             </a>
             <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=rank" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya matokeo na nafasi (PDF){% else %}Download the results report with ranks (PDF){% endif %}">
-              ⬇️ {% if LANG == 'sw' %}Ripoti ya Ranki{% else %}Rank Report{% endif %}
+              ⬇️ {% if LANG == 'sw' %}Ripoti ya Ranki{% else %}Rank Report{% endif %} (PDF)
+            </a>
+            <a href="{% url 'export_results_excel' ed.exam.id %}?style=rank" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya matokeo na nafasi (Excel){% else %}Download the results report with ranks (Excel){% endif %}">
+              📊 {% if LANG == 'sw' %}Ripoti ya Ranki{% else %}Rank Report{% endif %} (Excel)
             </a>
             <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=necta" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti kwa muundo wa NECTA (PDF){% else %}Download the report in NECTA format (PDF){% endif %}">
-              ⬇️ {% if LANG == 'sw' %}Ripoti ya NECTA{% else %}NECTA Report{% endif %}
+              ⬇️ {% if LANG == 'sw' %}Ripoti ya NECTA{% else %}NECTA Report{% endif %} (PDF)
+            </a>
+            <a href="{% url 'export_results_excel' ed.exam.id %}?style=necta" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti kwa muundo wa NECTA (Excel){% else %}Download the report in NECTA format (Excel){% endif %}">
+              📊 {% if LANG == 'sw' %}Ripoti ya NECTA{% else %}NECTA Report{% endif %} (Excel)
             </a>
             {% if ed.exam.form == 5 %}
             <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=royal" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya kifahari ya Form Five (PDF){% else %}Download the Form Five Royal report (PDF){% endif %}" style="color:#6B2FA0;font-weight:700;">
-              👑 {% if LANG == 'sw' %}Form Five Royal{% else %}Form Five Royal{% endif %}
+              👑 {% if LANG == 'sw' %}Form Five Royal{% else %}Form Five Royal{% endif %} (PDF)
+            </a>
+            <a href="{% url 'export_results_excel' ed.exam.id %}?style=royal" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya kifahari ya Form Five (Excel){% else %}Download the Form Five Royal report (Excel){% endif %}" style="color:#6B2FA0;font-weight:700;">
+              👑 {% if LANG == 'sw' %}Form Five Royal{% else %}Form Five Royal{% endif %} (Excel)
             </a>
             {% endif %}
             {% if ed.exam.form == 6 %}
             <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=acsee" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya kifahari ya Form Six (PDF){% else %}Download the Form Six Prestige report (PDF){% endif %}" style="color:#8A6D1F;font-weight:700;">
-              🎓 {% if LANG == 'sw' %}Form Six Prestige{% else %}Form Six Prestige{% endif %}
+              🎓 {% if LANG == 'sw' %}Form Six Prestige{% else %}Form Six Prestige{% endif %} (PDF)
+            </a>
+            <a href="{% url 'export_results_excel' ed.exam.id %}?style=acsee" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya kifahari ya Form Six (Excel){% else %}Download the Form Six Prestige report (Excel){% endif %}" style="color:#8A6D1F;font-weight:700;">
+              🎓 {% if LANG == 'sw' %}Form Six Prestige{% else %}Form Six Prestige{% endif %} (Excel)
             </a>
             {% endif %}
           </div>

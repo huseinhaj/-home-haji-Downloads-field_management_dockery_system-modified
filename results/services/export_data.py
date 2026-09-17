@@ -6,7 +6,12 @@ def get_exam_export_payload(exam):
 
     Returns:
         subjects           — every subject that has at least one ExamResult
-        processed_results  — all students ranked by position
+        processed_results  — all students in the same A-Z (last name, then
+                             first name) order used everywhere else in the
+                             system for the registration/roster list —
+                             NOT ranked by position. Each result still
+                             carries its own `.position` (rank) value for
+                             display; only the row order changed.
         score_lookup       — {(student_id, subject_id): score or None}
         absent_lookup      — {(student_id, subject_id): True} for absent
         student_subjects   — {student_id: set(subject_ids)} — subjects
@@ -15,7 +20,8 @@ def get_exam_export_payload(exam):
     """
     subjects = list(Subject.objects.filter(examresult__exam=exam).distinct().order_by('name'))
     processed_results = list(
-        ProcessedResult.objects.filter(exam=exam).select_related('student').order_by('position')
+        ProcessedResult.objects.filter(exam=exam).select_related('student')
+        .order_by('student__last_name', 'student__first_name')
     )
 
     all_exam_results = ExamResult.objects.filter(exam=exam, subject__in=subjects)

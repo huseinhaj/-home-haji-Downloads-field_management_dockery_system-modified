@@ -221,7 +221,12 @@ def generate_bulk_student_results_pdf(request, exam_id):
 def export_results_excel(request, exam_id):
     exam = _get_exam_or_404(exam_id, request.user)
     recompute_processed_results_for_exam(exam)
-    return generate_results_excel_response(exam)
+    # ?style= : same options and default as generate_results_pdf — 'normal'
+    # (default) | 'rank' | 'necta' | 'royal' (Form Five) | 'acsee' (Form Six).
+    style = (request.GET.get('style') or 'normal').lower()
+    if style not in ('normal', 'rank', 'necta', 'royal', 'acsee'):
+        style = 'normal'
+    return generate_results_excel_response(exam, style=style)
 
 
 # ── Printing Secretary (PS) handoff ────────────────────────────────────────

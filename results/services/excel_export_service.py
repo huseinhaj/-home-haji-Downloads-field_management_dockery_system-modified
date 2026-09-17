@@ -42,6 +42,25 @@ WHITE = "FF" + TZ_WHITE
 LIGHT_GREY = "FF" + TZ_LIGHT_GREY
 DARK_GREY  = "FF" + TZ_DARK_GREY
 
+# ── Output themes — mirrors pdf_export_service.py's ?style= palettes so the
+# Excel download for a given style looks like the same "family" as its PDF
+# counterpart. Content/structure are identical across styles — only the
+# header/accent colours change. 'normal' keeps the sheet's original Tanzania
+# flag green/gold look untouched.
+#   header_bg/header_fg : main section & column-header cells (was flat GREEN/WHITE)
+#   accent_bg/accent_fg : secondary header cells, e.g. sub-tables (was flat GOLD/GREEN)
+_EXCEL_THEMES = {
+    'normal': {'header_bg': GREEN, 'header_fg': WHITE, 'accent_bg': GOLD, 'accent_fg': GREEN},
+    'rank':   {'header_bg': 'FFFCE4D6', 'header_fg': 'FF000000', 'accent_bg': 'FF8EA9DB', 'accent_fg': 'FF000000'},
+    'necta':  {'header_bg': 'FFFFFFE0', 'header_fg': 'FF000080', 'accent_bg': 'FFFFF9B8', 'accent_fg': 'FF000080'},
+    'royal':  {'header_bg': 'FF6B2FA0', 'header_fg': 'FFFFFFFF', 'accent_bg': 'FFE9DFF7', 'accent_fg': 'FF4A1D6E'},
+    'acsee':  {'header_bg': 'FF1A1A1A', 'header_fg': 'FFE5C96B', 'accent_bg': 'FFF0E4BC', 'accent_fg': 'FF5A4713'},
+}
+
+
+def _resolve_excel_theme(style):
+    return _EXCEL_THEMES.get((style or 'normal').lower(), _EXCEL_THEMES['normal'])
+
 
 def _grade_thresholds(form):
     """Return (score-thresholds, grade-ranges) for the exam's NECTA scale.
@@ -102,18 +121,20 @@ def _make_border(color: str = "FFCCCCCC") -> Border:
     return Border(left=side, right=side, top=side, bottom=side)
 
 
-def _green_header_style(cell, *, bold: bool = True):
-    cell.font = Font(color=WHITE, bold=bold, name='Calibri', size=10)
-    cell.fill = _make_fill(GREEN)
+def _green_header_style(cell, theme=None, *, bold: bool = True):
+    theme = theme or _EXCEL_THEMES['normal']
+    cell.font = Font(color=theme['header_fg'], bold=bold, name='Calibri', size=10)
+    cell.fill = _make_fill(theme['header_bg'])
     cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    cell.border = _make_border(GOLD)
+    cell.border = _make_border(theme['accent_bg'])
 
 
-def _gold_header_style(cell):
-    cell.font = Font(color=GREEN, bold=True, name='Calibri', size=9)
-    cell.fill = _make_fill(GOLD)
+def _gold_header_style(cell, theme=None):
+    theme = theme or _EXCEL_THEMES['normal']
+    cell.font = Font(color=theme['accent_fg'], bold=True, name='Calibri', size=9)
+    cell.fill = _make_fill(theme['accent_bg'])
     cell.alignment = Alignment(horizontal='center', vertical='center')
-    cell.border = _make_border(GREEN)
+    cell.border = _make_border(theme['header_bg'])
 
 
 def _set_auto_width(ws, min_width: int = 8, max_width: int = 35):
@@ -132,7 +153,7 @@ def _set_auto_width(ws, min_width: int = 8, max_width: int = 35):
 
 
 # ── Sheet 1: Full Results / Matokeo Kamili ──────────────────────────────────
-def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
+def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict, theme: dict):
     lang = get_report_language(exam)
     school_disp = get_full_school_name(exam)
 
@@ -157,8 +178,8 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
         title_cell.value = f"{school_disp} — MATOKEO YA {exam.get_exam_type_display().upper()} {exam.year}"
     else:
         title_cell.value = f"{school_disp} — {exam.get_exam_type_display().upper()} EXAMINATION {exam.year}"
-    title_cell.font = Font(bold=True, size=14, color=WHITE, name='Calibri')
-    title_cell.fill = _make_fill(GREEN)
+    title_cell.font = Font(bold=True, size=14, color=theme['header_fg'], name='Calibri')
+    title_cell.fill = _make_fill(theme['header_bg'])
     title_cell.alignment = Alignment(horizontal='center', vertical='center')
     ws.row_dimensions[1].height = 28
 
@@ -168,8 +189,8 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
         sub_cell.value = f"Fomu {exam.form}   |   {exam.name}   |   Mwaka {exam.year}"
     else:
         sub_cell.value = f"Form {exam.form}   |   {exam.name}   |   Year {exam.year}"
-    sub_cell.font = Font(bold=False, size=10, color=GOLD, name='Calibri')
-    sub_cell.fill = _make_fill(GREEN)
+    sub_cell.font = Font(bold=False, size=10, color=theme['header_fg'], name='Calibri')
+    sub_cell.fill = _make_fill(theme['header_bg'])
     sub_cell.alignment = Alignment(horizontal='center', vertical='center')
     ws.row_dimensions[2].height = 18
 
@@ -186,7 +207,7 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
         headers = ["POS", "NAME", "SEX"] + [_subj_header(s) for s in subjects] + ["TOTAL", "AVG", "DIV.", "PTS"]
     for col_idx, title in enumerate(headers, 1):
         cell = ws.cell(row=header_row, column=col_idx, value=title)
-        _green_header_style(cell)
+        _green_header_style(cell, theme)
     ws.row_dimensions[header_row].height = 22
 
     # Freeze panes
@@ -248,7 +269,7 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
         pts_col = div_col + 1
 
         total_cell = ws.cell(row=data_row, column=total_col, value=result.total_score)
-        total_cell.font = Font(bold=True, name='Calibri', size=9, color=GREEN)
+        total_cell.font = Font(bold=True, name='Calibri', size=9, color=theme['accent_fg'])
 
         avg_cell = ws.cell(row=data_row, column=avg_col, value=float(result.average_score))
         avg_cell.number_format = '0.00'
@@ -279,7 +300,7 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
         ws.cell(row=legend_row, column=1, value="UFUNGUO WA DARAJA:")
     else:
         ws.cell(row=legend_row, column=1, value="GRADING KEY:")
-    ws.cell(row=legend_row, column=1).font = Font(bold=True, name='Calibri', size=8, color=GREEN)
+    ws.cell(row=legend_row, column=1).font = Font(bold=True, name='Calibri', size=8, color=theme['accent_fg'])
     for i, (label, bg, fg) in enumerate(legend_labels):
         cell = ws.cell(row=legend_row, column=2 + i, value=label)
         cell.fill = _make_fill(bg)
@@ -292,7 +313,7 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict):
 
 
 # ── Sheet 2: Summary / Muhtasari ────────────────────────────────────────────
-def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict):
+def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict, theme: dict):
     lang = get_report_language(exam)
     school_disp = get_full_school_name(exam)
 
@@ -309,10 +330,10 @@ def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict):
         title = sw if lang == 'sw' else en
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
         cell = ws.cell(row=row, column=1, value=title)
-        cell.font = Font(bold=True, size=10, color=WHITE, name='Calibri')
-        cell.fill = _make_fill(GREEN)
+        cell.font = Font(bold=True, size=10, color=theme['header_fg'], name='Calibri')
+        cell.fill = _make_fill(theme['header_bg'])
         cell.alignment = Alignment(horizontal='left', vertical='center')
-        cell.border = _make_border(GOLD)
+        cell.border = _make_border(theme['accent_bg'])
         ws.row_dimensions[row].height = 18
 
     def _write_kv(row, key, val):
@@ -352,7 +373,7 @@ def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict):
         div_headers = ["DIVISION", "COUNT", "PERCENTAGE"]
     for col_idx, h in enumerate(div_headers, 1):
         cell = ws.cell(row=cur_row, column=col_idx, value=h)
-        _gold_header_style(cell)
+        _gold_header_style(cell, theme)
     cur_row += 1
 
     div_counts = {'I': 0, 'II': 0, 'III': 0, 'IV': 0, '0': 0}
@@ -387,7 +408,7 @@ def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict):
         sub_headers = ["SUBJECT", "AVERAGE", "HIGHEST", "LOWEST", "PASS %"]
     for col_idx, h in enumerate(sub_headers, 1):
         cell = ws.cell(row=cur_row, column=col_idx, value=h)
-        _gold_header_style(cell)
+        _gold_header_style(cell, theme)
     cur_row += 1
 
     for subject in subjects:
@@ -429,7 +450,7 @@ def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict):
         top_headers = ["POS.", "NAME", "TOTAL", "AVERAGE", "DIV."]
     for col_idx, h in enumerate(top_headers, 1):
         cell = ws.cell(row=cur_row, column=col_idx, value=h)
-        _gold_header_style(cell)
+        _gold_header_style(cell, theme)
     cur_row += 1
 
     for result in results[:5]:
@@ -455,7 +476,7 @@ def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict):
 
 
 # ── Sheet 3: Subject Analysis / Somo kwa Somo ───────────────────────────────
-def _build_sheet_somo_kwa_somo(wb: openpyxl.Workbook, exam, payload: dict):
+def _build_sheet_somo_kwa_somo(wb: openpyxl.Workbook, exam, payload: dict, theme: dict):
     lang = get_report_language(exam)
 
     if lang == 'sw':
@@ -473,8 +494,8 @@ def _build_sheet_somo_kwa_somo(wb: openpyxl.Workbook, exam, payload: dict):
     ws.merge_cells(start_row=cur_row, start_column=1, end_row=cur_row, end_column=5)
     title_val = "UCHAMBUZI WA MASOMO" if lang == 'sw' else "SUBJECT ANALYSIS"
     title_cell = ws.cell(row=cur_row, column=1, value=title_val)
-    title_cell.font = Font(bold=True, size=12, color=WHITE, name='Calibri')
-    title_cell.fill = _make_fill(GREEN)
+    title_cell.font = Font(bold=True, size=12, color=theme['header_fg'], name='Calibri')
+    title_cell.fill = _make_fill(theme['header_bg'])
     title_cell.alignment = Alignment(horizontal='center', vertical='center')
     ws.row_dimensions[cur_row].height = 22
     cur_row += 2
@@ -483,10 +504,10 @@ def _build_sheet_somo_kwa_somo(wb: openpyxl.Workbook, exam, payload: dict):
         # Subject header
         ws.merge_cells(start_row=cur_row, start_column=1, end_row=cur_row, end_column=4)
         subj_cell = ws.cell(row=cur_row, column=1, value=subject.name.upper())
-        subj_cell.font = Font(bold=True, size=10, color=WHITE, name='Calibri')
-        subj_cell.fill = _make_fill(GREEN)
+        subj_cell.font = Font(bold=True, size=10, color=theme['header_fg'], name='Calibri')
+        subj_cell.fill = _make_fill(theme['header_bg'])
         subj_cell.alignment = Alignment(horizontal='left', vertical='center')
-        subj_cell.border = _make_border(GOLD)
+        subj_cell.border = _make_border(theme['accent_bg'])
         ws.row_dimensions[cur_row].height = 18
         cur_row += 1
 
@@ -497,7 +518,7 @@ def _build_sheet_somo_kwa_somo(wb: openpyxl.Workbook, exam, payload: dict):
             col_headers = ["POS.", "NAME", "SCORE", "GRADE"]
         for col_idx, h in enumerate(col_headers, 1):
             cell = ws.cell(row=cur_row, column=col_idx, value=h)
-            _gold_header_style(cell)
+            _gold_header_style(cell, theme)
         cur_row += 1
 
         # Collect and sort by score
@@ -547,24 +568,32 @@ def _build_sheet_somo_kwa_somo(wb: openpyxl.Workbook, exam, payload: dict):
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
-def generate_professional_excel_response(exam) -> HttpResponse:
-    """Generate a 3-sheet professional Excel for the given exam."""
+def generate_professional_excel_response(exam, style='normal') -> HttpResponse:
+    """Generate a 3-sheet professional Excel for the given exam.
+
+    ?style= : 'normal' (kawaida) | 'rank' | 'necta' | 'royal' (Form Five)
+    | 'acsee' (Form Six) — same palettes as the PDF export, so a school
+    picking e.g. 'necta' gets a matching look in both PDF and Excel.
+    Content/structure are identical — only header/accent colours change."""
+    theme = _resolve_excel_theme(style)
     payload = get_exam_export_payload(exam)
 
     wb = openpyxl.Workbook()
-    _build_sheet_matokeo(wb, exam, payload)
-    _build_sheet_muhtasari(wb, exam, payload)
-    _build_sheet_somo_kwa_somo(wb, exam, payload)
+    _build_sheet_matokeo(wb, exam, payload, theme)
+    _build_sheet_muhtasari(wb, exam, payload, theme)
+    _build_sheet_somo_kwa_somo(wb, exam, payload, theme)
 
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     safe_name = exam.name.replace(' ', '_')
-    response['Content-Disposition'] = f'attachment; filename=\"{safe_name}_{exam.year}_Results.xlsx\"'
+    style_key = (style or 'normal').lower()
+    suffix = '' if style_key == 'normal' else f'_{style_key.upper()}'
+    response['Content-Disposition'] = f'attachment; filename=\"{safe_name}_{exam.year}_Results{suffix}.xlsx\"'
     wb.save(response)
     return response
 
 
-def generate_results_excel_response(exam) -> HttpResponse:
+def generate_results_excel_response(exam, style='normal') -> HttpResponse:
     """Legacy alias — now returns the professional multi-sheet Excel."""
-    return generate_professional_excel_response(exam)
+    return generate_professional_excel_response(exam, style=style)

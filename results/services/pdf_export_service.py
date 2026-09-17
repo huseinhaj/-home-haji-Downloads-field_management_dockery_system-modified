@@ -2096,16 +2096,17 @@ def generate_bulk_student_results_pdf_response(exam, style='normal'):
     """All students of this exam (i.e. this form — an Exam is already
     scoped to one form/year/type), each on their own page(s), merged into
     ONE downloadable PDF — same slip _build_student_result_pdf_bytes
-    produces for a single student, just all of them together in position
-    order. Mirrors the merge pattern curriculum/views.py's
-    download_all_lesson_plans_pdf already uses for the same "many small
-    PDFs -> one file" need."""
+    produces for a single student, just all of them together in the same
+    A-Z (last name, then first name) order used for the registration/
+    roster list elsewhere in the system, not ranked by position. Mirrors
+    the merge pattern curriculum/views.py's download_all_lesson_plans_pdf
+    already uses for the same "many small PDFs -> one file" need."""
     import pypdfium2 as pdfium
 
     results = list(
         ProcessedResult.objects.filter(exam=exam)
         .select_related('student', 'exam', 'exam__school')
-        .order_by('position')
+        .order_by('student__last_name', 'student__first_name')
     )
     if not results:
         resp = HttpResponse('Hakuna matokeo yaliyokamilika kwa mtihani huu bado.', status=404)

@@ -676,7 +676,10 @@ class BulkStudentResultsPdfTests(TestCase):
 		self.academic = TeacherAccount.objects.create(email='academic@example.com', full_name='Academic One', role=TeacherAccount.ROLE_ACADEMIC, school=self.school)
 		self.teacher = TeacherAccount.objects.create(email='teacher@example.com', full_name='Teacher One', role=TeacherAccount.ROLE_TEACHER, school=self.school)
 
-	def test_merges_one_page_per_student_in_position_order(self):
+	def test_merges_one_page_per_student_in_az_name_order(self):
+		"""Rows/pages follow the same A-Z (surname, then first name) order
+		as the registration roster, not exam rank — Juma sorts before Mushi
+		regardless of their `.position` (rank) values."""
 		client = Client()
 		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
 		response = client.get(reverse('generate_bulk_student_results_pdf', args=[self.exam.id]))
@@ -692,6 +695,7 @@ class BulkStudentResultsPdfTests(TestCase):
 			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
 		self.assertIn('AMINA JUMA', text.upper())
 		self.assertIn('PETER MUSHI', text.upper())
+		self.assertLess(text.upper().index('AMINA JUMA'), text.upper().index('PETER MUSHI'))
 
 	def test_rejects_non_academic_teacher(self):
 		client = Client()
@@ -705,6 +709,59 @@ class BulkStudentResultsPdfTests(TestCase):
 		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
 		response = client.get(reverse('generate_bulk_student_results_pdf', args=[empty_exam.id]))
 		self.assertEqual(response.status_code, 404)
+
+
+class ResultsExportAzOrderAndExcelStylesTests(TestCase):
+	"""The main results exports (PDF and Excel) list students A-Z (surname,
+	then first name) — the same order as the registration roster — instead
+	of ranked by exam position. Each PDF ?style= (normal/rank/necta/royal/
+	acsee) has a matching Excel export at the same ?style= on
+	export_results_excel."""
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
+		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=2, school=self.school)
+		self.subject = Subject.objects.create(name='Mathematics')
+		# Zawadi ranks 1st (highest score) but should sort AFTER Amina in the
+		# A-Z export order — proves ordering no longer follows position.
+		self.zawadi = Student.objects.create(first_name='Zawadi', last_name='Ally', gender='F')
+		self.amina = Student.objects.create(first_name='Amina', last_name='Juma', gender='F')
+		ExamResult.objects.create(exam=self.exam, student=self.zawadi, subject=self.subject, score=90)
+		ExamResult.objects.create(exam=self.exam, student=self.amina, subject=self.subject, score=50)
+		ProcessedResult.objects.create(exam=self.exam, student=self.zawadi, total_score=90, average_score=90, points=1, position=1, division='I')
+		ProcessedResult.objects.create(exam=self.exam, student=self.amina, total_score=50, average_score=50, points=5, position=2, division='III')
+		self.academic = TeacherAccount.objects.create(email='academic@example.com', full_name='Academic One', role=TeacherAccount.ROLE_ACADEMIC, school=self.school)
+		self.client = Client()
+		self.client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+
+	def test_pdf_lists_students_az_not_by_position(self):
+		import io
+		import pdfplumber
+		response = self.client.get(reverse('generate_results_pdf', args=[self.exam.id]))
+		self.assertEqual(response.status_code, 200)
+		with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+		self.assertLess(text.index('Ally'), text.index('Juma'))
+
+	def test_excel_lists_students_az_not_by_position(self):
+		import io
+		import openpyxl
+		response = self.client.get(reverse('export_results_excel', args=[self.exam.id]))
+		self.assertEqual(response.status_code, 200)
+		wb = openpyxl.load_workbook(io.BytesIO(response.content))
+		ws = wb.active
+		names = [ws.cell(row=r, column=2).value for r in (4, 5)]
+		self.assertEqual(names, ['Zawadi Ally', 'Amina Juma'])
+
+	def test_excel_accepts_same_style_param_as_pdf(self):
+		for style in ('normal', 'rank', 'necta', 'royal', 'acsee'):
+			response = self.client.get(reverse('export_results_excel', args=[self.exam.id]), {'style': style})
+			self.assertEqual(response.status_code, 200, f'style={style}')
+			self.assertEqual(
+				response['Content-Type'],
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			)
 
 
 class SetClassTeacherAndConductTests(TestCase):
