@@ -1289,6 +1289,32 @@ def _bulk_save_form_students(school, form_num, parsed_rows):
     if to_update:
         FormStudent.objects.bulk_update(to_update, ['gender', 'admission_no'])
 
+    # ── Gender ya roster ndiyo mkuu ────────────────────────────────────
+    # Rosti mpya au iliyosasishwa inarekebisha pia Student records
+    # zinazolingana (izo records ndizo report cards / final results
+    # zinazosoma). Bila hii, mwanafunzi aliyeingia kwanza kupitia results
+    # upload yenye gender potofu angebaki nayo milele.
+    gender_by_name = {}
+    sync_filter = Q()
+    for fs in list(new_rows) + to_update:
+        gender_by_name[(fs.first_name.lower(), (fs.middle_name or '').lower(), fs.last_name.lower())] = fs.gender
+        sync_filter |= Q(
+            first_name__iexact=fs.first_name,
+            middle_name__iexact=fs.middle_name or '',
+            last_name__iexact=fs.last_name,
+        )
+    if sync_filter:
+        students_to_fix = []
+        for s in Student.objects.filter(sync_filter):
+            roster_gender = gender_by_name.get(
+                (s.first_name.lower(), (s.middle_name or '').lower(), s.last_name.lower())
+            )
+            if roster_gender and s.gender != roster_gender:
+                s.gender = roster_gender
+                students_to_fix.append(s)
+        if students_to_fix:
+            Student.objects.bulk_update(students_to_fix, ['gender'])
+
     return results
 
 

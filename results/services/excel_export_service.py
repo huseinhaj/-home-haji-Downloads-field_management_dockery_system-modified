@@ -213,7 +213,9 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict, theme: dict
     # Freeze panes
     ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
 
-    # Data rows
+    # Data rows — POS column inaonyesha namba ya ROSTER (1..N), si rank.
+    # Rank halisi bado inatumika kwenye Summary/Top 5 (inapanga kwa position).
+    roster_numbers = payload.get('roster_numbers', {})
     subject_start_col = 4  # columns 1-3 = POS, NAME/SEX
     for row_idx, result in enumerate(results):
         data_row = header_row + 1 + row_idx
@@ -222,7 +224,7 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict, theme: dict
             part for part in [student.first_name, student.middle_name or '', student.last_name] if part
         ).strip()
 
-        ws.cell(row=data_row, column=1, value=result.position)
+        ws.cell(row=data_row, column=1, value=roster_numbers.get(student.id, result.position))
         ws.cell(row=data_row, column=2, value=full_name)
         ws.cell(row=data_row, column=3, value=student.gender)
 

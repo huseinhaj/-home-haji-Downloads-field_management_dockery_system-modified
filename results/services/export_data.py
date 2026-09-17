@@ -56,6 +56,14 @@ def get_exam_export_payload(exam):
                              actual performance ranking (e.g. "Top 5
                              Performers") must sort their own copy by
                              `.position` — don't assume list order.
+        roster_numbers     — {student_id: 1..N} — namba za mfululizo za
+                             wanafunzi kwenye final results, zikifuata
+                             ROSTER (mpangilio wa usajili), si performance
+                             rank. Mwanafunzi asiye kwenye roster hapati
+                             namba kabla ya waliyosajiliwa wote (anapewa
+                             namba baada yao — anabaki mwisho). Hii ndiyo
+                             inayoonyeshwa kwenye column ya CNO/POS ya
+                             final results.
         score_lookup       — {(student_id, subject_id): score or None}
         absent_lookup      — {(student_id, subject_id): True} for absent
         student_subjects   — {student_id: set(subject_ids)} — subjects
@@ -67,6 +75,14 @@ def get_exam_export_payload(exam):
         exam,
         ProcessedResult.objects.filter(exam=exam).select_related('student'),
     )
+
+    # Namba za roster 1..N — mfululizo wa orodha ya final results (si rank
+    # ya performance). Mwanafunzi asiye kwenye roster anapewa namba baada
+    # ya waliyosajiliwa wote (anabaki mwisho wa orodha).
+    roster_numbers = {
+        r.student_id: idx
+        for idx, r in enumerate(processed_results, start=1)
+    }
 
     all_exam_results = ExamResult.objects.filter(exam=exam, subject__in=subjects)
 
@@ -84,6 +100,7 @@ def get_exam_export_payload(exam):
     return {
         'subjects': subjects,
         'processed_results': processed_results,
+        'roster_numbers': roster_numbers,
         'score_lookup': score_lookup,
         'absent_lookup': absent_lookup,
         'student_subjects': student_subjects,

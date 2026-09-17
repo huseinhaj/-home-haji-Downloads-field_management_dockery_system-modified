@@ -1076,6 +1076,9 @@ def generate_results_pdf_response(exam, style='normal'):
     score_lookup = payload['score_lookup']
     absent_lookup = payload['absent_lookup']
     student_subjects = payload['student_subjects']
+    # Namba za CNO/POS: 1..N kwa mpangilio wa ROSTER (si performance rank).
+    # Rank halisi bado ipo kwenye r.position — inatumika kwenye TOP 5 tu.
+    roster_numbers = payload.get('roster_numbers', {})
     N = len(results)
     n_subj = max(len(subjects), 1)
 
@@ -1432,7 +1435,8 @@ def generate_results_pdf_response(exam, style='normal'):
     all_rows = []
     necta_frames = []  # parallel to all_rows: per-row mini-table (necta) or None
     for r in results:
-        cno = f"{r.position:03d}"
+        # CNO = namba ya mwanafunzi kwenye ROSTER (1..N), si performance rank
+        cno = f"{roster_numbers.get(r.student_id, r.position):03d}"
         nm = _student_name(r)
         stu_gpa = r.points / counted if counted else 0
 
