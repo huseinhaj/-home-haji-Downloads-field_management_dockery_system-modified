@@ -26,6 +26,8 @@ from .scan_models import ScanAnswerKey, ScanSheet, ScanSheetBatch
 from .scan_views import _annotate_sheet, _class_roster, _get_exam_or_404
 from .services.scan_grader import process_sheet
 from .services.upload_processing_service import recompute_processed_results_for_exam
+from .services.ai_grader import grade_sheet, match_student, AIGradeError
+from .services.annotate_ai import annotate_ai_sheet
 from .bridge_models import SahishiBridge, ScanJob, generate_bridge_token
 
 logger = logging.getLogger(__name__)
@@ -76,10 +78,15 @@ def bridge_claim(request):
 
     from django.db import transaction
 
-    with transaction.atomic():
+    # ScanJob ni model ya app 'results' — ResultsRouter inaipeleka DB ya
+    # 'results'. Transaction LAZIMA ifunguliwe kwenye DB hiyo hiyo, la
+    # sivyo select_for_update inatoka nje ya transaction (500).
+    job_db = ScanJob.objects.db
+
+    with transaction.atomic(using=job_db):
         # Shule ya bridge tu — kazi za shule hiyo
         job = (
-            ScanJob.objects.select_for_update(skip_locked=True)
+            ScanJob.objects.using(job_db).select_for_update(skip_locked=True)
             .filter(status=ScanJob.Status.PENDING, school=bridge.school)
             .order_by('created_at')
             .first()
@@ -90,7 +97,7 @@ def bridge_claim(request):
         job.status = ScanJob.Status.CLAIMED
         job.bridge = bridge
         job.claimed_at = timezone.now()
-        job.save(update_fields=['status', 'bridge', 'claimed_at'])
+        job.save(using=job_db, update_fields=['status', 'bridge', 'claimed_at'])
 
     return JsonResponse({
         'ok': True,
@@ -136,53 +143,136 @@ def bridge_upload(request, job_id):
         return JsonResponse({'ok': False, 'error': 'Hakuna picha'}, status=400)
 
     exam, subject = job.exam, job.subject
+
+    # Hali mbili za usahihishaji:
+    #   AI   — MarkingScheme ya picha imepakiwa → Gemini inasoma karatasi
+    #          halisi (majina, matching, list, essay, calculations) na kuipa alama
+    #   OMR  — hakuna scheme ya picha → bubbles + ScanAnswerKey (njia ya zamani)
+    scheme = job.exam.marking_schemes.filter(subject=subject).first()
+    scheme_pages = []
+    if scheme:
+        for page in scheme.pages.all().order_by('page_number'):
+            try:
+                with page.image.open('rb') as fh:
+                    scheme_pages.append(fh.read())
+            except Exception:
+                logger.warning('Scheme page %s haikusomeka', page.pk)
+    use_ai = bool(scheme_pages)
+
+    roster = []
+    if use_ai:
+        roster = list(FormStudent.objects.filter(
+            school=exam.school, form=exam.form, is_active=True,
+        ))
+
+    data_list = [f.read() for f in images]
+
+    ai_grades = [None] * len(images)
+    if use_ai:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            futs = {
+                ex.submit(grade_sheet, data_list[i], scheme_pages): i
+                for i in range(len(images))
+            }
+            for fut in as_completed(futs):
+                i = futs[fut]
+                try:
+                    ai_grades[i] = fut.result()
+                except Exception as exc:
+                    logger.warning('[AIGrader] karatasi %s imeshindikana: %s', i, exc)
+
     key_obj = ScanAnswerKey.objects.filter(exam=exam, subject=subject).first()
     answer_key = key_obj.key if key_obj else {}
 
     batch = ScanSheetBatch.objects.create(
         exam=exam, subject=subject, image_count=len(images),
-        note=f'Bridge: {bridge.name}',
+        note=f'Bridge: {bridge.name}' + (' (AI)' if use_ai else ''),
     )
     job.batch = batch
 
     graded = review = 0
-    for f in images:
-        data = f.read()
-        res = process_sheet(data, answer_key)
-
+    for i, f in enumerate(images):
+        data = data_list[i]
         sheet = ScanSheet(exam=exam, subject=subject, batch=batch)
         sheet.image.save(f.name, ContentFile(data), save=False)
 
-        qr = res.get('qr')
-        if qr and qr['e'] == exam.pk and qr.get('sub') in (0, subject.pk):
-            fs = FormStudent.objects.filter(pk=qr['s']).first()
-            sheet.student = fs
-            sheet.page_number = qr['p']
-            if fs is None:
+        if use_ai:
+            grade = ai_grades[i]
+            if grade is None:
                 sheet.status = ScanSheet.Status.NEEDS_REVIEW
-                sheet.needs_review_reason = 'Mwanafunzi hayupo rostini'
+                sheet.needs_review_reason = 'AI imeshindikana kuisoma'
+                review += 1
+            else:
+                fs = match_student(
+                    exam.school,
+                    grade.get('student_name') or '',
+                    grade.get('reg_number') or '',
+                    roster,
+                )
+                if fs:
+                    sheet.student = fs
+                else:
+                    sheet.status = ScanSheet.Status.NEEDS_REVIEW
+                    sheet.needs_review_reason = (
+                        'Haijamatch rostini: ' + (grade.get('student_name') or '?')
+                    )[:200]
+                sheet.result = {'ai': grade}
+                try:
+                    sheet.score = float(grade.get('total') or 0)
+                    sheet.total = float(grade.get('max_total') or 0)
+                except (TypeError, ValueError):
+                    pass
+                if sheet.status != ScanSheet.Status.NEEDS_REVIEW:
+                    sheet.status = ScanSheet.Status.GRADED
+                    graded += 1
+                else:
+                    review += 1
+                # Alama nyekundu za AI kwenye karatasi halisi
+                try:
+                    annotated = annotate_ai_sheet(data, grade)
+                    if annotated:
+                        sheet.annotated_image.save(
+                            f'ai_{i}.png', ContentFile(annotated), save=False,
+                        )
+                except Exception:
+                    logger.exception('AI annotation imeshindikana sheet idx=%s', i)
         else:
-            sheet.status = ScanSheet.Status.NEEDS_REVIEW
-            sheet.needs_review_reason = res.get('review_reason') or 'QR haikusomeka'
+            res = process_sheet(data, answer_key)
 
-        sheet.result = {'answers': res.get('answers', {})}
-        if res.get('score') is not None:
-            sheet.score = res['score']
-            sheet.total = res.get('total') or len(answer_key)
-            if sheet.status != ScanSheet.Status.NEEDS_REVIEW:
-                sheet.status = ScanSheet.Status.GRADED
-                graded += 1
-        if sheet.status == ScanSheet.Status.NEEDS_REVIEW:
-            review += 1
-        sheet.save()
-        # Alama nyekundu (✓/✗/○ + jumla) kwenye karatasi
-        if sheet.score is not None and answer_key:
+            qr = res.get('qr')
+            if qr and qr['e'] == exam.pk and qr.get('sub') in (0, subject.pk):
+                fs = FormStudent.objects.filter(pk=qr['s']).first()
+                sheet.student = fs
+                sheet.page_number = qr['p']
+                if fs is None:
+                    sheet.status = ScanSheet.Status.NEEDS_REVIEW
+                    sheet.needs_review_reason = 'Mwanafunzi hayupo rostini'
+            else:
+                sheet.status = ScanSheet.Status.NEEDS_REVIEW
+                sheet.needs_review_reason = res.get('review_reason') or 'QR haikusomeka'
+
+            sheet.result = {'answers': res.get('answers', {})}
+            if res.get('score') is not None:
+                sheet.score = res['score']
+                sheet.total = res.get('total') or len(answer_key)
+                if sheet.status != ScanSheet.Status.NEEDS_REVIEW:
+                    sheet.status = ScanSheet.Status.GRADED
+                    graded += 1
+            if sheet.status == ScanSheet.Status.NEEDS_REVIEW:
+                review += 1
+
+        sheet.save(using=ScanSheet.objects.db)
+        # Alama nyekundu za OMR (njia ya zamani)
+        if not use_ai and sheet.score is not None and answer_key:
             _annotate_sheet(sheet, answer_key)
 
     job.status = ScanJob.Status.DONE
     job.completed_at = timezone.now()
-    job.result_message = f'Karatasi {len(images)}: {graded} graded, {review} review'
-    job.save(update_fields=['status', 'batch', 'completed_at', 'result_message'])
+    mode = 'AI' if use_ai else 'OMR'
+    job.result_message = f'Karatasi {len(images)} ({mode}): {graded} graded, {review} review'
+    job.save(using=ScanJob.objects.db,
+             update_fields=['status', 'batch', 'completed_at', 'result_message'])
     logger.info('Bridge job #%s done: %s', job.pk, job.result_message)
 
     # Ripoti ya uchapishaji itasasishwa na bridge
