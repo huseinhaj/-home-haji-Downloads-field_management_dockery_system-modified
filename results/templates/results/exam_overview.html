@@ -310,6 +310,12 @@
     </a>
     {% endif %}
 
+    {% if is_academic and submitted_count > 0 %}
+    <a href="{{ excel_url }}" class="btn btn-outline-success" style="border-radius:2px;font-size:0.82rem;font-weight:700;" title="{% if LANG == 'sw' %}Matokeo ya mtihani huu kwenye Excel — wanafunzi kwa mpangilio wa roster{% else %}This exam's results in Excel — students in roster order{% endif %}">
+      📊 {% if LANG == 'sw' %}Excel{% else %}Excel{% endif %}
+    </a>
+    {% endif %}
+
     {% if submitted_count > 0 %}
     <a href="{{ form_results_url }}" class="btn btn-outline-primary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
       {% if is_academic %}

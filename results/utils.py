@@ -171,8 +171,48 @@ def is_absent_marker(raw_score) -> bool:
     return str(raw_score).strip().upper() in ('X', 'ABS', 'ABSENT')
 
 
+# ── Gender normalization (Swahili-aware) ─────────────────────────────
+# Rosti za shule huandikwa kwa Kiswahili au Kiingereza: F/M, Female/Male,
+# Kike/Kiume, Mwanamke/Mwanaume, Msichana/Mvulana, n.k. Zamani "Kike"
+# ilikuwa inakuwa M (kiume!) kwa sababu ilitumia startswith('F') tu —
+# ndiyo chanzo cha gender mchanganyiko kwenye report cards.
+_FEMALE_GENDER_WORDS = {
+    'F', 'FE', 'FEMALE', 'WOMAN', 'GIRL', 'W',
+    'KIKE', 'MWANAMKE', 'MSICHANA', 'WASICHANA', 'MKE', 'KE',
+}
+_MALE_GENDER_WORDS = {
+    'M', 'ME', 'MALE', 'MAN', 'BOY',
+    'KIUME', 'MWANAUME', 'MVULANA', 'WAVULANA', 'MUME',
+}
+_FEMALE_GENDER_PREFIXES = (
+    'FEMALE', 'KIKE', 'MWANAMKE', 'MSICHANA', 'WASICHANA',
+    'WANAWAKE', 'WOMAN', 'GIRL',
+)
+_MALE_GENDER_PREFIXES = (
+    'MALE', 'KIUME', 'MWANAUME', 'MVULANA', 'WANAUME', 'WAVULANA',
+    'MAN', 'BOY',
+)
+
+
 def normalize_gender(raw_gender: str) -> str:
+    """'F'/'Female'/'Kike'/'Mwanamke'/'Msichana' → 'F'; 'M'/'Male'/'Kiume'
+    → 'M'. Unknown/empty → 'M' (default ya kihistoria).
+
+    Maneno kamili yanacheckwa KWANZA (kwa sababu 'Mwanamke' na 'Msichana'
+    yanaanza na 'M' — prefix check ingeyashika kabla ya 'F')."""
     normalized = str(raw_gender or "").strip().upper()
+    if not normalized:
+        return "M"
+    if normalized in _FEMALE_GENDER_WORDS:
+        return "F"
+    if normalized in _MALE_GENDER_WORDS:
+        return "M"
+    for prefix in _FEMALE_GENDER_PREFIXES:
+        if normalized.startswith(prefix):
+            return "F"
+    for prefix in _MALE_GENDER_PREFIXES:
+        if normalized.startswith(prefix):
+            return "M"
     if normalized.startswith("F"):
         return "F"
     return "M"

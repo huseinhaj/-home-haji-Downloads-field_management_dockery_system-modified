@@ -144,6 +144,11 @@
                {% if ed.submit_ps_url and ed.all_submitted and not ed.ps_submission %}onclick="revealPsSubmit({{ ed.exam.id }})"{% endif %}>
               📄 {% if LANG == 'sw' %}Ripoti ya Mtihani{% else %}Exam Report{% endif %}
             </a>
+            {% if ed.excel_url %}
+            <a href="{{ ed.excel_url }}" class="btn btn-sm btn-black" title="{% if LANG == 'sw' %}Matokeo ya mtihani huu kwenye Excel — wanafunzi kwa mpangilio wa roster{% else %}This exam's results in Excel — students in roster order{% endif %}">
+              📊 {% if LANG == 'sw' %}Excel{% else %}Excel{% endif %}
+            </a>
+            {% endif %}
             <a href="{{ ed.bulk_pdf_url }}" class="btn btn-sm btn-black" target="_blank" title="{% if LANG == 'sw' %}Slip moja-moja ya kila mwanafunzi (report cards){% else %}One slip per student (report cards){% endif %}">
               📥 {% if LANG == 'sw' %}Ripoti za Wanafunzi Wote{% else %}All Students' Reports{% endif %}
             </a>

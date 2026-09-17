@@ -2,7 +2,7 @@ from django.db import transaction
 from django.db.models import Prefetch
 
 from ..combinations import canon_subject, detect_acsee_combination
-from ..models import ExamResult, ProcessedResult, Student, Subject
+from ..models import ExamResult, FormStudent, ProcessedResult, Student, Subject
 from ..utils import (
     extract_subject_columns,
     get_division,
@@ -123,6 +123,35 @@ _DIVISION_SUBJECT_COUNT = {1: 7, 2: 7, 3: 7, 4: 7, 5: 3, 6: 3}
 _CSEE_DIVISION_ORDER = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, '0': 5}
 
 
+def _sync_student_genders_from_roster(exam):
+    """Roster (FormStudent) ndiyo mkuu kwa gender: kila mwanafunzi wa mtihani
+    huu aliye kwenye roster anasawazishwa na gender ya rosti yake. Hii
+    inatibu gender mchanganyiko (mf. 'Kike' ilikuwa inasomwa kama M kwenye
+    zamani) hata kwenye records zilizohifadhiwa kabla fix ya parser —
+    recompute yoyote inapofanyika, report cards na final results
+    zinaonyesha gender sahihi kutoka kwenye roster ya shule."""
+    if not exam.school:
+        return
+    roster = FormStudent.objects.filter(
+        school=exam.school, form=exam.form,
+        is_active=True, academic_year=exam.year,
+    )
+    to_fix = []
+    for fs in roster:
+        # Match ile ile inayotumika na _resolve_class_roster (marks_entry)
+        matches = Student.objects.filter(
+            first_name__iexact=fs.first_name,
+            middle_name__iexact=fs.middle_name or '',
+            last_name__iexact=fs.last_name,
+        )
+        for s in matches:
+            if s.gender != fs.gender:
+                s.gender = fs.gender
+                to_fix.append(s)
+    if to_fix:
+        Student.objects.bulk_update(to_fix, ['gender'])
+
+
 def recompute_processed_results_for_exam(exam):
     """Recompute each student's total/average/points/division for this exam.
 
@@ -171,6 +200,9 @@ def recompute_processed_results_for_exam(exam):
     prevents the same fewer-subjects advantage) — both then break ties by
     ascending points, then descending counted-subject total.
     """
+    # Roster ndiyo mkuu kwa gender — sawazisha kabla ya kuhesabu matokeo
+    _sync_student_genders_from_roster(exam)
+
     students = Student.objects.filter(examresult__exam=exam).distinct().prefetch_related(
         Prefetch('examresult_set', queryset=ExamResult.objects.filter(exam=exam).select_related('subject'))
     )

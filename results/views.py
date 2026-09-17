@@ -797,6 +797,7 @@ def exam_overview(request, exam_id):
         'is_academic': is_academic,
         'finalize_url': reverse('finalize_exam', args=[exam.id]) if is_academic else None,
         'form_results_url': reverse('form_results', args=[exam.form]),
+        'excel_url': reverse('export_results_excel', args=[exam.id]) if is_academic else None,
     })
 
 
@@ -2921,6 +2922,7 @@ def form_results(request, form_num):
             'grade_lookup': grade_lookup,
             'grade_key': grade_key,
             'pdf_url': reverse('generate_results_pdf', args=[exam.id]),
+            'excel_url': reverse('export_results_excel', args=[exam.id]),
             'bulk_pdf_url': reverse('generate_bulk_student_results_pdf', args=[exam.id]),
             'overview_url': reverse('exam_overview', args=[exam.id]),
             'approve_all_url': reverse('approve_exam_submissions', args=[exam.id]) if is_academic else None,
@@ -3060,7 +3062,9 @@ def form_results_excel(request, form_num):
             name = ' '.join(p for p in [st.first_name, st.middle_name or '', st.last_name] if p)
             row_fill = _fill(GREY) if ri % 2 == 0 else None
 
-            ws.cell(row=row, column=1, value=result.position)
+            # POS = namba ya mwanafunzi kwenye ROSTER (1..N), si rank —
+            # mfululizo huo huo unaotumika kwenye PDF (CNO).
+            ws.cell(row=row, column=1, value=ri + 1)
             ws.cell(row=row, column=2, value=name)
             ws.cell(row=row, column=3, value=st.gender)
 
