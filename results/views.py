@@ -2802,10 +2802,26 @@ def form_results(request, form_num):
 
     processed_qs = ProcessedResult.objects.filter(
         exam_id__in=exam_ids
-    ).select_related('student').order_by('position')
+    ).select_related('student')
+    # Roster order kwa kila exam (FormStudent upload order) — siyo rank
+    roster_orders = {
+        exam.id: {
+            (fs.first_name, fs.last_name): idx
+            for idx, fs in enumerate(FormStudent.objects.filter(
+                school=exam.school, form=exam.form,
+                is_active=True, academic_year=exam.year,
+            ).order_by('id'))
+        }
+        for exam in exams
+    }
     processed_by_exam = {}
     for pr in processed_qs:
+        ro = roster_orders.get(pr.exam_id, {})
         processed_by_exam.setdefault(pr.exam_id, []).append(pr)
+        processed_by_exam[pr.exam_id].sort(key=lambda r: (
+            ro.get((r.student.first_name, r.student.last_name), len(ro)),
+            r.student_id,
+        ))
 
     # Exam results — build score_lookup keyed by (student_id, subject_id) -> score,
     # plus per-exam grouping for grade_lookup
@@ -2935,11 +2951,27 @@ def form_results_excel(request, form_num):
     all_subject_ids = [s.id for s in all_subjects_list]
     subjects_by_id = {s.id: s for s in all_subjects_list}
 
+    from collections import defaultdict  # (kuunganisha na matumizi chini)
+
     processed_by_exam = {}
     for pr in ProcessedResult.objects.filter(
         exam_id__in=exam_ids
-    ).select_related('student').order_by('position'):
+    ).select_related('student'):
         processed_by_exam.setdefault(pr.exam_id, []).append(pr)
+    # Roster order kwa kila exam (FormStudent upload order) — siyo rank
+    for exam in exams:
+        ro = {
+            (fs.first_name, fs.last_name): idx
+            for idx, fs in enumerate(FormStudent.objects.filter(
+                school=exam.school, form=exam.form,
+                is_active=True, academic_year=exam.year,
+            ).order_by('id'))
+        }
+        lst = processed_by_exam.get(exam.id, [])
+        lst.sort(key=lambda r: (
+            ro.get((r.student.first_name, r.student.last_name), len(ro)),
+            r.student_id,
+        ))
 
     score_lookup_global = {}
     for er in ExamResult.objects.filter(

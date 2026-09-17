@@ -821,6 +821,16 @@ class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
 		first_name_in_top5 = ws.cell(row=header_row + 1, column=2).value
 		self.assertEqual(first_name_in_top5, 'Lenatha Damian')
 
+	def test_form_results_excel_lists_students_in_roster_order(self):
+		import io
+		import openpyxl
+		response = self.client.get(reverse('form_results_excel', args=[2]))
+		self.assertEqual(response.status_code, 200)
+		wb = openpyxl.load_workbook(io.BytesIO(response.content))
+		ws = wb[wb.sheetnames[0]]
+		names = [ws.cell(row=r, column=2).value for r in (4, 5, 6)]
+		self.assertEqual(names, ['Zawadi Zuberi', 'Amina Ally', 'Lenatha Damian'])
+
 	def test_excel_accepts_same_style_param_as_pdf(self):
 		for style in ('normal', 'rank', 'necta', 'royal', 'acsee'):
 			response = self.client.get(reverse('export_results_excel', args=[self.exam.id]), {'style': style})
