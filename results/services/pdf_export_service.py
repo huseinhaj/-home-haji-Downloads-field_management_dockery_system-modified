@@ -24,7 +24,7 @@ from reportlab.platypus import (
 )
 
 from ..models import ExamResult, ProcessedResult, Subject
-from .export_data import get_exam_export_payload
+from .export_data import get_exam_export_payload, order_by_registration
 from .report_helpers import (
     get_full_school_name, get_report_label, get_report_language,
     get_section_title, get_school_type_for_exam,
@@ -2101,16 +2101,17 @@ def generate_bulk_student_results_pdf_response(exam, style='normal'):
     scoped to one form/year/type), each on their own page(s), merged into
     ONE downloadable PDF — same slip _build_student_result_pdf_bytes
     produces for a single student, just all of them together in the same
-    registration order (Student.id) used for the roster list elsewhere in
-    the system, not ranked by position. Mirrors the merge pattern
-    curriculum/views.py's download_all_lesson_plans_pdf already uses for
-    the same "many small PDFs -> one file" need."""
+    registration order (order_by_registration — see export_data.py) used
+    for the roster list elsewhere in the system, not ranked by position.
+    Mirrors the merge pattern curriculum/views.py's
+    download_all_lesson_plans_pdf already uses for the same "many small
+    PDFs -> one file" need."""
     import pypdfium2 as pdfium
 
-    results = list(
+    results = order_by_registration(
+        exam,
         ProcessedResult.objects.filter(exam=exam)
-        .select_related('student', 'exam', 'exam__school')
-        .order_by('student_id')
+        .select_related('student', 'exam', 'exam__school'),
     )
     if not results:
         resp = HttpResponse('Hakuna matokeo yaliyokamilika kwa mtihani huu bado.', status=404)

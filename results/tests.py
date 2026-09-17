@@ -713,34 +713,59 @@ class BulkStudentResultsPdfTests(TestCase):
 
 
 class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
-	"""The main results exports (PDF and Excel) list students in the same
-	order they were registered into the system (Student.id — see
-	get_exam_export_payload), instead of ranked by exam position or sorted
-	alphabetically. "Top 5 Performers" is the one section that must still
-	rank by actual score regardless of that row order. Each PDF ?style=
-	(normal/rank/necta/royal/acsee) has a matching Excel export at the
-	same ?style= on export_results_excel."""
+	"""The main results exports (PDF and Excel) list students in the
+	school's actual registration order for this exam's form — the
+	FormStudent roster, exactly as shown on the upload_form_students page
+	(order_by('id')) — not ranked by exam position, not by Student.id, and
+	not alphabetical. A student who was never on that roster (added later,
+	e.g. via Marks Entry or a scoresheet scan that created a new Student on
+	the fly) sorts after every registered student. "Top 5 Performers" is
+	the one section that must still rank by actual score regardless of
+	that row order. Each PDF ?style= (normal/rank/necta/royal/acsee) has a
+	matching Excel export at the same ?style= on export_results_excel."""
 	databases = {'default', 'results'}
 
 	def setUp(self):
 		self.school = School.objects.create(name='Mfano Secondary', region='Dodoma', district='Dodoma')
 		self.exam = Exam.objects.create(name='Midterm 1', year=2026, form=2, school=self.school)
 		self.subject = Subject.objects.create(name='Mathematics')
-		# Registered FIRST (lower Student.id) but the WORSE performer, and
-		# alphabetically AFTER the other student (surname Zuberi > Ally) —
-		# disambiguates "registration order" from both "by position" and
-		# "alphabetical", which would each put Amina first instead.
-		self.zawadi = Student.objects.create(first_name='Zawadi', last_name='Zuberi', gender='F')
+
+		# Student.id order is the OPPOSITE of the roster order on purpose —
+		# Amina's Student row already existed (e.g. from a past exam) before
+		# Zawadi's was created here, but the roster (FormStudent, this
+		# exam's actual registration list) lists Zawadi first. A fix that
+		# fell back to Student.id instead of the roster would get this
+		# backwards, which is exactly the bug reported: students who are
+		# high on the roster were showing up at the very bottom.
 		self.amina = Student.objects.create(first_name='Amina', last_name='Ally', gender='F')
+		self.zawadi = Student.objects.create(first_name='Zawadi', last_name='Zuberi', gender='F')
+		FormStudent.objects.create(
+			school=self.school, form=2, academic_year=2026, is_active=True,
+			admission_no='S001', first_name='Zawadi', last_name='Zuberi', gender='F',
+		)
+		FormStudent.objects.create(
+			school=self.school, form=2, academic_year=2026, is_active=True,
+			admission_no='S002', first_name='Amina', last_name='Ally', gender='F',
+		)
+		# Lenatha Damian — never uploaded in the roster, added straight into
+		# this exam (mirrors a teacher adding a student manually, or OCR
+		# creating a new Student for an unmatched name). Best performer by
+		# score, but must sort LAST in the main listing since he isn't in
+		# the roster.
+		self.lenatha = Student.objects.create(first_name='Lenatha', last_name='Damian', gender='M')
+
 		ExamResult.objects.create(exam=self.exam, student=self.zawadi, subject=self.subject, score=50)
-		ExamResult.objects.create(exam=self.exam, student=self.amina, subject=self.subject, score=90)
-		ProcessedResult.objects.create(exam=self.exam, student=self.zawadi, total_score=50, average_score=50, points=5, position=2, division='III')
-		ProcessedResult.objects.create(exam=self.exam, student=self.amina, total_score=90, average_score=90, points=1, position=1, division='I')
+		ExamResult.objects.create(exam=self.exam, student=self.amina, subject=self.subject, score=70)
+		ExamResult.objects.create(exam=self.exam, student=self.lenatha, subject=self.subject, score=95)
+		ProcessedResult.objects.create(exam=self.exam, student=self.zawadi, total_score=50, average_score=50, points=5, position=3, division='III')
+		ProcessedResult.objects.create(exam=self.exam, student=self.amina, total_score=70, average_score=70, points=3, position=2, division='II')
+		ProcessedResult.objects.create(exam=self.exam, student=self.lenatha, total_score=95, average_score=95, points=1, position=1, division='I')
+
 		self.academic = TeacherAccount.objects.create(email='academic@example.com', full_name='Academic One', role=TeacherAccount.ROLE_ACADEMIC, school=self.school)
 		self.client = Client()
 		self.client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
 
-	def test_pdf_lists_students_in_registration_order(self):
+	def test_pdf_lists_students_in_roster_order_with_unregistered_last(self):
 		import io
 		import pdfplumber
 		response = self.client.get(reverse('generate_results_pdf', args=[self.exam.id]))
@@ -749,9 +774,15 @@ class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
 			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
 		# Both names also appear earlier in the TOP 5 PERFORMERS section
 		# (ranked by position) — use the LAST occurrence of each, which is
-		# the main per-student results table, to check registration order:
-		# Zawadi (registered first) before Amina.
-		self.assertLess(text.rindex('Zuberi'), text.rindex('Ally'))
+		# the main per-student results table, to check roster order:
+		# Zawadi (1st on the roster) before Amina (2nd on the roster)
+		# before Lenatha (not on the roster at all, despite being the top
+		# performer).
+		i_zuberi = text.rindex('Zuberi')
+		i_ally = text.rindex('Ally')
+		i_damian = text.rindex('Damian')
+		self.assertLess(i_zuberi, i_ally)
+		self.assertLess(i_ally, i_damian)
 
 	def test_pdf_top5_still_ranked_by_actual_position(self):
 		import io
@@ -760,21 +791,22 @@ class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
 		with pdfplumber.open(io.BytesIO(response.content)) as pdf:
 			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
 		top5_start = text.index('TOP 5 PERFORMERS')
-		top5_section = text[top5_start:top5_start + 400]
-		# Amina (position 1, the actual best performer) must lead the Top 5
-		# table even though she's listed second in the main registration-
-		# order table.
+		top5_section = text[top5_start:top5_start + 500]
+		# Lenatha (position 1, the actual best performer) must lead the Top
+		# 5 table even though he's listed LAST in the main roster-order
+		# table (he isn't on the roster at all).
+		self.assertLess(top5_section.index('Damian'), top5_section.index('Ally'))
 		self.assertLess(top5_section.index('Ally'), top5_section.index('Zuberi'))
 
-	def test_excel_lists_students_in_registration_order(self):
+	def test_excel_lists_students_in_roster_order_with_unregistered_last(self):
 		import io
 		import openpyxl
 		response = self.client.get(reverse('export_results_excel', args=[self.exam.id]))
 		self.assertEqual(response.status_code, 200)
 		wb = openpyxl.load_workbook(io.BytesIO(response.content))
 		ws = wb.active
-		names = [ws.cell(row=r, column=2).value for r in (4, 5)]
-		self.assertEqual(names, ['Zawadi Zuberi', 'Amina Ally'])
+		names = [ws.cell(row=r, column=2).value for r in (4, 5, 6)]
+		self.assertEqual(names, ['Zawadi Zuberi', 'Amina Ally', 'Lenatha Damian'])
 
 	def test_excel_top5_still_ranked_by_actual_position(self):
 		import io
@@ -787,7 +819,7 @@ class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
 			if ws.cell(row=r, column=1).value in ('POS.', 'NAFASI')
 		)
 		first_name_in_top5 = ws.cell(row=header_row + 1, column=2).value
-		self.assertEqual(first_name_in_top5, 'Amina Ally')
+		self.assertEqual(first_name_in_top5, 'Lenatha Damian')
 
 	def test_excel_accepts_same_style_param_as_pdf(self):
 		for style in ('normal', 'rank', 'necta', 'royal', 'acsee'):
