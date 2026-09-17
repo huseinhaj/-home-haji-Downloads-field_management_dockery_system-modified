@@ -867,6 +867,9 @@
         } else if (data.status === 'preview') {
           // Show review modal for this subject
           openReviewModal(data.preview);
+        } else if (data.recompute) {
+          // Recompute job (baada ya save) — hakuna file row ya kubadilisha;
+          // buttons zinajifungua kwenye onDone callback ya mnayoita.
         } else {
           markFileDone(upload, data.matched || 0, data.unmatched_count || 0);
           // Update subject chip
@@ -1325,6 +1328,20 @@
       }
 
       toast((LANG === 'sw' ? '✅ Alama ' + data.saved_count + ' zimehifadhiwa!' : '✅ ' + data.saved_count + ' scores saved!'), false);
+
+      // Recompute ya madaraja inaendeshwa kwa nyuma (thread) — subiri
+      // ikamilike ndipo buttons za Results/Excel zifunguke (data halisi).
+      if (data.job_id) {
+        pollTask(data.job_id, currentPreview.subject_id, '', () => {
+          const genBtn = document.getElementById('generateResultsBtn');
+          const xlsBtn = document.getElementById('exportExcelBtn');
+          if (genBtn) { genBtn.style.opacity = '1'; genBtn.style.pointerEvents = 'auto'; }
+          if (xlsBtn) { xlsBtn.style.opacity = '1'; xlsBtn.style.pointerEvents = 'auto'; }
+          toast(LANG === 'sw'
+            ? '🎉 Madaraja yamekamilika — unaweza kupakua Results/Excel sasa!'
+            : '🎉 Recompute finished — Results/Excel downloads are ready!');
+        });
+      }
     } catch (err) {
       toast(err.message, true);
     } finally {

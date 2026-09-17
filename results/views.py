@@ -4397,6 +4397,13 @@ def bulk_upload_status(request, task_id):
         return JsonResponse({'status': 'processing'})
 
     payload = job.preview or {}
+    # Recompute job (baada ya save) — frontend inapoll hadi madaraja yake
+    if payload.get('recompute_done'):
+        return JsonResponse({
+            'status': 'done',
+            'recompute': True,
+            'saved_count': payload.get('saved_count', 0),
+        })
     # Preview mode: task returned matched/unmatched without saving
     if payload.get('preview'):
         return JsonResponse({
@@ -4523,23 +4530,50 @@ def save_confirmed_scores(request, exam_id):
         },
     )
 
-    # Recompute processed results
-    try:
-        recompute_processed_results_for_exam(exam)
-    except Exception as exc:
-        # Scores ARE saved — don't report a total failure to the officer;
-        # tell them the truth and let them hit the results buttons again.
-        _log.exception("save_confirmed_scores: recompute failed for exam=%s", exam_id)
-        return JsonResponse({
-            'status': 'done',
-            'saved_count': len(exam_results),
-            'warning': f'Alama zimehifadhiwa, ila kuhesabu upya kwa madaraja kulikwama: {type(exc).__name__}.',
-            **({'duplicates_dropped': duplicates_dropped} if duplicates_dropped else {}),
-        })
+    # Recompute processed results KWA NYUMA (thread) — kwenye production
+    # (Postgres ya mbali + RAM ndogo) recompute ya darasa kubwa ilichukua
+    # zaidi ya timeout ya edge → connection ikatike → frontend "Failed to
+    # fetch" hata kama alama zilikuwa zimehifadhiwa. Sasa tunarudisha
+    # job_id; frontend inapoll mpaka madaraja yakamilike.
+    from .scan_models import BulkUploadJob
+    import threading as _threading
+
+    recompute_job = BulkUploadJob.objects.create(
+        exam=exam, subject=subject,
+        created_by='recompute',
+        status=BulkUploadJob.Status.PROCESSING,
+    )
+
+    def _run_recompute(job_id=recompute_job.pk, exam_id2=exam.pk):
+        from django.db import close_old_connections
+        close_old_connections()
+        try:
+            from .models import Exam as _Exam
+            ex = _Exam.objects.get(pk=exam_id2)
+            recompute_processed_results_for_exam(ex)
+            j = BulkUploadJob.objects.using(BulkUploadJob.objects.db).get(pk=job_id)
+            j.status = BulkUploadJob.Status.PREVIEW
+            j.preview = {'recompute_done': True, 'saved_count': len(exam_results)}
+            j.save(using=BulkUploadJob.objects.db)
+        except Exception as exc:
+            _log.exception("background recompute failed for exam=%s", exam_id2)
+            try:
+                j = BulkUploadJob.objects.using(BulkUploadJob.objects.db).get(pk=job_id)
+                j.status = BulkUploadJob.Status.ERROR
+                j.error = f'Recompute imeshindikana: {type(exc).__name__}'[:300]
+                j.save(using=BulkUploadJob.objects.db)
+            except Exception:
+                pass
+        finally:
+            close_old_connections()
+
+    _threading.Thread(target=_run_recompute, daemon=True).start()
 
     response = {
         'status': 'done',
         'saved_count': len(exam_results),
+        'job_id': recompute_job.pk,
+        'recompute': 'background',
     }
     if duplicates_dropped:
         response['duplicates_dropped'] = duplicates_dropped
