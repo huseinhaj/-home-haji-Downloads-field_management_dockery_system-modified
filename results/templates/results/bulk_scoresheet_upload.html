@@ -781,7 +781,8 @@
         // kusubiri OCR ndani ya request (ilikuwa chanzo cha HTTP 502).
         clearInterval(uploadTimer);
 
-        const tasks = data.jobs || [];
+        // Compat: server mpya inatuma 'jobs'; zamani ilikuwa 'tasks'
+        const tasks = data.jobs || data.tasks || [];
         let completed = 0;
 
         // Update file rows to processing state
@@ -797,20 +798,31 @@
         if (!tasks.length) {
           uploadAllBtn.disabled = false;
           updateUploadBtn();
-          toast(LANG === 'sw' ? 'Hakuna faili zilizopokelewa.' : 'No files were accepted.', true);
+          toast(LANG === 'sw'
+            ? '⚠️ Server haikupokea faili — jaribu tena au refresh ukurasa (Ctrl+Shift+R).'
+            : '⚠️ Server accepted no files — try again or hard-refresh (Ctrl+Shift+R).', true);
           return;
         }
 
+        toast(LANG === 'sw'
+          ? '⏳ Faili ' + tasks.length + ' zimepokelewa — AI inasoma nyuma pazia...'
+          : '⏳ ' + tasks.length + ' file(s) received — AI is reading in the background...');
+
         // Poll each job (DB-backed — status endpoint inasoma BulkUploadJob)
         for (const task of tasks) {
-          pollTask(task.job_id, task.subject_id, task.subject_name, () => {
+          pollTask(task.job_id || task.task_id, task.subject_id, task.subject_name, () => {
             completed++;
             if (completed >= tasks.length) {
               uploadAllBtn.disabled = false;
               updateUploadBtn();
+              // Fungua buttons za Results/Excel — preview zimefika
+              const genBtn = document.getElementById('generateResultsBtn');
+              const xlsBtn = document.getElementById('exportExcelBtn');
+              if (genBtn) { genBtn.style.opacity = '1'; genBtn.style.pointerEvents = 'auto'; }
+              if (xlsBtn) { xlsBtn.style.opacity = '1'; xlsBtn.style.pointerEvents = 'auto'; }
               toast(LANG === 'sw'
-                ? '✅ Masomo ' + tasks.length + ' yamekamilika!'
-                : '✅ ' + tasks.length + ' subjects uploaded!');
+                ? '✅ Masomo ' + tasks.length + ' yamekamilika — fungua modal ya ukaguzi (kama haikufunguka, angalia chips za somo).'
+                : '✅ ' + tasks.length + ' subject(s) done — check the review modal or subject chips.');
             }
           });
         }
@@ -818,7 +830,7 @@
         clearInterval(uploadTimer);
         uploadAllBtn.disabled = false;
         updateUploadBtn();
-        toast(err.message, true);
+        toast((LANG === 'sw' ? '❌ Hitilafu: ' : '❌ Error: ') + err.message, true);
       }
     });
   }
@@ -834,13 +846,13 @@
 
     function poll() {
       if (Date.now() - startedAt > MAX_WAIT) {
-        markFileError(upload, subjectName + ': Timed out');
+        markFileError(upload, subjectName + (LANG === 'sw' ? ': Muda umepita (jaribu tena)' : ': Timed out (retry)'));
         if (onDone) onDone();
         return;
       }
 
       fetch(url).then(r => r.json()).then(data => {
-        if (data.status === 'processing') {
+        if (data.status === 'processing' || data.status === 'pending') {
           const elapsed = Math.round((Date.now() - startedAt) / 1000);
           if (upload) {
             const status = document.getElementById('fstatus-' + upload.qid);

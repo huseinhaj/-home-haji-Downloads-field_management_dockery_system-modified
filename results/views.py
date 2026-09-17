@@ -19,6 +19,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.cache import never_cache
 
 from django.core.exceptions import ValidationError
 
@@ -4181,6 +4182,7 @@ def teacher_performance_report(request, form_num):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @academic_required
+@never_cache
 def bulk_scoresheet_upload(request, exam_id):
     """Academic officer uploads multiple scoresheets (PDFs/images) for
     different subjects at once.  Each file is OCR'd via a background
@@ -4376,6 +4378,7 @@ def ocr_health_check(request):
 
 
 @academic_required
+@never_cache
 def bulk_upload_status(request, task_id):
     """Polled by the frontend every 2s after bulk upload kicks off.
 
