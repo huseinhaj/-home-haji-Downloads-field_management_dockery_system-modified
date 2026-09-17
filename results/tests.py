@@ -821,6 +821,35 @@ class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
 		first_name_in_top5 = ws.cell(row=header_row + 1, column=2).value
 		self.assertEqual(first_name_in_top5, 'Lenatha Damian')
 
+	def test_bulk_upload_job_status_endpoint(self):
+		"""Upload ya scoresheet inatengeneza BulkUploadJob (OCR kwa nyuma);
+		status endpoint inarudisha processing → preview bila Celery."""
+		from .scan_models import BulkUploadJob
+		job = BulkUploadJob.objects.create(
+			exam=self.exam, subject=self.subject,
+			status=BulkUploadJob.Status.PROCESSING,
+		)
+		resp = self.client.get(reverse('bulk_upload_status', args=[job.pk]))
+		self.assertEqual(resp.status_code, 200)
+		self.assertEqual(resp.json()['status'], 'processing')
+
+		job.status = BulkUploadJob.Status.PREVIEW
+		job.preview = {
+			'preview': True, 'matched_count': 2, 'unmatched_count': 1,
+			'unmatched': [{'raw_name': 'Haijulikani'}],
+			'matched': [],
+		}
+		job.save()
+		resp = self.client.get(reverse('bulk_upload_status', args=[job.pk]))
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertEqual(data['status'], 'preview')
+		self.assertEqual(data['preview']['matched_count'], 2)
+
+		# Job isiyyopo → 404 (siyo 500)
+		resp = self.client.get(reverse('bulk_upload_status', args=[999999]))
+		self.assertEqual(resp.status_code, 404)
+
 	def test_form_results_excel_lists_students_in_roster_order(self):
 		import io
 		import openpyxl

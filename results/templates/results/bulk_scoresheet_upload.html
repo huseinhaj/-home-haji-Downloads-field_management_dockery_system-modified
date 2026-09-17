@@ -776,15 +776,13 @@
             || ((LANG === 'sw' ? 'Upload imeshindwa' : 'Upload failed') + ' (HTTP ' + res.status + ')'));
         }
 
-        // The response only arrives once every subject's OCR is fully
-        // done (they ran concurrently server-side, but this is still one
-        // request/response) — the "elapsed seconds" ticker was only ever
-        // needed until here.
+        // Server inarudisha MARA MOJA — kila file iko kwenye job ya nyuma
+        // (thread). Tunapoll kila job hadi iwe PREVIEW/ERROR. Hakuna tena
+        // kusubiri OCR ndani ya request (ilikuwa chanzo cha HTTP 502).
         clearInterval(uploadTimer);
 
-        const tasks = data.tasks || [];
+        const tasks = data.jobs || [];
         let completed = 0;
-        let anyAsync = false;
 
         // Update file rows to processing state
         for (const u of pendingUploads) {
@@ -796,54 +794,25 @@
           }
         }
 
-        // Poll each task (or handle sync-done tasks immediately)
-        for (const task of tasks) {
-          if (task.sync_done) {
-            // Task ran synchronously — show review modal if preview data exists
-            if (task.preview) {
-              openReviewModal(task.preview);
-            } else {
-              const upload = pendingUploads.find(u => u.subjectId == task.subject_id);
-              markFileDone(upload, task.matched || 0, 0);
-              const chip = document.getElementById('chip-' + task.subject_id);
-              if (chip) { chip.classList.remove('pending'); chip.classList.add('done'); }
-              uploadedCount++;
-              updateGlobalProgress();
-            }
-            completed++;
-          } else if (task.error) {
-            // Error from server
-            const upload = pendingUploads.find(u => u.subjectId == task.subject_id);
-            markFileError(upload, task.error);
-            completed++;
-          } else {
-            anyAsync = true;
-            pollTask(task.task_id, task.subject_id, task.subject_name, () => {
-              completed++;
-              if (completed >= tasks.length) {
-                uploadAllBtn.disabled = false;
-                updateUploadBtn();
-                toast(LANG === 'sw'
-                  ? '✅ Masomo ' + tasks.length + ' yamekamilika!'
-                  : '✅ ' + tasks.length + ' subjects uploaded!');
-              }
-            });
-          }
-        }
-
-        // No task went the Celery/poll route (the normal case without a
-        // worker deployed) — every result is already in hand, so re-enable
-        // the button right away instead of leaving it stuck on
-        // "Uploading..." forever waiting for a poll loop that will never
-        // start.
-        if (!anyAsync) {
+        if (!tasks.length) {
           uploadAllBtn.disabled = false;
           updateUploadBtn();
-          if (tasks.length) {
-            toast(LANG === 'sw'
-              ? '✅ Masomo ' + tasks.length + ' yamekamilika!'
-              : '✅ ' + tasks.length + ' subjects uploaded!');
-          }
+          toast(LANG === 'sw' ? 'Hakuna faili zilizopokelewa.' : 'No files were accepted.', true);
+          return;
+        }
+
+        // Poll each job (DB-backed — status endpoint inasoma BulkUploadJob)
+        for (const task of tasks) {
+          pollTask(task.job_id, task.subject_id, task.subject_name, () => {
+            completed++;
+            if (completed >= tasks.length) {
+              uploadAllBtn.disabled = false;
+              updateUploadBtn();
+              toast(LANG === 'sw'
+                ? '✅ Masomo ' + tasks.length + ' yamekamilika!'
+                : '✅ ' + tasks.length + ' subjects uploaded!');
+            }
+          });
         }
       } catch (err) {
         clearInterval(uploadTimer);
@@ -857,7 +826,7 @@
   function pollTask(taskId, subjectId, subjectName, onDone) {
     const url = STATUS_URL.replace('PLACEHOLDER', taskId);
     const POLL_INTERVAL = 2000;
-    const MAX_WAIT = 4 * 60 * 1000;
+    const MAX_WAIT = 10 * 60 * 1000;  // OCR ya AI inaweza chukua — 10 min kwa job
     const startedAt = Date.now();
 
     // Find the upload entry

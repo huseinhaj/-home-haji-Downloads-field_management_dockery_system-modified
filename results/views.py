@@ -4240,10 +4240,15 @@ def bulk_scoresheet_upload(request, exam_id):
         # Multi-file upload: each file matched to a subject_id
         if subject_ids_raw and files and len(files) == len(subject_ids_raw):
             from .tasks import process_bulk_upload_task
+            from .scan_models import BulkUploadJob
+            import threading as _threading
 
-            results_by_index = {}
-            sync_jobs = []  # [(index, subject, storage_path), ...]
-            for idx, (file, sid) in enumerate(zip(files, subject_ids_raw)):
+            # Kila file: hifadhi kwenye storage, tengeneza BulkUploadJob,
+            # anza OCR KWA NYUMA (thread) — request inarudisha MARA MOJA.
+            # (Zamani OCR ilifanyika ndani ya request: AI ya kurasa nyingi
+            # ilichukua zaidi ya nginx 120s/gunicorn 300s → HTTP 502.)
+            jobs = []
+            for file, sid in zip(files, subject_ids_raw):
                 if not sid or not file:
                     continue
                 try:
@@ -4253,57 +4258,53 @@ def bulk_scoresheet_upload(request, exam_id):
                 ext = os.path.splitext(file.name)[1].lower() or '.pdf'
                 storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
                 default_storage.save(storage_path, file)
-                try:
-                    task = process_bulk_upload_task.apply_async(
-                        args=[storage_path, exam.id, subject.id, roster_ids],
-                        kwargs={'preview_only': True},
-                        queue='default',
-                    )
-                    results_by_index[idx] = {'task_id': task.id, 'subject_id': subject.id, 'subject_name': subject.name}
-                except Exception as celery_err:
-                    # Celery broker may be down — queue it to run inline instead
-                    logger.warning('Celery apply_async failed for subject %s, running synchronously: %s', subject.name, celery_err)
-                    sync_jobs.append((idx, subject, storage_path))
 
-            # No Celery worker consuming the queue here (no REDIS_URL), so
-            # every file normally lands in sync_jobs. Running them ONE AT A
-            # TIME in this same request — as before — meant uploading
-            # several subjects' scoresheets together could sail well past
-            # gunicorn's request timeout even though each file alone is
-            # fine. Run them concurrently instead so the wait is roughly
-            # the slowest single file, not the sum of all of them. Capped
-            # at 4 at once — each file already parallelises its own pages
-            # internally (MAX_OCR_WORKERS), so this bounds how many vision
-            # API calls can be in flight simultaneously.
-            if sync_jobs:
-                from concurrent.futures import ThreadPoolExecutor, as_completed
-                from django.db import close_old_connections
+                job = BulkUploadJob.objects.create(
+                    exam=exam, subject=subject,
+                    created_by=getattr(request.user, 'full_name', '') or request.user.get_username(),
+                    status=BulkUploadJob.Status.PROCESSING,
+                )
 
-                def _run_sync(subject, storage_path):
+                def _run_job(job_id=job.pk, path=storage_path, sid2=subject.id, rids=roster_ids):
+                    from django.db import close_old_connections
                     close_old_connections()
                     try:
                         result = process_bulk_upload_task(
-                            storage_path, exam.id, subject.id, roster_ids, preview_only=True
+                            path, exam.id, sid2, rids, preview_only=True
                         )
+                        j = BulkUploadJob.objects.using(BulkUploadJob.objects.db).get(pk=job_id)
                         if result and result.get('error'):
-                            return {'error': result['error'], 'subject_id': subject.id, 'subject_name': subject.name}
-                        return {'task_id': None, 'subject_id': subject.id, 'subject_name': subject.name, 'sync_done': True, 'preview': result}
-                    except Exception as sync_err:
-                        logger.error('Synchronous bulk upload also failed for subject %s: %s', subject.name, sync_err)
-                        return {'error': str(sync_err), 'subject_id': subject.id, 'subject_name': subject.name}
+                            j.status = BulkUploadJob.Status.ERROR
+                            j.error = str(result['error'])[:300]
+                        else:
+                            j.status = BulkUploadJob.Status.PREVIEW
+                            j.preview = result or {}
+                        j.save(using=BulkUploadJob.objects.db)
+                    except Exception as exc:
+                        logger.error('Background OCR failed for job %s: %s', job_id, exc)
+                        try:
+                            j = BulkUploadJob.objects.using(BulkUploadJob.objects.db).get(pk=job_id)
+                            j.status = BulkUploadJob.Status.ERROR
+                            j.error = str(exc)[:300]
+                            j.save(using=BulkUploadJob.objects.db)
+                        except Exception:
+                            pass
                     finally:
                         close_old_connections()
 
-                with ThreadPoolExecutor(max_workers=min(len(sync_jobs), 4)) as pool:
-                    future_to_idx = {
-                        pool.submit(_run_sync, subject, storage_path): idx
-                        for idx, subject, storage_path in sync_jobs
-                    }
-                    for future in as_completed(future_to_idx):
-                        results_by_index[future_to_idx[future]] = future.result()
+                _threading.Thread(target=_run_job, daemon=True).start()
+                jobs.append(job)
 
-            tasks_started = [results_by_index[i] for i in sorted(results_by_index)]
-            return JsonResponse({'tasks': tasks_started})
+            return JsonResponse({
+                'jobs': [
+                    {
+                        'job_id': job.pk,
+                        'subject_id': job.subject_id,
+                        'subject_name': job.subject.name,
+                    }
+                    for job in jobs
+                ],
+            })
 
         # Single file upload (legacy)
         if subject_id and files:
@@ -4312,26 +4313,44 @@ def bulk_scoresheet_upload(request, exam_id):
             ext = os.path.splitext(file.name)[1].lower() or '.pdf'
             storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
             default_storage.save(storage_path, file)
-            from .tasks import process_bulk_upload_task
-            try:
-                task = process_bulk_upload_task.apply_async(
-                    args=[storage_path, exam.id, subject.id, roster_ids],
-                    kwargs={'preview_only': True},
-                    queue='default',
-                )
-                return JsonResponse({'task_id': task.id, 'subject_id': subject.id})
-            except Exception as celery_err:
-                logger.warning('Celery apply_async failed for subject %s, running synchronously: %s', subject_id, celery_err)
+            from .scan_models import BulkUploadJob
+            import threading as _threading
+
+            job = BulkUploadJob.objects.create(
+                exam=exam, subject=subject,
+                created_by=getattr(request.user, 'full_name', '') or request.user.get_username(),
+                status=BulkUploadJob.Status.PROCESSING,
+            )
+
+            def _run_job(job_id=job.pk, path=storage_path, rids=roster_ids):
+                from django.db import close_old_connections
+                close_old_connections()
                 try:
                     result = process_bulk_upload_task(
-                        storage_path, exam.id, subject.id, roster_ids, preview_only=True
+                        path, exam.id, subject.id, rids, preview_only=True
                     )
+                    j = BulkUploadJob.objects.using(BulkUploadJob.objects.db).get(pk=job_id)
                     if result and result.get('error'):
-                        return JsonResponse({'error': result['error']}, status=400)
-                    return JsonResponse({'task_id': None, 'subject_id': subject.id, 'sync_done': True, 'preview': result})
-                except Exception as sync_err:
-                    logger.error('Synchronous bulk upload also failed for subject %s: %s', subject_id, sync_err)
-                    return JsonResponse({'error': str(sync_err)}, status=500)
+                        j.status = BulkUploadJob.Status.ERROR
+                        j.error = str(result['error'])[:300]
+                    else:
+                        j.status = BulkUploadJob.Status.PREVIEW
+                        j.preview = result or {}
+                    j.save(using=BulkUploadJob.objects.db)
+                except Exception as exc:
+                    logger.error('Background OCR failed for job %s: %s', job_id, exc)
+                    try:
+                        j = BulkUploadJob.objects.using(BulkUploadJob.objects.db).get(pk=job_id)
+                        j.status = BulkUploadJob.Status.ERROR
+                        j.error = str(exc)[:300]
+                        j.save(using=BulkUploadJob.objects.db)
+                    except Exception:
+                        pass
+                finally:
+                    close_old_connections()
+
+            _threading.Thread(target=_run_job, daemon=True).start()
+            return JsonResponse({'jobs': [{'job_id': job.pk, 'subject_id': subject.id, 'subject_name': subject.name}]})
 
         return JsonResponse({'error': 'Tafadhali weka somo na upakie faili.'}, status=400)
 
@@ -4358,20 +4377,23 @@ def ocr_health_check(request):
 
 @academic_required
 def bulk_upload_status(request, task_id):
-    """Polled by the frontend every 2s after bulk upload kicks off."""
-    from celery.result import AsyncResult
-    result = AsyncResult(task_id)
+    """Polled by the frontend every 2s after bulk upload kicks off.
 
-    if not result.ready():
+    task_id ni id ya BulkUploadJob (DB) — OCR inaendeshwa na thread ya
+    nyuma, hivyo status inasomeka hata kama request ya awali imeisha."""
+    from .scan_models import BulkUploadJob
+
+    job = BulkUploadJob.objects.filter(pk=task_id).first()
+    if not job:
+        return JsonResponse({'error': 'Job haipatikani.'}, status=404)
+
+    if job.status == BulkUploadJob.Status.ERROR:
+        return JsonResponse({'error': job.error or 'Kuna hitilafu wakati wa kusoma scoresheet.'}, status=400)
+
+    if job.status in (BulkUploadJob.Status.PENDING, BulkUploadJob.Status.PROCESSING):
         return JsonResponse({'status': 'processing'})
 
-    if result.failed():
-        return JsonResponse({'error': 'Kuna hitilafu wakati wa kusoma scoresheet.'}, status=500)
-
-    payload = result.result or {}
-    if payload.get('error'):
-        return JsonResponse({'error': payload['error']}, status=400)
-
+    payload = job.preview or {}
     # Preview mode: task returned matched/unmatched without saving
     if payload.get('preview'):
         return JsonResponse({

@@ -157,3 +157,43 @@ class MarkingSchemePage(models.Model):
     def __str__(self):
         return f"Scheme {self.scheme_id} — uk. {self.page_number}"
 
+
+class BulkUploadJob(models.Model):
+    """Scoresheet moja iliyo-upload — OCR/AI inaendesha NYUMA (thread),
+    request inarudisha mara moja. Frontend inapoll status/ hii hapa.
+
+    Ilianzishwa kwa sababu upload ya sync ilipita timeout (nginx 120s na
+    gunicorn 300s) — Railways edge ilikatiza request → HTTP 502 "failed"
+    hata ingawa OCR ingefanikiwa nyuma pazia.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Inasubiri'
+        PROCESSING = 'PROCESSING', 'Inasoma (OCR/AI)'
+        PREVIEW = 'PREVIEW', 'Imekamilika — subiri ukaguzi'
+        ERROR = 'ERROR', 'Imeshindikana'
+
+    exam = models.ForeignKey(
+        Exam, on_delete=models.CASCADE, related_name='bulk_upload_jobs',
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.CASCADE, related_name='bulk_upload_jobs',
+    )
+    created_by = models.CharField(max_length=150, blank=True)
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True,
+    )
+    error = models.CharField(max_length=300, blank=True)
+    # Matokeo ya OCR/preview (matched/unmatched rows) kama yatakapokuwa tayari
+    preview = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Bulk upload job'
+        verbose_name_plural = 'Bulk upload jobs'
+
+    def __str__(self):
+        return f'Job #{self.pk} — {self.exam} / {self.subject} [{self.status}]'
+
