@@ -43,7 +43,7 @@ from .services.upload_processing_service import (
     process_uploaded_results,
     recompute_processed_results_for_exam,
 )
-from .utils import get_grade, get_grade_for_exam, get_grade_for_form, get_grade_primary, group_exams_by_type, normalize_gender, parse_name_score_sheet, parse_score, safe_get_or_create_subject, subjects_for_school
+from .utils import get_grade, get_grade_for_exam, get_grade_for_form, get_grade_primary, group_exams_by_type, normalize_gender, parse_name_score_sheet, parse_score, resolve_or_create_student, safe_get_or_create_subject, subjects_for_school
 
 _EXAM_TYPE_CHOICES = Exam.EXAM_TYPE_CHOICES
 
@@ -1128,14 +1128,9 @@ def _save_student(first, middle, last, gender, candidate_no=''):
     # on_student callbacks (see _bulk_save_form_students) but Student has
     # no such field — only FormStudent (the Academic's official roster)
     # tracks admission/candidate numbers.
-    student, _ = Student.objects.get_or_create(
-        first_name=first,
-        last_name=last or 'Unknown',
-        defaults={'middle_name': middle, 'gender': gender},
-    )
-    if middle and not student.middle_name:
-        student.middle_name = middle
-        student.save(update_fields=['middle_name'])
+    # Middle-name-aware find-or-create — brothers sharing first+last names
+    # are separate kids (Isingiro #216 used to swallow #217).
+    student, _created = resolve_or_create_student(first, middle, last, gender)
     name_parts = [p for p in [student.first_name, student.middle_name, student.last_name] if p]
     return {'id': student.id, 'name': ' '.join(name_parts)}
 
@@ -1177,43 +1172,73 @@ def _bulk_save_students(parsed_rows):
     # included) — Student has no field for it, so just drop it here.
     rows = [(first, middle, last or 'Unknown', gender) for first, middle, last, gender, *_ in parsed_rows]
 
+    # Middle-name-aware bulk dedup (same rules as resolve_or_create_student):
+    # a (first, last) hit with a different non-blank middle is a sibling, not
+    # the same kid — only a blank-middle row gets backfilled and reused.
     first_names = {r[0] for r in rows}
     last_names = {r[2] for r in rows}
-    existing = {
-        (s.first_name, s.last_name): s
-        for s in Student.objects.filter(first_name__in=first_names, last_name__in=last_names)
-    }
-
-    new_students = []
-    seen = set()
-    for first, middle, last, gender in rows:
-        key = (first, last)
-        if key not in existing and key not in seen:
-            seen.add(key)
-            new_students.append(Student(first_name=first, middle_name=middle, last_name=last, gender=gender))
-    if new_students:
-        Student.objects.bulk_create(new_students)
-        existing = {
-            (s.first_name, s.last_name): s
-            for s in Student.objects.filter(first_name__in=first_names, last_name__in=last_names)
-        }
+    siblings = {}
+    for s in Student.objects.filter(first_name__in=first_names, last_name__in=last_names):
+        siblings.setdefault((s.first_name.lower(), s.last_name.lower()), []).append(s)
 
     to_update = []
     updated_ids = set()
+    new_students = []
+    out = []
     for first, middle, last, gender in rows:
-        student = existing.get((first, last))
-        if student and middle and not student.middle_name and student.id not in updated_ids:
-            student.middle_name = middle
-            to_update.append(student)
-            updated_ids.add(student.id)
+        fam = siblings.get((first.lower(), last.lower()), [])
+        middle_norm = (middle or '').strip()
+        student = None
+        if middle_norm:
+            student = next(
+                (s for s in fam
+                 if (s.middle_name or '').strip().lower() == middle_norm.lower()),
+                None,
+            )
+            if student is None and len(fam) == 1 and not (fam[0].middle_name or '').strip():
+                student = fam[0]
+                if student.id not in updated_ids:
+                    student.middle_name = middle_norm
+                    to_update.append(student)
+                    updated_ids.add(student.id)
+            if student is None:
+                student = Student(first_name=first, middle_name=middle_norm,
+                                  last_name=last, gender=gender)
+                new_students.append(student)
+                fam = fam + [student]
+                siblings[(first.lower(), last.lower())] = fam
+        else:
+            blank = [s for s in fam if not (s.middle_name or '').strip()]
+            student = (blank or fam or [None])[0]
+            if student is None:
+                student = Student(first_name=first, middle_name='',
+                                  last_name=last, gender=gender)
+                new_students.append(student)
+                fam = fam + [student]
+                siblings[(first.lower(), last.lower())] = fam
+        name_parts = [p for p in [student.first_name, student.middle_name, student.last_name] if p]
+        out.append({'id': student.id, 'name': ' '.join(name_parts)})
+
+    if new_students:
+        Student.objects.bulk_create(new_students)
+        # bulk_create inatumia sequence moja — re-read kwa (first, middle,
+        # last) ili kupata PK halisi za rows mpya kabla ya kurudisha ids.
+        by_key = {}
+        for s in Student.objects.filter(first_name__in=first_names, last_name__in=last_names):
+            by_key.setdefault(
+                (s.first_name.lower(), (s.middle_name or '').strip().lower(), s.last_name.lower()),
+                s,
+            )
+        for i, (first, middle, last, _gender) in enumerate(rows):
+            middle_norm = (middle or '').strip().lower()
+            student = by_key.get((first.lower(), middle_norm, last.lower()))
+            if student is not None:
+                name_parts = [p for p in [student.first_name, student.middle_name, student.last_name] if p]
+                out[i] = {'id': student.id, 'name': ' '.join(name_parts)}
+
     if to_update:
         Student.objects.bulk_update(to_update, ['middle_name'])
 
-    out = []
-    for first, middle, last, gender in rows:
-        student = existing[(first, last)]
-        name_parts = [p for p in [student.first_name, student.middle_name, student.last_name] if p]
-        out.append({'id': student.id, 'name': ' '.join(name_parts)})
     return out
 
 
@@ -2650,17 +2675,11 @@ def _academic_add_student_ajax(request, school):
         if gender not in ('M', 'F'):
             gender = 'M'
 
-        # Same dedup as marks_entry_add_student / _save_student — a name
-        # that already exists (e.g. the kid IS on the roster, just missed
-        # somewhere) converges on the same Student row instead of forking.
-        student, created = Student.objects.get_or_create(
-            first_name=first_name,
-            last_name=last_name,
-            defaults={'middle_name': middle_name, 'gender': gender},
-        )
-        if middle_name and not student.middle_name:
-            student.middle_name = middle_name
-            student.save(update_fields=['middle_name'])
+        # Middle-name-aware dedup (same rules as resolve_or_create_student,
+        # shared with _save_student / _bulk_save_students / marks entry) —
+        # brothers sharing first+last names are separate kids; Isingiro's
+        # #216 used to swallow #217 here.
+        student, created = resolve_or_create_student(first_name, middle_name, last_name, gender)
         if student.gender != gender:
             student.gender = gender
             student.save(update_fields=['gender'])
@@ -2668,20 +2687,32 @@ def _academic_add_student_ajax(request, school):
         # Enroll in the official class roster (FormStudent) so the student
         # shows up everywhere the roster feeds — marks entry for other
         # subjects, blank scoresheets, next term's forms, etc.
+        # Dedup kwa (first, middle, last) ndani ya (school, form, year) —
+        # SI kwa admission_no nasibu: lookup ya kale ilikuja na NA-<uuid4>
+        # mpya kila wakati, hivyo kila add iliumba row mpya ya roster.
         fs_message = ''
         try:
             current_year = school.current_academic_year or timezone.now().year
-            fs, fs_created = FormStudent.objects.get_or_create(
+            fs = FormStudent.objects.filter(
                 school=school, form=exam.form,
                 is_active=True, academic_year=current_year,
-                admission_no=f'NA-{uuid.uuid4().hex[:10]}',
-                defaults={
-                    'first_name': student.first_name,
-                    'middle_name': student.middle_name,
-                    'last_name': student.last_name,
-                    'gender': student.gender,
-                },
-            )
+                first_name__iexact=student.first_name,
+                middle_name__iexact=student.middle_name or '',
+                last_name__iexact=student.last_name,
+            ).first()
+            fs_created = False
+            if fs is None:
+                fs = FormStudent.objects.create(
+                    school=school, form=exam.form,
+                    academic_year=current_year,
+                    is_active=True,
+                    admission_no=f'NA-{uuid.uuid4().hex[:10]}',
+                    first_name=student.first_name,
+                    middle_name=student.middle_name,
+                    last_name=student.last_name,
+                    gender=student.gender,
+                )
+                fs_created = True
             if fs_created:
                 fs_message = 'Ameandikishwa pia kwenye orodha ya darasa.'
         except Exception:

@@ -29,7 +29,7 @@ from django.views.decorators.http import require_GET, require_POST
 from .models import Exam, ExamResult, FormStudent, Student, StoredRoster, Subject, SubjectSubmission
 from .permissions import academic_required, teacher_or_academic_required
 from .services.upload_processing_service import recompute_processed_results_for_exam
-from .utils import get_grade_for_exam, is_passing_grade
+from .utils import get_grade_for_exam, is_passing_grade, resolve_or_create_student
 from .tasks import process_scoresheet_photo_task
 from .utils import get_grade_for_form, group_exams_by_type
 
@@ -744,15 +744,10 @@ def marks_entry_add_student(request):
     if gender not in ('M', 'F'):
         gender = 'M'
 
-    # get_or_create — same dedup as _save_student / _bulk_save_students
-    student, created = Student.objects.get_or_create(
-        first_name=first_name,
-        last_name=last_name,
-        defaults={'middle_name': middle_name, 'gender': gender},
-    )
-    if middle_name and not student.middle_name:
-        student.middle_name = middle_name
-        student.save(update_fields=['middle_name'])
+    # Same middle-name-aware dedup as _save_student / _bulk_save_students —
+    # brothers sharing first+last names are separate students (Isingiro's
+    # #216 used to swallow #217 here).
+    student, created = resolve_or_create_student(first_name, middle_name, last_name, gender)
 
     name = ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p)
 

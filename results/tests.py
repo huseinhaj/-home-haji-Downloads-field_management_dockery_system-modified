@@ -2218,3 +2218,95 @@ class TeacherScanNoWorkerFallbackTests(TestCase):
 		resp = self.client.get(reverse('scoresheet_extract_status', args=['ghost-task-id']))
 		self.assertEqual(resp.status_code, 200)
 		self.assertEqual(resp.json().get('status'), 'processing')
+
+
+class ResolveOrCreateStudentTests(TestCase):
+	"""Middle-name-aware Student dedup. Isingiro bug: brothers sharing
+	first+last names (Privatus Gordian Laurian #216 / Privatus Leonce
+	Laurian #217) collapsed into one Student because get_or_create keyed
+	on (first, last) only — adding #217 returned #216 and his marks were
+	written onto the wrong kid."""
+
+	databases = {'default', 'results'}
+
+	def _resolve(self, first, middle, last, gender='M'):
+		from .utils import resolve_or_create_student
+		return resolve_or_create_student(first, middle, last, gender)
+
+	def test_brother_with_different_middle_gets_his_own_row(self):
+		gordian, created1 = self._resolve('Privatus', 'Gordian', 'Laurian')
+		leonce, created2 = self._resolve('Privatus', 'Leonce', 'Laurian')
+		self.assertTrue(created1)
+		self.assertTrue(created2)
+		self.assertNotEqual(gordian.id, leonce.id)
+		self.assertEqual(gordian.middle_name, 'Gordian')
+		self.assertEqual(leonce.middle_name, 'Leonce')
+
+	def test_same_full_name_resolves_to_the_same_student(self):
+		first, created1 = self._resolve('Privatus', 'Leonce', 'Laurian')
+		again, created2 = self._resolve('Privatus', 'Leonce', 'Laurian')
+		self.assertTrue(created1)
+		self.assertFalse(created2)
+		self.assertEqual(first.id, again.id)
+
+	def test_name_only_row_backfills_middle_and_converges(self):
+		# Old upload saved the kid without a middle name; adding the full
+		# name later must reuse that row (and fill the middle), not fork.
+		name_only, created1 = self._resolve('Privatus', '', 'Laurian')
+		with_middle, created2 = self._resolve('Privatus', 'Gordian', 'Laurian')
+		self.assertTrue(created1)
+		self.assertFalse(created2)
+		self.assertEqual(name_only.id, with_middle.id)
+		self.assertEqual(with_middle.middle_name, 'Gordian')
+
+	def test_blank_middle_request_converges_on_existing_full_name(self):
+		full, _ = self._resolve('Privatus', 'Gordian', 'Laurian')
+		blank, created = self._resolve('Privatus', '', 'Laurian')
+		self.assertFalse(created)
+		self.assertEqual(full.id, blank.id)
+
+
+class AcademicAddStudentSiblingTests(TestCase):
+	"""POST academic_add_student_marks (action=add_student) with a
+	brother's full name must create the brother — not return the existing
+	sibling (Isingiro: adding #217 returned #216) — and retries must not
+	mint duplicate roster rows."""
+
+	databases = {'default', 'results'}
+
+	def setUp(self):
+		self.school = School.objects.create(name='Isingiro Sekondari', region='Kagera', district='Kyerwa')
+		self.exam = Exam.objects.create(name='Midterm 2026', year=2026, form=1, school=self.school)
+		self.academic = TeacherAccount.objects.create(
+			email='academic@example.com', full_name='Academic Officer',
+			role=TeacherAccount.ROLE_ACADEMIC, school=self.school)
+		self.client = Client()
+		self.client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+
+	def _add(self, first, middle, last):
+		return self.client.post(
+			reverse('academic_add_student_marks'),
+			data=json.dumps({
+				'action': 'add_student', 'exam_id': self.exam.id,
+				'first_name': first, 'middle_name': middle, 'last_name': last,
+				'gender': 'M',
+			}),
+			content_type='application/json',
+		)
+
+	def test_adding_brother_returns_the_brother_not_the_sibling(self):
+		r216 = self._add('Privatus', 'Gordian', 'Laurian').json()
+		r217 = self._add('Privatus', 'Leonce', 'Laurian').json()
+		self.assertNotEqual(r216['student']['id'], r217['student']['id'])
+		self.assertIn('Leonce', r217['student']['name'])
+		self.assertTrue(Student.objects.filter(
+			first_name='Privatus', middle_name='Leonce', last_name='Laurian').exists())
+
+	def test_re_adding_same_student_does_not_duplicate_roster_rows(self):
+		first = self._add('Privatus', 'Leonce', 'Laurian').json()
+		second = self._add('Privatus', 'Leonce', 'Laurian').json()
+		self.assertEqual(first['student']['id'], second['student']['id'])
+		self.assertEqual(FormStudent.objects.filter(
+			school=self.school, form=1,
+			first_name='Privatus', middle_name='Leonce', last_name='Laurian',
+		).count(), 1)

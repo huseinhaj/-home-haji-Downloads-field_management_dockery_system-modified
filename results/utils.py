@@ -563,3 +563,65 @@ def subjects_for_school(school):
         Q(level='secondary') | Q(level='both') | Q(level=''),
     ).order_by('name')
 
+
+def resolve_or_create_student(first_name, middle_name, last_name, gender):
+    """Find or create a Student for a full name — middle-name-aware.
+
+    get_or_create(first_name, last_name) merged brothers who share
+    first+last names: Isingiro's "Privatus Gordian Laurian" (#216)
+    swallowed "Privatus Leonce Laurian" (#217), so adding the brother
+    returned the first kid and his marks were written onto the wrong
+    student. Matching rules here:
+
+      1. exact (first, middle, last) match → reuse it
+      2. middle given, (first, last) taken by a DIFFERENT middle → the
+         name is a sibling: create a fresh Student
+      3. middle given, single (first, last) row with a BLANK middle →
+         reuse it and backfill the middle (name-only uploads)
+      4. middle blank → legacy (first, last) convergence (blank-middle
+         row preferred; a single existing row always wins)
+
+    Returns (student, created).
+    """
+    from .models import Student
+
+    first_name = (first_name or '').strip()
+    middle_name = (middle_name or '').strip()
+    last_name = (last_name or '').strip() or 'Unknown'
+
+    siblings = list(Student.objects.filter(
+        first_name__iexact=first_name, last_name__iexact=last_name,
+    ).order_by('id'))
+
+    created = False
+    if middle_name:
+        student = next(
+            (s for s in siblings
+             if (s.middle_name or '').strip().lower() == middle_name.lower()),
+            None,
+        )
+        if student is None and len(siblings) == 1 \
+                and not (siblings[0].middle_name or '').strip():
+            # Rule 3: the single name-only row is the same kid.
+            student = siblings[0]
+            student.middle_name = middle_name
+            student.save(update_fields=['middle_name'])
+        if student is None:
+            # Rule 2: sibling with a different middle — never swallow him.
+            student = Student.objects.create(
+                first_name=first_name, middle_name=middle_name,
+                last_name=last_name, gender=gender or 'M',
+            )
+            created = True
+    else:
+        blank = [s for s in siblings if not (s.middle_name or '').strip()]
+        student = (blank or siblings or [None])[0]
+        if student is None:
+            student = Student.objects.create(
+                first_name=first_name, middle_name='',
+                last_name=last_name, gender=gender or 'M',
+            )
+            created = True
+
+    return student, created
+
