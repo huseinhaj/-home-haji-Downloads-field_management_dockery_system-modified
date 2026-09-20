@@ -18,29 +18,38 @@ from .services.necta_ca_service import (
 
 
 class EstimateMarkTests(TestCase):
-    """estimate_mark — proportional scaling yenye clamp [min, max]."""
+    """estimate_mark — banding ya mwanafunzi ndani ya range ya mwalimu."""
 
     databases = {'default', 'results'}
 
     def test_none_stays_none(self):
         self.assertIsNone(estimate_mark(None, 45, 100))
 
-    def test_high_performer_is_never_lowballed(self):
-        # Requirement: mwanafunzi wa 80-100 hawezi kutiwa 60.
-        for base in (80, 85, 90, 95, 100):
-            mark = estimate_mark(base, 45, 100)
-            self.assertGreaterEqual(mark, 89, f'base={base} → {mark}')
-        self.assertEqual(estimate_mark(100, 45, 100), 100)
+    def test_weak_student_starts_at_teacher_min(self):
+        # Alama ya chini ya mwanafunzi 40 < 45 → huanzia 45 na kupanda.
+        self.assertEqual(estimate_mark(40, 45, 100, student_min=40), 45)
+        # Bando la juu (100) linafikia mark_max.
+        self.assertEqual(estimate_mark(100, 45, 100, student_min=40), 100)
+        # Bando za katikati zinapanda taratibu.
+        mid = estimate_mark(70, 45, 100, student_min=40)
+        self.assertGreater(mid, 45)
+        self.assertLess(mid, 100)
 
-    def test_proportional_mapping_endpoints(self):
+    def test_strong_student_starts_at_own_min(self):
+        # Alama ya chini ya mwanafunzi 70 na range 45-100 → huanzia 70,
+        # hashushishwi 45 (kikomo cha chini ni max(45, 70) = 70).
+        self.assertEqual(estimate_mark(70, 45, 100, student_min=70), 70)
+        self.assertEqual(estimate_mark(100, 45, 100, student_min=70), 100)
+        self.assertGreater(estimate_mark(85, 45, 100, student_min=70), 70)
+
+    def test_fallback_proportional_without_student_min(self):
         self.assertEqual(estimate_mark(0, 45, 100), 45)
+        self.assertEqual(estimate_mark(100, 45, 100), 100)
         self.assertEqual(estimate_mark(50, 45, 100), 73)   # 72.5 → round-half-up
-        self.assertEqual(estimate_mark(80, 45, 100), 89)
-        self.assertEqual(estimate_mark(20, 45, 100), 56)
 
     def test_clamped_to_range(self):
-        self.assertEqual(estimate_mark(120, 45, 100), 100)
-        self.assertEqual(estimate_mark(-5, 45, 100), 45)
+        self.assertEqual(estimate_mark(120, 45, 100, student_min=40), 100)
+        self.assertGreaterEqual(estimate_mark(-5, 45, 100, student_min=40), 45)
 
 
 class AutoMapExamsTests(TestCase):
@@ -112,12 +121,13 @@ class BuildCAPreviewTests(TestCase):
         preview = build_ca_preview(self.school, self.subject, exam_map, 45, 100, year=2026)
 
         rows = {r['name']: r['marks'] for r in preview['rows']}
-        asha = rows['Asha Mkubwa']
-        juma = rows['Juma Hassan Mdogo']
+        asha = rows['Asha Mkubwa']        # alama halisi: 80
+        juma = rows['Juma Hassan Mdogo']  # alama halisi: 40
 
-        # Asha (80 halisi) → 89; Juma (40 halisi) → 67. Performance inaheshimiwa.
-        self.assertEqual(asha['ft_terminal'], 89)
-        self.assertEqual(juma['ft_terminal'], 67)
+        # Juma (min 40) huanzia 45; Asha (min 80) huanzia 80. Wote
+        # wakadiria ndani ya range ya mwalimu (45-100).
+        self.assertEqual(juma['ft_terminal'], 45)
+        self.assertEqual(asha['ft_terminal'], 80)
         self.assertGreater(asha['ft_terminal'], juma['ft_terminal'])
 
     def test_blank_column_falls_back_to_combined_average(self):
@@ -129,7 +139,7 @@ class BuildCAPreviewTests(TestCase):
         rows = {r['name']: r['marks'] for r in preview['rows']}
         asha = rows['Asha Mkubwa']
         for key in ('ft_test_one', 'ft_mid_term', 'st_annual'):
-            self.assertEqual(asha[key], 89, f'{key} inafuata combined average')
+            self.assertEqual(asha[key], 80, f'{key} inafuata combined average')
 
     def test_absent_result_excluded(self):
         # ExamResult ya pili (is_absent=True) kwa exam nyingine haipaswi
@@ -146,10 +156,10 @@ class BuildCAPreviewTests(TestCase):
         asha = next(r for r in preview['rows'] if r['name'] == 'Asha Mkubwa')
         # 80 ya Terminal bado inatumika, na column ya absent inarudi kwa
         # combined average (80) — si 0, si None.
-        self.assertEqual(asha['marks']['ft_terminal'], 89)
-        self.assertEqual(asha['marks']['ft_test_one'], 89)
+        self.assertEqual(asha['marks']['ft_terminal'], 80)
+        self.assertEqual(asha['marks']['ft_test_one'], 80)
         juma = next(r for r in preview['rows'] if 'Juma' in r['name'])
-        self.assertEqual(juma['marks']['ft_terminal'], 67)
+        self.assertEqual(juma['marks']['ft_terminal'], 45)
 
     def test_project_and_practical_stay_blank(self):
         exam_map = {'ft_terminal': self.exam.id}
@@ -221,7 +231,7 @@ class NectaCaViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data['subject_name'], 'HISTORY')
-        self.assertEqual(data['rows'][0]['marks']['ft_terminal'], 89)
+        self.assertEqual(data['rows'][0]['marks']['ft_terminal'], 80)
 
     def test_download_creates_snapshot_and_excel(self):
         payload = {
@@ -245,5 +255,5 @@ class NectaCaViewTests(TestCase):
         snap = ContinuousAssessmentSnapshot.objects.get(school=self.school)
         self.assertEqual(snap.subject, self.subject)
         self.assertEqual(snap.params['center_no'], 'S3063')
-        self.assertEqual(snap.payload['rows'][0]['marks']['ft_terminal'], 89)
+        self.assertEqual(snap.payload['rows'][0]['marks']['ft_terminal'], 80)
         self.assertEqual(snap.created_by, self.academic)

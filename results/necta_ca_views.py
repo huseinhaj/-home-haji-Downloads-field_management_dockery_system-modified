@@ -5,8 +5,8 @@ Mwalimu/Academic anachagua:
   - Somo (Subject)
   - Exam ya kila column ya assessment (auto-mapped kwa exam_type, inaweza
     kubadilishwa kwa dropdowns)
-  - Range ya alama (mf. 45-100) — mfumo unakadiria kwa uwiano wa wastani,
-    performance-aware (mwanafunzi wa 80-100 hawezi kutiwa 60)
+  - Range ya alama (mf. 45-100) — range ni kikomo: kila mwanafunzi
+    anakadiriwa kuanzia alama yake ya chini (performance-aware)
   - Center number + phone (header ya NECTA)
 
 Preview inaonyeshwa kwenye ukurasa; Download inatengeneza Excel ya muundo

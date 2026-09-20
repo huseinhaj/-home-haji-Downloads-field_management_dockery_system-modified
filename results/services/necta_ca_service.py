@@ -9,13 +9,19 @@ TERM (TEST-ONE, MID-TERM, TEST-TWO, ANNUAL), PROJECT na PRACTICAL.
 Automation hapa:
   1. Roster ya Form 4 (is_active, mwaka wa sasa) inajaza S/N + majina.
   2. Mwalimu anachagua somo + exam ya kila column (auto-map kwa exam_type)
-     + range ya alama (mf. 45-100).
-  3. Alama zinakadiriwa kwa UWIANO WA WASTANI (proportional scaling):
-         mark = min + (alama_halisi / 100) * (max - min)
-     Performance inaheshimiwa — mwanafunzi wa 80-100 kwenye range 45-100
-     anapata ~89-100, SI 60. Msingi wa kila column ni alama ya exam ile
-     column; kama column ile haina exam/data, inatumika wastani wa
-     combined results za mwanafunzi kutoka columns zote zilizopo.
+     + range ya alama (mf. 45-100) — range hii ni KIKOMO (floor/ceiling).
+  3. Alama zinakadiriwa kwa BANDING YA MWANAFUNZI (performance-aware):
+     kila mwanafunzi ana alama yake ya CHINI (student_min) kutoka kwenye
+     mitihani iliyochaguliwa; floor = max(mark_min, student_min).
+         estimate(b) = floor + (b - student_min) * (mark_max - floor)
+                       / (100 - student_min)
+     - Mwanafunzi dhaifu (alama ya chini 40, range 45-100) huanzia 45 na
+       kupanda kadiri utendaji wake — hawezi kutiwa chini ya 45.
+     - Mwanafunzi hodari (alama ya chini 70, range 45-100) huanzia 70
+       kwenda juu — hashushishwi hadi 45.
+     Msingi wa kila column ni alama ya exam ile column; kama column ile
+     haina exam/data, inatumika wastani wa combined results za mwanafunzi
+     kutoka columns zote zilizopo.
   4. PROJECT na PRACTICAL zinabaki WAZI (mwalimu anajaza mkononi).
   5. Excel inatengenezwa kwa openpyxl kwa muundo wa NECTA.
 """
@@ -73,15 +79,41 @@ def auto_map_exams(form4_exams):
     return mapping
 
 
-def estimate_mark(base_score, mark_min, mark_max):
-    """Proportional scaling: min + (base/100)*(max-min), rounded up-half.
+def estimate_mark(base_score, mark_min, mark_max, student_min=None):
+    """Banding ya mwanafunzi ndani ya range ya mwalimu (floor/ceiling).
 
-    base_score 0-100 (au zaidi — inafungwa kwenye [min, max]). None → None.
+    student_min = alama ya CHINI ya mwanafunzi kwenye mitihani
+    iliyochaguliwa (profile yake ya utendaji):
+      - Dhaifu (student_min < mark_min, mf. 40 na range 45-100) → huanzia
+        mark_min (45) na kupanda kadiri utendaji wake.
+      - Hodari (student_min 70 na range 45-100) → huanzia 70 kwenda juu;
+        hashushishwi hadi 45.
+
+    estimate(b) = floor + (b - student_min) * (mark_max - floor)
+                  / (100 - student_min),   floor = max(mark_min, student_min)
+
+    student_min=None → fallback ya proportional: min + (b/100)*(max-min).
+    base_score None → None. Matokeo yanafungwa kwenye [mark_min, mark_max].
     """
     if base_score is None:
         return None
-    span = mark_max - mark_min
-    mark = mark_min + (float(base_score) / 100.0) * span
+    mark_min = int(mark_min)
+    mark_max = int(mark_max)
+    base = float(base_score)
+
+    if student_min is None:
+        mark = mark_min + (base / 100.0) * (mark_max - mark_min)
+    else:
+        smin = min(max(float(student_min), 0.0), 100.0)
+        floor = max(mark_min, smin)
+        span_real = 100.0 - smin
+        if span_real <= 0:
+            mark = mark_max          # alama zote za mwanafunzi ni 100
+        elif base <= smin:
+            mark = floor             # alama ya chini → floor
+        else:
+            mark = floor + (base - smin) * (mark_max - floor) / span_real
+
     mark = math.floor(mark + 0.5)
     return max(mark_min, min(mark_max, mark))
 
@@ -170,15 +202,19 @@ def build_ca_preview(school, subject, exam_map, mark_min, mark_max, year=None):
         sid = student.id if student else None
 
         column_scores = {}
+        all_scores = []          # profile ya utendaji: alama halisi zote
         for col in TERM_COLUMNS:
             eid = exam_map.get(col['key'])
             if eid and sid:
                 score = scores_by_exam.get(eid, {}).get(sid)
                 if score is not None:
                     column_scores[col['key']] = float(score)
+                    all_scores.append(float(score))
 
-        available = list(column_scores.values())
-        combined_avg = (sum(available) / len(available)) if available else None
+        combined_avg = (sum(all_scores) / len(all_scores)) if all_scores else None
+        # Alama ya chini ya mwanafunzi kwenye mitihani iliyochaguliwa —
+        # ndiyo anapoanzia makadirio (angalia estimate_mark).
+        student_min = min(all_scores) if all_scores else None
 
         marks = {}
         for col in ALL_COLUMNS:
@@ -186,7 +222,7 @@ def build_ca_preview(school, subject, exam_map, mark_min, mark_max, year=None):
                 marks[col['key']] = None     # wazi — kujaza mkononi
                 continue
             base = column_scores.get(col['key'], combined_avg)
-            marks[col['key']] = estimate_mark(base, mark_min, mark_max)
+            marks[col['key']] = estimate_mark(base, mark_min, mark_max, student_min)
 
         if any(v is not None for v in marks.values()):
             filled += 1

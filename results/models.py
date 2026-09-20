@@ -825,10 +825,10 @@ class ContinuousAssessmentSnapshot(models.Model):
     """Snapshot ya NECTA Continuous Assessment Form (Form IV) iliyotengenezwa.
 
     Mwalimu/Academic anachagua somo + exams zitakazolisha kila column +
-    range ya alama (mf. 45-100); mfumo unakadiria alama kwa uwiano wa
-    wastani wa mwanafunzi (proportional scaling inayoheshimu performance
-    — mwanafunzi wa 80-100 hawezi kutiwa 60) na ku-download Excel ya
-    muundo wa NECTA. Payload inahifadhiwa hapa ili historia isipotee.
+    range ya alama (mf. 45-100). Range ni KIKOMO: kila mwanafunzi anakadiriwa
+    kuanzia alama yake ya chini kwenye mitihani iliyochaguliwa — dhaifu wa 40
+    huanzia 45 na kupanda; hodari wa 70 huanzia 70 kwenda juu (hashushwi 45).
+    Payload inahifadhiwa hapa ili historia isipotee.
     """
     school = models.ForeignKey(
         School, on_delete=models.CASCADE, related_name='ca_snapshots',
