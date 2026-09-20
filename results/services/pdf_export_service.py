@@ -1688,6 +1688,40 @@ def generate_results_pdf_response(exam, style='normal'):
         tail_flowables.append(sp_table)
         tail_flowables.append(Spacer(1, 6))
 
+    # ── QR ya portal ya matokeo ya shule (anti-forgery + convenience) ──
+    # Ripoti ya darasa ina QR inayoelekeza portal ya public search
+    # (/shule/matokeo/?school=<id>) — mzazi anascan, anatafuta mwanafunzi
+    # WAKE kwenye portal rasmi. Si token ya mwanafunzi mmoja: ripoti ya
+    # darasa ni ya kila mtu, hivyo QR isiweze kumwachia mtu mwingine
+    # matokeo ya mwanafunzi fulani (privacy). Kosa la DB linapigwa logi
+    # na QR inarukwa — ripoti yenyewe haifeli.
+    try:
+        _school_id = exam.school_id
+        if _school_id:
+            _qr_png = _qr_data_uri(f"/shule/matokeo/?school={_school_id}", box_size=5)
+            if _qr_png:
+                _qr_note = _p(
+                    "<b>THIBITISHA MATOKEO ONLINE</b><br/>Scan QR hii — tafuta "
+                    "mwanafunzi kwenye portal rasmi ya shule",
+                    ParagraphStyle('cls_qr', parent=st['sig'], fontSize=7, alignment=1),
+                )
+                _qr_tbl = Table(
+                    [[_qr_note, Image(io.BytesIO(_qr_png), width=1.6 * cm, height=1.6 * cm)]],
+                    colWidths=[content_w - 2.1 * cm, 2.1 * cm],
+                )
+                _qr_tbl.setStyle(TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                    ('BOX', (0, 0), (-1, -1), 0.8, _HB),
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ]))
+                tail_flowables.append(Spacer(1, 4))
+                tail_flowables.append(_qr_tbl)
+    except Exception:
+        logger.warning("Class report QR block failed (exam=%s)", exam.id, exc_info=True)
+
     # Signature is drawn in _footer canvas function on the last page
     # (left: Academic Officer, right: Head of School, with date)
 
