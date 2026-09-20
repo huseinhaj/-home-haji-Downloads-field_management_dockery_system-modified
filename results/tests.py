@@ -244,6 +244,27 @@ class ScoreSheetOCRParsingTests(TestCase):
 		raw = [{"row": "7", "name": "Amina Juma", "score": 78}]
 		self.assertEqual(_clean_rows(raw)[0]["row"], 7)
 
+	def test_row_number_warnings_flags_skipped_and_duplicated_rows(self):
+		"""Mistari iliyorukwa (mf. ukurasa uliokatika / picha iliyokoleka)
+		ilazimisha onyo kwa mwalimu — hitilafu ni YA SCAN, si ya orodha yake."""
+		from .tasks import _row_number_warnings
+		rows = [
+			{'row': 1}, {'row': 2}, {'row': 3},
+			{'row': 7}, {'row': 8},   # 4-6 zimerukwa (truncation)
+		]
+		warnings = _row_number_warnings(rows)
+		self.assertEqual(len(warnings), 1)
+		self.assertIn('4', warnings[0])
+		self.assertIn('5', warnings[0])
+		# Mistari ya dupes pia inaonyeshwa
+		dupes = _row_number_warnings([
+			{'row': 1}, {'row': 1}, {'row': 2},
+		])
+		self.assertEqual(len(dupes), 1)
+		self.assertIn('mara moja', dupes[0])
+		# Mistari kamili 1..N → hakuna onyo
+		self.assertEqual(_row_number_warnings([{'row': i} for i in range(1, 8)]), [])
+
 
 def _build_pdf_bytes(num_pages=1):
 	from io import BytesIO
@@ -451,6 +472,55 @@ class ScoreSheetPhotoExtractViewTests(TestCase):
 		self.assertEqual(matched_by_id[self.student_one.id], 78)
 		self.assertEqual(matched_by_id[third.id], 41)
 		self.assertNotIn(self.student_two.id, matched_by_id)  # blank row carries no score
+
+	def test_blank_rows_block_fuzzy_steal_of_unfilled_students(self):
+		"""Lalamiko halisi: mwalimu hakuwajaza wanafunzi 3 (cells tupu kwenye
+		karatasi) lakini baada ya scan walikuwa wamejaziwa — fuzzy fallback
+		(KWENDA name-similarity) ilichukua alama za wenzao na kuwapa hao.
+
+		Mstari ulio BLANK na namba ya mstari iliyosomwa ni thabiti kuliko
+		jina la OCR: mwanafunzi aliye BLANK kwenye karatasi lazima asikubali
+		kuchukuliwa na fuzzy matching — aishie 'missing' (mstari wa manjano)
+		ili mwalimu ajaze mwenyewe."""
+		third = Student.objects.create(first_name='Grace', middle_name='', last_name='Kimaro', gender='F')
+		fourth = Student.objects.create(first_name='Baraka', middle_name='', last_name='Massawe', gender='M')
+		fifth = Student.objects.create(first_name='Neema', middle_name='', last_name='Lyimo', gender='F')
+		roster = [
+			{'id': self.student_one.id, 'name': 'Amina Juma'},
+			{'id': self.student_two.id, 'name': 'Peter Mushi'},
+			{'id': third.id, 'name': 'Grace Kimaro'},
+			{'id': fourth.id, 'name': 'Baraka Massawe'},
+			{'id': fifth.id, 'name': 'Neema Lyimo'},
+		]
+		# Wanafunzi 3-4 wana cells tupu (BLANK, rows 3/4). AI imeruka mstari
+		# wa 5 kabisa (rows=4 != roster=5) — hii inamwaga matching kwenye
+		# fuzzy fallback, njia ile ile iliyovuruga scan ya mwalimu: bila
+		# blank-protection, fuzzy inaweza kupaka alama za wenzazo kwenye
+		# wanafunzi walio BLANK.
+		extracted = [
+			{'raw_name': 'Amna Juuma', 'score': 78, 'row': 1, 'blank': False},
+			{'raw_name': 'Ptr Mshi', 'score': 55, 'row': 2, 'blank': False},
+			{'raw_name': 'Grsce Kimuro', 'score': None, 'row': 3, 'blank': True},
+			{'raw_name': 'Brka Msswe', 'score': None, 'row': 4, 'blank': True},
+		]
+		response = self._post(extracted, roster)
+		self.assertEqual(response.status_code, 200)
+		data = response.json()
+		# Waliojazwa ni 2 tu — na ni alama zao wenyewe
+		self.assertEqual(len(data['matched']), 2)
+		matched_by_id = {row['id']: row['score'] for row in data['matched']}
+		self.assertEqual(matched_by_id[self.student_one.id], 78)
+		self.assertEqual(matched_by_id[self.student_two.id], 55)
+		# Watatu wasiojazwa HAWAJAGUSIWA — hakuna alama iliyoingizwa kwao
+		self.assertNotIn(third.id, matched_by_id)
+		self.assertNotIn(fourth.id, matched_by_id)
+		self.assertNotIn(fifth.id, matched_by_id)
+		# Mwalimu aliyewaacha wazi (3, 4) hawaripotiwi missing — karatasi
+		# ilithibitisha waziwazi cells zao tupu. Neema (5) ndiye missing —
+		# AI haiwahi kumwona kabisa → mstari wa manjano kwa uhakiki.
+		missing_ids = {m['id'] for m in data['missing']}
+		self.assertEqual(missing_ids, {fifth.id})
+		self.assertEqual(data['unmatched'], [])
 
 	def test_name_not_on_roster_creates_a_new_student(self):
 		"""The photo IS the roster — a name that doesn't match anyone

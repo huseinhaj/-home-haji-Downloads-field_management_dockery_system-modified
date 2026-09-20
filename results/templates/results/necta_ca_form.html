@@ -20,6 +20,14 @@
   <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:16px;">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px;">
       <label style="font-size:13px;font-weight:600;">
+        Form Number
+        <select id="form_num" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px;">
+          {% for f in form_choices %}
+            <option value="{{ f }}" {% if f == form_num %}selected{% endif %}>Form {{ f }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label style="font-size:13px;font-weight:600;">
         Somo / Subject
         <select id="subject_id" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px;">
           <option value="">— chagua —</option>
@@ -122,6 +130,7 @@
   function collectParams() {
     var params = {
       action: 'preview',
+      form_num: $('form_num').value,
       subject_id: $('subject_id').value,
       year: $('year').value,
       center_no: $('center_no').value,
@@ -172,6 +181,12 @@
       ' | Hawana data kabisa: ' + data.stats.blank;
     wrap.style.display = 'block';
   }
+
+  $('form_num').addEventListener('change', function () {
+    var url = new URL(window.location.href);
+    url.searchParams.set('form', this.value);
+    window.location.href = url.toString();
+  });
 
   $('btn_preview').addEventListener('click', function () {
     if (!$('subject_id').value) { showMsg('Chagua somo kwanza.'); return; }

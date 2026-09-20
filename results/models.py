@@ -180,6 +180,15 @@ class FormStudent(models.Model):
         # the same numbering scheme (S2475/0001 again in the new year).
         unique_together = [('school', 'academic_year', 'form', 'admission_no')]
         ordering = ['form', 'last_name', 'first_name']
+        indexes = [
+            # Roster read hot path — marks entry Continue, scoresheets, CA
+            # form: kila MMO wanauliza (school, form, is_active,
+            # academic_year). Bila index hii Postgres inascan jedwali zima.
+            models.Index(
+                fields=['school', 'form', 'is_active', 'academic_year'],
+                name='results_fs_roster_idx',
+            ),
+        ]
 
     def __str__(self):
         return f"Form {self.form} — {self.first_name} {self.last_name} ({self.school})"

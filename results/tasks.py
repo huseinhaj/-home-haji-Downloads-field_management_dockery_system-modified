@@ -21,6 +21,38 @@ from .services.scoresheet_ocr_service import ScoreSheetOCRError, extract_scores_
 logger = logging.getLogger(__name__)
 
 
+def _row_number_warnings(extracted_rows):
+    """Tahadhari za mistari ya karatasi iliyosomwa vibaya au kurukwa.
+
+    AI inapokata mkondo (truncation), picha inakoleka, au mkono unaoficha
+    namba ya mstari, mistari michache ya mwisho/mkatikati haipatikani —
+    wanafunzi wake wanaishia "missing" na mwalimu haelewi kwanini. Hizi
+    warnings zinamtambulisha hitilafu HIYO YA SCAN (si makosa yake) na
+    kumwambia ni mistari gani ya "Na." ilipotea."""
+    nums = [r.get('row') for r in extracted_rows
+            if isinstance(r.get('row'), int) and r.get('row', 0) > 0]
+    warnings = []
+    if not nums:
+        return warnings
+    dupes = sorted({n for n in nums if nums.count(n) > 1})
+    if dupes:
+        warnings.append(
+            "Mistari hii imesomwa zaidi ya mara moja: "
+            + ', '.join(map(str, dupes))
+            + " — kagua karatasi, huenda mistari michanganyikiwa."
+        )
+    missing_nums = sorted(set(range(1, max(nums) + 1)) - set(nums))
+    if missing_nums:
+        preview = ', '.join(map(str, missing_nums[:15]))
+        more = f' (+{len(missing_nums) - 15} zaidi)' if len(missing_nums) > 15 else ''
+        warnings.append(
+            "Mistari hii ya 'Na.' haikusomwa kabisa kwenye picha: "
+            + preview + more
+            + " — wanafunzi wake watakuwa hawajazwi; kagua karatasi au piga picha pya."
+        )
+    return warnings
+
+
 @shared_task(bind=True, time_limit=360, soft_time_limit=340)
 def process_scoresheet_photo_task(self, storage_path, roster_ids):
     """storage_path: where scoresheet_photo_extract saved the upload
@@ -106,7 +138,10 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
             "(%d scored, %d blank, %d missing)",
             len(aligned_rows), len(roster_students), len(matched), len(blank_ids), len(missing),
         )
-        return {'matched': matched, 'unmatched': [], 'missing': missing}
+        return {
+            'matched': matched, 'unmatched': [], 'missing': missing,
+            'warnings': _row_number_warnings(extracted_rows),
+        }
 
     logger.info(
         "[ScoreSheetPhoto] Not a clean 1..N sheet (rows=%d, roster=%d) — "
@@ -133,6 +168,22 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
     # row, so two similarly-named students (same surname, or a name OCR
     # misread as another student's) can't both collapse onto the same
     # person — see match_rows_to_roster_exclusive's docstring.
+    #
+    # Blank-protection (lalamiko halisi: mwalimu hakuwajaza wanafunzi 3
+    # lakini scan iliweka alama kwao): mwanafunzi ambaye karatasi
+    # inaonyesha waziwazi cell tupu (BLANK, na namba ya mstari iliyosomwa)
+    # hawezi kuchukuliwa na fuzzy fallback — fuzzy name matching ni ya
+    # kuaminika kidogo (jina la OCR linaweza kufanana na wa mwingine), hivyo
+    # alama ya mwanafunzi mwingine inaweza kutembea kwake. Wanafunzi hao
+    # wanaishia 'missing' → mstari wa manjano → mwalimu anawajaza mwenyewe.
+    blank_claimed_ids = set()
+    for br in blank_rows:
+        row_no = br.get('row')
+        if row_no and 1 <= row_no <= len(roster_students):
+            blank_claimed_ids.add(roster_students[row_no - 1].id)
+    if blank_claimed_ids:
+        remaining_roster = [s for s in remaining_roster if s.id not in blank_claimed_ids]
+
     name_assignments, _unmatched_local = match_rows_to_roster_exclusive(
         remaining_rows, remaining_roster, threshold=0.80,
     )
@@ -187,7 +238,10 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
         if s.id not in matched_ids and s.id not in blank_ids
     ]
 
-    return {'matched': matched, 'unmatched': unmatched, 'missing': missing}
+    return {
+        'matched': matched, 'unmatched': unmatched, 'missing': missing,
+        'warnings': _row_number_warnings(extracted_rows),
+    }
 
 
 @shared_task(bind=True, time_limit=360, soft_time_limit=340)

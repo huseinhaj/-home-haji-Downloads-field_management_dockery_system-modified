@@ -15,7 +15,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import ScanKeyForm, ScanUploadForm
-from .marks_entry import _student_from_form_student
+from .marks_entry import _roster_subject_ids, _student_from_form_student
 from .models import Exam, ExamResult, FormStudent, Subject, SubjectSubmission
 from .scan_models import MarkingScheme, ScanAnswerKey, ScanSheet, ScanSheetBatch
 from .permissions import teacher_or_academic_required
@@ -126,17 +126,21 @@ def _build_student_results(exam, subject, answer_key):
 
 
 def _class_roster(exam, subject):
-    """Rosti ya wanafunzi wa darasa hili kwa somo hili (kama marks_entry)."""
+    """Rosti ya wanafunzi wa darasa hili kwa somo hili (kama marks_entry).
+    Performance: subject M2M inapakiwa kwa query moja (_roster_subject_ids)
+    badala ya 2 queries kwa kila mwanafunzi."""
     qs = FormStudent.objects.filter(
         form=exam.form, is_active=True, academic_year=exam.year,
     )
     if exam.school_id:
         qs = qs.filter(school=exam.school)
-    qs = qs.order_by('id')
+    qs = list(qs.order_by('id'))
     # Somo filter: wanafunzi wenye somo zilizopewa tu ndio wanaonekana
+    subj_map = _roster_subject_ids(qs)
     out = []
     for fs in qs:
-        if fs.subjects.exists() and not fs.subjects.filter(pk=subject.pk).exists():
+        fs_subjects = subj_map.get(fs.id, set())
+        if fs_subjects and subject.pk not in fs_subjects:
             continue
         out.append(fs)
     return out

@@ -75,6 +75,10 @@ PROMPT = (
     "'BLANK' — do NOT skip or omit the row. Every printed row must be "
     "reported, blank ones included, so the row count always matches the "
     "printed sheet.\n"
+    "4a. AN EMPTY CELL IS NOT A MARK. If the score cell is empty, you MUST "
+    "report 'BLANK' — NEVER write a number for an empty cell, never copy a "
+    "neighbouring row's mark, and never guess from handwriting elsewhere "
+    "on the page. A row with no visible mark must come back as 'BLANK'.\n"
     "5. IGNORE headers, dates, signatures, and ID numbers — but never a row "
     "that has a printed row number and a name, even with a blank score.\n"
     "6. Scores must be integers between 0 and 100, 'X' for absent, or "
@@ -310,7 +314,7 @@ def _clean_rows(raw_rows: list) -> list[dict]:
     return rows
 
 
-def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, max_tokens: int = 1200, prompt: str = PROMPT) -> str:
+def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, max_tokens: int = 4096, prompt: str = PROMPT) -> str:
     b64 = base64.b64encode(image_bytes).decode("ascii")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -337,9 +341,16 @@ def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, ma
     if resp.status_code != 200:
         raise RuntimeError(f"OpenRouter vision error {resp.status_code}: {resp.text[:300]}")
     data = resp.json()
-    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+    choice = data.get("choices", [{}])[0]
+    content = choice.get("message", {}).get("content", "")
     if not content:
         raise RuntimeError("OpenRouter vision: empty response")
+    # Truncation detection: output ikifika max_tokens kabla model haijaisha,
+    # mistari ya mwisho ya ukurasa inatupwa kimya-kimya — walimu wanaona
+    # wanafunzi wa mwisho "hana alama" wakati karatasi ina. finish_reason
+    # 'length' inatuambia waziwazi tukatika, retry na ceiling kubwa.
+    if choice.get("finish_reason") == "length":
+        raise RuntimeError("OR_TRUNCATED")
     return content
 
 
@@ -461,9 +472,34 @@ def extract_scores_from_document(uploaded_file) -> list[dict]:
 
     pages = _load_page_images(uploaded_file)
 
+    def _read_page_with_retry(img, page_num):
+        """Soma ukurasa mmoja; ukikataika (truncation au network blip) jaribu
+        tena mara 1. Truncation ndiyo ilikuwa inamwaga wanafunzi wa mwisho
+        wa kila ukurasa — max_tokens ya chini + retry bila kubadilisha
+        ceiling haikusaidii chochote, hivyo retry ya pili ina ceiling kubwa."""
+        last_exc = None
+        for attempt in range(2):
+            try:
+                return _read_page_with_ai(img) if attempt == 0 else _read_page_with_ai(
+                    img, prompt=PROMPT,
+                )
+            except RuntimeError as exc:
+                last_exc = exc
+                is_truncation = 'OR_TRUNCATED' in str(exc)
+                if not is_truncation and attempt == 0:
+                    # Network/timeout blip — jaribu tena mara moja
+                    continue
+                if is_truncation and attempt == 0:
+                    # Truncated — retry ina handled kwenye _read_page_with_ai
+                    # kupitia OpenRouter affordability retry; kama bado
+                    # inakatika, tunairudisha kama failure ya ukurasa.
+                    continue
+                raise
+        raise last_exc
+
     page_results: list[tuple[str | None, Exception | None]] = [(None, None)] * len(pages)
     with ThreadPoolExecutor(max_workers=min(len(pages), MAX_OCR_WORKERS)) as pool:
-        future_to_index = {pool.submit(_read_page_with_ai, img): i for i, img in enumerate(pages)}
+        future_to_index = {pool.submit(_read_page_with_retry, img, i + 1): i for i, img in enumerate(pages)}
         for future in as_completed(future_to_index):
             i = future_to_index[future]
             try:
@@ -473,34 +509,43 @@ def extract_scores_from_document(uploaded_file) -> list[dict]:
 
     all_rows: list[dict] = []
     last_error = None
-    any_page_succeeded = False
+    failed_pages: list[int] = []
     for page_num, (text, exc) in enumerate(page_results, 1):
         if exc is not None:
             last_error = exc
+            failed_pages.append(page_num)
             logger.warning("[ScoreSheetOCR] Page %d failed: %s", page_num, exc)
             continue
         logger.info("[ScoreSheetOCR] Page %d AI response (first 500 chars): %s", page_num, text[:500])
-        any_page_succeeded = True
         raw_rows = _extract_json_array(text)
         logger.info("[ScoreSheetOCR] Page %d extracted %d raw rows", page_num, len(raw_rows))
         cleaned = _clean_rows(raw_rows)
         logger.info("[ScoreSheetOCR] Page %d cleaned rows: %s", page_num, cleaned)
         all_rows.extend(cleaned)
 
-    if not any_page_succeeded:
-        err_detail = str(last_error) if last_error else 'unknown error'
-        logger.error(
-            "[ScoreSheetOCR] ALL pages failed. Last error: %s | API keys: OPENROUTER=%s, GEMINI=%s",
-            err_detail,
-            'set' if OPENROUTER_API_KEY else 'MISSING',
-            'set' if GOOGLE_API_KEY else 'MISSING',
+    if failed_pages and all_rows:
+        # Ukurasa mmoja au zaidi zimefaili lakini wengine wamesoma —
+        # makusudi hatutoi error: rows zilizopatikana ni za kweli, na
+        # mwalimu ataona wanafunzi wasiojazwa kwenye UI (missing rows).
+        # Error kamili hapa ingemfanya apakie upya kila kitu bila sababu.
+        logger.warning(
+            "[ScoreSheetOCR] Pages %s failed but %d rows were read from other pages — "
+            "returning partial results; teacher will see unfilled rows in the UI",
+            failed_pages, len(all_rows),
         )
-        raise ScoreSheetOCRError(
-            f"Imeshindwa kusoma faili — jaribu tena au jaza alama mwenyewe.\n"
-            f"Sababu: {err_detail}"
-        ) from last_error
 
     if not all_rows:
+        if last_error:
+            logger.error(
+                "[ScoreSheetOCR] ALL pages failed. Last error: %s | API keys: OPENROUTER=%s, GEMINI=%s",
+                last_error,
+                'set' if OPENROUTER_API_KEY else 'MISSING',
+                'set' if GOOGLE_API_KEY else 'MISSING',
+            )
+            raise ScoreSheetOCRError(
+                f"Imeshindwa kusoma faili — jaribu tena au jaza alama mwenyewe.\n"
+                f"Sababu: {last_error}"
+            ) from last_error
         raise ScoreSheetOCRError(
             "Hakuna jina/alama iliyotambulika kwenye faili. Hakikisha picha/PDF iko wazi na jaribu tena."
         )

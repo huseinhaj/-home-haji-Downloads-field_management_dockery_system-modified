@@ -45,7 +45,7 @@ def _pdf_escape(text):
     return _xml_escape(str(text or ''))
 
 
-def _student_from_form_student(fs):
+def _student_from_form_student(fs, _cache=None, _candidates=None):
     """Bridge a FormStudent row (the Academic Officer's official class
     list) to the Student model that ExamResult/marks-entry actually key
     off. Mirrors the exact (first_name, last_name) dedup that the
@@ -53,16 +53,66 @@ def _student_from_form_student(fs):
     so a name the Academic uploaded and a name a teacher separately
     uploaded earlier converge on the same Student row instead of
     creating two.
+
+    Performance: kila wito ni get_or_create (SELECT + wakati mwingine
+    INSERT) — kwenye roster ya wanafunzi 500 hii ilikuwa queries 1000+
+    kwa kila Continue, ndiyo chanzo kikuu cha uchee. Njia ya haraka:
+      - _candidates: {(first, last): [Student, …]} iliyopakiwa kwa query
+        MOJA kabla ya loop — hakuna SELECT kwa kila mwanafunzi.
+      - _cache: {(first, last): Student} ya majibu ya wito — wanafunzi
+        wenye majina yanayofanana (kaka) hulipwa mara moja tu.
+    Single-student callers bado wanaweza kuita bila zote mbili.
     """
-    student, _ = Student.objects.get_or_create(
-        first_name=fs.first_name,
-        last_name=fs.last_name or 'Unknown',
-        defaults={'middle_name': fs.middle_name, 'gender': fs.gender},
-    )
+    key = (fs.first_name, fs.last_name or 'Unknown')
+    if _cache is not None and key in _cache:
+        return _cache[key]
+
+    preloaded = _candidates.get(key) if _candidates is not None else None
+    if preloaded is not None:
+        # Bulk path: candidates zilipakiwa tayari — chagua mwenye middle
+        # name inayolingana (kaka wenye first+last moja hutofautishwa na
+        # middle), vinginevyo wa kwanza; hakuna aliyepo → tengeneza mpya.
+        if preloaded:
+            student = next(
+                (c for c in preloaded
+                 if (c.middle_name or '') == (fs.middle_name or '')),
+                preloaded[0],
+            )
+        else:
+            student = Student.objects.create(
+                first_name=fs.first_name,
+                last_name=fs.last_name or 'Unknown',
+                middle_name=fs.middle_name, gender=fs.gender,
+            )
+    else:
+        student, _ = Student.objects.get_or_create(
+            first_name=fs.first_name,
+            last_name=fs.last_name or 'Unknown',
+            defaults={'middle_name': fs.middle_name, 'gender': fs.gender},
+        )
     if fs.middle_name and not student.middle_name:
         student.middle_name = fs.middle_name
         student.save(update_fields=['middle_name'])
+
+    if _cache is not None:
+        _cache[key] = student
     return student
+
+
+def _roster_subject_ids(form_students):
+    """ID za somo ambazo kila FormStudent ana (query moja kwenye jedwali
+    la M2M badala ya fs.subjects.exists() + .filter() kwa kila mwanafunzi —
+    queries 2N zilikuwa za nne kwa kila Continue). Returns
+    {form_student_id: set(subject_ids)}; set() tupu = hana somo zilizopangiwa
+    (huonekana kwa masomo yote, backward-compatible)."""
+    through = FormStudent.subjects.through
+    rows = through.objects.filter(formstudent_id__in=[fs.id for fs in form_students]).values_list(
+        'formstudent_id', 'subject_id'
+    )
+    mapping = {fs.id: set() for fs in form_students}
+    for fs_id, subj_id in rows:
+        mapping.setdefault(fs_id, set()).add(subj_id)
+    return mapping
 
 
 def _resolve_class_roster(teacher, exam, subject, existing_marks):
@@ -99,20 +149,38 @@ def _resolve_class_roster(teacher, exam, subject, existing_marks):
     # intakes never mix in. An old-year exam therefore finds no live
     # roster here and falls through to the ExamResults fallback below,
     # which is exactly the students who sat it.
-    form_students = FormStudent.objects.filter(
+    form_students = list(FormStudent.objects.filter(
         school=exam.school, form=exam.form,
         is_active=True, academic_year=exam.year,
-    ).order_by('id') if exam.school else FormStudent.objects.none()
-    if form_students.exists():
+    ).order_by('id')) if exam.school else []
+    if form_students:
+        # Performance: roster ya wanafunzi 500 ilikuwa queries ~1000+
+        # (get_or_create kwa kila mwanafunzi + 2 subject queries kila mmoja)
+        # kwa kila "Continue" — ndiyo ilikuwa inafanya ukurasa uchee sana.
+        # Sasa: lookup ya majina kwa query moja, subject M2M kwa query
+        # moja, na get_or_create kwa wale tu ambao hawajapatikana.
+        by_name = {}
+        for s in Student.objects.filter(
+            first_name__in={fs.first_name for fs in form_students},
+            last_name__in={fs.last_name or 'Unknown' for fs in form_students},
+        ):
+            by_name.setdefault((s.first_name, s.last_name), []).append(s)
+
+        subj_map = _roster_subject_ids(form_students)
+
+        student_cache = {}
         class_students = []
         for fs in form_students:
             # Subject filter: if this FormStudent has subjects assigned,
             # only include them if the current subject is in their list.
             # Students with no subjects assigned appear for ALL subjects
             # (backward-compatible: old rosters without subjects still work).
-            if fs.subjects.exists() and not fs.subjects.filter(pk=subject.pk).exists():
+            fs_subjects = subj_map.get(fs.id, set())
+            if fs_subjects and subject.pk not in fs_subjects:
                 continue
-            student = _student_from_form_student(fs)
+            student = _student_from_form_student(
+                fs, _cache=student_cache, _candidates=by_name,
+            )
             class_students.append({
                 'id': student.id,
                 'name': ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p),
@@ -580,6 +648,7 @@ def scoresheet_extract_status(request, task_id):
             'matched': payload.get('matched', []),
             'unmatched': payload.get('unmatched', []),
             'missing': payload.get('missing', []),
+            'warnings': payload.get('warnings', []),
         })
 
     result = AsyncResult(task_id)
@@ -605,7 +674,13 @@ def scoresheet_extract_status(request, task_id):
     if payload.get('error'):
         return JsonResponse({'error': payload['error']}, status=400)
 
-    return JsonResponse({'status': 'done', 'matched': payload.get('matched', []), 'unmatched': payload.get('unmatched', []), 'missing': payload.get('missing', [])})
+    return JsonResponse({
+        'status': 'done',
+        'matched': payload.get('matched', []),
+        'unmatched': payload.get('unmatched', []),
+        'missing': payload.get('missing', []),
+        'warnings': payload.get('warnings', []),
+    })
 
 
 @teacher_or_academic_required

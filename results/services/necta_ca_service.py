@@ -151,8 +151,9 @@ def _match_students(roster_rows):
     return matched
 
 
-def build_ca_preview(school, subject, exam_map, mark_min, mark_max, year=None):
-    """Tengeneza grid ya C.A. form: roster ya Form 4 + alama zilizokadiriwa.
+def build_ca_preview(school, subject, exam_map, mark_min, mark_max, year=None,
+                     form_num=4):
+    """Tengeneza grid ya C.A. form: roster ya Form (form_num) + alama zilizokadiriwa.
 
     Returns dict:
       columns   — metadata ya columns (kwa header ya Excel/preview)
@@ -167,13 +168,13 @@ def build_ca_preview(school, subject, exam_map, mark_min, mark_max, year=None):
 
     year = year or school.current_academic_year
     roster = FormStudent.objects.filter(
-        school=school, form=4, is_active=True,
+        school=school, form=form_num, is_active=True,
     )
     if year:
         roster = roster.filter(academic_year=year)
     if not roster.exists():
-        # Fallback: roster yoyote ya Form 4 iliyopo (mwaka hazipangwi)
-        roster = FormStudent.objects.filter(school=school, form=4, is_active=True)
+        # Fallback: roster yoyote ya form hiyo iliyopo (mwaka hazipangwi)
+        roster = FormStudent.objects.filter(school=school, form=form_num, is_active=True)
     roster = roster.order_by('last_name', 'first_name', 'id')
 
     exam_ids = [eid for eid in exam_map.values() if eid]
@@ -248,6 +249,7 @@ def build_ca_preview(school, subject, exam_map, mark_min, mark_max, year=None):
 _THIN = Side(style='thin', color='FF000000')
 _BORDER = Border(left=_THIN, right=_THIN, top=_THIN, bottom=_THIN)
 _HEADER_FILL = PatternFill('solid', fgColor='FFD9E1F2')
+_ROMAN = {1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI'}
 _TITLE_FONT = Font(bold=True, size=14)
 _SUBTITLE_FONT = Font(bold=True, size=12)
 _INFO_FONT = Font(bold=True, size=11)
@@ -260,7 +262,9 @@ def generate_ca_excel(school, subject_name, year, rows, exam_map,
     Layout (sheet 'C.A. FORM'):
       Row 1: THE NATIONAL EXAMINATIONS COUNCIL OF TANZANIA
       Row 2: CONTINUOUS ASSESSMENT FORM FOR SECONDARY SCHOOLS
-      Row 3: Form IV | Phone No | CENTER NUMBER | YEAR | SUBJECT
+      Row 3: FORM | PHONE NO | CENTER NUMBER | YEAR | SUBJECT — kila moja
+             cell yake; phone/center ni TEXT ('@') ili namba ndefu
+             zisibandikwe kama 2.6E+11 na 0 ya mwanzo isikatike
       Rows 4-5: headers (merged FIRST TERM / SECOND TERM groups)
       Rows 6+: S/N, NAME OF STUDENT, alama (PROJECT/PRACTICAL wazi)
     """
@@ -281,15 +285,42 @@ def generate_ca_excel(school, subject_name, year, rows, exam_map,
     c.font = _SUBTITLE_FONT
     c.alignment = Alignment(horizontal='center', vertical='center')
 
-    info = (
-        f'Form {form_num}    Phone No: {phone or "……………"}    '
-        f'CENTER NUMBER: {center_no or "……………"}    YEAR: {year}    '
-        f'SUBJECT: {(subject_name or "").upper()}'
-    )
-    ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=n_cols)
-    c = ws.cell(row=3, column=1, value=info)
-    c.font = _INFO_FONT
-    c.alignment = Alignment(horizontal='center', vertical='center')
+    # ── Row 3: FORM | PHONE NO | CENTER NUMBER | YEAR | SUBJECT ──
+    # Phone na Center Number ni cells za TEXT (number_format '@') — hii
+    # inazuia Excel/WPS kuandika namba ndefu kama scientific notation
+    # (mf. 255712345678 → 2.6E+11) au kukata 0 ya mwanzo (0712… → 712…).
+    try:
+        rom = _ROMAN.get(int(form_num), str(form_num))
+    except (TypeError, ValueError):
+        rom = str(form_num or 4)
+
+    def _field_label(col, label, merge_to=None):
+        if merge_to and merge_to > col:
+            ws.merge_cells(start_row=3, start_column=col,
+                           end_row=3, end_column=merge_to)
+        c = ws.cell(row=3, column=col, value=label)
+        c.font = _INFO_FONT
+        c.alignment = Alignment(horizontal='left', vertical='center')
+
+    def _field_value(col, value, text=False):
+        c = ws.cell(row=3, column=col, value=value)
+        c.font = _INFO_FONT
+        c.alignment = Alignment(horizontal='left', vertical='center')
+        if text:
+            c.number_format = '@'
+
+    _field_label(1, f'FORM: {rom}', merge_to=2)
+    _field_label(3, 'PHONE NO:')
+    _field_value(4, phone or '……………', text=True)
+    _field_label(5, 'CENTER NUMBER:', merge_to=6)
+    _field_value(7, center_no or '……………', text=True)
+    _field_label(8, 'YEAR:')
+    _field_value(9, year)
+    _field_label(10, 'SUBJECT:')
+    _field_label(11, (subject_name or '').upper(), merge_to=n_cols)
+
+    for col in range(1, n_cols + 1):
+        ws.cell(row=3, column=col).border = _BORDER
 
     # ── Header rows 4-5 ──
     ws.merge_cells('A4:A5')
@@ -343,7 +374,7 @@ def generate_ca_excel(school, subject_name, year, rows, exam_map,
     ws.column_dimensions['A'].width = 6
     ws.column_dimensions['B'].width = 34
     for col in range(3, n_cols + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 11
+        ws.column_dimensions[get_column_letter(col)].width = 12
     ws.freeze_panes = 'A6'
     ws.page_setup.orientation = 'landscape'
     ws.page_setup.fitToWidth = 1

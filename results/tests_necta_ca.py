@@ -3,8 +3,10 @@
 Muhimu zaidi: makadirio yanayoheshimu utendaji (performance-aware) —
 mwanafunzi aliye 80-100 HAWEEZI kutiwa 60 kwenye fomu ya C.A.
 """
+import io
 import json
 
+import openpyxl
 from django.test import TestCase
 from django.urls import reverse
 
@@ -255,5 +257,52 @@ class NectaCaViewTests(TestCase):
         snap = ContinuousAssessmentSnapshot.objects.get(school=self.school)
         self.assertEqual(snap.subject, self.subject)
         self.assertEqual(snap.params['center_no'], 'S3063')
+        self.assertEqual(snap.params['form_num'], 4)
+        self.assertEqual(snap.form, 4)
         self.assertEqual(snap.payload['rows'][0]['marks']['ft_terminal'], 80)
         self.assertEqual(snap.created_by, self.academic)
+
+        # Phone/Center ni cells za TEXT ('@') — namba ndefu hazina
+        # kukbandikwa kama 2.6E+11 na 0 ya mwanzo haiwezi kukatika.
+        wb = openpyxl.load_workbook(io.BytesIO(resp.content))
+        ws = wb.active
+        self.assertEqual(ws.cell(row=3, column=4).value, '0712345678')
+        self.assertEqual(ws.cell(row=3, column=4).number_format, '@')
+        self.assertEqual(ws.cell(row=3, column=7).value, 'S3063')
+        self.assertEqual(ws.cell(row=3, column=7).number_format, '@')
+        self.assertEqual(ws.cell(row=3, column=1).value, 'FORM: IV')
+
+    def test_download_respects_form_number(self):
+        """form_num inachagua roster + exams za form ile — mf. Form 3."""
+        from .models import FormStudent as FS
+        FS.objects.create(
+            school=self.school, form=3, academic_year=2026, admission_no='S100',
+            first_name='Baraka', middle_name='', last_name='Mdogo', gender='M',
+        )
+        exam3 = Exam.objects.create(
+            school=self.school, name='Terminal F3', year=2026, form=3,
+            exam_type='TERMINAL',
+        )
+        ExamResult.objects.create(
+            exam=exam3, student=self.student, subject=self.subject, score=65,
+        )
+        payload = {
+            'subject_id': self.subject.id,
+            'year': 2026,
+            'form_num': 3,
+            'exam_ft_terminal': exam3.id,
+        }
+        resp = self.client.post(
+            reverse('necta_ca_download'), data=json.dumps(payload),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        snap = ContinuousAssessmentSnapshot.objects.get(school=self.school)
+        self.assertEqual(snap.form, 3)
+        self.assertEqual(len(snap.payload['rows']), 1)
+        self.assertEqual(snap.payload['rows'][0]['name'], 'Baraka Mdogo')
+        # Exam za Form 4 hazikupatikana kwenye request ya Form 3 —
+        # validation inafanya exam ile isipaswi kuwa None (imekataliwa).
+        wb = openpyxl.load_workbook(io.BytesIO(resp.content))
+        ws = wb.active
+        self.assertEqual(ws.cell(row=3, column=1).value, 'FORM: III')

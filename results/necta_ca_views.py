@@ -20,6 +20,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .models import ContinuousAssessmentSnapshot, Exam, SchoolSubject, Subject
 from .permissions import teacher_or_academic_required
@@ -54,12 +55,17 @@ def _clean_params(school, payload):
         id=subject_id, schoolsubject__school=school,
     ).distinct().first()
 
+    # Form number (1-6; chaguo-msingi 4 — fomu hii ya NECTA C.A.)
+    form_num = _int(payload.get('form_num'), 4)
+    if form_num not in (1, 2, 3, 4, 5, 6):
+        form_num = 4
+
     exam_map = {}
     for key in COLUMN_KEYS:
         exam_map[key] = _int(payload.get(f'exam_{key}'), 0) or None
-    # Exam zote lazima ziwe za shule hii na Form 4
+    # Exam zote lazima ziwe za shule hii na form ile iliyochaguliwa
     valid_exam_ids = set(
-        Exam.objects.filter(school=school, form=4)
+        Exam.objects.filter(school=school, form=form_num)
         .values_list('id', flat=True)
     )
     exam_map = {
@@ -88,7 +94,17 @@ def _clean_params(school, payload):
         'year': year,
         'center_no': center_no,
         'phone': phone,
+        'form_num': form_num,
     }
+
+
+def _int_from_get(request):
+    """Form number kutoka querystring (?form=4), chaguo-msingi 4."""
+    try:
+        n = int(request.GET.get('form', 4))
+    except (TypeError, ValueError):
+        return 4
+    return n if n in (1, 2, 3, 4, 5, 6) else 4
 
 
 @teacher_or_academic_required
@@ -123,13 +139,17 @@ def necta_ca_form(request):
         preview = build_ca_preview(
             school, params['subject'], params['exam_map'],
             params['mark_min'], params['mark_max'], params['year'],
+            form_num=params['form_num'],
         )
         preview['subject_name'] = params['subject'].name
         preview['year'] = params['year']
         return JsonResponse(preview)
 
     subjects = _school_subjects(school)
-    form4_exams = list(Exam.objects.filter(school=school, form=4).order_by('year', 'id'))
+    form_num = _int_from_get(request)
+    form4_exams = list(
+        Exam.objects.filter(school=school, form=form_num).order_by('year', 'id')
+    )
     auto_map = auto_map_exams(form4_exams)
 
     # Annotate kila column na exam iliyochaguliwa na auto-map — Django
@@ -143,6 +163,8 @@ def necta_ca_form(request):
 
     context = {
         'subjects': subjects,
+        'form_num': form_num,
+        'form_choices': [1, 2, 3, 4, 5, 6],
         'form4_exams': form4_exams,
         'term_columns': term_columns,
         'default_year': school.current_academic_year or timezone.now().year,
@@ -152,6 +174,7 @@ def necta_ca_form(request):
 
 
 @teacher_or_academic_required
+@require_POST
 def necta_ca_download(request):
     """Tengeneza Excel ya NECTA + hifadhi snapshot (history).
 
@@ -162,9 +185,6 @@ def necta_ca_download(request):
     if not school:
         messages.error(request, "Hakuna shule iliyowekwa kwenye account yako.")
         return redirect('home')
-
-    if request.method != 'POST':
-        return redirect('necta_ca_form')
 
     if 'application/json' in (request.content_type or ''):
         try:
@@ -182,11 +202,13 @@ def necta_ca_download(request):
     preview = build_ca_preview(
         school, params['subject'], params['exam_map'],
         params['mark_min'], params['mark_max'], params['year'],
+        form_num=params['form_num'],
     )
     if not preview['rows']:
         messages.error(
             request,
-            "Roster ya Form 4 haina wanafunzi — pakia orodha ya waliosajiliwa kwanza.",
+            f"Roster ya Form {params['form_num']} haina wanafunzi — pakia "
+            "orodha ya waliosajiliwa kwanza.",
         )
         return redirect('necta_ca_form')
 
@@ -194,7 +216,7 @@ def necta_ca_download(request):
         school=school,
         subject=params['subject'],
         subject_name=params['subject'].name,
-        form=4,
+        form=params['form_num'],
         year=params['year'],
         params={
             'exam_map': {k: v for k, v in params['exam_map'].items()},
@@ -202,6 +224,7 @@ def necta_ca_download(request):
             'mark_max': params['mark_max'],
             'center_no': params['center_no'],
             'phone': params['phone'],
+            'form_num': params['form_num'],
         },
         payload={
             'columns': preview['columns'],
@@ -217,4 +240,5 @@ def necta_ca_download(request):
     return generate_ca_excel(
         school, params['subject'].name, params['year'], preview['rows'],
         params['exam_map'], center_no=params['center_no'], phone=params['phone'],
+        form_num=params['form_num'],
     )

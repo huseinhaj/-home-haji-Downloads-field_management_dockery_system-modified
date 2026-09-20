@@ -246,6 +246,9 @@
     </p>
     <div class="d-grid">
       <button class="btn btn-brand" id="meContinueBtn">{% if LANG == 'sw' %}Endelea →{% else %}Continue →{% endif %}</button>
+      <div id="meContinueLoading" style="display:none;margin-top:0.6rem;font-size:0.85rem;color:#1F7A3D;font-weight:600;">
+        ⏳ {% if LANG == 'sw' %}Inapakia wanafunzi… tafadhali subiri{% else %}Loading students… please wait{% endif %}
+      </div>
     </div>
   </div>
 </div>
@@ -650,6 +653,14 @@ function _dlPdf(url) {
         toast(LANG === 'sw' ? 'Chagua mtihani na somo.' : 'Pick an exam and a subject.', true);
         return;
       }
+      // Loading state: kwa rosti kubwa server inachukua muda — bonyeza
+      // mara mbili halirudishi page mbili, wala kuonekana kama kilitu.
+      if (contBtn.dataset.busy === '1') return;
+      contBtn.dataset.busy = '1';
+      contBtn.disabled = true;
+      contBtn.style.opacity = '0.6';
+      const loader = document.getElementById('meContinueLoading');
+      if (loader) loader.style.display = 'block';
       window.location.href = "{% url 'marks_entry' %}?exam=" + examSel.value + '&subject=' + subjSel.value;
     });
   }
@@ -1325,6 +1336,28 @@ function _dlPdf(url) {
           const matched = data.matched || [];
           const unmatched = data.unmatched || [];
           const missing = data.missing || [];
+          const warnings = data.warnings || [];
+
+          // Scan-quality warnings: mistari iliyorukwa au kusomwa mara mbili
+          // — mwalimu anajua hitilafu ni YA SCAN (picha), si ya orodha yake.
+          let warnBox = document.getElementById('meScanWarnings');
+          if (warnings.length) {
+            if (!warnBox) {
+              warnBox = document.createElement('div');
+              warnBox.id = 'meScanWarnings';
+              photoStatus.after(warnBox);
+            }
+            const warnLabel = LANG === 'sw'
+              ? '📸 Tahadhari za ubora wa scan — kagua kabla ya kuhifadhi:'
+              : '📸 Scan-quality warnings — check before saving:';
+            warnBox.style.cssText = 'margin:0 0 0.8rem;padding:0.6rem 0.8rem;border:1.5px solid #f0a500;background:#fff8e6;border-radius:6px;';
+            warnBox.innerHTML = '<strong style="color:#8a6d1a;">' + escapeHtml(warnLabel) + '</strong>'
+              + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;color:#7a5200;">'
+              + warnings.map(w => '<li>' + escapeHtml(w) + '</li>').join('')
+              + '</ul>';
+          } else if (warnBox) {
+            warnBox.remove();
+          }
 
           matched.forEach(m => {
             if (m.is_new) {

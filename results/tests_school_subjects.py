@@ -325,3 +325,84 @@ class AcademicAddStudentMarksTests(TestCase):
                 first_name='Neema', last_name='Kabuje',
             ).exists()
         )
+
+
+class MarksEntryRosterPerfTests(TestCase):
+    """Performance ya Continue (marks_entry): rosti kubwa bila queries N+1.
+
+    Kulikuwa na lalamiko ya walimu kuwa Continue inachelea — chanzo:
+    get_or_create (2 queries) kwa kila mwanafunzi + 2 subject queries kwa
+    kila mwanafunzi kwenye rosti yote kila wakati page inapofunguliwa.
+    """
+    databases = {'default', 'results'}
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.school = School.objects.create(
+            name='Sekondari Perf', region='Dodoma', district='Dodoma',
+            level='secondary', current_academic_year=2026,
+        )
+        cls.teacher = TeacherAccount.objects.create(
+            email='perf@sekondari.ac.tz', full_name='Mwalimu Perf',
+            role='TEACHER', school=cls.school,
+        )
+        cls.exam = Exam.objects.create(
+            name='Terminal 2026', year=2026, form=4, school=cls.school,
+            exam_type='TERMINAL',
+        )
+        cls.subject = Subject.objects.create(name='Biology', level='secondary')
+        # Mwalimu lazima awe na somo ("Masomo Yangu") — vinginevyo marks
+        # entry inamrudisha select_my_subjects (302).
+        cls.teacher.subjects.add(cls.subject)
+        # Rosti ya wanafunzi 120 (roster halisi ya darasa)
+        FormStudent.objects.bulk_create([
+            FormStudent(
+                school=cls.school, form=4, academic_year=2026,
+                admission_no=f'S{i:04d}',
+                first_name=f'Mwanafunzi{i}', last_name=f'Mwisho{i}',
+                gender='M' if i % 2 else 'F',
+            ) for i in range(120)
+        ])
+        # Baadhi wana somo zilizopangiwa (option subjects)
+        for fs in FormStudent.objects.all()[:40]:
+            fs.subjects.add(cls.subject)
+
+    def setUp(self):
+        self.client = Client()
+        self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
+
+    def test_marks_entry_bounded_queries(self):
+        """Continue kwenye rosti ya wanafunzi 120 lazima itumie idadi
+        ndogo, isiyobadilika queries — si 2 queries kwa kila mwanafunzi."""
+        from django.test.utils import CaptureQueriesContext
+        from django.db import connection
+
+        url = reverse('marks_entry') + f'?exam={self.exam.id}&subject={self.subject.id}'
+        with CaptureQueriesContext(connection) as ctx:
+            resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        # Query >= roster + lookup + M2M + idx — lakini lazima iwe chini ya
+        # 100, siyo ~1000+ kama zamani (2 * 120 + 2 * 120 = 480+).
+        self.assertLess(
+            len(ctx), 100,
+            f'Marks entry inatumia queries {len(ctx)} — N+1 imerudi?',
+        )
+        # Roster yote 40 walio na somo hili + 80 wasio na lolote
+        data = resp.context['class_students_json']
+        self.assertIn('Mwanafunzi1', data)
+
+    def test_marks_entry_resolves_students_correctly(self):
+        """Rosti inaonyesha wanafunzi wote (na somo au bila) — na Student
+        records zinaundwa mara moja tu (get_or_create dedup haijavurugwa)."""
+        url = reverse('marks_entry') + f'?exam={self.exam.id}&subject={self.subject.id}'
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        students = Student.objects.filter(
+            first_name__startswith='Mwanafunzi',
+        )
+        self.assertEqual(students.count(), 120)   # hakuna duplicates
+        # Pili — hakuna Student mpya (get_or_create bado inalinda)
+        self.client.get(url)
+        self.assertEqual(Student.objects.filter(
+            first_name__startswith='Mwanafunzi',
+        ).count(), 120)
