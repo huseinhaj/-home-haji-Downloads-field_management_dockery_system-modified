@@ -1,0 +1,91 @@
+{% extends 'results/base.html' %}
+{% load static %}
+
+{% block title %}Uthibitisho wa Matokeo{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:640px;margin:0 auto;padding:20px;">
+
+  {% if invalid %}
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;text-align:center;">
+      <div style="font-size:48px;">❌</div>
+      <h1 style="font-size:20px;color:#b91c1c;margin:8px 0;">Slip haithibitishwi</h1>
+      <p style="color:#555;font-size:14px;">
+        QR hii hailingani na matokeo yoyote ya rasmi kwenye mfumo wa shule.
+        Huenda slip ni ya ghushi au imeharibiwa. Wasiliana na shule kwa uthibitisho rasmi.
+      </p>
+    </div>
+
+  {% elif revoked %}
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;text-align:center;">
+      <div style="font-size:48px;">⚠️</div>
+      <h1 style="font-size:20px;color:#b45309;margin:8px 0;">Slip hii imebadilishwa</h1>
+      <p style="color:#555;font-size:14px;">
+        Slip ya <strong>{{ student_name }}</strong> ({{ exam.name }} — {{ exam.year }})
+        imebadilishwa na shule. QR hii haithibitishi tena. Pata slip mpya kutoka shuleni.
+      </p>
+    </div>
+
+  {% else %}
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+      <div style="background:#1F7A3D;color:#fff;padding:16px 20px;">
+        <div style="font-size:12px;opacity:0.85;">✅ UTHIBITISHO RASMI — {{ exam.school.name|upper }}</div>
+        <h1 style="font-size:18px;margin:4px 0 0;">{{ student_name|upper }}</h1>
+        <div style="font-size:13px;opacity:0.9;">{{ exam.name }} — {{ exam.get_exam_type_display }} — {{ exam.year }}</div>
+      </div>
+
+      <div style="padding:20px;">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+          <thead>
+            <tr style="background:#F2F4F7;">
+              <th style="text-align:left;padding:8px;border-bottom:2px solid #1F7A3D;">SOMO</th>
+              <th style="padding:8px;border-bottom:2px solid #1F7A3D;">ALAMA</th>
+              <th style="padding:8px;border-bottom:2px solid #1F7A3D;">DARAJA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td style="padding:7px 8px;border-bottom:1px solid #eee;">{{ r.subject }}</td>
+                <td style="padding:7px 8px;border-bottom:1px solid #eee;text-align:center;font-weight:700;">{{ r.score }}</td>
+                <td style="padding:7px 8px;border-bottom:1px solid #eee;text-align:center;font-weight:700;color:#1F7A3D;">{{ r.grade }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:16px;">
+          <div style="background:#F2F4F7;border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:11px;color:#64748b;">JUMLA</div>
+            <div style="font-size:18px;font-weight:800;">{{ total }}</div>
+          </div>
+          <div style="background:#F2F4F7;border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:11px;color:#64748b;">WASTANI</div>
+            <div style="font-size:18px;font-weight:800;">{{ average }}</div>
+          </div>
+          {% if points %}
+            <div style="background:#F2F4F7;border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:11px;color:#64748b;">POINTI</div>
+              <div style="font-size:18px;font-weight:800;">{{ points }}</div>
+            </div>
+          {% endif %}
+          {% if division and division != '-' %}
+            <div style="background:#F2F4F7;border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:11px;color:#64748b;">DIVISION</div>
+              <div style="font-size:18px;font-weight:800;">{{ division }}</div>
+            </div>
+          {% endif %}
+          <div style="background:#F2F4F7;border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:11px;color:#64748b;">NAFASI</div>
+            <div style="font-size:18px;font-weight:800;">{{ position }} / {{ total_students }}</div>
+          </div>
+        </div>
+
+        <p style="font-size:12px;color:#94a3b8;margin:16px 0 0;text-align:center;">
+          Ilihakikiwa tarehe {{ scanned_at|date:"d M Y H:i" }} — matokeo haya yanatoka moja kwa moja kwenye database ya shule.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

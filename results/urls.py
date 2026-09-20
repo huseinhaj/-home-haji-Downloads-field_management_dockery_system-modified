@@ -93,6 +93,7 @@ from .views import (
     ocr_health_check,
     save_confirmed_scores,
 )
+from .result_verification import regenerate_result_token, result_verify
 from .marks_entry import (
     download_scoresheet_names_pdf,
     marks_entry,
@@ -326,4 +327,8 @@ urlpatterns += [
          bridge_start_job, name='bridge_start_job'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/bridge/hali/<int:job_id>/',
          bridge_job_status, name='bridge_job_status'),
+
+    # ── QR result verification (public, loginless) ──
+    path('verify/<str:token>/', result_verify, name='result_verify'),
+    path('verify/<int:result_id>/regenerate/', regenerate_result_token, name='result_verify_regenerate'),
 ]

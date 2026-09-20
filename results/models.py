@@ -965,3 +965,59 @@ from .scan_models import ScanAnswerKey, ScanSheet, ScanSheetBatch  # noqa: E402,
 
 # Sahishi Bridge (ADF scanner bridge) ziko kwenye bridge_models.py
 from .bridge_models import SahishiBridge, ScanJob  # noqa: E402,F401
+
+
+# =============================================================================
+# RESULT VERIFICATION (QR on result slips)
+# =============================================================================
+
+class ResultVerificationToken(models.Model):
+    """Token ya uthibitisho ya slip ya matokeo (QR code).
+
+    Kila ProcessedResult ina token moja (unique_together). Slip inaonyesha
+    QR iliyo na URL ya public verification: /results/verify/<token>/
+    Mzazi/mwalimu wa shule nyingine anascan QR → anapata ukurasa wa uthibitisho
+    wenye matokeo halisi — inaondoa slips za kughushi.
+
+    Token ni 43-char urlsafe base64 (32 bytes entropy) — haitabiriwi.
+    Token itself is stored (not a hash) because the QR URL must carry the
+    verifiable secret directly; a hash would need a lookup input we don't
+    have from a bare URL. Rotation (regenerate) invalidates the old QR.
+    """
+    result = models.ForeignKey(
+        'ProcessedResult', on_delete=models.CASCADE,
+        related_name='verification_tokens',
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        'TeacherAccount', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='result_verification_tokens',
+    )
+    scan_count = models.PositiveIntegerField(default=0)
+    last_scanned_at = models.DateTimeField(null=True, blank=True)
+    revoked = models.BooleanField(
+        default=False,
+        help_text="True = slip hii imefutwa rasmi (mf. matokeo yamebadilishwa) — QR inaonyesha 'matokeo yamebadilishwa'.",
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            import secrets
+            self.token = secrets.token_urlsafe(32)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_valid(self):
+        return not self.revoked
+
+    @classmethod
+    def active_for(cls, result):
+        """Token iliyo hai ya result hii (moja; regenerate inarevoke zamani)."""
+        return cls.objects.filter(result=result, revoked=False).first()
+
+    def __str__(self):
+        return f"Verify {self.result_id} — {self.token[:8]}…"

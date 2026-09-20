@@ -20,15 +20,40 @@ from reportlab.pdfbase.pdfmetrics import getAscent
 from reportlab.platypus import (
     BaseDocTemplate, PageTemplate, Frame,
     Table, TableStyle, Paragraph, Spacer, PageBreak,
-    Flowable,
+    Flowable, Image,
 )
+import logging
 
-from ..models import ExamResult, ProcessedResult, Subject
+from ..models import ExamResult, ProcessedResult, Subject, ResultVerificationToken
 from .export_data import get_exam_export_payload, order_by_registration
 from .report_helpers import (
     get_full_school_name, get_report_label, get_report_language,
     get_section_title, get_school_type_for_exam,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _get_or_create_verification_token(result):
+    """Token iliyo hai ya result hii — lazy create (historical slips pia).
+    Token iliyorevoked haitumiki tena — QR mpya inaundwa."""
+    vt = ResultVerificationToken.active_for(result)
+    if vt is None:
+        vt = ResultVerificationToken.objects.create(result=result)
+    return vt
+
+
+def _qr_data_uri(path, box_size=6):
+    """QR code ya path → PNG bytes (kwa reportlab Image). None kwa hiccup."""
+    try:
+        import qrcode
+        img = qrcode.make(path, box_size=box_size, border=2)
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        return buf.getvalue()
+    except Exception:
+        logger.warning("QR generation failed for %s", path, exc_info=True)
+        return None
 
 # ── Colours — modern flat palette (blue/emerald/amber) ────────────────────────
 NAVY      = colors.HexColor("#1D4ED8")  # vivid modern blue (was muted navy)
@@ -2070,6 +2095,38 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         "SIMU: ..................... SAHIHI: .....................",
         st['sig'],
     ))
+
+    # ── QR ya uthibitisho (anti-forgery) ──
+    # Kila slip ina token moja; QR inaelekeza /results/verify/<token>/ —
+    # mzazi anascan bila account na anapata matokeo halisi kutoka DB.
+    # Hakuna token → inaundwa wastaharabu (historical slips zinafaulu
+    # bila migration ya data). PDF generation haipaswi kufeli kwenye
+    # DB hiccup — QR ni optimization, siyo muhimu kwa slip yenyewe.
+    try:
+        vt = _get_or_create_verification_token(result)
+        verify_path = f"/results/verify/{vt.token}/"
+        qr_img = _qr_data_uri(verify_path)
+        if qr_img:
+            qr_table = Table(
+                [[_p(
+                    "<b>THIBITISHA MATOKEO</b><br/>Scan QR — angalia matokeo halisi online",
+                    ParagraphStyle('qr', parent=st['sig'], fontSize=7, alignment=1),
+                ), Image(io.BytesIO(qr_img), width=1.7 * cm, height=1.7 * cm)]],
+                colWidths=[content_w - 2.2 * cm, 2.2 * cm],
+            )
+            qr_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                ('BOX', (0, 0), (-1, -1), 0.8, theme['header_bg']),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            story.append(Spacer(1, 6))
+            story.append(qr_table)
+    except Exception:
+        logger.warning("QR verification block failed for result %s", getattr(result, 'id', '?'), exc_info=True)
+
     story.append(Spacer(1, 6))
     story.append(_p("Haya ni matokeo rasmi yaliyotolewa na mfumo wa shule.", st['sig']))
 
