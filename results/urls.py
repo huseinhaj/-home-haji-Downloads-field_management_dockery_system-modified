@@ -1,5 +1,6 @@
 from django.urls import path
 from .pwa import pwa_manifest, pwa_service_worker
+from .necta_ca_views import necta_ca_download, necta_ca_form
 from .auth_views import results_login, results_logout, manage_teachers
 from .class_timetable_views import (
     class_timetable_cell_edit,
@@ -217,6 +218,9 @@ urlpatterns = [
     path('speech-sessions/<int:session_id>/ingest/', ingest_speech_entry, name='ingest_speech_entry'),
     path('speech-sessions/<int:session_id>/confirm/', confirm_speech_candidate, name='confirm_speech_candidate'),
     path('speech-sessions/<int:session_id>/finalize/', finalize_speech_session, name='finalize_speech_session'),
+    # NECTA Continuous Assessment Form (Form IV) — automation
+    path('necta-ca/', necta_ca_form, name='necta_ca_form'),
+    path('necta-ca/download/', necta_ca_download, name='necta_ca_download'),
     # Form student lists — Academic Officer uploads students per form
     path('form-students/', upload_form_students, name='upload_form_students'),
     path('form-students/scan/', scan_roster, name='scan_roster'),

@@ -1,0 +1,215 @@
+{% extends 'results/base.html' %}
+{% load static %}
+
+{% block title %}NECTA C.A. Form — Continuous Assessment (Form IV){% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:1100px;margin:0 auto;padding:16px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+    <a href="{% url 'academic_dashboard' %}" style="text-decoration:none;font-size:14px;">← Academic</a>
+  </div>
+  <h1 style="font-size:22px;margin:0 0 4px;">NECTA Continuous Assessment Form (Form IV)</h1>
+  <p style="color:#555;font-size:13px;margin:0 0 16px;">
+    {% if LANG == 'sw' %}
+      Chagua somo, exams zitakazolisha kila column na range ya alama — mfumo unakadiria alama kwa uwiano wa wastani wa mwanafunzi (performance-aware: mwanafunzi wa 80-100 hawezi kutiwa 60). PROJECT na PRACTICAL zinabaki wazi kwa kujaza mkononi.
+    {% else %}
+      Pick a subject, the exam feeding each column and the marks range — the system estimates marks proportionally (performance-aware: a student scoring 80-100 will never be placed at 60). PROJECT and PRACTICAL stay blank for manual entry.
+    {% endif %}
+  </p>
+
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px;">
+      <label style="font-size:13px;font-weight:600;">
+        Somo / Subject
+        <select id="subject_id" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px;">
+          <option value="">— chagua —</option>
+          {% for s in subjects %}
+            <option value="{{ s.id }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label style="font-size:13px;font-weight:600;">
+        Mwaka / Year
+        <input type="number" id="year" value="{{ default_year }}" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px;">
+      </label>
+      <label style="font-size:13px;font-weight:600;">
+        Center Number
+        <input type="text" id="center_no" placeholder="S3063" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px;">
+      </label>
+      <label style="font-size:13px;font-weight:600;">
+        Phone No
+        <input type="text" id="phone" placeholder="0712 345 678" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px;">
+      </label>
+      <label style="font-size:13px;font-weight:600;">
+        Range ya alama (min → max)
+        <span style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+          <input type="number" id="mark_min" value="45" min="0" max="99" style="width:80px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+          <span>→</span>
+          <input type="number" id="mark_max" value="100" min="1" max="100" style="width:80px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+        </span>
+      </label>
+    </div>
+
+    <details open style="margin-bottom:12px;">
+      <summary style="cursor:pointer;font-weight:700;font-size:14px;margin-bottom:8px;">
+        {% if LANG == 'sw' %}Exams zinazolisha columns{% else %}Exams feeding the columns{% endif %}
+      </summary>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;">
+        {% for col in term_columns %}
+          <label style="font-size:12px;font-weight:600;">
+            {{ col.term }} — {{ col.label }}
+            <select name="exam_col" data-key="{{ col.key }}" style="width:100%;padding:7px;border:1px solid #cbd5e1;border-radius:8px;margin-top:3px;">
+              <option value="">— {% if LANG == 'sw' %}wazi{% else %}blank{% endif %} —</option>
+              {% for e in form4_exams %}
+                <option value="{{ e.id }}" {% if col.selected_exam_id == e.id %}selected{% endif %}>
+                  [{{ e.get_exam_type_display }}] {{ e.name }} ({{ e.year }})
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+        {% endfor %}
+      </div>
+      <p style="font-size:12px;color:#64748b;margin:6px 0 0;">
+        {% if LANG == 'sw' %}Auto-map imeweka exams kwa exam_type — unaweza kubadilisha.{% else %}Auto-map preselected exams by type — you can change any of them.{% endif %}
+      </p>
+    </details>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button id="btn_preview" type="button" style="background:#1EB53A;color:#fff;border:0;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;">
+        {% if LANG == 'sw' %}Ona Muhtasari (Preview){% else %}Preview{% endif %}
+      </button>
+      <button id="btn_download" type="button" style="background:#00A3DD;color:#fff;border:0;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;">
+        ⬇ {% if LANG == 'sw' %}Pakua Excel (NECTA){% else %}Download Excel (NECTA){% endif %}
+      </button>
+    </div>
+    <div id="ca_msg" style="margin-top:10px;font-size:13px;color:#b91c1c;display:none;"></div>
+  </div>
+
+  <div id="preview_wrap" style="display:none;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;overflow-x:auto;">
+    <h2 style="font-size:16px;margin:0 0 10px;">
+      {% if LANG == 'sw' %}Muhtasari wa alama zilizokadiriwa{% else %}Estimated marks preview{% endif %}
+    </h2>
+    <div id="preview_meta" style="font-size:12px;color:#64748b;margin-bottom:8px;"></div>
+    <table id="preview_table" style="border-collapse:collapse;font-size:12px;width:100%;"></table>
+  </div>
+
+  {% if snapshots %}
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-top:16px;">
+    <h2 style="font-size:15px;margin:0 0 8px;">{% if LANG == 'sw' %}History — forms zilizotengenezwa{% else %}History — generated forms{% endif %}</h2>
+    <ul style="font-size:13px;color:#334155;padding-left:18px;margin:0;">
+      {% for snap in snapshots %}
+        <li>{{ snap.created_at|date:"d M Y H:i" }} — {{ snap.subject_name }} ({{ snap.year }}) — wanafunzi {{ snap.payload.rows|length }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var columnKeys = ['ft_test_one','ft_mid_term','ft_test_two','ft_terminal',
+                    'st_test_one','st_mid_term','st_test_two','st_annual',
+                    'project','practical'];
+  var columnLabels = {
+    ft_test_one: 'FT TEST-ONE', ft_mid_term: 'FT MID TERM',
+    ft_test_two: 'FT TEST-TWO', ft_terminal: 'FT TERMINAL',
+    st_test_one: 'ST TEST-ONE', st_mid_term: 'ST MID-TERM',
+    st_test_two: 'ST TEST-TWO', st_annual: 'ST ANNUAL',
+    project: 'PROJECT', practical: 'PRACTICAL'
+  };
+
+  function collectParams() {
+    var params = {
+      action: 'preview',
+      subject_id: $('subject_id').value,
+      year: $('year').value,
+      center_no: $('center_no').value,
+      phone: $('phone').value,
+      mark_min: $('mark_min').value,
+      mark_max: $('mark_max').value
+    };
+    document.querySelectorAll('select[name="exam_col"]').forEach(function (sel) {
+      params['exam_' + sel.dataset.key] = sel.value;
+    });
+    return params;
+  }
+
+  function showMsg(text) {
+    var el = $('ca_msg');
+    el.textContent = text;
+    el.style.display = text ? 'block' : 'none';
+  }
+
+  function renderPreview(data) {
+    var wrap = $('preview_wrap');
+    var table = $('preview_table');
+    var html = '<thead><tr>';
+    html += '<th style="border:1px solid #cbd5e1;padding:6px;background:#D9E1F2;">S/N</th>';
+    html += '<th style="border:1px solid #cbd5e1;padding:6px;background:#D9E1F2;text-align:left;">NAME OF STUDENT</th>';
+    columnKeys.forEach(function (k) {
+      html += '<th style="border:1px solid #cbd5e1;padding:6px;background:#D9E1F2;">' + columnLabels[k] + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    data.rows.forEach(function (row) {
+      html += '<tr>';
+      html += '<td style="border:1px solid #cbd5e1;padding:5px;text-align:center;">' + row.sn + '</td>';
+      html += '<td style="border:1px solid #cbd5e1;padding:5px;">' + row.name.toUpperCase() + '</td>';
+      columnKeys.forEach(function (k) {
+        var v = row.marks[k];
+        html += '<td style="border:1px solid #cbd5e1;padding:5px;text-align:center;' +
+                (v === null ? 'color:#94a3b8;' : 'font-weight:600;') + '">' +
+                (v === null ? '—' : v) + '</td>';
+      });
+      html += '</tr>';
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+    $('preview_meta').textContent =
+      'Somo: ' + data.subject_name + ' | Mwaka: ' + data.year +
+      ' | Wanafunzi: ' + data.stats.students +
+      ' | Waliojazwa: ' + data.stats.filled +
+      ' | Hawana data kabisa: ' + data.stats.blank;
+    wrap.style.display = 'block';
+  }
+
+  $('btn_preview').addEventListener('click', function () {
+    if (!$('subject_id').value) { showMsg('Chagua somo kwanza.'); return; }
+    showMsg('');
+    fetch('{% url "necta_ca_form" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify(collectParams())
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) { showMsg(res.d.error || 'Hitilafu imejitokeza.'); return; }
+        renderPreview(res.d);
+      })
+      .catch(function () { showMsg('Imeshindikana kupata preview.'); });
+  });
+
+  $('btn_download').addEventListener('click', function () {
+    if (!$('subject_id').value) { showMsg('Chagua somo kwanza.'); return; }
+    showMsg('');
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "necta_ca_download" %}';
+    form.style.display = 'none';
+    function add(name, value) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    }
+    var params = collectParams();
+    Object.keys(params).forEach(function (k) {
+      if (k !== 'action') { add(k, params[k]); }
+    });
+    add('csrfmiddlewaretoken', '{{ csrf_token }}');
+    document.body.appendChild(form);
+    form.submit();
+  });
+})();
+</script>
+{% endblock %}

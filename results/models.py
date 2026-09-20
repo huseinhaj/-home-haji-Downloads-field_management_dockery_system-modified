@@ -821,6 +821,52 @@ class PaymentTransaction(models.Model):
 # CLASS TIMETABLE — weekly teaching schedule (generated, then edited as needed)
 # =============================================================================
 
+class ContinuousAssessmentSnapshot(models.Model):
+    """Snapshot ya NECTA Continuous Assessment Form (Form IV) iliyotengenezwa.
+
+    Mwalimu/Academic anachagua somo + exams zitakazolisha kila column +
+    range ya alama (mf. 45-100); mfumo unakadiria alama kwa uwiano wa
+    wastani wa mwanafunzi (proportional scaling inayoheshimu performance
+    — mwanafunzi wa 80-100 hawezi kutiwa 60) na ku-download Excel ya
+    muundo wa NECTA. Payload inahifadhiwa hapa ili historia isipotee.
+    """
+    school = models.ForeignKey(
+        School, on_delete=models.CASCADE, related_name='ca_snapshots',
+    )
+    subject = models.ForeignKey(
+        'Subject', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='ca_snapshots',
+    )
+    subject_name = models.CharField(
+        max_length=200, blank=True,
+        help_text="Jina la somo kwa wakati wa kutengeneza — linabaki hata "
+                  "kama Subject row inafutwa.",
+    )
+    form = models.PositiveIntegerField(default=4)
+    year = models.PositiveIntegerField()
+    params = models.JSONField(
+        default=dict, blank=True,
+        help_text="exam_map (column key → exam id), mark_min, mark_max, "
+                  "center_no, phone — vile vile vilivyochaguliwa.",
+    )
+    payload = models.JSONField(
+        default=dict, blank=True,
+        help_text="Mistari ya form: [{'sn', 'name', 'admission_no', 'marks': {...}}] "
+                  "alama zilizokadiriwa wakati huo.",
+    )
+    created_by = models.ForeignKey(
+        'TeacherAccount', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='ca_snapshots',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"C.A. {self.subject_name or '?'} Form {self.form} {self.year} — {self.school}"
+
+
 class TimeSlot(models.Model):
     """One row of the daily period grid for a school — either a teaching
     period or a fixed non-teaching block (break, lunch, parade, etc).

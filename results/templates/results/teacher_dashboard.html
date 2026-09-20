@@ -24,6 +24,11 @@
       <h3>{% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</h3>
       <p>{% if LANG == 'sw' %}Pakia orodha ya wanafunzi, jaza alama zao moja kwa moja, kagua na uwasilishe kwa Mtaaluma.{% else %}Upload the student list, enter their marks directly, review and submit to the academic officer.{% endif %}</p>
     </a>
+    <a href="{% url 'necta_ca_form' %}" class="action-card">
+      <span class="icon">&#128196;</span>
+      <h3>{% if LANG == 'sw' %}Fomu ya NECTA C.A.{% else %}NECTA C.A. Form{% endif %}</h3>
+      <p>{% if LANG == 'sw' %}Tengeneza Fomu ya Continuous Assessment ya NECTA (Form IV): chagua somo, mfumo unavuta matokeo ya Form Four na kukadiria alama kwa kuzingatia utendaji.{% else %}Generate the NECTA Continuous Assessment form (Form IV): pick a subject and the system pulls Form Four results and estimates marks performance-aware.{% endif %}</p>
+    </a>
   </div>
 </section>
 

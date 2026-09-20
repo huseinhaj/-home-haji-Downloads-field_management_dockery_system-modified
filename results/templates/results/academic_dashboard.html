@@ -216,6 +216,9 @@
       <a href="{% url 'upload_results' %}" class="ad-btn ad-btn--ghost">
         {% if LANG == 'sw' %}🧾 Unda Mtihani Mpya{% else %}🧾 Create New Exam{% endif %}
       </a>
+      <a href="{% url 'necta_ca_form' %}" class="ad-btn ad-btn--ghost">
+        📄 {% if LANG == 'sw' %}Fomu ya NECTA C.A. (Form IV){% else %}NECTA C.A. Form (Form IV){% endif %}
+      </a>
       <a href="{% url 'school_storage' %}" class="ad-btn ad-btn--ghost">
         🗄️ {% if LANG == 'sw' %}Hifadhi ya Shule (Backup){% else %}School Storage (Backup){% endif %}
       </a>
@@ -228,6 +231,7 @@
     <span><strong>📋 {% if LANG == 'sw' %}Orodha ya Wanafunzi{% else %}Student Roster{% endif %}</strong> — {% if LANG == 'sw' %}pakiwa na jaza orodha ya wanafunzi wa kila darasa{% else %}upload &amp; manage each class's student list{% endif %}</span>
     <span><strong>➕ {% if LANG == 'sw' %}Ongeza Mwanafunzi & Alama{% else %}Add Student & Marks{% endif %}</strong> — {% if LANG == 'sw' %}mwanafunzi aliesahaulika: muingize na jaza alama zake mara moja{% else %}a missed student: enroll them &amp; enter their marks in one go{% endif %}</span>
     <span><strong>🧾 {% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}Create New Exam{% endif %}</strong> — {% if LANG == 'sw' %}fungua mtihani mpya (Midterm, Terminal n.k.){% else %}open a new exam (Midterm, Terminal, etc.){% endif %}</span>
+    <span><strong>📄 {% if LANG == 'sw' %}Fomu ya NECTA C.A. (Form IV){% else %}NECTA C.A. Form (Form IV){% endif %}</strong> — {% if LANG == 'sw' %}tengeneza Fomu ya Continuous Assessment ya NECTA: chagua somo, mfumo unavuta matokeo ya Form Four na kukadiria alama kwa kuzingatia utendaji{% else %}generate the NECTA Continuous Assessment form: pick a subject and the system pulls Form Four results and estimates marks performance-aware{% endif %}</span>
     <span><strong>🗄️ {% if LANG == 'sw' %}Hifadhi ya Shule{% else %}School Storage{% endif %}</strong> — {% if LANG == 'sw' %}pakua nakala rudufu ya taarifa za shule{% else %}download a backup of your school's data{% endif %}</span>
     <span><strong>🎓 {% if LANG == 'sw' %}Anza Mwaka Mpya{% else %}Start New Year{% endif %}</strong> — {% if LANG == 'sw' %}hamisha wanafunzi darasa linalofuata mwaka unapoanza{% else %}promote students to the next class when the year begins{% endif %}</span>
   </div>
