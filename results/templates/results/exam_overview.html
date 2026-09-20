@@ -121,6 +121,8 @@
   .btn-upload-sm:hover { background: #1F7A3D; color: #fff; }
   .btn-pdf { background: #fff; color: #1a7a3b; border: 1.5px solid #1a7a3b; }
   .btn-pdf:hover { background: #1a7a3b; color: #fff; }
+  .btn-excel { background: #fff; color: #137a20; border: 1.5px solid #137a20; }
+  .btn-excel:hover { background: #137a20; color: #fff; }
 </style>
 
 <!-- Hero -->
@@ -213,7 +215,7 @@
       </a>
       {% endif %}
       {% if ctx.pdf_url %}
-      <a href="{{ ctx.pdf_url }}" class="btn btn-pdf" target="_blank">PDF</a>
+      <a href="{{ ctx.pdf_url }}" class="btn btn-pdf">PDF</a>
       {% endif %}
       {% if ctx.approve_url %}
       <form method="post" action="{{ ctx.approve_url }}" style="display:inline;">
@@ -259,47 +261,37 @@
     {% if not is_academic and submitted_count > 0 %}
     {# Three direct ?style= links instead of one link + a JS-shown style picker modal — plain server-rendered links always work regardless of script loading. Each style offers both PDF and Excel (📊), same ?style= palette in both. #}
     <div class="d-flex gap-1">
-      <a href="{% url 'generate_results_pdf' exam.id %}?style=normal" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;" target="_blank">
+      <a href="{% url 'generate_results_pdf' exam.id %}?style=normal" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;">
         📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}
       </a>
-      <a href="{% url 'export_results_excel' exam.id %}?style=normal" data-no-style-picker class="btn" style="background:#8a2419;color:#fff;font-weight:700;border-radius:0 2px 2px 0;font-size:0.82rem;" target="_blank" title="Excel">
-        📊
-      </a>
+      <a href="{% url 'export_results_excel' exam.id %}?style=normal" data-no-style-picker class="btn btn-excel" title="Excel">📊 Excel</a>
     </div>
     <div class="d-flex gap-1">
-      <a href="{% url 'generate_results_pdf' exam.id %}?style=rank" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;" target="_blank">
+      <a href="{% url 'generate_results_pdf' exam.id %}?style=rank" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;">
         📄 {% if LANG == 'sw' %}Ranki{% else %}Rank{% endif %}
       </a>
-      <a href="{% url 'export_results_excel' exam.id %}?style=rank" data-no-style-picker class="btn" style="background:#8a2419;color:#fff;font-weight:700;border-radius:0 2px 2px 0;font-size:0.82rem;" target="_blank" title="Excel">
-        📊
-      </a>
+      <a href="{% url 'export_results_excel' exam.id %}?style=rank" data-no-style-picker class="btn btn-excel" title="Excel">📊 Excel</a>
     </div>
     <div class="d-flex gap-1">
-      <a href="{% url 'generate_results_pdf' exam.id %}?style=necta" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;" target="_blank">
+      <a href="{% url 'generate_results_pdf' exam.id %}?style=necta" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;">
         📄 NECTA
       </a>
-      <a href="{% url 'export_results_excel' exam.id %}?style=necta" data-no-style-picker class="btn" style="background:#8a2419;color:#fff;font-weight:700;border-radius:0 2px 2px 0;font-size:0.82rem;" target="_blank" title="Excel">
-        📊
-      </a>
+      <a href="{% url 'export_results_excel' exam.id %}?style=necta" data-no-style-picker class="btn btn-excel" title="Excel">📊 Excel</a>
     </div>
     {% if exam.form == 5 %}
     <div class="d-flex gap-1">
-      <a href="{% url 'generate_results_pdf' exam.id %}?style=royal" data-no-style-picker class="btn" style="background:linear-gradient(135deg,#6B2FA0,#4A1D6E);color:#E5C96B;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;border:1px solid #C9A227;" target="_blank">
+      <a href="{% url 'generate_results_pdf' exam.id %}?style=royal" data-no-style-picker class="btn" style="background:linear-gradient(135deg,#6B2FA0,#4A1D6E);color:#E5C96B;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;border:1px solid #C9A227;">
         👑 Form Five Royal
       </a>
-      <a href="{% url 'export_results_excel' exam.id %}?style=royal" data-no-style-picker class="btn" style="background:linear-gradient(135deg,#4A1D6E,#3A1656);color:#E5C96B;font-weight:700;border-radius:0 2px 2px 0;font-size:0.82rem;border:1px solid #C9A227;border-left:none;" target="_blank" title="Excel">
-        📊
-      </a>
+      <a href="{% url 'export_results_excel' exam.id %}?style=royal" data-no-style-picker class="btn btn-excel" title="Excel">📊 Excel</a>
     </div>
     {% endif %}
     {% if exam.form == 6 %}
     <div class="d-flex gap-1">
-      <a href="{% url 'generate_results_pdf' exam.id %}?style=acsee" data-no-style-picker class="btn" style="background:linear-gradient(135deg,#1A1A1A,#3A3A3A);color:#E5C96B;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;border:1px solid #D4B14A;" target="_blank">
+      <a href="{% url 'generate_results_pdf' exam.id %}?style=acsee" data-no-style-picker class="btn" style="background:linear-gradient(135deg,#1A1A1A,#3A3A3A);color:#E5C96B;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;border:1px solid #D4B14A;">
         🎓 Form Six Prestige
       </a>
-      <a href="{% url 'export_results_excel' exam.id %}?style=acsee" data-no-style-picker class="btn" style="background:linear-gradient(135deg,#3A3A3A,#1A1A1A);color:#E5C96B;font-weight:700;border-radius:0 2px 2px 0;font-size:0.82rem;border:1px solid #D4B14A;border-left:none;" target="_blank" title="Excel">
-        📊
-      </a>
+      <a href="{% url 'export_results_excel' exam.id %}?style=acsee" data-no-style-picker class="btn btn-excel" title="Excel">📊 Excel</a>
     </div>
     {% endif %}
     {% endif %}

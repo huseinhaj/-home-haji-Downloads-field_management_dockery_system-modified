@@ -140,7 +140,7 @@
         <div class="action-group">
           <span class="group-label">{% if LANG == 'sw' %}Ripoti (PDF){% else %}Reports (PDF){% endif %}</span>
           <div class="group-btns">
-            <a href="{{ ed.pdf_url }}" class="btn btn-sm btn-black" target="_blank" title="{% if LANG == 'sw' %}Orodha kamili ya wanafunzi wote na nafasi zao (broadsheet){% else %}Full list of all students and their positions (broadsheet){% endif %}"
+            <a href="{{ ed.pdf_url }}" class="btn btn-sm btn-black" title="{% if LANG == 'sw' %}Orodha kamili ya wanafunzi wote na nafasi zao (broadsheet){% else %}Full list of all students and their positions (broadsheet){% endif %}"
                {% if ed.submit_ps_url and ed.all_submitted and not ed.ps_submission %}onclick="revealPsSubmit({{ ed.exam.id }})"{% endif %}>
               📄 {% if LANG == 'sw' %}Ripoti ya Mtihani{% else %}Exam Report{% endif %}
             </a>
@@ -149,7 +149,7 @@
               📊 {% if LANG == 'sw' %}Excel{% else %}Excel{% endif %}
             </a>
             {% endif %}
-            <a href="{{ ed.bulk_pdf_url }}" class="btn btn-sm btn-black" target="_blank" title="{% if LANG == 'sw' %}Slip moja-moja ya kila mwanafunzi (report cards){% else %}One slip per student (report cards){% endif %}">
+            <a href="{{ ed.bulk_pdf_url }}" class="btn btn-sm btn-black" title="{% if LANG == 'sw' %}Slip moja-moja ya kila mwanafunzi (report cards){% else %}One slip per student (report cards){% endif %}">
               📥 {% if LANG == 'sw' %}Ripoti za Wanafunzi Wote{% else %}All Students' Reports{% endif %}
             </a>
             <div class="btn-group">
@@ -157,9 +157,9 @@
                 🎨 {% if LANG == 'sw' %}Formati{% else %}Format{% endif %}
               </button>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=normal" target="_blank">📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}</a></li>
-                <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=rank" target="_blank">🏅 Rank</a></li>
-                <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=necta" target="_blank">🎓 NECTA</a></li>
+                <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=normal">📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}</a></li>
+                <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=rank">🏅 Rank</a></li>
+                <li><a class="dropdown-item" href="{{ ed.bulk_pdf_url }}?style=necta">🎓 NECTA</a></li>
               </ul>
             </div>
           </div>
@@ -220,7 +220,7 @@
           </div>
         </div>
         {% else %}
-        <a href="{{ ed.pdf_url }}" class="btn btn-sm btn-black" target="_blank"
+        <a href="{{ ed.pdf_url }}" class="btn btn-sm btn-black"
            {% if ed.submit_ps_url and ed.all_submitted and not ed.ps_submission %}onclick="revealPsSubmit({{ ed.exam.id }})"{% endif %}>
           📄 PDF
         </a>

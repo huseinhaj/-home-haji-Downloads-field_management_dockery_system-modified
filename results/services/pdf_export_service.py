@@ -55,6 +55,25 @@ def _qr_data_uri(path, box_size=6):
         logger.warning("QR generation failed for %s", path, exc_info=True)
         return None
 
+
+# ── Canonical public URL ─────────────────────────────────────────────────
+# QR ya kamera ya simu inahitaji URL KAMILI (https://...) — path pekee
+# (/results/verify/...) haitambuliki na scanner ya simu, ndiyo maana QR
+# za mwanzo zilikuwa "hazifanyi kazi" zikiscanwa na simu. Wakati request
+# ipo, build_absolute_uri inatumika (inajua host halisi); domain hii ya
+# production inatumika tu kwa PDFs zinazotengenezwa bila request.
+CANONICAL_SITE_URL = os.environ.get('CANONICAL_SITE_URL', 'https://studentschoolresultsystem.online')
+
+
+def _qr_url(path, request=None):
+    """Absolute URL ya QR — scanner ya simu inahitaji https://... kamili."""
+    if request is not None:
+        try:
+            return request.build_absolute_uri(path)
+        except Exception:
+            pass
+    return f"{CANONICAL_SITE_URL.rstrip('/')}{path}"
+
 # ── Colours — modern flat palette (blue/emerald/amber) ────────────────────────
 NAVY      = colors.HexColor("#1D4ED8")  # vivid modern blue (was muted navy)
 DARK_NAVY = colors.HexColor("#1E3A8A")  # deep blue for contrast accents
@@ -1066,7 +1085,7 @@ def _make_numbered_canvas(doc):
 # ══════════════════════════════════════════════════════════════════════════════
 # BUILD PDF
 # ══════════════════════════════════════════════════════════════════════════════
-def generate_results_pdf_response(exam, style='normal'):
+def generate_results_pdf_response(exam, style='normal', request=None):
     st = _styles()
     style_key = (style or 'normal').lower()
     is_normal_style = style_key == 'normal'
@@ -1693,12 +1712,17 @@ def generate_results_pdf_response(exam, style='normal'):
     # (/shule/matokeo/?school=<id>) — mzazi anascan, anatafuta mwanafunzi
     # WAKE kwenye portal rasmi. Si token ya mwanafunzi mmoja: ripoti ya
     # darasa ni ya kila mtu, hivyo QR isiweze kumwachia mtu mwingine
-    # matokeo ya mwanafunzi fulani (privacy). Kosa la DB linapigwa logi
-    # na QR inarukwa — ripoti yenyewe haifeli.
+    # matokeo ya mwanafunzi fulani (privacy).
+    # URL ni KAMILI (https://...) — kamera ya simu haifungui path pekee.
+    # Imepeakwa moja kwa moja kwenye story (siyo tail_flowables) kwa
+    # sababu ReportLab huvuta flowables kutoka tail hadi ukurasa mpya —
+    # QR iliishia kwenye ukurasa wa pili, na mzazi aliyepata ukurasa wa
+    # kwanza hakumpata. Kosa la DB/QR linapigwa logi na QR inarukwa —
+    # ripoti yenyewe haifeli.
     try:
         _school_id = exam.school_id
         if _school_id:
-            _qr_png = _qr_data_uri(f"/shule/matokeo/?school={_school_id}", box_size=5)
+            _qr_png = _qr_data_uri(_qr_url(f"/shule/matokeo/?school={_school_id}", request), box_size=5)
             if _qr_png:
                 _qr_note = _p(
                     "<b>THIBITISHA MATOKEO ONLINE</b><br/>Scan QR hii — tafuta "
@@ -1717,8 +1741,8 @@ def generate_results_pdf_response(exam, style='normal'):
                     ('TOPPADDING', (0, 0), (-1, -1), 4),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
                 ]))
-                tail_flowables.append(Spacer(1, 4))
-                tail_flowables.append(_qr_tbl)
+                story.append(Spacer(1, 6))
+                story.append(_qr_tbl)
     except Exception:
         logger.warning("Class report QR block failed (exam=%s)", exam.id, exc_info=True)
 
@@ -1898,7 +1922,7 @@ def generate_results_pdf_response(exam, style='normal'):
 # ══════════════════════════════════════════════════════════════════════════════
 def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=None,
                                      scores=None, subjects=None, subject_ranks=None,
-                                     style='normal'):
+                                     style='normal', request=None):
     """Full NECTA-style report card for a single ProcessedResult — same
     official header as the full class report, personalised below it with
     this student's own subjects/scores/grades (each with its own
@@ -2120,26 +2144,22 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         st['td_name'],
     ))
     story.append(Spacer(1, 8))
-    story.append(_p("<b>MAONI YA MZAZI/MLEZI:</b>", st['td_name']))
-    story.append(Spacer(1, 10))
-    story.append(_p(".................................................................................", st['td_name']))
-    story.append(Spacer(1, 6))
-    story.append(_p(
-        "JINA LA MZAZI/MLEZI: ......................................... "
-        "SIMU: ..................... SAHIHI: .....................",
-        st['sig'],
-    ))
+    # Block ya MAONI YA MZAZI/MLEZI (dots + JINA LA MZAZI/SIMU/SAHIHI)
+    # imeondolewa KABISA kwa ombi la shule — ilichukua nafasi kubwa kwenye
+    # slip bila maana; sahihi ya shule inachorwa na _footer kwenye ukurasa
+    # wa mwisho, na QR ya uthibitisho ipo chini ya slip.
 
     # ── QR ya uthibitisho (anti-forgery) ──
     # Kila slip ina token moja; QR inaelekeza /results/verify/<token>/ —
     # mzazi anascan bila account na anapata matokeo halisi kutoka DB.
-    # Hakuna token → inaundwa wastaharabu (historical slips zinafaulu
-    # bila migration ya data). PDF generation haipaswi kufeli kwenye
-    # DB hiccup — QR ni optimization, siyo muhimu kwa slip yenyewe.
+    # URL ni KAMILI (https://domain/...) kwa sababu kamera ya simu haiwezi
+    # kufungua path pekee. Hakuna token → inaundwa wastaharabu (historical
+    # slips zinafaulu bila migration ya data). PDF generation haipaswi
+    # kufeli kwenye DB hiccup — QR ni optimization, siyo muhimu kwa slip.
     try:
         vt = _get_or_create_verification_token(result)
         verify_path = f"/results/verify/{vt.token}/"
-        qr_img = _qr_data_uri(verify_path)
+        qr_img = _qr_data_uri(_qr_url(verify_path, request))
         if qr_img:
             qr_table = Table(
                 [[_p(
@@ -2182,16 +2202,16 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     return buf
 
 
-def generate_student_result_pdf_response(result):
+def generate_student_result_pdf_response(result, request=None):
     """Single-student download — see _build_student_result_pdf_bytes."""
-    buf = _build_student_result_pdf_bytes(result)
+    buf = _build_student_result_pdf_bytes(result, request=request)
     resp = HttpResponse(buf, content_type='application/pdf')
     safe_name = _student_name(result).replace(' ', '_')
     resp['Content-Disposition'] = f'attachment; filename="Matokeo_{safe_name}.pdf"'
     return resp
 
 
-def generate_bulk_student_results_pdf_response(exam, style='normal'):
+def generate_bulk_student_results_pdf_response(exam, style='normal', request=None):
     """All students of this exam (i.e. this form — an Exam is already
     scoped to one form/year/type), each on their own page(s), merged into
     ONE downloadable PDF — same slip _build_student_result_pdf_bytes
@@ -2249,6 +2269,7 @@ def generate_bulk_student_results_pdf_response(exam, style='normal'):
             subjects=subjects_by_student.get(result.student_id, []),
             subject_ranks=subject_ranks,
             style=style,
+            request=request,
         )
         buffers.append(buf)
         src = pdfium.PdfDocument(buf)  # buffers stay alive until save()

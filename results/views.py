@@ -196,7 +196,9 @@ def generate_results_pdf(request, exam_id):
     style = (request.GET.get('style') or 'normal').lower()
     if style not in ('normal', 'rank', 'necta', 'royal', 'acsee'):
         style = 'normal'
-    return generate_results_pdf_response(exam, style=style)
+    # request inapelekwa service ili QR zipate URL KAMILI (https://domain/...)
+    # — kamera ya simu haifungui path pekee.
+    return generate_results_pdf_response(exam, style=style, request=request)
 
 
 @academic_required
@@ -215,7 +217,9 @@ def generate_bulk_student_results_pdf(request, exam_id):
     style = (request.GET.get('style') or 'normal').lower()
     if style not in ('normal', 'rank', 'necta', 'royal', 'acsee'):
         style = 'normal'
-    return generate_bulk_student_results_pdf_response(exam, style=style)
+    # request → QR za slips zipate URL kamili (https://...) zinazofunguka
+    # kwa kamera ya simu.
+    return generate_bulk_student_results_pdf_response(exam, style=style, request=request)
 
 
 @academic_required
@@ -674,7 +678,9 @@ def student_result_pdf(request, token):
     """Downloadable version of the public results page — no login required,
     same share token, so a parent can save/print a copy to take home."""
     result = get_object_or_404(ProcessedResult, share_token=token)
-    return generate_student_result_pdf_response(result)
+    # request → QR ya slip ipate URL kamili (https://...) inayofunguka na
+    # kamera ya simu.
+    return generate_student_result_pdf_response(result, request=request)
 
 
 # ── Shareable Links Management (academic only) ───────────────────────────────

@@ -768,6 +768,36 @@ class BulkStudentResultsPdfTests(TestCase):
 		self.assertIn('PETER MUSHI', text.upper())
 		self.assertLess(text.upper().index('AMINA JUMA'), text.upper().index('PETER MUSHI'))
 
+	def test_slips_are_one_page_and_have_no_parent_signoff_block(self):
+		"""Kila mwanafunzi ukurasa MMOJA tu (QR + sahihi ya mzazi vinaingia
+		ukiurasa uleule), na block ya MAONI YA MZAZI/MLEZI na mistari yake
+		ya dots imeondolewa — ilichukua nafasi bila maana kwenye slip."""
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		response = client.get(reverse('generate_bulk_student_results_pdf', args=[self.exam.id]))
+		self.assertEqual(response.status_code, 200)
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+			self.assertEqual(len(pdf.pages), 2)  # wanafunzi 2 = kurasa 2
+			for page in pdf.pages:
+				text = (page.extract_text() or '').upper()
+				self.assertNotIn('MAONI YA MZAZI', text)
+				self.assertNotIn('JINA LA MZAZI', text)
+
+	def test_result_pdfs_are_attachments_not_new_windows(self):
+		"""Content-Disposition lazima iwe 'attachment' — kivinjari kinapakua
+		bila kufungua dirisha jipya tupu (target=_blank zimeondolewa kwenye
+		templates; hii inalinda upande wa server pia)."""
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		resp_class = client.get(reverse('generate_results_pdf', args=[self.exam.id]) + '?style=necta')
+		self.assertEqual(resp_class.status_code, 200)
+		self.assertTrue(resp_class['Content-Disposition'].startswith('attachment'))
+		resp_bulk = client.get(reverse('generate_bulk_student_results_pdf', args=[self.exam.id]))
+		self.assertEqual(resp_bulk.status_code, 200)
+		self.assertTrue(resp_bulk['Content-Disposition'].startswith('attachment'))
+
 	def test_rejects_non_academic_teacher(self):
 		client = Client()
 		client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
