@@ -2260,25 +2260,35 @@ def generate_bulk_student_results_pdf_response(exam, style='normal', request=Non
 
     merged = pdfium.PdfDocument.new()
     buffers = []
-    for result in results:
-        buf = _build_student_result_pdf_bytes(
-            result,
-            school_type=school_type,
-            total_students=total_students,
-            scores=scores_by_student.get(result.student_id, {}),
-            subjects=subjects_by_student.get(result.student_id, []),
-            subject_ranks=subject_ranks,
-            style=style,
-            request=request,
-        )
-        buffers.append(buf)
-        src = pdfium.PdfDocument(buf)  # buffers stay alive until save()
-        merged.import_pages(src)
-        src.close()
-
     out = io.BytesIO()
-    merged.save(out)
-    merged.close()
+    try:
+        for result in results:
+            buf = _build_student_result_pdf_bytes(
+                result,
+                school_type=school_type,
+                total_students=total_students,
+                scores=scores_by_student.get(result.student_id, {}),
+                subjects=subjects_by_student.get(result.student_id, []),
+                subject_ranks=subject_ranks,
+                style=style,
+                request=request,
+            )
+            buffers.append(buf)
+            src = pdfium.PdfDocument(buf)  # buffers stay alive until save()
+            try:
+                merged.import_pages(src)
+            finally:
+                src.close()
+
+        merged.save(out)
+    finally:
+        merged.close()
+        for b in buffers:
+            b.close()
+        # Acha buffers za slips zitikishe kumbukumbu mara tu zinapokwisha
+        # kutumika — kwenye exams kubwa peak ya RAM inatokea hapa, siyo
+        # wakati wa HTTP response.
+        buffers.clear()
 
     resp = HttpResponse(out.getvalue(), content_type='application/pdf')
     safe_name = exam.name.replace(' ', '_')
