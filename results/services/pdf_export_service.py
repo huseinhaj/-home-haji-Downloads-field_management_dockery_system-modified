@@ -24,6 +24,8 @@ from reportlab.platypus import (
 )
 import logging
 
+from django.urls import reverse
+
 from ..models import ExamResult, ProcessedResult, Subject, ResultVerificationToken
 from .export_data import get_exam_export_payload, order_by_registration
 from .report_helpers import (
@@ -2150,15 +2152,19 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     # wa mwisho, na QR ya uthibitisho ipo chini ya slip.
 
     # ── QR ya uthibitisho (anti-forgery) ──
-    # Kila slip ina token moja; QR inaelekeza /results/verify/<token>/ —
-    # mzazi anascan bila account na anapata matokeo halisi kutoka DB.
+    # Kila slip ina token moja; QR inaelekeza /shule/verify/<token>/ (app
+    # imemount kwenye /shule/) — mzazi anascan bila account na anapata
+    # matokeo halisi kutoka DB.
     # URL ni KAMILI (https://domain/...) kwa sababu kamera ya simu haiwezi
     # kufungua path pekee. Hakuna token → inaundwa wastaharabu (historical
     # slips zinafaulu bila migration ya data). PDF generation haipaswi
     # kufeli kwenye DB hiccup — QR ni optimization, siyo muhimu kwa slip.
     try:
         vt = _get_or_create_verification_token(result)
-        verify_path = f"/results/verify/{vt.token}/"
+        # Path inatoka URLconf (reverse) — SIYO hardcoded: app imemount kwenye
+        # /shule/, kwa hiyo path halisi ni /shule/verify/<token>/; hardcoded
+        # /results/verify/ ilikuwa 404 production → QR zilikufa baada ya scan.
+        verify_path = reverse('result_verify', args=[vt.token])
         qr_img = _qr_data_uri(_qr_url(verify_path, request))
         if qr_img:
             qr_table = Table(

@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, RedirectView
 from django.contrib.auth import views as auth_views
 from field_app import views  # Changed from ". import views" to import from your app
 from curriculum import views as curriculum_views  # PWA manifest & service worker
@@ -30,6 +30,13 @@ urlpatterns = [
     # PWA: Progressive Web App — MUST be before catch-all routes
     path('manifest.json', curriculum_views.pwa_manifest, name='root_pwa_manifest'),
     path('sw.js', curriculum_views.pwa_service_worker, name='root_pwa_service_worker'),
+
+    # QR za slips za ZAMANI zina /results/verify/<token>/ (ilikuwa hardcoded
+    # kwenye pdf_export_service badala ya /shule/verify/) — elekeza kwenye
+    # route halisi ili slips zilizoshachapishwa ziendelee kufanya kazi.
+    path('results/verify/<str:token>/',
+         RedirectView.as_view(url='/shule/verify/%(token)s/', permanent=False),
+         name='legacy_result_verify'),
 
     # REST API
     path('api/v1/', include('field_app.api_urls')),
