@@ -2018,7 +2018,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         else dict(ProcessedResult.DIVISION_CHOICES).get(result.division, result.division)
     )
     # INC/ABS markers: hakuna jumla halali ya kuonyesha — aggregate ina '-'
-    # na position ni NULL (ABS) au ya kawaida (INC inapangwa kwa kawaida).
+    # na position ni NULL kwa zote mbili (hakuna division halisi, hakuna nafasi).
     marker = result.division if result.division in ('INC', 'ABS') else ''
     if marker:
         division_label = dict(ProcessedResult.DIVISION_CHOICES).get(marker, marker)

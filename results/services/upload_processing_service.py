@@ -118,16 +118,17 @@ def process_uploaded_results(exam, uploaded_file):
 # accumulation, regardless of how well they actually performed.
 _DIVISION_SUBJECT_COUNT = {1: 7, 2: 7, 3: 7, 4: 7, 5: 3, 6: 3}
 
-# CSEE position ranking sorts by DIVISION first, then raw points within it —
-# see the "fewer-subjects" note in recompute_processed_results_for_exam for
-# why raw points alone can't be the primary key. INC/ABS are markers, not
-# divisions: they always rank below every REAL division INCLUDING '0' — an
-# INC candidate's points only ever sum a handful of subjects, so tying it
-# with '0' would let raw points reintroduce the exact fewer-subjects
-# advantage this ordering exists to prevent. ABS never gets a stored
-# position anyway (see the bulk_create loop below); its order value here
-# only has to avoid crashing a lookup.
-_CSEE_DIVISION_ORDER = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, '0': 5, 'INC': 6, 'ABS': 7}
+# Both CSEE and ACSEE position ranking sort by DIVISION first, then raw
+# points within it — see the "fewer-subjects"/INC note in
+# recompute_processed_results_for_exam for why raw points alone can't be
+# the primary key. INC/ABS are markers, not divisions: they always rank
+# below every REAL division INCLUDING '0' — an INC candidate's points only
+# ever sum a handful of subjects, so tying it with '0' would let raw
+# points reintroduce the exact fewer-subjects advantage this ordering
+# exists to prevent. ABS never gets a stored position anyway (see the
+# bulk_create loop below); its order value here only has to avoid
+# crashing a lookup.
+_DIVISION_ORDER = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, '0': 5, 'INC': 6, 'ABS': 7}
 
 
 def _sync_student_genders_from_roster(exam):
@@ -189,7 +190,8 @@ def recompute_processed_results_for_exam(exam):
         - A candidate who sat SOME subjects but fewer than the 7 the CSEE
           division scale assumes gets the marker INC — masomo hayajafika 7
           — instead of a division; points still reflect what they sat and
-          are used only for internal ordering.
+          are used only for internal ordering. Like ABS, INC is unranked
+          (position NULL) — no real division means no rank number.
         - Ranked candidates sort by DIVISION first, then points within it
           (both ascending — better division/fewer points first), then
           total score descending as the final tiebreaker, so "Top
@@ -201,21 +203,22 @@ def recompute_processed_results_for_exam(exam):
           student sat (see results.combinations.detect_acsee_combination).
           Any extra subject — a 4th principal, General Studies, BAM — is
           dropped, even if the student scored better in it.
-        - NECTA classifies every A-Level candidate on a FULL set of 3
-          combination subjects. A candidate short of that has the empty
-          slots scored as F (7 points) in the aggregate — so one lone A
-          is 1 + 7 + 7 = 15 → Division III, not Division I, and such a
-          candidate can never outrank a genuine 3-subject candidate.
-        - When no registered combination fits (unusual subject mix, or
-          fewer than 3 principals) it falls back to the best 3 principal
-          subjects, General Studies / BAM removed.
-        - Position ranking tiebreaker is the total of the combination
+        - A candidate who sat all 3 combination subjects — or, when no
+          registered combination fits, 3+ principal subjects (an unusual
+          mix) — gets a real division computed from those subjects.
+        - A candidate who sat only 1 or 2 principal subjects gets the
+          marker INC ("masomo hayajafika 3") instead of a division —
+          same meaning as CSEE's INC below, unranked (position NULL)
+          for the same reason. One who sat NONE of the principal
+          subjects (nothing, or only General Studies / BAM) gets ABS.
+        - Position ranking tiebreaker is the total of the counted
           subjects only (not General Studies / a 4th subject).
 
-    Ranking: students who sat nothing are placed last; CSEE then sorts by
-    division first, ACSEE goes straight to points (its F-padding already
-    prevents the same fewer-subjects advantage) — both then break ties by
-    ascending points, then descending counted-subject total.
+    Ranking: students who sat nothing are placed last; both CSEE and
+    ACSEE then sort by division first — INC/ABS always rank below every
+    real division so a short combination/sitting can never outrank a
+    genuine full one — then ascending points, then descending
+    counted-subject total.
     """
     # Roster ndiyo mkuu kwa gender — sawazisha kabla ya kuhesabu matokeo
     _sync_student_genders_from_roster(exam)
@@ -264,6 +267,7 @@ def recompute_processed_results_for_exam(exam):
         average = (total / count) if count else 0.0
 
         combo_code = ''
+        acsee_principal_count = None
         if exam.form in (5, 6):
             # ── ACSEE: division counts the student's COMBINATION only ──
             # Map every subject the student sat to its canonical A-Level
@@ -288,13 +292,18 @@ def recompute_processed_results_for_exam(exam):
                     key=lambda pair: pair[1],
                 )
             else:
-                # No registered combination fits — fall back to the best
-                # principal subjects (drop General Studies / BAM).
+                # No registered combination fits — either the sitting is
+                # incomplete (1-2 principal subjects, INC below) or it's
+                # an unusual mix of 3+ principals matching no registered
+                # combination. General Studies / BAM never substitute
+                # here — a candidate who sat ONLY those has zero
+                # principal subjects and is ABS, not scored on them.
                 principal = [
                     pair for cname, pair in by_canon.items()
                     if not is_acsee_subsidiary_subject(cname)
-                ] or list(by_canon.values())
+                ]
                 graded = sorted(principal, key=lambda pair: pair[1])[:best_n]
+            acsee_principal_count = len(graded)
         else:
             graded = sorted(
                 ((r, get_grade_points(get_grade_for_form(r.score, exam.form, primary=is_primary), form=exam.form)) for r in results),
@@ -304,17 +313,6 @@ def recompute_processed_results_for_exam(exam):
         # Use best N subjects (or all if fewer than N).
         best = graded[:best_n]
         points = sum(p for _, p in best)
-        counted_principal = len(best)
-
-        # ── ACSEE: pad a short combination up to best_n with F ────────
-        # NECTA classifies every A-Level candidate on a FULL set of 3
-        # combination subjects. Slots the candidate is short — absent, or
-        # never entered — count as F (the ACSEE fail point value) in the
-        # aggregate, exactly as on the real result slip. Without this a
-        # lone A scores 1 point and lands in Division I (ranking first);
-        # with it that candidate is 1 + 7 + 7 = 15 → Division III.
-        if exam.form in (5, 6) and counted_principal < best_n:
-            points += get_grade_points('F', form=exam.form) * (best_n - counted_principal)
 
         division = '' if is_primary else get_division(points, form=exam.form)
         counted_subjects = ', '.join(r.subject.name for r, _ in best)
@@ -338,6 +336,17 @@ def recompute_processed_results_for_exam(exam):
         if exam.form in (1, 2, 3, 4) and not is_primary and count < best_n:
             division = 'INC'
 
+        # ── ACSEE incomplete-combination marker ───────────────────────
+        # NECTA classifies an A-Level candidate on a FULL set of 3
+        # combination subjects. A candidate who sat 1 or 2 of them gets
+        # INC ("masomo hayajafika 3") instead of a division; one who sat
+        # NONE of them (nothing, or only General Studies / BAM) is ABS.
+        # Both keep their raw (unpadded) points for internal ordering
+        # only — a short combination must never outrank a genuine
+        # full-combination candidate (see _DIVISION_ORDER below).
+        if acsee_principal_count is not None and acsee_principal_count < best_n:
+            division = 'ABS' if acsee_principal_count == 0 else 'INC'
+
         student_data.append(
             {
                 'student': student,
@@ -352,12 +361,11 @@ def recompute_processed_results_for_exam(exam):
         )
 
     # NECTA ranking: students who sat nothing (Division 0, points forced
-    # to 0) go last. CSEE sorts by division BEFORE points -- a 4-subject
-    # straight-A student (4 points) must not outrank a 7-subject
-    # straight-A student (7 points) just because they sat fewer exams;
-    # division already accounts for that (see docstring above). ACSEE's
-    # combination is always padded to exactly best_n subjects, so its
-    # points are already directly comparable without a division key.
+    # to 0) go last. CSEE and ACSEE both sort by division BEFORE points --
+    # a short-sitting/short-combination student must not outrank a
+    # full-sitting one just because their unpadded points happen to be
+    # lower; division (now including the INC/ABS markers) already accounts
+    # for that (see docstring above).
     # PRIMARY ranking: hakuna division — jumla ya alama ndio kipimo (juu
     # kwanza), Wastani ndio tiebreaker. Waliosajiliwa wasiokwepo huishia
     # mwisho kama sekondari.
@@ -365,14 +373,15 @@ def recompute_processed_results_for_exam(exam):
         student_data.sort(
             key=lambda item: (item['subject_count'] == 0, -item['total'], -item['average'])
         )
-    elif exam.form in (1, 2, 3, 4):
-        # ABS candidates (subject_count == 0) go last and are UNRANKED —
-        # their position stays None on the stored row. INC rows rank
-        # below every real division but above ABS.
+    elif exam.form in (1, 2, 3, 4, 5, 6):
+        # ABS candidates (subject_count == 0, or ACSEE zero-principal)
+        # go last and are UNRANKED — their position stays None on the
+        # stored row. INC rows rank below every real division but above
+        # ABS.
         student_data.sort(
             key=lambda item: (
                 item['subject_count'] == 0,
-                _CSEE_DIVISION_ORDER.get(item['division'], 5),
+                _DIVISION_ORDER.get(item['division'], 5),
                 item['points'],
                 -item['rank_total'],
             )
@@ -386,12 +395,14 @@ def recompute_processed_results_for_exam(exam):
     # remote DB's per-query latency made this the slowest part of an
     # upload for exams with more than a handful of students.
     #
-    # Position: ABS rows (sat nothing) are UNRANKED — position stays NULL
-    # whatever their sort index was; they only ever sort to the tail.
+    # Position: ABS (sat nothing) and INC (incomplete sitting/combination)
+    # rows are UNRANKED — position stays NULL whatever their sort index
+    # was; a candidate no real division was computed for cannot be given
+    # a rank number among those who have one.
     processed_results = []
     position = 0
     for data in student_data:
-        if data['division'] == 'ABS':
+        if data['division'] in ('ABS', 'INC'):
             stored_position = None
         else:
             position += 1

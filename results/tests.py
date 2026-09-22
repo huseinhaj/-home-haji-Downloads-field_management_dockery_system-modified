@@ -854,9 +854,19 @@ class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
 		# the roster.
 		self.lenatha = Student.objects.create(first_name='Lenatha', last_name='Damian', gender='M')
 
-		ExamResult.objects.create(exam=self.exam, student=self.zawadi, subject=self.subject, score=50)
-		ExamResult.objects.create(exam=self.exam, student=self.amina, subject=self.subject, score=70)
-		ExamResult.objects.create(exam=self.exam, student=self.lenatha, subject=self.subject, score=95)
+		# CSEE (Form 2) needs 7 subjects sat to get a real division/position
+		# instead of INC (unranked) — these views always recompute on GET,
+		# so a single-subject sitting would make every student here INC
+		# and vanish from "Top Performers", which isn't what these tests
+		# are about.
+		extra_subjects = [
+			Subject.objects.create(name=name)
+			for name in ['English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'Civics']
+		]
+		for student, score in [(self.zawadi, 50), (self.amina, 70), (self.lenatha, 95)]:
+			ExamResult.objects.create(exam=self.exam, student=student, subject=self.subject, score=score)
+			for subject in extra_subjects:
+				ExamResult.objects.create(exam=self.exam, student=student, subject=subject, score=score)
 		ProcessedResult.objects.create(exam=self.exam, student=self.zawadi, total_score=50, average_score=50, points=5, position=3, division='III')
 		ProcessedResult.objects.create(exam=self.exam, student=self.amina, total_score=70, average_score=70, points=3, position=2, division='II')
 		ProcessedResult.objects.create(exam=self.exam, student=self.lenatha, total_score=95, average_score=95, points=1, position=1, division='I')
@@ -884,19 +894,19 @@ class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
 		self.assertLess(i_zuberi, i_ally)
 		self.assertLess(i_ally, i_damian)
 
-	def test_pdf_top5_still_ranked_by_actual_position(self):
+	def test_pdf_top4_still_ranked_by_actual_position(self):
 		import io
 		import pdfplumber
 		response = self.client.get(reverse('generate_results_pdf', args=[self.exam.id]))
 		with pdfplumber.open(io.BytesIO(response.content)) as pdf:
 			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
-		top5_start = text.index('TOP 5 PERFORMERS')
-		top5_section = text[top5_start:top5_start + 500]
+		top4_start = text.index('TOP 4 PERFORMERS')
+		top4_section = text[top4_start:top4_start + 500]
 		# Lenatha (position 1, the actual best performer) must lead the Top
-		# 5 table even though he's listed LAST in the main roster-order
+		# 4 table even though he's listed LAST in the main roster-order
 		# table (he isn't on the roster at all).
-		self.assertLess(top5_section.index('Damian'), top5_section.index('Ally'))
-		self.assertLess(top5_section.index('Ally'), top5_section.index('Zuberi'))
+		self.assertLess(top4_section.index('Damian'), top4_section.index('Ally'))
+		self.assertLess(top4_section.index('Ally'), top4_section.index('Zuberi'))
 
 	def test_excel_lists_students_in_roster_order_with_unregistered_last(self):
 		import io
@@ -1701,7 +1711,8 @@ class AcseeCombinationDetectionTests(TestCase):
 
 class RecomputeAcseeDivisionTests(TestCase):
 	"""ACSEE (Form 5-6) division: the student's COMBINATION subjects only,
-	extras dropped, and a combination short of 3 padded with F (7 pts)."""
+	extras dropped. A combination short of 3 gets INC (1-2 sat) or ABS
+	(0 sat) instead of a computed division."""
 
 	databases = {'default', 'results'}
 
@@ -1806,40 +1817,40 @@ class RecomputeAcseeDivisionTests(TestCase):
 		self.assertIsNone(absent_r.position)
 		self.assertIsNotNone(good_r.position)
 
-	def test_single_principal_subject_A_is_padded_to_division_III(self):
-		# One A (1 pt) + two missing slots scored F (7) each = 15 -> Div III.
+	def test_single_principal_subject_gets_INC(self):
+		# Only 1 of the 3 combination subjects sat -> INC, no division.
 		student = self._student('Baraka', 'Mushi')
 		self._enter(student, Physics=85)
 		result = self._processed(student)
-		self.assertEqual(result.points, 15)
-		self.assertEqual(result.division, 'III')
+		self.assertEqual(result.division, 'INC')
 
-	def test_single_principal_subject_F_is_division_0(self):
+	def test_single_principal_subject_F_still_gets_INC(self):
+		# INC applies regardless of the score in the one subject sat.
 		student = self._student('Neema', 'Paul')
 		self._enter(student, Physics=20)
 		result = self._processed(student)
-		self.assertEqual(result.points, 21)
-		self.assertEqual(result.division, '0')
+		self.assertEqual(result.division, 'INC')
 
-	def test_two_principal_subjects_are_padded_once(self):
-		# A(1) + B(2) + one F(7) = 10 -> Div II.
+	def test_two_principal_subjects_get_INC(self):
+		# 2 of 3 combination subjects sat -> INC, no division.
 		student = self._student('Juma', 'Ally')
 		self._enter(student, Physics=85, Chemistry=75)
 		result = self._processed(student)
-		self.assertEqual(result.points, 10)
-		self.assertEqual(result.division, 'II')
+		self.assertEqual(result.division, 'INC')
 
-	def test_padded_candidate_ranks_below_a_full_three_subject_candidate(self):
+	def test_inc_candidate_is_unranked_unlike_a_full_three_subject_candidate(self):
 		full = self._student('Full', 'Combination')
 		self._enter(full, Physics=85, Chemistry=85, Biology=85)  # 3 pts, Div I
 		partial = self._student('One', 'Subject')
-		self._enter(partial, History=85)  # padded to 15 pts, Div III
+		self._enter(partial, History=85)  # only 1 of 3 -> INC
 		from .services.upload_processing_service import recompute_processed_results_for_exam
 		recompute_processed_results_for_exam(self.exam)
 		full_r = ProcessedResult.objects.get(exam=self.exam, student=full)
 		partial_r = ProcessedResult.objects.get(exam=self.exam, student=partial)
 		self.assertEqual(full_r.division, 'I')
-		self.assertLess(full_r.position, partial_r.position)
+		self.assertEqual(partial_r.division, 'INC')
+		self.assertIsNotNone(full_r.position)
+		self.assertIsNone(partial_r.position)
 
 	def test_three_full_principals_are_not_padded(self):
 		student = self._student('Grace', 'Mena')
@@ -1848,13 +1859,14 @@ class RecomputeAcseeDivisionTests(TestCase):
 		self.assertEqual(result.points, 12)
 		self.assertEqual(result.division, 'II')
 
-	def test_only_subsidiary_subjects_falls_back_without_crashing(self):
+	def test_only_subsidiary_subjects_gets_ABS(self):
+		# General Studies / BAM are never combination subjects -> sitting
+		# ONLY those counts as zero principal subjects sat -> ABS.
 		student = self._student('Said', 'Omary')
 		self._enter(student, General_Studies=65, Basic_Applied_Mathematics=70)
 		result = self._processed(student)
-		# B(2) + C(3) + one padded F(7) = 12 -> Div II
-		self.assertEqual(result.points, 12)
-		self.assertEqual(result.division, 'II')
+		self.assertEqual(result.division, 'ABS')
+		self.assertIsNone(result.position)
 
 
 class RecomputeCseeMinimumSubjectRuleTests(TestCase):
@@ -1906,9 +1918,9 @@ class RecomputeCseeMinimumSubjectRuleTests(TestCase):
 		self.assertEqual(result.division, 'ABS')
 		self.assertIsNone(result.position)
 
-	def test_INC_ranks_below_every_real_division(self):
-		# A 7-subject Division IV student must outrank a 3-subject INC one,
-		# and the INC row still gets a position (below all real divisions).
+	def test_INC_is_unranked_like_ABS(self):
+		# A 7-subject Division IV student is ranked; a 3-subject INC one
+		# is not — INC gets no position, same as ABS.
 		full = Student.objects.create(first_name='Full', last_name='Seven', gender='M')
 		for name, score in zip(
 			['Physics', 'Chemistry', 'Biology', 'Mathematics', 'English', 'Kiswahili', 'Civics'],
@@ -1927,8 +1939,7 @@ class RecomputeCseeMinimumSubjectRuleTests(TestCase):
 		self.assertEqual(full_r.division, '0')
 		self.assertEqual(partial_r.division, 'INC')
 		self.assertIsNotNone(full_r.position)
-		self.assertIsNotNone(partial_r.position)
-		self.assertLess(full_r.position, partial_r.position)
+		self.assertIsNone(partial_r.position)
 
 	def test_fewer_subjects_straight_As_does_not_outrank_full_subject_straight_As(self):
 		"""A 4-subject straight-A student is INC (fewer than 7 subjects) —
@@ -1957,7 +1968,8 @@ class RecomputeCseeMinimumSubjectRuleTests(TestCase):
 		self.assertEqual(partial_r.division, 'INC')
 		self.assertEqual(full_r.points, 7)
 		self.assertEqual(full_r.division, 'I')
-		self.assertLess(full_r.position, partial_r.position)
+		self.assertIsNotNone(full_r.position)
+		self.assertIsNone(partial_r.position)
 
 	def test_within_same_division_lower_points_still_ranks_first(self):
 		better = Student.objects.create(first_name='Better', last_name='Points', gender='F')
@@ -2014,7 +2026,8 @@ class RecomputeCseePositionRankingMigrationTests(TestCase):
 
 		partial_r = ProcessedResult.objects.get(exam=exam, student=partial)
 		full_r = ProcessedResult.objects.get(exam=exam, student=full)
-		self.assertLess(full_r.position, partial_r.position)
+		self.assertIsNotNone(full_r.position)
+		self.assertIsNone(partial_r.position)
 
 	def test_non_csee_exams_are_left_alone(self):
 		"""ACSEE (form 5-6) exams aren't touched by this backfill."""
