@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import Prefetch
+from django.db.models.functions import Lower
 
 from ..combinations import canon_subject, detect_acsee_combination
 from ..models import ExamResult, FormStudent, ProcessedResult, Student, Subject
@@ -138,19 +139,34 @@ def _sync_student_genders_from_roster(exam):
     zinaonyesha gender sahihi kutoka kwenye roster ya shule."""
     if not exam.school:
         return
-    roster = FormStudent.objects.filter(
+    roster = list(FormStudent.objects.filter(
         school=exam.school, form=exam.form,
         is_active=True, academic_year=exam.year,
+    ).only('first_name', 'middle_name', 'last_name', 'gender'))
+    if not roster:
+        return
+
+    # One query for the whole roster instead of one Student lookup per
+    # roster row — over the remote DB's per-query latency that N+1 loop
+    # alone made recompute take minutes for a single exam.
+    candidates = Student.objects.annotate(
+        fn_lower=Lower('first_name'),
+        mn_lower=Lower('middle_name'),
+        ln_lower=Lower('last_name'),
+    ).filter(
+        fn_lower__in=[fs.first_name.lower() for fs in roster],
+        ln_lower__in=[fs.last_name.lower() for fs in roster],
     )
+    by_key = {}
+    for s in candidates:
+        key = (s.fn_lower, s.mn_lower or '', s.ln_lower)
+        by_key.setdefault(key, []).append(s)
+
     to_fix = []
     for fs in roster:
         # Match ile ile inayotumika na _resolve_class_roster (marks_entry)
-        matches = Student.objects.filter(
-            first_name__iexact=fs.first_name,
-            middle_name__iexact=fs.middle_name or '',
-            last_name__iexact=fs.last_name,
-        )
-        for s in matches:
+        key = (fs.first_name.lower(), (fs.middle_name or '').lower(), fs.last_name.lower())
+        for s in by_key.get(key, []):
             if s.gender != fs.gender:
                 s.gender = fs.gender
                 to_fix.append(s)
@@ -166,23 +182,18 @@ def recompute_processed_results_for_exam(exam):
     the student's BEST subjects (best_n = 7 for CSEE, 3 for ACSEE), sum
     those grades' point values, then map the total to a division.
 
-    Fewer-subjects fairness (CSEE / Form 1-4):
-        - Division and points are computed ONLY from the subjects a student
-          actually has (minimum 1). A student with 4 CSEE subjects uses all
-          4 for their points/division — they are NOT penalised for missing
-          subjects they were never tested in.
-        - Position ranking sorts by DIVISION first, then points within it
+    Incomplete sittings (CSEE / Form 1-4):
+        - A candidate on the roster who sat NOTHING gets division ABS —
+          aggregate displays '-', they are unranked (position NULL) and
+          sort to the bottom of the class.
+        - A candidate who sat SOME subjects but fewer than the 7 the CSEE
+          division scale assumes gets the marker INC — masomo hayajafika 7
+          — instead of a division; points still reflect what they sat and
+          are used only for internal ordering.
+        - Ranked candidates sort by DIVISION first, then points within it
           (both ascending — better division/fewer points first), then
-          total score descending as the final tiebreaker. Division must
-          come before raw points: a student with only 4 subjects, all A's,
-          has just 4 points — fewer than a 7-subject student with straight
-          A's (7 points) — so sorting on points alone would rank the
-          4-subject student above the genuinely stronger 7-subject one, even
-          though NECTA's own minimum-subject rule already caps that
-          4-subject student at Division IV. Sorting by division first keeps
-          "Top performers" meaning what it says: real Division I/II
-          students never get displaced by someone who simply sat fewer
-          exams.
+          total score descending as the final tiebreaker, so "Top
+          performers" always means genuine Division I/II students.
 
     ACSEE / Form 5-6 is different (verified against real 2025 result slips):
         - Division counts the student's COMBINATION subjects only (PCB,

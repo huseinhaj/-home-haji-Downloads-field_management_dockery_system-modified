@@ -1123,7 +1123,7 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     absent_lookup = payload['absent_lookup']
     student_subjects = payload['student_subjects']
     # Namba za CNO/POS: 1..N kwa mpangilio wa ROSTER (si performance rank).
-    # Rank halisi bado ipo kwenye r.position — inatumika kwenye TOP 5 tu.
+    # Rank halisi bado ipo kwenye r.position — inatumika kwenye TOP 4 tu.
     roster_numbers = payload.get('roster_numbers', {})
     N = len(results)
     n_subj = max(len(subjects), 1)
@@ -1400,19 +1400,19 @@ def generate_results_pdf_response(exam, style='normal', request=None):
         story.append(s_table)
         story.append(Spacer(1, 4))
 
-    # ── TOP 5 ──
+    # ── TOP 4 ──
     # results is in registration order (see get_exam_export_payload), NOT
-    # ranked by score — sort a copy by position here so "Top 5" is always
-    # the 5 actual best performers, regardless of the main table's order.
+    # ranked by score — sort a copy by position here so "Top 4" is always
+    # the 4 actual best performers, regardless of the main table's order.
     # ABS candidates are unranked (position None) and can never appear here.
     if results:
-        story.append(_p("<b>TOP 5 PERFORMERS</b>", st['section']))
+        story.append(_p("<b>TOP 4 PERFORMERS</b>", st['section']))
         th5 = ["POS", "NAME", "TOTAL", "AVG", "GPA", "PTS", "DIV"]
         t_data = [[_p(f"<b>{h}</b>", st['th']) for h in th5]]
         top5 = sorted(
             (r for r in results if r.position is not None),
             key=lambda r: r.position,
-        )[:5]
+        )[:4]
         for idx, r in enumerate(top5):
             nm = _student_name(r)
             if len(nm) > 28:
