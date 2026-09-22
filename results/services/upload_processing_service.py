@@ -181,7 +181,12 @@ def recompute_processed_results_for_exam(exam):
     Points and division follow the official NECTA method: convert each
     subject score to a grade (CSEE for Form 1-4, ACSEE for Form 5-6), take
     the student's BEST subjects (best_n = 7 for CSEE, 3 for ACSEE), sum
-    those grades' point values, then map the total to a division.
+    those grades' point values, then map the total to a division. TOTAL/
+    AVG are computed from those same counted subjects only — never every
+    subject a student happened to sit — so a candidate who takes extra
+    electives and does poorly in them isn't shown a misleadingly low
+    aggregate; a student's TOTAL is always consistent with the points
+    that actually set their division and rank.
 
     Incomplete sittings (CSEE / Form 1-4):
         - A candidate on the roster who sat NOTHING gets division ABS —
@@ -224,7 +229,10 @@ def recompute_processed_results_for_exam(exam):
     _sync_student_genders_from_roster(exam)
 
     students = Student.objects.filter(examresult__exam=exam).distinct().prefetch_related(
-        Prefetch('examresult_set', queryset=ExamResult.objects.filter(exam=exam).select_related('subject'))
+        Prefetch(
+            'examresult_set',
+            queryset=ExamResult.objects.filter(exam=exam).select_related('subject').order_by('subject__name'),
+        )
     )
 
     # ── Primary school (Darasa 1-7) ───────────────────────────────────
@@ -262,9 +270,7 @@ def recompute_processed_results_for_exam(exam):
             })
             continue
 
-        total = sum(result.score for result in results)
-        count = len(results)
-        average = (total / count) if count else 0.0
+        count = len(results)  # ALL subjects sat — for the INC check and subject_count only
 
         combo_code = ''
         acsee_principal_count = None
@@ -314,19 +320,29 @@ def recompute_processed_results_for_exam(exam):
         best = graded[:best_n]
         points = sum(p for _, p in best)
 
+        # TOTAL/AVG reflect only the COUNTED subjects — the same ones
+        # that set points/division — never every subject the student
+        # happened to sit. A student who takes extra electives and does
+        # poorly in them must not have that drag down a figure meant to
+        # describe their actual (best-subjects) performance: previously
+        # TOTAL summed every subject sat, so a genuinely stronger
+        # candidate with a couple of weak electives could show a LOWER
+        # total than a weaker candidate who simply sat fewer subjects —
+        # confusing on a report where position is sorted by points, not
+        # this total. (Primary is unaffected: best_n there is 999, so
+        # `best` already covers every subject sat.)
+        total = sum(r.score for r, _ in best)
+        counted_n = len(best)
+        average = (total / counted_n) if counted_n else 0.0
+
         division = '' if is_primary else get_division(points, form=exam.form)
         counted_subjects = ', '.join(r.subject.name for r, _ in best)
         if combo_code:
             counted_subjects = f"{combo_code}: {counted_subjects}"
 
-        # Tiebreaker for position ranking. For ACSEE this is the total of
-        # the COMBINATION subjects only (what actually set the division) —
-        # not General Studies / a 4th subject. For CSEE it stays the full
-        # total, unchanged.
-        if exam.form in (5, 6):
-            rank_total = sum(r.score for r, _ in best)
-        else:
-            rank_total = total
+        # Tiebreaker for position ranking — the total of the counted
+        # subjects only, same figure as TOTAL above.
+        rank_total = total
 
         # ── NECTA incomplete-sitting marker (O-Level / CSEE) ──────────
         # A candidate who sat SOME subjects but fewer than the 7 the CSEE

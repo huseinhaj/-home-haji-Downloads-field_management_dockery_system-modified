@@ -1795,28 +1795,104 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     # that final page, or — if it doesn't fit there — gets a page of its
     # own. Rows are never pulled off an already-packed page to make room
     # for it, so no results page ends up smaller than it needs to be.
-    # (Under necta each row is a framed mini-table that renders a few points
-    # taller than its bare cells, so a safety margin keeps ReportLab's own
-    # wrapping from spilling a framed row onto its own page. 'normal' keeps
-    # its original packing behaviour untouched — margin 0, exactly as before.)
-    chunks = []
-    idx = 0
+    def _build_page_table(c_start, c_end):
+        """The actual results Table ReportLab will render for rows
+        [c_start, c_end) — used both to verify a candidate chunk really
+        fits (see below) and, later, to render it for real. Returns None
+        for an empty range."""
+        if c_end <= c_start:
+            return None
+        if is_necta or is_prestige:
+            # Framed-row themes: each candidate's row IS a mini-table
+            # nested inside the page table and SPANned across all
+            # columns. Each cell is a LIST of flowables (ReportLab's
+            # format for nested content).
+            data = [_new_header_row()] + [
+                [[f]] for f in necta_frames[c_start:c_end]
+            ]
+        else:
+            data = [_new_header_row()] + all_rows[c_start:c_end]
+
+        table = Table(data, colWidths=cw)
+        rs = [
+            ('BACKGROUND', (0, 0), (-1, 0), _HB),
+            ('TEXTCOLOR', (0, 0), (-1, 0), _HF),
+            ('GRID', (0, 0), (-1, -1), 0.3, DARK_LINE),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+        ]
+        if is_necta or is_prestige:
+            # Body rows are single SPANned cells holding the framed
+            # mini-table: theme band behind them, zero side padding so
+            # the mini-table's columns line up 1:1 with the header's,
+            # and no inner grid (the mini-tables draw their own frames).
+            # Double outer frame around the whole table.
+            _outer = (NECTA_GRID, NECTA_TEXT_NAVY) if is_necta else (
+                (colors.HexColor("#C9A227"), colors.HexColor("#4A1D6E")) if style_key == 'royal'
+                else (colors.HexColor("#8A6D1F"), colors.HexColor("#1A1A1A"))
+            )
+            rs = [
+                ('BACKGROUND', (0, 0), (-1, 0), _HB),
+                ('TEXTCOLOR', (0, 0), (-1, 0), _HF),
+                ('GRID', (0, 0), (-1, 0), 0.3, DARK_LINE),
+                ('BACKGROUND', (0, 1), (-1, -1), _BB),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (-1, 0), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 2),
+                ('LEFTPADDING', (0, 0), (-1, 0), 3),
+                ('RIGHTPADDING', (0, 0), (-1, 0), 3),
+                ('TOPPADDING', (0, 1), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 2),
+                ('LEFTPADDING', (0, 1), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 1), (-1, -1), 0),
+            ]
+            for i in range(1, len(data)):
+                rs.append(('SPAN', (0, i), (-1, i)))
+            rs.append(('BOX', (0, 0), (-1, -1), 1.0, _outer[0]))
+            rs.append(('BOX', (0, 0), (-1, -1), 2.2, _outer[1]))
+        for i in range(1, len(data)):
+            if i % 2 == 0 and not (is_necta or is_prestige):
+                rs.append(('BACKGROUND', (0, i), (-1, i), _BB))
+        table.setStyle(TableStyle(rs))
+        return table
+
+    # Pack rows with a fast estimate first (cumulative row_heights, cheap),
+    # then VERIFY each candidate chunk against the real Table ReportLab
+    # will render — building the actual styled Table and reading its real
+    # .wrap() height back — shrinking by a row at a time until it truly
+    # fits. The estimate alone (bare per-cell wrap() outside any table
+    # context) can land a hair short of what the real table needs — its
+    # own grid lines, nested framing, or a cell that wraps one line
+    # differently once actually laid out — and at that margin ReportLab
+    # doesn't error, it silently SPILLS the last row or two onto their own
+    # near-empty extra page. Verifying against the real object removes the
+    # guesswork entirely: whatever it says fits, actually fits.
     n_rows = len(all_rows)
-    safety = SAFETY_MARGIN + 12 if (is_necta or is_prestige) else 0
-    while idx < n_rows:
+    chunks = []
+    next_start = 0
+    while next_start < n_rows:
         cum = header_h
-        j = idx
-        while j < n_rows and (j == idx or cum + row_heights[j] <= available_h - safety):
-            cum += row_heights[j]
-            j += 1
-        chunks.append((idx, j))
-        idx = j
+        end = next_start
+        while end < n_rows and (end == next_start or cum + row_heights[end] <= available_h):
+            cum += row_heights[end]
+            end += 1
+        while end > next_start:
+            real_h = header_h + _build_page_table(next_start, end).wrap(content_w, 10000)[1]
+            if real_h <= available_h:
+                break
+            end -= 1
+        chunks.append((next_start, end))
+        next_start = end
     if not chunks:
         chunks = [(0, 0)]
 
     c_start, c_end = chunks[-1]
-    last_page_used = header_h + sum(row_heights[c_start:c_end])
-    if last_page_used + tail_reserve > available_h - safety:
+    last_page_table = _build_page_table(c_start, c_end)
+    last_page_used = header_h + (last_page_table.wrap(content_w, 10000)[1] if last_page_table else 0)
+    if last_page_used + tail_reserve > available_h:
         chunks.append((n_rows, n_rows))  # tail doesn't fit here — give it its own page
 
     total_pages = len(chunks)
@@ -1838,62 +1914,8 @@ def generate_results_pdf_response(exam, style='normal', request=None):
         # A chunk can be empty when the tail block didn't fit on the
         # previous page and got bumped to a page of its own — skip the
         # table entirely rather than render one with just a header row.
-        if c_end > c_start:
-            if is_necta or is_prestige:
-                # Framed-row themes: each candidate's row IS a mini-table
-                # nested inside the page table and SPANned across all
-                # columns. Each cell is a LIST of flowables (ReportLab's
-                # format for nested content).
-                data = [_new_header_row()] + [
-                    [[f]] for f in necta_frames[c_start:c_end]
-                ]
-            else:
-                data = [_new_header_row()] + all_rows[c_start:c_end]
-
-            r_table = Table(data, colWidths=cw)
-            rs = [
-                ('BACKGROUND', (0, 0), (-1, 0), _HB),
-                ('TEXTCOLOR', (0, 0), (-1, 0), _HF),
-                ('GRID', (0, 0), (-1, -1), 0.3, DARK_LINE),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-                ('LEFTPADDING', (0, 0), (-1, -1), 3),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-            ]
-            if is_necta or is_prestige:
-                # Body rows are single SPANned cells holding the framed
-                # mini-table: theme band behind them, zero side padding so
-                # the mini-table's columns line up 1:1 with the header's,
-                # and no inner grid (the mini-tables draw their own frames).
-                # Double outer frame around the whole table.
-                _outer = (NECTA_GRID, NECTA_TEXT_NAVY) if is_necta else (
-                    (colors.HexColor("#C9A227"), colors.HexColor("#4A1D6E")) if style_key == 'royal'
-                    else (colors.HexColor("#8A6D1F"), colors.HexColor("#1A1A1A"))
-                )
-                rs = [
-                    ('BACKGROUND', (0, 0), (-1, 0), _HB),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), _HF),
-                    ('GRID', (0, 0), (-1, 0), 0.3, DARK_LINE),
-                    ('BACKGROUND', (0, 1), (-1, -1), _BB),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('TOPPADDING', (0, 0), (-1, 0), 2),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 2),
-                    ('LEFTPADDING', (0, 0), (-1, 0), 3),
-                    ('RIGHTPADDING', (0, 0), (-1, 0), 3),
-                    ('TOPPADDING', (0, 1), (-1, -1), 2),
-                    ('BOTTOMPADDING', (0, 1), (-1, -1), 2),
-                    ('LEFTPADDING', (0, 1), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 1), (-1, -1), 0),
-                ]
-                for i in range(1, len(data)):
-                    rs.append(('SPAN', (0, i), (-1, i)))
-                rs.append(('BOX', (0, 0), (-1, -1), 1.0, _outer[0]))
-                rs.append(('BOX', (0, 0), (-1, -1), 2.2, _outer[1]))
-            for i in range(1, len(data)):
-                if i % 2 == 0 and not (is_necta or is_prestige):
-                    rs.append(('BACKGROUND', (0, i), (-1, i), _BB))
-            r_table.setStyle(TableStyle(rs))
+        r_table = _build_page_table(c_start, c_end)
+        if r_table is not None:
             story.append(r_table)
 
         # ── Last page: grading key + centre performance + subject performance ──
@@ -1906,7 +1928,19 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     # ── Build ──
     buf = io.BytesIO()
 
-    frame = Frame(margin_lr, margin_bot, content_w, page_h - margin_top - margin_bot, id='main')
+    # Every width/height figure in this function (content_w, available_h,
+    # each row's measured height) assumes the frame's usable area is
+    # EXACTLY content_w × (page_h - margin_top - margin_bot) — but Frame's
+    # default 6pt padding on all four sides shrinks it by 12pt each way.
+    # Cells then get less real width than they were measured at, so a
+    # borderline one wraps an extra line ReportLab never told us about,
+    # and the results table silently spills its last row or two onto a
+    # near-empty extra page. Zero the frame's own padding so what we
+    # measured is what it actually gets.
+    frame = Frame(
+        margin_lr, margin_bot, content_w, page_h - margin_top - margin_bot, id='main',
+        leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0,
+    )
 
     tmpl = PageTemplate(id='main', frames=[frame], pagesize=A4, onPage=_footer)
 
