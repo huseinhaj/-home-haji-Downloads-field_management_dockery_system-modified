@@ -119,6 +119,7 @@ def result_verify(request, token):
 
     from .models import ProcessedResult as PR
     division = dict(PR.DIVISION_CHOICES).get(result.division, result.division)
+    is_marker = result.division in ('INC', 'ABS')
 
     context = {
         'valid': True,
@@ -126,9 +127,9 @@ def result_verify(request, token):
         'exam': exam,
         'student': student,
         'rows': rows,
-        'total': result.total_score,
-        'average': result.average_score,
-        'points': result.points,
+        'total': None if is_marker else result.total_score,
+        'average': None if is_marker else result.average_score,
+        'points': None if is_marker else result.points,
         'division': division,
         'position': result.position,
         'total_students': total_students,

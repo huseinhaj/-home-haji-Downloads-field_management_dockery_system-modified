@@ -379,17 +379,30 @@ class ProcessedResult(models.Model):
         ('III', 'Division III'),
         ('IV', 'Division IV'),
         ('0', 'Fail'),
+        # NECTA result-slip markers:
+        # INC — candidate sat SOME subjects but fewer than the 7 the CSEE
+        #       division scale assumes (masomo hayajafika 7). No division
+        #       can be computed from an incomplete sitting.
+        # ABS — candidate is on the roster but sat NOTHING (absent in all
+        #       subjects). Division/aggregate display as '-' and the
+        #       candidate is unranked (position NULL).
+        ('INC', 'Incomplete (INC)'),
+        ('ABS', 'Absent (ABS)'),
     ]
 
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     total_score = models.PositiveIntegerField()
     average_score = models.DecimalField(max_digits=5, decimal_places=2)
-    position = models.PositiveIntegerField()
+    # NULL = mwanafunzi hapangwi (ABS — hakufanya mtihani wowote). INC na
+    # madivisheni mengine yanapangwa kawaida; ABS huishia mwisho wa orodha.
+    position = models.PositiveIntegerField(null=True, blank=True)
     points = models.PositiveIntegerField()
     division = models.CharField(max_length=3, choices=DIVISION_CHOICES, blank=True,
         help_text="CSEE/ACSEE division (sekondari). BLANK kwa shule za msingi "
-                  "— msingi hauna division, unaonekana kwa jumla/wastani/nafasi.")
+                  "— msingi hauna division, unaonekana kwa jumla/wastani/nafasi. "
+                  "INC = masomo < 7 (hayajatosha kuhesabu daraja); "
+                  "ABS = hakufanya mtihani wowote.")
     counted_subjects = models.CharField(
         max_length=500, blank=True,
         help_text="Masomo bora yaliyotumika kuhesabu Daraja (mf. 7 bora kwa CSEE, 3 kwa ACSEE).",

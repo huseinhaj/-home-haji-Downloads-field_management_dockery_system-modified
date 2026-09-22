@@ -57,13 +57,13 @@
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:16px;">
           <div style="background:#F2F4F7;border-radius:8px;padding:10px;text-align:center;">
             <div style="font-size:11px;color:#64748b;">JUMLA</div>
-            <div style="font-size:18px;font-weight:800;">{{ total }}</div>
+            <div style="font-size:18px;font-weight:800;">{% if total is None %}-{% else %}{{ total }}{% endif %}</div>
           </div>
           <div style="background:#F2F4F7;border-radius:8px;padding:10px;text-align:center;">
             <div style="font-size:11px;color:#64748b;">WASTANI</div>
-            <div style="font-size:18px;font-weight:800;">{{ average }}</div>
+            <div style="font-size:18px;font-weight:800;">{% if average is None %}-{% else %}{{ average }}{% endif %}</div>
           </div>
-          {% if points %}
+          {% if points is not None %}
             <div style="background:#F2F4F7;border-radius:8px;padding:10px;text-align:center;">
               <div style="font-size:11px;color:#64748b;">POINTI</div>
               <div style="font-size:18px;font-weight:800;">{{ points }}</div>
@@ -77,7 +77,7 @@
           {% endif %}
           <div style="background:#F2F4F7;border-radius:8px;padding:10px;text-align:center;">
             <div style="font-size:11px;color:#64748b;">NAFASI</div>
-            <div style="font-size:18px;font-weight:800;">{{ position }} / {{ total_students }}</div>
+            <div style="font-size:18px;font-weight:800;">{% if position is None %}-{% else %}{{ position }} / {{ total_students }}{% endif %}</div>
           </div>
         </div>
 

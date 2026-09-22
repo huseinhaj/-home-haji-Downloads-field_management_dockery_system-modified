@@ -263,7 +263,7 @@
       </thead>
       <tbody>        {% for res in ed.processed_results %}
         <tr>
-          <td><span class="pos-badge">{{ res.position }}</span></td>
+          <td><span class="pos-badge">{% if res.position is None %}-{% else %}{{ res.position }}{% endif %}</span></td>
           <td>
             <strong>{{ res.student.first_name }} {% if res.student.middle_name %}{{ res.student.middle_name }} {% endif %}{{ res.student.last_name }}</strong>
           </td>
@@ -282,7 +282,7 @@
             <span title="Gredi ya wastani (msingi hauna division)">{{ ed.avg_grade_lookup|get_item:res.student.id|default:"—" }}</span>
           </td>
           {% else %}
-          <td style="text-align:center;">{{ res.points }}</td>
+          <td style="text-align:center;">{% if res.division == 'INC' or res.division == 'ABS' %}-{% else %}{{ res.points }}{% endif %}</td>
           <td style="text-align:center;">
             <span class="div-{{ res.division }}" {% if res.counted_subjects %}title="{% if LANG == 'sw' %}Masomo yaliyotumika{% else %}Subjects counted{% endif %}: {{ res.counted_subjects }}"{% endif %}>{% if LANG == 'sw' %}Daraja{% else %}Division{% endif %} {{ res.division }}</span>
           </td>

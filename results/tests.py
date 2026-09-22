@@ -1802,8 +1802,9 @@ class RecomputeAcseeDivisionTests(TestCase):
 		recompute_processed_results_for_exam(self.exam)
 		good_r = ProcessedResult.objects.get(exam=self.exam, student=good)
 		absent_r = ProcessedResult.objects.get(exam=self.exam, student=absent)
-		self.assertEqual(absent_r.division, '0')
-		self.assertGreater(absent_r.position, good_r.position)
+		self.assertEqual(absent_r.division, 'ABS')
+		self.assertIsNone(absent_r.position)
+		self.assertIsNotNone(good_r.position)
 
 	def test_single_principal_subject_A_is_padded_to_division_III(self):
 		# One A (1 pt) + two missing slots scored F (7) each = 15 -> Div III.
@@ -1857,8 +1858,9 @@ class RecomputeAcseeDivisionTests(TestCase):
 
 
 class RecomputeCseeMinimumSubjectRuleTests(TestCase):
-	"""The existing CSEE (<7 subjects) rule must be untouched by the
-	ACSEE changes."""
+	"""CSEE candidates who sat FEWER than 7 subjects get the INC marker
+	(masomo hayajafika 7) — no division is computed from an incomplete
+	sitting. Candidates who sat NOTHING get ABS with a NULL position."""
 
 	databases = {'default', 'results'}
 
@@ -1874,21 +1876,65 @@ class RecomputeCseeMinimumSubjectRuleTests(TestCase):
 		recompute_processed_results_for_exam(self.exam)
 		return ProcessedResult.objects.get(exam=self.exam, student=student)
 
-	def test_fewer_than_seven_with_a_pass_is_capped_at_division_IV(self):
+	def test_fewer_than_seven_subjects_get_INC(self):
 		result = self._run(Physics=90, Chemistry=88, Biology=85)  # 3x A
-		self.assertEqual(result.division, 'IV')
+		self.assertEqual(result.division, 'INC')
 
-	def test_fewer_than_seven_without_a_real_pass_is_division_0(self):
+	def test_fewer_than_seven_with_fails_also_get_INC(self):
 		result = self._run(Physics=20, Chemistry=25)  # 2x F
-		self.assertEqual(result.division, '0')
+		self.assertEqual(result.division, 'INC')
+
+	def test_exactly_seven_subjects_get_a_real_division(self):
+		subjects = ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'English', 'Kiswahili', 'Civics']
+		student = Student.objects.create(first_name='Full', last_name='House', gender='M')
+		for name, score in zip(subjects, [90, 90, 90, 90, 90, 90, 90]):  # 7x A = 7 pts
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=self.exam, student=student, subject=subject, score=score)
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		recompute_processed_results_for_exam(self.exam)
+		result = ProcessedResult.objects.get(exam=self.exam, student=student)
+		self.assertEqual(result.division, 'I')
+
+	def test_absent_in_all_subjects_gets_ABS_marker_and_no_position(self):
+		student = Student.objects.create(first_name='Ghost', last_name='Candidate', gender='F')
+		for name in ['Physics', 'Chemistry']:
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=self.exam, student=student, subject=subject, score=None, is_absent=True)
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		recompute_processed_results_for_exam(self.exam)
+		result = ProcessedResult.objects.get(exam=self.exam, student=student)
+		self.assertEqual(result.division, 'ABS')
+		self.assertIsNone(result.position)
+
+	def test_INC_ranks_below_every_real_division(self):
+		# A 7-subject Division IV student must outrank a 3-subject INC one,
+		# and the INC row still gets a position (below all real divisions).
+		full = Student.objects.create(first_name='Full', last_name='Seven', gender='M')
+		for name, score in zip(
+			['Physics', 'Chemistry', 'Biology', 'Mathematics', 'English', 'Kiswahili', 'Civics'],
+			[20, 20, 20, 20, 20, 20, 20],  # 7x F (<30) = 35 pts -> Div 0, still ranked
+		):
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=self.exam, student=full, subject=subject, score=score)
+		partial = Student.objects.create(first_name='Partial', last_name='Three', gender='F')
+		for name, score in [('Physics', 90), ('Chemistry', 88), ('Biology', 85)]:
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=self.exam, student=partial, subject=subject, score=score)
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		recompute_processed_results_for_exam(self.exam)
+		full_r = ProcessedResult.objects.get(exam=self.exam, student=full)
+		partial_r = ProcessedResult.objects.get(exam=self.exam, student=partial)
+		self.assertEqual(full_r.division, '0')
+		self.assertEqual(partial_r.division, 'INC')
+		self.assertIsNotNone(full_r.position)
+		self.assertIsNotNone(partial_r.position)
+		self.assertLess(full_r.position, partial_r.position)
 
 	def test_fewer_subjects_straight_As_does_not_outrank_full_subject_straight_As(self):
-		"""Raw points alone would rank a 4-subject straight-A student (4
-		points) above a 7-subject straight-A student (7 points), even
-		though NECTA's own rule caps the 4-subject student at Division IV.
-		Position must reflect division first so 'top performers' are the
-		students who are actually strongest, not just the ones who sat
-		fewer exams."""
+		"""A 4-subject straight-A student is INC (fewer than 7 subjects) —
+		INC ranks below every real division, so the 7-subject straight-A
+		Division I student must come first. (Was previously the
+		Division-IV cap; now the INC marker serves the same purpose.)"""
 		partial = Student.objects.create(first_name='Partial', last_name='Subjects', gender='F')
 		for name, score in [('Physics', 90), ('Chemistry', 88), ('Biology', 85), ('Mathematics', 92)]:
 			subject, _ = Subject.objects.get_or_create(name=name)
@@ -1908,7 +1954,7 @@ class RecomputeCseeMinimumSubjectRuleTests(TestCase):
 		full_r = ProcessedResult.objects.get(exam=self.exam, student=full)
 
 		self.assertEqual(partial_r.points, 4)
-		self.assertEqual(partial_r.division, 'IV')
+		self.assertEqual(partial_r.division, 'INC')
 		self.assertEqual(full_r.points, 7)
 		self.assertEqual(full_r.division, 'I')
 		self.assertLess(full_r.position, partial_r.position)

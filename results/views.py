@@ -458,8 +458,8 @@ def _preview_csee_division(exam, exam_results):
     results = [er for er in exam_results if not er.is_absent and er.score is not None]
     if not results:
         return {
-            'points': 0, 'division': '0', 'counted': 0, 'best_n': best_n,
-            'capped': True, 'missing': best_n,
+            'points': 0, 'division': 'ABS', 'counted': 0, 'best_n': best_n,
+            'incomplete': False, 'absent_all': True, 'missing': best_n,
         }
 
     graded = sorted(
@@ -473,16 +473,15 @@ def _preview_csee_division(exam, exam_results):
     points = sum(p for _, p in best)
     division = get_division(points, form=exam.form)
 
-    capped = len(results) < best_n
-    if capped:
-        grades = [get_grade_for_form(er.score, exam.form, primary=bool(exam.school and exam.school.is_primary)) for er, _ in best]
-        passing_a_bc = sum(1 for g in grades if g in ('A', 'B', 'C'))
-        passing_d = sum(1 for g in grades if g == 'D')
-        division = 'IV' if (passing_a_bc >= 1 or passing_d >= 2) else '0'
+    # Chini ya masomo best_n → INC (hakuna daraja inakokotolewa tena).
+    incomplete = len(results) < best_n
+    if incomplete:
+        division = 'INC'
 
     return {
         'points': points, 'division': division, 'counted': len(results),
-        'best_n': best_n, 'capped': capped, 'missing': best_n - len(results),
+        'best_n': best_n, 'incomplete': incomplete, 'absent_all': False,
+        'missing': best_n - len(results),
     }
 
 
@@ -542,23 +541,24 @@ def edit_processed_result(request, result_id):
                     f"Nafasi {fresh.position} kati ya {class_size}."
                 )
             else:
+                _pos_txt = f"Nafasi {fresh.position} kati ya {class_size}." if fresh.position is not None else "Hana nafasi (ABS)."
                 messages.success(
                     request,
                     f"Alama za {name} zimehifadhiwa. Matokeo mapya: "
                     f"Division {fresh.division}, Alama {fresh.points}, "
-                    f"Nafasi {fresh.position} kati ya {class_size}."
+                    f"{_pos_txt}"
                 )
             if exam.form in (1, 2, 3, 4) and not (exam.school and exam.school.is_primary):
                 # exam_results zimehaririwa hapo juu — helper inazisoma
                 # kama zilivyo sasa (source of truth iliyohifadhiwa).
                 snapshot = _preview_csee_division(exam, exam_results)
-                if snapshot and snapshot['capped']:
+                if snapshot and snapshot['incomplete']:
                     messages.warning(
                         request,
                         f"{name} ana masomo {snapshot['counted']} tu yaliyopimwa kwenye mtihani huu "
-                        f"(NECTA inahitaji {snapshot['best_n']}). Kwa hiyo daraja lake juu zaidi ni "
-                        f"Division IV hata kama alama zote ni nzuri. Jaza alama za masomo mengine "
-                        f"kupitia upload/marks entry ili daraja likokotwe kikamilifu."
+                        f"(NECTA inahitaji {snapshot['best_n']}). Daraja lake litaonyeshwa kama "
+                        f"INC (Incomplete) hadi masomo yatakapofika {snapshot['best_n']}. "
+                        f"Jaza alama za masomo mengine kupitia upload/marks entry."
                     )
         else:
             messages.success(
@@ -575,7 +575,7 @@ def edit_processed_result(request, result_id):
     if _edit_primary:
         # Msingi: hakuna division/NECTA-cap — onyesha idadi ya masomo tu.
         _sat = sum(1 for er in exam_results if not er.is_absent and er.score is not None)
-        preview = {'counted': _sat, 'best_n': 0, 'capped': False,
+        preview = {'counted': _sat, 'best_n': 0, 'incomplete': False, 'absent_all': False,
                    'points': 0, 'division': '', 'missing': 0}
     return render(request, 'results/edit_processed_result.html', {
         'result': result,

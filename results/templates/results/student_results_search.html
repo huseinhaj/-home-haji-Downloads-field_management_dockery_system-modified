@@ -318,7 +318,7 @@
               <span class="exam-badge">{{ r.exam_type }}</span>
               <span class="exam-badge">{% if r.school_is_primary %}Darasa {{ r.form }}{% else %}Form {{ r.form }}{% endif %}</span>
               <span class="exam-badge">{{ r.year }}</span>
-              {{ r.school_name }} &bull; #{{ r.position }}
+              {{ r.school_name }} &bull; #{% if r.position is None %}-{% else %}{{ r.position }}{% endif %}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:0.6rem;">

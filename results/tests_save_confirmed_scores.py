@@ -106,17 +106,32 @@ class SaveConfirmedScoresTestBase(TestCase):
         self.assertTrue(row.is_absent)
         self.assertIsNone(row.score)
 
-    # Patch the service module attribute — the view does its own
-    # `from .services.upload_processing_service import recompute…` at
-    # call time, which binds whatever the module exposes right then.
+    # Patch the service module attribute — the background recompute
+    # thread binds whatever the module exposes right then. Thread.start
+    # is also patched so the failing recompute never actually runs
+    # (sqlite test DBs lock up when a second thread writes mid-test).
+    @mock.patch('threading.Thread.start')
     @mock.patch('results.services.upload_processing_service.recompute_processed_results_for_exam')
-    def test_recompute_failure_returns_json_not_html(self, mock_recompute):
-        """If the recompute step blows up the client must get a JSON error
-        it can display — not a bare HTML 500 that surfaces as 'Save failed'.
-        Scores themselves ARE saved, so it's a 200 with a warning field."""
+    def test_recompute_failure_returns_json_not_html(self, mock_recompute, mock_start):
+        """Recompute now runs in a BACKGROUND thread (the inline version
+        blew past the edge timeout on big classes), so a recompute blow-up
+        can never reach the client as a bare HTML 500 'Save failed'.
+        The client still gets a JSON 200 with scores saved plus a job_id;
+        a background failure is recorded on that BulkUploadJob (status
+        ERROR) which the frontend polls — never in the HTTP response."""
         mock_recompute.side_effect = RuntimeError('boom')
         resp = self._post([self._score(self.students[0], 50)])
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data['status'], 'done')
-        self.assertIn('warning', data)
+        self.assertEqual(data['recompute'], 'background')
+        self.assertIn('job_id', data)
+        # Scores themselves ARE saved despite the recompute failure.
+        self.assertTrue(
+            ExamResult.objects.filter(exam=self.exam, subject=self.subject).exists()
+        )
+        # A recompute job was queued for the frontend to poll.
+        from .scan_models import BulkUploadJob
+        self.assertTrue(
+            BulkUploadJob.objects.filter(pk=data['job_id']).exists()
+        )

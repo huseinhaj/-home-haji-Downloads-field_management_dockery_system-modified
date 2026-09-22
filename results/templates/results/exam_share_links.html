@@ -179,7 +179,7 @@
 <div id="students-container">
   {% for s in students_links %}
   <div class="sl-student" data-division="{{ s.division }}" data-name="{{ s.name|lower }}">
-    <span class="pos">#{{ s.position }}</span>
+    <span class="pos">{% if s.position is None %}ABS{% else %}#{{ s.position }}{% endif %}</span>
     <span class="name">
       <span class="div-badge div-{{ s.division }}">{{ s.division }}</span>
       {{ s.name }}

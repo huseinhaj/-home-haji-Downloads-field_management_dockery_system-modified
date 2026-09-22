@@ -119,8 +119,14 @@ _DIVISION_SUBJECT_COUNT = {1: 7, 2: 7, 3: 7, 4: 7, 5: 3, 6: 3}
 
 # CSEE position ranking sorts by DIVISION first, then raw points within it —
 # see the "fewer-subjects" note in recompute_processed_results_for_exam for
-# why raw points alone can't be the primary key.
-_CSEE_DIVISION_ORDER = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, '0': 5}
+# why raw points alone can't be the primary key. INC/ABS are markers, not
+# divisions: they always rank below every REAL division INCLUDING '0' — an
+# INC candidate's points only ever sum a handful of subjects, so tying it
+# with '0' would let raw points reintroduce the exact fewer-subjects
+# advantage this ordering exists to prevent. ABS never gets a stored
+# position anyway (see the bulk_create loop below); its order value here
+# only has to avoid crashing a lookup.
+_CSEE_DIVISION_ORDER = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, '0': 5, 'INC': 6, 'ABS': 7}
 
 
 def _sync_student_genders_from_roster(exam):
@@ -225,15 +231,17 @@ def recompute_processed_results_for_exam(exam):
         results = [r for r in all_results if not r.is_absent and r.score is not None]
 
         # Students with ALL subjects absent/blank still appear in results
-        # with Division 0 (fail) — they must not be skipped so the PDF
-        # shows every registered student.
+        # — they must not be skipped so the PDF shows every registered
+        # student. NECTA slip marker: division ABS, aggregate '-', and no
+        # position (ranked last, unranked). Primary schools keep the
+        # simple zeroed row (no division concept there).
         if not results:
             student_data.append({
                 'student': student,
                 'total': 0,
                 'average': 0.0,
                 'points': 0,
-                'division': '' if is_primary else '0',
+                'division': '' if is_primary else 'ABS',
                 'counted_subjects': '',
                 'subject_count': 0,
                 'rank_total': 0,
@@ -311,22 +319,13 @@ def recompute_processed_results_for_exam(exam):
         else:
             rank_total = total
 
-        # ── NECTA minimum-pass rule (O-Level / CSEE) ──────────────────
-        # Official NECTA rule: a candidate with FEWER than 7 subjects can
-        # only receive Division IV — never I, II, or III — if they have:
-        #   - at least 1 subject in Grade A, B, or C,  OR
-        #   - at least 2 subjects in Grade D.
-        # Without either, they receive Division 0 (fail).
-        # Division I-III require 7+ subjects because the points scale
-        # (7–17 = Div I) assumes 7 subjects are counted.
+        # ── NECTA incomplete-sitting marker (O-Level / CSEE) ──────────
+        # A candidate who sat SOME subjects but fewer than the 7 the CSEE
+        # division scale assumes gets the marker INC ("masomo hayajafika
+        # 7") instead of a division — no real division can be computed
+        # from an incomplete sitting, so none is printed.
         if exam.form in (1, 2, 3, 4) and not is_primary and count < best_n:
-            grades = [get_grade_for_form(r.score, exam.form) for r, _ in best]
-            passing_a_bc = sum(1 for g in grades if g in ('A', 'B', 'C'))
-            passing_d = sum(1 for g in grades if g == 'D')
-            if passing_a_bc >= 1 or passing_d >= 2:
-                division = 'IV'  # max division for < 7 subjects
-            else:
-                division = '0'
+            division = 'INC'
 
         student_data.append(
             {
@@ -356,6 +355,9 @@ def recompute_processed_results_for_exam(exam):
             key=lambda item: (item['subject_count'] == 0, -item['total'], -item['average'])
         )
     elif exam.form in (1, 2, 3, 4):
+        # ABS candidates (subject_count == 0) go last and are UNRANKED —
+        # their position stays None on the stored row. INC rows rank
+        # below every real division but above ABS.
         student_data.sort(
             key=lambda item: (
                 item['subject_count'] == 0,
@@ -372,19 +374,29 @@ def recompute_processed_results_for_exam(exam):
     # One bulk upsert instead of one update_or_create per student — the
     # remote DB's per-query latency made this the slowest part of an
     # upload for exams with more than a handful of students.
-    processed_results = [
-        ProcessedResult(
-            exam=exam,
-            student=data['student'],
-            total_score=data['total'],
-            average_score=round(data['average'], 2),
-            points=data['points'],
-            division=data['division'],
-            position=position,
-            counted_subjects=data['counted_subjects'],
+    #
+    # Position: ABS rows (sat nothing) are UNRANKED — position stays NULL
+    # whatever their sort index was; they only ever sort to the tail.
+    processed_results = []
+    position = 0
+    for data in student_data:
+        if data['division'] == 'ABS':
+            stored_position = None
+        else:
+            position += 1
+            stored_position = position
+        processed_results.append(
+            ProcessedResult(
+                exam=exam,
+                student=data['student'],
+                total_score=data['total'],
+                average_score=round(data['average'], 2),
+                points=data['points'],
+                division=data['division'],
+                position=stored_position,
+                counted_subjects=data['counted_subjects'],
+            )
         )
-        for position, data in enumerate(student_data, start=1)
-    ]
     if processed_results:
         ProcessedResult.objects.bulk_create(
             processed_results,
@@ -401,3 +413,12 @@ def recompute_processed_results_for_exam(exam):
     # removes ones who no longer do.
     current_student_ids = [data['student'].id for data in student_data]
     ProcessedResult.objects.filter(exam=exam).exclude(student_id__in=current_student_ids).delete()
+
+
+def recompute_processed_results_for_exam_with_model(exam, ProcessedResult):
+    """Migration entry point — identical recompute but with the ProcessedResult
+    model passed in (history-model-safe, see migration 0054 backfill)."""
+    recompute_processed_results_for_exam(exam)
+    # The normal recompute already upserted via the real model; nothing
+    # extra to do here — the parameter exists so a historical-model caller
+    # (migration) never crashes on model imports.

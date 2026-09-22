@@ -44,23 +44,29 @@
           {% endif %}
           <div>
             <div style="font-size:0.72rem;color:#667;" class="text-uppercase">{% if LANG == 'sw' %}Nafasi{% else %}Position{% endif %}</div>
-            <strong style="font-size:1.35rem;">{{ result.position }}</strong>
+            <strong style="font-size:1.35rem;">{% if result.position is None %}-{% else %}{{ result.position }}{% endif %}</strong>
           </div>
           <div>
             <div style="font-size:0.72rem;color:#667;" class="text-uppercase">{% if LANG == 'sw' %}Masomo yaliyopimwa{% else %}Subjects sat{% endif %}</div>
             <strong style="font-size:1.35rem;">{{ preview.counted }} / {{ preview.best_n }}</strong>
           </div>
         </div>
-        {% if preview.capped %}
+        {% if preview.absent_all %}
+        <div class="alert alert-warning mt-3 mb-0" style="font-size:0.82rem;">
+          {% if LANG == 'sw' %}
+            ⚠️ <strong>Mwanafunzi hakufanya mtihani wowote</strong> (masomo yote ni X). Daraja lake ni <strong>ABS</strong> na hana nafasi (position) kwenye ranking.
+          {% else %}
+            ⚠️ <strong>This student sat no exam at all</strong> (every subject is X). Their division shows <strong>ABS</strong> and they have no position in the ranking.
+          {% endif %}
+        </div>
+        {% elif preview.incomplete %}
         <div class="alert alert-warning mt-3 mb-0" style="font-size:0.82rem;">
           {% if LANG == 'sw' %}
             ⚠️ <strong>Mwanafunzi ana masomo {{ preview.counted }} tu yaliyopimwa</strong> kwenye mtihani huu (NECTA inahitaji {{ preview.best_n }}).
-            Kwa mtindo wa NECTA, daraja lake <strong>juu zaidi ni Division IV</strong> hata kama alama zote ni nzuri.
-            Badilisha alama ukipenda — lakini daraja haitapanda zaidi ya IV hadi masomo mengine yatajazwa.
+            Masomo hayajafika {{ preview.best_n }} — daraja lake litaonyeshwa kama <strong>INC (Incomplete)</strong> hadi masomo mengine yatajazwa.
           {% else %}
             ⚠️ <strong>This student has only {{ preview.counted }} subject(s) sat</strong> in this exam (NECTA requires {{ preview.best_n }}).
-            Under NECTA rules their division is <strong>capped at Division IV</strong> even if every mark is excellent.
-            You can still edit marks, but the division cannot rise above IV until more subjects are filled in.
+            Fewer than {{ preview.best_n }} subjects — their division shows <strong>INC (Incomplete)</strong> until more subjects are filled in.
           {% endif %}
         </div>
         {% endif %}

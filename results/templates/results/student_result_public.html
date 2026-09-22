@@ -275,7 +275,7 @@
             <div class="student-name">{{ student_name }}</div>
             <div class="student-meta">
               {% if student.gender == 'M' %}Male / Kiume{% else %}Female / Kike{% endif %}
-              &bull; Position: {{ result.position }} of {{ total_students }}
+              &bull; Position: {% if result.position is None %}-{% else %}{{ result.position }} of {{ total_students }}{% endif %}
             </div>
           </div>
           <div class="division-box">
@@ -319,6 +319,16 @@
 
         <!-- Summary stats -->
         <div class="summary-strip">
+          {% if result.division == 'INC' or result.division == 'ABS' %}
+          <div class="summary-item">
+            <div class="label">Total Score / Jumla</div>
+            <div class="value">-</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">Average / Wastani</div>
+            <div class="value">-</div>
+          </div>
+          {% else %}
           <div class="summary-item">
             <div class="label">Total Score / Jumla</div>
             <div class="value">{{ result.total_score }}</div>
@@ -327,6 +337,7 @@
             <div class="label">Average / Wastani</div>
             <div class="value">{{ result.average_score }}</div>
           </div>
+          {% endif %}
           {% if is_primary_school %}
           <div class="summary-item">
             <div class="label">Gredi ya Wastani</div>
@@ -335,7 +346,7 @@
           {% else %}
           <div class="summary-item">
             <div class="label">Points / Pointi</div>
-            <div class="value">{{ result.points }}</div>
+            <div class="value">{% if result.division == 'INC' or result.division == 'ABS' %}-{% else %}{{ result.points }}{% endif %}</div>
           </div>
           <div class="summary-item">
             <div class="label">Division / Daraja</div>

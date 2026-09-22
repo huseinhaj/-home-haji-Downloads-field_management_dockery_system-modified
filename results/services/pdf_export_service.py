@@ -1305,19 +1305,21 @@ def generate_results_pdf_response(exam, style='normal', request=None):
             div_data.append(row)
     else:
         story.append(_p("<b>DIVISION PERFORMANCE SUMMARY</b>", st['section']))
-        div_hdrs = ["SEX", "I", "II", "III", "IV", "0"]
+        # INC (masomo < 7) na ABS (hakufanya mtihani) ni markers za NECTA —
+        # zinaonyeshwa kwenye safu zao ili jumla ifikie N.
+        div_hdrs = ["SEX", "I", "II", "III", "IV", "0", "INC", "ABS"]
         div_data = [[_p(f"<b>{h}</b>", st['th']) for h in div_hdrs]]
         for sex_label in ('F', 'M', 'T'):
             if sex_label == 'T':
-                row_counts = [div_counts.get(d, 0) for d in ('I', 'II', 'III', 'IV', '0')]
+                row_counts = [div_counts.get(d, 0) for d in ('I', 'II', 'III', 'IV', '0', 'INC', 'ABS')]
             else:
-                row_counts = [sex_div[sex_label].get(d, 0) for d in ('I', 'II', 'III', 'IV', '0')]
+                row_counts = [sex_div[sex_label].get(d, 0) for d in ('I', 'II', 'III', 'IV', '0', 'INC', 'ABS')]
             row = [_p(f"<b>{sex_label}</b>", st['td_bold'])]
             for dc in row_counts:
                 row.append(_p(str(dc), st['td']))
             div_data.append(row)
 
-    cw_div = [content_w * w for w in [0.12, 0.176, 0.176, 0.176, 0.176, 0.176]]
+    cw_div = [content_w * w for w in [0.12, 0.16, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12]]
     div_table = Table(div_data, colWidths=cw_div)
     ds = _std_table_style(len(div_data), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_prestige)
     ds.append(('ALIGN', (1, 0), (-1, -1), 'CENTER'))
@@ -1402,11 +1404,15 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     # results is in registration order (see get_exam_export_payload), NOT
     # ranked by score — sort a copy by position here so "Top 5" is always
     # the 5 actual best performers, regardless of the main table's order.
+    # ABS candidates are unranked (position None) and can never appear here.
     if results:
         story.append(_p("<b>TOP 5 PERFORMERS</b>", st['section']))
         th5 = ["POS", "NAME", "TOTAL", "AVG", "GPA", "PTS", "DIV"]
         t_data = [[_p(f"<b>{h}</b>", st['th']) for h in th5]]
-        top5 = sorted(results, key=lambda r: r.position)[:5]
+        top5 = sorted(
+            (r for r in results if r.position is not None),
+            key=lambda r: r.position,
+        )[:5]
         for idx, r in enumerate(top5):
             nm = _student_name(r)
             if len(nm) > 28:
@@ -1442,20 +1448,21 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     subj_st = ParagraphStyle('lss', parent=st['td'], fontSize=6.5, leading=8,
                              wordWrap='CJK')
 
-    r_hdr = (["CNO", "NAME", "SEX", "JUMLA", "WASTANI", "GREDI", "DETAILED SUBJECTS"]
+    r_hdr = (["CNO", "NAME", "SEX", "JUMLA", "WASTANI", "GREDI", "NAFASI", "DETAILED SUBJECTS"]
              if is_primary else
-             ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "DETAILED SUBJECTS"])
+             ["CNO", "NAME", "SEX", "AGGT", "GPA", "DIV", "POS", "DETAILED SUBJECTS"])
     # NAME and DETAILED SUBJECTS are the columns most prone to wrapping onto
     # extra lines (driving up row height, and so page count) — give them as
     # much of the row as the narrow fixed columns can spare.
     cw = [
         content_w * 0.04,   # CNO
-        content_w * 0.18,   # NAME
+        content_w * 0.17,   # NAME
         content_w * 0.03,   # SEX
         content_w * 0.045,  # AGGT
         content_w * 0.045,  # GPA
-        content_w * 0.035,  # DIV
-        content_w * 0.625,  # DETAILED SUBJECTS
+        content_w * 0.05,   # DIV — must fit "ABS" on one line, not just "INC"
+        content_w * 0.04,   # POS
+        content_w * 0.58,   # DETAILED SUBJECTS
     ]
     PAD_V = 4  # TOPPADDING(2) + BOTTOMPADDING(2) — row height budget
     PAD_H = 6  # LEFTPADDING(3) + RIGHTPADDING(3) — row width budget
@@ -1481,8 +1488,13 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     all_rows = []
     necta_frames = []  # parallel to all_rows: per-row mini-table (necta) or None
     for r in results:
-        # CNO = namba ya mwanafunzi kwenye ROSTER (1..N), si performance rank
-        cno = f"{roster_numbers.get(r.student_id, r.position):03d}"
+        # CNO = namba ya mwanafunzi kwenye ROSTER (1..N), si performance rank.
+        # Position inaweza kuwa NULL (ABS) — CNO haitegemei rank, hivyo
+        # tunarudi kwenye namba ya mfululizo wa results.
+        _cno_raw = roster_numbers.get(r.student_id, r.position)
+        if _cno_raw is None:
+            _cno_raw = results.index(r) + 1
+        cno = f"{_cno_raw:03d}"
         nm = _student_name(r)
         stu_gpa = r.points / counted if counted else 0
 
@@ -1540,16 +1552,21 @@ def generate_results_pdf_response(exam, style='normal', request=None):
                 _p(str(r.total_score), cell_bold),
                 _p(f"{float(r.average_score):.1f}", cell_bold),
                 _p(avg_g or '-', dv_st),
+                _p(str(r.position) if r.position is not None else '-', cell_st),
                 _p(subj_text, subj_st),
             ]
         else:
+            # INC (masomo < 7) na ABS (hakufanya chochote) hazina jumla
+            # halali ya AGGT — inaonyeshwa '-' kwenye broadsheet.
+            aggt_text = '-' if r.division in ('INC', 'ABS') else str(r.points)
             row_cells = [
                 _p(cno, cell_st),
                 _p(nm, name_st),
                 _p(r.student.gender or 'M', cell_st),
-                _p(str(r.points), cell_bold),
-                _p(f"{stu_gpa:.2f}", cell_bold),
+                _p(aggt_text, cell_bold),
+                _p(f"{stu_gpa:.2f}" if r.division not in ('INC', 'ABS') else '-', cell_bold),
                 _p(str(r.division), dv_st),
+                _p(str(r.position) if r.position is not None else '-', cell_st),
                 _p(subj_text, subj_st),
             ]
         if is_necta or is_prestige:
@@ -1650,7 +1667,7 @@ def generate_results_pdf_response(exam, style='normal', request=None):
             dp_row.append(_p(str(sum(1 for r in results if avg_grade_lookup.get(r.student_id) == grade)), cell_st))
         dp_data.append(dp_row)
     else:
-        div_perf_hdrs = ["", "REGIST", "ABSENT", "SAT", "CLEAN", "DIV I", "DIV II", "DIV III", "DIV IV", "DIV 0"]
+        div_perf_hdrs = ["", "REGIST", "ABSENT", "SAT", "CLEAN", "DIV I", "DIV II", "DIV III", "DIV IV", "DIV 0", "INC", "ABS"]
         absent_count = sum(1 for r in results if r.total_score == 0)
         dp_data = [[_p(f"<b>{h}</b>", ParagraphStyle('dph', parent=cell_st, fontSize=6, textColor=_HF, fontName='Helvetica-Bold')) for h in div_perf_hdrs]]
         dp_row = [_p("<b>TOTAL</b>", ParagraphStyle('dpt', parent=cell_st, fontSize=6, fontName='Helvetica-Bold'))]
@@ -1660,6 +1677,7 @@ def generate_results_pdf_response(exam, style='normal', request=None):
             _p(str(div_counts.get('I', 0)), cell_st), _p(str(div_counts.get('II', 0)), cell_st),
             _p(str(div_counts.get('III', 0)), cell_st), _p(str(div_counts.get('IV', 0)), cell_st),
             _p(str(div_counts.get('0', 0)), cell_st),
+            _p(str(div_counts.get('INC', 0)), cell_st), _p(str(div_counts.get('ABS', 0)), cell_st),
         ]
         dp_data.append(dp_row)
     cw_dp = [content_w / len(div_perf_hdrs)] * len(div_perf_hdrs)
@@ -1999,6 +2017,14 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         if is_primary
         else dict(ProcessedResult.DIVISION_CHOICES).get(result.division, result.division)
     )
+    # INC/ABS markers: hakuna jumla halali ya kuonyesha — aggregate ina '-'
+    # na position ni NULL (ABS) au ya kawaida (INC inapangwa kwa kawaida).
+    marker = result.division if result.division in ('INC', 'ABS') else ''
+    if marker:
+        division_label = dict(ProcessedResult.DIVISION_CHOICES).get(marker, marker)
+    position_label = (
+        f"{result.position} / {total_students}" if result.position is not None else "-"
+    )
 
     page_w, page_h = A4
     margin_lr = 1.6 * cm
@@ -2065,11 +2091,11 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         ]
     else:
         summary_row = [
-            str(result.total_score),
-            str(result.average_score),
-            str(result.points),
+            '-' if marker else str(result.total_score),
+            '-' if marker else str(result.average_score),
+            '-' if marker else str(result.points),
             division_label,
-            f"{result.position} / {total_students}",
+            position_label,
         ]
     summary_table = Table(
         [[_p(f"<b>{h}</b>", st['th_sm']) for h in summary_hdrs], [_p(v, st['td_bold']) for v in summary_row]],

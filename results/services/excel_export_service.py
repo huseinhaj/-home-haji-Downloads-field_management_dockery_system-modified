@@ -287,8 +287,12 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict, theme: dict
         elif result.division in ('IV', '0'):
             div_cell.fill = _make_fill("FFFADBD8")
             div_cell.font = Font(bold=True, name='Calibri', size=9, color="FF922B21")
+        elif result.division in ('INC', 'ABS'):
+            div_cell.fill = _make_fill("FFE2E8F0")
+            div_cell.font = Font(bold=True, name='Calibri', size=9, color="FF334155")
 
-        ws.cell(row=data_row, column=pts_col, value=result.points)
+        # INC/ABS: hakuna jumla halali ya points — '-' badala ya namba.
+        ws.cell(row=data_row, column=pts_col, value='-' if result.division in ('INC', 'ABS') else result.points)
 
     # Grade legend — ranges follow the exam's NECTA scale (FTNA vs CSEE)
     last_data_row = header_row + len(results) + 1
@@ -383,14 +387,18 @@ def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict, theme: di
         div_counts[r.division] = div_counts.get(r.division, 0) + 1
 
     total_students = len(results) or 1
-    for div in ['I', 'II', 'III', 'IV', '0']:
+    for div in ['I', 'II', 'III', 'IV', '0', 'INC', 'ABS']:
         count = div_counts.get(div, 0)
         pct = round(count / total_students * 100, 1)
         if lang == 'sw':
-            ws.cell(row=cur_row, column=1, value=f"Daraja {div}")
+            sw_names = {'I': 'Daraja I', 'II': 'Daraja II', 'III': 'Daraja III',
+                        'IV': 'Daraja IV', '0': 'Daraja 0', 'INC': 'Hakimaliza (INC)',
+                        'ABS': 'Hakuhudhuria (ABS)'}
+            ws.cell(row=cur_row, column=1, value=sw_names[div])
         else:
             div_names = {'I': 'Division I', 'II': 'Division II', 'III': 'Division III',
-                         'IV': 'Division IV', '0': 'Fail (0)'}
+                         'IV': 'Division IV', '0': 'Fail (0)', 'INC': 'Incomplete (INC)',
+                         'ABS': 'Absent (ABS)'}
             ws.cell(row=cur_row, column=1, value=div_names[div])
         ws.cell(row=cur_row, column=1).border = _make_border()
         ws.cell(row=cur_row, column=2, value=count).border = _make_border()
@@ -458,7 +466,10 @@ def _build_sheet_muhtasari(wb: openpyxl.Workbook, exam, payload: dict, theme: di
     # results is in registration order (see get_exam_export_payload), NOT
     # ranked by score — sort a copy by position so "Top 5" is always the 5
     # actual best performers, regardless of the main sheet's row order.
-    for result in sorted(results, key=lambda r: r.position)[:5]:
+    # ABS candidates are unranked (position None) and can never appear here.
+    for result in sorted(
+        (r for r in results if r.position is not None), key=lambda r: r.position
+    )[:5]:
         student = result.student
         full_name = ' '.join(
             part for part in [student.first_name, student.middle_name or '', student.last_name] if part
