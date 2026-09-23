@@ -87,113 +87,44 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
     students_by_id = {s.id: s for s in Student.objects.filter(id__in=roster_ids)}
     roster_students = [students_by_id[rid] for rid in roster_ids if rid in students_by_id]
 
-    content_rows = [r for r in extracted_rows if not r.get('blank')]
-    blank_rows = [r for r in extracted_rows if r.get('blank')]
-
-    # ── Strict positional alignment (the normal, happy case) ──────────
-    # We generated this scoresheet ourselves (download_scoresheet_names_pdf)
-    # straight from *this* roster, in *this* order, with a continuous "Na."
-    # column printed on it. So when the OCR hands back a clean, gap-free
-    # 1..N run of printed row numbers with N == the roster size — every
-    # printed line read exactly once, nobody skipped — the faithful match
-    # is simply: row 1 -> student 1, row 2 -> student 2, ... to the end.
-    # NO name-similarity gate here: a name the teacher wrote by hand and a
-    # vision model then re-typed very often scores low against the roster's
-    # own spelling even when the row is unmistakably the right student, and
-    # that gate is exactly what was dumping correctly-read marks into
-    # "missing" / spawning duplicate "new" students.
-    row_numbers = [r.get('row') for r in extracted_rows]
-    aligned_rows = None
-    if (len(roster_students)
-            and len(extracted_rows) == len(roster_students)
-            and all(isinstance(n, int) for n in row_numbers)
-            and sorted(row_numbers) == list(range(1, len(roster_students) + 1))):
-        # Sort by the printed "Na." number in case the pages came back
-        # slightly out of order.
-        aligned_rows = sorted(extracted_rows, key=lambda r: r['row'])
-
-    if aligned_rows is not None:
-        matched = []
-        blank_ids = set()
-        for student, row in zip(roster_students, aligned_rows):
-            if row.get('blank'):
-                blank_ids.add(student.id)
-                continue
-            matched.append({
-                'id': student.id,
-                'score': row['score'],
-                'is_absent': row.get('is_absent', False),
-                'raw_name': row['raw_name'],
-                'confidence': 1.0,
-                'is_new': False,
-            })
-        matched_ids = {m['id'] for m in matched}
-        missing = [
-            {'id': s.id, 'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p)}
-            for s in roster_students
-            if s.id not in matched_ids and s.id not in blank_ids
-        ]
-        logger.info(
-            "[ScoreSheetPhoto] Strict positional alignment: %d rows == %d roster students "
-            "(%d scored, %d blank, %d missing)",
-            len(aligned_rows), len(roster_students), len(matched), len(blank_ids), len(missing),
+    # ── Jina kwanza, namba ya mstari baadaye ─────────────────────────
+    # Zamani: karatasi safi ya 1..N yenye N == rosti ilipangwa KWA NAMBA
+    # TU (mstari 1 → mwanafunzi 1 ...). Rosti ya skrini ikitofautiana na
+    # karatasi (mwanafunzi ameongezwa/ameondolewa baada ya kuprint, mwalimu
+    # ametumia orodha yake) alama ZOTE zilisogea kwa wanafunzi wasio wao —
+    # lalamiko la 2026-09-23. Sasa ni kama scan ya academic
+    # (process_bulk_upload_task), ambayo walimu wanasema inapanga vizuri:
+    #   1. Jina linalofanana waziwazi (≥0.80, exclusive) linashinda — bila
+    #      kujali mstari uko wapi kwenye karatasi.
+    #   2. Mstari ambao jina lake halikusomeka (mwandiko → OCR) unapangwa
+    #      kwa namba yake ya "Na." — ila tu kama mwanafunzi wa nafasi hiyo
+    #      bado hajachukuliwa NA jina linafanana angalau kidogo (≥0.35).
+    # Mistari BLANK inashiriki kwenye hatua zote mbili ili imfunge
+    # mwanafunzi wake (cell tupu kwenye karatasi) — fuzzy haiwezi
+    # kumpaka alama ya mwenzake.
+    name_assignments, leftover = match_rows_to_roster_exclusive(
+        extracted_rows, roster_students, threshold=0.80,
+    )
+    assignments = dict(name_assignments)
+    claimed_ids = {student.id for student, _ in assignments.values()}
+    if leftover and roster_students:
+        pos_assign, _ = match_rows_to_roster_by_position(
+            [extracted_rows[i] for i in leftover], roster_students,
+            min_confidence=0.35, exclude_ids=claimed_ids,
         )
-        return {
-            'matched': matched, 'unmatched': [], 'missing': missing,
-            'warnings': _row_number_warnings(extracted_rows),
-        }
+        for local_i, assignment in pos_assign.items():
+            assignments[leftover[local_i]] = assignment
 
-    logger.info(
-        "[ScoreSheetPhoto] Not a clean 1..N sheet (rows=%d, roster=%d) — "
-        "falling back to position+fuzzy matching",
-        len(extracted_rows), len(roster_students),
-    )
-
-    # Position first: the row's printed "Na." number is stronger evidence
-    # than a re-typed name, since we generated the sheet from this exact
-    # roster order ourselves. min_confidence=0.0 -> when the AI gives us a
-    # printed row number at all, trust it (align student N with row N); the
-    # teacher has already told us the sheet is complete and in order, so a
-    # handwritten-then-OCR'd name diverging from the roster spelling must
-    # not veto that. Only rows with NO usable row number fall through to
-    # name-only exclusive matching below.
-    position_assignments, unresolved_indices = match_rows_to_roster_by_position(
-        content_rows, roster_students, min_confidence=0.0,
-    )
-    remaining_rows = [content_rows[i] for i in unresolved_indices]
-    claimed_ids = {student.id for student, _ in position_assignments.values()}
-    remaining_roster = [s for s in roster_students if s.id not in claimed_ids]
-
-    # Exclusive matching: each roster student can only be claimed by ONE
-    # row, so two similarly-named students (same surname, or a name OCR
-    # misread as another student's) can't both collapse onto the same
-    # person — see match_rows_to_roster_exclusive's docstring.
-    #
-    # Blank-protection (lalamiko halisi: mwalimu hakuwajaza wanafunzi 3
-    # lakini scan iliweka alama kwao): mwanafunzi ambaye karatasi
-    # inaonyesha waziwazi cell tupu (BLANK, na namba ya mstari iliyosomwa)
-    # hawezi kuchukuliwa na fuzzy fallback — fuzzy name matching ni ya
-    # kuaminika kidogo (jina la OCR linaweza kufanana na wa mwingine), hivyo
-    # alama ya mwanafunzi mwingine inaweza kutembea kwake. Wanafunzi hao
-    # wanaishia 'missing' → mstari wa manjano → mwalimu anawajaza mwenyewe.
-    blank_claimed_ids = set()
-    for br in blank_rows:
-        row_no = br.get('row')
-        if row_no and 1 <= row_no <= len(roster_students):
-            blank_claimed_ids.add(roster_students[row_no - 1].id)
-    if blank_claimed_ids:
-        remaining_roster = [s for s in remaining_roster if s.id not in blank_claimed_ids]
-
-    name_assignments, _unmatched_local = match_rows_to_roster_exclusive(
-        remaining_rows, remaining_roster, threshold=0.80,
-    )
-    assignments = dict(position_assignments)
-    for local_index, assignment in name_assignments.items():
-        assignments[unresolved_indices[local_index]] = assignment
+    blank_ids = {
+        assignments[i][0].id for i, r in enumerate(extracted_rows)
+        if r.get('blank') and i in assignments
+    }
 
     matched = []
     unmatched = []
-    for row_index, row in enumerate(content_rows):
+    for row_index, row in enumerate(extracted_rows):
+        if row.get('blank'):
+            continue
         assignment = assignments.get(row_index)
         if assignment:
             student, confidence = assignment
@@ -227,11 +158,6 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
     # action needed) or never showed up in the OCR output at all (needs a
     # manual check — most likely a mark the AI missed).
     matched_ids = {m['id'] for m in matched if not m.get('is_new')}
-    blank_ids = set()
-    for br in blank_rows:
-        row_no = br.get('row')
-        if row_no and 1 <= row_no <= len(roster_students):
-            blank_ids.add(roster_students[row_no - 1].id)
     missing = [
         {'id': s.id, 'name': ' '.join(p for p in [s.first_name, s.middle_name or '', s.last_name] if p)}
         for s in roster_students

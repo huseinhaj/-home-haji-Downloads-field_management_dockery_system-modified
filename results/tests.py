@@ -473,6 +473,27 @@ class ScoreSheetPhotoExtractViewTests(TestCase):
 		self.assertEqual(matched_by_id[third.id], 41)
 		self.assertNotIn(self.student_two.id, matched_by_id)  # blank row carries no score
 
+	def test_sheet_order_differs_from_roster_matches_by_name(self):
+		"""Lalamiko 2026-09-23: karatasi safi 1..N lakini mpangilio wake si
+		ule wa rosti ya skrini (mwanafunzi ameongezwa/kuondolewa baada ya
+		kuprint) — alama zilisogea kwa wanafunzi wasio wao. Jina lililosomeka
+		waziwazi lazima lishinde namba ya mstari (kama scan ya academic)."""
+		third = Student.objects.create(first_name='Grace', middle_name='', last_name='Kimaro', gender='F')
+		roster = [
+			{'id': self.student_one.id, 'name': 'Amina Juma'},
+			{'id': self.student_two.id, 'name': 'Peter Mushi'},
+			{'id': third.id, 'name': 'Grace Kimaro'},
+		]
+		extracted = [
+			{'raw_name': 'Grace Kimaro', 'score': 91, 'row': 1, 'blank': False},
+			{'raw_name': 'Amina Juma', 'score': 64, 'row': 2, 'blank': False},
+			{'raw_name': 'Peter Mushi', 'score': None, 'row': 3, 'blank': True},
+		]
+		data = self._post(extracted, roster).json()
+		matched_by_id = {row['id']: row['score'] for row in data['matched']}
+		self.assertEqual(matched_by_id, {third.id: 91, self.student_one.id: 64})
+		self.assertEqual(data['missing'], [])
+
 	def test_blank_rows_block_fuzzy_steal_of_unfilled_students(self):
 		"""Lalamiko halisi: mwalimu hakuwajaza wanafunzi 3 (cells tupu kwenye
 		karatasi) lakini baada ya scan walikuwa wamejaziwa — fuzzy fallback

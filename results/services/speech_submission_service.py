@@ -401,6 +401,7 @@ def match_rows_to_roster_by_position(
     rows: List[dict],
     ordered_roster: List[Student],
     min_confidence: float = 0.35,
+    exclude_ids: Iterable[int] = (),
 ) -> Tuple[dict, List[int]]:
     """Match scoresheet rows to the roster using the PRINTED ROW NUMBER
     the AI read off the sheet's "Na." column, instead of re-deriving a
@@ -421,10 +422,14 @@ def match_rows_to_roster_by_position(
     match_rows_to_roster_exclusive, so the caller can feed the leftovers
     (rows with no usable row number, or whose position candidate flunked
     the sanity check) into that function as a name-only fallback.
+
+    ``exclude_ids``: students already claimed by an earlier (name) pass —
+    their slot stays in ``ordered_roster`` so row numbers keep lining up,
+    but no row can be assigned to them here.
     """
     assignments: dict = {}
     unresolved: list = []
-    claimed_students: set = set()
+    claimed_students: set = set(exclude_ids)
     for row_index, row in enumerate(rows):
         row_no = row.get('row')
         if not row_no or not (1 <= row_no <= len(ordered_roster)):
