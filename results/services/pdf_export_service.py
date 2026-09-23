@@ -1435,6 +1435,108 @@ def generate_results_pdf_response(exam, style='normal', request=None):
         t_table.setStyle(TableStyle(ts))
         story.append(t_table)
 
+    # ── QR ya portal ya matokeo ya shule (anti-forgery + convenience) ──
+    # Kila ukurasa wa ripoti hii una QR yake mwenyewe — jalada/summary na
+    # kila ukurasa wa detailed listing — ili mzazi aliyepata ukurasa MMOJA
+    # tu (uliochapishwa au kupigwa picha peke yake) bado apate njia ya
+    # kuthibitisha matokeo online, si tu yule aliyepata ukurasa fulani
+    # maalum. Inaelekeza portal ya public search (/shule/matokeo/?school=)
+    # — si token ya mwanafunzi mmoja, kwa sababu ripoti ya darasa ni ya
+    # kila mtu (privacy: haiwezi kumwachia mtu mwingine matokeo ya
+    # mwanafunzi fulani). URL ni KAMILI (https://...) — kamera ya simu
+    # haifungui path pekee.
+    _qr_png_bytes = None
+    try:
+        _school_id = exam.school_id
+        if _school_id:
+            _qr_png_bytes = _qr_data_uri(_qr_url(f"/shule/matokeo/?school={_school_id}", request), box_size=5)
+    except Exception:
+        logger.warning("Class report QR generation failed (exam=%s)", exam.id, exc_info=True)
+
+    def _build_qr_block():
+        """Fresh QR flowables for one page — a Spacer + a note/image table.
+        New Table/Image instances every call, since a single flowable
+        instance can only ever be placed on one page. Empty list if the QR
+        couldn't be generated (report still renders fine without it)."""
+        if not _qr_png_bytes:
+            return []
+        try:
+            _qr_note = _p(
+                "<b>THIBITISHA MATOKEO ONLINE</b><br/>Scan QR hii — tafuta "
+                "mwanafunzi kwenye portal rasmi ya shule",
+                ParagraphStyle('cls_qr', parent=st['sig'], fontSize=7, alignment=1),
+            )
+            _qr_tbl = Table(
+                [[_qr_note, Image(io.BytesIO(_qr_png_bytes), width=1.6 * cm, height=1.6 * cm)]],
+                colWidths=[content_w - 2.1 * cm, 2.1 * cm],
+            )
+            _qr_tbl.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                ('BOX', (0, 0), (-1, -1), 0.8, _HB),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            return [Spacer(1, 6), _qr_tbl]
+        except Exception:
+            logger.warning("Class report QR block failed (exam=%s)", exam.id, exc_info=True)
+            return []
+
+    def _flowable_height(f):
+        if isinstance(f, Spacer):
+            return f.height
+        return f.wrap(content_w, 10000)[1]
+
+    # Page 1's content (division summary, performance summary, subject
+    # stats, top 4 — all variable-length) isn't measured/paginated by hand
+    # like the results pages below are, so ReportLab lays it out on its
+    # own. Only add the QR here if it demonstrably still fits in what's
+    # left of the page — appending it unconditionally risks the exact
+    # near-empty-extra-page bug the results pages were just fixed for,
+    # just for page 1 instead. If it doesn't fit, the first results page
+    # (which always gets one) covers for it.
+    # Summing each flowable's own .wrap() this way runs a few points
+    # optimistic versus how they actually lay out back to back in a real
+    # Frame (spacing/rounding accumulates) — the same kind of gap that
+    # caused the results-page overflow bug just fixed. A wide safety
+    # margin here (not a tight one like the results pages get, since
+    # those are individually verified against the real Table object —
+    # this sum never is) keeps that from recurring on page 1.
+    _page1_used = sum(_flowable_height(f) for f in story)
+    _page1_budget = page_h - margin_top - margin_bot - 20 - 60  # 20pt footer + 60pt margin of error
+    _qr_candidate = _build_qr_block()
+    if _qr_candidate and _page1_used + sum(_flowable_height(f) for f in _qr_candidate) <= _page1_budget:
+        story.extend(_qr_candidate)
+    elif _qr_png_bytes and results and story and story[-1] is t_table:
+        # Ukurasa wa 1 umejaa (darasa kubwa — masomo mengi kwenye subject
+        # stats): QR ndogo inakaa PEMBENI ya jedwali la TOP 4 (linatumia
+        # 90% ya upana) badala ya chini yake — haiongezi urefu hata point
+        # moja, hivyo kila ukurasa bado una QR bila hatari ya ukurasa mtupu.
+        try:
+            _qr_side = Table(
+                [[Image(io.BytesIO(_qr_png_bytes), width=1.5 * cm, height=1.5 * cm)],
+                 [_p("<b>SCAN</b>", ParagraphStyle('cls_qr_s', parent=st['sig'], fontSize=6, alignment=1))]],
+                colWidths=[content_w * 0.10],
+            )
+            _qr_side.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            _top_row = Table([[t_table, _qr_side]], colWidths=[content_w * 0.90, content_w * 0.10])
+            _top_row.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            story[-1] = _top_row
+        except Exception:
+            logger.warning("Class report page-1 side QR failed (exam=%s)", exam.id, exc_info=True)
+
     # ══════════════════════════════════════════════════════════════════════
     # RESULTS PAGES — each page gets its OWN table (no splitting issues)
     # CNO | NAME | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
@@ -1727,54 +1829,15 @@ def generate_results_pdf_response(exam, style='normal', request=None):
         tail_flowables.append(sp_table)
         tail_flowables.append(Spacer(1, 6))
 
-    # ── QR ya portal ya matokeo ya shule (anti-forgery + convenience) ──
-    # Ripoti ya darasa ina QR inayoelekeza portal ya public search
-    # (/shule/matokeo/?school=<id>) — mzazi anascan, anatafuta mwanafunzi
-    # WAKE kwenye portal rasmi. Si token ya mwanafunzi mmoja: ripoti ya
-    # darasa ni ya kila mtu, hivyo QR isiweze kumwachia mtu mwingine
-    # matokeo ya mwanafunzi fulani (privacy).
-    # URL ni KAMILI (https://...) — kamera ya simu haifungui path pekee.
-    # Imepeakwa moja kwa moja kwenye story (siyo tail_flowables) kwa
-    # sababu ReportLab huvuta flowables kutoka tail hadi ukurasa mpya —
-    # QR iliishia kwenye ukurasa wa pili, na mzazi aliyepata ukurasa wa
-    # kwanza hakumpata. Kosa la DB/QR linapigwa logi na QR inarukwa —
-    # ripoti yenyewe haifeli.
-    try:
-        _school_id = exam.school_id
-        if _school_id:
-            _qr_png = _qr_data_uri(_qr_url(f"/shule/matokeo/?school={_school_id}", request), box_size=5)
-            if _qr_png:
-                _qr_note = _p(
-                    "<b>THIBITISHA MATOKEO ONLINE</b><br/>Scan QR hii — tafuta "
-                    "mwanafunzi kwenye portal rasmi ya shule",
-                    ParagraphStyle('cls_qr', parent=st['sig'], fontSize=7, alignment=1),
-                )
-                _qr_tbl = Table(
-                    [[_qr_note, Image(io.BytesIO(_qr_png), width=1.6 * cm, height=1.6 * cm)]],
-                    colWidths=[content_w - 2.1 * cm, 2.1 * cm],
-                )
-                _qr_tbl.setStyle(TableStyle([
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('ALIGN', (1, 0), (1, 0), 'CENTER'),
-                    ('BOX', (0, 0), (-1, -1), 0.8, _HB),
-                    ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-                    ('TOPPADDING', (0, 0), (-1, -1), 4),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-                ]))
-                story.append(Spacer(1, 6))
-                story.append(_qr_tbl)
-    except Exception:
-        logger.warning("Class report QR block failed (exam=%s)", exam.id, exc_info=True)
-
     # Signature is drawn in _footer canvas function on the last page
     # (left: Academic Officer, right: Head of School, with date)
 
-    def _flowable_height(f):
-        if isinstance(f, Spacer):
-            return f.height
-        return f.wrap(content_w, 10000)[1]
-
     tail_reserve = sum(_flowable_height(f) for f in tail_flowables)
+    # Every detailed-listing page carries its own QR block too (see
+    # _build_qr_block above) — reserve its height up front so the packing
+    # budget below already accounts for it on every page, not just the
+    # last one.
+    qr_reserve = sum(_flowable_height(f) for f in _build_qr_block())
 
     # Calculate how much vertical room a results table has on a page:
     # header (150pt) + spacer (6pt) = 156pt overhead
@@ -1785,7 +1848,7 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     header_overhead = 150 + 6  # 156pt
     footer_text = 20  # just footer text line
     SAFETY_MARGIN = 15
-    available_h = page_h - margin_top - margin_bot - header_overhead - footer_text - SAFETY_MARGIN
+    available_h = page_h - margin_top - margin_bot - header_overhead - footer_text - SAFETY_MARGIN - qr_reserve
 
     # Pack rows by their REAL measured height, filling EVERY page to full
     # capacity first — plain greedy, ignoring the tail block entirely — so
@@ -1921,6 +1984,10 @@ def generate_results_pdf_response(exam, style='normal', request=None):
         # ── Last page: grading key + centre performance + subject performance ──
         if pg_idx == total_pages:
             story.extend(tail_flowables)
+
+        # QR on every page (see _build_qr_block above) — a fresh set of
+        # flowables each time, never the same instance placed twice.
+        story.extend(_build_qr_block())
 
         if pg_idx < total_pages:
             story.append(PageBreak())
