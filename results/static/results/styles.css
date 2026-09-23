@@ -1004,3 +1004,101 @@ body {
     padding-bottom: 0;
   }
 }
+
+/* ============================================================
+   MENYU INAYOJIELEZEA — makundi (desktop dropdown + drawer)
+   Kila kiungo: jina + mstari mmoja wa "kinakupeleka wapi".
+   Data: results/page_help.py → NAV
+   ============================================================ */
+.app-nav { align-items: center; flex-wrap: wrap; }
+.nav-group { position: relative; }
+.nav-group-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink-700);
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+}
+.nav-group-btn:hover,
+.nav-group.open .nav-group-btn { color: var(--ink-900); border-color: rgba(15, 23, 42, 0.3); }
+.nav-group.is-active .nav-group-btn { color: var(--accent-500); border-color: var(--accent-500); background: rgba(31, 122, 61, 0.06); }
+.nav-group-btn:focus-visible,
+.nav-item:focus-visible,
+.drawer-item:focus-visible { outline: 2px solid var(--secondary-500); outline-offset: 2px; }
+.nav-caret { font-size: 0.65rem; transition: transform 0.15s; }
+.nav-group.open .nav-caret { transform: rotate(180deg); }
+
+.nav-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 1200;
+  width: 340px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--surface-100);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.35);
+  padding: 6px;
+}
+.nav-group:last-of-type .nav-menu { left: auto; right: 0; }
+.nav-group.open .nav-menu { display: block; }
+
+.app-nav a.nav-item,
+.nav-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  padding: 0.55rem 0.7rem;
+  text-decoration: none;
+  color: var(--ink-900);
+}
+.app-nav a.nav-item:hover,
+.nav-item:hover { background: rgba(31, 122, 61, 0.08); color: var(--ink-900); }
+.nav-item i,
+.drawer-item i { width: 20px; margin-top: 0.2rem; text-align: center; color: var(--accent-500); flex: none; }
+.nav-item b,
+.drawer-item b { display: block; font-weight: 700; font-size: 0.9rem; line-height: 1.25; }
+.nav-item small,
+.drawer-item small { display: block; font-weight: 500; font-size: 0.76rem; line-height: 1.35; color: var(--ink-500); margin-top: 0.1rem; }
+.app-nav a.nav-item.active,
+.nav-item.active,
+.drawer-nav a.drawer-item.active { background: rgba(31, 122, 61, 0.12); box-shadow: inset 3px 0 0 var(--accent-500); }
+.app-nav a.nav-logout { color: var(--danger-500); }
+
+.drawer-group-title {
+  margin: 0.7rem 0 0.15rem;
+  padding: 0 0.85rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+.drawer-group-title i { margin-right: 0.35rem; color: var(--secondary-500); }
+.drawer-nav a.drawer-item { align-items: flex-start; }
+
+.bottom-nav a.active { color: var(--accent-500); font-weight: 700; }
+
+.srs-page-help summary .ph-crumb { color: var(--ink-500); font-weight: 600; }
+
+[data-theme="dark"] .nav-group-btn { background: #1e293b; color: var(--ink-700); border-color: var(--line); }
+[data-theme="dark"] .nav-group-btn:hover,
+[data-theme="dark"] .nav-group.open .nav-group-btn { color: #f8fafc; border-color: rgba(148, 163, 184, 0.4); }
+[data-theme="dark"] .nav-group.is-active .nav-group-btn { color: #7bd197; border-color: #3f9a5c; background: rgba(63, 154, 92, 0.12); }
+[data-theme="dark"] .nav-menu { background: #1e293b; }
+[data-theme="dark"] .nav-item,
+[data-theme="dark"] .app-nav a.nav-item { color: var(--ink-900); background: transparent; }
+[data-theme="dark"] .nav-item:hover,
+[data-theme="dark"] .app-nav a.nav-item:hover { background: rgba(123, 209, 151, 0.1); color: #f8fafc; }

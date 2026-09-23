@@ -420,6 +420,7 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
                         or_error = retry_exc
                         logger.warning("[ScoreSheetOCR] OpenRouter retry failed: %s", retry_exc)
 
+    gemini_error = None
     if GOOGLE_API_KEY:
         try:
             logger.info("[ScoreSheetOCR] Trying Gemini (fallback)")
@@ -427,10 +428,39 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
             logger.info("[ScoreSheetOCR] Gemini success")
             return text
         except Exception as exc:
+            gemini_error = exc
             logger.warning("[ScoreSheetOCR] Gemini failed: %s", exc)
-            raise RuntimeError(str(exc)) from (or_error or exc)
 
-    raise RuntimeError(str(or_error) if or_error else "No AI provider configured")
+    if not (or_error or gemini_error):
+        raise RuntimeError("No AI provider configured")
+    # Watumiaji waliona JSON ghafi ya Gemini tu ("401 … OAuth 2 access
+    # token …") wakati chanzo halisi kilikuwa pia salio la OpenRouter
+    # kuisha. Eleza kila mtoa huduma kwa lugha rahisi + nini cha kufanya.
+    reasons = []
+    if or_error:
+        reasons.append("OpenRouter: " + _explain_ai_error(or_error))
+    if gemini_error:
+        reasons.append("Gemini: " + _explain_ai_error(gemini_error))
+    raise RuntimeError(" | ".join(reasons)) from (gemini_error or or_error)
+
+
+def _explain_ai_error(exc) -> str:
+    """Kosa la mtoa huduma wa AI → sentensi fupi ya Kiswahili yenye suluhisho.
+    'OR_TRUNCATED' inabaki kwenye maandishi ili retry iendelee kuitambua."""
+    msg = str(exc)
+    low = msg.lower()
+    if msg == "OR_TRUNCATED":
+        return "jibu lilikatika katikati (OR_TRUNCATED)"
+    if " 402" in msg or "insufficient credits" in low or "can only afford" in low:
+        return "salio limeisha (402) — ongeza credits: openrouter.ai/settings/credits"
+    if " 401" in msg or " 403" in msg or "api key not valid" in low or "unauthenticated" in low:
+        return ("ufunguo wa API kwenye server si sahihi (401) — weka ufunguo sahihi "
+                "kwenye Railway → Variables")
+    if " 429" in msg or "quota" in low or "rate limit" in low:
+        return "kikomo cha matumizi kimefikiwa (429) — subiri dakika chache ujaribu tena"
+    if "timed out" in low or "timeout" in low:
+        return "imechelewa kujibu (mtandao) — jaribu tena"
+    return msg[:160]
 
 
 def check_ocr_health() -> dict:
