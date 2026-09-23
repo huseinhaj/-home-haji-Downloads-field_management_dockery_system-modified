@@ -4090,13 +4090,60 @@ def bulk_assign_form_student_subjects(request):
 @academic_required
 @require_POST
 def delete_form_student(request, student_id):
-    """Delete a single form student."""
+    """Delete a single form student.
+
+    remove_results=1 → mwondoe pia kwenye matokeo ya mitihani YOTE ya darasa
+    hilo shuleni (bila hii alama zake zinabaki na anaendelea kuonekana
+    kwenye PDF za matokeo — rosti ni orodha tu)."""
     school = request.user.school
     student = get_object_or_404(FormStudent, id=student_id, school=school)
     form_num = student.form
+    removed = None
+    if request.POST.get('remove_results') == '1':
+        removed = _remove_student_from_form_results(
+            school, form_num, student.first_name, student.middle_name, student.last_name,
+        )
     student.delete()
-    messages.success(request, "Mwanafunzi ameondolewa.")
+    if removed and removed[0]:
+        messages.success(request, (
+            f"Mwanafunzi ameondolewa kwenye orodha na kwenye matokeo "
+            f"(alama {removed[0]} kwenye mitihani {removed[1]})."
+        ))
+    elif removed is not None:
+        messages.success(request, "Mwanafunzi ameondolewa. Hakuwa na alama kwenye mitihani ya darasa hili.")
+    else:
+        messages.success(request, "Mwanafunzi ameondolewa.")
     return redirect(f'{reverse("upload_form_students")}?form={form_num}')
+
+
+def _remove_student_from_form_results(school, form_num, first, middle, last):
+    """Futa alama + ProcessedResult za mwanafunzi (majina matatu, bila kujali
+    herufi) kwenye mitihani yote ya darasa `form_num` shuleni, panga upya
+    nafasi, na futa Student aliyebaki yatima. Returns (marks, exams)."""
+    exams = list(Exam.objects.filter(school=school, form=form_num))
+    students = list(Student.objects.filter(
+        first_name__iexact=first, middle_name__iexact=middle or '', last_name__iexact=last,
+        examresult__exam__in=exams,
+    ).distinct())
+    if not students:
+        return 0, 0
+    touched = set(ExamResult.objects.filter(
+        exam__in=exams, student__in=students,
+    ).values_list('exam_id', flat=True))
+    with transaction.atomic(using='results'):
+        n_marks = ExamResult.objects.filter(exam__in=exams, student__in=students).delete()[0]
+        ProcessedResult.objects.filter(exam__in=exams, student__in=students).delete()
+        for st in students:
+            if not ExamResult.objects.filter(student=st).exists() \
+                    and not ProcessedResult.objects.filter(student=st).exists():
+                st.delete()
+    for exam in exams:
+        if exam.id in touched:
+            try:
+                recompute_processed_results_for_exam(exam)
+            except Exception:
+                logger.exception('delete_form_student: recompute failed for exam %s', exam.id)
+    return n_marks, len(touched)
 
 
 @academic_required

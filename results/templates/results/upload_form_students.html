@@ -306,8 +306,10 @@
               </td>
               <td>
                 <form method="post" action="{% url 'delete_form_student' s.id %}" class="d-inline"
-                      onsubmit="return confirm('Delete {{ s.first_name }} {{ s.last_name }}?');">
+                      data-name="{{ s.first_name }} {{ s.middle_name }} {{ s.last_name }}" data-form="{{ s.form }}"
+                      onsubmit="return confirmRosterDelete(this);">
                   {% csrf_token %}
+                  <input type="hidden" name="remove_results" value="0">
                   <button type="submit" class="btn btn-sm btn-outline-danger">🗑</button>
                 </form>
               </td>
@@ -610,5 +612,18 @@ function saveScannedRoster() {
   })
   .catch(err => { btn.disabled = false; alert('Hitilafu: ' + err); });
 }
+</script>
+<script>
+  // Futa kwenye rosti → uliza pia kama aondolewe kwenye matokeo (PDF).
+  function confirmRosterDelete(form) {
+    const name = form.dataset.name.replace(/\s+/g, ' ').trim();
+    if (!confirm('Mfute ' + name + ' kwenye orodha ya darasa?')) return false;
+    form.querySelector('[name=remove_results]').value = confirm(
+      'Mwondoe pia ' + name + ' kwenye MATOKEO ya mitihani yote ya darasa hili (Form ' +
+      form.dataset.form + ')?\n\nOK = alama zake zinafutwa, hataonekana kwenye PDF.\n' +
+      'Cancel = aondolewe kwenye orodha tu, alama zibaki.'
+    ) ? '1' : '0';
+    return true;
+  }
 </script>
 {% endblock %}

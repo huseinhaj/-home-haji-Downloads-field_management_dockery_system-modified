@@ -404,6 +404,35 @@ class AcademicAddStudentMarksTests(TestCase):
         self.assertEqual(ProcessedResult.objects.get(exam=self.exam, student=keep).position, 1)
 
 
+    def test_roster_delete_with_remove_results_clears_pdf_rows(self):
+        other_exam = Exam.objects.create(name='Annual 2026', year=2026, form=3,
+                                         school=self.school, exam_type='ANNUAL')
+        fs = FormStudent.objects.create(school=self.school, form=3, academic_year=2026,
+                                        admission_no='R1', first_name='Futa', middle_name='Kabisa',
+                                        last_name='Sasa', gender='M')
+        gone = Student.objects.create(first_name='FUTA', middle_name='KABISA', last_name='SASA', gender='M')
+        keep = Student.objects.create(first_name='Baki', last_name='Hapa', gender='F')
+        for ex in (self.exam, other_exam):
+            ExamResult.objects.create(exam=ex, student=gone, subject=self.sub1, score=95)
+            ExamResult.objects.create(exam=ex, student=keep, subject=self.sub1, score=50)
+        url = reverse('delete_form_student', args=[fs.id])
+        self.client.post(url, {'remove_results': '1'})
+        self.assertFalse(FormStudent.objects.filter(id=fs.id).exists())
+        self.assertFalse(ExamResult.objects.filter(student_id=gone.id).exists())
+        self.assertFalse(Student.objects.filter(id=gone.id).exists())
+        for ex in (self.exam, other_exam):
+            self.assertEqual(ProcessedResult.objects.get(exam=ex, student=keep).position, 1)
+
+    def test_roster_delete_without_flag_keeps_marks(self):
+        fs = FormStudent.objects.create(school=self.school, form=3, academic_year=2026,
+                                        admission_no='R2', first_name='Orodha', last_name='Tu', gender='M')
+        st = Student.objects.create(first_name='Orodha', last_name='Tu', gender='M')
+        ExamResult.objects.create(exam=self.exam, student=st, subject=self.sub1, score=60)
+        self.client.post(reverse('delete_form_student', args=[fs.id]))
+        self.assertFalse(FormStudent.objects.filter(id=fs.id).exists())
+        self.assertTrue(ExamResult.objects.filter(student=st).exists())
+
+
 
 class MarksEntryRosterPerfTests(TestCase):
     """Performance ya Continue (marks_entry): rosti kubwa bila queries N+1.
