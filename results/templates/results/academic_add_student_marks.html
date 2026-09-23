@@ -131,49 +131,105 @@
 </div>
 
 {% if exam %}
-<!-- ── Step 2: Taarifa za Mwanafunzi ── -->
+<!-- ── Step 2: Chagua Mwanafunzi (au ongeza mpya) ── -->
 <div class="aam-panel" id="aamStep2">
   <h2>
-    {% if LANG == 'sw' %}2. Taarifa za Mwanafunzi{% else %}2. Student Details{% endif %}
+    {% if LANG == 'sw' %}2. Chagua Mwanafunzi{% else %}2. Choose the Student{% endif %}
     <span class="aam-badge gold">{{ class_label }}</span>
   </h2>
   <p class="hint">
     {% if LANG == 'sw' %}
-    Jaza jina kamili kama lilivyo kwenye daftari la shule. Mwanafunzi ataandikishwa kwenye orodha ya {{ class_prefix }} {{ exam.form }} na kuonekana kwenye matokeo ya mtihani huu.
+    Wanafunzi wa {{ class_prefix }} {{ exam.form }} kwenye mtihani huu. ✓ = ana alama tayari. Ukimchagua, masomo yote ya mtihani yataonekana pamoja na alama zake.
     {% else %}
-    Enter the full name exactly as in the school register. The student is enrolled into {{ class_prefix }} {{ exam.form }} and appears in this exam's results.
+    Students of {{ class_prefix }} {{ exam.form }} on this exam. ✓ = already has marks. Pick one to see every subject of the exam with their marks.
     {% endif %}
   </p>
   <div class="aam-form-grid">
     <div class="aam-field">
-      <label>{% if LANG == 'sw' %}Jina la Kwanza *{% else %}First Name *{% endif %}</label>
-      <input type="text" id="aamFirstName" placeholder="{% if LANG == 'sw' %}mf. Amina{% else %}e.g. Amina{% endif %}">
+      <label>{% if LANG == 'sw' %}Tafuta{% else %}Search{% endif %}</label>
+      <input type="text" id="aamStudentFilter" placeholder="{% if LANG == 'sw' %}andika jina…{% else %}type a name…{% endif %}">
     </div>
-    <div class="aam-field">
-      <label>{% if LANG == 'sw' %}Jina la Kati{% else %}Middle Name{% endif %}</label>
-      <input type="text" id="aamMiddleName" placeholder="{% if LANG == 'sw' %}hiari{% else %}optional{% endif %}">
-    </div>
-    <div class="aam-field">
-      <label>{% if LANG == 'sw' %}Jina la Mwisho *{% else %}Last Name *{% endif %}</label>
-      <input type="text" id="aamLastName" placeholder="{% if LANG == 'sw' %}mf. Hassan{% else %}e.g. Hassan{% endif %}">
-    </div>
-    <div class="aam-field">
-      <label>{% if LANG == 'sw' %}Jinsia *{% else %}Gender *{% endif %}</label>
-      <select id="aamGender">
-        <option value="M">M</option>
-        <option value="F">F</option>
+    <div class="aam-field" style="grid-column: span 2;">
+      <label>{% if LANG == 'sw' %}Mwanafunzi ({{ exam_students|length }}){% else %}Student ({{ exam_students|length }}){% endif %}</label>
+      <select id="aamStudentSelect">
+        <option value="">{% if LANG == 'sw' %}-- Chagua Mwanafunzi --{% else %}-- Select Student --{% endif %}</option>
+        {% for st in exam_students %}
+        <option value="{{ st.key }}">{% if st.has_marks %}✓ {% endif %}{{ st.name }}</option>
+        {% endfor %}
       </select>
     </div>
   </div>
-  <div style="margin-top:0.9rem;">
-    <button type="button" class="btn-aam" id="aamAddStudentBtn">
-      ✓ {% if LANG == 'sw' %}Ongeza Mwanafunzi{% else %}Add Student{% endif %}
-    </button>
-    <button type="button" class="btn-aam-secondary" style="display:none;" id="aamChangeStudentBtn">
-      ✎ {% if LANG == 'sw' %}Badilisha Mwanafunzi{% else %}Change Student{% endif %}
+  <div style="margin-top:0.8rem;">
+    <button type="button" class="btn-aam-secondary" id="aamToggleNewBtn">
+      ➕ {% if LANG == 'sw' %}Hayupo kwenye orodha? Ongeza mwanafunzi mpya{% else %}Not listed? Add a new student{% endif %}
     </button>
   </div>
+
+  <div id="aamNewStudent" style="display:none;margin-top:0.9rem;border-top:1px dashed #dee2e6;padding-top:0.9rem;">
+    <p class="hint">
+      {% if LANG == 'sw' %}
+      Jaza jina kamili kama lilivyo kwenye daftari la shule. Majina matatu yakilingana na mwanafunzi aliyepo, hatatengenezwa mara ya pili — alama zitaongezwa kwake.
+      {% else %}
+      Enter the full name exactly as in the school register. If all three names match an existing student, no duplicate is created — marks are added to them.
+      {% endif %}
+    </p>
+    <div class="aam-form-grid">
+      <div class="aam-field">
+        <label>{% if LANG == 'sw' %}Jina la Kwanza *{% else %}First Name *{% endif %}</label>
+        <input type="text" id="aamFirstName" placeholder="{% if LANG == 'sw' %}mf. Amina{% else %}e.g. Amina{% endif %}">
+      </div>
+      <div class="aam-field">
+        <label>{% if LANG == 'sw' %}Jina la Kati{% else %}Middle Name{% endif %}</label>
+        <input type="text" id="aamMiddleName" placeholder="{% if LANG == 'sw' %}hiari{% else %}optional{% endif %}">
+      </div>
+      <div class="aam-field">
+        <label>{% if LANG == 'sw' %}Jina la Mwisho *{% else %}Last Name *{% endif %}</label>
+        <input type="text" id="aamLastName" placeholder="{% if LANG == 'sw' %}mf. Hassan{% else %}e.g. Hassan{% endif %}">
+      </div>
+      <div class="aam-field">
+        <label>{% if LANG == 'sw' %}Jinsia *{% else %}Gender *{% endif %}</label>
+        <select id="aamGender">
+          <option value="M">M</option>
+          <option value="F">F</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:0.9rem;">
+      <button type="button" class="btn-aam" id="aamAddStudentBtn">
+        ✓ {% if LANG == 'sw' %}Ongeza Mwanafunzi{% else %}Add Student{% endif %}
+      </button>
+    </div>
+  </div>
   <div class="aam-alert" id="aamStudentAlert"></div>
+</div>
+
+<!-- ── Ongeza somo kwenye mtihani huu ── -->
+<div class="aam-panel" id="aamSubjectPanel">
+  <h2>{% if LANG == 'sw' %}Ongeza Somo kwenye Mtihani Huu{% else %}Add a Subject to This Exam{% endif %}</h2>
+  <p class="hint">
+    {% if LANG == 'sw' %}Somo lililosahaulika wakati wa kuunda mtihani — chagua kwenye masomo ya shule au andika jina jipya.{% else %}A subject left out when the exam was created — pick one of the school's subjects or type a new name.{% endif %}
+  </p>
+  <div class="aam-form-grid">
+    <div class="aam-field">
+      <label>{% if LANG == 'sw' %}Masomo ya shule{% else %}School subjects{% endif %}</label>
+      <select id="aamAddSubjectSelect">
+        <option value="">{% if LANG == 'sw' %}-- Chagua Somo --{% else %}-- Select Subject --{% endif %}</option>
+        {% for sub in addable_subjects %}
+        <option value="{{ sub.id }}">{{ sub.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="aam-field">
+      <label>{% if LANG == 'sw' %}Au jina jipya{% else %}Or a new name{% endif %}</label>
+      <input type="text" id="aamAddSubjectName" placeholder="{% if LANG == 'sw' %}mf. Computer Studies{% else %}e.g. Computer Studies{% endif %}">
+    </div>
+  </div>
+  <div style="margin-top:0.9rem;">
+    <button type="button" class="btn-aam" id="aamAddSubjectBtn">
+      ➕ {% if LANG == 'sw' %}Ongeza Somo{% else %}Add Subject{% endif %}
+    </button>
+  </div>
+  <div class="aam-alert" id="aamSubjectAlert"></div>
 </div>
 
 <!-- ── Step 3: Alama za Masomo Yote ── -->
@@ -209,6 +265,16 @@
     <span style="font-size:0.8rem;color:#667;" id="aamSaveHint"></span>
   </div>
   <div class="aam-alert" id="aamMarksAlert"></div>
+
+  <div style="margin-top:1.2rem;border-top:1px dashed #f1948a;padding-top:0.9rem;">
+    <label style="font-size:0.8rem;color:#667;display:flex;gap:0.4rem;align-items:center;margin-bottom:0.6rem;">
+      <input type="checkbox" id="aamRemoveRoster">
+      {% if LANG == 'sw' %}Mwondoe pia kwenye orodha ya {{ class_prefix }} {{ exam.form }} (hakuwa wa darasa hili){% else %}Also remove from the {{ class_prefix }} {{ exam.form }} roster (not in this class){% endif %}
+    </label>
+    <button type="button" class="btn-aam" style="background:#c0392b;" id="aamRemoveStudentBtn">
+      🗑 {% if LANG == 'sw' %}Mwondoe kwenye Matokeo ya Mtihani Huu{% else %}Remove from This Exam's Results{% endif %}
+    </button>
+  </div>
 </div>
 {% else %}
 <div class="aam-panel">
@@ -276,7 +342,6 @@
   }
 
   const addBtn = document.getElementById('aamAddStudentBtn');
-  const changeBtn = document.getElementById('aamChangeStudentBtn');
   const studentAlert = document.getElementById('aamStudentAlert');
   const marksAlert = document.getElementById('aamMarksAlert');
   const step3 = document.getElementById('aamStep3');
@@ -284,10 +349,59 @@
   const saveBtn = document.getElementById('aamSaveMarksBtn');
   const studentBadge = document.getElementById('aamStudentBadge');
   const saveHint = document.getElementById('aamSaveHint');
+  const studentSelect = document.getElementById('aamStudentSelect');
+  const studentFilter = document.getElementById('aamStudentFilter');
+  const newStudentBox = document.getElementById('aamNewStudent');
+  const toggleNewBtn = document.getElementById('aamToggleNewBtn');
+  const removeBtn = document.getElementById('aamRemoveStudentBtn');
+  const addSubjectBtn = document.getElementById('aamAddSubjectBtn');
+  const subjectAlert = document.getElementById('aamSubjectAlert');
 
   let STUDENT = null;   // {id, name}
+  let SUBJECTS = [];    // [{id, name}] — masomo ya mtihani yanayoonyeshwa
 
-  // ── Step 2: add student ──
+  // Mwanafunzi amepatikana (dropdown au mpya) → onyesha masomo + alama zake.
+  function loadStudent(data, msg) {
+    STUDENT = data.student;
+    SUBJECTS = data.subjects;
+    if (msg) showAlert(studentAlert, '✓ ' + msg, 'success');
+    studentBadge.textContent = STUDENT.name;
+    renderSubjects(SUBJECTS, data.marks || {});
+    step3.style.display = 'block';
+    step3.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Step 2a: chagua mwanafunzi kwenye dropdown ──
+  if (studentSelect) {
+    const allOptions = Array.from(studentSelect.options).slice(1);
+    studentFilter.addEventListener('input', () => {
+      const q = studentFilter.value.trim().toLowerCase();
+      allOptions.forEach(o => { o.hidden = q && !o.textContent.toLowerCase().includes(q); });
+      const shown = allOptions.filter(o => !o.hidden);
+      if (q && shown.length === 1 && studentSelect.value !== shown[0].value) {
+        studentSelect.value = shown[0].value;
+        studentSelect.dispatchEvent(new Event('change'));
+      }
+    });
+    studentSelect.addEventListener('change', async () => {
+      if (!studentSelect.value) return;
+      try {
+        const data = await postJSON(ADD_URL, {
+          action: 'select_student', exam_id: EXAM_ID, key: studentSelect.value,
+        });
+        loadStudent(data);
+      } catch (err) {
+        showAlert(studentAlert, err.message, 'error');
+      }
+    });
+    toggleNewBtn.addEventListener('click', () => {
+      const open = newStudentBox.style.display === 'none';
+      newStudentBox.style.display = open ? 'block' : 'none';
+      if (open) document.getElementById('aamFirstName').focus();
+    });
+  }
+
+  // ── Step 2b: ongeza mwanafunzi mpya ──
   if (addBtn) {
     addBtn.addEventListener('click', async () => {
       const first = document.getElementById('aamFirstName').value.trim();
@@ -312,21 +426,10 @@
           last_name: last,
           gender: gender,
         });
-        STUDENT = data.student;
-
         const existsMsg = data.created
           ? (LANG === 'sw' ? 'Mwanafunzi ameingizwa.' : 'Student registered.')
-          : (LANG === 'sw' ? 'Mwanafunzi alikuwepo tayari — alama zitaandikwa juu yake.' : 'Student already existed — marks will be recorded on them.');
-        const rosterMsg = data.roster_message ? ' ' + data.roster_message : '';
-        showAlert(studentAlert, '✓ ' + existsMsg + rosterMsg, 'success');
-
-        // Show student badge + subject rows
-        studentBadge.textContent = STUDENT.name;
-        renderSubjects(data.subjects);
-        step3.style.display = 'block';
-        addBtn.style.display = 'none';
-        changeBtn.style.display = 'inline-flex';
-        step3.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          : (LANG === 'sw' ? 'Mwanafunzi alikuwepo tayari — hajatengenezwa mara ya pili, alama zitaongezwa kwake.' : 'Student already existed — no duplicate created, marks go onto them.');
+        loadStudent(data, existsMsg + (data.roster_message ? ' ' + data.roster_message : ''));
       } catch (err) {
         showAlert(studentAlert, err.message, 'error');
       } finally {
@@ -334,17 +437,87 @@
         addBtn.textContent = '✓ ' + (LANG === 'sw' ? 'Ongeza Mwanafunzi' : 'Add Student');
       }
     });
+  }
 
-    changeBtn.addEventListener('click', () => {
-      STUDENT = null;
-      step3.style.display = 'none';
-      addBtn.style.display = 'inline-flex';
-      changeBtn.style.display = 'none';
-      document.getElementById('aamFirstName').focus();
+  // ── Ongeza somo kwenye mtihani ──
+  if (addSubjectBtn) {
+    addSubjectBtn.addEventListener('click', async () => {
+      const sel = document.getElementById('aamAddSubjectSelect');
+      const nameInp = document.getElementById('aamAddSubjectName');
+      const payload = { action: 'add_subject', exam_id: EXAM_ID };
+      if (sel.value) payload.subject_id = sel.value;
+      else if (nameInp.value.trim()) payload.subject_name = nameInp.value.trim();
+      else {
+        showAlert(subjectAlert, LANG === 'sw' ? 'Chagua au andika jina la somo.' : 'Pick or type a subject.', 'error');
+        return;
+      }
+      addSubjectBtn.disabled = true;
+      try {
+        const data = await postJSON(ADD_URL, payload);
+        const opt = sel.querySelector('option[value="' + data.subject.id + '"]');
+        if (opt) opt.remove();
+        sel.value = ''; nameInp.value = '';
+        showAlert(subjectAlert, '✓ ' + (data.created
+          ? (LANG === 'sw' ? data.subject.name + ' limeongezwa kwenye mtihani.' : data.subject.name + ' added to the exam.')
+          : (LANG === 'sw' ? data.subject.name + ' lilikuwepo tayari kwenye mtihani.' : data.subject.name + ' was already on the exam.')), 'success');
+        if (STUDENT && !SUBJECTS.some(x => x.id === data.subject.id)) {
+          const marks = currentMarks();
+          SUBJECTS.push(data.subject);
+          SUBJECTS.sort((x, y) => x.name.localeCompare(y.name));
+          renderSubjects(SUBJECTS, marks);
+        }
+      } catch (err) {
+        showAlert(subjectAlert, err.message, 'error');
+      } finally {
+        addSubjectBtn.disabled = false;
+      }
     });
   }
 
-  function renderSubjects(subjects) {
+  // Alama zilizojazwa sasa hivi (zisipotee tunapochora jedwali upya).
+  function currentMarks() {
+    const marks = {};
+    subjectsBody.querySelectorAll('input.score-input').forEach(inp => {
+      if (inp.value.trim()) marks[inp.dataset.subjectId] = inp.value.trim();
+    });
+    return marks;
+  }
+
+  // ── Mwondoe mwanafunzi kwenye matokeo ya mtihani huu ──
+  if (removeBtn) {
+    removeBtn.addEventListener('click', async () => {
+      if (!STUDENT) return;
+      const roster = document.getElementById('aamRemoveRoster').checked;
+      const ok = confirm(LANG === 'sw'
+        ? 'Mwondoe ' + STUDENT.name + ' kwenye matokeo ya mtihani huu? Alama zake zote za mtihani huu zitafutwa na hataonekana kwenye PDF.' + (roster ? ' Ataondolewa pia kwenye orodha ya darasa.' : '')
+        : 'Remove ' + STUDENT.name + ' from this exam\'s results? All their marks on this exam are deleted and they disappear from the PDF.' + (roster ? ' They are also removed from the class roster.' : ''));
+      if (!ok) return;
+      removeBtn.disabled = true;
+      try {
+        const data = await postJSON(ADD_URL, {
+          action: 'remove_student', exam_id: EXAM_ID,
+          student_id: STUDENT.id, remove_from_roster: roster,
+        });
+        const name = STUDENT.name;
+        const opt = studentSelect && studentSelect.querySelector('option[value="' + studentSelect.value + '"]');
+        if (opt && (roster || opt.value.startsWith('s'))) opt.remove();
+        if (studentSelect) studentSelect.value = '';
+        STUDENT = null;
+        step3.style.display = 'none';
+        showAlert(studentAlert, '✓ ' + (LANG === 'sw'
+          ? name + ' ameondolewa kwenye matokeo (alama ' + data.removed_marks + ' zimefutwa).'
+          : name + ' removed from the results (' + data.removed_marks + ' marks deleted).'), 'success');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err) {
+        showAlert(marksAlert, err.message, 'error');
+      } finally {
+        removeBtn.disabled = false;
+      }
+    });
+  }
+
+  function renderSubjects(subjects, marks) {
+    marks = marks || {};
     subjectsBody.innerHTML = '';
     if (!subjects.length) {
       subjectsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#9aa3af;padding:1.4rem;">' +
@@ -356,12 +529,16 @@
       const tr = document.createElement('tr');
       tr.innerHTML =
         '<td class="row-no">' + (i + 1) + '</td>' +
-        '<td class="subject-name">' + s.name + '</td>' +
+        '<td class="subject-name"></td>' +
         '<td><input type="text" maxlength="6" class="score-input" data-subject-id="' + s.id + '" placeholder="0–100 / X">' +
         '<button type="button" class="absent-toggle" data-subject-id="' + s.id + '" title="' +
           (LANG === 'sw' ? 'Mwanafunzi hajafanya (X)' : 'Student absent (X)') + '">X</button></td>' +
         '<td><span class="aam-grade-chip" data-chip="' + s.id + '"></span></td>';
+      tr.querySelector('.subject-name').textContent = s.name;
       subjectsBody.appendChild(tr);
+      if (marks[s.id] !== undefined && marks[s.id] !== null) {
+        tr.querySelector('input.score-input').value = marks[s.id];
+      }
     });
 
     function updateRow(inp) {
@@ -391,6 +568,7 @@
 
     subjectsBody.querySelectorAll('input.score-input').forEach(inp => {
       inp.addEventListener('input', () => updateRow(inp));
+      if (inp.value) updateRow(inp);
     });
     subjectsBody.querySelectorAll('button.absent-toggle').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -409,7 +587,7 @@
   if (saveBtn) {
     saveBtn.addEventListener('click', async () => {
       if (!STUDENT) {
-        showAlert(marksAlert, LANG === 'sw' ? 'Ongeza mwanafunzi kwanza.' : 'Add the student first.', 'error');
+        showAlert(marksAlert, LANG === 'sw' ? 'Chagua au ongeza mwanafunzi kwanza.' : 'Choose or add a student first.', 'error');
         return;
       }
       const entries = [];

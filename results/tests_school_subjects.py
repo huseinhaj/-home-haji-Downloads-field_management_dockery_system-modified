@@ -326,6 +326,84 @@ class AcademicAddStudentMarksTests(TestCase):
             ).exists()
         )
 
+    # ── Dropdown ya wanafunzi / masomo / kuondoa (2026-09-23) ──────────────
+
+    def _post(self, **payload):
+        return self.client.post(self.add_url, data={'exam_id': self.exam.id, **payload},
+                                content_type='application/json')
+
+    def test_page_lists_roster_and_marked_students_once(self):
+        FormStudent.objects.create(school=self.school, form=3, academic_year=2026,
+                                   admission_no='A1', first_name='Asha', middle_name='Ali',
+                                   last_name='Musa', gender='F')
+        # Ana alama kwenye mtihani + yupo kwenye rosti (herufi tofauti) → mara moja tu
+        st = Student.objects.create(first_name='ASHA', middle_name='ALI', last_name='MUSA', gender='F')
+        ExamResult.objects.create(exam=self.exam, student=st, subject=self.sub1, score=70)
+        FormStudent.objects.create(school=self.school, form=4, academic_year=2026,
+                                   admission_no='B1', first_name='Juma', last_name='Darasa4', gender='M')
+        resp = self.client.get(self.add_url + f'?exam={self.exam.id}')
+        students = resp.context['exam_students']
+        self.assertEqual([e['key'] for e in students], [f's{st.id}'])
+        self.assertTrue(students[0]['has_marks'])
+
+    def test_select_student_returns_existing_marks(self):
+        fs = FormStudent.objects.create(school=self.school, form=3, academic_year=2026,
+                                        admission_no='A2', first_name='Bahati', middle_name='K',
+                                        last_name='Juma', gender='M')
+        data = self._post(action='select_student', key=f'f{fs.id}').json()
+        sid = data['student']['id']
+        self.assertEqual(data['marks'], {})
+        ExamResult.objects.create(exam=self.exam, student_id=sid, subject=self.sub2, score=55)
+        data = self._post(action='select_student', key=f's{sid}').json()
+        self.assertEqual(data['marks'], {str(self.sub2.id): 55})
+        self.assertEqual(len(data['subjects']), 3)
+
+    def test_add_student_with_same_three_names_reuses_roster_row(self):
+        FormStudent.objects.create(school=self.school, form=3, academic_year=2026,
+                                   admission_no='A3', first_name='Pili', middle_name='Hamisi',
+                                   last_name='Said', gender='F')
+        for _ in range(2):
+            resp = self._post(action='add_student', first_name='PILI', middle_name='hamisi',
+                              last_name='Said', gender='F')
+            self.assertEqual(resp.status_code, 200)
+        self.assertEqual(FormStudent.objects.filter(school=self.school, first_name__iexact='pili').count(), 1)
+        self.assertEqual(Student.objects.filter(first_name__iexact='pili').count(), 1)
+
+    def test_add_student_in_other_form_is_rejected(self):
+        """Isingiro 2026-09-23: wanafunzi wa Form 5 waliingia matokeo ya Form 6."""
+        FormStudent.objects.create(school=self.school, form=2, academic_year=2026,
+                                   admission_no='A4', first_name='Derick', middle_name='Ngalinda',
+                                   last_name='Dismas', gender='M')
+        resp = self._post(action='add_student', first_name='Derick', middle_name='Ngalinda',
+                          last_name='Dismas', gender='M')
+        self.assertEqual(resp.status_code, 409)
+        self.assertFalse(FormStudent.objects.filter(school=self.school, form=3,
+                                                    first_name='Derick').exists())
+
+    def test_add_subject_to_existing_exam(self):
+        data = self._post(action='add_subject', subject_name='Computer Studies').json()
+        self.assertTrue(data['created'])
+        self.assertTrue(SubjectSubmission.objects.filter(
+            exam=self.exam, subject_id=data['subject']['id']).exists())
+        data = self._post(action='add_subject', subject_id=self.sub1.id).json()
+        self.assertFalse(data['created'])
+
+    def test_remove_student_from_exam_results(self):
+        keep = Student.objects.create(first_name='Kaa', last_name='Mimi', gender='M')
+        gone = Student.objects.create(first_name='Toka', last_name='Wewe', gender='M')
+        FormStudent.objects.create(school=self.school, form=3, academic_year=2026,
+                                   admission_no='A5', first_name='Toka', last_name='Wewe', gender='M')
+        ExamResult.objects.create(exam=self.exam, student=keep, subject=self.sub1, score=40)
+        ExamResult.objects.create(exam=self.exam, student=gone, subject=self.sub1, score=90)
+        resp = self._post(action='remove_student', student_id=gone.id, remove_from_roster=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(ExamResult.objects.filter(exam=self.exam, student_id=gone.id).exists())
+        self.assertFalse(ProcessedResult.objects.filter(exam=self.exam, student_id=gone.id).exists())
+        self.assertFalse(Student.objects.filter(id=gone.id).exists())  # yatima
+        self.assertFalse(FormStudent.objects.get(admission_no='A5').is_active)
+        self.assertEqual(ProcessedResult.objects.get(exam=self.exam, student=keep).position, 1)
+
+
 
 class MarksEntryRosterPerfTests(TestCase):
     """Performance ya Continue (marks_entry): rosti kubwa bila queries N+1.

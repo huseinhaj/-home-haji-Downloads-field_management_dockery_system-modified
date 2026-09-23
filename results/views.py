@@ -2582,15 +2582,73 @@ def _academic_add_exam(teacher, exam_id):
     return Exam.objects.filter(id=exam_id, school=teacher.school).first()
 
 
+def _aam_exam_subjects(exam, school):
+    """Masomo yote ya mtihani: submissions ('Unda Mtihani' / 'Ongeza Somo')
+    + masomo yenye alama tayari. Mtihani usio na yoyote bado unaonyesha
+    masomo ya shule (fallback)."""
+    subject_ids = set(
+        exam.subject_submissions.values_list('subject_id', flat=True)
+    ) | set(
+        ExamResult.objects.filter(exam=exam).values_list('subject_id', flat=True)
+    )
+    subjects = Subject.objects.filter(id__in=subject_ids).order_by('name')
+    if not subjects:
+        subjects = Subject.objects.filter(schoolsubject__school=school).order_by('name')
+    return subjects
+
+
+def _aam_name_key(first, middle, last):
+    return ((first or '').strip().lower(), (middle or '').strip().lower(),
+            (last or '').strip().lower())
+
+
+def _aam_full_name(obj):
+    return ' '.join(p for p in (obj.first_name, obj.middle_name, obj.last_name) if p)
+
+
+def _aam_exam_students(exam, school):
+    """Dropdown ya wanafunzi wa mtihani: rosti hai ya darasa la mtihani +
+    yeyote mwenye alama kwenye mtihani huu. Majina matatu yanayolingana
+    (bila kujali herufi kubwa/ndogo) ni mwanafunzi MMOJA.
+    key: 's<Student.id>' (ana alama tayari) au 'f<FormStudent.id>' (rosti tu)."""
+    entries = {}
+    marked = Student.objects.filter(examresult__exam=exam).distinct()
+    for s in marked:
+        entries[_aam_name_key(s.first_name, s.middle_name, s.last_name)] = {
+            'key': f's{s.id}', 'name': _aam_full_name(s), 'has_marks': True,
+        }
+    roster = FormStudent.objects.filter(school=school, form=exam.form, is_active=True)
+    for fs in roster:
+        k = _aam_name_key(fs.first_name, fs.middle_name, fs.last_name)
+        entries.setdefault(k, {'key': f'f{fs.id}', 'name': _aam_full_name(fs), 'has_marks': False})
+    return sorted(entries.values(), key=lambda e: e['name'].lower())
+
+
+def _aam_student_marks(exam, student):
+    """{subject_id: score | 'X'} — alama zilizopo za mwanafunzi kwenye mtihani."""
+    return {
+        r.subject_id: ('X' if r.is_absent else r.score)
+        for r in ExamResult.objects.filter(exam=exam, student=student)
+    }
+
+
+def _aam_student_response(exam, school, student, **extra):
+    return JsonResponse({
+        'student': {'id': student.id, 'name': _aam_full_name(student)},
+        'subjects': [{'id': s.id, 'name': s.name} for s in _aam_exam_subjects(exam, school)],
+        'marks': {str(k): v for k, v in _aam_student_marks(exam, student).items()},
+        **extra,
+    })
+
+
 @academic_required
 def academic_add_student_marks(request):
     """Page ya kuongeza mwanafunzi asiye kwenye rosti na kujaza alama zake
     kwa masomo yote ya mtihani uliochaguliwa.
 
-    GET  ?exam=<id>           → fomu ya jina/jinsia + jedwali la masomo
-    POST (action=add_student) → tengeneza/pata Student + FormStudent,
-                                  rudisha rows za masomo (JSON)
-    POST (action=save_marks)  → hifadhi alama zote za masomo (JSON)
+    GET  ?exam=<id>              → dropdown ya wanafunzi wa mtihani + fomu ya
+                                   mwanafunzi mpya + jedwali la masomo
+    POST (JSON, action=...)      → tazama _academic_add_student_ajax
     """
     school = request.user.school
     if not school:
@@ -2603,7 +2661,8 @@ def academic_add_student_marks(request):
     exam_id = request.GET.get('exam') or ''
     exam = None
     exam_groups = []
-    subjects_ctx = []
+    exam_students = []
+    addable_subjects = []
 
     exams = Exam.objects.filter(school=school).order_by('-year', 'name')
     if exams.exists():
@@ -2611,32 +2670,13 @@ def academic_add_student_marks(request):
     if exam_id:
         exam = _academic_add_exam(request.user, exam_id)
         if exam:
-            # Masomo yote ya mtihani huu: submissions zilizoundwa na
-            # 'Unda Mtihani' + masomo yoyote yenye alama tayari.
-            submission_subject_ids = set(
-                exam.subject_submissions.values_list('subject_id', flat=True)
-            )
-            marked_subject_ids = set(
-                ExamResult.objects.filter(exam=exam).values_list('subject_id', flat=True)
-            )
-            subject_ids = submission_subject_ids | marked_subject_ids
-            subjects = Subject.objects.filter(id__in=subject_ids).order_by('name')
-            if not subjects:
-                # Fallback: masomo yaliyosajiliwa kwa shule hii
-                subjects = Subject.objects.filter(
-                    schoolsubject__school=school,
-                ).order_by('name')
-            for subject in subjects:
-                existing = ExamResult.objects.filter(
-                    exam=exam, subject=subject,
-                ).select_related('student').order_by('student__first_name')
-                subjects_ctx.append({
-                    'subject': subject,
-                    'existing_results': [
-                        {'student': r.student, 'score': r.score, 'is_absent': r.is_absent}
-                        for r in existing
-                    ],
-                })
+            exam_students = _aam_exam_students(exam, school)
+            on_exam = set(exam.subject_submissions.values_list('subject_id', flat=True))
+            addable_subjects = [
+                ss.subject for ss in
+                school.school_subjects.select_related('subject').order_by('subject__name')
+                if ss.subject_id not in on_exam
+            ]
 
     class_label = ''
     if exam:
@@ -2646,7 +2686,8 @@ def academic_add_student_marks(request):
         'exam_groups': exam_groups,
         'exam': exam,
         'class_label': class_label,
-        'subjects_ctx': subjects_ctx,
+        'exam_students': exam_students,
+        'addable_subjects': addable_subjects,
         'preselect_exam_id': exam_id,
         'class_prefix': school.class_prefix,
         'is_primary': school.is_primary,
@@ -2655,9 +2696,13 @@ def academic_add_student_marks(request):
 
 def _academic_add_student_ajax(request, school):
     """JSON endpoints behind the academic add-student page:
-    action=add_student → create/lookup the Student (+FormStudent roster row)
-    and echo back the subject rows; action=save_marks → bulk-save the
-    ExamResult rows and recompute the exam's processed results."""
+    action=add_student    → create/lookup the Student (+FormStudent roster row)
+                            and echo back the subject rows + existing marks;
+    action=select_student → same payload for a student picked from the dropdown;
+    action=add_subject    → add a subject to the already-created exam;
+    action=remove_student → drop the student from this exam's results;
+    action=save_marks     → bulk-save the ExamResult rows and recompute the
+                            exam's processed results."""
     import json as _json
 
     try:
@@ -2681,6 +2726,28 @@ def _academic_add_student_ajax(request, school):
         if gender not in ('M', 'F'):
             gender = 'M'
 
+        # Majina matatu yakilingana na mwanafunzi aliye tayari kwenye rosti
+        # ya shule, HATUTENGENEZI mwanafunzi wa pili — tunamtumia huyo huyo
+        # na kuongeza alama tu. Akiwa darasa JINGINE tunakataa: Isingiro
+        # 2026-09-23 wanafunzi wa Form 5 waliingia kwenye matokeo ya Form 6
+        # kupitia njia hii na kuharibu nafasi (ranking) za Form 6.
+        same_name = FormStudent.objects.filter(
+            school=school, is_active=True,
+            first_name__iexact=first_name,
+            middle_name__iexact=middle_name,
+            last_name__iexact=last_name,
+        )
+        fs = same_name.filter(form=exam.form).first()
+        if fs is None:
+            other = same_name.first()
+            if other is not None:
+                return JsonResponse({'error': (
+                    f"'{_aam_full_name(other)}' tayari yupo kwenye orodha ya "
+                    f"{school.class_prefix} {other.form}. Chagua mtihani wa "
+                    f"{school.class_prefix} {other.form} kuingiza alama zake — "
+                    f"hawezi kuingia kwenye matokeo ya {school.class_prefix} {exam.form}."
+                )}, status=409)
+
         # Middle-name-aware dedup (same rules as resolve_or_create_student,
         # shared with _save_student / _bulk_save_students / marks entry) —
         # brothers sharing first+last names are separate kids; Isingiro's
@@ -2693,24 +2760,12 @@ def _academic_add_student_ajax(request, school):
         # Enroll in the official class roster (FormStudent) so the student
         # shows up everywhere the roster feeds — marks entry for other
         # subjects, blank scoresheets, next term's forms, etc.
-        # Dedup kwa (first, middle, last) ndani ya (school, form, year) —
-        # SI kwa admission_no nasibu: lookup ya kale ilikuja na NA-<uuid4>
-        # mpya kila wakati, hivyo kila add iliumba row mpya ya roster.
-        fs_message = ''
-        try:
-            current_year = school.current_academic_year or timezone.now().year
-            fs = FormStudent.objects.filter(
-                school=school, form=exam.form,
-                is_active=True, academic_year=current_year,
-                first_name__iexact=student.first_name,
-                middle_name__iexact=student.middle_name or '',
-                last_name__iexact=student.last_name,
-            ).first()
-            fs_created = False
-            if fs is None:
+        fs_message = 'Alikuwepo tayari kwenye orodha ya darasa — alama zitaongezwa tu.' if fs else ''
+        if fs is None:
+            try:
                 fs = FormStudent.objects.create(
                     school=school, form=exam.form,
-                    academic_year=current_year,
+                    academic_year=school.current_academic_year or timezone.now().year,
                     is_active=True,
                     admission_no=f'NA-{uuid.uuid4().hex[:10]}',
                     first_name=student.first_name,
@@ -2718,36 +2773,95 @@ def _academic_add_student_ajax(request, school):
                     last_name=student.last_name,
                     gender=student.gender,
                 )
-                fs_created = True
-            if fs_created:
                 fs_message = 'Ameandikishwa pia kwenye orodha ya darasa.'
-        except Exception:
-            logger.exception(
-                'academic_add_student: could not create FormStudent '
-                '(school=%s form=%s student=%s)', school.id, exam.form, student.id,
-            )
-            fs_message = 'Haikuweza kuandikishwa orodha ya darasa — alama zitaingia tu.'
+            except Exception:
+                logger.exception(
+                    'academic_add_student: could not create FormStudent '
+                    '(school=%s form=%s student=%s)', school.id, exam.form, student.id,
+                )
+                fs_message = 'Haikuweza kuandikishwa orodha ya darasa — alama zitaingia tu.'
 
-        # Masomo ya mtihani: submissions + masomo yenye alama tayari;
-        # mtihani mpya usio na submissions bado unaonyesha masomo ya shule
-        # (fallback ile ile ya GET render hapo juu).
-        subject_ids = set(
-            exam.subject_submissions.values_list('subject_id', flat=True)
-        ) | set(
-            ExamResult.objects.filter(exam=exam).values_list('subject_id', flat=True)
+        return _aam_student_response(
+            exam, school, student,
+            created=created,
+            roster_message=fs_message,
         )
-        subjects = Subject.objects.filter(id__in=subject_ids).order_by('name')
-        if not subjects:
-            subjects = Subject.objects.filter(
-                schoolsubject__school=school,
-            ).order_by('name')
 
+    if action == 'select_student':
+        # Mwanafunzi kutoka dropdown: 's<id>' = ana alama kwenye mtihani huu,
+        # 'f<id>' = yupo kwenye rosti ya darasa (Student anapatikana/anaundwa
+        # kwa majina yake matatu).
+        key = str(payload.get('key') or '')
+        kind, _, raw_id = key[:1], None, key[1:]
+        if not raw_id.isdigit():
+            return JsonResponse({'error': 'Mwanafunzi hajachaguliwa.'}, status=400)
+        if kind == 's':
+            student = Student.objects.filter(
+                id=int(raw_id), examresult__exam=exam,
+            ).distinct().first()
+        elif kind == 'f':
+            fs = FormStudent.objects.filter(
+                id=int(raw_id), school=school, form=exam.form, is_active=True,
+            ).first()
+            student = fs and resolve_or_create_student(
+                fs.first_name, fs.middle_name, fs.last_name, fs.gender,
+            )[0]
+        else:
+            student = None
+        if student is None:
+            return JsonResponse({'error': 'Mwanafunzi hayupo kwenye mtihani huu.'}, status=404)
+        return _aam_student_response(exam, school, student)
+
+    if action == 'add_subject':
+        # Ongeza somo kwenye mtihani ulioundwa tayari (SubjectSubmission
+        # PENDING — sawa na 'Unda Mtihani').
+        subject = None
+        if payload.get('subject_id'):
+            subject = Subject.objects.filter(id=payload.get('subject_id')).first()
+        elif (payload.get('subject_name') or '').strip():
+            subject = safe_get_or_create_subject(payload['subject_name'].strip())
+        if subject is None:
+            return JsonResponse({'error': 'Chagua au andika jina la somo.'}, status=400)
+        _, sub_created = SubjectSubmission.objects.get_or_create(
+            exam=exam, subject=subject,
+            defaults={'status': SubjectSubmission.STATUS_PENDING},
+        )
         return JsonResponse({
-            'student': {'id': student.id, 'name': f'{student.first_name} {student.middle_name} {student.last_name}'.strip()},
-            'created': created,
-            'roster_message': fs_message,
-            'subjects': [{'id': s.id, 'name': s.name} for s in subjects],
+            'subject': {'id': subject.id, 'name': subject.name},
+            'created': sub_created,
         })
+
+    if action == 'remove_student':
+        # Ondoa mwanafunzi kwenye matokeo ya MTIHANI HUU (hataonekana kwenye
+        # PDF) — alama na ProcessedResult zake za mtihani huu zinafutwa,
+        # nafasi zinapangwa upya. Mitihani mingine haiguswi. remove_from_roster
+        # = ahifadhiwe (is_active=False) kwenye orodha ya darasa hili pia.
+        student = Student.objects.filter(id=payload.get('student_id')).first()
+        if student is None:
+            return JsonResponse({'error': 'Mwanafunzi hayupo kwenye mfumo.'}, status=404)
+        with transaction.atomic(using='results'):
+            n_marks = ExamResult.objects.filter(exam=exam, student=student).delete()[0]
+            ProcessedResult.objects.filter(exam=exam, student=student).delete()
+            archived = 0
+            if payload.get('remove_from_roster'):
+                archived = FormStudent.objects.filter(
+                    school=school, form=exam.form, is_active=True,
+                    first_name__iexact=student.first_name,
+                    middle_name__iexact=student.middle_name or '',
+                    last_name__iexact=student.last_name,
+                ).update(is_active=False)
+            # Student asiye na alama wala matokeo yoyote tena ni yatima.
+            if not ExamResult.objects.filter(student=student).exists() \
+                    and not ProcessedResult.objects.filter(student=student).exists():
+                try:
+                    student.delete()
+                except Exception:
+                    logger.exception('remove_student: could not delete orphan Student %s', student.id)
+        try:
+            recompute_processed_results_for_exam(exam)
+        except Exception:
+            logger.exception('remove_student: recompute failed for exam %s', exam.id)
+        return JsonResponse({'success': True, 'removed_marks': n_marks, 'archived_roster': archived})
 
     if action == 'save_marks':
         student = Student.objects.filter(id=payload.get('student_id')).first()
