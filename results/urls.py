@@ -39,6 +39,7 @@ from .views import (
     export_results_excel,
     filter_exams,
     exam_overview,
+    add_exam_subject,
     subject_upload,
     subject_pdf,
     subject_summary,
@@ -52,6 +53,7 @@ from .views import (
     approve_exam_submissions,
     recompute_exam_results,
     academic_add_student_marks,
+    register_form_student,
     set_class_teacher,
     set_conduct_and_comments,
     return_submission,
@@ -146,6 +148,7 @@ urlpatterns = [
     path('exam/<int:exam_id>/viungo/', exam_share_links, name='exam_share_links'),
     # Exam overview and per-subject flow
     path('exam/<int:exam_id>/', exam_overview, name='exam_overview'),
+    path('exam/<int:exam_id>/subject/add/', add_exam_subject, name='add_exam_subject'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/upload/', subject_upload, name='subject_upload'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/pdf/', subject_pdf, name='subject_pdf'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/muhtasari/', subject_summary, name='subject_summary'),
@@ -173,6 +176,7 @@ urlpatterns = [
     path('download-template/', download_roster_template, name='download_roster_template'),
     # Academic dashboard & form results
     path('academic/', academic_dashboard, name='academic_dashboard'),
+    path('academic/sajili-darasa/<int:form_num>/', register_form_student, name='register_form_student'),
     path('academic/year-rollover/', year_rollover, name='year_rollover'),
     path('academic/school-storage/', school_storage, name='school_storage'),
     path('academic/school-storage/<int:student_id>/restore/', restore_storage_student, name='restore_storage_student'),

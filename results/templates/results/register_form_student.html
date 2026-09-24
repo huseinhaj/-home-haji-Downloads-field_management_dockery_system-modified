@@ -1,0 +1,97 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Sajili {{ class_label }}{% else %}Register {{ class_label }}{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<style>
+  .rf-hero {
+    background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+    border: 2px solid #D9A441; border-radius: 2px;
+    padding: 1.4rem 2rem; color: #fff; margin-bottom: 1.5rem;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 1rem;
+  }
+  .rf-hero h1 { font-size: 1.3rem; font-weight: 800; margin: 0; }
+  .rf-hero .sub { font-size: 0.78rem; color: #D9A441; text-transform: uppercase; letter-spacing: 0.05em; }
+  .rf-card {
+    background: #fff; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 1.5rem; max-width: 640px;
+  }
+  .rf-field { margin-bottom: 1.1rem; }
+  .rf-field label { display: block; font-size: 0.8rem; font-weight: 700; color: #333; margin-bottom: 0.3rem; }
+  .rf-field input[type=text] {
+    width: 100%; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 0.55rem 0.7rem; font-size: 0.9rem; box-sizing: border-box;
+  }
+  .rf-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .rf-row .rf-field { flex: 1; min-width: 150px; }
+  .rf-field select {
+    width: 100%; border: 1.5px solid #dee2e6; border-radius: 2px;
+    padding: 0.55rem 0.7rem; font-size: 0.9rem; box-sizing: border-box;
+  }
+  .btn-rf-save {
+    background: #1F7A3D; color: #fff; border: none; font-weight: 700;
+    font-size: 0.85rem; padding: 0.6rem 1.5rem; border-radius: 2px; cursor: pointer;
+  }
+  .btn-rf-save:hover { background: #145226; }
+  .rf-count {
+    display: inline-block; background: #1F7A3D; color: #fff;
+    font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem;
+    border-radius: 999px; margin-left: 0.4rem; vertical-align: middle;
+  }
+</style>
+
+<div class="rf-hero">
+  <div>
+    <h1>{% if LANG == 'sw' %}Sajili Mwanafunzi — {{ class_label }}{% else %}Register Student — {{ class_label }}{% endif %}</h1>
+    <div class="sub">{{ class_prefix }} {{ form_num }} &nbsp;|&nbsp; {% if LANG == 'sw' %}Ongeza mwanafunzi mmoja-mmoja bila kuwa na mtihani{% else %}Add students one at a time without needing an exam{% endif %}</div>
+  </div>
+  <a href="{% url 'academic_dashboard' %}" class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;">
+    &larr; {% if LANG == 'sw' %}Dashibodi{% else %}Dashboard{% endif %}
+  </a>
+</div>
+
+<div class="rf-card">
+  <form method="post">
+    {% csrf_token %}
+    <div class="rf-field">
+      <label for="rfFirst">{% if LANG == 'sw' %}Jina la Kwanza{% else %}First Name{% endif %} <span style="color:#c0392b;">*</span></label>
+      <input type="text" name="first_name" id="rfFirst" required autofocus
+             placeholder="{% if LANG == 'sw' %}mf. Halima{% else %}e.g. Halima{% endif %}">
+    </div>
+    <div class="rf-row">
+      <div class="rf-field">
+        <label for="rfMiddle">{% if LANG == 'sw' %}Jina la Kati{% else %}Middle Name{% endif %}</label>
+        <input type="text" name="middle_name" id="rfMiddle" value="{{ request.POST.middle_name }}"
+               placeholder="{% if LANG == 'sw' %}mf. Ally (si lazima){% else %}e.g. Ally (optional){% endif %}">
+      </div>
+      <div class="rf-field">
+        <label for="rfLast">{% if LANG == 'sw' %}Jina la Mwisho{% else %}Last Name{% endif %} <span style="color:#c0392b;">*</span></label>
+        <input type="text" name="last_name" id="rfLast" required
+               placeholder="{% if LANG == 'sw' %}mf. Mohamed{% else %}e.g. Mohamed{% endif %}">
+      </div>
+    </div>
+    <div class="rf-field">
+      <label for="rfGender">{% if LANG == 'sw' %}Jinsia{% else %}Gender{% endif %}</label>
+      <select name="gender" id="rfGender">
+        <option value="M">♂ M — {% if LANG == 'sw' %}Kiume{% else %}Male{% endif %}</option>
+        <option value="F">♀ F — {% if LANG == 'sw' %}Kike{% else %}Female{% endif %}</option>
+      </select>
+    </div>
+
+    <p style="font-size:0.82rem;color:#666;margin:0.2rem 0 1.1rem;">
+      {% if LANG == 'sw' %}
+      Baada ya kuhifadhi utaelekezwa moja kwa moja kwenye roster (orodha) ya {{ class_label }} — hapo unaweza kuamisha masomo yake na kuendelea na wanafunzi wengine.
+      {% else %}
+      After saving you'll be taken straight to the {{ class_label }} roster, where you can assign this student's subjects and keep adding more.
+      {% endif %}
+    </p>
+
+    <button type="submit" class="btn-rf-save">
+      💾 {% if LANG == 'sw' %}Hifadhi na Enda kwenye Roster{% else %}Save & Go to Roster{% endif %}
+    </button>
+    <a href="{{ roster_url }}" class="btn btn-outline-secondary" style="border-radius:2px;">
+      {% if LANG == 'sw' %}Tazama Roster ya {{ class_label }}{% else %}View {{ class_label }} Roster{% endif %}
+    </a>
+  </form>
+</div>
+{% endblock %}

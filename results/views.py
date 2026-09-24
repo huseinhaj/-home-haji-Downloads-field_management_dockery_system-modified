@@ -809,6 +809,24 @@ def exam_overview(request, exam_id):
     # each student's overall division/position.
     enough_to_finalize = all_submitted
 
+    # Subjects the academic can quickly add to this exam (school subjects +
+    # common subjects, minus the ones already on the exam). For the "nilikosea
+    # somo" flow — a typeahead plus free-text fallback in the Add Subject modal.
+    used_subject_ids = set(exam.subject_submissions.values_list('subject_id', flat=True))
+    known_names = list(
+        Subject.objects
+        .filter(schoolsubject__school=request.user.school)
+        .exclude(id__in=used_subject_ids)
+        .values_list('name', flat=True)
+        .distinct()
+        .order_by('name')
+    )
+    known_set = set(known_names)
+    for name in COMMON_SUBJECTS:
+        if name not in known_set:
+            known_names.append(name)
+            known_set.add(name)
+
     progress_pct = round(submitted_count / total_subjects * 100) if total_subjects else 0
     approval_pct = round(approved_count / total_subjects * 100) if total_subjects else 0
 
@@ -827,7 +845,29 @@ def exam_overview(request, exam_id):
         'finalize_url': reverse('finalize_exam', args=[exam.id]) if is_academic else None,
         'form_results_url': reverse('form_results', args=[exam.form]),
         'excel_url': reverse('export_results_excel', args=[exam.id]) if is_academic else None,
+        'suggested_subjects': known_names,
     })
+
+
+@academic_required
+def add_exam_subject(request, exam_id):
+    """Add a forgotten subject to an existing exam. The subject is created if
+    needed (normalized to the canonical name) and registered on the exam as a
+    PENDING submission, exactly like when the exam was first created."""
+    exam = _get_exam_or_404(exam_id, request.user)
+    if request.method == 'POST':
+        raw = (request.POST.get('subject_name') or '').strip()
+        if not raw:
+            messages.error(request, "Andika jina la somo.")
+            return redirect(reverse('exam_overview', args=[exam.id]))
+        subject = safe_get_or_create_subject(raw)
+        submission, created = SubjectSubmission.objects.get_or_create(exam=exam, subject=subject)
+        if created:
+            messages.success(request, f"Somo '{subject.name}' limeongezwa kwenye mtihani huu.")
+        else:
+            messages.info(request, f"Somo '{subject.name}' tayari lipo kwenye mtihani huu.")
+        return redirect(reverse('exam_overview', args=[exam.id]))
+    return redirect(reverse('exam_overview', args=[exam.id]))
 
 
 # ── Subject Upload (CSV/Excel for one subject) ────────────────────────────────
@@ -2370,6 +2410,84 @@ def academic_dashboard(request):
     return render(request, 'results/academic_dashboard.html', {
         'forms_list': forms_list,
         'total_exams': exam_count,
+        'register_form_number': 1,
+        'register_form_label': (
+            Exam.PRIMARY_CLASS_LABELS.get(1, 'Darasa la 1')
+            if _is_primary else Exam.FORM_LABELS.get(1, 'Form I')
+        ),
+    })
+
+
+@academic_required
+def register_form_student(request, form_num):
+    """Sajili mwanafunzi mmoja-mmoja kwenye darasa (mf. Form I) bila kuwa
+    na mtihani.
+
+    GET  → fomu ndogo ya kusajili (jina la kwanza/kati/mwisho + jinsia).
+    POST → save kwenye rosti halafu KURUDISHA moja kwa moja kwenye roster
+            ya darasa hilo (upload_form_students?form=<n>) — mwanafunzi
+            anajitokeza hapo mara moja, yuko tayari kwa marks entry /
+            masomo yake.
+    """
+    school = request.user.school
+    if not school:
+        messages.error(request, "Hakuna shule iliyowekwa.")
+        return redirect('home')
+
+    try:
+        form_num = int(form_num)
+    except (TypeError, ValueError):
+        messages.error(request, "Darasa halijulikani.")
+        return redirect('academic_dashboard')
+
+    if form_num not in _school_class_numbers(school):
+        messages.error(request, "Darasa hilo halipo kwenye shule yako.")
+        return redirect('academic_dashboard')
+
+    class_label = (
+        Exam.PRIMARY_CLASS_LABELS.get(form_num, f'Darasa {form_num}')
+        if school.is_primary else Exam.FORM_LABELS.get(form_num, f'Form {form_num}')
+    )
+
+    if request.method == 'POST':
+        first_name = (request.POST.get('first_name') or '').strip()
+        middle_name = (request.POST.get('middle_name') or '').strip()
+        last_name = (request.POST.get('last_name') or '').strip()
+        gender = (request.POST.get('gender') or 'M').strip().upper()[:1]
+        if gender not in ('M', 'F'):
+            gender = 'M'
+
+        if not first_name or not last_name:
+            messages.error(request, "Jina la kwanza na jina la mwisho linahitajika.")
+            return redirect(reverse('register_form_student', args=[form_num]))
+
+        year = school.current_academic_year or timezone.now().year
+        existing = FormStudent.objects.filter(
+            school=school, form=form_num, is_active=True, academic_year=year,
+            first_name__iexact=first_name,
+            middle_name__iexact=middle_name,
+            last_name__iexact=last_name,
+        ).first()
+        if existing:
+            messages.info(request, f"'{existing.full_name}' tayari yupo kwenye {class_label}.")
+        else:
+            FormStudent.objects.create(
+                school=school, form=form_num, academic_year=year, is_active=True,
+                admission_no=f'NA-{uuid.uuid4().hex[:10]}',
+                first_name=first_name, middle_name=middle_name,
+                last_name=last_name, gender=gender,
+            )
+            full_name = ' '.join(p for p in (first_name, middle_name, last_name) if p)
+            messages.success(request, f"'{full_name}' amesajiliwa — {class_label}.")
+
+        # Save mara moja → mwanafunzi kaenda kwenye roster ya darasa hilo.
+        return redirect(f'{reverse("upload_form_students")}?form={form_num}')
+
+    return render(request, 'results/register_form_student.html', {
+        'form_num': form_num,
+        'class_label': class_label,
+        'class_prefix': school.class_prefix,
+        'roster_url': f'{reverse("upload_form_students")}?form={form_num}',
     })
 
 

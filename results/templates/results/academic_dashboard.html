@@ -222,6 +222,9 @@
     </div>
     <div class="action-toolbar align-items-center justify-content-end">
       <span class="toolbar-label">{% if LANG == 'sw' %}Vitendo vya Haraka{% else %}Quick Actions{% endif %}</span>
+      <a href="{% url 'register_form_student' register_form_number %}" class="ad-btn ad-btn--ghost">
+        🙋 {% if LANG == 'sw' %}Sajili {{ register_form_label }}{% else %}Register {{ register_form_label }}{% endif %}
+      </a>
       <a href="{% url 'upload_form_students' %}" class="ad-btn ad-btn--ghost">
         {% if LANG == 'sw' %}📋 Orodha ya Wanafunzi{% else %}📋 Student Roster{% endif %}
       </a>

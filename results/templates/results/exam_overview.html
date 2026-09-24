@@ -143,6 +143,11 @@
       <a href="{% url 'home' %}" class="kbtn kbtn--ghost kbtn--sm">
         <i class="fas fa-arrow-left"></i> {% if LANG == 'sw' %}Dashibodi{% else %}Dashboard{% endif %}
       </a>
+      {% if is_academic %}
+      <button type="button" class="kbtn kbtn--primary kbtn--sm" data-bs-toggle="modal" data-bs-target="#addSubjectModal" style="margin-left:0.5rem;">
+        <i class="fas fa-plus"></i> {% if LANG == 'sw' %}Ongeza Somo{% else %}Add Subject{% endif %}
+      </button>
+      {% endif %}
     </div>
   </div>
 
@@ -310,6 +315,42 @@
     {% endif %}
   </div>
 </div>
+
+{% if is_academic %}
+<!-- Add Subject to Exam Modal -->
+<div class="modal fade" id="addSubjectModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:2px;">
+      <form method="post" action="{% url 'add_exam_subject' exam.id %}">
+        {% csrf_token %}
+        <div class="modal-header" style="background:#1F7A3D;color:#fff;border-radius:0;">
+          <h5 class="modal-title"><i class="fas fa-plus"></i> {% if LANG == 'sw' %}Ongeza Somo kwenye Mtihani{% else %}Add Subject to this Exam{% endif %}</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:0.9rem;color:#666;margin-bottom:0.8rem;">
+            {% if LANG == 'sw' %}
+              Umesahau somo unalounda mtihani? Andika jina lake hapa na litaongezwa mara moja kwa mwalimu kujaza.
+            {% else %}
+              Forgot a subject when creating this exam? Type it below to register it right away for the teacher to fill in.
+            {% endif %}
+          </p>
+          <input type="text" name="subject_name" id="addSubjectInput" list="addSubjectList"
+                 placeholder="{% if LANG == 'sw' %}Jina la somo — mf. Fizikia{% else %}Subject name — e.g. Physics{% endif %}"
+                 style="width:100%;border:1.5px solid #ccc;border-radius:6px;padding:0.55rem 0.7rem;font-size:0.9rem;" autofocus>
+          <datalist id="addSubjectList">
+            {% for s in suggested_subjects %}<option value="{{ s }}">{% endfor %}
+          </datalist>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
+          <button type="submit" class="kbtn kbtn--primary"><i class="fas fa-plus"></i> {% if LANG == 'sw' %}Ongeza Somo{% else %}Add Subject{% endif %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Return to Teacher Modal -->
 <div class="modal fade" id="returnModal" tabindex="-1">
