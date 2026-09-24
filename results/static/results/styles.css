@@ -1004,3 +1004,304 @@ body {
     padding-bottom: 0;
   }
 }
+
+/* ============================================================
+   DASHBOARD DESIGN KIT — shared, consistent pieces for the
+   dashboards & internal work surfaces (Home, Academic, Teacher,
+   PS, Exam Overview). One button system, one chip system.
+   ============================================================ */
+
+/* ── Section header (title + hint + trailing actions) ── */
+.sec-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  flex-wrap: wrap;
+  margin: 1.6rem 0 0.7rem;
+}
+.sec-head h2 {
+  font-family: "Sora", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--ink-900);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sec-head .sec-hint {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-500);
+}
+.sec-head:first-child { margin-top: 0; }
+
+/* ── Toolbar: a tidy row/band of grouped actions ── */
+.action-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.action-toolbar .toolbar-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--line);
+  margin: 0 0.15rem;
+}
+.action-toolbar .toolbar-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+  margin-right: 0.2rem;
+}
+
+/* ── Unified button system ── */
+.kbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-family: "Manrope", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.62rem 1.05rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.16s ease, box-shadow 0.16s ease,
+    border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+.kbtn i { font-size: 0.95em; }
+.kbtn--primary {
+  background: linear-gradient(135deg, var(--accent-500), var(--accent-600));
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(31, 122, 61, 0.22);
+}
+.kbtn--primary:hover {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(31, 122, 61, 0.3);
+}
+.kbtn--gold {
+  background: linear-gradient(135deg, var(--secondary-500), #a9863a);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(217, 164, 65, 0.25);
+}
+.kbtn--gold:hover { color: #fff; transform: translateY(-1px); }
+.kbtn--ghost {
+  background: #fff;
+  color: var(--ink-700);
+  border-color: var(--line);
+}
+.kbtn--ghost:hover {
+  color: var(--accent-500);
+  border-color: var(--accent-500);
+  background: rgba(31, 122, 61, 0.05);
+}
+.kbtn--danger {
+  background: #fff;
+  color: var(--danger-500);
+  border-color: #eac7c1;
+}
+.kbtn--danger:hover {
+  background: var(--danger-500);
+  color: #fff;
+  border-color: var(--danger-500);
+}
+.kbtn--sm { font-size: 0.74rem; padding: 0.4rem 0.72rem; border-radius: 10px; }
+.kbtn--sm i { font-size: 0.95em; }
+.kbtn--block { width: 100%; }
+
+/* ── Status chips (pill, one consistent family) ── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.chip--complete { background: #e6f7ec; color: #15653a; border-color: #a3d9b4; }
+.chip--progress { background: #e8f4ff; color: #0056b3; border-color: #b3d4f5; }
+.chip--pending  { background: #fff8e6; color: #7a5200; border-color: #f0d07a; }
+.chip--returned { background: #fdecea; color: #c0392b; border-color: #f1948a; }
+.chip--neutral  { background: #f1f5f9; color: #334155; border-color: #dbe3ea; }
+
+/* ── Dashboard stat card ── */
+.stat-card {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.stat-card .stat-value {
+  font-family: "Sora", sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--accent-500);
+  line-height: 1.1;
+}
+.stat-card .stat-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+
+/* ── Progress bar (compact, used on exam cards) ── */
+.pbar { background: #e9ecef; border-radius: 999px; height: 7px; overflow: hidden; }
+.pbar > i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-500), #3f9d5c);
+  transition: width 0.4s;
+}
+.pbar--amber > i { background: linear-gradient(90deg, var(--secondary-500), #e8b84b); }
+
+/* Dark-mode support for the kit */
+[data-theme="dark"] .kbtn--ghost {
+  background: #1e293b;
+  color: var(--ink-700);
+}
+[data-theme="dark"] .kbtn--ghost:hover {
+  color: var(--secondary-300);
+  border-color: var(--secondary-500);
+  background: rgba(217, 164, 65, 0.1);
+}
+[data-theme="dark"] .kbtn--danger {
+  background: transparent;
+  color: #f39d94;
+  border-color: rgba(244, 63, 94, 0.4);
+}
+[data-theme="dark"] .kbtn--danger:hover { background: #dc2626; color: #fff; }
+[data-theme="dark"] .chip--neutral { background: #1e293b; color: #cbd5e1; border-color: #334155; }
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .action-toolbar { color: var(--ink-900); }
+[data-theme="dark"] .stat-card .stat-label,
+[data-theme="dark"] .sec-head .sec-hint,
+[data-theme="dark"] .action-toolbar .toolbar-label { color: var(--ink-500); }
+[data-theme="dark"] .pbar { background: #1e293b; }
+[data-theme="dark"] .action-toolbar .toolbar-sep { background: var(--line); }
+
+/* ============================================================
+   HEADER — zana (juu kulia) + upau wa menyu (PC)
+   ============================================================ */
+body { overflow-x: clip; }
+
+.header-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.header-tools .lang-switch { margin-left: 0; }
+.header-tools .lang-switch a {
+  display: inline-block;
+  text-decoration: none;
+  color: var(--ink-700);
+  font-weight: 700;
+}
+.header-tools .lang-switch a.active { color: white; }
+
+.tool-logout,
+.tool-login {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tool-logout { color: var(--danger-500); background: white; border: 1px solid rgba(187, 62, 47, 0.35); }
+.tool-logout:hover { background: var(--danger-500); color: white; }
+.tool-login { color: white; background: var(--accent-500); border: 1px solid var(--accent-500); }
+.tool-login:hover { background: var(--accent-600); color: white; }
+
+.main-nav-bar {
+  background: linear-gradient(180deg, var(--accent-600), #0e3d1b);
+  border-top: 2px solid var(--secondary-500);
+  box-shadow: 0 8px 20px -14px rgba(18, 77, 34, 0.9);
+}
+.main-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+.main-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.52rem;
+  border-radius: 10px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.main-nav a i { color: var(--secondary-500); font-size: 0.85rem; width: 1em; text-align: center; }
+.main-nav a:hover { background: rgba(255, 255, 255, 0.12); color: white; }
+.main-nav a.active { background: white; color: var(--accent-600); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); }
+.main-nav a.active i { color: var(--accent-500); }
+.main-nav a:focus-visible { outline: 2px solid var(--secondary-500); outline-offset: 2px; }
+
+.drawer-nav a.active { background: rgba(31, 122, 61, 0.12); color: var(--accent-600); font-weight: 700; }
+.bottom-nav a.active { color: var(--accent-500); }
+
+[data-theme="dark"] .main-nav-bar { background: linear-gradient(180deg, #0f2a18, #0b1f12); }
+[data-theme="dark"] .main-nav a.active { background: #e9f5ec; color: #0e3d1b; }
+[data-theme="dark"] .header-tools .lang-switch a { background: #1e293b; color: var(--ink-700); }
+[data-theme="dark"] .header-tools .lang-switch a.active { background: var(--accent-500); color: white; }
+[data-theme="dark"] .tool-logout { background: #1e293b; }
+
+/* ============================================================
+   VITUFE — muundo mmoja kwa kurasa zote za results
+   ============================================================ */
+.page-shell .btn {
+  border-radius: 8px !important;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  transition: transform 0.12s ease, box-shadow 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.page-shell .btn:hover:not(:disabled):not(.disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -6px rgba(15, 23, 42, 0.35);
+}
+.page-shell .btn:active { transform: none; box-shadow: none; }
+.page-shell .btn:focus-visible { outline: 2px solid var(--secondary-500); outline-offset: 2px; box-shadow: none; }
+.page-shell .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.78rem !important; line-height: 1.2; }
+.page-shell .btn:disabled,
+.page-shell .btn.disabled { opacity: 0.45; }
+.page-shell .btn-group > .btn { transform: none !important; }
+.page-shell .dropdown-menu { border-radius: 10px; border-color: var(--line); box-shadow: 0 14px 30px -12px rgba(15, 23, 42, 0.35); padding: 0.35rem; }
+.page-shell .dropdown-item { border-radius: 6px; font-size: 0.85rem; padding: 0.45rem 0.7rem; }
+.page-shell .dropdown-item:active { background: var(--accent-500); }

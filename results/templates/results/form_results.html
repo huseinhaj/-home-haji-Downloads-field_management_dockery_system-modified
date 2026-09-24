@@ -77,11 +77,11 @@
 .results-table tr:last-child td { border-bottom: none; }
 .results-table tr:hover td { background: #fafbfc; }
 
-.div-I   { background:#d4edda; color:#155724; font-weight:700; padding:.1rem .5rem; border-radius:2px; font-size:.72rem; }
-.div-II  { background:#cce5ff; color:#004085; font-weight:700; padding:.1rem .5rem; border-radius:2px; font-size:.72rem; }
-.div-III { background:#fff3cd; color:#856404; font-weight:700; padding:.1rem .5rem; border-radius:2px; font-size:.72rem; }
-.div-IV  { background:#f8d7da; color:#721c24; font-weight:700; padding:.1rem .5rem; border-radius:2px; font-size:.72rem; }
-.div-0   { background:#e2e3e5; color:#383d41; font-weight:700; padding:.1rem .5rem; border-radius:2px; font-size:.72rem; }
+.div-I   { background:#d4edda; color:#155724; font-weight:700; padding:.15rem .55rem; border-radius:6px; font-size:.72rem; white-space:nowrap; }
+.div-II  { background:#cce5ff; color:#004085; font-weight:700; padding:.15rem .55rem; border-radius:6px; font-size:.72rem; white-space:nowrap; }
+.div-III { background:#fff3cd; color:#856404; font-weight:700; padding:.15rem .55rem; border-radius:6px; font-size:.72rem; white-space:nowrap; }
+.div-IV  { background:#f8d7da; color:#721c24; font-weight:700; padding:.15rem .55rem; border-radius:6px; font-size:.72rem; white-space:nowrap; }
+.div-0   { background:#e2e3e5; color:#383d41; font-weight:700; padding:.15rem .55rem; border-radius:6px; font-size:.72rem; white-space:nowrap; }
 
 .pos-badge { background:#1F7A3D; color:#fff; font-weight:700; padding:.1rem .55rem; border-radius:2px; font-size:.75rem; }
 
@@ -89,15 +89,18 @@
 .action-group { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; justify-content:flex-end; }
 .group-label { font-size:0.6rem; font-weight:800; letter-spacing:0.08em; color:#666; text-transform:uppercase; border-bottom:2px solid #1b1b1b; padding-bottom:1px; white-space:nowrap; }
 .group-btns { display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; }
-.btn-black { background:#1b1b1b; color:#fff; font-size:0.72rem; border-radius:2px; font-weight:700; border:none; }
-.btn-black:hover, .btn-black:focus { background:#000; color:#fff; }
+.btn-black { background:var(--accent-600); color:#fff; font-size:0.72rem; font-weight:700; border:1px solid var(--accent-600); }
+.btn-black:hover, .btn-black:focus { background:var(--accent-500); border-color:var(--accent-500); color:#fff; }
+.btn-black.pick-print { background:var(--secondary-500); border-color:var(--secondary-500); color:#1b1b1b; }
+.btn-black.pick-print:hover { background:#c79231; border-color:#c79231; color:#1b1b1b; }
 @media (max-width: 768px) { .exam-actions { align-items:stretch; } .action-group { justify-content:flex-start; } }
 
 .empty-notice { padding:1.5rem; text-align:center; color:#aaa; font-size:0.85rem; }
 .pick-bar { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; padding:0.5rem 0.9rem; border-bottom:1px solid #f0f2f5; background:#fbfaf6; }
-.pick-bar .pick-style { width:auto; min-width:150px; font-size:0.78rem; }
+.pick-bar .pick-style { width:auto; min-width:150px; font-size:0.78rem; height:32px; min-height:0; padding-top:.2rem; padding-bottom:.2rem; border-radius:8px; }
 .pick-bar.has-pick { background:#fff7e0; }
 .results-table input[type=checkbox] { width:16px; height:16px; cursor:pointer; }
+[data-theme="dark"] .results-table td { color:#1f2937; }
 </style>
 
 <!-- Hero -->
@@ -250,7 +253,7 @@
         {% if ed.exam.form == 6 %}<option value="acsee">🎓 Form Six Prestige</option>{% endif %}
       </select>
       <button type="button" class="btn btn-sm btn-black pick-print" disabled>
-        🖨️ {% if LANG == 'sw' %}PDF ya Waliochaguliwa{% else %}PDF of Selected Students{% endif %} (<span class="pick-count">0</span>)
+        🖨️ {% if LANG == 'sw' %}PDF ya Waliochaguliwa{% else %}PDF of Selected Students{% endif %} <span>(<span class="pick-count">0</span>)</span>
       </button>
       <button type="button" class="btn btn-sm btn-outline-secondary pick-clear" disabled>
         ✕ {% if LANG == 'sw' %}Ondoa tiki zote{% else %}Clear{% endif %}

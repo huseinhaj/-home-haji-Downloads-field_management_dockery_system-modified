@@ -33,8 +33,12 @@
 </section>
 
 <div id="masomo-rasmi" class="mt-4">
-  <h2 style="font-family:'Sora',sans-serif;font-size:1.1rem;color:var(--ink-900);">{% if LANG == 'sw' %}Masomo ya Mitihani Rasmi{% else %}Official Exam Subjects{% endif %}</h2>
-  <p class="text-secondary" style="font-size:0.85rem;">{% if LANG == 'sw' %}Hali ya kila somo unalofundisha, kwa kila mtihani wa shule.{% else %}Status of every subject you teach, for each school exam.{% endif %}</p>
+  <div class="sec-head">
+    <div>
+      <h2>{% if LANG == 'sw' %}Masomo ya Mitihani Rasmi{% else %}Official Exam Subjects{% endif %}</h2>
+      <p class="sec-hint">{% if LANG == 'sw' %}Hali ya kila somo unalofundisha, kwa kila mtihani wa shule.{% else %}Status of every subject you teach, for each school exam.{% endif %}</p>
+    </div>
+  </div>
 
   {% if exams_ctx %}
     {% for ec in exams_ctx %}
@@ -57,7 +61,7 @@
           {% if ec.approved %}
           <span class="badge-soft" style="background:#e6f7ec;color:var(--ok-500);">&#10003; {% if LANG == 'sw' %}Imeidhinishwa{% else %}Approved{% endif %}: {{ ec.approved|length }}</span>
           {% endif %}
-          <a href="{% url 'exam_overview' ec.exam.id %}" class="btn-tile ghost">{% if LANG == 'sw' %}Tazama Yote{% else %}View All{% endif %}</a>
+          <a href="{% url 'exam_overview' ec.exam.id %}" class="kbtn kbtn--ghost kbtn--sm"><i class="fas fa-eye"></i> {% if LANG == 'sw' %}Tazama Yote{% else %}View All{% endif %}</a>
         </div>
       </div>
 
@@ -72,8 +76,8 @@
             <div class="s-meta" style="color:#24508a;">📋 {{ sub.roster_count }} {% if LANG == 'sw' %}wanafunzi kwenye orodha{% else %}students in roster{% endif %}</div>
             {% endif %}
             <div class="d-flex gap-1 flex-wrap">
-              <a href="{{ sub.marks_url }}" class="btn-tile primary">&#9997; {% if LANG == 'sw' %}Jaza Alama{% else %}Enter Marks{% endif %}</a>
-              <a href="{% url 'subject_upload' ec.exam.id sub.subject.id %}" class="btn-tile ghost">&#8679; {% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
+              <a href="{{ sub.marks_url }}" class="kbtn kbtn--primary kbtn--sm"><i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Jaza Alama{% else %}Enter Marks{% endif %}</a>
+              <a href="{% url 'subject_upload' ec.exam.id sub.subject.id %}" class="kbtn kbtn--ghost kbtn--sm"><i class="fas fa-upload"></i> {% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
             </div>
           </div>
           {% endfor %}
@@ -86,9 +90,9 @@
             <div class="s-meta">{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}: {{ sub.student_count }}</div>
             {% if sub.submitted_at %}<div class="s-meta">{{ sub.submitted_at|date:"d M Y" }}</div>{% endif %}
             <div class="d-flex gap-1 flex-wrap">
-              <a href="{{ sub.marks_url }}" class="btn-tile ghost">&#9997; {% if LANG == 'sw' %}Rekebisha Alama{% else %}Edit Marks{% endif %}</a>
-              <a href="{{ sub.summary_url }}" class="btn-tile ghost">&#128202; {% if LANG == 'sw' %}Muhtasari &amp; Mapendekezo{% else %}Summary &amp; Recommendations{% endif %}</a>
-              <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; PDF</a>
+              <a href="{{ sub.marks_url }}" class="kbtn kbtn--ghost kbtn--sm"><i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Rekebisha Alama{% else %}Edit Marks{% endif %}</a>
+              <a href="{{ sub.summary_url }}" class="kbtn kbtn--ghost kbtn--sm"><i class="fas fa-chart-simple"></i> {% if LANG == 'sw' %}Muhtasari &amp; Mapendekezo{% else %}Summary &amp; Recommendations{% endif %}</a>
+              <a href="{{ sub.pdf_url }}" class="kbtn kbtn--primary kbtn--sm" target="_blank"><i class="fas fa-file-pdf"></i> PDF</a>
             </div>
           </div>
           {% endfor %}
@@ -105,7 +109,7 @@
             {% if sub.returned_by %}<div class="s-meta" style="color:#c0392b;">{% if LANG == 'sw' %}Rudishwa na{% else %}Returned by{% endif %}: {{ sub.returned_by }}</div>{% endif %}
             {% if sub.returned_at %}<div class="s-meta">{{ sub.returned_at|date:"d M Y" }}</div>{% endif %}
             <div class="d-flex gap-1 flex-wrap">
-              <a href="{{ sub.marks_url }}" class="btn-tile" style="background:#c0392b;color:#fff;border:none;">&#9997; {% if LANG == 'sw' %}Rekebisha & Tuma Tenaresubmit{% else %}Fix & Resubmit{% endif %}</a>
+              <a href="{{ sub.marks_url }}" class="kbtn kbtn--danger kbtn--sm"><i class="fas fa-undo-alt"></i> {% if LANG == 'sw' %}Rekebisha &amp; Tuma Tena{% else %}Fix &amp; Resubmit{% endif %}</a>
             </div>
           </div>
           {% endfor %}
@@ -117,9 +121,9 @@
             <div class="s-meta">{% if LANG == 'sw' %}Mwalimu{% else %}Teacher{% endif %}: {{ sub.submitted_by|default:"—" }}</div>
             <div class="s-meta">{% if LANG == 'sw' %}Imeidhinishwa na{% else %}Approved by{% endif %}: {{ sub.approved_by|default:"—" }}</div>
             <div class="d-flex gap-1 flex-wrap">
-              <a href="{{ sub.marks_url }}" class="btn-tile ghost" title="{% if LANG == 'sw' %}Kuedit kutahitaji idhini tena ya Mtaaluma{% else %}Editing will need re-approval from the Academic Officer{% endif %}">&#9997; {% if LANG == 'sw' %}Rekebisha Alama{% else %}Edit Marks{% endif %}</a>
-              <a href="{{ sub.summary_url }}" class="btn-tile ghost">&#128202; {% if LANG == 'sw' %}Muhtasari &amp; Mapendekezo{% else %}Summary &amp; Recommendations{% endif %}</a>
-              <a href="{{ sub.pdf_url }}" class="btn-tile primary" target="_blank">&#128196; PDF</a>
+              <a href="{{ sub.marks_url }}" class="kbtn kbtn--ghost kbtn--sm" title="{% if LANG == 'sw' %}Kuedit kutahitaji idhini tena ya Mtaaluma{% else %}Editing will need re-approval from the Academic Officer{% endif %}"><i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Rekebisha Alama{% else %}Edit Marks{% endif %}</a>
+              <a href="{{ sub.summary_url }}" class="kbtn kbtn--ghost kbtn--sm"><i class="fas fa-chart-simple"></i> {% if LANG == 'sw' %}Muhtasari &amp; Mapendekezo{% else %}Summary &amp; Recommendations{% endif %}</a>
+              <a href="{{ sub.pdf_url }}" class="kbtn kbtn--primary kbtn--sm" target="_blank"><i class="fas fa-file-pdf"></i> PDF</a>
             </div>
           </div>
           {% endfor %}
@@ -138,7 +142,7 @@
         {% if LANG == 'sw' %}Hakuna mtihani wenye masomo yako bado. Wasiliana na Afisa Taaluma kuhusu ratiba ya mtihani.{% else %}No exam with your subjects yet. Talk to the academic officer about the exam schedule.{% endif %}
       {% else %}
         {% if LANG == 'sw' %}Hujachagua somo lolote bado.{% else %}You haven't picked any subject yet.{% endif %}
-        <div class="mt-2"><a href="{% url 'select_my_subjects' %}" class="btn btn-brand">{% if LANG == 'sw' %}Chagua Masomo Yangu{% else %}Choose My Subjects{% endif %}</a></div>
+        <div class="mt-2"><a href="{% url 'select_my_subjects' %}" class="kbtn kbtn--primary"><i class="fas fa-book"></i> {% if LANG == 'sw' %}Chagua Masomo Yangu{% else %}Choose My Subjects{% endif %}</a></div>
       {% endif %}
     </div>
   </div>
@@ -147,12 +151,14 @@
 
 {% if stored_rosters %}
 <div class="mt-4">
-  <h2 style="font-family:'Sora',sans-serif;font-size:1.1rem;color:var(--ink-900);">
-    {% if LANG == 'sw' %}📋 Orodha Zilizohifadhiwa{% else %}📋 Stored Student Lists{% endif %}
-  </h2>
-  <p class="text-secondary" style="font-size:0.85rem;">
-    {% if LANG == 'sw' %}Orodha za wanafunzi ulizopakia zimehifadhiwa. Bonyeza 'Jaza Alama' kuanza kujaza alama.{% else %}Uploaded student lists are saved. Click 'Enter Marks' to start filling in scores.{% endif %}
-  </p>
+  <div class="sec-head">
+    <div>
+      <h2>📋 {% if LANG == 'sw' %}Orodha Zilizohifadhiwa{% else %}Stored Student Lists{% endif %}</h2>
+      <p class="sec-hint">
+        {% if LANG == 'sw' %}Orodha za wanafunzi ulizopakia zimehifadhiwa. Bonyeza 'Jaza Alama' kuanza kujaza alama.{% else %}Uploaded student lists are saved. Click 'Enter Marks' to start filling in scores.{% endif %}
+      </p>
+    </div>
+  </div>
   <div class="subjects-grid">
     {% for r in stored_rosters %}
     <div class="subject-tile" style="border-left:4px solid #24508a;">
@@ -164,8 +170,8 @@
         &bull; {{ r.source_file|default:r.source_format }}
       </div>
       <div class="d-flex gap-1 flex-wrap mt-1">
-        <a href="{% url 'marks_entry' %}?exam={{ r.exam.id }}&subject={{ r.subject.id }}" class="btn-tile primary">
-          &#9997; {% if LANG == 'sw' %}Jaza Alama{% else %}Enter Marks{% endif %}
+        <a href="{% url 'marks_entry' %}?exam={{ r.exam.id }}&subject={{ r.subject.id }}" class="kbtn kbtn--primary kbtn--sm">
+          <i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Jaza Alama{% else %}Enter Marks{% endif %}
         </a>
       </div>
     </div>

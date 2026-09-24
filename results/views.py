@@ -95,6 +95,15 @@ def home(request):
 
     exams_list = list(exams)
 
+    def _state(e):
+        total = getattr(e, 'total_submissions', 0)
+        sub = getattr(e, 'submitted_count', 0)
+        if total == 0:
+            return 'pending'
+        return 'complete' if sub >= total else 'progress'
+
+    states = [_state(e) for e in exams_list]
+
     return render(
         request,
         'results/home.html',
@@ -102,6 +111,11 @@ def home(request):
             'exams': exams_list,
             'exam_count': len(exams_list),
             'latest_exam': exams_list[0] if exams_list else None,
+            'stats': {
+                'complete': sum(1 for s in states if s == 'complete'),
+                'progress': sum(1 for s in states if s == 'progress'),
+                'pending': sum(1 for s in states if s == 'pending'),
+            },
         },
     )
 

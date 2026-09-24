@@ -177,6 +177,18 @@
 }
 .pdf-dl:hover{ background:var(--ad-green); color:#fff; border-color:var(--ad-green-d); }
 
+.dl-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+  gap:.4rem .5rem;
+}
+.dl-grid .pdf-dl{ text-align:center; justify-content:center; }
+.dl-label{
+  font-size:.66rem; font-weight:800; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--ad-muted);
+  display:block; margin-bottom:.35rem;
+}
+
 .empty-state{ text-align:center; padding:3rem 1rem; color:var(--ad-faint); font-size:.9rem; }
 
 .stream-badge{
@@ -185,15 +197,17 @@
   margin-left:.4rem; letter-spacing:.04em; vertical-align:middle;
 }
 
-/* One-line explanations of the hero quick-action buttons — the system
-   should explain itself to a first-time user (official requirement). */
-.ad-btn-hints{
-  margin-top:.7rem; padding-top:.6rem;
-  border-top:1px solid rgba(255,255,255,.25);
-  display:flex; flex-direction:column; gap:.2rem;
+/* Vitufe — mwendo mdogo ukipitisha mouse */
+.ad-btn, .form-nav-btn{ border-radius:8px; transition:transform .12s ease, box-shadow .15s ease, background-color .15s ease, color .15s ease; }
+.ad-btn:hover, .form-nav-btn:hover{ transform:translateY(-1px); box-shadow:0 6px 14px -6px rgba(15,23,42,.35); }
+.acad-hero{ border-radius:12px; }
+@media (max-width: 600px){
+  .acad-hero .action-toolbar{ display:grid; grid-template-columns:1fr 1fr; gap:.45rem; align-items:stretch !important; }
+  .acad-hero .action-toolbar .toolbar-sep{ display:none; }
+  .acad-hero .action-toolbar .toolbar-label,
+  .acad-hero .action-toolbar .ad-btn--primary{ grid-column:1 / -1; }
+  .acad-hero .action-toolbar .ad-btn{ justify-content:center; white-space:normal; text-align:center; line-height:1.25; padding:.6rem .5rem; }
 }
-.ad-btn-hints span{ font-size:.72rem; color:rgba(255,255,255,.85); line-height:1.5; }
-.ad-btn-hints strong{ color:#fff; font-weight:700; }
 </style>
 
 <div class="acad-hero">
@@ -206,7 +220,8 @@
         &nbsp;&bull;&nbsp; {{ total_exams }} {% if LANG == 'sw' %}mitihani jumla{% else %}total exams{% endif %}
       </div>
     </div>
-    <div class="d-flex gap-2 flex-wrap">
+    <div class="action-toolbar align-items-center justify-content-end">
+      <span class="toolbar-label">{% if LANG == 'sw' %}Vitendo vya Haraka{% else %}Quick Actions{% endif %}</span>
       <a href="{% url 'upload_form_students' %}" class="ad-btn ad-btn--ghost">
         {% if LANG == 'sw' %}📋 Orodha ya Wanafunzi{% else %}📋 Student Roster{% endif %}
       </a>
@@ -217,23 +232,16 @@
         {% if LANG == 'sw' %}🧾 Unda Mtihani Mpya{% else %}🧾 Create New Exam{% endif %}
       </a>
       <a href="{% url 'necta_ca_form' %}" class="ad-btn ad-btn--ghost">
-        📄 {% if LANG == 'sw' %}Fomu ya NECTA C.A. (Form IV){% else %}NECTA C.A. Form (Form IV){% endif %}
+        📄 {% if LANG == 'sw' %}NECTA C.A. (Form IV){% else %}NECTA C.A. Form (Form IV){% endif %}
       </a>
       <a href="{% url 'school_storage' %}" class="ad-btn ad-btn--ghost">
         🗄️ {% if LANG == 'sw' %}Hifadhi ya Shule (Backup){% else %}School Storage (Backup){% endif %}
       </a>
+      <span class="toolbar-sep"></span>
       <a href="{% url 'year_rollover' %}" class="ad-btn ad-btn--primary">
         🎓 {% if LANG == 'sw' %}Anza Mwaka Mpya wa Masomo{% else %}Start New Academic Year{% endif %}
       </a>
     </div>
-  </div>
-  <div class="ad-btn-hints">
-    <span><strong>📋 {% if LANG == 'sw' %}Orodha ya Wanafunzi{% else %}Student Roster{% endif %}</strong> — {% if LANG == 'sw' %}pakiwa na jaza orodha ya wanafunzi wa kila darasa{% else %}upload &amp; manage each class's student list{% endif %}</span>
-    <span><strong>➕ {% if LANG == 'sw' %}Ongeza Mwanafunzi & Alama{% else %}Add Student & Marks{% endif %}</strong> — {% if LANG == 'sw' %}mwanafunzi aliesahaulika: muingize na jaza alama zake mara moja{% else %}a missed student: enroll them &amp; enter their marks in one go{% endif %}</span>
-    <span><strong>🧾 {% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}Create New Exam{% endif %}</strong> — {% if LANG == 'sw' %}fungua mtihani mpya (Midterm, Terminal n.k.){% else %}open a new exam (Midterm, Terminal, etc.){% endif %}</span>
-    <span><strong>📄 {% if LANG == 'sw' %}Fomu ya NECTA C.A. (Form IV){% else %}NECTA C.A. Form (Form IV){% endif %}</strong> — {% if LANG == 'sw' %}tengeneza Fomu ya Continuous Assessment ya NECTA: chagua somo, mfumo unavuta matokeo ya Form Four na kukadiria alama kwa kuzingatia utendaji{% else %}generate the NECTA Continuous Assessment form: pick a subject and the system pulls Form Four results and estimates marks performance-aware{% endif %}</span>
-    <span><strong>🗄️ {% if LANG == 'sw' %}Hifadhi ya Shule{% else %}School Storage{% endif %}</strong> — {% if LANG == 'sw' %}pakua nakala rudufu ya taarifa za shule{% else %}download a backup of your school's data{% endif %}</span>
-    <span><strong>🎓 {% if LANG == 'sw' %}Anza Mwaka Mpya{% else %}Start New Year{% endif %}</strong> — {% if LANG == 'sw' %}hamisha wanafunzi darasa linalofuata mwaka unapoanza{% else %}promote students to the next class when the year begins{% endif %}</span>
   </div>
 </div>
 
@@ -346,7 +354,9 @@
         <div class="all-approved-bar">
           <div class="msg">✅ {% if LANG == 'sw' %}Masomo yote yameidhinishwa{% else %}All subjects approved{% endif %}</div>
           {# Three direct links instead of one link + a JS-shown style picker modal — plain server-rendered ?style= links can never fail to come up. Each style offers both a PDF and an Excel (📊) download, same ?style= palette in both. #}
-          <div class="d-flex gap-1 flex-wrap">
+          <div style="flex:1 1 100%;">
+            <span class="dl-label">{% if LANG == 'sw' %}Pakua Ripoti ya Matokeo{% else %}Download Results Report{% endif %}</span>
+            <div class="dl-grid">
             <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=normal" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti kamili ya matokeo ya mtihani huu (PDF){% else %}Download this exam's full results report (PDF){% endif %}">
               ⬇️ {% if LANG == 'sw' %}Ripoti ya Kawaida{% else %}Normal Report{% endif %} (PDF)
             </a>
@@ -381,6 +391,7 @@
               🎓 {% if LANG == 'sw' %}Form Six Prestige{% else %}Form Six Prestige{% endif %} (Excel)
             </a>
             {% endif %}
+            </div>
           </div>
         </div>
         {% endif %}

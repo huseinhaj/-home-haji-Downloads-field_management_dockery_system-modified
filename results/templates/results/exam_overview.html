@@ -77,8 +77,7 @@
   }
 
   .subject-meta { font-size: 0.78rem; color: #666; }
-  .subject-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.35rem; }
-  .subject-actions .btn { font-size: 0.75rem; padding: 0.3rem 0.75rem; border-radius: 2px; font-weight: 600; }
+  .subject-actions { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-top: 0.45rem; }
 
   .finalize-section {
     background: #f8f9fa;
@@ -115,14 +114,17 @@
   .btn-finalize:not(:disabled):hover {
     background: #145226;
   }
-  .btn-speech { background: #1F7A3D; color: #fff; border: none; }
-  .btn-speech:hover { background: #145226; color: #fff; }
-  .btn-upload-sm { background: #fff; color: #1F7A3D; border: 1.5px solid #1F7A3D; }
-  .btn-upload-sm:hover { background: #1F7A3D; color: #fff; }
-  .btn-pdf { background: #fff; color: #1a7a3b; border: 1.5px solid #1a7a3b; }
-  .btn-pdf:hover { background: #1a7a3b; color: #fff; }
-  .btn-excel { background: #fff; color: #137a20; border: 1.5px solid #137a20; }
-  .btn-excel:hover { background: #137a20; color: #fff; }
+  .dl-pair { display: inline-flex; align-items: stretch; overflow: hidden; border-radius: 6px; }
+  .dl-pair .dl-main { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.55rem 0.9rem; color: #fff; font-weight: 800; font-size: 0.8rem; text-decoration: none; }
+  .dl-pair .dl-excel { display: inline-flex; align-items: center; padding: 0.55rem 0.6rem; background: #fff; color: #137a20; border: 1px solid #137a20; font-weight: 800; font-size: 0.8rem; text-decoration: none; border-left: none; }
+  .dl-pair .dl-excel:hover { background: #137a20; color: #fff; }
+  .dl-pair--normal .dl-main { background: linear-gradient(135deg, #1F7A3D, #145226); }
+  .dl-pair--rank .dl-main { background: linear-gradient(135deg, #0b4a8b, #082f5c); }
+  .dl-pair--necta .dl-main { background: linear-gradient(135deg, #84141e, #570e14); }
+  .dl-pair--royal .dl-main { background: linear-gradient(135deg, #6B2FA0, #4A1D6E); color: #E5C96B; }
+  .dl-pair--acsee .dl-main { background: linear-gradient(135deg, #1A1A1A, #3A3A3A); color: #E5C96B; }
+  .dl-pair .dl-main:hover { filter: brightness(1.1); }
+  .dl-label-sm { display: block; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-500); margin-bottom: 0.35rem; }
 </style>
 
 <!-- Hero -->
@@ -138,8 +140,8 @@
       </div>
     </div>
     <div>
-      <a href="{% url 'home' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
-        &larr; Dashboard
+      <a href="{% url 'home' %}" class="kbtn kbtn--ghost kbtn--sm">
+        <i class="fas fa-arrow-left"></i> {% if LANG == 'sw' %}Dashibodi{% else %}Dashboard{% endif %}
       </a>
     </div>
   </div>
@@ -204,30 +206,26 @@
 
     <div class="subject-actions">
       {% if not ctx.is_approved and not is_academic %}
-      <a href="{{ ctx.marks_url }}" class="btn btn-speech">✏️ {% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</a>
-      <a href="{{ ctx.upload_url }}" class="btn btn-upload-sm">{% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
-      <a href="{% url 'scan_upload' exam.pk ctx.subject.pk %}" class="btn btn-upload-sm" title="Sahishi Scan — piga picha karatasi, mfumo usahihishe moja kwa moja">📷 Sahishi Scan</a>
-      <a href="{% url 'scan_scheme_upload' exam.pk ctx.subject.pk %}" class="btn btn-upload-sm" title="Pakia marking scheme ya somo hili">📋 Scheme</a>
+      <a href="{{ ctx.marks_url }}" class="kbtn kbtn--primary kbtn--sm"><i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Jaza Alama{% else %}Marks Entry{% endif %}</a>
+      <a href="{{ ctx.upload_url }}" class="kbtn kbtn--ghost kbtn--sm"><i class="fas fa-upload"></i> {% if LANG == 'sw' %}Pakia Faili{% else %}Upload File{% endif %}</a>
+      <a href="{% url 'scan_upload' exam.pk ctx.subject.pk %}" class="kbtn kbtn--ghost kbtn--sm" title="Sahishi Scan — piga picha karatasi, mfumo usahihishe moja kwa moja"><i class="fas fa-camera"></i> {% if LANG == 'sw' %}Sahishi Scan{% else %}Scan{% endif %}</a>
+      <a href="{% url 'scan_scheme_upload' exam.pk ctx.subject.pk %}" class="kbtn kbtn--ghost kbtn--sm" title="Pakia marking scheme ya somo hili"><i class="fas fa-list-check"></i> {% if LANG == 'sw' %}Scheme{% else %}Scheme{% endif %}</a>
       {% endif %}
       {% if ctx.is_returned and not is_academic %}
-      <a href="{{ ctx.marks_url }}" class="btn" style="background:#c0392b;color:#fff;font-size:.72rem;padding:.28rem .7rem;border-radius:2px;font-weight:700;border:none;">
-        &#8630; {% if LANG == 'sw' %}Rekebisha & Tuma Tenaresubmit{% else %}Fix & Resubmit{% endif %}
-      </a>
+      <a href="{{ ctx.marks_url }}" class="kbtn kbtn--danger kbtn--sm"><i class="fas fa-undo-alt"></i> {% if LANG == 'sw' %}Rekebisha &amp; Tuma Tena{% else %}Fix &amp; Resubmit{% endif %}</a>
       {% endif %}
       {% if ctx.pdf_url %}
-      <a href="{{ ctx.pdf_url }}" class="btn btn-pdf">PDF</a>
+      <a href="{{ ctx.pdf_url }}" class="kbtn kbtn--ghost kbtn--sm"><i class="fas fa-file-pdf"></i> PDF</a>
       {% endif %}
       {% if ctx.approve_url %}
       <form method="post" action="{{ ctx.approve_url }}" style="display:inline;">
         {% csrf_token %}
-        <button type="submit" class="btn" style="background:#1a7a3b;color:#fff;font-size:.72rem;padding:.28rem .7rem;border-radius:2px;font-weight:700;border:none;">
-          ✓ {% if LANG == 'sw' %}Idhinisha{% else %}Approve{% endif %}
-        </button>
+        <button type="submit" class="kbtn kbtn--primary kbtn--sm"><i class="fas fa-check"></i> {% if LANG == 'sw' %}Idhinisha{% else %}Approve{% endif %}</button>
       </form>
       {% endif %}
       {% if ctx.return_url %}
-      <button type="button" class="btn" style="background:#c0392b;color:#fff;font-size:.72rem;padding:.28rem .7rem;border-radius:2px;font-weight:700;border:none;cursor:pointer;" onclick="openReturnModal('{{ ctx.subject.id }}', '{{ ctx.subject.name }}', '{{ ctx.return_url }}')">
-        &#8630; {% if LANG == 'sw' %}Rudisha{% else %}Return{% endif %}
+      <button type="button" class="kbtn kbtn--danger kbtn--sm" onclick="openReturnModal('{{ ctx.subject.id }}', '{{ ctx.subject.name }}', '{{ ctx.return_url }}')">
+        <i class="fas fa-undo-alt"></i> {% if LANG == 'sw' %}Rudisha{% else %}Return{% endif %}
       </button>
       {% endif %}
     </div>
@@ -260,60 +258,53 @@
   <div class="d-flex gap-2 flex-wrap">
     {% if not is_academic and submitted_count > 0 %}
     {# Three direct ?style= links instead of one link + a JS-shown style picker modal — plain server-rendered links always work regardless of script loading. Each style offers both PDF and Excel (📊), same ?style= palette in both. #}
-    <div class="d-flex gap-1">
-      <a href="{% url 'generate_results_pdf' exam.id %}?style=normal" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;">
-        📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}
-      </a>
-      <a href="{% url 'export_results_excel' exam.id %}?style=normal" data-no-style-picker class="btn btn-excel" title="Excel">📊 Excel</a>
-    </div>
-    <div class="d-flex gap-1">
-      <a href="{% url 'generate_results_pdf' exam.id %}?style=rank" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;">
-        📄 {% if LANG == 'sw' %}Ranki{% else %}Rank{% endif %}
-      </a>
-      <a href="{% url 'export_results_excel' exam.id %}?style=rank" data-no-style-picker class="btn btn-excel" title="Excel">📊 Excel</a>
-    </div>
-    <div class="d-flex gap-1">
-      <a href="{% url 'generate_results_pdf' exam.id %}?style=necta" data-no-style-picker class="btn" style="background:#c0392b;color:#fff;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;">
-        📄 NECTA
-      </a>
-      <a href="{% url 'export_results_excel' exam.id %}?style=necta" data-no-style-picker class="btn btn-excel" title="Excel">📊 Excel</a>
-    </div>
+    <div>
+      <span class="dl-label-sm">{% if LANG == 'sw' %}Pakua Matokeo{% else %}Download Results{% endif %}</span>
+      <div class="d-flex gap-2 flex-wrap">
+      <span class="dl-pair dl-pair--normal">
+        <a href="{% url 'generate_results_pdf' exam.id %}?style=normal" data-no-style-picker class="dl-main"><i class="fas fa-file-pdf"></i> {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}</a>
+        <a href="{% url 'export_results_excel' exam.id %}?style=normal" data-no-style-picker class="dl-excel" title="Excel"><i class="fas fa-file-excel"></i></a>
+      </span>
+      <span class="dl-pair dl-pair--rank">
+        <a href="{% url 'generate_results_pdf' exam.id %}?style=rank" data-no-style-picker class="dl-main"><i class="fas fa-file-pdf"></i> {% if LANG == 'sw' %}Ranki{% else %}Rank{% endif %}</a>
+        <a href="{% url 'export_results_excel' exam.id %}?style=rank" data-no-style-picker class="dl-excel" title="Excel"><i class="fas fa-file-excel"></i></a>
+      </span>
+      <span class="dl-pair dl-pair--necta">
+        <a href="{% url 'generate_results_pdf' exam.id %}?style=necta" data-no-style-picker class="dl-main"><i class="fas fa-file-pdf"></i> NECTA</a>
+        <a href="{% url 'export_results_excel' exam.id %}?style=necta" data-no-style-picker class="dl-excel" title="Excel"><i class="fas fa-file-excel"></i></a>
+      </span>
     {% if exam.form == 5 %}
-    <div class="d-flex gap-1">
-      <a href="{% url 'generate_results_pdf' exam.id %}?style=royal" data-no-style-picker class="btn" style="background:linear-gradient(135deg,#6B2FA0,#4A1D6E);color:#E5C96B;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;border:1px solid #C9A227;">
-        👑 Form Five Royal
-      </a>
-      <a href="{% url 'export_results_excel' exam.id %}?style=royal" data-no-style-picker class="btn btn-excel" title="Excel">📊 Excel</a>
-    </div>
+      <span class="dl-pair dl-pair--royal">
+        <a href="{% url 'generate_results_pdf' exam.id %}?style=royal" data-no-style-picker class="dl-main"><i class="fas fa-crown"></i> {% if LANG == 'sw' %}Form Five Royal{% else %}Form Five Royal{% endif %}</a>
+        <a href="{% url 'export_results_excel' exam.id %}?style=royal" data-no-style-picker class="dl-excel" title="Excel"><i class="fas fa-file-excel"></i></a>
+      </span>
     {% endif %}
     {% if exam.form == 6 %}
-    <div class="d-flex gap-1">
-      <a href="{% url 'generate_results_pdf' exam.id %}?style=acsee" data-no-style-picker class="btn" style="background:linear-gradient(135deg,#1A1A1A,#3A3A3A);color:#E5C96B;font-weight:700;border-radius:2px 0 0 2px;font-size:0.82rem;border:1px solid #D4B14A;">
-        🎓 Form Six Prestige
-      </a>
-      <a href="{% url 'export_results_excel' exam.id %}?style=acsee" data-no-style-picker class="btn btn-excel" title="Excel">📊 Excel</a>
-    </div>
+      <span class="dl-pair dl-pair--acsee">
+        <a href="{% url 'generate_results_pdf' exam.id %}?style=acsee" data-no-style-picker class="dl-main"><i class="fas fa-graduation-cap"></i> {% if LANG == 'sw' %}Form Six Prestige{% else %}Form Six Prestige{% endif %}</a>
+        <a href="{% url 'export_results_excel' exam.id %}?style=acsee" data-no-style-picker class="dl-excel" title="Excel"><i class="fas fa-file-excel"></i></a>
+      </span>
     {% endif %}
+      </div>
+    </div>
     {% endif %}
 
     {% if is_academic or request.user.id == exam.class_teacher_id %}
-    <a href="{% url 'set_conduct_and_comments' exam.id %}" class="btn btn-outline-secondary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
-      📝 {% if LANG == 'sw' %}Tabia na Maoni{% else %}Conduct &amp; Comment{% endif %}
-    </a>
+    <a href="{% url 'set_conduct_and_comments' exam.id %}" class="kbtn kbtn--ghost"><i class="fas fa-comment-dots"></i> {% if LANG == 'sw' %}Tabia na Maoni{% else %}Conduct &amp; Comment{% endif %}</a>
     {% endif %}
 
     {% if is_academic and submitted_count > 0 %}
-    <a href="{{ excel_url }}" class="btn btn-outline-success" style="border-radius:2px;font-size:0.82rem;font-weight:700;" title="{% if LANG == 'sw' %}Matokeo ya mtihani huu kwenye Excel — wanafunzi kwa mpangilio wa roster{% else %}This exam's results in Excel — students in roster order{% endif %}">
-      📊 {% if LANG == 'sw' %}Excel{% else %}Excel{% endif %}
+    <a href="{{ excel_url }}" class="kbtn kbtn--ghost" title="{% if LANG == 'sw' %}Matokeo ya mtihani huu kwenye Excel — wanafunzi kwa mpangilio wa roster{% else %}This exam's results in Excel — students in roster order{% endif %}">
+      <i class="fas fa-file-excel"></i> {% if LANG == 'sw' %}Excel{% else %}Excel{% endif %}
     </a>
     {% endif %}
 
     {% if submitted_count > 0 %}
-    <a href="{{ form_results_url }}" class="btn btn-outline-primary" style="border-radius:2px;font-size:0.82rem;font-weight:600;">
+    <a href="{{ form_results_url }}" class="kbtn kbtn--primary">
       {% if is_academic %}
-        {% if LANG == 'sw' %}Idhinisha, Pakua na Tuma kwa PS — Form {{ exam.form }}{% else %}Approve, Download and Submit to PS — Form {{ exam.form }}{% endif %}
+        <i class="fas fa-check-double"></i> {% if LANG == 'sw' %}Idhinisha, Pakua na Tuma kwa PS — Form {{ exam.form }}{% else %}Approve, Download and Submit to PS — Form {{ exam.form }}{% endif %}
       {% else %}
-        {% if LANG == 'sw' %}Matokeo{% else %}Results{% endif %} Form {{ exam.form }}
+        <i class="fas fa-chart-line"></i> {% if LANG == 'sw' %}Matokeo{% else %}Results{% endif %} Form {{ exam.form }}
       {% endif %}
     </a>
     {% endif %}
