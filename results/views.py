@@ -196,9 +196,18 @@ def generate_results_pdf(request, exam_id):
     style = (request.GET.get('style') or 'normal').lower()
     if style not in ('normal', 'rank', 'necta', 'royal', 'acsee'):
         style = 'normal'
+    # ?students=12,15,40 : safu za wanafunzi hawa tu (waliorekebishwa baada
+    # ya matokeo kuchapishwa) badala ya darasa zima.
+    student_ids = None
+    raw = request.GET.get('students')
+    if raw is not None:
+        student_ids = [int(x) for x in raw.split(',') if x.strip().isdigit()]
+        if not student_ids:
+            messages.error(request, "Chagua angalau mwanafunzi mmoja.")
+            return redirect('form_results', form_num=exam.form)
     # request inapelekwa service ili QR zipate URL KAMILI (https://domain/...)
     # — kamera ya simu haifungui path pekee.
-    return generate_results_pdf_response(exam, style=style, request=request)
+    return generate_results_pdf_response(exam, style=style, request=request, student_ids=student_ids)
 
 
 @academic_required
@@ -211,26 +220,15 @@ def generate_bulk_student_results_pdf(request, exam_id):
     only has their own child's share token).
 
     ?style= : 'normal' (kawaida) | 'rank' | 'necta' | 'royal' (Form Five)
-    | 'acsee' (Form Six) — palette tu inabadilika, maudhui ni hayo hayo.
-
-    ?students=12,15,40 : slip za wanafunzi hawa tu (waliorekebishwa baada
-    ya matokeo kuchapishwa) badala ya darasa zima."""
+    | 'acsee' (Form Six) — palette tu inabadilika, maudhui ni hayo hayo."""
     exam = _get_exam_or_404(exam_id, request.user)
     recompute_processed_results_for_exam(exam)
     style = (request.GET.get('style') or 'normal').lower()
     if style not in ('normal', 'rank', 'necta', 'royal', 'acsee'):
         style = 'normal'
-    student_ids = None
-    raw = request.GET.get('students')
-    if raw is not None:
-        student_ids = [int(x) for x in raw.split(',') if x.strip().isdigit()]
-        if not student_ids:
-            messages.error(request, "Chagua angalau mwanafunzi mmoja.")
-            return redirect('form_results', form_num=exam.form)
     # request → QR za slips zipate URL kamili (https://...) zinazofunguka
     # kwa kamera ya simu.
-    return generate_bulk_student_results_pdf_response(
-        exam, style=style, request=request, student_ids=student_ids)
+    return generate_bulk_student_results_pdf_response(exam, style=style, request=request)
 
 
 @academic_required

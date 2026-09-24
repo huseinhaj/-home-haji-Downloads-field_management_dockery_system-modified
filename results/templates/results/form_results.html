@@ -241,7 +241,7 @@
 
     {% if ed.processed_results %}
     {% if is_academic %}
-    <div class="pick-bar" data-bulk-url="{{ ed.bulk_pdf_url }}">
+    <div class="pick-bar" data-pdf-url="{{ ed.pdf_url }}">
       <select class="pick-style form-select form-select-sm" aria-label="{% if LANG == 'sw' %}Formati{% else %}Format{% endif %}">
         <option value="normal">📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}</option>
         <option value="rank">🏅 Rank</option>
@@ -250,7 +250,7 @@
         {% if ed.exam.form == 6 %}<option value="acsee">🎓 Form Six Prestige</option>{% endif %}
       </select>
       <button type="button" class="btn btn-sm btn-black pick-print" disabled>
-        🖨️ {% if LANG == 'sw' %}Slip za Waliochaguliwa{% else %}Selected Students' Slips{% endif %} (<span class="pick-count">0</span>)
+        🖨️ {% if LANG == 'sw' %}PDF ya Waliochaguliwa{% else %}PDF of Selected Students{% endif %} (<span class="pick-count">0</span>)
       </button>
       <button type="button" class="btn btn-sm btn-outline-secondary pick-clear" disabled>
         ✕ {% if LANG == 'sw' %}Ondoa tiki zote{% else %}Clear{% endif %}
@@ -348,7 +348,7 @@ document.querySelectorAll('[id^="ps-submit-wrap-"]').forEach(function (el) {
   } catch (e) {}
 });
 
-// Slip za wanafunzi waliochaguliwa tu (?students=1,2,3) — kwa waliorekebishwa
+// PDF ya matokeo ya wanafunzi waliochaguliwa tu (?students=1,2,3) — kwa waliorekebishwa
 // baada ya matokeo kuchapishwa.
 document.querySelectorAll('.pick-bar').forEach(function (bar) {
   var block = bar.closest('.exam-block');
@@ -376,7 +376,7 @@ document.querySelectorAll('.pick-bar').forEach(function (bar) {
   btn.addEventListener('click', function () {
     var ids = picked().map(function (c) { return c.value; });
     if (!ids.length) return;
-    window.location.href = bar.dataset.bulkUrl + '?style=' + bar.querySelector('.pick-style').value +
+    window.location.href = bar.dataset.pdfUrl + '?style=' + bar.querySelector('.pick-style').value +
       '&students=' + ids.join(',');
   });
   refresh();

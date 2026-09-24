@@ -1087,7 +1087,12 @@ def _make_numbered_canvas(doc):
 # ══════════════════════════════════════════════════════════════════════════════
 # BUILD PDF
 # ══════════════════════════════════════════════════════════════════════════════
-def generate_results_pdf_response(exam, style='normal', request=None):
+def generate_results_pdf_response(exam, style='normal', request=None, student_ids=None):
+    """Ripoti ya matokeo ya mtihani (PDF).
+
+    student_ids: safu za wanafunzi hawa tu (mf. waliorekebishwa baada ya
+    matokeo kuchapishwa) — bila ukurasa wa muhtasari wala takwimu za
+    mwisho. CNO, nafasi na division ni zile zile za darasa zima."""
     st = _styles()
     style_key = (style or 'normal').lower()
     is_normal_style = style_key == 'normal'
@@ -1127,6 +1132,12 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     roster_numbers = payload.get('roster_numbers', {})
     N = len(results)
     n_subj = max(len(subjects), 1)
+    row_results = results
+    if student_ids is not None:
+        wanted = set(student_ids)
+        row_results = [r for r in results if r.student_id in wanted]
+        if not row_results:
+            return HttpResponse('Hakuna mwanafunzi aliyechaguliwa mwenye matokeo kwenye mtihani huu.', status=404)
 
     # Load logos — base64 from DB first, then ImageField fallback
     # After loading from ImageField, auto-save to base64 in DB for next time
@@ -1541,7 +1552,12 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     # RESULTS PAGES — each page gets its OWN table (no splitting issues)
     # CNO | NAME | SEX | AGGT | GPA | DIV | DETAILED SUBJECTS
     # ══════════════════════════════════════════════════════════════════════
-    story.append(PageBreak())
+    if student_ids is None:
+        story.append(PageBreak())
+    else:
+        # Waliochaguliwa tu: muhtasari wa darasa ulishachapishwa — anza
+        # moja kwa moja na safu zao.
+        story = []
 
     cell_st = ParagraphStyle('lsm', parent=st['td'], fontSize=7.5, leading=9)
     cell_bold = ParagraphStyle('lsb', parent=st['td_bold'], fontSize=7.5, leading=9)
@@ -1589,7 +1605,7 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     # measured before deciding how many rows fit on each page.
     all_rows = []
     necta_frames = []  # parallel to all_rows: per-row mini-table (necta) or None
-    for r in results:
+    for r in row_results:
         # CNO = namba ya mwanafunzi kwenye ROSTER (1..N), si performance rank.
         # Position inaweza kuwa NULL (ABS) — CNO haitegemei rank, hivyo
         # tunarudi kwenye namba ya mfululizo wa results.
@@ -1832,6 +1848,8 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     # Signature is drawn in _footer canvas function on the last page
     # (left: Academic Officer, right: Head of School, with date)
 
+    if student_ids is not None:
+        tail_flowables = []  # takwimu za darasa hazihusiki kwa waliochaguliwa
     tail_reserve = sum(_flowable_height(f) for f in tail_flowables)
     # Every detailed-listing page carries its own QR block too (see
     # _build_qr_block above) — reserve its height up front so the packing
@@ -2032,7 +2050,8 @@ def generate_results_pdf_response(exam, style='normal', request=None):
     buf.seek(0)
     resp = HttpResponse(buf, content_type='application/pdf')
     safe_name = exam.name.replace(" ", "_")
-    resp['Content-Disposition'] = f'attachment; filename="{safe_name}_Results.pdf"'
+    suffix = 'Results' if student_ids is None else f'Results_Waliochaguliwa_{len(row_results)}'
+    resp['Content-Disposition'] = f'attachment; filename="{safe_name}_{suffix}.pdf"'
     return resp
 
 
@@ -2344,7 +2363,7 @@ def generate_student_result_pdf_response(result, request=None):
     return resp
 
 
-def generate_bulk_student_results_pdf_response(exam, style='normal', request=None, student_ids=None):
+def generate_bulk_student_results_pdf_response(exam, style='normal', request=None):
     """All students of this exam (i.e. this form — an Exam is already
     scoped to one form/year/type), each on their own page(s), merged into
     ONE downloadable PDF — same slip _build_student_result_pdf_bytes
@@ -2353,12 +2372,7 @@ def generate_bulk_student_results_pdf_response(exam, style='normal', request=Non
     for the roster list elsewhere in the system, not ranked by position.
     Mirrors the merge pattern curriculum/views.py's
     download_all_lesson_plans_pdf already uses for the same "many small
-    PDFs -> one file" need.
-
-    student_ids: chapisha slip za wanafunzi hawa tu (mf. waliorekebishwa
-    baada ya matokeo kuchapishwa). Nafasi darasani, idadi ya wanafunzi na
-    nafasi kwa kila somo bado zinahesabiwa kwa darasa zima, ili slip hizi
-    zilingane na zile zilizokwisha kuchapishwa."""
+    PDFs -> one file" need."""
     import pypdfium2 as pdfium
 
     results = order_by_registration(
@@ -2396,18 +2410,11 @@ def generate_bulk_student_results_pdf_response(exam, style='normal', request=Non
         pairs.sort(key=lambda p: -p[0])
         subject_ranks[subject_id] = {sid: i + 1 for i, (_score, sid) in enumerate(pairs)}
 
-    to_print = results
-    if student_ids is not None:
-        wanted = set(student_ids)
-        to_print = [r for r in results if r.student_id in wanted]
-        if not to_print:
-            return HttpResponse('Hakuna mwanafunzi aliyechaguliwa mwenye matokeo kwenye mtihani huu.', status=404)
-
     merged = pdfium.PdfDocument.new()
     buffers = []
     out = io.BytesIO()
     try:
-        for result in to_print:
+        for result in results:
             buf = _build_student_result_pdf_bytes(
                 result,
                 school_type=school_type,
@@ -2437,6 +2444,5 @@ def generate_bulk_student_results_pdf_response(exam, style='normal', request=Non
 
     resp = HttpResponse(out.getvalue(), content_type='application/pdf')
     safe_name = exam.name.replace(' ', '_')
-    prefix = 'Matokeo_Wote' if student_ids is None else f'Matokeo_Waliochaguliwa_{len(to_print)}'
-    resp['Content-Disposition'] = f'attachment; filename="{prefix}_Form{exam.form}_{safe_name}.pdf"'
+    resp['Content-Disposition'] = f'attachment; filename="Matokeo_Wote_Form{exam.form}_{safe_name}.pdf"'
     return resp
