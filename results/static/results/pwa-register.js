@@ -120,7 +120,7 @@
           <div style="
             width: 40px; height: 40px; flex-shrink: 0;
             border-radius: 10px;
-            background: linear-gradient(135deg, #124D22, #1F7A3D);
+            background: linear-gradient(135deg, #2a3a57, #3f5273);
             display: flex; align-items: center; justify-content: center;
             color: white; font-size: 1.1rem;
           ">
@@ -254,7 +254,7 @@
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
             <div style="
               width: 44px; height: 44px; border-radius: 11px;
-              background: linear-gradient(135deg, #124D22, #1F7A3D);
+              background: linear-gradient(135deg, #2a3a57, #3f5273);
               display:flex;align-items:center;justify-content:center;
               color:white;font-size:1.15rem;
             "><i class="fas fa-download"></i></div>

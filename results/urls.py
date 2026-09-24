@@ -40,6 +40,7 @@ from .views import (
     filter_exams,
     exam_overview,
     add_exam_subject,
+    remove_exam_subject,
     subject_upload,
     subject_pdf,
     subject_summary,
@@ -149,6 +150,7 @@ urlpatterns = [
     # Exam overview and per-subject flow
     path('exam/<int:exam_id>/', exam_overview, name='exam_overview'),
     path('exam/<int:exam_id>/subject/add/', add_exam_subject, name='add_exam_subject'),
+    path('exam/<int:exam_id>/subject/<int:subject_id>/delete/', remove_exam_subject, name='remove_exam_subject'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/upload/', subject_upload, name='subject_upload'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/pdf/', subject_pdf, name='subject_pdf'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/muhtasari/', subject_summary, name='subject_summary'),

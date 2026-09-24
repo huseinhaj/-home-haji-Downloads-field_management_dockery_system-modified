@@ -33,7 +33,7 @@
         </div>
         <div style="display:flex;gap:14px;align-items:center;">
           <div style="text-align:center;">
-            <div style="font-size:1.5rem;font-weight:800;color:#1F7A3D;">{{ r.score }}<span style="color:#999;font-size:.9rem;">/{{ r.total }}</span></div>
+            <div style="font-size:1.5rem;font-weight:800;color:#3f5273;">{{ r.score }}<span style="color:#999;font-size:.9rem;">/{{ r.total }}</span></div>
             <div style="font-size:.7rem;color:#777;">JUMLA</div>
           </div>
           <div style="text-align:center;">
@@ -53,7 +53,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:4px;">
           {% for qnum, given, key_ans, state in s.rows %}
             {% if state == "ok" %}
-              <span style="background:#eef7f0;color:#1F7A3D;border-radius:4px;padding:2px 8px;font-size:.78rem;" title="Sahihi">
+              <span style="background:#eef7f0;color:#3f5273;border-radius:4px;padding:2px 8px;font-size:.78rem;" title="Sahihi">
                 ✓ {{ qnum }}. {{ given }}
               </span>
             {% elif state == "wrong" %}

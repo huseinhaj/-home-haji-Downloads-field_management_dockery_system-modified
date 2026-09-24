@@ -6,7 +6,7 @@
 {% block content %}
 <style>
   .ov-hero {
-    background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+    background: linear-gradient(135deg, #3f5273 0%, #24508a 100%);
     border: 2px solid #D9A441;
     border-radius: 2px;
     padding: 1.6rem 2rem;
@@ -44,7 +44,7 @@
     gap: 0.45rem;
     transition: border-color 0.15s;
   }
-  .subject-card:hover { border-color: #1F7A3D; }
+  .subject-card:hover { border-color: #3f5273; }
   .subject-card.is-submitted { border-left: 4px solid #0056b3; }
   .subject-card.is-approved { border-left: 4px solid #1a7a3b; }
   .subject-card.is-pending { border-left: 4px solid #D9A441; }
@@ -52,7 +52,7 @@
   .subject-card .subject-name {
     font-weight: 700;
     font-size: 0.95rem;
-    color: #1F7A3D;
+    color: #3f5273;
     letter-spacing: 0.01em;
     text-transform: uppercase;
   }
@@ -91,11 +91,11 @@
     gap: 1rem;
     margin-top: 1.5rem;
   }
-  .finalize-section h4 { font-size: 1rem; font-weight: 700; color: #1F7A3D; margin: 0; }
+  .finalize-section h4 { font-size: 1rem; font-weight: 700; color: #3f5273; margin: 0; }
   .finalize-section p { font-size: 0.82rem; color: #666; margin: 0.2rem 0 0; }
 
   .btn-finalize {
-    background: #1F7A3D;
+    background: #3f5273;
     color: #fff;
     border: 2px solid #D9A441;
     font-weight: 700;
@@ -112,13 +112,13 @@
     color: #fff;
   }
   .btn-finalize:not(:disabled):hover {
-    background: #145226;
+    background: #2e3c59;
   }
   .dl-pair { display: inline-flex; align-items: stretch; overflow: hidden; border-radius: 6px; }
   .dl-pair .dl-main { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.55rem 0.9rem; color: #fff; font-weight: 800; font-size: 0.8rem; text-decoration: none; }
   .dl-pair .dl-excel { display: inline-flex; align-items: center; padding: 0.55rem 0.6rem; background: #fff; color: #137a20; border: 1px solid #137a20; font-weight: 800; font-size: 0.8rem; text-decoration: none; border-left: none; }
   .dl-pair .dl-excel:hover { background: #137a20; color: #fff; }
-  .dl-pair--normal .dl-main { background: linear-gradient(135deg, #1F7A3D, #145226); }
+  .dl-pair--normal .dl-main { background: linear-gradient(135deg, #3f5273, #2e3c59); }
   .dl-pair--rank .dl-main { background: linear-gradient(135deg, #0b4a8b, #082f5c); }
   .dl-pair--necta .dl-main { background: linear-gradient(135deg, #84141e, #570e14); }
   .dl-pair--royal .dl-main { background: linear-gradient(135deg, #6B2FA0, #4A1D6E); color: #E5C96B; }
@@ -145,7 +145,7 @@
       </a>
       {% if is_academic %}
       <button type="button" class="kbtn kbtn--primary kbtn--sm" data-bs-toggle="modal" data-bs-target="#addSubjectModal" style="margin-left:0.5rem;">
-        <i class="fas fa-plus"></i> {% if LANG == 'sw' %}Ongeza Somo{% else %}Add Subject{% endif %}
+        <i class="fas fa-plus"></i> <i class="fas fa-minus"></i> {% if LANG == 'sw' %}Ongeza/Ondoa Somo{% else %}Add/Remove Subject{% endif %}
       </button>
       {% endif %}
     </div>
@@ -317,17 +317,42 @@
 </div>
 
 {% if is_academic %}
-<!-- Add Subject to Exam Modal -->
+<!-- Add/Remove Subject Modal -->
 <div class="modal fade" id="addSubjectModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border-radius:2px;">
-      <form method="post" action="{% url 'add_exam_subject' exam.id %}">
-        {% csrf_token %}
-        <div class="modal-header" style="background:#1F7A3D;color:#fff;border-radius:0;">
-          <h5 class="modal-title"><i class="fas fa-plus"></i> {% if LANG == 'sw' %}Ongeza Somo kwenye Mtihani{% else %}Add Subject to this Exam{% endif %}</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      <div class="modal-header" style="background:#1F7A3D;color:#fff;border-radius:0;">
+        <h5 class="modal-title"><i class="fas fa-plus"></i> <i class="fas fa-minus"></i> {% if LANG == 'sw' %}Ongeza au Ondoa Somo kwenye Mtihani{% else %}Add or Remove a Subject to this Exam{% endif %}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        {% if subjects_ctx %}
+        <div style="margin-bottom:1rem;">
+          <div style="font-weight:700;font-size:0.85rem;color:#444;margin-bottom:0.5rem;">
+            {% if LANG == 'sw' %}
+              Masomo yaliyopo sasa — bofya <span style="color:#c0392b;">Ondoa</span> kufuta somo ulilojaza kwa makosa (alama zake nazo zitafutwa):
+            {% else %}
+              Subjects on this exam now — click <span style="color:#c0392b;">Remove</span> to delete one you added by mistake (its marks are removed too):
+            {% endif %}
+          </div>
+          <div style="max-height:190px;overflow:auto;border:1px solid #eee;border-radius:6px;padding:0.4rem;">
+          {% for ctx in subjects_ctx %}
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.35rem 0.5rem;border-radius:4px;{% if not forloop.last %}border-bottom:1px solid #f0f0f0;{% endif %}">
+              <span style="font-size:0.88rem;"><i class="fas fa-book"></i> {{ ctx.subject.name }}
+                {% if ctx.submission %}<span style="color:#999;font-size:0.75rem;">({{ ctx.submission.get_status_display }})</span>{% endif %}
+              </span>
+              <form method="post" action="{% url 'remove_exam_subject' exam.id ctx.subject.id %}" class="d-inline" onsubmit="return confirm('{% if LANG == 'sw' %}Ondoa somo &quot;{{ ctx.subject.name }}&quot; na alama zake zote kwenye mtihani huu? Kitendo hiki hakiwezi kutenduliwa.{% else %}Remove &quot;{{ ctx.subject.name }}&quot; and all its marks from this exam? This cannot be undone.{% endif %}');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm" style="background:#c0392b;color:#fff;border-radius:4px;font-weight:700;padding:0.2rem 0.65rem;font-size:0.75rem;"><i class="fas fa-trash"></i> {% if LANG == 'sw' %}Ondoa{% else %}Remove{% endif %}</button>
+              </form>
+            </div>
+          {% endfor %}
+          </div>
         </div>
-        <div class="modal-body">
+        <hr>
+        {% endif %}
+        <form method="post" action="{% url 'add_exam_subject' exam.id %}">
+          {% csrf_token %}
           <p style="font-size:0.9rem;color:#666;margin-bottom:0.8rem;">
             {% if LANG == 'sw' %}
               Umesahau somo unalounda mtihani? Andika jina lake hapa na litaongezwa mara moja kwa mwalimu kujaza.
@@ -341,12 +366,12 @@
           <datalist id="addSubjectList">
             {% for s in suggested_subjects %}<option value="{{ s }}">{% endfor %}
           </datalist>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
-          <button type="submit" class="kbtn kbtn--primary"><i class="fas fa-plus"></i> {% if LANG == 'sw' %}Ongeza Somo{% else %}Add Subject{% endif %}</button>
-        </div>
-      </form>
+          <div style="margin-top:0.9rem;" class="text-end">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
+            <button type="submit" class="kbtn kbtn--primary"><i class="fas fa-plus"></i> {% if LANG == 'sw' %}Ongeza Somo{% else %}Add Subject{% endif %}</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </div>

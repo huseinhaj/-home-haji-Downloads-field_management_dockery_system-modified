@@ -50,3 +50,33 @@ class AddSubjectToExamUiTests(TestCase):
         resp = self.client.post(url, {'subject_name': 'Mathematics'})
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(SubjectSubmission.objects.filter(exam=self.exam, subject=self.math).count(), 1)
+
+    def test_overview_offers_remove_controls_in_modal(self):
+        self.client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+        resp = self.client.get(reverse('exam_overview', args=[self.exam.id]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Add/Remove Subject')
+        self.assertContains(resp, reverse('remove_exam_subject', args=[self.exam.id, self.math.id]))
+
+    def test_remove_subject_deletes_submission_and_marks(self):
+        from .models import ExamResult, Student
+
+        self.client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+        student = Student.objects.create(first_name='Juma', last_name='Baker')
+        ExamResult.objects.create(exam=self.exam, student=student, subject=self.math, score=75)
+        url = reverse('remove_exam_subject', args=[self.exam.id, self.math.id])
+        resp = self.client.post(url)
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(SubjectSubmission.objects.filter(exam=self.exam, subject=self.math).exists())
+        self.assertFalse(ExamResult.objects.filter(exam=self.exam, subject=self.math).exists())
+
+    def test_remove_subject_requires_academic(self):
+        from .models import ExamResult, Student
+
+        student = Student.objects.create(first_name='Juma', last_name='Baker')
+        ExamResult.objects.create(exam=self.exam, student=student, subject=self.math, score=75)
+        self.client.force_login(self.teacher, backend='results.backends.ResultsAuthBackend')
+        url = reverse('remove_exam_subject', args=[self.exam.id, self.math.id])
+        resp = self.client.post(url)
+        self.assertEqual(resp.status_code, 403)
+        self.assertTrue(SubjectSubmission.objects.filter(exam=self.exam, subject=self.math).exists())

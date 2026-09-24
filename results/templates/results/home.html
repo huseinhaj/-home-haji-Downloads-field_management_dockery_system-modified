@@ -57,7 +57,7 @@
 {% if not exams %}
 <div class="empty-state panel mt-4" style="border:2px dashed #D9A441;border-radius:18px;">
   <div style="font-size:2.5rem;margin-bottom:0.5rem;">📋</div>
-  <h3 style="color:#1F7A3D;font-weight:800;">{% if LANG == 'sw' %}Hakuna Mtihani Bado{% else %}No Exams Yet{% endif %}</h3>
+  <h3 style="color:#3f5273;font-weight:800;">{% if LANG == 'sw' %}Hakuna Mtihani Bado{% else %}No Exams Yet{% endif %}</h3>
   <p class="text-secondary mb-3">
     {% if LANG == 'sw' %}Mtaaluma anaunda mtihani kwanza, kisha kila mwalimu anapakia alama za somo lake (au kuzijaza moja kwa moja — Marks Entry).
     {% else %}The academic officer creates an exam first, then each teacher uploads their subject's scores (or enters them manually via Marks Entry).{% endif %}
@@ -81,11 +81,11 @@
 <div class="row g-3 mt-1">
   {% for exam in exams %}
   <div class="col-md-6 col-lg-4">
-    <div class="panel h-100 d-flex flex-column" style="border-top:4px solid {% if exam.submitted_count == exam.total_submissions and exam.total_submissions > 0 %}#1a7a3b{% elif exam.submitted_count > 0 %}#D9A441{% else %}#1F7A3D{% endif %};">
+    <div class="panel h-100 d-flex flex-column" style="border-top:4px solid {% if exam.submitted_count == exam.total_submissions and exam.total_submissions > 0 %}#1a7a3b{% elif exam.submitted_count > 0 %}#D9A441{% else %}#3f5273{% endif %};">
       <div class="panel-body d-flex flex-column h-100">
         <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
           <div>
-            <div style="font-weight:800;color:#1F7A3D;font-size:1rem;">{{ exam.name }}</div>
+            <div style="font-weight:800;color:#3f5273;font-size:1rem;">{{ exam.name }}</div>
             <div class="text-secondary" style="font-size:0.8rem;">Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} &nbsp;|&nbsp; {{ exam.year }} &nbsp;|&nbsp; {{ exam.get_exam_type_display }}</div>
           </div>
           {% if exam.submitted_count == exam.total_submissions and exam.total_submissions > 0 %}

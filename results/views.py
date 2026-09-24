@@ -870,6 +870,29 @@ def add_exam_subject(request, exam_id):
     return redirect(reverse('exam_overview', args=[exam.id]))
 
 
+@academic_required
+@require_POST
+def remove_exam_subject(request, exam_id, subject_id):
+    """Remove a subject from an exam (e.g. one added by mistake). Deletes the
+    subject's marks (ExamResult) and submission, then recomputes the exam's
+    processed results so totals, divisions and positions stay exact."""
+    exam = _get_exam_or_404(exam_id, request.user)
+    subject = get_object_or_404(Subject, id=subject_id)
+    submission = SubjectSubmission.objects.filter(exam=exam, subject=subject).first()
+    if not submission:
+        messages.error(request, f"Somo '{subject.name}' halipo kwenye mtihani huu.")
+        return redirect(reverse('exam_overview', args=[exam.id]))
+    with transaction.atomic(using='results'):
+        ExamResult.objects.filter(exam=exam, subject=subject).delete()
+        submission.delete()
+    try:
+        recompute_processed_results_for_exam(exam)
+    except Exception:
+        logger.exception('remove_exam_subject: recompute failed for exam %s', exam.id)
+    messages.success(request, f"Somo '{subject.name}' limeondolewa kwenye mtihani huu.")
+    return redirect(reverse('exam_overview', args=[exam.id]))
+
+
 # ── Subject Upload (CSV/Excel for one subject) ────────────────────────────────
 
 @teacher_required
