@@ -24,8 +24,8 @@
     border: 2px solid #ddd; cursor: pointer; font-weight: 600; font-size: 0.85rem;
     margin: 3px; transition: all 0.15s;
   }
-  .class-chip:hover { border-color: #3f5273; background: #e8f5e9; }
-  .class-chip.active { border-color: #3f5273; background: #3f5273; color: #fff; }
+  .class-chip:hover { border-color: #1F7A3D; background: #e8f5e9; }
+  .class-chip.active { border-color: #1F7A3D; background: #1F7A3D; color: #fff; }
 </style>
 
 <div class="container-fluid py-4">
@@ -80,7 +80,7 @@
         <input type="hidden" name="gen_stream" id="genStreamInput" value="">
       </div>
 
-      <button type="submit" class="btn fw-bold" style="background:#D9A441;color:#3f5273;">
+      <button type="submit" class="btn fw-bold" style="background:#D9A441;color:#1F7A3D;">
         ⚡ Generate with AI
       </button>
     </form>
@@ -174,7 +174,7 @@
           </table>
         </div>
         <div class="p-3 d-flex gap-2">
-          <button type="submit" class="btn fw-bold" style="background:#3f5273;color:#fff;">💾 Save Timetable</button>
+          <button type="submit" class="btn fw-bold" style="background:#1F7A3D;color:#fff;">💾 Save Timetable</button>
           <a href="{% url 'generate_class_timetable' %}" class="btn btn-outline-secondary">🔄 Regenerate</a>
         </div>
       </form>

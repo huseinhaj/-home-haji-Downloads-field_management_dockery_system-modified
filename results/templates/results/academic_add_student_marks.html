@@ -9,7 +9,7 @@
 <style>
   /* ── Academic: Ongeza Mwanafunzi + Jaza Alama ─────────────────────── */
   .aam-hero {
-    background: linear-gradient(135deg, #3f5273 0%, #24508a 100%);
+    background: linear-gradient(135deg, #1F7A3D 0%, #145226 100%);
     border: 2px solid #D9A441; border-radius: 2px;
     padding: 1.4rem 1.8rem; color: #fff; margin-bottom: 1.2rem;
   }
@@ -20,7 +20,7 @@
     background: #fff; border: 1.5px solid #dee2e6; border-radius: 2px;
     padding: 1.2rem 1.4rem; margin-bottom: 1.2rem;
   }
-  .aam-panel h2 { font-size: 1rem; font-weight: 800; color: #3f5273; margin-bottom: 0.8rem; }
+  .aam-panel h2 { font-size: 1rem; font-weight: 800; color: #1F7A3D; margin-bottom: 0.8rem; }
   .aam-panel .hint { font-size: 0.8rem; color: #667; margin-bottom: 0.9rem; }
 
   .aam-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem; }
@@ -29,32 +29,32 @@
     width: 100%; border: 1.5px solid #ced4da; border-radius: 2px;
     padding: 0.5rem 0.6rem; font-size: 0.9rem;
   }
-  .aam-field input:focus, .aam-field select:focus { border-color: #3f5273; outline: none; box-shadow: 0 0 0 2px rgba(63, 82, 115,0.15); }
+  .aam-field input:focus, .aam-field select:focus { border-color: #1F7A3D; outline: none; box-shadow: 0 0 0 2px rgba(31, 122, 61,0.15); }
 
   .btn-aam {
-    background: #3f5273; color: #fff; border: none; border-radius: 2px;
+    background: #1F7A3D; color: #fff; border: none; border-radius: 2px;
     font-weight: 700; letter-spacing: 0.03em; padding: 0.55rem 1.3rem;
     font-size: 0.85rem; cursor: pointer;
   }
-  .btn-aam:hover { background: #2e3c59; }
+  .btn-aam:hover { background: #145226; }
   .btn-aam:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-aam-secondary {
-    background: #fff; color: #3f5273; border: 1.5px solid #3f5273;
+    background: #fff; color: #1F7A3D; border: 1.5px solid #1F7A3D;
     font-weight: 700; padding: 0.45rem 1rem; border-radius: 2px; font-size: 0.8rem;
     cursor: pointer;
   }
-  .btn-aam-secondary:hover { background: #3f5273; color: #fff; }
+  .btn-aam-secondary:hover { background: #1F7A3D; color: #fff; }
 
   .aam-alert { display: none; border-radius: 2px; padding: 0.55rem 0.8rem; font-size: 0.82rem; margin-top: 0.7rem; }
   .aam-alert.error { background: #fdecea; color: #c0392b; border: 1px solid #f1948a; }
-  .aam-alert.info { background: #e8f4ff; color: #0056b3; border: 1px solid #b3d4f5; }
+  .aam-alert.info { background: #e6f7ec; color: #0056b3; border: 1px solid #b3d4f5; }
   .aam-alert.success { background: #e6f7ec; color: #1a7a3b; border: 1px solid #a3d9b4; }
 
   /* Subject marks table */
   .aam-table-wrap { overflow-x: auto; border: 1.5px solid #dee2e6; border-radius: 2px; background: #fff; }
   .aam-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
   .aam-table thead th {
-    background: #3f5273; color: #fff; font-size: 0.7rem; letter-spacing: 0.06em;
+    background: #1F7A3D; color: #fff; font-size: 0.7rem; letter-spacing: 0.06em;
     text-transform: uppercase; padding: 0.55rem 0.7rem; text-align: left;
     position: sticky; top: 0; z-index: 2;
   }
@@ -65,9 +65,9 @@
   .aam-table .subject-name { font-weight: 600; color: #222; }
   .aam-table input.score-input {
     width: 74px; border: 1.5px solid #ced4da; border-radius: 2px;
-    padding: 0.3rem 0.5rem; font-weight: 700; text-align: center; color: #3f5273;
+    padding: 0.3rem 0.5rem; font-weight: 700; text-align: center; color: #1F7A3D;
   }
-  .aam-table input.score-input:focus { border-color: #3f5273; outline: none; box-shadow: 0 0 0 2px rgba(63, 82, 115,0.15); }
+  .aam-table input.score-input:focus { border-color: #1F7A3D; outline: none; box-shadow: 0 0 0 2px rgba(31, 122, 61,0.15); }
   .aam-table .absent-toggle {
     margin-left: 0.3rem; border: 1.5px solid #ced4da; background: #fff; color: #6b7280;
     font-weight: 800; font-size: 0.72rem; border-radius: 2px; padding: 0.28rem 0.45rem; cursor: pointer;
@@ -631,7 +631,7 @@
             ? 'Alama ' + data.saved_count + ' zimehifadhiwa. Mwanafunzi anaonekana sasa kwenye matokeo ya mtihani huu.'
             : data.saved_count + ' marks saved. The student now appears in this exam\'s results.'),
           'success');
-        saveHint.innerHTML = '<a href="' + data.overview_url + '" style="color:#3f5273;font-weight:700;">' +
+        saveHint.innerHTML = '<a href="' + data.overview_url + '" style="color:#1F7A3D;font-weight:700;">' +
           (LANG === 'sw' ? 'Angalia Muhtasari wa Mtihani →' : 'View Exam Overview →') + '</a>';
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (err) {

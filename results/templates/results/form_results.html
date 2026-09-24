@@ -5,7 +5,7 @@
 {% block content %}
 <style>
 .fr-hero {
-  background: linear-gradient(135deg, #3f5273 0%, #24508a 100%);
+  background: linear-gradient(135deg, #1F7A3D 0%, #145226 100%);
   border: 2px solid #D9A441;
   border-radius: 2px;
   padding: 1.4rem 2rem;
@@ -28,10 +28,10 @@
   font-weight: 700;
   text-decoration: none;
   background: #f0f2f5;
-  color: #3f5273;
+  color: #1F7A3D;
   border: 1.5px solid #dee2e6;
 }
-.form-nav a.active, .form-nav a:hover { background: #3f5273; color: #fff; border-color: #3f5273; }
+.form-nav a.active, .form-nav a:hover { background: #1F7A3D; color: #fff; border-color: #1F7A3D; }
 
 .exam-block {
   background: #fff;
@@ -50,7 +50,7 @@
   background: #f4f6fb;
   border-bottom: 1.5px solid #e9ecef;
 }
-.exam-block-head .ename { font-weight: 700; color: #3f5273; font-size: 0.95rem; }
+.exam-block-head .ename { font-weight: 700; color: #1F7A3D; font-size: 0.95rem; }
 .exam-block-head .emeta { font-size: 0.75rem; color: #888; }
 
 .not-approved-notice {
@@ -83,7 +83,7 @@
 .div-IV  { background:#f8d7da; color:#721c24; font-weight:700; padding:.15rem .55rem; border-radius:6px; font-size:.72rem; white-space:nowrap; }
 .div-0   { background:#e2e3e5; color:#383d41; font-weight:700; padding:.15rem .55rem; border-radius:6px; font-size:.72rem; white-space:nowrap; }
 
-.pos-badge { background:#3f5273; color:#fff; font-weight:700; padding:.1rem .55rem; border-radius:2px; font-size:.75rem; }
+.pos-badge { background:#1F7A3D; color:#fff; font-weight:700; padding:.1rem .55rem; border-radius:2px; font-size:.75rem; }
 
 .exam-actions { display:flex; flex-direction:column; align-items:flex-end; gap:0.4rem; }
 .action-group { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; justify-content:flex-end; }
@@ -111,11 +111,11 @@
   </div>
   <div class="d-flex gap-2 flex-wrap">
     {% if is_academic %}
-    <a href="{% url 'academic_dashboard' %}" class="btn btn-sm" style="background:#D9A441;color:#3f5273;font-weight:700;border-radius:2px;">
+    <a href="{% url 'academic_dashboard' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
       &larr; Academic Dashboard
     </a>
     {% else %}
-    <a href="{% url 'teacher_dashboard' %}" class="btn btn-sm" style="background:#D9A441;color:#3f5273;font-weight:700;border-radius:2px;">
+    <a href="{% url 'teacher_dashboard' %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
       &larr; {% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}
     </a>
     {% endif %}
@@ -197,7 +197,7 @@
               </button>
             </form>
             {% elif ed.ps_submission.status == 'PENDING' %}
-            <span class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-size:0.72rem;border-radius:2px;font-weight:700;cursor:default;">
+            <span class="btn btn-sm" style="background:#D9A441;color:#124D22;font-size:0.72rem;border-radius:2px;font-weight:700;cursor:default;">
               ⏳ {% if LANG == 'sw' %}Kwa PS{% else %}With PS{% endif %}
             </span>
             {% else %}
@@ -294,7 +294,7 @@
             </td>
             {% endwith %}
           {% endfor %}
-          <td style="text-align:center;font-weight:700;color:#3f5273;">{{ res.total_score }}</td>
+          <td style="text-align:center;font-weight:700;color:#1F7A3D;">{{ res.total_score }}</td>
           <td style="text-align:center;">{{ res.average_score }}</td>
           {% if ed.is_primary %}
           <td style="text-align:center;">—</td>

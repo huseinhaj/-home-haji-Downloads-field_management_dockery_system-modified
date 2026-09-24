@@ -6,7 +6,7 @@
 <style>
   /* ── Marks Entry wizard ─────────────────────────────────────────── */
   .me-hero {
-    background: linear-gradient(135deg, #1F7A3D 0%, #24508a 100%);
+    background: linear-gradient(135deg, #1F7A3D 0%, #145226 100%);
     border: 2px solid #D9A441;
     border-radius: 2px;
     padding: 1.4rem 1.8rem;
@@ -110,8 +110,8 @@
     border: 1px solid #f0dca0; border-radius: 2px; padding: 0.35rem 0.6rem;
     width: 100%; margin-top: 0.4rem;
   }
-  .btn-me-photo { color: #24508a; border-color: #24508a; }
-  .btn-me-photo:hover { background: #24508a; color: #fff; }
+  .btn-me-photo { color: #145226; border-color: #145226; }
+  .btn-me-photo:hover { background: #145226; color: #fff; }
   #mePhotoHint { display: none; }
   .me-photo-unmatched {
     font-size: 0.78rem; color: #8a2a1a; background: #fdeceb;
@@ -263,7 +263,7 @@
     </div>
     {% if submission %}
       {% if submission.status == 'SUBMITTED' %}
-      <span class="badge-soft" style="background:#e8f4ff;color:#0056b3;">&#8679; {% if LANG == 'sw' %}Imewasilishwa kwa Mtaaluma{% else %}Submitted to Academic{% endif %}</span>
+      <span class="badge-soft" style="background:#e6f7ec;color:#0056b3;">&#8679; {% if LANG == 'sw' %}Imewasilishwa kwa Mtaaluma{% else %}Submitted to Academic{% endif %}</span>
       {% elif submission.status == 'RETURNED' %}
       <div style="display:flex;flex-direction:column;gap:0.3rem;">
         <span class="badge-soft" style="background:#fdecea;color:#c0392b;">&#8630; {% if LANG == 'sw' %}Imerudishwa na Mtaaluma{% else %}Returned by Academic{% endif %}{% if submission.revision_number > 1 %} (rev{{ submission.revision_number }}){% endif %}</span>
@@ -322,7 +322,7 @@
       </a>
       <div class="d-flex gap-2 flex-wrap">
         {% if pdf_url %}
-        <button type="button" class="btn-me-submit" onclick="window._dlPdf('{{ pdf_url }}')" style="background:#24508a;border-color:#24508a;">
+        <button type="button" class="btn-me-submit" onclick="window._dlPdf('{{ pdf_url }}')" style="background:#145226;border-color:#145226;">
           &#128196; {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}
         </button>
         {% endif %}
@@ -582,7 +582,7 @@
           </p>
           <div class="d-flex gap-2 justify-content-center flex-wrap">
             {% if pdf_url %}
-            <button type="button" class="btn-me-submit" onclick="window._dlPdf('{{ pdf_url }}')" style="background:#24508a;border-color:#24508a;">&#128196; {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}</button>
+            <button type="button" class="btn-me-submit" onclick="window._dlPdf('{{ pdf_url }}')" style="background:#145226;border-color:#145226;">&#128196; {% if LANG == 'sw' %}Pakua PDF{% else %}Download PDF{% endif %}</button>
             {% endif %}
             <a href="{% url 'exam_overview' exam.id %}" class="btn-me-ghost">{% if LANG == 'sw' %}Rudi kwenye Mtihani{% else %}Back to Exam{% endif %} →</a>
           </div>
@@ -1269,7 +1269,7 @@ function _dlPdf(url) {
         missingBox.style.display = 'none';
         missingBox.innerHTML = '';
         document.querySelectorAll('tr.photo-missing-row').forEach(tr => tr.classList.remove('photo-missing-row'));
-        photoStatus.innerHTML = '<span style="color:#24508a;">⏳ ' +
+        photoStatus.innerHTML = '<span style="color:#145226;">⏳ ' +
           (LANG === 'sw' ? 'Inasoma picha...' : 'Reading photo...') + '</span>';
 
         try {
@@ -1306,7 +1306,7 @@ function _dlPdf(url) {
                 : 'Timed out reading the photo. Try again or use a smaller image.');
             }
             const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
-            photoStatus.innerHTML = '<span style="color:#24508a;">⏳ ' +
+            photoStatus.innerHTML = '<span style="color:#145226;">⏳ ' +
               (LANG === 'sw' ? 'Inasoma picha...' : 'Reading photo...') + ' (' + elapsedSec + 's)</span>';
 
             // A poll can fail at the network level (flaky mobile data

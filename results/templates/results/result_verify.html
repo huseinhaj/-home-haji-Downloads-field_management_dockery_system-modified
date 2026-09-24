@@ -28,7 +28,7 @@
 
   {% else %}
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
-      <div style="background:#3f5273;color:#fff;padding:16px 20px;">
+      <div style="background:#1F7A3D;color:#fff;padding:16px 20px;">
         <div style="font-size:12px;opacity:0.85;">✅ UTHIBITISHO RASMI — {{ exam.school.name|upper }}</div>
         <h1 style="font-size:18px;margin:4px 0 0;">{{ student_name|upper }}</h1>
         <div style="font-size:13px;opacity:0.9;">{{ exam.name }} — {{ exam.get_exam_type_display }} — {{ exam.year }}</div>
@@ -38,9 +38,9 @@
         <table style="width:100%;border-collapse:collapse;font-size:14px;">
           <thead>
             <tr style="background:#F2F4F7;">
-              <th style="text-align:left;padding:8px;border-bottom:2px solid #3f5273;">SOMO</th>
-              <th style="padding:8px;border-bottom:2px solid #3f5273;">ALAMA</th>
-              <th style="padding:8px;border-bottom:2px solid #3f5273;">DARAJA</th>
+              <th style="text-align:left;padding:8px;border-bottom:2px solid #1F7A3D;">SOMO</th>
+              <th style="padding:8px;border-bottom:2px solid #1F7A3D;">ALAMA</th>
+              <th style="padding:8px;border-bottom:2px solid #1F7A3D;">DARAJA</th>
             </tr>
           </thead>
           <tbody>
@@ -48,7 +48,7 @@
               <tr>
                 <td style="padding:7px 8px;border-bottom:1px solid #eee;">{{ r.subject }}</td>
                 <td style="padding:7px 8px;border-bottom:1px solid #eee;text-align:center;font-weight:700;">{{ r.score }}</td>
-                <td style="padding:7px 8px;border-bottom:1px solid #eee;text-align:center;font-weight:700;color:#3f5273;">{{ r.grade }}</td>
+                <td style="padding:7px 8px;border-bottom:1px solid #eee;text-align:center;font-weight:700;color:#1F7A3D;">{{ r.grade }}</td>
               </tr>
             {% endfor %}
           </tbody>

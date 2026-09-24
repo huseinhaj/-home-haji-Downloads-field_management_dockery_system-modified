@@ -4,7 +4,7 @@
 {% block content %}
 <style>
   .ct-hero {
-    background: linear-gradient(135deg, #1F497D 0%, #24508a 100%);
+    background: linear-gradient(135deg, #124D22 0%, #145226 100%);
     border: 2px solid #D9A441; border-radius: 2px;
     padding: 1.4rem 2rem; color: #fff; margin-bottom: 1.5rem;
     display: flex; justify-content: space-between; align-items: center;
@@ -26,10 +26,10 @@
   .ct-row { display: flex; gap: 1rem; flex-wrap: wrap; }
   .ct-row .ct-field { flex: 1; min-width: 180px; }
   .btn-ct-save {
-    background: #3f5273; color: #fff; border: none; font-weight: 700;
+    background: #1F7A3D; color: #fff; border: none; font-weight: 700;
     font-size: 0.85rem; padding: 0.55rem 1.4rem; border-radius: 2px; cursor: pointer;
   }
-  .btn-ct-save:hover { background: #2e3c59; }
+  .btn-ct-save:hover { background: #145226; }
 </style>
 
 <div class="ct-hero">
@@ -37,7 +37,7 @@
     <h1>{% if LANG == 'sw' %}Mipangilio ya Ripoti ya Mwanafunzi{% else %}Report Card Settings{% endif %}</h1>
     <div class="sub">{{ exam.name }} — {% if LANG == 'sw' %}Fomu{% else %}Form{% endif %} {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} ({{ exam.year }})</div>
   </div>
-  <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;">
+  <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#124D22;font-weight:700;border-radius:2px;">
     &larr; {% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}
   </a>
 </div>

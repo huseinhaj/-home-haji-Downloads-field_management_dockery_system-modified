@@ -4,7 +4,7 @@
 {% block content %}
 <style>
   .tc-hero {
-    background: linear-gradient(135deg, #1F497D 0%, #24508a 100%);
+    background: linear-gradient(135deg, #124D22 0%, #145226 100%);
     border: 2px solid #D9A441; border-radius: 2px;
     padding: 1.4rem 2rem; color: #fff; margin-bottom: 1.5rem;
     display: flex; justify-content: space-between; align-items: center;
@@ -29,10 +29,10 @@
   }
   .tc-bulkbar select { border: 1.5px solid #dee2e6; border-radius: 2px; padding: 0.3rem 0.5rem; font-size: 0.82rem; }
   .btn-tc-bulk-apply, .btn-tc-checkall {
-    background: #24508a; color: #fff; border: none; font-weight: 700;
+    background: #145226; color: #fff; border: none; font-weight: 700;
     font-size: 0.78rem; padding: 0.4rem 0.8rem; border-radius: 2px; cursor: pointer;
   }
-  .btn-tc-checkall { background: #fff; color: #24508a; border: 1.5px solid #24508a; }
+  .btn-tc-checkall { background: #fff; color: #145226; border: 1.5px solid #145226; }
   .tc-hint { font-size: 0.72rem; color: #888; width: 100%; }
   table.tc-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
   table.tc-table th {
@@ -45,14 +45,14 @@
   table.tc-table td.tc-name-cell { text-align: left; }
   table.tc-table select.conduct-grade { padding: 0.25rem 0.3rem; font-size: 0.8rem; border-radius: 2px; border: 1.5px solid #dee2e6; width: 100%; }
   .btn-tc-save {
-    background: #3f5273; color: #fff; border: none; font-weight: 700;
+    background: #1F7A3D; color: #fff; border: none; font-weight: 700;
     font-size: 0.85rem; padding: 0.55rem 1.4rem; border-radius: 2px; cursor: pointer;
   }
-  .btn-tc-save:hover { background: #2e3c59; }
+  .btn-tc-save:hover { background: #145226; }
   .btn-tc-save:disabled { opacity: 0.5; cursor: default; }
   .tc-toast {
     position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
-    background: #3f5273; color: #fff; padding: 0.6rem 1.5rem; border-radius: 2px;
+    background: #1F7A3D; color: #fff; padding: 0.6rem 1.5rem; border-radius: 2px;
     font-weight: 600; font-size: 0.82rem; z-index: 9999; opacity: 0;
     transition: opacity 0.3s; pointer-events: none;
   }
@@ -65,7 +65,7 @@
     <h1>{% if LANG == 'sw' %}Tabia na Mwenendo{% else %}Conduct &amp; Class Comment{% endif %}</h1>
     <div class="sub">{{ exam.name }} — {% if LANG == 'sw' %}Fomu{% else %}Form{% endif %} {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} ({{ exam.year }})</div>
   </div>
-  <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;">
+  <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#124D22;font-weight:700;border-radius:2px;">
     &larr; {% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}
   </a>
 </div>

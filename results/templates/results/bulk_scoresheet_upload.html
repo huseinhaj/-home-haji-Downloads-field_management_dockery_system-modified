@@ -5,7 +5,7 @@
 {% block extra_css %}
 <style>
 .bulk-hero {
-  background: linear-gradient(135deg, #3f5273 0%, #24508a 100%);
+  background: linear-gradient(135deg, #1F7A3D 0%, #145226 100%);
   border: 2px solid #D9A441;
   border-radius: 2px;
   padding: 1.4rem 1.8rem;
@@ -23,7 +23,7 @@
 .summary-item { text-align: center; flex: 1; min-width: 80px; }
 .summary-item .val { font-size: 1.4rem; font-weight: 800; }
 .summary-item .lbl { font-size: 0.68rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
-.val-green { color: #3f5273; }
+.val-green { color: #1F7A3D; }
 .val-gold { color: #D9A441; }
 
 /* Big upload zone */
@@ -32,21 +32,21 @@
   text-align: center; background: #fffbf0; cursor: pointer; transition: all 0.2s;
   margin-bottom: 1.5rem; position: relative;
 }
-.big-upload-zone:hover { background: #fff3d6; border-color: #3f5273; transform: scale(1.005); }
-.big-upload-zone.dragover { background: #e6f7ec; border-color: #3f5273; }
+.big-upload-zone:hover { background: #fff3d6; border-color: #1F7A3D; transform: scale(1.005); }
+.big-upload-zone.dragover { background: #e6f7ec; border-color: #1F7A3D; }
 .big-upload-zone .icon { font-size: 3rem; margin-bottom: 0.5rem; }
-.big-upload-zone .label { font-weight: 800; color: #3f5273; font-size: 1.1rem; }
+.big-upload-zone .label { font-weight: 800; color: #1F7A3D; font-size: 1.1rem; }
 .big-upload-zone .hint { font-size: 0.82rem; color: #888; margin-top: 0.4rem; max-width: 500px; margin-left: auto; margin-right: auto; }
 
 /* File queue */
 .file-queue { margin-bottom: 1.5rem; }
-.file-queue-title { font-size: 0.9rem; font-weight: 800; color: #3f5273; margin-bottom: 0.6rem; }
+.file-queue-title { font-size: 0.9rem; font-weight: 800; color: #1F7A3D; margin-bottom: 0.6rem; }
 .file-row {
   display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.8rem;
   background: #fff; border: 1.5px solid #e9ecef; border-radius: 2px;
   margin-bottom: 0.4rem; flex-wrap: wrap; transition: all 0.2s;
 }
-.file-row:hover { border-color: #3f5273; }
+.file-row:hover { border-color: #1F7A3D; }
 .file-row.processing { border-color: #D9A441; background: #fff8e6; }
 .file-row.done { border-color: #1a7a3b; background: #e6f7ec; }
 .file-row.error { border-color: #c0392b; background: #fdecea; }
@@ -58,9 +58,9 @@
 }
 .file-subject select {
   font-size: 0.78rem; padding: 0.25rem 0.5rem; border: 1.5px solid #ced4da;
-  border-radius: 2px; background: #fff; font-weight: 600; color: #3f5273;
+  border-radius: 2px; background: #fff; font-weight: 600; color: #1F7A3D;
 }
-.file-subject select:focus { border-color: #3f5273; outline: none; }
+.file-subject select:focus { border-color: #1F7A3D; outline: none; }
 .file-status { font-size: 0.78rem; color: #888; min-width: 100px; text-align: right; }
 .file-status.done { color: #1a7a3b; font-weight: 700; }
 .file-status.error { color: #c0392b; }
@@ -76,7 +76,7 @@
   margin-bottom: 1rem;
 }
 .progress-global .fill {
-  height: 100%; background: linear-gradient(90deg, #3f5273, #D9A441);
+  height: 100%; background: linear-gradient(90deg, #1F7A3D, #D9A441);
   border-radius: 4px; transition: width 0.4s;
 }
 
@@ -105,10 +105,10 @@
   font-weight: 700; padding: 0.6rem 1.6rem; border-radius: 2px; font-size: 0.9rem;
   border: 2px solid #D9A441; cursor: pointer; text-decoration: none; display: inline-block;
 }
-.btn-final.primary { background: #3f5273; color: #fff; }
-.btn-final.primary:hover { background: #2e3c59; color: #fff; }
-.btn-final.secondary { background: #fff; color: #3f5273; }
-.btn-final.secondary:hover { background: #f0faf4; color: #3f5273; }
+.btn-final.primary { background: #1F7A3D; color: #fff; }
+.btn-final.primary:hover { background: #145226; color: #fff; }
+.btn-final.secondary { background: #fff; color: #1F7A3D; }
+.btn-final.secondary:hover { background: #f0faf4; color: #1F7A3D; }
 .btn-final:disabled { opacity: 0.4; pointer-events: none; }
 
 /* Toast */
@@ -129,13 +129,13 @@
 }
 .review-overlay.active { display: flex; justify-content: center; align-items: flex-start; }
 .review-panel {
-  background: #fff; border-radius: 4px; border: 2px solid #3f5273;
+  background: #fff; border-radius: 4px; border: 2px solid #1F7A3D;
   max-width: 900px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.3);
   animation: slideUp 0.3s ease;
 }
 @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .review-header {
-  background: linear-gradient(135deg, #3f5273 0%, #24508a 100%);
+  background: linear-gradient(135deg, #1F7A3D 0%, #145226 100%);
   padding: 1rem 1.4rem; color: #fff; border-radius: 2px 2px 0 0;
   display: flex; justify-content: space-between; align-items: center;
 }
@@ -152,17 +152,17 @@
 }
 .review-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 .review-table th {
-  background: #f8f9fb; border-bottom: 2px solid #3f5273; padding: 0.5rem 0.6rem;
-  text-align: left; font-weight: 700; color: #3f5273; font-size: 0.78rem;
+  background: #f8f9fb; border-bottom: 2px solid #1F7A3D; padding: 0.5rem 0.6rem;
+  text-align: left; font-weight: 700; color: #1F7A3D; font-size: 0.78rem;
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 .review-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #e9ecef; vertical-align: middle; }
 .review-table tr:hover { background: #f8f9fb; }
 .review-table .score-input {
   width: 70px; padding: 0.3rem 0.5rem; border: 1.5px solid #ced4da; border-radius: 2px;
-  font-weight: 700; font-size: 0.85rem; text-align: center; color: #3f5273;
+  font-weight: 700; font-size: 0.85rem; text-align: center; color: #1F7A3D;
 }
-.review-table .score-input:focus { border-color: #3f5273; outline: none; background: #f0faf4; }
+.review-table .score-input:focus { border-color: #1F7A3D; outline: none; background: #f0faf4; }
 .review-table .score-input.error { border-color: #c0392b; background: #fdecea; }
 .review-table .confidence {
   font-size: 0.72rem; padding: 0.15rem 0.4rem; border-radius: 2px; font-weight: 600;
@@ -174,7 +174,7 @@
   font-size: 0.78rem; padding: 0.25rem 0.5rem; border: 1.5px solid #ced4da;
   border-radius: 2px; background: #fff; max-width: 200px;
 }
-.review-table .student-select:focus { border-color: #3f5273; outline: none; }
+.review-table .student-select:focus { border-color: #1F7A3D; outline: none; }
 .review-table .row-remove {
   background: none; border: none; color: #c0392b; cursor: pointer;
   font-size: 1rem; opacity: 0.5; padding: 0.2rem;
@@ -187,7 +187,7 @@
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;
 }
 .review-stats { font-size: 0.82rem; color: #666; }
-.review-stats strong { color: #3f5273; }
+.review-stats strong { color: #1F7A3D; }
 .review-actions { display: flex; gap: 0.8rem; }
 .review-actions .btn-final { font-size: 0.85rem; padding: 0.5rem 1.4rem; }
 .review-table .absent-check { width: 18px; height: 18px; cursor: pointer; accent-color: #D9A441; }
@@ -214,7 +214,7 @@
         {{ exam.name }} &nbsp;|&nbsp; Form {{ exam.form }}{% if exam.stream %} {{ exam.stream }}{% endif %} &nbsp;|&nbsp; {{ exam.year }}
       </div>
     </div>
-    <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#3f5273;font-weight:700;border-radius:2px;">
+    <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#1F7A3D;font-weight:700;border-radius:2px;">
       ← {% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}
     </a>
   </div>
@@ -235,14 +235,14 @@
     <div class="lbl">{% if LANG == 'sw' %}Jumla Masomo{% else %}Total Subjects{% endif %}</div>
   </div>
   <div class="summary-item">
-    <div class="val" style="color:#24508a;">{{ student_count }}</div>
+    <div class="val" style="color:#145226;">{{ student_count }}</div>
     <div class="lbl">{% if LANG == 'sw' %}Wanafunzi{% else %}Students{% endif %}</div>
   </div>
 </div>
 
 <!-- Subject Status Grid -->
 <div style="margin-bottom:1rem;">
-  <div style="font-size:0.85rem;font-weight:800;color:#3f5273;margin-bottom:0.5rem;">
+  <div style="font-size:0.85rem;font-weight:800;color:#1F7A3D;margin-bottom:0.5rem;">
     📊 {% if LANG == 'sw' %}Hali ya Masomo{% else %}Subject Status{% endif %}
   </div>
   <div class="subjects-grid">
@@ -281,11 +281,11 @@
 </div>
 
 <div style="background:#fffbf0;border:2px dashed #D9A441;border-radius:4px;padding:1rem;margin:-0.4rem 0 1.2rem;">
-  <div style="font-weight:800;color:#3f5273;font-size:0.9rem;margin-bottom:0.55rem;">
+  <div style="font-weight:800;color:#1F7A3D;font-size:0.9rem;margin-bottom:0.55rem;">
     ➕ {% if LANG == 'sw' %}Ongeza scoresheet ya somo moja{% else %}Add one subject's scoresheet{% endif %}
   </div>
   <div class="d-flex flex-wrap gap-2 align-items-center">
-    <select id="addSubjectSel" style="font-size:0.82rem;padding:0.45rem 0.6rem;border:1.5px solid #ced4da;border-radius:2px;font-weight:700;color:#3f5273;min-width:170px;">
+    <select id="addSubjectSel" style="font-size:0.82rem;padding:0.45rem 0.6rem;border:1.5px solid #ced4da;border-radius:2px;font-weight:700;color:#1F7A3D;min-width:170px;">
       <option value="">— {% if LANG == 'sw' %}Chagua somo{% else %}Select subject{% endif %} —</option>
       {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
     </select>
@@ -334,7 +334,7 @@
   </a>
   {# Three direct ?style= links in a group — plain server-rendered links can't fail to come up the way a JS click-interceptor can. Not gated on every subject being Done; generate_results_pdf just prints whatever ExamResults exist. #}
   <div style="display:flex;flex-direction:column;gap:0.35rem;" id="resultsFormatGroup">
-    <div style="font-size:0.78rem;font-weight:800;color:#1F497D;text-transform:uppercase;letter-spacing:0.04em;">
+    <div style="font-size:0.78rem;font-weight:800;color:#124D22;text-transform:uppercase;letter-spacing:0.04em;">
       {% if LANG == 'sw' %}Fomati ya Matokeo:{% else %}Results Format:{% endif %}
     </div>
     <div class="btn-final primary d-flex gap-1 flex-wrap" id="generateResultsBtn" style="background:none;padding:0;">

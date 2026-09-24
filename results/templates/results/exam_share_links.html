@@ -4,7 +4,7 @@
 {% block content %}
 <style>
   .sl-hero {
-    background: linear-gradient(135deg, #1F497D 0%, #24508a 100%);
+    background: linear-gradient(135deg, #124D22 0%, #145226 100%);
     border: 2px solid #D9A441;
     border-radius: 2px;
     padding: 1.4rem 2rem;
@@ -20,7 +20,7 @@
   .sl-hero .sub { font-size: 0.78rem; color: #D9A441; text-transform: uppercase; letter-spacing: 0.05em; }
   .sl-hero .count-badge {
     background: #D9A441;
-    color: #1F497D;
+    color: #124D22;
     font-weight: 800;
     padding: 0.3rem 1rem;
     border-radius: 2px;
@@ -45,7 +45,7 @@
     font-size: 0.82rem;
   }
   .btn-copy-all {
-    background: #3f5273;
+    background: #1F7A3D;
     color: #fff;
     border: none;
     font-weight: 700;
@@ -54,7 +54,7 @@
     border-radius: 2px;
     cursor: pointer;
   }
-  .btn-copy-all:hover { background: #2e3c59; }
+  .btn-copy-all:hover { background: #145226; }
 
   .sl-student {
     background: #fff;
@@ -69,8 +69,8 @@
     gap: 0.75rem;
     transition: border-color 0.15s;
   }
-  .sl-student:hover { border-color: #1F497D; }
-  .sl-student .pos { font-weight: 800; color: #1F497D; font-size: 0.82rem; min-width: 35px; }
+  .sl-student:hover { border-color: #124D22; }
+  .sl-student .pos { font-weight: 800; color: #124D22; font-size: 0.82rem; min-width: 35px; }
   .sl-student .name { font-weight: 600; color: #333; font-size: 0.88rem; flex: 1; }
   .sl-student .div-badge {
     display: inline-block;
@@ -105,7 +105,7 @@
     font-family: 'Courier New', monospace;
   }
   .btn-copy {
-    background: #1F497D;
+    background: #124D22;
     color: #fff;
     border: none;
     font-size: 0.7rem;
@@ -127,7 +127,7 @@
     bottom: 2rem;
     left: 50%;
     transform: translateX(-50%);
-    background: #3f5273;
+    background: #1F7A3D;
     color: #fff;
     padding: 0.6rem 1.5rem;
     border-radius: 2px;
@@ -148,7 +148,7 @@
   </div>
   <div class="d-flex align-items-center gap-2">
     <span class="count-badge">{{ total_students }} {% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</span>
-    <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#1F497D;font-weight:700;border-radius:2px;">
+    <a href="{% url 'exam_overview' exam.id %}" class="btn btn-sm" style="background:#D9A441;color:#124D22;font-weight:700;border-radius:2px;">
       &larr; {% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}
     </a>
   </div>
