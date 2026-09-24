@@ -69,23 +69,28 @@
       <!-- Desktop nav -->
       <nav class="app-nav app-nav-desktop">
         {% if user.is_authenticated %}
-          {# Menyu ya makundi kwa kila role (results/nav.py → NAV) #}
-          {% for g in NAV_GROUPS %}
-          <div class="nav-group{% if g.active %} is-active{% endif %}">
-            <button type="button" class="nav-group-btn" aria-expanded="false" aria-haspopup="true">
-              <i class="fas {{ g.icon }}"></i> {{ g.title }} <i class="fas fa-chevron-down nav-caret"></i>
-            </button>
-            <div class="nav-menu" role="menu">
-              {% for it in g.items %}
-              <a href="{{ it.url }}" role="menuitem" class="nav-item{% if it.active %} active{% endif %}"{% if it.active %} aria-current="page"{% endif %}>
-                <i class="fas {{ it.icon }}"></i>
-                <span><b>{{ it.title }}</b></span>
-              </a>
-              {% endfor %}
-            </div>
-          </div>
-          {% endfor %}
-          <a href="{% url 'results_logout' %}" class="nav-logout"><i class="fas fa-sign-out-alt"></i> {% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}</a>
+          <a href="{% url 'home' %}">{% if LANG == 'sw' %}Mitihani{% else %}Exams{% endif %}</a>
+          {% if user.is_academic %}
+            <a href="{% url 'school_setup' %}">{% if LANG == 'sw' %}Shule Yangu{% else %}My School{% endif %}</a>
+            <a href="{% url 'upload_results' %}">{% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}Create New Exam{% endif %}</a>
+            <a href="{% url 'academic_dashboard' %}">Academic</a>
+            <a href="{% url 'manage_teachers' %}">{% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</a>
+            <a href="{% url 'upload_form_students' %}">{% if LANG == 'sw' %}Orodha ya Wanafunzi{% else %}Student Roster{% endif %}</a>
+            <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
+            <a href="{% url 'class_timetable_view' %}">{% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>
+          {% elif user.is_teacher %}
+            <a href="{% url 'teacher_dashboard' %}">{% if LANG == 'sw' %}Walimu{% else %}Dashboard{% endif %}</a>
+            <a href="{% url 'select_my_subjects' %}">{% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
+            <a href="{% url 'class_timetable_view' %}">{% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>
+            <a href="{% url 'personal_upload' %}">{% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
+          {% elif user.is_printing_secretary %}
+            <a href="{% url 'printing_secretary_dashboard' %}">{% if LANG == 'sw' %}Uchapishaji (PS){% else %}Printing (PS){% endif %}</a>
+          {% endif %}
+          {% if user.is_teacher or user.is_academic %}
+          <a href="{% url 'marks_entry' %}">✏️ {% if LANG == 'sw' %}Jaza Alama{% else %}Marks{% endif %}</a>
+          {% endif %}
+          <a href="{% url 'user_guide' %}">📖 {% if LANG == 'sw' %}Mwongozo{% else %}Guide{% endif %}</a>
+          <a href="{% url 'results_logout' %}">{% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}</a>
         {% else %}
           <a href="{% url 'results_login' %}">{% if LANG == 'sw' %}Ingia{% else %}Login{% endif %}</a>
         {% endif %}
@@ -122,18 +127,29 @@
     <nav class="drawer-nav">
       <a href="#" class="install-link" onclick="event.preventDefault(); window.SRSInstall && SRSInstall.prompt();"><i class="fas fa-download"></i> 📱 {% if LANG == 'sw' %}Sakinisha App{% else %}Install App{% endif %}</a>
       <div class="nav-sep"></div>
-      {% if not user.is_authenticated %}<a href="{% url 'home' %}"><i class="fas fa-home"></i> {% if LANG == 'sw' %}Nyumbani{% else %}Home{% endif %}</a>{% endif %}
+      <a href="{% url 'home' %}"><i class="fas fa-home"></i> {% if LANG == 'sw' %}Nyumbani{% else %}Home{% endif %}</a>
       {% if user.is_authenticated %}
-        {% for g in NAV_GROUPS %}
-          <div class="drawer-group-title"><i class="fas {{ g.icon }}"></i> {{ g.title }}</div>
-          {% for it in g.items %}
-          <a href="{{ it.url }}" class="drawer-item{% if it.active %} active{% endif %}"{% if it.active %} aria-current="page"{% endif %}>
-            <i class="fas {{ it.icon }}"></i>
-            <span><b>{{ it.title }}</b></span>
-          </a>
-          {% endfor %}
-        {% endfor %}
+        {% if user.is_academic %}
+          <a href="{% url 'upload_results' %}"><i class="fas fa-plus-circle"></i> {% if LANG == 'sw' %}Unda Mtihani Mpya{% else %}Create New Exam{% endif %}</a>
+          <a href="{% url 'school_setup' %}"><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule Yangu{% else %}My School{% endif %}</a>
+          <a href="{% url 'academic_dashboard' %}"><i class="fas fa-chart-bar"></i> Academic</a>
+          <a href="{% url 'manage_teachers' %}"><i class="fas fa-users"></i> {% if LANG == 'sw' %}Simamia Walimu{% else %}Manage Teachers{% endif %}</a>
+          <a href="{% url 'upload_form_students' %}"><i class="fas fa-user-graduate"></i> {% if LANG == 'sw' %}Orodha ya Wanafunzi{% else %}Student Roster{% endif %}</a>
+          <a href="{% url 'class_timetable_view' %}"><i class="fas fa-calendar-alt"></i> {% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>
+        {% elif user.is_teacher %}
+          <a href="{% url 'teacher_dashboard' %}"><i class="fas fa-chalkboard-teacher"></i> {% if LANG == 'sw' %}Dashibodi Yangu{% else %}My Dashboard{% endif %}</a>
+          <a href="{% url 'class_timetable_view' %}"><i class="fas fa-calendar-alt"></i> {% if LANG == 'sw' %}Ratiba ya Darasa{% else %}Class Timetable{% endif %}</a>
+          <a href="{% url 'personal_upload' %}"><i class="fas fa-file-upload"></i> {% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
+        {% elif user.is_printing_secretary %}
+          <a href="{% url 'printing_secretary_dashboard' %}"><i class="fas fa-print"></i> {% if LANG == 'sw' %}Uchapishaji (PS){% else %}Printing (PS){% endif %}</a>
+        {% endif %}
+        <a href="{% url 'select_my_subjects' %}"><i class="fas fa-book"></i> {% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
+        {% if user.is_teacher or user.is_academic %}
+        <a href="{% url 'marks_entry' %}"><i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Kuingiza Alama{% else %}Marks Entry{% endif %}</a>
+        {% endif %}
         <div class="nav-sep"></div>
+        <a href="{% url 'student_results_search' %}"><i class="fas fa-search"></i> {% if LANG == 'sw' %}Tafuta Matokeo{% else %}Search Results{% endif %}</a>
+        <a href="{% url 'user_guide' %}"><i class="fas fa-book-open"></i> {% if LANG == 'sw' %}Mwongozo{% else %}Guide{% endif %}</a>
         <a href="{% url 'results_logout' %}" style="color:var(--danger-500);"><i class="fas fa-sign-out-alt"></i> {% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}</a>
       {% else %}
         <a href="{% url 'results_login' %}"><i class="fas fa-sign-in-alt"></i> {% if LANG == 'sw' %}Ingia{% else %}Login{% endif %}</a>
@@ -301,7 +317,6 @@
       if (e.key === 'Escape') closeDrawer();
     });
   </script>
-  <script src="{% static 'results/nav.js' %}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

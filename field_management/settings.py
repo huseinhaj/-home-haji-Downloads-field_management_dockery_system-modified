@@ -126,7 +126,6 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'field_app.context_processors.language',
                 'results.context_processors.branding',
-                'results.nav.nav',
                 'curriculum.context_processors.branding',
             ],
         },
