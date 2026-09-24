@@ -1,25 +1,12 @@
-"""Mfumo unaojielezea: menyu, njia ya kazi na maelekezo ya ukurasa."""
+"""Menyu ya results: kila kiungo kinafunguka, na kila role inaona viungo vyake tu."""
 from django.test import Client, TestCase
 from django.urls import reverse
 
 from results.models import School, TeacherAccount
-from results.page_help import NAV, PAGE_HELP, WORKFLOW, _routes
+from results.nav import NAV
 
 
-class PageHelpDataTests(TestCase):
-    def test_every_nav_and_workflow_link_has_help(self):
-        names = {n for *_, items in NAV for n, _, _ in items}
-        names |= {n for steps in WORKFLOW.values() for n, _, _ in steps}
-        self.assertEqual(names - set(PAGE_HELP), set())
-        for name in names:
-            self.assertEqual(PAGE_HELP[name]['kind'], 'page', name)
-            reverse(name)  # arg-free: every menu link must resolve
-
-    def test_every_help_entry_is_a_real_results_url(self):
-        self.assertEqual({n for n, _ in _routes()}, set(PAGE_HELP))
-
-
-class SelfExplainingPagesTests(TestCase):
+class NavLinksTests(TestCase):
     databases = {'default', 'results'}
 
     def setUp(self):
@@ -38,7 +25,18 @@ class SelfExplainingPagesTests(TestCase):
     def _groups(self, response):
         return {g['key']: [i['url'] for i in g['items']] for g in response.context['NAV_GROUPS']}
 
-    def test_academic_menu_workflow_and_page_help(self):
+    def _assert_all_links_open(self, groups):
+        for urls in groups.values():
+            for url in urls:
+                r = self.client.get(url)
+                self.assertIn(r.status_code, (200, 302), url)
+
+    def test_every_nav_link_resolves(self):
+        for *_, items in NAV:
+            for name, *_ in items:
+                reverse(name)
+
+    def test_academic_menu(self):
         self._login(TeacherAccount.ROLE_ACADEMIC)
         r = self.client.get(reverse('academic_dashboard'))
         self.assertEqual(r.status_code, 200)
@@ -47,17 +45,13 @@ class SelfExplainingPagesTests(TestCase):
         self.assertIn(reverse('manage_teachers'), groups['shule'])
         self.assertNotIn('ps', groups)
         self.assertNotIn(reverse('personal_upload'), groups['mitihani'])
-
-        wf = r.context['WORKFLOW']
-        self.assertEqual(wf['total'], len(WORKFLOW['academic']))
-        self.assertEqual(wf['current'], wf['total'])  # dashibodi = hatua ya mwisho
-
         html = r.content.decode()
-        self.assertIn('Uko hapa:', html)
-        self.assertIn(PAGE_HELP['academic_dashboard']['sw']['title'], html)
-        # Kila kiungo cha menyu kinaonyesha kinakupeleka wapi.
-        self.assertIn(PAGE_HELP['manage_teachers']['sw']['what'], html)
         self.assertIn('aria-current="page"', html)
+        # Maelekezo yameondolewa.
+        self.assertNotIn('Uko hapa:', html)
+        self.assertNotIn('srs-workflow', html)
+        self.assertNotIn('help.js', html)
+        self._assert_all_links_open(groups)
 
     def test_teacher_sees_only_teacher_links(self):
         self._login(TeacherAccount.ROLE_TEACHER)
@@ -69,14 +63,15 @@ class SelfExplainingPagesTests(TestCase):
         self.assertIn(reverse('personal_upload'), all_urls)
         for academic_only in ('upload_results', 'manage_teachers', 'school_setup', 'academic_dashboard'):
             self.assertNotIn(reverse(academic_only), all_urls)
-        self.assertEqual(r.context['WORKFLOW']['current'], 3)
+        self._assert_all_links_open(groups)
 
     def test_printing_secretary_menu(self):
         self._login(TeacherAccount.ROLE_PRINTING_SECRETARY)
         r = self.client.get(reverse('printing_secretary_dashboard'))
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(self._groups(r)['ps'], [reverse('printing_secretary_dashboard')])
-        self.assertIsNone(r.context['WORKFLOW'])
+        groups = self._groups(r)
+        self.assertEqual(groups['ps'], [reverse('printing_secretary_dashboard')])
+        self._assert_all_links_open(groups)
 
     def test_logged_out_login_page_has_no_menu_groups(self):
         r = self.client.get(reverse('results_login'))

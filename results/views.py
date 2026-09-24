@@ -2248,7 +2248,7 @@ def restore_storage_student(request, student_id):
     return redirect(f'{reverse("school_storage")}?year={old_year}')
 
 
-@academic_required
+@login_required
 def user_guide(request):
     """Mwongozo wa matumizi — documentation ndani ya system. Inafunguka
     kwa mtumiaji yeyote aliyeingia (academic/teacher/PS); kila jukumu
