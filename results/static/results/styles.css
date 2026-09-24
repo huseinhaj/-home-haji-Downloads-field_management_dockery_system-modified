@@ -1380,3 +1380,30 @@ body { overflow-x: clip; }
 .page-shell .dropdown-menu { border-radius: 10px; border-color: var(--line); box-shadow: 0 14px 30px -12px rgba(15, 23, 42, 0.35); padding: 0.35rem; }
 .page-shell .dropdown-item { border-radius: 6px; font-size: 0.85rem; padding: 0.45rem 0.7rem; }
 .page-shell .dropdown-item:active { background: var(--accent-500); }
+
+/* ────────────────────────────────────────────────────────────────
+   Inside pages: header band kit.
+   Green is used logically — page title, left accent bar, buttons,
+   statuses. The big green leaders become clean white cards, so the
+   green reads as an accent, not a wall of color.
+   ──────────────────────────────────────────────────────────────── */
+.ov-hero, .exam-hero, .bulk-hero, .rf-hero, .fr-hero, .ct-hero,
+.aam-hero, .tc-hero, .school-hero, .upload-hero, .me-hero, .sl-hero {
+  background: #ffffff !important;
+  border: 1px solid #dfe3e8 !important;
+  border-left: 4px solid var(--accent-500) !important;
+  border-radius: 10px !important;
+  color: #1f2937 !important;
+  box-shadow: 0 2px 14px -10px rgba(18, 77, 34, 0.35) !important;
+}
+.ov-hero h1, .exam-hero h1, .bulk-hero h1, .rf-hero h1, .fr-hero h1,
+.ct-hero h1, .aam-hero h1, .tc-hero h1, .school-hero h1,
+.upload-hero h1, .me-hero h1, .sl-hero h1 {
+  color: var(--accent-500) !important;
+}
+.ov-hero .meta-row, .ov-hero .meta, .exam-hero .sub, .bulk-hero .meta,
+.rf-hero .sub, .fr-hero .sub, .ct-hero .sub, .aam-hero .meta,
+.tc-hero .sub, .school-hero .sub, .upload-hero .meta, .me-hero .meta,
+.sl-hero .sub {
+  color: #6b7280 !important;
+}
