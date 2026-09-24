@@ -94,6 +94,10 @@
 @media (max-width: 768px) { .exam-actions { align-items:stretch; } .action-group { justify-content:flex-start; } }
 
 .empty-notice { padding:1.5rem; text-align:center; color:#aaa; font-size:0.85rem; }
+.pick-bar { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; padding:0.5rem 0.9rem; border-bottom:1px solid #f0f2f5; background:#fbfaf6; }
+.pick-bar .pick-style { width:auto; min-width:150px; font-size:0.78rem; }
+.pick-bar.has-pick { background:#fff7e0; }
+.results-table input[type=checkbox] { width:16px; height:16px; cursor:pointer; }
 </style>
 
 <!-- Hero -->
@@ -228,12 +232,6 @@
       </div>
     </div>
 
-    {% if is_academic %}
-    <div style="font-size:0.68rem;color:#666;padding:0.4rem 1rem;background:#fbfaf6;border-bottom:1px solid #f0f2f5;">
-      💡 {% if LANG == 'sw' %}<strong>Ripoti ya Mtihani</strong> = orodha ya wanafunzi wote na nafasi &bull; <strong>Ripoti za Wanafunzi Wote</strong> = slip kwa kila mwanafunzi &bull; <strong>Formati</strong> = muonekano wa slip (Kawaida/Rank/NECTA) &bull; <strong>Matokeo (Pakia)</strong> = kupakia karatasi za alama &bull; <strong>Maelezo</strong> = kina cha mtihani{% else %}<strong>Exam Report</strong> = full student list with positions &bull; <strong>All Students' Reports</strong> = one slip per student &bull; <strong>Format</strong> = slip look (Normal/Rank/NECTA) &bull; <strong>Results (Upload)</strong> = upload scoresheets &bull; <strong>Details</strong> = exam internals{% endif %}
-    </div>
-    {% endif %}
-
     {% if not ed.all_approved %}
     <div class="not-approved-notice">
       ⚠️ {% if LANG == 'sw' %}Masomo {{ ed.approved_subs }}/{{ ed.total_subs }} tu yameidhinishwa — matokeo haya si ya mwisho bado.{% else %}Only {{ ed.approved_subs }}/{{ ed.total_subs }} subjects are approved — these results are not final yet.{% endif %}
@@ -242,10 +240,28 @@
     {% endif %}
 
     {% if ed.processed_results %}
+    {% if is_academic %}
+    <div class="pick-bar" data-bulk-url="{{ ed.bulk_pdf_url }}">
+      <select class="pick-style form-select form-select-sm" aria-label="{% if LANG == 'sw' %}Formati{% else %}Format{% endif %}">
+        <option value="normal">📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}</option>
+        <option value="rank">🏅 Rank</option>
+        <option value="necta">🎓 NECTA</option>
+        {% if ed.exam.form == 5 %}<option value="royal">👑 Form Five Royal</option>{% endif %}
+        {% if ed.exam.form == 6 %}<option value="acsee">🎓 Form Six Prestige</option>{% endif %}
+      </select>
+      <button type="button" class="btn btn-sm btn-black pick-print" disabled>
+        🖨️ {% if LANG == 'sw' %}Slip za Waliochaguliwa{% else %}Selected Students' Slips{% endif %} (<span class="pick-count">0</span>)
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-secondary pick-clear" disabled>
+        ✕ {% if LANG == 'sw' %}Ondoa tiki zote{% else %}Clear{% endif %}
+      </button>
+    </div>
+    {% endif %}
     <div style="overflow-x:auto;">
     <table class="results-table" style="min-width:680px;">
       <thead>
         <tr>
+          {% if is_academic %}<th style="width:34px;text-align:center;"><input type="checkbox" class="pick-all" aria-label="{% if LANG == 'sw' %}Chagua wote{% else %}Select all{% endif %}"></th>{% endif %}
           <th style="width:50px">{% if LANG == 'sw' %}Nafasi{% else %}Pos.{% endif %}</th>
           <th style="min-width:180px;">{% if LANG == 'sw' %}Jina la Mwanafunzi{% else %}Student Name{% endif %}</th>
           {% for subj in ed.subjects %}
@@ -263,6 +279,7 @@
       </thead>
       <tbody>        {% for res in ed.processed_results %}
         <tr>
+          {% if is_academic %}<td style="text-align:center;"><input type="checkbox" class="pick-one" value="{{ res.student.id }}" aria-label="{{ res.student.first_name }} {{ res.student.last_name }}"></td>{% endif %}
           <td><span class="pos-badge">{% if res.position is None %}-{% else %}{{ res.position }}{% endif %}</span></td>
           <td>
             <strong>{{ res.student.first_name }} {% if res.student.middle_name %}{{ res.student.middle_name }} {% endif %}{{ res.student.last_name }}</strong>
@@ -329,6 +346,40 @@ document.querySelectorAll('[id^="ps-submit-wrap-"]').forEach(function (el) {
   try {
     if (sessionStorage.getItem('ps_pdf_seen_' + examId)) { revealPsSubmit(examId); }
   } catch (e) {}
+});
+
+// Slip za wanafunzi waliochaguliwa tu (?students=1,2,3) — kwa waliorekebishwa
+// baada ya matokeo kuchapishwa.
+document.querySelectorAll('.pick-bar').forEach(function (bar) {
+  var block = bar.closest('.exam-block');
+  var ones = Array.prototype.slice.call(block.querySelectorAll('.pick-one'));
+  var all = block.querySelector('.pick-all');
+  var btn = bar.querySelector('.pick-print');
+  var clear = bar.querySelector('.pick-clear');
+  function picked() { return ones.filter(function (c) { return c.checked; }); }
+  function refresh() {
+    var n = picked().length;
+    bar.querySelector('.pick-count').textContent = n;
+    btn.disabled = clear.disabled = n === 0;
+    bar.classList.toggle('has-pick', n > 0);
+    if (all) { all.checked = n === ones.length; all.indeterminate = n > 0 && n < ones.length; }
+  }
+  ones.forEach(function (c) { c.addEventListener('change', refresh); });
+  if (all) all.addEventListener('change', function () {
+    ones.forEach(function (c) { c.checked = all.checked; });
+    refresh();
+  });
+  clear.addEventListener('click', function () {
+    ones.forEach(function (c) { c.checked = false; });
+    refresh();
+  });
+  btn.addEventListener('click', function () {
+    var ids = picked().map(function (c) { return c.value; });
+    if (!ids.length) return;
+    window.location.href = bar.dataset.bulkUrl + '?style=' + bar.querySelector('.pick-style').value +
+      '&students=' + ids.join(',');
+  });
+  refresh();
 });
 </script>
 {% endblock %}

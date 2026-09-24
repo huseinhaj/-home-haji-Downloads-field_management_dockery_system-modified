@@ -2344,7 +2344,7 @@ def generate_student_result_pdf_response(result, request=None):
     return resp
 
 
-def generate_bulk_student_results_pdf_response(exam, style='normal', request=None):
+def generate_bulk_student_results_pdf_response(exam, style='normal', request=None, student_ids=None):
     """All students of this exam (i.e. this form — an Exam is already
     scoped to one form/year/type), each on their own page(s), merged into
     ONE downloadable PDF — same slip _build_student_result_pdf_bytes
@@ -2353,7 +2353,12 @@ def generate_bulk_student_results_pdf_response(exam, style='normal', request=Non
     for the roster list elsewhere in the system, not ranked by position.
     Mirrors the merge pattern curriculum/views.py's
     download_all_lesson_plans_pdf already uses for the same "many small
-    PDFs -> one file" need."""
+    PDFs -> one file" need.
+
+    student_ids: chapisha slip za wanafunzi hawa tu (mf. waliorekebishwa
+    baada ya matokeo kuchapishwa). Nafasi darasani, idadi ya wanafunzi na
+    nafasi kwa kila somo bado zinahesabiwa kwa darasa zima, ili slip hizi
+    zilingane na zile zilizokwisha kuchapishwa."""
     import pypdfium2 as pdfium
 
     results = order_by_registration(
@@ -2371,14 +2376,14 @@ def generate_bulk_student_results_pdf_response(exam, style='normal', request=Non
     total_students = len(results)
     school_type = get_school_type_for_exam(exam)
 
-    student_ids = [r.student_id for r in results]
+    class_ids = [r.student_id for r in results]
     scores_by_student = {}
     subjects_by_student = {}
     # {subject_id: [(score, student_id), ...]} — for the per-subject NAFASI
     # column; absent/no-score entries don't get ranked, same as
     # subject_pdf_service.py's existing single-subject ranking.
     scored_by_subject = defaultdict(list)
-    for er in ExamResult.objects.filter(exam=exam, student_id__in=student_ids).select_related('subject'):
+    for er in ExamResult.objects.filter(exam=exam, student_id__in=class_ids).select_related('subject'):
         scores_by_student.setdefault(er.student_id, {})[er.subject_id] = er.score
         subjects_by_student.setdefault(er.student_id, {})[er.subject_id] = er.subject
         if er.score is not None and not er.is_absent:
@@ -2391,11 +2396,18 @@ def generate_bulk_student_results_pdf_response(exam, style='normal', request=Non
         pairs.sort(key=lambda p: -p[0])
         subject_ranks[subject_id] = {sid: i + 1 for i, (_score, sid) in enumerate(pairs)}
 
+    to_print = results
+    if student_ids is not None:
+        wanted = set(student_ids)
+        to_print = [r for r in results if r.student_id in wanted]
+        if not to_print:
+            return HttpResponse('Hakuna mwanafunzi aliyechaguliwa mwenye matokeo kwenye mtihani huu.', status=404)
+
     merged = pdfium.PdfDocument.new()
     buffers = []
     out = io.BytesIO()
     try:
-        for result in results:
+        for result in to_print:
             buf = _build_student_result_pdf_bytes(
                 result,
                 school_type=school_type,
@@ -2425,5 +2437,6 @@ def generate_bulk_student_results_pdf_response(exam, style='normal', request=Non
 
     resp = HttpResponse(out.getvalue(), content_type='application/pdf')
     safe_name = exam.name.replace(' ', '_')
-    resp['Content-Disposition'] = f'attachment; filename="Matokeo_Wote_Form{exam.form}_{safe_name}.pdf"'
+    prefix = 'Matokeo_Wote' if student_ids is None else f'Matokeo_Waliochaguliwa_{len(to_print)}'
+    resp['Content-Disposition'] = f'attachment; filename="{prefix}_Form{exam.form}_{safe_name}.pdf"'
     return resp

@@ -832,6 +832,33 @@ class BulkStudentResultsPdfTests(TestCase):
 		response = client.get(reverse('generate_bulk_student_results_pdf', args=[empty_exam.id]))
 		self.assertEqual(response.status_code, 404)
 
+	def test_selected_students_only(self):
+		"""?students= → slip za waliochaguliwa tu (waliorekebishwa baada ya
+		matokeo kuchapishwa); nafasi bado ni ya darasa zima."""
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		url = reverse('generate_bulk_student_results_pdf', args=[self.exam.id])
+		response = client.get(f'{url}?style=necta&students={self.student_two.id}')
+		self.assertEqual(response.status_code, 200)
+		self.assertIn('Matokeo_Waliochaguliwa_1', response['Content-Disposition'])
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+			self.assertEqual(len(pdf.pages), 1)
+			text = (pdf.pages[0].extract_text() or '').upper()
+		self.assertIn('PETER MUSHI', text)
+		self.assertNotIn('AMINA JUMA', text)
+		self.assertIn('MATHEMATICS 55 C 2', text)  # nafasi ya somo = ya darasa zima
+
+	def test_selected_students_from_another_exam_are_ignored(self):
+		other = Student.objects.create(first_name='Nje', middle_name='', last_name='Kabisa', gender='M')
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		url = reverse('generate_bulk_student_results_pdf', args=[self.exam.id])
+		self.assertEqual(client.get(f'{url}?students={other.id}').status_code, 404)
+		empty = client.get(f'{url}?students=')
+		self.assertRedirects(empty, reverse('form_results', args=[self.exam.form]), fetch_redirect_response=False)
+
 
 class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
 	"""The main results exports (PDF and Excel) list students in the
