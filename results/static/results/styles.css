@@ -4,8 +4,8 @@
   --ink-500: #64748b;
   --surface-100: #fffef7;
   --surface-200: #f8f5e7;
-  --accent-500: #3f5273;
-  --accent-600: #2a3a57;
+  --accent-500: #1F7A3D;
+  --accent-600: #124D22;
   --secondary-500: #D9A441;
   --secondary-300: #FBEFD3;
   --ok-500: #1f8a4c;
@@ -585,7 +585,7 @@ body {
 }
 
 [data-theme="dark"] .site-bg {
-  background-image: linear-gradient(120deg, rgba(63, 82, 115, 0.10), rgba(217, 164, 65, 0.06));
+  background-image: linear-gradient(120deg, rgba(31, 122, 61, 0.10), rgba(217, 164, 65, 0.06));
 }
 
 [data-theme="dark"] .app-header {
@@ -739,7 +739,7 @@ body {
 .theme-toggle:hover {
   color: var(--accent-500);
   border-color: var(--accent-500);
-  background: rgba(63, 82, 115, 0.06);
+  background: rgba(31, 122, 61, 0.06);
 }
 
 .drawer-overlay {
@@ -837,14 +837,14 @@ body {
 
 .drawer-nav a:hover {
   background: #fff;
-  border-color: rgba(63, 82, 115, 0.35);
+  border-color: rgba(31, 122, 61, 0.35);
   color: var(--accent-500);
   transform: translateX(3px);
-  box-shadow: 0 4px 12px -6px rgba(63, 82, 115, 0.35);
+  box-shadow: 0 4px 12px -6px rgba(31, 122, 61, 0.35);
 }
 
 [data-theme="dark"] .drawer-nav a { background: #1b2637; border-color: rgba(15, 23, 42, 0.6); }
-[data-theme="dark"] .drawer-nav a:hover { background: #243048; border-color: rgba(63, 82, 115, 0.5); }
+[data-theme="dark"] .drawer-nav a:hover { background: #243048; border-color: rgba(31, 122, 61, 0.5); }
 
 .drawer-nav a i {
   width: 32px;
@@ -853,12 +853,12 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 9px;
-  background: rgba(63, 82, 115, 0.12);
+  background: rgba(31, 122, 61, 0.12);
   color: var(--accent-500);
   font-size: 0.85rem;
 }
 
-[data-theme="dark"] .drawer-nav a i { background: rgba(63, 82, 115, 0.2); }
+[data-theme="dark"] .drawer-nav a i { background: rgba(31, 122, 61, 0.2); }
 
 /* ============================================================
    INSTALL APP BUTTONS (header + drawer)
@@ -890,7 +890,7 @@ body {
   color: white;
   font-weight: 700;
   border-color: transparent;
-  box-shadow: 0 4px 12px -6px rgba(42, 58, 87, 0.6);
+  box-shadow: 0 4px 12px -6px rgba(18, 77, 34, 0.6);
 }
 
 .drawer-nav a.install-link i {
@@ -905,8 +905,8 @@ body {
   transform: translateX(3px);
 }
 
-[data-theme="dark"] .drawer-nav a.install-link { background: linear-gradient(135deg, var(--accent-500), #22304b); }
-[data-theme="dark"] .drawer-nav a.install-link:hover { background: linear-gradient(135deg, #22304b, var(--accent-500)); }
+[data-theme="dark"] .drawer-nav a.install-link { background: linear-gradient(135deg, var(--accent-500), #0e3d1b); }
+[data-theme="dark"] .drawer-nav a.install-link:hover { background: linear-gradient(135deg, #0e3d1b, var(--accent-500)); }
 
 /* Bottom nav install item — gold accent to stand out */
 .bottom-nav a.install-link {
@@ -1108,12 +1108,12 @@ body {
 .kbtn--primary {
   background: linear-gradient(135deg, var(--accent-500), var(--accent-600));
   color: #fff;
-  box-shadow: 0 4px 12px rgba(63, 82, 115, 0.22);
+  box-shadow: 0 4px 12px rgba(31, 122, 61, 0.22);
 }
 .kbtn--primary:hover {
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(63, 82, 115, 0.3);
+  box-shadow: 0 8px 18px rgba(31, 122, 61, 0.3);
 }
 .kbtn--gold {
   background: linear-gradient(135deg, var(--secondary-500), #a9863a);
@@ -1129,7 +1129,7 @@ body {
 .kbtn--ghost:hover {
   color: var(--accent-500);
   border-color: var(--accent-500);
-  background: rgba(63, 82, 115, 0.05);
+  background: rgba(31, 122, 61, 0.05);
 }
 .kbtn--danger {
   background: #fff;
@@ -1265,9 +1265,9 @@ body { overflow-x: clip; }
 .tool-login:hover { background: var(--accent-600); color: white; }
 
 .main-nav-bar {
-  background: linear-gradient(180deg, var(--accent-600), #22304b);
+  background: linear-gradient(180deg, var(--accent-600), #0e3d1b);
   border-top: 2px solid var(--secondary-500);
-  box-shadow: 0 8px 20px -14px rgba(42, 58, 87, 0.9);
+  box-shadow: 0 8px 20px -14px rgba(18, 77, 34, 0.9);
 }
 .main-nav {
   display: flex;
@@ -1324,9 +1324,9 @@ body { overflow-x: clip; }
 .main-nav a:focus-visible { outline: 2px solid var(--secondary-500); outline-offset: 2px; }
 
 .drawer-nav a.active {
-  background: rgba(63, 82, 115, 0.1);
+  background: rgba(31, 122, 61, 0.1);
   border-color: var(--accent-500);
-  box-shadow: 0 0 0 3px rgba(63, 82, 115, 0.12);
+  box-shadow: 0 0 0 3px rgba(31, 122, 61, 0.12);
   color: var(--accent-600);
   font-weight: 700;
 }

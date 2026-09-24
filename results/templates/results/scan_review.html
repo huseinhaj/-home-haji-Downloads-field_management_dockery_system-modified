@@ -10,14 +10,14 @@
         ← Scan nyingine
       </a>
       <a href="{% url 'scan_results' exam.pk subject.pk %}"
-         style="background:#3f5273;color:#fff;text-decoration:none;padding:7px 14px;border-radius:4px;font-weight:700;">
+         style="background:#1F7A3D;color:#fff;text-decoration:none;padding:7px 14px;border-radius:4px;font-weight:700;">
         📊 Matokeo (ticks + scores)
       </a>
       {% if graded_count_total > 0 %}
       <form method="post" action="{% url 'scan_import' exam.pk subject.pk %}" style="display:inline;"
             onsubmit="return confirm('Ingiza matokeo yote yaliyosahihishwa kwenye mtihani?');">
         {% csrf_token %}
-        <button type="submit" style="background:#3f5273;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-weight:700;cursor:pointer;">
+        <button type="submit" style="background:#1F7A3D;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-weight:700;cursor:pointer;">
           ✅ Ingiza kwenye Matokeo
         </button>
       </form>
@@ -77,7 +77,7 @@
             {% if sheet.status == "IMPORTED" %}
               <span style="background:#e8f1fb;color:#1a56db;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:700;">IMEINGIZWA</span>
             {% elif sheet.status == "GRADED" %}
-              <span style="background:#eef7f0;color:#3f5273;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:700;">IMESAHIHISHWA</span>
+              <span style="background:#eef7f0;color:#1F7A3D;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:700;">IMESAHIHISHWA</span>
             {% elif sheet.status == "NEEDS_REVIEW" %}
               <span style="background:#fdecea;color:#c0392b;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:700;">UKAGUZI</span>
               {% if sheet.needs_review_reason %}
@@ -136,7 +136,7 @@
                     {% endfor %}
                   </select>
                   {% endif %}
-                  <button type="submit" style="background:#3f5273;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-weight:700;cursor:pointer;width:100%;">
+                  <button type="submit" style="background:#1F7A3D;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-weight:700;cursor:pointer;width:100%;">
                     ✓ Thibitisha
                   </button>
                 </form>

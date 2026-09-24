@@ -10,7 +10,7 @@
 
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0;">
     <div style="background:#eef7f0;border-radius:6px;padding:10px;text-align:center;">
-      <div style="font-size:1.4rem;font-weight:800;color:#3f5273;">{{ graded_count }}</div>
+      <div style="font-size:1.4rem;font-weight:800;color:#1F7A3D;">{{ graded_count }}</div>
       <div style="font-size:.75rem;color:#555;">Zimesahihishwa</div>
     </div>
     <div style="background:#fdf3e7;border-radius:6px;padding:10px;text-align:center;">
@@ -44,7 +44,7 @@
       · <a href="{% url 'scan_scheme_upload' exam.pk subject.pk %}">Badilisha scheme</a>
     </div>
     <a href="{% url 'scan_results' exam.pk subject.pk %}"
-       style="background:#3f5273;color:#fff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:800;font-size:1rem;">
+       style="background:#1F7A3D;color:#fff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:800;font-size:1rem;">
       ✅ SAHISHA SASA — ona matokeo →
     </a>
   </div>
@@ -89,10 +89,10 @@
       {{ form.images }}
       {{ form.note }}
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-        <button type="submit" style="background:#3f5273;color:#fff;border:none;padding:9px 20px;border-radius:4px;font-weight:700;cursor:pointer;">
+        <button type="submit" style="background:#1F7A3D;color:#fff;border:none;padding:9px 20px;border-radius:4px;font-weight:700;cursor:pointer;">
           📤 Pakia & Sahihisha
         </button>
-        <a href="{% url 'scan_review' exam.pk subject.pk %}" style="color:#3f5273;text-decoration:none;padding:9px 12px;font-weight:600;">
+        <a href="{% url 'scan_review' exam.pk subject.pk %}" style="color:#1F7A3D;text-decoration:none;padding:9px 12px;font-weight:600;">
           Angalia review queue →
         </a>
       </div>
