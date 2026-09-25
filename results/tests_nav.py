@@ -39,8 +39,26 @@ class NavLinksTests(TestCase):
         self._login(TeacherAccount.ROLE_ACADEMIC)
         links = self._menu_links(reverse('academic_dashboard'))
         self.assertIn(reverse('upload_results'), links)
+        self.assertIn(reverse('student_results_search'), links)
         self.assertIn(reverse('user_guide'), links)
         self._assert_all_open(links)
+
+    def test_academic_bottom_navigation_order(self):
+        self._login(TeacherAccount.ROLE_ACADEMIC)
+        html = self.client.get(reverse('academic_dashboard')).content.decode()
+        start = html.index('<nav class="bottom-nav"')
+        end = html.index('</nav>', start)
+        bottom = html[start:end]
+        expected_urls = [
+            reverse('home'),
+            reverse('upload_results'),
+            reverse('marks_entry'),
+            reverse('student_results_search'),
+            reverse('results_logout'),
+            '#',
+        ]
+        positions = [bottom.index(url) for url in expected_urls]
+        self.assertEqual(positions, sorted(positions))
 
     def test_teacher_menu_links_open(self):
         self._login(TeacherAccount.ROLE_TEACHER)

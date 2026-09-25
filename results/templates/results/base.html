@@ -120,6 +120,7 @@
         {% if user.is_teacher or user.is_academic %}
         <a href="{% url 'marks_entry' %}"><i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Jaza Alama{% else %}Marks{% endif %}</a>
         {% endif %}
+        <a href="{% url 'student_results_search' %}"><i class="fas fa-search"></i> {% if LANG == 'sw' %}Tafuta Matokeo{% else %}Find Results{% endif %}</a>
         <a href="{% url 'user_guide' %}"><i class="fas fa-book-open"></i> {% if LANG == 'sw' %}Mwongozo{% else %}Guide{% endif %}</a>
       </nav>
     </div>
