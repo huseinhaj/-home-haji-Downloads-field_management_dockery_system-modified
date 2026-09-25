@@ -226,12 +226,12 @@ body {
   padding: 0.45rem 0.7rem !important;
   font-size: 0.78rem;
   background: #ffffff;
-  color: var(--accent-500) !important;
+  color: #1f2937 !important;
 }
 
 .lang-switch a.active {
   background: #ffffff;
-  color: var(--accent-500) !important;
+  color: #1f2937 !important;
   font-weight: 700;
 }
 
@@ -612,7 +612,7 @@ body {
 
 [data-theme="dark"] .lang-switch a {
   background: #ffffff;
-  color: var(--accent-500) !important;
+  color: #1f2937 !important;
 }
 
 [data-theme="dark"] .panel,
@@ -830,7 +830,7 @@ body {
   background: #ffffff;
   border: 1px solid var(--accent-500);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
-  color: var(--accent-500);
+  color: #1f2937;
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 600;
@@ -839,14 +839,14 @@ body {
 
 .drawer-nav a:hover {
   background: #ffffff;
-  border-color: var(--accent-600);
-  color: var(--accent-600);
+  border-color: var(--accent-500);
+  color: #1f2937;
   transform: translateX(3px);
   box-shadow: 0 4px 12px -6px rgba(18, 77, 34, 0.3);
 }
 
-[data-theme="dark"] .drawer-nav a { background: #ffffff; border-color: var(--accent-500); }
-[data-theme="dark"] .drawer-nav a:hover { background: #ffffff; border-color: var(--accent-600); }
+[data-theme="dark"] .drawer-nav a { background: #ffffff; border-color: var(--accent-500); color: #1f2937; }
+[data-theme="dark"] .drawer-nav a:hover { background: #ffffff; border-color: var(--accent-500); color: #1f2937; }
 
 .drawer-nav a i {
   width: 32px;
@@ -855,12 +855,12 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 9px;
-  background: rgba(31, 122, 61, 0.12);
-  color: var(--accent-500);
+  background: transparent;
+  color: #1f2937;
   font-size: 0.85rem;
 }
 
-[data-theme="dark"] .drawer-nav a i { background: rgba(31, 122, 61, 0.12); color: var(--accent-500); }
+[data-theme="dark"] .drawer-nav a i { background: transparent; color: #1f2937; }
 
 /* ============================================================
    INSTALL APP BUTTONS (header + drawer)
@@ -870,7 +870,7 @@ body {
   align-items: center;
   gap: 0.4rem;
   background: #ffffff;
-  color: var(--accent-500);
+  color: #1f2937;
   font-weight: 700;
   font-size: 0.78rem;
   border: 1px solid var(--accent-500);
@@ -883,28 +883,29 @@ body {
 
 .pwa-install-btn:hover {
   background: #ffffff;
-  color: var(--accent-600);
+  color: #1f2937;
+  border-color: var(--accent-500);
   box-shadow: 0 4px 12px -6px rgba(18, 77, 34, 0.35);
   transform: translateY(-1px);
 }
 
 .drawer-nav a.install-link {
   background: #ffffff;
-  color: var(--accent-500);
+  color: #1f2937;
   font-weight: 700;
   border-color: var(--accent-500);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
 
 .drawer-nav a.install-link i {
-  background: rgba(31, 122, 61, 0.12);
-  color: var(--accent-500);
+  background: transparent;
+  color: #1f2937;
 }
 
 .drawer-nav a.install-link:hover {
   background: #ffffff;
-  border-color: var(--accent-600);
-  color: var(--accent-600);
+  border-color: var(--accent-500);
+  color: #1f2937;
   transform: translateX(3px);
 }
 
@@ -914,16 +915,16 @@ body {
 /* Bottom nav install item */
 .bottom-nav a.install-link {
   background: #ffffff;
-  color: var(--accent-500);
+  color: #1f2937;
   font-weight: 800;
 }
 
 .bottom-nav a.install-link i {
-  color: var(--accent-500);
+  color: #1f2937;
 }
 
 .bottom-nav a.install-link:hover {
-  color: var(--accent-600);
+  color: #1f2937;
   background: #ffffff;
 }
 
@@ -967,10 +968,11 @@ body {
   gap: 2px;
   text-decoration: none;
   background: #ffffff;
-  color: var(--accent-500);
+  color: #1f2937;
   font-size: 0.6rem;
   font-weight: 600;
   padding: 0.25rem 0.6rem;
+  border: 1px solid var(--accent-500);
   border-radius: 10px;
   transition: all 0.18s ease;
   position: relative;
@@ -982,7 +984,8 @@ body {
 
 .bottom-nav a:hover {
   background: #ffffff;
-  color: var(--accent-600);
+  color: #1f2937;
+  border-color: var(--accent-500);
 }
 
 /* Mobile layout rules */
@@ -1247,10 +1250,10 @@ body { overflow-x: clip; }
 .header-tools .lang-switch a {
   display: inline-block;
   text-decoration: none;
-  color: var(--accent-500) !important;
+  color: #1f2937 !important;
   font-weight: 700;
 }
-.header-tools .lang-switch a.active { color: var(--accent-500) !important; }
+.header-tools .lang-switch a.active { color: #1f2937 !important; }
 
 .tool-logout,
 .tool-login {
@@ -1265,8 +1268,8 @@ body { overflow-x: clip; }
   white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.tool-logout { color: var(--accent-500); background: #ffffff; border: 1px solid var(--accent-500); }
-.tool-logout:hover { background: #ffffff; color: var(--accent-600); border-color: var(--accent-600); }
+.tool-logout { color: #1f2937; background: #ffffff; border: 1px solid var(--accent-500); }
+.tool-logout:hover { background: #ffffff; color: #1f2937; border-color: var(--accent-500); }
 .tool-login { color: white; background: var(--accent-500); border: 1px solid var(--accent-500); }
 .tool-login:hover { background: var(--accent-600); color: white; }
 
@@ -1290,7 +1293,7 @@ body { overflow-x: clip; }
   gap: 0.45rem;
   white-space: nowrap;
   text-decoration: none;
-  color: var(--accent-500);
+  color: #1f2937;
   font-weight: 600;
   font-size: 0.8rem;
   padding: 0.4rem 0.72rem;
@@ -1301,7 +1304,7 @@ body { overflow-x: clip; }
   transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 .main-nav a i {
-  color: var(--accent-500);
+  color: #1f2937;
   font-size: 0.8rem;
   width: 1.5rem;
   height: 1.5rem;
@@ -1309,58 +1312,58 @@ body { overflow-x: clip; }
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(31, 122, 61, 0.12);
+  background: transparent;
 }
 .main-nav a:hover {
   background: #ffffff;
-  border-color: var(--accent-600);
-  color: var(--accent-600);
+  border-color: var(--accent-500);
+  color: #1f2937;
   transform: translateY(-1px);
   box-shadow: 0 4px 10px -4px rgba(18, 77, 34, 0.35);
 }
 .main-nav a.active {
   background: #ffffff;
-  border-color: var(--accent-600);
-  color: var(--accent-600);
+  border-color: var(--accent-500);
+  color: #1f2937;
   font-weight: 700;
   box-shadow: 0 3px 10px -3px rgba(18, 77, 34, 0.25);
 }
 .main-nav a.active i {
-  background: rgba(31, 122, 61, 0.16);
-  color: var(--accent-600);
+  background: transparent;
+  color: #1f2937;
 }
 .main-nav a:focus-visible { outline: 2px solid var(--accent-500); outline-offset: 2px; }
 
 .drawer-nav a.active {
   background: #ffffff;
-  border-color: var(--accent-600);
+  border-color: var(--accent-500);
   box-shadow: 0 2px 8px -4px rgba(18, 77, 34, 0.3);
-  color: var(--accent-600);
+  color: #1f2937;
   font-weight: 700;
 }
-.drawer-nav a.active i { background: rgba(31, 122, 61, 0.16); color: var(--accent-600); }
+.drawer-nav a.active i { background: transparent; color: #1f2937; }
 
 .drawer-nav a.drawer-logout {
-  color: var(--accent-500);
+  color: #1f2937;
   border-color: var(--accent-500);
 }
-.drawer-nav a.drawer-logout i { background: rgba(31, 122, 61, 0.12); color: var(--accent-500); }
+.drawer-nav a.drawer-logout i { background: transparent; color: #1f2937; }
 .drawer-nav a.drawer-logout:hover {
   background: #ffffff;
-  border-color: var(--accent-600);
-  color: var(--accent-600);
+  border-color: var(--accent-500);
+  color: #1f2937;
   box-shadow: 0 4px 12px -6px rgba(18, 77, 34, 0.3);
 }
 [data-theme="dark"] .drawer-nav a.drawer-logout:hover { background: #ffffff; }
-.bottom-nav a.active { background: #ffffff; color: var(--accent-500); }
+.bottom-nav a.active { background: #ffffff; color: #1f2937; border-color: var(--accent-500); }
 
 [data-theme="dark"] .main-nav-bar { background: linear-gradient(180deg, #12351d, #0b1f12); }
-[data-theme="dark"] .main-nav a { background: #ffffff; border-color: var(--accent-500); color: var(--accent-500); }
-[data-theme="dark"] .main-nav a:hover { background: #ffffff; color: var(--accent-600); }
-[data-theme="dark"] .main-nav a.active { background: #ffffff; border-color: var(--accent-600); color: var(--accent-600); }
-[data-theme="dark"] .main-nav a.active i { background: rgba(31, 122, 61, 0.16); color: var(--accent-600); }
-[data-theme="dark"] .header-tools .lang-switch a { background: #ffffff; color: var(--accent-500) !important; }
-[data-theme="dark"] .header-tools .lang-switch a.active { background: #ffffff; color: var(--accent-500) !important; }
+[data-theme="dark"] .main-nav a { background: #ffffff; border-color: var(--accent-500); color: #1f2937; }
+[data-theme="dark"] .main-nav a:hover { background: #ffffff; color: #1f2937; }
+[data-theme="dark"] .main-nav a.active { background: #ffffff; border-color: var(--accent-500); color: #1f2937; }
+[data-theme="dark"] .main-nav a.active i { background: transparent; color: #1f2937; }
+[data-theme="dark"] .header-tools .lang-switch a { background: #ffffff; color: #1f2937 !important; }
+[data-theme="dark"] .header-tools .lang-switch a.active { background: #ffffff; color: #1f2937 !important; }
 [data-theme="dark"] .tool-logout { background: #ffffff; }
 
 /* ============================================================
