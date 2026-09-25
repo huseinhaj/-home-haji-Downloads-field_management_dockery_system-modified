@@ -165,7 +165,7 @@
         <a href="{% url 'student_results_search' %}"><i class="fas fa-search"></i> {% if LANG == 'sw' %}Tafuta Matokeo{% else %}Search Results{% endif %}</a>
       {% endif %}
       <div class="nav-sep"></div>
-      <div style="display:flex;align-items:center;gap:8px;padding:0.5rem 0.85rem;font-size:0.8rem;color:var(--ink-500);">
+      <div style="display:flex;align-items:center;gap:8px;padding:0.5rem 0.85rem;font-size:0.8rem;color:var(--accent-500);">
         <i class="fas fa-globe"></i> <span>Lugha / Language:</span>
         <span class="lang-switch" style="margin-left:auto;">
           <a href="{% url 'set_language' %}?lang=en&next={{ request.path|urlencode }}" class="{% if LANG == 'en' %}active{% endif %}">EN</a>
