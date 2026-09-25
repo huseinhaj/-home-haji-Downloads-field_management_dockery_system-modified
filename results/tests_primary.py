@@ -44,6 +44,20 @@ class PrimaryGradeTests(TestCase):
         self.assertEqual(get_grade_for_form(20, 1, primary=True), 'E')
         self.assertEqual(get_grade_for_form(20, 1, primary=False), 'F')
 
+    def test_grade_for_form_uses_advanced_scale(self):
+        self.assertEqual(get_grade_for_form(80, 5), 'A')
+        self.assertEqual(get_grade_for_form(79, 5), 'B')
+        self.assertEqual(get_grade_for_form(70, 6), 'B')
+        self.assertEqual(get_grade_for_form(69, 6), 'C')
+        self.assertEqual(get_grade_for_form(60, 6), 'C')
+        self.assertEqual(get_grade_for_form(59, 6), 'D')
+        self.assertEqual(get_grade_for_form(50, 6), 'D')
+        self.assertEqual(get_grade_for_form(49, 6), 'E')
+        self.assertEqual(get_grade_for_form(40, 6), 'E')
+        self.assertEqual(get_grade_for_form(39, 6), 'S')
+        self.assertEqual(get_grade_for_form(35, 6), 'S')
+        self.assertEqual(get_grade_for_form(34, 6), 'F')
+
 
 class PrimaryRecomputeTests(TestCase):
     databases = {'default', 'results'}

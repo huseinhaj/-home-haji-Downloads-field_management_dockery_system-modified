@@ -293,6 +293,8 @@
   const LANG = '{{ LANG }}';
   const EXAM_ID = '{{ exam.id|default:"" }}';
   const IS_PRIMARY = {{ is_primary|yesno:"true,false" }};
+  const EXAM_FORM = Number('{{ exam.form|default:""|escapejs }}');
+  const IS_ADVANCED = [5, 6].includes(EXAM_FORM);
   const ADD_URL = "{% url 'academic_add_student_marks' %}";
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
   const csrfToken = csrf ? csrf.value : '';
@@ -317,7 +319,6 @@
     el._t = setTimeout(() => { el.style.display = 'none'; }, 6000);
   }
 
-  // ── Grade chip (A–E msingi, A–F sekondari) — consistent na utils.py ──
   function gradeFor(score) {
     if (IS_PRIMARY) {
       if (score >= 80) return 'A';
@@ -326,9 +327,18 @@
       if (score >= 30) return 'D';
       return 'E';
     }
+    if (IS_ADVANCED) {
+      if (score >= 80) return 'A';
+      if (score >= 70) return 'B';
+      if (score >= 60) return 'C';
+      if (score >= 50) return 'D';
+      if (score >= 40) return 'E';
+      if (score >= 35) return 'S';
+      return 'F';
+    }
     if (score >= 75) return 'A';
     if (score >= 65) return 'B';
-    if (score >= 50) return 'C';
+    if (score >= 45) return 'C';
     if (score >= 30) return 'D';
     return 'F';
   }

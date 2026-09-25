@@ -181,6 +181,30 @@ class AcademicAddStudentMarksTests(TestCase):
         self.assertIn('Midterm 2026', content)
         self.assertIn('Darasa la', content)  # primary class label
 
+    def test_grade_chip_receives_selected_exam_form(self):
+        resp = self.client.get(self.add_url + f'?exam={self.exam.id}')
+        content = resp.content.decode()
+        self.assertIn("const EXAM_FORM = Number('3');", content)
+        self.assertIn("const IS_ADVANCED = [5, 6].includes(EXAM_FORM);", content)
+
+    def test_grade_chip_switches_for_advanced_forms(self):
+        secondary_school = School.objects.create(
+            name='Sekondari Advanced', region='Dodoma', district='Dodoma',
+            level='secondary', current_academic_year=2026,
+        )
+        academic = TeacherAccount.objects.create(
+            email='advanced@secondary.ac.tz', full_name='Mtaaluma Advanced',
+            role='ACADEMIC', school=secondary_school,
+        )
+        client = Client()
+        client.force_login(academic, backend='results.backends.ResultsAuthBackend')
+        for form in (5, 6):
+            exam = Exam.objects.create(
+                name=f'Advanced Mock {form}', year=2026, form=form, school=secondary_school,
+            )
+            content = client.get(self.add_url + f'?exam={exam.id}').content.decode()
+            self.assertIn(f"const EXAM_FORM = Number('{form}');", content)
+
     def test_page_renders_non_empty_csrf_token_for_ajax(self):
         """Regression: base.html haina hidden CSRF input, so the page's
         fetch() calls found no token and every 'Add Student' POST died

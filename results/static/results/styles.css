@@ -914,18 +914,17 @@ body {
 
 /* Bottom nav install item */
 .bottom-nav a.install-link {
-  background: #ffffff;
-  color: #1f2937;
+  color: var(--secondary-500);
   font-weight: 800;
 }
 
 .bottom-nav a.install-link i {
-  color: #1f2937;
+  color: var(--secondary-500);
 }
 
 .bottom-nav a.install-link:hover {
-  color: #1f2937;
-  background: #ffffff;
+  color: var(--secondary-500);
+  background: rgba(217, 164, 65, 0.12);
 }
 
 /* Hide install buttons once the app is already installed (standalone) */
@@ -967,12 +966,10 @@ body {
   align-items: center;
   gap: 2px;
   text-decoration: none;
-  background: #ffffff;
-  color: #1f2937;
+  color: var(--ink-500);
   font-size: 0.6rem;
   font-weight: 600;
   padding: 0.25rem 0.6rem;
-  border: 1px solid var(--accent-500);
   border-radius: 10px;
   transition: all 0.18s ease;
   position: relative;
@@ -983,9 +980,7 @@ body {
 }
 
 .bottom-nav a:hover {
-  background: #ffffff;
-  color: #1f2937;
-  border-color: var(--accent-500);
+  color: var(--accent-500);
 }
 
 /* Mobile layout rules */
@@ -1358,7 +1353,7 @@ body { overflow-x: clip; }
   box-shadow: 0 4px 12px -6px rgba(18, 77, 34, 0.3);
 }
 [data-theme="dark"] .drawer-nav a.drawer-logout:hover { background: #ffffff; }
-.bottom-nav a.active { background: #ffffff; color: #1f2937; border-color: var(--accent-500); }
+.bottom-nav a.active { color: var(--accent-500); font-weight: 700; }
 
 [data-theme="dark"] .main-nav-bar { background: linear-gradient(180deg, #12351d, #0b1f12); }
 [data-theme="dark"] .main-nav a { background: #ffffff; border-color: var(--accent-500); color: #1f2937; }
