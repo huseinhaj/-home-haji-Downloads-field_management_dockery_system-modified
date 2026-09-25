@@ -60,6 +60,10 @@ class NavLinksTests(TestCase):
         positions = [bottom.index(url) for url in expected_urls]
         self.assertEqual(positions, sorted(positions))
 
+    def test_public_desktop_search_link(self):
+        html = self.client.get(reverse('results_login')).content.decode()
+        self.assertIn(reverse('student_results_search'), html)
+
     def test_teacher_menu_links_open(self):
         self._login(TeacherAccount.ROLE_TEACHER)
         links = self._menu_links(reverse('teacher_dashboard'))

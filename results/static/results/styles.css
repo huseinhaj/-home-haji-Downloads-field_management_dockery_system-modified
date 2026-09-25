@@ -1256,7 +1256,8 @@ body { overflow-x: clip; }
 .header-tools .lang-switch a.active { color: #1f2937 !important; }
 
 .tool-logout,
-.tool-login {
+.tool-login,
+.tool-find-results {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -1268,8 +1269,10 @@ body { overflow-x: clip; }
   white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.tool-logout { color: #1f2937; background: #ffffff; border: 1px solid var(--accent-500); }
-.tool-logout:hover { background: #ffffff; color: #1f2937; border-color: var(--accent-500); }
+.tool-logout,
+.tool-find-results { color: #1f2937; background: #ffffff; border: 1px solid var(--accent-500); }
+.tool-logout:hover,
+.tool-find-results:hover { background: #ffffff; color: #1f2937; border-color: var(--accent-500); }
 .tool-login { color: white; background: var(--accent-500); border: 1px solid var(--accent-500); }
 .tool-login:hover { background: var(--accent-600); color: white; }
 
