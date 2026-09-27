@@ -29,7 +29,7 @@ _PROGRESS_CACHE_TIMEOUT = 600
 OCR_STAGES = ('reading', 'matching')
 
 
-def report_ocr_stage(progress_key, stage, done=None, total=None, **extra):
+def report_ocr_stage(progress_key, stage, done=None, total=None, namespace='scoresheet_ocr', **extra):
     """Tuma hatua ya OCR inayoendelea kwa frontend inayopoll.
 
     Njia zote mbili zinahitaji kihicho tofauti na ZINAKOSHAULIANA, si
@@ -43,7 +43,12 @@ def report_ocr_stage(progress_key, stage, done=None, total=None, **extra):
         runner ya ndini.
 
     progress_key ni String tu (si callable) ili Celery iweze kuizisafisha
-    bila hitilafu unaposafisha ujumbe kwa broker."""
+    bila hitilafu unaposafisha ujumbe kwa broker.
+
+    namespace hutofautisha kihicho cha cache kwa kila aina ya scan. Bila
+    argument hii, task ya orodha ingeandika chini ya 'scoresheet_ocr:...' na
+    roster_scan_status isingeyipata (kila mtu akisoma kichicho hasa
+    kilichotengenezwa na mtu mwingine ni mjeuri wa kugombana)."""
     payload = {'stage': stage}
     if done is not None:
         payload['pages_done'] = done
@@ -51,12 +56,43 @@ def report_ocr_stage(progress_key, stage, done=None, total=None, **extra):
         payload['pages_total'] = total
     payload.update(extra)
     if progress_key:
-        key = f'scoresheet_ocr:{progress_key}'
+        key = f'{namespace}:{progress_key}'
         entry = cache.get(key) or {}
         entry.update(payload)
         entry['status'] = 'processing'
         cache.set(key, entry, timeout=_PROGRESS_CACHE_TIMEOUT)
     return payload
+
+
+def make_stage_reporter(task, progress_key, namespace='scoresheet_ocr'):
+    """Jenga on_progress(stage, done, total, **extra) inayotuma hatua ya
+    OCR kwa frontend.
+
+    Mbili njia zinahitaji kihicho tofauti na ZINAKOSHAULIANA, si mbadala —
+    kila njia inatumia kihicho chake tu:
+      * Celery (progress_key is None) — task.update_state(meta=...) hifadhi
+        meta kwenye backend na status endpoint inaisoma kama
+        AsyncResult.info.
+      * Thread ya ndini (progress_key set, hakuna worker) — task haijafanyiwa
+        dispatch, hivyo update_state haina backend halisi ya kuandikia;
+        tunahifadhi kwenye cache kwa progress_key ile ile inayotumika na
+        runner ya ndini.
+
+    namespace inapaswa kulingana na kichicho kinachoisoma status endpoint
+    ya kila scan (scoresheet_ocr:... au roster_scan_ocr:...)."""
+
+    def _stage(stage, done=None, total=None, **extra):
+        meta = report_ocr_stage(progress_key, stage, done=done, total=total,
+                                namespace=namespace, **extra)
+        if progress_key:
+            return
+        try:
+            task.update_state(state='PROGRESS', meta=meta)
+        except Exception as exc:
+            # A stage ping is a nicety, never a reason to fail the read.
+            logger.debug("OCR stage report skipped: %s", exc)
+
+    return _stage
 
 
 def _row_number_warnings(extracted_rows):
@@ -110,23 +146,8 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids, progress_key=N
     from .services.speech_submission_service import match_rows_to_roster_by_position, match_rows_to_roster_exclusive
     from .views import _parse_roster_line, _save_student
 
-    def _stage(stage, done=None, total=None, **extra):
-        """Tuma hatua kwa frontend inayopoll.
-
-        Njia zote mbili ni za kipekee, si mbadala: kwenye njia ya Celery
-        self.update_state(meta=...) ndiyo chanzo, na progress_key ni None.
-        Kwenye runner ya thread (hakuna worker) task haijafanyiwa dispatch
-        basi update_state haina backend halisi ya kuandikia — kuiita hapo
-        huwa inaazisha muda wa kila ukurasa wa kila poll, hivyo hapa
-        tunatumia cache pekee."""
-        meta = report_ocr_stage(progress_key, stage, done=done, total=total)
-        if progress_key:
-            return
-        try:
-            self.update_state(state='PROGRESS', meta=meta)
-        except Exception as exc:
-            # A stage ping is a nicety, never a reason to fail the read.
-            logger.debug("scoresheet OCR stage report skipped: %s", exc)
+    # Hatua kwa frontend: 'reading' (kwa kurasa) kisha 'matching'.
+    _stage = make_stage_reporter(self, progress_key)
 
     try:
         with default_storage.open(storage_path) as document:
@@ -234,7 +255,50 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids, progress_key=N
 
 
 @shared_task(bind=True, time_limit=360, soft_time_limit=340)
-def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids, preview_only=False):
+def process_roster_scan_task(self, storage_path, progress_key=None):
+    """Academic roster scan: piga picha / pakia orodha ya wanafunzi, AI
+    isome majina na jinsia, kisha Academic ahakiki (preview) kabla ya
+    kuhifadhi kwenye FormStudent.
+
+    storage_path: default_storage-relative path ya picha/PDF iliyopakiwa;
+    task hii ndiyo inayoyamiliki kuifuta baada ya kumalika.
+    progress_key: task_id ya njia ya thread (hakuna Celery worker), kwa
+    kuripoti hatua — angalia report_ocr_stage. Celery path haina
+    progress_key na inatumia update_state.
+
+    Hapa ndipo academic scan ilikuwa IKIZUNGUAZWA ndani ya request
+    (scan_roster) — kusoma kurasa 3-5 kwa AI kwa mfano ni dakika 60-300,
+    ambayo proxy hufa kabla ya AI kukamilisha, na mtumiaji alipata
+    "Failed to fetch" bila maelezo. Sasa hii ni kazi ya nyuma yenye
+    polling, kama scoresheet OCR.
+
+    Returns {'students': [...]} au {'error': '...'}. Hakuna chochote
+    kinachohifadhiwa hapa — uhakiki na hifadhi ni kazi ya Academic."""
+    from .services.roster_scan_service import extract_students_from_document
+
+    # Kichicho 'roster_scan_ocr:...' kinalingana na roster_scan_status —
+    # bila argument hii progress ya orodha ingeandikwa chini ya kichicho
+    # cha scoresheet na paneli isingeyiweza kuionyesha.
+    _stage = make_stage_reporter(self, progress_key, namespace='roster_scan_ocr')
+    try:
+        with default_storage.open(storage_path) as document:
+            students = extract_students_from_document(document, on_progress=_stage)
+    except ScoreSheetOCRError as exc:
+        # RosterScanError inatoka kwenye ScoreSheetOCRError, hivyo kiumbe
+        # kimoja kinatosha kwa makosa yote ya kusoma AI.
+        return {'error': str(exc)}
+    finally:
+        try:
+            default_storage.delete(storage_path)
+        except Exception:
+            logger.warning("process_roster_scan_task: could not delete temp file %s", storage_path, exc_info=True)
+
+    _stage('matching', rows=len(students))
+    return {'students': students}
+
+
+@shared_task(bind=True, time_limit=360, soft_time_limit=340)
+def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids, preview_only=False, progress_key=None):
     """Background task: OCR a scoresheet, match students, save results,
     and auto-approve the SubjectSubmission.  Used by the academic
     officer's bulk upload flow (one file per subject at a time).
@@ -242,15 +306,23 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
     When *preview_only* is True the task returns the matched/unmatched
     rows but does NOT write them to the database — the frontend shows
     them in a review table so the teacher can correct scores before
-    the final save."""
+    the final save.
+
+    progress_key: kitanzi cha kazi (kawaida BulkUploadJob.pk) inachotumika
+    kuandika hatua za maendeleo kwenye cache kwa paneli ya AI. Nzuri kwa
+    njia ya thread (academic inaendesha task hii kwa thread, si Celery),
+    kwa hivyo hapa tunatumia report_ocr_stage moja kwa moja badala ya
+    task.update_state ambayo hafanyi kazi bila broker."""
     from django.utils import timezone
     from .services.speech_submission_service import match_rows_to_roster_exclusive
     from .services.upload_processing_service import recompute_processed_results_for_exam
     from .views import _parse_roster_line, _save_student
 
+    _stage = make_stage_reporter(self, progress_key, namespace='bulk_upload_ocr')
+
     try:
         with default_storage.open(storage_path) as document:
-            extracted_rows = extract_scores_from_document(document)
+            extracted_rows = extract_scores_from_document(document, on_progress=_stage)
     except ScoreSheetOCRError as exc:
         return {'error': str(exc)}
     finally:
@@ -277,6 +349,7 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
     # row, so two similarly-named students (same surname, or a name OCR
     # misread as another student's) can't both collapse onto the same
     # person — see match_rows_to_roster_exclusive's docstring.
+    _stage('matching', rows=len(extracted_rows))
     assignments, _unmatched_indices = match_rows_to_roster_exclusive(
         extracted_rows, roster_students, threshold=0.80,
     )

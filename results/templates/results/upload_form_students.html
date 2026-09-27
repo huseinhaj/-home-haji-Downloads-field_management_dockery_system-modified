@@ -1,9 +1,15 @@
 {% extends "results/base.html" %}
+{% load static %}
 {% load results_filters %}
 {% block title %}{% if LANG == 'sw' %}Orodha ya Wanafunzi{% else %}Student Roster{% endif %} | {{ class_prefix }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
+  {# Paneli ya AI iko HAPA juu kabisa ya ukurasa, na JS inampa 'float'
+     (banda juu ya viewport): vikwamba vya "Piga Picha" viko hatua 4
+     chini, hivyo paneli iliokuwa ndani ya kadi haikuonekana pale mtu
+     anapobofya kifungu. #}
+  {% include "results/includes/ai_scan_panel.html" with panel_id="rosterScanPanel" panel_subject="orodha" %}
   <h2 class="mb-1" style="color:var(--accent-600);">📋 {% if LANG == 'sw' %}Orodha ya Wanafunzi (Rosti ya Darasa){% else %}Student Roster (Class Lists){% endif %}</h2>
   <p class="text-muted mb-1" style="font-size:0.92rem;">
     {% if LANG == 'sw' %}
@@ -93,6 +99,11 @@
         <button type="button" class="btn fw-bold" style="background:#5B3E90;color:#fff;" onclick="document.getElementById('scanCameraInput').click()">
           📷 {% if LANG == 'sw' %}Piga Picha Sasa{% else %}Take Photo Now{% endif %}
         </button>
+        <button type="button" class="btn fw-bold" id="rosterMultiScanBtn" style="background:#7B4FB5;color:#fff;display:none;"
+                title="{% if LANG == 'sw' %}Piga picha ya kila ukurasa wa orodha (namba zinaonyeshwa), zisha AI itasoma zote kwa pamoja{% else %}Photograph every roster page (thumbnails included), then AI reads them all at once{% endif %}">
+          🗂️ {% if LANG == 'sw' %}Scan Kurasa Nyingi{% else %}Scan Multiple Pages{% endif %}
+        </button>
+
         <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('scanFileInput').click()">
           🖼️ {% if LANG == 'sw' %}Chagua Picha/PDF{% else %}Choose Photo/PDF{% endif %}
         </button>
@@ -453,6 +464,8 @@
   {% endif %}
 </div>
 
+<script src="{% static 'results/js/scoresheet_scanner.js' %}"></script>
+<script src="{% static 'results/js/ai_scan_panel.js' %}"></script>
 <script>
 function toggleSelectAll(el) {
   document.querySelectorAll('.student-cb').forEach(cb => { cb.checked = el.checked; });
@@ -507,50 +520,163 @@ document.getElementById('bulkActionBtn').addEventListener('click', function() {
 }, false);
 
 // ── Scan Roster (photo → AI → preview → save) ────────────────
-function getCsrfToken() {
-  var m = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
-  return m ? m[2] : '';
-}
-function setScanStatus(msg) {
-  var el = document.getElementById('scanStatus');
-  if (el) el.textContent = msg || '';
-}
-function initScanInput(inputId) {
-  var inp = document.getElementById(inputId);
-  if (!inp) return;
-  inp.addEventListener('change', function() {
-    if (!inp.files || !inp.files[0]) return;
-    scanRosterFile(inp.files[0]);
-    inp.value = '';  // allow re-selecting the same file
-  });
-}
-initScanInput('scanCameraInput');
-initScanInput('scanFileInput');
+var ROSTER_SCAN = (function() {
+  'use strict';
+  var SW = {% if LANG == 'sw' %}true{% else %}false{% endif %};
+  var t = function(sw, en) { return SW ? sw : en; };
+  // Moduli ya pamoja na marks entry — ili paneli zionekane identiki.
+  // float:true = ibande juu ya ekran, ili mtu aone bila kuyoroga
+  // juu kupata vikwamba vilivyo hatua 4 chini ya ukurasa.
+  var panel = window.AiScanPanel
+    ? new window.AiScanPanel({ lang: SW ? 'sw' : 'en', id: 'rosterScanPanel', rosterSize: 0, float: true })
+    : { start: function(){}, setUpload: function(){}, upload: null,
+        applyMeta: function(){}, finish: function(){}, fail: function(){} };
 
-function scanRosterFile(file) {
-  var formNum = '{{ selected_form }}';
-  if (!formNum) { alert('{% if LANG == "sw" %}Chagua darasa kwanza.{% else %}Select a form first.{% endif %}'); return; }
-  var fd = new FormData();
-  fd.append('form', formNum);
-  fd.append('scan_file', file);
-  setScanStatus('⏳ {% if LANG == "sw" %}Inasoma picha kwa AI... subiri kidogo{% else %}Reading the photo with AI... please wait{% endif %}');
-  fetch("{% url 'scan_roster' %}", {
-    method: 'POST',
-    headers: { 'X-CSRFToken': getCsrfToken() },
-    body: fd,
-  })
-  .then(r => r.json().then(data => ({ok: r.ok, data})))
-  .then(({ok, data}) => {
-    if (!ok || data.error) {
-      setScanStatus('');
-      alert(data.error || 'Scan failed.');
+  var POLL_MS = 2500;
+  var MAX_WAIT_MS = 6 * 60 * 1000;   // kurasa nyingi za AI zinaweza kuchukua muda mrefu
+
+  function getCsrfToken() {
+    var m = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
+    return m ? m[2] : '';
+  }
+  function setScanStatus(msg) {
+    var el = document.getElementById('scanStatus');
+    if (el) el.textContent = msg || '';
+  }
+  function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+  function initScanInput(inputId) {
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    inp.addEventListener('change', function() {
+      if (!inp.files || !inp.files[0]) return;
+      scanRosterFile(inp.files[0]);
+      inp.value = '';  // allow re-selecting the same file
+    });
+  }
+  initScanInput('scanCameraInput');
+  initScanInput('scanFileInput');
+
+  // Scanner ya kurasa nyingi — ile ile ya Marks Entry: piga picha ya
+  // kila ukurasa, namba (thumbnails) zinaonyeshwa ili uhakiki
+  // kabla ya AI, kisha zote hufungwa kuwa PDF moja na kuingia
+  // kwenye njia ya OCR ile ile. Bila hii, orodha iliyokuwa na
+  // kurasa 3+ ilikuwa inaweza kupakia picha moja tu kwa kila
+  // wakati (mtu alizoekana kama hakuna scan).
+  (function wireMultiPageScanner() {
+    var btn = document.getElementById('rosterMultiScanBtn');
+    if (!btn) return;
+    if (!window.ScoresheetScanner) return;  // haijapakuliwa — acha button
+    btn.style.display = '';
+    btn.addEventListener('click', function () {
+      if (!'{{ selected_form }}') {
+        alert('{% if LANG == "sw" %}Chagua darasa kwanza.{% else %}Select a form first.{% endif %}');
+        return;
+      }
+      window.ScoresheetScanner.open({
+        lang: SW ? 'sw' : 'en',
+        filename: 'orodha',
+        jspdfUrl: "{% static 'results/vendor/jspdf.umd.min.js' %}",
+        onComplete: function (pdfFile) {
+          scanRosterFile(pdfFile);
+        },
+      });
+    });
+  })();
+
+  function scanRosterFile(file) {
+    var formNum = '{{ selected_form }}';
+    if (!formNum) {
+      alert('{% if LANG == "sw" %}Chagua darasa kwanza.{% else %}Select a form first.{% endif %}');
       return;
     }
-    setScanStatus('✅ ' + data.count + ' {% if LANG == "sw" %}wanafunzi waliosomwa{% else %}students read{% endif %}');
-    showScanPreview(data.students || []);
-  })
-  .catch(err => { setScanStatus(''); alert('Hitilafu: ' + err); });
-}
+    var fd = new FormData();
+    fd.append('form', formNum);
+    fd.append('scan_file', file);
+
+    panel.start({
+      title: t('Kupakia picha/PDF ya orodha…', 'Uploading roster photo/PDF…'),
+      sub: t('Tuma faili — AI itasoma majina ya wanafunzi kutoka kwa kurasa.',
+             'Sending the file — AI will read the student names from the pages.')
+    });
+    setScanStatus('');
+
+    // panel.upload() ni XHR, hivyo hatua 1 inaonyesha byte halisi
+    // (Kupakia 46% — 2.3 MB / 5.0 MB). fetch haionyeshi kipekee hicho,
+    // ndiyo mtu aliyokuwa akisubiri bila dalili.
+    var kickoff = panel.upload
+      ? panel.upload("{% url 'scan_roster' %}", fd, { csrf: getCsrfToken() })
+      : fetch("{% url 'scan_roster' %}", {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCsrfToken() },
+          body: fd,
+        }).then(function(r) { return r.json(); });
+
+    kickoff
+    .then(function(res) {
+      if (!res || res.error) {
+        throw new Error((res && res.error) || t('Scan imeshindwa.', 'Scan failed.'));
+      }
+      return poll(res.task_id);
+    })
+    .then(function(data) {
+      var n = data.count || 0;
+      panel.log(t('AI imesoma ' + n + ' wanafunzi.', 'AI read ' + n + ' students.'));
+      panel.finish({
+        title: t('AI imemaliza kusoma orodha', 'AI finished reading the roster'),
+        sub: t('Wanafunzi ' + n + ' wamepatikana. Kagua majina hapa chini, kisha bonyeza "Hifadhi Wanafunzi Wote".',
+               n + ' students found. Check the names below, then press "Save All Students".')
+      });
+      setScanStatus('✅ ' + n + ' ' + t('wanafunzi waliosomwa', 'students read'));
+      showScanPreview(data.students || []);
+    })
+    .catch(function(err) {
+      var msg = (err && err.message) || String(err);
+      panel.fail(msg);
+      setScanStatus('');
+      alert(msg);
+    });
+  }
+
+  /* Poll hadi 'preview' au kosa. Meta ya hatua (stage/kurasa/mistari)
+   * inaonyesha kwenye paneli — hiyo ndiyo mtu aliyokuwa akisubiri
+   * "Inasoma... subiri kidogo" bila dalili yoyote. */
+  function poll(taskId) {
+    if (!taskId) return Promise.reject(new Error(t('Hakuna task_id — jaribu tena.', 'No task_id — please retry.')));
+    var base = "{% url 'roster_scan_status' task_id='PLACEHOLDER' %}".replace('PLACEHOLDER', taskId);
+    var startedAt = Date.now();
+    var netErrors = 0;
+    return (function loop() {
+      if (Date.now() - startedAt > MAX_WAIT_MS) {
+        return Promise.reject(new Error(t(
+          'Muda umeisha kusoma picha. Jaribu tena au tumie picha ndogo zaidi.',
+          'Timed out reading the photo. Try again or use a smaller image.')));
+      }
+      return fetch(base).then(function(r) {
+        return r.json().catch(function() { return {}; }).then(function(data) {
+          if (!r.ok) throw new Error(data.error || t('Hitilafu ya kusoma.', 'Read error.'));
+          return data;
+        });
+      }).catch(function(err) {
+        // Network blip (data ya simu inayopendelea) si kosa la AI —
+        // jaribu mara chache kama marks entry inafanya.
+        if (err && err.__net) throw err;
+        netErrors++;
+        if (netErrors >= 5) throw err;
+        return sleep(POLL_MS).then(loop);
+      }).then(function(data) {
+        if (data.status === 'processing') {
+          panel.applyMeta(data.stage ? data : { stage: 'reading' });
+          return sleep(POLL_MS).then(loop);
+        }
+        return data;
+      });
+    })();
+  }
+
+  return { scanRosterFile: scanRosterFile, setScanStatus: setScanStatus, getCsrfToken: getCsrfToken };
+})();
+function getCsrfToken() { return ROSTER_SCAN.getCsrfToken(); }
 
 function showScanPreview(students) {
   var tbody = document.getElementById('scanPreviewBody');

@@ -65,6 +65,12 @@ MAX_OCR_WORKERS = 8  # concurrent vision calls — bound API load / rate limits
 # providers failing) at 120s, safely inside the request timeout.
 VISION_TIMEOUT_S = 60
 
+# Ceiling ya OpenRouter. Iliokuwa 4096: ukurasa wa scoresheet ya darasa
+# (60-100 wanafunzi) unahitaji 4000-8000 token, hivyo modeli ilikatika
+# na mistari ya mwisho ilipotea bila sababu inayoonekana. Gemini tayari
+# ina 16384, tunaiwanya hapa ili nyuma ziwe sawa.
+MAX_TOKENS_OPENROUTER = 16384
+
 PROMPT = (
     "This is a PHOTO of a scoresheet — a table with a row number column "
     "('Na.'), student names, and their marks written by a teacher "
@@ -261,50 +267,195 @@ def _encode_jpeg(img) -> bytes:
     return buf.getvalue()
 
 
+def _strip_fences(text: str) -> str:
+    """Ondoa markdown code fences na maelezo yoyote yaliyo nje ya JSON.
+
+    Vision models hawaifu kila wakati: mmoja anasema "Hapa kuna matokeo:"
+    kabla ya JSON, mwingine analalamika baadaye ("Nimeona mistari 20"), au
+    anazunguka jibu lake kwa ```json ... ```. Tatu hizo hazihujumuishi
+    ukweli wa data, kwa hiyo tunakata yote na kujaribu kuparekana kwa
+    JSON halisi tu."""
+    cleaned = (text or "").strip()
+    # Fence inayofungua na inayofunga (zenye maeno kama ```json au ```JSON)
+    cleaned = re.sub(r"^```[a-zA-Z]*\s*", "", cleaned)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+    return cleaned.strip()
+
+
+def _repair_json(text: str) -> str:
+    """Safi za kawaida za JSON zinazotokea kwenye majibu ya AI.
+
+    Vision model mara nyingi huandika JSON ambayo ni 'karibu' sahihi:
+    koma mwisho (,) kabla ya } au ], newlines za ziada ndani ya muundo,
+    au majibu yaliyokatwa kwa idadi. Hapa tunalingana na ile ambayo
+    Python inaweza kusoma; kama bado haiwezekani, tunarudi kwenye
+    njia zingine za kukomaa chini (mfano mistari).
+    """
+    fixed = re.sub(r",\s*([}\]])", r"\1", text)      # koma mwisho
+    fixed = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", fixed)  # udhibiti wa mistari
+    # Single quotes zilizo ndani ya string halisi zinaweza kuangusha
+    # json.loads; badala ya kuzingatia hapa tunabeba tu kama
+    # jibu lote linatumia single quotes (halali ya kutosha kwa AI).
+    if '"' not in fixed and "'" in fixed:
+        fixed = fixed.replace("'", '"')
+    return fixed
+
+
+def _longest_valid_json_array(text: str):
+    """Chukua array ya JSON yenye urefu MKUBWA inayoweza kusomwa.
+
+    Jibu linalokatwa (max_tokens) huacha mwisho bila ']' — hapo
+    json.loads inashindwa kwa 'Unterminated string'. Badala ya kufa
+    kabisa (mtumiaji hupoteza wanafunzi WOTE wa ukurasa huo), tunajaribu
+    kila mwisho unawezekana: hapa tunapunguza array hadi mwisho wa
+    object inayofuata iliyokamilika, na kuangalia kama hiyo basi inasomwa.
+    """
+    start = text.find("[")
+    if start == -1:
+        return None
+    # Kila mfuatano wa '}' au ']' ndani ya array huwa mwisho unawezekana
+    for end in sorted({m.end() for m in re.finditer(r"[\]\}]", text[start:])}, reverse=True):
+        chunk = text[start:end]
+        if chunk.rstrip().endswith(","):
+            chunk = chunk.rstrip().rstrip(",")
+        try:
+            data = json.loads(_repair_json(chunk))
+            if isinstance(data, list) and data:
+                return _normalise_rows(data)
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
+def _rows_from_objects(objects: list) -> list:
+    """Chukua mistari kutoka kwa dict zilizomo jina na alama, safi au
+    zenye majina ya tofauti ya maelezo (vision models hutofautisha sana
+    kwenye uandishi wa ulezi).
+
+    Majina mengine ya AI (k.v. 'gender' kwenye orodha) hubaki pale
+    mistari imejaaliwa hapa — kama tungezi tu row/name/score, basi
+    kila mwanafunzi wa kike katika orodha angehifadhiwa kama kiume.
+    Kwa hivyo tunabeba nyongezo zote za asili na kuiweka tu zile
+    tatu kuu kwa majina safi.
+    """
+    name_keys = ("name", "student", "student_name", "full_name", "fullname", "jina", "studentname")
+    score_keys = ("score", "mark", "marks", "alama", "points", "grade", "value")
+    row_keys = ("row", "na", "no", "number", "namba", "index")
+    rows = []
+    for obj in objects:
+        if not isinstance(obj, dict):
+            continue
+        lowered = {str(k).strip().lower(): v for k, v in obj.items()}
+        name = next((str(lowered[k]).strip() for k in name_keys if k in lowered and lowered[k]), "")
+        if not name:
+            continue
+        raw_score = next((lowered[k] for k in score_keys if k in lowered), None)
+        row_no = next((lowered.get(k) for k in row_keys if lowered.get(k) is not None), None)
+        # Nyongezo zote isizokuwa majina ya kawaida (gender, class, n.k.)
+        aliases = set(name_keys) | set(score_keys) | set(row_keys)
+        extra = {
+            k: v for k, v in obj.items()
+            if str(k).strip().lower() not in aliases
+        }
+        rows.append({"row": row_no, "name": name, "score": raw_score, **extra})
+    return rows
+
+
+def _normalise_rows(data: list) -> list:
+	"""Ikiwa array ni ya muundo ulioombwa (kila row ina 'name' na 'score'),
+	haigushwi — majaribio na wanafunzi wanaoona matokeo yanategemea
+	hiyo hasa. Ikiwa ni majina sani ('student_name'/'marks'), tunavitengua
+	kuwa muundo wetu ili _clean_rows isielewe, na tunafuta ufunguo
+	wa None (k.v. 'row': None) ili usichukue nafasi.
+	"""
+	if not data:
+		return data
+	all_dicts = all(isinstance(item, dict) for item in data)
+	if all_dicts and all("name" in item and "score" in item for item in data):
+		return data
+	rows = _rows_from_objects(data)
+	if not rows:
+		return data
+	return [
+		{k: v for k, v in row.items() if v is not None or k == 'row'}
+		for row in rows
+	]
+
+
 def _extract_json_array(text: str) -> list:
     if not text:
         raise ScoreSheetOCRError("AI haikurudisha jibu.")
-    cleaned = text.strip()
-    # Strip markdown code fences (```json ... ``` or ``` ... ```)
-    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.MULTILINE).strip()
-    # Try to find a JSON array [...]
+    cleaned = _strip_fences(text)
+
+    # ── 1. JSON safi kama ilivyotoka ────────────────────────────────────
+    for candidate in (cleaned, _repair_json(cleaned)):
+        try:
+            data = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, list):
+            return _normalise_rows(data)
+        if isinstance(data, dict):
+            # Mfumo mwingine wa AI hufanya {"rows": [...]} au
+            # {"students": [...]}: kuchukua array iliyo ndani yake.
+            for value in data.values():
+                if isinstance(value, list):
+                    rows = _rows_from_objects(value)
+                    if rows:
+                        return rows
+            single = _rows_from_objects([data])
+            if single:
+                return single
+
+    # ── 2. Array iliyo ndani ya mazungumzo (neno kabla/baada) ──────────
     match = re.search(r"\[.*\]", cleaned, flags=re.DOTALL)
     if match:
         try:
-            data = json.loads(match.group(0))
-            if isinstance(data, list):
+            data = json.loads(_repair_json(match.group(0)))
+            if isinstance(data, list) and data:
                 return data
         except json.JSONDecodeError:
-            pass  # Try other strategies below
+            # Jibu lililokatwa — chukua array ya mistari iliyoizidi
+            # kwenye ukurasa, si kufa na kupoteza wote.
+            partial = _longest_valid_json_array(_repair_json(match.group(0)))
+            if partial:
+                logger.warning(
+                    "[ScoreSheetOCR] AI response was truncated — salvaged %d rows "
+                    "from the incomplete JSON", len(partial),
+                )
+                return partial
 
-    # Fallback: try to find individual {"name":..., "score":...} objects
-    objects = re.findall(r'\{[^{}]*"name"[^{}]*"score"[^{}]*\}', cleaned, re.DOTALL)
-    if objects:
-        parsed = []
-        for obj_str in objects:
-            try:
-                obj = json.loads(obj_str)
-                if isinstance(obj, dict) and "name" in obj and "score" in obj:
-                    parsed.append(obj)
-            except json.JSONDecodeError:
-                continue
-        if parsed:
-            return parsed
+    # ── 3. Object kwa object (zikiwa na braces zilizo ndani) ────────────
+    decoder = json.JSONDecoder()
+    objects = []
+    idx = 0
+    while True:
+        brace = cleaned.find("{", idx)
+        if brace == -1:
+            break
+        try:
+            obj, end = decoder.raw_decode(_repair_json(cleaned[brace:]))
+            objects.append(obj)
+            idx = brace + end
+        except json.JSONDecodeError:
+            idx = brace + 1
+    rows = _rows_from_objects(objects)
+    if rows:
+        return rows
 
-    # Last resort: AI returned conversational text — try to extract any numbers
-    # near names (e.g., "John Doe 85" or "John Doe: 85")
-    lines = text.split('\n')
+    # ── 4. Mistari ya maandishi: "Jina 85" / "Jina: 85" ────────────────
     fallback_rows = []
-    for line in lines:
-        line = line.strip()
+    for line in cleaned.split("\n"):
+        line = re.sub(r"^\s*[-*\d.)\]]+\s*", "", line).strip()
         if not line:
             continue
-        # Match patterns like: "Name Score" or "Name: Score" or "Name - Score"
-        m = re.match(r'^([A-Za-z\s\.]+?)\s*[:\-]?\s*(\d{1,3})\s*$', line)
+        m = re.match(r"^([A-Za-z][A-Za-z\s\.'\-]{2,}?)\s*[:\-–]?\s*(\d{1,3})\s*$", line)
         if m:
             name = m.group(1).strip()
             score = int(m.group(2))
-            if 0 <= score <= 100 and len(name) >= 3:
+            # Jina la mwanafunzi lina maneno >= 2. bila hili sentensi za
+            # AI kama "I counted 20 rows" zingeonekana kama mwanafunzi.
+            if 0 <= score <= 100 and len(name.split()) >= 2:
                 fallback_rows.append({"name": name, "score": score})
     if fallback_rows:
         return fallback_rows
@@ -389,7 +540,7 @@ def _clean_rows(raw_rows: list) -> list[dict]:
     return rows
 
 
-def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, max_tokens: int = 4096, prompt: str = PROMPT) -> str:
+def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, max_tokens: int = MAX_TOKENS_OPENROUTER, prompt: str = PROMPT) -> str:
     b64 = base64.b64encode(image_bytes).decode("ascii")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -495,6 +646,24 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
             return text
         except Exception as exc:
             logger.warning("[ScoreSheetOCR] OpenRouter failed: %s", exc)
+            if 'OR_TRUNCATED' in str(exc):
+                # Ukurasa wa wanafunzi wengi (100+) unahitaji token
+                # nyingi: kila mstari ~40-60 token. 4096 iliyokuwa
+                # mwanzo ilikatika kwa kurasa 60+ — na retry ya kwanza
+                # ilikuwa ikitumia ceiling ile ile, kwa hivyo haikusaidii
+                # chochote. Sasa tunajaribu kwa ceiling kubwa mara moja.
+                big = MAX_TOKENS_OPENROUTER * 2
+                try:
+                    logger.info("[ScoreSheetOCR] Truncated — retrying OpenRouter with max_tokens=%s", big)
+                    text = _call_openrouter_vision(
+                        image_bytes, mime_type, OPENROUTER_API_KEY,
+                        max_tokens=big, prompt=prompt,
+                    )
+                    logger.info("[ScoreSheetOCR] OpenRouter retry (bigger ceiling) success")
+                    return text
+                except Exception as retry_exc:
+                    exc = retry_exc
+                    logger.warning("[ScoreSheetOCR] OpenRouter bigger-ceiling retry failed: %s", retry_exc)
             if _is_out_of_credits(exc):
                 # Salio haliishukawi ndani ya muda wa mfumo — sitaki kulipa
                 # safari ya bure kwa kila ukurasa wa kila pakia.

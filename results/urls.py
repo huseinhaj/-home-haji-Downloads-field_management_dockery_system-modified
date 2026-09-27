@@ -76,6 +76,7 @@ from .views import (
     exam_share_links,
     upload_form_students,
     scan_roster,
+    roster_scan_status,
     save_scanned_roster,
     user_guide,
     delete_form_student,
@@ -231,6 +232,7 @@ urlpatterns = [
     # Form student lists — Academic Officer uploads students per form
     path('form-students/', upload_form_students, name='upload_form_students'),
     path('form-students/scan/', scan_roster, name='scan_roster'),
+    path('form-students/scan/status/<str:task_id>/', roster_scan_status, name='roster_scan_status'),
     path('form-students/scan/save/', save_scanned_roster, name='save_scanned_roster'),
     path('form-students/<int:student_id>/delete/', delete_form_student, name='delete_form_student'),
     path('form-students/<int:form_num>/delete-all/', delete_all_form_students, name='delete_all_form_students'),

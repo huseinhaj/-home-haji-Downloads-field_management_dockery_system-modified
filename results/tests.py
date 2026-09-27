@@ -204,6 +204,20 @@ class ScoreSheetOCRParsingTests(TestCase):
 		text = 'Here are the results:\n[{"name": "Peter Mushi", "score": 55}]\nHope that helps!'
 		self.assertEqual(_extract_json_array(text), [{"name": "Peter Mushi", "score": 55}])
 
+	def test_extract_json_array_keeps_extra_fields_like_gender(self):
+		"""Mijini ya AI kwa orodha ina 'gender'. Ikiwa tunajenga mistari
+		mine tu (row/name/score), kila mwanafunzi wa kike katika orodha
+		alihifadhiwa kama kiume — bila kosa lolote linaloonekana."""
+		text = json.dumps([
+			{"row": 1, "name": "Halima Ally Mohamed", "gender": "F"},
+			{"row": 2, "student_name": "Juma Hamisi", "gender": "M"},
+		])
+		rows = _extract_json_array(text)
+		self.assertEqual(rows[0]["name"], "Halima Ally Mohamed")
+		self.assertEqual(rows[0]["gender"], "F")
+		self.assertEqual(rows[1]["name"], "Juma Hamisi")
+		self.assertEqual(rows[1]["gender"], "M")
+
 	def test_extract_json_array_raises_on_no_array(self):
 		with self.assertRaises(ScoreSheetOCRError):
 			_extract_json_array('Sorry, I could not read the image.')
@@ -211,6 +225,59 @@ class ScoreSheetOCRParsingTests(TestCase):
 	def test_extract_json_array_raises_on_malformed_json(self):
 		with self.assertRaises(ScoreSheetOCRError):
 			_extract_json_array('[{"name": "Amina", "score": }]')
+
+	# ── Majibu halisi ya vision models ──────────────────────────────────
+	# Kila moja hapa ni muundo uliotokea kwenye matumizi halisi
+	# (2026-09-27: mwalimu alipiga picha, AI akarudisha muundo
+	# tofauti na ulioombwa, na ukurasa ukakoseka kabisa).
+
+	def test_extract_json_array_reads_object_wrapped_array(self):
+		"""AI nyingine inajibu {"rows": [...]} badala ya array moja.
+		Muundo huu ulitosha kupoteza wanafunzi WOTE wa ukurasa."""
+		text = '{"rows": [{"row": 1, "name": "Amina Juma", "score": 78}, {"row": 2, "name": "Peter Mushi", "score": 55}]}'
+		rows = _extract_json_array(text)
+		self.assertEqual([r['name'] for r in rows], ['Amina Juma', 'Peter Mushi'])
+		self.assertEqual([r['score'] for r in rows], [78, 55])
+
+	def test_extract_json_array_reads_alternative_key_names(self):
+		"""'student_name'/'marks' ni majina sani ya AI — haya ya kawaida
+		chini ya vision models, na hapo mwanzo parser yetu alikuwa
+		akirusha 'AI haikurudisha muundo sahihi wa JSON'."""
+		text = '[\n {"student_name": "Amina Juma", "marks": 78, "Na": 1},\n {"student_name": "Peter Mushi", "marks": 55, "Na": 2}\n]'
+		rows = _extract_json_array(text)
+		self.assertEqual([r['name'] for r in rows], ['Amina Juma', 'Peter Mushi'])
+		self.assertEqual([r['score'] for r in rows], [78, 55])
+		self.assertEqual([r['row'] for r in rows], [1, 2])
+
+	def test_extract_json_array_salvages_truncated_response(self):
+		"""Jibu lililokatika (max_tokens) halisombwi — mistari
+		iliyokamilika inachukuliwa badala ya kupoteza ukurasa wote."""
+		truncated = (
+			'[{"row": 1, "name": "Amina Juma", "score": 78}, '
+			'{"row": 2, "name": "Peter Mushi", "score": 55}, '
+			'{"row": 3, "name": "Grace Kima'
+		)
+		rows = _extract_json_array(truncated)
+		self.assertEqual([r['name'] for r in rows], ['Amina Juma', 'Peter Mushi'])
+
+	def test_extract_json_array_tolerates_trailing_commas(self):
+		text = '[\n {"name": "Amina Juma", "score": 78,},\n {"name": "Peter Mushi", "score": 55,},\n]'
+		rows = _extract_json_array(text)
+		self.assertEqual(len(rows), 2)
+		self.assertEqual(rows[1]['name'], 'Peter Mushi')
+
+	def test_extract_json_array_reads_numbered_plain_text_lines(self):
+		"""AI ikirudi mistari ya maandishi badala ya JSON kabisa."""
+		text = '1. Amina Juma 78\n2. Peter Mushi 55\n3. Grace Kimaro -'
+		rows = _extract_json_array(text)
+		self.assertEqual([r['name'] for r in rows], ['Amina Juma', 'Peter Mushi'])
+
+	def test_extract_json_array_ignores_prose_line_with_number(self):
+		"""'I counted 20 rows' si mwanafunzi — msimbo wa maneno
+		mawili hapa unafanya sentensi kama hii isionekane kama
+		mwanafunzi wa scoresheet."""
+		with self.assertRaises(ScoreSheetOCRError):
+			_extract_json_array('I counted 20 rows on the sheet.')
 
 	def test_clean_rows_drops_out_of_range_and_garbage_fields(self):
 		raw = [

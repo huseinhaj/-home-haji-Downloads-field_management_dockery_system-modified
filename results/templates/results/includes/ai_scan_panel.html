@@ -1,0 +1,61 @@
+{% comment %}
+  Paneli ya AI ("AI inasoma") — sehemu ya pamoja kwa Marks Entry na
+  Academic roster scan, ili wote waonekane hasa identiki. Msimbo wa paneli
+  (id za ndani) unapaswa kuwa FLAJI, basi JS ya kila ukurasa inaunda kiole
+  chake chenye vituo.
+
+  Wasilisha: {% include "results/includes/ai_scan_panel.html" %}
+  CSS: results/static/results/styles.css (darasa .me-ai-*)
+  JS:  results/static/results/js/ai_scan_panel.js (AiScanPanel)
+
+  Chaguo: panel_id (kipewa cha pekee kwa ukurusa), panel_subject (jina la
+  kitu AI kinachosoma — "scoresheet" au "orodha"). JS hubadilisha maandishi
+  haya wakati scan inapoanza, lakini tunayafanya tofauti ili maandishi ya
+  awali yawe ya ukurasa husika pia (yawekana kama JS ikishindwa).
+
+  Hatua: 0 = kupakia, 1 = AI inasoma, 2 = kulinganisha, 3 = imekamilika.
+{% endcomment %}
+<div class="me-ai-panel" id="{{ panel_id|default:'aiScanPanel' }}" data-busy="1" role="status" aria-live="polite">
+  <div class="me-ai-head">
+    <div class="me-ai-ring" data-ai="ring" data-pct="0" role="img" aria-hidden="true">
+      <div class="me-ai-orb" data-ai="orb">🤖</div>
+    </div>
+    <div class="me-ai-titles">
+      <div class="me-ai-stage" data-ai="stage">
+        {% if LANG == 'sw' %}AI inaanza kusoma…{% else %}AI starting to read…{% endif %}
+      </div>
+      <div class="me-ai-sub" data-ai="sub">
+        {% if panel_subject == 'orodha' %}
+          {% if LANG == 'sw' %}Tuma picha au PDF ya orodha — AI itasoma majina ya wanafunzi, kisha uyakague kabla ya kuhifadhi.{% else %}Upload the roster photo or PDF — AI reads the student names, then you review them before saving.{% endif %}
+        {% else %}
+          {% if LANG == 'sw' %}Tuma picha au PDF ya scoresheet — AI itasoma jina na alama ya kila mwanafunzi.{% else %}Upload the scoresheet photo or PDF — AI reads each student's name and score.{% endif %}
+        {% endif %}
+      </div>
+    </div>
+    <div class="me-ai-clock">
+      <span data-ai="clock">0s</span>
+      <small>{% if LANG == 'sw' %}muda{% else %}elapsed{% endif %}</small>
+    </div>
+  </div>
+  <div class="me-ai-track"><div class="me-ai-bar" data-ai="bar"></div></div>
+  <div class="me-ai-ring-read" data-ai="ringLabel" hidden><span data-ai="pct">0%</span></div>
+  <div class="me-ai-steps" data-ai="steps">
+    <span class="me-ai-step active" data-step="uploading">
+      <span class="tick">1</span>
+      {% if LANG == 'sw' %}Kupakia{% else %}Uploading{% endif %}
+    </span>
+    <span class="me-ai-step" data-step="reading">
+      <span class="tick">2</span>
+      {% if LANG == 'sw' %}AI inasoma{% else %}AI reading{% endif %}
+    </span>
+    <span class="me-ai-step" data-step="matching">
+      <span class="tick">3</span>
+      {% if LANG == 'sw' %}Kulinganisha{% else %}Matching{% endif %}
+    </span>
+    <span class="me-ai-step" data-step="done">
+      <span class="tick">4</span>
+      {% if LANG == 'sw' %}Imekamilika{% else %}Complete{% endif %}
+    </span>
+  </div>
+  <div class="me-ai-log" data-ai="log"></div>
+</div>

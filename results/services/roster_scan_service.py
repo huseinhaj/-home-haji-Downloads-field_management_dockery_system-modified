@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .scoresheet_ocr_service import (
+    MAX_OCR_WORKERS,
     ScoreSheetOCRError,
     _clean_row_number,
     _extract_json_array,
@@ -71,28 +73,60 @@ def _clean_name(name: str) -> str:
     return s
 
 
-def extract_students_from_document(uploaded_file) -> list[dict]:
+def extract_students_from_document(uploaded_file, on_progress=None) -> list[dict]:
     """Returns [{"first": str, "middle": str, "last": str, "gender": "M"|"F",
     "row": int|None}, ...] — one entry per student the AI read off the
     photo/PDF. Names are split first/middle/last the same way
     views._parse_roster_line does for uploaded text files, so scanned and
-    uploaded rosters land in FormStudent identically (same dedup keys)."""
+    uploaded rosters land in FormStudent identically (same dedup keys).
+
+    Kurasa zinasomwa kwa PARALLEL, kama extract_scores_from_document —
+    kabla hapa zilikusomwa moja baada ya nyingine (for loop), hivyo orodha ya
+    kurasa 5 ilikuwa inasubiri jumla ya mitano miambito ya AI pale
+    ambapo mfumo huo unatosha kulipa moja tu. Majibu yatunzwa kwa INDEX
+    ili namba za mistari zibaki katika mpangilio wa ukurasa.
+
+    on_progress: optional callable, on_progress(stage, done, total) — kama
+    extract_scores_from_document. Default None = tabia ya awali."""
     from results.views import GENDER_TOKENS, normalize_gender  # local: avoid import cycle at module load
 
     pages = _load_page_images(uploaded_file)
+    total_pages = len(pages)
+    if on_progress:
+        on_progress('reading', 0, total_pages)
+
+    # Soma kwa pamoja, kisha ingiza majibu kwa mpangilio wa ukurasa.
+    page_results: list[tuple[str | None, Exception | None]] = [(None, None)] * total_pages
+    pages_done = 0
+    with ThreadPoolExecutor(max_workers=min(total_pages, MAX_OCR_WORKERS)) as pool:
+        future_to_index = {pool.submit(_read_page_with_ai, img, prompt=PROMPT): i for i, img in enumerate(pages)}
+        for future in as_completed(future_to_index):
+            i = future_to_index[future]
+            try:
+                page_results[i] = (future.result(), None)
+            except Exception as exc:
+                page_results[i] = (None, exc)
+            # Kurasa uliofaili pia unahesabiwa — mzigo usisimame.
+            pages_done += 1
+            if on_progress:
+                on_progress('reading', pages_done, total_pages)
 
     rows: list[dict] = []
     last_error: Exception | None = None
     any_page_succeeded = False
 
-    for page_num, img in enumerate(pages, 1):
-        try:
-            text = _read_page_with_ai(img, prompt=PROMPT)
-            any_page_succeeded = True
-        except Exception as exc:
+    # Hatua ya 3 ya paneli: kurasa zote zimesomwa, sasa majina yanagawanywa
+    # (first/middle/last) na vichwa vya jedwali vinarukwa. Bila hatua hii
+    # paneli ingeyonoka kutoka "AI inasoma" moja kwa moja hadi "Imekamilika".
+    if on_progress:
+        on_progress('matching', total_pages, total_pages, rows=0)
+
+    for page_num, (text, exc) in enumerate(page_results, 1):
+        if exc is not None:
             last_error = exc
             logger.warning("[RosterScan] Page %d failed: %s", page_num, exc)
             continue
+        any_page_succeeded = True
 
         raw_rows = _extract_json_array(text)
         logger.info("[RosterScan] Page %d extracted %d raw rows", page_num, len(raw_rows))
@@ -131,6 +165,11 @@ def extract_students_from_document(uploaded_file) -> list[dict]:
                 'gender': gender,
                 'row': _clean_row_number(item.get('row')),
             })
+
+        if on_progress:
+            # Idadi ya mistari inayoendelea kuonekana kwenye paneli wakati
+            # majina yakitafutwa vichwa na kuchukuliwa.
+            on_progress('matching', total_pages, total_pages, rows=len(rows))
 
     if not any_page_succeeded:
         err_detail = str(last_error) if last_error else 'unknown error'

@@ -205,6 +205,12 @@
 {% block content %}
 {# Renders the hidden csrfmiddlewaretoken input AND forces the csrftoken cookie to be set on this page — the uploads POST via fetch and were getting HTTP 403 without a token. #}
 <form style="display:none">{% csrf_token %}</form>
+{# Paneli ya AI — JUU kabisa ya ukurasa (float). Kitufe cha "Pakia
+   Zilizopo" kiko chini sana miongoni mwa masomo; bila hapa mtu
+   aliyobofya hakuona chochote. Hatua za paneli: Kupakia (asilimia
+   halisi) → AI inasoma (kurasa) → Kulinganisha (mistari) →
+   Imekamilika. #}
+{% include "results/includes/ai_scan_panel.html" with panel_id="bulkScanPanel" panel_subject="scoresheet" %}
 <!-- Hero -->
 <div class="bulk-hero">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -433,6 +439,7 @@
 <script>window.PDF_PICKER_LANG = '{{ LANG }}';</script>
 <script src="{% static 'results/js/pdf_style_picker.js' %}"></script>
 <script src="{% static 'results/js/scoresheet_scanner.js' %}"></script>
+<script src="{% static 'results/js/ai_scan_panel.js' %}"></script>
 <script>
 (() => {
   const LANG = '{{ LANG }}';
@@ -450,6 +457,15 @@
   let uploadedCount = {{ subject_status_done }};
   let pendingUploads = [];  // [{file, subjectId, subjectName}]
   let queueId = 0;
+
+  /* Paneli ya AI — ile ile ya marks entry na academic roster scan
+   * (results/static/results/js/ai_scan_panel.js). float:true = ibande
+   * juu ya ekran; kitufe cha "Pakia Zilizopo" kiko chini sana miongoni
+   * mwa masomo. rosterSize = idadi ya wanafunzi wa mtihani huu —
+   * inaonyesha "mistari X imesomwa — inalinganishwa na wanafunzi Y". */
+  const aiPanel = window.AiScanPanel
+    ? new window.AiScanPanel({ lang: LANG, id: 'bulkScanPanel', rosterSize: {{ student_count|default:0 }}, float: true })
+    : { start() {}, setUpload() {}, upload: null, log() {}, applyMeta() {}, finish() {}, fail() {} };
 
   const SAVE_URL = '{% url "save_confirmed_scores" exam.id %}';
   const PREVIEW_PDF_URL = '{% url "bulk_scoresheet_preview_pdf" exam.id %}';
@@ -744,14 +760,24 @@
 
       uploadAllBtn.disabled = true;
       // AI kusoma kila scoresheet inachukua muda halisi (sekunde chache
-      // hadi dakika kadhaa kwa masomo mengi kwa pamoja) — kitufe
-      // kinaonyesha muda unaopita ili isionekane imekwama.
+      // hadi dakika kadhaa kwa masomo mengi kwa pamoja) — paneli ya AI
+      // inaonyesha hatua na muda, hivyo kitufe hapa kinaweza kubaki
+      // rahisi ("Inapakia") badala ya kutumika kama spinner.
+      const nFiles = pendingUploads.length;
+      const nBytes = pendingUploads.reduce((sum, u) => sum + (u.file ? u.file.size : 0), 0);
+      const sizeMb = (nBytes / 1048576).toFixed(1);
+      aiPanel.start({
+        title: LANG === 'sw' ? 'Kupakia scoresheet…' : 'Uploading scoresheets…',
+        sub: (LANG === 'sw'
+          ? 'Faili ' + nFiles + ' (' + sizeMb + ' MB) inatumwa kwenye seriveri — bar hapa chini inaonyesha asilimia halisi.'
+          : 'Sending ' + nFiles + ' file(s) (' + sizeMb + ' MB) to the server — the bar below shows real percentages.'),
+      });
       const uploadStartedAt = Date.now();
       const uploadTimer = setInterval(() => {
         const secs = Math.floor((Date.now() - uploadStartedAt) / 1000);
         uploadAllBtn.textContent = (LANG === 'sw'
-          ? '⏳ Inasoma masomo ' + pendingUploads.length + '... (' + secs + 's)'
-          : '⏳ Reading ' + pendingUploads.length + ' subject(s)... (' + secs + 's)');
+          ? '⏳ Inasoma masomo ' + nFiles + '... (' + secs + 's)'
+          : '⏳ Reading ' + nFiles + ' subject(s)... (' + secs + 's)');
       }, 1000);
       uploadAllBtn.textContent = LANG === 'sw' ? '⏳ Inapakia...' : '⏳ Uploading...';
 
@@ -765,15 +791,23 @@
       subjectIds.forEach(id => fd.append('subject_ids', id));
 
       try {
-        const res = await fetch(window.location.href, {
-          method: 'POST',
-          headers: { 'X-CSRFToken': csrfToken },
-          body: fd,
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data.error
-            || ((LANG === 'sw' ? 'Upload imeshindwa' : 'Upload failed') + ' (HTTP ' + res.status + ')'));
+        /* aiPanel.upload() ni XHR — inaonyesha kipekee cha byte
+         * (fetch haionyeshi). Nzuri hapa: picha za scoresheet ni
+         * kubwa mzito, na mtihani 9 masomo unaweza kuwa 20 MB. */
+        let data;
+        if (aiPanel.upload) {
+          data = await aiPanel.upload(window.location.href, fd, { csrf: csrfToken });
+        } else {
+          const res = await fetch(window.location.href, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: fd,
+          });
+          data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error
+              || ((LANG === 'sw' ? 'Upload imeshindwa' : 'Upload failed') + ' (HTTP ' + res.status + ')'));
+          }
         }
 
         // Server inarudisha MARA MOJA — kila file iko kwenye job ya nyuma
@@ -798,6 +832,11 @@
         if (!tasks.length) {
           uploadAllBtn.disabled = false;
           updateUploadBtn();
+          // Paneli lazima ionyeshe kosa — bila hapa ingebaki
+          // 'Kupakia' milele hata kama seriveri haikupokea chochote.
+          aiPanel.fail(LANG === 'sw'
+            ? 'Server haikupokea faili — jaribu tena au refresh ukurasa (Ctrl+Shift+R).'
+            : 'Server accepted no files — try again or hard-refresh (Ctrl+Shift+R).');
           toast(LANG === 'sw'
             ? '⚠️ Server haikupokea faili — jaribu tena au refresh ukurasa (Ctrl+Shift+R).'
             : '⚠️ Server accepted no files — try again or hard-refresh (Ctrl+Shift+R).', true);
@@ -807,8 +846,12 @@
         toast(LANG === 'sw'
           ? '⏳ Faili ' + tasks.length + ' zimepokelewa — AI inasoma nyuma pazia...'
           : '⏳ ' + tasks.length + ' file(s) received — AI is reading in the background...');
+        aiPanel.log(LANG === 'sw'
+          ? 'Faili zimepokelewa, AI inaanza kusoma ' + tasks.length + ' somo.'
+          : 'Files received, AI starting to read ' + tasks.length + ' subject(s).');
 
         // Poll each job (DB-backed — status endpoint inasoma BulkUploadJob)
+        let failed = 0;
         for (const task of tasks) {
           pollTask(task.job_id || task.task_id, task.subject_id, task.subject_name, () => {
             completed++;
@@ -820,22 +863,36 @@
               const xlsBtn = document.getElementById('exportExcelBtn');
               if (genBtn) { genBtn.style.opacity = '1'; genBtn.style.pointerEvents = 'auto'; }
               if (xlsBtn) { xlsBtn.style.opacity = '1'; xlsBtn.style.pointerEvents = 'auto'; }
+              if (failed) {
+                aiPanel.fail(LANG === 'sw'
+                  ? 'Masomo ' + failed + ' kati ya ' + tasks.length + ' yashindwa — angalia safu za hapa chini kwa sababu, kisha jaribu tena.'
+                  : failed + ' of ' + tasks.length + ' subject(s) failed — see the rows below for the reason, then retry.');
+              } else {
+                aiPanel.finish({
+                  title: LANG === 'sw' ? 'AI imemaliza kusoma masomo yote'
+                                         : 'AI finished reading every subject',
+                  sub: LANG === 'sw'
+                    ? 'Masomo ' + tasks.length + ' yamekamilika. Fungua modal ya ukaguzi (au angalia chips za somo) kukagua alama kabla ya kuhifadhi.'
+                    : tasks.length + ' subject(s) done. Open the review modal (or the subject chips) to check the marks before saving.',
+                });
+              }
               toast(LANG === 'sw'
                 ? '✅ Masomo ' + tasks.length + ' yamekamilika — fungua modal ya ukaguzi (kama haikufunguka, angalia chips za somo).'
                 : '✅ ' + tasks.length + ' subject(s) done — check the review modal or subject chips.');
             }
-          });
+          }, () => { failed++; });
         }
       } catch (err) {
         clearInterval(uploadTimer);
         uploadAllBtn.disabled = false;
         updateUploadBtn();
+        aiPanel.fail(err.message);
         toast((LANG === 'sw' ? '❌ Hitilafu: ' : '❌ Error: ') + err.message, true);
       }
     });
   }
 
-  function pollTask(taskId, subjectId, subjectName, onDone) {
+  function pollTask(taskId, subjectId, subjectName, onDone, onError) {
     const url = STATUS_URL.replace('PLACEHOLDER', taskId);
     const POLL_INTERVAL = 2000;
     const MAX_WAIT = 10 * 60 * 1000;  // OCR ya AI inaweza chukua — 10 min kwa job
@@ -844,9 +901,24 @@
     // Find the upload entry
     const upload = pendingUploads.find(u => u.subjectId == subjectId);
 
+    // Mzigo mmoja: paneli ya AI inaonyesha somo moja kwa wakati (AI
+    // husoma moja baada ya moja), lakini tunajaliwa kuwa mtihani
+    // anaweza kuchagua masomo 9 — bila hii mtu angeona kurasa 2/3 ya
+    // Kiswahili, kisha 1/1 ya Kisimani bila kujua ni ipi inayoendelea.
+    let announced = false;
+    function reportMeta(data) {
+      if (!data || !data.stage) return;
+      if (!announced) {
+        announced = true;
+        aiPanel.log((LANG === 'sw' ? 'Somo: ' : 'Subject: ') + subjectName);
+      }
+      aiPanel.applyMeta(data);
+    }
+
     function poll() {
       if (Date.now() - startedAt > MAX_WAIT) {
         markFileError(upload, subjectName + (LANG === 'sw' ? ': Muda umepita (jaribu tena)' : ': Timed out (retry)'));
+        if (onError) onError();
         if (onDone) onDone();
         return;
       }
@@ -858,12 +930,14 @@
             const status = document.getElementById('fstatus-' + upload.qid);
             if (status) status.innerHTML = '⏳ ' + (LANG === 'sw' ? 'Inasoma...' : 'Reading...') + ' (' + elapsed + 's)';
           }
+          reportMeta(data);
           setTimeout(poll, POLL_INTERVAL);
           return;
         }
 
         if (data.error) {
           markFileError(upload, data.error);
+          if (onError) onError();
         } else if (data.status === 'preview') {
           // Show review modal for this subject
           openReviewModal(data.preview);
@@ -881,6 +955,7 @@
         if (onDone) onDone();
       }).catch(err => {
         markFileError(upload, err.message);
+        if (onError) onError();
         if (onDone) onDone();
       });
     }

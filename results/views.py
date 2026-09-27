@@ -7,10 +7,13 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 import pandas as pd
+from celery.result import AsyncResult
 
 from django.conf import settings
 from django.contrib import messages
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
+from django.core.files.storage import default_storage
 from django.db.models import Case, Count, IntegerField, Q, When
 from django.db import transaction
 from django.http import Http404, HttpResponse, JsonResponse
@@ -26,6 +29,7 @@ from django.core.exceptions import ValidationError
 from .forms import ExamUploadForm, TeacherSelfSubjectsForm
 from .models import Exam, ExamResult, FormStudent, PersonalUpload, PersonalUploadResult, PrintSubmission, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission, TeacherAccount, TeacherFormAssignment
 from .permissions import academic_required, printing_secretary_required, results_login_required as login_required, teacher_or_academic_required, teacher_required
+from .tasks import process_roster_scan_task
 from .services.excel_export_service import generate_professional_excel_response, generate_results_excel_response
 from .services.pdf_export_service import (
     generate_bulk_student_results_pdf_response,
@@ -1344,7 +1348,6 @@ def _bulk_save_form_students(school, form_num, parsed_rows):
     file had none. An existing student's placeholder is backfilled with
     a real candidate_no on re-upload, but a genuine admission_no already
     on file is never overwritten."""
-    import uuid as _uuid
 
     if not parsed_rows:
         return []
@@ -1392,7 +1395,7 @@ def _bulk_save_form_students(school, form_num, parsed_rows):
             results.append({'created': False})
         else:
             seen.add(key)
-            admission_no = candidate_no if candidate_no and candidate_no not in seen_admission_nos else f'NA-{_uuid.uuid4().hex[:10]}'
+            admission_no = candidate_no if candidate_no and candidate_no not in seen_admission_nos else f'NA-{uuid.uuid4().hex[:10]}'
             seen_admission_nos.add(admission_no)
             new_rows.append(FormStudent(
                 school=school, form=form_num,
@@ -4006,6 +4009,7 @@ def upload_form_students(request):
 
 
 @academic_required
+@require_POST
 def scan_roster(request):
     """Scan (piga picha / pakia picha-PDF ya) orodha ya wanafunzi badala ya
     ku-upload faili. AI vision inasoma majina → uhakiki kwenye preview →
@@ -4013,16 +4017,20 @@ def scan_roster(request):
     the same name-splitting rules as the file upload parsers, so scanned
     and uploaded rosters land in FormStudent identically.
 
-    POST: picha/PDF (field 'scan_file') + form number → JSON preview rows
-    (nothing saved yet). The Academic edits/removes rows in the UI, then
-    posts the confirmed rows to save_scanned_roster."""
-    from .services.roster_scan_service import RosterScanError, extract_students_from_document
+    POST: picha/PDF (field 'scan_file') + form number → 202 + task_id.
+    FRONTEND inapolling `roster_scan_status` mpaka 'preview' au 'error'.
 
+    Zamani kusoma AI kilikuwa ndani ya request hii yenyewe: orodha ya
+    kurasa 3-5 ni sekunde 60-300, ambayo proxy (Railway/nginx) huufa
+    kabla ya AI kukamilisha — mtumiaji alipata "Failed to fetch" bila
+    maelezo, na paneli ya maendeleo haikuweza kujali chochoto kwa kuwa
+    seriveri hakuwa na nini cha kuripoti. Sasa ni kazi ya nyuma kama
+    scoresheet OCR, yenye kuripoti hatua (kurahusa, mistari)."""
     school = request.user.school
     if not school:
         return JsonResponse({'error': 'Hakuna shule iliyowekwa.'}, status=400)
 
-    form_num = request.POST.get('form') or request.GET.get('form') or ''
+    form_num = request.POST.get('form') or ''
     valid_classes = _school_class_numbers(school)
     if not (str(form_num).isdigit() and int(form_num) in valid_classes):
         return JsonResponse({'error': 'Chagua darasa sahihi kwanza.'}, status=400)
@@ -4031,14 +4039,112 @@ def scan_roster(request):
     if not uploaded_file:
         return JsonResponse({'error': 'Hakuna picha au faili lililotumwa.'}, status=400)
 
-    try:
-        students = extract_students_from_document(uploaded_file)
-    except RosterScanError as exc:
-        return JsonResponse({'error': str(exc)}, status=400)
-    except Exception as exc:
-        logger.error("[RosterScan] Unexpected failure: %s", exc)
-        return JsonResponse({'error': f'Hitilafu ya usomaji: {exc}'}, status=500)
+    ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
+    storage_path = f"roster_scan/{uuid.uuid4().hex}{ext}"
+    default_storage.save(storage_path, uploaded_file)
 
+    from field_management.celery import app as celery_app
+    from .marks_entry import _celery_worker_consuming
+
+    # Bila worker hai (local docker, au production iliyokosa service ya
+    # `worker`), task ingesubiri kwenye broker milele. Hapa tunitumia
+    # thread ya nyuma — mtumiaji analewa maendeleo vizuri kama kwenye
+    # njia ya Celery, kwa kuwa frontend halijui chanzo.
+    if (not getattr(celery_app.conf, 'task_always_eager', False)
+            and not _celery_worker_consuming('default')):
+        logger.warning('scan_roster: no live Celery worker — running OCR in a background thread')
+        return _run_roster_scan_background(storage_path)
+
+    try:
+        task = process_roster_scan_task.apply_async(args=[storage_path], queue='default')
+        return JsonResponse({'task_id': task.id}, status=202)
+    except Exception as celery_err:
+        logger.warning('Celery apply_async failed for roster scan, falling back to a background thread: %s', celery_err)
+        return _run_roster_scan_background(storage_path)
+
+
+# Prefix + cache key tohutofautia na scoresheet OCR ili mitiririko miwili
+# isichanganye kwenye cache (kama mtu anascan orodha na scoresheet kwa
+# pamoja). Cache ni Redis kwenye production, inashirikiwa na gunicorn
+# wote, hivyo poll kwenye worker tofauti na ile iliyozalaza thread bado
+# naona matokeo.
+_ROSTER_TASK_PREFIX = 'localroster-'
+_ROSTER_TASK_CACHE_TIMEOUT = 600  # >= tasks.py's time_limit=360, plus margin
+
+
+def _run_roster_scan_background(storage_path):
+    """Celery-less fallback ya scan_roster: OCR kwenye thread ya nyuma.
+    Anarudi task_id mara moja; roster_scan_status inasoma maendeleo
+    kutoka cache."""
+    import threading
+
+    from django.db import close_old_connections
+
+    task_id = f'{_ROSTER_TASK_PREFIX}{uuid.uuid4().hex}'
+    cache_key = f'roster_scan_ocr:{task_id}'
+    cache.set(cache_key, {'status': 'processing'}, timeout=_ROSTER_TASK_CACHE_TIMEOUT)
+
+    def _run():
+        close_old_connections()
+        try:
+            result = process_roster_scan_task(storage_path, progress_key=task_id)
+            if result and result.get('error'):
+                cache.set(cache_key, {'status': 'failed', 'error': result['error']},
+                          timeout=_ROSTER_TASK_CACHE_TIMEOUT)
+            else:
+                cache.set(cache_key, {'status': 'done', 'result': result},
+                          timeout=_ROSTER_TASK_CACHE_TIMEOUT)
+        except Exception as bg_err:
+            logger.error('Background roster scan failed: %s', bg_err, exc_info=True)
+            cache.set(cache_key, {'status': 'failed', 'error': str(bg_err)},
+                      timeout=_ROSTER_TASK_CACHE_TIMEOUT)
+        finally:
+            close_old_connections()
+
+    threading.Thread(target=_run, daemon=True).start()
+    return JsonResponse({'task_id': task_id}, status=202)
+
+
+@academic_required
+@require_GET
+def roster_scan_status(request, task_id):
+    """Polled na frontend ya academic roster scan kila sekunde 2.5 baada
+    ya scan_roster kuanza. Inarudi hatua ('stage'/'pages_done'/
+    'pages_total'/'rows') wakati wa kusoma, na 'preview' + rows mwishoni
+    — hakuna chochote kikihifadhiwa hapa, uhakiki ni kazi ya Academic."""
+    from .marks_entry import _stage_fields
+
+    if task_id.startswith(_ROSTER_TASK_PREFIX):
+        entry = cache.get(f'roster_scan_ocr:{task_id}')
+        if entry is None:
+            # Poll iliyokangua cache.set ya kwanza — endelea kusubiri;
+            # MAX_WAIT_MS ya frontend ndiyo inayolinda muda.
+            return JsonResponse({'status': 'processing'})
+        if entry['status'] == 'processing':
+            return JsonResponse({'status': 'processing', **_stage_fields(entry)})
+        if entry['status'] == 'failed':
+            logger.error("roster_scan_status: local task %s failed: %s", task_id, entry.get('error'))
+            return JsonResponse({'error': str(entry.get('error') or 'Kuna hitilafu wakati wa kusoma picha. Jaribu tena.')}, status=500)
+        payload = entry.get('result') or {}
+        if payload.get('error'):
+            return JsonResponse({'error': payload['error']}, status=400)
+        students = payload.get('students') or []
+        return JsonResponse({'status': 'preview', 'count': len(students), 'students': students})
+
+    result = AsyncResult(task_id)
+
+    if not result.ready():
+        info = result.info if isinstance(result.info, dict) else {}
+        return JsonResponse({'status': 'processing', **_stage_fields(info)})
+
+    if result.failed():
+        logger.error("roster_scan_status: task %s failed: %s", task_id, result.result)
+        return JsonResponse({'error': 'Kuna hitilafu wakati wa kusoma picha. Jaribu tena.'}, status=500)
+
+    payload = result.result or {}
+    if payload.get('error'):
+        return JsonResponse({'error': payload['error']}, status=400)
+    students = payload.get('students') or []
     return JsonResponse({'status': 'preview', 'count': len(students), 'students': students})
 
 
@@ -4623,7 +4729,6 @@ def bulk_scoresheet_upload(request, exam_id):
         })
 
     if request.method == 'POST':
-        import uuid as _uuid
         from django.core.files.storage import default_storage
 
         # Support both single and multiple file upload
@@ -4650,7 +4755,7 @@ def bulk_scoresheet_upload(request, exam_id):
                 except (Subject.DoesNotExist, ValueError):
                     continue
                 ext = os.path.splitext(file.name)[1].lower() or '.pdf'
-                storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
+                storage_path = f"bulk_upload/{exam.id}/{subject.id}_{uuid.uuid4().hex}{ext}"
                 default_storage.save(storage_path, file)
 
                 job = BulkUploadJob.objects.create(
@@ -4663,8 +4768,13 @@ def bulk_scoresheet_upload(request, exam_id):
                     from django.db import close_old_connections
                     close_old_connections()
                     try:
+                        # progress_key = job_id: paneli ya AI inapoll kwa
+                        # BulkUploadJob.pk, hivyo meta za kurasa zikawekwa
+                        # chini ya kichicho 'bulk_upload_ocr:<job_id>' —
+                        # kichicho sawa na jina linalotumika na frontend.
                         result = process_bulk_upload_task(
-                            path, exam.id, sid2, rids, preview_only=True
+                            path, exam.id, sid2, rids, preview_only=True,
+                            progress_key=str(job_id),
                         )
                         j = BulkUploadJob.objects.using(BulkUploadJob.objects.db).get(pk=job_id)
                         if result and result.get('error'):
@@ -4705,7 +4815,7 @@ def bulk_scoresheet_upload(request, exam_id):
             file = files[0]
             subject = get_object_or_404(Subject, id=int(subject_id))
             ext = os.path.splitext(file.name)[1].lower() or '.pdf'
-            storage_path = f"bulk_upload/{exam.id}/{subject.id}_{_uuid.uuid4().hex}{ext}"
+            storage_path = f"bulk_upload/{exam.id}/{subject.id}_{uuid.uuid4().hex}{ext}"
             default_storage.save(storage_path, file)
             from .scan_models import BulkUploadJob
             import threading as _threading
@@ -4775,8 +4885,14 @@ def bulk_upload_status(request, task_id):
     """Polled by the frontend every 2s after bulk upload kicks off.
 
     task_id ni id ya BulkUploadJob (DB) — OCR inaendeshwa na thread ya
-    nyuma, hivyo status inasomeka hata kama request ya awali imeisha."""
+    nyuma, hivyo status inasomeka hata kama request ya awali imeisha.
+
+    Wakati wa kusoma tunaripoti pia hatua (stage/kurasa/mistari) kutoka
+    cache — kichicho 'bulk_upload_ocr:<job_id>' kinachoweka task ya
+    OCR. Bila metadata hizi, paneli ya AI ingebaki 'Kupakia' tu bila
+    kuonyesha chochote cha kusoma."""
     from .scan_models import BulkUploadJob
+    from .marks_entry import _stage_fields
 
     job = BulkUploadJob.objects.filter(pk=task_id).first()
     if not job:
@@ -4786,7 +4902,8 @@ def bulk_upload_status(request, task_id):
         return JsonResponse({'error': job.error or 'Kuna hitilafu wakati wa kusoma scoresheet.'}, status=400)
 
     if job.status in (BulkUploadJob.Status.PENDING, BulkUploadJob.Status.PROCESSING):
-        return JsonResponse({'status': 'processing'})
+        meta = _stage_fields(cache.get(f'bulk_upload_ocr:{job.pk}') or {})
+        return JsonResponse({'status': 'processing', **meta})
 
     payload = job.preview or {}
     # Recompute job (baada ya save) — frontend inapoll hadi madaraja yake
