@@ -1,4 +1,5 @@
 """Kosa la AI ya kusoma scoresheet linaelezwa kwa lugha rahisi."""
+import os
 from unittest import mock
 
 from django.test import SimpleTestCase
@@ -8,6 +9,13 @@ from results.services import scoresheet_ocr_service as ocr
 
 
 class AIErrorMessageTests(SimpleTestCase):
+    def setUp(self):
+        # A 402 in the first test puts OpenRouter into its out-of-credits
+        # cooldown, which would make the next test skip the provider
+        # entirely — clear the memory so each test sees a fresh chain.
+        ocr._reset_provider_health()
+        self.addCleanup(ocr._reset_provider_health)
+
     def _read(self, or_exc, gemini_exc):
         img = Image.new('RGB', (40, 20), 'white')
         with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
@@ -31,3 +39,57 @@ class AIErrorMessageTests(SimpleTestCase):
         msg = self._read(RuntimeError('OR_TRUNCATED'), RuntimeError('Read timed out'))
         self.assertIn('OR_TRUNCATED', msg)
         self.assertIn('imechelewa kujibu', msg)
+
+
+class ProviderOrderTests(SimpleTestCase):
+    """Gemini (bure) kwanza, OpenRouter (ya malipo) cha pili — ili mfumo
+    usikae unanilipa kila kwanza wanapotaka kusoma wanafunzi kwa AI."""
+
+    def setUp(self):
+        ocr._reset_provider_health()
+        self.addCleanup(ocr._reset_provider_health)
+        self.img = Image.new('RGB', (40, 20), 'white')
+
+    def test_default_order_prefers_free_gemini(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop('OCR_PROVIDER_ORDER', None)
+            self.assertEqual(ocr._provider_order(), ['gemini', 'openrouter'])
+
+    def test_env_can_restore_paid_first(self):
+        with mock.patch.dict(os.environ, {'OCR_PROVIDER_ORDER': 'openrouter,gemini'}):
+            self.assertEqual(ocr._provider_order(), ['openrouter', 'gemini'])
+
+    def test_gemini_success_never_calls_openrouter(self):
+        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'k'), \
+                mock.patch.object(ocr, '_call_gemini_vision', return_value='[]') as gem, \
+                mock.patch.object(ocr, '_call_openrouter_vision') as orr:
+            self.assertEqual(ocr._read_page_with_ai(self.img), '[]')
+        self.assertEqual(gem.call_count, 1)
+        self.assertEqual(orr.call_count, 0)
+
+    def test_openrouter_skipped_after_out_of_credits(self):
+        # Both down: Gemini is tried, then OpenRouter answers 402. Page 2 of
+        # the same upload must not pay for another doomed call.
+        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'k'), \
+                mock.patch.object(ocr, '_call_openrouter_vision',
+                                  side_effect=RuntimeError('OpenRouter vision error 402: Insufficient credits')) as orr, \
+                mock.patch.object(ocr, '_call_gemini_vision', side_effect=RuntimeError('Gemini down')):
+            with self.assertRaises(RuntimeError):
+                ocr._read_page_with_ai(self.img)
+            self.assertEqual(orr.call_count, 1)
+            self.assertFalse(ocr._openrouter_usable())
+            with self.assertRaises(RuntimeError):
+                ocr._read_page_with_ai(self.img)
+            self.assertEqual(orr.call_count, 1)
+
+    def test_openrouter_used_again_after_cooldown(self):
+        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'k'), \
+                mock.patch.object(ocr, '_call_openrouter_vision', return_value='[]') as orr, \
+                mock.patch.object(ocr, '_call_gemini_vision', side_effect=RuntimeError('Gemini down')):
+            ocr._disable_openrouter(seconds=0)
+            self.assertEqual(orr.call_count, 0)
+            ocr._read_page_with_ai(self.img)
+        self.assertEqual(orr.call_count, 1)

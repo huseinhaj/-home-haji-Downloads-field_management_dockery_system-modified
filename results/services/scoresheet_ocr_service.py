@@ -2,9 +2,14 @@
 scanned) ya scoresheet aliyoijaza kwa mkono, mfumo unatumia AI (vision
 model) kusoma majina na alama kwenye kila ukurasa.
 
-Chain: OpenRouter (google/gemini-2.5-flash, vision) -> Gemini direct HTTP
-(FREE fallback) -- inafanana na chain ya curriculum/ai_utils.py lakini hii
-inatuma picha (multimodal), si maandishi tu.
+Chain: Gemini direct HTTP (FREE) -> OpenRouter (google/gemini-2.5-flash,
+vision, ya malipo) -- inafanana na chain ya curriculum/ai_utils.py lakini
+hii inatuma picha (multimodal), si maandishi tu.
+
+Gemini ya kwanza kwa sababu OpenRouter ni *mawakala wa malipo* wa Gemini
+hiyo-hiyo: kulipia OpenRouter kununua Gemini kupitia njia ndefu. Weka
+OCR_PROVIDER_ORDER=openrouter,gemini kurejesha mpangilio wa awali bila
+kugusa msimbo.
 """
 from __future__ import annotations
 
@@ -14,6 +19,7 @@ import json
 import logging
 import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
@@ -98,6 +104,49 @@ PROMPT = (
 
 class ScoreSheetOCRError(Exception):
     pass
+
+
+def _provider_order() -> list:
+    """Mlipangilio wa watoa huduma: 'gemini' kwanja (bure), 'openrouter'
+    cha pili (ya malipo). Env variable ya OCR_PROVIDER_ORDER inaweza
+    kuibadilisha kwa mfano 'openrouter,gemini'."""
+    raw = os.getenv("OCR_PROVIDER_ORDER", "gemini,openrouter")
+    order = [p.strip().lower() for p in raw.split(",") if p.strip()]
+    return [p for p in order if p in ("gemini", "openrouter")] or ["gemini", "openrouter"]
+
+
+# 402 = salio la OpenRouter limeisha. Hali hiyo haijibadilika kwenye muda
+# wa mfumo uliofunguliwa, so kuijaribu tena kwa kila ukurasa wa kila
+# pakia huzalisha tu sekunde za bure. Tunakumbuka na tunakwenda kwenye
+# Gemini mara moja, kisha tunarudi kujaribu baada ya muda mfupi — ili
+# salio likishatiwa vizuri mfumo unashuka kwenye OpenRouter bila kufanya
+# deploy.
+_OR_DISABLED_UNTIL = 0.0
+_OR_COOLDOWN_S = 900  # dakika 15
+
+
+def _openrouter_usable() -> bool:
+    return bool(OPENROUTER_API_KEY) and time.monotonic() > _OR_DISABLED_UNTIL
+
+
+def _disable_openrouter(seconds: int = _OR_COOLDOWN_S) -> None:
+    global _OR_DISABLED_UNTIL
+    _OR_DISABLED_UNTIL = time.monotonic() + seconds
+    logger.warning(
+        "[ScoreSheetOCR] OpenRouter imeuzimwa kwa sekunda %s (salio limeisha) — "
+        "Gemini ndiyo inatumika kwa sasa", seconds,
+    )
+
+
+def _reset_provider_health() -> None:
+    """[Tumia kwenye tests] Safisha kumbukumbu ya iko ya OpenRouter."""
+    global _OR_DISABLED_UNTIL
+    _OR_DISABLED_UNTIL = 0.0
+
+
+def _is_out_of_credits(exc) -> bool:
+    msg = str(exc).lower()
+    return " 402" in msg or "insufficient credits" in msg
 
 
 def _is_pdf(uploaded_file) -> bool:
@@ -382,66 +431,73 @@ def _call_gemini_vision(image_bytes: bytes, mime_type: str, api_key: str, prompt
 
 
 def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
-    """OpenRouter first, Gemini fallback — one rendered page/photo in, raw
-    model text out. Raises RuntimeError if both providers fail.
+    """Gemini first (free), OpenRouter second (paid) — one rendered page/photo
+    in, raw model text out. Raises RuntimeError if every provider fails.
     `prompt` lets other vision tasks (roster scan) reuse this provider
     chain with their own instructions."""
     image_bytes = _encode_jpeg(img)
     mime_type = "image/jpeg"
 
-    or_error = None
-    if OPENROUTER_API_KEY:
+    errors = []
+
+    for provider in _provider_order():
+        if provider == 'gemini':
+            if not GOOGLE_API_KEY:
+                continue
+            try:
+                logger.info("[ScoreSheetOCR] Trying Gemini (%s)", GEMINI_MODEL)
+                text = _call_gemini_vision(image_bytes, mime_type, GOOGLE_API_KEY, prompt=prompt)
+                logger.info("[ScoreSheetOCR] Gemini success")
+                return text
+            except Exception as exc:
+                logger.warning("[ScoreSheetOCR] Gemini failed: %s", exc)
+                errors.append(("Gemini", exc))
+                continue
+
+        # OpenRouter — a paid hop, so it only runs while it is actually usable.
+        if not _openrouter_usable():
+            if OPENROUTER_API_KEY:
+                logger.info("[ScoreSheetOCR] OpenRouter imebaki iko — kurukia")
+            continue
         try:
             logger.info("[ScoreSheetOCR] Trying OpenRouter (%s)", VISION_MODEL_OPENROUTER)
             text = _call_openrouter_vision(image_bytes, mime_type, OPENROUTER_API_KEY, prompt=prompt)
             logger.info("[ScoreSheetOCR] OpenRouter success")
             return text
         except Exception as exc:
-            or_error = exc
             logger.warning("[ScoreSheetOCR] OpenRouter failed: %s", exc)
-            # Low account balance: OpenRouter reserves budget for the full
-            # max_tokens ceiling up front, not actual usage — a low-balance
-            # account can still afford this task's genuinely small JSON
-            # output if we ask for a lower ceiling. Retry once with
-            # whatever it says it can afford.
-            afford_match = re.search(r"can only afford (\d+)", str(exc))
-            if afford_match:
-                affordable = int(afford_match.group(1))
-                # Retry with whatever OpenRouter says it can afford — even 18
-                # tokens is enough for a tiny JSON response.  The vision
-                # request is the expensive part (input); the output is tiny.
-                if affordable >= 10:
-                    try:
-                        logger.info("[ScoreSheetOCR] Retrying OpenRouter with max_tokens=%s", affordable)
-                        text = _call_openrouter_vision(image_bytes, mime_type, OPENROUTER_API_KEY, max_tokens=affordable, prompt=prompt)
-                        logger.info("[ScoreSheetOCR] OpenRouter retry success")
-                        return text
-                    except Exception as retry_exc:
-                        or_error = retry_exc
-                        logger.warning("[ScoreSheetOCR] OpenRouter retry failed: %s", retry_exc)
+            if _is_out_of_credits(exc):
+                # Salio haliishukawi ndani ya muda wa mfumo — sitaki kulipa
+                # safari ya bure kwa kila ukurasa wa kila pakia.
+                _disable_openrouter()
+            else:
+                # Salio dogo (si kabisa limeisha): OpenRouter hifadhi bajeti
+                # ya max_tokens nzima awali, si matumizi halisi — kwa hiyo
+                # salio dogo bado linaweza kulipa jibu dogo la JSON. Jaribu
+                # mara moja kwa kile OpenRouter anachosema kinachoweza.
+                afford_match = re.search(r"can only afford (\d+)", str(exc))
+                if afford_match:
+                    affordable = int(afford_match.group(1))
+                    # Even 18 tokens is enough for a tiny JSON response. The
+                    # vision request is the expensive part (input); output tiny.
+                    if affordable >= 10:
+                        try:
+                            logger.info("[ScoreSheetOCR] Retrying OpenRouter with max_tokens=%s", affordable)
+                            text = _call_openrouter_vision(image_bytes, mime_type, OPENROUTER_API_KEY, max_tokens=affordable, prompt=prompt)
+                            logger.info("[ScoreSheetOCR] OpenRouter retry success")
+                            return text
+                        except Exception as retry_exc:
+                            exc = retry_exc
+                            logger.warning("[ScoreSheetOCR] OpenRouter retry failed: %s", retry_exc)
+            errors.append(("OpenRouter", exc))
 
-    gemini_error = None
-    if GOOGLE_API_KEY:
-        try:
-            logger.info("[ScoreSheetOCR] Trying Gemini (fallback)")
-            text = _call_gemini_vision(image_bytes, mime_type, GOOGLE_API_KEY, prompt=prompt)
-            logger.info("[ScoreSheetOCR] Gemini success")
-            return text
-        except Exception as exc:
-            gemini_error = exc
-            logger.warning("[ScoreSheetOCR] Gemini failed: %s", exc)
-
-    if not (or_error or gemini_error):
+    if not errors:
         raise RuntimeError("No AI provider configured")
     # Watumiaji waliona JSON ghafi ya Gemini tu ("401 … OAuth 2 access
     # token …") wakati chanzo halisi kilikuwa pia salio la OpenRouter
     # kuisha. Eleza kila mtoa huduma kwa lugha rahisi + nini cha kufanya.
-    reasons = []
-    if or_error:
-        reasons.append("OpenRouter: " + _explain_ai_error(or_error))
-    if gemini_error:
-        reasons.append("Gemini: " + _explain_ai_error(gemini_error))
-    raise RuntimeError(" | ".join(reasons)) from (gemini_error or or_error)
+    reasons = ["%s: %s" % (name, _explain_ai_error(exc)) for name, exc in errors]
+    raise RuntimeError(" | ".join(reasons)) from errors[-1][1]
 
 
 def _explain_ai_error(exc) -> str:
@@ -464,8 +520,13 @@ def _explain_ai_error(exc) -> str:
 
 
 def check_ocr_health() -> dict:
-    """Quick check: are API keys set and do they work?"""
+    """Quick check: are API keys set, do they work, and (OpenRouter) is there
+    any money left? A key that authenticates fine still returns 402 on every
+    call once the account balance runs out, so the balance is the part worth
+    reporting — it is what silently turned scans into 'imeshindwa kusoma
+    faili' when the account had spent $10.20 of its $10."""
     status = {
+        'provider_order': _provider_order(),
         'openrouter': bool(OPENROUTER_API_KEY),
         'gemini': bool(GOOGLE_API_KEY),
     }
@@ -483,6 +544,21 @@ def check_ocr_health() -> dict:
         except Exception as e:
             status['openrouter_ok'] = False
             status['openrouter_error'] = str(e)
+        try:
+            creds = requests.get(
+                'https://openrouter.ai/api/v1/credits',
+                headers={'Authorization': f'Bearer {OPENROUTER_API_KEY}'},
+                timeout=10,
+            )
+            if creds.status_code == 200:
+                data = creds.json().get('data', {})
+                total, used = data.get('total_credits'), data.get('total_usage')
+                if total is not None and used is not None:
+                    balance = round(float(total) - float(used), 4)
+                    status['openrouter_balance'] = balance
+                    status['openrouter_has_credits'] = balance > 0
+        except Exception:
+            pass  # balance is a nicety — never fail the health check over it
     return status
 
 
