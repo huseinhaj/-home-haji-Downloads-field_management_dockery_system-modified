@@ -623,7 +623,7 @@ def check_ocr_health() -> dict:
     return status
 
 
-def extract_scores_from_document(uploaded_file) -> list[dict]:
+def extract_scores_from_document(uploaded_file, on_progress=None) -> list[dict]:
     """Returns [{"raw_name": str, "score": int}, ...] read from the upload —
     a single photo, or every page of a scanned PDF (each page's rows are
     concatenated, since a multi-page scoresheet just continues the list).
@@ -631,13 +631,21 @@ def extract_scores_from_document(uploaded_file) -> list[dict]:
     Pages are sent to the vision API concurrently — each is an independent,
     slow (up to 180s) HTTP call, so a 3-5 page scoresheet reading pages one
     at a time could take minutes; reading them in parallel bounds the wait
-    to roughly the slowest single page instead of the sum of all of them."""
+    to roughly the slowest single page instead of the sum of all of them.
+
+    on_progress: optional callable, called as on_progress(stage, done, total)
+    after every page finishes so the caller can show real progress instead
+    of an open-ended spinner. Default None keeps every other caller (and the
+    existing tests) on the previous behaviour — no callback, no overhead."""
     if not (OPENROUTER_API_KEY or GOOGLE_API_KEY):
         raise ScoreSheetOCRError(
             "Hakuna AI provider iliyosanidiwa. Weka OPENROUTER_API_KEY au GOOGLE_API_KEY kwenye .env"
         )
 
     pages = _load_page_images(uploaded_file)
+    total_pages = len(pages)
+    if on_progress:
+        on_progress('reading', 0, total_pages)
 
     def _read_page_with_retry(img, page_num):
         """Soma ukurasa mmoja; ukikataika (truncation au network blip) jaribu
@@ -665,6 +673,7 @@ def extract_scores_from_document(uploaded_file) -> list[dict]:
         raise last_exc
 
     page_results: list[tuple[str | None, Exception | None]] = [(None, None)] * len(pages)
+    pages_done = 0
     with ThreadPoolExecutor(max_workers=min(len(pages), MAX_OCR_WORKERS)) as pool:
         future_to_index = {pool.submit(_read_page_with_retry, img, i + 1): i for i, img in enumerate(pages)}
         for future in as_completed(future_to_index):
@@ -673,6 +682,12 @@ def extract_scores_from_document(uploaded_file) -> list[dict]:
                 page_results[i] = (future.result(), None)
             except Exception as exc:
                 page_results[i] = (None, exc)
+            # Report after every page — finished OR failed — so the count
+            # only ever moves forward. A page that dies still gets counted;
+            # a progress bar that stalls looks like a hang.
+            pages_done += 1
+            if on_progress:
+                on_progress('reading', pages_done, total_pages)
 
     all_rows: list[dict] = []
     last_error = None

@@ -13,12 +13,50 @@ from __future__ import annotations
 import logging
 
 from celery import shared_task
+from django.core.cache import cache
 from django.core.files.storage import default_storage
 
 from .models import ExamResult, Student, Subject, SubjectSubmission
 from .services.scoresheet_ocr_service import ScoreSheetOCRError, extract_scores_from_document
 
 logger = logging.getLogger(__name__)
+
+# Mirafu ya cache inayotumika kwa ripoti ya maendeleo. Inapaswa kuwa >= time_limit
+# ya task chini (360s) ili hali ya "processing" isizikoseke kabla ya kukamilika.
+_PROGRESS_CACHE_TIMEOUT = 600
+
+# Hatua za backend (frontend inaongeza 'uploading' na 'done' kwenye zake).
+OCR_STAGES = ('reading', 'matching')
+
+
+def report_ocr_stage(progress_key, stage, done=None, total=None, **extra):
+    """Tuma hatua ya OCR inayoendelea kwa frontend inayopoll.
+
+    Njia zote mbili zinahitaji kihicho tofauti na ZINAKOSHAULIANA, si
+    mbadala — kila njia inatumia kihicho chake tu:
+      * Celery (progress_key is None) — self.update_state(meta=...) hifadhi
+        meta kwenye backend na scoresheet_extract_status inaisoma kama
+        AsyncResult.info.
+      * Thread ya ndini (progress_key set, hakuna worker) — task haijafanyiwa
+        dispatch, hivyo update_state haina backend halisi ya kuandikia;
+        tunahifadhi kwenye cache kwa progress_key ile ile inayotumika na
+        runner ya ndini.
+
+    progress_key ni String tu (si callable) ili Celery iweze kuizisafisha
+    bila hitilafu unaposafisha ujumbe kwa broker."""
+    payload = {'stage': stage}
+    if done is not None:
+        payload['pages_done'] = done
+    if total is not None:
+        payload['pages_total'] = total
+    payload.update(extra)
+    if progress_key:
+        key = f'scoresheet_ocr:{progress_key}'
+        entry = cache.get(key) or {}
+        entry.update(payload)
+        entry['status'] = 'processing'
+        cache.set(key, entry, timeout=_PROGRESS_CACHE_TIMEOUT)
+    return payload
 
 
 def _row_number_warnings(extracted_rows):
@@ -54,11 +92,14 @@ def _row_number_warnings(extracted_rows):
 
 
 @shared_task(bind=True, time_limit=360, soft_time_limit=340)
-def process_scoresheet_photo_task(self, storage_path, roster_ids):
+def process_scoresheet_photo_task(self, storage_path, roster_ids, progress_key=None):
     """storage_path: where scoresheet_photo_extract saved the upload
     (default_storage-relative) — this task owns deleting it once done.
     roster_ids: student PKs from the roster the teacher already had
     loaded client-side, used to fuzzy-match extracted names against.
+    progress_key: optional task_id for the no-worker fallback path, used to
+    publish which stage the read is on (see report_ocr_stage). None on the
+    Celery path, which reports through self.update_state instead.
 
     Returns a dict — either {'error': ...} (OCR couldn't read the
     document) or {'matched': [...], 'unmatched': [...], 'missing': [...]}.
@@ -69,9 +110,29 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
     from .services.speech_submission_service import match_rows_to_roster_by_position, match_rows_to_roster_exclusive
     from .views import _parse_roster_line, _save_student
 
+    def _stage(stage, done=None, total=None, **extra):
+        """Tuma hatua kwa frontend inayopoll.
+
+        Njia zote mbili ni za kipekee, si mbadala: kwenye njia ya Celery
+        self.update_state(meta=...) ndiyo chanzo, na progress_key ni None.
+        Kwenye runner ya thread (hakuna worker) task haijafanyiwa dispatch
+        basi update_state haina backend halisi ya kuandikia — kuiita hapo
+        huwa inaazisha muda wa kila ukurasa wa kila poll, hivyo hapa
+        tunatumia cache pekee."""
+        meta = report_ocr_stage(progress_key, stage, done=done, total=total)
+        if progress_key:
+            return
+        try:
+            self.update_state(state='PROGRESS', meta=meta)
+        except Exception as exc:
+            # A stage ping is a nicety, never a reason to fail the read.
+            logger.debug("scoresheet OCR stage report skipped: %s", exc)
+
     try:
         with default_storage.open(storage_path) as document:
-            extracted_rows = extract_scores_from_document(document)
+            extracted_rows = extract_scores_from_document(
+                document, on_progress=_stage,
+            )
     except ScoreSheetOCRError as exc:
         return {'error': str(exc)}
     finally:
@@ -79,6 +140,8 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids):
             default_storage.delete(storage_path)
         except Exception:
             logger.warning("process_scoresheet_photo_task: could not delete temp file %s", storage_path, exc_info=True)
+
+    _stage('matching', rows=len(extracted_rows))
 
     # Preserve the order roster_ids arrived in — it mirrors the order the
     # frontend's marks table (and therefore download_scoresheet_names_pdf's

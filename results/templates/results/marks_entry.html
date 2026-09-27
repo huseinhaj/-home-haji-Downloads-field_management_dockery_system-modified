@@ -120,6 +120,134 @@
   }
   tr.photo-missing-row { outline: 2px dashed #c9971f; outline-offset: -2px; background: #fffaf0 !important; }
 
+  /* ── Paneli ya AI: "AI inasoma" ──────────────────────────────────────
+     Kabla ya hapa mtu alikuwa anaona mistari moja tu ya maneno
+     ("⏳ Inasoma picha...") ndani ya toolbar ndogo. Naomba "ionyeshe
+     kabisa pale juu" — hivyo sasa kuna paneli kamili juu ya ukurasa:
+     inabaki inayotizama (sticky) hata mtu akishuka kwenye jedwali la
+     wanafunzi 200, inaonyesha hatua, kurasa, na muda. */
+  .me-ai-panel {
+    display: none;
+    position: sticky;
+    top: 78px; /* juu ya .masthead (≈76px) ili isikiriwe */
+    z-index: 25;
+    width: 100%;
+    margin: 0.5rem 0;
+    padding: 1rem 1.1rem;
+    border-radius: 14px;
+    border: 2px solid #145226;
+    background: linear-gradient(135deg, #0f3d1c 0%, #145226 55%, #1a6b34 100%);
+    color: #eaf7ee;
+    box-shadow: 0 10px 28px rgba(10, 40, 22, 0.35);
+    font-size: 1rem;
+    animation: meAiIn 0.35s ease-out;
+  }
+  .me-ai-panel.on { display: block; }
+  @keyframes meAiIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .me-ai-head { display: flex; align-items: center; gap: 0.9rem; }
+  .me-ai-orb {
+    flex: 0 0 auto;
+    width: 52px; height: 52px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 1.5rem;
+    background: rgba(255, 255, 255, 0.14);
+    border: 2px solid rgba(255, 255, 255, 0.35);
+  }
+  /* Mzunguko unaopendelea — ishara ya "AI inafanya kazi" bila maneno. */
+  .me-ai-panel[data-busy="1"] .me-ai-orb { animation: meAiSpin 1.6s linear infinite; }
+  @keyframes meAiSpin { to { transform: rotate(360deg); } }
+
+  .me-ai-titles { flex: 1 1 auto; min-width: 0; }
+  .me-ai-stage {
+    font-size: 1.25rem; font-weight: 800; line-height: 1.25;
+    color: #fff; letter-spacing: 0.2px;
+  }
+  .me-ai-sub { font-size: 0.92rem; color: #bfe3cb; margin-top: 0.15rem; }
+  .me-ai-clock {
+    flex: 0 0 auto; text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.5rem; font-weight: 800; color: #fff;
+  }
+  .me-ai-clock small { display: block; font-size: 0.68rem; font-weight: 700; color: #bfe3cb; text-transform: uppercase; letter-spacing: 1px; }
+
+  .me-ai-track {
+    position: relative;
+    height: 14px;
+    margin: 0.85rem 0 0.5rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.28);
+    overflow: hidden;
+  }
+  .me-ai-bar {
+    height: 100%; width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #7ee2a4, #d9f27a);
+    transition: width 0.45s ease;
+  }
+  .me-ai-panel[data-busy="1"] .me-ai-bar::after {
+    content: ""; display: block; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+    animation: meAiShimmer 1.3s ease-in-out infinite;
+  }
+  @keyframes meAiShimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  /* Hakuna data ya asilimia? Onyesha mzigo wa kutatanua, si kilaambiri. */
+  .me-ai-panel[data-busy="1"] .me-ai-bar { width: 35%; animation: meAiIndet 1.8s ease-in-out infinite; }
+  @keyframes meAiIndet { 0% { margin-left: 0; } 50% { margin-left: 65%; } 100% { margin-left: 0; } }
+  .me-ai-panel[data-busy="0"] .me-ai-bar { width: 100%; }
+
+  .me-ai-steps { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.35rem; }
+  .me-ai-step {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.8rem; font-weight: 700;
+    padding: 0.3rem 0.6rem; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #9fc4ad;
+  }
+  .me-ai-step.active {
+    background: #fff; color: #145226; border-color: #fff;
+  }
+  .me-ai-step.done { color: #c9f2d6; border-color: rgba(150, 240, 180, 0.45); }
+  .me-ai-step .tick { font-weight: 900; }
+
+  .me-ai-log {
+    margin: 0.75rem 0 0;
+    padding: 0.55rem 0.7rem;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: #d6f2e0;
+    max-height: 7.5rem; overflow-y: auto;
+  }
+  .me-ai-log:empty { display: none; }
+  .me-ai-log div { display: flex; gap: 0.45rem; }
+  .me-ai-log .t { color: #8fc9a5; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+
+  .me-ai-panel.is-error { border-color: #d9534f; background: linear-gradient(135deg, #6d1f1c, #a3322c); }
+  .me-ai-panel.is-done { border-color: #1a6b34; }
+  .me-ai-close {
+    margin-left: 0.5rem; background: rgba(255,255,255,0.16); color: #fff;
+    border: 0; border-radius: 6px; padding: 0.3rem 0.55rem;
+    font-size: 0.78rem; font-weight: 700; cursor: pointer;
+  }
+  .me-ai-close:hover { background: rgba(255,255,255,0.3); }
+
+  @media (max-width: 640px) {
+    .me-ai-panel { top: 70px; font-size: 0.92rem; padding: 0.8rem; }
+    .me-ai-stage { font-size: 1.05rem; }
+    .me-ai-clock { font-size: 1.15rem; }
+  }
+  /* Mtumiaji aliyemaa na u movement — paneli bado inaonyesha maendeleo,
+     tu bila mzigo unaosogea. */
+  @media (prefers-reduced-motion: reduce) {
+    .me-ai-panel, .me-ai-bar, .me-ai-orb, .me-ai-bar::after { animation: none !important; }
+  }
+
   /* Review table */
   .me-review .pos-badge {
     display: inline-flex; align-items: center; justify-content: center;
@@ -427,6 +555,49 @@
           <input type="file" id="mePhotoInput" accept="image/*,.pdf,application/pdf" capture="environment" style="display:none;">
           <div class="me-voice-status" id="meVoiceStatus"></div>
           <div class="me-voice-status" id="mePhotoStatus"></div>
+          {% comment %}
+            Paneli ya AI: inaonyesha hatua, kurasa na muda wakati wa kusoma.
+            Imewekwa NDANI ya toolbar (ambayo tayari iko juu kabisa ya
+            maudhui) ili iwe "pale juu" kwa mwalimu na kwa academic
+            wote — template moja, hakuna tofauti kwa role.
+          {% endcomment %}
+          <div class="me-ai-panel" id="meScanPanel" data-busy="1" role="status" aria-live="polite">
+            <div class="me-ai-head">
+              <div class="me-ai-orb" id="meScanOrb">🤖</div>
+              <div class="me-ai-titles">
+                <div class="me-ai-stage" id="meScanStage">
+                  {% if LANG == 'sw' %}AI inaanza kusoma…{% else %}AI starting to read…{% endif %}
+                </div>
+                <div class="me-ai-sub" id="meScanSub">
+                  {% if LANG == 'sw' %}Tuma picha au PDF ya scoresheet — AI itasoma jina na alama ya kila mwanafunzi.{% else %}Upload the scoresheet photo or PDF — AI reads each student's name and score.{% endif %}
+                </div>
+              </div>
+              <div class="me-ai-clock">
+                <span id="meScanClock">0s</span>
+                <small>{% if LANG == 'sw' %}muda{% else %}elapsed{% endif %}</small>
+              </div>
+            </div>
+            <div class="me-ai-track"><div class="me-ai-bar" id="meScanBar"></div></div>
+            <div class="me-ai-steps" id="meScanSteps">
+              <span class="me-ai-step active" data-step="uploading">
+                <span class="tick">{% if LANG == 'sw' %}1{% else %}1{% endif %}</span>
+                {% if LANG == 'sw' %}Kupakia{% else %}Uploading{% endif %}
+              </span>
+              <span class="me-ai-step" data-step="reading">
+                <span class="tick">2</span>
+                {% if LANG == 'sw' %}AI inasoma{% else %}AI reading{% endif %}
+              </span>
+              <span class="me-ai-step" data-step="matching">
+                <span class="tick">3</span>
+                {% if LANG == 'sw' %}Kulinganisha na orodha{% else %}Matching roster{% endif %}
+              </span>
+              <span class="me-ai-step" data-step="done">
+                <span class="tick">4</span>
+                {% if LANG == 'sw' %}Imekamilika{% else %}Complete{% endif %}
+              </span>
+            </div>
+            <div class="me-ai-log" id="meScanLog"></div>
+          </div>
           <div class="me-voice-hint" id="meVoiceHint" style="display:none;">
             💡 {% if LANG == 'sw' %}
               Sema alama kwa Kiingereza (mfano "forty five") kwa usahihi zaidi — Kiswahili mara nyingi hakieleweki vizuri na mfumo. Mwanafunzi asiyesoma somo hili? Sema "skip" (au bonyeza Enter kwenye kisanduku tupu) kuruka bila kuweka alama. Ikishindwa kutambua namba, andika alama kwenye kisanduku kilichoangaziwa kisha bonyeza Enter.
@@ -1251,6 +1422,128 @@ function _dlPdf(url) {
       const missingBox = document.getElementById('mePhotoMissing');
       if (!photoBtn || !photoInput) return;
 
+      /* ── Paneli ya AI: kiungo kimoja kikichorwa ──────────────────────
+         Msimamo wa hatua: 0=pakia, 1=AI inasoma, 2=kulinganisha,
+         3=imekamilika. Server (results/tasks.py report_ocr_stage) tuna
+         'reading' na 'matching' tu; 'uploading' na 'done' ni za hapa
+         kulewa kwa kuwa zinatokea kabla/baada ya server. */
+      const aiPanel = document.getElementById('meScanPanel');
+      const aiStage = document.getElementById('meScanStage');
+      const aiSub = document.getElementById('meScanSub');
+      const aiClock = document.getElementById('meScanClock');
+      const aiBar = document.getElementById('meScanBar');
+      const aiSteps = document.getElementById('meScanSteps');
+      const aiLog = document.getElementById('meScanLog');
+      const aiOrb = document.getElementById('meScanOrb');
+      const AI_STEP_ORDER = ['uploading', 'reading', 'matching', 'done'];
+      let aiTimer = null, aiStartedAt = 0, aiStageIdx = 0;
+
+      const aiText = (sw, en) => (LANG === 'sw' ? sw : en);
+
+      function aiRenderSteps(idx) {
+        if (!aiSteps) return;
+        aiSteps.querySelectorAll('.me-ai-step').forEach(el => {
+          const i = AI_STEP_ORDER.indexOf(el.dataset.step);
+          el.classList.toggle('active', i === idx);
+          el.classList.toggle('done', i < idx);
+        });
+      }
+
+      function aiLogLine(text) {
+        if (!aiLog) return;
+        const secs = Math.round((Date.now() - aiStartedAt) / 1000);
+        const row = document.createElement('div');
+        const t = document.createElement('span');
+        t.className = 't';
+        t.textContent = secs + 's';
+        const m = document.createElement('span');
+        m.textContent = text;
+        row.appendChild(t); row.appendChild(m);
+        aiLog.appendChild(row);
+        aiLog.scrollTop = aiLog.scrollHeight;
+      }
+
+      function aiShow() {
+        if (!aiPanel) return;
+        aiPanel.classList.add('on');
+        aiPanel.classList.remove('is-error', 'is-done');
+        aiPanel.dataset.busy = '1';
+      }
+
+      function aiSetStage(idx, stageText, subText) {
+        aiStageIdx = idx;
+        if (stageText) aiStage.textContent = stageText;
+        aiSub.textContent = subText || '';
+        aiRenderSteps(idx);
+      }
+
+      function aiStart() {
+        aiStartedAt = Date.now();
+        aiStageIdx = 0;
+        if (aiLog) aiLog.innerHTML = '';
+        if (aiClock) aiClock.textContent = '0s';
+        if (aiBar) aiBar.style.width = '';
+        aiShow();
+        aiSetStage(0,
+          aiText('Pakia picha/PDF…', 'Uploading photo/PDF…'),
+          aiText('Tuma faili — hii inachukua sekunde chache.', 'Sending the file — this takes a few seconds.'));
+        if (aiTimer) clearInterval(aiTimer);
+        aiTimer = setInterval(() => {
+          const s = Math.round((Date.now() - aiStartedAt) / 1000);
+          if (aiClock) aiClock.textContent = s >= 60
+            ? Math.floor(s / 60) + 'm ' + (s % 60) + 's'
+            : s + 's';
+        }, 500);
+      }
+
+      function aiFinish(summary) {
+        if (aiTimer) { clearInterval(aiTimer); aiTimer = null; }
+        if (!aiPanel) return;
+        aiPanel.dataset.busy = '0';
+        aiPanel.classList.add('is-done');
+        if (aiBar) aiBar.style.width = '100%';
+        aiSetStage(3, summary.title, summary.sub);
+        if (aiOrb) aiOrb.textContent = '✅';
+      }
+
+      function aiFail(message) {
+        if (aiTimer) { clearInterval(aiTimer); aiTimer = null; }
+        if (!aiPanel) return;
+        aiPanel.dataset.busy = '0';
+        aiPanel.classList.remove('is-done');
+        aiPanel.classList.add('is-error');
+        if (aiOrb) aiOrb.textContent = '⚠️';
+        aiSetStage(3, aiText('AI imeshindwa kusoma', 'AI could not read this'), message);
+      }
+
+      /* Kubadilisha meta ya server ('reading'/'matching') kuwa hatua ya
+         paneli yenye maelezo, ikiwa na kurasa na mistari iliyosomwa. */
+      function aiApplyMeta(meta) {
+        if (!meta || !meta.stage) return;
+        if (meta.stage === 'reading') {
+          if (aiStageIdx > 1) return; // tuko tayari zaidi — usirudi nyuma
+          const total = meta.pages_total, done = meta.pages_done;
+          let sub = aiText('AI inasoma jina na alama kutoka kwa kurasa.',
+                           'AI reads names and scores from the pages.');
+          if (total) {
+            sub += ' ' + aiText('Ukurasa', 'Page') + ' ' + (done || 0) + '/' + total;
+            if (aiBar && total) aiBar.style.width = Math.round(((done || 0) / total) * 100) + '%';
+          }
+          if (done && !aiStage.dataset.paged) {
+            aiLogLine(aiText('Ukurasa ' + done + ' umesomwa.', 'Page ' + done + ' read.'));
+            aiStage.dataset.paged = '1';
+          }
+          aiSetStage(1, aiText('AI inasoma…', 'AI is reading…'), sub);
+        } else if (meta.stage === 'matching') {
+          aiSetStage(2,
+            aiText('AI inalinganisha majina na orodha…', 'AI is matching names to the roster…'),
+            meta.rows
+              ? aiText('Mistari ' + meta.rows + ' imesomwa — inalinganishwa na wanafunzi ' + (byId.size) + '.',
+                       meta.rows + ' rows read — matching against ' + (byId.size) + ' students.')
+              : aiText('Inalinganisha na orodha ya darasa.', 'Matching against the class roster.'));
+        }
+      }
+
       photoBtn.addEventListener('click', () => {
         if (photoHint) photoHint.style.display = '';
         photoInput.click();
@@ -1269,6 +1562,7 @@ function _dlPdf(url) {
         missingBox.style.display = 'none';
         missingBox.innerHTML = '';
         document.querySelectorAll('tr.photo-missing-row').forEach(tr => tr.classList.remove('photo-missing-row'));
+        aiStart();
         photoStatus.innerHTML = '<span style="color:#145226;">⏳ ' +
           (LANG === 'sw' ? 'Inasoma picha...' : 'Reading photo...') + '</span>';
 
@@ -1308,6 +1602,7 @@ function _dlPdf(url) {
             const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
             photoStatus.innerHTML = '<span style="color:#145226;">⏳ ' +
               (LANG === 'sw' ? 'Inasoma picha...' : 'Reading photo...') + ' (' + elapsedSec + 's)</span>';
+            if (aiClock) aiClock.textContent = elapsedSec + 's';
 
             // A poll can fail at the network level (flaky mobile data
             // during a multi-minute wait) without the OCR itself having
@@ -1326,6 +1621,12 @@ function _dlPdf(url) {
             }
             if (!pollRes.ok) throw new Error(pollData.error || 'Upload failed');
             if (pollData.status === 'processing') {
+              // Meta ya hatua: stage + pages_done/pages_total/rows.
+              // Ikiwa seriveri bado haijasema chochote bado, hatua ya
+              // "reading" ndiyo iliyo makadiria — mtu anapaswa kuona AI
+              // inafanya kazi mara tu faili inapokelewa, hasa kwa Gemini
+              // ambapo ukurasa mmoja unaweza kuchukua sekunde 30+.
+              aiApplyMeta(pollData.stage ? pollData : { stage: 'reading' });
               await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
               continue;
             }
@@ -1337,6 +1638,22 @@ function _dlPdf(url) {
           const unmatched = data.unmatched || [];
           const missing = data.missing || [];
           const warnings = data.warnings || [];
+
+          // Paneli: muhtasari wa matokeo. Hapa ndipo "AI imesoma nini"
+          // inakuwa namba, si ahali ya "inasoma..." isiyosindika.
+          aiLogLine(aiText(
+            'AI imesoma ' + matched.length + ' wanafunzi, ' + unmatched.length + ' hawakupatikana.',
+            'AI read ' + matched.length + ' students, ' + unmatched.length + ' unmatched.'));
+          aiFinish({
+            title: aiText('AI imemaliza kusoma', 'AI finished reading'),
+            sub: aiText(
+              'Jedwali limejazwa: ' + matched.length + ' waliozingatiwa'
+                + (missing.length ? ', ' + missing.length + ' hawakupatikana alama' : '')
+                + '. Kagua kila alama dhidi ya picha kabla ya kuhifadhi.',
+              'Table filled: ' + matched.length + ' matched'
+                + (missing.length ? ', ' + missing.length + ' with no mark' : '')
+                + '. Check every score against the photo before saving.'),
+          });
 
           // Scan-quality warnings: mistari iliyorukwa au kusomwa mara mbili
           // — mwalimu anajua hitilafu ni YA SCAN (picha), si ya orodha yake.
@@ -1412,6 +1729,7 @@ function _dlPdf(url) {
             : ' — Try again: shoot closer with good light, fill the frame with the sheet. Or type the marks manually in the table below.';
           photoStatus.innerHTML = '<span style="color:#c0392b;">❌ ' +
             escapeHtml(msg || (LANG === 'sw' ? 'Imeshindwa kusoma picha.' : 'Failed to read the photo.')) + hint + '</span>';
+          aiFail(msg || (LANG === 'sw' ? 'Imeshindwa kusoma picha.' : 'Failed to read the photo.'));
         } finally {
           photoBtn.disabled = false;
         }

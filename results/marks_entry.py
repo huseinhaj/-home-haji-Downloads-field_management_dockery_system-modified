@@ -30,7 +30,7 @@ from .models import Exam, ExamResult, FormStudent, Student, StoredRoster, Subjec
 from .permissions import academic_required, teacher_or_academic_required
 from .services.upload_processing_service import recompute_processed_results_for_exam
 from .utils import get_grade_for_exam, is_passing_grade, resolve_or_create_student
-from .tasks import process_scoresheet_photo_task
+from .tasks import OCR_STAGES, process_scoresheet_photo_task
 from .utils import get_grade_for_form, group_exams_by_type
 
 logger = logging.getLogger(__name__)
@@ -606,7 +606,9 @@ def _run_scoresheet_ocr_background(storage_path, roster_ids):
 
     def _run():
         try:
-            result = process_scoresheet_photo_task(storage_path, roster_ids)
+            result = process_scoresheet_photo_task(
+                storage_path, roster_ids, progress_key=task_id,
+            )
             cache.set(cache_key, {'status': 'done', 'result': result}, timeout=_LOCAL_TASK_CACHE_TIMEOUT)
         except Exception as bg_err:
             logger.error('Background scoresheet OCR failed: %s', bg_err, exc_info=True)
@@ -620,6 +622,24 @@ def _run_scoresheet_ocr_background(storage_path, roster_ids):
 
     threading.Thread(target=_run, daemon=True).start()
     return JsonResponse({'task_id': task_id}, status=202)
+
+
+def _stage_fields(entry):
+    """Chuja meta ya maendeleo ya OCR (stage/pages_done/pages_total/rows)
+    kwa frontend. Meta huja kama dict tu wakati wa kusoma, lakini AsyncResult
+    .info pia inaweza kuwa string/byte au None — hapa tunaisafisha ili
+    frontend isipate thamani ya ajabu."""
+    if not isinstance(entry, dict):
+        return {}
+    out = {}
+    stage = entry.get('stage')
+    if stage in OCR_STAGES:
+        out['stage'] = stage
+    for key in ('pages_done', 'pages_total', 'rows'):
+        val = entry.get(key)
+        if isinstance(val, int) and val >= 0:
+            out[key] = val
+    return out
 
 
 @teacher_or_academic_required
@@ -636,7 +656,7 @@ def scoresheet_extract_status(request, task_id):
             # waiting; its own MAX_WAIT_MS cap still applies.
             return JsonResponse({'status': 'processing'})
         if entry['status'] == 'processing':
-            return JsonResponse({'status': 'processing'})
+            return JsonResponse({'status': 'processing', **_stage_fields(entry)})
         if entry['status'] == 'failed':
             logger.error("scoresheet_extract_status: local task %s failed: %s", task_id, entry.get('error'))
             return JsonResponse({'error': 'Kuna hitilafu wakati wa kusoma picha. Jaribu tena.'}, status=500)
@@ -654,7 +674,12 @@ def scoresheet_extract_status(request, task_id):
     result = AsyncResult(task_id)
 
     if not result.ready():
-        return JsonResponse({'status': 'processing'})
+        # Celery stores each self.update_state(meta=...) on the result
+        # backend, so while the task is still running `info` holds the
+        # stage it last published. The frontend renders it as a live
+        # progress panel instead of an unexplained wait.
+        info = result.info if isinstance(result.info, dict) else {}
+        return JsonResponse({'status': 'processing', **_stage_fields(info)})
 
     if not result.result and not result.failed():
         # A queued task with no live worker NEVER transitions to ready —
