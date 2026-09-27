@@ -29,8 +29,18 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+def _read_key(name: str) -> str:
+    """Soma ufunguo wa API na kuukawaha. Dashboard za Railway, .env na
+    copy-paste za mwanagenzi hupeleka viwilio au alama za semi huwa pamoja
+    naye, na ufunguo ulioambishwa na kimoja hufanya Google 401 (UNAUTHENTICATED)
+— hapo ndipo mfumo unadai 'ufunguo si sahihi' wakati kwa kweli ni sahihi.
+"""
+    raw = os.getenv(name) or ""
+    return raw.strip().strip('"').strip("'").strip()
+
+
+OPENROUTER_API_KEY = _read_key("OPENROUTER_API_KEY")
+GOOGLE_API_KEY = _read_key("GOOGLE_API_KEY")
 
 VISION_MODEL_OPENROUTER = "google/gemini-2.5-flash"
 GEMINI_MODEL = "gemini-3.6-flash"
@@ -142,6 +152,22 @@ def _reset_provider_health() -> None:
     """[Tumia kwenye tests] Safisha kumbukumbu ya iko ya OpenRouter."""
     global _OR_DISABLED_UNTIL
     _OR_DISABLED_UNTIL = 0.0
+
+
+def _key_fingerprint(name: str) -> dict:
+    """Maelezo ya ufunguo bila kuuacha (si sehemu, si urefu kamili) — vya
+    kutosha kulinganisha na thamani kwenye .env wakati unatafuta 401, bila
+    kuvitisha siri kwenye ukurasa wa JSON."""
+    raw = os.getenv(name) or ""
+    clean = raw.strip().strip('"').strip("'").strip()
+    return {
+        'len': len(clean),
+        'prefix': clean[:6],
+        # True = the pasted value carried quotes or a stray space, which
+        # authenticates as nobody and reads as "wrong key" on the dashboard.
+        'had_paste_junk': raw != clean,
+        'missing': not clean,
+    }
 
 
 def _is_out_of_credits(exc) -> bool:
@@ -529,6 +555,8 @@ def check_ocr_health() -> dict:
         'provider_order': _provider_order(),
         'openrouter': bool(OPENROUTER_API_KEY),
         'gemini': bool(GOOGLE_API_KEY),
+        'gemini_key': _key_fingerprint("GOOGLE_API_KEY"),
+        'openrouter_key': _key_fingerprint("OPENROUTER_API_KEY"),
     }
     # Quick OpenRouter ping
     if OPENROUTER_API_KEY:

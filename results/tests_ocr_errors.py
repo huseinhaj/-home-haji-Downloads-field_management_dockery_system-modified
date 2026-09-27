@@ -41,6 +41,36 @@ class AIErrorMessageTests(SimpleTestCase):
         self.assertIn('imechelewa kujibu', msg)
 
 
+class KeyReadingTests(SimpleTestCase):
+    """Ufunguo ulioambishwa na viwilio/alama za semi hufaanya Google 401 —
+    mfumo humuita 'ufunguo si sahihi' wakati kwa kweli ni sahihi."""
+
+    def test_surrounding_junk_is_stripped(self):
+        for raw in ['  KEY  ', '"KEY"', "'KEY'", ' "KEY" \n', '\tKEY\r\n']:
+            with mock.patch.dict(os.environ, {'GOOGLE_API_KEY': raw}):
+                self.assertEqual(ocr._read_key('GOOGLE_API_KEY'), 'KEY')
+
+    def test_plain_key_untouched(self):
+        with mock.patch.dict(os.environ, {'GOOGLE_API_KEY': 'AQ.Ab8RN6J'}):
+            self.assertEqual(ocr._read_key('GOOGLE_API_KEY'), 'AQ.Ab8RN6J')
+
+    def test_unset_key_is_empty_not_none(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(ocr._read_key('GOOGLE_API_KEY'), '')
+
+    def test_fingerprint_flags_paste_junk_without_leaking_the_key(self):
+        with mock.patch.dict(os.environ, {'GOOGLE_API_KEY': ' "AQ.Ab8RN6J"'}):
+            fp = ocr._key_fingerprint('GOOGLE_API_KEY')
+        self.assertTrue(fp['had_paste_junk'])
+        self.assertEqual(fp['len'], 10)
+        self.assertEqual(fp['prefix'], 'AQ.Ab8')
+        self.assertNotIn('RN6J', str(fp))
+
+    def test_fingerprint_reports_a_missing_key(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertTrue(ocr._key_fingerprint('GOOGLE_API_KEY')['missing'])
+
+
 class ProviderOrderTests(SimpleTestCase):
     """Gemini (bure) kwanza, OpenRouter (ya malipo) cha pili — ili mfumo
     usikae unanilipa kila kwanza wanapotaka kusoma wanafunzi kwa AI."""
