@@ -268,5 +268,97 @@ class AiScanPanelJsTests(unittest.TestCase):
                       'PDF ya scanner inapaswa kuingia kwenye njia ya OCR ya kawaida')
 
 
+class ScanAssetCacheBustingTests(unittest.TestCase):
+    """CSS/JS za kuingia lazima zibadilishwe kila mtu zinapobadilika.
+
+    WhiteNoise anasema kila kitu chini ya /static/ ni `immutable,
+    max-age=31536000` — browser hafungani kuuliza tena kwa mwaka. Hiyo
+    ni salama kwenye majina YALIYO-HASHED, lakini kwenye jina la kawaida
+    (`/static/results/styles.css`) URL hubaki pale pale na mtu hataona
+    mabadiliko mapya. Hii ndiyo iliyokuwa ikisemwa "deployment imefanikiwa
+    lakini bar ya maendeleo haionekani" kwenye ukurasa wa academic: ukurasa
+    ulikuwa na markup na moduli yake, lakini kivinjari kilikuwa kikiwa na
+    stylesheet ya zamani ambayo haikuwa na `.me-ai-*` hata kidogo.
+    """
+
+    maxDiff = None
+
+    def _base(self):
+        return PANEL_JS.parent.parent.parent.parent
+
+    def test_staticver_is_used_for_the_scan_assets(self):
+        base = self._base()
+        consumers = ('bulk_scoresheet_upload.html', 'marks_entry.html',
+                     'upload_form_students.html')
+        for tpl in consumers:
+            src = (base / 'templates' / 'results' / tpl).read_text()
+            for asset in ('results/js/ai_scan_panel.js',
+                          'results/js/scoresheet_scanner.js'):
+                wanted = "{% staticver '" + asset + "' %}"
+                self.assertIn(wanted, src,
+                              tpl + ' lazima ipakie moduli kwa staticver, si '
+                              '{% static %} (kiole hiki hakiwezi kubadilika)')
+            self.assertNotIn("{% static 'results/js/ai_scan_panel.js' %}", src,
+                             tpl + ' bado inapakia moduli bila cache-busting')
+
+    def test_stylesheet_is_cache_busted(self):
+        base = self._base()
+        src = (base / 'templates' / 'results' / 'base.html').read_text()
+        self.assertIn("{% staticver 'results/styles.css' %}", src,
+                      'styles.css lazima iwekwe ?v= (staticver), bila hiyo '
+                      'kivinjari kinashikilia stylesheet ya zamani kwa mwaka')
+        self.assertNotIn("{% static 'results/styles.css' %}?", src,
+                         '?v= iliyoandikwa kwa mkono haibadilishwi kwenye '
+                         'deploy mpya — hiyo ndiyo iliyosababisha tatizo')
+
+    def test_staticver_appends_the_files_own_mtime(self):
+        from django.template import Context, Template
+        out = Template("{% load staticver %}{% staticver 'results/styles.css' %}"
+                       ).render(Context({}))
+        self.assertIn('?v=', out)
+        mtime = int(os.path.getmtime(self._base() / 'static/results/styles.css'))
+        self.assertTrue(out.endswith('?v=%x' % mtime),
+                        f'?v= inapaswa kuwa mtime ya faili: {out}')
+
+    def test_staticver_survives_a_file_it_cannot_stat(self):
+        """Faili isiyopatikana kwenye disku haipaswi kuiangusha ukurasa
+        wote — tunarudi kwenye URL ya kawaida (hali ya zamani)."""
+        from unittest import mock
+
+        from results.templatetags import staticver as tag
+        tag._MEMO.clear()          # memo ya majaribio yaliyotangulia
+        with mock.patch.object(tag.finders, 'find', return_value=None):
+            out = tag.staticver('results/styles.css')
+        self.assertIn('/static/', out)
+        self.assertNotIn('?v=', out)
+
+
+class TemplateCommentTests(unittest.TestCase):
+    """`{# ... #}` ya Django ni ya mstari MOJA kama.
+
+    Ikiwa imeandikwa kwa mistari mingi, Django haisoma kama dokeo — regex
+    yake haipiti mistari. Sehemu iliyobaki inakuwa maandishi ya kawaida
+    kwenye HTML, kwa hiyo mtu anaona `{# Paneli ya AI — JUU kabisa...` kama
+    maandishi kwenye ukurasa (kilichotokea kwenye 'Pakia Scoresheets').
+    Maoni marefu yaliyokuwa yanayosomekana kama kichwa cha paneli.
+    """
+
+    def test_no_multiline_django_comments(self):
+        leaked = []
+        for path in sorted((self.results_templates()).rglob('*.html')):
+            for no, line in enumerate(path.read_text().splitlines(), 1):
+                idx = line.find('{#')
+                if idx != -1 and '#}' not in line[idx:]:
+                    leaked.append(f'{path.name}:{no}')
+        self.assertEqual(
+            leaked, [],
+            'Dokeo la {# #} linalozunguka mistari huu linaonekana kama '
+            'maandishi kwenye ukurasa — andika kwa {% comment %}: ' + ', '.join(leaked),
+        )
+
+    def results_templates(self):
+        return PANEL_JS.parent.parent.parent.parent / 'templates'
+
+
 if __name__ == '__main__':
     unittest.main()

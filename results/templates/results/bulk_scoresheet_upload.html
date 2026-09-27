@@ -1,5 +1,5 @@
 {% extends 'results/base.html' %}
-{% load static %}
+{% load static staticver %}
 {% block title %}PakiaScoresheets — {{ exam.name }} | School Results{% endblock %}
 
 {% block extra_css %}
@@ -205,11 +205,13 @@
 {% block content %}
 {# Renders the hidden csrfmiddlewaretoken input AND forces the csrftoken cookie to be set on this page — the uploads POST via fetch and were getting HTTP 403 without a token. #}
 <form style="display:none">{% csrf_token %}</form>
-{# Paneli ya AI — JUU kabisa ya ukurasa (float). Kitufe cha "Pakia
-   Zilizopo" kiko chini sana miongoni mwa masomo; bila hapa mtu
-   aliyobofya hakuona chochote. Hatua za paneli: Kupakia (asilimia
-   halisi) → AI inasoma (kurasa) → Kulinganisha (mistari) →
-   Imekamilika. #}
+{% comment %}
+Paneli ya AI — JUU kabisa ya ukurasa (float). Kitufe cha "Pakia
+Zilizopo" kiko chini sana miongoni mwa masomo; bila hapa mtu
+aliyobofya hakuona chochote. Hatua za paneli: Kupakia (asilimia
+halisi) → AI inasoma (kurasa) → Kulinganisha (mistari) →
+Imekamilika.
+{% endcomment %}
 {% include "results/includes/ai_scan_panel.html" with panel_id="bulkScanPanel" panel_subject="scoresheet" %}
 <!-- Hero -->
 <div class="bulk-hero">
@@ -438,8 +440,8 @@
 {# The style picker only affects the "Generate Results PDF" link (the final results output). The scan/upload widget is untouched. #}
 <script>window.PDF_PICKER_LANG = '{{ LANG }}';</script>
 <script src="{% static 'results/js/pdf_style_picker.js' %}"></script>
-<script src="{% static 'results/js/scoresheet_scanner.js' %}"></script>
-<script src="{% static 'results/js/ai_scan_panel.js' %}"></script>
+<script src="{% staticver 'results/js/scoresheet_scanner.js' %}"></script>
+<script src="{% staticver 'results/js/ai_scan_panel.js' %}"></script>
 <script>
 (() => {
   const LANG = '{{ LANG }}';

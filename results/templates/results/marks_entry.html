@@ -1,5 +1,5 @@
 {% extends 'results/base.html' %}
-{% load static %}
+{% load static staticver %}
 {% block title %}{% if LANG == 'sw' %}Jaza Alama — Marks Entry{% else %}Marks Entry{% endif %} | School Results{% endblock %}
 
 {% block extra_css %}
@@ -600,8 +600,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'results/js/scoresheet_scanner.js' %}"></script>
-<script src="{% static 'results/js/ai_scan_panel.js' %}"></script>
+<script src="{% staticver 'results/js/scoresheet_scanner.js' %}"></script>
+<script src="{% staticver 'results/js/ai_scan_panel.js' %}"></script>
 <script>
 // PDF download helper — fetches file and triggers download without leaving the page
 function _dlPdf(url) {

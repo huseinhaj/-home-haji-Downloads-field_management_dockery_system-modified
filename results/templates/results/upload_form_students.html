@@ -1,14 +1,16 @@
 {% extends "results/base.html" %}
-{% load static %}
+{% load static staticver %}
 {% load results_filters %}
 {% block title %}{% if LANG == 'sw' %}Orodha ya Wanafunzi{% else %}Student Roster{% endif %} | {{ class_prefix }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-  {# Paneli ya AI iko HAPA juu kabisa ya ukurasa, na JS inampa 'float'
-     (banda juu ya viewport): vikwamba vya "Piga Picha" viko hatua 4
-     chini, hivyo paneli iliokuwa ndani ya kadi haikuonekana pale mtu
-     anapobofya kifungu. #}
+  {% comment %}
+  Paneli ya AI iko HAPA juu kabisa ya ukurasa, na JS inampa 'float'
+  (banda juu ya viewport): vikwamba vya "Piga Picha" viko hatua 4
+  chini, hivyo paneli iliokuwa ndani ya kadi haikuonekana pale mtu
+  anapobofya kifungu.
+  {% endcomment %}
   {% include "results/includes/ai_scan_panel.html" with panel_id="rosterScanPanel" panel_subject="orodha" %}
   <h2 class="mb-1" style="color:var(--accent-600);">📋 {% if LANG == 'sw' %}Orodha ya Wanafunzi (Rosti ya Darasa){% else %}Student Roster (Class Lists){% endif %}</h2>
   <p class="text-muted mb-1" style="font-size:0.92rem;">
@@ -464,8 +466,8 @@
   {% endif %}
 </div>
 
-<script src="{% static 'results/js/scoresheet_scanner.js' %}"></script>
-<script src="{% static 'results/js/ai_scan_panel.js' %}"></script>
+<script src="{% staticver 'results/js/scoresheet_scanner.js' %}"></script>
+<script src="{% staticver 'results/js/ai_scan_panel.js' %}"></script>
 <script>
 function toggleSelectAll(el) {
   document.querySelectorAll('.student-cb').forEach(cb => { cb.checked = el.checked; });
