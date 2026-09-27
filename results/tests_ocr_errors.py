@@ -32,8 +32,30 @@ class AIErrorMessageTests(SimpleTestCase):
             RuntimeError('Gemini vision error 401: {"error":{"status":"UNAUTHENTICATED"}}'),
         )
         self.assertIn('OpenRouter: salio limeisha (402)', msg)
-        self.assertIn('Gemini: ufunguo wa API kwenye server si sahihi (401)', msg)
+        self.assertIn('Gemini: ufunguo wa Gemini si sahihi (401 UNAUTHENTICATED)', msg)
         self.assertNotIn('{', msg)
+
+    def test_permission_denied_is_not_reported_as_a_bad_key(self):
+        """403 = API haijasajiliwa / ufunguo wa Android pekee. Kuiita 'ufunguo
+        si sahihi' ilipelekea mpangilio akafuate ufunguo mpwa mara kwa mara
+        wakati suluhisho lake ni kuwasha API kwenye Google Cloud Console."""
+        msg = self._read(
+            RuntimeError('OpenRouter vision error 402: insufficient'),
+            RuntimeError('Gemini vision error 403: {"error":{"status":"PERMISSION_DENIED"}}'),
+        )
+        self.assertIn('403 PERMISSION_DENIED', msg)
+        self.assertIn('Generative Language API → ENABLE', msg)
+        self.assertNotIn('ufunguo wa Gemini si sahihi', msg)
+
+    def test_unknown_error_still_shows_googles_own_words(self):
+        """Kosa lisichojulikana hatakuwa 'hitilafu isiyotambulika: <code>'
+        tu — mpangilio anapaswa kuona namba halisi ya mtoa huduma."""
+        msg = self._read(
+            RuntimeError('weird'),
+            RuntimeError('Gemini vision error 500: {"error":{"status":"UNAVAILABLE"}}'),
+        )
+        self.assertIn('500 UNAVAILABLE', msg)
+        self.assertNotIn('is same 401', msg)
 
     def test_truncation_marker_survives_for_retry(self):
         msg = self._read(RuntimeError('OR_TRUNCATED'), RuntimeError('Read timed out'))

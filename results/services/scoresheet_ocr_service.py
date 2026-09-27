@@ -476,7 +476,10 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
                 logger.info("[ScoreSheetOCR] Gemini success")
                 return text
             except Exception as exc:
-                logger.warning("[ScoreSheetOCR] Gemini failed: %s", exc)
+                # Alama ya ufunguo (si siri yenyewe) kwenye log: mpangilio
+                # anaona kwa neno kama thamani iliyo kwenye Railway ni ile
+                # ile ya .env bila kuingiza siri kwenye ukurasa wa mwalimu.
+                logger.warning("[ScoreSheetOCR] Gemini failed: %s | ufunguo: %s", exc, _key_fingerprint("GOOGLE_API_KEY"))
                 errors.append(("Gemini", exc))
                 continue
 
@@ -526,23 +529,53 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
     raise RuntimeError(" | ".join(reasons)) from errors[-1][1]
 
 
+def _google_status(msg: str) -> str:
+    """Namba halisi na neno halisi lililotoka kwa Google (mfano '403
+    PERMISSION_DENIED'). Nini kimeandikwa hapa awali — 'weka ufunguo
+    sahihi (401)' — ni maneno yetu, si jibu la Google, kwa hiyo mwalimu
+    alikuwa anakomesha ujumbe ambayo Google haikuambiri hata kamwe."""
+    low = msg.lower()
+    for code in ("400", "401", "403", "404", "429", "500", "503"):
+        if f"error {code}" in low or f" {code}:" in low:
+            label = re.search(r'"status"\s*:\s*"([A-Z_]+)"', msg)
+            return f"{code} {label.group(1)}" if label else code
+    return ""
+
+
 def _explain_ai_error(exc) -> str:
-    """Kosa la mtoa huduma wa AI → sentensi fupi ya Kiswahili yenye suluhisho.
-    'OR_TRUNCATED' inabaki kwenye maandishi ili retry iendelee kuitambua."""
+    """Kosa la mtoa huduma wa AI → sentensi fupi ya Kiswahili yenye suluhisho,
+    ikiwa na namba halisi ya mtoa huduma ili mpangilio usiwe anaonyesha
+    dalili zake za kudhani. 'OR_TRUNCATED' inabaki kwenye maandishi ili
+    retry iendelee kuitambua."""
     msg = str(exc)
     low = msg.lower()
+
     if msg == "OR_TRUNCATED":
         return "jibu lilikatika katikati (OR_TRUNCATED)"
     if " 402" in msg or "insufficient credits" in low or "can only afford" in low:
         return "salio limeisha (402) — ongeza credits: openrouter.ai/settings/credits"
-    if " 401" in msg or " 403" in msg or "api key not valid" in low or "unauthenticated" in low:
-        return ("ufunguo wa API kwenye server si sahihi (401) — weka ufunguo sahihi "
-                "kwenye Railway → Variables")
-    if " 429" in msg or "quota" in low or "rate limit" in low:
-        return "kikomo cha matumizi kimefikiwa (429) — subiri dakika chache ujaribu tena"
+    if " 401" in msg or "unauthenticated" in low or "api key not valid" in low or "api_key_invalid" in low:
+        return ("ufunguo wa Gemini si sahihi (%s) — thamani ya GOOGLE_API_KEY kwenye "
+                "Railway → Variables inapaswa kuwa ile kwenye .env yako" % (_google_status(msg) or "401"))
+    if " 403" in msg or "permission_denied" in low:
+        return ("Google imekataa ufunguo (%s) — API haijaWashwa au ufunguo umefunguliwa "
+                "kwa programu ya Android/iOS pekee: Google Cloud Console → APIs & Services → "
+                "Generative Language API → ENABLE, kisha ondoa vikwazo vya ufunguo" % (_google_status(msg) or "403"))
+    if " 404" in msg or "not_found" in low:
+        return "mfumo wa Gemini haupo (%s) — GEMINI_MODEL inahitaji kubadilishwa" % (_google_status(msg) or "404")
+    if " 429" in msg or "quota" in low or "rate limit" in low or "resource_exhausted" in low:
+        return "kikomo cha matumizi kimefikiwa (%s) — subiri dakika chache ujaribu tena" % (_google_status(msg) or "429")
     if "timed out" in low or "timeout" in low:
         return "imechelewa kujibu (mtandao) — jaribu tena"
-    return msg[:160]
+    # 5xx = kosa upande wa mtoa huduma, si mpangilio wetu. Muisi 'isichojulikana'
+    # iliwafanya waangalimu kutaratibu ufunguo ambao hauhusiani na tatizo.
+    five_xx = re.search(r"error (5\d\d)", low)
+    if five_xx:
+        return ("seva ya %s imeshindwa (%s) — si kosa la mpangilio, jaribu tena "
+                "baada ya dakika chache" % ("Gemini", _google_status(msg) or five_xx.group(1)))
+    # Kosa lisichojulikana: onyesha sehemu ya jibu halisi (bila JSON nzito)
+    # ili mpangilio anaweza kuona namba halisi badala ya maneno yetu tu.
+    return "hitilafu isiyotambulika: " + re.sub(r"\s+", " ", msg)[:180]
 
 
 def check_ocr_health() -> dict:
