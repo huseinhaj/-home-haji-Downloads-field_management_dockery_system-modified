@@ -1,4 +1,5 @@
 {% extends "results/base.html" %}
+{% load results_filters %}
 {% block title %}{% if LANG == 'sw' %}Orodha ya Wanafunzi{% else %}Student Roster{% endif %} | {{ class_prefix }}{% endblock %}
 
 {% block content %}
@@ -20,10 +21,10 @@
     {% for val, lbl in class_options %}
     <li class="nav-item">
       <a class="nav-link {% if selected_form == val %}active{% endif %}"
-         href="?form={{ val }}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}"
+         href="?form={{ val }}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}#form-content"
          style="{% if selected_form == val %}background:var(--accent-600);color:#fff;{% endif %}">
         {{ lbl }}
-        <span class="badge bg-secondary ms-1">{{ form_counts|default_if_none:"" }}</span>
+        {% with tab_count=form_counts|get_item:val %}{% if tab_count != '' %}<span class="badge bg-secondary ms-1">{{ tab_count }}</span>{% endif %}{% endwith %}
       </a>
     </li>
     {% endfor %}
@@ -33,7 +34,7 @@
   <div class="row mb-4">
     {% for f, cnt in form_counts.items %}
     <div class="col-md-2 col-4 mb-2">
-      <a href="?form={{ f }}" class="text-decoration-none">
+      <a href="?form={{ f }}#form-content" class="text-decoration-none">
         <div class="card text-center {% if selected_form == f %}border-primary shadow{% else %}border-light{% endif %}">
           <div class="card-body py-2 px-1">
             <div class="fw-bold" style="color:{% if selected_form == f %}var(--accent-600){% else %}var(--ink-500){% endif %};">{{ class_prefix }} {{ f }}</div>
@@ -47,6 +48,11 @@
   </div>
 
   {% if selected_form %}
+  <!-- Kichwa cha maudhui ya darasa iliyochaguliwa: viungo vya tabs/kadi
+       vinaishia kwenye #form-content ili kuingia hapa badala ya kurukia
+       juu, kwa kuwa ukurasa unapakuliwa upya (mfano ?form=3) na kivinjari
+       kinaruka hadi mawingu ya ukurasa bila kiakisi. -->
+  <div id="form-content">
   <!-- Upload Section -->
   <div class="card mb-4 shadow-sm">
     <div class="card-header" style="background:var(--accent-600);color:#fff;">
@@ -153,12 +159,13 @@
           {% endfor %}
         </select>
         {% if selected_subject %}
-        <a href="?form={{ selected_form }}" class="btn btn-sm btn-outline-secondary">✕ Clear Filter</a>
+        <a href="?form={{ selected_form }}#form-content" class="btn btn-sm btn-outline-secondary">✕ Clear Filter</a>
         {% endif %}
         <small class="text-muted">{{ students|length }} {% if LANG == 'sw' %}wanafunzi{% else %}students{% endif %}</small>
       </form>
     </div>
   </div>
+  </div><!-- /#form-content -->
   {% endif %}
 
   <!-- Students Table -->

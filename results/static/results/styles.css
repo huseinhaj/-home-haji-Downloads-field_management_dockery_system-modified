@@ -1417,3 +1417,21 @@ body { overflow-x: clip; }
 .sl-hero .sub {
   color: #6b7280 !important;
 }
+
+/* ---- Kifonyicho (anchor) na kijikapu ukurasa --------------------------
+   Kivinjari hapo kinapotafuta #kitufe huu huingiza ukurasa mpya kwenye
+   #kitufe, lakini .masthead ni sticky (~76px) — hivyo kichwa cha maudhui
+   kinafichwa chini ya pembe, na mtumiaji anadhani "hakuna kilichotokea".
+   scroll-margin-top inaacha nafasi ya masthead. Inagusa layout kwa
+   njia isiyoonekana: inaathiri tu mahali kivinjari kinaposimama. */
+html {
+  scroll-behavior: smooth;
+}
+[id] {
+  scroll-margin-top: 90px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

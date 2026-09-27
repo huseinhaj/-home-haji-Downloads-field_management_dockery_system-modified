@@ -577,7 +577,12 @@
       var f = this.dataset.form;
       nav.querySelectorAll('.form-nav-btn').forEach(function (b) { b.classList.toggle('active', b === btn); });
       cards.forEach(function (c) { c.hidden = (c.dataset.form !== f); });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Siku za awali hapa kulikuwa na window.scrollTo({ top: 0 }) — kila
+      // kitufe cha form kilirukia juu kabisa, kwenye sehemu ya hero yenye
+      // vitufe 8, na kichwa cha kadi iliyochaguliwa kilibaki chini ya
+      // mistari mingi. Tunayofanya sasa ni kuiweka nav mwenyewe juu, ili
+      // vitufe vya form na kadi ya yake vionekane pamoja mara moja.
+      nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
 })();
@@ -592,6 +597,9 @@ document.querySelectorAll('.stream-tab').forEach(tab => {
     this.classList.add('active');
     const panel = document.getElementById(targetId);
     if (panel) panel.classList.add('active');
+    // Stream inayofuata inaweza kuwa chini ya kioo cha skrini — mtumiaji
+    // hubaki akitafuta panel inayoingia, bila ishara yoyote ya mabadiliko.
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 });
 
