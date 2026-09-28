@@ -36,6 +36,9 @@
       <span data-ai="clock">0s</span>
       <small>{% if LANG == 'sw' %}muda{% else %}elapsed{% endif %}</small>
     </div>
+    <button type="button" class="me-ai-close" data-ai="close"
+            title="{% if LANG == 'sw' %}Funga{% else %}Close{% endif %}"
+            aria-label="{% if LANG == 'sw' %}Funga paneli ya AI{% else %}Close AI panel{% endif %}">✕</button>
   </div>
   <div class="me-ai-track"><div class="me-ai-bar" data-ai="bar"></div></div>
   <div class="me-ai-ring-read" data-ai="ringLabel" hidden><span data-ai="pct">0%</span></div>

@@ -445,6 +445,55 @@ def _normalise_rows(data: list) -> list:
 	]
 
 
+def _wrong_document_message(text: str):
+    """AI ikirudi maneno badala ya JSON, mara nyingi hiyo ni sababu
+    mtu alipakia karatasi isiyo scoresheet — kwa kawaida marking
+    scheme. Bezwe hapo awali kosa lilikuwa "AI haikurudisha muundo
+    sahihi wa JSON" + nusu ya maneno ya AI kwa Kiingereza, ambayo
+    haikuwa na maana kwa mwalimu.
+
+    Tunarudisha ujumbe wa Kiswahili wenye maelekezo, au None kama
+    jibu si "karatasi isiyo sahihi" bali tatizo lingine.
+    """
+    if not text:
+        return None
+    low = text.lower()
+
+    # Alama za kipekee za aina ya karatasi iliyo onekana, ili
+    # tumbuze mtu kile alichopakia hasa.
+    found = ""
+    if "marking scheme" in low or "marking guide" in low or "answer key" in low:
+        found = "iliyoonekana ni **marking scheme** (mpango wa kuangalia majibu)"
+    elif any(p in low for p in (
+        "not a scoresheet", "not the scoresheet", "does not appear to be a scoresheet",
+        "does not contain a scoresheet", "is not a score sheet",
+    )):
+        found = "haionekani kuwa scoresheet"
+    elif any(p in low for p in (
+        "does not contain student names", "no student names",
+        "not contain a list of students", "does not appear to be a list of students",
+    )):
+        found = "haionekani kuwa ina majina ya wanafunzi"
+    elif any(p in low for p in (
+        "cannot extract", "can't extract", "unable to extract", "cannot determine",
+        "i'm sorry", "i am sorry", "as an ai",
+    )):
+        found = "AI haikuweza kutoa jina na alama za wanafunzi kutoka"
+
+    if not found:
+        return None
+
+    return (
+        f"Siyo scoresheet — {found}.\n\n"
+        "Pakia **karatasi ya alama**: kila mwanafunzi awe na jina lake kando ya "
+        "alama yake, mfano:\n"
+        "  1. JOHN DOE ............ 85\n"
+        "  2. MARY JONES ......... 72\n\n"
+        "Marking scheme (mpango wa kuangalia majibu), maswali, au ukurasa wa "
+        "maelekezo hayatoshiweza kusomwa hapa — AI inahitaji jina + alama."
+    )
+
+
 def _extract_json_array(text: str) -> list:
     if not text:
         raise ScoreSheetOCRError("AI haikurudisha jibu.")
@@ -522,6 +571,10 @@ def _extract_json_array(text: str) -> list:
                 fallback_rows.append({"name": name, "score": score})
     if fallback_rows:
         return fallback_rows
+
+    wrong_doc = _wrong_document_message(text)
+    if wrong_doc:
+        raise ScoreSheetOCRError(wrong_doc)
 
     raise ScoreSheetOCRError(
         f"AI haikurudisha muundo sahihi wa JSON.\n"

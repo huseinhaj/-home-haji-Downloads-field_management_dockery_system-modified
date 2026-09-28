@@ -57,10 +57,46 @@
         bar: this.root.querySelector('[data-ai="bar"]'),
         steps: this.root.querySelector('[data-ai="steps"]'),
         log: this.root.querySelector('[data-ai="log"]'),
+        close: this.root.querySelector('[data-ai="close"]'),
       };
       if (this.el.ring) this.el.ring.style.setProperty('--pct', 0);
+      if (this.el.close) {
+        var self = this;
+        this.el.close.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          self.close();
+        });
+      }
     }
   }
+
+  /* ── Kufunga paneli ───────────────────────────────────────────────
+   * Bezwe hapo awali paneli ilibaki milele baada ya kushindwa
+   * ("AI could not read this") — mtu alikuwa lazima a-refresh ukurasa
+   * ili kuiondoa. Sasa kitufe cha ✕ (na Escape) kuna kuifunga.
+   * close() pia kuanzisha upya paneli ili scan inayofuata isitumie
+   * mzigo wa zilizopita. */
+  AiScanPanel.prototype.close = function () {
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    if (!this.root) return;
+    this.root.hidden = true;
+    this.root.classList.remove('is-done', 'is-error');
+    this.root.dataset.busy = '0';
+    delete this.root.dataset.upload;
+    this.idx = 0;
+    this.startedAt = 0;
+    if (this.el && this.el.bar) this.el.bar.style.width = '0%';
+    if (this.el && this.el.orb) this.el.orb.textContent = '🤖';
+    if (this.el && this.el.log) this.el.log.innerHTML = '';
+  };
+
+  /* Onyesha paneli tena (inaitwa na start() na wa mtu anayefanya
+   * scan mwingine baada ya kui funga). */
+  AiScanPanel.prototype.reopen = function () {
+    if (!this.root) return;
+    this.root.hidden = false;
+  };
 
   /* ── Mzunguko wa asilimia ────────────────────────────────────────
    * Kipande kimoja kinajibu: byte wakati wa kupakia, kurasa wakati
@@ -120,6 +156,7 @@
   AiScanPanel.prototype.start = function (opts) {
     opts = opts || {};
     if (!this.root) return;
+    this.reopen();
     this.root.classList.add('on');
     this.root.classList.remove('is-error', 'is-done');
     this.root.dataset.busy = '1';

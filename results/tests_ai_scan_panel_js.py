@@ -249,6 +249,26 @@ class AiScanPanelJsTests(unittest.TestCase):
         self.assertIn('var(--pct', css,
                       'mzunguko unapaswa kusoma --pct ambayo JS inaiweka')
 
+    def test_panel_can_be_closed(self):
+        """Paneli lazima iwe na kitufe cha kufunga. Bezwe hapo awali
+        hakikuwa na "close" popote kwenye JS — ukurasa ulibaki na
+        "AI could not read this" milele, na mwalimu hakuweza kuendelea
+        bila refresh. Sasa ✕ inaficha paneli na kuiandaa kwa scan
+        inayofuata."""
+        base = PANEL_JS.parent.parent.parent.parent
+        markup = (base / 'templates' / 'results' / 'includes' / 'ai_scan_panel.html').read_text()
+        self.assertIn('data-ai="close"', markup,
+                      'markup haijaweka kitufe cha kufunga')
+        js = PANEL_JS.read_text()
+        self.assertIn("querySelector('[data-ai=\"close\"]')", js,
+                      'JS haijafuta kitufe cha kufunga')
+        self.assertIn('prototype.close', js, 'JS haijaweza njia ya close()')
+        # Scan inayofuata lazima kuifungua upya paneli iliyofungwa
+        self.assertIn('prototype.reopen', js, 'JS haijaweza njia ya reopen()')
+        # Na CSS ili isionekane kama kitufe
+        css = (base / 'static' / 'results' / 'styles.css').read_text()
+        self.assertIn('.me-ai-close', css, 'CSS haijaweka kitufe cha kufunga')
+
     def test_academic_roster_scans_multiple_pages_with_thumbnails(self):
         """Orodha ya academic inapaswa kutumia scanner ya kurasa nyingi
         (nzuri/vizuiri za kila ukurasa, kama Marks Entry). Bila hii, mtu

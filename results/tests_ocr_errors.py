@@ -372,3 +372,51 @@ class OcrProgressReportingTests(SimpleTestCase):
         self.assertEqual(sorted(d for _, d, _ in progress), [0, 1, 2, 3])
         self.assertEqual({t for _, _, t in progress}, {3})
         self.assertEqual({s for s, _, _ in progress}, {'reading'})
+
+
+class WrongDocumentTests(SimpleTestCase):
+    """Mtu anakaratasi isiyo scoresheet (kwa kawaida marking scheme)
+    lazima apate ujumbe unaofaa — si "AI haikurudisha muundo sahihi wa
+    JSON" + nusu ya maneno ya AI kwa Kiingereza, ambayo haikuwa na maana
+    kwa mwalimu."""
+
+    def _err_for(self, ai_text):
+        with self.assertRaises(ocr.ScoreSheetOCRError) as ctx:
+            ocr._extract_json_array(ai_text)
+        return str(ctx.exception)
+
+    def test_marking_scheme_gets_a_plain_language_error(self):
+        msg = self._err_for(
+            "I'm sorry, but the image you provided does not appear to be a "
+            "scoresheet with student names and scores. It looks like a "
+            "handwritten \"Marking Scheme\" for a test, showing simple math "
+            "problems and their answers."
+        )
+        self.assertIn('marking scheme', msg)
+        self.assertIn('Siyo scoresheet', msg)
+        # Haipaki kelele za AI kwa Kiingereza
+        self.assertNotIn("I'm sorry", msg)
+        self.assertNotIn('Jibu la AI', msg)
+
+    def test_equations_instead_of_names_are_named_as_the_cause(self):
+        msg = self._err_for(
+            "I'm sorry, but the image you provided does not contain a "
+            "scoresheet. It contains handwritten mathematical equations and "
+            "symbols, not a table with row numbers, student names, and scores."
+        )
+        self.assertIn('Siyo scoresheet', msg)
+        self.assertNotIn('Jibu la AI', msg)
+
+    def test_the_error_says_what_a_scoresheet_should_look_like(self):
+        msg = self._err_for(
+            "I'm sorry, the image does not appear to be a scoresheet."
+        )
+        # Mwanafunzi anapaswa kujua hasa nini apakie
+        self.assertIn('Pakia', msg)
+        self.assertIn('JOHN DOE', msg)
+
+    def test_a_refusal_without_a_document_clue_stays_the_generic_error(self):
+        # "Total students counted: 3" si ukwuhofu wa karatasi — ni
+        # uumbizaji mbaya. Hatutaki kudai alikuwa alipakia nini.
+        msg = self._err_for("Total students counted: 3. The overall average is 74.5.")
+        self.assertIn('Jibu la AI', msg)

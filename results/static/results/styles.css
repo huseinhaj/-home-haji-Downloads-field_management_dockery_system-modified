@@ -1532,6 +1532,22 @@ html {
 }
 .me-ai-clock small { display: block; font-size: 0.68rem; font-weight: 700; color: #bfe3cb; text-transform: uppercase; letter-spacing: 1px; }
 
+/* Kitufe cha kufunga paneli. Ukubwa wa kipekee ili kusi occupy
+ * nafasi ya saa, lakini mwingiliano mkubwa kwa vidole (40px) —
+ * watu hufanya vibaya kwenye simu. */
+.me-ai-close {
+  flex: 0 0 auto; align-self: flex-start;
+  width: 40px; height: 40px; margin-left: 0.5rem;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff; font-size: 1.25rem; line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%; cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.me-ai-close:hover { background: #D9A441; color: #1b1b1b; transform: rotate(90deg); }
+.me-ai-close:focus-visible { outline: 3px solid #D9A441; outline-offset: 2px; }
+
 .me-ai-track {
   position: relative;
   height: 14px;
