@@ -348,7 +348,7 @@ class ExamResult(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-    score = models.PositiveIntegerField(null=True, blank=True,
+    score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True,
         help_text="Alama ya mwanafunzi. None = alikuwa absent (X kwenye scoresheet)."
     )
     is_absent = models.BooleanField(default=False,
@@ -392,7 +392,7 @@ class ProcessedResult(models.Model):
 
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    total_score = models.PositiveIntegerField()
+    total_score = models.DecimalField(max_digits=8, decimal_places=2)
     average_score = models.DecimalField(max_digits=5, decimal_places=2)
     # NULL = mwanafunzi hapangwi (ABS — hakufanya mtihani wowote). INC na
     # madivisheni mengine yanapangwa kawaida; ABS huishia mwisho wa orodha.

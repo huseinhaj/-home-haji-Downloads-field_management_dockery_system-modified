@@ -126,7 +126,7 @@
                   {% csrf_token %}
                   <label style="font-size:.85rem;font-weight:600;">Alama:</label>
                   <input type="number" name="score" min="0" value="{{ sheet.score|default_if_none:0 }}"
-                         style="width:80px;padding:6px;border:1px solid #ccc;border-radius:4px;margin:4px 0 10px;">
+                         style="width:80px;padding:6px;border:1px solid #ccc;border-radius:4px;margin:4px 0 10px;" step="any">
                   {% if not sheet.student %}
                   <label style="font-size:.85rem;font-weight:600;">Mwanafunzi:</label>
                   <select name="student" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;margin:4px 0 10px;">

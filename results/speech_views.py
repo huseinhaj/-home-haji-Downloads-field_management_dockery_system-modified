@@ -481,10 +481,11 @@ def voice_entry_save_score(request):
     if not all([exam_id, subject_id, student_id, score is not None]):
         return JsonResponse({'error': 'Taarifa zote zinahitajika: exam_id, subject_id, student_id, score.'}, status=400)
 
-    try:
-        score = int(score)
-    except (TypeError, ValueError):
-        return JsonResponse({'error': f'Alama "{score}" si nambari sahihi.'}, status=400)
+    from .utils import parse_mark as _parse_mark
+    _parsed = _parse_mark(score)
+    if _parsed is None:
+        return JsonResponse({'error': f'Alama "{score}" si nambari sahihi (0-100).'}, status=400)
+    score = _parsed
 
     if score < 0 or score > 100:
         return JsonResponse({'error': f'Alama {score} ni nje ya kipimo 0-100.'}, status=400)

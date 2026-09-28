@@ -88,7 +88,7 @@
             <tr>
               <td>{{ er.subject.name }}</td>
               <td>
-                <input type="number" min="0" max="100" step="1"
+                <input type="number" min="0" max="100" step="any"
                        class="form-control form-control-sm score-input"
                        name="score_{{ er.pk }}"
                        value="{% if er.score is not None %}{{ er.score }}{% endif %}"

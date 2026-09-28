@@ -11,6 +11,8 @@ Mzunguko:
 """
 from django.db import models
 
+from .json_utils import ScoreJSONEncoder
+
 from .models import Exam, FormStudent, Subject
 
 
@@ -184,8 +186,11 @@ class BulkUploadJob(models.Model):
         max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True,
     )
     error = models.CharField(max_length=300, blank=True)
-    # Matokeo ya OCR/preview (matched/unmatched rows) kama yatakapokuwa tayari
-    preview = models.JSONField(default=dict, blank=True)
+    # Matokeo ya OCR/preview (matched/unmatched rows) kama yatakapokuwa tayari.
+    # encoder=ScoreJSONEncoder kwa sababu alama sasa ni Decimal (10.60).
+    # JSONField chake default huitumii Decimal na ingekosha TypeError
+    # ndani ya background thread — job ingebaki "Inasoma" milele.
+    preview = models.JSONField(default=dict, blank=True, encoder=ScoreJSONEncoder)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

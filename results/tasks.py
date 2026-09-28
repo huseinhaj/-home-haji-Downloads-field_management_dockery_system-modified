@@ -16,7 +16,7 @@ from celery import shared_task
 from django.core.cache import cache
 from django.core.files.storage import default_storage
 
-from .models import ExamResult, Student, Subject, SubjectSubmission
+from .models import Exam, ExamResult, Student, Subject, SubjectSubmission
 from .services.scoresheet_ocr_service import ScoreSheetOCRError, extract_scores_from_document
 
 logger = logging.getLogger(__name__)
@@ -289,6 +289,20 @@ def process_roster_scan_task(self, storage_path, progress_key=None):
     return {'students': students}
 
 
+def _ordered_roster(roster_ids):
+    """Roster katika mpangilio unaotarajiwa wa kuchapisha.
+
+    Namba ya "Na." kwenye scoresheet ni nafasi katika orodha hii, hivyo
+    mpangilio lazima uwe wa tulivu — sio ulio arbitrary tuvao ya
+    database. Tunapanga kwa jina la mwisho kwanza (nyumbani scoresheets
+    huchapishwa kwa majibu), kisha jina la kwanza, kisha ID ili kama
+    majina yanafanana mpangilio uwe na uhakika.
+    """
+    return list(
+        Student.objects.filter(id__in=roster_ids).order_by('last_name', 'first_name', 'id')
+    )
+
+
 @shared_task(bind=True, time_limit=360, soft_time_limit=340)
 def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids, preview_only=False, progress_key=None):
     """Background task: OCR a scoresheet, match students, save results,
@@ -306,9 +320,8 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
     kwa hivyo hapa tunatumia report_ocr_stage moja kwa moja badala ya
     task.update_state ambayo hafanyi kazi bila broker."""
     from django.utils import timezone
-    from .services.speech_submission_service import match_rows_to_roster_exclusive
+    from .services.speech_submission_service import match_rows_to_roster_by_position
     from .services.upload_processing_service import recompute_processed_results_for_exam
-    from .views import _parse_roster_line, _save_student
 
     _stage = make_stage_reporter(self, progress_key, namespace='bulk_upload_ocr')
 
@@ -324,32 +337,53 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
             logger.warning("bulk_upload: could not delete temp file %s", storage_path, exc_info=True)
 
     # Match extracted names to roster students
-    roster_students = list(Student.objects.filter(id__in=roster_ids))
-    exam = ExamResult.objects.filter(exam_id=exam_id).select_related('exam').first()
-    if not exam:
+    #
+    # Mpangilio wa kwanza: kama scoresheet imeandikwa na mfumu huu
+    # ("Na." = namba ya mwanafunzi kwa mpangilio wa kuchapisha), namba
+    # hiyo ni kielelezo kinachotuaminia kuliko jina. Lakini kwenye
+    # bulk upload tunazingatia majina pia — ili mtu asipate alama ya
+    # mwanafunzi mwingine kwa sababu AI imesoma jina vibaya.
+    roster_students = _ordered_roster(roster_ids)
+    # Mtihani hutafutwa kwenye Exam moja kwa moja — SI kwenye ExamResult.
+    # Kumbuka: kwanja hapa kiliangalie ExamResult ya kwanza, mtihani
+    # mpya (ambapo bado hakuna alama zozote) ungependelea kuonekana
+    # kuwa "haupatikana" kabisa hata kama upo kwenye database.
+    exam_obj = Exam.objects.filter(id=exam_id).first()
+    if not exam_obj:
         return {'error': 'Mtihani haupatikana.'}
-    exam_obj = exam.exam
     subject = Subject.objects.filter(id=subject_id).first()
     if not subject:
         return {'error': 'Somo halipatikani.'}
 
-    # Blank rows (student on the sheet but no mark written) carry no score
-    # to save — drop them here rather than trying to match/save them.
-    extracted_rows = [r for r in extracted_rows if not r.get('blank')]
+    # Tahadhari za mistari iliyokosewa kabisa (namba ya "Na." iliyosoma
+    # mara kumi, au iliyokuwa haipo). Bila hizi mtu hana njia ya
+    # kujua namba gani haikusomwa.
+    row_warnings = _row_number_warnings(extracted_rows)
 
-    # Exclusive matching: each roster student can only be claimed by ONE
-    # row, so two similarly-named students (same surname, or a name OCR
-    # misread as another student's) can't both collapse onto the same
-    # person — see match_rows_to_roster_exclusive's docstring.
     _stage('matching', rows=len(extracted_rows))
-    assignments, _unmatched_indices = match_rows_to_roster_exclusive(
-        extracted_rows, roster_students, threshold=0.80,
+    assignments, _unresolved = match_rows_to_roster_by_position(
+        extracted_rows, roster_students,
     )
 
     matched = []
     unmatched = []
     for row_index, row in enumerate(extracted_rows):
         is_absent = row.get('is_absent', False)
+        # Mstari ambao AI haukuweza kusoma alama yake (grada ya herufi,
+        # au namba isiyo maana). Mzigo huu unaonyeshwa kwa mwalimu ili
+        # asemewe mwenyewe — hatupangi alama ya mtu mwingine.
+        if row.get('unreadable'):
+            logger.warning("[BulkUpload] AI could not read the mark for '%s' (row %s, raw=%r) — left blank for the officer",
+                row['raw_name'], row.get('row'), row.get('raw_mark'))
+            unmatched.append({
+                'raw_name': row['raw_name'], 'score': None, 'is_absent': False,
+                'unreadable': True, 'raw_mark': row.get('raw_mark', ''),
+            })
+            continue
+        # Mwanafunzi aliacha seli tupu — hakuna alama ya kuhifadhi, lakini
+        # mstari unabaki ili vipimo vya "Na." vizingatie.
+        if row.get('blank'):
+            continue
         assignment = assignments.get(row_index)
         if assignment:
             student, confidence = assignment
@@ -365,22 +399,15 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
                 'confidence': round(confidence, 4),
             })
             continue
-        parsed = _parse_roster_line(row['raw_name'])
-        if not parsed:
-            logger.warning("[BulkUpload] UNMATCHED '%s' score=%s absent=%s",
-                row['raw_name'], row['score'], is_absent)
-            unmatched.append({'raw_name': row['raw_name'], 'score': row['score'], 'is_absent': is_absent})
-            continue
-        first, middle, last, gender = parsed
-        saved = _save_student(first, middle, last, gender)
-        matched.append({
-            'student_id': saved['id'],
-            'student_name': saved['name'],
-            'score': row['score'],
-            'is_absent': is_absent,
-            'raw_name': row['raw_name'],
-            'confidence': 0.0,
-        })
+        # Hatukuweza kusikia mwanafunzi wa mstari huu kwa uhakika. Tuna
+        # mshauri mtu asichaguliwe: mwalimu atashughulika. Hatumii
+        # jina lililosomewa kuunda mwanafunzi mpya hapa — kwenye
+        # hali ya kuwaga, mfumo huingiza wanafunzi wasio waonekana
+        # kama "wahisi" wana alama za watu wengine.
+        logger.warning("[BulkUpload] No confident match for '%s' (row %s, score=%s) — left for the officer",
+            row['raw_name'], row.get('row'), row['score'])
+        unmatched.append({'raw_name': row['raw_name'], 'score': row['score'], 'is_absent': is_absent})
+        continue
 
     # ── Preview mode: return data without saving ──────────────────────
     if preview_only:
@@ -402,6 +429,10 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
             'unmatched': unmatched,
             'roster': roster_list,
             'missing': missing,
+            # Tahadhari: mistari iliyosomwa mara kumi, au iliyokuwa
+            # haipo. Bila hizi mwalimu hana njia ya kujua namba gani
+            # haikusomwa na alama zimepelekwa wapi.
+            'warnings': row_warnings,
         }
 
     # ── Save mode: write to DB ───────────────────────────────────────

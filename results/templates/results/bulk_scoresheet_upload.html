@@ -1012,7 +1012,7 @@ Imekamilika.
       const isAbsent = absentCheck ? absentCheck.checked : false;
       let score = null;
       if (!isAbsent && scoreInput && scoreInput.value !== '') {
-        const parsed = parseInt(scoreInput.value);
+        const parsed = parseFloat(scoreInput.value);
         if (!isNaN(parsed)) score = parsed;
       }
       out.push({ name: name, score: score, is_absent: isAbsent, status: tr.dataset.status || 'matched' });
@@ -1076,6 +1076,18 @@ Imekamilika.
       + (LANG === 'sw' ? '<br>⚠️ Tafadhali kagua alama kabla ya kuhifadhi. Bonyeza kwenye alama au somo la mwanafunzi kurekebisha.'
         : '<br>⚠️ Please review scores before saving. Click on score or student name to correct.');
 
+    // Tahadhari za seriveri: mistari iliyosomwa mara kumi, au iliyokuwa
+    // haipo. Hizi ndizo zenyewe zinazopeleka alama za watu wengine
+    // kwenye mistari sahihi — mwalimu lazima aone.
+    if (preview.warnings && preview.warnings.length) {
+      info.innerHTML += '<div style="margin-top:0.5rem;padding:0.45rem 0.6rem;background:#fff4e5;'
+        + 'border-left:3px solid #D9A441;border-radius:3px;font-size:0.78rem;color:#7a4f00;">'
+        + (LANG === 'sw' ? '<strong>⚠️ Angalia kwa makini:</strong>' : '<strong>⚠️ Check carefully:</strong>')
+        + '<ul style="margin:0.25rem 0 0 1rem;padding:0;">'
+        + preview.warnings.map(w => '<li>' + escapeHtml(w) + '</li>').join('')
+        + '</ul></div>';
+    }
+
     tbody.innerHTML = '';
 
     // Helper: build student options HTML
@@ -1110,7 +1122,7 @@ Imekamilika.
           <td style="color:#888;font-size:0.75rem;">${idx + 1}</td>
           <td style="font-style:italic;color:#666;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(row.raw_name || (LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]'))}</td>
           <td><select class="student-select" data-idx="${idx}">${buildStudentOptions(row.student_id)}</select></td>
-          <td><input type="number" class="score-input" min="0" max="100" value="${scoreVal}" data-idx="${idx}"${scoreDisabled}></td>
+          <td><input type="number" class="score-input" min="0" max="100" value="${scoreVal}" data-idx="${idx}"${scoreDisabled} step="any"></td>
           <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="${idx}"${absentChecked}></td>
           <td><span class="confidence ${confClass}">${confLabel}</span></td>
           <td style="white-space:nowrap;">
@@ -1133,14 +1145,27 @@ Imekamilika.
         const uAbsent = row.is_absent || false;
         const uAbsentChecked = uAbsent ? ' checked' : '';
         const uScoreDisabled = uAbsent ? ' disabled' : '';
-        const uScoreVal = uAbsent ? '' : row.score;
+        const uScoreVal = uAbsent ? '' : (row.score === null || row.score === undefined ? '' : row.score);
+        // AI haikuweza kusoma alama hii (grada ya herufi, namba isiyo
+        // maana). Tunamwambia mwalimu alama inayoonekana ili asemewe
+        // mwenyewe — hatujiweza kwa kubahatisha.
+        const uWhy = row.unreadable
+          ? (LANG === 'sw'
+              ? 'AI haikusoma alama — ilikuwa "' + escapeHtml(row.raw_mark || '?') + '"'
+              : 'AI could not read the mark — it was "' + escapeHtml(row.raw_mark || '?') + '"')
+          : (LANG === 'sw'
+              ? 'Jina halikughitani na mwanafunzi wowote kwa uhakika'
+              : 'Name did not confidently match any student');
+        const uBadge = row.unreadable
+          ? (LANG === 'sw' ? 'Chagua mwanafunzi' : 'Pick student')
+          : (LANG === 'sw' ? 'Haijaunganishwa' : 'Unmatched');
         tr.innerHTML = `
           <td style="color:#888;font-size:0.75rem;">${globalIdx + 1}</td>
           <td style="font-style:italic;color:#856404;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(row.raw_name || '')}</td>
           <td><select class="student-select" data-idx="${globalIdx}">${buildStudentOptions('')}</select></td>
-          <td><input type="number" class="score-input" min="0" max="100" value="${uScoreVal}" data-idx="${globalIdx}"${uScoreDisabled}></td>
+          <td><input type="number" class="score-input" min="0" max="100" value="${uScoreVal}" data-idx="${globalIdx}"${uScoreDisabled} step="any"></td>
           <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="${globalIdx}"${uAbsentChecked}></td>
-          <td><span class="confidence low">${LANG === 'sw' ? 'Haijaunganishwa' : 'Unmatched'}</span></td>
+          <td><span class="confidence low" title="${escapeHtml(uWhy)}">${uBadge}</span></td>
           <td style="white-space:nowrap;">
             <button class="row-insert" data-action="insert-after" title="${LANG === 'sw' ? 'Ongeza chini' : 'Insert below'}">+</button>
             <button class="row-remove" data-idx="${globalIdx}" title="${LANG === 'sw' ? 'Ondoa' : 'Remove'}">&#x2715;</button>
@@ -1167,7 +1192,7 @@ Imekamilika.
           <td style="color:#888;font-size:0.75rem;">${globalIdx + 1}</td>
           <td style="font-style:italic;color:#8a6d1a;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.name)}</td>
           <td><select class="student-select" data-idx="${globalIdx}">${buildStudentOptions(s.id)}</select></td>
-          <td><input type="number" class="score-input" min="0" max="100" value="" data-idx="${globalIdx}"></td>
+          <td><input type="number" class="score-input" min="0" max="100" value="" data-idx="${globalIdx}" step="any"></td>
           <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="${globalIdx}"></td>
           <td><span class="confidence low">${LANG === 'sw' ? 'Hakuna alama' : 'No mark found'}</span></td>
           <td style="white-space:nowrap;">
@@ -1249,7 +1274,7 @@ Imekamilika.
       <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">${rowNum}</td>
       <td style="font-style:italic;color:#1a7a3b;">${LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]'}</td>
       <td><select class="student-select">${opts}</select></td>
-      <td><input type="number" class="score-input" min="0" max="100" value=""></td>
+      <td><input type="number" class="score-input" min="0" max="100" value="" step="any"></td>
       <td style="text-align:center;"><input type="checkbox" class="absent-check"></td>
       <td><span class="confidence" style="background:#e6f7ec;color:#1a7a3b;">${LANG === 'sw' ? 'Mpya' : 'New'}</span></td>
       <td style="white-space:nowrap;">
@@ -1454,7 +1479,7 @@ Imekamilika.
       <td style="color:#1a7a3b;font-size:0.75rem;font-weight:700;">${rowNum}</td>
       <td style="font-style:italic;color:#1a7a3b;">${LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]'}</td>
       <td><select class="student-select">${opts}</select></td>
-      <td><input type="number" class="score-input" min="0" max="100" value=""></td>
+      <td><input type="number" class="score-input" min="0" max="100" value="" step="any"></td>
       <td style="text-align:center;"><input type="checkbox" class="absent-check"></td>
       <td><span class="confidence" style="background:#e6f7ec;color:#1a7a3b;">${LANG === 'sw' ? 'Mpya' : 'New'}</span></td>
       <td style="white-space:nowrap;">

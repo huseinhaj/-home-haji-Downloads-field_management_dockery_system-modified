@@ -47,7 +47,7 @@ from .services.upload_processing_service import (
     process_uploaded_results,
     recompute_processed_results_for_exam,
 )
-from .utils import get_grade, get_grade_for_exam, get_grade_for_form, get_grade_primary, group_exams_by_type, normalize_gender, parse_name_score_sheet, parse_score, resolve_or_create_student, safe_get_or_create_subject, subjects_for_school
+from .utils import get_grade, get_grade_for_exam, get_grade_for_form, get_grade_primary, group_exams_by_type, normalize_gender, parse_mark, parse_name_score_sheet, parse_score, resolve_or_create_student, safe_get_or_create_subject, subjects_for_school
 
 _EXAM_TYPE_CHOICES = Exam.EXAM_TYPE_CHOICES
 
@@ -212,7 +212,7 @@ def generate_results_pdf(request, exam_id):
     # Content/structure are identical — only the palette / row styling
     # differs.
     style = (request.GET.get('style') or 'normal').lower()
-    if style not in ('normal', 'rank', 'necta', 'royal', 'acsee'):
+    if style not in ('normal', 'rank', 'necta', 'royal', 'acsee', 'junior', 'olevel'):
         style = 'normal'
     # ?students=12,15,40 : safu za wanafunzi hawa tu (waliorekebishwa baada
     # ya matokeo kuchapishwa) badala ya darasa zima.
@@ -242,7 +242,7 @@ def generate_bulk_student_results_pdf(request, exam_id):
     exam = _get_exam_or_404(exam_id, request.user)
     recompute_processed_results_for_exam(exam)
     style = (request.GET.get('style') or 'normal').lower()
-    if style not in ('normal', 'rank', 'necta', 'royal', 'acsee'):
+    if style not in ('normal', 'rank', 'necta', 'royal', 'acsee', 'junior', 'olevel'):
         style = 'normal'
     # request → QR za slips zipate URL kamili (https://...) zinazofunguka
     # kwa kamera ya simu.
@@ -256,7 +256,7 @@ def export_results_excel(request, exam_id):
     # ?style= : same options and default as generate_results_pdf — 'normal'
     # (default) | 'rank' | 'necta' | 'royal' (Form Five) | 'acsee' (Form Six).
     style = (request.GET.get('style') or 'normal').lower()
-    if style not in ('normal', 'rank', 'necta', 'royal', 'acsee'):
+    if style not in ('normal', 'rank', 'necta', 'royal', 'acsee', 'junior', 'olevel'):
         style = 'normal'
     return generate_results_excel_response(exam, style=style)
 
@@ -543,10 +543,10 @@ def edit_processed_result(request, result_id):
                     er.score = None
                     er.is_absent = False
                 else:
-                    try:
-                        er.score = max(0, min(100, int(float(raw_score))))
-                    except ValueError:
-                        continue  # value batili — ruka
+                    parsed_mark = parse_mark(raw_score)
+                    if parsed_mark is None:
+                        continue  # si namba, au nje ya 0-100 — ruka
+                    er.score = parsed_mark
                     er.is_absent = False
                 er.save(update_fields=['score', 'is_absent'])
             recompute_processed_results_for_exam(exam)
@@ -2792,9 +2792,15 @@ def _aam_exam_students(exam, school):
 
 
 def _aam_student_marks(exam, student):
-    """{subject_id: score | 'X'} — alama zilizopo za mwanafunzi kwenye mtihani."""
+    """{subject_id: score | 'X'} — alama zilizopo za mwanafunzi kwenye mtihani.
+
+    Alama zinawekwa kama float (si Decimal) ili zikaonekane kama
+    namba halisi kwenye JSON. Kama zingebaki Decimal, DjangoJSONEncoder
+    ingeziandika kama kamba ("55.00") na kipimo kwenye JavaScript
+    kama `marks[id] > 50` chenyewe kuingekosewa.
+    """
     return {
-        r.subject_id: ('X' if r.is_absent else r.score)
+        r.subject_id: ('X' if r.is_absent else (float(r.score) if r.score is not None else None))
         for r in ExamResult.objects.filter(exam=exam, student=student)
     }
 
@@ -3051,11 +3057,8 @@ def _academic_add_student_ajax(request, school):
             if raw_str in ('X', 'ABS', 'ABSENT'):
                 absent_ids.append(sid)
             else:
-                try:
-                    score = int(raw)
-                except (TypeError, ValueError):
-                    continue
-                if score < 0 or score > 100:
+                score = parse_mark(raw)
+                if score is None:
                     return JsonResponse({'error': f'Alama ya somo #{sid} si sahihi (0-100).'}, status=400)
                 parsed.append((sid, score))
 
@@ -4995,11 +4998,13 @@ def save_confirmed_scores(request, exam_id):
         else:
             if score is None:
                 continue
-            try:
-                score = int(score)
-            except (TypeError, ValueError):
-                continue
-            if score < 0 or score > 100:
+            # parse_mark (si int) ili desimali zisipotee: alama 10.6
+            # ilikuwa ikikatawa kuwa 10, na pale inapofaa ilikuwa
+            # ikibadilishwa kuwa 75. Pia hukata mstari kwa sababu ya
+            # desimali — mstari uliopotea husogeza wanafunzi wote
+            # baadaye.
+            score = parse_mark(score)
+            if score is None:
                 continue
         seen_student_ids.add(student_id)
         exam_results.append(ExamResult(

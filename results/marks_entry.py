@@ -20,6 +20,7 @@ from celery.result import AsyncResult
 from django.contrib import messages
 from django.core.cache import cache
 from django.core.files.storage import default_storage
+from .json_utils import ScoreJSONEncoder
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -29,7 +30,7 @@ from django.views.decorators.http import require_GET, require_POST
 from .models import Exam, ExamResult, FormStudent, Student, StoredRoster, Subject, SubjectSubmission
 from .permissions import academic_required, teacher_or_academic_required
 from .services.upload_processing_service import recompute_processed_results_for_exam
-from .utils import get_grade_for_exam, is_passing_grade, resolve_or_create_student
+from .utils import parse_mark,  get_grade_for_exam, is_passing_grade, resolve_or_create_student
 from .tasks import OCR_STAGES, process_scoresheet_photo_task
 from .utils import get_grade_for_form, group_exams_by_type
 
@@ -334,8 +335,8 @@ def marks_entry(request):
         'pdf_url': pdf_url,
         'avg_score': avg_score,
         'pass_rate': pass_rate,
-        'existing_marks_json': json.dumps(existing_marks),
-        'class_students_json': json.dumps(class_students),
+        'existing_marks_json': json.dumps(existing_marks, cls=ScoreJSONEncoder),
+        'class_students_json': json.dumps(class_students, cls=ScoreJSONEncoder),
     })
 
 
@@ -377,11 +378,8 @@ def marks_entry_save(request):
         if raw_str in ('X', 'ABS', 'ABSENT'):
             absent_ids.append(sid)
         else:
-            try:
-                score = int(raw_score)
-            except (TypeError, ValueError):
-                continue
-            if score < 0 or score > 100:
+            score = parse_mark(raw_score)
+            if score is None:
                 return JsonResponse({'error': f'Alama ya mwanafunzi #{sid} si sahihi (0-100).'}, status=400)
             parsed.append((sid, score))
 

@@ -13,6 +13,8 @@ Colours: Tanzania flag (green #1EB53A, yellow #FCD116, black, blue #00A3DD).
 
 from __future__ import annotations
 
+import numbers
+
 import openpyxl
 from django.http import HttpResponse
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -55,6 +57,10 @@ _EXCEL_THEMES = {
     'necta':  {'header_bg': 'FFFFFFE0', 'header_fg': 'FF000080', 'accent_bg': 'FFFFF9B8', 'accent_fg': 'FF000080'},
     'royal':  {'header_bg': 'FF6B2FA0', 'header_fg': 'FFFFFFFF', 'accent_bg': 'FFE9DFF7', 'accent_fg': 'FF4A1D6E'},
     'acsee':  {'header_bg': 'FF1A1A1A', 'header_fg': 'FFE5C96B', 'accent_bg': 'FFF0E4BC', 'accent_fg': 'FF5A4713'},
+    # Form Two (emerald) and Form Four (ocean) — zina rangi zao mwenyewe
+    # ili ukurasa wa Form 2 usionekane kama wa Form 4/5/6.
+    'junior': {'header_bg': 'FF0F7A4A', 'header_fg': 'FFFFFFFF', 'accent_bg': 'FF7FCBA4', 'accent_fg': 'FF04361F'},
+    'olevel': {'header_bg': 'FF0E5A6B', 'header_fg': 'FFFFFFFF', 'accent_bg': 'FF8FC7D4', 'accent_fg': 'FF042A33'},
 }
 
 
@@ -93,7 +99,7 @@ _FILL_BY_LETTER = {
 
 
 def _score_fill(score, form=4) -> tuple[str | None, str | None]:
-    if not isinstance(score, (int, float)):
+    if not isinstance(score, numbers.Number):
         return None, None
     thresholds, grade_ranges = _grade_thresholds(form)
     for i, t in enumerate(thresholds):
@@ -103,7 +109,7 @@ def _score_fill(score, form=4) -> tuple[str | None, str | None]:
 
 
 def _score_grade(score, form=4) -> str:
-    if not isinstance(score, (int, float)):
+    if not isinstance(score, numbers.Number):
         return '-'
     thresholds, grade_ranges = _grade_thresholds(form)
     for i, t in enumerate(thresholds):

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Optional
 
 import pandas as pd
@@ -153,10 +155,53 @@ def parse_score(raw_score) -> Optional[int]:
     raw_str = str(raw_score).strip()
     if raw_str.upper() in ('X', 'ABS', 'ABSENT', '-'):
         return None  # caller should check is_absent_marker()
-    try:
-        return int(float(raw_str))
-    except (TypeError, ValueError):
+    return parse_mark(raw_str)
+
+
+def parse_mark(raw_mark, max_value: "int | None" = 100):
+    """Soma alama ya mwanafunzi na irudishe kama Decimal, au None kama
+    haisomeki.
+
+    Hii ndiyo njia moja ya kusoma alama kwenye mfumo wote. Kabla ya
+    hii, kila mahali ilikuwa ikitumia int(float(...)) — ambayo
+    ilikata desimali: "10.6" → 10, na wakati mwingine ilikuwa
+    ikibadilisha "7.5" kuwa 75 kwa kukata kila kitu isichokuwa digit.
+    Alama iliyokosewa haipaswi kuwa alama ya mwanafunzi mwingine.
+
+    Inarudisha None (si 0) pale alama haisomeki — ili mstari uone
+    kama wa kushindwa kusoma badala ya kupewa alama ya kubahatisha.
+    """
+    if raw_mark is None:
         return None
+    s = str(raw_mark).strip()
+    if not s:
+        return None
+
+    # Kituzi cha alama: "85/100" → 85
+    s = re.split(r'[/]', s)[0].strip()
+
+    # Koma ya kihesabi ni desimali Tanzania: "10,6" ni 10.6, si 106
+    s = s.replace(',', '.')
+
+    # Ondoa vitufe visivyoweza kuwepo, lakini USIHIFADHI kila digit
+    s = re.sub(r'[^0-9.\-+]', '', s).rstrip('.')
+
+    if not s or s in ('-', '+', '.'):
+        return None
+    try:
+        value = Decimal(s)
+    except (InvalidOperation, ValueError):
+        return None
+    if not value.is_finite():
+        return None
+
+    # Zaidi ya maeneo mawili ya decimal ni uakikwaji wa kidole, si alama
+    quantised = value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    if quantised != value:
+        return None
+    if max_value is not None and not (0 <= quantised <= max_value):
+        return None
+    return quantised
 
 
 def is_absent_marker(raw_score) -> bool:

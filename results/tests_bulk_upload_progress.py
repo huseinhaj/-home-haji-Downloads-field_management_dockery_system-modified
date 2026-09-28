@@ -136,3 +136,93 @@ class BulkUploadProgressPanelTests(TestCase):
 			cache.get('scoresheet_ocr:77'),
 			'bulk upload imeandika kwenye kichicho cha marks entry!',
 		)
+
+	def test_bulk_upload_accepts_a_fresh_exam_with_no_marks_yet(self):
+		"""Mtihani MPYA — ambapo bado hakuna alama zozote — lazima
+		ukubaliwe kupakia scoresheet.
+
+		Hitilafu iliyokuwa ikijitokea: task ilitafuta mtihani kwenye
+		`ExamResult` (mfano wa kwanza), hivyo mtihani mpya wenye zero
+		alama ungependelea kurudi 'Mtihani haupatikana.' kama haukuo.
+		Kilikuwa kinamutisha mwalimu kwamba amekosewa, wakati tatizo
+		halikuwa kwake.
+		"""
+		from .tasks import process_bulk_upload_task
+
+		fresh = Exam.objects.create(
+			name='Mtihani Mpya', year=2026, form=2, school=self.school,
+		)
+		self.assertFalse(
+			ExamResult.objects.filter(exam=fresh).exists(),
+			'majaribio yanahitaji mtihani bila alama',
+		)
+
+		def fake_extract(document, on_progress=None):
+			if on_progress:
+				on_progress('reading', 1, 1)
+			return [
+				{'raw_name': 'Zawadi Zuberi', 'score': '10.6', 'is_absent': False, 'row': 1,
+				 'blank': False, 'unreadable': False},
+				{'raw_name': 'Amina Ally', 'score': '85.5', 'is_absent': False, 'row': 2,
+				 'blank': False, 'unreadable': False},
+			]
+
+		roster = [self.zawadi.id, self.amina.id]
+		with patch('results.tasks.extract_scores_from_document', fake_extract), \
+				patch('results.tasks.default_storage.open', MagicMock()), \
+				patch('results.tasks.default_storage.delete', MagicMock()):
+			out = process_bulk_upload_task.run(
+				'bulk_upload/mpya.pdf', fresh.id, self.subject.id, roster,
+				preview_only=True, progress_key='91',
+			)
+
+		self.assertNotIn('error', out, f"mtihani mpya umekataliwa: {out.get('error')}")
+		self.assertEqual(len(out['matched']), 2, out.get('matched'))
+		# Desimali lazima zibaki kama desimali hadi kwenye preview —
+		# hazipaswi kukatwa wala kuandikwa kama kamba tu.
+		scores = sorted(str(m['score']) for m in out['matched'])
+		self.assertEqual(scores, ['10.6', '85.5'], scores)
+
+	def test_bulk_upload_never_creates_a_student_for_an_unknown_name(self):
+		"""Jina lisilosomewa vizuri halitakiwi kuunda mwanafunzi
+		mwingine kwa msimu — mstari unapaswa kuondwa na mwalimu
+		akilazimishe mwenyewe.
+
+		Tabia ya awali: jina lililosomewa vibaya lilikuwa likitengeneza
+		mwanafunzi mpya kwa default storage, ambayo inaweza kumpa
+		mwanafunzi wa mwisho alama ya mtu mwingine.
+		"""
+		from .tasks import process_bulk_upload_task
+
+		before = Student.objects.count()
+
+		def fake_extract(document, on_progress=None):
+			return [
+				{'raw_name': 'Zawadi Zuberi', 'score': '70', 'is_absent': False, 'row': 1,
+				 'blank': False, 'unreadable': False},
+				{'raw_name': 'Xxyzzy Nonexistent', 'score': '99', 'is_absent': False, 'row': 2,
+				 'blank': False, 'unreadable': False},
+			]
+
+		roster = [self.zawadi.id, self.amina.id]
+		with patch('results.tasks.extract_scores_from_document', fake_extract), \
+				patch('results.tasks.default_storage.open', MagicMock()), \
+				patch('results.tasks.default_storage.delete', MagicMock()):
+			out = process_bulk_upload_task.run(
+				'bulk_upload/umbeki.pdf', self.exam.id, self.subject.id, roster,
+				preview_only=True, progress_key='92',
+			)
+
+		self.assertEqual(
+			Student.objects.count(), before,
+			'AI imeunda mwanafunzi mpya kwa jina ambalo halikuwa kwenye orodha!',
+		)
+		self.assertEqual(len(out['matched']), 1, 'mstari wa jina la kigeni haipaswi kulingishwa')
+		self.assertTrue(out['unmatched'], 'mstari wa jina la kigeni unapaswa kuondwa kwa mwalimu')
+		# Amina (iliyokuwa nafasi ya 2 kwenye orodha) HAJAPATA alama
+		# ya mtu asiyejulikana.
+		self.assertFalse(
+			ExamResult.objects.filter(exam=self.exam, student=self.amina, subject=self.subject).exclude(pk=None).exists()
+			and ExamResult.objects.filter(exam=self.exam, student=self.amina, subject=self.subject).count() > 1,
+			'mtihani ulikuwa na alama moja tu kabla — hakuna alama nyingine zilizoongezwa',
+		)

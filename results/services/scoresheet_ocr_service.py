@@ -21,6 +21,7 @@ import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 import requests
 from dotenv import load_dotenv
@@ -590,7 +591,24 @@ def _clean_row_number(raw_row) -> "int | None":
         return None
 
 
+def _parse_mark(raw_str):
+    """Soma alama ya mwanafunzi na irudishe kama Decimal, au None kama
+    haisomeki.
+
+    Hapa ndipo alama za desimali zilizopotea. Msimu wa zamani ulitumia
+    int(), na pale inapofaa ilikata non-digit: "7.5" → "75". Mwanafunzi
+    aliyepata alama 7.5 alipewa 75 — na kila mstari uliotoweka husababisha
+    wanafunzi wa baadaye kusogeza nafasi hadi mwisho wa listi.
+
+    Mantiku halisi iko kwenye results.utils.parse_mark ili ukurasa
+    wote usome alama kwa njia moja.
+    """
+    from results.utils import parse_mark
+    return parse_mark(raw_str)
+
+
 def _clean_rows(raw_rows: list) -> list[dict]:
+
     """Normalise raw OCR rows into [{raw_name, score, is_absent, row, blank}, ...].
 
     Handles:
@@ -635,21 +653,37 @@ def _clean_rows(raw_rows: list) -> list[dict]:
             is_absent = True
             score = 0
         else:
-            # ── Numeric score (may have leading zeros) ────────────────
-            try:
-                # int('00') → 0, int('08') → 8, int('10') → 10
-                score = int(raw_str)
-            except (TypeError, ValueError):
-                # Last resort: strip non-numeric chars (e.g. '78.' → '78')
-                cleaned = re.sub(r'[^\d]', '', raw_str)
-                if not cleaned:
-                    continue
-                try:
-                    score = int(cleaned)
-                except ValueError:
-                    continue
+            # ── Alama namba (inaweza kuwa desimali) ───────────────────
+            # Kabla ya hapa kila alama ilipitiwa kwa int(), na kama
+            # isingefaa, mstari mzima ulikatika. Matokeo: "10.6"
+            # ilikatika, "7.5" ilibadilika kuwa 75 (namba zilizounganishwa),
+            # na kwa kuwa mistari iliyobaki inasogea nafasi, mwanafunzi
+            # wa mwisho alipata alama ya mwanafunzi aliyetangulia.
+            # Sasa: desimali zinasomwa, na kisichosomeka hushikwa na
+            # kuacha alama tupu badala ya kukatika.
+            parsed = _parse_mark(raw_str)
+            if parsed is None:
+                # Hatuna uhakika kama hii ni namba. Mstari unabaki
+                # ili mwalimu aone, lakini bila alama — si kujaza
+                # kwa kubahatisha.
+                rows.append({
+                    "raw_name": name, "score": None, "is_absent": False,
+                    "row": row_no, "blank": True, "unreadable": True,
+                    "raw_mark": raw_str[:40],
+                })
+                continue
+            score = parsed
 
         if score < 0 or score > 100:
+            # Namba iko nje ya 0-100 (mfano "106" iliyotokana na
+            # alama ya desimali iliyosomewa vibaya). Tunashika mstari
+            # ili mstari uzingiwe — lakini bila alama, na AI ataona
+            # mstari huu kama wa kushindwa kusoma.
+            rows.append({
+                "raw_name": name, "score": None, "is_absent": False,
+                "row": row_no, "blank": True, "unreadable": True,
+                "raw_mark": str(raw_str)[:40],
+            })
             continue
 
         rows.append({"raw_name": name, "score": score, "is_absent": is_absent, "row": row_no, "blank": False})

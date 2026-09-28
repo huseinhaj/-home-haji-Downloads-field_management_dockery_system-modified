@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.test import Client, TestCase
@@ -43,10 +44,23 @@ class ResultsUtilsTests(TestCase):
 		self.assertEqual(extract_subject_columns(df), ['Physics', 'Chemistry'])
 
 	def test_parse_score_handles_invalid_and_numeric_values(self):
-		self.assertEqual(parse_score('78'), 78)
-		self.assertEqual(parse_score(44.8), 44)
+		# Desimali hazikatwi: alama 10.6 ilikuwa ikifanyika 10 na
+		# "7.5" ikifanyika 75 kwa kukata kila digit. Kukanusha
+		# alama huu ndiyo uliotoroga wanafunzi wa baadaye kwenye
+		# scoresheet (mstari uliotoweka -> mtu mwingine alipata alama).
+		self.assertEqual(parse_score('78'), Decimal('78.00'))
+		self.assertEqual(parse_score('10.6'), Decimal('10.60'))
+		self.assertEqual(parse_score(44.8), Decimal('44.80'))
+		self.assertEqual(parse_score('7.5'), Decimal('7.50'))
 		self.assertIsNone(parse_score('not-a-number'))
 		self.assertIsNone(parse_score(float('nan')))
+		# Namba nje ya 0-100 haisomeki (kwa mtihani wa kawaida) —
+		# hatuiruhusu ipotoshwe kuwa "106" iliyotokana na desimali.
+		self.assertIsNone(parse_score('150'))
+		self.assertIsNone(parse_score('-5'))
+		self.assertIsNone(parse_score('10.678'))  # maeneo 3 ya decimal = kidole
+		self.assertEqual(parse_score('85/100'), Decimal('85.00'))
+		self.assertEqual(parse_score('10,6'), Decimal('10.60'))
 
 	def test_normalize_gender_defaults_to_male_for_unknown_input(self):
 		self.assertEqual(normalize_gender('Female'), 'F')
@@ -279,7 +293,16 @@ class ScoreSheetOCRParsingTests(TestCase):
 		with self.assertRaises(ScoreSheetOCRError):
 			_extract_json_array('I counted 20 rows on the sheet.')
 
-	def test_clean_rows_drops_out_of_range_and_garbage_fields(self):
+	def test_clean_rows_keeps_unreadable_marks_instead_of_dropping_the_row(self):
+		"""Mstari ambao AI haukuweza kusoma alama yake HUBWEKI
+		hasi, lakini bila alama — si kukatika.
+
+		Mtumia wa mwanzo: mstari uliotoweka husogeza kila mwanafunzi
+		baadaye nafasi, hivyo mwisho wa listi unapewa alama ya mwanafunzi
+		wa juu yake. Zaidi ya hayo, alama ya desimali ("10.6") ilikuwa
+		ikikatwa na mstari mzima ukatoweka — ndio iliyokuwa ikisababisha
+		wanafunzi ~10 wa mwisho kupata alama za watu wengine.
+		"""
 		raw = [
 			{"row": 1, "name": "Amina Juma", "score": 78},
 			{"name": "", "score": 50},
@@ -287,11 +310,29 @@ class ScoreSheetOCRParsingTests(TestCase):
 			{"row": 4, "name": "Too High", "score": 150},
 			{"row": 5, "name": "Too Low", "score": -5},
 			{"row": 6, "name": "Not A Number", "score": "abc"},
+			{"row": 7, "name": "Decimal Mark", "score": "10.6"},
 		]
-		self.assertEqual(_clean_rows(raw), [
-			{"raw_name": "Amina Juma", "score": 78, "is_absent": False, "row": 1, "blank": False},
-			{"raw_name": "No Score", "score": None, "is_absent": False, "row": 3, "blank": True},
+		rows = _clean_rows(raw)
+
+		# Jina tupu bado hupungikwa (hakuna mwanafunzi wa kushughulikiwa)
+		self.assertEqual([r["raw_name"] for r in rows], [
+			"Amina Juma", "No Score", "Too High", "Too Low",
+			"Not A Number", "Decimal Mark",
 		])
+		# Kila mstari unaotakiwa kuhifadhiwa, namba yake iko pale
+		self.assertEqual([r["row"] for r in rows], [1, 3, 4, 5, 6, 7])
+
+		by_name = {r["raw_name"]: r for r in rows}
+		# Desimali inasomwa vizuri — si 106, si 10
+		self.assertEqual(by_name["Decimal Mark"]["score"], Decimal('10.60'))
+		self.assertFalse(by_name["Decimal Mark"]["blank"])
+
+		# Alama zisizosomeka: mstari hubaki, alama ni None, na tunaijua
+		# kuwa AI haikusoma ili mwalimu asemewe mwenyewe.
+		for name in ("Too High", "Too Low", "Not A Number"):
+			self.assertIsNone(by_name[name]["score"], name)
+			self.assertTrue(by_name[name]["unreadable"], name)
+			self.assertTrue(by_name[name]["blank"], name)
 
 	def test_clean_rows_keeps_blank_rows_instead_of_dropping_them(self):
 		"""A blank/dash score cell means 'student doesn't study this
@@ -1089,13 +1130,61 @@ class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
 		self.assertEqual(names, ['Zawadi Zuberi', 'Amina Ally', 'Lenatha Damian'])
 
 	def test_excel_accepts_same_style_param_as_pdf(self):
-		for style in ('normal', 'rank', 'necta', 'royal', 'acsee'):
+		for style in ('normal', 'rank', 'necta', 'royal', 'acsee', 'junior', 'olevel'):
 			response = self.client.get(reverse('export_results_excel', args=[self.exam.id]), {'style': style})
 			self.assertEqual(response.status_code, 200, f'style={style}')
 			self.assertEqual(
 				response['Content-Type'],
 				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 			)
+
+	def test_form_two_and_form_four_get_their_own_colours(self):
+		"""Form 2 (junior/emerald) na Form 4 (olevel/ocean) zinapaswa kuwa
+		na rangi zao mwenyewe — si kurudio tu la 'normal', na zisichukue
+		rangi ya Form 5 (royal/purple) wala Form 6 (acsee/black-gold).
+
+		Hii inahusu maombi ya mwalimu: kurasa tofauti za kila kiwango
+		zioneke kuonyeshwa kwa utambulisho wa kawaida.
+		"""
+		from results.services.pdf_export_service import _THEMES
+		from results.services.excel_export_service import _EXCEL_THEMES
+
+		# Kila theme mpya ina kila ufunguo ule _THEMES['normal'] inaotumia,
+		# hasa 'grid' — bila hiyo ukingo ungekuwa wa rangi ya royal.
+		for key in ('header_bg', 'header_fg', 'band_bg', 'accent_bg', 'accent_fg', 'section_fg', 'page_bg', 'grid'):
+			for theme in ('junior', 'olevel'):
+				self.assertIn(key, _THEMES[theme], f'{theme}.{key}')
+
+		# Rangi za kila theme lazima ziwe tofauti (Form 2 ≠ Form 4 ≠ 5 ≠ 6).
+		sigs = {
+			name: (
+				str(_THEMES[name]['header_bg']),
+				str(_THEMES[name]['page_bg']),
+				_EXCEL_THEMES[name]['header_bg'],
+			)
+			for name in ('junior', 'olevel', 'royal', 'acsee')
+		}
+		self.assertEqual(len(set(sigs.values())), len(sigs), f'themes zinalingana: {sigs}')
+
+		# Form 2/4 zinapaswa kukataza au kuacha rangi ya Form 5/6.
+		for name, other, stolen in (
+			('junior', 'royal', '#6B2FA0'),
+			('junior', 'acsee', '#E5C96B'),
+			('olevel', 'royal', '#6B2FA0'),
+			('olevel', 'acsee', '#E5C96B'),
+		):
+			self.assertNotEqual(str(_THEMES[name]['header_bg']).upper(), stolen.upper(), f'{name} imechukua rangi ya {other}')
+
+		# Zote mbili zina mandhari yao (page_bg) — hazipati 'None' kama normal.
+		for name in ('junior', 'olevel'):
+			self.assertIsNotNone(_THEMES[name]['page_bg'], name)
+
+	# Na mtihani wa Form 2 unapaswa kupokea style=junior bila kurudi 'normal'
+	def test_pdf_accepts_the_new_form_two_and_four_styles(self):
+		for style in ('junior', 'olevel'):
+			response = self.client.get(reverse('generate_results_pdf', args=[self.exam.id]), {'style': style})
+			self.assertEqual(response.status_code, 200, f'style={style}')
+			self.assertTrue(response['Content-Type'].startswith('application/pdf'), f'style={style}')
 
 
 class SetClassTeacherAndConductTests(TestCase):

@@ -249,6 +249,8 @@
         <option value="normal">📄 {% if LANG == 'sw' %}Kawaida{% else %}Normal{% endif %}</option>
         <option value="rank">🏅 Rank</option>
         <option value="necta">🎓 NECTA</option>
+        {% if ed.exam.form == 2 %}<option value="junior">🌿 Form Two Emerald</option>{% endif %}
+        {% if ed.exam.form == 4 %}<option value="olevel">🌊 Form Four Ocean</option>{% endif %}
         {% if ed.exam.form == 5 %}<option value="royal">👑 Form Five Royal</option>{% endif %}
         {% if ed.exam.form == 6 %}<option value="acsee">🎓 Form Six Prestige</option>{% endif %}
       </select>
