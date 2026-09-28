@@ -42,6 +42,66 @@ def _read_key(name: str) -> str:
 OPENROUTER_API_KEY = _read_key("OPENROUTER_API_KEY")
 GOOGLE_API_KEY = _read_key("GOOGLE_API_KEY")
 
+# Ufunguo wa Gemini direct API (generativelanguage.googleapis.com)
+# hauhusuwi na mtindo wake. Msimu wa awali ulikuwa unakataa chochote
+# isiyokuwa na 'AIza' kichwa, na hivyo likarukia Gemini KILA wito. Kwa
+# mpangilio wa 'gemini,openrouter' maana yake: salio la OpenRouter
+# ndio lililokuwa likitumika kwa kila ukurasa, na mnyororo wa backup
+# ulikuwa tupu — OpenRouter ikikosea (402) hakuna kilichobaki kulijibu.
+# Ufunguo halisi wa mpangilio huu ('AQ.Ab8...') umeuthibitishwa kwa
+# kweli kwenye endpoint ya Gemini: 200, wakati ufunguo wa kubuni
+# unajibu 400. Sasa tunaamini Google, si mtindo wa ufunguo.
+GEMINI_PROBE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+GEMINI_PROBE_TTL_S = 600  # dakika 10 — ukaguzi wa ukweli, si kila ukurasa
+_gemini_probe = {"at": None, "problem": ""}
+
+
+def _gemini_key_problem() -> str:
+    """"" kama GOOGLE_API_KEY haiwezi kutumika na Gemini direct, au
+    '' kama inaweza. Tunarudisha sentensi ya Kiswahili ili
+    check_ocr_health / log ionyeshe sababu halisi."""
+    if not GOOGLE_API_KEY:
+        return "GOOGLE_API_KEY haijasetwa"
+    now = time.monotonic()
+    if _gemini_probe["at"] is not None and now - _gemini_probe["at"] < GEMINI_PROBE_TTL_S:
+        return _gemini_probe["problem"]
+    try:
+        # Bure kabisa: endpoint hii inaorodhesha modeli tu — hakuna
+        # kizalishaji, hakuna token zinazolipwa. Ufunguo wa kweli
+        # unajibu 200; ufunguo wa kubuni au wa OAuth token unajibu
+        # 400/401. Tunakaa matokeo kwa dakika 10 ili tusiombe
+        # ukaguzi wa ziada kwa kila ukurasa wa kila pakia.
+        resp = requests.get(
+            GEMINI_PROBE_URL,
+            headers={"x-goog-api-key": GOOGLE_API_KEY},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            problem = ""
+        else:
+            # Namba na maneno ya Google yenyewe — si mkadiria yetu.
+            # _google_status() haisemiishi JSON tupu (imeandikwa kwa
+            # majibu tayali ya mfano 'Gemini vision error 403: {...}'),
+            # kwa hiyo hapa tunachimba msimbo na ujumbe moja kwa moja.
+            label = re.search(r'"status"\s*:\s*"([A-Z_]+)"', resp.text or "")
+            status = "%s %s" % (resp.status_code, label.group(1)) if label else "HTTP %s" % resp.status_code
+            detail = re.search(r'"message"\s*:\s*"([^"]{3,120})"', resp.text or "")
+            problem = (
+                "GOOGLE_API_KEY haukubaliwa na Gemini (%s%s) — pata ufunguo mpya wa "
+                "Gemini API kwenye Google AI Studio" % (
+                    status, ": " + detail.group(1) if detail else "",
+                )
+            )
+    except Exception as exc:
+        # Mfuko wa mtandao si uthibitisho wa kwamba ufunguo ni mbaya —
+        # tunasema hivyo, na tunakubali Gemini jaribuwe iwezekanavyo
+        # (mtu wa backup si lazima aonekane kama amekosewa kwa sababu
+        # ya mtandao wa mpangizio).
+        problem = "Gemini haijafikika kwa ukaguzi (%s)" % (str(exc)[:60] or "timeout",)
+    _gemini_probe["at"] = now
+    _gemini_probe["problem"] = problem
+    return problem
+
 VISION_MODEL_OPENROUTER = "google/gemini-2.5-flash"
 GEMINI_MODEL = "gemini-3.6-flash"
 
@@ -155,9 +215,12 @@ def _disable_openrouter(seconds: int = _OR_COOLDOWN_S) -> None:
 
 
 def _reset_provider_health() -> None:
-    """[Tumia kwenye tests] Safisha kumbukumbu ya iko ya OpenRouter."""
+    """[Tumia kwenye tests] Safisha kumbukumbu ya iko ya OpenRouter na
+    ukaguzi wa Gemini, ili kila jaribio lianze kwenye hali safi."""
     global _OR_DISABLED_UNTIL
     _OR_DISABLED_UNTIL = 0.0
+    _gemini_probe["at"] = None
+    _gemini_probe["problem"] = ""
 
 
 def _key_fingerprint(name: str) -> dict:
@@ -619,7 +682,14 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
 
     for provider in _provider_order():
         if provider == 'gemini':
-            if not GOOGLE_API_KEY:
+            # Ufunguo wa mtindo mbaya (mfano OAuth token) hawezi
+            # kuthibitisha kamwe — tukiruka kabla ya kutuma wito
+            # ambalo lingekuwa 401, ili OpenRouter ipate nafasi yake
+            # bila kupoteza sekunda na bila kuchanganya mpangilio kwa
+            # mwanagenzi.
+            gemini_problem = _gemini_key_problem()
+            if gemini_problem:
+                logger.info("[ScoreSheetOCR] Gemini kurukiwa: %s", gemini_problem)
                 continue
             try:
                 logger.info("[ScoreSheetOCR] Trying Gemini (%s)", GEMINI_MODEL)
@@ -760,6 +830,18 @@ def check_ocr_health() -> dict:
         'gemini_key': _key_fingerprint("GOOGLE_API_KEY"),
         'openrouter_key': _key_fingerprint("OPENROUTER_API_KEY"),
     }
+    # Sababu ya hasa ya kukosa Gemini. Nyumbani, GOOGLE_API_KEY iliyokuwa
+    # ikishweka OAuth token ilikuwa ikifanya kila ukurasa 401 na
+    # mpangilio akidhani OpenRouter ndiyo iliyokosea. Sasa tunaeleza
+    # wazi kabla ya kujaribu hata wito moja.
+    gemini_problem = _gemini_key_problem()
+    status['gemini_usable'] = not gemini_problem
+    if gemini_problem:
+        status['gemini_problem'] = gemini_problem
+    # Mwanagenzi alimlipa OpenRouter mara tu: mfumo wa gunicorn uliokuwa
+    # umesahaulisha salio lililokuwa limeisha na hujiruhusu OpenRouter
+    # kwa dakika 15 — alionekana kama ameendelea kulipwa bila kutendeka.
+    status['openrouter_cooldown_s'] = round(max(0.0, _OR_DISABLED_UNTIL - time.monotonic()))
     # Quick OpenRouter ping
     if OPENROUTER_API_KEY:
         try:

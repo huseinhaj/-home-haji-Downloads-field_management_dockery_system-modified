@@ -1,4 +1,5 @@
 """Kosa la AI ya kusoma scoresheet linaelezwa kwa lugha rahisi."""
+import contextlib
 import os
 from unittest import mock
 
@@ -6,6 +7,21 @@ from django.test import SimpleTestCase
 from PIL import Image
 
 from results.services import scoresheet_ocr_service as ocr
+
+
+@contextlib.contextmanager
+def gemini_key_accepted():
+    """Moja kwa moja: ukaguzi wa ufunguo wa Gemini unarudisha 200.
+
+    Kabla ya ukaguzi huu ulikuwa ukaguzi wa mtindo wa ufunguo, ambapo
+    majaribio yalikuwa ya moja kwa moja bila kugusa mtandao. Sasa mfumo
+    huuliza Google moja kwa moja, hivyo majaribo yote yanaotarajia
+    Gemini kushiriki lazima yauke ukaguzi huu — bila yake mfumo
+    unaruka Gemini na majaribo yanapofana kwa sabahi isiyoyotarajiwa."""
+    with mock.patch.object(ocr.requests, 'get') as get:
+        get.return_value.status_code = 200
+        get.return_value.text = '{"models": []}'
+        yield get
 
 
 class AIErrorMessageTests(SimpleTestCase):
@@ -18,8 +34,9 @@ class AIErrorMessageTests(SimpleTestCase):
 
     def _read(self, or_exc, gemini_exc):
         img = Image.new('RGB', (40, 20), 'white')
-        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
-                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'k'), \
+        with gemini_key_accepted(), \
+                mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AIza-test-key'), \
                 mock.patch.object(ocr, '_call_openrouter_vision', side_effect=or_exc), \
                 mock.patch.object(ocr, '_call_gemini_vision', side_effect=gemini_exc):
             with self.assertRaises(RuntimeError) as cm:
@@ -112,8 +129,13 @@ class ProviderOrderTests(SimpleTestCase):
             self.assertEqual(ocr._provider_order(), ['openrouter', 'gemini'])
 
     def test_gemini_success_never_calls_openrouter(self):
-        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
-                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'k'), \
+        # Mpangilio umefungwa hapa kwa makusudi: .env ya mfumo huu sasa
+        # inaweka OpenRouter kwanja, na jaribio hili linapima tabia ya
+        # mpangilio 'gemini,openrouter' — si ya mazingira ya mzunguko.
+        with mock.patch.dict(os.environ, {'OCR_PROVIDER_ORDER': 'gemini,openrouter'}), \
+                gemini_key_accepted(), \
+                mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AIza-test-key'), \
                 mock.patch.object(ocr, '_call_gemini_vision', return_value='[]') as gem, \
                 mock.patch.object(ocr, '_call_openrouter_vision') as orr:
             self.assertEqual(ocr._read_page_with_ai(self.img), '[]')
@@ -123,8 +145,9 @@ class ProviderOrderTests(SimpleTestCase):
     def test_openrouter_skipped_after_out_of_credits(self):
         # Both down: Gemini is tried, then OpenRouter answers 402. Page 2 of
         # the same upload must not pay for another doomed call.
-        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
-                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'k'), \
+        with gemini_key_accepted(), \
+                mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AIza-test-key'), \
                 mock.patch.object(ocr, '_call_openrouter_vision',
                                   side_effect=RuntimeError('OpenRouter vision error 402: Insufficient credits')) as orr, \
                 mock.patch.object(ocr, '_call_gemini_vision', side_effect=RuntimeError('Gemini down')):
@@ -137,14 +160,140 @@ class ProviderOrderTests(SimpleTestCase):
             self.assertEqual(orr.call_count, 1)
 
     def test_openrouter_used_again_after_cooldown(self):
-        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
-                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'k'), \
+        with gemini_key_accepted(), \
+                mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AIza-test-key'), \
                 mock.patch.object(ocr, '_call_openrouter_vision', return_value='[]') as orr, \
                 mock.patch.object(ocr, '_call_gemini_vision', side_effect=RuntimeError('Gemini down')):
             ocr._disable_openrouter(seconds=0)
             self.assertEqual(orr.call_count, 0)
             ocr._read_page_with_ai(self.img)
         self.assertEqual(orr.call_count, 1)
+
+
+class GeminiKeyProbeTests(SimpleTestCase):
+    """Ufuatiliaji wa GOOGLE_API_KEY lazima uwe wa kweli — si kukaribisha
+    mtindo wa ufunguo.
+
+    Msimu wa awali ulikataa chochote isiyokuwa na 'AIza' kichwa, na hivyo
+    likarukia Gemini KILA wito. Maana yake: salio la OpenRouter ndio
+    lililokuwa likitumika kwa kila ukurasa, na mnyororo wa backup ulikuwa
+    tupu — OpenRouter ikikosea (402) hakuna kilichobaki kulijibu. Ufunguo
+    halisi wa mpangilio huu ('AQ.Ab8...') umeuthibitishwa kwenye endpoint
+    ya Gemini: 200, wakati ufunguo wa kubuni unajibu 400.
+
+    Majaribio haya yana hakikisha sasa mfumo huamini JIBU la Google, si
+    mtindo wa ufunguo."""
+
+    def setUp(self):
+        ocr._reset_provider_health()
+        self.addCleanup(ocr._reset_provider_health)
+        self.img = Image.new('RGB', (40, 20), 'white')
+
+    def _probe_ok(self):
+        return mock.patch.object(ocr.requests, 'get')
+
+    def test_a_key_google_accepts_is_usable_whatever_its_prefix(self):
+        """Ufunguo wa mpangilio huyu ananza 'AQ.Ab8' — Gemini anakubali
+        (200), kwa hiyo lazima ishirikiwe kama backup."""
+        with mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8RN6J6nmZWLGSWnZ7QK'), \
+                self._probe_ok() as get:
+            get.return_value.status_code = 200
+            self.assertEqual(ocr._gemini_key_problem(), '')
+
+    def test_a_key_google_rejects_is_named_with_googles_own_status(self):
+        with mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AIzaSyGARBAGE_1234567890'), \
+                self._probe_ok() as get:
+            get.return_value.status_code = 400
+            get.return_value.text = (
+                '{"error": {"code": 400, "message": "API key not valid. '
+                'Please pass a valid API key.", "status": "INVALID_ARGUMENT"}}'
+            )
+            problem = ocr._gemini_key_problem()
+        self.assertIn('API key not valid', problem)
+        self.assertIn('Google AI Studio', problem)
+
+    def test_missing_key_is_named_as_missing(self):
+        with mock.patch.object(ocr, 'GOOGLE_API_KEY', ''):
+            self.assertIn('haijasetwa', ocr._gemini_key_problem())
+
+    def test_the_probe_is_asked_once_not_once_per_page(self):
+        """Kila ukurasa wa kila pakia unapaswa kutoi wito la kipekee kwa
+        kila ukurasa wa kila pakia."""
+        with mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8x'), \
+                self._probe_ok() as get:
+            get.return_value.status_code = 200
+            for _ in range(5):
+                ocr._gemini_key_problem()
+        self.assertEqual(get.call_count, 1)
+
+    def test_a_rejected_gemini_key_is_never_called(self):
+        """Ufunguo Google ukikataa, jibu la mwisho lazima liwe la
+        OpenRouter pekee — si 'Gemini: 400'."""
+        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AIzaSyGARBAGE_1'), \
+                self._probe_ok() as get, \
+                mock.patch.object(ocr, '_call_gemini_vision') as gem, \
+                mock.patch.object(ocr, '_call_openrouter_vision', return_value='[]') as orr:
+            get.return_value.status_code = 400
+            get.return_value.text = '{"error": {"status": "INVALID_ARGUMENT"}}'
+            self.assertEqual(ocr._read_page_with_ai(self.img), '[]')
+        self.assertEqual(gem.call_count, 0)
+        self.assertEqual(orr.call_count, 1)
+
+    def test_openrouter_first_but_gemini_still_catches_its_failure(self):
+        """Hapa ndipo mwanagenzi amemalipa: anataka OpenRouter kwanja
+        (OCR_PROVIDER_ORDER=openrouter,gemini) — lakini mnyororo wa
+        backup lazima UWEKO. Msimu wa 'AIza' ulikuwa umefuta Gemini
+        kabisa, hivyo 402 ya OpenRouter ilikuwa mwisho wa njia: mzigo
+        ulikuwa umekosewa bila ujumbe wowote wa AI."""
+        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8RN6J6nmZWLGSWnZ7QK'), \
+                self._probe_ok() as get, \
+                mock.patch.object(ocr, '_call_gemini_vision', return_value='BURE') as gem, \
+                mock.patch.object(ocr, '_call_openrouter_vision',
+                                  side_effect=RuntimeError('OpenRouter vision error 402: insufficient')) as orr:
+            get.return_value.status_code = 200
+            with mock.patch.dict(os.environ, {'OCR_PROVIDER_ORDER': 'openrouter,gemini'}):
+                self.assertEqual(ocr._read_page_with_ai(self.img), 'BURE')
+        self.assertEqual(orr.call_count, 1)
+        self.assertEqual(gem.call_count, 1)
+
+    def test_openrouter_first_needs_no_gemini_call_while_credit_remains(self):
+        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8RN6J6nmZWLGSWnZ7QK'), \
+                self._probe_ok() as get, \
+                mock.patch.object(ocr, '_call_gemini_vision') as gem, \
+                mock.patch.object(ocr, '_call_openrouter_vision', return_value='[]') as orr:
+            get.return_value.status_code = 200
+            with mock.patch.dict(os.environ, {'OCR_PROVIDER_ORDER': 'openrouter,gemini'}):
+                self.assertEqual(ocr._read_page_with_ai(self.img), '[]')
+        self.assertEqual(orr.call_count, 1)
+        self.assertEqual(gem.call_count, 0)
+
+    def test_health_check_reports_gemini_usable_when_google_accepts_it(self):
+        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8RN6J6nmZWLGSWnZ7QK'), \
+                self._probe_ok() as get:
+            get.return_value.status_code = 200
+            get.return_value.text = '{"models": []}'
+            get.return_value.json.return_value = {'data': {}}
+            health = ocr.check_ocr_health()
+        self.assertTrue(health['gemini_usable'])
+        self.assertNotIn('gemini_problem', health)
+        self.assertEqual(health['openrouter_cooldown_s'], 0)
+
+    def test_health_check_reports_the_real_reason_when_google_rejects_it(self):
+        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AIzaSyGARBAGE_1'), \
+                self._probe_ok() as get:
+            get.return_value.status_code = 401
+            get.return_value.text = '{"error": {"status": "UNAUTHENTICATED"}}'
+            get.return_value.json.return_value = {'data': {}}
+            health = ocr.check_ocr_health()
+        self.assertFalse(health['gemini_usable'])
+        self.assertIn('haukubaliwa', health['gemini_problem'])
+
 
 
 class OcrProgressReportingTests(SimpleTestCase):
@@ -210,7 +359,7 @@ class OcrProgressReportingTests(SimpleTestCase):
             return '[{"row": 1, "name": "Survivor", "score": 70}]'
 
         with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
-                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AIza-test-key'), \
                 mock.patch.object(ocr, '_load_page_images', return_value=['page1', 'page2', 'page3']), \
                 mock.patch.object(ocr, '_read_page_with_ai', side_effect=fake_read):
             rows = ocr.extract_scores_from_document(
