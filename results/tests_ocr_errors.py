@@ -196,7 +196,7 @@ class GeminiKeyProbeTests(SimpleTestCase):
     def test_a_key_google_accepts_is_usable_whatever_its_prefix(self):
         """Ufunguo wa mpangilio huyu ananza 'AQ.Ab8' — Gemini anakubali
         (200), kwa hiyo lazima ishirikiwe kama backup."""
-        with mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8RN6J6nmZWLGSWnZ7QK'), \
+        with mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8FAKE-NOT-A-REAL-KEY'), \
                 self._probe_ok() as get:
             get.return_value.status_code = 200
             self.assertEqual(ocr._gemini_key_problem(), '')
@@ -248,7 +248,7 @@ class GeminiKeyProbeTests(SimpleTestCase):
         kabisa, hivyo 402 ya OpenRouter ilikuwa mwisho wa njia: mzigo
         ulikuwa umekosewa bila ujumbe wowote wa AI."""
         with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
-                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8RN6J6nmZWLGSWnZ7QK'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8FAKE-NOT-A-REAL-KEY'), \
                 self._probe_ok() as get, \
                 mock.patch.object(ocr, '_call_gemini_vision', return_value='BURE') as gem, \
                 mock.patch.object(ocr, '_call_openrouter_vision',
@@ -261,7 +261,7 @@ class GeminiKeyProbeTests(SimpleTestCase):
 
     def test_openrouter_first_needs_no_gemini_call_while_credit_remains(self):
         with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
-                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8RN6J6nmZWLGSWnZ7QK'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8FAKE-NOT-A-REAL-KEY'), \
                 self._probe_ok() as get, \
                 mock.patch.object(ocr, '_call_gemini_vision') as gem, \
                 mock.patch.object(ocr, '_call_openrouter_vision', return_value='[]') as orr:
@@ -273,7 +273,7 @@ class GeminiKeyProbeTests(SimpleTestCase):
 
     def test_health_check_reports_gemini_usable_when_google_accepts_it(self):
         with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
-                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8RN6J6nmZWLGSWnZ7QK'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AQ.Ab8FAKE-NOT-A-REAL-KEY'), \
                 self._probe_ok() as get:
             get.return_value.status_code = 200
             get.return_value.text = '{"models": []}'
