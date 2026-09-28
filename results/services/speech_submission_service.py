@@ -397,56 +397,173 @@ def match_rows_to_roster_exclusive(
     return assignments, unmatched_row_indices
 
 
+# Jina linalofanana kwa kina zaidi cha hiki linaweza kwa kweli
+# kumiliki mstari — lakini mara nyingi ni jina la mwanafunzi MWINGINE
+# (mfano "Emmanuel John Mushi" dhidi ya "Emmanuel Peter Mushi": kina
+# 0.81, na bila kizingiti hicho mtu wa pili angechukua alama za wa
+# kwanza). Kwa hivyo jina lina "kunasa" namba ya kuchapishwa pale
+# linapostahili kwa uwazi.
+NAME_OVERRIDE_THRESHOLD = 0.80
+# ...na lazima liwe *kwa wazi* bora, si sawa na nafasi iliyochapishwa.
+# Jina na nafasi zinazokwenda 0.85 dhidi ya 0.83 (jina la mwanafunzi
+# mwingine) zinaonyesha AI imesoma jina la mwanafunzi mwenzine — hapo
+# nafasi ya "Na." ndiyo iliyo sahihi, jina ndio kilichokosea.
+NAME_OVERRIDE_MARGIN = 0.25
+
+# Alama inayotokana na jina tu (namba haipo, au imekosana na jina)
+# inarekebishwa hapa juu — juu ya 0.90 hakuna alama inayomwonyesha
+# mwalimu kuna tatizo. Mji wa UI unachunguza confidence < 0.90
+# ili kuweka mstari wa kahawia, na mstari ambao namba na jina
+# vimekubaliana (au alama ikatoka kwa namba) hauhitaji kuangaliwa
+# tena. Mstari ambao jimependa namba ya kuchapishwa ndio
+# hasa anayohitaji macho ya mwalimu.
+NAME_ONLY_CONFIDENCE_CAP = 0.85
+
+# Kizingiti cha jina lililosomwa dhidi ya jina lilichapishwa kwenye
+# nafasi hiyo. rapidfuzz WRatio ni mpole: majina YASIYOENDA
+# (kina "Peter Mushi" dhidi ya "Zachary Unknown Student") yanapata
+# hadi 0.39, na wastani wa majina tofauti ni 0.36 — kwa hivyo 0.35
+# (kilichokuwa kizingiti cha mwisho mwanzo) haikuweza kusema chochote,
+# lilikuwa akizungua kura. 0.55 liko juu ya makwilio hayo (p75 ya
+# majina tofauti ni 0.46) na bado chini ya kila kosa la OCR la
+# jina la mwanafunzi WAO (ambalo kawaida ni 0.80+).
+POSITION_MATCH_FLOOR = 0.55
+
+
 def match_rows_to_roster_by_position(
     rows: List[dict],
     ordered_roster: List[Student],
-    min_confidence: float = 0.35,
+    min_confidence: float = POSITION_MATCH_FLOOR,
+    name_threshold: float = NAME_OVERRIDE_THRESHOLD,
     exclude_ids: Iterable[int] = (),
 ) -> Tuple[dict, List[int]]:
-    """Match scoresheet rows to the roster using the PRINTED ROW NUMBER
-    the AI read off the sheet's "Na." column, instead of re-deriving a
-    student's identity purely from a re-typed name.
+    """Panga mistari ya scoresheet kwenye rosti KWA Namba ya "Na."
+    iliyochapishwa, na kutumia jina kama KUHIAKIKI — si kama ufunguo.
 
-    ``ordered_roster`` MUST be in the exact order the scoresheet PDF was
-    generated in — row 1 on the sheet is ``ordered_roster[0]`` — since we
-    printed that sheet from this same roster ourselves
-    (download_scoresheet_names_pdf). A row's printed number is strong
-    evidence of who it belongs to even when the handwritten mark sits
-    close to a neighbouring line and confuses a global name search, so a
-    much lower name-similarity bar is enough here than in
-    match_rows_to_roster_exclusive — it only guards against the roster
-    having changed since the sheet was printed, or the AI misreading the
-    row number, not against genuine ambiguity.
+    ``ordered_roster`` lazima iwe katika mpangilio hasa ambao karatasi
+    ya scoresheet ilichapishwa kwa (download_scoresheet_names_pdf):
+    mstari 1 kwenye karatasi ni ``ordered_roster[0]``. Namba hiyo
+    inachapishwa na mfumo mwenyewe, kwa hivyo AI hahitaji kujenga
+    upya utambulisho wa mwanafunzi kwa kusoma jina — inahitaji kusoma
+    TU alama. Hii ndiyo njia: AI inaposoma jina mmoja vibaya (mchapa,
+    mwandiko uliofunikwa), mwanafunzi wake hupoteza alama yake hata
+    ingawa namba yake iko wazi karatasi.
 
-    Returns (assignments, unresolved_row_indices) — same shape as
-    match_rows_to_roster_exclusive, so the caller can feed the leftovers
-    (rows with no usable row number, or whose position candidate flunked
-    the sanity check) into that function as a name-only fallback.
+    Jina bado lina moja ya kazi muhimu: kuhakiki. Pale namba na jina
+    vinapokubaliana, mstari unabakiwa salama. Pale zinapotana
+    (mwano mmoja):
 
-    ``exclude_ids``: students already claimed by an earlier (name) pass —
-    their slot stays in ``ordered_roster`` so row numbers keep lining up,
-    but no row can be assigned to them here.
+    * jina limefanana **kwa wazi zaidi** kuliko jina la mwanafunzi
+      wa nafasi iliyochapishwa — basi jina ndio inashiriki. Hii ni
+      hali ya rosti iliyobadilika baada ya karatasi kuchapishwa
+      (mwanafunzi ameongezwa/ameondolewa, mwalimu ametumia orodha
+      yake), au AI imekosea namba.
+    * sasa — jina la mwanafunzi mwingine linafanana karibu na
+      nafasi (kwa mfano wawili wa jina la mfamilia)— basi nafasi ya
+      "Na." ndiyo iliyo sahihi.
+
+    ``exclude_ids``: wanafunzi waliokwishachukuliwa mapema (nafasi
+    zao zinabaki kwenye ``ordered_roster`` ili namba zizisimame
+    vizuri, lakini hakuna mstari unaopewa wao).
+
+    Returns (assignments, unresolved_row_indices) — kama
+    match_rows_to_roster_exclusive: assignments inaonyesha
+    row_index -> (student, confidence), na mstari wa pili ni wa
+    hawepatikana (hakuna namba, au jina na nafasi vyote vimeshindwa
+    kwa namna ya maana) — mwanagenzaji huwapa mwalimu.
     """
-    assignments: dict = {}
-    unresolved: list = []
-    claimed_students: set = set(exclude_ids)
+    roster = list(ordered_roster)
+    excluded: set = set(exclude_ids)
+
+    # ── 1. Namba ya "Na." — mpangilio wa kwanza ────────────────────────
+    # Tunashumilia nafasi yake, hata AI akisoma jina vibaya, lakini
+    # tunakumbuka jana alilosoma ili tuwe na uwezo wa kuiondoa baadaye.
+    position: dict = {}
     for row_index, row in enumerate(rows):
         row_no = row.get('row')
-        if not row_no or not (1 <= row_no <= len(ordered_roster)):
-            unresolved.append(row_index)
+        if not isinstance(row_no, int) or not (1 <= row_no <= len(roster)):
             continue
-        candidate = ordered_roster[row_no - 1]
-        if candidate.id in claimed_students:
-            unresolved.append(row_index)
-            continue
-        confidence = _compare_names(
+        candidate = roster[row_no - 1]
+        similarity = _compare_names(
             normalize_text(row.get('raw_name') or ''), normalize_student_name(candidate),
         )
-        if confidence >= min_confidence:
-            assignments[row_index] = (candidate, max(confidence, 0.90))
-            claimed_students.add(candidate.id)
-        else:
-            unresolved.append(row_index)
+        position[row_index] = (candidate, similarity)
+
+    # ── 2. Jina — ushahidi wa pili, kwa kila mstari kwa pamoja ─────────
+    # Hapa hakuna utafuto wa kipekee: mstari mbili zinaweza kuelekeza
+    # kwa mwanafunzi mmoja (AI imesoma jina la mwanafunzi mwingine kwa
+    # mwanafunzi wa pili). Mgongano wa mwisho hapa chini ndio
+    # uliomalua mtu mmoja mara mbili.
+    best_name: dict = {}
+    for row_index, row in enumerate(rows):
+        target = normalize_text(row.get('raw_name') or '')
+        if not target:
+            continue
+        best: Optional[tuple] = None
+        for student in roster:
+            confidence = _compare_names(target, normalize_student_name(student))
+            if confidence >= name_threshold and (best is None or confidence > best[1]):
+                best = (student, confidence)
+        if best is not None:
+            best_name[row_index] = best
+
+    # ── 3. Chagua kwa kila mstari ──────────────────────────────────────
+    proposals: dict = {}
+
+    def by_name(row_index, student, confidence):
+        """Umgongano ambao JINA ndio uliosema — mstari huu hujafanyiwa
+        kama 'tuliyokubali' bila kuangaliwa, mwalimu anapaswa kuona
+        kahawia juu yake."""
+        proposals[row_index] = (student, min(confidence, NAME_ONLY_CONFIDENCE_CAP))
+
+    for row_index in range(len(rows)):
+        pos = position.get(row_index)
+        name = best_name.get(row_index)
+
+        if pos and name:
+            pos_student, pos_similarity = pos
+            name_student, name_confidence = name
+            if pos_student.id == name_student.id:
+                # Makubaliano kamili — namba NA jina vinasema mwanafunzi
+                # mmoja. Hii ndiyo hali ya kawaida na yenye nguvu zaidi.
+                proposals[row_index] = (pos_student, max(pos_similarity, name_confidence, 0.90))
+            elif name_confidence - pos_similarity >= NAME_OVERRIDE_MARGIN:
+                # Jina ni ushahidi mkubwa zaidi — rosti ilibadilika baada
+                # ya kuchapisha, au AI imekosea namba.
+                by_name(row_index, name_student, name_confidence)
+            elif pos_similarity >= min_confidence:
+                # Jina la mwanafunzi mwingine lilifanana karibu na
+                # nafasi iliyochapishwa — AI kimesoma jina la mwanafunzi
+                # mwenzine. Namba yetu ndiyo iliyo sahihi.
+                proposals[row_index] = (pos_student, max(pos_similarity, 0.90))
+            else:
+                by_name(row_index, name_student, name_confidence)
+        elif pos:
+            if pos[1] >= min_confidence:
+                proposals[row_index] = (pos[0], max(pos[1], 0.90))
+        elif name:
+            # Hakuna namba iliyosomwa (AI haikuijibu au mstari ulikata)
+            # — jina ndilo lilobaki.
+            by_name(row_index, name[0], name[1])
+
+    # ── 4. Mwanafunzi mmoja, mstari mmoja ─────────────────────────────
+    # Mijana miwili inaweza kuomba mwanafunzi mmoja (AI imemsoma
+    # mwanafunzi wa 3 mara mbili, mfano). Mwenye ushahidi mkubwa
+    # ndio anayepatikana na wengine wanabaki bila mtu — mwalimu
+    # huona wao kama "walioomwa kuhakiki".
+    ranked = sorted(
+        proposals.items(),
+        key=lambda item: (-item[1][1], item[0]),
+    )
+    assignments: dict = {}
+    claimed: set = set(excluded)
+    for row_index, (student, confidence) in ranked:
+        if row_index in assignments or student.id in claimed:
+            continue
+        assignments[row_index] = (student, confidence)
+        claimed.add(student.id)
+
+    unresolved = [i for i in range(len(rows)) if i not in assignments]
     return assignments, unresolved
 
 

@@ -143,7 +143,7 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids, progress_key=N
     (not a score, not an X, not even an explicit blank row) — these are
     almost always a mark the AI failed to read, not a student who simply
     doesn't study the subject, and need a manual check against the photo."""
-    from .services.speech_submission_service import match_rows_to_roster_by_position, match_rows_to_roster_exclusive
+    from .services.speech_submission_service import match_rows_to_roster_by_position
     from .views import _parse_roster_line, _save_student
 
     # Hatua kwa frontend: 'reading' (kwa kurasa) kisha 'matching'.
@@ -171,33 +171,25 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids, progress_key=N
     students_by_id = {s.id: s for s in Student.objects.filter(id__in=roster_ids)}
     roster_students = [students_by_id[rid] for rid in roster_ids if rid in students_by_id]
 
-    # ── Jina kwanza, namba ya mstari baadaye ─────────────────────────
-    # Zamani: karatasi safi ya 1..N yenye N == rosti ilipangwa KWA NAMBA
-    # TU (mstari 1 → mwanafunzi 1 ...). Rosti ya skrini ikitofautiana na
-    # karatasi (mwanafunzi ameongezwa/ameondolewa baada ya kuprint, mwalimu
-    # ametumia orodha yake) alama ZOTE zilisogea kwa wanafunzi wasio wao —
-    # lalamiko la 2026-09-23. Sasa ni kama scan ya academic
-    # (process_bulk_upload_task), ambayo walimu wanasema inapanga vizuri:
-    #   1. Jina linalofanana waziwazi (≥0.80, exclusive) linashinda — bila
-    #      kujali mstari uko wapi kwenye karatasi.
-    #   2. Mstari ambao jina lake halikusomeka (mwandiko → OCR) unapangwa
-    #      kwa namba yake ya "Na." — ila tu kama mwanafunzi wa nafasi hiyo
-    #      bado hajachukuliwa NA jina linafanana angalau kidogo (≥0.35).
-    # Mistari BLANK inashiriki kwenye hatua zote mbili ili imfunge
-    # mwanafunzi wake (cell tupu kwenye karatasi) — fuzzy haiwezi
-    # kumpaka alama ya mwenzake.
-    name_assignments, leftover = match_rows_to_roster_exclusive(
-        extracted_rows, roster_students, threshold=0.80,
+    # ── Namba ya "Na." kwanza, jina kama kuhakiki ───────────────────
+    # Karatasi ya scoresheet inachapishwa na mfumo mwenyewe
+    # (download_scoresheet_names_pdf) kwa mpangilio rahisi, na
+    # namba ya "Na." kwenye kila ukurasa ndiyo funguo inayotambulisha
+    # mwanafunzi. AI inapaswa kusoma TU alama — si kujenga upya
+    # utambulisho wa mwanafunzi kwa kusoma jina.
+    #
+    # Mwanzo ilikuwa jina kwanza (≥0.80), na namba ya mstari ilikuwa
+    # ya kumuja tu. Ilishindwa kila jili AI ilipokosea jina MOJA:
+    # mchapa, mwandiko uliofunikwa, au jina la mwanafunzi mwingine
+    # lililofanana karibu — mwanafunzi huyo alipoteza alama yake,
+    # au (mbaya zaidi) alichukua alama ya mwanafunzi mwingine
+    # bila kuonekana. Sasa namba ya kuchapishwa inaongoza, na jina
+    # limekuwa kuhakiki: pale rosti ya skrini imebadilika baada ya
+    # kuchapisha, jina la kweli (≥0.80, kwa wazi bora) linaondoa
+    # mstari huo kutoka nafasi yake.
+    assignments, _unresolved = match_rows_to_roster_by_position(
+        extracted_rows, roster_students,
     )
-    assignments = dict(name_assignments)
-    claimed_ids = {student.id for student, _ in assignments.values()}
-    if leftover and roster_students:
-        pos_assign, _ = match_rows_to_roster_by_position(
-            [extracted_rows[i] for i in leftover], roster_students,
-            min_confidence=0.35, exclude_ids=claimed_ids,
-        )
-        for local_i, assignment in pos_assign.items():
-            assignments[leftover[local_i]] = assignment
 
     blank_ids = {
         assignments[i][0].id for i, r in enumerate(extracted_rows)
