@@ -461,7 +461,7 @@ class SpecialCaseUiTests(unittest.TestCase):
     def test_saving_is_blocked_until_special_cases_confirmed(self):
         """Hii ndiyo maana ya 'mwalimu akague kwanza, kisha uendelee
         kama kawaida' — bila ukingo, utaratibu unakuwa wa kuonyesha
-        tu, na alama ya mashaka bado ingeingia kwenye rekodi."""
+        tu, na alama ya mashaka bodo ingeingia kwenye rekodi."""
         bulk = self._read('bulk_scoresheet_upload.html')
         self.assertIn('pendingSpecialCount', bulk)
         self.assertIn('pendingSpecialCount', bulk)
@@ -469,6 +469,74 @@ class SpecialCaseUiTests(unittest.TestCase):
         me = self._read('marks_entry.html')
         self.assertIn('specialAcked', me)
         self.assertIn('specialRows().length > 0 && !specialAcked', me)
+
+    @staticmethod
+    def _brace_depth(src, index):
+        """Kina cha mabano ya kufungwa hadi mwanzo wa index.
+
+        Inatumika kugundua kama kifumo kimefichwa ndani ya kifumo
+        kingine. Vitu vilivyo ndani ya openReviewModal havifikiwi na
+        vitufe vilivyo nje ya wake.
+        """
+        depth = 0
+        for ch in src[:index]:
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+        return depth
+
+    def test_save_button_can_reach_the_confirmation_helper(self):
+        """Regression: pendingSpecialCount ilikuwa defined ndani ya
+        openReviewModal, lakini kijengo cha kitufe cha kuhifadhi kipo
+        nje ya wake. JS hautoi SyntaxError kwa hayo — ReferenceError
+        hutokea pale mwanayezi unapobofya Hifadhi, na kitufe hicho
+        hufanyi kazi kabisa bila ujumbe wowote. Hapa tunathibitisha
+        wote ziko kwenye kiwango saja.
+        """
+        src = self._read('bulk_scoresheet_upload.html')
+        for helper in ('pendingSpecialCount', 'resetSpecialBanner', 'showSpecialBanner'):
+            self.assertIn(f'function {helper}(', src, f'{helper} haipo kwenye template')
+        modal = src.index('function openReviewModal(preview) {')
+        save = src.index("document.getElementById('reviewSaveBtn').addEventListener")
+
+        self.assertLess(
+            src.index('function pendingSpecialCount('), modal,
+            'pendingSpecialCount lazima iwe mbele ya openReviewModal — '
+            'ikiwa ndani yake, kitufe cha kuhifadhi (nje) kikifanikwa '
+            'kwa ReferenceError na hifadhi inashindikana bila ujumbe.')
+
+        for helper in ('pendingSpecialCount', 'resetSpecialBanner', 'showSpecialBanner'):
+            idx = src.index(f'function {helper}(')
+            self.assertEqual(
+                self._brace_depth(src, idx), self._brace_depth(src, save),
+                f'{helper} iko kwenye kiwango tofauti na kijengo cha '
+                f'kuhifadhi — hifadhi itashindikana kwa ReferenceError.')
+
+    def test_failed_save_keeps_the_review_modal_open(self):
+        """Hitilafu ya kuhifadhi haifungi modal. Ikiwa modal ingefungwa,
+        mwalimu anaona tu ujumbe unaoisha mara moja, hana nafasi ya
+        kurekebisha alama na kujaribu tena — anadhani mfumo umekufa."""
+        src = self._read('bulk_scoresheet_upload.html')
+        catch = src.index('} catch (err) {', src.index("'reviewSaveBtn').addEventListener"))
+        after_catch = src[catch:catch + 700]
+        self.assertIn('return;', after_catch,
+                      'baada ya hitilafu kifungu kinapaswa kuondoka mapema')
+        close = after_catch.index("classList.remove('active')")
+        early = after_catch.index('return;')
+        self.assertLess(early, close,
+                        'modal inafungwa kabla ya return — mwalimu hataona '
+                        'hitilafu wala hujaribu tena')
+
+    def test_every_opened_subject_resets_the_special_banner(self):
+        """Banner ya somo la awali haipaswi kubaki wazi kwenye somo la
+        pili, lako sasa mwakala akadhani alama za awali zimeshindwa."""
+        src = self._read('bulk_scoresheet_upload.html')
+        modal = src.index('function openReviewModal(preview) {')
+        body = src[modal:modal + 3000]
+        self.assertIn("tbody.innerHTML = ''", body)
+        self.assertIn('resetSpecialBanner()', body,
+                      'openReviewModal lazima isafishe banner ya somo la awali')
 
     def test_special_case_is_persisted_for_audit(self):
         """Alama inabaki ya mashaka hata baada ya mwalimu kuisahihisha,

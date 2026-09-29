@@ -1101,6 +1101,33 @@ Imekamilika.
 
   document.getElementById('reviewPdfRefreshBtn').addEventListener('click', refreshReviewPdf);
 
+  // ── SPECIAL CASE: kuhesabu mistari ambayo mwalimu bado hajaakagua ──
+  // Hapa kwa sababu inahitajiwa na vitufe vya kuhifadhi (reviewSaveBtn),
+  // ambavyo viko nje ya openReviewModal. Ikiwa ingekuwa ndani yake,
+  // save handler ingeipata ReferenceError na hifadhi isingefanya
+  // kazi hata kidogo.
+  function pendingSpecialCount() {
+    let n = 0;
+    document.querySelectorAll('#reviewTableBody tr.special-row').forEach(tr => {
+      if (tr.classList.contains('removed')) return;
+      const cb = tr.querySelector('.special-confirm');
+      if (cb && !cb.checked) n++;
+    });
+    return n;
+  }
+  function resetSpecialBanner() {
+    const b = document.getElementById('specialBanner');
+    if (b) b.classList.remove('show');
+  }
+  function showSpecialBanner(n) {
+    const b = document.getElementById('specialBanner');
+    if (!b) return;
+    const c = document.getElementById('specialBannerCount');
+    if (c) c.textContent = n;
+    b.classList.add('show');
+    b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   function openReviewModal(preview) {
     currentPreview = preview;
     const overlay = document.getElementById('reviewOverlay');
@@ -1141,6 +1168,10 @@ Imekamilika.
     }
 
     tbody.innerHTML = '';
+    // Kila somo lina banner lake. Bila kuisafisha hapa, banner ya
+    // somo la awali ingebaki ikionyeshwa wakati somo la pili likifunguliwa,
+    // na mwakala akadhani alama za somo la kwanza zimeshindwa kuhifadhiwa.
+    resetSpecialBanner();
 
     // Helper: build student options HTML
     function buildStudentOptions(selectedId) {
@@ -1152,25 +1183,6 @@ Imekamilika.
         });
       }
       return opts;
-    }
-
-    const specialBanner = document.getElementById('specialBanner');
-    if (specialBanner) specialBanner.classList.remove('show');
-    const specialBannerCount = document.getElementById('specialBannerCount');
-    function showSpecialBanner(n) {
-      if (!specialBanner) return;
-      if (specialBannerCount) specialBannerCount.textContent = n;
-      specialBanner.classList.add('show');
-      specialBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-    function pendingSpecialCount() {
-      let n = 0;
-      document.querySelectorAll('#reviewTableBody tr.special-row').forEach(tr => {
-        if (tr.classList.contains('removed')) return;
-        const cb = tr.querySelector('.special-confirm');
-        if (cb && !cb.checked) n++;
-      });
-      return n;
     }
 
     if (preview.matched && preview.matched.length) {
@@ -1589,12 +1601,19 @@ Imekamilika.
       }
     } catch (err) {
       toast(err.message, true);
+      // Modal haifungiwi pale inapofailika. Ikiwa ingefungwa, mwalimu
+      // angeona tu ujembe unaoisha mara moja na akadhani mfumo umekufa
+      // — bila nafasi ya kurekebisha alama na kujaribu tena.
+      saveBtn.disabled = false;
+      saveBtn.textContent = (LANG === 'sw' ? 'Hifadhi Alama' : 'Save Scores');
+      return;
     } finally {
       saveBtn.disabled = false;
-      saveBtn.textContent = '✅ ' + (LANG === 'sw' ? 'Hifadhi Alama' : 'Save Scores');
-      document.getElementById('reviewOverlay').classList.remove('active');
-      currentPreview = null;
     }
+    // Umefanikiwa — sasa tunaweza kufunga modal na kuendelea.
+    saveBtn.textContent = '✅ ' + (LANG === 'sw' ? 'Hifadhi Alama' : 'Save Scores');
+    document.getElementById('reviewOverlay').classList.remove('active');
+    currentPreview = null;
   });
 
   // Close modal on overlay click
