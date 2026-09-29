@@ -376,6 +376,44 @@ class TemplateCommentTests(unittest.TestCase):
             'maandishi kwenye ukurasa — andika kwa {% comment %}: ' + ', '.join(leaked),
         )
 
+    def test_templates_only_call_panel_helpers_that_exist(self):
+        """Templates hazipaswi kuiita function ya AI ambayo haipo.
+
+        Hitilafu hii ilijitokea kwenye ukurasa wa mwalimu: alikuwa
+        anaita `aiLogLine(...)` na `aiText(...)` ambavyo havipo
+        popote kwenye msimbo — hivyo kulikuwa kuna ReferenceError
+        "aiLogLine is not defined" na ukurasa wa mwalimu ulishindwa
+        kabisa, wakati ukurasa wa academic ulifanya kazi vizuri
+        (kwa sababu haukuwahi kuitia).
+
+        Jibu halisi ni njia za `aiPanel`: `aiPanel.log()` na
+        `aiPanel.t()`. Majaribio haya yanagwagua kila ukirejeshwa.
+        """
+        import re
+
+        # Njia zilizopo kwenye moduli halisi — hii ndizo pekee zinazoweza
+        # kuitwa kupitia `aiPanel.<jina>()`.
+        real = set(re.findall(
+            r'AiScanPanel\.prototype\.([A-Za-z_$][\w$]*)\s*=',
+            PANEL_JS.read_text(),
+        ))
+
+        bad = []
+        for path in sorted((self.results_templates()).rglob('*.html')):
+            text = path.read_text()
+            # Njia za AI zinazotarajiwa kuwa kwenye kila template.
+            for used in re.findall(r'\baiPanel\.([A-Za-z_$][\w$]*)\s*\(', text):
+                if used not in real:
+                    bad.append(f'{path.name}: aiPanel.{used}() haipo')
+            # Function za AI za zamani zilizoitwa kwa majina ya bure.
+            for ghost in re.findall(r'(?<![.\w$])(ai[A-Z]\w*)\s*\(', text):
+                if ghost not in ('aiPanel',):
+                    bad.append(f'{path.name}: {ghost}() haifafanywi popote')
+        self.assertEqual(
+            bad, [],
+            'Msimbo wa AI wa kuduma:\n  ' + '\n  '.join(bad),
+        )
+
     def results_templates(self):
         return PANEL_JS.parent.parent.parent.parent / 'templates'
 

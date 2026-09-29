@@ -1368,12 +1368,12 @@ function _dlPdf(url) {
 
           // Paneli: muhtasari wa matokeo. Hapa ndipo "AI imesoma nini"
           // inakuwa namba, si ahali ya "inasoma..." isiyosindika.
-          aiLogLine(aiText(
+          aiPanel.log(aiPanel.t(
             'AI imesoma ' + matched.length + ' wanafunzi, ' + unmatched.length + ' hawakupatikana.',
             'AI read ' + matched.length + ' students, ' + unmatched.length + ' unmatched.'));
           aiPanel.finish({
-            title: aiText('AI imemaliza kusoma', 'AI finished reading'),
-            sub: aiText(
+            title: aiPanel.t('AI imemaliza kusoma', 'AI finished reading'),
+            sub: aiPanel.t(
               'Jedwali limejazwa: ' + matched.length + ' waliozingatiwa'
                 + (missing.length ? ', ' + missing.length + ' hawakupatikana alama' : '')
                 + '. Kagua kila alama dhidi ya picha kabla ya kuhifadhi.',
