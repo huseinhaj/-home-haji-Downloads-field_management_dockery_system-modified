@@ -103,6 +103,7 @@ def bridge_claim(request):
         'ok': True,
         'job': {
             'id': job.pk,
+            'mode': job.mode,
             'exam_id': job.exam_id,
             'subject_id': job.subject_id,
             'exam_name': job.exam.name,
@@ -141,6 +142,9 @@ def bridge_upload(request, job_id):
         job.result_message = 'Bridge ilituma picha 0'
         job.save(update_fields=['status', 'result_message'])
         return JsonResponse({'ok': False, 'error': 'Hakuna picha'}, status=400)
+
+    if job.mode == ScanJob.Mode.CAPTURE:
+        return _capture_upload(job, images)
 
     exam, subject = job.exam, job.subject
 
@@ -288,6 +292,77 @@ def bridge_upload(request, job_id):
     })
 
 
+def _capture_page_path(job_id, page):
+    return f'sahishi_capture/job_{job_id}/page_{page:04d}.png'
+
+
+def _capture_upload(job, images):
+    """CAPTURE: karatasi zilizosahihishwa tayari → reg number + alama.
+
+    Hakuna ExamResult inayoandikwa hapa — matokeo yanakaa kwenye
+    job.capture_result, Marks Entry inayachukua na kujaza jedwali, na
+    mwalimu anakagua kisha anabonyeza Hifadhi kama kawaida.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.core.files.storage import default_storage
+
+    from .services.score_capture import (
+        build_capture_payload, read_paper_header, reg_map_for_roster,
+    )
+
+    job.status = ScanJob.Status.UPLOADING
+    job.save(using=ScanJob.objects.db, update_fields=['status'])
+
+    data_list = [f.read() for f in images]
+
+    # Picha zinahifadhiwa ili mwalimu aone karatasi halisi anapokagua
+    # alama ya mashaka au karatasi isiyolingana na mwanafunzi yeyote.
+    for i, data in enumerate(data_list, 1):
+        try:
+            default_storage.save(_capture_page_path(job.pk, i), ContentFile(data))
+        except Exception:
+            logger.exception('Capture job #%s: ukurasa %s haukuhifadhiwa', job.pk, i)
+
+    def _read(i):
+        try:
+            return read_paper_header(data_list[i])
+        except Exception as exc:
+            logger.warning('[ScoreCapture] job #%s ukurasa %s: %s', job.pk, i + 1, exc)
+            return None
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        raw_reads = list(ex.map(_read, range(len(data_list))))
+
+    roster = [r for r in (job.capture_roster or []) if isinstance(r, dict) and 'id' in r]
+    reg_map = reg_map_for_roster(job.exam, [r['id'] for r in roster])
+    payload = build_capture_payload(
+        [{'page': i + 1, 'read': r} for i, r in enumerate(raw_reads)],
+        roster, reg_map,
+    )
+
+    job.capture_result = payload
+    job.status = ScanJob.Status.DONE
+    job.completed_at = timezone.now()
+    job.result_message = (
+        f'Karatasi {len(images)}: {len(payload["matched"])} zimelingana, '
+        f'{len(payload["unmatched"])} hazijalingana, {len(payload["missing"])} hazina karatasi'
+    )[:255]
+    job.save(using=ScanJob.objects.db, update_fields=[
+        'capture_result', 'status', 'completed_at', 'result_message',
+    ])
+    logger.info('Capture job #%s done: %s', job.pk, job.result_message)
+    return JsonResponse({
+        'ok': True,
+        'mode': job.mode,
+        'total': len(images),
+        'graded': len(payload['matched']),
+        'review': len(payload['unmatched']),
+        'print_marked': False,
+        'marked_url': None,
+    })
+
+
 @require_POST
 @csrf_exempt
 def bridge_fail(request, job_id):
@@ -374,3 +449,151 @@ def bridge_rotate_token(request, bridge_id):
         return redirect(request.META.get('HTTP_REFERER') or 'admin:index')
 
     return _view(request, bridge_id)
+
+
+# ================= Capture Scores (Marks Entry) =================
+
+BRIDGE_ONLINE_SECONDS = 60  # bridge inauliza kila sekunde 4
+
+
+def _bridge_online(school):
+    cutoff = timezone.now() - timezone.timedelta(seconds=BRIDGE_ONLINE_SECONDS)
+    return SahishiBridge.objects.filter(
+        school=school, active=True, last_seen__gte=cutoff,
+    ).exists()
+
+
+def _teacher_capture_job(request, job_id):
+    job = get_object_or_404(
+        ScanJob.objects.select_related('exam', 'subject'),
+        pk=job_id, mode=ScanJob.Mode.CAPTURE,
+    )
+    school = getattr(request.user, 'school', None)
+    if school is None or job.school_id != school.pk:
+        return None
+    return job
+
+
+@require_POST
+@teacher_or_academic_required
+def bridge_capture_start(request):
+    """Marks Entry → "Capture Scores": ScanJob ya CAPTURE kwa bridge ya shule.
+
+    Fields: exam_id, subject_id, roster (JSON [{id, name}]), pages, duplex.
+    """
+    import json
+
+    from .marks_entry import _teacher_exam
+
+    teacher = request.user
+    school = getattr(teacher, 'school', None)
+    if school is None:
+        return JsonResponse({'error': 'Akaunti yako haina shule — bridge haiwezi kupatikana.'}, status=400)
+
+    exam = _teacher_exam(teacher, request.POST.get('exam_id'))
+    if exam is None:
+        return JsonResponse({'error': 'Mtihani haupatikani.'}, status=404)
+    subject = get_object_or_404(Subject, id=request.POST.get('subject_id'))
+    if not teacher.subjects.filter(pk=subject.pk).exists():
+        return JsonResponse({'error': 'Hujapangiwa somo hili.'}, status=403)
+
+    try:
+        roster = json.loads(request.POST.get('roster') or '[]')
+    except json.JSONDecodeError:
+        roster = []
+    roster = [
+        {'id': int(r['id']), 'name': str(r.get('name') or '')[:200]}
+        for r in roster
+        if isinstance(r, dict) and str(r.get('id', '')).isdigit()
+    ]
+    if not roster:
+        return JsonResponse({'error': 'Orodha ya wanafunzi iko tupu — pakia orodha kwanza.'}, status=400)
+
+    if not SahishiBridge.objects.filter(school=school, active=True).exists():
+        return JsonResponse({
+            'error': 'Shule yako haina Sahishi Bridge. Mwombe Mtaaluma/Admin aisajili '
+                     '(Admin → Sahishi Bridges) na kuiwasha kwenye PC yenye printer.',
+        }, status=400)
+
+    try:
+        pages = max(1, min(200, int(request.POST.get('pages') or 60)))
+    except ValueError:
+        pages = 60
+
+    job = ScanJob.objects.create(
+        school=school, exam=exam, subject=subject,
+        mode=ScanJob.Mode.CAPTURE,
+        pages=pages, duplex=request.POST.get('duplex') in ('on', '1', 'true'),
+        dpi=200,  # reg number + alama tu — 200dpi inatosha na ni haraka
+        capture_roster=roster,
+        requested_by_id=teacher.pk,
+        note='Capture score',
+    )
+    return JsonResponse({
+        'ok': True,
+        'job_id': job.pk,
+        'bridge_online': _bridge_online(school),
+    })
+
+
+@require_GET
+@teacher_or_academic_required
+def bridge_capture_status(request, job_id):
+    """Polling ya Marks Entry. Ikiisha inarudisha muundo ule ule wa
+    scoresheet_extract_status (matched/unmatched/missing/warnings)."""
+    job = _teacher_capture_job(request, job_id)
+    if job is None:
+        return JsonResponse({'error': 'Kazi haipatikani.'}, status=404)
+
+    if job.status == ScanJob.Status.DONE:
+        result = job.capture_result or {}
+        return JsonResponse({
+            'status': 'done',
+            'job_id': job.pk,
+            'message': job.result_message,
+            'matched': result.get('matched', []),
+            'unmatched': result.get('unmatched', []),
+            'missing': result.get('missing', []),
+            'warnings': result.get('warnings', []),
+        })
+    if job.status in (ScanJob.Status.FAILED, ScanJob.Status.CANCELLED):
+        return JsonResponse({
+            'status': 'failed',
+            'error': job.result_message or job.get_status_display(),
+        })
+    return JsonResponse({
+        'status': 'processing',
+        'job_status': job.status,
+        'status_display': job.get_status_display(),
+        'bridge_online': _bridge_online(job.school),
+    })
+
+
+@require_POST
+@teacher_or_academic_required
+def bridge_capture_cancel(request, job_id):
+    """Mwalimu anaghairi kazi ambayo bridge bado haijaichukua."""
+    job = _teacher_capture_job(request, job_id)
+    if job is None:
+        return JsonResponse({'error': 'Kazi haipatikani.'}, status=404)
+    updated = ScanJob.objects.filter(pk=job.pk, status=ScanJob.Status.PENDING).update(
+        status=ScanJob.Status.CANCELLED, result_message='Imeghairiwa na mwalimu',
+        completed_at=timezone.now(),
+    )
+    if not updated:
+        return JsonResponse({'error': 'Bridge imeshaanza kuscan — subiri iishe.'}, status=409)
+    return JsonResponse({'ok': True})
+
+
+@require_GET
+@teacher_or_academic_required
+def bridge_capture_page(request, job_id, page):
+    """Picha ya ukurasa mmoja wa capture — mwalimu anaikagua dhidi ya alama."""
+    from django.core.files.storage import default_storage
+    from django.http import FileResponse, Http404
+
+    job = _teacher_capture_job(request, job_id)
+    path = _capture_page_path(job_id, page)
+    if job is None or not default_storage.exists(path):
+        raise Http404('Ukurasa haupatikani.')
+    return FileResponse(default_storage.open(path, 'rb'), content_type='image/png')

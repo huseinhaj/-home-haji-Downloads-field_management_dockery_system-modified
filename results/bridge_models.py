@@ -68,9 +68,25 @@ class ScanJob(models.Model):
         FAILED = 'FAILED', 'Imeshindikana'
         CANCELLED = 'CANCELLED', 'Imefutwa'
 
+    class Mode(models.TextChoices):
+        # GRADE   — karatasi za majibu → AI inasahihisha dhidi ya marking scheme
+        # CAPTURE — karatasi ZILIZOSAHIHISHWA tayari na mwalimu → AI inasoma
+        #           reg number + alama iliyoandikwa juu tu, kisha mfumo
+        #           unajaza scoresheet ya Marks Entry
+        GRADE = 'GRADE', 'Sahihisha (AI/OMR)'
+        CAPTURE = 'CAPTURE', 'Capture score (reg no + alama)'
+
     school = models.ForeignKey(
         School, on_delete=models.CASCADE, related_name='sahishi_jobs', null=True, blank=True,
     )
+    mode = models.CharField(max_length=10, choices=Mode.choices, default=Mode.GRADE)
+    # CAPTURE: orodha ya Marks Entry wakati mwalimu alipobonyeza
+    # [{"id": <Student id>, "name": "..."}] — matching inafanyika dhidi yake
+    capture_roster = models.JSONField(default=list, blank=True)
+    # CAPTURE: {"matched": [...], "unmatched": [...], "missing": [...], "warnings": [...]}
+    # — muundo ule ule wa scoresheet_extract_status ili Marks Entry iujaze jedwali
+    capture_result = models.JSONField(default=dict, blank=True)
+    requested_by_id = models.PositiveIntegerField(null=True, blank=True)
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='sahishi_jobs')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='sahishi_jobs')
     batch = models.ForeignKey(

@@ -447,6 +447,9 @@
           <button type="button" class="btn-me-voice btn-me-photo" id="meScanBtn">
             🖨️ {% if LANG == 'sw' %}Scan Scoresheet (kurasa nyingi){% else %}Scan Scoresheet (multi-page){% endif %}
           </button>
+          <button type="button" class="btn-me-voice btn-me-photo" id="meCaptureBtn">
+            📠 {% if LANG == 'sw' %}Capture Scores (Printer){% else %}Capture Scores (Printer){% endif %}
+          </button>
           <input type="file" id="mePhotoInput" accept="image/*,.pdf,application/pdf" capture="environment" style="display:none;">
           <div class="me-voice-status" id="meVoiceStatus"></div>
           <div class="me-voice-status" id="mePhotoStatus"></div>
@@ -465,6 +468,31 @@
             {% else %}
               Upload a photo (take one now or pick an existing one) OR a scanned PDF of the scoresheet you filled by hand — each student's name and score. The table below fills in automatically; check every score against the file before saving.
             {% endif %}
+          </div>
+          <div class="me-voice-hint" id="meCapturePanel" style="display:none;">
+            <strong>📠 {% if LANG == 'sw' %}Capture Scores kutoka Printer (ADF){% else %}Capture Scores from the Printer (ADF){% endif %}</strong>
+            <ol style="margin:0.35rem 0 0.5rem 1.1rem;padding:0;">
+              {% if LANG == 'sw' %}
+              <li>Kila karatasi iliyosahihishwa iwe na <b>reg number</b> ya mwanafunzi na <b>alama ya jumla</b> uliyoiandika juu.</li>
+              <li>Weka karatasi kwenye ADF ya printer. Inatosha kuweka ukurasa wa kwanza tu (wenye reg number na alama) — kurasa za ndani zinarukwa.</li>
+              <li>Bonyeza <b>Anza Capture</b>: bridge itascan, mfumo utasoma reg number na alama, na kuzilinganisha na orodha hii.</li>
+              <li>Jedwali litajazwa — kagua alama za njano/SPECIAL CASE, kisha bonyeza <b>Hifadhi</b> kama kawaida.</li>
+              {% else %}
+              <li>Every marked paper must show the student's <b>reg number</b> and the <b>total score</b> you wrote at the top.</li>
+              <li>Load the papers into the printer's ADF. The first page of each paper is enough — inner pages are skipped.</li>
+              <li>Press <b>Start Capture</b>: the bridge scans, the system reads each reg number and score and matches them to this roster.</li>
+              <li>The table fills in — check yellow / SPECIAL CASE rows, then press <b>Save</b> as usual.</li>
+              {% endif %}
+            </ol>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.6rem;">
+              <label style="font-size:0.85rem;">{% if LANG == 'sw' %}Kurasa (upeo){% else %}Pages (max){% endif %}
+                <input type="number" id="meCapturePages" min="1" max="200" value="40" style="width:5rem;margin-left:0.3rem;">
+              </label>
+              <label style="font-size:0.85rem;"><input type="checkbox" id="meCaptureDuplex"> {% if LANG == 'sw' %}Pande mbili (duplex){% else %}Both sides (duplex){% endif %}</label>
+              <button type="button" class="btn-me-voice" id="meCaptureStart">▶ {% if LANG == 'sw' %}Anza Capture{% else %}Start Capture{% endif %}</button>
+              <button type="button" class="btn-me-ghost" id="meCaptureCancel" style="display:none;">✖ {% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
+            </div>
+            <div id="meCaptureStatus" style="margin-top:0.45rem;font-size:0.88rem;"></div>
           </div>
           <div class="me-photo-unmatched" id="mePhotoUnmatched" style="display:none;"></div>
           <div class="me-photo-unmatched" id="mePhotoMissing" style="display:none; color:#8a6d1a; background:#fff8e6; border-color:#f0dca0;"></div>
@@ -1341,6 +1369,103 @@ function _dlPdf(url) {
         photoInput.click();
       });
 
+      /* Jaza jedwali kutoka majibu ya AI ({matched, unmatched, missing,
+         warnings}) — inatumika na picha/PDF ya scoresheet NA Capture
+         Scores ya printer (bridge), ambazo zinarudisha muundo ule ule.
+         opts.pageUrl(page) → link ya karatasi iliyoscaniwa (capture tu). */
+      function applyScanResult(data, opts) {
+        opts = opts || {};
+        const matched = data.matched || [];
+        const unmatched = data.unmatched || [];
+        const missing = data.missing || [];
+        const warnings = data.warnings || [];
+        const pageLink = (item) => (opts.pageUrl && item.page)
+          ? ' <a href="' + opts.pageUrl(item.page) + '" target="_blank" rel="noopener">' +
+            (LANG === 'sw' ? '(ona karatasi #' : '(view paper #') + item.page + ')</a>'
+          : '';
+
+        // Scan-quality warnings: mistari iliyorukwa au kusomwa mara mbili
+        // — mwalimu anajua hitilafu ni YA SCAN (picha), si ya orodha yake.
+        let warnBox = document.getElementById('meScanWarnings');
+        if (warnings.length) {
+          if (!warnBox) {
+            warnBox = document.createElement('div');
+            warnBox.id = 'meScanWarnings';
+            photoStatus.after(warnBox);
+          }
+          const warnLabel = LANG === 'sw'
+            ? '📸 Tahadhari za ubora wa scan — kagua kabla ya kuhifadhi:'
+            : '📸 Scan-quality warnings — check before saving:';
+          warnBox.style.cssText = 'margin:0 0 0.8rem;padding:0.6rem 0.8rem;border:1.5px solid #f0a500;background:#fff8e6;border-radius:6px;';
+          warnBox.innerHTML = '<strong style="color:#8a6d1a;">' + escapeHtml(warnLabel) + '</strong>'
+            + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;color:#7a5200;">'
+            + warnings.map(w => '<li>' + escapeHtml(w) + '</li>').join('')
+            + '</ul>';
+        } else if (warnBox) {
+          warnBox.remove();
+        }
+
+        matched.forEach(m => {
+          if (m.is_new) {
+            byId.set(m.id, {
+              id: m.id, name: m.name, score: m.score,
+              is_absent: m.is_absent || false,
+              is_special_case: !!m.is_special_case,
+              special_reason: m.special_reason || '',
+              raw_mark: m.raw_mark || '',
+            });
+          } else {
+            const s = byId.get(m.id);
+            if (s) {
+              s.score = m.score;
+              s.is_absent = m.is_absent || false;
+              // Alama iliyokuwa ya mashaka inabaki ya mashaka hata
+              // baada ya mwalimu kuiandika upya — hiyo ndiyo
+              // maana ya "special case".
+              s.is_special_case = !!m.is_special_case;
+              s.special_reason = m.special_reason || '';
+              s.raw_mark = m.raw_mark || '';
+            }
+          }
+        });
+        renderRows();
+        showSpecialCases();
+        matched.forEach(m => {
+          const row = rowsBody.querySelector('tr[data-id="' + m.id + '"]');
+          if (row && (m.is_new || m.confidence < 0.9)) row.classList.add('photo-low-confidence');
+        });
+
+        if (unmatched.length) {
+          unmatchedBox.style.display = '';
+          const label = opts.unmatchedLabel || (LANG === 'sw'
+            ? '⚠️ Mfumo haukuweza kusoma jina la mstari huu vizuri — jaza mwenyewe:'
+            : "⚠️ The system couldn't clearly read the name on this row — fill it in manually:");
+          unmatchedBox.innerHTML = escapeHtml(label) + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;">' +
+            unmatched.map(u => '<li>' + escapeHtml(u.raw_name) + ' — ' + escapeHtml(String(u.score ?? '')) + pageLink(u) + '</li>').join('') + '</ul>';
+        }
+
+        if (missing.length) {
+          missingBox.style.display = '';
+          const label = opts.missingLabel || (LANG === 'sw'
+            ? '🟡 Wanafunzi hawa WAKO kwenye orodha lakini mfumo hakuona alama yao kabisa kwenye picha (si "hasomi somo" — huenda alama yao ilikosekana). Wamewekewa mstari wa manjano hapo chini — thibitisha dhidi ya karatasi:'
+            : "🟡 These students ARE on the roster but the system found NO mark for them at all in the photo (this is different from \"doesn't take the subject\" — their mark was likely missed). Their rows are outlined in yellow below — double-check against the paper sheet:");
+          missingBox.innerHTML = escapeHtml(label) + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;">' +
+            missing.map(m => '<li>' + escapeHtml(m.name) + '</li>').join('') + '</ul>';
+          missing.forEach(m => {
+            const row = rowsBody.querySelector('tr[data-id="' + m.id + '"]');
+            if (row) row.classList.add('photo-missing-row');
+          });
+        }
+
+        mePdfFlaggedIds = new Set(missing.map(m => m.id));
+        refreshMarksPreviewPdf();
+
+        photoStatus.innerHTML = matched.length
+          ? '<span style="color:#1a7a3b;">✅ ' + matched.length + ' ' +
+            (LANG === 'sw' ? 'zimejazwa. Kagua kila alama dhidi ya ' + (opts.sourceSw || 'picha') + ' kabla ya kuhifadhi.' : 'scores filled in. Check each one against the ' + (opts.sourceEn || 'photo') + ' before saving.') + '</span>'
+          : '<span style="color:#c0392b;">⚠️ ' + (LANG === 'sw' ? 'Hakuna alama iliyolingana na orodha.' : 'No scores matched the roster.') + '</span>';
+      }
+
       async function processScoresheetFile(file) {
         if (!file) return;
         if (!EXAM_ID || !SUBJECT_ID) {
@@ -1455,86 +1580,7 @@ function _dlPdf(url) {
                 + '. Check every score against the photo before saving.'),
           });
 
-          // Scan-quality warnings: mistari iliyorukwa au kusomwa mara mbili
-          // — mwalimu anajua hitilafu ni YA SCAN (picha), si ya orodha yake.
-          let warnBox = document.getElementById('meScanWarnings');
-          if (warnings.length) {
-            if (!warnBox) {
-              warnBox = document.createElement('div');
-              warnBox.id = 'meScanWarnings';
-              photoStatus.after(warnBox);
-            }
-            const warnLabel = LANG === 'sw'
-              ? '📸 Tahadhari za ubora wa scan — kagua kabla ya kuhifadhi:'
-              : '📸 Scan-quality warnings — check before saving:';
-            warnBox.style.cssText = 'margin:0 0 0.8rem;padding:0.6rem 0.8rem;border:1.5px solid #f0a500;background:#fff8e6;border-radius:6px;';
-            warnBox.innerHTML = '<strong style="color:#8a6d1a;">' + escapeHtml(warnLabel) + '</strong>'
-              + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;color:#7a5200;">'
-              + warnings.map(w => '<li>' + escapeHtml(w) + '</li>').join('')
-              + '</ul>';
-          } else if (warnBox) {
-            warnBox.remove();
-          }
-
-          matched.forEach(m => {
-            if (m.is_new) {
-              byId.set(m.id, {
-                id: m.id, name: m.name, score: m.score,
-                is_absent: m.is_absent || false,
-                is_special_case: !!m.is_special_case,
-                special_reason: m.special_reason || '',
-                raw_mark: m.raw_mark || '',
-              });
-            } else {
-              const s = byId.get(m.id);
-              if (s) {
-                s.score = m.score;
-                s.is_absent = m.is_absent || false;
-                // Alama iliyokuwa ya mashaka inabaki ya mashaka hata
-                // baada ya mwalimu kuiandika upya — hiyo ndiyo
-                // maana ya "special case".
-                s.is_special_case = !!m.is_special_case;
-                s.special_reason = m.special_reason || '';
-                s.raw_mark = m.raw_mark || '';
-              }
-            }
-          });
-          renderRows();
-          showSpecialCases();
-          matched.forEach(m => {
-            const row = rowsBody.querySelector('tr[data-id="' + m.id + '"]');
-            if (row && (m.is_new || m.confidence < 0.9)) row.classList.add('photo-low-confidence');
-          });
-
-          if (unmatched.length) {
-            unmatchedBox.style.display = '';
-            const label = LANG === 'sw'
-              ? '⚠️ Mfumo haukuweza kusoma jina la mstari huu vizuri — jaza mwenyewe:'
-              : "⚠️ The system couldn't clearly read the name on this row — fill it in manually:";
-            unmatchedBox.innerHTML = escapeHtml(label) + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;">' +
-              unmatched.map(u => '<li>' + escapeHtml(u.raw_name) + ' — ' + u.score + '</li>').join('') + '</ul>';
-          }
-
-          if (missing.length) {
-            missingBox.style.display = '';
-            const label = LANG === 'sw'
-              ? '🟡 Wanafunzi hawa WAKO kwenye orodha lakini mfumo hakuona alama yao kabisa kwenye picha (si "hasomi somo" — huenda alama yao ilikosekana). Wamewekewa mstari wa manjano hapo chini — thibitisha dhidi ya karatasi:'
-              : "🟡 These students ARE on the roster but the system found NO mark for them at all in the photo (this is different from \"doesn't take the subject\" — their mark was likely missed). Their rows are outlined in yellow below — double-check against the paper sheet:";
-            missingBox.innerHTML = escapeHtml(label) + '<ul style="margin:0.3rem 0 0 1.1rem;padding:0;">' +
-              missing.map(m => '<li>' + escapeHtml(m.name) + '</li>').join('') + '</ul>';
-            missing.forEach(m => {
-              const row = rowsBody.querySelector('tr[data-id="' + m.id + '"]');
-              if (row) row.classList.add('photo-missing-row');
-            });
-          }
-
-          mePdfFlaggedIds = new Set(missing.map(m => m.id));
-          refreshMarksPreviewPdf();
-
-          photoStatus.innerHTML = matched.length
-            ? '<span style="color:#1a7a3b;">✅ ' + matched.length + ' ' +
-              (LANG === 'sw' ? 'zimejazwa. Kagua kila alama dhidi ya picha kabla ya kuhifadhi.' : 'scores filled in. Check each one against the photo before saving.') + '</span>'
-            : '<span style="color:#c0392b;">⚠️ ' + (LANG === 'sw' ? 'Hakuna alama iliyolingana na orodha.' : 'No scores matched the roster.') + '</span>';
+          applyScanResult(data);
         } catch (err) {
           const msg = (err && err.message) || '';
           const hint = LANG === 'sw'
@@ -1553,6 +1599,142 @@ function _dlPdf(url) {
         photoInput.value = '';
         processScoresheetFile(f);
       });
+
+      /* ── Capture Scores: karatasi ZILIZOSAHIHISHWA kwenye ADF ya printer ──
+         Mwalimu anaweka karatasi (reg number + alama juu) kwenye ADF →
+         ScanJob ya CAPTURE → Sahishi Bridge (PC ya shule) inascan → seriveri
+         inasoma reg number + alama na kuzilinganisha na orodha hii →
+         jedwali linajazwa kwa applyScanResult. Hakuna kinachohifadhiwa
+         mpaka mwalimu abonyeze Hifadhi. */
+      const capBtn = document.getElementById('meCaptureBtn');
+      const capPanel = document.getElementById('meCapturePanel');
+      if (capBtn && capPanel) {
+        const capStart = document.getElementById('meCaptureStart');
+        const capCancel = document.getElementById('meCaptureCancel');
+        const capStatus = document.getElementById('meCaptureStatus');
+        const capPages = document.getElementById('meCapturePages');
+        const capDuplex = document.getElementById('meCaptureDuplex');
+        const CAP_BASE = "{% url 'bridge_capture_start' %}".replace(/anza\/$/, '');
+        const sw = LANG === 'sw';
+        let capJobId = null;
+
+        capPages.addEventListener('input', () => { capPages.dataset.touched = '1'; });
+        capBtn.addEventListener('click', () => {
+          const show = capPanel.style.display === 'none';
+          capPanel.style.display = show ? '' : 'none';
+          if (show && !capPages.dataset.touched) capPages.value = Math.min(200, Math.max(1, byId.size));
+        });
+
+        capCancel.addEventListener('click', async () => {
+          if (!capJobId) return;
+          const res = await fetch(CAP_BASE + capJobId + '/ghairi/', {
+            method: 'POST', headers: { 'X-CSRFToken': csrfToken },
+          });
+          const d = await res.json().catch(() => ({}));
+          if (!res.ok) { toast(d.error || (sw ? 'Imeshindikana kughairi.' : 'Could not cancel.'), true); return; }
+          capJobId = null;  // loop ya polling inaona hii na kusimama
+        });
+
+        capStart.addEventListener('click', async () => {
+          if (!EXAM_ID || !SUBJECT_ID) {
+            toast(sw ? 'Chagua mtihani na somo kwanza.' : 'Pick an exam and subject first.', true);
+            return;
+          }
+          if (!byId.size) {
+            toast(sw ? 'Orodha ya wanafunzi iko tupu — pakia orodha kwanza.' : 'The roster is empty — load it first.', true);
+            return;
+          }
+          capStart.disabled = true;
+          capBtn.disabled = true;
+          unmatchedBox.style.display = 'none';
+          unmatchedBox.innerHTML = '';
+          missingBox.style.display = 'none';
+          missingBox.innerHTML = '';
+          document.querySelectorAll('tr.photo-missing-row').forEach(tr => tr.classList.remove('photo-missing-row'));
+          capStatus.innerHTML = '<span style="color:#145226;">⏳ ' + (sw ? 'Inatuma kazi kwa bridge...' : 'Sending the job to the bridge...') + '</span>';
+
+          try {
+            const fd = new FormData();
+            fd.append('exam_id', EXAM_ID);
+            fd.append('subject_id', SUBJECT_ID);
+            fd.append('roster', JSON.stringify([...byId.values()].map(s => ({ id: s.id, name: s.name }))));
+            fd.append('pages', capPages.value || '40');
+            if (capDuplex.checked) fd.append('duplex', 'on');
+            const res = await fetch(CAP_BASE + 'anza/', {
+              method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd,
+            });
+            const kick = await res.json().catch(() => ({}));
+            if (!res.ok || !kick.ok) throw new Error(kick.error || (sw ? 'Imeshindikana kuanza.' : 'Could not start.'));
+
+            const myJob = kick.job_id;
+            capJobId = myJob;
+            capCancel.style.display = '';
+
+            const POLL_MS = 3000;
+            const MAX_WAIT_MS = 20 * 60 * 1000;
+            const startedAt = Date.now();
+            let netErrors = 0;
+            let data;
+            while (true) {
+              if (capJobId !== myJob) {
+                capStatus.innerHTML = '<span style="color:#8a6d1a;">✖ ' + (sw ? 'Kazi imeghairiwa.' : 'Job cancelled.') + '</span>';
+                return;
+              }
+              if (Date.now() - startedAt > MAX_WAIT_MS) {
+                throw new Error(sw ? 'Muda umeisha — angalia bridge na printer, kisha jaribu tena.' : 'Timed out — check the bridge and printer, then try again.');
+              }
+              let pollRes, poll;
+              try {
+                pollRes = await fetch(CAP_BASE + myJob + '/hali/');
+                poll = await pollRes.json().catch(() => ({}));
+                netErrors = 0;
+              } catch (networkErr) {
+                if (++netErrors >= 5) throw networkErr;
+                await new Promise(r => setTimeout(r, POLL_MS));
+                continue;
+              }
+              if (!pollRes.ok) throw new Error(poll.error || 'Status failed');
+              if (poll.status === 'failed') throw new Error(poll.error || (sw ? 'Bridge imeshindikana.' : 'The bridge failed.'));
+              if (poll.status === 'done') { data = poll; break; }
+
+              const secs = Math.round((Date.now() - startedAt) / 1000);
+              const waiting = poll.job_status === 'PENDING';
+              if (!waiting) capCancel.style.display = 'none';
+              let msg = '⏳ ' + escapeHtml(poll.status_display || '') + ' (' + secs + 's)';
+              if (poll.job_status === 'UPLOADING') {
+                msg += ' — ' + (sw ? 'AI inasoma reg number na alama za kila karatasi...' : 'AI is reading every reg number and score...');
+              }
+              if (waiting && poll.bridge_online === false) {
+                msg += '<br><span style="color:#c0392b;">⚠️ ' + (sw
+                  ? 'Bridge haionekani mtandaoni — hakikisha PC yenye printer imewashwa na bridge.py --serve inaendelea.'
+                  : 'The bridge is offline — make sure the PC with the printer is on and bridge.py --serve is running.') + '</span>';
+              }
+              capStatus.innerHTML = '<span style="color:#145226;">' + msg + '</span>';
+              await new Promise(r => setTimeout(r, POLL_MS));
+            }
+
+            applyScanResult(data, {
+              pageUrl: (page) => CAP_BASE + myJob + '/ukurasa/' + page + '/',
+              sourceSw: 'karatasi',
+              sourceEn: 'papers',
+              unmatchedLabel: sw
+                ? '⚠️ Karatasi hizi hazikulingana na mwanafunzi yeyote wa orodha (reg number haijapatikana) — fungua karatasi, kisha jaza alama mwenyewe:'
+                : '⚠️ These papers did not match anyone on the roster (reg number not found) — open the paper and type the mark yourself:',
+              missingLabel: sw
+                ? '🟡 Wanafunzi hawa WAKO kwenye orodha lakini hakuna karatasi yao iliyoscaniwa (au reg number yao haikusomeka). Wamewekewa mstari wa manjano hapo chini:'
+                : '🟡 These students ARE on the roster but none of the scanned papers was theirs (or their reg number was unreadable). Their rows are outlined in yellow below:',
+            });
+            capStatus.innerHTML = '<span style="color:#1a7a3b;">✅ ' + escapeHtml(data.message || '') + '</span>';
+          } catch (err) {
+            capStatus.innerHTML = '<span style="color:#c0392b;">❌ ' + escapeHtml((err && err.message) || 'Error') + '</span>';
+          } finally {
+            capJobId = null;
+            capStart.disabled = false;
+            capBtn.disabled = false;
+            capCancel.style.display = 'none';
+          }
+        });
+      }
 
       // Multi-page in-app scanner: capture each page with the camera, the
       // widget stitches them into one PDF, then it runs through the exact

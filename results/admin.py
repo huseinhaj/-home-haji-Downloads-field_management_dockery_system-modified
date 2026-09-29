@@ -188,8 +188,8 @@ class SahishiBridgeAdmin(admin.ModelAdmin):
 
 
 class ScanJobAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'exam', 'subject', 'status', 'bridge', 'created_at', 'result_message')
-    list_filter = ('status',)
+    list_display = ('pk', 'exam', 'subject', 'mode', 'status', 'bridge', 'created_at', 'result_message')
+    list_filter = ('status', 'mode')
     autocomplete_fields = ('exam', 'subject', 'bridge')
     search_fields = ('exam__name',)
 

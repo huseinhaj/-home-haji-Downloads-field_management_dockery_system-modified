@@ -51,6 +51,21 @@ python3 bridge.py --serve
 3. Ukurasa unaonyesha: *Inasubiri bridge → Bridge inascan → Inatuma → Imekamilika*
 4. Mwalimu anaenda review — karatasi zimesahihishwa
 
+### Capture Scores (karatasi zilizosahihishwa tayari)
+
+Mwalimu amesahihisha mitihani kwa mkono na kuandika **alama ya jumla** juu ya
+kila karatasi, karibu na **reg number** ya mwanafunzi:
+
+1. **Marks Entry** → chagua mtihani + somo → **📠 Capture Scores (Printer)**
+2. Weka karatasi kwenye ADF (ukurasa wa kwanza wa kila mwanafunzi unatosha)
+3. Bonyeza **Anza Capture** — bridge inascan, site inasoma reg number + alama
+   na kuzilinganisha na reg number za wanafunzi walio kwenye mfumo
+4. Jedwali linajazwa. Mistari ya njano / SPECIAL CASE = kagua (bonyeza
+   "ona karatasi" kuona picha), kisha **Hifadhi** kama kawaida
+
+Bridge haihitaji mabadiliko yoyote ya ziada kwa hii — ni kazi ile ile ya
+scan + upload (bridge ya zamani pia inafanya kazi).
+
 ## Kuweka kama service (inaanza yenyewe PC inapowashwa)
 
 ```bash

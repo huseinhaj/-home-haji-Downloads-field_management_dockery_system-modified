@@ -3,6 +3,12 @@
 Sahishi Bridge — programu ndogo inayokaa PC ya shule (Ubuntu).
 Inaunganisha scanner ya ADF moja kwa moja na site ya Sahishi.
 
+Aina mbili za kazi (job['mode']):
+  GRADE   — karatasi za majibu → site inasahihisha (AI/OMR)
+  CAPTURE — karatasi ZILIZOSAHIHISHWA na mwalimu → site inasoma reg number
+            + alama iliyoandikwa juu na kujaza scoresheet ya Marks Entry
+Bridge inafanya kitu kile kile kwa zote mbili: scan ADF → upload.
+
 Matumizi:
   # 1. Thibitisha token (Server inatoa token kwa admin)
   python3 bridge.py --ping
@@ -199,8 +205,14 @@ def do_job(job):
 
     print(f'  Kurasa {len(files)} zimescan. Zinatuma...')
     result = upload_images(job['id'], files)
-    print(f"  ✓ {result.get('total')} picha: {result.get('graded')} graded, {result.get('review')} review")
-    print(f"  → Fungua review: {SERVER}/shule/exam/{job['exam_id']}/subject/{job['subject_id']}/sahishi/review/")
+    if job.get('mode') == 'CAPTURE':
+        # Karatasi zilizosahihishwa: seriveri imesoma reg number + alama,
+        # jedwali la Marks Entry la mwalimu linajazwa lenyewe
+        print(f"  ✓ {result.get('total')} karatasi: {result.get('graded')} zimelingana, "
+              f"{result.get('review')} hazijalingana — mwalimu akague Marks Entry")
+    else:
+        print(f"  ✓ {result.get('total')} picha: {result.get('graded')} graded, {result.get('review')} review")
+        print(f"  → Fungua review: {SERVER}/shule/exam/{job['exam_id']}/subject/{job['subject_id']}/sahishi/review/")
 
     # Red-pen printing: pakua karatasi zenye alama + chapisha
     if job.get('print_marked') and job.get('marked_url'):
@@ -227,7 +239,8 @@ def serve(poll_seconds=4):
         try:
             job = claim_job()
             if job:
-                print(f'\n📄 Kazi mpya #{job["id"]}: {job["exam_name"]} — {job["subject_name"]}')
+                kind = 'Capture score' if job.get('mode') == 'CAPTURE' else 'Sahihisha'
+                print(f'\n📄 Kazi mpya #{job["id"]} ({kind}): {job["exam_name"]} — {job["subject_name"]}')
                 try:
                     do_job(job)
                 except Exception as e:

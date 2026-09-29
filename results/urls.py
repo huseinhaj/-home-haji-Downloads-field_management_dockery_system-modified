@@ -314,6 +314,10 @@ urlpatterns += [
 # ---------------- Sahishi Bridge (ADF scanner) ----------------
 from .bridge_marked_views import bridge_marked_zip  # noqa: E402
 from .bridge_views import (  # noqa: E402
+    bridge_capture_cancel,
+    bridge_capture_page,
+    bridge_capture_start,
+    bridge_capture_status,
     bridge_claim,
     bridge_fail,
     bridge_job_status,
@@ -335,6 +339,11 @@ urlpatterns += [
          bridge_start_job, name='bridge_start_job'),
     path('exam/<int:exam_id>/subject/<int:subject_id>/sahishi/bridge/hali/<int:job_id>/',
          bridge_job_status, name='bridge_job_status'),
+    # Capture Scores: karatasi zilizosahihishwa → reg no + alama → Marks Entry
+    path('sahishi/bridge/capture/anza/', bridge_capture_start, name='bridge_capture_start'),
+    path('sahishi/bridge/capture/<int:job_id>/hali/', bridge_capture_status, name='bridge_capture_status'),
+    path('sahishi/bridge/capture/<int:job_id>/ghairi/', bridge_capture_cancel, name='bridge_capture_cancel'),
+    path('sahishi/bridge/capture/<int:job_id>/ukurasa/<int:page>/', bridge_capture_page, name='bridge_capture_page'),
 
     # ── QR result verification (public, loginless) ──
     path('verify/<str:token>/', result_verify, name='result_verify'),
