@@ -164,8 +164,10 @@ PROMPT = (
     "on the page. A row with no visible mark must come back as 'BLANK'.\n"
     "5. IGNORE headers, dates, signatures, and ID numbers — but never a row "
     "that has a printed row number and a name, even with a blank score.\n"
-    "6. Scores must be integers between 0 and 100, 'X' for absent, or "
-    "'BLANK' for empty.\n"
+    "6. Scores must be between 0 and 100. They MAY contain DECIMALS — "
+    "write them exactly as written: '10.6' stays 10.6, do NOT round it to "
+    "11, and '7.5' stays 7.5. Only 'X' for absent or 'BLANK' for empty "
+    "are non-numeric.\n"
     "7. NEVER invent names or scores — write ONLY what you see.\n"
     "8. Read each name COMPLETELY — do NOT cut off or abbreviate names.\n"
     "9. A score of '0' (zero) is a valid score — include it.\n"
@@ -175,7 +177,21 @@ PROMPT = (
     "11. COMMON CONFUSIONS to watch for:\n"
     "    - '0' vs 'O' (letter O) — if it's in the score column, it's 0\n"
     "    - '1' vs 'l' (lowercase L) vs 'I' (uppercase i) — in scores it's 1\n"
-    "    - 'X' vs 'x' vs '✕' vs '✗' vs a cross/tick mark — all mean ABSENT"
+    "    - 'X' vs 'x' vs '✕' vs '✗' vs a cross/tick mark — all mean ABSENT\n"
+    "12. UNCLEAR MARKS — THIS MATTERS. If a mark is smudged, overwritten, "
+    "crossed out, torn, or you are simply NOT SURE which digit it is, do "
+    "NOT silently pick your best guess. Return that row like this:\n"
+    '    {"row": 9, "name": "Full Name", "score": 10.6, "uncertain": true, '
+    '"raw_score": "1O.6"}\n'
+    "    - \"uncertain\": true means a HUMAN MUST check this mark before it "
+    "is trusted.\n"
+    "    - \"raw_score\": the characters you actually see, copied as-is, so "
+    "the teacher can compare against the photo.\n"
+    "    - ONLY use uncertain:true when you genuinely cannot tell. Clear, "
+    "legible marks are plain numbers with no extra keys — do NOT add "
+    "uncertain:true to every row, or the teacher loses the signal.\n"
+    "    - NEVER resolve an unclear mark by choosing the most likely number. "
+    "Flagging it is correct; guessing is not."
 )
 
 
@@ -607,6 +623,70 @@ def _parse_mark(raw_str):
     return parse_mark(raw_str)
 
 
+# Herufi ambazo AI mara nyingi huwa na ambazo hazina maana katika
+# safu ya alama — kama zipo hapo, alama imeandikwa au kusomwa vibaye
+# (mfano "1O.6" badala ya "10.6", "S5" badala ya "55", "B0" badala
+# ya "80"). AI inadai kuwa "score" ni namba, lakini mara nyingi
+# inarudisha kitu kilichokuwa herufi na namba.
+_SUSPECT_MARK_CHARS = set("SOolIBGZTD")
+
+
+def _special_case_reason(item, raw_str, score, is_absent) -> str:
+    """Cha alama hii kama "special case" inayohitaji kuangaliwa na mwalimu.
+
+    Inarudi '' kama alama ni safi (ikiwa ni namba tu, 0-100, na AI
+    haikuwa amesema ana washa).
+
+    Kanuni zinazotumika:
+      1. AI mwenyewe akisema ana washa (`uncertain: true`) — ndiyo
+         maelekezo yake yenyewe.
+      2. Alama ina herufi zinazohusishwa na kukoseka kwa macho
+         ("1O.6", "S5", "B0") — alama imeandikwa vibaya kwenye
+         karatasi, na AI imeikusaha kuachilia.
+      3. AI imeripa `raw_score` tofauti na alama yake yenyewe
+         ("1O.6" → 10.6): AI ina uhakika zaidi kuliko mtaa aliyoiandika,
+         ndiyo maana mwalimu anapaswa kuiona.
+
+    Tunakwagua kwa HATUA tatu hivi tu. Alama safi hazipati alama
+    ya sumaku hata kidogo: mwanafunzi aliyepata 0, 100, au 7.5 kwa
+    uakiki ni mwanafunzi wa kawaida, si tatizo la kusoma. Ukaguzi
+    mkubwa ungewafanya mwalimu wengi wasiweze kuona alama zinazohitaji
+    ukaguzi halisi, na hapo ndipo alama za mashaka zingeyakosewa.
+    """
+    if is_absent:
+        return ''
+
+    # (1) AI mwenyewe akisema ana washa — maelekezo yake yenyewe.
+    flag = item.get("uncertain", item.get("needs_review", False))
+    if isinstance(flag, str):
+        if flag.strip().lower() in ("true", "yes", "1", "uncertain"):
+            flag = True
+        else:
+            flag = False
+    if flag:
+        return 'AI haikuwa na uhakika wa alama hii'
+
+    # (2) Herufi za kushaka zilizo ndani ya alama.
+    text = str(raw_str)
+    suspect = sorted({c for c in text if c in _SUSPECT_MARK_CHARS})
+    if suspect:
+        return 'Alama ina herufi za kushaka: ' + ' '.join(suspect)
+
+    # (3) raw_score tofauti na alama AI iliyotoa.
+    raw_reported = item.get("raw_score")
+    if raw_reported is not None:
+        raw_reported_str = str(raw_reported).strip()
+        if raw_reported_str and raw_reported_str != text:
+            parsed_raw = _parse_mark(raw_reported_str)
+            if parsed_raw is None or parsed_raw != score:
+                return (
+                    f'AI ilisoma "{text}" lakini ilaonyesha "{raw_reported_str}"'
+                )
+
+    return ''
+
+
+
 def _clean_rows(raw_rows: list) -> list[dict]:
 
     """Normalise raw OCR rows into [{raw_name, score, is_absent, row, blank}, ...].
@@ -682,6 +762,25 @@ def _clean_rows(raw_rows: list) -> list[dict]:
             rows.append({
                 "raw_name": name, "score": None, "is_absent": False,
                 "row": row_no, "blank": True, "unreadable": True,
+                "raw_mark": str(raw_str)[:40],
+            })
+            continue
+
+        # ── Special case: AI haikuwa na uhakika wa alama hii ───────────
+        # Alama iliyoandikwa vibaya (doti, imefutwa, digit ya mashaka)
+        # haipaswi kuingizwa kwa kuonekana kama nyingine. Tunaiweka
+        # kama "special case" na mwalimu lazima aikague mwenyewe
+        # kabla ya kuikubali — kisha anaendelea kama kawaida.
+        special_reason = _special_case_reason(item, raw_str, score, is_absent)
+        if special_reason:
+            # raw_mark: alama ILIYOANDIKWA kwenye karatasi. Mwalimu
+            # anahitaji kuiona ili auangalie dhidi ya picha — bila
+            # hii, anaona tu "1.60" na hataweza kujua kwamba
+            # karatasi ilikuwa "1O.6".
+            rows.append({
+                "raw_name": name, "score": score, "is_absent": is_absent,
+                "row": row_no, "blank": False,
+                "is_special_case": True, "special_reason": special_reason,
                 "raw_mark": str(raw_str)[:40],
             })
             continue

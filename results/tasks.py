@@ -211,6 +211,10 @@ def process_scoresheet_photo_task(self, storage_path, roster_ids, progress_key=N
                 'raw_name': row['raw_name'],
                 'confidence': round(confidence, 4),
                 'is_new': False,
+                # Alama iliyoandikwa vibaya — mwalimu lazima aikague.
+                'is_special_case': row.get('is_special_case', False),
+                'special_reason': row.get('special_reason', ''),
+                'raw_mark': row.get('raw_mark', ''),
             })
             continue
 
@@ -388,6 +392,9 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
         if assignment:
             student, confidence = assignment
             student_name = ' '.join(p for p in [student.first_name, student.middle_name or '', student.last_name] if p)
+            if row.get('is_special_case'):
+                logger.warning("[BulkUpload] SPECIAL CASE for '%s' (row %s): %s (raw=%r)",
+                    row['raw_name'], row.get('row'), row.get('special_reason'), row.get('raw_mark'))
             logger.info("[BulkUpload] Matched '%s' -> '%s' (confidence=%.4f) score=%s absent=%s",
                 row['raw_name'], student_name, confidence, row['score'], is_absent)
             matched.append({
@@ -397,6 +404,11 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
                 'is_absent': is_absent,
                 'raw_name': row['raw_name'],
                 'confidence': round(confidence, 4),
+                # Alama iliyoandikwa vibaya: mwalimu lazima aikague
+                # kabla ya kuikubali, kisha anaendelea kama kawaida.
+                'is_special_case': row.get('is_special_case', False),
+                'special_reason': row.get('special_reason', ''),
+                'raw_mark': row.get('raw_mark', ''),
             })
             continue
         # Hatukuweza kusikia mwanafunzi wa mstari huu kwa uhakika. Tuna
@@ -442,6 +454,11 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
             exam=exam_obj, student_id=m['student_id'], subject=subject,
             score=m['score'] if not m.get('is_absent') else None,
             is_absent=m.get('is_absent', False),
+            # Tunahifadhi alama iliyokuwa ya AI pekee. Mwalimu hata akaisahihisha,
+            # bado inabaki special case — ili baadaye tuone kwamba alama hii
+            # awali ilikuwa ya mashaka na mwalimu ndiye aliyoisoma, si AI.
+            is_special_case=m.get('is_special_case', False),
+            special_reason=(m.get('special_reason') or '')[:200],
         ))
 
     if exam_results:
@@ -449,7 +466,7 @@ def process_bulk_upload_task(self, storage_path, exam_id, subject_id, roster_ids
             exam_results,
             update_conflicts=True,
             unique_fields=['exam', 'student', 'subject'],
-            update_fields=['score', 'is_absent'],
+            update_fields=['score', 'is_absent', 'is_special_case', 'special_reason'],
         )
 
     # Mark SubjectSubmission as SUBMITTED + APPROVED (academic uploaded it)

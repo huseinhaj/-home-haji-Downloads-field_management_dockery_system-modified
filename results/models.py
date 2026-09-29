@@ -354,6 +354,17 @@ class ExamResult(models.Model):
     is_absent = models.BooleanField(default=False,
         help_text="True = mwanafunzi alikuwa absent kwenye mtihani huu."
     )
+    # Alama ambayo AI haikuwa na uhakika nalo (doti, imefutwa, digit
+    # ya mashaka) — mwalimu lazima aikague mwenyewe kabla ya kuikubali.
+    # Tunahifadhi hii alama ili iweze kufuatiliwa baadaye: "alama hii
+    # alikuwa mwalimu ameisoma au AI?" bila hii, alama ya mwisho
+    # inaonekana kama ilikuwa safi kama zilivyokuwa zote.
+    is_special_case = models.BooleanField(default=False,
+        help_text="True = alama hii AI haikuwa na uhakika nalo; mwalimu alikagua."
+    )
+    special_reason = models.CharField(max_length=200, blank=True,
+        help_text="Sababu alama hii ikawa special case (kwa mwongo wa mwalimu)."
+    )
 
     class Meta:
         unique_together = ('exam', 'student', 'subject')

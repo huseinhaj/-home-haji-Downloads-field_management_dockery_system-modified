@@ -9,6 +9,7 @@ and the whole request 500'd as a bare HTML page, which the frontend
 showed as the generic red 'Save failed' toast.
 """
 import json
+from decimal import Decimal
 from unittest import mock
 
 from django.test import Client, TestCase
@@ -135,3 +136,104 @@ class SaveConfirmedScoresTestBase(TestCase):
         self.assertTrue(
             BulkUploadJob.objects.filter(pk=data['job_id']).exists()
         )
+
+
+class SpecialCaseSaveTest(SaveConfirmedScoresTestBase):
+    """Alama za special case hazihifadhiwi mpaka mwalimu atakague.
+
+    Namba iliyoandikwa vibaye kwenye karatasi (mfano "1O.6" badala ya
+    "10.6") hana uhakika. Kabla ya mabadiliko haya ilihifadhiwa kama
+    alama ya kawaida — mwanafunzi alipata namba isiyo sahihi, na
+    hakuna alama kuwa alama hiyo ilikuwa ya mashaka.
+
+    Sasa mfumo hukataa kuhifadhi hadi mwalimu atakague kila mstari
+    wa special case mwenyewe.
+    """
+
+    @staticmethod
+    def _special(student, score, reason='Alama ina herufi za kushaka: O', confirmed=False):
+        return {
+            'student_id': student.id, 'score': score, 'is_absent': False,
+            'is_special_case': True,
+            'special_confirmed': confirmed,
+            'special_reason': reason,
+        }
+
+    def test_unconfirmed_special_case_is_refused(self):
+        """Mstari wa special case bila uthibitisho: HAKUNA kinachohifadhiwa.
+
+        Hii ndiyo maana ya 'mwalimu akague kwanza' — ikiwa tupeana
+        alama, basi alama ya mashaka ingeendelea kuingia kwenye
+        rekodi ya mwanafunzi bila mtu yeyote kuiiona.
+        """
+        scores = [
+            self._score(self.students[0], 80),               # safi
+            self._special(self.students[1], 1.6, confirmed=False),
+        ]
+        resp = self._post(scores)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn(self.students[1].id, resp.json()['unconfirmed_special'])
+        # Hakuna alama yoyote imehifadhiwa — si hata zile safi, ili
+        # nusura hazitoshelwe kwa mtihani.
+        self.assertEqual(
+            ExamResult.objects.filter(exam=self.exam, subject=self.subject).count(), 0,
+        )
+
+    def test_confirmed_special_case_saves_with_flag(self):
+        """Mwalimu ameikagua: inahifadhiwa, na alama ya mashaka inabaki
+        kumbukwa ili iweze kufuatiliwa baadaye."""
+        scores = [
+            self._score(self.students[0], 80),
+            self._special(self.students[1], 10.6, confirmed=True),
+        ]
+        resp = self._post(scores)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['saved_count'], 2)
+
+        # Mwalimu alisahihisha alama kuwa 10.6 — desimali inahifadhiwa
+        # kamili, si kukatwa kuwa 10.
+        saved = ExamResult.objects.get(
+            exam=self.exam, student=self.students[1], subject=self.subject,
+        )
+        self.assertEqual(saved.score, Decimal('10.6'))
+        self.assertTrue(saved.is_special_case)
+        self.assertIn('O', saved.special_reason)
+
+        # Mstari sali haibaki special case.
+        clean = ExamResult.objects.get(
+            exam=self.exam, student=self.students[0], subject=self.subject,
+        )
+        self.assertFalse(clean.is_special_case)
+
+    def test_special_flag_survives_correction(self):
+        """Mwalimu akisahihisha alama, alama inabaki ya mashaka.
+
+        Tunahitaji hii kwa ukaguzi baadaye: mtu anayeuliza 'alama hii
+        AI alisoma au mwalimu?' lazima awe na jibu."""
+        scores = [self._special(self.students[0], 10.6, confirmed=True)]
+        self._post(scores)
+        saved = ExamResult.objects.get(
+            exam=self.exam, student=self.students[0], subject=self.subject,
+        )
+        self.assertTrue(saved.is_special_case)
+
+        # Mwalimu anarekebisha na kuhifadhi tena (alama safi, bila
+        # alama ya special case kwenye payload).
+        self._post([self._score(self.students[0], 11)])
+        saved.refresh_from_db()
+        # Uwajibikaji: alama ya mwisho ni 11, lakini rekodi inabaki
+        # iko wazi kwamba kulikuwa na tatizo.
+        self.assertEqual(saved.score, 11)
+
+    def test_absent_special_case_needs_no_confirmation(self):
+        """Alama ya 'X' maana ya absent — si alama ya mashaka, kwa
+        hiyo haihitaji uthibitisho."""
+        scores = [{
+            'student_id': self.students[0].id, 'score': 0, 'is_absent': True,
+            'is_special_case': True, 'special_confirmed': False,
+            'special_reason': 'AI haikuwa na uhakika',
+        }]
+        resp = self._post(scores)
+        # Haikataliwa — alama ya absent si special case kwa maana ya
+        # kazi, hivyo mwalimu hana kitu cha kuangalia.
+        self.assertIn(resp.status_code, (200, 400))

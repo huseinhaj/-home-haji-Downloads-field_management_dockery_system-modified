@@ -2676,3 +2676,130 @@ class AcademicAddStudentSiblingTests(TestCase):
 			school=self.school, form=1,
 			first_name='Privatus', middle_name='Leonce', last_name='Laurian',
 		).count(), 1)
+
+
+class SpecialCaseMarkTests(TestCase):
+    """Alama zilizoandikwa vibaye kwenye scoresheet.
+
+    Namba kama "1O.6" (badala ya "10.6") hazisomeki vizuri, na AI
+    ndiye anayedhamini. Kabla ya mabadiliko haya alama kama hizo
+    zilipita kama zilivyokuwa kawaida — mwanafunzi alipata alama
+    ya mtu mwingine bila mwalimu kupata nafasi ya kuona.
+
+    Sasa: alama ya washa inaflag-iwika "special case", mwalimu
+    anaona kwanza (juu ya meza), na hihifadhiwi mpaka azitibitisha.
+    """
+
+    # ── (1) AI mwenyewe akisema ana washa ───────────────────────────
+    def test_ai_uncertain_flag_becomes_special_case(self):
+        rows = _clean_rows([
+            {'row': 1, 'name': 'Amina', 'score': 10.6, 'uncertain': True},
+        ])
+        self.assertEqual(len(rows), 1)
+        self.assertTrue(rows[0]['is_special_case'])
+        self.assertIn('uhakika', rows[0]['special_reason'])
+        # Alama inabaki — mwalimu anaisahihisha, si mfumo.
+        self.assertEqual(rows[0]['score'], Decimal('10.6'))
+
+    def test_uncertain_as_string_is_honoured(self):
+        # Gemini/OpenRouter wanaweza kurudi "true" kama maandishi.
+        rows = _clean_rows([
+            {'row': 1, 'name': 'Amina', 'score': 8, 'uncertain': 'true'},
+        ])
+        self.assertTrue(rows[0]['is_special_case'])
+
+    def test_uncertain_false_is_not_special(self):
+        rows = _clean_rows([
+            {'row': 1, 'name': 'Amina', 'score': 8, 'uncertain': False},
+        ])
+        self.assertNotIn('is_special_case', rows[0])
+
+    # ── (2) Herufi zinazodhibiwa na kukoseka ────────────────────────
+    def test_letter_confusion_in_mark_is_flagged(self):
+        # "1O.6" — O (herufi) badala ya 0. Alama iliyokosewa.
+        rows = _clean_rows([{'row': 1, 'name': 'Zawadi', 'score': '1O.6'}])
+        self.assertTrue(rows[0]['is_special_case'])
+        self.assertIn('O', rows[0]['special_reason'])
+        # Alama asilia inabaki ili mwalimu aipige mbali na alama yake.
+        self.assertEqual(rows[0]['raw_mark'], '1O.6')
+
+    def test_s5_for_55_is_flagged(self):
+        rows = _clean_rows([{'row': 1, 'name': 'Neema', 'score': 'S5'}])
+        self.assertTrue(rows[0]['is_special_case'])
+        self.assertIn('S', rows[0]['special_reason'])
+
+    def test_raw_mark_shown_even_when_score_parsed(self):
+        # Mufano halisi: alama inasomika kwa njia moja lakini mfumo
+        # hakupata uhakika. Mwalimu lazima aone "1O.6" ili ajue
+        # nini kilikuwa kwenye karatasi.
+        rows = _clean_rows([
+            {'row': 1, 'name': 'Peter', 'score': 10.6, 'raw_score': '1O.6'},
+        ])
+        self.assertTrue(rows[0]['is_special_case'])
+        self.assertEqual(rows[0]['raw_mark'], '10.6')
+        self.assertIn('1O.6', rows[0]['special_reason'])
+
+    # ── (3) Alama safi hazipati alama ya sumaku ──────────────────
+    def test_clean_marks_are_not_special(self):
+        rows = _clean_rows([
+            {'row': 1, 'name': 'A', 'score': 10.6},
+            {'row': 2, 'name': 'B', 'score': 78},
+            {'row': 3, 'name': 'C', 'score': 0},
+            {'row': 4, 'name': 'D', 'score': 100},
+            {'row': 5, 'name': 'E', 'score': 7.5},
+        ])
+        for r in rows:
+            self.assertNotIn('is_special_case', r, f"{r['raw_name']} haipaswi kuwa special case")
+
+    def test_absent_is_never_special(self):
+        # X maana ya alikuwa absent — si alama ya mashaka.
+        rows = _clean_rows([{'row': 1, 'name': 'Fatuma', 'score': 'X'}])
+        self.assertTrue(rows[0]['is_absent'])
+        self.assertNotIn('is_special_case', rows[0])
+
+    def test_blank_is_not_special(self):
+        rows = _clean_rows([{'row': 1, 'name': 'Hadija', 'score': 'BLANK'}])
+        self.assertTrue(rows[0]['blank'])
+        self.assertNotIn('is_special_case', rows[0])
+
+    def test_unreadable_mark_is_not_double_flagged(self):
+        # Alama inayosomika kabisa (grada ya herufi) inashikiliwa kama
+        # 'unreadable' — hatuiweka alama yake. Hii inaonyesha mfumo
+        # HAJAWEZA kusoma, tofauti na special case ambayo mfumo
+        # unaweza kusoma lakini hana uhakika.
+        rows = _clean_rows([{'row': 1, 'name': 'Zulekha', 'score': '???'}])
+        self.assertTrue(rows[0].get('unreadable'))
+        self.assertIsNone(rows[0]['score'])
+        self.assertNotIn('is_special_case', rows[0])
+
+    def test_zero_and_hundred_are_not_special(self):
+        # Mwanafunzi aliyepata 0 au 100 kwa uakiki ni mwanafunzi wa
+        # kawaida. Mf flag-iwake kama special case unamfanya mwalimu
+        # aone kelele kwa kila darasa, na hapo ndipo alama za
+        # kweli zinazohitaji ukaguzi zinapokosewa.
+        rows = _clean_rows([
+            {'row': 1, 'name': 'Zero', 'score': 0},
+            {'row': 2, 'name': 'Full', 'score': 100},
+        ])
+        for r in rows:
+            self.assertNotIn('is_special_case', r)
+
+    def test_decimal_marks_survive_flagging(self):
+        # Mwanzo wa bug: desimali zilikatwa. Alama ya special case
+        # inapaswa kuwa DESIMALI kamili.
+        rows = _clean_rows([
+            {'row': 1, 'name': 'Asha', 'score': 9.75, 'uncertain': True},
+        ])
+        self.assertEqual(rows[0]['score'], Decimal('9.75'))
+        self.assertTrue(rows[0]['is_special_case'])
+
+    def test_special_case_does_not_shift_roster_positions(self):
+        # Mstari wa special case bado ziko katika nafasi yake. Ikiwa
+        # mungu hutoweka, wanafunzi wa baadaye wangesogeza nafasi.
+        rows = _clean_rows([
+            {'row': 1, 'name': 'A', 'score': 10.6, 'uncertain': True},
+            {'row': 2, 'name': 'B', 'score': 78},
+            {'row': 3, 'name': 'C', 'score': 65},
+        ])
+        self.assertEqual([r['raw_name'] for r in rows], ['A', 'B', 'C'])
+        self.assertEqual([r['row'] for r in rows], [1, 2, 3])

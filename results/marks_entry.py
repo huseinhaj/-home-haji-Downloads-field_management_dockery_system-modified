@@ -368,7 +368,17 @@ def marks_entry_save(request):
 
     parsed = []       # [(student_id, score)]
     absent_ids = []   # [student_id] — marked absent (X)
+    # Alama za special case: {student_id: sababu}. Alama hizi ziliandikwa
+    # vibaye kwenye karatasi, kama "1O.6" badala ya "10.6", au AI
+    # haikuwa na uhakika nazo. Mwalimu amezingatia hizi kwanza, ndiyo
+    # mfumo hana uhakika nalo. Tunahifadhi ili kuweza kufuatilia baadaye.
+    special_map = {}
     for e in entries:
+        if e.get('is_special_case'):
+            try:
+                special_map[int(e.get('student_id'))] = str(e.get('special_reason') or '')[:200]
+            except (TypeError, ValueError):
+                pass
         try:
             sid = int(e.get('student_id'))
         except (TypeError, ValueError):
@@ -396,6 +406,11 @@ def marks_entry_save(request):
         exam_results.append(ExamResult(
             exam=exam, student=student_map[sid], subject=subject,
             score=score, is_absent=False,
+            # Inabaki True hata baada ya mwalimu kuisahihisha — kwa
+            # njia hiyo tunaona baadaye alama hii awali ilikuwa ya
+            # mashaka na mwalimu ndiye aliyoisoma, si AI.
+            is_special_case=sid in special_map,
+            special_reason=special_map.get(sid, ''),
         ))
     for sid in absent_ids:
         exam_results.append(ExamResult(
@@ -407,7 +422,7 @@ def marks_entry_save(request):
         exam_results,
         update_conflicts=True,
         unique_fields=['exam', 'student', 'subject'],
-        update_fields=['score', 'is_absent'],
+        update_fields=['score', 'is_absent', 'is_special_case', 'special_reason'],
     )
 
     # Clean up stale ExamResults for students who are no longer in the

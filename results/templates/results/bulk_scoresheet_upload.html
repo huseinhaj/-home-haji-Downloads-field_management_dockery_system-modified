@@ -170,6 +170,35 @@
 .review-table .confidence.high { background: #e6f7ec; color: #1a7a3b; }
 .review-table .confidence.medium { background: #fff3cd; color: #856404; }
 .review-table .confidence.low { background: #fdecea; color: #721c24; }
+
+/* ── SPECIAL CASE: alama iliyokuwa ya mashaka ────────────────────────
+   Mstari huu lazima uangaliwe na mwalimu KABLA ya alama nyingine.
+   Rangi ya njano-luavu inaonyesha "somesha, lakini AI hakuwa na
+   uhakika" — tofauti na 'confidence low' ambayo inahusu kulingana
+   kwa juma, si ubora wa alama yenyewe. */
+.review-table tr.special-row { background: #fff8e1; }
+.review-table tr.special-row:hover { background: #fff3cd; }
+.review-table tr.special-row.approved { background: #e6f7ec; }
+.special-badge {
+  display: inline-block; background: #b8860b; color: #fff;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em;
+  padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+}
+.special-why { display: block; font-size: 0.72rem; color: #7a5c00; line-height: 1.35; }
+.special-raw {
+  display: inline-block; margin-top: 3px; font-family: monospace;
+  background: #fff; border: 1px dashed #b8860b; color: #5c4400;
+  padding: 1px 6px; border-radius: 4px; font-size: 0.75rem;
+}
+.special-check { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; }
+.special-check input { width: auto; margin: 0; }
+.special-banner {
+  display: none; margin: 0 0 12px; padding: 12px 14px;
+  background: #fff8e1; border: 1px solid #e0b400; border-left: 5px solid #b8860b;
+  border-radius: 6px; color: #5c4400; font-size: 0.86rem;
+}
+.special-banner.show { display: block; }
+.special-banner b { display: block; margin-bottom: 3px; font-size: 0.92rem; }
 .review-table .student-select {
   font-size: 0.78rem; padding: 0.25rem 0.5rem; border: 1.5px solid #ced4da;
   border-radius: 2px; background: #fff; max-width: 200px;
@@ -400,6 +429,18 @@ Imekamilika.
         </div>
         <iframe id="reviewPdfFrame" title="Scoresheet review PDF" style="width:100%;height:360px;border:1px solid #ccc;border-radius:4px;display:none;"></iframe>
       </div>
+      <div class="special-banner" id="specialBanner">
+        <b>{% if LANG == 'sw' %}Kuna alama za SPECIAL CASE zinazohitaji kuangaliwa{% else %}There are SPECIAL CASE marks to review{% endif %}</b>
+        {% if LANG == 'sw' %}
+          Alama <span id="specialBannerCount">0</span> zilizokuwa zilizoandikwa vibaye, kama <code>1O.6</code> badala ya <code>10.6</code>, au AI haikuwa na uhakika.
+          Zimewekwa <b>juu kabisa</b> ya meza. Linganisha kila mstari na picha ya scoresheet, sahihisha alama, kisha bonyeza
+          <b>&ldquo;Nimeikagua&rdquo;</b> kwa kila mstari kabla ya kuhifadhi.
+        {% else %}
+          <span id="specialBannerCount">0</span> marks were written unclearly or the AI was unsure of them.
+          They are at the <b>top of the table</b>. Compare each against the scoresheet photo, correct it, then tick
+          <b>&ldquo;I checked it&rdquo;</b> on every row before saving.
+        {% endif %}
+      </div>
       <div style="overflow-x:auto;">
         <table class="review-table">
           <thead>
@@ -409,7 +450,8 @@ Imekamilika.
               <th>{% if LANG == 'sw' %}Mwanafunzi{% else %}Student{% endif %}</th>
               <th>{% if LANG == 'sw' %}Alama{% else %}Score{% endif %}</th>
               <th>{% if LANG == 'sw' %}Absent{% else %}Absent{% endif %}</th>
-              <th>{% if LANG == 'sw' %}Uhusiano{% else %}Confidence{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Uhusiano / Hali{% else %}Confidence / Status{% endif %}</th>
+              <th>{% if LANG == 'sw' %}Umwagizaji{% else %}Teacher Check{% endif %}</th>
               <th></th>
             </tr>
           </thead>
@@ -1112,14 +1154,44 @@ Imekamilika.
       return opts;
     }
 
+    const specialBanner = document.getElementById('specialBanner');
+    if (specialBanner) specialBanner.classList.remove('show');
+    const specialBannerCount = document.getElementById('specialBannerCount');
+    function showSpecialBanner(n) {
+      if (!specialBanner) return;
+      if (specialBannerCount) specialBannerCount.textContent = n;
+      specialBanner.classList.add('show');
+      specialBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function pendingSpecialCount() {
+      let n = 0;
+      document.querySelectorAll('#reviewTableBody tr.special-row').forEach(tr => {
+        if (tr.classList.contains('removed')) return;
+        const cb = tr.querySelector('.special-confirm');
+        if (cb && !cb.checked) n++;
+      });
+      return n;
+    }
+
     if (preview.matched && preview.matched.length) {
-      preview.matched.forEach((row, idx) => {
+      // Mwalimu akague ZA MAALAMA za special case kwanza, kisha
+      // zile za kawaida. Tunapanga special case juu ili zisionekane
+      // kama mistari ya kawaida tu.
+      const sw = LANG === 'sw';
+      const ordered = preview.matched.slice().sort((a, b) => {
+        const as = a.is_special_case ? 0 : 1, bs = b.is_special_case ? 0 : 1;
+        return as - bs;
+      });
+      const specialCount = ordered.filter(r => r.is_special_case).length;
+      if (specialCount) showSpecialBanner(specialCount);
+
+      ordered.forEach((row, idx) => {
         const conf = row.confidence || 0;
         let confClass = 'high';
         let confLabel = Math.round(conf * 100) + '%';
-        if (conf < 0.85) { confClass = 'low'; confLabel = (LANG === 'sw' ? 'Chini' : 'Low') + ' ' + confLabel; }
-        else if (conf < 0.95) { confClass = 'medium'; confLabel = (LANG === 'sw' ? 'Wastani' : 'Med') + ' ' + confLabel; }
-        else { confLabel = (LANG === 'sw' ? 'Juu' : 'High') + ' ' + confLabel; }
+        if (conf < 0.85) { confClass = 'low'; confLabel = (sw ? 'Chini' : 'Low') + ' ' + confLabel; }
+        else if (conf < 0.95) { confClass = 'medium'; confLabel = (sw ? 'Wastani' : 'Med') + ' ' + confLabel; }
+        else { confLabel = (sw ? 'Juu' : 'High') + ' ' + confLabel; }
 
         const tr = document.createElement('tr');
         tr.id = 'review-row-' + idx;
@@ -1128,18 +1200,45 @@ Imekamilika.
         const absentChecked = isAbsent ? ' checked' : '';
         const scoreDisabled = isAbsent ? ' disabled' : '';
         const scoreVal = isAbsent ? '' : row.score;
+        const isSpecial = !!row.is_special_case;
+        if (isSpecial) tr.classList.add('special-row');
+
+        // Kolumu ya maelezo: kwa mstari wa kawaida inaonyesha kiwango
+        // cha kulingana. Kwa special case inaonyesha SABABU na alama
+        // iliyokuwa imeandikwa kwenye karatasi (mfano "1O.6").
+        const statusCell = isSpecial
+          ? `<span class="special-badge">${sw ? 'SPECIAL CASE' : 'SPECIAL CASE'}</span>
+             <span class="special-why">${escapeHtml(row.special_reason || (sw ? 'AI haikuwa na uhakika' : 'AI was unsure'))}</span>
+             ${row.raw_mark ? `<span class="special-raw">${sw ? 'kwenye karatasi' : 'on sheet'}: ${escapeHtml(String(row.raw_mark))}</span>` : ''}`
+          : `<span class="confidence ${confClass}">${confLabel}</span>`;
+
+        // Mwakala wa uthibitisho: mwalimu lazima aseme ameiangalia
+        // alama hii mwenyewe. Bila hii, hazihifadhiwi.
+        const specialCheck = isSpecial
+          ? `<label class="special-check"><input type="checkbox" class="special-confirm" data-idx="${idx}"> ${sw ? 'Nimeikagua' : 'I checked it'}</label>`
+          : '';
+
         tr.innerHTML = `
           <td style="color:#888;font-size:0.75rem;">${idx + 1}</td>
-          <td style="font-style:italic;color:#666;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(row.raw_name || (LANG === 'sw' ? '[Mwanafunzi mpya]' : '[New student]'))}</td>
+          <td style="font-style:italic;color:#666;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(row.raw_name || (sw ? '[Mwanafunzi mpya]' : '[New student]'))}</td>
           <td><select class="student-select" data-idx="${idx}">${buildStudentOptions(row.student_id)}</select></td>
           <td><input type="number" class="score-input" min="0" max="100" value="${scoreVal}" data-idx="${idx}"${scoreDisabled} step="any"></td>
           <td style="text-align:center;"><input type="checkbox" class="absent-check" data-idx="${idx}"${absentChecked}></td>
-          <td><span class="confidence ${confClass}">${confLabel}</span></td>
+          <td style="min-width:170px;">${statusCell}</td>
+          <td>${specialCheck}</td>
           <td style="white-space:nowrap;">
-            <button class="row-insert" data-action="insert-after" title="${LANG === 'sw' ? 'Ongeza chini' : 'Insert below'}">+</button>
-            <button class="row-remove" data-idx="${idx}" title="${LANG === 'sw' ? 'Ondoa' : 'Remove'}">&#x2715;</button>
+            <button class="row-insert" data-action="insert-after" title="${sw ? 'Ongeza chini' : 'Insert below'}">+</button>
+            <button class="row-remove" data-idx="${idx}" title="${sw ? 'Ondoa' : 'Remove'}">&#x2715;</button>
           </td>
         `;
+
+        if (isSpecial) {
+          const cb = tr.querySelector('.special-confirm');
+          if (cb) cb.addEventListener('change', function() {
+            tr.classList.toggle('approved', this.checked);
+            updateReviewStats();
+          });
+        }
         tbody.appendChild(tr);
       });
     }
@@ -1233,7 +1332,7 @@ Imekamilika.
     // Event: score input validation
     tbody.querySelectorAll('.score-input').forEach(input => {
       input.addEventListener('input', function() {
-        const val = parseInt(this.value);
+        const val = parseFloat(this.value);
         if (isNaN(val) || val < 0 || val > 100) {
           this.classList.add('error');
         } else {
@@ -1313,7 +1412,7 @@ Imekamilika.
       }
     });
     newTr.querySelector('.score-input').addEventListener('input', function() {
-      const val = parseInt(this.value);
+      const val = parseFloat(this.value);
       if (isNaN(val) || val < 0 || val > 100) {
         this.classList.add('error');
       } else {
@@ -1375,10 +1474,29 @@ Imekamilika.
       const studentId = parseInt(studentSelect.value);
       if (isNaN(studentId) || !studentId) return;
       const isAbsent = absentCheck ? absentCheck.checked : false;
-      if (isAbsent) {
+      // Mstari wa special case: mwalimu lazima amekagua mwenyewe.
+      const isSpecial = tr.classList.contains('special-row');
+      const specialConfirm = tr.querySelector('.special-confirm');
+      const specialReasonEl = tr.querySelector('.special-why');
+      if (isSpecial) {
+        // Mstari wa special case hubifadhiwi mpaka mwakala wa
+        // "Nimeikagua" umechofunguliwa. Tunatuma alama halisi
+        // pamoja na alama ili backend pia itakata.
+        const spScore = isAbsent ? 0 : parseFloat(scoreInput ? scoreInput.value : '');
+        if (!isAbsent && (isNaN(spScore) || spScore < 0 || spScore > 100)) return;
+        scores.push({
+          student_id: studentId, score: isAbsent ? 0 : spScore,
+          is_absent: isAbsent, is_special_case: true,
+          special_confirmed: !!(specialConfirm && specialConfirm.checked),
+          special_reason: specialReasonEl ? specialReasonEl.textContent : '',
+        });
+      } else if (isAbsent) {
         scores.push({ student_id: studentId, score: 0, is_absent: true });
       } else {
-        const score = parseInt(scoreInput ? scoreInput.value : '');
+        // parseFloat, si parseInt: alama 10.6 ilikuwa ikikatawa kuwa 10
+        // wakati wa kuhifadhi — desimali zilizokaribishwa kwenye
+        // mfumo zilikosewa hapa, mara ya mwisho.
+        const score = parseFloat(scoreInput ? scoreInput.value : '');
         if (isNaN(score) || score < 0 || score > 100) return;
         scores.push({ student_id: studentId, score: score, is_absent: false });
       }
@@ -1386,6 +1504,21 @@ Imekamilika.
 
     if (!scores.length) {
       toast(LANG === 'sw' ? 'Hakuna alama ya kuhifadhi.' : 'No valid scores to save.', true);
+      return;
+    }
+
+    // Mwalimu akague alama za special case ZA MAALAMA kwanza — hapo
+    // ndipo zilipokuwa za mashaka. Haturuhusu hifadhi yoyote mpaka
+    // azikague, ili nusura hazitoshelwe kwa mtihani.
+    const pending = pendingSpecialCount();
+    if (pending > 0) {
+      toast((LANG === 'sw'
+        ? 'Kuna alama ' + pending + ' za special case ambazo bado hujujagua. '
+          + 'Ziunguze juu kabisa jinsi zinavyoandikwa kwenye karatasi, '
+          + 'tuma alama sahihi, kisha bonyeza "Nimeikagua" kwa kila mstari.'
+        : pending + ' special-case marks are not confirmed yet. Check each one first.'), true);
+      const firstPending = document.querySelector('#reviewTableBody tr.special-row:not(.removed):not(.approved)');
+      if (firstPending) firstPending.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -1515,7 +1648,7 @@ Imekamilika.
       }
     });
     newTr.querySelector('.score-input').addEventListener('input', function() {
-      const val = parseInt(this.value);
+      const val = parseFloat(this.value);
       if (isNaN(val) || val < 0 || val > 100) {
         this.classList.add('error');
       } else {

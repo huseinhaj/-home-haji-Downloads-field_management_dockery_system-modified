@@ -420,3 +420,84 @@ class TemplateCommentTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+# ═══ SPECIAL CASE: alama za mashaka zinafungwa na uthibitisho ═══════
+
+class SpecialCaseUiTests(unittest.TestCase):
+    """Template za review zinaonyesha na kulinda alama za mashaka.
+
+    Lengo la mwanzo: mstari wa alama iliyoandikwa vibaye (mfano "1O.6")
+    unapitia kama mistari ya kawaida, mwanafunzi hupata namba isiyo
+    sahihi, na mwalimu hana dalili yoyote ya kuangalia.
+
+    Sasa: mistari ya special case ipo JUU ya meza, ina alama ya
+    SPECIAL CASE, inaonyesha alama iliyokuwa kwenye karatasi, na
+    kuhifadhi kunakataliwa mpaka mwalimu atakague kila mstari.
+    """
+
+    TEMPLATES = ('bulk_scoresheet_upload.html', 'marks_entry.html')
+
+    @staticmethod
+    def _read(name):
+        return (Path(__file__).resolve().parent / 'templates' / 'results' / name).read_text(encoding='utf-8')
+
+    def test_special_cases_are_ordered_first(self):
+        """Mwalimu akague maalama ya mashaka kwanza — hazipatiwa
+        mwisho wa meza kwa sababu ya kuingia haraka."""
+        bulk = self._read('bulk_scoresheet_upload.html')
+        self.assertIn('is_special_case ? 0 : 1', bulk,
+                      'bulk: special case lazima iwe mwanzo kwenye mpangilio')
+        me = self._read('marks_entry.html')
+        self.assertIn('b.is_special_case ? 1 : 0', me,
+                      'marks_entry: special case lazima iwe mwanzo kwenye mpangilio')
+
+    def test_both_templates_show_badge_and_raw_mark(self):
+        for name in self.TEMPLATES:
+            src = self._read(name)
+            self.assertIn('SPECIAL CASE', src, f'{name}: hakuna alama ya SPECIAL CASE')
+            self.assertIn('raw_mark', src, f'{name}: alama asilia ya karatasi haionyeshiwi')
+
+    def test_saving_is_blocked_until_special_cases_confirmed(self):
+        """Hii ndiyo maana ya 'mwalimu akague kwanza, kisha uendelee
+        kama kawaida' — bila ukingo, utaratibu unakuwa wa kuonyesha
+        tu, na alama ya mashaka bado ingeingia kwenye rekodi."""
+        bulk = self._read('bulk_scoresheet_upload.html')
+        self.assertIn('pendingSpecialCount', bulk)
+        self.assertIn('pendingSpecialCount', bulk)
+        self.assertIn('hujujagua', bulk, 'bulk: hakuna ujumbe wa kukinga hifadhi')
+        me = self._read('marks_entry.html')
+        self.assertIn('specialAcked', me)
+        self.assertIn('specialRows().length > 0 && !specialAcked', me)
+
+    def test_special_case_is_persisted_for_audit(self):
+        """Alama inabaki ya mashaka hata baada ya mwalimu kuisahihisha,
+        ili mtu yeyote aweza kuiuliza baadaye: AI au mwalimu?"""
+        for path in ('results/marks_entry.py', 'results/views.py', 'results/tasks.py'):
+            src = (Path(__file__).resolve().parents[1] / path).read_text(encoding='utf-8')
+            self.assertIn('is_special_case', src, f'{path}: special case haihifadhiwi')
+            self.assertIn('special_reason', src, f'{path}: sababu haihifadhiwi')
+
+    def test_decimal_marks_survive_the_whole_path(self):
+        """Mwanzo wa bug: desimali zilikatwa na parseInt mara kati.
+
+        Kila njia inapaswa kutumia parseFloat/parse_mark. Mfano huu
+        unakwamba kila njia kwa sababu hitilafu hizi zilikuwa
+        zilizojificha kila mahali tofauti.
+        """
+        for name in self.TEMPLATES:
+            src = self._read(name)
+            self.assertNotIn('parseInt(this.value)', src, f'{name}: parseInt bado inakatika desimali')
+            self.assertNotIn('parseInt(scoreInput ? scoreInput.value', src,
+                             f'{name}: parseInt bado inakatika desimali wakati wa kuhifadhi')
+        prompt_src = (Path(__file__).resolve().parent
+                      / 'services' / 'scoresheet_ocr_service.py').read_text(encoding='utf-8')
+        self.assertIn('MAY contain DECIMALS', prompt_src,
+                      'prompt bado inaambia AI atupe desimali')
+
+    def test_ai_is_instructed_to_flag_unclear_marks(self):
+        src = (Path(__file__).resolve().parent
+               / 'services' / 'scoresheet_ocr_service.py').read_text(encoding='utf-8')
+        self.assertIn('UNCLEAR MARKS', src)
+        self.assertIn('uncertain', src)
+        self.assertIn('raw_score', src)

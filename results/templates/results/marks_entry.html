@@ -79,6 +79,29 @@
   .me-table tbody tr.voice-done { background: #eafaf1; }
   .me-table tbody tr.voice-skipped { background: #f1f1f1; color: #999; font-style: italic; }
   .me-table tbody tr.photo-low-confidence { background: #fff3d6 !important; }
+
+  /* ── SPECIAL CASE: alama iliyokuwa ya mashaka ─────────────────────
+     Rangi hii ya njano-luavu inaonyesha "alama hii inahitaji mwalimu
+     mwenyewe" — tofauti na njano ya photo-low-confidence ambayo
+     inahusu kulingana kwa juma, si alama yenyewe. */
+  .me-table tbody tr.me-special-row { background: #fff8e1 !important; box-shadow: inset 4px 0 0 #b8860b; }
+  .me-special-badge {
+    display: inline-block; background: #b8860b; color: #fff;
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em;
+    padding: 1px 6px; border-radius: 9px; vertical-align: middle;
+  }
+  .me-special-why { display: block; font-size: 0.68rem; color: #7a5c00; font-weight: 400; line-height: 1.3; margin-top: 2px; }
+  .me-special-raw {
+    display: inline-block; margin-top: 2px; font-size: 0.68rem; color: #5c4400;
+    background: #fff; border: 1px dashed #b8860b; border-radius: 3px; padding: 0 4px;
+  }
+  #meSpecialBanner {
+    display: none; margin: 0 0 0.8rem; padding: 0.75rem 0.9rem;
+    background: #fff8e1; border: 1px solid #e0b400; border-left: 5px solid #b8860b;
+    border-radius: 6px; color: #5c4400; font-size: 0.82rem; line-height: 1.45;
+  }
+  #meSpecialBanner.show { display: block; }
+  #meSpecialBanner b { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; }
   .me-insert-btn { opacity: 0.4; transition: opacity 0.15s; }
   .me-insert-btn:hover { opacity: 1 !important; background: #fff3d6 !important; }
 
@@ -445,6 +468,7 @@
           </div>
           <div class="me-photo-unmatched" id="mePhotoUnmatched" style="display:none;"></div>
           <div class="me-photo-unmatched" id="mePhotoMissing" style="display:none; color:#8a6d1a; background:#fff8e6; border-color:#f0dca0;"></div>
+          <div id="meSpecialBanner"></div>
         </div>
         <div id="mePdfPreviewSection" style="margin-bottom:0.6rem;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.4rem;">
@@ -693,8 +717,54 @@ function _dlPdf(url) {
       return (s.score === null || s.score === undefined) ? '' : s.score;
     }
 
+    // ── SPECIAL CASE: onyesha na kuzuia kuhifadhi kabla ya kuangaliwa ──
+    // Alama iliyoandikwa vibaye kwenye karatasi (mfano "1O.6" badala ya
+    // "10.6"), au ambayo AI haikuwa na uhakika nalo, inawekwa hapa.
+    // Mwalimu lazima aiangalie kwanza — kisha anaendelea kama kawaida.
+    function specialRows() {
+      return [...byId.values()].filter(s => s.is_special_case && !s.is_absent);
+    }
+    function showSpecialCases() {
+      const banner = document.getElementById('meSpecialBanner');
+      if (!banner) return;
+      const list = specialRows();
+      if (!list.length) {
+        banner.classList.remove('show');
+        return;
+      }
+      const sw = LANG === 'sw';
+      const items = list.map(s => {
+        const mark = s.raw_mark ? ` (${sw ? 'karatasi' : 'sheet'}: <code>${escapeHtml(String(s.raw_mark))}</code>)` : '';
+        return `<li><b>${escapeHtml(s.name)}</b> — ${escapeHtml(s.special_reason || (sw ? 'AI haikuwa na uhakika' : 'AI was unsure'))}${mark}</li>`;
+      }).join('');
+      banner.innerHTML =
+        (sw
+          ? `<b>⚠️ Kuna alama ${list.length} za SPECIAL CASE zinazohitaji kuangaliwa kwanza</b>
+             Alama hizi zimeandikwa vibaye kwenye karatasi au AI haikuwa na uhakika nazo, ndiyo mfumo
+             hana uhakika nazo. Zimewekwa juu ya meza. Linganisha kila mstari na picha ya scoresheet,
+             sahihisha alama, kisha bonyeza <b>&ldquo;Nimeyakagua alama zote&rdquo;</b> ili uweze kuhifadhi.`
+          : `<b>⚠️ ${list.length} SPECIAL CASE mark(s) need review first</b>
+             These were written unclearly on the sheet or the AI was unsure of them, so the system
+             cannot trust them. They are at the top of the table. Compare each row against the
+             scoresheet photo, correct it, then tick <b>&ldquo;I have checked all special marks&rdquo;</b> to save.`)
+        + `<ul style="margin:0.4rem 0 0 1.1rem;padding:0;">${items}</ul>`
+        + `<label style="display:flex;align-items:center;gap:6px;margin-top:0.6rem;font-weight:600;cursor:pointer;">`
+        + `<input type="checkbox" id="meSpecialAck"> ${sw ? 'Nimeyakagua alama zote za special case' : 'I have checked all special marks'}</label>`;
+      banner.classList.add('show');
+      const ack = document.getElementById('meSpecialAck');
+      if (ack) {
+        ack.checked = specialAcked;
+        ack.addEventListener('change', e => { specialAcked = e.target.checked; saveBtn.disabled = false; });
+      }
+    }
+    let specialAcked = false;
+
     function renderRows() {
       const arr = [...byId.values()];
+      // Mwalimu akague alama za SPECIAL CASE kwanza, kisha zile
+      // za kawaida. Tunapanga maalama juu ili zisionekane kama
+      // mistari ya kawaida tu.
+      arr.sort((a, b) => (b.is_special_case ? 1 : 0) - (a.is_special_case ? 1 : 0));
       if (!arr.length) {
         rowsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:1.4rem;">' +
           (LANG === 'sw'
@@ -703,9 +773,9 @@ function _dlPdf(url) {
           '</td></tr>';
       } else {
         rowsBody.innerHTML = arr.map((s, i) => `
-          <tr data-id="${s.id}" ${s.is_absent ? 'style="background:#f8f9fb;"' : ''}>
+          <tr data-id="${s.id}" class="${s.is_special_case ? 'me-special-row' : ''}" ${s.is_absent ? 'style="background:#f8f9fb;"' : ''}>
             <td class="row-no">${i + 1}</td>
-            <td class="student-name">${escapeHtml(s.name)}</td>
+            <td class="student-name">${escapeHtml(s.name)}${s.is_special_case ? `<br><span class="me-special-badge">${LANG === 'sw' ? 'SPECIAL CASE' : 'SPECIAL CASE'}</span>` : ''}${s.is_special_case && s.special_reason ? `<br><span class="me-special-why">${escapeHtml(s.special_reason)}</span>` : ''}${s.is_special_case && s.raw_mark ? `<br><span class="me-special-raw">${LANG === 'sw' ? 'kwenye karatasi' : 'on sheet'}: <code>${escapeHtml(String(s.raw_mark))}</code></span>` : ''}</td>
             <td><input type="number" class="score-input" min="0" max="100" value="${s.is_absent ? '' : scoreVal(s)}" data-id="${s.id}" inputmode="numeric" ${s.is_absent ? 'disabled style="opacity:0.5;"' : ''} step="any"></td>
             <td><button type="button" class="btn btn-sm me-absent-btn ${s.is_absent ? 'active' : ''}" data-id="${s.id}" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:2px;border:1.5px solid #dee2e6;background:${s.is_absent ? '#475569' : '#fff'};color:${s.is_absent ? '#fff' : '#475569'};font-weight:600;cursor:pointer;">
               ${s.is_absent ? '✓ X' : 'X'}
@@ -720,7 +790,10 @@ function _dlPdf(url) {
         inp.addEventListener('input', () => {
           const s = byId.get(parseInt(inp.dataset.id, 10));
           if (s) {
-            s.score = inp.value === '' ? null : Math.max(0, Math.min(100, parseInt(inp.value, 10) || 0));
+            // parseFloat, si parseInt: kwa parseInt alama 10.6
+            // inakuwa 10 mara tu mwalimu anapoandika, hata kabla
+            // ya kuhifadhi.
+            s.score = inp.value === '' ? null : Math.max(0, Math.min(100, parseFloat(inp.value) || 0));
             if (s.is_absent && inp.value !== '') {
               s.is_absent = false;
               renderRows();
@@ -1405,16 +1478,29 @@ function _dlPdf(url) {
 
           matched.forEach(m => {
             if (m.is_new) {
-              byId.set(m.id, { id: m.id, name: m.name, score: m.score, is_absent: m.is_absent || false });
+              byId.set(m.id, {
+                id: m.id, name: m.name, score: m.score,
+                is_absent: m.is_absent || false,
+                is_special_case: !!m.is_special_case,
+                special_reason: m.special_reason || '',
+                raw_mark: m.raw_mark || '',
+              });
             } else {
               const s = byId.get(m.id);
               if (s) {
                 s.score = m.score;
                 s.is_absent = m.is_absent || false;
+                // Alama iliyokuwa ya mashaka inabaki ya mashaka hata
+                // baada ya mwalimu kuiandika upya — hiyo ndiyo
+                // maana ya "special case".
+                s.is_special_case = !!m.is_special_case;
+                s.special_reason = m.special_reason || '';
+                s.raw_mark = m.raw_mark || '';
               }
             }
           });
           renderRows();
+          showSpecialCases();
           matched.forEach(m => {
             const row = rowsBody.querySelector('tr[data-id="' + m.id + '"]');
             if (row && (m.is_new || m.confidence < 0.9)) row.classList.add('photo-low-confidence');
@@ -1546,7 +1632,16 @@ function _dlPdf(url) {
         } else {
           const v = s.score;
           if (v !== null && v !== undefined && v !== '' && !isNaN(v)) {
-            entries.push({ student_id: s.id, score: Math.max(0, Math.min(100, parseInt(v, 10))) });
+            // Alama maaluma (10.6) zinapelekwa kama zilivyo.
+            const num = Math.max(0, Math.min(100, parseFloat(v)));
+            const entry = { student_id: s.id, score: num };
+            // Alama iliyokuwa ya mashaka: tunapitisha maelezo ili
+            // iweze kufuatiliwa baadaye ("AI au mwalimu?").
+            if (s.is_special_case) {
+              entry.is_special_case = true;
+              entry.special_reason = s.special_reason || '';
+            }
+            entries.push(entry);
           }
         }
       });
@@ -1554,6 +1649,17 @@ function _dlPdf(url) {
         toast(LANG === 'sw'
           ? 'Hakuna alama zilizojazwa — jaza angalau alama moja.'
           : 'No marks entered — fill in at least one score.', true);
+        return;
+      }
+      // Mwalimu akague alama za special case ZA MAALAMA kwanza. Bila
+      // uthibitisho huu hatuhifadhi — hapo ndipo alama zilizoandikwa
+      // vibayene zinapokosewa.
+      if (specialRows().length > 0 && !specialAcked) {
+        toast(LANG === 'sw'
+          ? '⚠️ Kuna alama za SPECIAL CASE ambazo bado hujujagua. Ziunguze juu kabisa ya meza, linganisha na picha ya scoresheet, kisha bonyeza "Nimeyakagua alama zote za special case".'
+          : '⚠️ Special-case marks are not confirmed yet. Check them at the top of the table first.', true);
+        const banner = document.getElementById('meSpecialBanner');
+        if (banner) banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
       saveBtn.disabled = true;

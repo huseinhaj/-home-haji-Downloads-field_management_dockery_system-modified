@@ -4976,13 +4976,22 @@ def save_confirmed_scores(request, exam_id):
     exam_results = []
     seen_student_ids = set()
     duplicates_dropped = 0
+    # Alama za special case ambazo mwalimu bado hajaakagua. Huhifadhiwi
+    # chochote mpaka azikague — hii ndiyo maana ya "mwalimu akague
+    # kwanza, kisha uendelee kama kawaida".
+    unconfirmed_special = []
     for entry in scores:
         student_id = entry.get('student_id')
         score = entry.get('score')
         is_absent = entry.get('is_absent', False)
+        is_special = bool(entry.get('is_special_case'))
+        special_ok = bool(entry.get('special_confirmed'))
         if student_id is None:
             continue
         student_id = int(student_id)
+        if is_special and not special_ok:
+            unconfirmed_special.append(student_id)
+            continue
         # Dedup: the review table allows picking the same student twice
         # (manual 'Add Student' row, re-added OCR row, …). ON CONFLICT
         # can't update the same row twice in one statement — drop the
@@ -5011,7 +5020,24 @@ def save_confirmed_scores(request, exam_id):
             exam=exam, student_id=student_id, subject=subject,
             score=score if not is_absent else None,
             is_absent=bool(is_absent),
+            # Mwanzo wa ukweli wa alama hii: ilikuwa ya AI pekee, mwalimu
+            # ndiye aliyoisoma. Tunahifadhi ili mtu yeyote anaweza kuiuliza
+            # baadaye — "hii alama AI alisoma au mwalimu?"
+            is_special_case=is_special,
+            special_reason=(entry.get('special_reason') or '')[:200],
         ))
+
+    # Mwalimu bado hajaakagua alama zote za special case — hatuhifadhi
+    # chochote, ili nusura hazitoshelwe na mtihani.
+    if unconfirmed_special:
+        return JsonResponse({
+            'error': (
+                f'Kuna alama {len(unconfirmed_special)} za special case ambazo '
+                'bado hujujagua. Angalia kwanza alama hizo zilizokmarkedwa '
+                '"SPECIAL CASE", kisha uhifadhi tena.'
+            ),
+            'unconfirmed_special': unconfirmed_special,
+        }, status=400)
 
     if exam_results:
         try:
@@ -5019,7 +5045,7 @@ def save_confirmed_scores(request, exam_id):
                 exam_results,
                 update_conflicts=True,
                 unique_fields=['exam', 'student', 'subject'],
-                update_fields=['score', 'is_absent'],
+                update_fields=['score', 'is_absent', 'is_special_case', 'special_reason'],
             )
         except Exception as exc:
             # Last-resort guard: never surface a bare HTML 500 to the
