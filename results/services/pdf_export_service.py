@@ -148,6 +148,23 @@ DIV_BG_THEME = {
         'III': colors.HexColor("#F0E4BC"), 'IV':  colors.HexColor("#F6ECD0"),
         '0':   colors.HexColor("#FBF6E8"),
     },
+    # junior (Form Two — emerald): Division I gets a solid emerald honour
+    # chip, and the ladder below steps down through mint tints. Without
+    # these, junior/olevel fell through to band_bg/header_fg, which put
+    # the DIV text in the SAME green as the header — the division simply
+    # did not read as anything on the page.
+    'junior': {
+        'I':   colors.HexColor("#0F7A4A"), 'II':  colors.HexColor("#A8DEC0"),
+        'III': colors.HexColor("#CDEBDA"), 'IV':  colors.HexColor("#E1F4E8"),
+        '0':   colors.HexColor("#EDF9F2"),
+    },
+    # olevel (Form Four — ocean): petrol Division I chip, then cool
+    # blue tints for II, III, IV and 0.
+    'olevel': {
+        'I':   colors.HexColor("#0E5A6B"), 'II':  colors.HexColor("#A3D0DA"),
+        'III': colors.HexColor("#C8E4EB"), 'IV':  colors.HexColor("#DCEFF3"),
+        '0':   colors.HexColor("#EAF5F8"),
+    },
 }
 DIV_FG_THEME = {
     'royal': {
@@ -159,6 +176,21 @@ DIV_FG_THEME = {
         'I':   colors.HexColor("#2B2410"), 'II':  colors.HexColor("#4A3D10"),
         'III': colors.HexColor("#5A4713"), 'IV':  colors.HexColor("#6E5A1E"),
         '0':   colors.HexColor("#7E6B2A"),
+    },
+    # junior: Division I is white on solid emerald. The tints below need
+    # dark green ink — a light mint background with pale text would
+    # disappear, which is the opposite of what these chips are for.
+    'junior': {
+        'I':   colors.HexColor("#FFFFFF"), 'II':  colors.HexColor("#04432A"),
+        'III': colors.HexColor("#0B5A38"), 'IV':  colors.HexColor("#136F49"),
+        '0':   colors.HexColor("#17764C"),
+    },
+    # olevel: Division I is white on solid petrol; the tints step down in
+    # deep teal so every chip keeps contrast against its own background.
+    'olevel': {
+        'I':   colors.HexColor("#FFFFFF"), 'II':  colors.HexColor("#03333F"),
+        'III': colors.HexColor("#083F4C"), 'IV':  colors.HexColor("#0B5163"),
+        '0':   colors.HexColor("#0F6379"),
     },
 }
 
@@ -290,6 +322,28 @@ _THEMES = {
 
 def _resolve_theme(style):
     return _THEMES.get((style or 'normal').lower(), _THEMES['normal'])
+
+
+def _div_colors(style_key, theme, division):
+    """(bg, fg) ya seli ya DIVISION kwa mtindo fulani.
+
+    Kila style ina rungo yake mwenyewe: 'normal' inatumia rangi za
+    kawaida za mfumo hili, 'royal'/'acsee'/'junior'/'olevel' zina
+    madimbwi ya rangi za heshima, na 'rank'/'necta' zinakopi
+    karatasi halisi za NECTA ambazo hazitaji rangi za madivisheni.
+
+    Kigezo hapa ni hasa kwa sababu kabla ya mabadiliko haya 'junior'
+    na 'olevel' zilikuwa zinatumia band_bg/header_fg — mpaka mpaka
+    wa rangi ya kichwa. Div I "I" ilikuwa ya kijani kwenye kichwa
+    cha kijani: alama haikuwa na maana yoyote, kwa hiyo mwalimu
+    alikuwa akisema "division hazionekani".
+    """
+    if (style_key or 'normal') == 'normal':
+        return DIV_BG.get(division, WHITE), DIV_FG.get(division, BLACK)
+    if style_key in DIV_BG_THEME:
+        return (DIV_BG_THEME[style_key].get(division, theme['band_bg']),
+                DIV_FG_THEME[style_key].get(division, theme['section_fg']))
+    return theme['band_bg'], theme['header_fg']
 
 
 # ── Styles ───────────────────────────────────────────────────────────────────
@@ -1360,7 +1414,24 @@ def generate_results_pdf_response(exam, style='normal', request=None, student_id
         # INC (masomo < 7) na ABS (hakufanya mtihani) ni markers za NECTA —
         # zinaonyeshwa kwenye safu zao ili jumla ifikie N.
         div_hdrs = ["SEX", "I", "II", "III", "IV", "0", "INC", "ABS"]
-        div_data = [[_p(f"<b>{h}</b>", st['th']) for h in div_hdrs]]
+        # Kichwa kina rangi za divisheni hasa: kila safu (I, II, III...)
+        # inachukua rangi yake ile ile inayotumika kwenye seli za DIV za
+        # meza kuu chini. Mwalimu anaona kwa macho kama Division I ya
+        # muhtasari inalingana na ya mwanafunzi.
+        div_keys = [None, 'I', 'II', 'III', 'IV', '0', 'INC', 'ABS']
+        div_data = []
+        div_hdr_cells = []
+        for ci, h in enumerate(div_hdrs):
+            if ci == 0:
+                div_hdr_cells.append(_p(f"<b>{h}</b>", st['th']))
+                continue
+            dkey = div_keys[ci]
+            d_bg, d_fg = _div_colors(style_key, theme, dkey)
+            div_hdr_cells.append(_p(f"<b>{h}</b>", ParagraphStyle(
+                f'dvh_{h}', parent=st['th'],
+                backColor=d_bg, textColor=d_fg, fontName='Helvetica-Bold',
+            )))
+        div_data.append(div_hdr_cells)
         for sex_label in ('F', 'M', 'T'):
             if sex_label == 'T':
                 row_counts = [div_counts.get(d, 0) for d in ('I', 'II', 'III', 'IV', '0', 'INC', 'ABS')]
@@ -1470,6 +1541,12 @@ def generate_results_pdf_response(exam, style='normal', request=None, student_id
             if len(nm) > 28:
                 nm = nm[:26] + '..'
             stu_gpa = r.points / counted if counted else 0
+            # DIV ya TOP 4 inapata rangi ile ile ya meza kuu chini, ili
+            # mwanachampi wa Division I aone hivyo hata kwenye muhtasari.
+            t4_bg, t4_fg = _div_colors(style_key, theme, r.division)
+            t4_div_st = ParagraphStyle(f't4div_{r.student_id}', parent=st['td'],
+                                       backColor=t4_bg, textColor=t4_fg,
+                                       fontName='Helvetica-Bold', alignment=TA_CENTER)
             t_data.append([
                 _p(str(r.position), st['td']),
                 _p(nm, ParagraphStyle('tn5', parent=st['td'], alignment=TA_LEFT)),
@@ -1477,7 +1554,7 @@ def generate_results_pdf_response(exam, style='normal', request=None, student_id
                 _p(f"{r.average_score:.1f}", st['td']),
                 _p(f"{stu_gpa:.2f}", st['td_bold']),
                 _p(str(r.points), st['td']),
-                _p(str(r.division), st['td']),
+                _p(str(r.division), t4_div_st),
             ])
         cw_t5 = [content_w * w for w in [0.06, 0.30, 0.10, 0.10, 0.10, 0.10, 0.14]]
         t_table = Table(t_data, colWidths=cw_t5)
@@ -1686,18 +1763,7 @@ def generate_results_pdf_response(exam, style='normal', request=None, student_id
             )
         subj_text = '&nbsp;'.join(subj_parts)
 
-        if is_normal_style:
-            div_bg = DIV_BG.get(r.division, WHITE)
-            div_fg = DIV_FG.get(r.division, BLACK)
-        elif style_key in DIV_BG_THEME:
-            # royal/acsee: themed honour chips — Division I shines gold /
-            # champagne, lower divisions step down through the theme's tint
-            # ladder so every division reads clearly on the panel.
-            div_bg = DIV_BG_THEME[style_key].get(r.division, theme['band_bg'])
-            div_fg = DIV_FG_THEME[style_key].get(r.division, theme['section_fg'])
-        else:
-            div_bg = theme['band_bg']
-            div_fg = theme['header_fg']
+        div_bg, div_fg = _div_colors(style_key, theme, r.division)
         dv_st = ParagraphStyle(f'dv4_{r.student_id}', parent=cell_st,
                                backColor=div_bg, textColor=div_fg,
                                fontName='Helvetica-Bold')

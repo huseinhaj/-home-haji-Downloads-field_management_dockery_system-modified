@@ -63,6 +63,18 @@ _EXCEL_THEMES = {
     'olevel': {'header_bg': 'FF0E5A6B', 'header_fg': 'FFFFFFFF', 'accent_bg': 'FF8FC7D4', 'accent_fg': 'FF042A33'},
 }
 
+# Per-theme division cell fills for Excel (ARGB). These match the PDF
+# junior/olevel palettes so the two exports read as the same theme.
+# 'normal' keeps the system default rainbow below.
+_EXCEL_DIV_FILL = {
+    'junior': {'I': ('FF0F7A4A', 'FFFFFFFF'), 'II': ('FFA8DEC0', 'FF04432A'),
+               'III': ('FFCDEBDA', 'FF0B5A38'), 'IV': ('FFE1F4E8', 'FF136F49'),
+               '0': ('FFEDF9F2', 'FF17764C')},
+    'olevel': {'I': ('FF0E5A6B', 'FFFFFFFF'), 'II': ('FFA3D0DA', 'FF03333F'),
+               'III': ('FFC8E4EB', 'FF083F4C'), 'IV': ('FFDCEFF3', 'FF0B5163'),
+               '0': ('FFEAF5F8', 'FF0F6379')},
+}
+
 
 def _resolve_excel_theme(style):
     return _EXCEL_THEMES.get((style or 'normal').lower(), _EXCEL_THEMES['normal'])
@@ -284,7 +296,13 @@ def _build_sheet_matokeo(wb: openpyxl.Workbook, exam, payload: dict, theme: dict
         avg_cell.font = Font(bold=True, name='Calibri', size=9)
 
         div_cell = ws.cell(row=data_row, column=div_col, value=result.division)
-        if result.division == 'I':
+        style_key = theme.get('style_key', 'normal')
+        div_fills = _EXCEL_DIV_FILL.get(style_key)
+        if div_fills and result.division in div_fills:
+            df, dc = div_fills[result.division]
+            div_cell.fill = _make_fill(df)
+            div_cell.font = Font(bold=True, name='Calibri', size=9, color=dc)
+        elif result.division == 'I':
             div_cell.fill = _make_fill("FFC6F4D6")
             div_cell.font = Font(bold=True, name='Calibri', size=9, color="FF145A32")
         elif result.division in ('II', 'III'):
@@ -598,6 +616,9 @@ def generate_professional_excel_response(exam, style='normal') -> HttpResponse:
     picking e.g. 'necta' gets a matching look in both PDF and Excel.
     Content/structure are identical — only header/accent colours change."""
     theme = _resolve_excel_theme(style)
+    # Weka style_key ndani ya theme ili sheet builders wa ndani waweza
+    # kupata palette ya divisheni inayolingana na PDF.
+    theme = dict(theme, style_key=(style or 'normal').lower())
     payload = get_exam_export_payload(exam)
 
     wb = openpyxl.Workbook()

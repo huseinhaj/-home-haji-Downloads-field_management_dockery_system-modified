@@ -1186,6 +1186,88 @@ class ResultsExportRegistrationOrderAndExcelStylesTests(TestCase):
 			self.assertEqual(response.status_code, 200, f'style={style}')
 			self.assertTrue(response['Content-Type'].startswith('application/pdf'), f'style={style}')
 
+	# ── Divisheni zinaonekana kwa rangi (Form 2 na Form 4) ───────────
+	def test_division_chips_have_colours_in_every_themed_style(self):
+		"""Divisheni hazikiwezi kuwa hazionekani.
+
+		Hitilafu hii ilikuwa: 'junior' na 'olevel' hawakuwa na
+		rangi zao za divisheni, kwa hiyo zilirudi band_bg/header_fg
+		— mpaka mpaka wa rangi ya kichwa. Div I "I" ilikuwa ya
+		kijani kwenye kichwa cha kijani: hazikuwa na maana, ndiyo
+		mwalimu alikuwa akisema "division hazionekani".
+
+		Sasa kila style yenye rangi ina rangi zake za I, II, III,
+		IV na 0.
+		"""
+		from results.services.pdf_export_service import _THEMES, DIV_BG_THEME, DIV_FG_THEME
+		for style in ('junior', 'olevel', 'royal', 'acsee'):
+			self.assertIn(style, DIV_BG_THEME, f'{style} haina rangi za divisheni')
+			self.assertIn(style, DIV_FG_THEME, f'{style} haina rangi za nakala za divisheni')
+			for division in ('I', 'II', 'III', 'IV', '0'):
+				self.assertIn(division, DIV_BG_THEME[style], f'{style}: Div {division} haina rangi')
+				self.assertIn(division, DIV_FG_THEME[style], f'{style}: Div {division} haina nakala')
+
+		# Form 2 na Form 4 hazihitaji rangi zileile (zinatofautiana).
+		self.assertNotEqual(
+		 str(DIV_BG_THEME['junior']['I']),
+		 str(DIV_BG_THEME['olevel']['I']),
+		 'Form 2 na Form 4 zinatumia rangi ileile ya Division I',
+		)
+
+	def test_div_colour_chips_are_actually_readable(self):
+		"""Nakala lazima ionyeshe juu ya mpaka wa rangi.
+
+		Div I ya Form 2 ni nyeupe juu ya emerald iliyo ngumu. Kama
+		mfumo ungekuwa na nakala ya njano kwenye njano, alama
+		itaonekana kuwa haipo — hasa kwa wazee wa macho na kwa
+		wanafunzi wa darasa.
+		"""
+		from results.services.pdf_export_service import DIV_BG_THEME, DIV_FG_THEME
+
+		def luminance(c):
+			def ch(v):
+				v = max(0.0, min(1.0, v))
+				return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+			return 0.2126 * ch(c.red) + 0.7152 * ch(c.green) + 0.0722 * ch(c.blue)
+
+		for style in ('junior', 'olevel', 'royal', 'acsee'):
+			for division in ('I', 'II', 'III', 'IV', '0'):
+				bg = DIV_BG_THEME[style][division]
+				fg = DIV_FG_THEME[style][division]
+				l1, l2 = luminance(bg), luminance(fg)
+				ratio = (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
+				# WCAG AA kwa maandishi: 4.5:1
+				self.assertGreaterEqual(
+					ratio, 4.5,
+					f'{style} Div {division}: contrast {ratio:.2f}:1 ni chini ya 4.5:1',
+				)
+
+	def test_div_colour_helper_is_used_in_every_division_cell(self):
+		"""Seli zote za DIV zinapasita kupata rangi kutoka kichakato
+		moja, ili Form 2/4 zisionekane za njia moja na zilizizo kwenye
+		meza nyingine."""
+		import inspect
+		from results.services import pdf_export_service as svc
+		src = inspect.getsource(svc)
+		# Hakuna tena taratibu iliyokuwa ikirudi band_bg/header_fg moja kwa
+		# moja kwenye sehemu ya meza kuu.
+		self.assertIn('_div_colors(style_key, theme, r.division)', src)
+		self.assertNotIn(
+			"div_bg = theme['band_bg']",
+			src,
+			'kuna msimo uliobaki unaorudisha rangi ya kawaida badala ya rangi ya divisheni',
+		)
+
+	def test_excel_division_cells_use_theme_palette(self):
+		"""Excel ndio inapaswa kuonyesha divisheni kwa rangi kama PDF."""
+		from results.services.excel_export_service import _EXCEL_DIV_FILL
+		for style in ('junior', 'olevel'):
+			self.assertIn(style, _EXCEL_DIV_FILL)
+			for division in ('I', 'II', 'III', 'IV', '0'):
+				self.assertIn(division, _EXCEL_DIV_FILL[style], f'{style}: Div {division} haina rangi ya Excel')
+				bg, fg = _EXCEL_DIV_FILL[style][division]
+				self.assertNotEqual(bg, fg, f'{style} Div {division}: rangi na nakala ni zileile')
+
 
 class SetClassTeacherAndConductTests(TestCase):
 	"""The two new report-card sign-off screens: the Academic Officer
