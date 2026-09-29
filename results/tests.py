@@ -2723,6 +2723,18 @@ class SpecialCaseMarkTests(TestCase):
         # Alama asilia inabaki ili mwalimu aipige mbali na alama yake.
         self.assertEqual(rows[0]['raw_mark'], '1O.6')
 
+    def test_raw_mark_prefers_what_was_on_the_sheet(self):
+        # AI alisoma "1O.6" kisha akaika kuwa 10.6 na kutuma
+        # raw_score="1O.6". Mwalimu lazima aone "1O.6" ili apige
+        # mbali na picha — "10.6" ni alama tayyo iliyosomewa na
+        # haina thamani ya kulingana na karatasi.
+        rows = _clean_rows([
+            {'row': 1, 'name': 'Zawadi', 'score': 10.6,
+             'uncertain': True, 'raw_score': '1O.6'},
+        ])
+        self.assertEqual(rows[0]['score'], Decimal('10.6'))
+        self.assertEqual(rows[0]['raw_mark'], '1O.6')
+
     def test_s5_for_55_is_flagged(self):
         rows = _clean_rows([{'row': 1, 'name': 'Neema', 'score': 'S5'}])
         self.assertTrue(rows[0]['is_special_case'])
@@ -2736,7 +2748,11 @@ class SpecialCaseMarkTests(TestCase):
             {'row': 1, 'name': 'Peter', 'score': 10.6, 'raw_score': '1O.6'},
         ])
         self.assertTrue(rows[0]['is_special_case'])
-        self.assertEqual(rows[0]['raw_mark'], '10.6')
+        # raw_mark ni alama KWELI iliyokuwa kwenye karatasi ("1O.6"),
+        # si alama AI iliyokosoa ("10.6") — mwalimu anahitaji kulingana
+        # na picha.
+        self.assertEqual(rows[0]['raw_mark'], '1O.6')
+        self.assertEqual(rows[0]['score'], Decimal('10.6'))
         self.assertIn('1O.6', rows[0]['special_reason'])
 
     # ── (3) Alama safi hazipati alama ya sumaku ──────────────────

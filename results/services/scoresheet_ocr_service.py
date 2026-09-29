@@ -773,15 +773,18 @@ def _clean_rows(raw_rows: list) -> list[dict]:
         # kabla ya kuikubali — kisha anaendelea kama kawaida.
         special_reason = _special_case_reason(item, raw_str, score, is_absent)
         if special_reason:
-            # raw_mark: alama ILIYOANDIKWA kwenye karatasi. Mwalimu
-            # anahitaji kuiona ili auangalie dhidi ya picha — bila
-            # hii, anaona tu "1.60" na hataweza kujua kwamba
-            # karatasi ilikuwa "1O.6".
+            # raw_mark: alama ILIYOANDIKWA kwenye karatasi, ili mwalimu
+            # apige mbali na alama AI iliyotoa. Tunachagua raw_score
+            # kwanza kama AI ilitupa: kama AI alisema alisoma "1O.6"
+            # na kisha aikosoa kuwa 10.6, mwalimu lazima aone "1O.6"
+            # — si "10.6", ambayo ni alama tayyo iliyosomewa na
+            # haina thamani ya kulingana na karatasi.
+            shown_mark = item.get("raw_score") or raw_str
             rows.append({
                 "raw_name": name, "score": score, "is_absent": is_absent,
                 "row": row_no, "blank": False,
                 "is_special_case": True, "special_reason": special_reason,
-                "raw_mark": str(raw_str)[:40],
+                "raw_mark": str(shown_mark)[:40],
             })
             continue
 
