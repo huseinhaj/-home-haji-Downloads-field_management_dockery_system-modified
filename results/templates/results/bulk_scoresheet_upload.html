@@ -355,6 +355,16 @@ Imekamilika.
       <a href="{% url 'generate_results_pdf' exam.id %}?style=necta" data-no-style-picker class="btn-final primary" style="font-size:0.8rem;">
         📄 NECTA
       </a>
+      {% if exam.form == 2 %}
+      <a href="{% url 'generate_results_pdf' exam.id %}?style=junior" data-no-style-picker class="btn-final primary" style="font-size:0.8rem;background:linear-gradient(135deg,#0F7A4A,#085733);color:#FFFFFF;border:1px solid #7FCBA4;">
+        🌿 Form Two Emerald
+      </a>
+      {% endif %}
+      {% if exam.form == 4 %}
+      <a href="{% url 'generate_results_pdf' exam.id %}?style=olevel" data-no-style-picker class="btn-final primary" style="font-size:0.8rem;background:linear-gradient(135deg,#0E5A6B,#07333D);color:#FFFFFF;border:1px solid #8FC7D4;">
+        🌊 Form Four Ocean
+      </a>
+      {% endif %}
       {% if exam.form == 5 %}
       <a href="{% url 'generate_results_pdf' exam.id %}?style=royal" data-no-style-picker class="btn-final primary" style="font-size:0.8rem;background:linear-gradient(135deg,#6B2FA0,#4A1D6E);color:#E5C96B;border:1px solid #C9A227;">
         👑 Form Five Royal

@@ -121,6 +121,8 @@
   .dl-pair--normal .dl-main { background: linear-gradient(135deg, #1F7A3D, #145226); }
   .dl-pair--rank .dl-main { background: linear-gradient(135deg, #0b4a8b, #082f5c); }
   .dl-pair--necta .dl-main { background: linear-gradient(135deg, #84141e, #570e14); }
+  .dl-pair--junior .dl-main { background: linear-gradient(135deg, #0F7A4A, #085733); color: #FFFFFF; }
+  .dl-pair--olevel .dl-main { background: linear-gradient(135deg, #0E5A6B, #07333D); color: #FFFFFF; }
   .dl-pair--royal .dl-main { background: linear-gradient(135deg, #6B2FA0, #4A1D6E); color: #E5C96B; }
   .dl-pair--acsee .dl-main { background: linear-gradient(135deg, #1A1A1A, #3A3A3A); color: #E5C96B; }
   .dl-pair .dl-main:hover { filter: brightness(1.1); }
@@ -278,6 +280,18 @@
         <a href="{% url 'generate_results_pdf' exam.id %}?style=necta" data-no-style-picker class="dl-main"><i class="fas fa-file-pdf"></i> NECTA</a>
         <a href="{% url 'export_results_excel' exam.id %}?style=necta" data-no-style-picker class="dl-excel" title="Excel"><i class="fas fa-file-excel"></i></a>
       </span>
+    {% if exam.form == 2 %}
+      <span class="dl-pair dl-pair--junior">
+        <a href="{% url 'generate_results_pdf' exam.id %}?style=junior" data-no-style-picker class="dl-main"><i class="fas fa-seedling"></i> {% if LANG == 'sw' %}Form Two Emerald{% else %}Form Two Emerald{% endif %}</a>
+        <a href="{% url 'export_results_excel' exam.id %}?style=junior" data-no-style-picker class="dl-excel" title="Excel"><i class="fas fa-file-excel"></i></a>
+      </span>
+    {% endif %}
+    {% if exam.form == 4 %}
+      <span class="dl-pair dl-pair--olevel">
+        <a href="{% url 'generate_results_pdf' exam.id %}?style=olevel" data-no-style-picker class="dl-main"><i class="fas fa-water"></i> {% if LANG == 'sw' %}Form Four Ocean{% else %}Form Four Ocean{% endif %}</a>
+        <a href="{% url 'export_results_excel' exam.id %}?style=olevel" data-no-style-picker class="dl-excel" title="Excel"><i class="fas fa-file-excel"></i></a>
+      </span>
+    {% endif %}
     {% if exam.form == 5 %}
       <span class="dl-pair dl-pair--royal">
         <a href="{% url 'generate_results_pdf' exam.id %}?style=royal" data-no-style-picker class="dl-main"><i class="fas fa-crown"></i> {% if LANG == 'sw' %}Form Five Royal{% else %}Form Five Royal{% endif %}</a>

@@ -379,6 +379,22 @@
             <a href="{% url 'export_results_excel' ed.exam.id %}?style=necta" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua matokeo kwa muundo wa NECTA (Excel){% else %}Download the results in NECTA format (Excel){% endif %}">
               📊 {% if LANG == 'sw' %}Matokeo ya NECTA{% else %}NECTA Results{% endif %} (Excel)
             </a>
+            {% if ed.exam.form == 2 %}
+            <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=junior" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya Form Two Emerald (PDF){% else %}Download the Form Two Emerald report (PDF){% endif %}" style="color:#0F7A4A;font-weight:700;">
+              🌿 {% if LANG == 'sw' %}Form Two Emerald{% else %}Form Two Emerald{% endif %} (PDF)
+            </a>
+            <a href="{% url 'export_results_excel' ed.exam.id %}?style=junior" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya Form Two Emerald (Excel){% else %}Download the Form Two Emerald report (Excel){% endif %}" style="color:#0F7A4A;font-weight:700;">
+              🌿 {% if LANG == 'sw' %}Form Two Emerald{% else %}Form Two Emerald{% endif %} (Excel)
+            </a>
+            {% endif %}
+            {% if ed.exam.form == 4 %}
+            <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=olevel" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya Form Four Ocean (PDF){% else %}Download the Form Four Ocean report (PDF){% endif %}" style="color:#0E5A6B;font-weight:700;">
+              🌊 {% if LANG == 'sw' %}Form Four Ocean{% else %}Form Four Ocean{% endif %} (PDF)
+            </a>
+            <a href="{% url 'export_results_excel' ed.exam.id %}?style=olevel" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya Form Four Ocean (Excel){% else %}Download the Form Four Ocean report (Excel){% endif %}" style="color:#0E5A6B;font-weight:700;">
+              🌊 {% if LANG == 'sw' %}Form Four Ocean{% else %}Form Four Ocean{% endif %} (Excel)
+            </a>
+            {% endif %}
             {% if ed.exam.form == 5 %}
             <a href="{% url 'generate_results_pdf' ed.exam.id %}?style=royal" data-no-style-picker class="pdf-dl" title="{% if LANG == 'sw' %}Pakua ripoti ya kifahari ya Form Five (PDF){% else %}Download the Form Five Royal report (PDF){% endif %}" style="color:#6B2FA0;font-weight:700;">
               👑 {% if LANG == 'sw' %}Form Five Royal{% else %}Form Five Royal{% endif %} (PDF)
