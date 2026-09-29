@@ -54,6 +54,8 @@ def _remember_email(request, response, email):
 
 
 def _redirect_for_role(account):
+    if account.is_district_officer:
+        return redirect('district_dashboard')
     if account.is_academic:
         return redirect('academic_dashboard')
     if account.is_printing_secretary:

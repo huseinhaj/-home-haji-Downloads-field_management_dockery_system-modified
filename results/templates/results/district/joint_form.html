@@ -1,0 +1,75 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Unda Joint Exam{% else %}Create Joint Exam{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h1 class="mb-1">{% if LANG == 'sw' %}Unda Joint Exam ya Wilaya{% else %}Create a District Joint Exam{% endif %}</h1>
+    <p class="mb-0 text-secondary">{% if LANG == 'sw' %}Mtihani unaundwa mara moja na kuonekana kwenye kila shule iliyochaguliwa — walimu wanaingiza alama kama kawaida.{% else %}Created once, it appears in every selected school — teachers enter marks as usual.{% endif %}</p>
+  </div>
+</section>
+
+<form method="post" class="mt-4">
+  {% csrf_token %}
+  <div class="support-box">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">{% if LANG == 'sw' %}Jina la mtihani{% else %}Exam name{% endif %}</label>
+        <input type="text" name="name" class="form-control" required placeholder="FORM ONE MID TERM JOINT EXAMINATION" value="{{ post.name|default:'' }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold">{% if LANG == 'sw' %}Kidato{% else %}Form{% endif %}</label>
+        <select name="form" class="form-select">
+          {% for f in "123456" %}<option value="{{ f }}" {% if post.form == f %}selected{% endif %}>Form {{ f }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold">{% if LANG == 'sw' %}Mwaka{% else %}Year{% endif %}</label>
+        <input type="number" name="year" class="form-control" value="{{ post.year|default:this_year }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold">{% if LANG == 'sw' %}Tarehe{% else %}Date{% endif %}</label>
+        <input type="date" name="date" class="form-control" value="{{ post.date|default:'' }}">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">{% if LANG == 'sw' %}Aina{% else %}Type{% endif %}</label>
+        <select name="exam_type" class="form-select">
+          {% for code, label in exam_type_choices %}<option value="{{ code }}" {% if code == 'DISTRICT_JOINT' %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-head mt-4"><div><h2>{% if LANG == 'sw' %}Masomo{% else %}Subjects{% endif %}</h2>
+    <small class="text-secondary">{% if LANG == 'sw' %}Kila shule inapata masomo inayofundisha tu (kama yamewekwa "Shule Yangu"); vinginevyo yote.{% else %}Each school only gets the subjects it teaches (if set under "My School"); otherwise all.{% endif %}</small></div></div>
+  <div class="support-box" style="columns:3 220px;">
+    {% for s in subjects %}
+    <label class="d-block"><input type="checkbox" name="subjects" value="{{ s.id }}" {% if s.id in default_subject_ids %}checked{% endif %}> {{ s.name }}</label>
+    {% endfor %}
+  </div>
+
+  <div class="sec-head mt-4"><div><h2>{% if LANG == 'sw' %}Shule zinazoshiriki{% else %}Participating schools{% endif %} ({{ schools|length }})</h2></div>
+    <div><label><input type="checkbox" id="allSchools" checked> {% if LANG == 'sw' %}Zote{% else %}All{% endif %}</label></div></div>
+  <div class="support-box" style="columns:2 280px;">
+    {% for s in schools %}
+    <label class="d-block"><input type="checkbox" name="schools" value="{{ s.id }}" class="school-cb" {% if not s.is_primary %}checked{% endif %}>
+      {{ s.name }} <small class="text-secondary">{{ s.ward|default:"" }}{% if s.ownership %} · {{ s.get_ownership_display }}{% endif %}</small></label>
+    {% empty %}
+    {% if LANG == 'sw' %}Hakuna shule za wilaya hii kwenye mfumo.{% else %}No schools for this district in the system.{% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="mt-4 d-flex gap-2">
+    <button type="submit" class="kbtn kbtn--primary"><i class="fas fa-check"></i> {% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}</button>
+    <a href="{% url 'district_dashboard' %}" class="kbtn kbtn--ghost">{% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('allSchools')?.addEventListener('change', (e) => {
+    document.querySelectorAll('.school-cb').forEach(cb => { cb.checked = e.target.checked; });
+  });
+</script>
+{% endblock %}

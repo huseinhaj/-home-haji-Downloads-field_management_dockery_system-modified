@@ -89,6 +89,9 @@ COMMON_SUBJECTS = [
 
 @login_required
 def home(request):
+    if getattr(request.user, 'is_district_officer', False):
+        # Afisa Wilaya hana shule — nyumbani kwake ni dashibodi ya wilaya
+        return redirect('district_dashboard')
     exams = Exam.objects.filter(school=request.user.school).order_by('-year', 'name').annotate(
         submitted_count=Count(
             'subject_submissions',

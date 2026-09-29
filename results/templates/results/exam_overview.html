@@ -142,6 +142,11 @@
       </div>
     </div>
     <div>
+      {% if exam.joint_exam_id and exam.joint_exam.published %}
+      <a href="{% url 'school_joint_results' exam.id %}" class="kbtn kbtn--gold kbtn--sm">
+        <i class="fas fa-landmark"></i> {% if LANG == 'sw' %}Matokeo ya Wilaya{% else %}District Results{% endif %}
+      </a>
+      {% endif %}
       <a href="{% url 'home' %}" class="kbtn kbtn--ghost kbtn--sm">
         <i class="fas fa-arrow-left"></i> {% if LANG == 'sw' %}Dashibodi{% else %}Dashboard{% endif %}
       </a>

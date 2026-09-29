@@ -85,7 +85,7 @@ class SubjectSubmissionAdmin(admin.ModelAdmin):
 
 
 class TeacherAccountAdmin(admin.ModelAdmin):
-    list_display = ('email', 'full_name', 'role', 'school', 'is_active', 'created_at')
+    list_display = ('email', 'full_name', 'role', 'school', 'district', 'is_active', 'created_at')
     list_filter = ('role', 'school', 'is_active')
     search_fields = ('email', 'full_name')
     filter_horizontal = ('subjects',)
@@ -116,8 +116,8 @@ class TeacherAccountAdmin(admin.ModelAdmin):
 
 
 class SchoolAdmin(admin.ModelAdmin):
-    list_display = ('name', 'region', 'district', 'created_at')
-    list_filter = ('region', 'district')
+    list_display = ('name', 'region', 'district', 'ward', 'ownership', 'created_at')
+    list_filter = ('region', 'district', 'ownership')
     search_fields = ('name',)
     ordering = ('name',)
 
@@ -225,3 +225,15 @@ custom_admin_site.register(ScanAnswerKey, ScanAnswerKeyAdmin)
 custom_admin_site.register(MarkingScheme, MarkingSchemeAdmin)
 custom_admin_site.register(ScanSheetBatch, ScanSheetBatchAdmin)
 custom_admin_site.register(ScanSheet, ScanSheetAdmin)
+
+
+from .district_models import JointExam  # noqa: E402
+
+
+class JointExamAdmin(admin.ModelAdmin):
+    list_display = ('name', 'district', 'form', 'year', 'published', 'created_at')
+    list_filter = ('district', 'year', 'published')
+    filter_horizontal = ('subjects',)
+
+
+custom_admin_site.register(JointExam, JointExamAdmin)

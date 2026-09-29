@@ -1,0 +1,45 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Afisa Wilaya{% else %}District Officer{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h1 class="mb-1">{% if LANG == 'sw' %}Halmashauri ya Wilaya ya {{ user.district|title }}{% else %}{{ user.district|title }} District Council{% endif %}</h1>
+    <p class="mb-0 text-secondary">
+      {% if LANG == 'sw' %}Mitihani ya pamoja ya shule {{ school_count }} za wilaya — ranking, maendeleo ya uingizaji wa alama, na Excel ya Halmashauri.{% else %}Joint exams for the district's {{ school_count }} schools — ranking, marks-entry progress and the council Excel report.{% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap mt-2">
+    <a href="{% url 'joint_exam_create' %}" class="kbtn kbtn--primary"><i class="fas fa-plus-circle"></i> {% if LANG == 'sw' %}Unda Joint Exam{% else %}Create Joint Exam{% endif %}</a>
+    <a href="{% url 'district_schools' %}" class="kbtn kbtn--ghost"><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule za Wilaya{% else %}District Schools{% endif %}</a>
+  </div>
+</section>
+
+{% if missing_info %}
+<div class="support-box mt-3" style="border-color:#f0a500;background:#fff8e6;">
+  ⚠️ {% if LANG == 'sw' %}Baadhi ya shule hazina <b>kata</b> au <b>umiliki</b> (Serikali/Binafsi) — ripoti za Halmashauri zinazihitaji.{% else %}Some schools have no <b>ward</b> or <b>ownership</b> set — the council reports need them.{% endif %}
+  <a href="{% url 'district_schools' %}">{% if LANG == 'sw' %}Jaza sasa{% else %}Fill in now{% endif %} →</a>
+</div>
+{% endif %}
+
+<div class="mt-4">
+  <div class="sec-head"><div><h2>{% if LANG == 'sw' %}Joint Exams{% else %}Joint Exams{% endif %}</h2></div></div>
+  {% if joints %}
+  <div class="subjects-grid">
+    {% for j in joints %}
+    <a class="subject-tile {% if j.published %}approved{% else %}pending{% endif %}" href="{% url 'joint_exam_detail' j.id %}" style="text-decoration:none;color:inherit;">
+      <div class="s-name">{{ j.name }}</div>
+      <div class="s-meta">Form {{ j.form }} &bull; {{ j.year }}{% if j.date %} &bull; {{ j.date|date:"d M Y" }}{% endif %}</div>
+      <div class="s-meta">{% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}: {{ j.school_exams.count }}</div>
+      <div class="s-meta">
+        {% if j.published %}<span class="chip chip--complete">{% if LANG == 'sw' %}Wazi kwa shule{% else %}Open to schools{% endif %}</span>
+        {% else %}<span class="chip chip--pending">{% if LANG == 'sw' %}Afisa tu{% else %}Officer only{% endif %}</span>{% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="support-box">{% if LANG == 'sw' %}Bado hakuna joint exam. Bonyeza "Unda Joint Exam" kuanza.{% else %}No joint exams yet. Press "Create Joint Exam" to start.{% endif %}</div>
+  {% endif %}
+</div>
+{% endblock %}

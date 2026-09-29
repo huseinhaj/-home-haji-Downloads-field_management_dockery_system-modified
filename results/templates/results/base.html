@@ -123,6 +123,9 @@
           <a href="{% url 'personal_upload' %}"><i class="fas fa-file-upload"></i> {% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
         {% elif user.is_printing_secretary %}
           <a href="{% url 'printing_secretary_dashboard' %}"><i class="fas fa-print"></i> {% if LANG == 'sw' %}Uchapishaji (PS){% else %}Printing (PS){% endif %}</a>
+        {% elif user.is_district_officer %}
+          <a href="{% url 'district_dashboard' %}"><i class="fas fa-landmark"></i> {% if LANG == 'sw' %}Wilaya{% else %}District{% endif %}</a>
+          <a href="{% url 'district_schools' %}"><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule za Wilaya{% else %}District Schools{% endif %}</a>
         {% endif %}
         {% if user.is_teacher or user.is_academic %}
         <a href="{% url 'marks_entry' %}"><i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Jaza Alama{% else %}Marks{% endif %}</a>
@@ -158,6 +161,9 @@
           <a href="{% url 'personal_upload' %}"><i class="fas fa-file-upload"></i> {% if LANG == 'sw' %}Binafsi{% else %}Personal{% endif %}</a>
         {% elif user.is_printing_secretary %}
           <a href="{% url 'printing_secretary_dashboard' %}"><i class="fas fa-print"></i> {% if LANG == 'sw' %}Uchapishaji (PS){% else %}Printing (PS){% endif %}</a>
+        {% elif user.is_district_officer %}
+          <a href="{% url 'district_dashboard' %}"><i class="fas fa-landmark"></i> {% if LANG == 'sw' %}Wilaya{% else %}District{% endif %}</a>
+          <a href="{% url 'district_schools' %}"><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule za Wilaya{% else %}District Schools{% endif %}</a>
         {% endif %}
         <a href="{% url 'select_my_subjects' %}"><i class="fas fa-book"></i> {% if LANG == 'sw' %}Masomo Yangu{% else %}My Subjects{% endif %}</a>
         {% if user.is_teacher or user.is_academic %}

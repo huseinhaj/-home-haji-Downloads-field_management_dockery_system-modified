@@ -1,0 +1,41 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Shule za Wilaya{% else %}District Schools{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h1 class="mb-1">{% if LANG == 'sw' %}Shule za Wilaya ya {{ user.district|title }}{% else %}{{ user.district|title }} District Schools{% endif %}</h1>
+    <p class="mb-0 text-secondary">{% if LANG == 'sw' %}Kata na umiliki vinaonekana kwenye ripoti za Halmashauri (KATA, UMILIKI).{% else %}Ward and ownership appear on the council reports (KATA, UMILIKI).{% endif %}</p>
+  </div>
+</section>
+
+<form method="post" class="mt-4">
+  {% csrf_token %}
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered align-middle bg-white">
+      <thead class="table-light">
+        <tr><th>#</th><th>{% if LANG == 'sw' %}Shule{% else %}School{% endif %}</th><th>{% if LANG == 'sw' %}Kata{% else %}Ward{% endif %}</th><th>{% if LANG == 'sw' %}Umiliki{% else %}Ownership{% endif %}</th></tr>
+      </thead>
+      <tbody>
+        {% for s in schools %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ s.name }}{% if s.is_primary %} <small class="text-secondary">(msingi)</small>{% endif %}</td>
+          <td><input type="text" name="ward_{{ s.id }}" value="{{ s.ward }}" class="form-control form-control-sm" style="min-width:9rem;"></td>
+          <td>
+            <select name="ownership_{{ s.id }}" class="form-select form-select-sm" style="min-width:8rem;">
+              <option value="">—</option>
+              {% for code, label in ownership_choices %}<option value="{{ code }}" {% if s.ownership == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="d-flex gap-2">
+    <button type="submit" class="kbtn kbtn--primary"><i class="fas fa-save"></i> {% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}</button>
+    <a href="{% url 'district_dashboard' %}" class="kbtn kbtn--ghost">{% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends 'results/base.html' %}
+{% block title %}{{ joint.name }} | {% if LANG == 'sw' %}Wilaya{% else %}District{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .jt { font-size: 0.86rem; }
+  .jt th, .jt td { text-align: center; vertical-align: middle; white-space: nowrap; }
+  .jt td.name, .jt th.name { text-align: left; white-space: normal; min-width: 14rem; }
+  .jt tr.mine td { background: #e8f5ec !important; font-weight: 600; }
+  .jt tr.total td { background: #fff2cc; font-weight: 700; }
+  .jt .muted { color: #8a8f98; }
+  .own-filter .kbtn.active { outline: 2px solid #1F7A3D; }
+  details.subj { border: 1px solid #e3e6ea; border-radius: 8px; margin-bottom: .5rem; background: #fff; }
+  details.subj > summary { padding: .5rem .8rem; cursor: pointer; font-weight: 600; }
+  details.subj > div { padding: 0 .6rem .6rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h1 class="mb-1">{{ joint.name }}</h1>
+    <p class="mb-0 text-secondary">
+      {% if LANG == 'sw' %}Halmashauri ya Wilaya ya{% else %}District Council:{% endif %} {{ joint.district|title }} &bull; Form {{ joint.form }} &bull; {{ joint.year }}{% if joint.date %} &bull; {{ joint.date|date:"d M Y" }}{% endif %}
+      &bull; {% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}: {{ data.schools|length }}
+    </p>
+  </div>
+  {% if is_officer %}
+  <div class="d-flex gap-2 flex-wrap mt-2">
+    <a href="{% url 'joint_exam_excel' joint.id %}" class="kbtn kbtn--primary"><i class="fas fa-file-excel"></i> {% if LANG == 'sw' %}Pakua Excel ya Halmashauri{% else %}Download Council Excel{% endif %}</a>
+    <form method="post" action="{% url 'joint_exam_publish' joint.id %}">
+      {% csrf_token %}
+      {% if joint.published %}
+      <button class="kbtn kbtn--ghost"><i class="fas fa-lock"></i> {% if LANG == 'sw' %}Funga kwa shule{% else %}Hide from schools{% endif %}</button>
+      {% else %}
+      <button class="kbtn kbtn--gold"><i class="fas fa-bullhorn"></i> {% if LANG == 'sw' %}Fungua kwa shule zote{% else %}Open to all schools{% endif %}</button>
+      {% endif %}
+    </form>
+    <a href="{% url 'district_dashboard' %}" class="kbtn kbtn--ghost">{% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}</a>
+  </div>
+  {% endif %}
+</section>
+
+<div class="mt-3 own-filter d-flex gap-2 flex-wrap">
+  <button type="button" class="kbtn kbtn--ghost kbtn--sm active" data-own="">{% if LANG == 'sw' %}Zote{% else %}All{% endif %}</button>
+  <button type="button" class="kbtn kbtn--ghost kbtn--sm" data-own="Serikali">{% if LANG == 'sw' %}Serikali{% else %}Government{% endif %}</button>
+  <button type="button" class="kbtn kbtn--ghost kbtn--sm" data-own="Binafsi">{% if LANG == 'sw' %}Binafsi{% else %}Private{% endif %}</button>
+</div>
+
+{# ── DIVISION ── #}
+<div class="mt-3">
+  <div class="sec-head"><div><h2>{% if LANG == 'sw' %}Muhtasari wa Madaraja (Division){% else %}Division Performance{% endif %}</h2>
+    <small class="text-secondary">GPA = (I×1 + II×2 + III×3 + IV×4 + 0×5) ÷ {% if LANG == 'sw' %}waliofanya — ndogo ndiyo bora{% else %}candidates — lower is better{% endif %}</small></div></div>
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered jt bg-white">
+      <thead class="table-light">
+        <tr>
+          <th>{% if LANG == 'sw' %}Nafasi{% else %}Rank{% endif %}</th>
+          <th class="name">{% if LANG == 'sw' %}Shule{% else %}School{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Kata{% else %}Ward{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Umiliki{% else %}Owner{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Walisajiliwa{% else %}Reg{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Walifanya{% else %}Sat{% endif %}</th>
+          <th>I</th><th>II</th><th>III</th><th>IV</th><th>0</th>
+          <th>I–III %</th><th>I–IV %</th><th>GPA</th>
+          {% if is_officer %}<th>{% if LANG == 'sw' %}Masomo yaliyowasilishwa{% else %}Subjects submitted{% endif %}</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in data.schools %}
+        <tr data-own="{{ s.ownership }}" class="{% if my_school and s.school.id == my_school.id %}mine{% endif %}">
+          <td>{{ s.rank|default:"—" }}</td>
+          <td class="name">{{ s.school.name }}</td>
+          <td>{{ s.ward|default:"—" }}</td>
+          <td>{{ s.ownership|default:"—" }}</td>
+          <td>{{ s.registered.T }}</td>
+          <td>{{ s.sat.T }}</td>
+          <td>{{ s.divisions.I.T }}</td><td>{{ s.divisions.II.T }}</td><td>{{ s.divisions.III.T }}</td>
+          <td>{{ s.divisions.IV.T }}</td><td>{{ s.divisions.0.T }}</td>
+          <td>{% if s.i_iii_pct is not None %}{{ s.i_iii_pct|floatformat:1 }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if s.i_iv_pct is not None %}{{ s.i_iv_pct|floatformat:1 }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td><b>{% if s.gpa is not None %}{{ s.gpa|floatformat:4 }}{% else %}<span class="muted">—</span>{% endif %}</b></td>
+          {% if is_officer %}
+          <td>
+            {% if s.subjects_total %}
+              <span class="chip {% if s.subjects_done >= s.subjects_total %}chip--complete{% elif s.subjects_done %}chip--progress{% else %}chip--pending{% endif %}">{{ s.subjects_done }}/{{ s.subjects_total }}</span>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+        <tr class="total">
+          <td></td><td class="name">TOTAL</td><td></td><td></td>
+          <td>{{ data.totals.registered.T }}</td><td>{{ data.totals.sat.T }}</td>
+          <td>{{ data.totals.divisions.I.T }}</td><td>{{ data.totals.divisions.II.T }}</td><td>{{ data.totals.divisions.III.T }}</td>
+          <td>{{ data.totals.divisions.IV.T }}</td><td>{{ data.totals.divisions.0.T }}</td>
+          <td>{{ data.totals.i_iii_pct|default_if_none:"—"|floatformat:1 }}</td>
+          <td>{{ data.totals.i_iv_pct|default_if_none:"—"|floatformat:1 }}</td>
+          <td>{{ data.totals.gpa|default_if_none:"—"|floatformat:4 }}</td>
+          {% if is_officer %}<td></td>{% endif %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── MASOMO ── #}
+<div class="mt-4">
+  <div class="sec-head"><div><h2>{% if LANG == 'sw' %}Ranking ya Masomo{% else %}Subject Ranking{% endif %}</h2>
+    <small class="text-secondary">{% if LANG == 'sw' %}Bonyeza somo kuona shule zote kwa somo hilo.{% else %}Click a subject to see every school for it.{% endif %}</small></div></div>
+  {% for subj in data.subjects %}
+  <details class="subj">
+    <summary>
+      #{{ subj.rank|default:"—" }} &nbsp; {{ subj.name }}
+      <span class="text-secondary fw-normal">— {% if LANG == 'sw' %}walifanya{% else %}sat{% endif %} {{ subj.sat.T }},
+        A {{ subj.grades.A.T }} · B {{ subj.grades.B.T }} · C {{ subj.grades.C.T }} · D {{ subj.grades.D.T }} · F {{ subj.grades.F.T }},
+        {% if LANG == 'sw' %}ufaulu{% else %}pass{% endif %} {{ subj.pass_pct|default_if_none:"—"|floatformat:1 }}%, GPA {{ subj.gpa|default_if_none:"—"|floatformat:4 }}</span>
+    </summary>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered jt mb-0">
+        <thead class="table-light"><tr>
+          <th>{% if LANG == 'sw' %}Nafasi{% else %}Rank{% endif %}</th><th class="name">{% if LANG == 'sw' %}Shule{% else %}School{% endif %}</th>
+          <th>{% if LANG == 'sw' %}Walifanya{% else %}Sat{% endif %}</th><th>A</th><th>B</th><th>C</th><th>D</th><th>F</th>
+          <th>{% if LANG == 'sw' %}Ufaulu{% else %}Pass{% endif %} %</th><th>GPA</th>
+        </tr></thead>
+        <tbody>
+          {% for r in subj.rows %}
+          <tr data-own="{{ r.ownership }}" class="{% if my_school and r.school.id == my_school.id %}mine{% endif %}">
+            <td>{{ r.rank|default:"—" }}</td><td class="name">{{ r.school.name }}</td>
+            <td>{{ r.sat.T }}</td>
+            <td>{{ r.grades.A.T }}</td><td>{{ r.grades.B.T }}</td><td>{{ r.grades.C.T }}</td><td>{{ r.grades.D.T }}</td><td>{{ r.grades.F.T }}</td>
+            <td>{{ r.pass_pct|default_if_none:"—"|floatformat:1 }}</td>
+            <td><b>{{ r.gpa|default_if_none:"—"|floatformat:4 }}</b></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% empty %}
+  <div class="support-box">{% if LANG == 'sw' %}Bado hakuna alama zilizoingizwa.{% else %}No marks entered yet.{% endif %}</div>
+  {% endfor %}
+</div>
+
+{% if is_officer and not_in_joint %}
+<div class="mt-4">
+  <div class="sec-head"><div><h2>{% if LANG == 'sw' %}Ongeza shule{% else %}Add schools{% endif %}</h2></div></div>
+  <form method="post" class="support-box">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add_schools">
+    <div style="columns:2 280px;">
+      {% for s in not_in_joint %}
+      <label class="d-block"><input type="checkbox" name="schools" value="{{ s.id }}"> {{ s.name }}</label>
+      {% endfor %}
+    </div>
+    <button class="kbtn kbtn--primary kbtn--sm mt-2"><i class="fas fa-plus"></i> {% if LANG == 'sw' %}Ongeza{% else %}Add{% endif %}</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Chuja Serikali / Binafsi kwenye jedwali zote (bila kupakia ukurasa upya)
+  document.querySelectorAll('.own-filter [data-own]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.own-filter [data-own]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const own = btn.dataset.own;
+      document.querySelectorAll('table.jt tbody tr[data-own]').forEach(tr => {
+        tr.style.display = (!own || tr.dataset.own === own) ? '' : 'none';
+      });
+    });
+  });
+</script>
+{% endblock %}

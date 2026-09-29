@@ -46,6 +46,21 @@ class School(models.Model):
                   "orodha kuu ya field_app (level ya shule); shule zisizolinkiwa "
                   "zinaanza 'secondary' na zinaweza kubadilishwa Shule Yangu.",
     )
+    # ── Taarifa za Halmashauri (joint exams za wilaya) ──
+    OWNERSHIP_GOV = 'GOV'
+    OWNERSHIP_PRIVATE = 'PRIVATE'
+    OWNERSHIP_CHOICES = [
+        (OWNERSHIP_GOV, 'Serikali'),
+        (OWNERSHIP_PRIVATE, 'Binafsi'),
+    ]
+    ward = models.CharField(
+        max_length=100, blank=True, default='',
+        help_text="Kata ya shule — inaonekana kwenye ripoti za Halmashauri (KATA).",
+    )
+    ownership = models.CharField(
+        max_length=10, choices=OWNERSHIP_CHOICES, blank=True, default='',
+        help_text="Umiliki: Serikali au Binafsi — safu ya UMILIKI kwenye ripoti za wilaya.",
+    )
     primary_last_class = models.PositiveIntegerField(
         default=7,
         help_text="Darasa la MWISHO la msingi kwa mtaala huu (7 leo; mtaala mpya "
@@ -293,6 +308,13 @@ class Exam(models.Model):
     school_name = models.CharField(max_length=200, blank=True)
     school = models.ForeignKey(
         'School', null=True, blank=True, on_delete=models.SET_NULL, related_name='exams'
+    )
+    # Mtihani wa pamoja wa wilaya ulioundwa na Afisa Wilaya — kila shule
+    # inapata Exam yake (walimu wanaingiza alama kama kawaida), zote
+    # zinaunganishwa hapa kwa ranking/ripoti za Halmashauri.
+    joint_exam = models.ForeignKey(
+        'JointExam', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='school_exams',
     )
 
     # ── Full report-card extras (class-teacher/headmaster sign-off) ────
@@ -581,11 +603,13 @@ class TeacherAccount(AbstractBaseUser):
     ROLE_ACADEMIC = 'ACADEMIC'
     ROLE_TEACHER = 'TEACHER'
     ROLE_PRINTING_SECRETARY = 'PS'
+    ROLE_DISTRICT = 'DISTRICT'
 
     ROLE_CHOICES = [
         (ROLE_ACADEMIC, 'Academic'),
         (ROLE_TEACHER, 'Teacher'),
         (ROLE_PRINTING_SECRETARY, 'Printing Secretary'),
+        (ROLE_DISTRICT, 'District Education Officer'),
     ]
 
     email = models.EmailField(unique=True)
@@ -597,6 +621,10 @@ class TeacherAccount(AbstractBaseUser):
                   "can see are scoped to this school.",
     )
     subjects = models.ManyToManyField(Subject, blank=True, related_name='teachers')
+    # Afisa Wilaya (ROLE_DISTRICT): hana shule — anaona shule zote za
+    # district hii (School.district, bila kujali "Dc"/herufi kubwa).
+    district = models.CharField(max_length=100, blank=True, default='')
+    region = models.CharField(max_length=100, blank=True, default='')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -643,6 +671,10 @@ class TeacherAccount(AbstractBaseUser):
     @property
     def is_printing_secretary(self):
         return self.role == self.ROLE_PRINTING_SECRETARY
+
+    @property
+    def is_district_officer(self):
+        return self.role == self.ROLE_DISTRICT
 
     @property
     def is_activated(self):
@@ -989,6 +1021,9 @@ from .scan_models import ScanAnswerKey, ScanSheet, ScanSheetBatch  # noqa: E402,
 
 # Sahishi Bridge (ADF scanner bridge) ziko kwenye bridge_models.py
 from .bridge_models import SahishiBridge, ScanJob  # noqa: E402,F401
+
+# Joint exams za wilaya (Afisa Wilaya / Halmashauri) ziko kwenye district_models.py
+from .district_models import JointExam  # noqa: E402,F401
 
 
 # =============================================================================
