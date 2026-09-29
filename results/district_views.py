@@ -20,9 +20,15 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .district_models import JointExam, schools_in_district
+from django.db import transaction
+from django.utils import timezone
+
+from .district_models import (
+    JointExam, district_program_name, is_empty_placeholder, joints_for_school,
+    schools_in_district,
+)
 from .models import Exam, School, Subject
-from .permissions import _role_required, teacher_or_academic_required
+from .permissions import _role_required, academic_required, teacher_or_academic_required
 from .services.joint_analysis import analyse_joint_exam
 
 district_officer_required = _role_required(
@@ -55,6 +61,7 @@ def district_dashboard(request):
     return render(request, 'results/district/dashboard.html', {
         'joints': joints,
         'school_count': schools.count(),
+        'joined_count': schools.filter(joint_member=True).count(),
         'missing_info': missing_info,
     })
 
@@ -79,8 +86,10 @@ def joint_exam_create(request):
             except ValueError:
                 date = None
         subject_ids = {int(x) for x in request.POST.getlist('subjects') if x.isdigit()}
+        # Shule zilizojiunga (Mtaaluma alibonyeza "Join") zinapata mtihani
+        # moja kwa moja; afisa anaweza kuongeza nyingine hapa pia.
         school_ids = {int(x) for x in request.POST.getlist('schools') if x.isdigit()}
-        chosen_schools = [s for s in schools if s.pk in school_ids]
+        chosen_schools = [s for s in schools if s.pk in school_ids or s.joint_member]
 
         errors = []
         if not name:
@@ -89,8 +98,6 @@ def joint_exam_create(request):
             errors.append('Chagua kidato na mwaka sahihi.')
         if not subject_ids:
             errors.append('Chagua angalau somo moja.')
-        if not chosen_schools:
-            errors.append('Chagua angalau shule moja.')
         if errors:
             for e in errors:
                 messages.error(request, e)
@@ -105,8 +112,8 @@ def joint_exam_create(request):
                 joint.attach_school(school)
             messages.success(
                 request,
-                f'"{joint.name}" imeundwa kwa shule {len(chosen_schools)}. '
-                f'Walimu wa kila shule sasa wanaweza kuingiza alama.',
+                f'"{joint.name}" imeundwa na kupewa shule {len(chosen_schools)} zilizojiunga. '
+                f'Shule zitakazojiunga baadaye zitaupata moja kwa moja.',
             )
             return redirect('joint_exam_detail', joint_id=joint.pk)
 
@@ -217,4 +224,96 @@ def school_joint_results(request, exam_id):
     return render(request, 'results/district/joint_detail.html', {
         'joint': joint, 'data': data, 'is_officer': False,
         'my_school': school,
+    })
+
+
+# ================= Mtaaluma: "Join <Wilaya> DC Joint Exams" =================
+
+@academic_required
+def district_joint_home(request):
+    """Mtaaluma: joint exams za wilaya yake. Kama shule bado haijajiunga →
+    fomu ya kujiunga."""
+    school = request.user.school
+    program = district_program_name(school)
+    if program is None:
+        messages.info(request, 'Wilaya ya shule yako haina joint exams kwenye mfumo bado.')
+        return redirect('home')
+    if not school.joint_member:
+        return redirect('district_joint_join')
+
+    rows = []
+    for joint in joints_for_school(school):
+        exam = joint.attach_school(school)  # hakikisha Exam ipo (joint mpya)
+        rows.append({'joint': joint, 'exam': exam})
+    return render(request, 'results/district/joint_school_home.html', {
+        'program': program, 'school': school, 'rows': rows,
+    })
+
+
+@academic_required
+def district_joint_join(request):
+    """Fomu ya kujiunga: Kata → Umiliki → Jina la shule (dropdown + search).
+
+    Shule iliyochaguliwa ni rekodi ya orodha ya Halmashauri. Kama si shule
+    ya akaunti hii lakini ni "tupu" (haina akaunti/data yoyote), shule ya
+    Mtaaluma inachukua nafasi yake na rekodi tupu inaondolewa — ili shule
+    moja isionekane mara mbili kwenye ripoti za wilaya.
+    """
+    my_school = request.user.school
+    program = district_program_name(my_school)
+    if program is None:
+        messages.info(request, 'Wilaya ya shule yako haina joint exams kwenye mfumo bado.')
+        return redirect('home')
+
+    district_schools_qs = schools_in_district(my_school.district).exclude(level='primary')
+    schools = list(district_schools_qs.order_by('name'))
+    wards = sorted({s.ward for s in schools if s.ward})
+    form = {
+        'ward': my_school.ward, 'ownership': my_school.ownership, 'school_id': str(my_school.pk),
+    }
+
+    if request.method == 'POST':
+        form = {
+            'ward': request.POST.get('ward', '').strip().upper()[:100],
+            'ownership': request.POST.get('ownership', ''),
+            'school_id': request.POST.get('school_id', ''),
+        }
+        chosen = next((s for s in schools if str(s.pk) == form['school_id']), None)
+        errors = []
+        if not form['ward']:
+            errors.append('Jaza kata ya shule.')
+        if form['ownership'] not in dict(School.OWNERSHIP_CHOICES):
+            errors.append('Chagua umiliki (Serikali au Binafsi).')
+        if chosen is None:
+            errors.append('Chagua jina la shule kwenye orodha.')
+        elif chosen.pk != my_school.pk and not is_empty_placeholder(chosen):
+            errors.append(
+                f'"{chosen.name}" tayari inatumiwa na akaunti nyingine kwenye mfumo. '
+                f'Chagua shule yako, au wasiliana na Afisa Wilaya.'
+            )
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+        else:
+            with transaction.atomic(using=School.objects.db):
+                if chosen.pk != my_school.pk:
+                    chosen.delete()
+                my_school.ward = form['ward']
+                my_school.ownership = form['ownership']
+                my_school.joint_member = True
+                my_school.joint_joined_at = timezone.now()
+                my_school.save(update_fields=['ward', 'ownership', 'joint_member', 'joint_joined_at'])
+                for joint in joints_for_school(my_school):
+                    joint.attach_school(my_school)
+            messages.success(
+                request,
+                f'{my_school.name} imejiunga na {program.title()} DC Joint Exams. '
+                f'Walimu wanaingiza alama kwenye Marks Entry kama kawaida.',
+            )
+            return redirect('district_joint_home')
+
+    return render(request, 'results/district/joint_join.html', {
+        'program': program, 'schools': schools, 'wards': wards, 'form': form,
+        'my_school': my_school,
+        'ownership_choices': School.OWNERSHIP_CHOICES,
     })

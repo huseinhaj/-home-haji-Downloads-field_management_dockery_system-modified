@@ -1,0 +1,91 @@
+{% extends 'results/base.html' %}
+{% block title %}Join {{ program|title }} DC Joint Exams | School Results{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h1 class="mb-1">Join {{ program|title }} DC Joint Exams</h1>
+    <p class="mb-0 text-secondary">
+      {% if LANG == 'sw' %}Jaza kata, umiliki na uchague shule yako. Ukishajiunga, shule yako itapata kila mtihani wa pamoja wa wilaya, na walimu wataingiza alama kwenye Marks Entry kama kawaida.{% else %}Fill in the ward and ownership and pick your school. Once joined, your school gets every district joint exam, and teachers enter marks in Marks Entry as usual.{% endif %}
+    </p>
+  </div>
+</section>
+
+<form method="post" class="mt-4 support-box" style="max-width:640px;">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label fw-semibold" for="jWard">1. {% if LANG == 'sw' %}Kata{% else %}Ward{% endif %}</label>
+    <input type="text" name="ward" id="jWard" class="form-control" list="jWards" required value="{{ form.ward }}" autocomplete="off" placeholder="{% if LANG == 'sw' %}mf. ISINGIRO{% else %}e.g. ISINGIRO{% endif %}">
+    <datalist id="jWards">{% for w in wards %}<option value="{{ w }}">{% endfor %}</datalist>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label fw-semibold" for="jOwn">2. {% if LANG == 'sw' %}Umiliki{% else %}Ownership{% endif %}</label>
+    <select name="ownership" id="jOwn" class="form-select" required>
+      <option value="">—</option>
+      {% for code, label in ownership_choices %}<option value="{{ code }}" {% if form.ownership == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label fw-semibold" for="jSearch">3. {% if LANG == 'sw' %}Jina la shule{% else %}School name{% endif %}</label>
+    <input type="search" id="jSearch" class="form-control mb-2" placeholder="🔍 {% if LANG == 'sw' %}Tafuta shule...{% else %}Search schools...{% endif %}" autocomplete="off">
+    <select name="school_id" id="jSchool" class="form-select" size="8" required>
+      {% for s in schools %}
+      <option value="{{ s.id }}" data-ward="{{ s.ward|upper }}" data-own="{{ s.ownership }}" data-name="{{ s.name|lower }}"
+        {% if form.school_id == s.id|stringformat:"s" %}selected{% endif %}>
+        {{ s.name }}{% if s.ward %} — {{ s.ward|title }}{% endif %}{% if s.id == my_school.id %} ({% if LANG == 'sw' %}shule yako{% else %}your school{% endif %}){% endif %}
+      </option>
+      {% endfor %}
+    </select>
+    <small class="text-secondary" id="jCount"></small>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="kbtn kbtn--primary"><i class="fas fa-handshake"></i> {% if LANG == 'sw' %}Jiunge{% else %}Join{% endif %}</button>
+    <a href="{% url 'home' %}" class="kbtn kbtn--ghost">{% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (() => {
+    const ward = document.getElementById('jWard');
+    const own = document.getElementById('jOwn');
+    const search = document.getElementById('jSearch');
+    const select = document.getElementById('jSchool');
+    const count = document.getElementById('jCount');
+    const opts = [...select.options];
+    const sw = '{{ LANG }}' === 'sw';
+
+    // Orodha inachujwa kwa kata + umiliki + maneno ya kutafuta. Shule
+    // ambazo bado hazina kata/umiliki kwenye mfumo zinaonekana daima.
+    function filter() {
+      const w = ward.value.trim().toUpperCase();
+      const o = own.value;
+      const q = search.value.trim().toLowerCase();
+      let shown = 0;
+      opts.forEach(opt => {
+        const ok = (!w || !opt.dataset.ward || opt.dataset.ward === w)
+          && (!o || !opt.dataset.own || opt.dataset.own === o)
+          && (!q || opt.dataset.name.includes(q));
+        opt.hidden = !ok;
+        if (ok) shown++;
+      });
+      count.textContent = shown + (sw ? ' shule' : ' schools');
+    }
+    [ward, own, search].forEach(el => el.addEventListener('input', filter));
+    own.addEventListener('change', filter);
+
+    // Ukichagua shule yenye kata/umiliki vilivyojulikana, jaza vilivyo tupu
+    select.addEventListener('change', () => {
+      const opt = select.selectedOptions[0];
+      if (!opt) return;
+      if (!ward.value && opt.dataset.ward) ward.value = opt.dataset.ward;
+      if (!own.value && opt.dataset.own) own.value = opt.dataset.own;
+    });
+    filter();
+  })();
+</script>
+{% endblock %}

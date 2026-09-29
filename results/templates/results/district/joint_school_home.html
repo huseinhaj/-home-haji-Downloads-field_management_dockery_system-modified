@@ -1,0 +1,39 @@
+{% extends 'results/base.html' %}
+{% block title %}{{ program|title }} DC Joint Exams | School Results{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <h1 class="mb-1">{{ program|title }} DC Joint Exams</h1>
+    <p class="mb-0 text-secondary">
+      {{ school.name }}{% if school.ward %} &bull; {% if LANG == 'sw' %}Kata{% else %}Ward{% endif %} {{ school.ward|title }}{% endif %}{% if school.ownership %} &bull; {{ school.get_ownership_display }}{% endif %}
+      &bull; <a href="{% url 'district_joint_join' %}">{% if LANG == 'sw' %}badilisha taarifa{% else %}edit details{% endif %}</a>
+    </p>
+  </div>
+</section>
+
+<div class="support-box mt-3">
+  💡 {% if LANG == 'sw' %}Fungua mtihani → walimu wanaingiza alama za kila somo kwenye <b>Jaza Alama</b> → wanawasilisha → wewe unaidhinisha kama kawaida. Afisa Wilaya anaona shule zote na kutengeneza Excel ya Halmashauri.{% else %}Open an exam → teachers enter each subject's marks in <b>Marks</b> → submit → you approve as usual. The District Officer sees every school and produces the council Excel.{% endif %}
+</div>
+
+<div class="mt-4">
+  {% if rows %}
+  <div class="subjects-grid">
+    {% for r in rows %}
+    <div class="subject-tile {% if r.joint.published %}approved{% else %}pending{% endif %}">
+      <div class="s-name">{{ r.joint.name }}</div>
+      <div class="s-meta">Form {{ r.joint.form }} &bull; {{ r.joint.year }}{% if r.joint.date %} &bull; {{ r.joint.date|date:"d M Y" }}{% endif %}</div>
+      <div class="d-flex gap-1 flex-wrap mt-1">
+        <a href="{% url 'exam_overview' r.exam.id %}" class="kbtn kbtn--primary kbtn--sm"><i class="fas fa-pen-alt"></i> {% if LANG == 'sw' %}Fungua / Jaza alama{% else %}Open / Enter marks{% endif %}</a>
+        {% if r.joint.published %}
+        <a href="{% url 'school_joint_results' r.exam.id %}" class="kbtn kbtn--gold kbtn--sm"><i class="fas fa-landmark"></i> {% if LANG == 'sw' %}Matokeo ya Wilaya{% else %}District Results{% endif %}</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="support-box">{% if LANG == 'sw' %}Umejiunga ✅. Afisa Wilaya bado hajaunda mtihani wa pamoja — ukiundwa, utaonekana hapa moja kwa moja.{% else %}You have joined ✅. The District Officer hasn't created a joint exam yet — it will appear here automatically.{% endif %}</div>
+  {% endif %}
+</div>
+{% endblock %}

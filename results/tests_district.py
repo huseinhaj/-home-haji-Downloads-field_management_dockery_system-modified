@@ -217,3 +217,88 @@ class SetupKyerwaCommandTests(TestCase):
     def test_dry_run_changes_nothing(self):
         call_command('setup_kyerwa_district', dry_run=True, stdout=io.StringIO())
         self.assertEqual(School.objects.count(), 0)
+
+
+class AcademicJoinTests(TestCase):
+    """Mtaaluma: "Join Kyerwa DC Joint Exams" → kata, umiliki, shule → alama kwenye Marks Entry."""
+
+    databases = {'default', 'results'}
+
+    def setUp(self):
+        self.mine = School.objects.create(
+            name='Kaisho Secondary School', region='Kagera', district='Kyerwa Dc', level='secondary')
+        # Rekodi ya orodha ya Halmashauri (setup_kyerwa_district) — haina chochote
+        self.placeholder = School.objects.create(
+            name='Kaisho Secondary School', region='Kagera', district='Kyerwa',
+            ward='Isingiro', ownership='PRIVATE', level='secondary')
+        self.taken = School.objects.create(
+            name='Businde Secondary School', region='Kagera', district='Kyerwa', level='secondary')
+        TeacherAccount.objects.create(
+            email='ac@businde.sc.tz', role=TeacherAccount.ROLE_ACADEMIC, school=self.taken)
+        self.officer = TeacherAccount.objects.create(
+            email='deo@kyerwa.go.tz', role=TeacherAccount.ROLE_DISTRICT,
+            district='Kyerwa', region='Kagera')
+        self.maths = Subject.objects.create(name='Mathematics')
+        self.joint = JointExam.objects.create(
+            name='FORM ONE MID TERM JOINT', form=1, year=2026, district='Kyerwa', region='Kagera')
+        self.joint.subjects.set([self.maths])
+
+        self.academic = TeacherAccount.objects.create(
+            email='ac@kaisho.sc.tz', role=TeacherAccount.ROLE_ACADEMIC, school=self.mine)
+        self.client = Client()
+        self.client.force_login(self.academic, backend=LOGIN_BACKEND)
+
+    def _join(self, school, ward='Isingiro', ownership='PRIVATE'):
+        return self.client.post(reverse('district_joint_join'), {
+            'ward': ward, 'ownership': ownership, 'school_id': school.pk,
+        })
+
+    def test_nav_link_and_join_page(self):
+        home = self.client.get(reverse('academic_dashboard'))
+        self.assertContains(home, 'Kyerwa DC Joint')
+        # Bado hajajiunga → anapelekwa kwenye fomu
+        self.assertRedirects(self.client.get(reverse('district_joint_home')),
+                             reverse('district_joint_join'), fetch_redirect_response=False)
+        page = self.client.get(reverse('district_joint_join'))
+        self.assertContains(page, 'Businde Secondary School')
+
+    def test_join_takes_over_the_empty_council_record(self):
+        resp = self._join(self.placeholder)
+        self.assertRedirects(resp, reverse('district_joint_home'), fetch_redirect_response=False)
+        self.assertFalse(School.objects.filter(pk=self.placeholder.pk).exists())
+        self.mine.refresh_from_db()
+        self.assertEqual((self.mine.ward, self.mine.ownership, self.mine.joint_member),
+                         ('ISINGIRO', 'PRIVATE', True))
+        # Joint iliyopo imepewa shule hii, na somo liko tayari kwa Marks Entry
+        exam = Exam.objects.get(joint_exam=self.joint, school=self.mine)
+        self.assertTrue(SubjectSubmission.objects.filter(exam=exam, subject=self.maths).exists())
+        self.assertEqual(self.client.get(reverse('district_joint_home')).status_code, 200)
+
+    def test_cannot_take_a_school_that_is_already_in_use(self):
+        resp = self._join(self.taken)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(School.objects.filter(pk=self.taken.pk).exists())
+        self.mine.refresh_from_db()
+        self.assertFalse(self.mine.joint_member)
+
+    def test_joint_created_later_reaches_joined_schools(self):
+        self._join(self.mine)
+        officer = Client()
+        officer.force_login(self.officer, backend=LOGIN_BACKEND)
+        officer.post(reverse('joint_exam_create'), {
+            'name': 'FORM TWO TERMINAL JOINT', 'form': '2', 'year': '2026',
+            'subjects': [self.maths.pk],
+        })
+        later = JointExam.objects.get(name='FORM TWO TERMINAL JOINT')
+        self.assertTrue(Exam.objects.filter(joint_exam=later, school=self.mine).exists())
+        self.assertFalse(Exam.objects.filter(joint_exam=later, school=self.taken).exists())
+
+    def test_academic_outside_the_district_sees_nothing(self):
+        other = School.objects.create(name='Nje', region='Kagera', district='Karagwe')
+        acct = TeacherAccount.objects.create(
+            email='ac@nje.sc.tz', role=TeacherAccount.ROLE_ACADEMIC, school=other)
+        c = Client()
+        c.force_login(acct, backend=LOGIN_BACKEND)
+        self.assertNotContains(c.get(reverse('academic_dashboard')), 'DC Joint')
+        self.assertRedirects(c.get(reverse('district_joint_home')), reverse('home'),
+                             fetch_redirect_response=False)

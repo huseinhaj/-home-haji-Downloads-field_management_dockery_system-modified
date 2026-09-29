@@ -20,7 +20,13 @@ def branding(request):
     school = getattr(user, 'school', None) if user and getattr(user, 'is_authenticated', False) else None
     district = school.district if school else None
     is_kyerwa = bool(district) and 'kyerwa' in district.lower()
+    # "Join <Wilaya> DC Joint Exams" — Mtaaluma wa wilaya yenye joint program tu
+    district_joint = None
+    if school and getattr(user, 'is_academic', False):
+        from .district_models import district_program_name
+        district_joint = district_program_name(school)
     return {
+        'DISTRICT_JOINT_NAME': district_joint,
         'DISTRICT_NAME': district,
         'IS_KYERWA': is_kyerwa,
         'TZ_EMBLEM_URL': TZ_EMBLEM_URL,

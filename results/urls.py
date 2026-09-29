@@ -354,6 +354,8 @@ urlpatterns += [
 # ---------------- Afisa Wilaya: joint exams za Halmashauri ----------------
 from .district_views import (  # noqa: E402
     district_dashboard,
+    district_joint_home,
+    district_joint_join,
     district_schools,
     joint_exam_create,
     joint_exam_detail,
@@ -370,4 +372,6 @@ urlpatterns += [
     path('wilaya/joint/<int:joint_id>/excel/', joint_exam_excel, name='joint_exam_excel'),
     path('wilaya/joint/<int:joint_id>/fungua/', joint_exam_publish, name='joint_exam_publish'),
     path('exam/<int:exam_id>/wilaya/', school_joint_results, name='school_joint_results'),
+    path('joint-wilaya/', district_joint_home, name='district_joint_home'),
+    path('joint-wilaya/jiunge/', district_joint_join, name='district_joint_join'),
 ]

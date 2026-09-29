@@ -14,7 +14,7 @@
   <div class="table-responsive">
     <table class="table table-sm table-bordered align-middle bg-white">
       <thead class="table-light">
-        <tr><th>#</th><th>{% if LANG == 'sw' %}Shule{% else %}School{% endif %}</th><th>{% if LANG == 'sw' %}Kata{% else %}Ward{% endif %}</th><th>{% if LANG == 'sw' %}Umiliki{% else %}Ownership{% endif %}</th></tr>
+        <tr><th>#</th><th>{% if LANG == 'sw' %}Shule{% else %}School{% endif %}</th><th>{% if LANG == 'sw' %}Kata{% else %}Ward{% endif %}</th><th>{% if LANG == 'sw' %}Umiliki{% else %}Ownership{% endif %}</th><th>{% if LANG == 'sw' %}Imejiunga{% else %}Joined{% endif %}</th></tr>
       </thead>
       <tbody>
         {% for s in schools %}
@@ -28,6 +28,7 @@
               {% for code, label in ownership_choices %}<option value="{{ code }}" {% if s.ownership == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
             </select>
           </td>
+          <td class="text-center">{% if s.joint_member %}✅ <small class="text-secondary">{{ s.joint_joined_at|date:"d M" }}</small>{% else %}<span class="text-secondary">—</span>{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>

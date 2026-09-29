@@ -15,6 +15,11 @@
   </div>
 </section>
 
+<div class="support-box mt-3">
+  🏫 {% if LANG == 'sw' %}Shule zilizojiunga:{% else %}Schools joined:{% endif %} <b>{{ joined_count }}</b> / {{ school_count }}
+  <small class="text-secondary">— {% if LANG == 'sw' %}Mtaaluma wa kila shule anabonyeza "{{ user.district|title }} DC Joint" kwenye menyu yake ili kujiunga.{% else %}Each school's Academic presses "{{ user.district|title }} DC Joint" in their menu to join.{% endif %}</small>
+</div>
+
 {% if missing_info %}
 <div class="support-box mt-3" style="border-color:#f0a500;background:#fff8e6;">
   ⚠️ {% if LANG == 'sw' %}Baadhi ya shule hazina <b>kata</b> au <b>umiliki</b> (Serikali/Binafsi) — ripoti za Halmashauri zinazihitaji.{% else %}Some schools have no <b>ward</b> or <b>ownership</b> set — the council reports need them.{% endif %}

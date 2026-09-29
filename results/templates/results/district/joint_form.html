@@ -48,11 +48,12 @@
     {% endfor %}
   </div>
 
-  <div class="sec-head mt-4"><div><h2>{% if LANG == 'sw' %}Shule zinazoshiriki{% else %}Participating schools{% endif %} ({{ schools|length }})</h2></div>
-    <div><label><input type="checkbox" id="allSchools" checked> {% if LANG == 'sw' %}Zote{% else %}All{% endif %}</label></div></div>
+  <div class="sec-head mt-4"><div><h2>{% if LANG == 'sw' %}Shule zinazoshiriki{% else %}Participating schools{% endif %} ({{ schools|length }})</h2>
+    <small class="text-secondary">{% if LANG == 'sw' %}Shule zilizojiunga (✔ zisizobadilika) zinapata mtihani moja kwa moja; unaweza kuongeza nyingine.{% else %}Joined schools (locked ✔) get the exam automatically; you may add others.{% endif %}</small></div>
+    <div><label><input type="checkbox" id="allSchools"> {% if LANG == 'sw' %}Zote{% else %}All{% endif %}</label></div></div>
   <div class="support-box" style="columns:2 280px;">
     {% for s in schools %}
-    <label class="d-block"><input type="checkbox" name="schools" value="{{ s.id }}" class="school-cb" {% if not s.is_primary %}checked{% endif %}>
+    <label class="d-block"><input type="checkbox" name="schools" value="{{ s.id }}" class="school-cb" {% if s.joint_member %}checked disabled{% endif %}>
       {{ s.name }} <small class="text-secondary">{{ s.ward|default:"" }}{% if s.ownership %} · {{ s.get_ownership_display }}{% endif %}</small></label>
     {% empty %}
     {% if LANG == 'sw' %}Hakuna shule za wilaya hii kwenye mfumo.{% else %}No schools for this district in the system.{% endif %}
@@ -69,7 +70,7 @@
 {% block scripts %}
 <script>
   document.getElementById('allSchools')?.addEventListener('change', (e) => {
-    document.querySelectorAll('.school-cb').forEach(cb => { cb.checked = e.target.checked; });
+    document.querySelectorAll('.school-cb:not([disabled])').forEach(cb => { cb.checked = e.target.checked; });
   });
 </script>
 {% endblock %}

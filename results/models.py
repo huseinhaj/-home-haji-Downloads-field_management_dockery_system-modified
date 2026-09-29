@@ -61,6 +61,10 @@ class School(models.Model):
         max_length=10, choices=OWNERSHIP_CHOICES, blank=True, default='',
         help_text="Umiliki: Serikali au Binafsi — safu ya UMILIKI kwenye ripoti za wilaya.",
     )
+    # Mtaaluma amebonyeza "Join <Wilaya> DC Joint Exams" — shule inapata
+    # kila joint exam ya wilaya (ya sasa na zijazo) moja kwa moja.
+    joint_member = models.BooleanField(default=False)
+    joint_joined_at = models.DateTimeField(null=True, blank=True)
     primary_last_class = models.PositiveIntegerField(
         default=7,
         help_text="Darasa la MWISHO la msingi kwa mtaala huu (7 leo; mtaala mpya "

@@ -41,6 +41,50 @@ def schools_in_district(district, region=''):
     return School.objects.filter(pk__in=ids)
 
 
+def district_program_name(school):
+    """Jina la wilaya kama shule hii inaweza kujiunga na joint ya wilaya
+    (wilaya ina Afisa Wilaya au joint exam), vinginevyo None."""
+    from .models import TeacherAccount
+
+    if school is None or not school.district:
+        return None
+    key = district_key(school.district)
+    first = key.split(' ')[0]
+    for d in list(JointExam.objects.filter(district__istartswith=first)
+                  .values_list('district', flat=True).distinct()) + list(
+        TeacherAccount.objects.filter(role=TeacherAccount.ROLE_DISTRICT, district__istartswith=first)
+        .values_list('district', flat=True).distinct()
+    ):
+        if district_key(d) == key:
+            return d
+    return None
+
+
+def joints_for_school(school):
+    key = district_key(school.district)
+    return [j for j in JointExam.objects.filter(district__istartswith=key.split(' ')[0])
+            if district_key(j.district) == key]
+
+
+def is_empty_placeholder(school):
+    """Shule isiyo na chochote kinachoitegemea (akaunti, mitihani, wanafunzi,
+    masomo...) — rekodi iliyoundwa kutoka orodha ya Halmashauri ambayo
+    hakuna aliyeitumia bado. Inakagua KILA uhusiano kupitia Collector ya
+    Django, si orodha tunayoikumbuka."""
+    from django.db.models.deletion import Collector
+
+    collector = Collector(using=school._state.db or 'default')
+    collector.collect([school])
+    related = sum(len(objs) for objs in collector.data.values()) - 1
+    related += sum(qs.count() for qs in collector.fast_deletes)
+    # on_delete=SET_NULL (mf. TeacherAccount.school, Exam.school) haziingii
+    # kwenye data — Collector inaziweka kwenye field_updates
+    for objs in collector.field_updates.values():
+        for obj in objs:
+            related += obj.count() if hasattr(obj, 'count') and not isinstance(obj, models.Model) else 1
+    return related == 0
+
+
 class JointExam(models.Model):
     """Mtihani mmoja wa pamoja wa wilaya — unaunganisha Exam za shule zote."""
 
