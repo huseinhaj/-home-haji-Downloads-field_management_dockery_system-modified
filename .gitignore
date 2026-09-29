@@ -19,6 +19,21 @@ backups/
 *.backup_final
 *.bak
 
+# Data ya wanafunzi halisi — REPO HII NI PUBLIC, kwa hiyo haisendwi.
+# Hizi zina majina na alama za wanafunzi wa kweli (mfano: Bagamoyo
+# Islamic Secondary School) na zinapaswa zikae kwenye mashine hii
+# pekee. Sasa zinaingia kwenye git history kwa hiyo hazitakiwi tena.
+backup_isingiro_*.json
+ocr_result.json
+preview_*_results.pdf
+preview_*_slip.pdf
+
+# Script ya kurekebisha data moja kwa moja: ina jina la mwanafunzi
+# halisi na alama zake za masomo iliyoandikwa ndani yake. Data, si
+# msimbo — haitumizwi tena baada ya kurekebisha, kwa hiyo haihitaji
+# kuwamo kwenye repo.
+fill_marks.py
+
 # Token/secret files
 save
 cive
