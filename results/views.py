@@ -4244,6 +4244,28 @@ def edit_form_student(request, student_id):
         messages.error(request, "Jina la kwanza na la mwisho vinahitajika.")
         return redirect(f'{reverse("upload_form_students")}?form={form_num}')
 
+    # Reg number (admission_no) — Capture Scores inalinganisha namba
+    # iliyoandikwa kwenye karatasi na hii. Tupu = placeholder ya NA-
+    # (unique_together hairuhusu wawili wenye '' kwenye darasa moja).
+    update_fields = ['first_name', 'middle_name', 'last_name', 'gender']
+    if 'admission_no' in request.POST:
+        admission_no = (request.POST.get('admission_no') or '').strip().upper()
+        if not admission_no:
+            admission_no = (student.admission_no if student.admission_no.startswith('NA-')
+                            else f'NA-{uuid.uuid4().hex[:10]}')
+        taken = FormStudent.objects.filter(
+            school=school, academic_year=student.academic_year,
+            form=form_num, admission_no=admission_no,
+        ).exclude(id=student.id).first()
+        if taken:
+            messages.error(
+                request,
+                f"Reg number {admission_no} tayari ni ya {taken.first_name} {taken.last_name}.",
+            )
+            return redirect(f'{reverse("upload_form_students")}?form={form_num}')
+        student.admission_no = admission_no
+        update_fields.append('admission_no')
+
     old_first = student.first_name
     old_middle = student.middle_name
     old_last = student.last_name
@@ -4253,7 +4275,7 @@ def edit_form_student(request, student_id):
         student.middle_name = middle_name
         student.last_name = last_name
         student.gender = gender
-        student.save(update_fields=['first_name', 'middle_name', 'last_name', 'gender'])
+        student.save(update_fields=update_fields)
 
         # Eneza kwenye Student record (inayobeba results) — case-insensitive
         # match ya majina matatu yote ya zamani. Pia sasisha gender, ili

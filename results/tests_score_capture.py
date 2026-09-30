@@ -198,3 +198,46 @@ class CaptureFlowTests(TestCase):
         self.bridge_client.post(reverse('bridge_claim'))
         self.assertEqual(
             self.client.post(reverse('bridge_capture_cancel', args=[job2])).status_code, 409)
+
+
+class EditRegNumberTests(TestCase):
+    """Mtaaluma anaweka reg number kwenye roster ili Capture Scores ilinganishe."""
+
+    databases = {'default', 'results'}
+
+    def setUp(self):
+        self.school = School.objects.create(name='Mfano Sekondari', region='Dodoma', district='Dodoma')
+        self.academic = TeacherAccount.objects.create(
+            email='a@example.com', full_name='Mtaaluma', role=TeacherAccount.ROLE_ACADEMIC,
+            school=self.school)
+        self.asha = FormStudent.objects.create(
+            school=self.school, form=4, first_name='Asha', last_name='Kimaro', gender='F',
+            academic_year=2026, admission_no='NA-abc123')
+        self.baraka = FormStudent.objects.create(
+            school=self.school, form=4, first_name='Baraka', last_name='Mushi', gender='M',
+            academic_year=2026, admission_no='S0451/0002')
+        self.client = Client()
+        self.client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+
+    def _edit(self, student, **extra):
+        data = {'first_name': student.first_name, 'last_name': student.last_name,
+                'gender': student.gender, **extra}
+        return self.client.post(reverse('edit_form_student', args=[student.id]), data)
+
+    def test_sets_reg_number(self):
+        self._edit(self.asha, admission_no=' s0451/0001 ')
+        self.asha.refresh_from_db()
+        self.assertEqual(self.asha.admission_no, 'S0451/0001')
+
+    def test_duplicate_reg_number_is_rejected(self):
+        self._edit(self.asha, admission_no='S0451/0002')
+        self.asha.refresh_from_db()
+        self.assertEqual(self.asha.admission_no, 'NA-abc123')
+
+    def test_blank_keeps_placeholder_and_omitted_field_is_untouched(self):
+        self._edit(self.asha, admission_no='')
+        self._edit(self.baraka)
+        self.asha.refresh_from_db()
+        self.baraka.refresh_from_db()
+        self.assertEqual(self.asha.admission_no, 'NA-abc123')
+        self.assertEqual(self.baraka.admission_no, 'S0451/0002')
