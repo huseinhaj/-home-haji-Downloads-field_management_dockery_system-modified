@@ -1,284 +1,387 @@
 """
-Excel ya Halmashauri kwa joint exam — faili MOJA la shule zote (Serikali +
-Binafsi, safu ya UMILIKI), kwa format ya mafaili ya Halmashauri:
+Excel za Halmashauri kwa joint exam ya wilaya — NAKALA ya format za mafaili
+ya Halmashauri (templates ziko results/xlsx_templates/, zimetolewa kwenye
+mafaili halisi ya Kyerwa DC: vichwa, merges, Arial, rangi za theme, upana
+wa safu, number formats):
 
-  DIVISION          — muhtasari wa madaraja + nafasi kiwilaya
-  GRADE             — gredi ya wastani wa wanafunzi (A–F) kwa kila shule
-  LIST OF SUBJECTS  — ranking ya masomo (wilaya nzima)
-  <somo>            — sheet moja kwa kila somo: kila shule A–F, PASS, %, GPA
+  joint_division.xlsx  → "FORM ONE DIVISION PERFORMANCE ANALYSIS"
+      DIVISION  — madaraja kwa kila shule + NAFASI KIWILAYA (RANK)
+      GRADE     — gredi ya wastani wa mwanafunzi A–F (F/M/T)
+  joint_subjects.xlsx  → "SUBJECT PERFORMANCE ANALYSIS"
+      LIST OF SUBJECTS — ranking ya masomo (inasoma TOTAL ya kila sheet)
+      <somo>           — sheet moja kwa kila somo (H'MAADILI, PHYS, KISW, ...)
+
+Mfumo unaandika IDADI tu (WAV/WAS kwa kila daraja/gredi); jumla, %, GPA na
+nafasi ni formulas za Excel zile zile za mafaili ya Halmashauri — faili
+likifunguliwa Excel inahesabu, na afisa anaweza kuhariri kama kawaida.
+
+Tofauti moja ya makusudi: mstari wa TOTAL wa DIVISION kwenye faili la
+Halmashauri ulikuwa na makosa mawili (I–III ilijumlisha Div IV; IV–0 JML
+ilijumlisha safu ya WAV) — hapa zimesahihishwa.
 """
 from __future__ import annotations
 
+import copy
 import io
 import re
+from pathlib import Path
 
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter as L
 
-from .joint_analysis import DIVISIONS, GRADES, analyse_joint_exam
+from .joint_analysis import GRADES, analyse_joint_exam
+
+TEMPLATE_DIR = Path(__file__).resolve().parent.parent / 'xlsx_templates'
 
 FORM_SW = {1: 'KIDATO CHA KWANZA', 2: 'KIDATO CHA PILI', 3: 'KIDATO CHA TATU',
            4: 'KIDATO CHA NNE', 5: 'KIDATO CHA TANO', 6: 'KIDATO CHA SITA'}
+FORM_EN = {1: 'FORM ONE', 2: 'FORM TWO', 3: 'FORM THREE', 4: 'FORM FOUR',
+           5: 'FORM FIVE', 6: 'FORM SIX'}
 MONTH_SW = ['JANUARI', 'FEBRUARI', 'MACHI', 'APRILI', 'MEI', 'JUNI', 'JULAI',
             'AGOSTI', 'SEPTEMBA', 'OKTOBA', 'NOVEMBA', 'DESEMBA']
+MONTH_EN = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY',
+            'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER']
+OWNERSHIP_LABEL = {'GOV': 'GOV', 'PRIVATE': 'PRIVATE', None: 'ALL'}
 
-THIN = Side(style='thin', color='000000')
-BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
-CENTER = Alignment(horizontal='center', vertical='center', wrap_text=True)
-LEFT = Alignment(horizontal='left', vertical='center')
-HEAD_FILL = PatternFill('solid', fgColor='D9E1F2')
-TOTAL_FILL = PatternFill('solid', fgColor='FFF2CC')
-BOLD = Font(bold=True)
-TITLE = Font(bold=True, size=12)
+# Jina la sheet + jina kamili la somo kama kwenye faili la Halmashauri.
+# Key = jina la somo bila alama/nafasi, herufi ndogo (majina ya DB yanatofautiana).
+SUBJECT_SHEETS = [
+    ("H'MAADILI", 'HISTORIA YA TANZANIA & MAADILI',
+     ['historiayatanzanianamaadili', 'historiayatanzaniamaadili', 'hisroriayatanzanianamahadili']),
+    ('PHYS', 'PHYSICS', ['physics']),
+    ('EDK', 'ELIMU YA DINI YA KIISLAMU (EDK)',
+     ['edk', 'elimuyadini', 'elimuyadiniyakiislam', 'elimuyadiniyakiislamu', 'islamicknowledge', 'ire']),
+    ('HIST', 'HISTORY', ['history']),
+    ('BIOS', 'BIOLOGY', ['biology']),
+    ('CHEM', 'CHEMISTRY', ['chemistry']),
+    ('MATHS', 'MATHEMATICS', ['mathematics', 'basicmathematics', 'basicappliedmathematics', 'hisabati', 'hesabu']),
+    ('ENGLISH', 'ENGLISH', ['english', 'englishlanguage']),
+    ('KISW', 'KISWAHILI', ['kiswahili']),
+    ('GEO', 'GEOGRAPHY', ['geography']),
+    ("BUS'STUDIES", 'BUSSINESS STUDIES', ['businessstudies', 'bussinessstudies']),
+    ("B'KNOWLEDGE", 'BIBLE KNOWLEDGE', ['bibleknowledge', 'cre']),
+    ("B'KEEPING", 'BOOK KEEPING', ['bookkeeping', 'bkeeping']),
+    ('AGR', 'AGRICULTURE', ['agriculture']),
+    ("LIT'ENGLISH", 'LITERATURE IN ENGLISH', ['literatureinenglish']),
+    ("AD'MATHS", 'ADDITIONAL MATHEMATICS', ['additionalmathematics', 'furthermathematics']),
+    ('FRENCH', 'FRENCH', ['french']),
+    ("COMP'SCIENCE", 'COMPUTER SCIENCE', ['computerscience', 'computerstudies']),
+    ("FAS'KISWAHILI", 'FASIHI YA KISWAHILI', ['fasihiyakiswahili']),
+    ('MUSIC', 'MUSIC', ['music', 'muziki']),
+    ('CHINESE', 'CHINESE', ['chinese']),
+    ('ARABIC', 'ARABIC', ['arabic']),
+    ("T'ARTS", 'THEATRE ARTS', ['theatrearts']),
+    ("F'ARTS", 'FINE ARTS', ['finearts', 'fineart']),
+    ("TG'CONSTR", 'TEXTILE & GARMENT CONSTRUCTION', ['textilegarmentconstruction', 'textileandgarmentconstruction']),
+    ("SP'STUDIES", 'SPORT STUDIES', ['sportstudies', 'sportsstudies']),
+    ("F&H'NUTR", 'FOOD & HUMAN NUTRITION', ['foodhumannutrition', 'foodandhumannutrition']),
+]
+_SUBJECT_LOOKUP = {k: (i, sheet, full) for i, (sheet, full, keys) in enumerate(SUBJECT_SHEETS) for k in keys}
 
 
-def _num(v, digits=2):
-    return '-' if v is None else round(v, digits)
+def _key(name):
+    return re.sub(r'[^a-z0-9]', '', (name or '').lower())
 
 
-def _titles(ws, joint, heading, ncols):
-    when = ''
+def subject_sheet(name):
+    """(order, sheet title, full name) ya somo — la Halmashauri au jipya."""
+    hit = _SUBJECT_LOOKUP.get(_key(name))
+    if hit:
+        return hit
+    title = re.sub(r"[\[\]\*\?/\\:]", ' ', name.upper()).strip()[:31] or 'SUBJECT'
+    return (len(SUBJECT_SHEETS), title, name.upper())
+
+
+def _q(sheet_title):
+    """Rejea ya sheet kwenye formula: ='COMP''SCIENCE'!B6 / =KISW!B6."""
+    if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', sheet_title):
+        return sheet_title
+    return "'" + sheet_title.replace("'", "''") + "'"
+
+
+# ── Titles ──
+
+def _when(joint, months):
     if joint.date:
-        when = f'{MONTH_SW[joint.date.month - 1]} {joint.date.year}'
-    else:
-        when = str(joint.year)
-    lines = [
-        'OFISI YA WAZIRI MKUU - TAMISEMI',
-        f'HALMASHAURI YA WILAYA YA {joint.district.upper()}',
-        f'MUHTASARI WA MATOKEO YA {joint.name.upper()}, '
-        f'{FORM_SW.get(joint.form, f"KIDATO {joint.form}")} {when}',
-        '',
-        heading,
-    ]
-    for i, text in enumerate(lines, 1):
-        if not text:
-            continue
-        ws.cell(row=i, column=1, value=text).font = TITLE
-        ws.cell(row=i, column=1).alignment = CENTER
-        ws.merge_cells(start_row=i, start_column=1, end_row=i, end_column=ncols)
+        return f'{months[joint.date.month - 1]} {joint.date.year}'
+    return str(joint.year)
 
 
-def _head(ws, row, col, text, rowspan=1, colspan=1):
-    c = ws.cell(row=row, column=col, value=text)
-    if rowspan > 1 or colspan > 1:
-        ws.merge_cells(start_row=row, start_column=col,
-                       end_row=row + rowspan - 1, end_column=col + colspan - 1)
-    for r in range(row, row + rowspan):
-        for cc in range(col, col + colspan):
-            cell = ws.cell(row=r, column=cc)
-            cell.font = BOLD
-            cell.alignment = CENTER
-            cell.fill = HEAD_FILL
-            cell.border = BORDER
+def _title_sw(joint):
+    return (f'MUHTASARI WA MATOKEO YA MITIHANI WA {joint.name.upper()}, '
+            f'{FORM_SW.get(joint.form, f"KIDATO {joint.form}")} {_when(joint, MONTH_SW)}')
 
 
-def _write_row(ws, row, values, total=False, left_cols=()):
-    for i, v in enumerate(values, 1):
-        c = ws.cell(row=row, column=i, value=v)
-        c.border = BORDER
-        c.alignment = LEFT if i in left_cols else CENTER
-        if total:
-            c.font = BOLD
-            c.fill = TOTAL_FILL
+def _title_en(joint):
+    region = (joint.region or '').upper()
+    prefix = f'{region} REGION - ' if region else ''
+    name = joint.name.upper()
+    if FORM_EN.get(joint.form, '') not in name:
+        name = f'{FORM_EN.get(joint.form, f"FORM {joint.form}")} {name}'
+    return f'{prefix}{name}, {_when(joint, MONTH_EN)}'
 
 
-def _widths(ws, widths):
-    for col, w in widths.items():
-        ws.column_dimensions[get_column_letter(col)].width = w
+# ── Template rows ──
+
+class _RowStyles:
+    """Mitindo ya mstari wa data na TOTAL kutoka template (kisha inafutwa)."""
+
+    def __init__(self, ws, data_row, total_row, maxcol):
+        self.ws, self.maxcol = ws, maxcol
+        self.data = [copy.copy(ws.cell(data_row, c)._style) for c in range(1, maxcol + 1)]
+        self.total = [copy.copy(ws.cell(total_row, c)._style) for c in range(1, maxcol + 1)]
+        self.data_h = ws.row_dimensions[data_row].height
+        self.total_h = ws.row_dimensions[total_row].height
+        ws.delete_rows(data_row, ws.max_row)
+
+    def row(self, r, total=False):
+        for c, s in enumerate(self.total if total else self.data, 1):
+            self.ws.cell(r, c)._style = copy.copy(s)
+        self.ws.row_dimensions[r].height = self.total_h if total else self.data_h
 
 
-def _mft(b, order='MFT'):
-    return [b[k] for k in order]
+def _put(ws, r, values):
+    for col, v in values.items():
+        ws[f'{col}{r}'] = v
 
 
 # ── DIVISION ──
 
-def _division_sheet(wb, joint, data):
-    ws = wb.active
-    ws.title = 'DIVISION'
-    ncols = 44
-    _titles(ws, joint, 'DIVISION PERFORMANCE SUMMARY', ncols)
-    r = 6
-    for col, text in enumerate(['S/N', 'HALMASHAURI', 'KATA', 'UMILIKI', 'JINA LA SHULE'], 1):
-        _head(ws, r, col, text, rowspan=3)
-    _head(ws, r, 6, 'WALIOSAJILIWA', rowspan=2, colspan=3)
-    _head(ws, r, 9, 'WALIOFANYA', rowspan=2, colspan=3)
-    _head(ws, r, 12, 'WASIOFANYA', rowspan=2, colspan=3)
-    _head(ws, r, 15, 'DARAJA/DIVISION', colspan=29)
-    _head(ws, r, 44, 'NAFASI KIWILAYA', rowspan=3)
-    col = 15
-    for label in DIVISIONS + ['I-III']:
-        _head(ws, r + 1, col, label, colspan=3)
-        col += 3
-    _head(ws, r + 1, col, '%', rowspan=2); col += 1                 # % I-III
-    _head(ws, r + 1, col, 'I - IV', colspan=3); col += 3
-    _head(ws, r + 1, col, '%', rowspan=2); col += 1
-    _head(ws, r + 1, col, 'IV-0', colspan=3); col += 3
-    _head(ws, r + 1, col, '%IV-0', rowspan=2); col += 1
-    _head(ws, r + 1, col, 'PASS', rowspan=2); col += 1
-    _head(ws, r + 1, col, 'GPA', rowspan=2); col += 1
-    # WAV/WAS/JML chini ya kila kundi la 3
-    triple_starts = [6, 9, 12, 15, 18, 21, 24, 27, 30, 34, 38]
-    for start in triple_starts:
-        for off, t in enumerate(['WAV', 'WAS', 'JML']):
-            _head(ws, r + 2, start + off, t)
+def _division_sheet(ws, joint, schools):
+    first = 9
+    styles = _RowStyles(ws, first, first + 1, 44)
+    ws['A2'] = f'HALMASHAURI YA WILAYA YA {joint.district.upper()}'
+    ws['A3'] = _title_sw(joint)
+    last = first + len(schools) - 1
+    council = f'{joint.district.upper()} DC'
 
-    row = r + 3
-    district = f'{joint.district.upper()} DC'
-    for i, s in enumerate(data['schools'], 1):
-        d = s['divisions']
-        _write_row(ws, row, [
-            i, district, s['ward'].upper(), s['ownership'].upper(),
-            s['school'].name.upper() if s['school'] else '',
-            *_mft(s['registered']), *_mft(s['sat']), *_mft(s['absent']),
-            *[v for div in DIVISIONS for v in _mft(d[div])],
-            *_mft(s['i_iii']), _num(s['i_iii_pct']),
-            *_mft(s['i_iv']), _num(s['i_iv_pct']),
-            *_mft(s['iv_0']), _num(s['iv_0_pct']),
-            s['pass'], _num(s['gpa']), s['rank'] or '-',
-        ], left_cols=(2, 3, 4, 5))
-        row += 1
-    t = data['totals']
-    _write_row(ws, row, [
-        'TOTAL', '', '', '', f'{len(data["schools"])} SCHOOLS',
-        *_mft(t['registered']), *_mft(t['sat']), *_mft(t['absent']),
-        *[v for div in DIVISIONS for v in _mft(t['divisions'][div])],
-        *_mft(t['i_iii']), _num(t['i_iii_pct']),
-        *_mft(t['i_iv']), _num(t['i_iv_pct']),
-        *_mft(t['iv_0']), _num(t['iv_0_pct']),
-        t['pass'], _num(t['gpa']), '',
-    ], total=True)
-    _widths(ws, {1: 5, 2: 12, 3: 14, 4: 10, 5: 38})
-    for c in range(6, ncols + 1):
-        ws.column_dimensions[get_column_letter(c)].width = 6
-    ws.freeze_panes = 'F9'
+    for i, s in enumerate(schools):
+        r = first + i
+        styles.row(r)
+        d, a = s['divisions'], s['absent']
+        _put(ws, r, {
+            'A': i + 1, 'B': council, 'C': s['ward'].upper(), 'D': s['ownership'].upper(),
+            'E': s['school'].name.upper() if s['school'] else '',
+            'F': f'=IFERROR(I{r}+L{r},"-")', 'G': f'=IFERROR(J{r}+M{r},"-")',
+            'H': f'=IF(SUM(F{r}:G{r})=0,"-",SUM(F{r}:G{r}))',
+            'I': f'=IFERROR(O{r}+R{r}+U{r}+X{r}+AA{r},"-")',
+            'J': f'=IFERROR(P{r}+S{r}+V{r}+Y{r}+AB{r},"-")',
+            'K': f'=IF(SUM(I{r}:J{r})=0,"-",SUM(I{r}:J{r}))',
+            'L': a['M'], 'M': a['F'], 'N': f'=IF(L{r}="","",SUM(L{r}:M{r}))',
+            'O': d['I']['M'], 'P': d['I']['F'], 'Q': f'=IF(O{r}="","",SUM(O{r}:P{r}))',
+            'R': d['II']['M'], 'S': d['II']['F'], 'T': f'=IF(R{r}="","",SUM(R{r}:S{r}))',
+            'U': d['III']['M'], 'V': d['III']['F'], 'W': f'=IF(U{r}="","",SUM(U{r}:V{r}))',
+            'X': d['IV']['M'], 'Y': d['IV']['F'], 'Z': f'=IF(X{r}="","",SUM(X{r}:Y{r}))',
+            'AA': d['0']['M'], 'AB': d['0']['F'], 'AC': f'=IF(AA{r}="","",SUM(AA{r}:AB{r}))',
+            'AD': f'=IFERROR(O{r}+R{r}+U{r},"")', 'AE': f'=IFERROR(P{r}+S{r}+V{r},"")',
+            'AF': f'=IF(AD{r}&AE{r}="","",SUM(AD{r}:AE{r}))',
+            'AG': f'=IFERROR(AF{r}/K{r}*100,"-")',
+            'AH': f'=IFERROR(AD{r}+X{r},"")', 'AI': f'=IFERROR(AE{r}+Y{r},"")',
+            'AJ': f'=IF(AH{r}&AI{r}="","",SUM(AH{r}:AI{r}))',
+            'AK': f'=IFERROR(AJ{r}/K{r}*100,"-")',
+            'AL': f'=IFERROR(X{r}+AA{r},"")', 'AM': f'=IFERROR(Y{r}+AB{r},"")',
+            'AN': f'=IF(AL{r}&AM{r}="","",SUM(AL{r}:AM{r}))',
+            'AO': f'=IFERROR(AN{r}/K{r}*100,"-")',
+            'AP': f'=IFERROR(Q{r}+T{r}+W{r}+Z{r},"-")',
+            'AQ': f'=IFERROR((Q{r}*1+T{r}*2+W{r}*3+Z{r}*4+AC{r}*5)/(Q{r}+T{r}+W{r}+Z{r}+AC{r}),"")',
+            'AR': f'=IFERROR(RANK(AQ{r},$AQ${first}:$AQ${last},1),"")',
+        })
+
+    if last < first:              # hakuna shule/somo bado — mstari mmoja tupu
+        styles.row(first)
+        last = first
+    t = last + 1
+    styles.row(t, total=True)
+    ws[f'A{t}'] = 'TOTAL'
+    ws.merge_cells(f'A{t}:E{t}')
+    for c in range(6, 43):                          # F .. AP
+        col = L(c)
+        if col in ('AG', 'AK', 'AO'):
+            continue
+        ws[f'{col}{t}'] = f'=SUM({col}{first}:{col}{last})'
+    ws[f'AG{t}'] = f'=IFERROR(AF{t}/K{t}*100,"--")'
+    ws[f'AK{t}'] = f'=IFERROR(AJ{t}/K{t}*100,"--")'
+    ws[f'AO{t}'] = f'=IFERROR(AN{t}/K{t}*100,"--")'
 
 
 # ── GRADE ──
 
-def _grade_sheet(wb, joint, data):
-    ws = wb.create_sheet('GRADE')
-    ncols = 28
-    _titles(ws, joint, 'GRADE PERFORMANCE SUMMARY', ncols)
-    r = 6
-    for col, text in enumerate(['SN', 'WARD', 'UMILIKI', 'SCHOOL NAME'], 1):
-        _head(ws, r, col, text, rowspan=2)
-    col = 5
-    for label in ['SAT'] + GRADES + ['PASS(A-D)']:
-        _head(ws, r, col, label, colspan=3)
-        for off, t in enumerate('FMT'):
-            _head(ws, r + 1, col + off, t)
-        col += 3
-    _head(ws, r, col, '%', rowspan=2)
-    _head(ws, r, col + 1, 'GPA', rowspan=2)
-    _head(ws, r, col + 2, 'NAFASI', rowspan=2)
+def _grade_sheet(ws, joint, schools):
+    first = 8
+    styles = _RowStyles(ws, first, first + 1, 28)
+    ws['B2'] = f'HALMASHAURI YA WILAYA YA {joint.district.upper()}'
+    ws['B3'] = _title_sw(joint)
+    rows = sorted(schools, key=lambda s: (s['grade']['gpa'] is None, s['grade']['gpa'] or 0))
+    last = first + len(rows) - 1
+    cols = {'A': ('H', 'I'), 'B': ('K', 'L'), 'C': ('N', 'O'), 'D': ('Q', 'R'), 'F': ('T', 'U')}
 
-    rows = sorted(data['schools'], key=lambda s: (s['grade_rank'] is None, s['grade_rank'] or 0))
-    row = r + 2
-    for i, s in enumerate(rows, 1):
-        g = s['grade']
-        _write_row(ws, row, [
-            i, s['ward'].upper(), s['ownership'].upper(),
-            s['school'].name.upper() if s['school'] else '',
-            *_mft(g['sat'], 'FMT'),
-            *[v for gr in GRADES for v in _mft(g['grades'][gr], 'FMT')],
-            *_mft(g['pass'], 'FMT'), _num(g['pass_pct']), _num(g['gpa']),
-            s['grade_rank'] or '-',
-        ], left_cols=(2, 3, 4))
-        row += 1
-    g = data['totals']['grade']
-    _write_row(ws, row, [
-        '', 'TOTAL', '', '', *_mft(g['sat'], 'FMT'),
-        *[v for gr in GRADES for v in _mft(g['grades'][gr], 'FMT')],
-        *_mft(g['pass'], 'FMT'), _num(g['pass_pct']), _num(g['gpa']), '',
-    ], total=True)
-    _widths(ws, {1: 5, 2: 14, 3: 10, 4: 38})
-    for c in range(5, ncols + 1):
-        ws.column_dimensions[get_column_letter(c)].width = 6
-    ws.freeze_panes = 'E8'
+    for i, s in enumerate(rows):
+        r = first + i
+        styles.row(r)
+        g = s['grade']['grades']
+        vals = {'B': i + 1, 'C': s['ward'].upper(), 'D': s['school'].name.upper() if s['school'] else ''}
+        for grade, (fcol, mcol) in cols.items():          # GRADE: F kwanza, kisha M
+            vals[fcol], vals[mcol] = g[grade]['F'], g[grade]['M']
+        vals.update({
+            'E': f'=SUM(H{r},K{r},N{r},Q{r},T{r})', 'F': f'=SUM(I{r},L{r},O{r},R{r},U{r})',
+            'G': f'=SUM(E{r}:F{r})',
+            'J': f'=SUM(H{r}:I{r})', 'M': f'=SUM(K{r}:L{r})', 'P': f'=SUM(N{r}:O{r})',
+            'S': f'=SUM(Q{r}:R{r})', 'V': f'=SUM(T{r}:U{r})',
+            'W': f'=H{r}+K{r}+N{r}+Q{r}', 'X': f'=I{r}+L{r}+O{r}+R{r}', 'Y': f'=SUM(W{r}:X{r})',
+            'Z': f'=IFERROR(Y{r}/(J{r}+M{r}+P{r}+S{r}+V{r}),"-")',
+            'AA': f'=IFERROR((J{r}*1+M{r}*2+P{r}*3+S{r}*4+V{r}*5)/(J{r}+M{r}+P{r}+S{r}+V{r}),"-")',
+        })
+        _put(ws, r, vals)
+
+    if last < first:              # hakuna shule/somo bado — mstari mmoja tupu
+        styles.row(first)
+        last = first
+    t = last + 1
+    styles.row(t, total=True)
+    ws[f'C{t}'] = 'TOTAL'
+    ws.merge_cells(f'C{t}:D{t}')
+    for c in range(5, 26):                          # E .. Y
+        col = L(c)
+        ws[f'{col}{t}'] = f'=SUM({col}{first}:{col}{last})'
+    ws[f'Z{t}'] = f'=IFERROR(Y{t}/(J{t}+M{t}+P{t}+S{t}+V{t}),"-")'
+    ws[f'AA{t}'] = f'=IFERROR((J{t}*1+M{t}*2+P{t}*3+S{t}*4+V{t}*5)/(J{t}+M{t}+P{t}+S{t}+V{t}),"-")'
 
 
 # ── MASOMO ──
 
-def _subject_header(ws, r, first_cols):
-    for col, text in enumerate(first_cols, 1):
-        _head(ws, r, col, text, rowspan=2)
-    col = len(first_cols) + 1
-    for label in ['REGISTERED'] + GRADES + ['PASS (A-D)']:
-        _head(ws, r, col, label, colspan=3)
-        for off, t in enumerate('MFT'):
-            _head(ws, r + 1, col + off, t)
-        col += 3
-    _head(ws, r, col, '%', rowspan=2)
-    _head(ws, r, col + 1, 'GPA', rowspan=2)
-    _head(ws, r, col + 2, 'NAFASI', rowspan=2)
-    return col + 2
+GRADE_COLS = {'A': ('H', 'I'), 'B': ('K', 'L'), 'C': ('N', 'O'), 'D': ('Q', 'R'), 'F': ('T', 'U')}
 
 
-def _grade_cells(b):
-    return [
-        *_mft(b['sat']),
-        *[v for gr in GRADES for v in _mft(b['grades'][gr])],
-        *_mft(b['pass']), _num(b['pass_pct']), _num(b['gpa']),
-    ]
+def _subject_sheet(ws, joint, subj):
+    first = 9
+    styles = _RowStyles(ws, first, first + 1, 28)
+    ws['B3'] = f'{joint.district.upper()} DISTRICT COUNCIL'
+    ws['B5'] = _title_en(joint)
+    ws['B6'] = subj['full_name']
+    rows = subj['rows']
+    last = first + len(rows) - 1
+
+    for i, row in enumerate(rows):
+        r = first + i
+        styles.row(r)
+        vals = {'B': i + 1, 'C': row['school'].name.upper() if row['school'] else '',
+                'D': row['ward'].upper()}
+        for grade, (mcol, fcol) in GRADE_COLS.items():    # MASOMO: M kwanza, kisha F
+            vals[mcol], vals[fcol] = row['grades'][grade]['M'], row['grades'][grade]['F']
+        vals.update({
+            'E': f'=SUM(H{r},K{r},N{r},Q{r},T{r})', 'F': f'=SUM(I{r},L{r},O{r},R{r},U{r})',
+            'G': f'=SUM(E{r}:F{r})',
+            'J': f'=SUM(H{r}:I{r})', 'M': f'=SUM(K{r}:L{r})', 'P': f'=SUM(N{r}:O{r})',
+            'S': f'=SUM(Q{r}:R{r})', 'V': f'=SUM(T{r}:U{r})',
+            'W': f'=SUM(H{r},K{r},N{r},Q{r})', 'X': f'=SUM(I{r},L{r},O{r},R{r})',
+            'Y': f'=SUM(W{r}:X{r})',
+            'Z': f'=IFERROR(Y{r}/G{r},"-")',
+            'AA': f'=IFERROR((J{r}*1+M{r}*2+P{r}*3+S{r}*4+V{r}*5)/(J{r}+M{r}+P{r}+S{r}+V{r}),"-")',
+        })
+        _put(ws, r, vals)
+
+    if last < first:              # hakuna shule/somo bado — mstari mmoja tupu
+        styles.row(first)
+        last = first
+    t = last + 1
+    styles.row(t, total=True)
+    ws[f'C{t}'] = 'TOTAL'
+    ws[f'D{t}'] = f'=COUNTA(D{first}:D{last})'
+    for c in range(5, 26):                          # E .. Y
+        col = L(c)
+        ws[f'{col}{t}'] = f'=SUM({col}{first}:{col}{last})'
+    ws[f'Z{t}'] = f'=IFERROR(Y{t}/G{t},"-")'
+    ws[f'AA{t}'] = f'=IFERROR((J{t}*1+M{t}*2+P{t}*3+S{t}*4+V{t}*5)/(J{t}+M{t}+P{t}+S{t}+V{t}),"-")'
+    return t
 
 
-def _subjects_list_sheet(wb, joint, data):
-    ws = wb.create_sheet('LIST OF SUBJECTS')
-    ncols = 2 + 21 + 3
-    _titles(ws, joint, 'SUBJECT PERFORMANCE RANKING', ncols)
-    _subject_header(ws, 6, ['S/N', 'SUBJECT NAME'])
-    row = 8
-    for i, s in enumerate(data['subjects'], 1):
-        _write_row(ws, row, [i, s['name'].upper(), *_grade_cells(s), s['rank'] or '-'],
-                   left_cols=(2,))
-        row += 1
-    _widths(ws, {1: 5, 2: 34})
-    for c in range(3, ncols + 1):
-        ws.column_dimensions[get_column_letter(c)].width = 6
-    ws.freeze_panes = 'C8'
+def _list_sheet(ws, joint, subjects):
+    """LIST OF SUBJECTS — kila mstari unasoma TOTAL ya sheet ya somo lake."""
+    first = 9
+    styles = _RowStyles(ws, first, first + 1, 30)
+    ws['C3'] = f'{joint.district.upper()} DISTRICT COUNCIL'
+    ws['C4'] = _title_en(joint)
+    last = first + len(subjects) - 1
+
+    for i, subj in enumerate(subjects):
+        r = first + i
+        styles.row(r)
+        ref, tot = _q(subj['sheet']), subj['total_row']
+        vals = {'C': i + 1, 'D': f'={ref}!$B$6'}
+        for c in range(5, 26):                      # E .. Y
+            col = L(c)
+            vals[col] = f'={ref}!{col}{tot}'
+        vals['Z'] = f'=IFERROR(Y{r}/G{r}*100,"-")'
+        vals['AA'] = f'={ref}!AA{tot}'
+        _put(ws, r, vals)
+
+    if last < first:              # hakuna shule/somo bado — mstari mmoja tupu
+        styles.row(first)
+        last = first
+    t = last + 1
+    styles.row(t, total=True)
+    ws[f'C{t}'] = 'TOTAL'
+    ws.merge_cells(f'C{t}:D{t}')
+    for c in range(5, 26):
+        col = L(c)
+        ws[f'{col}{t}'] = f'=SUM({col}{first}:{col}{last})'
+    ws[f'Z{t}'] = f'=IFERROR(Y{t}/G{t}*100,"-")'
+    ws[f'AA{t}'] = f'=IFERROR((J{t}*1+M{t}*2+P{t}*3+S{t}*4+V{t}*5)/(J{t}+M{t}+P{t}+S{t}+V{t}),"-")'
 
 
-def _sheet_name(name, used):
-    base = re.sub(r'[\[\]\*\?/\\:]', ' ', name.upper()).strip()[:28] or 'SUBJECT'
-    title, n = base, 2
-    while title in used or title in ('DIVISION', 'GRADE', 'LIST OF SUBJECTS'):
-        title = f'{base[:26]} {n}'
-        n += 1
-    used.add(title)
-    return title
+# ── Public ──
 
-
-def _subject_sheets(wb, joint, data):
-    used = set()
-    for s in sorted(data['subjects'], key=lambda x: x['name']):
-        ws = wb.create_sheet(_sheet_name(s['name'], used))
-        ncols = 4 + 21 + 3
-        _titles(ws, joint, f'{s["name"].upper()} — SUBJECT GRADE PERFORMANCE ANALYSIS', ncols)
-        _subject_header(ws, 6, ['S/N', 'NAME OF THE SCHOOL', 'WARD', 'UMILIKI'])
-        row = 8
-        for i, r in enumerate(s['rows'], 1):
-            _write_row(ws, row, [
-                i, r['school'].name.upper() if r['school'] else '',
-                r['ward'].upper(), r['ownership'].upper(),
-                *_grade_cells(r), r['rank'] or '-',
-            ], left_cols=(2, 3, 4))
-            row += 1
-        _write_row(ws, row, ['', 'TOTAL', '', '', *_grade_cells(s), ''], total=True)
-        _widths(ws, {1: 5, 2: 38, 3: 14, 4: 10})
-        for c in range(5, ncols + 1):
-            ws.column_dimensions[get_column_letter(c)].width = 6
-        ws.freeze_panes = 'E8'
-
-
-def build_joint_workbook(joint) -> bytes:
-    data = analyse_joint_exam(joint)
-    wb = Workbook()
-    _division_sheet(wb, joint, data)
-    _grade_sheet(wb, joint, data)
-    _subjects_list_sheet(wb, joint, data)
-    _subject_sheets(wb, joint, data)
+def _save(wb):
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+def build_division_workbook(joint, ownership=None) -> bytes:
+    """DIVISION + GRADE (format ya "FORM ONE DIVISION PERFORMANCE ANALYSIS")."""
+    data = analyse_joint_exam(joint, ownership=ownership)
+    wb = load_workbook(TEMPLATE_DIR / 'joint_division.xlsx')
+    _division_sheet(wb['DIVISION'], joint, data['schools'])
+    _grade_sheet(wb['GRADE'], joint, data['schools'])
+    return _save(wb)
+
+
+def build_subjects_workbook(joint, ownership=None) -> bytes:
+    """LIST OF SUBJECTS + sheet ya kila somo (format ya "SUBJECT PERFORMANCE ANALYSIS")."""
+    data = analyse_joint_exam(joint, ownership=ownership)
+    wb = load_workbook(TEMPLATE_DIR / 'joint_subjects.xlsx')
+    template = wb['SUBJECT_TEMPLATE']
+
+    subjects = []
+    used = set()
+    for s in data['subjects']:
+        order, sheet, full = subject_sheet(s['name'])
+        base, n = sheet, 2
+        while sheet in used:
+            sheet = f'{base[:28]} {n}'
+            n += 1
+        used.add(sheet)
+        subjects.append({**s, 'order': order, 'sheet': sheet, 'full_name': full})
+
+    # Sheets kwa mpangilio wa faili la Halmashauri (H'MAADILI, PHYS, EDK, ...)
+    for subj in sorted(subjects, key=lambda x: (x['order'], x['sheet'])):
+        ws = wb.copy_worksheet(template)
+        ws.title = subj['sheet']
+        ws.sheet_view.zoomScale = template.sheet_view.zoomScale
+        subj['total_row'] = _subject_sheet(ws, joint, subj)
+    wb.remove(template)
+
+    # LIST: kwa GPA (bora kwanza), kama kwenye faili la Halmashauri
+    ranked = sorted(subjects, key=lambda x: (x['gpa'] is None, x['gpa'] or 0, x['full_name']))
+    _list_sheet(wb['LIST OF SUBJECTS'], joint, ranked)
+    return _save(wb)
+
+
+def workbook_filename(joint, kind, ownership=None):
+    form = FORM_EN.get(joint.form, f'FORM {joint.form}')
+    own = OWNERSHIP_LABEL.get(ownership, 'ALL')
+    if kind == 'division':
+        name = f'{form} DIVISION PERFORMANCE ANALYSIS {joint.year} - {own}.xlsx'
+    else:
+        name = f'SUBJECT PERFORMANCE ANALYSIS_{form} - {own} - {joint.name.upper()} {joint.year}.xlsx'
+    return re.sub(r'[\\/:*?"<>|]', '-', name)

@@ -27,7 +27,15 @@
   </div>
   {% if is_officer %}
   <div class="d-flex gap-2 flex-wrap mt-2">
-    <a href="{% url 'joint_exam_excel' joint.id %}" class="kbtn kbtn--primary"><i class="fas fa-file-excel"></i> {% if LANG == 'sw' %}Pakua Excel ya Halmashauri{% else %}Download Council Excel{% endif %}</a>
+    <form method="get" action="{% url 'joint_exam_excel' joint.id %}" class="d-flex gap-2 flex-wrap align-items-center">
+      <select name="own" class="form-select form-select-sm" style="width:auto;">
+        <option value="">{% if LANG == 'sw' %}Shule zote{% else %}All schools{% endif %}</option>
+        <option value="GOV">{% if LANG == 'sw' %}Serikali (GOV){% else %}Government (GOV){% endif %}</option>
+        <option value="PRIVATE">{% if LANG == 'sw' %}Binafsi (PRIVATE){% else %}Private{% endif %}</option>
+      </select>
+      <button type="submit" name="kind" value="division" class="kbtn kbtn--primary"><i class="fas fa-file-excel"></i> DIVISION PERFORMANCE ANALYSIS</button>
+      <button type="submit" name="kind" value="subjects" class="kbtn kbtn--primary"><i class="fas fa-file-excel"></i> SUBJECT PERFORMANCE ANALYSIS</button>
+    </form>
     <form method="post" action="{% url 'joint_exam_publish' joint.id %}">
       {% csrf_token %}
       {% if joint.published %}

@@ -157,11 +157,18 @@ def joint_exam_detail(request, joint_id):
 
 @district_officer_required
 def joint_exam_excel(request, joint_id):
-    from .services.joint_excel import build_joint_workbook
+    """?kind=division (DIVISION + GRADE) | subjects (LIST OF SUBJECTS + masomo)
+       &own=GOV | PRIVATE | (tupu = shule zote)"""
+    from .services.joint_excel import (
+        build_division_workbook, build_subjects_workbook, workbook_filename,
+    )
 
     joint = _officer_joint_or_404(request, joint_id)
-    content = build_joint_workbook(joint)
-    filename = f'{joint.district} {joint.name} Form {joint.form} {joint.year}.xlsx'.replace('/', '-')
+    kind = 'subjects' if request.GET.get('kind') == 'subjects' else 'division'
+    own = request.GET.get('own') if request.GET.get('own') in ('GOV', 'PRIVATE') else None
+    build = build_subjects_workbook if kind == 'subjects' else build_division_workbook
+    content = build(joint, ownership=own)
+    filename = workbook_filename(joint, kind, own)
     resp = HttpResponse(
         content,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

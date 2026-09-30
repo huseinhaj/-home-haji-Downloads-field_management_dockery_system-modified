@@ -127,17 +127,33 @@ class JointFlowTests(TestCase):
     def test_excel_has_council_sheets(self):
         joint = self._create_joint()
         self._fill_results(joint)
-        resp = self.officer_client.get(reverse('joint_exam_excel', args=[joint.pk]))
+        url = reverse('joint_exam_excel', args=[joint.pk])
+
+        resp = self.officer_client.get(url, {'kind': 'division'})
         self.assertEqual(resp.status_code, 200)
+        self.assertIn('DIVISION PERFORMANCE ANALYSIS', resp['Content-Disposition'])
         wb = load_workbook(io.BytesIO(resp.content))
-        self.assertEqual(wb.sheetnames[:3], ['DIVISION', 'GRADE', 'LIST OF SUBJECTS'])
-        self.assertIn('MATHEMATICS', wb.sheetnames)
+        self.assertEqual(wb.sheetnames, ['DIVISION', 'GRADE'])
         ws = wb['DIVISION']
-        self.assertEqual(ws['E9'].value, 'BERNARD SECONDARY SCHOOL')
-        self.assertEqual(ws['D9'].value, 'BINAFSI')
-        self.assertEqual(ws['AR9'].value, 1)          # NAFASI KIWILAYA
-        self.assertEqual(ws['E10'].value, 'BUSINDE SECONDARY SCHOOL')
-        self.assertEqual(ws['D10'].value, 'SERIKALI')
+        self.assertEqual(ws['A2'].value, 'HALMASHAURI YA WILAYA YA KYERWA')
+        self.assertEqual((ws['E9'].value, ws['D9'].value), ('BERNARD SECONDARY SCHOOL', 'BINAFSI'))
+        self.assertEqual((ws['O9'].value, ws['P9'].value), (1, 1))      # Div I: WAV 1, WAS 1
+        self.assertEqual(ws['AR9'].value, '=IFERROR(RANK(AQ9,$AQ$9:$AQ$10,1),"")')
+        self.assertEqual((ws['E10'].value, ws['D10'].value), ('BUSINDE SECONDARY SCHOOL', 'SERIKALI'))
+        self.assertEqual(ws['A11'].value, 'TOTAL')
+        self.assertEqual(ws['F11'].value, '=SUM(F9:F10)')
+
+        gov = load_workbook(io.BytesIO(
+            self.officer_client.get(url, {'kind': 'division', 'own': 'GOV'}).content))
+        self.assertEqual(gov['DIVISION']['E9'].value, 'BUSINDE SECONDARY SCHOOL')
+        self.assertEqual(gov['DIVISION']['A10'].value, 'TOTAL')
+
+        wb = load_workbook(io.BytesIO(self.officer_client.get(url, {'kind': 'subjects'}).content))
+        self.assertEqual(wb.sheetnames[0], 'LIST OF SUBJECTS')
+        self.assertIn('MATHS', wb.sheetnames)
+        self.assertIn('KISW', wb.sheetnames)
+        self.assertEqual(wb['MATHS']['B6'].value, 'MATHEMATICS')
+        self.assertTrue(str(wb['LIST OF SUBJECTS']['D9'].value).endswith('!$B$6'))
 
     def test_officer_pages_render(self):
         joint = self._create_joint()
