@@ -22,6 +22,9 @@ Automation hapa:
      Msingi wa kila column ni alama ya exam ile column; kama column ile
      haina exam/data, inatumika wastani wa combined results za mwanafunzi
      kutoka columns zote zilizopo.
+     Mstari ukitoka BAPA (mf. mtihani mmoja tu umelisha safu zote),
+     alama zinapanda kutoka alama ya mwanafunzi kuelekea juu (auto_climb:
+     robo ya nafasi hadi mark_max, alama 2–10) — FT TEST-ONE → ST ANNUAL.
   4. PROJECT na PRACTICAL zinabaki WAZI (mwalimu anajaza mkononi).
   5. Excel inatengenezwa kwa openpyxl kwa muundo wa NECTA.
 """
@@ -116,6 +119,34 @@ def estimate_mark(base_score, mark_min, mark_max, student_min=None):
 
     mark = math.floor(mark + 0.5)
     return max(mark_min, min(mark_max, mark))
+
+
+def auto_climb(start, mark_max):
+    """Kiasi cha kupanda (FT TEST-ONE → ST ANNUAL) kinachokadiriwa na mfumo:
+    robo ya nafasi iliyobaki hadi mark_max, kati ya 2 na 10.
+      70 (max 100) → 8 · 45 → 10 · 90 → 3 · 100 → 0
+    """
+    headroom = int(mark_max) - int(start)
+    if headroom <= 0:
+        return 0
+    return max(2, min(10, math.floor(headroom * 0.25 + 0.5)))
+
+
+def apply_climb(marks, mark_max):
+    """Mstari BAPA (safu zote za muhula zina alama moja — mf. mtihani mmoja
+    tu umelisha safu zote) unapanda kutoka alama ya mwanafunzi kwenda juu,
+    sawasawa kwenye safu 8, bila kupita mark_max. Mstari wenye alama halisi
+    tofauti tofauti (mitihani tofauti) haubadilishwi."""
+    keys = [c['key'] for c in TERM_COLUMNS]
+    values = [marks.get(k) for k in keys]
+    if any(v is None for v in values) or len(set(values)) != 1:
+        return marks
+    start = values[0]
+    climb = auto_climb(start, mark_max)
+    steps = len(keys) - 1
+    for i, k in enumerate(keys):
+        marks[k] = min(int(mark_max), start + math.floor(climb * i / steps + 0.5))
+    return marks
 
 
 def _full_name(fs):
@@ -224,6 +255,7 @@ def build_ca_preview(school, subject, exam_map, mark_min, mark_max, year=None,
                 continue
             base = column_scores.get(col['key'], combined_avg)
             marks[col['key']] = estimate_mark(base, mark_min, mark_max, student_min)
+        apply_climb(marks, mark_max)
 
         if any(v is not None for v in marks.values()):
             filled += 1

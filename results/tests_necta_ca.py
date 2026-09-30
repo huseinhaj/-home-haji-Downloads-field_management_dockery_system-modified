@@ -15,8 +15,27 @@ from .models import (
     SchoolSubject, Student, Subject, TeacherAccount,
 )
 from .services.necta_ca_service import (
-    auto_map_exams, build_ca_preview, estimate_mark,
+    TERM_COLUMNS, auto_climb, auto_map_exams, build_ca_preview, estimate_mark,
 )
+
+TERM_KEYS = [c['key'] for c in TERM_COLUMNS]
+
+
+def _line(marks):
+    return [marks[k] for k in TERM_KEYS]
+
+
+class AutoClimbTests(TestCase):
+    """Mstari bapa unapanda kutoka alama ya mwanafunzi (kiasi kinakadiriwa)."""
+
+    databases = {'default', 'results'}
+
+    def test_climb_is_a_quarter_of_the_headroom_between_2_and_10(self):
+        self.assertEqual(auto_climb(70, 100), 8)     # 30 × ¼ = 7.5 → 8
+        self.assertEqual(auto_climb(45, 100), 10)    # 55 × ¼ = 13.75 → kikomo 10
+        self.assertEqual(auto_climb(90, 100), 3)     # 10 × ¼ = 2.5 → 3
+        self.assertEqual(auto_climb(99, 100), 2)     # angalau 2 (mark_max inazuia)
+        self.assertEqual(auto_climb(100, 100), 0)
 
 
 class EstimateMarkTests(TestCase):
@@ -126,22 +145,42 @@ class BuildCAPreviewTests(TestCase):
         asha = rows['Asha Mkubwa']        # alama halisi: 80
         juma = rows['Juma Hassan Mdogo']  # alama halisi: 40
 
-        # Juma (min 40) huanzia 45; Asha (min 80) huanzia 80. Wote
-        # wakadiria ndani ya range ya mwalimu (45-100).
-        self.assertEqual(juma['ft_terminal'], 45)
-        self.assertEqual(asha['ft_terminal'], 80)
+        # Juma (min 40) huanzia 45; Asha (min 80) huanzia 80, kisha wote
+        # wanapanda kuelekea ANNUAL, ndani ya range ya mwalimu (45-100).
+        self.assertEqual((juma['ft_test_one'], juma['st_annual']), (45, 55))
+        self.assertEqual((asha['ft_test_one'], asha['st_annual']), (80, 85))
         self.assertGreater(asha['ft_terminal'], juma['ft_terminal'])
+
+    def test_single_exam_line_climbs_from_the_students_mark(self):
+        # Mtihani mmoja tu umelisha safu zote → mstari haubaki bapa.
+        exam_map = {k: self.exam.id for k in TERM_KEYS}
+        preview = build_ca_preview(self.school, self.subject, exam_map, 45, 100, year=2026)
+        rows = {r['name']: r['marks'] for r in preview['rows']}
+        self.assertEqual(_line(rows['Asha Mkubwa']), [80, 81, 81, 82, 83, 84, 84, 85])
+        self.assertEqual(_line(rows['Juma Hassan Mdogo']), [45, 46, 48, 49, 51, 52, 54, 55])
+
+    def test_real_different_marks_are_not_changed(self):
+        # Mitihani tofauti yenye alama tofauti → alama halisi, hakuna kupanda.
+        test_one = Exam.objects.create(
+            school=self.school, name='Test 1', year=2026, form=4, exam_type='TEST')
+        ExamResult.objects.create(exam=test_one, student=self.st1, subject=self.subject, score=60)
+        exam_map = {'ft_test_one': test_one.id, 'ft_terminal': self.exam.id}
+        preview = build_ca_preview(self.school, self.subject, exam_map, 45, 100, year=2026)
+        asha = next(r['marks'] for r in preview['rows'] if r['name'] == 'Asha Mkubwa')
+        self.assertEqual(asha['ft_test_one'], 60)
+        self.assertEqual(asha['ft_terminal'], 80)
 
     def test_blank_column_falls_back_to_combined_average(self):
         # Column zisizo-mapped zinavuta wastani wa columns zilizopo —
-        # "combined results mpaka wakati huo".
+        # "combined results mpaka wakati huo" — na mstari unapanda kutoka hapo.
         exam_map = {'ft_terminal': self.exam.id}
         preview = build_ca_preview(self.school, self.subject, exam_map, 45, 100, year=2026)
 
         rows = {r['name']: r['marks'] for r in preview['rows']}
         asha = rows['Asha Mkubwa']
-        for key in ('ft_test_one', 'ft_mid_term', 'st_annual'):
-            self.assertEqual(asha[key], 80, f'{key} inafuata combined average')
+        self.assertEqual(asha['ft_test_one'], 80)
+        self.assertEqual(asha['ft_mid_term'], 81)
+        self.assertEqual(asha['st_annual'], 85)
 
     def test_absent_result_excluded(self):
         # ExamResult ya pili (is_absent=True) kwa exam nyingine haipaswi
@@ -157,11 +196,11 @@ class BuildCAPreviewTests(TestCase):
         preview = build_ca_preview(self.school, self.subject, exam_map, 45, 100, year=2026)
         asha = next(r for r in preview['rows'] if r['name'] == 'Asha Mkubwa')
         # 80 ya Terminal bado inatumika, na column ya absent inarudi kwa
-        # combined average (80) — si 0, si None.
-        self.assertEqual(asha['marks']['ft_terminal'], 80)
+        # combined average (80) — si 0, si None; mstari bapa unapanda.
         self.assertEqual(asha['marks']['ft_test_one'], 80)
+        self.assertEqual(asha['marks']['ft_terminal'], 82)
         juma = next(r for r in preview['rows'] if 'Juma' in r['name'])
-        self.assertEqual(juma['marks']['ft_terminal'], 45)
+        self.assertEqual(juma['marks']['ft_test_one'], 45)
 
     def test_project_and_practical_stay_blank(self):
         exam_map = {'ft_terminal': self.exam.id}
@@ -233,7 +272,8 @@ class NectaCaViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data['subject_name'], 'HISTORY')
-        self.assertEqual(data['rows'][0]['marks']['ft_terminal'], 80)
+        marks = data['rows'][0]['marks']
+        self.assertEqual((marks['ft_test_one'], marks['st_annual']), (80, 85))
 
     def test_download_creates_snapshot_and_excel(self):
         payload = {
@@ -259,7 +299,8 @@ class NectaCaViewTests(TestCase):
         self.assertEqual(snap.params['center_no'], 'S3063')
         self.assertEqual(snap.params['form_num'], 4)
         self.assertEqual(snap.form, 4)
-        self.assertEqual(snap.payload['rows'][0]['marks']['ft_terminal'], 80)
+        self.assertEqual(snap.payload['rows'][0]['marks']['ft_test_one'], 80)
+        self.assertEqual(snap.payload['rows'][0]['marks']['st_annual'], 85)
         self.assertEqual(snap.created_by, self.academic)
 
         # Phone/Center ni cells za TEXT ('@') — namba ndefu hazina
