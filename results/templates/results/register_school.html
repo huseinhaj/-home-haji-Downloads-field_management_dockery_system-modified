@@ -64,9 +64,14 @@
         </div>
       </div>
 
-      <button type="submit" id="submitBtn" class="btn btn-brand w-100 mt-3" disabled>{% if LANG == 'sw' %}Endelea{% else %}Continue{% endif %}</button>
+      <button type="submit" id="submitBtn" class="btn btn-brand w-100 mt-3" disabled>{% if LANG == 'sw' %}Kagua Muunganisho{% else %}Check Join Status{% endif %}</button>
     </form>
   </div>
+</div>
+
+<div class="text-center mt-3" style="font-size:0.85rem;color:#888;">
+  {% if LANG == 'sw' %}Support — wasiliana na Admin:{% else %}Support — contact the Admin:{% endif %}
+  <a href="tel:{{ support_phone }}" style="font-weight:800;color:var(--accent-500);text-decoration:none;">{{ support_phone }}</a>
 </div>
 
 <p class="text-center text-secondary mt-3" style="font-size:0.85rem;">

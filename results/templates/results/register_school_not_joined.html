@@ -1,0 +1,35 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Hujaungwa Na Shule Hii{% else %}Not Joined To This School{% endif %} | School Results{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="panel mt-4">
+      <div class="panel-body text-center">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem;">🏫</div>
+        <h3 style="font-family:'Sora',sans-serif;color:var(--accent-500);">{{ school.name }}</h3>
+        <p class="text-secondary mb-1" style="font-size:0.95rem;">
+          {% if LANG == 'sw' %}
+          <strong>Hujaungwa na shule hii.</strong> Kujiunga kwenye mfumo hukufanyiwa na Msimamizi wa mfumo.
+          {% else %}
+          <strong>You have not joined this school.</strong> Only the system administrator can join you to it.
+          {% endif %}
+        </p>
+        <p class="text-secondary" style="font-size:0.9rem;">
+          {% if LANG == 'sw' %}
+          Support: Wasiliana na Admin kupata akaunti na kuunganishwa na shule hii.
+          {% else %}
+          Support: Contact the Admin to get an account and be linked to this school.
+          {% endif %}
+        </p>
+        <a href="tel:{{ support_phone }}" style="font-weight:800;font-size:1.3rem;color:var(--accent-500);text-decoration:none;display:inline-block;margin:0.5rem 0;">{{ support_phone }}</a>
+
+        <div class="mt-3">
+          <a href="{% url 'register_school_start' %}" class="btn btn-outline-secondary btn-sm">{% if LANG == 'sw' %}Badilisha Shule{% else %}Change School{% endif %}</a>
+          <a href="{% url 'results_login' %}" class="btn btn-brand btn-sm">{% if LANG == 'sw' %}Ingia{% else %}Login{% endif %}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
