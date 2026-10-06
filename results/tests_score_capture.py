@@ -3,6 +3,7 @@ import io
 import json
 import shutil
 import tempfile
+import threading
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -168,6 +169,60 @@ class CaptureFlowTests(TestCase):
 
         page = self.client.get(reverse('bridge_capture_page', args=[job_id, 1]))
         self.assertEqual(page.status_code, 200)
+
+    def _upload(self, files):
+        roster = [{'id': self.asha.id, 'name': 'Asha Kimaro'},
+                  {'id': self.baraka.id, 'name': 'Baraka Mushi'}]
+
+        real_thread = threading.Thread
+
+        class _SyncThread(real_thread):
+            # ThreadPoolExecutor ya ndani ya kazi ya nyuma inatumia Thread
+            # za kweli, hivyo zinaendelea kawaida. Ni thread pekee ya view
+            # (daemon=True) inayoendeshwa papo hapa ndani ya test.
+            def start(self):
+                if self.daemon:
+                    return self.run()
+                return super().start()
+
+        from django.db import connection
+        with mock.patch('threading.Thread', _SyncThread), \
+                mock.patch.object(connection, 'close'):
+            return self.client.post(reverse('bridge_capture_upload'), {
+                'exam_id': self.exam.id, 'subject_id': self.subject.id,
+                'roster': json.dumps(roster), 'files': files,
+            })
+
+    def test_pdf_upload_without_bridge(self):
+        """Photocopier yoyote → PDF → Capture Scores, hata shule isiyo na bridge."""
+        self.bridge.delete()
+        pdf = io.BytesIO()
+        Image.new('RGB', (200, 280), 'white').save(pdf, format='PDF', save_all=True,
+                                                    append_images=[Image.new('RGB', (200, 280), 'white')])
+        reads = [
+            {'has_header': True, 'reg_number': 's0451-0001', 'student_name': 'Asha',
+             'score': '73', 'max_score': None, 'unclear': False},
+            {'has_header': True, 'reg_number': 'S0451/0002', 'student_name': 'Baraka',
+             'score': '58', 'max_score': None, 'unclear': False},
+        ]
+        with mock.patch('results.services.score_capture.read_paper_header', side_effect=reads):
+            resp = self._upload([SimpleUploadedFile('rundo.pdf', pdf.getvalue(), 'application/pdf')])
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()['pages'], 2)
+        job_id = resp.json()['job_id']
+
+        done = self.client.get(reverse('bridge_capture_status', args=[job_id])).json()
+        self.assertEqual(done['status'], 'done')
+        self.assertEqual(sorted((m['id'], m['score']) for m in done['matched']),
+                         sorted([(self.asha.id, 73), (self.baraka.id, 58)]))
+        self.assertEqual(self.client.get(reverse('bridge_capture_page', args=[job_id, 2])).status_code, 200)
+        # Kazi ya upload haichukuliwi na bridge
+        self.assertEqual(ScanJob.objects.get(pk=job_id).note, 'Capture score (upload)')
+
+    def test_upload_rejects_unreadable_file(self):
+        resp = self._upload([SimpleUploadedFile('x.pdf', b'si pdf', 'application/pdf')])
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(ScanJob.objects.exists())
 
     def test_school_without_bridge_gets_a_clear_error(self):
         self.bridge.delete()

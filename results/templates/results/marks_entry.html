@@ -492,6 +492,20 @@
               <button type="button" class="btn-me-voice" id="meCaptureStart">▶ {% if LANG == 'sw' %}Anza Capture{% else %}Start Capture{% endif %}</button>
               <button type="button" class="btn-me-ghost" id="meCaptureCancel" style="display:none;">✖ {% if LANG == 'sw' %}Ghairi{% else %}Cancel{% endif %}</button>
             </div>
+            <div style="margin-top:0.6rem;padding-top:0.5rem;border-top:1px dashed #cfe3d4;">
+              <div style="font-size:0.85rem;margin-bottom:0.35rem;">
+                {% if LANG == 'sw' %}
+                  <b>Huna printer yenye ADF hapa?</b> Scan rundo kwenye photocopier yoyote (<i>Scan to USB/Email</i> → PDF) kisha pakia PDF, au piga picha za karatasi kwa simu.
+                {% else %}
+                  <b>No ADF printer here?</b> Scan the stack on any photocopier (<i>Scan to USB/Email</i> → PDF) and upload the PDF, or photograph the papers with your phone.
+                {% endif %}
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:0.6rem;">
+                <button type="button" class="btn-me-voice" id="meCaptureUpload">📄 {% if LANG == 'sw' %}Pakia PDF/Picha za Karatasi{% else %}Upload PDF/Photos of Papers{% endif %}</button>
+                <button type="button" class="btn-me-voice" id="meCaptureCamera">📷 {% if LANG == 'sw' %}Piga Picha kwa Simu{% else %}Photograph with Phone{% endif %}</button>
+              </div>
+              <input type="file" id="meCaptureFile" accept="image/*,.pdf,application/pdf" multiple style="display:none;">
+            </div>
             <div id="meCaptureStatus" style="margin-top:0.45rem;font-size:0.88rem;"></div>
           </div>
           <div class="me-photo-unmatched" id="mePhotoUnmatched" style="display:none;"></div>
@@ -1614,6 +1628,9 @@ function _dlPdf(url) {
         const capStatus = document.getElementById('meCaptureStatus');
         const capPages = document.getElementById('meCapturePages');
         const capDuplex = document.getElementById('meCaptureDuplex');
+        const capUpload = document.getElementById('meCaptureUpload');
+        const capCamera = document.getElementById('meCaptureCamera');
+        const capFile = document.getElementById('meCaptureFile');
         const CAP_BASE = "{% url 'bridge_capture_start' %}".replace(/anza\/$/, '');
         const sw = LANG === 'sw';
         let capJobId = null;
@@ -1635,7 +1652,9 @@ function _dlPdf(url) {
           capJobId = null;  // loop ya polling inaona hii na kusimama
         });
 
-        capStart.addEventListener('click', async () => {
+        // Kazi moja ya capture: kick() inaanzisha ScanJob (bridge au
+        // upload) na kurudisha JSON {ok, job_id}; kisha tunapoll hadi iishe.
+        async function runCapture(kick, startMsg) {
           if (!EXAM_ID || !SUBJECT_ID) {
             toast(sw ? 'Chagua mtihani na somo kwanza.' : 'Pick an exam and subject first.', true);
             return;
@@ -1645,28 +1664,26 @@ function _dlPdf(url) {
             return;
           }
           capStart.disabled = true;
+          capUpload.disabled = true;
+          capCamera.disabled = true;
           capBtn.disabled = true;
           unmatchedBox.style.display = 'none';
           unmatchedBox.innerHTML = '';
           missingBox.style.display = 'none';
           missingBox.innerHTML = '';
           document.querySelectorAll('tr.photo-missing-row').forEach(tr => tr.classList.remove('photo-missing-row'));
-          capStatus.innerHTML = '<span style="color:#145226;">⏳ ' + (sw ? 'Inatuma kazi kwa bridge...' : 'Sending the job to the bridge...') + '</span>';
+          capStatus.innerHTML = '<span style="color:#145226;">⏳ ' + startMsg + '</span>';
 
           try {
             const fd = new FormData();
             fd.append('exam_id', EXAM_ID);
             fd.append('subject_id', SUBJECT_ID);
             fd.append('roster', JSON.stringify([...byId.values()].map(s => ({ id: s.id, name: s.name }))));
-            fd.append('pages', capPages.value || '40');
-            if (capDuplex.checked) fd.append('duplex', 'on');
-            const res = await fetch(CAP_BASE + 'anza/', {
-              method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd,
-            });
-            const kick = await res.json().catch(() => ({}));
-            if (!res.ok || !kick.ok) throw new Error(kick.error || (sw ? 'Imeshindikana kuanza.' : 'Could not start.'));
+            const res = await kick(fd);
+            const kicked = await res.json().catch(() => ({}));
+            if (!res.ok || !kicked.ok) throw new Error(kicked.error || (sw ? 'Imeshindikana kuanza.' : 'Could not start.'));
 
-            const myJob = kick.job_id;
+            const myJob = kicked.job_id;
             capJobId = myJob;
             capCancel.style.display = '';
 
@@ -1730,10 +1747,45 @@ function _dlPdf(url) {
           } finally {
             capJobId = null;
             capStart.disabled = false;
+            capUpload.disabled = false;
+            capCamera.disabled = false;
             capBtn.disabled = false;
             capCancel.style.display = 'none';
           }
-        });
+        }
+
+        capStart.addEventListener('click', () => runCapture((fd) => {
+          fd.append('pages', capPages.value || '40');
+          if (capDuplex.checked) fd.append('duplex', 'on');
+          return fetch(CAP_BASE + 'anza/', {
+            method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd,
+          });
+        }, sw ? 'Inatuma kazi kwa bridge...' : 'Sending the job to the bridge...'));
+
+        // Bila printer ya ADF: PDF (Scan to USB/Email ya photocopier yoyote)
+        // au picha — AI ile ile inasoma reg number + alama.
+        function uploadCapture(files) {
+          files = [...files];
+          if (!files.length) return;
+          runCapture((fd) => {
+            files.forEach(f => fd.append('files', f));
+            return fetch(CAP_BASE + 'pakia/', {
+              method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: fd,
+            });
+          }, sw ? 'Inapakia karatasi...' : 'Uploading the papers...');
+        }
+        capUpload.addEventListener('click', () => capFile.click());
+        capFile.addEventListener('change', () => { uploadCapture(capFile.files); capFile.value = ''; });
+        if (window.ScoresheetScanner) {
+          capCamera.addEventListener('click', () => window.ScoresheetScanner.open({
+            lang: LANG,
+            filename: 'karatasi',
+            jspdfUrl: "{% static 'results/vendor/jspdf.umd.min.js' %}",
+            onComplete: (pdf) => uploadCapture([pdf]),
+          }));
+        } else {
+          capCamera.style.display = 'none';
+        }
       }
 
       // Multi-page in-app scanner: capture each page with the camera, the

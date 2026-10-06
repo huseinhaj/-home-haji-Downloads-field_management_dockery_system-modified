@@ -474,12 +474,10 @@ def _teacher_capture_job(request, job_id):
     return job
 
 
-@require_POST
-@teacher_or_academic_required
-def bridge_capture_start(request):
-    """Marks Entry → "Capture Scores": ScanJob ya CAPTURE kwa bridge ya shule.
+def _capture_request(request):
+    """Uthibitisho wa pamoja wa Capture Scores (bridge NA upload).
 
-    Fields: exam_id, subject_id, roster (JSON [{id, name}]), pages, duplex.
+    Inarudisha (teacher, school, exam, subject, roster) au JsonResponse ya kosa.
     """
     import json
 
@@ -488,7 +486,7 @@ def bridge_capture_start(request):
     teacher = request.user
     school = getattr(teacher, 'school', None)
     if school is None:
-        return JsonResponse({'error': 'Akaunti yako haina shule — bridge haiwezi kupatikana.'}, status=400)
+        return JsonResponse({'error': 'Akaunti yako haina shule.'}, status=400)
 
     exam = _teacher_exam(teacher, request.POST.get('exam_id'))
     if exam is None:
@@ -508,6 +506,20 @@ def bridge_capture_start(request):
     ]
     if not roster:
         return JsonResponse({'error': 'Orodha ya wanafunzi iko tupu — pakia orodha kwanza.'}, status=400)
+    return teacher, school, exam, subject, roster
+
+
+@require_POST
+@teacher_or_academic_required
+def bridge_capture_start(request):
+    """Marks Entry → "Capture Scores": ScanJob ya CAPTURE kwa bridge ya shule.
+
+    Fields: exam_id, subject_id, roster (JSON [{id, name}]), pages, duplex.
+    """
+    ctx = _capture_request(request)
+    if isinstance(ctx, JsonResponse):
+        return ctx
+    teacher, school, exam, subject, roster = ctx
 
     if not SahishiBridge.objects.filter(school=school, active=True).exists():
         return JsonResponse({
@@ -534,6 +546,116 @@ def bridge_capture_start(request):
         'job_id': job.pk,
         'bridge_online': _bridge_online(school),
     })
+
+
+CAPTURE_UPLOAD_MAX_PAGES = 200
+
+
+def _capture_file_pages(uploaded_file) -> list[bytes]:
+    """PDF (kurasa nyingi) au picha moja → JPEG bytes kwa kila ukurasa."""
+    import io
+
+    from PIL import Image
+
+    from .services.scoresheet_ocr_service import (
+        PDF_RENDER_SCALE, _is_pdf, _open_with_pillow_heif,
+    )
+
+    def _jpeg(img):
+        buf = io.BytesIO()
+        img.convert('RGB').save(buf, format='JPEG', quality=85)
+        return buf.getvalue()
+
+    if _is_pdf(uploaded_file):
+        import pypdfium2 as pdfium
+
+        uploaded_file.seek(0)
+        pdf = pdfium.PdfDocument(uploaded_file.read())
+        try:
+            return [
+                _jpeg(pdf[i].render(scale=PDF_RENDER_SCALE).to_pil())
+                for i in range(min(len(pdf), CAPTURE_UPLOAD_MAX_PAGES))
+            ]
+        finally:
+            pdf.close()
+
+    uploaded_file.seek(0)
+    try:
+        img = Image.open(uploaded_file)
+        img.load()
+    except Exception:
+        img = _open_with_pillow_heif(uploaded_file)
+        if img is None:
+            raise
+    return [_jpeg(img)]
+
+
+@require_POST
+@teacher_or_academic_required
+def bridge_capture_upload(request):
+    """Capture Scores BILA bridge: PDF/picha za karatasi zilizosahihishwa.
+
+    Kwa shule zisizo na printer yenye ADF inayounganika na bridge:
+    mwalimu anascan rundo kwenye photocopier yoyote (Scan to USB/Email →
+    PDF) au anapiga picha kwa simu, kisha anapakia hapa. Kazi ni ile ile
+    ya CAPTURE — ScanJob, AI inasoma reg number + alama, Marks Entry
+    inapoll bridge_capture_status na kujaza jedwali.
+
+    Fields: exam_id, subject_id, roster, files (PDF au picha, nyingi).
+    """
+    import io
+    import threading
+
+    from django.db import connection
+
+    ctx = _capture_request(request)
+    if isinstance(ctx, JsonResponse):
+        return ctx
+    teacher, school, exam, subject, roster = ctx
+
+    files = request.FILES.getlist('files')
+    if not files:
+        return JsonResponse({'error': 'Chagua PDF au picha za karatasi kwanza.'}, status=400)
+
+    pages = []
+    for f in files:
+        try:
+            pages.extend(_capture_file_pages(f))
+        except Exception:
+            logger.warning('Capture upload: faili %r haikusomeka', f.name, exc_info=True)
+            return JsonResponse({'error': f'Faili "{f.name}" haikusomeka — tumia PDF au picha (JPG/PNG).'}, status=400)
+        if len(pages) >= CAPTURE_UPLOAD_MAX_PAGES:
+            pages = pages[:CAPTURE_UPLOAD_MAX_PAGES]
+            break
+    if not pages:
+        return JsonResponse({'error': 'Hakuna ukurasa uliopatikana kwenye faili.'}, status=400)
+
+    # UPLOADING (si PENDING) — bridge haitaichukua kazi hii.
+    job = ScanJob.objects.create(
+        school=school, exam=exam, subject=subject,
+        mode=ScanJob.Mode.CAPTURE,
+        status=ScanJob.Status.UPLOADING,
+        pages=len(pages), dpi=200,
+        capture_roster=roster,
+        requested_by_id=teacher.pk,
+        note='Capture score (upload)',
+    )
+
+    def _run():
+        try:
+            _capture_upload(job, [io.BytesIO(p) for p in pages])
+        except Exception as exc:
+            logger.exception('Capture upload job #%s imeshindikana', job.pk)
+            ScanJob.objects.filter(pk=job.pk).update(
+                status=ScanJob.Status.FAILED,
+                result_message=f'Imeshindikana kusoma karatasi: {exc}'[:255],
+                completed_at=timezone.now(),
+            )
+        finally:
+            connection.close()
+
+    threading.Thread(target=_run, daemon=True).start()
+    return JsonResponse({'ok': True, 'job_id': job.pk, 'pages': len(pages)})
 
 
 @require_GET

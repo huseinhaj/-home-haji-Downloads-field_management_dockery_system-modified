@@ -318,6 +318,7 @@ from .bridge_views import (  # noqa: E402
     bridge_capture_page,
     bridge_capture_start,
     bridge_capture_status,
+    bridge_capture_upload,
     bridge_claim,
     bridge_fail,
     bridge_job_status,
@@ -341,6 +342,7 @@ urlpatterns += [
          bridge_job_status, name='bridge_job_status'),
     # Capture Scores: karatasi zilizosahihishwa → reg no + alama → Marks Entry
     path('sahishi/bridge/capture/anza/', bridge_capture_start, name='bridge_capture_start'),
+    path('sahishi/bridge/capture/pakia/', bridge_capture_upload, name='bridge_capture_upload'),
     path('sahishi/bridge/capture/<int:job_id>/hali/', bridge_capture_status, name='bridge_capture_status'),
     path('sahishi/bridge/capture/<int:job_id>/ghairi/', bridge_capture_cancel, name='bridge_capture_cancel'),
     path('sahishi/bridge/capture/<int:job_id>/ukurasa/<int:page>/', bridge_capture_page, name='bridge_capture_page'),
