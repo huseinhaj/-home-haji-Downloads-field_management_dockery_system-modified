@@ -235,6 +235,127 @@ class SetupKyerwaCommandTests(TestCase):
         self.assertEqual(School.objects.count(), 0)
 
 
+class JointRecomputeTests(TestCase):
+    """recompute_all_processed_results must repair rows the grade-tie bug
+    damaged, including rows of a DC Joint exam.
+
+    The tiebreak bug's signature is "division and points unchanged,
+    total/average/counted_subjects wrong" — a report that only watched
+    division would score such a run as 0 changes, so the diff has to cover
+    every stored field. DC Joint needs no special path: attach_school()
+    gives each member school a plain Exam row, which the command
+    recomputes like any other exam; --joint just scopes the queryset.
+    """
+
+    databases = {'default', 'results'}
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name='Bernard Secondary School', region='Kagera', district='Kyerwa',
+            ward='Isingiro', ownership='PRIVATE', level='secondary')
+        self.joint = JointExam.objects.create(
+            name='FORM ONE JOINT', form=1, year=2026,
+            district='Kyerwa', region='Kagera')
+        self.subjects = []
+        for name in ('Agriculture', 'Biology', 'Chemistry', 'Divinity', 'English',
+                     'Geography', 'History', 'Zoology'):
+            # Seeded subjects already exist in the test DB — reuse them.
+            subject, _ = Subject.objects.get_or_create(name=name)
+            self.subjects.append(subject)
+        self.joint.subjects.set(self.subjects)
+        self.exam = self.joint.attach_school(self.school)
+        self.student = Student.objects.create(
+            first_name='Asha', last_name='Test', gender='F')
+        strong = dict(zip(
+            ('Agriculture', 'Biology', 'Chemistry', 'Divinity', 'English', 'Geography'),
+            (80, 70, 68, 50, 49, 47),
+        ))
+        # History & Zoology share grade D — the old name-ordered sort kept
+        # Zoology and threw away History, costing the candidate 13 marks.
+        marks = {**strong, 'History': 31, 'Zoology': 44}
+        by_name = dict(zip(
+            ('Agriculture', 'Biology', 'Chemistry', 'Divinity', 'English', 'Geography',
+             'History', 'Zoology'), self.subjects))
+        for name, score in marks.items():
+            ExamResult.objects.create(
+                exam=self.exam, student=self.student, subject=by_name[name], score=score)
+
+    def _stale_row(self):
+        """The row as the buggy code wrote it: 6 strong + Zoology = 395."""
+        from .services.upload_processing_service import recompute_processed_results_for_exam
+        recompute_processed_results_for_exam(self.exam)
+        row = ProcessedResult.objects.get(exam=self.exam, student=self.student)
+        row.total_score = 395
+        row.average_score = 56.43  # 395/7 as the buggy sort wrote it
+        row.counted_subjects = ', '.join(
+            n for n in ('Agriculture', 'Biology', 'Chemistry', 'Divinity',
+                        'English', 'Geography', 'History'))
+        row.save(update_fields=['total_score', 'average_score', 'counted_subjects'])
+        return row
+
+    def test_command_repairs_a_grade_tie_row_of_a_joint_exam(self):
+        stale = self._stale_row()
+        self.assertEqual(stale.total_score, 395)
+
+        out = io.StringIO()
+        call_command('recompute_all_processed_results', '--exam', self.exam.pk,
+                     '--in-process', stdout=out)
+        report = out.getvalue()
+
+        fixed = ProcessedResult.objects.get(exam=self.exam, student=self.student)
+        self.assertEqual(fixed.total_score, 408)          # 31 -> 44 recovered
+        self.assertEqual(float(fixed.average_score), 58.29)
+        self.assertIn('Zoology', fixed.counted_subjects)   # 44 recovered
+        self.assertNotIn('History', fixed.counted_subjects)  # 31 given up
+        # points/division were never wrong and must not drift
+        self.assertEqual(fixed.points, stale.points)
+        self.assertEqual(fixed.division, stale.division)
+        # the diff must NAME the fields it fixed, not just count a row
+        self.assertIn('total_score', report)
+        self.assertIn('average_score', report)
+        self.assertIn('counted_subjects', report)
+
+    def test_dry_run_reports_the_fix_but_saves_nothing(self):
+        self._stale_row()
+        out = io.StringIO()
+        call_command('recompute_all_processed_results', '--exam', self.exam.pk,
+                     '--in-process', '--dry-run', stdout=out)
+        self.assertIn('DRY RUN', out.getvalue())
+        self.assertEqual(
+            ProcessedResult.objects.get(exam=self.exam, student=self.student).total_score,
+            395,
+        )
+
+    def test_joint_filter_scopes_the_run_to_that_wilaya(self):
+        self._stale_row()   # give this joint's exam a cached row to repair
+        other = School.objects.create(
+            name='Businde Secondary School', region='Kagera', district='Kyerwa',
+            level='secondary')
+        other_joint = JointExam.objects.create(
+            name='FORM ONE JOINT (BWANI)', form=1, year=2026, district='Kyerwa')
+        other_exam = other_joint.attach_school(other)
+        other_student = Student.objects.create(first_name='Businde', last_name='T', gender='M')
+        subject, _ = Subject.objects.get_or_create(name='Mathematics')
+        ExamResult.objects.create(
+            exam=other_exam, student=other_student, subject=subject, score=70)
+        from .services.upload_processing_service import recompute_processed_results_for_exam
+        recompute_processed_results_for_exam(other_exam)
+        untouched = ProcessedResult.objects.get(exam=other_exam, student=other_student)
+        untouched.total_score = 1
+        untouched.save(update_fields=['total_score'])
+
+        call_command('recompute_all_processed_results', '--joint', self.joint.pk,
+                     '--in-process', stdout=io.StringIO())
+        self.assertEqual(
+            ProcessedResult.objects.get(exam=self.exam, student=self.student).total_score,
+            408,
+        )
+        self.assertEqual(
+            ProcessedResult.objects.get(exam=other_exam, student=other_student).total_score,
+            1, 'mtihani wa joint nyingine haukubadilishwa',
+        )
+
+
 class AcademicJoinTests(TestCase):
     """Mtaaluma: "Join Kyerwa DC Joint Exams" → kata, umiliki, shule → alama kwenye Marks Entry."""
 
