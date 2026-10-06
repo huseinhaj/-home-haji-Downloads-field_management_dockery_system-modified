@@ -1678,7 +1678,16 @@ Imekamilika.
     updateReviewStats();
   });
 
-  // Check OCR health on page load
+  // Onyesho la AI: TAARIFA ZA NDANI hazionyeshiwi hapa.
+  // Zilikuwa zinaonyesha salio la akaunti ya OpenRouter, mpangilio
+  // wa wanaotoa (openrouter → gemini) na sababu ya Gemini kushindwa
+  // — vyote ni taarifa za mfumo, si za kazi ya mwalimu, na zilikuwa
+  // zinaonekana kwa kila mtu aliyefungua ukurasa huu.
+  //
+  // Tunabaki na HITILAFAU HALISI tu: ikiwa hakuna AI inayoweza kufanya
+  // kazi, mwalimu lazima aone. Bila hiyo angepakia scoresheet, AI
+  // haisomyi chochote, paneli ingeonyesha "0 wanafunzi waliofanikiwa",
+  // naye akadhani msimamizi wa mfumo ndiye aliyekosea.
   (function checkOCR() {
     var el = document.getElementById('ocrHealth');
     if (!el) return;
@@ -1690,45 +1699,27 @@ Imekamilika.
       el.innerHTML = html;
     }
     fetch("{% url 'ocr_health_check' %}")
-      .then(function(r) { return r.json(); })
+      .then(function(r) { return r.ok ? r.json() : null; })
       .then(function(data) {
-        var notes = [];
-        // Salio halisi — ufunguo unaweza kuthibitisha vizuri lakini
-        // bado kila wito linapata 402 mara salio linapomalika.
-        if (data.openrouter_has_credits === false) {
-          notes.push('💳 Salio la OpenRouter limeisha — ongeza credits: openrouter.ai/settings/credits');
-        } else if (typeof data.openrouter_balance === 'number') {
-          notes.push('💳 Salio la OpenRouter: $' + data.openrouter_balance.toFixed(2));
-        }
-        // Mwanagenzi alimlipa hivi karibuni: mfumo wa gunicorn bado
-        // anakumbuka salio lilikuwa limeisha na hujiruhusu OpenRouter
-        // kwa dakika 15. Bila ujumbe huu anaona "AI imeshindwa" akidhani
-        // malipo hayajatika.
-        if (data.openrouter_cooldown_s > 0) {
-          notes.push('⏳ OpenRouter imeuzimwa kwa sekunda ' + data.openrouter_cooldown_s +
-            ' (salio lilikuwa limeisha kabla ya malipo). Inaanza yenyewe baada ya muda huo — fungua upena mfumo au subiri.');
-        }
-        // Sababu halisi ya Gemini kushindwa: si 'AI imeshindwa', ni
-        // variable moja kwenye mfumo.
-        if (data.gemini_problem) {
-          notes.push('ℹ️ Gemini haitatumika: ' + data.gemini_problem);
-        }
-        if (notes.length) {
-          box('#fff3cd', '#856404', '1px solid #ffc107',
-            'ℹ️ AI inatumika kupitia: <strong>' + (data.provider_order || []).join(' → ') + '</strong>' +
-            '<ul style="margin:0.4rem 0 0 1.2rem;padding:0;">' +
-            notes.map(function(n) { return '<li>' + n + '</li>'; }).join('') + '</ul>');
+        if (!data) { el.style.display = 'none'; return; }
+        // Hakuna ufunguo wowote — OCR haiwezi kufanya kazi kabisa.
+        if (!data.openrouter && !data.gemini) {
+          box('#f8d7da', '#721c24', '1px solid #f5c6cb',
+            '❌ Hakuna AI imewekwa kwenye mfumo — kusoma scoresheet kusingiwezi kufanya kazi. Tafadhali wasiliana na msimamizi wa mfumo.');
           return;
         }
-        if (data.openrouter_ok === false) {
+        // Kuna ufunguo, lakini hakuna anayeweza kutumika — mfano sasa
+        // salio limeisha au ufunguo umekosewa. Hapa mwalimu anapaswa
+        // ajue, lakini hatuna chochote cha kumsha kuhusu jinsi ya
+        // kurekebisha — hilo ni kazi ya msimamizi wa mfumo.
+        var usable = (data.openrouter && data.openrouter_ok !== false) || data.gemini_usable;
+        if (!usable) {
           box('#fff3cd', '#856404', '1px solid #ffc107',
-            '⚠️ OpenRouter API haifanyi kazi — Gemini itatumika kama fallback.');
-        } else if (!data.openrouter && !data.gemini) {
-          box('#f8d7da', '#721c24', '1px solid #f5c6cb',
-            '❌ Hakuna AI API key iliyowekwa — OCR haiwezi kufanya kazi!');
-        } else {
-          el.style.display = 'none';
+            '⚠️ Kusoma scoresheet kusingiwezi kufanya kazi kwa sasa. Tafadhali wasiliana na msimamizi wa mfumo.');
+          return;
         }
+        // AI inafanya kazi. Hakuna kinachohitaji kuonyeshwa.
+        el.style.display = 'none';
       })
       .catch(function() { el.style.display = 'none'; });
   })();

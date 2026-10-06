@@ -4904,8 +4904,18 @@ def bulk_scoresheet_upload(request, exam_id):
 
 
 @academic_required
+@teacher_or_academic_required
+@never_cache
 def ocr_health_check(request):
-    """Check if OCR API keys are configured and working."""
+    """Check if OCR API keys are configured and working.
+
+    Mwanzo huu ulikuwa huraha bila ukingo wa login, kwa hiyo mtu
+    yeyote — hata asiyeingia — alikuwa anaweza kuiita na kusoma salio
+    halisi la akaunti ya OpenRouter, mpangilio wa wanaotoa, na sehemu
+    ya kwanza ya ufunguo (`prefix`, `len`). Hiyo ni taarifa ya akaunti
+    na yenyewe inaweza kusaidia kutatua hoja. Sasa imefungwa kwa
+    wafanyakazi wa shule pekee.
+    """
     from .services.scoresheet_ocr_service import check_ocr_health
     health = check_ocr_health()
     return JsonResponse(health)
