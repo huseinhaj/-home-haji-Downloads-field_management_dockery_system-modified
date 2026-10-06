@@ -49,6 +49,14 @@ _CANONICAL = {
     "advanced math": "Advanced Mathematics",
     "adv mathematics": "Advanced Mathematics",
     "adv maths": "Advanced Mathematics",
+    # NECTA prints this slash form on the ACSEE slip itself (verified on
+    # real 2024 result slips: "ADV/MATHS - 'C'"). Without it the subject
+    # canonicalises to "Adv/maths", which is in NO combination, so PCM /
+    # PGM / PMC / EGM / CBM candidates silently lose their division.
+    "adv/maths": "Advanced Mathematics",
+    "adv/math": "Advanced Mathematics",
+    "adv/mathematics": "Advanced Mathematics",
+    "advanced/maths": "Advanced Mathematics",
     "a-level mathematics": "Advanced Mathematics",
     "pure mathematics": "Advanced Mathematics",
     # ── English Language vs Literature in English ──
@@ -83,6 +91,17 @@ _CANONICAL = {
     "hte": "Historia ya Tanzania na Maadili",
     "geography": "Geography",
     "geo": "Geography",
+    # NECTA's own printed abbreviation on ACSEE slips ("GEOGR - 'C'").
+    # Without these two, Geography canonicalised to "Geogr"/"Geog" — not a
+    # subject in ANY combination — so CBG / PGM / HGL / HGK / HGE / EGM /
+    # PGE / KLG candidates fell through to a naive best-3 and could be
+    # given the wrong division. Verified on ACSEE 2024 slip S4828/0508:
+    # NECTA counted CBG (Chemistry 4 + Biology 5 + Geography 3 = 12) and
+    # dropped Divinity, which the candidate had scored better in.
+    "geogr": "Geography",
+    "geog": "Geography",
+    "geogry": "Geography",
+    "geo/graphy": "Geography",
     "physics": "Physics",
     "phy": "Physics",
     "chemistry": "Chemistry",

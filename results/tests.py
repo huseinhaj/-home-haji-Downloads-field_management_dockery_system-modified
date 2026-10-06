@@ -1960,6 +1960,39 @@ class AcseeCombinationDetectionTests(TestCase):
 		self.assertEqual(canon_subject('BAM'), 'Basic Applied Mathematics')
 		self.assertEqual(canon_subject('Nutmeg Studies'), 'Nutmeg Studies')
 
+	def test_necta_printed_slip_abbreviations_resolve(self):
+		"""Abbreviations NECTA itself prints on ACSEE result slips.
+
+		Real slip S4828/0508 (ACSEE 2024) reads "GEOGR - 'C'" and
+		"ADV/MATHS - 'C'" — with a slash. Unmapped, they canonicalised to
+		'Geogr'/'Adv/maths', which appear in NO combination, so those
+		candidates fell through to a naive best-3 and could be given the
+		wrong division. NECTA counted CBG (Chem 4 + Bio 5 + Geog 3 = 12)
+		and dropped the Divinity the candidate had scored better in.
+		"""
+		from .combinations import ACSEE_COMBINATIONS, canon_subject
+		in_a_combination = {s for subs in ACSEE_COMBINATIONS.values() for s in subs}
+		for raw in ('GEOGR', 'GEOG', 'ADV/MATHS', 'ADV MATHS', 'ADV/MATH'):
+			self.assertIn(canon_subject(raw), in_a_combination, raw)
+		self.assertEqual(canon_subject('GEOGR'), 'Geography')
+		self.assertEqual(canon_subject('ADV/MATHS'), 'Advanced Mathematics')
+
+	def test_slip_abbreviations_still_detect_the_right_combination(self):
+		"""Slip S4828/0508 verbatim — NECTA printed AGGT 12, Div II."""
+		from .combinations import canon_subject, detect_acsee_combination
+		from .utils import get_grade_points
+		sat = {'G/STUDIES': 'D', 'GEOGR': 'C', 'DIVINITY': 'B',
+		       'CHEMISTRY': 'D', 'BIOLOGY': 'E', 'BAM': 'F'}
+		by_canon = {}
+		for name, grade in sat.items():
+			pts = get_grade_points(grade, form=6)
+			cname = canon_subject(name)
+			if cname not in by_canon or pts < by_canon[cname][1]:
+				by_canon[cname] = (name, pts)
+		code, subs = detect_acsee_combination(by_canon.keys(), lambda n: by_canon[n][1])
+		self.assertEqual(code, 'CBG')
+		self.assertEqual(sum(by_canon[s][1] for s in subs), 12)
+
 	def test_detects_unambiguous_combination(self):
 		from .combinations import detect_acsee_combination
 		code, subs = detect_acsee_combination(
@@ -2180,6 +2213,58 @@ class RecomputeCseeMinimumSubjectRuleTests(TestCase):
 	def test_fewer_than_seven_subjects_get_INC(self):
 		result = self._run(Physics=90, Chemistry=88, Biology=85)  # 3x A
 		self.assertEqual(result.division, 'INC')
+
+	def test_grade_tie_is_broken_by_score_not_by_subject_name(self):
+		"""Two subjects sharing a grade must not be separated by NAME.
+
+		The best-7 cut happens after the sort, so a tie between two
+		grade-D subjects decided which one got thrown away. The rows
+		arrive ordered by subject name, so "Zoology" was dropped before
+		"History" — a candidate could lose a 44 to a 31 on alphabetical
+		order alone. TOTAL, AVERAGE and the position tiebreaker all come
+		from the kept rows, so that one mark also moved them down the
+		ranking while their division stayed correct.
+		"""
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		strong = dict(Agriculture=80, Biology=70, Chemistry=68, Divinity=50,
+		              English=49, Geography=47)          # A,B,B,C,C,C
+		weak = dict(History=31, Zoology=44)              # both grade D
+		results = {}
+		for first, marks in (('Asha', weak), ('Baraka', dict(History=44, Zoology=31))):
+			student = Student.objects.create(first_name=first, last_name='Test', gender='F')
+			for name, score in {**strong, **marks}.items():
+				subject, _ = Subject.objects.get_or_create(name=name)
+				ExamResult.objects.create(exam=self.exam, student=student, subject=subject, score=score)
+			recompute_processed_results_for_exam(self.exam)
+			results[first] = ProcessedResult.objects.get(exam=self.exam, student=student)
+
+		asha, baraka = results['Asha'], results['Baraka']
+		# Same multiset of marks -> identical everything. Only the subject
+		# each 44 belongs to differs.
+		self.assertEqual(asha.total_score, baraka.total_score)
+		self.assertEqual(asha.average_score, baraka.average_score)
+		self.assertEqual(asha.points, baraka.points)
+		self.assertEqual(asha.division, baraka.division)
+		# each keeps their own 44 rather than the 31
+		self.assertIn('Zoology', asha.counted_subjects)
+		self.assertIn('History', baraka.counted_subjects)
+
+	def test_a_higher_mark_always_survives_the_cut(self):
+		"""The kept mark must be the highest available, whatever its name."""
+		from .services.upload_processing_service import recompute_processed_results_for_exam
+		student = Student.objects.create(first_name='Keep', last_name='Best', gender='M')
+		marks = dict(Aardvark=80, Buffalo=70, Camel=68, Donkey=50, Eagle=49,
+		             Falcon=47, Gopher=44, Zebra=31)   # Gopher & Zebra both D
+		for name, score in marks.items():
+			subject, _ = Subject.objects.get_or_create(name=name)
+			ExamResult.objects.create(exam=self.exam, student=student, subject=subject, score=score)
+		recompute_processed_results_for_exam(self.exam)
+		result = ProcessedResult.objects.get(exam=self.exam, student=student)
+		self.assertIn('Gopher', result.counted_subjects)   # 44 kept
+		self.assertNotIn('Zebra', result.counted_subjects)  # 31 dropped
+		self.assertEqual(result.total_score, 408)
+		self.assertEqual(result.points, 18)
+		self.assertEqual(result.division, 'II')
 
 	def test_fewer_than_seven_with_fails_also_get_INC(self):
 		result = self._run(Physics=20, Chemistry=25)  # 2x F

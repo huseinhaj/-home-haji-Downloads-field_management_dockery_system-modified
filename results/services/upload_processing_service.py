@@ -131,6 +131,25 @@ _DIVISION_SUBJECT_COUNT = {1: 7, 2: 7, 3: 7, 4: 7, 5: 3, 6: 3}
 _DIVISION_ORDER = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, '0': 5, 'INC': 6, 'ABS': 7}
 
 
+def _best_first(result_points):
+    """Sort key that puts a candidate's BEST work first.
+
+    Primary key is the NECTA grade-point value (lower = better grade), so
+    DIVISION/points are untouched by this. The secondary key is the raw
+    score, DESCENDING, and it matters: the best-N cut happens AFTER this
+    sort, so when two subjects share a grade (e.g. two grade-D subjects at
+    31 and 44) the tie decides which one is thrown away. Without the score
+    key, Python's stable sort kept whatever order the rows arrived in —
+    which is `subject__name` — so a candidate could silently lose a 44 to
+    a 31 purely because "Zoology" sorts after "History". TOTAL, AVERAGE
+    and the position tiebreaker are all computed from the kept rows, so
+    that one dropped mark could also rank the candidate below someone with
+    the same division and a worse mark in every single subject.
+    """
+    result, points = result_points
+    return (points, -result.score)
+
+
 def _sync_student_genders_from_roster(exam):
     """Roster (FormStudent) ndiyo mkuu kwa gender: kila mwanafunzi wa mtihani
     huu aliye kwenye roster anasawazishwa na gender ya rosti yake. Hii
@@ -295,7 +314,7 @@ def recompute_processed_results_for_exam(exam):
                 combo_code, combo_subjects = combo
                 graded = sorted(
                     (by_canon[s] for s in combo_subjects if s in by_canon),
-                    key=lambda pair: pair[1],
+                    key=_best_first,
                 )
             else:
                 # No registered combination fits — either the sitting is
@@ -308,12 +327,12 @@ def recompute_processed_results_for_exam(exam):
                     pair for cname, pair in by_canon.items()
                     if not is_acsee_subsidiary_subject(cname)
                 ]
-                graded = sorted(principal, key=lambda pair: pair[1])[:best_n]
+                graded = sorted(principal, key=_best_first)[:best_n]
             acsee_principal_count = len(graded)
         else:
             graded = sorted(
                 ((r, get_grade_points(get_grade_for_form(r.score, exam.form, primary=is_primary), form=exam.form)) for r in results),
-                key=lambda pair: pair[1],
+                key=_best_first,
             )
 
         # Use best N subjects (or all if fewer than N).

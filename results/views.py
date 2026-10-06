@@ -481,7 +481,7 @@ def _preview_csee_division(exam, exam_results):
     if exam.form not in (1, 2, 3, 4):
         return None
 
-    from .services.upload_processing_service import _DIVISION_SUBJECT_COUNT
+    from .services.upload_processing_service import _DIVISION_SUBJECT_COUNT, _best_first
     from .utils import get_division, get_grade_for_form, get_grade_points
 
     best_n = _DIVISION_SUBJECT_COUNT.get(exam.form, 7)
@@ -497,7 +497,11 @@ def _preview_csee_division(exam, exam_results):
             (er, get_grade_points(get_grade_for_form(er.score, exam.form, primary=bool(exam.school and exam.school.is_primary)), form=exam.form))
             for er in results
         ),
-        key=lambda pair: pair[1],
+        # Same best-N cut as recompute_processed_results_for_exam, and
+        # therefore the same tie-break (score descending) — otherwise this
+        # preview could disagree with the stored result on which of two
+        # equal-grade subjects survives the cut.
+        key=_best_first,
     )
     best = graded[:best_n]
     points = sum(p for _, p in best)
