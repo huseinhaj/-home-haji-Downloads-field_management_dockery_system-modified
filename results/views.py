@@ -27,6 +27,7 @@ from django.views.decorators.cache import never_cache
 from django.core.exceptions import ValidationError
 
 from .forms import ExamUploadForm, TeacherSelfSubjectsForm
+from .district_models import JointExam
 from .models import Exam, ExamResult, FormStudent, PersonalUpload, PersonalUploadResult, PrintSubmission, ProcessedResult, School, SchoolSubject, Student, Subject, SubjectSubmission, TeacherAccount, TeacherFormAssignment
 from .permissions import academic_required, printing_secretary_required, results_login_required as login_required, teacher_or_academic_required, teacher_required
 from .tasks import process_roster_scan_task
@@ -452,6 +453,10 @@ def public_results_search(request):
     # inashughulikia AnonymousUser kabla ya kuangalia is_academic.
     is_academic_user = request.user.is_authenticated and getattr(request.user, 'is_academic', False)
 
+    # Mitihani ya wilaya iliyochapishwa — mtu anaweza kuingia moja kwa moja
+    # kwenye ukurasa wa herufi A–Z kama NECTA (hakuna login).
+    district_joints = list(JointExam.objects.filter(published=True).order_by('-year', '-created_at')[:24])
+
     return render(request, 'results/student_results_search.html', {
         'query': query,
         'selected_form': selected_form,
@@ -465,6 +470,7 @@ def public_results_search(request):
         'year_choices': year_choices,
         'lang': lang,
         'is_academic_user': is_academic_user,
+        'district_joints': district_joints,
     })
 
 

@@ -12,6 +12,9 @@
   <div class="d-flex gap-2 flex-wrap mt-2">
     <a href="{% url 'joint_exam_create' %}" class="kbtn kbtn--primary"><i class="fas fa-plus-circle"></i> {% if LANG == 'sw' %}Unda Joint Exam{% else %}Create Joint Exam{% endif %}</a>
     <a href="{% url 'district_schools' %}" class="kbtn kbtn--ghost"><i class="fas fa-school"></i> {% if LANG == 'sw' %}Shule za Wilaya{% else %}District Schools{% endif %}</a>
+    {% if joints %}
+    <a href="{% url 'district_necta_index' joints.0.pk %}" class="kbtn kbtn--gold"><i class="fas fa-globe"></i> {% if LANG == 'sw' %}Matokeo kwa Umma (NECTA){% else %}Public Results (NECTA){% endif %}</a>
+    {% endif %}
   </div>
 </section>
 

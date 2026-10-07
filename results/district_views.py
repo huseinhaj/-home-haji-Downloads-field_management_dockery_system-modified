@@ -11,6 +11,10 @@ Afisa (TeacherAccount.ROLE_DISTRICT):
 
 Shule (Mtaaluma/Mwalimu wa shule inayoshiriki):
   /shule/exam/<exam_id>/wilaya/           performance ya shule zote za wilaya
+
+Umma (bila login — kama NECTA, baada ya afisa kuyafungua):
+  /shule/wilaya/<joint_id>/matokeo/       chagua herufi → shule zinazoanzia nayo
+  /shule/wilaya/<joint_id>/matokeo/<id>/  matokeo kamili ya shule hiyo
 """
 import datetime
 
@@ -21,15 +25,17 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from .district_models import (
-    JointExam, district_program_name, is_empty_placeholder, joints_for_school,
-    schools_in_district,
+    JointExam, district_key, district_program_name, is_empty_placeholder,
+    joints_for_school, schools_in_district,
 )
-from .models import Exam, School, Subject
+from .models import Exam, ExamResult, ProcessedResult, School, Subject
 from .permissions import _role_required, academic_required, teacher_or_academic_required
 from .services.joint_analysis import analyse_joint_exam
+from .utils import get_grade_for_exam, get_grade_primary
 
 district_officer_required = _role_required(
     lambda user: getattr(user, 'is_district_officer', False),
@@ -323,4 +329,160 @@ def district_joint_join(request):
         'program': program, 'schools': schools, 'wards': wards, 'form': form,
         'my_school': my_school,
         'ownership_choices': School.OWNERSHIP_CHOICES,
+    })
+
+
+# ==================== Matokeo ya umma — muundo wa NECTA ====================
+#
+# NECTA inachapisha matokeo kwa mtiririko huu: mtu anafungua ukurasa wa
+# wilaya, anapata herufi A–Z, anabonyeza herufi ya kwanza ya jina la shule
+# yake, kisha anapata shule zinazoanzia nayo — alichague moja na aone
+# matokeo YOTE ya shule hiyo (nafasi, jina, alama za masomo, points,
+# daraja) kama ilivyochapishwa.
+#
+# Hapa: /shule/wilaya/<joint_id>/matokeo/  na  .../matokeo/<exam_id>/
+
+
+def _public_joint_or_404(request, joint_id):
+    """Joint ya wilaya kwa ukurasa huu wa umma.
+
+    Baada ya Afisa kuyafungua (`joint.published`) mtu yeyote anaona —
+    hiyo ndiyo "kuchapisha" kama NECTA. Kabla ya hapo ni Afisa Wilaya ya
+    hiyo joint na shule zinazoshiriki pekee ndizo zinaona; mwingine anaona
+    404 (si 403 — tusionyeshe kuwa mtihani huu upo).
+    """
+    joint = get_object_or_404(JointExam, pk=joint_id)
+    if joint.published:
+        return joint
+    user = request.user
+    if not getattr(user, 'is_authenticated', False):
+        raise Http404('Matokeo ya wilaya hayajafunguliwa bado.')
+    if getattr(user, 'is_district_officer', False) and \
+            district_key(user.district) == district_key(joint.district):
+        return joint
+    school = getattr(user, 'school', None)
+    if school and joint.school_exams.filter(school=school).exists():
+        return joint
+    raise Http404('Matokeo ya wilaya hayajafunguliwa bado.')
+
+
+def _school_letter(name):
+    """Herufi ya kwanza ya jina la shule — NECTA hupanga kwa hiyo.
+
+    Herufi si herufi (namba, alama za nukta) hupitwa: "Shule ya Sekondari
+    ..." na "St. Mary's" zote zinawekea kwenye S.
+    """
+    for ch in (name or ''):
+        if ch.isalpha():
+            return ch.upper()
+    return '#'
+
+
+def district_necta_index(request, joint_id):
+    """Ukurasa wa umma: chagua herufi → orodha ya shule zinazoanzia nayo."""
+    joint = _public_joint_or_404(request, joint_id)
+
+    exams = [
+        ex for ex in joint.school_exams.select_related('school')
+        .order_by('school__name')
+        if ex.school_id and ex.school
+    ]
+    grouped = {}
+    for ex in exams:
+        grouped.setdefault(_school_letter(ex.school.name), []).append(ex)
+
+    alphabet = [
+        {'letter': chr(code), 'count': len(grouped.get(chr(code), []))}
+        for code in range(ord('A'), ord('Z') + 1)
+    ]
+
+    selected = (request.GET.get('L') or '').strip().upper()[:1]
+    if not selected.isalpha():
+        selected = ''
+
+    return render(request, 'results/district/necta_schools.html', {
+        'joint': joint,
+        'alphabet': alphabet,
+        'selected': selected,
+        'schools': grouped.get(selected, []) if selected else [],
+        'school_total': len(exams),
+        # Masthead ya base.html inatoka kwa mtumiaji aliyeingia — kwa ukurasa
+        # wa umma tunalazimisha jina la wilaya ya hii joint (mf. KYERWA).
+        'DISTRICT_NAME': joint.district,
+        'IS_KYERWA': 'kyerwa' in (joint.district or '').lower(),
+    })
+
+
+def district_necta_school(request, joint_id, exam_id):
+    """Matokeo kamili ya shule moja — kama NECTA inavyochapisha: kila
+    mwanafunzi na nafasi yake, alama za masomo (A–F/X), points na daraja."""
+    joint = _public_joint_or_404(request, joint_id)
+    exam = get_object_or_404(
+        Exam.objects.select_related('school'), pk=exam_id, joint_exam=joint,
+    )
+    school = exam.school
+    if school is None:
+        raise Http404('Mtihani huu hauna shule.')
+
+    processed = list(
+        ProcessedResult.objects.filter(exam=exam).select_related('student')
+        .order_by(
+            F('position').asc(nulls_last=True),
+            'student__last_name', 'student__first_name',
+        )
+    )
+
+    subjects = list(
+        Subject.objects.filter(examresult__exam=exam)
+        .distinct().order_by('name')
+    )
+
+    # Gredi ya kila (mwanafunzi, somo) — 'X' kwa aliyetosa/aliye absent.
+    marks = {}
+    for student_id, subject_id, score, is_absent in ExamResult.objects.filter(
+        exam=exam,
+    ).values_list('student_id', 'subject_id', 'score', 'is_absent'):
+        if is_absent or score is None:
+            marks[(student_id, subject_id)] = 'X'
+        else:
+            marks[(student_id, subject_id)] = get_grade_for_exam(score, exam)
+
+    is_primary = bool(school.is_primary)
+    rows = []
+    divisions = {'I': 0, 'II': 0, 'III': 0, 'IV': 0, '0': 0, 'INC': 0, 'ABS': 0}
+    for pr in processed:
+        st = pr.student
+        name = ' '.join(p for p in [st.first_name, st.middle_name or '', st.last_name] if p)
+        if pr.division in divisions:
+            divisions[pr.division] += 1
+        rows.append({
+            'position': pr.position,
+            'name': name,
+            'gender': st.gender,
+            'division': pr.division,
+            # Msingi hauna division — NECTA ya PSLE inaonyesha wastani +
+            # daraja (A–E), kwa hiyo hiyo ndiyo "daraja" ya mwanafunzi hapa.
+            'display_division': (
+                pr.division if pr.division else
+                (f'{pr.average_score:g} ({get_grade_primary(float(pr.average_score))})'
+                 if is_primary and pr.average_score is not None else '—')
+            ),
+            'points': pr.points,
+            'average': pr.average_score,
+            'grades': [marks.get((st.pk, s.pk), '') for s in subjects],
+        })
+
+    sat = sum(v for k, v in divisions.items() if k != 'ABS')
+    return render(request, 'results/district/necta_school_results.html', {
+        'joint': joint,
+        'exam': exam,
+        'school': school,
+        'subjects': subjects,
+        'rows': rows,
+        'divisions': divisions,
+        'registered': len(rows),
+        'sat': sat,
+        'is_primary': is_primary,
+        'DISTRICT_NAME': joint.district,
+        'IS_KYERWA': 'kyerwa' in (joint.district or '').lower(),
     })

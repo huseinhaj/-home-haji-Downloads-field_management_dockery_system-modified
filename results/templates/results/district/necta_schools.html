@@ -1,0 +1,149 @@
+{% extends 'results/base.html' %}
+{% block title %}{% if LANG == 'sw' %}Matokeo ya Wilaya{% else %}District Results{% endif %} | {{ joint.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Muundo wa NECTA (onlinesys.necta.go.tz): ukurasa wa bluu pana,
+     vigae vya njano fedha, maandishi ya navy na vichwa vya zambarau. */
+  .necta-page {
+    background: #87CEEB;
+    border: 3px solid #7A8BA8;
+    border-radius: 6px;
+    padding: 1.1rem 1rem 1.4rem;
+    color: #000080;
+  }
+  .necta-page a { color: #000080; }
+  .necta-head {
+    text-align: center;
+    color: #800080;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    line-height: 1.35;
+    margin-bottom: .35rem;
+  }
+  .necta-head .sub {
+    display: block;
+    font-size: .82rem;
+    font-weight: 700;
+    color: #000080;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .necta-rule { border: 0; border-top: 2px solid #7A8BA8; margin: .7rem 0; }
+  .letter-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .38rem;
+    justify-content: center;
+    margin: .5rem 0 .3rem;
+  }
+  .letter-grid a, .letter-grid span {
+    width: 2.35rem;
+    height: 2.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #7A8BA8;
+    border-radius: 4px;
+    background: #FFFFE0;
+    color: #000080;
+    font-weight: 800;
+    text-decoration: none;
+  }
+  .letter-grid span.off { opacity: .38; }
+  .letter-grid a.on { background: #800080; color: #fff; border-color: #800080; }
+  .necta-note {
+    text-align: center;
+    font-size: .88rem;
+    margin: .45rem 0 .8rem;
+  }
+  .necta-table {
+    background: #FFFFE0;
+    color: #000080;
+    border-color: #7A8BA8;
+    margin: 0;
+    font-size: .92rem;
+  }
+  .necta-table th, .necta-table td { border: 1px solid #7A8BA8; padding: .45rem .55rem; }
+  .necta-table thead th { background: #800080; color: #fff; text-align: center; }
+  .necta-table tbody td { text-align: center; }
+  .necta-table tbody td.name { text-align: left; font-weight: 700; }
+  .necta-table tbody tr:nth-child(even) td { background: #fffbe0; }
+  .necta-empty { text-align: center; padding: .9rem; font-weight: 700; }
+  .necta-back { display: inline-block; margin-top: .8rem; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="necta-page">
+  <div class="necta-head">
+    {% if LANG == 'sw' %}Halmashauri ya Wilaya ya{% else %}{{ joint.district|upper }} District Council:{% endif %}
+    {{ joint.district|upper }}
+    <span class="sub">
+      {{ joint.name }} &bull; Form {{ joint.form }} &bull; {{ joint.year }}
+      {% if joint.date %} &bull; {{ joint.date|date:"d M Y" }}{% endif %}
+    </span>
+    <span class="sub">
+      {% if LANG == 'sw' %}MATOKEO YA SHULE{% else %}SCHOOL RESULTS{% endif %}
+      ({{ school_total }}) —
+      {% if LANG == 'sw' %}chagua herufi ya kwanza ya jina la shule yako{% else %}choose the first letter of your school's name{% endif %}
+    </span>
+  </div>
+
+  <hr class="necta-rule">
+
+  <div class="letter-grid">
+    {% for item in alphabet %}
+      {% if item.count %}
+        <a href="?L={{ item.letter }}" class="{% if selected == item.letter %}on{% endif %}">{{ item.letter }}</a>
+      {% else %}
+        <span class="off" title="{% if LANG == 'sw' %}Hakuna shule{% else %}No schools{% endif %}">{{ item.letter }}</span>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <p class="necta-note">
+    {% if LANG == 'sw' %}
+      Bonyeza herufi ili kuona shule zinazoanzia nayo, kisha bonyeza jina la shule yako
+      kuona matokeo yake kamili.
+    {% else %}
+      Press a letter to list the schools starting with it, then press your school's
+      name to see its full results.
+    {% endif %}
+  </p>
+
+  {% if selected %}
+  <div class="table-responsive">
+    <table class="table necta-table">
+      <thead>
+        <tr>
+          <th style="width:3rem;">#</th>
+          <th>{% if LANG == 'sw' %}JINA LA SHULE{% else %}SCHOOL NAME{% endif %}</th>
+          <th>{% if LANG == 'sw' %}KATA{% else %}WARD{% endif %}</th>
+          <th>{% if LANG == 'sw' %}UMILIKI{% else %}OWNERSHIP{% endif %}</th>
+          <th>{% if LANG == 'sw' %}CHAGUA{% else %}SELECT{% endif %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ex in schools %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td class="name">{{ ex.school.name }}</td>
+          <td>{{ ex.school.ward|default:"—" }}</td>
+          <td>{% if ex.school.ownership == 'GOV' %}{% if LANG == 'sw' %}Serikali{% else %}Government{% endif %}{% elif ex.school.ownership %}{% if LANG == 'sw' %}Binafsi{% else %}Private{% endif %}{% else %}—{% endif %}</td>
+          <td><a href="{% url 'district_necta_school' joint.id ex.pk %}"><b>{% if LANG == 'sw' %}ONA MATOKEO{% else %}VIEW RESULTS{% endif %}</b></a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="necta-empty">
+          {% if LANG == 'sw' %}Hakuna shule inayoanzia na herufi {{ selected }} kwenye mtihani huu.{% else %}No school starting with {{ selected }} in this examination.{% endif %}
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <a class="necta-back" href="{% url 'student_results_search' %}">← {% if LANG == 'sw' %}Rudi kwenye utafutaji wa matokeo{% else %}Back to results search{% endif %}</a>
+</div>
+{% endblock %}

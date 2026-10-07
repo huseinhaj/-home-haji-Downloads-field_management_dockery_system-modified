@@ -358,6 +358,8 @@ from .district_views import (  # noqa: E402
     district_dashboard,
     district_joint_home,
     district_joint_join,
+    district_necta_index,
+    district_necta_school,
     district_schools,
     joint_exam_create,
     joint_exam_detail,
@@ -373,6 +375,9 @@ urlpatterns += [
     path('wilaya/joint/<int:joint_id>/', joint_exam_detail, name='joint_exam_detail'),
     path('wilaya/joint/<int:joint_id>/excel/', joint_exam_excel, name='joint_exam_excel'),
     path('wilaya/joint/<int:joint_id>/fungua/', joint_exam_publish, name='joint_exam_publish'),
+    # Matokeo ya umma kama NECTA: herufi A–Z → shule → matokeo kamili.
+    path('wilaya/<int:joint_id>/matokeo/', district_necta_index, name='district_necta_index'),
+    path('wilaya/<int:joint_id>/matokeo/<int:exam_id>/', district_necta_school, name='district_necta_school'),
     path('exam/<int:exam_id>/wilaya/', school_joint_results, name='school_joint_results'),
     path('joint-wilaya/', district_joint_home, name='district_joint_home'),
     path('joint-wilaya/jiunge/', district_joint_join, name='district_joint_join'),

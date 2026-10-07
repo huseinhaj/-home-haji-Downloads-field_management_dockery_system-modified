@@ -225,6 +225,30 @@
       vertical-align: middle;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── District joint exams (NECTA-style letter picker) ── */
+    .joint-strip { max-width: 800px; margin: 0 auto 3rem; padding: 0 1rem; }
+    .joint-strip__title {
+      font-weight: 800; font-size: 1rem; color: var(--navy);
+      text-align: center; text-transform: uppercase; letter-spacing: 0.04em;
+      margin-bottom: 0.2rem;
+    }
+    .joint-strip__sub {
+      font-size: 0.8rem; color: #7a8091; text-align: center; margin-bottom: 0.9rem;
+    }
+    .joint-strip__list { display: grid; gap: 0.6rem; }
+    .joint-strip__item {
+      display: flex; flex-direction: column; gap: 0.15rem;
+      background: #fff; border: 1.5px solid #dee2e6; border-left: 4px solid var(--gold);
+      border-radius: 2px; padding: 0.7rem 1rem; text-decoration: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .joint-strip__item:hover { border-color: var(--navy); box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+    .joint-strip__item b { color: var(--navy); font-size: 0.92rem; }
+    .joint-strip__item span { color: #7a8091; font-size: 0.78rem; }
+    .joint-strip__empty {
+      background: #fff; border: 1.5px dashed #dee2e6; border-radius: 2px;
+      padding: 0.9rem; text-align: center; color: #7a8091; font-size: 0.85rem;
+    }
     @media (max-width: 576px) {
       .search-card { padding: 1rem; }
       .portal-header { padding: 1.5rem 1rem 1.5rem; }
@@ -381,6 +405,26 @@
         </p>
       </div>
     {% endif %}
+  </div>
+
+  <!-- District joint exams — herufi A–Z kama NECTA -->
+  <div class="joint-strip">
+    <div class="joint-strip__title">🏛️ {% if lang == 'sw' %}Matokeo ya Mitihani ya Wilaya{% else %}District Joint Examination Results{% endif %}</div>
+    <div class="joint-strip__sub">
+      {% if lang == 'sw' %}Chagua mtihani wa wilaya yako, kisha herufi ya kwanza ya jina la shule{% else %}Pick your district examination, then the first letter of the school name{% endif %}
+    </div>
+    <div class="joint-strip__list">
+      {% for j in district_joints %}
+      <a class="joint-strip__item" href="{% url 'district_necta_index' j.pk %}">
+        <b>{{ j.name }}</b>
+        <span>{{ j.district }}{% if j.region %}, {{ j.region }}{% endif %} &bull; Form {{ j.form }} &bull; {{ j.year }}</span>
+      </a>
+      {% empty %}
+      <div class="joint-strip__empty">
+        {% if lang == 'sw' %}Bado hakuna mtihani wa wilaya uliochapishwa kwenye mfumo huu.{% else %}No district examination has been published yet.{% endif %}
+      </div>
+      {% endfor %}
+    </div>
   </div>
 
   <!-- Footer -->

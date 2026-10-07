@@ -25,8 +25,9 @@
       &bull; {% if LANG == 'sw' %}Shule{% else %}Schools{% endif %}: {{ data.schools|length }}
     </p>
   </div>
-  {% if is_officer %}
   <div class="d-flex gap-2 flex-wrap mt-2">
+    <a href="{% url 'district_necta_index' joint.id %}" class="kbtn kbtn--gold"><i class="fas fa-globe"></i> {% if LANG == 'sw' %}Matokeo kwa Umma (NECTA){% else %}Public Results (NECTA){% endif %}</a>
+    {% if is_officer %}
     <form method="get" action="{% url 'joint_exam_excel' joint.id %}" class="d-flex gap-2 flex-wrap align-items-center">
       <select name="own" class="form-select form-select-sm" style="width:auto;">
         <option value="">{% if LANG == 'sw' %}Shule zote{% else %}All schools{% endif %}</option>
@@ -45,8 +46,8 @@
       {% endif %}
     </form>
     <a href="{% url 'district_dashboard' %}" class="kbtn kbtn--ghost">{% if LANG == 'sw' %}Rudi{% else %}Back{% endif %}</a>
+    {% endif %}
   </div>
-  {% endif %}
 </section>
 
 <div class="mt-3 own-filter d-flex gap-2 flex-wrap">
