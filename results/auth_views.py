@@ -5,6 +5,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.cache import never_cache
 
 from .backends import ResultsAuthBackend
 from .forms import TeacherAccountForm, TeacherSubjectsForm
@@ -87,6 +88,7 @@ def _prg_login(request, step, email=''):
     return redirect('results_login')
 
 
+@never_cache
 def results_login(request):
     if request.user.is_authenticated and isinstance(request.user, TeacherAccount):
         return _redirect_for_role(request.user)

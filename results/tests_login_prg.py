@@ -110,3 +110,16 @@ class LoginPrgTests(TestCase):
     def test_register_school_link_still_on_plain_get(self):
         html = self.client.get(LOGIN_URL).content.decode()
         self.assertIn(reverse('register_school_start'), html)
+
+    def test_login_get_is_never_cached(self):
+        """Ukurasa wa login usijazwe mkononi kwenye cache za browser/proxy.
+
+        Ukurasa wa login uki-cached, browser inaweza kukabidhi nakala ya
+        zamani yenye csrf token ya kale wakati cookie ya csrftoken imebadilika —
+        hiyo ndiyo chanzo cha '403 CSRF verification failed' wakati wa login
+        (token ya fomu hailingani na cookie ya sasa). lazima 'no-store' iwepo.
+        """
+        r = self.client.get(LOGIN_URL)
+        cache_control = r.headers.get('Cache-Control', '')
+        self.assertIn('no-store', cache_control)
+        self.assertIn('no-cache', cache_control)
