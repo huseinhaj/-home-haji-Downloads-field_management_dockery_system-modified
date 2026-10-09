@@ -95,23 +95,28 @@ class SubTask(models.Model):
 
 
 class WeekEntry(models.Model):
-    """Kumbukumbu ya mwalimu kwa wiki moja kwa sub task moja (amount ya kuongeza)."""
+    """Kumbukumbu ya mwalimu kwa siku moja kwa sub task moja (kiingio kimoja = submission).
+
+    Mwalimu anaweza kuweka viingilio vingi kwa wiki (mara 2-3+ kwa siku
+    tofauti); kila siku kimoja kwa sub task. Jumla ya viingilio ndiyo
+    'actual' kwenye hesabu ya asilimia.
+    """
 
     subtask = models.ForeignKey(SubTask, on_delete=models.CASCADE, related_name='entries')
     profile = models.ForeignKey(
         TeacherProfile, on_delete=models.CASCADE, related_name='week_entries')
-    week_no = models.PositiveSmallIntegerField()
+    week_no = models.PositiveSmallIntegerField(default=1)
     date = models.DateField(default=timezone.localdate)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     note = models.CharField(max_length=400, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['week_no']
-        unique_together = [('subtask', 'week_no')]
+        ordering = ['date', 'week_no']
+        unique_together = [('subtask', 'date')]
 
     def __str__(self):
-        return f'Wiki {self.week_no}: {self.amount} ({self.subtask_id})'
+        return f'{self.date}: {self.amount} ({self.subtask_id})'
 
 
 class EssFillRun(models.Model):

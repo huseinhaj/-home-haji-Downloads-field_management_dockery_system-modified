@@ -1,9 +1,9 @@
 {% extends 'field_app/base.html' %}
-{% block title %}Ingiza wiki — ESS e-Utendaji{% endblock %}
+{% block title %}Rekodi wiki — ESS e-Utendaji{% endblock %}
 {% block content %}
 <div class="container py-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-    <h5 class="mb-0"><i class="fas fa-calendar-week me-2"></i>Ingiza kumbukumbu ya wiki</h5>
+    <h5 class="mb-0"><i class="fas fa-calendar-check me-2"></i>Rekodi kazi kwa wiki</h5>
     <form class="d-flex gap-2 align-items-center">
       <label class="text-muted small">Wiki namba:</label>
       <input type="number" name="week" min="1" class="form-control form-control-sm" style="width:90px"
@@ -15,53 +15,101 @@
   <form method="post">
     {% csrf_token %}
     <input type="hidden" name="week_no" value="{{ week }}">
-    <div class="row g-2 align-items-center mb-3">
-      <div class="col-auto"><label class="form-label mb-0 small">Tarehe ya kumbukumbu:</label></div>
-      <div class="col-auto"><input type="date" name="entry_date" class="form-control form-control-sm"
-                                   value="{% now 'Y-m-d' %}"></div>
+
+    {% if entries %}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header">Viingilio vya wiki {{ week }} (kilichowekwa tayari)</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr><th style="width:40px"></th><th>Tarehe</th><th>Sub Task</th>
+                <th style="width:110px">Kiasi</th><th>Maelezo</th></tr>
+          </thead>
+          <tbody>
+            {% for e in entries %}
+            <tr>
+              <td class="text-center"><input type="checkbox" class="form-check-input"
+                                             name="del_{{ e.id }}" title="Futa kiingilio hiki"></td>
+              <td>{{ e.date|date:"d/m/Y" }}</td>
+              <td class="small">{{ e.subtask.position }}. {{ e.subtask.description }}</td>
+              <td>{{ e.amount }}</td>
+              <td class="small">{{ e.note }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer text-muted small">Tiki kiingilio utakachotaka kufuta, halafu Hifadhi.</div>
     </div>
+    {% endif %}
 
     <div class="card shadow-sm">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Maandishi unayofanya kipindi cha wiki {{ week }}</span>
-        <button class="btn btn-sm btn-success" type="submit"><i class="fas fa-save me-1"></i>Hifadhi</button>
+        <span>Rekodi mpya — "leo nimefanya..."</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addRow()">
+          <i class="fas fa-plus me-1"></i>Ongeza safu</button>
       </div>
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
           <thead class="table-light">
             <tr>
+              <th style="width:150px">Tarehe</th>
               <th>Sub Task</th>
-              <th style="width:130px">Kiasi (wiki hii)</th>
-              <th style="width:200px">Maelezo</th>
-              <th class="text-end" style="width:150px">% hadi sasa</th>
+              <th style="width:110px">Kiasi leo</th>
+              <th style="width:220px">Maelezo (mf. vitu 2)</th>
             </tr>
           </thead>
-          <tbody>
-            {% for r in rows %}
-            <tr>
-              <td class="small">{{ r.st.position }}. {{ r.st.description }}
-                {% if r.expected %}<span class="text-muted">(tarajio wiki: {{ r.expected }})</span>{% endif %}</td>
-              <td><input type="number" step="any" class="form-control form-control-sm"
-                         name="amount_{{ r.st.id }}" value="{{ r.entry.amount|default_if_none:'' }}"
-                         {% if r.st.mode == 'annual' %}disabled title="annual — hujazwi kwa wiki"{% endif %}></td>
-              <td><input type="text" class="form-control form-control-sm" name="note_{{ r.st.id }}"
-                         value="{{ r.entry.note }}" placeholder="mf. nukuu 15, zana 1..."></td>
-              <td class="text-end"><span class="badge bg-info">{{ r.pct_str|default:'—' }}</span></td>
+          <tbody id="entryRows">
+            {% for i in "12345" %}
+            <tr class="erecord">
+              <td><input type="date" name="d_{{ forloop.counter0 }}" class="form-control form-control-sm"
+                         value="{% now 'Y-m-d' %}"></td>
+              <td>
+                <select name="s_{{ forloop.counter0 }}" class="form-select form-select-sm">
+                  <option value="">— chagua sub task —</option>
+                  {% for st in subtasks %}
+                  <option value="{{ st.id }}">{{ st.position }}. {{ st.description }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td><input type="number" step="any" name="a_{{ forloop.counter0 }}"
+                         class="form-control form-control-sm"></td>
+              <td><input type="text" name="n_{{ forloop.counter0 }}" class="form-control form-control-sm"></td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
-    <div class="mt-3">
-      <button class="btn btn-success"><i class="fas fa-save me-1"></i>Hifadhi wiki {{ week }}</button>
+
+    <div class="mt-3 d-flex gap-2">
+      <button class="btn btn-success"><i class="fas fa-save me-1"></i>Hifadhi rekodi za wiki {{ week }}</button>
       <a href="{% url 'ess_tracker:ess_home' %}" class="btn btn-outline-secondary">Rudi</a>
     </div>
     <small class="text-muted d-block mt-2">
-      Sub-task za <b>mwaka mzima</b> (maazimio, nukuu, tathmini) hujazwa target yao moja kwa moja;
-      zingine (maandalio, kufundisha, zana, majaribio) zinaongezwa kwa jumla ya wiki hii. Ikiwa umeandika
-      nambari kwenye 'Maelezo', tafadhali ziweke pia kwenye Kiasi — maelezo hayajahesabiwi.
+      Viingilio hivi vinahesabiwa kwenye asilimia. Zile asilimia zinaingia kwenye ESS baada ya kubofya
+      <b>Jaza ESS sasa</b> (hurudisha: mwalimu anaweza kuweka viingilio vingi kwa wiki — siku tofauti).
+      Sub-task za mwaka mzima (maazimio, nukuu, tathmini) zina asilimia 100 zenyewe.
     </small>
   </form>
 </div>
+
+<script>
+  var SUBTASK_OPTS = '{% for st in subtasks %}<option value="{{ st.id }}">{{ st.position }}. {{ st.description|escapejs }}</option>{% endfor %}';
+  var rowno = 5;
+  function addRow() {
+    var tbody = document.getElementById('entryRows');
+    var tr = document.createElement('tr');
+    tr.className = 'erecord';
+    var today = new Date().toISOString().split('T')[0];
+    tr.innerHTML =
+      '<td><input type="date" name="d_' + rowno + '" class="form-control form-control-sm" value="' + today + '"></td>' +
+      '<td><select name="s_' + rowno + '" class="form-select form-select-sm">' +
+      '<option value="">— chagua sub task —</option>' + SUBTASK_OPTS + '</select></td>' +
+      '<td><input type="number" step="any" name="a_' + rowno + '" class="form-control form-control-sm"></td>' +
+      '<td><input type="text" name="n_' + rowno + '" class="form-control form-control-sm"></td>';
+    tbody.appendChild(tr);
+    rowno += 1;
+  }
+</script>
 {% endblock %}

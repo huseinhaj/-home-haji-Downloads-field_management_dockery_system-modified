@@ -300,39 +300,69 @@ def ess_week(request):
         first = tasks[0]
         week = _week_of(first, date.today()) if date.today() >= first.start else 1
 
+    all_sts = SubTask.objects.filter(task__profile=profile) \
+        .exclude(mode='annual').order_by('task__start', 'position')
+
     if request.method == 'POST':
-        wk_no = int(request.POST.get('week_no') or week)
-        entry_date = request.POST.get('entry_date') or date.today().isoformat()
-        for field, val in request.POST.items():
-            if not field.startswith('amount_'):
-                continue
-            st_id = field.split('_', 1)[1]
-            val = val.strip()
-            note = request.POST.get(f'note_{st_id}', '').strip()
-            if not val:
+        week_no = int(request.POST.get('week_no') or week)
+        acc = {}
+        for i in range(len(request.POST)):
+            st_id = request.POST.get(f's_{i}', '').strip()
+            amt = request.POST.get(f'a_{i}', '').strip()
+            if not st_id or not amt:
                 continue
             st = SubTask.objects.filter(pk=st_id, task__profile=profile).first()
             if st is None:
                 continue
+            d = _parse_date(request.POST.get(f'd_{i}', ''), default=date.today())
+            note = request.POST.get(f'n_{i}', '').strip()
+            wk = _week_of(st.task, d) if d else week_no
+            key = (st.id, d)
+            if key in acc:
+                acc[key]['amount'] += _dec_or_zero(amt)
+                if note:
+                    acc[key]['note'] = (acc[key]['note'] + '; ' + note) if acc[key]['note'] else note
+            else:
+                acc[key] = {'amount': _dec_or_zero(amt), 'note': note,
+                            'week_no': wk, 'profile': profile, 'st': st}
+        for (st_id, d), v in acc.items():
             WeekEntry.objects.update_or_create(
-                subtask=st, week_no=wk_no,
-                defaults={'amount': _dec_or_zero(val), 'note': note,
-                          'profile': profile, 'date': entry_date})
-        messages.success(request, f'Wiki {wk_no} imehifadhiwa.')
-        return redirect(f'{request.path}?week={wk_no}')
+                subtask_id=st_id, date=d,
+                defaults={'week_no': v['week_no'], 'amount': v['amount'],
+                          'note': v['note'], 'profile': profile})
+        deleted = 0
+        for key, val in request.POST.items():
+            if not key.startswith('del_'):
+                continue
+            if val == 'on':
+                WeekEntry.objects.filter(
+                    pk=key.split('_', 1)[1], profile=profile).delete()
+                deleted += 1
+        msgs = []
+        amount_rows = len(acc)
+        if amount_rows:
+            msgs.append(f'Viingilio {amount_rows} vimehifadhiwa.')
+        if deleted:
+            msgs.append(f'Vimefutwa: {deleted}.')
+        (messages.success(request, ' '.join(msgs) or 'Hakuna kilichohifadhiwa.')
+         if msgs else messages.info(request, 'Hakuna kilichohifadhiwa.'))
+        return redirect(f'{request.path}?week={week}')
 
-    rows = []
-    for task in tasks:
-        for snap in subtask_snapshot(task):
-            st = snap['st']
-            entry = WeekEntry.objects.filter(subtask=st, week_no=week).first()
-            rows.append({**snap, 'entry': entry})
+    entries = list(WeekEntry.objects.filter(profile=profile, week_no=week)
+                   .select_related('subtask__task').order_by('-date', '-created_at'))
     return render(request, 'ess_tracker/ess_week.html', {
         'profile': profile,
         'tasks': tasks,
         'week': week,
-        'rows': rows,
+        'subtasks': all_sts,
+        'entries': entries,
     })
+
+
+def _parse_date(val, default=None):
+    from .compute import parse_date as _pd
+    d = _pd(val)
+    return d or default
 
 
 @login_required(login_url=ESS_LOGIN_URL)
