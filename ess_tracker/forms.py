@@ -7,46 +7,66 @@ from .models import MODE_CHOICES, SubTask, Task, TeacherProfile
 CustomUser = get_user_model()
 
 
-class TeacherRegistrationForm(UserCreationForm):
-    """Kujisajili kwa mwalimu wa ESS — bila kuunda wasifu wa intern/student."""
+class TeacherRegistrationForm(forms.Form):
+    """Kujisajili kwa mwalimu wa ESS kwa kutumia username na password ZAKE ZA ESS."""
 
-    full_name = forms.CharField(label='Majina kamili', max_length=255)
-    phone = forms.CharField(label='Namba ya simu', max_length=20, required=False)
-    email = forms.EmailField(label='Barua pepe')
+    ess_username = forms.CharField(label='Username ya ESS (e-Utendaji)', max_length=255)
+    password1 = forms.CharField(label='Password ya ESS', widget=forms.PasswordInput(
+        attrs={'placeholder': '********', 'autocomplete': 'new-password'}))
+    password2 = forms.CharField(
+        label='Thibitisha password', widget=forms.PasswordInput(
+            attrs={'placeholder': '********', 'autocomplete': 'new-password'}))
 
-    class Meta:
-        model = CustomUser
-        fields = ('email', 'password1', 'password2', 'full_name', 'phone')
-        widgets = {
-            'email': forms.EmailInput(attrs={'class': 'form-control'}),
-            'password1': forms.PasswordInput(attrs={'class': 'form-control'}),
-            'password2': forms.PasswordInput(attrs={'class': 'form-control'}),
-            'full_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'phone': forms.TextInput(attrs={'class': 'form-control'}),
-        }
+    def clean_ess_username(self):
+        u = (self.cleaned_data.get('ess_username') or '').strip()
+        if not u:
+            raise forms.ValidationError('Weka username yako ya ESS.')
+        if TeacherProfile.objects.filter(ess_username__iexact=u).exists():
+            raise forms.ValidationError('Username hii ya ESS tayari imesajiliwa. Ingia tu.')
+        return u
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for name in ('full_name', 'phone', 'email', 'password1', 'password2'):
-            self.fields[name].widget.attrs['class'] = 'form-control'
+    def clean(self):
+        cleaned = super().clean()
+        pw1 = cleaned.get('password1')
+        pw2 = cleaned.get('password2')
+        if pw1 and pw1 != pw2:
+            self.add_error('password2', 'Password mbili hazilingani.')
+        return cleaned
 
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.username = user.email
-        if commit:
-            user.save()
-            TeacherProfile.objects.get_or_create(
-                user=user,
-                defaults={'full_name': self.cleaned_data.get('full_name', '')})
-        return user
+    def build_user_and_profile(self) -> tuple:
+        """Unda CustomUser (usiotumika moja kwa moja) + TeacherProfile ya ESS.
+
+        CustomUser ina password isiyotumika (mwalimu hakimbaji kwa email);
+        kuingia ni kwa ESS username + password pekee.
+        """
+        username = self.cleaned_data['ess_username'].strip()
+        email = _ess_email_for_username(username)
+        base, i = email, 0
+        while CustomUser.objects.filter(email=email).exists():
+            i += 1
+            root = base.split('@')[0]
+            email = f'{root}-{i}@eutendaji.moe.go.tz'
+        user = CustomUser.objects.create_user(email=email, password=None)
+        user.is_active = True
+        user.save()
+        profile = TeacherProfile(user=user, full_name=username, ess_username=username)
+        profile.set_ess_password(self.cleaned_data['password1'])
+        profile.save()
+        return user, profile
+
+
+def _ess_email_for_username(username: str) -> str:
+    import re
+    safe = re.sub(r'[^a-z0-9._-]+', '', username.lower())
+    return f'{safe}@eutendaji.moe.go.tz'
 
 
 class ProfileForm(forms.ModelForm):
     ess_password = forms.CharField(
-        label='Password ya ESS (e-Utendaji)',
+        label='Password yako ya ESS (e-Utendaji)',
         required=False,
         widget=forms.PasswordInput(render_value=True),
-        help_text='Imehifadhiwa kwa usimbaji. Ikitolewa tupu tupu, password ya zamani inasalia.')
+        help_text='Imehifadhiwa kwa usimbaji. Ikitolewa tupu, password ya zamani inasalia.')
 
     class Meta:
         model = TeacherProfile
@@ -57,11 +77,24 @@ class ProfileForm(forms.ModelForm):
             'school': forms.Select(attrs={'class': 'form-select'}),
             'ess_username': forms.TextInput(attrs={'class': 'form-control'}),
         }
+        labels = {
+            'ess_username': 'Username yako ya ESS (e-Utendaji)',
+            'full_name': 'Majina kamili',
+            'school': 'Shule',
+        }
 
     def clean(self):
         cleaned = super().clean()
         if not cleaned.get('full_name'):
             cleaned['full_name'] = self.instance.user.email or ''
+        uname = (cleaned.get('ess_username') or '').strip()
+        if uname:
+            dup = TeacherProfile.objects.filter(ess_username__iexact=uname)
+            if self.instance and self.instance.pk:
+                dup = dup.exclude(pk=self.instance.pk)
+            if dup.exists():
+                self.add_error('ess_username',
+                               'Username hii ya ESS inatumiwa na mwalimu mwingine.')
         return cleaned
 
     def save(self, commit=True):

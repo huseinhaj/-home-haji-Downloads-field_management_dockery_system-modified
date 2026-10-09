@@ -2,9 +2,8 @@ import threading
 from datetime import date
 
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db.models import Sum
 from django.http import JsonResponse
@@ -19,8 +18,6 @@ from .forms import (AutogenForm, ProfileForm, SubTaskEditForm, TaskForm,
                     TeacherRegistrationForm)
 from .models import EssFillRun, SubTask, Task, TeacherProfile, WeekEntry
 
-CustomUser = get_user_model()
-
 ESS_LOGIN_URL = '/ess/login/'
 
 
@@ -32,36 +29,49 @@ def _safe_next(request, fallback='/ess/'):
 
 
 def ess_login(request):
-    """Login ya walimu (kwa ESS pekee) — si portal ya internship."""
+    """Login ya walimu kwa username+password zake Mwenyewe ZA ESS (e-Utendaji)."""
     if request.user.is_authenticated:
         if _me(request) is None:
             return redirect('ess_tracker:ess_profile')
         return redirect('ess_tracker:ess_home')
     if request.method == 'POST':
-        email = request.POST.get('email', '').strip().lower()
+        username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
-        user = authenticate(request, username=email, password=password)
-        if user is None:
-            messages.error(request, 'Barua pepe au password si sahihi.')
-        elif user.is_staff:
-            messages.error(request, 'Akaunti hii ni ya msimamizi — tumia ukurasa wa msimamizi.')
+        profile = None
+        if username:
+            profile = TeacherProfile.objects.filter(
+                ess_username__iexact=username).select_related('user').first()
+        if profile is None:
+            messages.error(request, 'Username hii ya ESS haijasajiliwa. Jisajili kwanza.')
+        elif not _ess_password_ok(profile, password):
+            messages.error(request, 'Password si sahihi. Jaribu tena.')
         else:
-            login(request, user, backend='field_app.backends.EmailBackend')
+            login(request, profile.user, backend='field_app.backends.EmailBackend')
             messages.success(request, 'Umeingia e-Utendaji (ESS).')
             return redirect(_safe_next(request))
     return render(request, 'ess_tracker/ess_login.html', {'hide_navbar': True})
 
 
+def _ess_password_ok(profile, raw: str) -> bool:
+    try:
+        stored = profile.ess_password_plain
+    except Exception:
+        return False
+    from secrets import compare_digest
+    return bool(stored) and compare_digest(stored, raw)
+
+
 def ess_register(request):
-    """Kujisajili kwa mwalimu wa ESS (hatoi akaunti ya intern/student)."""
+    """Kujisajili kwa ESS username+password (akaunti ya app haitumiwi kwa email)."""
     if request.user.is_authenticated:
         return redirect('ess_tracker:ess_home')
     if request.method == 'POST':
         form = TeacherRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            user, profile = form.build_user_and_profile()
             login(request, user, backend='field_app.backends.EmailBackend')
-            messages.success(request, 'Akaunti imeundwa. Jaza wasifu wako wa ESS.')
+            messages.success(request,
+                             'Akaunti yako ya ESS imesajiliwa. Jaza maelezo yako zaidi kwenye wasifu.')
             return redirect('ess_tracker:ess_profile')
         messages.error(request, 'Tafadhali sahihisha makosa ya fomu.')
     else:

@@ -4,112 +4,180 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% if LANG == 'sw' %}Ingia — e-Utendaji (ESS){% else %}Sign In — e-Utendaji (ESS){% endif %}</title>
+<title>e-UTENDAJI Login</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-:root{--navy:#0A2B5E;--gold:#C8900A;--light:#EEF1F6;--white:#fff;--text:#0F1923;--muted:#5A6B7E;--border:#C8D0DB;--danger:#DC2626;--success:#059669;}
-html,body{height:100%;-webkit-font-smoothing:antialiased;}
-body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;background:var(--light);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
-.top-bar{background:var(--navy);border-bottom:3px solid var(--gold);padding:0 20px;height:48px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.top-bar-brand{display:flex;align-items:center;gap:10px;}
-.logo-box{width:28px;height:28px;background:rgba(200,144,10,.2);border:1px solid rgba(200,144,10,.4);border-radius:4px;display:flex;align-items:center;justify-content:center;}
-.logo-box i{color:var(--gold);font-size:13px;}
-.top-bar-brand span{color:#fff;font-weight:700;font-size:14px;}
-.top-bar-brand small{color:rgba(255,255,255,.5);font-size:10px;font-weight:400;margin-left:4px;}
-.lang-row{display:flex;gap:2px;}
-.lang-a{font-size:11px;font-weight:700;text-decoration:none;padding:3px 9px;border-radius:3px;letter-spacing:.3px;transition:all .12s;}
-.lang-a.on{background:var(--gold);color:#fff;}
-.lang-a.off{color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);}
+:root{--navy:#0B2E5C;--navy-dark:#082243;--gold:#C8900A;--light:#EEF2F7;--white:#fff;--text:#1B2A3A;--muted:#5A6B7E;--border:#CBD5E1;--danger:#B91C1C;--success:#047857;}
+html,body{height:100%;}
+body{font-family:'Segoe UI',system-ui,-apple-system,Tahoma,sans-serif;font-size:14px;background:var(--light);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
+/* ── TANZANIA GOVERNMENT TOP BAR (kama ESS) ── */
+.gov-bar{
+  background:linear-gradient(180deg,var(--navy),var(--navy-dark));
+  border-bottom:4px solid var(--gold);
+  padding:10px 24px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+}
+.gov-brand{display:flex;align-items:center;gap:12px;}
+.gov-arms{
+  width:46px;height:46px;border-radius:50%;flex-shrink:0;
+  background:rgba(200,144,10,.18);
+  border:2px solid rgba(200,144,10,.55);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;color:var(--gold);
+}
+.gov-text{display:flex;flex-direction:column;}
+.gov-text .l1{font-size:12px;color:#fff;font-weight:800;letter-spacing:.3px;}
+.gov-text .l2{font-size:10.5px;color:var(--gold);font-weight:600;letter-spacing:.2px;}
+.gov-right{display:flex;align-items:center;gap:8px;}
+.gov-chip{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);
+  color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:3px;
+  letter-spacing:.4px;
+}
+.lang-row{display:flex;gap:3px;}
+.lang-a{font-size:11px;font-weight:700;text-decoration:none;padding:4px 9px;border-radius:3px;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.18);}
+.lang-a.on{background:var(--gold);color:#fff;border-color:var(--gold);}
 .lang-a.off:hover{color:#fff;}
-.main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 16px;}
-.card{width:100%;max-width:420px;background:var(--white);border-radius:8px;border:1px solid rgba(10,43,94,.12);box-shadow:0 4px 6px rgba(0,0,0,.05),0 10px 30px rgba(10,43,94,.1);overflow:hidden;}
-.card-top{background:var(--navy);border-bottom:3px solid var(--gold);padding:16px 24px 18px;display:flex;flex-direction:column;align-items:center;gap:6px;}
-.card-top-inner{display:flex;align-items:center;gap:14px;width:100%;justify-content:center;}
-.coat{width:52px;height:52px;flex-shrink:0;background:rgba(200,144,10,.15);border:1.5px solid rgba(200,144,10,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;}
-.coat i{color:var(--gold);font-size:22px;}
-.card-top-text .t2{font-size:14px;color:#fff;font-weight:800;margin:2px 0;letter-spacing:-.1px;line-height:1.2;text-align:center;}
-.card-top-text .t3{font-size:11px;color:var(--gold);font-weight:500;text-align:center;}
-.card-body{padding:24px;}
-.field{margin-bottom:16px;}
-.field label{display:block;font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px;}
+/* ── MAIN ── */
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:28px 16px;}
+.card{
+  width:100%;max-width:430px;background:var(--white);
+  border-radius:6px;border:1px solid rgba(11,46,92,.14);
+  box-shadow:0 2px 4px rgba(0,0,0,.05),0 12px 34px rgba(11,46,92,.12);
+  overflow:hidden;
+}
+.card-head{
+  background:var(--navy);padding:14px 20px;
+  display:flex;align-items:center;gap:10px;
+}
+.card-head .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);}
+.card-head .tt{color:#fff;font-weight:800;font-size:16px;letter-spacing:.2px;}
+.card-head .tt small{display:block;font-size:10.5px;font-weight:600;color:rgba(255,255,255,.6);}
+.card-body{padding:26px 24px 22px;}
+.form-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.form-sub{font-size:12px;color:var(--muted);margin-bottom:18px;}
+.field{margin-bottom:15px;}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--text);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;}
 .inp-wrap{position:relative;}
-.inp-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9AAFC0;font-size:13px;pointer-events:none;}
-input[type=text],input[type=email],input[type=password]{width:100%;padding:10px 11px 10px 34px;font-size:13.5px;color:var(--text);border:1.5px solid var(--border);border-radius:5px;background:#FAFBFD;font-family:inherit;outline:none;transition:border-color .13s,box-shadow .13s;}
-input[type=text]:focus,input[type=email]:focus,input[type=password]:focus{border-color:var(--navy);background:#fff;box-shadow:0 0 0 3px rgba(10,43,94,.09);}
-input::placeholder{color:#B8C4CE;font-size:12.5px;}
-.row2{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:8px;}
-.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer;}
-.forgot{font-size:12.5px;color:var(--navy);text-decoration:none;}
+.inp-wrap .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;}
+.inp-wrap input[type=text],.inp-wrap input[type=password]{
+  width:100%;padding:11px 40px 11px 36px;
+  font-size:13.5px;color:var(--text);
+  border:1.5px solid var(--border);border-radius:4px;background:#FBFCFE;
+  font-family:inherit;outline:none;transition:border-color .13s,box-shadow .13s;
+}
+.inp-wrap input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(11,46,92,.09);background:#fff;}
+.eye{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:4px;
+}
+.eye:hover{color:var(--navy);}
+.hint{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;font-size:12px;color:var(--muted);}
+.chk{display:flex;align-items:center;gap:6px;cursor:pointer;}
+.forgot{color:var(--navy);text-decoration:none;font-weight:600;}
 .forgot:hover{text-decoration:underline;}
-.btn{width:100%;background:var(--navy);color:#fff;border:none;border-radius:5px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.3px;transition:background .13s;}
-.btn:hover{background:#0F3A7C;}
-.alert{border-radius:5px;padding:10px 12px;font-size:12.5px;margin-bottom:16px;}
-.alert.err{background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;}
-.alert.ok{background:#D1FAE5;color:#065F46;border:1px solid #A7F3D0;}
-.auth-links{text-align:center;margin-top:18px;font-size:13px;color:var(--muted);}
-.auth-links a{color:var(--navy);font-weight:700;text-decoration:none;}
-.auth-links a:hover{text-decoration:underline;}
-.footer{background:#fff;border-top:1px solid var(--border);text-align:center;padding:10px;font-size:11px;color:var(--muted);flex-shrink:0;}
+.btn{
+  width:100%;background:var(--navy);color:#fff;border:none;border-radius:4px;
+  padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;font-family:inherit;
+  letter-spacing:.6px;transition:background .13s;text-transform:uppercase;
+}
+.btn:hover{background:var(--navy-dark);}
+.btn i{margin-right:6px;}
+.alert{border-radius:4px;padding:10px 12px;font-size:12.5px;margin-bottom:15px;}
+.alert.err{background:#FEE2E2;color:var(--danger);border:1px solid #FECACA;}
+.alert.ok{background:#D1FAE5;color:var(--success);border:1px solid #A7F3D0;}
+.alt{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+.alt a{color:var(--navy);font-weight:700;text-decoration:none;font-size:13px;}
+.alt a:hover{text-decoration:underline;}
+.alt .muted{font-size:12px;color:var(--muted);}
+.gov-foot{background:#fff;border-top:1px solid var(--border);padding:12px;text-align:center;font-size:11px;color:var(--muted);flex-shrink:0;}
 </style>
 </head>
 <body>
-<div class="top-bar">
-  <div class="top-bar-brand">
-    <div class="logo-box"><i class="fas fa-clipboard-check"></i></div>
-    <span>e-Utendaji (ESS)</span><small>{% if LANG == 'sw' %}Mfumo wa Walimu{% else %}Teachers Portal{% endif %}</small>
+
+<div class="gov-bar">
+  <div class="gov-brand">
+    <div class="gov-arms"><i class="fas fa-bullseye"></i></div>
+    <div class="gov-text">
+      <span class="l1">UNITED REPUBLIC OF TANZANIA</span>
+      <span class="l2">Ministry of Education, Science and Technology</span>
+    </div>
   </div>
-  <div class="lang-row">
-    <a class="lang-a {% if LANG == 'sw' %}on{% else %}off{% endif %}" href="{% url 'set_language' %}?lang=sw&next={{ request.path }}">SW</a>
-    <a class="lang-a {% if LANG == 'en' %}on{% else %}off{% endif %}" href="{% url 'set_language' %}?lang=en&next={{ request.path }}">EN</a>
+  <div class="gov-right">
+    <span class="gov-chip">e-UTENDAJI</span>
+    <div class="lang-row">
+      <a class="lang-a {% if LANG == 'sw' %}on{% else %}off{% endif %}" href="{% url 'set_language' %}?lang=sw&next={{ request.path }}">SW</a>
+      <a class="lang-a {% if LANG == 'en' %}on{% else %}off{% endif %}" href="{% url 'set_language' %}?lang=en&next={{ request.path }}">EN</a>
+    </div>
   </div>
 </div>
 
 <div class="main">
   <div class="card">
-    <div class="card-top">
-      <div class="card-top-inner">
-        <div class="coat"><i class="fas fa-graduation-cap"></i></div>
-        <div class="card-top-text">
-          <div class="t2">UNITED REPUBLIC OF TANZANIA</div>
-          <div class="t3">Ministry of Education, Science & Technology — e-Utendaji (ESS)</div>
-        </div>
-      </div>
+    <div class="card-head">
+      <span class="dot"></span>
+      <span class="tt">{% if LANG == 'sw' %}INGIA E-UTENDAJI{% else %}SIGN IN TO E-UTENDAJI{% endif %}<small>Employee Self Service</small></span>
     </div>
     <div class="card-body">
+      <div class="form-title">{% if LANG == 'sw' %}Ingia kwa akaunti yako{% else %}Sign in to your account{% endif %}</div>
+      <div class="form-sub">{% if LANG == 'sw' %}Tumia username na password ZAKO ZA ESS{% else %}Use your ESS username and password{% endif %}</div>
+
       {% if messages %}
         {% for m in messages %}
         <div class="alert {% if m.tags == 'error' %}err{% elif m.tags == 'success' %}ok{% else %}err{% endif %}">{{ m }}</div>
         {% endfor %}
       {% endif %}
+
       <form method="post" action="{% url 'ess_tracker:ess_login' %}">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.GET.next }}">
         <div class="field">
-          <label>{% if LANG == 'sw' %}Barua pepe{% else %}Email Address{% endif %}</label>
-          <div class="inp-wrap"><i class="fas fa-envelope inp-ico"></i>
-            <input type="email" name="email" required autocomplete="email" placeholder="mwalimu@example.com" value="{{ request.POST.email }}">
+          <label>Username</label>
+          <div class="inp-wrap"><i class="fas fa-user ic"></i>
+            <input type="text" name="username" required autofocus autocomplete="username"
+                   placeholder="Your ESS username" value="{{ request.POST.username }}">
           </div>
         </div>
         <div class="field">
-          <label>{% if LANG == 'sw' %}Nywila{% else %}Password{% endif %}</label>
-          <div class="inp-wrap"><i class="fas fa-lock inp-ico"></i>
-            <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+          <label>Password</label>
+          <div class="inp-wrap"><i class="fas fa-lock ic"></i>
+            <input type="password" name="password" required autocomplete="current-password"
+                   placeholder="********" id="id_password">
+            <button type="button" class="eye" id="id_toggle" aria-label="Show password"><i class="far fa-eye"></i></button>
           </div>
         </div>
-        <div class="row2">
+        <div class="hint">
           <label class="chk"><input type="checkbox" name="remember"> {% if LANG == 'sw' %}Nikumbuke{% else %}Remember me{% endif %}</label>
-          <a class="forgot" href="{% url 'password_reset' %}">{% if LANG == 'sw' %}Umesahau nywila?{% else %}Forgot password?{% endif %}</a>
+          <a class="forgot" href="https://ess.utumishi.go.tz/" target="_blank" rel="noopener">{% if LANG == 'sw' %}Umesahau password?{% else %}Forgot password?{% endif %}</a>
         </div>
-        <button class="btn" type="submit"><i class="fas fa-sign-in-alt me-1"></i>{% if LANG == 'sw' %}INGIA{% else %}SIGN IN{% endif %}</button>
+        <button class="btn" type="submit"><i class="fas fa-sign-in-alt"></i>{% if LANG == 'sw' %}Ingia{% else %}Sign In{% endif %}</button>
       </form>
-      <div class="auth-links">
-        {% if LANG == 'sw' %}Hujasajiliwa?{% else %}Not registered?{% endif %} <a href="{% url 'ess_tracker:ess_register' %}">{% if LANG == 'sw' %}Jisajili hapa{% else %}Create an account{% endif %}</a>
+
+      <div class="alt">
+        <span class="muted">{% if LANG == 'sw' %}Huna akaunti?{% else %}No account?{% endif %}</span>
+        <a href="{% url 'ess_tracker:ess_register' %}">{% if LANG == 'sw' %}Jisajili{% else %}Register{% endif %} →</a>
       </div>
     </div>
   </div>
 </div>
 
-<div class="footer">© 2026 Ministry of Education, Science and Technology — Tanzania</div>
+<div class="gov-foot">
+  © 2026 Ministry of Education, Science and Technology — United Republic of Tanzania
+</div>
+
+<script>
+(function () {
+  var t = document.getElementById('id_toggle');
+  var p = document.getElementById('id_password');
+  if (t && p) {
+    t.addEventListener('click', function () {
+      var show = p.type === 'password';
+      p.type = show ? 'text' : 'password';
+      t.innerHTML = show ? '<i class="far fa-eye-slash"></i>' : '<i class="far fa-eye"></i>';
+    });
+  }
+})();
+</script>
 </body>
 </html>
