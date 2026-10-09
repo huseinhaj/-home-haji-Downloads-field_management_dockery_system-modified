@@ -1,6 +1,44 @@
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import get_user_model
 
 from .models import MODE_CHOICES, SubTask, Task, TeacherProfile
+
+CustomUser = get_user_model()
+
+
+class TeacherRegistrationForm(UserCreationForm):
+    """Kujisajili kwa mwalimu wa ESS — bila kuunda wasifu wa intern/student."""
+
+    full_name = forms.CharField(label='Majina kamili', max_length=255)
+    phone = forms.CharField(label='Namba ya simu', max_length=20, required=False)
+    email = forms.EmailField(label='Barua pepe')
+
+    class Meta:
+        model = CustomUser
+        fields = ('email', 'password1', 'password2', 'full_name', 'phone')
+        widgets = {
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'password1': forms.PasswordInput(attrs={'class': 'form-control'}),
+            'password2': forms.PasswordInput(attrs={'class': 'form-control'}),
+            'full_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ('full_name', 'phone', 'email', 'password1', 'password2'):
+            self.fields[name].widget.attrs['class'] = 'form-control'
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.username = user.email
+        if commit:
+            user.save()
+            TeacherProfile.objects.get_or_create(
+                user=user,
+                defaults={'full_name': self.cleaned_data.get('full_name', '')})
+        return user
 
 
 class ProfileForm(forms.ModelForm):

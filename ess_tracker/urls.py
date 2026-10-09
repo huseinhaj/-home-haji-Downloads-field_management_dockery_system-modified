@@ -5,6 +5,9 @@ from . import views
 app_name = 'ess_tracker'
 
 urlpatterns = [
+    path('login/', views.ess_login, name='ess_login'),
+    path('register/', views.ess_register, name='ess_register'),
+    path('logout/', views.ess_logout, name='ess_logout'),
     path('', views.ess_home, name='ess_home'),
     path('profile/', views.ess_profile, name='ess_profile'),
     path('task/new/', views.ess_task_new, name='ess_task_new'),

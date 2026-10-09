@@ -2,7 +2,9 @@ import threading
 from datetime import date
 
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db.models import Sum
 from django.http import JsonResponse
@@ -13,8 +15,66 @@ from django.views.decorators.http import require_POST
 from .compute import (actual_for, autogen_subtasks, create_task_from_row,
                       elapsed_weeks, parse_csv_text, pct_for, target_for)
 from .essfill import CACHE_PREFIX, expected_display, subtask_snapshot
-from .forms import AutogenForm, ProfileForm, SubTaskEditForm, TaskForm
+from .forms import (AutogenForm, ProfileForm, SubTaskEditForm, TaskForm,
+                    TeacherRegistrationForm)
 from .models import EssFillRun, SubTask, Task, TeacherProfile, WeekEntry
+
+CustomUser = get_user_model()
+
+ESS_LOGIN_URL = '/ess/login/'
+
+
+def _safe_next(request, fallback='/ess/'):
+    next_url = request.POST.get('next') or request.GET.get('next') or ''
+    if not next_url or next_url.startswith('http') or not next_url.startswith('/'):
+        return fallback
+    return next_url
+
+
+def ess_login(request):
+    """Login ya walimu (kwa ESS pekee) — si portal ya internship."""
+    if request.user.is_authenticated:
+        if _me(request) is None:
+            return redirect('ess_tracker:ess_profile')
+        return redirect('ess_tracker:ess_home')
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        password = request.POST.get('password', '')
+        user = authenticate(request, username=email, password=password)
+        if user is None:
+            messages.error(request, 'Barua pepe au password si sahihi.')
+        elif user.is_staff:
+            messages.error(request, 'Akaunti hii ni ya msimamizi — tumia ukurasa wa msimamizi.')
+        else:
+            login(request, user, backend='field_app.backends.EmailBackend')
+            messages.success(request, 'Umeingia e-Utendaji (ESS).')
+            return redirect(_safe_next(request))
+    return render(request, 'ess_tracker/ess_login.html', {'hide_navbar': True})
+
+
+def ess_register(request):
+    """Kujisajili kwa mwalimu wa ESS (hatoi akaunti ya intern/student)."""
+    if request.user.is_authenticated:
+        return redirect('ess_tracker:ess_home')
+    if request.method == 'POST':
+        form = TeacherRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user, backend='field_app.backends.EmailBackend')
+            messages.success(request, 'Akaunti imeundwa. Jaza wasifu wako wa ESS.')
+            return redirect('ess_tracker:ess_profile')
+        messages.error(request, 'Tafadhali sahihisha makosa ya fomu.')
+    else:
+        form = TeacherRegistrationForm()
+    return render(request, 'ess_tracker/ess_register.html', {
+        'form': form,
+        'hide_navbar': True,
+    })
+
+
+def ess_logout(request):
+    logout(request)
+    return redirect('ess_tracker:ess_login')
 
 
 def _me(request) -> TeacherProfile | None:
@@ -30,11 +90,11 @@ def _week_of(task: Task, d: date) -> int:
     return int((d - task.start).days // 7) + 1
 
 
-@login_required
+@login_required(login_url=ESS_LOGIN_URL)
 def ess_home(request):
     profile = _me(request)
     if profile is None:
-        return redirect('ess_profile')
+        return redirect('ess_tracker:ess_profile')
     tasks = []
     for task in profile.tasks.all():
         week_now = 0
@@ -59,7 +119,7 @@ def ess_home(request):
     })
 
 
-@login_required
+@login_required(login_url=ESS_LOGIN_URL)
 def ess_profile(request):
     profile = _me(request)
     creating = profile is None
@@ -68,7 +128,7 @@ def ess_profile(request):
         if form.is_valid():
             profile = form.save()
             messages.success(request, 'Wasifu umehifadhiwa.')
-            return redirect('ess_home')
+            return redirect('ess_tracker:ess_home')
         messages.error(request, 'Tafadhali sahihisha makosa kwenye fomu.')
     else:
         form = ProfileForm(instance=profile)
@@ -78,11 +138,11 @@ def ess_profile(request):
     })
 
 
-@login_required
+@login_required(login_url=ESS_LOGIN_URL)
 def ess_task_new(request):
     profile = _me(request)
     if profile is None:
-        return redirect('ess_profile')
+        return redirect('ess_tracker:ess_profile')
     if request.method == 'POST':
         form = TaskForm(request.POST)
         if form.is_valid():
@@ -90,14 +150,14 @@ def ess_task_new(request):
             task.profile = profile
             task.save()
             messages.success(request, 'Task imeundwa. Sasa ongeza sub-tasks.')
-            return redirect('ess_task_edit', task_id=task.id)
+            return redirect('ess_tracker:ess_task_edit', task_id=task.id)
         messages.error(request, 'Makosa kwenye fomu ya Task.')
     else:
         form = TaskForm()
     return render(request, 'ess_tracker/ess_task_new.html', {'form': form})
 
 
-@login_required
+@login_required(login_url=ESS_LOGIN_URL)
 def ess_task_edit(request, task_id):
     profile = _me(request)
     task = get_object_or_404(Task, pk=task_id, profile=profile)
@@ -109,7 +169,7 @@ def ess_task_edit(request, task_id):
             messages.error(request, 'Makosa kwenye fomu ya Task.')
         _save_subtasks_from_forms(request, task)
         messages.success(request, 'Sub-tasks zimehifadhiwa.')
-        return redirect('ess_task_edit', task_id=task.id)
+        return redirect('ess_tracker:ess_task_edit', task_id=task.id)
     form = TaskForm(instance=task)
     snapshot = subtask_snapshot(task)
     autogen = AutogenForm(initial={
@@ -202,7 +262,7 @@ def ess_autogen(request, task_id):
         messages.success(request, 'Sub-tasks 7 za kawaida zimetengenezwa.')
     else:
         messages.error(request, 'Makosa kwenye vigezo vya kuzalisha sub-tasks.')
-    return redirect('ess_task_edit', task_id=task.id)
+    return redirect('ess_tracker:ess_task_edit', task_id=task.id)
 
 
 @login_required
@@ -212,18 +272,18 @@ def ess_task_delete(request, task_id):
     task = get_object_or_404(Task, pk=task_id, profile=profile)
     task.delete()
     messages.success(request, 'Task imefutwa.')
-    return redirect('ess_home')
+    return redirect('ess_tracker:ess_home')
 
 
-@login_required
+@login_required(login_url=ESS_LOGIN_URL)
 def ess_week(request):
     profile = _me(request)
     if profile is None:
-        return redirect('ess_profile')
+        return redirect('ess_tracker:ess_profile')
     tasks = list(profile.tasks.all())
     if not tasks:
         messages.info(request, 'Unda Task kwanza kisha uweze kuingiza wiki.')
-        return redirect('ess_task_new')
+        return redirect('ess_tracker:ess_task_new')
 
     week = int(request.GET.get('week') or 0)
     if week <= 0:
@@ -265,11 +325,11 @@ def ess_week(request):
     })
 
 
-@login_required
+@login_required(login_url=ESS_LOGIN_URL)
 def ess_csv(request):
     profile = _me(request)
     if profile is None:
-        return redirect('ess_profile')
+        return redirect('ess_tracker:ess_profile')
     if request.method == 'POST':
         text = request.POST.get('csv_text', '')
         if 'csv_file' in request.FILES:
@@ -283,7 +343,7 @@ def ess_csv(request):
                 if create_task_from_row(profile, row):
                     made += 1
             messages.success(request, f'Tasks {made} zimeingizwa (safu {len(rows)}).')
-        return redirect('ess_home')
+        return redirect('ess_tracker:ess_home')
     return render(request, 'ess_tracker/ess_csv.html', {'profile': profile})
 
 
@@ -292,10 +352,10 @@ def ess_csv(request):
 def ess_fill(request):
     profile = _me(request)
     if profile is None:
-        return redirect('ess_profile')
+        return redirect('ess_tracker:ess_profile')
     if not profile.ess_ready:
         messages.error(request, 'Weka kwanza ESS username na password kwenye wasifu.')
-        return redirect('ess_profile')
+        return redirect('ess_tracker:ess_profile')
     run = EssFillRun.objects.create(profile=profile)
     run.status = 'running'
     run.save()
@@ -311,7 +371,7 @@ def ess_fill(request):
         threading.Thread(target=_run_in_thread, args=(profile.id, run.id), daemon=True).start()
     cache.set(CACHE_PREFIX + str(run.id), {'msg': 'Inaanzisha...', 'step': 0,
                                            'done': False, 'error': ''}, timeout=3600)
-    return redirect('ess_fill_status', run_id=run.id)
+    return redirect('ess_tracker:ess_fill_status', run_id=run.id)
 
 
 def _run_in_thread(profile_id, run_id):
@@ -319,15 +379,15 @@ def _run_in_thread(profile_id, run_id):
     run_fill(profile_id, run_id)
 
 
-@login_required
+@login_required(login_url=ESS_LOGIN_URL)
 def ess_fill_status(request, run_id):
     run = get_object_or_404(EssFillRun, pk=run_id)
     if request.user != run.profile.user and not request.user.is_staff:
-        return redirect('ess_home')
+        return redirect('ess_tracker:ess_home')
     return render(request, 'ess_tracker/ess_fill_status.html', {'run': run})
 
 
-@login_required
+@login_required(login_url=ESS_LOGIN_URL)
 def ess_fill_status_json(request, run_id):
     run = get_object_or_404(EssFillRun, pk=run_id)
     if request.user != run.profile.user and not request.user.is_staff:
@@ -345,10 +405,10 @@ def ess_fill_status_json(request, run_id):
     })
 
 
-@login_required
+@login_required(login_url=ESS_LOGIN_URL)
 def ess_fill_log(request):
     profile = _me(request)
     if profile is None:
-        return redirect('ess_profile')
+        return redirect('ess_tracker:ess_profile')
     runs = profile.fill_runs.all()[:30]
     return render(request, 'ess_tracker/ess_fill_log.html', {'profile': profile, 'runs': runs})

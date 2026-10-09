@@ -712,7 +712,11 @@
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
+                            {% if user.is_authenticated and user.ess_profile %}
+                            <a class="dropdown-item logout-btn" href="{% url 'ess_tracker:ess_logout' %}">
+                            {% else %}
                             <a class="dropdown-item logout-btn" href="{% url 'logout' %}">
+                            {% endif %}
                                 <i class="fas fa-sign-out-alt me-2"></i>{% if LANG == 'sw' %}Toka{% else %}Logout{% endif %}
                             </a>
                         </li>
