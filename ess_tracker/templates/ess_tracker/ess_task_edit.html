@@ -1,15 +1,11 @@
-{% extends 'field_app/base.html' %}
-{% block title %}Hariri Task — ESS e-Utendaji{% endblock %}
+{% extends 'ess_tracker/ess_base.html' %}
+{% block title %}Hariri Task — e-UTENDAJI{% endblock %}
 {% block content %}
-<div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="mb-0">Hariri Task</h5>
-    <form method="post" action="{% url 'ess_tracker:ess_task_delete' task.id %}"
-          onsubmit="return confirm('Futa Task hii na sub-tasks zake?')">
-      {% csrf_token %}
-      <button class="btn btn-outline-danger btn-sm"><i class="fas fa-trash me-1"></i>Futa</button>
-    </form>
-  </div>
+<div style="max-width:960px;margin:0 auto;">
+<div class="page-head">
+  <h4>Hariri Task</h4>
+  <div class="sub">Weka sub-tasks kisha, kwenye Nyumbani, hifadhi kazi zako za kila siku.</div>
+</div>
 
   <form method="post">
     {% csrf_token %}
@@ -45,7 +41,6 @@
               <th>Wiki</th>
               <th>Base</th>
               <th>%</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -65,7 +60,6 @@
               <td><input type="number" class="form-control form-control-sm" name="wk_{{ s.st.id }}" value="{{ s.st.week_count }}"></td>
               <td><input type="number" step="any" class="form-control form-control-sm" name="base_{{ s.st.id }}" value="{{ s.st.actual_base }}"></td>
               <td class="small">{{ s.pct_str|default:'—' }}</td>
-              <td class="text-center"><input type="checkbox" class="form-check-input" name="del_{{ s.st.id }}" title="Futa"></td>
             </tr>
             {% endfor %}
           </tbody>

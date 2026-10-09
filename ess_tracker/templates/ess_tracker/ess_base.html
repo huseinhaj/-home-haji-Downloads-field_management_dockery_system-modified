@@ -1,0 +1,100 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="{% if LANG == 'sw' %}sw{% else %}en{% endif %}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}e-UTENDAJI{% endblock %}</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+:root{--navy:#0B2E5C;--navy-dark:#082243;--gold:#C8900A;--light:#EEF2F7;--border:#CBD5E1;}
+*,*::before,*::after{box-sizing:border-box;}
+body{font-family:'Segoe UI',system-ui,-apple-system,Tahoma,sans-serif;font-size:14.5px;background:var(--light);color:#1B2A3A;min-height:100vh;display:flex;flex-direction:column;}
+.gov-bar{
+  background:linear-gradient(180deg,var(--navy),var(--navy-dark));
+  border-bottom:4px solid var(--gold);
+  padding:10px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+}
+.gov-brand{display:flex;align-items:center;gap:11px;}
+.gov-arms{width:42px;height:42px;border-radius:50%;flex-shrink:0;background:rgba(200,144,10,.16);border:2px solid rgba(200,144,10,.55);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--gold);}
+.gov-text{display:flex;flex-direction:column;}
+.gov-text .l1{font-size:12px;color:#fff;font-weight:800;letter-spacing:.3px;}
+.gov-text .l2{font-size:10.5px;color:var(--gold);font-weight:600;}
+.gov-right{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.gov-chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:3px;letter-spacing:.4px;}
+.user-chip{display:flex;align-items:center;gap:7px;color:#fff;font-size:12.5px;font-weight:600;}
+.user-chip .avatar{width:30px;height:30px;border-radius:50%;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;}
+.logout-btn{color:rgba(255,255,255,.85);text-decoration:none;font-size:12.5px;font-weight:700;border:1px solid rgba(255,255,255,.25);padding:6px 12px;border-radius:4px;background:rgba(255,255,255,.05);}
+.logout-btn:hover{color:#fff;background:var(--gold);border-color:var(--gold);}
+.navbar-ess{
+  background:#fff;border-bottom:1px solid #E2E8F0;box-shadow:0 1px 3px rgba(11,46,92,.06);
+  display:flex;align-items:center;gap:4px;padding:7px 22px;overflow-x:auto;flex-wrap:wrap;
+}
+.navbar-ess a{
+  color:#33475B;font-size:13.5px;font-weight:700;text-decoration:none;padding:8px 14px;border-radius:6px;white-space:nowrap;
+}
+.navbar-ess a:hover{background:var(--light);color:var(--navy);}
+.navbar-ess a.on{background:var(--navy);color:#fff;}
+.main{flex:1;width:100%;padding:22px 16px 34px;}
+.page-head{max-width:960px;margin:0 auto 18px;}
+.page-head h4{font-size:21px;font-weight:800;color:var(--navy);margin:0;}
+.page-head .sub{font-size:13px;color:#5A6B7E;}
+.gov-foot{background:#fff;border-top:1px solid var(--border);padding:12px 20px;text-align:center;font-size:11.5px;color:#5A6B7E;flex-shrink:0;}
+.card{border-color:#E2E8F0;border-radius:8px;}
+.card-header{background:#fff;border-bottom:1px solid #EEF2F7;font-weight:700;color:#0B2E5C;}
+.btn-success{--bs-btn-bg:var(--navy);--bs-btn-border-color:var(--navy);--bs-btn-hover-bg:var(--navy-dark);--bs-btn-hover-border-color:var(--navy-dark);}
+a.btn-success{color:#fff;}
+</style>
+</head>
+<body>
+
+<div class="gov-bar">
+  <div class="gov-brand">
+    <div class="gov-arms"><i class="fas fa-bullseye"></i></div>
+    <div class="gov-text">
+      <span class="l1">UNITED REPUBLIC OF TANZANIA</span>
+      <span class="l2">Ministry of Education, Science and Technology</span>
+    </div>
+  </div>
+  <div class="gov-right">
+    <span class="gov-chip">e-UTENDAJI</span>
+    {% if user.is_authenticated %}
+    <span class="user-chip">
+      <span class="avatar">{{ profile.full_name|default:user.ess_profile.ess_username|slice:":1"|upper }}</span>
+      {{ profile.full_name|default:user.ess_profile.ess_username }}
+    </span>
+    <a class="logout-btn" href="{% url 'ess_tracker:ess_logout' %}"><i class="fas fa-sign-out-alt me-1"></i>Toka</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if user.is_authenticated %}
+<div class="navbar-ess">
+  <a href="{% url 'ess_tracker:ess_home' %}" {% if request.resolver_match.url_name == 'ess_home' %}class="on"{% endif %}><i class="fas fa-home me-1"></i>Nyumbani</a>
+  <a href="{% url 'ess_tracker:ess_task_new' %}" {% if request.resolver_match.url_name == 'ess_task_new' %}class="on"{% endif %}><i class="fas fa-plus-circle me-1"></i>Task mpya</a>
+  <a href="{% url 'ess_tracker:ess_week' %}" {% if request.resolver_match.url_name == 'ess_week' %}class="on"{% endif %}><i class="fas fa-calendar-check me-1"></i>Rekodi wiki</a>
+  <a href="{% url 'ess_tracker:ess_profile' %}" {% if request.resolver_match.url_name == 'ess_profile' %}class="on"{% endif %}><i class="fas fa-user-cog me-1"></i>Wasifu</a>
+</div>
+{% endif %}
+
+{% if messages %}
+<div class="mt-3 mx-3" style="max-width:960px;margin-left:auto;margin-right:auto;">
+  {% for m in messages %}
+  <div class="alert alert-{% if m.tags == 'error' %}danger{% elif m.tags == 'success' %}success{% else %}info{% endif %} py-2 small mb-2">{{ m }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<main class="main">
+  {% block content %}{% endblock %}
+</main>
+
+<div class="gov-foot">
+  © 2026 Ministry of Education, Science and Technology — United Republic of Tanzania
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

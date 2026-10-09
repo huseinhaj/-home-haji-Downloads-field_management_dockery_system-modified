@@ -1,26 +1,34 @@
-{% extends 'field_app/base.html' %}
-{% block title %}Task mpya — ESS e-Utendaji{% endblock %}
+{% extends 'ess_tracker/ess_base.html' %}
+{% block title %}Task mpya — e-UTENDAJI{% endblock %}
 {% block content %}
-<div class="container" style="max-width:680px">
-  <div class="card shadow-sm mt-4">
-    <div class="card-header"><strong>Unda Task mpya</strong></div>
-    <div class="card-body">
-      <form method="post">
-        {% csrf_token %}
-        {% for field in form %}
-        <div class="mb-3">
-          <label class="form-label">{{ field.label }}</label>
-          {{ field }}
-          {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-        </div>
-        {% endfor %}
-        <button class="btn btn-success">Unda</button>
+<div class="page-head">
+  <h4>Task mpya</h4>
+  <div class="sub">Anza task moja ya somo. Baadaye utaongeza sub-tasks zake 7 za kawaida.</div>
+</div>
+
+<div class="card shadow-sm" style="max-width:680px;margin:0 auto;">
+  <div class="card-header">Unda Task mpya</div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="mb-3">
+        <label class="form-label">{{ field.label }}</label>
+        {{ field }}
+        {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+      </div>
+      {% endfor %}
+      <div class="d-flex gap-2">
+        <button class="btn btn-success"><i class="fas fa-check me-1"></i>Unda Task</button>
         <a href="{% url 'ess_tracker:ess_home' %}" class="btn btn-outline-secondary">Rudi</a>
-      </form>
-      <hr>
-      <p class="text-muted small mb-3">Baada ya Task kuundwa utaongeza <b>sub-tasks</b> — ama kwa kufunga
-      upande <b>"Tengeneza 7 za kawaida"</b> (vipindi kwa wiki, wiki jumla, namba) ama kwa CSV.</p>
-    </div>
+      </div>
+    </form>
+    <hr>
+    <p class="text-muted small mb-1">
+      Baada ya Task kuundwa, utaongeza <b>sub-tasks 7 za kawaida</b> kwa upande
+      wa ukurasa wa hariri (vipindi kwa wiki, wiki jumla), au kwa
+      <a href="{% url 'ess_tracker:ess_csv' %}">CSV ya masomo</a>.
+    </p>
   </div>
 </div>
 {% endblock %}

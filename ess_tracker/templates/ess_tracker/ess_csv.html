@@ -1,8 +1,12 @@
-{% extends 'field_app/base.html' %}
-{% block title %}Ingiza CSV — ESS e-Utendaji{% endblock %}
+{% extends 'ess_tracker/ess_base.html' %}
+{% block title %}Ingiza CSV — e-UTENDAJI{% endblock %}
 {% block content %}
+<div class="page-head" style="max-width:760px;margin-left:auto;margin-right:auto;">
+  <h4>Ingiza tasks kwa CSV</h4>
+  <div class="sub">Muundo kama wa masomo_sample_v2.csv.</div>
+</div>
 <div class="container" style="max-width:760px">
-  <div class="card shadow-sm mt-4">
+  <div class="card shadow-sm mt-2">
     <div class="card-header"><strong>Ingiza tasks kwa CSV aina ya masomo_sample_v2.csv</strong></div>
     <div class="card-body">
       <form method="post" enctype="multipart/form-data">

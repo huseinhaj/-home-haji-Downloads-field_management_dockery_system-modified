@@ -1,5 +1,5 @@
-{% extends 'field_app/base.html' %}
-{% block title %}Wasifu — ESS e-Utendaji{% endblock %}
+{% extends 'ess_tracker/ess_base.html' %}
+{% block title %}Wasifu — e-UTENDAJI{% endblock %}
 {% block content %}
 <style>
 .ess-school{position:relative;}
@@ -18,8 +18,12 @@
 .ess-school .ess-ul li:hover,.ess-school .ess-ul li.hl{background:#e9f2ff;}
 .ess-school .ess-ul li.ess-none{cursor:default;color:#6c757d;background:#fff;}
 </style>
+<div class="page-head" style="max-width:680px;margin-left:auto;margin-right:auto;">
+  <h4>Wasifu wako</h4>
+  <div class="sub">Weka username na password zako za ESS — ndizo zinazotumika kujaza e-Utendaji wako.</div>
+</div>
 <div class="container" style="max-width:680px">
-  <div class="card shadow-sm mt-4">
+  <div class="card shadow-sm mt-2">
     <div class="card-header"><strong>Wasifu wa ESS e-Utendaji</strong></div>
     <div class="card-body">
       <form method="post" id="essprofile">
