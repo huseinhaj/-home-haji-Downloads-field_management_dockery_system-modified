@@ -56,6 +56,9 @@ urlpatterns = [
     # Muungano Curriculum — Scheme of Work, Lesson Plan & Logbook
     path('curriculum/', include('curriculum.urls')),
 
+    # ESS e-Utendaji — tracker + kujaza kwa walimu
+    path('ess/', include('ess_tracker.urls')),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 # NOTE: static(settings.MEDIA_URL, ...) ni no-op kwenye production (DEBUG=False) —
 # nginx/whitenoise inaserve /media/ kwenye Railway.

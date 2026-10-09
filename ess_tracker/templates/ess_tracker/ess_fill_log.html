@@ -1,0 +1,58 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Historia ya kujaza — ESS e-Utendaji{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h5 class="mb-3">Historia ya kujaza ESS</h5>
+  <div class="card shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Ilianza</th>
+            <th>Ilimalizika</th>
+            <th>Status</th>
+            <th>Zimeongezwa</th>
+            <th>Sawa</th>
+            <th>Hazikupatikana</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in runs %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td class="small">{{ r.started|date:'d M Y H:i' }}</td>
+            <td class="small">{{ r.finished|date:'d M Y H:i'|default:'—' }}</td>
+            <td>
+              <span class="badge {% if r.status == 'done' %}bg-success{% elif r.status == 'error' %}bg-danger{% else %}bg-info{% endif %}">
+                {{ r.get_status_display }}
+              </span>
+            </td>
+            <td>{{ r.saved }}</td>
+            <td>{{ r.skipped }}</td>
+            <td>{{ r.not_found }}</td>
+            <td>
+              {% if r.status == 'running' %}
+              <a href="{% url 'ess_tracker:ess_fill_status' r.id %}" class="btn btn-sm btn-outline-info">Fuata</a>
+              {% else %}
+              <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse"
+                      data-bs-target="#log{{ r.id }}">Log</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% if r.status != 'running' %}
+          <tr class="collapse" id="log{{ r.id }}">
+            <td colspan="8"><pre class="small bg-light p-2 mb-0" style="max-height:200px;overflow:auto;">{{ r.log }}</pre></td>
+          </tr>
+          {% endif %}
+          {% empty %}
+          <tr><td colspan="8" class="text-center text-muted py-4">Bado hakuna kujaza.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <a href="{% url 'ess_tracker:ess_home' %}" class="btn btn-outline-secondary mt-3">Rudi</a>
+</div>
+{% endblock %}

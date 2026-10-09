@@ -1,0 +1,93 @@
+{% extends 'field_app/base.html' %}
+{% block title %}ESS e-Utendaji{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h4 class="mb-0">e-Utendaji — {{ profile.full_name }}</h4>
+    <div class="btn-group">
+      <a href="{% url 'ess_tracker:ess_task_new' %}" class="btn btn-sm btn-outline-success">
+        <i class="fas fa-plus me-1"></i>Task mpya</a>
+      <a href="{% url 'ess_tracker:ess_week' %}" class="btn btn-sm btn-outline-primary">
+        <i class="fas fa-calendar-week me-1"></i>Ingiza wiki</a>
+      <a href="{% url 'ess_tracker:ess_csv' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-file-csv me-1"></i>CSV</a>
+      <a href="{% url 'ess_tracker:ess_profile' %}" class="btn btn-sm btn-outline-dark">
+        <i class="fas fa-user-cog me-1"></i>Wasifu</a>
+    </div>
+  </div>
+
+  {% if not profile.ess_ready %}
+  <div class="alert alert-warning">Unaweza kuingiza data, lakini <b>huwezi kujaza ESS</b> mpaka
+    uweke <b>username na password</b> zako za ESS kwenye
+    <a href="{% url 'ess_tracker:ess_profile' %}">Wasifu</a>.</div>
+  {% endif %}
+
+  {% if latest_run and latest_run.status == 'running' %}
+  <a class="alert alert-info d-block mb-3" href="{% url 'ess_tracker:ess_fill_status' latest_run.id %}">
+    Kuna kujaza kunayoendelea — bonyeza hapa kutazama...
+  </a>
+  {% endif %}
+
+  {% for item in tasks %}
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <strong>{{ item.task.somo|upper }}</strong>
+        {% if item.task.kidato %}<span class="badge bg-secondary ms-2">kidato cha {{ item.task.kidato }}</span>{% endif %}
+        <div class="small text-muted">{{ item.task.start }} — {{ item.task.end }}</div>
+      </div>
+      <div class="btn-group btn-group-sm">
+        <a href="{% url 'ess_tracker:ess_task_edit' item.task.id %}" class="btn btn-outline-primary">Hariri</a>
+        <a href="{% url 'ess_tracker:ess_week' %}?week={{ item.last_week|default:item.week_now }}"
+           class="btn btn-outline-success">Wiki ya {{ item.week_now }}</a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th style="width:34px">#</th>
+            <th>Sub Task</th>
+            <th class="text-end">Target</th>
+            <th class="text-end">Actual</th>
+            <th style="width:180px">Asilimia</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in item.subtasks %}
+          <tr>
+            <td>{{ s.st.position }}</td>
+            <td class="small">{{ s.st.description }}<div class="text-muted small">{{ s.st.get_mode_display }}</div></td>
+            <td class="text-end small">{{ s.target }}</td>
+            <td class="text-end small">{{ s.actual }}{% if s.expected %} <span class="text-muted">(tarajio {{ s.expected }})</span>{% endif %}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height:8px;">
+                  <div class="progress-bar {% if s.pct and s.pct >= 100 %}bg-success{% elif s.pct and s.pct >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                       style="width:{{ s.pct|default:0 }}%"></div>
+                </div>
+                <span class="small fw-bold">{{ s.pct_str|default:'—' }}</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% empty %}
+  <div class="alert alert-info">Bado hakuna Task. Unda kwanza, au ingiza CSV yako ya masomo.</div>
+  {% endfor %}
+
+  <div class="mt-4">
+    <form method="post" action="{% url 'ess_tracker:ess_fill' %}" onsubmit="return confirm('Kujaza ESS kunahitaji login ya akaunti yako ya ESS. Endelea?')">
+      {% csrf_token %}
+      <button class="btn btn-success btn-lg" {% if not profile.ess_ready %}disabled{% endif %}>
+        <i class="fas fa-cloud-upload-alt me-2"></i>Jaza ESS sasa
+      </button>
+      <a href="{% url 'ess_tracker:ess_fill_log' %}" class="btn btn-outline-secondary">Historia ya kujaza</a>
+    </form>
+    <small class="text-muted">Kitufe hiki kinawasha mtiririko wa kujaza sub-tasks kwenye ESS kwa akaunti yako (inachukua sekunde chache).</small>
+  </div>
+</div>
+{% endblock %}

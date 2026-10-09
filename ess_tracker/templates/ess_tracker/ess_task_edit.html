@@ -1,0 +1,108 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Hariri Task — ESS e-Utendaji{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Hariri Task</h5>
+    <form method="post" action="{% url 'ess_tracker:ess_task_delete' task.id %}"
+          onsubmit="return confirm('Futa Task hii na sub-tasks zake?')">
+      {% csrf_token %}
+      <button class="btn btn-outline-danger btn-sm"><i class="fas fa-trash me-1"></i>Futa</button>
+    </form>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header">Task</div>
+      <div class="card-body">
+        <div class="row g-3">
+          {% for field in form %}
+          <div class="col-md-6">
+            <label class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Sub-tasks</span>
+        <button class="btn btn-sm btn-success" type="submit">Hifadhi sub-tasks</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th style="min-width:280px">Maandishi (lazima yalingane na ESS)</th>
+              <th>Aina</th>
+              <th>Target</th>
+              <th>Vila/Wiki</th>
+              <th>Wiki</th>
+              <th>Base</th>
+              <th>%</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in snapshot %}
+            <tr>
+              <td>{{ s.st.position }}</td>
+              <td><input class="form-control form-control-sm" name="desc_{{ s.st.id }}" value="{{ s.st.description }}" required></td>
+              <td>
+                <select name="mode_{{ s.st.id }}" class="form-select form-select-sm">
+                  <option value="annual" {% if s.st.mode == 'annual' %}selected{% endif %}>Mwaka mzima</option>
+                  <option value="periods" {% if s.st.mode == 'periods' %}selected{% endif %}>Vipindi/wiki</option>
+                  <option value="manual" {% if s.st.mode == 'manual' %}selected{% endif %}>Actual/Target</option>
+                </select>
+              </td>
+              <td><input type="number" step="any" class="form-control form-control-sm" name="target_{{ s.st.id }}" value="{{ s.st.target }}"></td>
+              <td><input type="number" step="any" class="form-control form-control-sm" name="vila_{{ s.st.id }}" value="{{ s.st.vila_per_week }}"></td>
+              <td><input type="number" class="form-control form-control-sm" name="wk_{{ s.st.id }}" value="{{ s.st.week_count }}"></td>
+              <td><input type="number" step="any" class="form-control form-control-sm" name="base_{{ s.st.id }}" value="{{ s.st.actual_base }}"></td>
+              <td class="small">{{ s.pct_str|default:'—' }}</td>
+              <td class="text-center"><input type="checkbox" class="form-check-input" name="del_{{ s.st.id }}" title="Futa"></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if not snapshot %}
+      <div class="p-3 text-muted">Bado hakuna sub-task. Tumia fomu hapa chini kuzalisha 7 za kawaida.</div>
+      {% endif %}
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header">Tengeneza sub-tasks 7 za kawaida (kama CSV v2)</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'ess_tracker:ess_autogen' task.id %}">
+          {% csrf_token %}
+          <div class="row g-3">
+            {% for field in autogen %}
+              {% if field.name != 'generate' %}
+              <div class="col-md-4 col-lg-3">
+                <label class="form-label small">{{ field.label }}</label>
+                {{ field }}
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          <div class="d-flex align-items-center gap-3 mt-3">
+            <button class="btn btn-outline-primary btn-sm" type="submit">
+              <i class="fas fa-wand-magic-sparkles me-1"></i>Tengeneza/Rejesha sub-tasks</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+      <button class="btn btn-success">Hifadhi mabadiliko</button>
+      <a href="{% url 'ess_tracker:ess_home' %}" class="btn btn-outline-secondary">Rudi</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

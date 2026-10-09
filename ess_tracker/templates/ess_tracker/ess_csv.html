@@ -1,0 +1,34 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Ingiza CSV — ESS e-Utendaji{% endblock %}
+{% block content %}
+<div class="container" style="max-width:760px">
+  <div class="card shadow-sm mt-4">
+    <div class="card-header"><strong>Ingiza tasks kwa CSV aina ya masomo_sample_v2.csv</strong></div>
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Andika hapa (CSV)</label>
+          <textarea name="csv_text" class="form-control" rows="8"
+            placeholder="somo,kidato,mwalimu,task,tarehe_anza,tarehe_mwisho,vipindi_kwa_wiki,wiki,subtasks&#10;hisabati,kwanza,Haji Huseni,,Aug 1, 2026,Dec 5, 2026,24,18,1,2,3,4,5,6,7"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Au pakia faili</label>
+          <input type="file" name="csv_file" accept=".csv,.txt" class="form-control">
+        </div>
+        <button class="btn btn-success">Ingiza</button>
+        <a href="{% url 'ess_tracker:ess_home' %}" class="btn btn-outline-secondary">Rudi</a>
+      </form>
+      <hr>
+      <h6>Safu zinazotambulika</h6>
+      <ul class="small text-muted">
+        <li>Lazima: <b>somo</b>. Hiari: kidato, mwalimu, task.</li>
+        <li>Muda: <b>tarehe_anza</b>, <b>tarehe_mwisho</b> — plot yajumuisha; au safu moja <b>kipindi</b>.</li>
+        <li>Hesabu: <b>vipindi_kwa_wiki</b>, <b>wiki</b> (hiari).</li>
+        <li>Sub-tasks zote 7 kwa chaguo-msingi; unaweza kuchagua kwa <b>subtasks</b> = e.g. "1,2,3,5,6" au "maazimio,nukuu".</li>
+        <li>Namba: maazimio, nukuu, maandalio, zana, vipindi, majaribio, mitihani; Actual: *_actual; Aina/override: mode_1..7, asilimia_1..7.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

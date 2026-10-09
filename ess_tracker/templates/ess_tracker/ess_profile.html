@@ -1,0 +1,28 @@
+{% extends 'field_app/base.html' %}
+{% block title %}Wasifu — ESS e-Utendaji{% endblock %}
+{% block content %}
+<div class="container" style="max-width:680px">
+  <div class="card shadow-sm mt-4">
+    <div class="card-header"><strong>Wasifu wa ESS e-Utendaji</strong></div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+          {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+        <button class="btn btn-primary">Hifadhi</button>
+        <a href="{% url 'ess_tracker:ess_home' %}" class="btn btn-outline-secondary">Rudi</a>
+      </form>
+      {% if not creating %}
+      <p class="text-muted mt-3 mb-0 small">Username na password za ESS (sio za app hii) hutumika
+      pekee wakati wa kujaza—zinahifadhiwa kwa usimbaji (cryptography) na hazionyeshwi mahali popote.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

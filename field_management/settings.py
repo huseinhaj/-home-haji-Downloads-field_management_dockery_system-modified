@@ -15,6 +15,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-only-insecure-key-change-in-production')
 
+# ESS e-Utendaji — kitufe cha Fernet kwa password za ESS (hiari; kikosekanapo
+# tunatumia key inayotokana na SECRET_KEY). Tengeneza kwa:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+ESS_ENC_KEY = os.environ.get('ESS_ENC_KEY', '')
+
 # SECURITY WARNING: don't run with debug turned on in production
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
@@ -92,6 +97,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'elearning',
     'curriculum',
+    'ess_tracker',
 ]
 
 MIDDLEWARE = [
