@@ -76,33 +76,33 @@
       {% endif %}
     </div>
 
-    <div class="card shadow-sm mb-3">
-      <div class="card-header">Tengeneza sub-tasks 7 za kawaida (kama CSV v2)</div>
-      <div class="card-body">
-        <form method="post" action="{% url 'ess_tracker:ess_autogen' task.id %}">
-          {% csrf_token %}
-          <div class="row g-3">
-            {% for field in autogen %}
-              {% if field.name != 'generate' %}
-              <div class="col-md-4 col-lg-3">
-                <label class="form-label small">{{ field.label }}</label>
-                {{ field }}
-              </div>
-              {% endif %}
-            {% endfor %}
-          </div>
-          <div class="d-flex align-items-center gap-3 mt-3">
-            <button class="btn btn-outline-primary btn-sm" type="submit">
-              <i class="fas fa-wand-magic-sparkles me-1"></i>Tengeneza/Rejesha sub-tasks</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <div class="d-flex gap-2 mb-4">
       <button class="btn btn-success">Hifadhi mabadiliko</button>
       <a href="{% url 'ess_tracker:ess_home' %}" class="btn btn-outline-secondary">Rudi</a>
     </div>
   </form>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header">Tengeneza sub-tasks 7 za kawaida (kama CSV v2)</div>
+    <div class="card-body">
+      <form method="post" action="{% url 'ess_tracker:ess_autogen' task.id %}">
+        {% csrf_token %}
+        <div class="row g-3">
+          {% for field in autogen %}
+            {% if field.name != 'generate' %}
+            <div class="col-md-4 col-lg-3">
+              <label class="form-label small">{{ field.label }}</label>
+              {{ field }}
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="d-flex align-items-center gap-3 mt-3">
+          <button class="btn btn-outline-primary btn-sm" type="submit">
+            <i class="fas fa-wand-magic-sparkles me-1"></i>Tengeneza/Rejesha sub-tasks</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}
