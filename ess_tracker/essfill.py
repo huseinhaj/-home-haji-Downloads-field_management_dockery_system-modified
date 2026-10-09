@@ -53,6 +53,11 @@ SELECTORS = {
     'save_button': "mat-dialog-container button[type='submit']",
     'paginator_next_selector': '.mat-mdc-paginator-navigation-next',
     'match_threshold': 0.9,
+    # Vitufe vya kuwasilisha (ESS inahitaji Submit, si Save pekee)
+    'submit_labels': ['Submit', 'SUBMIT', 'Submit Progress', 'Wasilisha', 'Tuma',
+                      'Thibitisha', 'Send', 'Sumit'],
+    'confirm_labels': ['Yes', 'YES', 'Ok', 'OK', 'Confirm', 'Continue',
+                       'Ndiyo', 'Thibitisha', 'Submit', 'SUBMIT'],
 }
 
 CACHE_PREFIX = 'ess_fill:'
@@ -227,6 +232,46 @@ def _click_text_option(page, needle, exact=True):
     return False
 
 
+def _dialog_button_texts(page):
+    out = []
+    for b in page.query_selector_all('mat-dialog-container button'):
+        try:
+            if b.is_visible():
+                out.append((b.inner_text() or '').strip())
+        except Exception:
+            continue
+    return [t for t in out if t]
+
+
+def _click_first_text(page, needles, scope='mat-dialog-container'):
+    """Bofya kitufe cha kwanza kinacholingana na mojawapo ya majina."""
+    for needle in needles:
+        for sel in (f"{scope} button:has-text('{needle}')",
+                    f"{scope} button:text-is('{needle}')"):
+            try:
+                for el in page.query_selector_all(sel):
+                    if el.is_visible() and el.is_enabled():
+                        el.click()
+                        return needle
+            except Exception:
+                continue
+    return None
+
+
+def _confirm_if_any(page, labels):
+    """Bofya 'Ndiyo/Yes/OK' kama dialog ya uthibitisho imetokea."""
+    for needle in labels:
+        try:
+            el = page.query_selector(
+                f".cdk-overlay-container button:has-text('{needle}')")
+            if el and el.is_visible() and el.is_enabled():
+                el.click()
+                return needle
+        except Exception:
+            continue
+    return None
+
+
 # ── Mtiririko mkuu ───────────────────────────────────────────────────
 def _set_progress(run_id, **kw):
     data = cache.get(CACHE_PREFIX + str(run_id)) or {}
@@ -313,7 +358,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         emit(f'= sawa tayari ({pct:.2f}%): {text[:50]}')
                         continue
                     emit(f'-> {text[:50]}  (match {score:.2f}) => {pct:.2f}%')
-                    _fill_one(page, match['i'], text, pct)
+                    _fill_one(page, match['i'], text, pct, emit=emit)
                     saved += 1
                     _set_progress(run_id, saved=saved)
 
@@ -350,7 +395,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     return {'status': 'done', 'saved': saved, 'skipped': skipped, 'not_found': not_found}
 
 
-def _fill_one(page, row_index, text, pct) -> None:
+def _fill_one(page, row_index, text, pct, emit=None) -> None:
     """Fungua dialog na ujaze sub task moja (selectors zimehakikiwa)."""
     row_els = page.query_selector_all(SELECTORS['row_selector'])
     if row_index >= len(row_els):
@@ -384,13 +429,41 @@ def _fill_one(page, row_index, text, pct) -> None:
 
     inp = page.wait_for_selector(SELECTORS['percentage_input_selector'], timeout=10000)
     inp.fill(str(int(round(pct))))
-    page.click(SELECTORS['save_button'])
-    page.wait_for_selector(SELECTORS['dialog_selector'], state='detached', timeout=20000)
+    page.wait_for_timeout(300)
+
+    if emit:
+        emit('  vitufe vya dialog: ' + ', '.join(_dialog_button_texts(page)) or '(hakuna)')
+
+    # 1) Bofya "Submit" (ESS inahitaji kuwasilisha, si Save pekee).
+    pressed = _click_first_text(page, SELECTORS['submit_labels'])
+    # 2) Kama hakuna Submit, angalia dialog ya kuthibitisha yenyewe.
+    if not pressed:
+        page.wait_for_timeout(600)
+        pressed = _confirm_if_any(page, SELECTORS['confirm_labels'])
+    # 3) Mwisho: Save (kama njia ya akiba).
+    if not pressed:
+        try:
+            page.click(SELECTORS['save_button'])
+            pressed = 'Save'
+        except Exception:
+            raise RuntimeError(
+                'Sikuweza kubofya Submit wala Save kwenye dialog: '
+                + (', '.join(_dialog_button_texts(page)) or '(hakuna vitufe)'))
+    if emit:
+        emit(f'  -> imebofya: {pressed}')
+
+    # Dialog ya uthibitisho inaweza kutokea baada ya Submit.
+    page.wait_for_timeout(900)
+    conf = _confirm_if_any(page, SELECTORS['confirm_labels'])
+    if conf and emit:
+        emit(f'  -> uthibitisho: {conf}')
+
+    page.wait_for_selector(SELECTORS['dialog_selector'], state='detached', timeout=25000)
     try:
         page.wait_for_load_state('networkidle', timeout=15000)
     except Exception:
         pass
-    page.wait_for_timeout(600)
+    page.wait_for_timeout(800)
 
 
 def subtask_snapshot(task) -> list[dict]:
