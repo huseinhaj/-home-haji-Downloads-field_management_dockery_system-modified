@@ -150,6 +150,33 @@ def pct_for(st: SubTask) -> tuple[float | None, str]:
     return None, 'none'
 
 
+def planned_fraction(task: Task, leo: date | None = None) -> float:
+    """Sehemu ya muda iliyopita (0..1) kati ya kuanza na kuisha kwa Task."""
+    tw = total_weeks(task)
+    if not tw or tw <= 0:
+        return 0.0
+    return max(0.0, min(1.0, elapsed_weeks(task, leo) / tw))
+
+
+def pct_auto_for(st: SubTask) -> tuple[float | None, str]:
+    """Asilimia ya 'Jaza' bila mwalimu kuandika kitu.
+
+    - Sub-task za mwaka (maazimio/nukuu/tathmini): 100%.
+    - Nyingine: maendeleo ya ratiba (muda uliopita) au actual kama aliandika
+      zaidi ya ratiba. Chanzo: 'annual' | 'auto'.
+    """
+    if st.mode == 'annual':
+        return 100.0, 'annual'
+    target = target_for(st)
+    actual = actual_for(st)
+    frac = planned_fraction(st.task)
+    if target > 0:
+        planned = target * _dec(round(frac, 6))
+        eff = actual if actual > planned else planned
+        return min(100.0, round(float(eff) / float(target) * 100.0, 2)), 'auto'
+    return round(frac * 100.0, 2), 'auto'
+
+
 def _dec(v) -> Decimal:
     try:
         return Decimal(str(v))
@@ -158,11 +185,14 @@ def _dec(v) -> Decimal:
 
 
 def built_wanted(profile) -> list[tuple[str, float]]:
-    """[(description, asilimia)] kwa sub task zote zenye asilimia."""
+    """[(description, asilimia)] za KILA sub-task (maendeleo ya ratiba).
+
+    Hutumika na 'Jaza': mwalimu haandiki kitu, asilimia inahesabiwa kiotomatiki.
+    """
     out = []
     for task in profile.tasks.all():
         for st in task.subtasks.all():
-            pct, _src = pct_for(st)
+            pct, _src = pct_auto_for(st)
             if pct is not None:
                 out.append((st.description, pct))
     return out

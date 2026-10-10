@@ -5,7 +5,10 @@
 <div class="page-head d-flex flex-wrap justify-content-between align-items-end gap-2">
   <div>
     <h4>Rekodi kazi kwa wiki {{ week }}</h4>
-    <div class="sub">Andika kile ulichofanya — "leo nimefanya..." — unaweza kuweka viingilio vingi kwa wiki.</div>
+    <div class="sub">
+      <b>Hiari:</b> huna haja ya kurekodi hapa — <b>Jaza ESS sasa</b> inajaza yote yenyewe.
+      Weka hapa tu kama unataka kuonyesha idadi halisi uliyofanya (mf. vipindi 4), itatumika badala ya ratiba.
+    </div>
   </div>
   <form class="d-flex gap-2 align-items-center">
     <label class="text-muted small mb-0">Wiki namba:</label>
@@ -25,7 +28,7 @@
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0">
         <thead class="table-light">
-          <tr><th>Tarehe</th><th>Sub Task</th><th style="width:110px">Kiasi</th><th>Maelezo</th></tr>
+          <tr><th>Tarehe</th><th>Sub Task</th><th style="width:110px">Idadi</th><th>Maelezo</th></tr>
         </thead>
         <tbody>
           {% for e in entries %}
@@ -54,8 +57,8 @@
           <tr>
             <th style="width:150px">Tarehe</th>
             <th>Sub Task</th>
-            <th style="width:110px">Kiasi leo</th>
-            <th style="width:230px">Maelezo (mf. "vipindi 2")</th>
+            <th style="width:150px">Idadi uliyofanya (hiari)</th>
+            <th style="width:230px">Maelezo (hiari)</th>
           </tr>
         </thead>
         <tbody id="entryRows">
@@ -86,8 +89,10 @@
     <a href="{% url 'ess_tracker:ess_home' %}" class="btn btn-outline-secondary">Nyumbani</a>
   </div>
   <small class="text-muted d-block mt-2">
-    Viingilio hivi vinahesabiwa kwenye asilimia. Zile asilimia zinaingia kwenye ESS yako baada ya kubofya
-    <b>Jaza ESS sasa</b>. Sub-task za mwaka mzima (maazimio, nukuu, tathmini) zina asilimia 100 zenyewe.
+    <b>Idadi</b> = kiasi cha kile ulichofanya siku hiyo (mf. vipindi 4, maandalio 2).
+    Ukiiandika, tunatumia hiyo; usipoandika, tunatumia maendeleo ya ratiba.
+    Zote zinaingia ESS baada ya kubofya <b>Jaza ESS sasa</b>. Sub-task za mwaka mzima
+    (maazimio, nukuu, tathmini) zina asilimia 100 zenyewe.
   </small>
 </form>
 </div>

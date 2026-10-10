@@ -15,7 +15,7 @@ from difflib import SequenceMatcher
 from django.core.cache import cache
 from django.utils import timezone as tz
 
-from .compute import built_wanted, pct_for
+from .compute import built_wanted, pct_auto_for, pct_for
 from .models import EssFillRun, SubTask
 
 BASE_URL = 'https://ess.utumishi.go.tz/'
@@ -470,14 +470,16 @@ def subtask_snapshot(task) -> list[dict]:
     """Maelezo ya UI (asilimia, target, actual) kwa template."""
     out = []
     for st in task.subtasks.all().prefetch_related('entries'):
-        pct, src = pct_for(st)
+        pct, src = pct_auto_for(st)
+        recorded, _ = pct_for(st)
         out.append({
             'st': st,
             'target': target_display(st),
             'actual': actual_display(st),
             'expected': expected_display(st),
             'pct': pct,
-            'pct_str': '' if pct is None else f'{pct:.2f}%',
+            'pct_str': '' if pct is None else f'{pct:.0f}%',
+            'recorded_pct': recorded,
             'source': src,
         })
     return out

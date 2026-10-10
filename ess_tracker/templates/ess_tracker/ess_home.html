@@ -4,7 +4,7 @@
 <div class="page-head d-flex flex-wrap justify-content-between align-items-end gap-2">
   <div>
     <h4>e-Tendaji — {{ profile.full_name|default:profile.ess_username }}</h4>
-    <div class="sub">Rekodi kazi yako kwa wiki, kisha ujaze e-Tendaji yako kwenye ESS.</div>
+    <div class="sub">Bofya <b>Jaza ESS sasa</b> chini — tunahesabu na kuwasilisha maendeleo yako yote kiotomatiki. Hakuna cha kuandika.</div>
   </div>
   <a href="{% url 'ess_tracker:ess_csv' %}" class="btn btn-sm btn-outline-secondary text-decoration-none">
     <i class="fas fa-file-csv me-1"></i>Ingiza kwa CSV</a>
@@ -44,9 +44,9 @@
         <tr>
           <th style="width:34px">#</th>
           <th>Sub Task</th>
-          <th class="text-end">Target</th>
-          <th class="text-end">Actual</th>
-          <th style="width:200px">Asilimia</th>
+          <th class="text-end">Malengo</th>
+          <th class="text-end">Uliyofanya</th>
+          <th style="width:200px">Asilimia itakayotumwa</th>
         </tr>
       </thead>
       <tbody>
@@ -86,7 +86,11 @@
       </button>
       <a href="{% url 'ess_tracker:ess_fill_log' %}" class="btn btn-outline-secondary ms-2">Historia ya kujaza</a>
     </form>
-    <small class="text-muted d-block mt-2">Hii inawasilisha asilimia za sub-tasks kwenye ESS kwa akaunti yako.</small>
+    <small class="text-muted d-block mt-2">
+      Huna haja ya kuandika kitu — tunajaza maendeleo yote (maazimio, nukuu, maandalio, zana, vipindi,
+      tathmini, majaribio) kwenye ESS kwa akaunti yako. Ukitaka kuweka idadi halisi uliyofanya,
+      unaweza hiari kwenye <a href="{% url 'ess_tracker:ess_week' %}">Rekodi wiki</a>.
+    </small>
   </div>
 </div>
 {% endblock %}
