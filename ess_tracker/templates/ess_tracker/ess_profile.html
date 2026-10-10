@@ -1,5 +1,5 @@
 {% extends 'ess_tracker/ess_base.html' %}
-{% block title %}Wasifu — e-UTENDAJI{% endblock %}
+{% block title %}Wasifu — e-Tendaji{% endblock %}
 {% block content %}
 <style>
 .ess-school{position:relative;}
@@ -20,11 +20,11 @@
 </style>
 <div class="page-head" style="max-width:680px;margin-left:auto;margin-right:auto;">
   <h4>Wasifu wako</h4>
-  <div class="sub">Weka username na password zako za ESS — ndizo zinazotumika kujaza e-Utendaji wako.</div>
+  <div class="sub">Weka username na password zako za ESS — ndizo zinazotumika kujaza e-Tendaji wako.</div>
 </div>
 <div class="container" style="max-width:680px">
   <div class="card shadow-sm mt-2">
-    <div class="card-header"><strong>Wasifu wa ESS e-Utendaji</strong></div>
+    <div class="card-header"><strong>Wasifu wa ESS e-Tendaji</strong></div>
     <div class="card-body">
       <form method="post" id="essprofile">
         {% csrf_token %}
@@ -41,9 +41,9 @@
       </form>
       {% if not creating %}
       <p class="text-muted mt-3 mb-0 small">
-        Username na password za <b>ESS (e-Utendaji)</b> ni zile zile unazoingia
+        Username na password za <b>ESS (e-Tendaji)</b> ni zile zile unazoingia
         <code>ess.utumishi.go.tz</code> — zinahifadhiwa kwa usimbaji (cryptography)
-        na hazionyeshwi mahali popote. Hizi ndizo zinazotumiwa kujaza e-Utendaji lako.
+        na hazionyeshwi mahali popote. Hizi ndizo zinazotumiwa kujaza e-Tendaji lako.
       </p>
       {% endif %}
     </div>

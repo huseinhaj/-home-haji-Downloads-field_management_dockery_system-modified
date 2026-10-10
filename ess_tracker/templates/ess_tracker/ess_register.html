@@ -4,87 +4,96 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>e-UTENDAJI Register</title>
+<title>e-Tendaji — Register</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
+:root{--primary:#1F41BB;--primary-dk:#16308c;--body-bg:#F0F5F9;--text:#212529;--muted:#5A6B7E;
+  --border:#dee2e6;--danger:#df0029;--success:#4CAF50;}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-:root{--navy:#0B2E5C;--navy-dark:#082243;--gold:#C8900A;--light:#EEF2F7;--white:#fff;--text:#1B2A3A;--muted:#5A6B7E;--border:#CBD5E1;--danger:#B91C1C;--success:#047857;}
 html,body{height:100%;}
-body{font-family:'Segoe UI',system-ui,-apple-system,Tahoma,sans-serif;font-size:14px;background:var(--light);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
-.gov-bar{background:linear-gradient(180deg,var(--navy),var(--navy-dark));border-bottom:4px solid var(--gold);padding:10px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
-.gov-brand{display:flex;align-items:center;gap:12px;}
-.gov-arms{width:46px;height:46px;border-radius:50%;flex-shrink:0;background:rgba(200,144,10,.18);border:2px solid rgba(200,144,10,.55);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--gold);}
-.gov-text{display:flex;flex-direction:column;}
-.gov-text .l1{font-size:12px;color:#fff;font-weight:800;letter-spacing:.3px;}
-.gov-text .l2{font-size:10.5px;color:var(--gold);font-weight:600;letter-spacing:.2px;}
-.gov-right{display:flex;align-items:center;gap:8px;}
-.gov-chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:3px;letter-spacing:.4px;}
+body{font-family:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14px;
+  background:var(--body-bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
+h1,h2,h3,h4,.btn,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
+.app-header{background:linear-gradient(135deg,var(--primary),var(--primary-dk));padding:12px 26px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;color:#fff;}
+.brand{display:flex;align-items:center;gap:14px;}
+.brand img{width:52px;height:52px;flex-shrink:0;}
+.brand-txt h1{font-size:15px;font-weight:600;color:#F8F9FA;margin:0;}
+.brand-txt p{font-size:11px;font-weight:400;color:rgba(255,255,255,.82);margin:1px 0 0;line-height:1.25;}
+.head-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.head-flag{height:44px;width:auto;border-radius:3px;box-shadow:0 2px 8px rgba(0,0,0,.25);}
 .lang-row{display:flex;gap:3px;}
-.lang-a{font-size:11px;font-weight:700;text-decoration:none;padding:4px 9px;border-radius:3px;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.18);}
-.lang-a.on{background:var(--gold);color:#fff;border-color:var(--gold);}
-.lang-a.off:hover{color:#fff;}
-.main{flex:1;display:flex;align-items:center;justify-content:center;padding:28px 16px;}
-.card{width:100%;max-width:430px;background:var(--white);border-radius:6px;border:1px solid rgba(11,46,92,.14);box-shadow:0 2px 4px rgba(0,0,0,.05),0 12px 34px rgba(11,46,92,.12);overflow:hidden;}
-.card-head{background:var(--navy);padding:14px 20px;display:flex;align-items:center;gap:10px;}
-.card-head .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);}
-.card-head .tt{color:#fff;font-weight:800;font-size:15px;letter-spacing:.2px;}
-.card-head .tt small{display:block;font-size:10.5px;font-weight:600;color:rgba(255,255,255,.6);}
-.card-body{padding:24px;}
-.form-title{font-size:15px;font-weight:700;margin-bottom:3px;}
-.form-sub{font-size:12px;color:var(--muted);margin-bottom:16px;}
-.field{margin-bottom:14px;}
-.field label{display:block;font-size:11px;font-weight:700;color:var(--text);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;}
-.inp-wrap{position:relative;}
-.inp-wrap .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;}
-.inp-wrap input[type=text],.inp-wrap input[type=password]{width:100%;padding:11px 12px 11px 36px;font-size:13.5px;color:var(--text);border:1.5px solid var(--border);border-radius:4px;background:#FBFCFE;font-family:inherit;outline:none;transition:border-color .13s,box-shadow .13s;}
-.inp-wrap input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(11,46,92,.09);background:#fff;}
-.eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:4px;}
-.eye:hover{color:var(--navy);}
-.notice{background:#FEF9C3;border:1px solid #FDE68A;color:#854D0E;border-radius:4px;padding:9px 12px;font-size:12px;margin-bottom:15px;}
-.errlist{list-style:none;background:#FEE2E2;border:1px solid #FECACA;color:var(--danger);border-radius:4px;padding:9px 12px;font-size:12px;margin-bottom:15px;}
+.lang-a{font-size:11px;font-weight:700;text-decoration:none;padding:5px 10px;border-radius:4px;
+  color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.25);}
+.lang-a.on{background:#fff;color:var(--primary);border-color:#fff;}
+.lang-a.off:hover{color:#fff;background:rgba(255,255,255,.12);}
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:30px 16px;}
+.card{width:100%;max-width:470px;background:#fff;border-radius:12px;box-shadow:0 6px 30px rgba(31,65,187,.15);overflow:hidden;}
+.card-body{padding:32px 34px 26px;}
+.portal{text-align:center;margin-bottom:20px;}
+.portal h2{font-size:22px;font-weight:600;color:var(--primary);margin-bottom:4px;}
+.portal .sub{font-size:13px;color:var(--muted);margin-top:4px;}
+.mfield{position:relative;border:1.5px solid #b6c2d4;border-radius:7px;padding:15px 14px 9px;
+  margin-bottom:16px;background:#fff;transition:border-color .13s,box-shadow .13s;}
+.mfield:focus-within{border-color:var(--primary);box-shadow:0 0 0 2px rgba(31,65,187,.14);}
+.mfield label{position:absolute;top:-9px;left:10px;background:#fff;padding:0 6px;font-size:11.5px;
+  color:var(--muted);font-weight:600;font-family:'Poppins',sans-serif;}
+.mfield:focus-within label{color:var(--primary);}
+.mfield input{border:none;outline:none;width:100%;font-size:14px;padding:1px 26px 1px 0;
+  background:transparent;font-family:inherit;color:var(--text);}
+.eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;
+  cursor:pointer;color:var(--muted);font-size:14px;padding:4px;}
+.eye:hover{color:var(--primary);}
+.notice{background:#EFF4FF;border:1px solid #CBD8FF;color:#26397a;border-radius:6px;
+  padding:10px 12px;font-size:12px;margin-bottom:16px;line-height:1.4;}
+.errlist{list-style:none;background:#FEE2E2;border:1px solid #FECACA;color:var(--danger);
+  border-radius:6px;padding:9px 12px;font-size:12px;margin-bottom:15px;}
 .errlist li{margin:2px 0;}
-.btn{width:100%;background:var(--navy);color:#fff;border:none;border-radius:4px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.6px;transition:background .13s;text-transform:uppercase;margin-top:2px;}
-.btn:hover{background:var(--navy-dark);}
-.btn i{margin-right:6px;}
-.alt{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
-.alt a{color:var(--navy);font-weight:700;text-decoration:none;font-size:13px;}
+.btn{width:100%;background:var(--primary);color:#fff;border:none;border-radius:7px;padding:14px;
+  font-size:15px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;letter-spacing:.6px;
+  text-transform:uppercase;transition:background .13s;margin-top:2px;}
+.btn:hover{background:var(--primary-dk);}
+.btn i{margin-right:7px;}
+.alt{text-align:center;margin-top:20px;padding-top:18px;border-top:1px solid var(--border);font-size:13px;color:var(--muted);}
+.alt a{color:var(--primary);font-weight:700;text-decoration:none;}
 .alt a:hover{text-decoration:underline;}
-.alt .muted{font-size:12px;color:var(--muted);}
-.gov-foot{background:#fff;border-top:1px solid var(--border);padding:12px;text-align:center;font-size:11px;color:var(--muted);flex-shrink:0;}
+.app-foot{background:#fff;border-top:1px solid var(--border);padding:14px;text-align:center;
+  font-size:11.5px;color:var(--muted);flex-shrink:0;font-family:'Poppins',sans-serif;}
+.app-foot a{color:var(--primary);text-decoration:none;}
 </style>
 </head>
 <body>
 
-<div class="gov-bar">
-  <div class="gov-brand">
-    <div class="gov-arms"><i class="fas fa-bullseye"></i></div>
-    <div class="gov-text">
-      <span class="l1">UNITED REPUBLIC OF TANZANIA</span>
-      <span class="l2">Ministry of Education, Science and Technology</span>
+<header class="app-header">
+  <div class="brand">
+    <img src="{% static 'ess/arm.png' %}" alt="Tanzania">
+    <div class="brand-txt">
+      <h1>United Republic of Tanzania</h1>
+      <p>President's Office Public Service<br>Management and Good Governance</p>
     </div>
   </div>
-  <div class="gov-right">
-    <span class="gov-chip">e-UTENDAJI</span>
+  <div class="head-right">
+    <img class="head-flag" src="{% static 'ess/flag.png' %}" alt="Tanzania flag">
     <div class="lang-row">
       <a class="lang-a {% if LANG == 'sw' %}on{% else %}off{% endif %}" href="{% url 'set_language' %}?lang=sw&next={{ request.path }}">SW</a>
       <a class="lang-a {% if LANG == 'en' %}on{% else %}off{% endif %}" href="{% url 'set_language' %}?lang=en&next={{ request.path }}">EN</a>
     </div>
   </div>
-</div>
+</header>
 
 <div class="main">
   <div class="card">
-    <div class="card-head">
-      <span class="dot"></span>
-      <span class="tt">{% if LANG == 'sw' %}JISAJILI E-UTENDAJI{% else %}REGISTER E-UTENDAJI{% endif %}<small>Employee Self Service</small></span>
-    </div>
     <div class="card-body">
-      <div class="form-title">{% if LANG == 'sw' %}Unda akaunti yako{% else %}Create your account{% endif %}</div>
-      <div class="form-sub">{% if LANG == 'sw' %}Tumia username na password ambazo tayari unazotumia kwenye ESS{% else %}Use the username and password you already use on ESS{% endif %}</div>
+      <div class="portal">
+        <h2>e-Tendaji</h2>
+        <div class="sub">{% if LANG == 'sw' %}Unda akaunti yako kwa username na password ZAKO ZA ESS{% else %}Create your account with your ESS username and password{% endif %}</div>
+      </div>
 
       <div class="notice">
-        <i class="fas fa-shield-alt me-1"></i>
-        {% if LANG == 'sw' %}Username na password hizi ndizo tutakazotumia kujaza e-Utendaji lako. Zimehifadhiwa kwa usimbaji (encrypted) na hazionyeshwi mahali popote.{% else %}These are the credentials we will use to fill your e-Utendaji. They are stored encrypted and never shown anywhere.{% endif %}
+        <i class="fas fa-shield-alt"></i>
+        {% if LANG == 'sw' %}Username na password hizi ndizo tutakazotumia kujaza e-Tendaji lako. Zimehifadhiwa kwa usimbaji (encrypted) na hazionyeshwi mahali popote.{% else %}These are the credentials we will use to fill your e-Tendaji. They are stored encrypted and never shown anywhere.{% endif %}
       </div>
 
       {% if form.errors %}
@@ -97,40 +106,37 @@ body{font-family:'Segoe UI',system-ui,-apple-system,Tahoma,sans-serif;font-size:
 
       <form method="post" action="{% url 'ess_tracker:ess_register' %}">
         {% csrf_token %}
-        <div class="field">
+        <div class="mfield">
           <label>Username ya ESS</label>
-          <div class="inp-wrap"><i class="fas fa-user ic"></i>
-            <input type="text" name="ess_username" required autofocus value="{{ form.ess_username.value|default_if_none:'' }}" placeholder="e.g. huseinhaj09">
-          </div>
+          <input type="text" name="ess_username" required autofocus
+                 value="{{ form.ess_username.value|default_if_none:'' }}" placeholder="e.g. huseinhaj09">
         </div>
-        <div class="field">
+        <div class="mfield">
           <label>Password ya ESS</label>
-          <div class="inp-wrap"><i class="fas fa-lock ic"></i>
-            <input type="password" name="password1" required autocomplete="new-password" id="pw1" placeholder="********">
-            <button type="button" class="eye" data-tgt="pw1" aria-label="Show"><i class="far fa-eye"></i></button>
-          </div>
+          <input type="password" name="password1" required autocomplete="new-password" id="pw1">
+          <button type="button" class="eye" data-tgt="pw1" aria-label="Show"><i class="far fa-eye"></i></button>
         </div>
-        <div class="field">
+        <div class="mfield">
           <label>{% if LANG == 'sw' %}Thibitisha password{% else %}Confirm password{% endif %}</label>
-          <div class="inp-wrap"><i class="fas fa-lock ic"></i>
-            <input type="password" name="password2" required autocomplete="new-password" id="pw2" placeholder="********">
-            <button type="button" class="eye" data-tgt="pw2" aria-label="Show"><i class="far fa-eye"></i></button>
-          </div>
+          <input type="password" name="password2" required autocomplete="new-password" id="pw2">
+          <button type="button" class="eye" data-tgt="pw2" aria-label="Show"><i class="far fa-eye"></i></button>
         </div>
-        <button class="btn" type="submit"><i class="fas fa-user-plus"></i>{% if LANG == 'sw' %}Jisajili{% else %}Register{% endif %}</button>
+        <button class="btn" type="submit">{% if LANG == 'sw' %}Jisajili{% else %}Register{% endif %}</button>
       </form>
 
       <div class="alt">
-        <span class="muted">{% if LANG == 'sw' %}Akaunti ipo tayari?{% else %}Already registered?{% endif %}</span>
-        <a href="{% url 'ess_tracker:ess_login' %}">{% if LANG == 'sw' %}Ingia{% else %}Sign in{% endif %} →</a>
+        {% if LANG == 'sw' %}Akaunti ipo tayari?{% else %}Already registered?{% endif %}
+        <a href="{% url 'ess_tracker:ess_login' %}">{% if LANG == 'sw' %}Ingia{% else %}Sign in →{% endif %}</a>
       </div>
     </div>
   </div>
 </div>
 
-<div class="gov-foot">
-  © 2026 Ministry of Education, Science and Technology — United Republic of Tanzania
-</div>
+<footer class="app-foot">
+  For any Technical inquiry, Please contact ICT Support Team at:
+  <a href="mailto:support@utumishi.go.tz">support@utumishi.go.tz</a> or call 026 216 0240<br>
+  Copyright ©2026, All rights reserved.
+</footer>
 
 <script>
 document.querySelectorAll('.eye[data-tgt]').forEach(function (btn) {

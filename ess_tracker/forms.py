@@ -10,7 +10,7 @@ CustomUser = get_user_model()
 class TeacherRegistrationForm(forms.Form):
     """Kujisajili kwa mwalimu wa ESS kwa kutumia username na password ZAKE ZA ESS."""
 
-    ess_username = forms.CharField(label='Username ya ESS (e-Utendaji)', max_length=255)
+    ess_username = forms.CharField(label='Username ya ESS (e-Tendaji)', max_length=255)
     password1 = forms.CharField(label='Password ya ESS', widget=forms.PasswordInput(
         attrs={'placeholder': '********', 'autocomplete': 'new-password'}))
     password2 = forms.CharField(
@@ -63,7 +63,7 @@ def _ess_email_for_username(username: str) -> str:
 
 class ProfileForm(forms.ModelForm):
     ess_password = forms.CharField(
-        label='Password yako ya ESS (e-Utendaji)',
+        label='Password yako ya ESS (e-Tendaji)',
         required=False,
         widget=forms.PasswordInput(render_value=True),
         help_text='Imehifadhiwa kwa usimbaji. Ikitolewa tupu, password ya zamani inasalia.')
@@ -78,7 +78,7 @@ class ProfileForm(forms.ModelForm):
             'ess_username': forms.TextInput(attrs={'class': 'form-control'}),
         }
         labels = {
-            'ess_username': 'Username yako ya ESS (e-Utendaji)',
+            'ess_username': 'Username yako ya ESS (e-Tendaji)',
             'full_name': 'Majina kamili',
             'school': 'Shule',
         }

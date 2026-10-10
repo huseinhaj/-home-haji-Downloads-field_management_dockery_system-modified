@@ -18,7 +18,7 @@ RUN_STATUS_CHOICES = [
 
 
 class TeacherProfile(models.Model):
-    """Wasifu wa mwalimu kwenye app (kwa ajili ya e-Utendaji + ESS auto-fill)."""
+    """Wasifu wa mwalimu kwenye app (kwa ajili ya e-Tendaji + ESS auto-fill)."""
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ess_profile')
@@ -29,7 +29,7 @@ class TeacherProfile(models.Model):
         related_name='ess_profiles')
     ess_username = models.CharField(
         max_length=255, blank=True,
-        help_text='Jina au barua pepe unayotumia kuingia ESS (e-Utendaji)')
+        help_text='Jina au barua pepe unayotumia kuingia ESS (e-Tendaji)')
     ess_password = models.CharField(max_length=512, blank=True)
     ess_ready = models.BooleanField(default=False, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)

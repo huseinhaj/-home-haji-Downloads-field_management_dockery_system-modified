@@ -29,7 +29,7 @@ def _safe_next(request, fallback='/ess/'):
 
 
 def ess_login(request):
-    """Login ya walimu kwa username+password zake Mwenyewe ZA ESS (e-Utendaji)."""
+    """Login ya walimu kwa username+password zake Mwenyewe ZA ESS (e-Tendaji)."""
     if request.user.is_authenticated:
         if _me(request) is None:
             return redirect('ess_tracker:ess_profile')
@@ -47,7 +47,7 @@ def ess_login(request):
             messages.error(request, 'Password si sahihi. Jaribu tena.')
         else:
             login(request, profile.user, backend='field_app.backends.EmailBackend')
-            messages.success(request, 'Umeingia e-Utendaji (ESS).')
+            messages.success(request, 'Umeingia e-Tendaji (ESS).')
             return redirect(_safe_next(request))
     return render(request, 'ess_tracker/ess_login.html', {'hide_navbar': True})
 

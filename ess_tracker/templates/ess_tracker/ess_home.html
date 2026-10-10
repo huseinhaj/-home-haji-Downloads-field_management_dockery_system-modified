@@ -1,10 +1,10 @@
 {% extends 'ess_tracker/ess_base.html' %}
-{% block title %}Nyumbani — e-UTENDAJI{% endblock %}
+{% block title %}Nyumbani — e-Tendaji{% endblock %}
 {% block content %}
 <div class="page-head d-flex flex-wrap justify-content-between align-items-end gap-2">
   <div>
-    <h4>e-Utendaji — {{ profile.full_name|default:profile.ess_username }}</h4>
-    <div class="sub">Rekodi kazi yako kwa wiki, kisha ujaze e-Utendaji yako kwenye ESS.</div>
+    <h4>e-Tendaji — {{ profile.full_name|default:profile.ess_username }}</h4>
+    <div class="sub">Rekodi kazi yako kwa wiki, kisha ujaze e-Tendaji yako kwenye ESS.</div>
   </div>
   <a href="{% url 'ess_tracker:ess_csv' %}" class="btn btn-sm btn-outline-secondary text-decoration-none">
     <i class="fas fa-file-csv me-1"></i>Ingiza kwa CSV</a>
