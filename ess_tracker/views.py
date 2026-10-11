@@ -419,6 +419,40 @@ def _run_in_thread(profile_id, run_id):
     run_fill(profile_id, run_id)
 
 
+@login_required
+@require_POST
+def ess_sync_names(request):
+    """Chukua majina ya task/sub-task kutoka official ESS na usawazishe local."""
+    profile = _me(request)
+    if profile is None:
+        return redirect('ess_tracker:ess_profile')
+    if not profile.ess_ready:
+        messages.error(request, 'Weka kwanza ESS username na password kwenye wasifu.')
+        return redirect('ess_tracker:ess_profile')
+    run = EssFillRun.objects.create(profile=profile, kind='sync')
+    run.status = 'running'
+    run.save()
+    try:
+        from .tasks import run_ess_sync
+        res = run_ess_sync.apply_async(args=[profile.id, run.id], queue='default')
+        run.task_id = res.id
+        run.save()
+        started = True
+    except Exception:
+        started = False
+    if not started:
+        threading.Thread(target=_run_sync_in_thread,
+                         args=(profile.id, run.id), daemon=True).start()
+    cache.set(CACHE_PREFIX + str(run.id), {'msg': 'Inaanzisha...', 'step': 0,
+                                           'done': False, 'error': ''}, timeout=3600)
+    return redirect('ess_tracker:ess_fill_status', run_id=run.id)
+
+
+def _run_sync_in_thread(profile_id, run_id):
+    from .essfill import run_sync
+    run_sync(profile_id, run_id)
+
+
 @login_required(login_url=ESS_LOGIN_URL)
 def ess_fill_status(request, run_id):
     run = get_object_or_404(EssFillRun, pk=run_id)

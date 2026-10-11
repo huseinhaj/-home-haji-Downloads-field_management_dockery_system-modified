@@ -799,6 +799,323 @@ def _fill_one(page, row_index, text, pct, emit=None) -> None:
     page.wait_for_timeout(800)
 
 
+# ── Sawazisha majina na ESS (official) ───────────────────────────────
+PEPMIS_GQL = 'https://gateway.ess.utumishi.go.tz/ess-pepmis/graphql'
+
+_GQL_EMPLOYEE_TASKS = (
+    'query getEmployeeTasks($financialYear: Long, $checkNumber: Long, '
+    '$calendarYear: Long) {'
+    ' getEmployeeTasks(financialYear: $financialYear, '
+    'checkNumber: $checkNumber, calendarYear: $calendarYear) {'
+    ' id taskDescription subTask { id subTaskDescription } } }')
+
+_GQL_SUBACTIVITY = (
+    'query getEmployeeSubActivityYearId($checkNumber: Long, $yearId: Long) {'
+    ' getEmployeeSubActivityYearId(checkNumber: $checkNumber, yearId: $yearId) {'
+    ' activityDescription subActivityDescription } }')
+
+
+def _name_key(s: str) -> str:
+    """Ufunguo wa kulinganisha: bila namba, ili 384 == 432."""
+    return re.sub(r'[0-9]+', ' ', _normalize(s)).strip()
+
+
+def _similar(a: str, b: str) -> float:
+    return SequenceMatcher(None, _name_key(a), _name_key(b)).ratio()
+
+
+def _match_name(target, candidates, threshold=0.75):
+    best, best_sc, second = None, 0.0, 0.0
+    for c in candidates:
+        sc = _similar(target, c)
+        if sc > best_sc:
+            second = best_sc
+            best, best_sc = c, sc
+        elif sc > second:
+            second = sc
+    if best_sc < threshold:
+        return None, best_sc
+    if best_sc < 1.0 and best_sc - second < 0.03:
+        return None, best_sc
+    return best, best_sc
+
+
+def _ess_fetch_json(page, token, query, variables, emit):
+    import json
+    try:
+        resp = page.request.post(
+            PEPMIS_GQL,
+            headers={
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json',
+                'apollographql-client-name': 'ess-web',
+                'apollographql-client-version': '1.0.0',
+            },
+            data=json.dumps({'query': query, 'variables': variables}),
+            timeout=60000)
+    except Exception as exc:
+        emit(f'GraphQL haikufikiwa: {exc}')
+        return None
+    try:
+        body = resp.text()
+    except Exception:
+        body = ''
+    emit(f'GraphQL {resp.status} {body[:220]}')
+    if resp.status >= 400:
+        return None
+    try:
+        return json.loads(body)
+    except Exception:
+        return None
+
+
+def _ess_names_from_payload(payload):
+    """-> [(taskDescription, [subTaskDescription, ...])] au None."""
+    if not isinstance(payload, dict):
+        return None
+    data = payload.get('data') or {}
+
+    def _as_list(node):
+        if isinstance(node, list):
+            return node
+        if isinstance(node, dict):
+            if isinstance(node.get('dataList'), list):
+                return node['dataList']
+            return [node]
+        return []
+
+    node = data.get('getEmployeeTasks')
+    items = _as_list(node)
+    if items:
+        out = []
+        for it in items:
+            subs = [s.get('subTaskDescription')
+                    for s in (it.get('subTask') or [])
+                    if s.get('subTaskDescription')]
+            out.append((it.get('taskDescription') or '', subs))
+        return out
+
+    node = data.get('getEmployeeSubActivityYearId')
+    items = _as_list(node)
+    if items:
+        groups, order = {}, []
+        for it in items:
+            t = it.get('activityDescription') or ''
+            s = it.get('subActivityDescription')
+            if t not in groups:
+                groups[t] = []
+                order.append(t)
+            if s:
+                groups[t].append(s)
+        return [(t, groups[t]) for t in order]
+    return None
+
+
+def _ess_names_from_ui(page, emit):
+    """Fallback: soma majina ya sub-task moja kwa moja kutoka jedwali."""
+    try:
+        _goto_subtasks(page)
+    except Exception as exc:
+        emit(f'Ukurasa wa sub-tasks haupatikani: {exc}')
+        return []
+    names, seen = [], set()
+    while True:
+        try:
+            page.wait_for_selector(SELECTORS['row_selector'], timeout=15000)
+        except Exception:
+            break
+        for el in _rows(page):
+            cell = el.query_selector(SELECTORS['subtask_cell_selector'])
+            if not cell:
+                continue
+            t = re.sub(r'\s+', ' ', cell.inner_text()).strip()
+            if t and t not in seen:
+                seen.add(t)
+                names.append(t)
+        nxt = page.query_selector(SELECTORS['paginator_next_selector'])
+        if not nxt or nxt.get_attribute('disabled') is not None or nxt.is_disabled():
+            break
+        nxt.click()
+        page.wait_for_timeout(700)
+    emit(f'Kutoka jedwali: majina {len(names)} ya sub-task (bila task).')
+    return [('', [n]) for n in names]
+
+
+def _sync_local_names(profile, ess_tasks, emit):
+    """Sawazisha Task.name na SubTask.description na majina ya ESS."""
+    saved = skipped = not_found = total = 0
+    ess_pool = []
+    for _t, subs in ess_tasks:
+        ess_pool.extend(subs)
+
+    for task in profile.tasks.all():
+        best_t = None
+        for tname, _subs in ess_tasks:
+            if not tname:
+                continue
+            sc = _similar(task.name, tname)
+            if best_t is None or sc > best_t[0]:
+                best_t = (sc, tname)
+        task_subs = None
+        if best_t and best_t[0] >= 0.7:
+            for tname, subs in ess_tasks:
+                if tname == best_t[1]:
+                    task_subs = subs
+                    break
+            if _normalize(task.name) != _normalize(best_t[1]):
+                emit(f'Task: "{task.name[:45]}" -> "{best_t[1][:45]}"')
+                task.name = best_t[1]
+                task.save(update_fields=['name'])
+
+        for st in task.subtasks.all():
+            total += 1
+            match, sc = (None, 0.0)
+            if task_subs:
+                match, sc = _match_name(st.description, task_subs)
+            if not match:
+                match, sc = _match_name(st.description, ess_pool)
+            if not match:
+                not_found += 1
+                emit(f'# haipo ESS: {st.description[:55]}')
+                continue
+            if _normalize(st.description) == _normalize(match):
+                skipped += 1
+                emit(f'= sawa: {st.description[:55]}')
+                continue
+            emit(f'-> "{st.description[:38]}" => "{match[:38]}" ({sc:.2f})')
+            try:
+                ess_pool.remove(match)
+            except ValueError:
+                pass
+            st.description = match
+            st.save(update_fields=['description'])
+            saved += 1
+    return saved, skipped, not_found, total
+
+
+def run_sync(profile_id: int, run_id: int) -> dict:
+    """Chukua majina ya task/sub-task kutoka ESS na usawazishe local."""
+    from .models import TeacherProfile
+
+    profile = TeacherProfile.objects.select_related('user').get(pk=profile_id)
+    run = EssFillRun.objects.get(pk=run_id)
+    log = []
+
+    def emit(msg):
+        log.append(msg)
+        _set_progress(run_id, msg=msg, log=list(log), done=False)
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        run.status = 'error'
+        run.finished = tz.now()
+        run.log = 'Playwright haiko kwenye server.'
+        run.save()
+        return {'status': 'error', 'msg': str(exc)}
+
+    page = None
+    saved = skipped = not_found = total = 0
+    ess_tasks = None
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(
+                headless=True,
+                args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'])
+            ctx = browser.new_context(ignore_https_errors=True)
+            page = ctx.new_page()
+            page.set_default_timeout(45000)
+
+            _goto_retry(page, BASE_URL)
+            _auto_login(page, profile.ess_username, profile.ess_password_plain)
+            emit('Login kamili.')
+            try:
+                _goto_retry(page, DASHBOARD_URL)
+                _wait_for_current_year(page, 20)
+            except Exception:
+                pass
+
+            token = page.evaluate("() => localStorage.getItem('token')")
+            emp = page.evaluate(
+                "() => { const v = localStorage.getItem('currentEmployee');"
+                " return v ? JSON.parse(v) : null; }")
+            year = _current_year(page)
+            ytitle = year.get('yearTitle') if isinstance(year, dict) else year
+            emit(f'currentYear: {ytitle}')
+
+            if token and isinstance(emp, dict) and isinstance(year, dict):
+                check = emp.get('checkNumber') or emp.get('check_number')
+                ytype = year.get('yearTypeCode')
+                fin = year.get('id') if ytype == 'FY' else None
+                cal = year.get('id') if ytype != 'FY' else None
+                emit(f'checkNumber={check} financialYear={fin} calendarYear={cal}')
+                payload = _ess_fetch_json(
+                    page, token, _GQL_EMPLOYEE_TASKS,
+                    {'financialYear': fin, 'checkNumber': check,
+                     'calendarYear': cal}, emit)
+                ess_tasks = _ess_names_from_payload(payload)
+                if not ess_tasks:
+                    payload = _ess_fetch_json(
+                        page, token, _GQL_SUBACTIVITY,
+                        {'checkNumber': check, 'yearId': year.get('id')}, emit)
+                    ess_tasks = _ess_names_from_payload(payload)
+            else:
+                emit('token/currentEmployee/currentYear havipo — naruka GraphQL.')
+
+            if not ess_tasks:
+                emit('GraphQL haitoi data — najaribu kusoma jedwali.')
+                ess_tasks = _ess_names_from_ui(page, emit)
+            browser.close()
+
+        if not ess_tasks:
+            emit('Sikusoma task/sub-task yoyote kutoka ESS.')
+            run.status = 'error'
+            run.finished = tz.now()
+            run.log = '\n'.join(log)
+            run.save()
+            return {'status': 'error', 'msg': 'Hakuna majina ya ESS.'}
+
+        n_subs = sum(len(s) for _t, s in ess_tasks)
+        emit(f'ESS: tasks {len(ess_tasks)}, sub-tasks {n_subs}.')
+        saved, skipped, not_found, total = _sync_local_names(
+            profile, ess_tasks, emit)
+    except Exception as exc:  # noqa: BLE001
+        snippet = ''
+        if page is not None:
+            try:
+                shot = f'/tmp/ess_sync_{run_id}.png'
+                page.screenshot(path=shot, full_page=True)
+                snippet = f' [screenshot: {shot}; URL: {page.url}]'
+            except Exception:
+                try:
+                    snippet = f' [URL: {page.url}]'
+                except Exception:
+                    pass
+        run.status = 'error'
+        run.finished = tz.now()
+        run.saved = saved
+        run.skipped = skipped
+        run.not_found = not_found
+        run.log = '\n'.join(log + [f'ERROR: {exc}{snippet}'])
+        run.save()
+        _set_progress(run_id, done=True, status='error',
+                      saved=saved, skipped=skipped, not_found=not_found)
+        return {'status': 'error', 'msg': str(exc)}
+
+    run.status = 'done'
+    run.finished = tz.now()
+    run.saved = saved
+    run.skipped = skipped
+    run.not_found = not_found
+    run.required = total
+    run.log = '\n'.join(log)
+    run.save()
+    _set_progress(run_id, done=True, status='done', saved=saved,
+                  skipped=skipped, not_found=not_found)
+    return {'status': 'done', 'saved': saved, 'skipped': skipped,
+            'not_found': not_found}
+
+
 def subtask_snapshot(task) -> list[dict]:
     """Maelezo ya UI (asilimia, target, actual) kwa template."""
     out = []

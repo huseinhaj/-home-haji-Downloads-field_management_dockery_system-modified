@@ -17,6 +17,7 @@ urlpatterns = [
     path('week/', views.ess_week, name='ess_week'),
     path('csv/', views.ess_csv, name='ess_csv'),
     path('fill/', views.ess_fill, name='ess_fill'),
+    path('fill/sync/', views.ess_sync_names, name='ess_sync_names'),
     path('fill/<int:run_id>/', views.ess_fill_status, name='ess_fill_status'),
     path('fill/<int:run_id>/json/', views.ess_fill_status_json, name='ess_fill_status_json'),
     path('fill/log/', views.ess_fill_log, name='ess_fill_log'),
