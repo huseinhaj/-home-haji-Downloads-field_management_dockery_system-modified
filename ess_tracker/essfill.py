@@ -646,9 +646,9 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         continue
                     remaining.remove(entry)
                     cur = match['pct']
-                    if cur is not None and abs(float(cur) - pct) < 0.5:
+                    if cur is not None and float(pct) <= float(cur) + 0.5:
                         skipped += 1
-                        emit(f'= sawa tayari ({pct:.2f}%): {text[:50]}')
+                        emit(f'= ESS tayari {float(cur):.0f}% (>= {pct:.2f}%): {text[:50]}')
                         continue
                     emit(f'-> {text[:50]}  (match {score:.2f}) => {pct:.2f}%')
                     try:
@@ -656,10 +656,15 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         saved += 1
                         _set_progress(run_id, saved=saved)
                     except Exception as exc:
-                        failed += 1
-                        emit(f'  !! imeshindikana ({pct:.2f}%): {exc}')
+                        if 'pending progress' in str(exc).lower():
+                            skipped += 1
+                            emit(f'  = ESS ina pending progress (imeachwa): {text[:40]}')
+                        else:
+                            failed += 1
+                            emit(f'  !! imeshindikana ({pct:.2f}%): {exc}')
                         _close_progress_dialog(page)
-                        _set_progress(run_id, not_found=failed)
+                        _set_progress(run_id, saved=saved, skipped=skipped,
+                                      not_found=failed)
                         continue
 
                 nxt = page.query_selector(SELECTORS['paginator_next_selector'])
