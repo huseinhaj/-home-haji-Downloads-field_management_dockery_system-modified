@@ -412,17 +412,85 @@ def _click_first_text(page, needles, scope='mat-dialog-container'):
 
 
 def _confirm_if_any(page, labels):
-    """Bofya 'Ndiyo/Yes/OK' kama dialog ya uthibitisho imetokea."""
-    for needle in labels:
-        try:
-            el = page.query_selector(
-                f".cdk-overlay-container button:has-text('{needle}')")
-            if el and el.is_visible() and el.is_enabled():
-                el.click()
-                return needle
-        except Exception:
-            continue
-    return None
+    """Bofya uthibitisho: SweetAlert2 au dialog ya Material (si ile ya progress)."""
+    try:
+        el = page.query_selector('.swal2-confirm')
+        if el and el.is_visible():
+            el.click()
+            return 'swal2'
+    except Exception:
+        pass
+    try:
+        hit = page.evaluate(
+            """(labels) => {
+              const prog = [...document.querySelectorAll("mat-dialog-container")]
+                 .find(d => d.querySelector("input[formcontrolname='percentageRank']"));
+              const btns = [...document.querySelectorAll("button")].filter(b => {
+                 if (!b.offsetParent || b.disabled) return false;
+                 if (prog && prog.contains(b)) return false;
+                 const t = (b.innerText || '').trim().toUpperCase();
+                 return labels.includes(t);
+              });
+              if (btns.length) { btns[0].click(); return btns[0].innerText.trim(); }
+              return null;
+            }""",
+            [l.upper() for l in labels])
+        return hit
+    except Exception:
+        return None
+
+
+def _progress_dialog_open(page) -> bool:
+    try:
+        return page.query_selector(
+            "mat-dialog-container input[formcontrolname='percentageRank']") is not None
+    except Exception:
+        return False
+
+
+def _swal_text(page):
+    try:
+        el = page.query_selector('.swal2-html-container, .swal2-title')
+        if el:
+            return re.sub(r'\s+', ' ', el.inner_text()).strip()
+    except Exception:
+        pass
+    return ''
+
+
+def _dialog_diagnostics(page):
+    """Maelezo ya dialog iliyokwama: vitufe, validation errors, swal, maandishi."""
+    parts = []
+    try:
+        btns = _dialog_button_texts(page)
+        if btns:
+            parts.append('vitufe: ' + ', '.join(btns))
+    except Exception:
+        pass
+    try:
+        errs = page.evaluate(
+            """() => [...document.querySelectorAll(
+                 'mat-error, .mat-mdc-form-field-error')]
+                 .map(e => (e.innerText || '').trim()).filter(Boolean)""")
+        if errs:
+            parts.append('makosa: ' + ' | '.join(dict.fromkeys(errs)))
+    except Exception:
+        pass
+    try:
+        swal = page.query_selector('.swal2-html-container, .swal2-title')
+        if swal:
+            parts.append('swal: ' + re.sub(r'\s+', ' ', swal.inner_text()).strip()[:200])
+    except Exception:
+        pass
+    try:
+        dtxt = page.evaluate(
+            """() => { const d = document.querySelector('mat-dialog-container');
+                 return d ? (d.innerText||'').replace(/\\s+/g,' ').trim().slice(0,300) : ''; }""")
+        if dtxt:
+            parts.append('dialog: ' + dtxt)
+    except Exception:
+        pass
+    return ' ; '.join(parts) or '(hakuna maelezo)'
 
 
 # ── Mtiririko mkuu ───────────────────────────────────────────────────
@@ -657,13 +725,30 @@ def _fill_one(page, row_index, text, pct, emit=None) -> None:
     if emit:
         emit(f'  -> imebofya: {pressed}')
 
-    # Dialog ya uthibitisho inaweza kutokea baada ya Submit.
-    page.wait_for_timeout(900)
-    conf = _confirm_if_any(page, SELECTORS['confirm_labels'])
-    if conf and emit:
-        emit(f'  -> uthibitisho: {conf}')
+    # Dialog ya uthibitisho / onyo (SweetAlert au Material) inaweza kutokea.
+    swal_seen = []
+    for _ in range(6):
+        page.wait_for_timeout(800)
+        txt = _swal_text(page)
+        if txt and txt not in swal_seen:
+            swal_seen.append(txt)
+            if emit:
+                emit('  !! ESS: ' + txt[:200])
+        if not _progress_dialog_open(page):
+            break
+        conf = _confirm_if_any(page, SELECTORS['confirm_labels'])
+        if conf and emit:
+            emit(f'  -> uthibitisho: {conf}')
 
-    page.wait_for_selector(SELECTORS['dialog_selector'], state='detached', timeout=25000)
+    try:
+        page.wait_for_selector(SELECTORS['dialog_selector'], state='detached',
+                               timeout=8000)
+    except Exception:
+        diag = _dialog_diagnostics(page)
+        if emit:
+            emit('  !! dialog haikufungwa: ' + diag)
+        raise RuntimeError('Dialog ya progress haikufungwa baada ya '
+                           + pressed + '. ' + diag)
     try:
         page.wait_for_load_state('networkidle', timeout=15000)
     except Exception:
