@@ -448,6 +448,37 @@ def _progress_dialog_open(page) -> bool:
         return False
 
 
+def _close_progress_dialog(page) -> None:
+    """Funga dialog ya progress (baada ya kosa) ili kuendelea na sub-task nyingine."""
+    try:
+        el = page.query_selector('.swal2-confirm')
+        if el and el.is_visible():
+            el.click()
+            page.wait_for_timeout(400)
+    except Exception:
+        pass
+    if not _progress_dialog_open(page):
+        return
+    for sel in ("mat-dialog-container button[mat-dialog-close]",
+                "mat-dialog-container button:has-text('close')",
+                "mat-dialog-container button:has-text('Cancel')",
+                "mat-dialog-container button:has-text('Funga')"):
+        try:
+            el = page.query_selector(sel)
+            if el and el.is_visible():
+                el.click()
+                page.wait_for_timeout(500)
+                if not _progress_dialog_open(page):
+                    return
+        except Exception:
+            continue
+    try:
+        page.keyboard.press('Escape')
+        page.wait_for_timeout(500)
+    except Exception:
+        pass
+
+
 def _swal_text(page):
     try:
         el = page.query_selector('.swal2-html-container, .swal2-title')
@@ -537,7 +568,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     run.log = '\n'.join(log)
     run.save()
 
-    saved = skipped = not_found = 0
+    saved = skipped = not_found = failed = 0
     page = None
     try:
         with sync_playwright() as pw:
@@ -620,9 +651,16 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         emit(f'= sawa tayari ({pct:.2f}%): {text[:50]}')
                         continue
                     emit(f'-> {text[:50]}  (match {score:.2f}) => {pct:.2f}%')
-                    _fill_one(page, match['i'], text, pct, emit=emit)
-                    saved += 1
-                    _set_progress(run_id, saved=saved)
+                    try:
+                        _fill_one(page, match['i'], text, pct, emit=emit)
+                        saved += 1
+                        _set_progress(run_id, saved=saved)
+                    except Exception as exc:
+                        failed += 1
+                        emit(f'  !! imeshindikana ({pct:.2f}%): {exc}')
+                        _close_progress_dialog(page)
+                        _set_progress(run_id, not_found=failed)
+                        continue
 
                 nxt = page.query_selector(SELECTORS['paginator_next_selector'])
                 if not nxt or nxt.get_attribute('disabled') is not None or nxt.is_disabled():
@@ -630,7 +668,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                 nxt.click()
                 page.wait_for_timeout(700)
 
-            not_found = len(remaining)
+            not_found = len(remaining) + failed
             browser.close()
     except Exception as exc:  # noqa: BLE001
         snippet = ''
@@ -648,7 +686,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
         run.finished = tz.now()
         run.saved = saved
         run.skipped = skipped
-        run.not_found = not_found
+        run.not_found = not_found + failed
         run.log = '\n'.join(log + [f'ERROR: {exc}{snippet}'])
         run.save()
         _set_progress(run_id, done=True, error=str(exc), status='error')
