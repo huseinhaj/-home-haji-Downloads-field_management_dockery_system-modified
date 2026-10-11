@@ -470,8 +470,11 @@ def run_fill(profile_id: int, run_id: int) -> dict:
             _goto_subtasks(page)
 
             cy = _current_year(page)
-            emit(f'currentYear: {cy.get("id") if cy else "HAIPO"}'
-                 + (f' ({cy.get("name")})' if cy and cy.get("name") else ''))
+            if cy:
+                import json as _json
+                emit('currentYear: ' + _json.dumps(cy, default=str)[:300])
+            else:
+                emit('currentYear: HAIPO')
 
             threshold = SELECTORS['match_threshold']
             remaining = list(wanted)
@@ -492,7 +495,8 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         one = re.sub(r'\s+', ' ', v['text']).strip()[:90]
                         emit(f'   • [{v["pct"]}] {one}')
                     if not visible:
-                        emit('   (jedwali tupu: angalia currentYear / mwaka wa PEPMIS)')
+                        emit(f'   (jedwali tupu) URL: {page.url}')
+                        emit('   ukurasa: ' + _visible_text(page, 400))
 
                 for entry in list(remaining):
                     text, pct = entry
