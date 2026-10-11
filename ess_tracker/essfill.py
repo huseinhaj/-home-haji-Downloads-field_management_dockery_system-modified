@@ -265,6 +265,28 @@ def _wait_for_current_year(page, timeout_s=20):
     return False
 
 
+def _set_current_year(page, year_obj) -> None:
+    page.evaluate(
+        "y => localStorage.setItem('currentYear', JSON.stringify(y))", year_obj)
+
+
+def _candidate_years(page):
+    """Miaka iliyohifadhiwa kwenye kikao (FY/CY) -- moja inaweza kuwa na sub-tasks."""
+    out, seen = [], set()
+    for key in ('currentYear', 'currentFinancialYear', 'currentCalendarYear',
+                'planningYear'):
+        try:
+            y = page.evaluate(
+                "k => { const v = localStorage.getItem(k);"
+                " return v ? JSON.parse(v) : null; }", key)
+        except Exception:
+            y = None
+        if isinstance(y, dict) and y.get('id') and y['id'] not in seen:
+            seen.add(y['id'])
+            out.append(y)
+    return out
+
+
 def _goto_subtasks(page) -> None:
     _goto_retry(page, SUBTASKS_URL)
     ok = _wait_for_table(page, 30)
@@ -475,6 +497,26 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                 emit('currentYear: ' + _json.dumps(cy, default=str)[:300])
             else:
                 emit('currentYear: HAIPO')
+
+            # ESS inaweza kuwa na sub-tasks chini ya mwaka mwingine (FY vs CY);
+            # pima miaka iliyohifadhiwa na uchague unao na safu.
+            cands = _candidate_years(page)
+            if cy and cy.get('id'):
+                cands.sort(key=lambda c: 0 if c['id'] == cy['id'] else 1)
+            chosen = cy
+            for cand in cands:
+                try:
+                    _set_current_year(page, cand)
+                    _goto_subtasks(page)
+                    n = len(_rows(page))
+                except Exception as exc:
+                    emit(f'mwaka {cand.get("id")}: kosa {exc}')
+                    continue
+                emit(f'mwaka {cand.get("id")} '
+                     f'({cand.get("yearTypeCode") or cand.get("yearType") or "?"}): safu {n}')
+                if n > 0:
+                    chosen = cand
+                    break
 
             threshold = SELECTORS['match_threshold']
             remaining = list(wanted)
