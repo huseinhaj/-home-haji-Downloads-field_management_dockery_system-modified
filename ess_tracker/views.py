@@ -433,6 +433,9 @@ def ess_fill_status_json(request, run_id):
     if request.user != run.profile.user and not request.user.is_staff:
         return JsonResponse({'error': 'forbidden'}, status=403)
     data = cache.get(CACHE_PREFIX + str(run.id)) or {}
+    run_log = data.get('log')
+    if not run_log:
+        run_log = run.log.splitlines() if run.log else []
     return JsonResponse({
         'status': run.status,
         'msg': data.get('msg', ''),
@@ -442,6 +445,7 @@ def ess_fill_status_json(request, run_id):
         'required': run.required,
         'done': run.status in ('done', 'error'),
         'error': '' if run.status == 'done' else run.log.splitlines()[-1] if run.log else '',
+        'log': run_log,
     })
 
 

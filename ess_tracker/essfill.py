@@ -420,7 +420,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
 
     def emit(msg):
         log.append(msg)
-        _set_progress(run_id, msg=msg, done=False)
+        _set_progress(run_id, msg=msg, log=list(log), done=False)
 
     try:
         from playwright.sync_api import sync_playwright

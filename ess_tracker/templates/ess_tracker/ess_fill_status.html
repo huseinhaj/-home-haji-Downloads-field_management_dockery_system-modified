@@ -36,7 +36,7 @@
   const badge = document.getElementById('statusbadge');
   const pbar = document.getElementById('pbar');
   const errbox = document.getElementById('errorbox');
-  const lines = new Set();
+  let shown = 0;
   let done = false;
   async function poll() {
     try {
@@ -47,6 +47,13 @@
       miss.textContent = d.not_found;
       req.textContent = d.required;
       if (d.msg) { msg.textContent = d.msg; }
+      if (Array.isArray(d.log) && d.log.length > shown) {
+        for (let i = shown; i < d.log.length; i++) {
+          box.textContent += (box.textContent ? '\n' : '') + d.log[i];
+        }
+        shown = d.log.length;
+        box.scrollTop = box.scrollHeight;
+      }
       if (d.done) {
         done = true;
         badge.textContent = d.status;
