@@ -855,14 +855,18 @@ def _match_name(target, candidates, threshold=0.75):
     return best, best_sc
 
 
-def _ess_fetch_json(page, token, query, variables, emit):
+def _ess_fetch_json(page, auth, query, variables, emit):
     import json
+    if not auth:
+        emit('Hakuna auth header ya ESS — naruka GraphQL.')
+        return None
     try:
         resp = page.request.post(
             PEPMIS_GQL,
             headers={
-                'Authorization': f'Bearer {token}',
+                'Authorization': auth,
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'apollographql-client-name': 'ess-web',
                 'apollographql-client-version': '1.0.0',
             },
@@ -933,6 +937,30 @@ def _ess_names_from_ui(page, emit):
     except Exception as exc:
         emit(f'Ukurasa wa sub-tasks haupatikani: {exc}')
         return []
+
+    def _wait_rows(timeout_s=20):
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            if _rows(page):
+                return True
+            page.wait_for_timeout(700)
+        return False
+
+    if not _wait_rows():
+        # Labda mwaka wa PEPMIS haujasetiwa kwenye ukurasa huu — pima miaka.
+        cy = _current_year(page)
+        cands = _candidate_years(page)
+        if cy and cy.get('id'):
+            cands.sort(key=lambda c: 0 if c['id'] == cy['id'] else 1)
+        for cand in cands:
+            try:
+                _set_current_year(page, cand)
+                _goto_subtasks(page)
+                if _wait_rows():
+                    break
+            except Exception:
+                continue
+
     names, seen = [], set()
     while True:
         try:
@@ -952,6 +980,8 @@ def _ess_names_from_ui(page, emit):
             break
         nxt.click()
         page.wait_for_timeout(700)
+    if not names:
+        emit(f'Jedwali tupu. URL: {page.url}')
     emit(f'Kutoka jedwali: majina {len(names)} ya sub-task (bila task).')
     return [('', [n]) for n in names]
 
@@ -1048,6 +1078,20 @@ def run_sync(profile_id: int, run_id: int) -> dict:
             page = ctx.new_page()
             page.set_default_timeout(45000)
 
+            cap = {'auth': None}
+
+            def _on_req(req):
+                try:
+                    if ('graphql' in req.url and req.method == 'POST'
+                            and not cap['auth']):
+                        auth_h = (req.headers or {}).get('authorization')
+                        if auth_h:
+                            cap['auth'] = auth_h
+                except Exception:
+                    pass
+
+            page.on('request', _on_req)
+
             _open_ess(page)
             _auto_login(page, profile.ess_username, profile.ess_password_plain)
             emit('Login kamili.')
@@ -1065,24 +1109,35 @@ def run_sync(profile_id: int, run_id: int) -> dict:
             ytitle = year.get('yearTitle') if isinstance(year, dict) else year
             emit(f'currentYear: {ytitle}')
 
-            if token and isinstance(emp, dict) and isinstance(year, dict):
+            # Fungua ukurasa wa sub-tasks ili app yenyewe iite gateway —
+            # kamata header halisi ya Authorization inayotumika.
+            try:
+                _goto_subtasks(page)
+                page.wait_for_timeout(2500)
+            except Exception as exc:
+                emit(f'Ukurasa wa sub-tasks: {exc}')
+            auth = cap['auth'] or (f'Bearer {token}' if token else None)
+            if cap['auth']:
+                emit('Auth header (app): ' + cap['auth'][:22] + '...')
+
+            if auth and isinstance(emp, dict) and isinstance(year, dict):
                 check = emp.get('checkNumber') or emp.get('check_number')
                 ytype = year.get('yearTypeCode')
                 fin = year.get('id') if ytype == 'FY' else None
                 cal = year.get('id') if ytype != 'FY' else None
                 emit(f'checkNumber={check} financialYear={fin} calendarYear={cal}')
                 payload = _ess_fetch_json(
-                    page, token, _GQL_EMPLOYEE_TASKS,
+                    page, auth, _GQL_EMPLOYEE_TASKS,
                     {'financialYear': fin, 'checkNumber': check,
                      'calendarYear': cal}, emit)
                 ess_tasks = _ess_names_from_payload(payload)
                 if not ess_tasks:
                     payload = _ess_fetch_json(
-                        page, token, _GQL_SUBACTIVITY,
+                        page, auth, _GQL_SUBACTIVITY,
                         {'checkNumber': check, 'yearId': year.get('id')}, emit)
                     ess_tasks = _ess_names_from_payload(payload)
             else:
-                emit('token/currentEmployee/currentYear havipo — naruka GraphQL.')
+                emit('auth/currentEmployee/currentYear havipo — naruka GraphQL.')
 
             if not ess_tasks:
                 emit('GraphQL haitoi data — najaribu kusoma jedwali.')
