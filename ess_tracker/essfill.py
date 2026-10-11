@@ -19,6 +19,8 @@ from .compute import built_wanted, pct_auto_for, pct_for
 from .models import EssFillRun, SubTask
 
 BASE_URL = 'https://ess.utumishi.go.tz/'
+SIGNIN_URL = 'https://ess.utumishi.go.tz/sessions/signin'
+DASHBOARD_URL = 'https://ess.utumishi.go.tz/dashboard'
 SUBTASKS_URL = 'https://ess.utumishi.go.tz/pepmis/implementation/progress'
 
 PASSWORD_SEL = "input[formcontrolname='password'], input[name='password'], input[type='password']"
@@ -92,76 +94,186 @@ def _click_fuzzy_text(page, needle) -> bool:
     return False
 
 
-def _has_password_form(page) -> bool:
-    return len(page.query_selector_all(PASSWORD_SEL)) > 0
+def _visible_text(page, limit=400) -> str:
+    try:
+        txt = page.inner_text('body') or ''
+    except Exception:
+        return ''
+    return re.sub(r'\s+', ' ', txt).strip()[:limit]
 
 
-def _fill_first_visible(page, sels, value):
+def _pick_visible_input(page, sels, min_width=40):
+    """Chagua input iliyo wazi kabisa (ESS ina nakala zilizofichwa/ndogo)."""
+    best, best_area = None, 0.0
     for sel in sels:
         try:
             for el in page.query_selector_all(sel):
-                if el.is_visible() and not el.get_attribute('type') in ('password', 'submit'):
-                    el.fill(value)
-                    return True
+                box = el.bounding_box()
+                if not box or box['width'] < min_width or box['height'] < 5:
+                    continue
+                area = box['width'] * box['height']
+                if area > best_area:
+                    best, best_area = el, area
         except Exception:
             continue
-    return False
+    return best
+
+
+def _set_input_value(el, value) -> None:
+    """Jaza input; ESS huweka `readonly` dhidi ya autofill hivyo inaondolewa."""
+    el.evaluate(
+        """(node, val) => {
+            node.removeAttribute('readonly');
+            node.removeAttribute('disabled');
+            node.focus();
+            node.value = val;
+            node.dispatchEvent(new Event('input', {bubbles: true}));
+            node.dispatchEvent(new Event('change', {bubbles: true}));
+        }""",
+        value,
+    )
+
+
+def _login_error_text(page) -> str:
+    txt = _visible_text(page, 2500).lower()
+    for needle in ('wrong credentials', 'login failed', 'internal server error',
+                   'gateway timeout', 'service is unreachable', 'invalid user',
+                   'invalid credentials', 'bad credentials'):
+        if needle in txt:
+            return needle.title()
+    return ''
+
+
+def _click_login(page, pw_el) -> None:
+    for sel in ("button[type='submit']", "button:has-text('LOGIN')",
+                "button:has-text('Login')", "button:has-text('INGIA')"):
+        try:
+            for el in page.query_selector_all(sel):
+                if el.is_visible() and el.is_enabled():
+                    el.click()
+                    return
+        except Exception:
+            continue
+    if pw_el is not None:
+        pw_el.press('Enter')
 
 
 def _auto_login(page, username, password) -> bool:
     """Rudi True — login imetengenezwa au tayari tumelogin."""
     try:
-        page.wait_for_selector(PASSWORD_SEL, timeout=30000)
+        if page.evaluate("() => !!localStorage.getItem('token')"):
+            return True
     except Exception:
-        return True
+        pass
+
+    # Subiri fomu ya login (Angular inaichelewa kuionesha).
+    try:
+        page.wait_for_function(
+            """() => [...document.querySelectorAll("input[formcontrolname='email']")]
+                     .some(e => e.getBoundingClientRect().width > 50)""",
+            timeout=60000)
+    except Exception:
+        try:
+            if page.evaluate("() => !!localStorage.getItem('token')"):
+                return True
+        except Exception:
+            pass
+        raise RuntimeError('Fomu ya login ya ESS haikuonekana (URL: %s).' % page.url)
+
     if not username or not password:
         raise RuntimeError('Mwalimu hajaweka ESS username na password.')
-    if not _fill_first_visible(page, USERNAME_SELS, username):
+
+    user_el = _pick_visible_input(page, USERNAME_SELS)
+    pw_el = _pick_visible_input(page, [
+        "input[formcontrolname='password']",
+        "input[name='password']",
+        "input[type='password']",
+    ])
+    if user_el is None:
         raise RuntimeError('Sikuweza kupata fomu ya username kwenye ESS login.')
-    pw = page.query_selector(PASSWORD_SEL)
-    if not pw:
+    if pw_el is None:
         raise RuntimeError('Sikuweza kupata fomu ya password (ESS).')
-    pw.fill(password)
-    try:
-        page.click("button[type='submit']")
-    except Exception:
-        pw.press('Enter')
+
+    _set_input_value(user_el, username)
+    _set_input_value(pw_el, password)
+    _click_login(page, pw_el)
+
     deadline = time.time() + 90
     while time.time() < deadline:
-        if not _has_password_form(page):
-            return True
-        page.wait_for_timeout(2000)
-    raise RuntimeError('Login ya ESS haikufaulu (fomu yake ilibaki wazi).')
+        try:
+            if page.evaluate("() => !!localStorage.getItem('token')"):
+                return True
+        except Exception:
+            pass
+        if '/user/must-change-password' in page.url:
+            raise RuntimeError(
+                'Akaunti yako ya ESS inahitaji kubadilisha password kwenye portal '
+                '(must-change-password) kabla ya kujaza.')
+        err = _login_error_text(page)
+        if err:
+            raise RuntimeError('Login ya ESS haikufaulu: ' + err)
+        page.wait_for_timeout(1500)
+    raise RuntimeError('Login ya ESS haikufaulu (URL: %s).' % page.url)
+
+
+def _rows(page):
+    """Safu za jedwali zenye data (mat-row; si safu ya 'hakuna data')."""
+    for sel in ('table tbody tr[mat-row]',
+                'table tbody tr.mat-mdc-row.mdc-data-table__row',
+                'table tbody tr.mat-mdc-row'):
+        try:
+            els = page.query_selector_all(sel)
+            if els:
+                return els
+        except Exception:
+            continue
+    return []
+
+
+def _wait_for_table(page, timeout_s=30) -> bool:
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        try:
+            if page.query_selector(
+                    '.mat-column-subTaskDescription, .mat-column-progressPercentage, '
+                    '.pepmis-table-container table'):
+                return True
+        except Exception:
+            pass
+        if '/sessions/signin' in page.url:
+            return False
+        page.wait_for_timeout(500)
+    return False
 
 
 def _goto_subtasks(page) -> None:
-    try:
-        page.goto(SUBTASKS_URL, wait_until='domcontentloaded')
-        page.wait_for_selector(SELECTORS['row_selector'], timeout=25000)
-        return
-    except Exception:
-        pass
-    if 'pepmis' not in page.url:
+    _goto_retry(page, SUBTASKS_URL)
+    ok = _wait_for_table(page, 30)
+    if '/user/must-change-password' in page.url:
+        raise RuntimeError(
+            'Akaunti yako ya ESS inahitaji kubadilisha password kwenye portal '
+            '(must-change-password) kwanza. URL: %s' % page.url)
+    if not ok and '/sessions/signin' in page.url:
+        raise RuntimeError(
+            'ESS inarudisha kwenye login baada ya kuingia (kikao hakihifadhiwa). '
+            'Hakikisha username/password za ESS ni sahihi. URL: %s' % page.url)
+    if not ok:
         _click_fuzzy_text(page, 'e-Utendaji')
-        page.wait_for_timeout(4000)
-    try:
-        el = page.query_selector("button:has-text('Implementation and Monitoring')")
-        if el and el.is_visible():
-            el.click()
-    except Exception:
-        pass
-    page.wait_for_timeout(1500)
-    for sel in ("a[href='/pepmis/implementation/progress']",
-                "a[href*='implementation/progress' i]"):
-        try:
-            el = page.query_selector(sel)
-            if el and el.is_visible():
-                el.click()
-                break
-        except Exception:
-            continue
-    page.wait_for_timeout(3500)
-    page.wait_for_selector(SELECTORS['row_selector'], timeout=30000)
+        page.wait_for_timeout(2500)
+        for sel in ("a[href='/pepmis/implementation/progress']",
+                    "a[href*='implementation/progress' i]"):
+            try:
+                el = page.query_selector(sel)
+                if el and el.is_visible():
+                    el.click()
+                    break
+            except Exception:
+                continue
+        ok = _wait_for_table(page, 30)
+    if not ok:
+        raise RuntimeError(
+            'Ukurasa wa sub-tasks (ESS) hauleti jedwali. URL: %s | Kichwa: %s | '
+            'Kimeonekana: %s' % (page.url, page.title(), _visible_text(page, 300)))
 
 
 def _best_row_match(target_text, candidates, threshold):
@@ -317,6 +429,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     run.save()
 
     saved = skipped = not_found = 0
+    page = None
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(
@@ -329,6 +442,12 @@ def run_fill(profile_id: int, run_id: int) -> dict:
             _goto_retry(page, BASE_URL)
             _auto_login(page, profile.ess_username, profile.ess_password_plain)
             emit('Login kamili.')
+            # Pitia dashboard kwanza ili app ikamilishe kikao, kisha sub-tasks.
+            try:
+                _goto_retry(page, DASHBOARD_URL)
+                page.wait_for_timeout(2500)
+            except Exception:
+                pass
             _goto_subtasks(page)
 
             threshold = SELECTORS['match_threshold']
@@ -337,7 +456,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
             while remaining:
                 page_no += 1
                 page.wait_for_selector(SELECTORS['row_selector'], timeout=15000)
-                row_els = page.query_selector_all(SELECTORS['row_selector'])
+                row_els = _rows(page)
                 visible = []
                 for i, el in enumerate(row_els):
                     cell = el.query_selector(SELECTORS['subtask_cell_selector'])
@@ -371,12 +490,23 @@ def run_fill(profile_id: int, run_id: int) -> dict:
             not_found = len(remaining)
             browser.close()
     except Exception as exc:  # noqa: BLE001
+        snippet = ''
+        if page is not None:
+            try:
+                shot = f'/tmp/ess_fill_{run_id}.png'
+                page.screenshot(path=shot, full_page=True)
+                snippet = f' [screenshot: {shot}; URL: {page.url}]'
+            except Exception:
+                try:
+                    snippet = f' [URL: {page.url}]'
+                except Exception:
+                    pass
         run.status = 'error'
         run.finished = tz.now()
         run.saved = saved
         run.skipped = skipped
         run.not_found = not_found
-        run.log = '\n'.join(log + [f'ERROR: {exc}'])
+        run.log = '\n'.join(log + [f'ERROR: {exc}{snippet}'])
         run.save()
         _set_progress(run_id, done=True, error=str(exc), status='error')
         return {'status': 'error', 'msg': str(exc)}
@@ -397,7 +527,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
 
 def _fill_one(page, row_index, text, pct, emit=None) -> None:
     """Fungua dialog na ujaze sub task moja (selectors zimehakikiwa)."""
-    row_els = page.query_selector_all(SELECTORS['row_selector'])
+    row_els = _rows(page)
     if row_index >= len(row_els):
         raise RuntimeError('Mstari wa jedwali haupo tena (ulibadilika baada ya Save).')
     row_el = row_els[row_index]
