@@ -246,6 +246,25 @@ def _wait_for_table(page, timeout_s=30) -> bool:
     return False
 
 
+def _current_year(page):
+    try:
+        return page.evaluate(
+            "() => { const y = localStorage.getItem('currentYear');"
+            " return y ? JSON.parse(y) : null; }")
+    except Exception:
+        return None
+
+
+def _wait_for_current_year(page, timeout_s=20):
+    """Subiri ESS iweke mwaka wa PEPMIS (currentYear) kwenye localStorage."""
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        if _current_year(page):
+            return True
+        page.wait_for_timeout(1000)
+    return False
+
+
 def _goto_subtasks(page) -> None:
     _goto_retry(page, SUBTASKS_URL)
     ok = _wait_for_table(page, 30)
@@ -442,13 +461,17 @@ def run_fill(profile_id: int, run_id: int) -> dict:
             _goto_retry(page, BASE_URL)
             _auto_login(page, profile.ess_username, profile.ess_password_plain)
             emit('Login kamili.')
-            # Pitia dashboard kwanza ili app ikamilishe kikao, kisha sub-tasks.
+            # Pitia dashboard ili app ikamilishe kikao na iweke mwaka wa PEPMIS.
             try:
                 _goto_retry(page, DASHBOARD_URL)
-                page.wait_for_timeout(2500)
+                _wait_for_current_year(page, 20)
             except Exception:
                 pass
             _goto_subtasks(page)
+
+            cy = _current_year(page)
+            emit(f'currentYear: {cy.get("id") if cy else "HAIPO"}'
+                 + (f' ({cy.get("name")})' if cy and cy.get("name") else ''))
 
             threshold = SELECTORS['match_threshold']
             remaining = list(wanted)
@@ -464,6 +487,12 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         visible.append({'i': i, 'text': cell.inner_text(),
                                         'pct': _row_current_pct(el)})
                 emit(f'Ukurasa {page_no}: safu {len(visible)}')
+                if page_no == 1:
+                    for v in visible:
+                        one = re.sub(r'\s+', ' ', v['text']).strip()[:90]
+                        emit(f'   • [{v["pct"]}] {one}')
+                    if not visible:
+                        emit('   (jedwali tupu: angalia currentYear / mwaka wa PEPMIS)')
 
                 for entry in list(remaining):
                     text, pct = entry
