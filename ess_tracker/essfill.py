@@ -81,6 +81,21 @@ def _goto_retry(page, url, tries=3):
             page.wait_for_timeout(2000)
 
 
+def _open_ess(page) -> None:
+    """Fungua ESS kwa imara: root inaweza kuchelewa; jaribu signin/dashboard."""
+    last = None
+    for url in (BASE_URL, SIGNIN_URL, DASHBOARD_URL):
+        for _ in range(2):
+            try:
+                page.goto(url, wait_until='domcontentloaded', timeout=30000)
+                return
+            except Exception as exc:  # noqa: BLE001
+                last = exc
+                page.wait_for_timeout(1500)
+    if last is not None:
+        raise last
+
+
 def _click_fuzzy_text(page, needle) -> bool:
     for sel in (f'text={needle}', f":has-text('{needle}')",
                 f"span:text-is('{needle}')", f"div:text-is('{needle}')"):
@@ -579,7 +594,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
             page = ctx.new_page()
             page.set_default_timeout(45000)
 
-            _goto_retry(page, BASE_URL)
+            _open_ess(page)
             _auto_login(page, profile.ess_username, profile.ess_password_plain)
             emit('Login kamili.')
             # Pitia dashboard ili app ikamilishe kikao na iweke mwaka wa PEPMIS.
@@ -1026,7 +1041,7 @@ def run_sync(profile_id: int, run_id: int) -> dict:
             page = ctx.new_page()
             page.set_default_timeout(45000)
 
-            _goto_retry(page, BASE_URL)
+            _open_ess(page)
             _auto_login(page, profile.ess_username, profile.ess_password_plain)
             emit('Login kamili.')
             try:
