@@ -1019,6 +1019,13 @@ def run_sync(profile_id: int, run_id: int) -> dict:
     def emit(msg):
         log.append(msg)
         _set_progress(run_id, msg=msg, log=list(log), done=False)
+        try:
+            run.log = '\n'.join(log)
+            run.save(update_fields=['log'])
+        except Exception:
+            pass
+
+    emit('Sync imeanza — naingia ESS...')
 
     try:
         from playwright.sync_api import sync_playwright
