@@ -17,7 +17,8 @@ from difflib import SequenceMatcher
 from django.core.cache import cache
 from django.utils import timezone as tz
 
-from .compute import built_wanted, increment_pct, pct_auto_for, pct_for
+from .compute import (built_wanted, entry_for_ess, increment_pct, parse_count,
+                      pct_auto_for, pct_for)
 from .models import EssFillRun, SubTask
 
 BASE_URL = 'https://ess.utumishi.go.tz/'
@@ -822,6 +823,36 @@ def _submit_panel_or_view(page, row_index, text, emit=None) -> bool:
         _close_panel(page)
 
 
+def _prior_actual_for_ess(page, row_index, st, emit=None):
+    """Soma entries za nyuma za sub-task; rudi (idadi kubwa iliyokubaliwa, entries).
+
+    Hufungua 'View Implementation', husoma jedwali la entries, kisha hufunga.
+    """
+    entries = []
+    try:
+        if _open_view_implementation(page, row_index, emit):
+            entries = _read_progress_entries(page)
+    except Exception as exc:  # noqa: BLE001
+        if emit:
+            emit(f'  (sikuweza kusoma entries za nyuma: {exc})')
+    finally:
+        _close_panel(page)
+    prev = None
+    for e in entries:
+        if 'accepted' not in (e.get('status') or '').lower():
+            continue
+        n = parse_count(e.get('desc') or '', st.position)
+        if n is not None and (prev is None or n > prev):
+            prev = n
+    if emit:
+        shown = '; '.join(
+            f'{e.get("status")}/{e.get("pct")}: {e.get("desc", "")[:35]}'
+            for e in entries[:4])
+        emit(f'  entries za nyuma ({len(entries)}): {shown}')
+        emit(f'  prev_actual(nafasi {st.position}) = {prev}')
+    return prev, entries
+
+
 def _swal_text(page):
     try:
         el = page.query_selector('.swal2-html-container, .swal2-title')
@@ -997,12 +1028,17 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         emit('   ukurasa: ' + _visible_text(page, 400))
 
                 for entry in list(remaining):
-                    text, note, pct = entry
+                    st, text, note, pct = entry
                     match, score = _best_row_match(text, visible, threshold)
                     if not match:
                         continue
                     remaining.remove(entry)
                     cur = match['pct']
+                    # Soma entries za nyuma za ESS ili actual/asilimia ziwe sawa.
+                    prev, _prior = _prior_actual_for_ess(
+                        page, match['i'], st, emit)
+                    note, pct = entry_for_ess(st, prev)
+                    emit(f'  hesabu: prev={prev} => {pct:.2f}% (actual/target)')
                     if cur is not None and float(pct) <= float(cur) + 0.5:
                         skipped += 1
                         emit(f'= ESS tayari {float(cur):.0f}% (>= {pct:.2f}%): {text[:50]}')
@@ -1063,7 +1099,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     run.not_found = not_found
     run.log = '\n'.join(log)
     run.save()
-    for text, _note, _p in remaining:
+    for _st, text, _note, _p in remaining:
         emit(f'# haijapatikana: {text[:60]}')
     _set_progress(run_id, done=True, status='done', saved=saved,
                   skipped=skipped, not_found=not_found)

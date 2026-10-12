@@ -412,31 +412,93 @@ _NOTE_LEADS = {
 }
 
 
+def implementation_note_with(st: SubTask, actual) -> str:
+    """Sentensi ya kile kilichofanyika kwa idadi maalum (actual)."""
+    lead = _NOTE_LEADS.get(st.position, 'Nimetekeleza')
+    target = target_for(st)
+    if target and target > 0:
+        return (f'{lead} {float(actual):g} kati ya '
+                f'{float(target):g} kikamilifu')
+    return f'{lead} kikamilifu'
+
+
 def implementation_note(st: SubTask) -> str:
     """Sentensi ya kile kilichofanyika (description ya entry ya ESS).
 
     Mf. 'Nimefundisha vipindi 292 kati ya 432 kikamilifu'.
     """
-    lead = _NOTE_LEADS.get(st.position, 'Nimetekeleza')
+    return implementation_note_with(st, actual_for(st))
+
+
+# Namba za Kiswahili (kwa kusoma description za ESS zilizopita).
+_SW_NUM = {
+    'moja': 1, 'mmoja': 1, 'mmoja': 1, 'mawili': 2, 'miwili': 2, 'mbili': 2,
+    'matatu': 3, 'tatu': 3, 'manne': 4, 'nne': 4, 'matano': 5, 'tano': 5,
+    'sita': 6, 'saba': 7, 'nane': 8, 'tisa': 9, 'kumi': 10,
+}
+# Neno la funguo kwa kila nafasi ya sub-task.
+_POS_KEYWORDS = {
+    1: ('azimio',), 2: ('nukuu',), 3: ('maandalio',), 4: ('zana',),
+    5: ('vipindi',), 6: ('tathmini',),
+    7: ('majaribio', 'jaribio', 'mitihani', 'mtihani'),
+}
+
+
+def parse_count(desc: str, position: int | None) -> int | None:
+    """Toa idadi iliyotajwa kwenye description ya ESS (kwa nafasi ya sub-task).
+
+    Mf. 'Majaribio mawili na mitihani miwili ...' -> 2 (nafasi 7).
+    """
+    if not desc:
+        return None
+    text = desc.lower()
+    keywords = _POS_KEYWORDS.get(position, ())
+    if not keywords:
+        return None
+    for kw in keywords:
+        for m in re.finditer(r'\b' + re.escape(kw) + r'\b', text):
+            tail = text[m.end():m.end() + 24].strip()
+            digit = re.match(r'(\d+)', tail)
+            if digit:
+                return int(digit.group(1))
+            word = re.match(r'([a-z\u00c0-\u024f]+)', tail)
+            if word and word.group(1) in _SW_NUM:
+                return _SW_NUM[word.group(1)]
+    return None
+
+
+def entry_for_ess(st: SubTask, prev_actual=None) -> tuple[str, float]:
+    """(description, asilimia) ya entry mpya ya ESS.
+
+    actual = idadi kubwa kati ya entries za nyuma (prev_actual) na ile ya
+    ratiba (target x pct_auto), isiyozidi target. asilimia = actual/target.
+    """
+    base_pct, _src = pct_auto_for(st)
+    if base_pct is None:
+        base_pct = 0.0
     target = target_for(st)
     if target and target > 0:
-        return (f'{lead} {float(actual_for(st)):g} kati ya '
-                f'{float(target):g} kikamilifu')
-    return f'{lead} kikamilifu'
+        planned = round(float(target) * base_pct / 100.0)
+        actual = max(planned, int(prev_actual or 0))
+        actual = int(min(actual, int(target)))
+        pct = round(100.0 * actual / float(target), 2)
+        return implementation_note_with(st, actual), pct
+    return implementation_note_with(st, int(prev_actual or 0)), round(base_pct, 2)
 
 
-def built_wanted(profile) -> list[tuple[str, str, float]]:
-    """[(sub-task, description ya siku, asilimia)] za KILA sub-task.
+def built_wanted(profile) -> list[tuple[SubTask, str, str, float]]:
+    """[(sub-task, jina, description ya siku, asilimia)] za KILA sub-task.
 
     Hutumika na 'Jaza': mwalimu haandiki kitu, description na asilimia
-    huhesabiwa kiotomatiki.
+    huhesabiwa kiotomatiki (description inaweza kubadilishwa baada ya
+    kusoma entries za nyuma za ESS).
     """
     out = []
     for task in profile.tasks.all():
         for st in task.subtasks.all():
             pct, _src = pct_auto_for(st)
             if pct is not None:
-                out.append((st.description, implementation_note(st), pct))
+                out.append((st, st.description, implementation_note(st), pct))
     return out
 
 
