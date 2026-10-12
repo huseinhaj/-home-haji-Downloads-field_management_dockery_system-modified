@@ -38,6 +38,15 @@ class TeacherProfile(models.Model):
         help_text='Jina au barua pepe unayotumia kuingia ESS (e-Tendaji)')
     ess_password = models.CharField(max_length=512, blank=True)
     ess_ready = models.BooleanField(default=False, editable=False)
+    school_open = models.DateField(
+        null=True, blank=True,
+        help_text='Tarehe shule inavyofunguliwa mwaka huu (mf. 2026-01-12)')
+    school_close = models.DateField(
+        null=True, blank=True,
+        help_text='Tarehe shule inavyofungwa mwaka huu (mf. 2026-12-04)')
+    entries_per_week = models.PositiveSmallIntegerField(
+        default=3,
+        help_text='Mara ngapi kwa wiki mfumo ujaze maendeleo yako (2 au 3)')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

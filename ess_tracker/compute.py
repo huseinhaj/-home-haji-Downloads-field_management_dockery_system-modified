@@ -96,10 +96,19 @@ def weeks_between(a, b) -> float | None:
     return (b - a).days / 7.0
 
 
+def _window(task: Task) -> tuple[date | None, date | None]:
+    """Dirisha la mwaka: tarehe ya shule ikiwekwa (Wasifu), vinginevyo za Task."""
+    profile = getattr(task, 'profile', None)
+    if profile is not None and profile.school_open and profile.school_close:
+        return profile.school_open, profile.school_close
+    return task.start, task.end
+
+
 def elapsed_weeks(task: Task, leo: date | None = None) -> float:
     leo = leo or date.today()
-    weeks = weeks_between(task.start, leo)
-    total = weeks_between(task.start, task.end)
+    start, end = _window(task)
+    weeks = weeks_between(start, leo)
+    total = weeks_between(start, end)
     if weeks is None:
         return 0.0
     if weeks < 0:
@@ -110,7 +119,8 @@ def elapsed_weeks(task: Task, leo: date | None = None) -> float:
 
 
 def total_weeks(task: Task) -> float | None:
-    return weeks_between(task.start, task.end)
+    start, end = _window(task)
+    return weeks_between(start, end)
 
 
 # ── Target / Actual / Asilimia ───────────────────────────────────────

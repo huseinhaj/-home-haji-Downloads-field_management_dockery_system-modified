@@ -17,6 +17,22 @@
 </div>
 {% endif %}
 
+{% if not profile.school_open or not profile.school_close %}
+<div class="alert alert-info small mb-2" style="max-width:960px;margin:0 auto 16px;">
+  <i class="fas fa-calendar me-1"></i>Weka <b>tarehe ya kufungulia na kufunga shule</b> (na mara ngapi kwa wiki)
+  kwenye <a href="{% url 'ess_tracker:ess_profile' %}">Wasifu</a> ili mfumo uhesabu maendeleo yako ya mwaka mzima
+  na ujae <b>kiotomatiki</b> mpaka sub-tasks zote zifikie <b>100%</b> tarehe ya kufunga.
+</div>
+{% else %}
+<div class="alert alert-success small mb-2" style="max-width:960px;margin:0 auto 16px;">
+  <i class="fas fa-calendar-check me-1"></i>Kalenda ya shule:
+  <b>{{ profile.school_open|date:'d M Y' }}</b> &rarr;
+  <b>{{ profile.school_close|date:'d M Y' }}</b>
+  &middot; Kujaziwa <b>{{ profile.entries_per_week }} mara kwa wiki</b>
+  &middot; <a href="{% url 'ess_tracker:ess_profile' %}" class="text-decoration-none">Badilisha</a>
+</div>
+{% endif %}
+
 {% if latest_run and latest_run.status == 'running' %}
 <a class="alert alert-info d-block small mb-3 text-decoration-none" style="max-width:960px;margin-left:auto;margin-right:auto;"
    href="{% url 'ess_tracker:ess_fill_status' latest_run.id %}">

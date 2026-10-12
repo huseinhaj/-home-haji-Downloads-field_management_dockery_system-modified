@@ -163,7 +163,10 @@ def ess_task_new(request):
             return redirect('ess_tracker:ess_task_edit', task_id=task.id)
         messages.error(request, 'Makosa kwenye fomu ya Task.')
     else:
-        form = TaskForm()
+        initial = {}
+        if profile.school_open and profile.school_close:
+            initial = {'start': profile.school_open, 'end': profile.school_close}
+        form = TaskForm(initial=initial)
     return render(request, 'ess_tracker/ess_task_new.html', {'form': form})
 
 

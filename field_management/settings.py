@@ -318,12 +318,18 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 300  # 5 minutes max per task
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # fair scheduling for long tasks
 
-# Beat schedule: refresh HESLB knowledge every Monday at 06:00 EAT
+# Beat schedule: refresh HESLB knowledge every Monday at 06:00 EAT;
+# every day ~06:00 EAT try auto-fill due ESS profiles (calendar-aware).
 CELERY_BEAT_SCHEDULE = {
     "refresh-heslb-knowledge-weekly": {
         "task": "heslb_knowledge.refresh",
         "schedule": 604800,  # 7 days in seconds
         "options": {"expires": 3600},
+    },
+    "ess-auto-fill-daily": {
+        "task": "ess_tracker.tasks.auto_fill_due",
+        "schedule": 86400.0,  # daily
+        "options": {"expires": 1800},
     },
 }
 

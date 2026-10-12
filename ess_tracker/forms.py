@@ -83,6 +83,35 @@ class ProfileForm(forms.ModelForm):
             'school': 'Shule',
         }
 
+    school_open = forms.DateField(
+        label='Tarehe shule inavyofunguliwa (mwaka huu)',
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        help_text='Kuanzia tarehe hii mfumo utaanza kujaza maendeleo yako.',
+        input_formats=['%Y-%m-%d', '%d/%m/%Y'])
+
+    school_close = forms.DateField(
+        label='Tarehe shule inavyofungwa (mwisho wa mwaka)',
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        help_text='Kufika tarehe hii sub-tasks zote zitakuwa zimefikia 100%.',
+        input_formats=['%Y-%m-%d', '%d/%m/%Y'])
+
+    entries_per_week = forms.ChoiceField(
+        label='Mfumo ujaze maendeleo yako mara ngapi kwa wiki?',
+        required=False,
+        choices=[(2, 'Mara 2 kwa wiki'), (3, 'Mara 3 kwa wiki')],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='Hesabu ya mwaka mzima (tarehe ya kufungua hadi kufunga) '
+                  'itagawanywa kwa mara hizi ili ufikie 100% tarehe ya kufunga.')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['school_open'].initial = self.instance.school_open
+            self.fields['school_close'].initial = self.instance.school_close
+            self.fields['entries_per_week'].initial = self.instance.entries_per_week
+
     def clean(self):
         cleaned = super().clean()
         if not cleaned.get('full_name'):
@@ -95,6 +124,12 @@ class ProfileForm(forms.ModelForm):
             if dup.exists():
                 self.add_error('ess_username',
                                'Username hii ya ESS inatumiwa na mwalimu mwingine.')
+        open_d = cleaned.get('school_open')
+        close_d = cleaned.get('school_close')
+        if open_d and close_d and close_d <= open_d:
+            self.add_error(
+                'school_close',
+                'Tarehe ya kufunga lazima iwe baada ya tarehe ya kufungua.')
         return cleaned
 
     def save(self, commit=True):
@@ -104,6 +139,9 @@ class ProfileForm(forms.ModelForm):
             profile.set_ess_password(new_pw)
         elif not profile.ess_password:
             profile.ess_password = ''
+        profile.school_open = self.cleaned_data.get('school_open')
+        profile.school_close = self.cleaned_data.get('school_close')
+        profile.entries_per_week = int(self.cleaned_data.get('entries_per_week') or 3)
         if commit:
             profile.save()
         return profile
