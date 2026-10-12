@@ -8,6 +8,7 @@ hivyo inajaza username/password iliyohifadhiwa na kuendelea.
 """
 from __future__ import annotations
 
+import json
 import re
 import time
 from datetime import date
@@ -321,24 +322,59 @@ def _wait_for_current_year(page, timeout_s=20):
 
 
 def _set_current_year(page, year_obj) -> None:
+    clean = {k: v for k, v in year_obj.items() if not k.startswith('_')}
+    src = year_obj.get('_src') or 'currentYear'
     page.evaluate(
-        "y => localStorage.setItem('currentYear', JSON.stringify(y))", year_obj)
+        "([obj, src]) => {"
+        " localStorage.setItem('currentYear', JSON.stringify(obj));"
+        " localStorage.setItem(src, JSON.stringify(obj)); }",
+        [clean, src])
+
+
+def _iter_year_like(value):
+    """Toa dict zote zinazofanana na mwaka (zina id + yearTitle/yearTypeCode)."""
+    found = []
+    if isinstance(value, dict):
+        if value.get('id') and (value.get('yearTitle')
+                                or value.get('yearTypeCode')
+                                or value.get('yearType')):
+            found.append(value)
+        for v in value.values():
+            found.extend(_iter_year_like(v))
+    elif isinstance(value, list):
+        for v in value:
+            found.extend(_iter_year_like(v))
+    return found
+
+
+def _storage_dump(page):
+    """Maadili yote ya localStorage/sessionStorage: {key: value}."""
+    try:
+        return page.evaluate(
+            "() => { const res = {};"
+            " for (const s of [localStorage, sessionStorage]) {"
+            "  for (let i = 0; i < s.length; i++) {"
+            "   const k = s.key(i); res[k] = s.getItem(k); } }"
+            " return res; }") or {}
+    except Exception:
+        return {}
 
 
 def _candidate_years(page):
-    """Miaka iliyohifadhiwa kwenye kikao (FY/CY) -- moja inaweza kuwa na sub-tasks."""
+    """Miaka yote inayopatikana kwenye kikao (FY/CY) -- moja huenda na sub-tasks."""
     out, seen = [], set()
-    for key in ('currentYear', 'currentFinancialYear', 'currentCalendarYear',
-                'planningYear'):
+    for key, raw in _storage_dump(page).items():
         try:
-            y = page.evaluate(
-                "k => { const v = localStorage.getItem(k);"
-                " return v ? JSON.parse(v) : null; }", key)
+            val = json.loads(raw)
         except Exception:
-            y = None
-        if isinstance(y, dict) and y.get('id') and y['id'] not in seen:
-            seen.add(y['id'])
-            out.append(y)
+            continue
+        for obj in _iter_year_like(val):
+            yid = obj.get('id')
+            if yid and yid not in seen:
+                seen.add(yid)
+                obj = dict(obj)
+                obj['_src'] = key
+                out.append(obj)
     return out
 
 
@@ -785,14 +821,28 @@ def run_fill(profile_id: int, run_id: int) -> dict:
 
             cy = _current_year(page)
             if cy:
-                import json as _json
-                emit('currentYear: ' + _json.dumps(cy, default=str)[:300])
+                emit('currentYear: ' + json.dumps(cy, default=str)[:300])
             else:
                 emit('currentYear: HAIPO')
+            try:
+                ysel = page.evaluate(
+                    "() => Array.from(document.querySelectorAll("
+                    "'mat-select, button, [role=button]'))"
+                    ".map(e => (e.innerText || '').trim())"
+                    ".filter(t => /20\\d\\d/.test(t)).slice(0, 20)")
+                if ysel:
+                    emit('year-selectors: ' + ' | '.join(ysel)[:300])
+            except Exception:
+                pass
 
             # ESS inaweza kuwa na sub-tasks chini ya mwaka mwingine (FY vs CY);
             # pima miaka iliyohifadhiwa na uchague unao na safu.
             cands = _candidate_years(page)
+            for c in cands:
+                emit('mwaka-pendekezwa: id=%s type=%s title=%s src=%s'
+                     % (c.get('id'),
+                        c.get('yearTypeCode') or c.get('yearType'),
+                        c.get('yearTitle'), c.get('_src')))
             if cy and cy.get('id'):
                 cands.sort(key=lambda c: 0 if c['id'] == cy['id'] else 1)
             chosen = cy
