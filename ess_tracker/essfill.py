@@ -1027,6 +1027,13 @@ def _sync_local_names(profile, ess_tasks, emit):
                 skipped += 1
                 emit(f'= sawa: {st.description[:55]}')
                 continue
+            # Tofauti ndogo (mf. idadi/namba pekee) — tunza la local.
+            sim = SequenceMatcher(
+                None, _normalize(st.description), _normalize(match)).ratio()
+            if sim >= 0.9:
+                skipped += 1
+                emit(f'= imeachwa (idadi/similar) — tunza la local: {st.description[:45]}')
+                continue
             emit(f'-> "{st.description[:38]}" => "{match[:38]}" ({sc:.2f})')
             try:
                 ess_pool.remove(match)
