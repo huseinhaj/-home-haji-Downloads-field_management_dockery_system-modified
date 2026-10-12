@@ -412,14 +412,20 @@ _NOTE_LEADS = {
 }
 
 
-def implementation_note_with(st: SubTask, actual) -> str:
-    """Sentensi ya kile kilichofanyika kwa idadi maalum (actual)."""
+def note_from(st: SubTask, actual, target=None) -> str:
+    """Sentensi ya kile kilichofanyika kwa actual/target maalum (BILA DB)."""
+    if target is None:
+        target = target_for(st)
     lead = _NOTE_LEADS.get(st.position, 'Nimetekeleza')
-    target = target_for(st)
-    if target and target > 0:
+    if target and float(target) > 0:
         return (f'{lead} {float(actual):g} kati ya '
                 f'{float(target):g} kikamilifu')
     return f'{lead} kikamilifu'
+
+
+def implementation_note_with(st: SubTask, actual) -> str:
+    """Sentensi ya kile kilichofanyika kwa idadi maalum (actual)."""
+    return note_from(st, actual, target_for(st))
 
 
 def implementation_note(st: SubTask) -> str:
@@ -445,9 +451,10 @@ _POS_KEYWORDS = {
 
 
 def parse_count(desc: str, position: int | None) -> int | None:
-    """Toa idadi iliyotajwa kwenye description ya ESS (kwa nafasi ya sub-task).
+    """Toa idadi ya kwanza kwenye description/jina la ESS (kwa nafasi).
 
-    Mf. 'Majaribio mawili na mitihani miwili ...' -> 2 (nafasi 7).
+    Mf. 'Majaribio mawili ...' -> 2 ; '... majaribio (05) ...' -> 5 ;
+    'kufundisha vipindi 432 vya ...' -> 432 (nafasi 5).
     """
     if not desc:
         return None
@@ -457,13 +464,15 @@ def parse_count(desc: str, position: int | None) -> int | None:
         return None
     for kw in keywords:
         for m in re.finditer(r'\b' + re.escape(kw) + r'\b', text):
-            tail = text[m.end():m.end() + 24].strip()
-            digit = re.match(r'(\d+)', tail)
-            if digit:
+            tail = text[m.end():m.end() + 30]
+            digit = re.search(r'(\d+)', tail)
+            word = re.search(r'([a-z\u00c0-\u024f]+)', tail)
+            if digit and (not word or digit.start() < word.start()):
                 return int(digit.group(1))
-            word = re.match(r'([a-z\u00c0-\u024f]+)', tail)
             if word and word.group(1) in _SW_NUM:
                 return _SW_NUM[word.group(1)]
+            if digit:
+                return int(digit.group(1))
     return None
 
 
@@ -485,8 +494,8 @@ def entry_from_values(st: SubTask, target, base_pct,
         actual = max(planned, int(prev_actual or 0))
         actual = int(min(actual, int(target)))
         pct = round(100.0 * actual / target, 2)
-        return implementation_note_with(st, actual), pct
-    return implementation_note_with(st, int(prev_actual or 0)), round(base_pct, 2)
+        return note_from(st, actual, target), pct
+    return note_from(st, int(prev_actual or 0), target), round(base_pct, 2)
 
 
 def entry_for_ess(st: SubTask, prev_actual=None) -> tuple[str, float]:

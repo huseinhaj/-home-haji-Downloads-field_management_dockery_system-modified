@@ -1034,6 +1034,11 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         continue
                     remaining.remove(entry)
                     cur = match['pct']
+                    # Jumla inayotakiwa (target) isomwe kutoka jina la ESS.
+                    ess_target = parse_count(match.get('text') or '', st.position)
+                    if ess_target and ess_target > 0:
+                        target = float(ess_target)
+                    emit(f'  target = {target:g} (kutoka ESS)')
                     # Soma entries za nyuma za ESS ili actual/asilimia ziwe sawa.
                     prev, _prior = _prior_actual_for_ess(
                         page, match['i'], st, emit)
