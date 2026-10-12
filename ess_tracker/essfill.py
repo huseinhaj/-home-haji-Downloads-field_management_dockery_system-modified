@@ -1139,6 +1139,17 @@ def _pull_from_ess(profile, tree, year_num, emit):
             continue
 
         task = best[1]
+        somo_now = (_norm_somo(tname)
+                    or (_norm_somo(et['subs'][0]['sub_name']) if et['subs'] else ''))
+        kidato_now = (_norm_kidato(tname)
+                      or (_norm_kidato(et['subs'][0]['sub_name']) if et['subs'] else ''))
+        meta = False
+        if somo_now and task.somo != somo_now:
+            task.somo = somo_now
+            meta = True
+        if kidato_now and task.kidato != kidato_now:
+            task.kidato = kidato_now
+            meta = True
         if tname and _normalize(task.name) != _normalize(tname):
             sim = SequenceMatcher(
                 None, _normalize(task.name), _normalize(tname)).ratio()
@@ -1147,6 +1158,13 @@ def _pull_from_ess(profile, tree, year_num, emit):
                 task.save(update_fields=['name'])
                 saved += 1
                 emit(f'Task: -> "{tname[:50]}"')
+            elif task.name != tname:
+                meta = True
+                task.name = tname
+        if meta:
+            task.save(update_fields=['name', 'somo', 'kidato'])
+            saved += 1
+            emit(f'Task meta (herufi): somo="{task.somo}" kidato="{task.kidato}"')
 
         local_subs = list(task.subtasks.all())
         next_pos = max([s.position for s in local_subs], default=0)
@@ -1162,8 +1180,14 @@ def _pull_from_ess(profile, tree, year_num, emit):
                 st = None
             if st is not None:
                 if _normalize(st.description) == _normalize(name):
-                    skipped += 1
-                    emit(f'= sawa: {st.description[:55]}')
+                    if st.description == name:
+                        skipped += 1
+                        emit(f'= sawa: {st.description[:55]}')
+                    else:
+                        emit(f'-> (herufi) "{st.description[:38]}" => "{name[:38]}"')
+                        st.description = name
+                        st.save(update_fields=['description'])
+                        saved += 1
                     continue
                 sim = SequenceMatcher(
                     None, _normalize(st.description), _normalize(name)).ratio()
