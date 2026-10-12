@@ -17,8 +17,8 @@ from difflib import SequenceMatcher
 from django.core.cache import cache
 from django.utils import timezone as tz
 
-from .compute import (built_wanted, entry_for_ess, increment_pct, parse_count,
-                      pct_auto_for, pct_for)
+from .compute import (built_wanted, entry_from_values, increment_pct,
+                      parse_count, pct_auto_for, pct_for)
 from .models import EssFillRun, SubTask
 
 BASE_URL = 'https://ess.utumishi.go.tz/'
@@ -1028,7 +1028,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         emit('   ukurasa: ' + _visible_text(page, 400))
 
                 for entry in list(remaining):
-                    st, text, note, pct = entry
+                    st, text, note, pct, target = entry
                     match, score = _best_row_match(text, visible, threshold)
                     if not match:
                         continue
@@ -1037,7 +1037,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                     # Soma entries za nyuma za ESS ili actual/asilimia ziwe sawa.
                     prev, _prior = _prior_actual_for_ess(
                         page, match['i'], st, emit)
-                    note, pct = entry_for_ess(st, prev)
+                    note, pct = entry_from_values(st, target, pct, prev)
                     emit(f'  hesabu: prev={prev} => {pct:.2f}% (actual/target)')
                     if cur is not None and float(pct) <= float(cur) + 0.5:
                         skipped += 1
@@ -1099,7 +1099,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     run.not_found = not_found
     run.log = '\n'.join(log)
     run.save()
-    for _st, text, _note, _p in remaining:
+    for _st, text, _note, _p, _t in remaining:
         emit(f'# haijapatikana: {text[:60]}')
     _set_progress(run_id, done=True, status='done', saved=saved,
                   skipped=skipped, not_found=not_found)

@@ -467,38 +467,47 @@ def parse_count(desc: str, position: int | None) -> int | None:
     return None
 
 
-def entry_for_ess(st: SubTask, prev_actual=None) -> tuple[str, float]:
-    """(description, asilimia) ya entry mpya ya ESS.
+def entry_from_values(st: SubTask, target, base_pct,
+                      prev_actual=None) -> tuple[str, float]:
+    """(description, asilimia) kutoka target/base_pct (BILA DB).
 
-    actual = idadi kubwa kati ya entries za nyuma (prev_actual) na ile ya
-    ratiba (target x pct_auto), isiyozidi target. asilimia = actual/target.
+    Hutumika ndani ya context ya Playwright (async) ambapo ORM haiwezi
+    kuitwa. actual = idadi kubwa kati ya entries za nyuma (prev_actual) na
+    ile ya ratiba (target x base_pct), isiyozidi target. asilimia = actual/target.
     """
-    base_pct, _src = pct_auto_for(st)
-    if base_pct is None:
-        base_pct = 0.0
-    target = target_for(st)
-    if target and target > 0:
-        planned = round(float(target) * base_pct / 100.0)
+    try:
+        target = float(target or 0)
+    except (TypeError, ValueError):
+        target = 0.0
+    base_pct = float(base_pct or 0.0)
+    if target > 0:
+        planned = round(target * base_pct / 100.0)
         actual = max(planned, int(prev_actual or 0))
         actual = int(min(actual, int(target)))
-        pct = round(100.0 * actual / float(target), 2)
+        pct = round(100.0 * actual / target, 2)
         return implementation_note_with(st, actual), pct
     return implementation_note_with(st, int(prev_actual or 0)), round(base_pct, 2)
 
 
-def built_wanted(profile) -> list[tuple[SubTask, str, str, float]]:
-    """[(sub-task, jina, description ya siku, asilimia)] za KILA sub-task.
+def entry_for_ess(st: SubTask, prev_actual=None) -> tuple[str, float]:
+    """(description, asilimia) ya entry mpya ya ESS (inagusa DB)."""
+    base_pct, _src = pct_auto_for(st)
+    return entry_from_values(st, target_for(st), base_pct, prev_actual)
 
-    Hutumika na 'Jaza': mwalimu haandiki kitu, description na asilimia
-    huhesabiwa kiotomatiki (description inaweza kubadilishwa baada ya
-    kusoma entries za nyuma za ESS).
+
+def built_wanted(profile) -> list[tuple[SubTask, str, str, float, float]]:
+    """[(sub-task, jina, description, asilimia, target)] za KILA sub-task.
+
+    Hukokotolewa KABLA ya Playwright ili ndani ya context ya async tusiguse
+    ORM. description inaweza kubadilishwa baada ya kusoma entries za nyuma.
     """
     out = []
     for task in profile.tasks.all():
         for st in task.subtasks.all():
             pct, _src = pct_auto_for(st)
             if pct is not None:
-                out.append((st, st.description, implementation_note(st), pct))
+                out.append((st, st.description, implementation_note(st), pct,
+                            float(target_for(st))))
     return out
 
 
