@@ -186,13 +186,36 @@ def _auto_login(page, username, password) -> bool:
     except Exception:
         pass
 
-    # Subiri fomu ya login (Angular inaichelewa kuionesha).
-    try:
-        page.wait_for_function(
-            """() => [...document.querySelectorAll("input[formcontrolname='email']")]
-                     .some(e => e.getBoundingClientRect().width > 50)""",
-            timeout=60000)
-    except Exception:
+    # Subiri fomu ya login (Angular inaichelewa kuionesha); reload kama lazima.
+    login_js = ("() => [\"input[formcontrolname='email']\","
+                "\"input[name='email']\", \"input[type='email']\","
+                "\"input[formcontrolname='username']\", \"input[name='username']\","
+                "\"input[id='username']\", \"input[id='email']\","
+                "\"input[type='password']\"].some(sel =>"
+                " [...document.querySelectorAll(sel)].some(e => {"
+                " const r = e.getBoundingClientRect();"
+                " return r.width > 50 && r.height > 5; }))")
+    found = False
+    for attempt in range(3):
+        try:
+            page.wait_for_function(login_js, timeout=25000)
+            found = True
+            break
+        except Exception:
+            page.wait_for_timeout(2000)
+            try:
+                if page.evaluate("() => !!localStorage.getItem('token')"):
+                    return True
+            except Exception:
+                pass
+            try:
+                page.reload(wait_until='commit')
+            except Exception:
+                try:
+                    _goto_retry(page, page.url)
+                except Exception:
+                    pass
+    if not found:
         try:
             if page.evaluate("() => !!localStorage.getItem('token')"):
                 return True
