@@ -82,16 +82,20 @@ def _goto_retry(page, url, tries=3):
 
 
 def _open_ess(page) -> None:
-    """Fungua ESS kwa imara: root inaweza kuchelewa; jaribu signin/dashboard."""
+    """Fungua ESS kwa imara: jaribu signin/root/dashboard kwa 'commit' kwanza.
+
+    'commit' hurudi mara tu server inapojibu (haisubiri DOM), hivyo
+    kuepuka timeouts kwenye kurasa nzito.
+    """
     last = None
-    for url in (BASE_URL, SIGNIN_URL, DASHBOARD_URL):
-        for _ in range(2):
+    for url in (SIGNIN_URL, BASE_URL, DASHBOARD_URL):
+        for wait in ('commit', 'domcontentloaded'):
             try:
-                page.goto(url, wait_until='domcontentloaded', timeout=30000)
+                page.goto(url, wait_until=wait, timeout=30000)
                 return
             except Exception as exc:  # noqa: BLE001
                 last = exc
-                page.wait_for_timeout(1500)
+                page.wait_for_timeout(2000)
     if last is not None:
         raise last
 
