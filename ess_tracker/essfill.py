@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 import time
+from datetime import date
 from difflib import SequenceMatcher
 
 from django.core.cache import cache
@@ -934,6 +935,86 @@ def _ess_names_from_payload(payload):
     return None
 
 
+def _ess_tree_from_payload(payload):
+    """-> [{'task_id','task_name','start','end','subs':[{'sub_id','sub_name'}]}].
+
+    Hutumika kuvuta (import) task/sub-task kutoka ESS kwenda local."""
+    if not isinstance(payload, dict):
+        return None
+    data = payload.get('data') or {}
+
+    def _as_list(node):
+        if isinstance(node, list):
+            return node
+        if isinstance(node, dict):
+            if isinstance(node.get('dataList'), list):
+                return node['dataList']
+            return [node]
+        return []
+
+    node = data.get('getEmployeeTasks')
+    items = _as_list(node)
+    if items:
+        tree = []
+        for it in items:
+            subs = [{'sub_id': s.get('id'),
+                     'sub_name': s.get('subTaskDescription'),
+                     'start': s.get('startDate'),
+                     'end': s.get('endDate')}
+                    for s in (it.get('subTask') or [])
+                    if s.get('subTaskDescription')]
+            tree.append({'task_id': it.get('id'),
+                         'task_name': it.get('taskDescription') or '',
+                         'start': it.get('startDate'), 'end': it.get('endDate'),
+                         'subs': subs})
+        if tree:
+            return tree
+
+    node = data.get('getEmployeeSubActivityYearId')
+    items = _as_list(node)
+    if items:
+        groups, order = {}, []
+        for it in items:
+            t = it.get('activityDescription') or ''
+            s = it.get('subActivityDescription')
+            if t not in groups:
+                groups[t] = []
+                order.append(t)
+            if s:
+                groups[t].append({'sub_id': None, 'sub_name': s,
+                                  'start': None, 'end': None})
+        return [{'task_id': None, 'task_name': t, 'start': None, 'end': None,
+                 'subs': groups[t]} for t in order]
+    return None
+
+
+def _parse_named(text, prefixes):
+    for p in prefixes:
+        m = re.search(p + r'\s+([\w\u00c0-\u024f-]+)', text or '', re.I)
+        if m:
+            return m.group(1)
+    return ''
+
+
+def _ess_date(value, year, month, day):
+    if isinstance(value, str) and value.strip():
+        m = re.match(r'(\d{4})-(\d{2})-(\d{2})', value.strip())
+        if m:
+            try:
+                return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+            except ValueError:
+                pass
+    return date(year, month, day)
+
+
+def _norm_somo(text):
+    return _parse_named(text, [r'somo\s+la', r'somo\s+ya']) or ''
+
+
+def _norm_kidato(text):
+    return _parse_named(text, [r'kidato\s+cha', r'kidato\s+ya']) or ''
+
+
 def _ess_names_from_ui(page, emit):
     """Fallback: soma majina ya sub-task moja kwa moja kutoka jedwali."""
     try:
@@ -987,65 +1068,107 @@ def _ess_names_from_ui(page, emit):
     if not names:
         emit(f'Jedwali tupu. URL: {page.url}')
     emit(f'Kutoka jedwali: majina {len(names)} ya sub-task (bila task).')
-    return [('', [n]) for n in names]
+    return [{'task_id': None, 'task_name': '', 'start': None, 'end': None,
+             'subs': [{'sub_id': None, 'sub_name': n, 'start': None, 'end': None}]}
+            for n in names]
 
 
-def _sync_local_names(profile, ess_tasks, emit):
-    """Sawazisha Task.name na SubTask.description na majina ya ESS."""
+def _pull_from_ess(profile, tree, year_num, emit):
+    """Vuta task/sub-task kutoka ESS: badilisha majina na uunde zisizopo local."""
+    from .models import Task
+
     saved = skipped = not_found = total = 0
-    ess_pool = []
-    for _t, subs in ess_tasks:
-        ess_pool.extend(subs)
+    local_tasks = list(profile.tasks.all())
+    ess_pool = [s['sub_name'] for t in tree for s in t['subs'] if s['sub_name']]
 
-    for task in profile.tasks.all():
-        best_t = None
-        for tname, _subs in ess_tasks:
+    for et in tree:
+        tname = et['task_name']
+        best = None
+        for task in local_tasks:
             if not tname:
                 continue
             sc = _similar(task.name, tname)
-            if best_t is None or sc > best_t[0]:
-                best_t = (sc, tname)
-        task_subs = None
-        if best_t and best_t[0] >= 0.7:
-            for tname, subs in ess_tasks:
-                if tname == best_t[1]:
-                    task_subs = subs
-                    break
-            if _normalize(task.name) != _normalize(best_t[1]):
-                emit(f'Task: "{task.name[:45]}" -> "{best_t[1][:45]}"')
-                task.name = best_t[1]
-                task.save(update_fields=['name'])
+            if sc >= 0.7 and (best is None or sc > best[0]):
+                best = (sc, task)
 
-        for st in task.subtasks.all():
-            total += 1
-            match, sc = (None, 0.0)
-            if task_subs:
-                match, sc = _match_name(st.description, task_subs)
-            if not match:
-                match, sc = _match_name(st.description, ess_pool)
-            if not match:
-                not_found += 1
-                emit(f'# haipo ESS: {st.description[:55]}')
-                continue
-            if _normalize(st.description) == _normalize(match):
-                skipped += 1
-                emit(f'= sawa: {st.description[:55]}')
-                continue
-            # Tofauti ndogo (mf. idadi/namba pekee) — tunza la local.
-            sim = SequenceMatcher(
-                None, _normalize(st.description), _normalize(match)).ratio()
-            if sim >= 0.9:
-                skipped += 1
-                emit(f'= imeachwa (idadi/similar) — tunza la local: {st.description[:45]}')
-                continue
-            emit(f'-> "{st.description[:38]}" => "{match[:38]}" ({sc:.2f})')
-            try:
-                ess_pool.remove(match)
-            except ValueError:
-                pass
-            st.description = match
-            st.save(update_fields=['description'])
+        if best is None:
+            sub_first = et['subs'][0]['sub_name'] if et['subs'] else ''
+            task = Task.objects.create(
+                profile=profile, name=tname or 'Task',
+                somo=_norm_somo(tname) or _norm_somo(sub_first),
+                kidato=_norm_kidato(tname) or _norm_kidato(sub_first),
+                start=_ess_date(et.get('start'), year_num, 1, 1),
+                end=_ess_date(et.get('end'), year_num, 12, 31))
+            local_tasks.append(task)
             saved += 1
+            emit(f'+ Task mpya local: {task.name[:55]}')
+            pos = 0
+            for es in et['subs']:
+                if not es['sub_name']:
+                    continue
+                pos += 1
+                SubTask.objects.create(task=task, position=pos,
+                                       description=es['sub_name'],
+                                       mode='manual', target=0)
+                saved += 1
+                total += 1
+                emit(f'  + Sub-task: {es["sub_name"][:55]}')
+            continue
+
+        task = best[1]
+        if tname and _normalize(task.name) != _normalize(tname):
+            sim = SequenceMatcher(
+                None, _normalize(task.name), _normalize(tname)).ratio()
+            if sim < 0.9:
+                task.name = tname
+                task.save(update_fields=['name'])
+                saved += 1
+                emit(f'Task: -> "{tname[:50]}"')
+
+        local_subs = list(task.subtasks.all())
+        next_pos = max([s.position for s in local_subs], default=0)
+        for es in et['subs']:
+            name = es['sub_name']
+            if not name:
+                continue
+            total += 1
+            m, _sc = _match_name(name, [s.description for s in local_subs])
+            if m:
+                st = next((s for s in local_subs if s.description == m), None)
+            else:
+                st = None
+            if st is not None:
+                if _normalize(st.description) == _normalize(name):
+                    skipped += 1
+                    emit(f'= sawa: {st.description[:55]}')
+                    continue
+                sim = SequenceMatcher(
+                    None, _normalize(st.description), _normalize(name)).ratio()
+                if sim >= 0.9:
+                    skipped += 1
+                    emit(f'= imeachwa (idadi/similar) — tunza la local: '
+                         f'{st.description[:45]}')
+                    continue
+                emit(f'-> "{st.description[:38]}" => "{name[:38]}"')
+                st.description = name
+                st.save(update_fields=['description'])
+                saved += 1
+                continue
+            next_pos += 1
+            new_st = SubTask.objects.create(
+                task=task, position=next_pos, description=name,
+                mode='manual', target=0)
+            local_subs.append(new_st)
+            saved += 1
+            total += 1
+            emit(f'  + Sub-task mpya: {name[:55]}')
+
+    for task in local_tasks:
+        for st in task.subtasks.all():
+            if not _match_name(st.description, ess_pool)[0]:
+                not_found += 1
+                emit(f'# haipo ESS (local pekee): {st.description[:50]}')
+
     return saved, skipped, not_found, total
 
 
@@ -1079,7 +1202,8 @@ def run_sync(profile_id: int, run_id: int) -> dict:
 
     page = None
     saved = skipped = not_found = total = 0
-    ess_tasks = None
+    tree = None
+    year_num = tz.localdate().year
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(
@@ -1119,6 +1243,8 @@ def run_sync(profile_id: int, run_id: int) -> dict:
             year = _current_year(page)
             ytitle = year.get('yearTitle') if isinstance(year, dict) else year
             emit(f'currentYear: {ytitle}')
+            if str(ytitle).isdigit():
+                year_num = int(ytitle)
 
             # Fungua ukurasa wa sub-tasks ili app yenyewe iite gateway —
             # kamata header halisi ya Authorization inayotumika.
@@ -1141,21 +1267,21 @@ def run_sync(profile_id: int, run_id: int) -> dict:
                     page, auth, _GQL_EMPLOYEE_TASKS,
                     {'financialYear': fin, 'checkNumber': check,
                      'calendarYear': cal}, emit)
-                ess_tasks = _ess_names_from_payload(payload)
-                if not ess_tasks:
+                tree = _ess_tree_from_payload(payload)
+                if not tree:
                     payload = _ess_fetch_json(
                         page, auth, _GQL_SUBACTIVITY,
                         {'checkNumber': check, 'yearId': year.get('id')}, emit)
-                    ess_tasks = _ess_names_from_payload(payload)
+                    tree = _ess_tree_from_payload(payload)
             else:
                 emit('auth/currentEmployee/currentYear havipo — naruka GraphQL.')
 
-            if not ess_tasks:
+            if not tree:
                 emit('GraphQL haitoi data — najaribu kusoma jedwali.')
-                ess_tasks = _ess_names_from_ui(page, emit)
+                tree = _ess_names_from_ui(page, emit)
             browser.close()
 
-        if not ess_tasks:
+        if not tree:
             emit('Sikusoma task/sub-task yoyote kutoka ESS.')
             run.status = 'error'
             run.finished = tz.now()
@@ -1163,10 +1289,10 @@ def run_sync(profile_id: int, run_id: int) -> dict:
             run.save()
             return {'status': 'error', 'msg': 'Hakuna majina ya ESS.'}
 
-        n_subs = sum(len(s) for _t, s in ess_tasks)
-        emit(f'ESS: tasks {len(ess_tasks)}, sub-tasks {n_subs}.')
-        saved, skipped, not_found, total = _sync_local_names(
-            profile, ess_tasks, emit)
+        n_subs = sum(len(t['subs']) for t in tree)
+        emit(f'ESS: tasks {len(tree)}, sub-tasks {n_subs}.')
+        saved, skipped, not_found, total = _pull_from_ess(
+            profile, tree, year_num, emit)
     except Exception as exc:  # noqa: BLE001
         snippet = ''
         if page is not None:

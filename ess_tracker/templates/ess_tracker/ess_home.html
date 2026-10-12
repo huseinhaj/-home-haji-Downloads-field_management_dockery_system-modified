@@ -87,10 +87,10 @@
       <a href="{% url 'ess_tracker:ess_fill_log' %}" class="btn btn-outline-secondary ms-2">Historia ya kujaza</a>
     </form>
     <form method="post" action="{% url 'ess_tracker:ess_sync_names' %}" class="mt-2"
-          onsubmit="return confirm('Kusawazisha kunachukua majina ya task/sub-task kutoka ESS official na kubadilisha yaliyo local. Endelea?')">
+          onsubmit="return confirm('Vuta inachukua task/sub-task kutoka ESS official (zisizopo local zitaundwa) na kusawazisha majina. Endelea?')">
       {% csrf_token %}
       <button class="btn btn-outline-primary" {% if not profile.ess_ready %}disabled{% endif %}>
-        <i class="fas fa-sync-alt me-2"></i>Sawazisha majina na ESS
+        <i class="fas fa-down-long me-2"></i>Vuta kutoka ESS (ESS &rarr; local)
       </button>
     </form>
     <form method="post" action="{% url 'ess_tracker:ess_push_names' %}" class="mt-2"
