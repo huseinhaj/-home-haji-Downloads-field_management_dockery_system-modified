@@ -653,6 +653,33 @@ def _close_panel(page) -> None:
         pass
 
 
+def _panel_diag(page, row=None) -> str:
+    """Maelezo ya panel ya Sub Task Progress (kwa utambuzi wa Actions/Submit)."""
+    parts = []
+    try:
+        parts.append('rows=%d' % len(
+            page.query_selector_all(SELECTORS['progress_row_selector'])))
+    except Exception:
+        pass
+    try:
+        btns = [re.sub(r'\s+', ' ', b.inner_text()).strip()
+                for b in page.query_selector_all('mat-dialog-container button')]
+        btns = [b for b in btns if b][:12]
+        if btns:
+            parts.append('buttons: ' + ', '.join(btns))
+    except Exception:
+        pass
+    if row is not None:
+        try:
+            cells = row.query_selector_all('td')
+            if cells:
+                parts.append('last-cell: ' + re.sub(
+                    r'\s+', ' ', cells[-1].inner_html())[:400])
+        except Exception:
+            pass
+    return ' | '.join(parts)
+
+
 def _submit_latest_progress(page, text, emit=None) -> bool:
     """Wasilisha (Submit) entry mpya kwenye jedwali la Sub Task Progress.
 
@@ -661,9 +688,13 @@ def _submit_latest_progress(page, text, emit=None) -> bool:
     try:
         page.wait_for_selector(SELECTORS['dialog_selector'], timeout=8000)
     except Exception:
+        if emit:
+            emit('  !! panel ya Sub Task Progress haipo (Submit imeachwa).')
         return False
     rows = page.query_selector_all(SELECTORS['progress_row_selector'])
     if not rows:
+        if emit:
+            emit('  !! hakuna entry kwenye panel. ' + _panel_diag(page))
         return False
     target = rows[0]
     key = _normalize(text)[:40]
@@ -690,9 +721,14 @@ def _submit_latest_progress(page, text, emit=None) -> bool:
         except Exception:
             continue
     if not opened:
+        if emit:
+            emit('  !! kitufe cha Actions hakipatikani. ' + _panel_diag(page, target))
         return False
     label = _menu_item_click(page, SELECTORS['submit_entry_labels'])
     if not label:
+        if emit:
+            emit('  !! hakuna kipengele cha Submit kwenye menu. '
+                 + _panel_diag(page, target))
         try:
             page.keyboard.press('Escape')
         except Exception:
@@ -706,6 +742,29 @@ def _submit_latest_progress(page, text, emit=None) -> bool:
     if emit:
         emit(f'  -> imewasilishwa kwa idhini: {label}')
     return True
+
+
+def _submit_panel_or_view(page, row_index, text, emit=None) -> bool:
+    """Hakikisha panel ya Sub Task Progress ipo, kisha wasilisha entry mpya."""
+    panel = None
+    try:
+        panel = page.query_selector(SELECTORS['dialog_selector'])
+    except Exception:
+        panel = None
+    if not panel:
+        if not _open_view_implementation(page, row_index, emit):
+            if emit:
+                emit('  !! hatukuweza kufungua View Implementation '
+                     '(Submit imeachwa).')
+            return False
+    try:
+        return _submit_latest_progress(page, text, emit)
+    except Exception as exc:  # noqa: BLE001
+        if emit:
+            emit(f'  !! Submit imeshindikana: {exc}')
+        return False
+    finally:
+        _close_panel(page)
 
 
 def _swal_text(page):
@@ -1038,37 +1097,30 @@ def _fill_one(page, row_index, text, pct, emit=None, note=None) -> None:
             emit(f'  -> uthibitisho: {conf}')
 
     if pending:
+        # Entry ya awali 'NOT SUBMITTED' ipo -- jaribu kuiwasilisha sasa.
+        _submit_panel_or_view(page, row_index, note or text, emit)
         _close_progress_dialog(page)
         raise PendingProgressError(pending)
 
+    detached = False
     try:
         page.wait_for_selector(SELECTORS['dialog_selector'], state='detached',
                                timeout=8000)
+        detached = True
     except Exception:
-        diag = _dialog_diagnostics(page)
+        # Kawaida dialog hugeuka kuwa panel 'Sub Task Progress' yenye orodha.
         if emit:
-            emit('  !! dialog haikufungwa: ' + diag)
-        raise RuntimeError('Dialog ya progress haikufungwa baada ya '
-                           + pressed + '. ' + diag)
-    try:
-        page.wait_for_load_state('networkidle', timeout=15000)
-    except Exception:
-        pass
-    page.wait_for_timeout(800)
-
-    # Entry mpya huanza 'NOT SUBMITTED'. Ifuatilie 'View Implementation'
-    # na uiwasilishe (Submit) ili iende kwa idhini ya mkuu.
-    if _open_view_implementation(page, row_index, emit):
+            emit('  (dialog bado wazi -- inaonyesha Sub Task Progress)')
+    if detached:
         try:
-            if not _submit_latest_progress(page, note or text, emit) and emit:
-                emit('  !! Submit ya entry haikupatikana (angalia Actions).')
-        except Exception as exc:  # noqa: BLE001
-            if emit:
-                emit(f'  !! Submit imeshindikana: {exc}')
-        finally:
-            _close_panel(page)
-    elif emit:
-        emit('  !! hatukuweza kufungua View Implementation (Submit imeachwa).')
+            page.wait_for_load_state('networkidle', timeout=15000)
+        except Exception:
+            pass
+        page.wait_for_timeout(800)
+
+    # Entry mpya huanza 'NOT SUBMITTED'. Iwasilishe (Submit) ili iende kwa idhini.
+    if not _submit_panel_or_view(page, row_index, note or text, emit) and emit:
+        emit('  !! Submit ya entry haikupatikana (angalia Actions).')
 
 
 # ── Sawazisha majina na ESS (official) ───────────────────────────────
