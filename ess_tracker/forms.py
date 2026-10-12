@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 
-from .models import MODE_CHOICES, SubTask, Task, TeacherProfile
+from .models import MODE_CHOICES, Holiday, SubTask, Task, TeacherProfile
 
 CustomUser = get_user_model()
 
@@ -105,12 +106,24 @@ class ProfileForm(forms.ModelForm):
         help_text='Hesabu ya mwaka mzima (tarehe ya kufungua hadi kufunga) '
                   'itagawanywa kwa mara hizi ili ufikie 100% tarehe ya kufunga.')
 
+    holidays = forms.ModelMultipleChoiceField(
+        label='Likizo (chagua zinazohusu mwaka huu)',
+        required=False,
+        queryset=Holiday.objects.none(),
+        widget=forms.SelectMultiple(attrs={'class': 'form-select', 'size': '6'}),
+        help_text='Siku hizi zitatolewa kwenye hesabu ya siku 194 za shule.')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.fields['school_open'].initial = self.instance.school_open
             self.fields['school_close'].initial = self.instance.school_close
             self.fields['entries_per_week'].initial = self.instance.entries_per_week
+            self.fields['holidays'].queryset = Holiday.objects.filter(
+                Q(profile__isnull=True) | Q(profile=self.instance))
+            self.fields['holidays'].initial = self.instance.holidays.all()
+        else:
+            self.fields['holidays'].queryset = Holiday.objects.filter(profile__isnull=True)
 
     def clean(self):
         cleaned = super().clean()
@@ -144,20 +157,28 @@ class ProfileForm(forms.ModelForm):
         profile.entries_per_week = int(self.cleaned_data.get('entries_per_week') or 3)
         if commit:
             profile.save()
+            profile.holidays.set(self.cleaned_data.get('holidays') or [])
         return profile
 
 
 class TaskForm(forms.ModelForm):
     class Meta:
         model = Task
-        fields = ['name', 'somo', 'kidato', 'start', 'end']
+        fields = ['name', 'somo', 'kidato', 'topics_total', 'topics_taught',
+                  'start', 'end']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control',
                                             'placeholder': 'TASK — mf. kutekeleza majukumu ya ufundishaji wa somo la hisabati...'}),
             'somo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'hisabati'}),
             'kidato': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'kwanza'}),
+            'topics_total': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'topics_taught': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
             'start': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'end': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        }
+        labels = {
+            'topics_total': 'Jumla ya mada za mwaka',
+            'topics_taught': 'Mada zilizofundishwa hadi sasa',
         }
 
     def clean(self):
@@ -174,13 +195,14 @@ class AutogenForm(forms.Form):
         label='Vipindi kwa wiki', required=False, widget=forms.NumberInput(attrs={'class': 'form-control'}))
     week_count = forms.IntegerField(
         label='Jumla ya wiki', required=False, widget=forms.NumberInput(attrs={'class': 'form-control'}))
-    maazimio = forms.IntegerField(initial=2, required=False,
-                                  widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    maazimio = forms.IntegerField(initial=1, required=False,
+                                  widget=forms.NumberInput(attrs={'class': 'form-control'}),
+                                  help_text='Azimio la kazi: 1 kwa somo kwa mwaka')
     nukuu = forms.DecimalField(required=False, label='Nukuu (jumla ya mwaka)',
                                widget=forms.NumberInput(attrs={'class': 'form-control'}))
     zana = forms.DecimalField(required=False, label='Zana (jumla ya mwaka)',
                               widget=forms.NumberInput(attrs={'class': 'form-control'}))
-    majaribio = forms.IntegerField(initial=5, required=False,
+    majaribio = forms.IntegerField(initial=6, required=False,
                                    widget=forms.NumberInput(attrs={'class': 'form-control'}))
     mitihani = forms.IntegerField(initial=4, required=False,
                                   widget=forms.NumberInput(attrs={'class': 'form-control'}))

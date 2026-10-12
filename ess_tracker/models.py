@@ -47,6 +47,9 @@ class TeacherProfile(models.Model):
     entries_per_week = models.PositiveSmallIntegerField(
         default=3,
         help_text='Mara ngapi kwa wiki mfumo ujaze maendeleo yako (2 au 3)')
+    holidays = models.ManyToManyField(
+        'Holiday', blank=True, related_name='profiles',
+        help_text='Likizo zilizochaguliwa — zinatolewa kwenye hesabu ya siku za shule (194)')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -68,6 +71,32 @@ class TeacherProfile(models.Model):
         super().save(*args, **kwargs)
 
 
+class Holiday(models.Model):
+    """Likizo (ya kitaifa au ya shule) inayotolewa kwenye hesabu ya siku za shule.
+
+    profile tupu = likizo ya kitaifa (inapatikana kwa walimu wote); profile
+    ikiwekwa = likizo ya shule/mwalimu huyo pekee.
+    """
+
+    name = models.CharField(max_length=150)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    is_public = models.BooleanField(default=False, help_text='Likizo ya kitaifa')
+    profile = models.ForeignKey(
+        TeacherProfile, null=True, blank=True, on_delete=models.CASCADE,
+        related_name='custom_holidays')
+
+    class Meta:
+        ordering = ['start_date', 'name']
+
+    def __str__(self):
+        return f'{self.name} ({self.start_date} - {self.end_date})'
+
+    @property
+    def days(self) -> int:
+        return (self.end_date - self.start_date).days + 1
+
+
 class Task(models.Model):
     """TASK moja ya mwaka (mf. 'kutekeleza majukumu ya ufundishaji ...')."""
 
@@ -75,6 +104,10 @@ class Task(models.Model):
     name = models.CharField(max_length=400)
     somo = models.CharField(max_length=100)
     kidato = models.CharField(max_length=100, blank=True)
+    topics_total = models.PositiveSmallIntegerField(
+        default=0, help_text='Jumla ya mada za somo kwa mwaka (hesabu ya nukuu)')
+    topics_taught = models.PositiveSmallIntegerField(
+        default=0, help_text='Jumla ya mada zilizofundishwa hadi sasa')
     start = models.DateField()
     end = models.DateField()
     created_at = models.DateTimeField(default=timezone.now)

@@ -12,40 +12,163 @@ from decimal import Decimal, ROUND_HALF_UP
 from .models import SubTask, Task
 
 # ── Namba -> maneno ya Kiswahili ─────────────────────────────────────
-_MAAZIMIO_WORDS = {1: 'moja', 2: 'mawili', 3: 'matatu', 4: 'manne', 5: 'matano'}
-_MITIHANI_WORDS = {1: 'mmoja', 2: 'miwili', 3: 'mitatu', 4: 'minne', 5: 'mitano',
-                   6: 'sita', 7: 'saba', 8: 'nane'}
+_SW_ONES = ['', 'moja', 'mbili', 'tatu', 'nne', 'tano', 'sita', 'saba', 'nane', 'tisa']
+_SW_TENS = ['', 'kumi', 'ishirini', 'thelathini', 'arobaini', 'hamsini', 'sitini',
+            'sabini', 'themanini', 'tisini']
 _MONTHS_SW = ['Januari', 'Februari', 'Machi', 'Aprili', 'Mei', 'Juni', 'Julai',
               'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba']
 
-# ── Templates za sub-tasks (sawa na CLI) ─────────────────────────────
+
+def _sw_below_100(n: int) -> str:
+    if n < 10:
+        return _SW_ONES[n]
+    if n == 10:
+        return 'kumi'
+    if n < 20:
+        return 'kumi na ' + _SW_ONES[n - 10]
+    tens, ones = divmod(n, 10)
+    return _SW_TENS[tens] + (' na ' + _SW_ONES[ones] if ones else '')
+
+
+def swahili_number(value) -> str:
+    """Namba (0..999999) -> maneno ya Kiswahili.
+
+    mf. 936 -> 'mia tisa thelathini na sita'; 4 -> 'nne'; 600 -> 'mia sita'.
+    """
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if n < 0:
+        return 'hasi ' + swahili_number(-n)
+    if n == 0:
+        return 'sifuri'
+    parts = []
+    if n >= 1000:
+        th, n = divmod(n, 1000)
+        parts.append('elfu ' + swahili_number(th))
+    if n >= 100:
+        hu, n = divmod(n, 100)
+        parts.append('mia ' + _SW_ONES[hu])
+    if n:
+        parts.append(_sw_below_100(n))
+    return ' '.join(parts)
+
+
+def count_phrase(value) -> str:
+    """'mia tisa thelathini na sita(936)' — tupu kama hakuna idadi."""
+    if value in (None, '', 0, '0'):
+        return ''
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if n <= 0:
+        return ''
+    return f'{swahili_number(n)}({n})'
+
+
+# ── Templates za sub-tasks (kwa mfano wa ESS halisi) ─────────────────
+# (key, template, mode): {somo}{kidato_p} hujazwa; {*_p} = idadi kwa
+# maneno+tarakimu (mf. 'mia tisa thelathini na sita(936)') au tupu.
 SUBTASK_SPECS = [
     ('maazimio',
-     'kuandaa maazimio {maazimio_neno} ya kufundishia somo la {somo} kidato cha {kidato}',
+     'Kuandaa azimio la kazi la somo la {somo}{kidato_p}',
      'annual'),
     ('nukuu',
-     'kuandaa nukuu {nukuu} za somo la {somo} kidato cha {kidato}',
-     'annual'),
+     'Kuandaa nukuu {nukuu_p} za somo la {somo}{kidato_p} kwa kila mada husika',
+     'manual'),
     ('maandalio',
-     'kuandaa maandalio {maandalio} ya somo la {somo}',
+     'Kuandaa maandalio {maandalio_p}',
      'periods'),
     ('zana',
-     'kuandaa zana {zana} za kufundishia na kujifunzia somo la {somo} kidato cha {kidato}',
-     'manual'),
-    ('kufundisha',
-     'kufundisha vipindi {vipindi} vya somo la {somo} kidato cha {kidato}',
+     'Kuandaa zana {zana_p} za kufundishia na kujifunzia somo la {somo}{kidato_p}',
      'periods'),
-    ('tathmini',
-     'kufanya tathmini ya maendeleo ya wanafunzi katika somo la {somo} '
-     'kila baada ya tathmini ya mtihani mmoja',
-     'annual'),
+    ('kufundisha',
+     'Kufundisha vipindi {vipindi_p} na kutoa zoezi kwa kila kipindi',
+     'periods'),
+    ('mitihani',
+     'Kutoa, kuashisha na kufanya tathmini ya matokeo ya mitihani {mitihani_p}',
+     'manual'),
     ('majaribio',
-     'kutoa na kusahihisha majaribio ({majaribio_pad}) ya mitihani '
-     '{mitihani_neno} ya somo la {somo} kidato cha {kidato}',
+     'Kutoa, kuashisha na kufanya tathmini ya matokeo ya majaribio {majaribio_p}',
      'manual'),
 ]
 
-DEFAULTS = {'maazimio': 2, 'majaribio': 5, 'mitihani': 4}
+DEFAULTS = {'maazimio': 1, 'majaribio': 6, 'mitihani': 4}
+
+# ── Vipindi kwa wiki (Mtaala Mpya wa Elimu ya Sekondari, 2023) ───────
+# Chanzo: TIE, "Mtaala wa Elimu ya Sekondari Kidato cha I - IV" (2023),
+# Jedwali Na. 5 (Masomo ya Msingi na Lazima) na Jedwali Na. 6 (Masomo
+# Chaguzi). Mwaka wa masomo = siku 194 = wiki 39 (mihula miwili); kila
+# muhula wiki 2 hutumika kwa upimaji wa ndani; kipindi = dakika 40.
+WEEKS_PER_YEAR = 39
+SCHOOL_DAYS_PER_YEAR = 194
+ASSESSMENT_WEEKS_PER_YEAR = 4          # wiki 2 kwa kila muhula
+TEACHING_WEEKS_PER_YEAR = WEEKS_PER_YEAR - ASSESSMENT_WEEKS_PER_YEAR
+PERIOD_MINUTES = 40
+
+# jina la somo -> (vipindi Kidato I–II, vipindi Kidato III–IV)
+SUBJECT_PERIODS_WEEK = {
+    # Jedwali Na. 5 — Masomo ya Msingi na Lazima
+    'mathematics': (5, 5), 'hisabati': (5, 5),
+    'kiswahili': (4, 4),
+    'english language': (5, 5), 'english': (5, 5), 'kiingereza': (5, 5),
+    'business studies': (3, 3), 'elimu ya biashara': (3, 3), 'biashara': (3, 3),
+    'geography': (2, 3), 'jiografia': (2, 3),
+    'historia ya tanzania na maadili': (3, 3),
+    # Jedwali Na. 6 — Masomo Chaguzi
+    'physics': (3, 4), 'fizikia': (3, 4),
+    'chemistry': (3, 4), 'kemia': (3, 4),
+    'biology': (3, 4), 'baiolojia': (3, 4),
+    'agriculture': (5, 5), 'kilimo': (5, 5),
+    'computer science': (4, 4), 'computer studies': (4, 4),
+    'sayansi ya kompyuta': (4, 4),
+    'food and human nutrition': (5, 5), 'chakula na lishe': (5, 5),
+    'sport studies': (4, 4), 'michezo': (4, 4),
+    'textile and garment construction': (5, 5), 'ushoni': (5, 5),
+    'fine art': (4, 4), 'sanaa': (4, 4),
+    'theatre arts': (4, 4), 'sanaa bunifu': (4, 4),
+    'additional mathematics': (0, 3), 'hisabati ya ziada': (0, 3),
+    'literature in english': (0, 2),
+    'fasihi ya kiswahili': (0, 2),
+    'french': (3, 3), 'kifaransa': (3, 3),
+    'arabic': (3, 3), 'kiarabu': (3, 3),
+    'chinese': (3, 3), 'kichina': (3, 3),
+    'music': (4, 4), 'muziki': (4, 4),
+    'history': (3, 4), 'historia': (3, 4),
+    'book-keeping': (3, 4), 'book keeping': (3, 4), 'uhasibu': (3, 4),
+    'bible knowledge': (3, 3), 'elimu ya dini ya kikristo': (3, 3),
+    'dini ya kiislamu': (3, 3), 'elimu ya dini ya kiislamu': (3, 3),
+}
+
+_UPPER_FORM_HINTS = ('3', '4', 'iii', 'iv', 'tatu', 'nne', 'three', 'four')
+
+
+def _is_upper_form(kidato) -> bool:
+    """Kidato cha III/IV (kidato cha tatu/nne, III, IV, 3, 4)."""
+    k = str(kidato or '').strip().lower()
+    return any(h in k for h in _UPPER_FORM_HINTS)
+
+
+def periods_per_week(somo, kidato=None):
+    """Vipindi kwa wiki kwa somo (Mtaala Mpya 2023).
+
+    Hurejesha Kidato III–IV kama kidato ni cha juu, vinginevyo I–II.
+    None kama somo haijulikani kwenye jedwali.
+    """
+    row = SUBJECT_PERIODS_WEEK.get(str(somo or '').strip().lower())
+    if row is None:
+        return None
+    lo, up = row
+    v = up if _is_upper_form(kidato) else lo
+    return v or None
+
+
+def periods_per_year(somo, kidato=None, weeks=TEACHING_WEEKS_PER_YEAR):
+    """Vipindi kwa mwaka = vipindi/wiki x wiki za kufundisha (mf. 35)."""
+    pww = periods_per_week(somo, kidato)
+    return pww * weeks if pww else None
 
 
 def _to_number(val):
@@ -123,6 +246,39 @@ def total_weeks(task: Task) -> float | None:
     return weeks_between(start, end)
 
 
+def topics_fraction(task: Task) -> float | None:
+    """Sehemu ya mada zilizofundishwa (0..1) au None kama hazijawekwa."""
+    total = getattr(task, 'topics_total', 0) or 0
+    taught = getattr(task, 'topics_taught', 0) or 0
+    if total > 0:
+        return max(0.0, min(1.0, taught / total))
+    return None
+
+
+def holiday_days(profile, start, end) -> int:
+    """Jumla ya siku za likizo zilizochaguliwa ndani ya kipindi [start, end]."""
+    if not (start and end):
+        return 0
+    total = 0
+    for h in profile.holidays.all():
+        s = max(h.start_date, start)
+        e = min(h.end_date, end)
+        if e >= s:
+            total += (e - s).days + 1
+    return total
+
+
+def school_days(profile) -> int | None:
+    """Siku za shule = 194 za mtaala huku zikitolewa likizo zilizochaguliwa.
+
+    Likizo hupimwa ndani ya dirisha la mwaka wa shule (kufungua..kufunga).
+    """
+    if not (profile.school_open and profile.school_close):
+        return None
+    return max(0, SCHOOL_DAYS_PER_YEAR
+               - holiday_days(profile, profile.school_open, profile.school_close))
+
+
 # ── Target / Actual / Asilimia ───────────────────────────────────────
 def target_for(st: SubTask) -> Decimal:
     if st.mode == 'periods':
@@ -157,6 +313,9 @@ def pct_for(st: SubTask) -> tuple[float | None, str]:
         return 100.0, 'computed'
     if target > 0:
         return round(float(actual) / float(target) * 100.0 + 1e-9, 2), 'computed'
+    frac = topics_fraction(st.task)
+    if frac is not None:
+        return round(frac * 100.0, 2), 'topics'
     return None, 'none'
 
 
@@ -168,23 +327,71 @@ def planned_fraction(task: Task, leo: date | None = None) -> float:
     return max(0.0, min(1.0, elapsed_weeks(task, leo) / tw))
 
 
+def entries_per_week(profile) -> int:
+    """Mara ngapi kwa wiki mfumo unatarajia kiingilio (2 au 3)."""
+    try:
+        return max(1, int(getattr(profile, 'entries_per_week', 3) or 3))
+    except (TypeError, ValueError):
+        return 3
+
+
+def schedule_units(task: Task) -> tuple[float, int] | None:
+    """(wiki zote, viingilio kwa wiki) vya mwaka wa Task, au None."""
+    tw = total_weeks(task)
+    if not tw or tw <= 0:
+        return None
+    return tw, entries_per_week(task.profile)
+
+
+def increment_pct(task: Task) -> float | None:
+    """Asilimia inayoongezwa kwa KILA kiingilio = 100 / (wiki x viingilio/wiki)."""
+    su = schedule_units(task)
+    if su is None:
+        return None
+    tw, epw = su
+    total = tw * epw
+    return round(100.0 / total, 4) if total > 0 else None
+
+
+def entry_fraction(st: SubTask, leo: date | None = None) -> float:
+    """Sehemu ya ratiba ya viingilio (0..1).
+
+    Kila kiingilio huongeza 100/(wiki x entries_per_week) asilimia. Hapa
+    hulinganisha viingilio halisi vya sub task (WeekEntry) na vile
+    vinavyotarajiwa kufikia sasa (wiki zilizopita x entries_per_week).
+    """
+    su = schedule_units(st.task)
+    if su is None:
+        return 0.0
+    tw, epw = su
+    total = tw * epw
+    if total <= 0:
+        return 0.0
+    expected_now = elapsed_weeks(st.task, leo) * epw
+    made = st.entries.count()
+    return max(0.0, min(1.0, max(made, expected_now) / total))
+
+
 def pct_auto_for(st: SubTask) -> tuple[float | None, str]:
     """Asilimia ya 'Jaza' bila mwalimu kuandika kitu.
 
-    - Sub-task za mwaka (maazimio/nukuu/tathmini): 100%.
-    - Nyingine: maendeleo ya ratiba (muda uliopita) au actual kama aliandika
-      zaidi ya ratiba. Chanzo: 'annual' | 'auto'.
+    - Sub-task ya mwaka (maazimio): 100%.
+    - Nyingine: ratiba ya viingilio (entries_per_week) au actual kama
+      aliandika zaidi ya ratiba. Chanzo: 'annual' | 'schedule' | 'topics'.
     """
     if st.mode == 'annual':
         return 100.0, 'annual'
     target = target_for(st)
     actual = actual_for(st)
-    frac = planned_fraction(st.task)
+    frac = entry_fraction(st)
     if target > 0:
         planned = target * _dec(round(frac, 6))
         eff = actual if actual > planned else planned
-        return min(100.0, round(float(eff) / float(target) * 100.0, 2)), 'auto'
-    return round(frac * 100.0, 2), 'auto'
+        return min(100.0, round(float(eff) / float(target) * 100.0, 2)), 'schedule'
+    topics = topics_fraction(st.task)
+    if topics is not None:
+        return round(topics * 100.0, 2), 'topics'
+    return round(frac * 100.0, 2), 'schedule'
 
 
 def _dec(v) -> Decimal:
@@ -210,34 +417,31 @@ def built_wanted(profile) -> list[tuple[str, float]]:
 
 # ── Kutengeneza sub-tasks kwa kiingilio rahisi (kama CSV) ────────────
 def autogen_subtasks(somo: str, kidato: str, *,
-                     maazimio: int = 2, majaribio: int = 5, mitihani: int = 4,
+                     maazimio: int = 1, majaribio: int = 6, mitihani: int = 4,
                      nukuu=None, maandalio=None, vipindi=None,
                      zana=None) -> list[dict]:
-    """Tengeneza stakabadhi 7 za kawaida. Nambari zisizotolewa huhesabiwa
-    baadaye kando ya vila_per_week/wiki."""
+    """Tengeneza sub-tasks 7 za kawaida (kwa mfano wa ESS halisi).
 
-    def word(d, n):
-        return d.get(int(n) if isinstance(n, (int, float)) else -1, str(n))
-
-    maazimio_neno = word(_MAAZIMIO_WORDS, maazimio)
-    mitihani_neno = word(_MITIHANI_WORDS, mitihani)
-    try:
-        majaribio_pad = f'{int(majaribio):02d}'
-    except (TypeError, ValueError):
-        majaribio_pad = str(majaribio)
-
+    Idadi inayoonekana kwenye maandishi hujazwa kwa maneno+tarakimu, mf.
+    'Kufundisha vipindi mia tisa thelathini na sita(936) ...'. Idadi
+    isiyotolewa huacha nafasi tupu (maandishi ya jumla) na target
+    huhesabiwa baadaye kando ya vila_per_week/wiki.
+    """
     fmt = {
-        'somo': somo, 'kidato': kidato or '',
-        'maazimio': maazimio, 'nukuu': nukuu or '', 'maandalio': maandalio or '',
-        'zana': zana or '', 'vipindi': vipindi or '',
-        'majaribio': majaribio, 'mitihani': mitihani,
-        'maazimio_neno': maazimio_neno, 'mitihani_neno': mitihani_neno,
-        'majaribio_pad': majaribio_pad,
+        'somo': somo,
+        'kidato_p': f' kidato cha {kidato}' if kidato else '',
+        'nukuu_p': count_phrase(nukuu),
+        'maandalio_p': count_phrase(maandalio),
+        'zana_p': count_phrase(zana),
+        'vipindi_p': count_phrase(vipindi),
+        'mitihani_p': count_phrase(mitihani),
+        'majaribio_p': count_phrase(majaribio),
     }
-    return [
-        {'position': i, 'key': key, 'text': tpl.format(**fmt), 'mode': mode}
-        for i, (key, tpl, mode) in enumerate(SUBTASK_SPECS, start=1)
-    ]
+    out = []
+    for i, (key, tpl, mode) in enumerate(SUBTASK_SPECS, start=1):
+        text = re.sub(r'\s+', ' ', tpl.format(**fmt)).strip()
+        out.append({'position': i, 'key': key, 'text': text, 'mode': mode})
+    return out
 
 
 # ── Kusoma CSV aina ya masomo_sample_v2.csv ─────────────────────────
@@ -338,8 +542,8 @@ _SPEC_TARGET_COL = ['maazimio', 'nukuu', 'maandalio', 'zana', 'vipindi',
 _SPEC_ACTUAL_COL = ['maazimio_actual', 'nukuu_actual', 'maandalio_actual',
                     'zana_actual', 'vipindi_actual', 'tathmini_actual',
                     'majaribio_actual']
-_DEFAULT_MODES = {1: 'annual', 2: 'annual', 3: 'periods', 4: 'manual',
-                  5: 'periods', 6: 'annual', 7: 'manual'}
+_DEFAULT_MODES = {1: 'annual', 2: 'manual', 3: 'periods', 4: 'periods',
+                  5: 'periods', 6: 'manual', 7: 'manual'}
 
 
 def _mode_for(idx: int, row: dict) -> str:

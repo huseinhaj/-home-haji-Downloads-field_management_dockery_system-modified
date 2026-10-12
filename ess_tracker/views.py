@@ -12,7 +12,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .compute import (actual_for, autogen_subtasks, create_task_from_row,
-                      elapsed_weeks, parse_csv_text, pct_for, target_for)
+                      elapsed_weeks, parse_csv_text, pct_for, periods_per_week,
+                      school_days, target_for)
 from .essfill import CACHE_PREFIX, expected_display, subtask_snapshot
 from .forms import (AutogenForm, ProfileForm, SubTaskEditForm, TaskForm,
                     TeacherRegistrationForm)
@@ -145,6 +146,7 @@ def ess_profile(request):
     return render(request, 'ess_tracker/ess_profile.html', {
         'form': form,
         'creating': creating,
+        'school_days': school_days(profile) if profile else None,
     })
 
 
@@ -185,11 +187,11 @@ def ess_task_edit(request, task_id):
         return redirect('ess_tracker:ess_task_edit', task_id=task.id)
     form = TaskForm(instance=task)
     snapshot = subtask_snapshot(task)
+    existing = task.subtasks.filter(mode='periods').first()
     autogen = AutogenForm(initial={
-        'vila_per_week': task.subtasks.filter(mode='periods').first().vila_per_week
-        if task.subtasks.filter(mode='periods').exists() else None,
-        'week_count': task.subtasks.filter(mode='periods').first().week_count
-        if task.subtasks.filter(mode='periods').exists() else None,
+        'vila_per_week': existing.vila_per_week if existing
+        else periods_per_week(task.somo, task.kidato),
+        'week_count': existing.week_count if existing else None,
         'nukuu': task.subtasks.filter(position=2).first().target if task.subtasks.filter(position=2).exists() else None,
         'zana': task.subtasks.filter(position=4).first().target if task.subtasks.filter(position=4).exists() else None,
     })
@@ -243,26 +245,27 @@ def ess_autogen(request, task_id):
     task = get_object_or_404(Task, pk=task_id, profile=profile)
     form = AutogenForm(request.POST)
     if form.is_valid():
-        vila = form.cleaned_data.get('vila_per_week') or 0
+        vila = form.cleaned_data.get('vila_per_week') or periods_per_week(task.somo, task.kidato) or 0
         wc = form.cleaned_data.get('week_count') or 0
         period_target = int(round((vila or 0) * (wc or 0)))
+        nukuu_count = form.cleaned_data.get('nukuu')
         specs = autogen_subtasks(
             task.somo, task.kidato,
-            maazimio=form.cleaned_data.get('maazimio') or 2,
-            majaribio=form.cleaned_data.get('majaribio') or 5,
+            maazimio=form.cleaned_data.get('maazimio') or 1,
+            majaribio=form.cleaned_data.get('majaribio') or 6,
             mitihani=form.cleaned_data.get('mitihani') or 4,
-            nukuu=form.cleaned_data.get('nukuu') or period_target,
+            nukuu=nukuu_count,
             maandalio=period_target,
             vipindi=period_target,
             zana=form.cleaned_data.get('zana'))
         target_by_key = {
-            'maazimio': form.cleaned_data.get('maazimio') or 2,
-            'nukuu': form.cleaned_data.get('nukuu') or period_target,
+            'maazimio': form.cleaned_data.get('maazimio') or 1,
+            'nukuu': nukuu_count or 0,
             'maandalio': period_target,
             'zana': form.cleaned_data.get('zana') or 0,
             'kufundisha': period_target,
-            'tathmini': form.cleaned_data.get('mitihani') or 4,
-            'majaribio': form.cleaned_data.get('majaribio') or 5,
+            'mitihani': form.cleaned_data.get('mitihani') or 4,
+            'majaribio': form.cleaned_data.get('majaribio') or 6,
         }
         for item in specs:
             periods = item['mode'] == 'periods'

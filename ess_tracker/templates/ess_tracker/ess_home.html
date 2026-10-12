@@ -80,6 +80,7 @@
               </div>
               <span class="small fw-bold">{{ s.pct_str|default:'—' }}</span>
             </div>
+            {% if s.increment_str %}<div class="text-muted" style="font-size:.7rem">kila kiingilio +{{ s.increment_str }}</div>{% endif %}
           </td>
         </tr>
         {% endfor %}

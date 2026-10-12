@@ -39,6 +39,11 @@
         <button class="btn btn-primary">Hifadhi</button>
         <a href="{% url 'ess_tracker:ess_home' %}" class="btn btn-outline-secondary">Rudi</a>
       </form>
+      {% if school_days %}
+      <div class="alert alert-info mt-3 mb-0 py-2 small">
+        Siku za shule mwaka huu (bila likizo ulizochagua): <b>{{ school_days }}</b>.
+      </div>
+      {% endif %}
       {% if not creating %}
       <p class="text-muted mt-3 mb-0 small">
         Username na password za <b>ESS (e-Tendaji)</b> ni zile zile unazoingia

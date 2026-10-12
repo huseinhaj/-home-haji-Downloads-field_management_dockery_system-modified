@@ -16,7 +16,7 @@ from difflib import SequenceMatcher
 from django.core.cache import cache
 from django.utils import timezone as tz
 
-from .compute import built_wanted, pct_auto_for, pct_for
+from .compute import built_wanted, increment_pct, pct_auto_for, pct_for
 from .models import EssFillRun, SubTask
 
 BASE_URL = 'https://ess.utumishi.go.tz/'
@@ -1637,6 +1637,7 @@ def subtask_snapshot(task) -> list[dict]:
     for st in task.subtasks.all().prefetch_related('entries'):
         pct, src = pct_auto_for(st)
         recorded, _ = pct_for(st)
+        inc = increment_pct(st.task)
         out.append({
             'st': st,
             'target': target_display(st),
@@ -1646,6 +1647,8 @@ def subtask_snapshot(task) -> list[dict]:
             'pct_str': '' if pct is None else f'{pct:.0f}%',
             'recorded_pct': recorded,
             'source': src,
+            'increment': inc,
+            'increment_str': '' if inc is None else f'{inc:.2f}%',
         })
     return out
 
