@@ -833,7 +833,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         emit('   ukurasa: ' + _visible_text(page, 400))
 
                 for entry in list(remaining):
-                    text, pct = entry
+                    text, note, pct = entry
                     match, score = _best_row_match(text, visible, threshold)
                     if not match:
                         continue
@@ -844,8 +844,9 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         emit(f'= ESS tayari {float(cur):.0f}% (>= {pct:.2f}%): {text[:50]}')
                         continue
                     emit(f'-> {text[:50]}  (match {score:.2f}) => {pct:.2f}%')
+                    emit(f'   desc: {note[:70]}')
                     try:
-                        _fill_one(page, match['i'], text, pct, emit=emit)
+                        _fill_one(page, match['i'], text, pct, emit=emit, note=note)
                         saved += 1
                         _set_progress(run_id, saved=saved)
                     except Exception as exc:
@@ -898,14 +899,14 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     run.not_found = not_found
     run.log = '\n'.join(log)
     run.save()
-    for text, _p in remaining:
+    for text, _note, _p in remaining:
         emit(f'# haijapatikana: {text[:60]}')
     _set_progress(run_id, done=True, status='done', saved=saved,
                   skipped=skipped, not_found=not_found)
     return {'status': 'done', 'saved': saved, 'skipped': skipped, 'not_found': not_found}
 
 
-def _fill_one(page, row_index, text, pct, emit=None) -> None:
+def _fill_one(page, row_index, text, pct, emit=None, note=None) -> None:
     """Fungua dialog na ujaze sub task moja (selectors zimehakikiwa)."""
     row_els = _rows(page)
     if row_index >= len(row_els):
@@ -930,7 +931,7 @@ def _fill_one(page, row_index, text, pct, emit=None) -> None:
         page.wait_for_timeout(500)
 
     desc = page.wait_for_selector(SELECTORS['description_selector'], timeout=10000)
-    desc.fill(text[:500])
+    desc.fill((note or text)[:500])
 
     status_opt = (SELECTORS['status_option_completed'] if pct >= 100
                   else SELECTORS['status_option_in_progress'] if pct > 0
@@ -1009,7 +1010,7 @@ def _fill_one(page, row_index, text, pct, emit=None) -> None:
     # na uiwasilishe (Submit) ili iende kwa idhini ya mkuu.
     if _open_view_implementation(page, row_index, emit):
         try:
-            if not _submit_latest_progress(page, text, emit) and emit:
+            if not _submit_latest_progress(page, note or text, emit) and emit:
                 emit('  !! Submit ya entry haikupatikana (angalia Actions).')
         except Exception as exc:  # noqa: BLE001
             if emit:

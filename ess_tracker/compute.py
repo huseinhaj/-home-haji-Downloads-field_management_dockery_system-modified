@@ -401,17 +401,42 @@ def _dec(v) -> Decimal:
         return Decimal('0')
 
 
-def built_wanted(profile) -> list[tuple[str, float]]:
-    """[(description, asilimia)] za KILA sub-task (maendeleo ya ratiba).
+_NOTE_LEADS = {
+    1: 'Nimeandaa azimio la kazi',
+    2: 'Nimeandaa nukuu',
+    3: 'Nimeandaa maandalio',
+    4: 'Nimeandaa zana',
+    5: 'Nimefundisha vipindi',
+    6: 'Nimetoa na kusahihisha mitihani',
+    7: 'Nimetoa na kusahihisha majaribio',
+}
 
-    Hutumika na 'Jaza': mwalimu haandiki kitu, asilimia inahesabiwa kiotomatiki.
+
+def implementation_note(st: SubTask) -> str:
+    """Sentensi ya kile kilichofanyika (description ya entry ya ESS).
+
+    Mf. 'Nimefundisha vipindi 292 kati ya 432 kikamilifu'.
+    """
+    lead = _NOTE_LEADS.get(st.position, 'Nimetekeleza')
+    target = target_for(st)
+    if target and target > 0:
+        return (f'{lead} {float(actual_for(st)):g} kati ya '
+                f'{float(target):g} kikamilifu')
+    return f'{lead} kikamilifu'
+
+
+def built_wanted(profile) -> list[tuple[str, str, float]]:
+    """[(sub-task, description ya siku, asilimia)] za KILA sub-task.
+
+    Hutumika na 'Jaza': mwalimu haandiki kitu, description na asilimia
+    huhesabiwa kiotomatiki.
     """
     out = []
     for task in profile.tasks.all():
         for st in task.subtasks.all():
             pct, _src = pct_auto_for(st)
             if pct is not None:
-                out.append((st.description, pct))
+                out.append((st.description, implementation_note(st), pct))
     return out
 
 
