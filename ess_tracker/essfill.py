@@ -45,6 +45,10 @@ SELECTORS = {
     'percentage_value_attr': 'aria-valuenow',
     'row_action_button_selector': 'td.mat-column-manage .mat-mdc-menu-trigger',
     'edit_menu_item': ".mat-mdc-menu-panel button.mat-mdc-menu-item:has-text('Add Progress Details')",
+    'view_impl_labels': ['View Implementation', 'View Progress', 'View Impl'],
+    'submit_entry_labels': ['Submit', 'SUBMIT', 'Submit Progress', 'Wasilisha',
+                            'Tuma', 'Send'],
+    'progress_row_selector': 'mat-dialog-container table tbody tr',
     'dialog_selector': 'mat-dialog-container',
     'subtype_select_selector': "mat-dialog-container mat-select[formcontrolname='subActivityType']",
     'description_selector': "mat-dialog-container textarea[formcontrolname='description']",
@@ -541,6 +545,133 @@ def _close_progress_dialog(page) -> None:
         pass
 
 
+def _menu_item_click(page, labels):
+    """Bofya kipengele cha menu (mat-mdc-menu-panel) kwa maandishi."""
+    for label in labels:
+        for sel in (f".mat-mdc-menu-panel button.mat-mdc-menu-item:has-text('{label}')",
+                    f".cdk-overlay-container button.mat-mdc-menu-item:has-text('{label}')"):
+            try:
+                for el in page.query_selector_all(sel):
+                    if el.is_visible():
+                        el.click()
+                        return label
+            except Exception:
+                continue
+    return None
+
+
+def _open_view_implementation(page, row_index, emit=None) -> bool:
+    """Fungua 'View Implementation' ya safu ya sub-task (kuona entries)."""
+    row_els = _rows(page)
+    if row_index >= len(row_els):
+        return False
+    trigger = row_els[row_index].query_selector(
+        SELECTORS['row_action_button_selector'])
+    if not trigger:
+        return False
+    try:
+        trigger.click()
+        page.wait_for_timeout(700)
+    except Exception:
+        return False
+    label = _menu_item_click(page, SELECTORS['view_impl_labels'])
+    if not label:
+        try:
+            page.keyboard.press('Escape')
+        except Exception:
+            pass
+        return False
+    page.wait_for_timeout(1200)
+    if emit:
+        emit(f'  -> View Implementation: {label}')
+    return True
+
+
+def _close_panel(page) -> None:
+    """Funga panel/dialog ya Sub Task Progress (isiyo ya kuongeza)."""
+    try:
+        el = page.query_selector('.swal2-confirm')
+        if el and el.is_visible():
+            el.click()
+            page.wait_for_timeout(300)
+    except Exception:
+        pass
+    for sel in ("mat-dialog-container button[mat-dialog-close]",
+                "mat-dialog-container button:has-text('close')",
+                "mat-dialog-container button:has-text('Close')",
+                "mat-dialog-container button:has-text('Funga')",
+                "mat-dialog-container button:has-text('Cancel')"):
+        try:
+            el = page.query_selector(sel)
+            if el and el.is_visible():
+                el.click()
+                page.wait_for_timeout(500)
+                if not page.query_selector('mat-dialog-container'):
+                    return
+        except Exception:
+            continue
+    try:
+        page.keyboard.press('Escape')
+        page.wait_for_timeout(400)
+    except Exception:
+        pass
+
+
+def _submit_latest_progress(page, text, emit=None) -> bool:
+    """Wasilisha (Submit) entry mpya kwenye jedwali la Sub Task Progress.
+
+    Hurudi True ikifanikiwa; False vinginevyo (haisimamishi run).
+    """
+    try:
+        page.wait_for_selector(SELECTORS['dialog_selector'], timeout=8000)
+    except Exception:
+        return False
+    rows = page.query_selector_all(SELECTORS['progress_row_selector'])
+    if not rows:
+        return False
+    target = rows[0]
+    key = _normalize(text)[:40]
+    for r in rows:
+        try:
+            if key and key in _normalize(r.inner_text()):
+                target = r
+                break
+        except Exception:
+            continue
+    opened = False
+    for sel in ("td:last-child .mat-mdc-menu-trigger",
+                "td.mat-column-manage .mat-mdc-menu-trigger",
+                "td:last-child button:has-text('Submit')",
+                "td:last-child button",
+                "button.mat-mdc-menu-trigger"):
+        try:
+            btn = target.query_selector(sel)
+            if btn and btn.is_visible():
+                btn.click()
+                page.wait_for_timeout(700)
+                opened = True
+                break
+        except Exception:
+            continue
+    if not opened:
+        return False
+    label = _menu_item_click(page, SELECTORS['submit_entry_labels'])
+    if not label:
+        try:
+            page.keyboard.press('Escape')
+        except Exception:
+            pass
+        return False
+    page.wait_for_timeout(1000)
+    try:
+        _confirm_if_any(page, SELECTORS['confirm_labels'])
+    except Exception:
+        pass
+    if emit:
+        emit(f'  -> imewasilishwa kwa idhini: {label}')
+    return True
+
+
 def _swal_text(page):
     try:
         el = page.query_selector('.swal2-html-container, .swal2-title')
@@ -873,6 +1004,20 @@ def _fill_one(page, row_index, text, pct, emit=None) -> None:
     except Exception:
         pass
     page.wait_for_timeout(800)
+
+    # Entry mpya huanza 'NOT SUBMITTED'. Ifuatilie 'View Implementation'
+    # na uiwasilishe (Submit) ili iende kwa idhini ya mkuu.
+    if _open_view_implementation(page, row_index, emit):
+        try:
+            if not _submit_latest_progress(page, text, emit) and emit:
+                emit('  !! Submit ya entry haikupatikana (angalia Actions).')
+        except Exception as exc:  # noqa: BLE001
+            if emit:
+                emit(f'  !! Submit imeshindikana: {exc}')
+        finally:
+            _close_panel(page)
+    elif emit:
+        emit('  !! hatukuweza kufungua View Implementation (Submit imeachwa).')
 
 
 # ── Sawazisha majina na ESS (official) ───────────────────────────────
