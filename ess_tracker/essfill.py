@@ -66,6 +66,14 @@ SELECTORS = {
 CACHE_PREFIX = 'ess_fill:'
 
 
+class PendingProgressError(RuntimeError):
+    """ESS ina pending progress iliyowasilishwa/isiyoidhinishwa bado.
+
+    Haiwezekani kuongeza progress mpya mpaka ile iliyopo iidhinishwe. Hii
+    si kosa la kudumu — tunairuka na kuendelea na sub-task nyingine.
+    """
+
+
 # ── Msaada wa Playwright ─────────────────────────────────────────────
 def _normalize(s: str) -> str:
     return re.sub(r'\s+', ' ', (s or '').strip().lower())
@@ -358,6 +366,17 @@ def _goto_subtasks(page) -> None:
         raise RuntimeError(
             'Ukurasa wa sub-tasks (ESS) hauleti jedwali. URL: %s | Kichwa: %s | '
             'Kimeonekana: %s' % (page.url, page.title(), _visible_text(page, 300)))
+
+
+def _find_row_index(page, text):
+    """Tafuta index ya safu ya jedwali kwa maandishi (baada ya jedwali kubadilika)."""
+    cands = []
+    for i, el in enumerate(_rows(page)):
+        cell = el.query_selector(SELECTORS['subtask_cell_selector'])
+        if cell:
+            cands.append({'i': i, 'text': cell.inner_text()})
+    match, _ = _best_row_match(text, cands, SELECTORS['match_threshold'])
+    return match['i'] if match else None
 
 
 def _best_row_match(target_text, candidates, threshold):
@@ -699,7 +718,8 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         saved += 1
                         _set_progress(run_id, saved=saved)
                     except Exception as exc:
-                        if 'pending progress' in str(exc).lower():
+                        if (isinstance(exc, PendingProgressError)
+                                or 'pending progress' in str(exc).lower()):
                             skipped += 1
                             emit(f'  = ESS ina pending progress (imeachwa): {text[:40]}')
                         else:
@@ -758,7 +778,12 @@ def _fill_one(page, row_index, text, pct, emit=None) -> None:
     """Fungua dialog na ujaze sub task moja (selectors zimehakikiwa)."""
     row_els = _rows(page)
     if row_index >= len(row_els):
-        raise RuntimeError('Mstari wa jedwali haupo tena (ulibadilika baada ya Save).')
+        fresh = _find_row_index(page, text)
+        if fresh is None:
+            raise RuntimeError(
+                'Mstari wa jedwali haupo tena (ulibadilika baada ya Save).')
+        row_index = fresh
+        row_els = _rows(page)
     row_el = row_els[row_index]
     row_el.query_selector(SELECTORS['row_action_button_selector']).click()
     page.wait_for_selector(SELECTORS['edit_menu_item'], timeout=8000)
@@ -813,6 +838,7 @@ def _fill_one(page, row_index, text, pct, emit=None) -> None:
 
     # Dialog ya uthibitisho / onyo (SweetAlert au Material) inaweza kutokea.
     swal_seen = []
+    pending = ''
     for _ in range(6):
         page.wait_for_timeout(800)
         txt = _swal_text(page)
@@ -820,11 +846,18 @@ def _fill_one(page, row_index, text, pct, emit=None) -> None:
             swal_seen.append(txt)
             if emit:
                 emit('  !! ESS: ' + txt[:200])
+            if 'pending progress' in txt.lower():
+                pending = txt
+                break
         if not _progress_dialog_open(page):
             break
         conf = _confirm_if_any(page, SELECTORS['confirm_labels'])
         if conf and emit:
             emit(f'  -> uthibitisho: {conf}')
+
+    if pending:
+        _close_progress_dialog(page)
+        raise PendingProgressError(pending)
 
     try:
         page.wait_for_selector(SELECTORS['dialog_selector'], state='detached',
