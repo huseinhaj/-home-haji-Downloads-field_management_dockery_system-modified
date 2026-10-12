@@ -46,10 +46,15 @@ SELECTORS = {
     'percentage_value_selector': 'mat-progress-bar',
     'percentage_value_attr': 'aria-valuenow',
     'row_action_button_selector': 'td.mat-column-manage .mat-mdc-menu-trigger',
-    'edit_menu_item': ".mat-mdc-menu-panel button.mat-mdc-menu-item:has-text('Add Progress Details')",
+    'add_entry_labels': ['Add Sub Task Progress', 'Add Progress Details',
+                         'Add Progress', 'Add Implementation'],
     'view_impl_labels': ['View Implementation', 'View Progress', 'View Impl'],
     'submit_entry_labels': ['Submit', 'SUBMIT', 'Submit Progress', 'Wasilisha',
                             'Tuma', 'Send'],
+    'delete_entry_labels': ['Delete', 'Remove', 'Futa', 'Ondoa'],
+    'delete_confirm_labels': ['Yes', 'YES', 'Delete', 'Confirm', 'Ok', 'OK',
+                              'Continue', 'Ndiyo', 'Thibitisha', 'Futa',
+                              'Proceed', 'Submit', 'SUBMIT'],
     'progress_row_selector': 'mat-dialog-container table tbody tr',
     'dialog_selector': 'mat-dialog-container',
     'subtype_select_selector': "mat-dialog-container mat-select[formcontrolname='subActivityType']",
@@ -720,8 +725,56 @@ def _panel_diag(page, row=None) -> str:
     return ' | '.join(parts)
 
 
+def _menu_items_diag(page) -> str:
+    """Majina ya vipengele vya menu ya Actions iliyofunguliwa (kwa utambuzi)."""
+    try:
+        return ', '.join(page.evaluate(
+            """() => [...document.querySelectorAll(
+                 '.mat-mdc-menu-panel button, .cdk-overlay-container .mat-mdc-menu-item')]
+                 .map(b => (b.innerText || '').trim()).filter(Boolean).slice(0, 12)"""))
+    except Exception:
+        return ''
+
+
+def _open_row_actions(page, row) -> bool:
+    """Fungua menu ya 'Actions' ya safu ya entries."""
+    for sel in ("td:last-child .mat-mdc-menu-trigger",
+                "td.mat-column-manage .mat-mdc-menu-trigger",
+                "td:last-child button",
+                "button.mat-mdc-menu-trigger"):
+        try:
+            btn = row.query_selector(sel)
+            if btn and btn.is_visible():
+                btn.click()
+                page.wait_for_timeout(700)
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _not_submitted_row(page, text):
+    """Safu ya entry ya 'NOT SUBMITTED' (au inayolingana na maandishi yetu)."""
+    rows = _entries_rows(page)
+    for r in rows:
+        try:
+            if 'not submitted' in _normalize(r.inner_text()):
+                return r
+        except Exception:
+            continue
+    key = _normalize(text)[:40]
+    if key:
+        for r in rows:
+            try:
+                if key in _normalize(r.inner_text()):
+                    return r
+            except Exception:
+                continue
+    return None
+
+
 def _submit_latest_progress(page, text, emit=None) -> bool:
-    """Wasilisha (Submit) entry mpya kwenye jedwali la Sub Task Progress.
+    """Wasilisha (Submit) entry kwenye jedwali la Sub Task Progress.
 
     Hurudi True ikifanikiwa; False vinginevyo (haisimamishi run).
     """
@@ -736,50 +789,18 @@ def _submit_latest_progress(page, text, emit=None) -> bool:
         if emit:
             emit('  !! hakuna entry kwenye panel. ' + _panel_diag(page))
         return False
-    target, key = None, _normalize(text)[:40]
-    # 1) safu yenye status 'NOT SUBMITTED' (ndiyo ya kuwasilisha).
-    for r in rows:
-        try:
-            if 'not submitted' in _normalize(r.inner_text()):
-                target = r
-                break
-        except Exception:
-            continue
-    # 2) la sivyo, safu inayolingana na maandishi yetu.
-    if target is None and key:
-        for r in rows:
-            try:
-                if key in _normalize(r.inner_text()):
-                    target = r
-                    break
-            except Exception:
-                continue
-    if target is None:
-        target = rows[0]
-    opened = False
-    for sel in ("td:last-child .mat-mdc-menu-trigger",
-                "td.mat-column-manage .mat-mdc-menu-trigger",
-                "td:last-child button:has-text('Submit')",
-                "td:last-child button",
-                "button.mat-mdc-menu-trigger"):
-        try:
-            btn = target.query_selector(sel)
-            if btn and btn.is_visible():
-                btn.click()
-                page.wait_for_timeout(700)
-                opened = True
-                break
-        except Exception:
-            continue
-    if not opened:
+    target = _not_submitted_row(page, text) or rows[0]
+    if not _open_row_actions(page, target):
         if emit:
             emit('  !! kitufe cha Actions hakipatikani. ' + _panel_diag(page, target))
         return False
     label = _menu_item_click(page, SELECTORS['submit_entry_labels'])
     if not label:
+        items = _menu_items_diag(page)
         if emit:
-            emit('  !! hakuna kipengele cha Submit kwenye menu. '
-                 + _panel_diag(page, target))
+            emit('  !! hakuna kipengele cha Submit kwenye menu.'
+                 + (f' | menu: {items}' if items else '')
+                 + ' ' + _panel_diag(page, target))
         try:
             page.keyboard.press('Escape')
         except Exception:
@@ -795,15 +816,123 @@ def _submit_latest_progress(page, text, emit=None) -> bool:
     return True
 
 
-def _submit_panel_or_view(page, row_index, text, emit=None) -> bool:
-    """Hakikisha panel ya Sub Task Progress ipo, kisha wasilisha entry mpya."""
-    panel = None
+def _panel_is_entries(page) -> bool:
+    """True kama dialog iliyo wazi ni panel ya 'Sub Task Progress' (na jedwali),
+    SI fomu ya Add/Edit Progress."""
     try:
-        panel = page.query_selector(SELECTORS['dialog_selector'])
+        if not page.query_selector(SELECTORS['dialog_selector']):
+            return False
     except Exception:
-        panel = None
-    if not panel:
-        if not _open_view_implementation(page, row_index, emit):
+        return False
+    if _progress_dialog_open(page):
+        return False
+    return _entries_table(page) is not None
+
+
+def _status_for_pct(pct):
+    if pct >= 100:
+        return SELECTORS['status_option_completed']
+    if pct > 0:
+        return SELECTORS['status_option_in_progress']
+    return SELECTORS['status_option_not_started']
+
+
+def _select_status(page, pct) -> None:
+    status_opt = _status_for_pct(pct)
+    status = page.wait_for_selector(SELECTORS['status_select_selector'], timeout=10000)
+    status.click()
+    page.wait_for_timeout(800)
+    if not _click_text_option(page, status_opt, exact=True):
+        raise RuntimeError(f'Sikuweza kuchagua status {status_opt}.')
+    page.wait_for_timeout(500)
+
+
+def _press_save_or_submit(page, emit=None):
+    """Bofya Submit/Save kwenye fomu ya progress; subiri swal.
+
+    Hurudi (kitufe, onyo_la_pending) -- onyo ni tupu kama hakuna.
+    """
+    pressed = _click_first_text(page, SELECTORS['submit_labels'])
+    if not pressed:
+        page.wait_for_timeout(600)
+        pressed = _confirm_if_any(page, SELECTORS['confirm_labels'])
+    if not pressed:
+        try:
+            page.click(SELECTORS['save_button'])
+            pressed = 'Save'
+        except Exception:
+            raise RuntimeError(
+                'Sikuweza kubofya Submit wala Save kwenye dialog: '
+                + (', '.join(_dialog_button_texts(page)) or '(hakuna vitufe)'))
+    if emit:
+        emit(f'  -> imebofya: {pressed}')
+    swal_seen, pending = [], ''
+    for _ in range(6):
+        page.wait_for_timeout(800)
+        txt = _swal_text(page)
+        if txt and txt not in swal_seen:
+            swal_seen.append(txt)
+            if emit:
+                emit('  !! ESS: ' + txt[:200])
+            if 'pending progress' in txt.lower():
+                pending = txt
+                break
+        if not _progress_dialog_open(page):
+            break
+        conf = _confirm_if_any(page, SELECTORS['confirm_labels'])
+        if conf and emit:
+            emit(f'  -> uthibitisho: {conf}')
+    return pressed, pending
+
+
+def _delete_not_submitted_entry(page, text, emit=None) -> bool:
+    """Futa entry ya 'NOT SUBMITTED' (draft inayozuia entry mpya).
+
+    ESS haina 'Edit' kwenye Actions -- ni 'Submit' na 'Delete' pekee.
+    """
+    row = _not_submitted_row(page, text)
+    if row is None:
+        return False
+    if not _open_row_actions(page, row):
+        return False
+    label = _menu_item_click(page, SELECTORS['delete_entry_labels'])
+    if not label:
+        items = _menu_items_diag(page)
+        if emit:
+            emit('  !! hakuna kipengele cha Delete kwenye Actions'
+                 + (f' | menu: {items}' if items else ''))
+        try:
+            page.keyboard.press('Escape')
+        except Exception:
+            pass
+        return False
+    if emit:
+        emit(f'  -> menu: {label}')
+    page.wait_for_timeout(800)
+    try:
+        conf = _confirm_if_any(page, SELECTORS['delete_confirm_labels'])
+        if conf and emit:
+            emit(f'  -> kuthibitisha kufuta: {conf}')
+    except Exception:
+        pass
+    page.wait_for_timeout(1200)
+    return _not_submitted_row(page, text) is None
+
+
+def _submit_panel_or_view(page, row_index, text, emit=None) -> bool:
+    """Hakikisha panel ya 'Sub Task Progress' ipo, kisha wasilisha entry.
+
+    Fomu ya 'Add Sub Task Progress' (yenye percentageRank) huwa wazi baada ya
+    onyo la ESS 'There is pending progress created or rolled back'. Hiyo SI
+    panel ya entries -- ifunge kwanza, kisha fungua 'View Implementation'.
+    """
+    if not _panel_is_entries(page):
+        _close_progress_dialog(page)
+        _close_panel(page)
+        ridx = row_index
+        if ridx is None or ridx >= len(_rows(page)):
+            ridx = _find_row_index(page, text)
+        if ridx is None or not _open_view_implementation(page, ridx, emit):
             if emit:
                 emit('  !! hatukuweza kufungua View Implementation '
                      '(Submit imeachwa).')
@@ -821,6 +950,38 @@ def _submit_panel_or_view(page, row_index, text, emit=None) -> bool:
         return False
     finally:
         _close_panel(page)
+
+
+def _replace_pending_entry(page, row_index, text, pct, note, emit=None) -> bool:
+    """Badilisha draft ya 'NOT SUBMITTED' kwa entry yetu, kisha wasilisha.
+
+    ESS hairuhusu entry mpya ikiwepo draft; kwa kuwa Actions haina Edit,
+    tunafuta draft kisha kuongeza entry mpya (description/asilimia yetu).
+    """
+    ridx = row_index
+    if ridx is None or ridx >= len(_rows(page)):
+        ridx = _find_row_index(page, text)
+    if not _panel_is_entries(page):
+        if ridx is None or not _open_view_implementation(page, ridx, emit):
+            if emit:
+                emit('  !! View Implementation haikufungukana (kufuta kumeshindikana).')
+            return False
+    deleted = _delete_not_submitted_entry(page, text, emit)
+    _close_panel(page)
+    if not deleted:
+        # Tushindwa kufuta -- wasilisha draft iliyopo angalau.
+        return _submit_panel_or_view(page, ridx, text, emit)
+    if emit:
+        emit('  -> draft imefutwa; naongeza entry mpya.')
+    try:
+        again = _open_fill_save(page, ridx, text, pct, note, emit)
+    except Exception as exc:  # noqa: BLE001
+        if emit:
+            emit(f'  !! kuongeza entry baada ya kufuta imeshindikana: {exc}')
+        return False
+    if again and emit:
+        emit('  !! bado kuna pending baada ya kufuta; naendelea kusubmit.')
+    return _submit_panel_or_view(page, ridx, text, emit)
 
 
 def _prior_actual_for_ess(page, row_index, st, emit=None):
@@ -1111,10 +1272,13 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     return {'status': 'done', 'saved': saved, 'skipped': skipped, 'not_found': not_found}
 
 
-def _fill_one(page, row_index, text, pct, emit=None, note=None) -> None:
-    """Fungua dialog na ujaze sub task moja (selectors zimehakikiwa)."""
+def _open_fill_save(page, row_index, text, pct, emit=None, note=None) -> str:
+    """Fungua 'Add Sub Task Progress', jaza, na bofya Save/Submit.
+
+    Hurudi onyo la ESS ('pending progress'...) au '' kama hakuna.
+    """
     row_els = _rows(page)
-    if row_index >= len(row_els):
+    if row_index is None or row_index >= len(row_els):
         fresh = _find_row_index(page, text)
         if fresh is None:
             raise RuntimeError(
@@ -1123,8 +1287,13 @@ def _fill_one(page, row_index, text, pct, emit=None, note=None) -> None:
         row_els = _rows(page)
     row_el = row_els[row_index]
     row_el.query_selector(SELECTORS['row_action_button_selector']).click()
-    page.wait_for_selector(SELECTORS['edit_menu_item'], timeout=8000)
-    page.click(SELECTORS['edit_menu_item'])
+    page.wait_for_timeout(700)
+    if not _menu_item_click(page, SELECTORS['add_entry_labels']):
+        try:
+            page.keyboard.press('Escape')
+        except Exception:
+            pass
+        raise RuntimeError('Sikuweza kufungua "Add Sub Task Progress" kwenye Actions.')
     page.wait_for_selector(SELECTORS['dialog_selector'], timeout=15000)
 
     subtype = page.wait_for_selector(SELECTORS['subtype_select_selector'], timeout=10000)
@@ -1138,15 +1307,7 @@ def _fill_one(page, row_index, text, pct, emit=None, note=None) -> None:
     desc = page.wait_for_selector(SELECTORS['description_selector'], timeout=10000)
     desc.fill((note or text)[:500])
 
-    status_opt = (SELECTORS['status_option_completed'] if pct >= 100
-                  else SELECTORS['status_option_in_progress'] if pct > 0
-                  else SELECTORS['status_option_not_started'])
-    status = page.wait_for_selector(SELECTORS['status_select_selector'], timeout=10000)
-    status.click()
-    page.wait_for_timeout(800)
-    if not _click_text_option(page, status_opt, exact=True):
-        raise RuntimeError(f'Sikuweza kuchagua status {status_opt}.')
-    page.wait_for_timeout(500)
+    _select_status(page, pct)
 
     inp = page.wait_for_selector(SELECTORS['percentage_input_selector'], timeout=10000)
     inp.fill(str(int(round(pct))))
@@ -1155,47 +1316,20 @@ def _fill_one(page, row_index, text, pct, emit=None, note=None) -> None:
     if emit:
         emit('  vitufe vya dialog: ' + ', '.join(_dialog_button_texts(page)) or '(hakuna)')
 
-    # 1) Bofya "Submit" (ESS inahitaji kuwasilisha, si Save pekee).
-    pressed = _click_first_text(page, SELECTORS['submit_labels'])
-    # 2) Kama hakuna Submit, angalia dialog ya kuthibitisha yenyewe.
-    if not pressed:
-        page.wait_for_timeout(600)
-        pressed = _confirm_if_any(page, SELECTORS['confirm_labels'])
-    # 3) Mwisho: Save (kama njia ya akiba).
-    if not pressed:
-        try:
-            page.click(SELECTORS['save_button'])
-            pressed = 'Save'
-        except Exception:
-            raise RuntimeError(
-                'Sikuweza kubofya Submit wala Save kwenye dialog: '
-                + (', '.join(_dialog_button_texts(page)) or '(hakuna vitufe)'))
-    if emit:
-        emit(f'  -> imebofya: {pressed}')
+    _pressed, pending = _press_save_or_submit(page, emit)
+    return pending
 
-    # Dialog ya uthibitisho / onyo (SweetAlert au Material) inaweza kutokea.
-    swal_seen = []
-    pending = ''
-    for _ in range(6):
-        page.wait_for_timeout(800)
-        txt = _swal_text(page)
-        if txt and txt not in swal_seen:
-            swal_seen.append(txt)
-            if emit:
-                emit('  !! ESS: ' + txt[:200])
-            if 'pending progress' in txt.lower():
-                pending = txt
-                break
-        if not _progress_dialog_open(page):
-            break
-        conf = _confirm_if_any(page, SELECTORS['confirm_labels'])
-        if conf and emit:
-            emit(f'  -> uthibitisho: {conf}')
+
+def _fill_one(page, row_index, text, pct, emit=None, note=None) -> None:
+    """Fungua dialog na ujaze sub task moja (selectors zimehakikiwa)."""
+    pending = _open_fill_save(page, row_index, text, pct, emit, note)
 
     if pending:
-        # Entry ya awali 'NOT SUBMITTED' ipo -- jaribu kuiwasilisha sasa.
-        _submit_panel_or_view(page, row_index, note or text, emit)
+        # ESS hairuhusu entry mpya ikiwepo draft 'NOT SUBMITTED'. Kwa kuwa
+        # Actions haina Edit, futa draft kisha ongeza entry yetu na uwasilishe.
         _close_progress_dialog(page)
+        if _replace_pending_entry(page, row_index, text, pct, note, emit):
+            return
         raise PendingProgressError(pending)
 
     detached = False
@@ -1215,7 +1349,7 @@ def _fill_one(page, row_index, text, pct, emit=None, note=None) -> None:
         page.wait_for_timeout(800)
 
     # Entry mpya huanza 'NOT SUBMITTED'. Iwasilishe (Submit) ili iende kwa idhini.
-    if not _submit_panel_or_view(page, row_index, note or text, emit) and emit:
+    if not _submit_panel_or_view(page, row_index, text, emit) and emit:
         emit('  !! Submit ya entry haikupatikana (angalia Actions).')
 
 
