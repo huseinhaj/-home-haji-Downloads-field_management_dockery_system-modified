@@ -653,12 +653,51 @@ def _close_panel(page) -> None:
         pass
 
 
+def _entries_table(page):
+    """Jedwali la entries lenye 'Implementation Description'/'Status'."""
+    root = page.query_selector(SELECTORS['dialog_selector']) or page
+    for tbl in root.query_selector_all('table'):
+        try:
+            head = tbl.query_selector('thead')
+            htxt = head.inner_text() if head else tbl.inner_text()
+        except Exception:
+            htxt = ''
+        if ('Implementation' in htxt or 'Status' in htxt
+                or 'Percentage' in htxt):
+            return tbl
+    return None
+
+
+def _entries_rows(page):
+    """Safu za jedwali la entries (bila safu za Performance Indicators)."""
+    tbl = _entries_table(page)
+    return tbl.query_selector_all('tbody tr') if tbl else []
+
+
+def _read_progress_entries(page):
+    """Soma entries za Sub Task Progress: [{desc, date, pct, status}]."""
+    out = []
+    for r in _entries_rows(page):
+        try:
+            cells = r.query_selector_all('td')
+            txt = [re.sub(r'\s+', ' ', c.inner_text()).strip() for c in cells]
+        except Exception:
+            continue
+        if len(txt) >= 2:
+            out.append({
+                'desc': txt[1] if len(txt) > 1 else '',
+                'date': txt[2] if len(txt) > 2 else '',
+                'pct': txt[3] if len(txt) > 3 else '',
+                'status': txt[4] if len(txt) > 4 else '',
+            })
+    return out
+
+
 def _panel_diag(page, row=None) -> str:
     """Maelezo ya panel ya Sub Task Progress (kwa utambuzi wa Actions/Submit)."""
     parts = []
     try:
-        parts.append('rows=%d' % len(
-            page.query_selector_all(SELECTORS['progress_row_selector'])))
+        parts.append('rows=%d' % len(_entries_rows(page)))
     except Exception:
         pass
     try:
@@ -691,20 +730,31 @@ def _submit_latest_progress(page, text, emit=None) -> bool:
         if emit:
             emit('  !! panel ya Sub Task Progress haipo (Submit imeachwa).')
         return False
-    rows = page.query_selector_all(SELECTORS['progress_row_selector'])
+    rows = _entries_rows(page)
     if not rows:
         if emit:
             emit('  !! hakuna entry kwenye panel. ' + _panel_diag(page))
         return False
-    target = rows[0]
-    key = _normalize(text)[:40]
+    target, key = None, _normalize(text)[:40]
+    # 1) safu yenye status 'NOT SUBMITTED' (ndiyo ya kuwasilisha).
     for r in rows:
         try:
-            if key and key in _normalize(r.inner_text()):
+            if 'not submitted' in _normalize(r.inner_text()):
                 target = r
                 break
         except Exception:
             continue
+    # 2) la sivyo, safu inayolingana na maandishi yetu.
+    if target is None and key:
+        for r in rows:
+            try:
+                if key in _normalize(r.inner_text()):
+                    target = r
+                    break
+            except Exception:
+                continue
+    if target is None:
+        target = rows[0]
     opened = False
     for sel in ("td:last-child .mat-mdc-menu-trigger",
                 "td.mat-column-manage .mat-mdc-menu-trigger",
@@ -757,6 +807,11 @@ def _submit_panel_or_view(page, row_index, text, emit=None) -> bool:
                 emit('  !! hatukuweza kufungua View Implementation '
                      '(Submit imeachwa).')
             return False
+    if emit:
+        for e in _read_progress_entries(page)[:8]:
+            emit('   entry [%s] %s%% %s: %s'
+                 % (e['status'] or '?', e['pct'] or '?', e['date'] or '?',
+                    e['desc'][:60]))
     try:
         return _submit_latest_progress(page, text, emit)
     except Exception as exc:  # noqa: BLE001
