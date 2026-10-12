@@ -93,6 +93,13 @@
         <i class="fas fa-sync-alt me-2"></i>Sawazisha majina na ESS
       </button>
     </form>
+    <form method="post" action="{% url 'ess_tracker:ess_push_names' %}" class="mt-2"
+          onsubmit="return confirm('Kutuma kunabadilisha majina ya sub-task KWENYE ESS official kutoka yaliyo local (yanayotofautiana). Endelea?')">
+      {% csrf_token %}
+      <button class="btn btn-outline-warning" {% if not profile.ess_ready %}disabled{% endif %}>
+        <i class="fas fa-cloud-upload-alt me-2"></i>Sahihisha majina kwenye ESS (local &rarr; ESS)
+      </button>
+    </form>
     <small class="text-muted d-block mt-2">
       Huna haja ya kuandika kitu — tunajaza maendeleo yote (maazimio, nukuu, maandalio, zana, vipindi,
       tathmini, majaribio) kwenye ESS kwa akaunti yako. Ukitaka kuweka idadi halisi uliyofanya,

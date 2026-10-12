@@ -1,9 +1,9 @@
 {% extends 'ess_tracker/ess_base.html' %}
-{% block title %}{% if run.kind == 'sync' %}Sawazisha majina na ESS{% else %}Kujaza ESS{% endif %} — e-Tendaji{% endblock %}
+{% block title %}{% if run.kind == 'sync' %}Sawazisha majina na ESS{% elif run.kind == 'push' %}Sahihisha majina kwenye ESS{% else %}Kujaza ESS{% endif %} — e-Tendaji{% endblock %}
 {% block content %}
 <div class="card shadow-sm" style="max-width:720px;margin:0 auto;margin-top:10px;">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <span><i class="fas fa-{% if run.kind == 'sync' %}sync-alt{% else %}cloud-upload-alt{% endif %} me-2"></i>{% if run.kind == 'sync' %}Sawazisha majina na ESS{% else %}Kujaza ESS{% endif %} — Run #{{ run.id }}</span>
+      <span><i class="fas fa-{% if run.kind == 'sync' %}sync-alt{% else %}cloud-upload-alt{% endif %} me-2"></i>{% if run.kind == 'sync' %}Sawazisha majina na ESS{% elif run.kind == 'push' %}Sahihisha majina kwenye ESS{% else %}Kujaza ESS{% endif %} — Run #{{ run.id }}</span>
       <span id="statusbadge" class="badge bg-info">running</span>
     </div>
     <div class="card-body">
@@ -12,7 +12,7 @@
         <div id="pbar" class="progress-bar" style="width:0%"></div>
       </div>
       <div class="row text-center mb-3">
-        <div class="col"><p class="mb-0 small text-muted">{% if run.kind == 'sync' %}Zimesawazishwa{% else %}Zinazoongezwa{% endif %}</p><h5 id="c_saved" class="mb-0">0</h5></div>
+        <div class="col"><p class="mb-0 small text-muted">{% if run.kind == 'sync' %}Zimesawazishwa{% elif run.kind == 'push' %}Zimesahihishwa ESS{% else %}Zinazoongezwa{% endif %}</p><h5 id="c_saved" class="mb-0">0</h5></div>
         <div class="col"><p class="mb-0 small text-muted">Sawa tayari</p><h5 id="c_skip" class="mb-0">0</h5></div>
         <div class="col"><p class="mb-0 small text-muted">{% if run.kind == 'sync' %}Hazipo ESS{% else %}Hazikupatikana{% endif %}</p><h5 id="c_miss" class="mb-0">0</h5></div>
         <div class="col"><p class="mb-0 small text-muted">Jumla</p><h5 id="c_req" class="mb-0">{{ run.required }}</h5></div>

@@ -19,6 +19,7 @@ RUN_STATUS_CHOICES = [
 RUN_KIND_CHOICES = [
     ('fill', 'Kujaza ESS'),
     ('sync', 'Sawazisha majina na ESS'),
+    ('push', 'Tuma majina kwenye ESS'),
 ]
 
 
