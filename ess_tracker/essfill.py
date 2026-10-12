@@ -1235,53 +1235,58 @@ def _ess_subtasks_from_payload(payload):
     return out or None
 
 
-def _push_local_names(profile, ess_subs, update, emit):
-    """Tuma majina ya local kwenda ESS (badilisha yale yanayotofautiana)."""
+def _push_local_names(local_tasks, ess_subs, update, emit):
+    """Tuma majina ya local kwenda ESS (badilisha yale yanayotofautiana).
+
+    `local_tasks` ni orodha tayari ya dict (bila ORM) ili kuepuka ORM
+    ndani ya sync_playwright (Django hukataa ORM kwenye async context).
+    """
     task_names = list(dict.fromkeys(e['task_name'] for e in ess_subs if e['task_name']))
     pushed = skipped = not_found = total = 0
     used = set()
 
-    for task in profile.tasks.all():
+    for task in local_tasks:
         best_name, best_sc = None, 0.0
         for tname in task_names:
-            sc = _similar(task.name, tname)
+            sc = _similar(task['name'], tname)
             if sc > best_sc:
                 best_name, best_sc = tname, sc
         pool = [e for e in ess_subs if e['task_name'] == best_name] if best_sc >= 0.7 else []
 
-        for st in task.subtasks.all():
+        for st in task['subs']:
             total += 1
+            desc = st['desc']
             match = None
             if pool:
-                m, _ = _match_name(st.description, [e['sub_name'] for e in pool])
+                m, _ = _match_name(desc, [e['sub_name'] for e in pool])
                 if m:
                     match = next(e for e in pool if e['sub_name'] == m)
             if match is None:
-                m, _ = _match_name(st.description, [e['sub_name'] for e in ess_subs])
+                m, _ = _match_name(desc, [e['sub_name'] for e in ess_subs])
                 if m:
                     match = next(e for e in ess_subs if e['sub_name'] == m)
             if match is None or match['sub_id'] is None:
                 not_found += 1
-                emit(f'# haipo ESS: {st.description[:55]}')
+                emit(f'# haipo ESS: {desc[:55]}')
                 continue
             key = (match['task_id'], match['sub_id'])
             if key in used:
                 not_found += 1
-                emit(f'# imetumika kwa lingine: {st.description[:50]}')
+                emit(f'# imetumika kwa lingine: {desc[:50]}')
                 continue
-            if _normalize(st.description) == _normalize(match['sub_name']):
+            if _normalize(desc) == _normalize(match['sub_name']):
                 skipped += 1
-                emit(f'= ESS tayari sawa: {st.description[:55]}')
+                emit(f'= ESS tayari sawa: {desc[:55]}')
                 continue
-            ok, info = update(st, match)
+            ok, info = update(desc, match)
             if ok:
                 used.add(key)
                 pushed += 1
                 emit(f'-> ESS imesahihishwa: "{match["sub_name"][:40]}" '
-                     f'=> "{st.description[:40]}"')
+                     f'=> "{desc[:40]}"')
             else:
                 not_found += 1
-                emit(f'  !! imeshindikana: {st.description[:40]} — {info}')
+                emit(f'  !! imeshindikana: {desc[:40]} — {info}')
     return pushed, skipped, not_found, total
 
 
@@ -1315,6 +1320,12 @@ def run_push(profile_id: int, run_id: int) -> dict:
 
     page = None
     saved = skipped = not_found = total = 0
+    local_tasks = [
+        {'name': t.name,
+         'subs': [{'id': st.id, 'desc': st.description}
+                  for st in t.subtasks.all()]}
+        for t in profile.tasks.all()
+    ]
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(
@@ -1384,10 +1395,10 @@ def run_push(profile_id: int, run_id: int) -> dict:
 
             emit(f'ESS: sub-tasks {len(ess_subs)}.')
 
-            def update(st, match):
+            def update(desc, match):
                 variables = {'input': [{
                     'id': match['sub_id'],
-                    'subTaskDescription': st.description,
+                    'subTaskDescription': desc,
                     'emerging': False,
                     'task': {'id': match['task_id']},
                 }]}
@@ -1404,7 +1415,7 @@ def run_push(profile_id: int, run_id: int) -> dict:
                                or f'code {code}')
 
             saved, skipped, not_found, total = _push_local_names(
-                profile, ess_subs, update, emit)
+                local_tasks, ess_subs, update, emit)
             browser.close()
     except Exception as exc:  # noqa: BLE001
         snippet = ''
