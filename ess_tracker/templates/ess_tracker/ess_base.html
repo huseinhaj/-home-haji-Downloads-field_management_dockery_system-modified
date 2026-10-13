@@ -5,6 +5,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}e-Tendaji{% endblock %}</title>
+<link rel="manifest" href="{% url 'ess_tracker:ess_manifest' %}">
+<meta name="theme-color" content="#1F41BB">
+<link rel="apple-touch-icon" href="{% static 'ess/icon-180.png' %}">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="e-Tendaji">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
@@ -132,6 +139,14 @@ a.btn-success{color:#fff;}
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register("{% url 'ess_tracker:ess_sw' %}", { scope: '/ess/' })
+      .catch(function () {});
+  });
+}
+</script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

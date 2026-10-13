@@ -58,6 +58,11 @@
     <table class="table table-sm table-striped mb-0 align-middle">
       <thead class="table-light">
         <tr>
+          <th style="width:30px">
+            <input class="form-check-input" type="checkbox" form="jaza-form"
+                   onclick="document.querySelectorAll('input.subpick').forEach(c=>c.checked=this.checked)"
+                   title="Chagua zote">
+          </th>
           <th style="width:34px">#</th>
           <th>Sub Task</th>
           <th class="text-end">Malengo</th>
@@ -68,6 +73,10 @@
       <tbody>
         {% for s in item.subtasks %}
         <tr>
+          <td>
+            <input class="form-check-input subpick" type="checkbox" form="jaza-form"
+                   name="subtasks" value="{{ s.st.id }}">
+          </td>
           <td>{{ s.st.position }}</td>
           <td class="small">{{ s.st.description }}</td>
           <td class="text-end small">{{ s.target }}</td>
@@ -96,11 +105,16 @@
 
 <div class="card shadow-sm" style="max-width:960px;margin:0 auto;">
   <div class="card-body text-center">
-    <form method="post" action="{% url 'ess_tracker:ess_fill' %}" onsubmit="return confirm('Kujaza ESS kunahitaji login ya akaunti yako ya ESS. Endelea?')">
+    <form id="jaza-form" method="post" action="{% url 'ess_tracker:ess_fill' %}"
+          onsubmit="return confirm('Kujaza ESS kunahitaji login ya akaunti yako ya ESS. Endelea?')">
       {% csrf_token %}
       <button class="btn btn-success btn-lg px-4" {% if not profile.ess_ready %}disabled{% endif %}>
-        <i class="fas fa-cloud-upload-alt me-2"></i>Jaza ESS sasa
+        <i class="fas fa-cloud-upload-alt me-2"></i>Jaza
       </button>
+      <div class="small text-muted mt-1">
+        Umechagua sub-task hapo juu? Tunajaza <b>zilizochaguliwa</b> pekee.
+        Usipochagua, tunajaza <b>zote</b>.
+      </div>
       <a href="{% url 'ess_tracker:ess_fill_log' %}" class="btn btn-outline-secondary ms-2">Historia ya kujaza</a>
     </form>
     <form method="post" action="{% url 'ess_tracker:ess_sync_names' %}" class="mt-2"

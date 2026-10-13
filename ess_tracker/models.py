@@ -181,6 +181,9 @@ class EssFillRun(models.Model):
     required = models.IntegerField(default=0)
     log = models.TextField(blank=True)
     task_id = models.CharField(max_length=64, blank=True)
+    only_subtasks = models.CharField(
+        max_length=255, blank=True,
+        help_text='ID za SubTask zilizochaguliwa kujazwa (mf. "12,15"). Tupu = zote.')
 
     class Meta:
         ordering = ['-started']

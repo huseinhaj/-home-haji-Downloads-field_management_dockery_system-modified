@@ -22,4 +22,6 @@ urlpatterns = [
     path('fill/<int:run_id>/', views.ess_fill_status, name='ess_fill_status'),
     path('fill/<int:run_id>/json/', views.ess_fill_status_json, name='ess_fill_status_json'),
     path('fill/log/', views.ess_fill_log, name='ess_fill_log'),
+    path('manifest.webmanifest', views.ess_manifest, name='ess_manifest'),
+    path('sw.js', views.ess_sw, name='ess_sw'),
 ]

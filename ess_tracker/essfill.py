@@ -26,6 +26,18 @@ SIGNIN_URL = 'https://ess.utumishi.go.tz/sessions/signin'
 DASHBOARD_URL = 'https://ess.utumishi.go.tz/dashboard'
 SUBTASKS_URL = 'https://ess.utumishi.go.tz/pepmis/implementation/progress'
 
+
+def _parse_id_list(raw) -> set:
+    """'12, 15; 18' -> {12, 15, 18}. Ni salama kwa tupu/None."""
+    if not raw:
+        return set()
+    out = set()
+    for part in re.split(r'[,\s;]+', str(raw)):
+        if part.isdigit():
+            out.add(int(part))
+    return out
+
+
 PASSWORD_SEL = "input[formcontrolname='password'], input[name='password'], input[type='password']"
 
 USERNAME_SELS = [
@@ -1134,6 +1146,11 @@ def run_fill(profile_id: int, run_id: int) -> dict:
         return {'status': 'error', 'msg': str(exc)}
 
     wanted = built_wanted(profile)
+    only_ids = _parse_id_list(getattr(run, 'only_subtasks', ''))
+    if only_ids:
+        wanted = [w for w in wanted if w[0].id in only_ids]
+        log.append('Chaguo la mwalimu: sub-task %s pekee.'
+                   % ','.join(str(i) for i in sorted(only_ids)))
     run.required = len(wanted)
     run.save()
 

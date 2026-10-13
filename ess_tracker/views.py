@@ -6,8 +6,9 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Sum
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -48,6 +49,7 @@ def ess_login(request):
             messages.error(request, 'Password si sahihi. Jaribu tena.')
         else:
             login(request, profile.user, backend='field_app.backends.EmailBackend')
+            request.session.set_expiry(60 * 60 * 24 * 30)  # wiki 4 — ingia mara moja
             messages.success(request, 'Umeingia e-Tendaji (ESS).')
             return redirect(_safe_next(request))
     return render(request, 'ess_tracker/ess_login.html', {'hide_navbar': True})
@@ -71,6 +73,7 @@ def ess_register(request):
         if form.is_valid():
             user, profile = form.build_user_and_profile()
             login(request, user, backend='field_app.backends.EmailBackend')
+            request.session.set_expiry(60 * 60 * 24 * 30)  # wiki 4 — ingia mara moja
             messages.success(request,
                              'Akaunti yako ya ESS imesajiliwa. Jaza maelezo yako zaidi kwenye wasifu.')
             return redirect('ess_tracker:ess_profile')
@@ -406,7 +409,12 @@ def ess_fill(request):
     if existing:
         messages.info(request, 'Kujaza kunaendelea tayari kwa mwalimu huyu — subiri kukamilika.')
         return redirect('ess_tracker:ess_fill_status', run_id=existing.id)
+    selected = []
+    for raw in request.POST.getlist('subtasks'):
+        if str(raw).isdigit():
+            selected.append(int(raw))
     run = EssFillRun.objects.create(profile=profile)
+    run.only_subtasks = ','.join(str(i) for i in sorted(set(selected)))
     run.status = 'running'
     run.save()
     try:
@@ -534,3 +542,56 @@ def ess_fill_log(request):
         return redirect('ess_tracker:ess_profile')
     runs = profile.fill_runs.all()[:30]
     return render(request, 'ess_tracker/ess_fill_log.html', {'profile': profile, 'runs': runs})
+
+
+def ess_manifest(request):
+    """Manifest ya PWA (icona zinatumia {% static %} hivyo hash inafuata)."""
+    import json
+
+    data = {
+        'name': 'e-Tendaji — Kujaza ESS',
+        'short_name': 'e-Tendaji',
+        'description': 'Kujaza maendeleo ya e-Utendaji (ESS) kiotomatiki.',
+        'start_url': '/ess/',
+        'scope': '/ess/',
+        'display': 'standalone',
+        'background_color': '#F0F5F9',
+        'theme_color': '#1F41BB',
+        'lang': 'sw',
+        'icons': [
+            {'src': static('ess/icon-192.png'), 'sizes': '192x192',
+             'type': 'image/png', 'purpose': 'any'},
+            {'src': static('ess/icon-512.png'), 'sizes': '512x512',
+             'type': 'image/png', 'purpose': 'any'},
+            {'src': static('ess/icon-512.png'), 'sizes': '512x512',
+             'type': 'image/png', 'purpose': 'maskable'},
+        ],
+    }
+    return HttpResponse(json.dumps(data), content_type='application/manifest+json')
+
+
+def ess_sw(request):
+    """Service worker ya PWA (basic offline: network-first + cache fallback)."""
+    js = """
+const CACHE = 'ess-v1';
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', (e) => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/ess/fill/')) return;
+  e.respondWith(
+    fetch(req).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+      return res;
+    }).catch(() => caches.match(req))
+  );
+});
+""".strip()
+    resp = HttpResponse(js, content_type='application/javascript')
+    resp['Service-Worker-Allowed'] = '/ess/'
+    resp['Cache-Control'] = 'no-cache'
+    return resp
