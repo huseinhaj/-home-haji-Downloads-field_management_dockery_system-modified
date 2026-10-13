@@ -1020,7 +1020,7 @@ def _replace_pending_entry(page, row_index, text, pct, note, emit=None) -> bool:
     if emit:
         emit('  -> draft imefutwa; naongeza entry mpya.')
     try:
-        again = _open_fill_save(page, ridx, text, pct, note, emit)
+        again = _open_fill_save(page, ridx, text, pct, emit=emit, note=note)
     except Exception as exc:  # noqa: BLE001
         if emit:
             emit(f'  !! kuongeza entry baada ya kufuta imeshindikana: {exc}')
