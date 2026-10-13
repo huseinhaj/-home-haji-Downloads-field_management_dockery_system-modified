@@ -337,8 +337,17 @@ CELERY_TASK_ANNOTATIONS = {
 # isifunguke kabla ya kazi kuisha; pia ikianguka, hujifuta yenyewe.
 ESS_PROFILE_LOCK_SECONDS = int(os.environ.get('ESS_PROFILE_LOCK_SECONDS', '900'))
 
+# ── Web Push (VAPID) kwa arifa za walimu ──
+# Tengeneza keys kwa: python manage.py gen_vapid_keys
+# Weka VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY kwenye env ya production.
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_ADMIN_EMAIL = os.environ.get('VAPID_ADMIN_EMAIL', 'support@example.com')
+
 # Beat schedule: refresh HESLB knowledge every Monday at 06:00 EAT;
 # every day ~06:00 EAT try auto-fill due ESS profiles (calendar-aware).
+from celery.schedules import crontab  # noqa: E402
+
 CELERY_BEAT_SCHEDULE = {
     "refresh-heslb-knowledge-weekly": {
         "task": "heslb_knowledge.refresh",
@@ -349,6 +358,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "ess_tracker.tasks.auto_fill_due",
         "schedule": 86400.0,  # daily
         "options": {"expires": 1800},
+    },
+    "ess-notify-due": {
+        # Jumatatu–Ijumaa 07:00 EAT: kumbusha walimu kujaza.
+        "task": "ess_tracker.tasks.notify_fill_due",
+        "schedule": crontab(hour=7, minute=0, day_of_week='1-5'),
+        "options": {"expires": 3600},
     },
 }
 

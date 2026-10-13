@@ -112,6 +112,7 @@ a.btn-success{color:#fff;}
 </header>
 
 {% if user.is_authenticated %}
+<div id="csrf-holder" hidden>{% csrf_token %}</div>
 <nav class="app-nav">
   <a href="{% url 'ess_tracker:ess_home' %}" {% if request.resolver_match.url_name == 'ess_home' %}class="on"{% endif %}><i class="fas fa-home me-1"></i>Nyumbani</a>
   <a href="{% url 'ess_tracker:ess_task_new' %}" {% if request.resolver_match.url_name == 'ess_task_new' %}class="on"{% endif %}><i class="fas fa-plus-circle me-1"></i>Task mpya</a>
@@ -146,6 +147,79 @@ if ('serviceWorker' in navigator) {
       .catch(function () {});
   });
 }
+(function () {
+  var U = {
+    key: "{% url 'ess_tracker:ess_push_key' %}",
+    subscribe: "{% url 'ess_tracker:ess_push_subscribe' %}",
+    unsubscribe: "{% url 'ess_tracker:ess_push_unsubscribe' %}",
+    test: "{% url 'ess_tracker:ess_push_test' %}"
+  };
+  function csrf() {
+    var el = document.querySelector('#csrf-holder input[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+  function b64ToU8(b64) {
+    var pad = '='.repeat((4 - b64.length % 4) % 4);
+    var s = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = atob(s), out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+  window.essPushSupported = ('serviceWorker' in navigator) && ('PushManager' in window)
+    && ('Notification' in window);
+  window.essPushState = function () {
+    if (!window.essPushSupported) return Promise.resolve('unsupported');
+    return navigator.serviceWorker.ready.then(function (reg) {
+      return reg.pushManager.getSubscription().then(function (sub) {
+        if (sub) return 'subscribed';
+        return Notification.permission === 'denied' ? 'denied' : 'available';
+      });
+    });
+  };
+  window.essPushEnable = function () {
+    if (!window.essPushSupported) return Promise.reject('unsupported');
+    return Notification.requestPermission().then(function (perm) {
+      if (perm !== 'granted') throw 'denied';
+      return fetch(U.key).then(function (r) { return r.json(); });
+    }).then(function (info) {
+      if (!info.enabled || !info.key) throw 'not-configured';
+      return navigator.serviceWorker.ready.then(function (reg) {
+        return reg.pushManager.getSubscription().then(function (sub) {
+          if (sub) return sub;
+          return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(info.key) });
+        });
+      });
+    }).then(function (sub) {
+      return fetch(U.subscribe, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+        body: JSON.stringify(sub)
+      });
+    }).then(function () { return 'subscribed'; });
+  };
+  window.essPushDisable = function () {
+    if (!window.essPushSupported) return Promise.resolve('unsupported');
+    return navigator.serviceWorker.ready.then(function (reg) {
+      return reg.pushManager.getSubscription().then(function (sub) {
+        if (!sub) return null;
+        return fetch(U.unsubscribe, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+          body: JSON.stringify({ endpoint: sub.endpoint })
+        }).then(function () { return sub.unsubscribe(); });
+      });
+    }).then(function () { return 'available'; });
+  };
+  window.essPushTest = function () {
+    return fetch(U.test, { method: 'POST', headers: { 'X-CSRFToken': csrf() } })
+      .then(function (r) { return r.json(); });
+  };
+  if (window.essPushSupported && Notification.permission === 'granted') {
+    navigator.serviceWorker.ready.then(function () {
+      window.essPushEnable().catch(function () {});
+    });
+  }
+})();
 </script>
 {% block extra_js %}{% endblock %}
 </body>

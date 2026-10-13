@@ -1,3 +1,4 @@
+import json
 import threading
 from datetime import date
 
@@ -546,8 +547,6 @@ def ess_fill_log(request):
 
 def ess_manifest(request):
     """Manifest ya PWA (icona zinatumia {% static %} hivyo hash inafuata)."""
-    import json
-
     data = {
         'name': 'e-Tendaji — Kujaza ESS',
         'short_name': 'e-Tendaji',
@@ -571,9 +570,9 @@ def ess_manifest(request):
 
 
 def ess_sw(request):
-    """Service worker ya PWA (basic offline: network-first + cache fallback)."""
+    """Service worker ya PWA (offline cache + arifa za push)."""
     js = """
-const CACHE = 'ess-v1';
+const CACHE = 'ess-v2';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', (e) => {
@@ -590,8 +589,109 @@ self.addEventListener('fetch', (e) => {
     }).catch(() => caches.match(req))
   );
 });
+self.addEventListener('push', (e) => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (err) {}
+  const title = data.title || 'e-Tendaji';
+  e.waitUntil(self.registration.showNotification(title, {
+    body: data.body || '',
+    icon: data.icon || undefined,
+    badge: data.badge || undefined,
+    tag: data.tag || 'ess',
+    renotify: !!data.renotify,
+    data: { url: data.url || '/ess/' },
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/ess/';
+  e.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      if (c.url.indexOf('/ess/') !== -1 && 'focus' in c) {
+        if (c.navigate) await c.navigate(url);
+        return c.focus();
+      }
+    }
+    if (self.clients.openWindow) return self.clients.openWindow(url);
+  })());
+});
 """.strip()
     resp = HttpResponse(js, content_type='application/javascript')
     resp['Service-Worker-Allowed'] = '/ess/'
     resp['Cache-Control'] = 'no-cache'
     return resp
+
+
+def ess_push_key(request):
+    """VAPID public key kwa JS ili kujiandikisha kupokea arifa."""
+    from django.conf import settings
+    key = getattr(settings, 'VAPID_PUBLIC_KEY', '')
+    return JsonResponse({'enabled': bool(key), 'key': key})
+
+
+@login_required(login_url=ESS_LOGIN_URL)
+@require_POST
+def ess_push_subscribe(request):
+    """Hifadhi subscription ya kifaa cha mwalimu (Web Push)."""
+    from .models import PushSubscription
+    profile = _me(request)
+    if profile is None:
+        return JsonResponse({'ok': False, 'error': 'no-profile'}, status=400)
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({'ok': False, 'error': 'bad-json'}, status=400)
+    endpoint = (data.get('endpoint') or '').strip()
+    keys = data.get('keys') or {}
+    p256dh = (keys.get('p256dh') or '').strip()
+    auth = (keys.get('auth') or '').strip()
+    if not (endpoint and p256dh and auth):
+        return JsonResponse({'ok': False, 'error': 'missing-fields'}, status=400)
+    sub, _ = PushSubscription.objects.update_or_create(
+        endpoint=endpoint[:500],
+        defaults={
+            'profile': profile,
+            'p256dh': p256dh[:200],
+            'auth': auth[:100],
+            'user_agent': (request.META.get('HTTP_USER_AGENT') or '')[:300],
+            'active': True,
+            'last_seen': timezone.now(),
+        })
+    return JsonResponse({'ok': True, 'id': sub.id})
+
+
+@login_required(login_url=ESS_LOGIN_URL)
+@require_POST
+def ess_push_unsubscribe(request):
+    """Zima arifa za kifaa hiki."""
+    from .models import PushSubscription
+    profile = _me(request)
+    if profile is None:
+        return JsonResponse({'ok': False, 'error': 'no-profile'}, status=400)
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except (ValueError, UnicodeDecodeError):
+        data = {}
+    endpoint = (data.get('endpoint') or '').strip()
+    qs = profile.push_subscriptions.all()
+    if endpoint:
+        qs = qs.filter(endpoint=endpoint)
+    deleted = qs.delete()[0]
+    return JsonResponse({'ok': True, 'deleted': deleted})
+
+
+@login_required(login_url=ESS_LOGIN_URL)
+@require_POST
+def ess_push_test(request):
+    """Tuma arifa ya jaribio kwa vifaa vya mwalimu mwenyewe."""
+    from .push import push_configured, send_to_profile
+    profile = _me(request)
+    if profile is None:
+        return JsonResponse({'ok': False, 'error': 'no-profile'}, status=400)
+    if not push_configured():
+        return JsonResponse({'ok': False, 'error': 'not-configured'}, status=400)
+    res = send_to_profile(profile, title='e-Tendaji: jaribio la arifa',
+                          body='Arifa zinafanya kazi. Utapata kumbukumbu siku za kujaza.',
+                          url='/ess/', tag='ess-test', renotify=True)
+    return JsonResponse({'ok': True, 'result': res})

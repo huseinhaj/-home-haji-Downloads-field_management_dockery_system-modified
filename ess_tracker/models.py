@@ -190,3 +190,27 @@ class EssFillRun(models.Model):
 
     def __str__(self):
         return f'{self.profile} #{self.id} {self.status}'
+
+
+class PushSubscription(models.Model):
+    """Arifa za kifaa (Web Push) za mwalimu mmoja.
+
+    Kifaa kimoja (browser/phone) = subscription moja. Mwalimu anaweza kuwa
+    na vifaa kadhaa. Tunatuma arifa siku za kujaza na baada ya kujaza.
+    """
+
+    profile = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE,
+                                related_name='push_subscriptions')
+    endpoint = models.URLField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=100)
+    user_agent = models.CharField(max_length=300, blank=True)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.profile} {self.endpoint[:40]}…'

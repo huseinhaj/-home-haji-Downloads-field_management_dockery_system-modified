@@ -66,3 +66,25 @@ python3 manage.py runserver 8000
 Kwa topology kamili ya production (nginx → /ttc/ → TTC, / → field_management),
 weka `TTC_PORTAL_ENABLED=true` na tumia Dockerfile + `docker-entrypoint.sh`
 (majadiliano kamili yamo kwenye `ttc_portal/README.md`).
+
+## 📱 e-Tendaji (ESS) — app ya walimu
+
+App ya kujaza maendeleo ya **e-Utendaji (ESS)** iko chini ya `/ess/` (PWA).
+Walimu wanajiandikisha mara moja, wanachagua sub-task na kubonyeza **Jaza**.
+
+### Env variables (Railway)
+| Variable | Maelezo |
+|---|---|
+| `ESS_ENC_KEY` | Fernet key ya kusimba password za ESS. Tengeneza: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push (arifa). Tengeneza: `python manage.py gen_vapid_keys` |
+| `VAPID_ADMIN_EMAIL` | Barua pepe ya mawasiliano ya VAPID (mf. `support@utumishi.go.tz`) |
+| `ESS_FILL_CONCURRENCY` | Idadi ya workers wa foleni `essfill` (default 4) |
+
+> **MUHIMU:** Kazi za ESS zinatumia foleni **`essfill`**. Hakikisha worker wa foleni
+> hii anaendesha, la sivyo kazi zitasubiri milele:
+> ```bash
+> celery -A field_management worker --loglevel=info \
+>   --concurrency=4 --queues=essfill --max-tasks-per-child=20
+> ```
+> Beat hutuma kumbukumbu Jumatatu–Ijumaa 07:00 EAT (`ess-notify-due`) na kujaza
+> kiotomatiki kila siku (`ess-auto-fill-daily`).

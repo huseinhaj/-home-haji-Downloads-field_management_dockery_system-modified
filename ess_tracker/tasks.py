@@ -88,7 +88,23 @@ def run_ess_fill(self, profile_id, run_id):
         res = run_fill(profile_id, run_id)
     if _retry_safe(self, run_id, res):
         raise self.retry(countdown=_retry_countdown(self, 120))
+    _notify_fill_result(profile_id, run_id)
     return res
+
+
+def _notify_fill_result(profile_id, run_id):
+    """Tuma arifa ya matokeo ya kujaza (kama notifications zimewashwa)."""
+    from .models import EssFillRun
+    from .push import push_configured, send_to_profile
+    if not push_configured():
+        return
+    run = EssFillRun.objects.filter(pk=run_id).first()
+    if run is None or run.status != 'done':
+        return
+    body = ('Imejaza: %d mpya, %d zilizopo tayari, %d hazikupatikana.'
+            % (run.saved, run.skipped, run.not_found))
+    send_to_profile(profile_id, title='e-Tendaji: kujaza kumekamilika',
+                    body=body, url='/ess/', tag='ess-done', renotify=True)
 
 
 @shared_task(bind=True, queue='essfill', time_limit=600, soft_time_limit=560,
@@ -113,3 +129,46 @@ def run_ess_push(self, profile_id, run_id):
         if not got:
             raise self.retry(countdown=_retry_countdown(self, 90))
         return run_push(profile_id, run_id)
+
+
+@shared_task(time_limit=180, soft_time_limit=160)
+def notify_fill_due():
+    """Kumbusha walimu (wenye arifa) kujaza ESS siku za kujaza.
+
+    Hutumwa tu Jumatatu–Ijumaa, kwa walimu ambao hawajajazwa leo
+    (hawana run ya 'done' ya leo). Waliojibiwa tayari kiotomatiki
+    hawasumbuliwi — wanapata arifa ya matokeo kwenye run_ess_fill.
+    """
+    from datetime import date
+
+    from django.utils import timezone
+
+    from .models import EssFillRun, TeacherProfile
+    from .push import push_configured, send_to_profile
+
+    today = timezone.localdate()
+    if not _fill_day(today.weekday()):
+        return {'date': date.today().isoformat(), 'skipped': 'not-fill-day'}
+    if not push_configured():
+        return {'date': date.today().isoformat(), 'skipped': 'not-configured'}
+
+    sent = 0
+    skipped = 0
+    profs = TeacherProfile.objects.filter(
+        push_subscriptions__active=True).distinct().select_related('user')
+    for prof in profs:
+        if prof.school_open and prof.school_close \
+                and not (prof.school_open <= today <= prof.school_close):
+            skipped += 1
+            continue
+        done_today = EssFillRun.objects.filter(
+            profile=prof, kind='fill', status='done',
+            finished__date=today).exists()
+        if done_today:
+            skipped += 1
+            continue
+        res = send_to_profile(prof, title='Kumbuka: jaza e-Tendaji leo',
+                              body='Bonyeza "Jaza" kuingiza maendeleo yako ya leo.',
+                              url='/ess/', tag='ess-remind')
+        sent += res.get('sent', 0)
+    return {'date': date.today().isoformat(), 'sent': sent, 'skipped': skipped}

@@ -53,6 +53,22 @@
       {% endif %}
     </div>
   </div>
+
+  {% if not creating %}
+  <div class="card shadow-sm mt-3">
+    <div class="card-header"><strong><i class="fas fa-bell me-2"></i>Arifa (Notifications)</strong></div>
+    <div class="card-body">
+      <p class="small text-muted mb-2">
+        Washa arifa upate kumbukumbu siku za kujaza (Jumatatu–Ijumaa) na taarifa
+        mara kazi inapokamilika. Arifa hufanya kazi kwenye simu/kompyuta hii.
+      </p>
+      <div id="push-status" class="small mb-2 text-muted">Inaangalia hali…</div>
+      <button type="button" id="push-enable" class="btn btn-primary btn-sm"><i class="fas fa-bell me-1"></i>Washa arifa</button>
+      <button type="button" id="push-test" class="btn btn-outline-primary btn-sm" style="display:none"><i class="fas fa-paper-plane me-1"></i>Tuma jaribio</button>
+      <button type="button" id="push-disable" class="btn btn-outline-secondary btn-sm" style="display:none">Zima arifa</button>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
 
@@ -130,6 +146,56 @@
   wrap.appendChild(box);
   wrap.appendChild(dd);
   sel.parentNode.insertBefore(wrap, sel.nextSibling);
+})();
+</script>
+<script>
+(function () {
+  var statusEl = document.getElementById('push-status');
+  if (!statusEl) return;
+  var enable = document.getElementById('push-enable');
+  var disable = document.getElementById('push-disable');
+  var test = document.getElementById('push-test');
+
+  function render(state) {
+    if (state === 'subscribed') {
+      statusEl.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-1"></i>Arifa zimewashwa kwenye kifaa hiki.</span>';
+      enable.style.display = 'none'; disable.style.display = ''; test.style.display = '';
+    } else if (state === 'denied') {
+      statusEl.innerHTML = '<span class="text-danger">Arifa zimezuiwa. Ruhusu notifications kwenye settings za browser.</span>';
+      enable.style.display = ''; disable.style.display = 'none'; test.style.display = 'none';
+    } else if (state === 'unsupported') {
+      statusEl.innerHTML = '<span class="text-muted">Kifaa/browser hiki hakitumii arifa (jaribu Chrome kwenye Android, au usakinishe app).</span>';
+      enable.style.display = 'none'; disable.style.display = 'none'; test.style.display = 'none';
+    } else {
+      statusEl.innerHTML = '<span class="text-muted">Arifa hazijawashwa kwenye kifaa hiki.</span>';
+      enable.style.display = ''; disable.style.display = 'none'; test.style.display = 'none';
+    }
+  }
+  function refresh() {
+    window.essPushState().then(render).catch(function () {});
+  }
+  enable.addEventListener('click', function () {
+    enable.disabled = true;
+    window.essPushEnable().then(function () { refresh(); })
+      .catch(function (err) {
+        enable.disabled = false;
+        statusEl.innerHTML = '<span class="text-danger">Imeshindikana: ' + err + '</span>';
+      });
+  });
+  disable.addEventListener('click', function () {
+    disable.disabled = true;
+    window.essPushDisable().then(function () { refresh(); disable.disabled = false; })
+      .catch(function () { disable.disabled = false; });
+  });
+  test.addEventListener('click', function () {
+    test.disabled = true;
+    window.essPushTest().then(function (r) {
+      test.disabled = false;
+      if (r && r.ok) statusEl.innerHTML = '<span class="text-success">Jaribio limetumwa — angalia kifaa chako.</span>';
+      else statusEl.innerHTML = '<span class="text-danger">Imeshindikana kutuma jaribio.</span>';
+    }).catch(function () { test.disabled = false; });
+  });
+  refresh();
 })();
 </script>
 {% endblock %}

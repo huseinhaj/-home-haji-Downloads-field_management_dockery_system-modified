@@ -24,4 +24,8 @@ urlpatterns = [
     path('fill/log/', views.ess_fill_log, name='ess_fill_log'),
     path('manifest.webmanifest', views.ess_manifest, name='ess_manifest'),
     path('sw.js', views.ess_sw, name='ess_sw'),
+    path('push/key/', views.ess_push_key, name='ess_push_key'),
+    path('push/subscribe/', views.ess_push_subscribe, name='ess_push_subscribe'),
+    path('push/unsubscribe/', views.ess_push_unsubscribe, name='ess_push_unsubscribe'),
+    path('push/test/', views.ess_push_test, name='ess_push_test'),
 ]
