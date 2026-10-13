@@ -156,18 +156,27 @@
   var disable = document.getElementById('push-disable');
   var test = document.getElementById('push-test');
 
+  function iosInstallHint() {
+    return '<div class="small text-muted mt-1">Kwenye iPhone/iPad: fungua kwa <b>Safari</b>, bofya <b>Share</b> → <b>Add to Home Screen</b>, kisha fungua app hiyo na uwasha arifa.</div>';
+  }
+  function unblockHint() {
+    return '<div class="small text-muted mt-1">Bofya aikoni ya <b>kufuli</b> (au <b>&#9432;</b>) kando ya anwani → <b>Notifications</b> → chagua <b>Allow</b>. Kisha pakua ukurasa upya (Refresh).</div>';
+  }
+  var iosBootNeeded = window.essPushIsIOS && !window.essPushStandalone;
   function render(state) {
     if (state === 'subscribed') {
       statusEl.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-1"></i>Arifa zimewashwa kwenye kifaa hiki.</span>';
       enable.style.display = 'none'; disable.style.display = ''; test.style.display = '';
     } else if (state === 'denied') {
-      statusEl.innerHTML = '<span class="text-danger">Arifa zimezuiwa. Ruhusu notifications kwenye settings za browser.</span>';
+      statusEl.innerHTML = '<span class="text-danger">Arifa zimezuiwa kwenye browser hiki.</span>' + unblockHint();
       enable.style.display = ''; disable.style.display = 'none'; test.style.display = 'none';
     } else if (state === 'unsupported') {
-      statusEl.innerHTML = '<span class="text-muted">Kifaa/browser hiki hakitumii arifa (jaribu Chrome kwenye Android, au usakinishe app).</span>';
+      statusEl.innerHTML = '<span class="text-muted">Kifaa/browser hiki hakitumii arifa. Tumia Chrome (Android/kompyuta) au usakinishe app.</span>'
+        + (iosBootNeeded ? iosInstallHint() : '');
       enable.style.display = 'none'; disable.style.display = 'none'; test.style.display = 'none';
     } else {
-      statusEl.innerHTML = '<span class="text-muted">Arifa hazijawashwa kwenye kifaa hiki.</span>';
+      statusEl.innerHTML = '<span class="text-muted">Arifa hazijawashwa kwenye kifaa hiki.</span>'
+        + (iosBootNeeded ? iosInstallHint() : '');
       enable.style.display = ''; disable.style.display = 'none'; test.style.display = 'none';
     }
   }
@@ -179,7 +188,21 @@
     window.essPushEnable().then(function () { refresh(); })
       .catch(function (err) {
         enable.disabled = false;
-        statusEl.innerHTML = '<span class="text-danger">Imeshindikana: ' + err + '</span>';
+        var msg;
+        if (err === 'blocked') {
+          msg = '<span class="text-danger">Arifa zimezuiwa kwenye browser hiki.</span>' + unblockHint();
+        } else if (err === 'dismissed') {
+          msg = '<span class="text-danger">Hukuchagua "Allow".</span><div class="small text-muted mt-1">Bofya "Washa arifa" tena kisha chagua <b>Allow</b>.</div>';
+        } else if (err === 'not-configured') {
+          msg = '<span class="text-danger">Arifa hazijapangwa kwenye server (VAPID). Mwambie msimamizi wa mfumo.</span>';
+        } else if (typeof err === 'string' && err.indexOf('subscribe:') === 0) {
+          msg = '<span class="text-danger">Imeshindikana kujiandikisha arifa (' + err.slice(10) + '). Jaribu tena.</span>';
+        } else if (err === 'unsupported') {
+          msg = '<span class="text-danger">Kifaa/browser hiki hakitumii arifa.</span>' + (iosBootNeeded ? iosInstallHint() : '');
+        } else {
+          msg = '<span class="text-danger">Imeshindikana: ' + err + '.</span>';
+        }
+        statusEl.innerHTML = msg;
       });
   });
   disable.addEventListener('click', function () {

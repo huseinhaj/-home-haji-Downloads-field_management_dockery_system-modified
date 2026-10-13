@@ -75,6 +75,7 @@ h1,h2,h3,h4,.btn,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
     </div>
   </div>
   <div class="head-right">
+    {% include 'ess_tracker/_ess_install.html' %}
     <img class="head-flag" src="{% static 'ess/flag.png' %}" alt="Tanzania flag">
     <div class="lang-row">
       <a class="lang-a {% if LANG == 'sw' %}on{% else %}off{% endif %}" href="{% url 'set_language' %}?lang=sw&next={{ request.path }}">SW</a>

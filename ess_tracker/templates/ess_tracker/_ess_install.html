@@ -1,0 +1,62 @@
+{# Kitufe cha kusakinisha PWA (Android, Desktop, iOS). Kinatumika kwenye
+   ess_base.html, ess_login.html na ess_register.html. #}
+<style>
+.ess-install-btn{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:800;
+  font-family:'Poppins',system-ui,sans-serif;background:#fff;color:#1F41BB;border:none;
+  padding:8px 15px;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);
+  animation:essPulse 2.4s ease-in-out infinite;}
+.ess-install-btn:hover{background:#F5F8FF;color:#16308c;}
+.ess-install-btn i{font-size:13px;}
+@keyframes essPulse{0%,100%{box-shadow:0 2px 8px rgba(0,0,0,.2);}50%{box-shadow:0 2px 14px rgba(45,90,255,.75);}}
+@media (max-width:520px){.ess-install-btn{padding:8px 10px;}.ess-install-btn span{display:none;}}
+@media print{.ess-install-btn{display:none;}}
+</style>
+<button type="button" id="ess-install-btn" class="ess-install-btn"
+        title="Sakinisha e-Tendaji kwenye kifaa chako">
+  <i class="fas fa-download"></i><span>Sakinisha App</span>
+</button>
+<script>
+(function () {
+  var btn = document.getElementById('ess-install-btn');
+  if (!btn) return;
+  var deferred = null;
+  var standalone = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  var ua = navigator.userAgent || '';
+  var isIOS = /iphone|ipad|ipod/i.test(ua)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  function hide() { btn.classList.add('d-none'); btn.style.display = 'none'; }
+
+  if (standalone) { hide(); return; }
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+  });
+  window.addEventListener('appinstalled', function () {
+    deferred = null;
+    hide();
+  });
+
+  btn.addEventListener('click', function () {
+    if (deferred) {
+      deferred.prompt();
+      deferred.userChoice.then(function (res) {
+        deferred = null;
+        if (res && res.outcome === 'accepted') hide();
+      }).catch(function () {});
+      return;
+    }
+    if (isIOS) {
+      alert('Kusakinisha e-Tendaji kwenye iPhone/iPad:\n\n'
+        + '1. Bonyeza kitufe cha Share (□↑) chini ya Safari.\n'
+        + '2. Chagua "Add to Home Screen" (Ongeza kwenye Skrini ya Nyumbani).\n'
+        + '3. Bonyeza "Add".');
+      return;
+    }
+    alert('Kusakinisha e-Tendaji:\n\n'
+      + 'Fungua menyu ya browser (⋮) kisha chagua\n'
+      + '"Install app" au "Add to Home screen".');
+  });
+})();
+</script>

@@ -1,6 +1,19 @@
 {% extends 'ess_tracker/ess_base.html' %}
 {% block title %}Rekodi wiki — e-Tendaji{% endblock %}
 {% block content %}
+<style>
+/* Simu: kila safu ya kurekodi iwe kadi yenye maandishi-binafsi (labels) */
+@media (max-width:768px){
+  .entry-table thead{display:none;}
+  .entry-table,.entry-table tbody,.entry-table tr,.entry-table td{display:block;width:100%;}
+  .entry-table tr.erecord{border:1px solid #e2e8f2;border-radius:9px;margin:0 0 12px;padding:8px 10px;
+    background:#fff;box-shadow:0 1px 6px rgba(31,65,187,.06);}
+  .entry-table td{border:none!important;padding:.3rem 0!important;}
+  .entry-table td::before{content:attr(data-label);display:block;font-size:11px;font-weight:700;
+    color:#5A6B7E;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;}
+  .entry-table td:empty{display:none;}
+}
+</style>
 <div style="max-width:960px;margin:0 auto;">
 <div class="page-head d-flex flex-wrap justify-content-between align-items-end gap-2">
   <div>
@@ -28,7 +41,7 @@
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0">
         <thead class="table-light">
-          <tr><th>Tarehe</th><th>Sub Task</th><th style="width:110px">Idadi</th><th>Maelezo</th></tr>
+          <tr><th>Tarehe</th><th>Sub Task</th><th style="width:110px">Idadi</th><th class="d-none d-md-table-cell">Maelezo</th></tr>
         </thead>
         <tbody>
           {% for e in entries %}
@@ -36,7 +49,7 @@
             <td>{{ e.date|date:"d/m/Y" }}</td>
             <td class="small">{{ e.subtask.position }}. {{ e.subtask.description }}</td>
             <td>{{ e.amount }}</td>
-            <td class="small">{{ e.note }}</td>
+            <td class="small d-none d-md-table-cell">{{ e.note }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -52,7 +65,7 @@
         <i class="fas fa-plus me-1"></i>Ongeza safu</button>
     </div>
     <div class="table-responsive">
-      <table class="table table-sm align-middle mb-0">
+      <table class="table table-sm align-middle mb-0 entry-table">
         <thead class="table-light">
           <tr>
             <th style="width:150px">Tarehe</th>
@@ -64,9 +77,9 @@
         <tbody id="entryRows">
           {% for i in "12345" %}
           <tr class="erecord">
-            <td><input type="date" name="d_{{ forloop.counter0 }}" class="form-control form-control-sm"
+            <td data-label="Tarehe"><input type="date" name="d_{{ forloop.counter0 }}" class="form-control form-control-sm"
                        value="{% now 'Y-m-d' %}"></td>
-            <td>
+            <td data-label="Sub Task">
               <select name="s_{{ forloop.counter0 }}" class="form-select form-select-sm">
                 <option value="">— chagua sub task —</option>
                 {% for st in subtasks %}
@@ -74,9 +87,9 @@
                 {% endfor %}
               </select>
             </td>
-            <td><input type="number" step="any" name="a_{{ forloop.counter0 }}"
+            <td data-label="Idadi uliyofanya (hiari)"><input type="number" step="any" name="a_{{ forloop.counter0 }}"
                        class="form-control form-control-sm"></td>
-            <td><input type="text" name="n_{{ forloop.counter0 }}" class="form-control form-control-sm"></td>
+            <td data-label="Maelezo (hiari)"><input type="text" name="n_{{ forloop.counter0 }}" class="form-control form-control-sm"></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -106,11 +119,11 @@
     tr.className = 'erecord';
     var today = new Date().toISOString().split('T')[0];
     tr.innerHTML =
-      '<td><input type="date" name="d_' + rowno + '" class="form-control form-control-sm" value="' + today + '"></td>' +
-      '<td><select name="s_' + rowno + '" class="form-select form-select-sm">' +
+      '<td data-label="Tarehe"><input type="date" name="d_' + rowno + '" class="form-control form-control-sm" value="' + today + '"></td>' +
+      '<td data-label="Sub Task"><select name="s_' + rowno + '" class="form-select form-select-sm">' +
       '<option value="">— chagua sub task —</option>' + SUBTASK_OPTS + '</select></td>' +
-      '<td><input type="number" step="any" name="a_' + rowno + '" class="form-control form-control-sm"></td>' +
-      '<td><input type="text" name="n_' + rowno + '" class="form-control form-control-sm"></td>';
+      '<td data-label="Idadi uliyofanya (hiari)"><input type="number" step="any" name="a_' + rowno + '" class="form-control form-control-sm"></td>' +
+      '<td data-label="Maelezo (hiari)"><input type="text" name="n_' + rowno + '" class="form-control form-control-sm"></td>';
     tbody.appendChild(tr);
     rowno += 1;
   }

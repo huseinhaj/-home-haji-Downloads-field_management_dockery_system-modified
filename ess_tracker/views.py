@@ -111,15 +111,18 @@ def ess_home(request):
     if profile is None:
         return redirect('ess_tracker:ess_profile')
     tasks = []
+    behind_count = 0
     for task in profile.tasks.all():
         week_now = 0
         if date.today() >= task.start:
             week_now = _week_of(task, date.today())
         last_entry = WeekEntry.objects.filter(profile=profile, subtask__task=task) \
             .order_by('-week_no').first()
+        subtasks = subtask_snapshot(task)
+        behind_count += sum(1 for s in subtasks if s['status'] == 'behind')
         tasks.append({
             'task': task,
-            'subtasks': subtask_snapshot(task),
+            'subtasks': subtasks,
             'week_now': week_now,
             'last_week': last_entry.week_no if last_entry else 0,
             'total_actual': WeekEntry.objects.filter(profile=profile,
@@ -131,6 +134,7 @@ def ess_home(request):
         'profile': profile,
         'tasks': tasks,
         'latest_run': latest_run,
+        'behind_count': behind_count,
     })
 
 
@@ -474,6 +478,40 @@ def _run_sync_in_thread(profile_id, run_id):
 
 @login_required
 @require_POST
+def ess_read_pcts(request):
+    """Soma asilimia HALISI za sub-task kutoka ESS official (bila kujaza)."""
+    profile = _me(request)
+    if profile is None:
+        return redirect('ess_tracker:ess_profile')
+    if not profile.ess_ready:
+        messages.error(request, 'Weka kwanza ESS username na password kwenye wasifu.')
+        return redirect('ess_tracker:ess_profile')
+    run = EssFillRun.objects.create(profile=profile, kind='read')
+    run.status = 'running'
+    run.save()
+    try:
+        from .tasks import run_ess_read
+        res = run_ess_read.apply_async(args=[profile.id, run.id], queue='essfill')
+        run.task_id = res.id
+        run.save()
+        started = True
+    except Exception:
+        started = False
+    if not started:
+        threading.Thread(target=_run_read_in_thread,
+                         args=(profile.id, run.id), daemon=True).start()
+    cache.set(CACHE_PREFIX + str(run.id), {'msg': 'Inaanzisha...', 'step': 0,
+                                           'done': False, 'error': ''}, timeout=3600)
+    return redirect('ess_tracker:ess_fill_status', run_id=run.id)
+
+
+def _run_read_in_thread(profile_id, run_id):
+    from .essfill import run_read
+    run_read(profile_id, run_id)
+
+
+@login_required
+@require_POST
 def ess_push_names(request):
     """Tuma majina ya local kwenda ESS official (badilisha yanayotofautiana)."""
     profile = _me(request)
@@ -548,15 +586,22 @@ def ess_fill_log(request):
 def ess_manifest(request):
     """Manifest ya PWA (icona zinatumia {% static %} hivyo hash inafuata)."""
     data = {
+        'id': '/ess/',
         'name': 'e-Tendaji — Kujaza ESS',
         'short_name': 'e-Tendaji',
         'description': 'Kujaza maendeleo ya e-Utendaji (ESS) kiotomatiki.',
         'start_url': '/ess/',
         'scope': '/ess/',
         'display': 'standalone',
+        'display_override': ['window-controls-overlay', 'standalone', 'minimal-ui'],
+        # 'any' ili isilazimishe mwelekeo — Android na Desktop vinautumia sawa.
+        'orientation': 'any',
         'background_color': '#F0F5F9',
         'theme_color': '#1F41BB',
         'lang': 'sw',
+        'dir': 'ltr',
+        'categories': ['education', 'productivity', 'government'],
+        'prefer_related_applications': False,
         'icons': [
             {'src': static('ess/icon-192.png'), 'sizes': '192x192',
              'type': 'image/png', 'purpose': 'any'},
@@ -564,6 +609,13 @@ def ess_manifest(request):
              'type': 'image/png', 'purpose': 'any'},
             {'src': static('ess/icon-512.png'), 'sizes': '512x512',
              'type': 'image/png', 'purpose': 'maskable'},
+        ],
+        'shortcuts': [
+            {'name': 'Jaza ESS sasa', 'short_name': 'Jaza',
+             'url': '/ess/', 'icons': [
+                 {'src': static('ess/icon-192.png'), 'sizes': '192x192'}]},
+            {'name': 'Rekodi wiki', 'short_name': 'Rekodi',
+             'url': '/ess/week/'},
         ],
     }
     return HttpResponse(json.dumps(data), content_type='application/manifest+json')

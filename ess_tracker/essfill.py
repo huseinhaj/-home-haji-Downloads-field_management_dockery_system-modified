@@ -17,8 +17,9 @@ from difflib import SequenceMatcher
 from django.core.cache import cache
 from django.utils import timezone as tz
 
-from .compute import (built_wanted, entry_from_values, increment_pct,
-                      parse_count, pct_auto_for, pct_for)
+from .compute import (built_wanted, entry_from_values,
+                      on_track_status, parse_count, pct_auto_for, pct_for,
+                      plan_for, subtask_increment_pct)
 from .models import EssFillRun, SubTask
 
 BASE_URL = 'https://ess.utumishi.go.tz/'
@@ -1124,6 +1125,26 @@ def _set_progress(run_id, **kw):
     cache.set(CACHE_PREFIX + str(run_id), data, timeout=3600)
 
 
+def _save_official_pcts(mapping) -> int:
+    """Hifadhi asilimia HALISI za ESS kwa sub-task zilizolingana.
+
+    `mapping`: {subtask_id: asilimia}. Hurudi idadi iliyohifadhiwa.
+    """
+    if not mapping:
+        return 0
+    now = tz.now()
+    saved = 0
+    for sid, val in mapping.items():
+        try:
+            f = float(val)
+        except (TypeError, ValueError):
+            continue
+        updated = SubTask.objects.filter(pk=sid).update(
+            official_pct=f, official_at=now)
+        saved += updated
+    return saved
+
+
 def run_fill(profile_id: int, run_id: int) -> dict:
     """Jaza ESS kwa profile ya mwalimu (inaitwa ndani ya Celery)."""
     from .models import TeacherProfile
@@ -1167,6 +1188,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     run.save()
 
     saved = skipped = not_found = failed = 0
+    official = {}
     page = None
     finalized = False
     try:
@@ -1267,6 +1289,8 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                             continue
                         remaining.remove(entry)
                         cur = match['pct']
+                        if cur is not None:
+                            official[st.id] = float(cur)
                         # Jumla inayotakiwa (target) isomwe kutoka jina la ESS.
                         ess_target = parse_count(match.get('text') or '', st.position)
                         if ess_target and ess_target > 0:
@@ -1344,6 +1368,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                 browser.close()
             except Exception:
                 pass
+        _save_official_pcts(official)
     except Exception as exc:  # noqa: BLE001
         if finalized:
             return {'status': 'done', 'saved': saved, 'skipped': skipped,
@@ -1463,6 +1488,14 @@ _GQL_EMPLOYEE_TASKS = (
     ' getEmployeeTasks(financialYear: $financialYear, '
     'checkNumber: $checkNumber, calendarYear: $calendarYear) {'
     ' id taskDescription subTask { id subTaskDescription } } }')
+
+_GQL_EMPLOYEE_TASKS_DATES = (
+    'query getEmployeeTasks($financialYear: Long, $checkNumber: Long, '
+    '$calendarYear: Long) {'
+    ' getEmployeeTasks(financialYear: $financialYear, '
+    'checkNumber: $checkNumber, calendarYear: $calendarYear) {'
+    ' id taskDescription startDate endDate'
+    ' subTask { id subTaskDescription startDate endDate } } }')
 
 _GQL_SUBACTIVITY = (
     'query getEmployeeSubActivityYearId($checkNumber: Long, $yearId: Long) {'
@@ -1642,6 +1675,18 @@ def _ess_date(value, year, month, day):
     return date(year, month, day)
 
 
+def _ess_sdate(value):
+    """Tarehe ya ESS (startDate/endDate) au None kama haipo/batili."""
+    if isinstance(value, str) and value.strip():
+        m = re.match(r'(\d{4})-(\d{2})-(\d{2})', value.strip())
+        if m:
+            try:
+                return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+            except ValueError:
+                pass
+    return None
+
+
 def _norm_somo(text):
     return _parse_named(text, [r'somo\s+la', r'somo\s+ya']) or ''
 
@@ -1744,7 +1789,9 @@ def _pull_from_ess(profile, tree, year_num, emit):
                 pos += 1
                 SubTask.objects.create(task=task, position=pos,
                                        description=es['sub_name'],
-                                       mode='manual', target=0)
+                                       mode='manual', target=0,
+                                       start=_ess_sdate(es.get('start')),
+                                       end=_ess_sdate(es.get('end')))
                 saved += 1
                 total += 1
                 emit(f'  + Sub-task: {es["sub_name"][:55]}')
@@ -1791,6 +1838,17 @@ def _pull_from_ess(profile, tree, year_num, emit):
             else:
                 st = None
             if st is not None:
+                s_e = _ess_sdate(es.get('start'))
+                e_e = _ess_sdate(es.get('end'))
+                d_upd = []
+                if s_e and st.start != s_e:
+                    st.start = s_e
+                    d_upd.append('start')
+                if e_e and st.end != e_e:
+                    st.end = e_e
+                    d_upd.append('end')
+                if d_upd:
+                    st.save(update_fields=d_upd)
                 if _normalize(st.description) == _normalize(name):
                     if st.description == name:
                         skipped += 1
@@ -1816,7 +1874,9 @@ def _pull_from_ess(profile, tree, year_num, emit):
             next_pos += 1
             new_st = SubTask.objects.create(
                 task=task, position=next_pos, description=name,
-                mode='manual', target=0)
+                mode='manual', target=0,
+                start=_ess_sdate(es.get('start')),
+                end=_ess_sdate(es.get('end')))
             local_subs.append(new_st)
             saved += 1
             total += 1
@@ -1829,6 +1889,237 @@ def _pull_from_ess(profile, tree, year_num, emit):
                 emit(f'# haipo ESS (local pekee): {st.description[:50]}')
 
     return saved, skipped, not_found, total
+
+
+def _collect_official_rows(page, emit) -> dict:
+    """Soma {maandishi_ya_safu: asilimia} za sub-task kutoka ESS (miaka yote)."""
+    rows = {}
+
+    def _scan():
+        page_no = 0
+        while True:
+            page_no += 1
+            els = _rows(page)
+            if not els:
+                break
+            for el in els:
+                cell = el.query_selector(SELECTORS['subtask_cell_selector'])
+                if not cell:
+                    continue
+                t = re.sub(r'\s+', ' ', cell.inner_text()).strip()
+                if t and t not in rows:
+                    rows[t] = _row_current_pct(el)
+            nxt = page.query_selector(SELECTORS['paginator_next_selector'])
+            if not nxt or nxt.get_attribute('disabled') is not None or nxt.is_disabled():
+                break
+            before = []
+            for el in els:
+                c = el.query_selector(SELECTORS['subtask_cell_selector'])
+                before.append(c.inner_text() if c else '')
+            nxt.click()
+            page.wait_for_timeout(700)
+            after = []
+            for el in _rows(page):
+                c = el.query_selector(SELECTORS['subtask_cell_selector'])
+                after.append(c.inner_text() if c else '')
+            if page_no >= 50 or after == before:
+                break
+
+    cands = _candidate_years(page)
+    cy = _current_year(page)
+    if cy and cy.get('id'):
+        cands.sort(key=lambda c: 0 if c['id'] == cy['id'] else 1)
+        if not any(c.get('id') == cy['id'] for c in cands):
+            cands.insert(0, cy)
+
+    if not cands:
+        _scan()
+    else:
+        for cand in cands:
+            try:
+                _set_current_year(page, cand)
+                _goto_subtasks(page)
+                _table_settled(page)
+            except Exception as exc:
+                emit(f'pct mwaka {cand.get("id")}: {exc}')
+                continue
+            _scan()
+    emit(f'Asilimia kutoka jedwali: safu {len(rows)}.')
+    return rows
+
+
+def _supervise_official_rows(profile, rows, emit) -> int:
+    """Linganisha safu za ESS na sub-task za local, hifadhi official_pct."""
+    if not rows:
+        return 0
+    local = [(st.id, st.description)
+             for task in profile.tasks.all()
+             for st in task.subtasks.all()]
+    cands = [{'text': k, 'pct': v} for k, v in rows.items()]
+    mapping = {}
+    for sid, text in local:
+        m, _sc = _best_row_match(text, cands, SELECTORS['match_threshold'])
+        if m and m['pct'] is not None:
+            mapping[sid] = m['pct']
+    saved = _save_official_pcts(mapping)
+    emit(f'Asilimia za ESS zimehifadhiwa kwa sub-task {saved}.')
+    return saved
+
+
+def _read_official_map(page, local, emit, threshold=None) -> dict:
+    """Soma asilimia za safu za ESS na zilinganishe na sub-task za local.
+
+    `local`: [(subtask_id, maandishi)]. Rudi {subtask_id: asilimia}.
+    """
+    threshold = SELECTORS['match_threshold'] if threshold is None else threshold
+    found = {}
+    page_no = 0
+    while True:
+        page_no += 1
+        cands = []
+        for i, el in enumerate(_rows(page)):
+            cell = el.query_selector(SELECTORS['subtask_cell_selector'])
+            if cell:
+                cands.append({'i': i, 'text': cell.inner_text(),
+                              'pct': _row_current_pct(el)})
+        if not cands:
+            break
+        for sid, text in local:
+            if sid in found:
+                continue
+            m, _sc = _best_row_match(text, cands, threshold)
+            if m and m['pct'] is not None:
+                found[sid] = float(m['pct'])
+        emit(f'Ukurasa {page_no}: safu {len(cands)}, zimepatikana {len(found)}')
+        nxt = page.query_selector(SELECTORS['paginator_next_selector'])
+        if not nxt or nxt.get_attribute('disabled') is not None or nxt.is_disabled():
+            break
+        before = [c['text'] for c in cands]
+        nxt.click()
+        page.wait_for_timeout(700)
+        after = []
+        for el in _rows(page):
+            c = el.query_selector(SELECTORS['subtask_cell_selector'])
+            if c:
+                after.append(c.inner_text())
+        if page_no >= 50 or after == before:
+            break
+    return found
+
+
+def run_read(profile_id: int, run_id: int) -> dict:
+    """Soma asilimia HALISI za kila sub-task kutoka ESS (hakuna kubadilisha)."""
+    from .models import TeacherProfile
+
+    profile = TeacherProfile.objects.select_related('user').get(pk=profile_id)
+    run = EssFillRun.objects.get(pk=run_id)
+    log = []
+
+    def emit(msg):
+        log.append(msg)
+        _set_progress(run_id, msg=msg, log=list(log), done=False)
+        try:
+            run.log = '\n'.join(log)
+            run.save(update_fields=['log'])
+        except Exception:
+            pass
+
+    local = [(st.id, st.description)
+             for task in profile.tasks.all()
+             for st in task.subtasks.all()]
+    if not local:
+        emit('Hakuna sub-task ya kusoma.')
+        run.status = 'error'
+        run.finished = tz.now()
+        run.log = '\n'.join(log)
+        run.save()
+        return {'status': 'error', 'msg': 'Hakuna sub-task.'}
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        run.status = 'error'
+        run.finished = tz.now()
+        run.log = 'Playwright haiko kwenye server.'
+        run.save()
+        return {'status': 'error', 'msg': str(exc)}
+
+    emit('Kusoma asilimia ESS kumeanza — naingia ESS...')
+    official = {}
+    saved = 0
+    page = None
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(
+                headless=True,
+                args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'])
+            ctx = browser.new_context(ignore_https_errors=True)
+            page = ctx.new_page()
+            page.set_default_timeout(45000)
+
+            _open_ess(page)
+            _auto_login(page, profile.ess_username, profile.ess_password_plain)
+            emit('Login kamili.')
+            try:
+                _goto_retry(page, DASHBOARD_URL)
+                _wait_for_current_year(page, 20)
+            except Exception:
+                pass
+            _goto_subtasks(page)
+
+            cands = _candidate_years(page)
+            cy = _current_year(page)
+            if cy and cy.get('id'):
+                cands.sort(key=lambda c: 0 if c['id'] == cy['id'] else 1)
+                if not any(c.get('id') == cy['id'] for c in cands):
+                    cands.insert(0, cy)
+
+            if not cands:
+                official.update(_read_official_map(page, local, emit))
+            else:
+                for cand in cands:
+                    if len(official) >= len(local):
+                        break
+                    try:
+                        _set_current_year(page, cand)
+                        _goto_subtasks(page)
+                        _table_settled(page)
+                    except Exception as exc:
+                        emit(f'mwaka {cand.get("id")}: kosa {exc}')
+                        continue
+                    official.update(_read_official_map(page, local, emit))
+            try:
+                browser.close()
+            except Exception:
+                pass
+        saved = _save_official_pcts(official)
+    except Exception as exc:  # noqa: BLE001
+        snippet = ''
+        if page is not None:
+            try:
+                snippet = f' [URL: {page.url}]'
+            except Exception:
+                pass
+        run.status = 'error'
+        run.finished = tz.now()
+        run.saved = saved
+        run.required = len(local)
+        run.log = '\n'.join(log + [f'ERROR: {exc}{snippet}'])
+        run.save()
+        _set_progress(run_id, done=True, status='error', saved=saved)
+        return {'status': 'error', 'msg': str(exc)}
+
+    not_found = len(local) - len(official)
+    run.status = 'done'
+    run.finished = tz.now()
+    run.saved = saved
+    run.not_found = not_found
+    run.required = len(local)
+    run.log = '\n'.join(log)
+    run.save()
+    _set_progress(run_id, done=True, status='done', saved=saved,
+                  not_found=not_found)
+    return {'status': 'done', 'saved': saved, 'not_found': not_found}
 
 
 def run_sync(profile_id: int, run_id: int) -> dict:
@@ -1862,6 +2153,7 @@ def run_sync(profile_id: int, run_id: int) -> dict:
     page = None
     saved = skipped = not_found = total = 0
     tree = None
+    official_rows = {}
     year_num = tz.localdate().year
     try:
         with sync_playwright() as pw:
@@ -1922,11 +2214,17 @@ def run_sync(profile_id: int, run_id: int) -> dict:
                 fin = year.get('id') if ytype == 'FY' else None
                 cal = year.get('id') if ytype != 'FY' else None
                 emit(f'checkNumber={check} financialYear={fin} calendarYear={cal}')
+                gql_vars = {'financialYear': fin, 'checkNumber': check,
+                            'calendarYear': cal}
+                # Jaribu kwanza query yenye startDate/endDate; ikikataliwa,
+                # rudi kwenye ile ya awali ili sync isivunjike.
                 payload = _ess_fetch_json(
-                    page, auth, _GQL_EMPLOYEE_TASKS,
-                    {'financialYear': fin, 'checkNumber': check,
-                     'calendarYear': cal}, emit)
+                    page, auth, _GQL_EMPLOYEE_TASKS_DATES, gql_vars, emit)
                 tree = _ess_tree_from_payload(payload)
+                if not tree:
+                    payload = _ess_fetch_json(
+                        page, auth, _GQL_EMPLOYEE_TASKS, gql_vars, emit)
+                    tree = _ess_tree_from_payload(payload)
                 if not tree:
                     payload = _ess_fetch_json(
                         page, auth, _GQL_SUBACTIVITY,
@@ -1938,6 +2236,10 @@ def run_sync(profile_id: int, run_id: int) -> dict:
             if not tree:
                 emit('GraphQL haitoi data — najaribu kusoma jedwali.')
                 tree = _ess_names_from_ui(page, emit)
+            try:
+                official_rows = _collect_official_rows(page, emit)
+            except Exception as exc:
+                emit(f'Kusoma asilimia za ESS: {exc}')
             browser.close()
 
         if not tree:
@@ -1952,6 +2254,10 @@ def run_sync(profile_id: int, run_id: int) -> dict:
         emit(f'ESS: tasks {len(tree)}, sub-tasks {n_subs}.')
         saved, skipped, not_found, total = _pull_from_ess(
             profile, tree, year_num, emit)
+        try:
+            _supervise_official_rows(profile, official_rows, emit)
+        except Exception as exc:
+            emit(f'Kuhifadhi asilimia za ESS: {exc}')
     except Exception as exc:  # noqa: BLE001
         snippet = ''
         if page is not None:
@@ -2249,7 +2555,10 @@ def subtask_snapshot(task) -> list[dict]:
     for st in task.subtasks.all().prefetch_related('entries'):
         pct, src = pct_auto_for(st)
         recorded, _ = pct_for(st)
-        inc = increment_pct(st.task)
+        inc = subtask_increment_pct(st)
+        status, expected_pct, gap = on_track_status(st, pct)
+        ess_val = float(st.official_pct) if st.official_pct is not None else None
+        plan = plan_for(st, ess_val if ess_val is not None else pct)
         out.append({
             'st': st,
             'target': target_display(st),
@@ -2261,6 +2570,15 @@ def subtask_snapshot(task) -> list[dict]:
             'source': src,
             'increment': inc,
             'increment_str': '' if inc is None else f'{inc:.2f}%',
+            'status': status,
+            'expected_pct': expected_pct,
+            'expected_pct_str': '' if expected_pct is None else f'{expected_pct:.0f}%',
+            'gap': gap,
+            'ess_pct': st.official_pct,
+            'ess_pct_str': '' if st.official_pct is None
+                           else f'{float(st.official_pct):.0f}%',
+            'ess_at': st.official_at,
+            'plan': plan,
         })
     return out
 

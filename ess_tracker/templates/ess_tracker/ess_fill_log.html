@@ -14,11 +14,11 @@
           <tr>
             <th>#</th>
             <th>Ilianza</th>
-            <th>Ilimalizika</th>
+            <th class="d-none d-md-table-cell">Ilimalizika</th>
             <th>Status</th>
             <th>Zimeongezwa</th>
-            <th>Sawa</th>
-            <th>Hazikupatikana</th>
+            <th class="d-none d-md-table-cell">Sawa</th>
+            <th class="d-none d-md-table-cell">Hazikupatikana</th>
             <th></th>
           </tr>
         </thead>
@@ -27,15 +27,15 @@
           <tr>
             <td>{{ r.id }}</td>
             <td class="small">{{ r.started|date:'d M Y H:i' }}</td>
-            <td class="small">{{ r.finished|date:'d M Y H:i'|default:'—' }}</td>
+            <td class="small d-none d-md-table-cell">{{ r.finished|date:'d M Y H:i'|default:'—' }}</td>
             <td>
               <span class="badge {% if r.status == 'done' %}bg-success{% elif r.status == 'error' %}bg-danger{% else %}bg-info{% endif %}">
                 {{ r.get_status_display }}
               </span>
             </td>
             <td>{{ r.saved }}</td>
-            <td>{{ r.skipped }}</td>
-            <td>{{ r.not_found }}</td>
+            <td class="d-none d-md-table-cell">{{ r.skipped }}</td>
+            <td class="d-none d-md-table-cell">{{ r.not_found }}</td>
             <td>
               {% if r.status == 'running' %}
               <a href="{% url 'ess_tracker:ess_fill_status' r.id %}" class="btn btn-sm btn-outline-info">Fuata</a>

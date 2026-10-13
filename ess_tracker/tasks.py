@@ -59,7 +59,7 @@ def auto_fill_due(self):
             skipped.append({'id': prof.id, 'why': 'not-fill-day'})
             continue
         if EssFillRun.objects.filter(profile=prof, kind='fill') \
-                .exclude(status='failed') \
+                .exclude(status='error') \
                 .filter(started__gte=day_start, started__lt=day_end).exists():
             skipped.append({'id': prof.id, 'why': 'already'})
             continue
@@ -151,6 +151,18 @@ def run_ess_push(self, profile_id, run_id):
         if not got:
             raise self.retry(countdown=_retry_countdown(self, 90))
         return run_push(profile_id, run_id)
+
+
+@shared_task(bind=True, queue='essfill', time_limit=600, soft_time_limit=560,
+             max_retries=3)
+def run_ess_read(self, profile_id, run_id):
+    """Soma asilimia halisi za ESS (queue='essfill')."""
+    from .essfill import run_read
+    from .locks import profile_lock
+    with profile_lock(profile_id) as got:
+        if not got:
+            raise self.retry(countdown=_retry_countdown(self, 90))
+        return run_read(profile_id, run_id)
 
 
 @shared_task(time_limit=180, soft_time_limit=160)

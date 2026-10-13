@@ -20,6 +20,7 @@ RUN_KIND_CHOICES = [
     ('fill', 'Kujaza ESS'),
     ('sync', 'Sawazisha majina na ESS'),
     ('push', 'Tuma majina kwenye ESS'),
+    ('read', 'Soma asilimia ESS'),
 ]
 
 
@@ -131,6 +132,18 @@ class SubTask(models.Model):
     vila_per_week = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     week_count = models.PositiveSmallIntegerField(default=0)
     actual_base = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    official_pct = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        help_text='Asilimia halisi kama inavyoonekana ESS official')
+    official_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Muda asilimia ya ESS official iliposomwa mara ya mwisho')
+    start = models.DateField(
+        null=True, blank=True,
+        help_text='Tarehe sub-task inaanza kwenye ESS (startDate)')
+    end = models.DateField(
+        null=True, blank=True,
+        help_text='Tarehe sub-task inaisha kwenye ESS (endDate)')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 

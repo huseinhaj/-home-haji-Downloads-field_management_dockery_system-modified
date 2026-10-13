@@ -33,6 +33,15 @@
 </div>
 {% endif %}
 
+{% if behind_count %}
+<div class="alert alert-danger small mb-2" style="max-width:960px;margin:0 auto 16px;">
+  <i class="fas fa-triangle-exclamation me-1"></i>
+  <b>Sub-task {{ behind_count }}</b> {{ behind_count|pluralize }} zipo <b>chini ya tarajio</b> la muda
+  (ratiba ya mstari mnyoofu). Bofya <b>Jaza</b> au ongeza viingilio kwenye
+  <a href="{% url 'ess_tracker:ess_week' %}" class="text-decoration-none">Rekodi wiki</a>.
+</div>
+{% endif %}
+
 {% if latest_run and latest_run.status == 'running' %}
 <a class="alert alert-info d-block small mb-3 text-decoration-none" style="max-width:960px;margin-left:auto;margin-right:auto;"
    href="{% url 'ess_tracker:ess_fill_status' latest_run.id %}">
@@ -65,8 +74,8 @@
           </th>
           <th style="width:34px">#</th>
           <th>Sub Task</th>
-          <th class="text-end">Malengo</th>
-          <th class="text-end">Uliyofanya</th>
+          <th class="text-end d-none d-md-table-cell">Malengo</th>
+          <th class="text-end d-none d-md-table-cell">Uliyofanya</th>
           <th style="width:200px">Asilimia itakayotumwa</th>
         </tr>
       </thead>
@@ -79,8 +88,8 @@
           </td>
           <td>{{ s.st.position }}</td>
           <td class="small">{{ s.st.description }}</td>
-          <td class="text-end small">{{ s.target }}</td>
-          <td class="text-end small">{{ s.actual }}{% if s.expected %} <span class="text-muted">(tarajio {{ s.expected }})</span>{% endif %}</td>
+          <td class="text-end small d-none d-md-table-cell">{{ s.target }}</td>
+          <td class="text-end small d-none d-md-table-cell">{{ s.actual }}{% if s.expected %} <span class="text-muted">(tarajio {{ s.expected }})</span>{% endif %}</td>
           <td>
             <div class="d-flex align-items-center gap-2">
               <div class="progress flex-grow-1" style="height:8px;">
@@ -90,6 +99,38 @@
               <span class="small fw-bold">{{ s.pct_str|default:'—' }}</span>
             </div>
             {% if s.increment_str %}<div class="text-muted" style="font-size:.7rem">kila kiingilio +{{ s.increment_str }}</div>{% endif %}
+            {% if s.ess_pct_str %}
+            <div class="mt-1">
+              <span class="badge bg-primary" title="Asilimia halisi kutoka ESS official{% if s.ess_at %} — ilisomwa {{ s.ess_at|date:'d M Y H:i' }}{% endif %}">
+                <i class="fas fa-cloud-arrow-down me-1"></i>ESS {{ s.ess_pct_str }}</span>
+            </div>
+            {% endif %}
+            {% if s.expected_pct_str %}
+              {% if s.status == 'behind' %}
+              <span class="badge bg-danger mt-1" title="Tarajio la sasa {{ s.expected_pct_str }} — umepungukiwa {{ s.gap }}%">
+                <i class="fas fa-triangle-exclamation me-1"></i>Chini ya tarajio {{ s.expected_pct_str }}</span>
+              {% else %}
+              <span class="badge bg-success mt-1" title="Tarajio la sasa {{ s.expected_pct_str }}">
+                <i class="fas fa-check me-1"></i>Sawa na tarajio {{ s.expected_pct_str }}</span>
+              {% endif %}
+            {% endif %}
+            {% if s.plan and s.plan.remaining > 0 %}
+              {% if s.plan.impossible %}
+              <div class="text-danger fw-semibold" style="font-size:.72rem">
+                <i class="fas fa-triangle-exclamation me-1"></i>Muda hautoshi — ongeza viingilio!</div>
+              {% elif s.plan.on_track %}
+              <div class="text-muted" style="font-size:.72rem">
+                <i class="fas fa-gauge-high me-1"></i>Ingia ~{{ s.plan.epw_needed }}x/wiki
+                (wiki {{ s.plan.weeks_left }} zilizobaki) &rarr; 100%</div>
+              {% else %}
+              <div class="text-danger fw-semibold" style="font-size:.72rem">
+                <i class="fas fa-arrow-up me-1"></i>Ongeza hadi ~{{ s.plan.epw_needed }}x/wiki
+                (sasa {{ s.plan.epw_setting }}x) &rarr; 100%</div>
+              {% endif %}
+            {% elif s.plan %}
+              <div class="text-success" style="font-size:.72rem">
+                <i class="fas fa-flag-checkered me-1"></i>Imefikia 100%</div>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -129,6 +170,13 @@
       {% csrf_token %}
       <button class="btn btn-outline-warning" {% if not profile.ess_ready %}disabled{% endif %}>
         <i class="fas fa-cloud-upload-alt me-2"></i>Sahihisha majina kwenye ESS (local &rarr; ESS)
+      </button>
+    </form>
+    <form method="post" action="{% url 'ess_tracker:ess_read_pcts' %}" class="mt-2"
+          onsubmit="return confirm('Kusoma kunavuta asilimia HALISI za kila sub-task kutoka ESS official (hakuna kubadilisha chochote). Endelea?')">
+      {% csrf_token %}
+      <button class="btn btn-outline-info" {% if not profile.ess_ready %}disabled{% endif %}>
+        <i class="fas fa-cloud-arrow-down me-2"></i>Soma asilimia kutoka ESS
       </button>
     </form>
     <small class="text-muted d-block mt-2">

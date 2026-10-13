@@ -5,6 +5,7 @@ na asilimia. Kwenye app, actual = actual_base + jumla ya WeekEntry.
 """
 import csv
 import io
+import math
 import re
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
@@ -246,6 +247,42 @@ def total_weeks(task: Task) -> float | None:
     return weeks_between(start, end)
 
 
+def subtask_window(st: SubTask) -> tuple[date | None, date | None]:
+    """Dirisha la sub-task: tarehe zake za ESS ikiwepo, vinginevyo za Task."""
+    s = getattr(st, 'start', None)
+    e = getattr(st, 'end', None)
+    if s and e:
+        return s, e
+    return _window(st.task)
+
+
+def subtask_total_weeks(st: SubTask) -> float | None:
+    start, end = subtask_window(st)
+    return weeks_between(start, end)
+
+
+def subtask_elapsed_weeks(st: SubTask, leo: date | None = None) -> float:
+    leo = leo or date.today()
+    start, end = subtask_window(st)
+    weeks = weeks_between(start, leo)
+    if weeks is None or weeks < 0:
+        return 0.0
+    total = weeks_between(start, end)
+    if total is not None and weeks > total:
+        return total
+    return weeks
+
+
+def subtask_increment_pct(st: SubTask) -> float | None:
+    """Asilimia kwa kiingilio kwa kutumia dirisha la sub-task."""
+    tw = subtask_total_weeks(st)
+    if not tw or tw <= 0:
+        return None
+    epw = entries_per_week(st.task.profile)
+    total = tw * epw
+    return round(100.0 / total, 4) if total > 0 else None
+
+
 def topics_fraction(task: Task) -> float | None:
     """Sehemu ya mada zilizofundishwa (0..1) au None kama hazijawekwa."""
     total = getattr(task, 'topics_total', 0) or 0
@@ -303,6 +340,39 @@ def expected_for(st: SubTask) -> Decimal | None:
     return None
 
 
+def expected_pct(st: SubTask, leo: date | None = None) -> float | None:
+    """Asilimia inayotarajiwa kwa sasa kwa ratiba ya mstari mnyoofu.
+
+    Linear = wiki zilizopita / wiki zote x 100. Sub-task ya mwaka (annual)
+    hutarajiwa 100%. Rudi None kama hakuna dirisha la muda.
+    """
+    if st.mode == 'annual':
+        return 100.0
+    tw = subtask_total_weeks(st)
+    if not tw or tw <= 0:
+        return None
+    frac = subtask_elapsed_weeks(st, leo) / tw
+    return round(min(100.0, max(0.0, frac * 100.0)), 2)
+
+
+def on_track_status(st: SubTask, pct: float | None,
+                    tolerance: float = 0.5) -> tuple[str, float | None, float | None]:
+    """Linganisha asilimia ya sasa na inayotarajiwa (linear).
+
+    Rudi (hali, expected_pct, gap):
+      'behind'  — ipo chini ya tarajio (gap = kiasi kinachopungua)
+      'ontrack' — imefikia au kuzidi tarajio
+      'none'    — hakuna data ya kutosha
+    """
+    ep = expected_pct(st)
+    if pct is None or ep is None:
+        return 'none', ep, None
+    gap = round(ep - float(pct), 2)
+    if float(pct) + tolerance < ep:
+        return 'behind', ep, gap
+    return 'ontrack', ep, gap
+
+
 def pct_for(st: SubTask) -> tuple[float | None, str]:
     """Rudi (asilimia, chanzo). Chanzo: 'annual' | 'computed' | 'none'."""
     target = target_for(st)
@@ -351,6 +421,54 @@ def increment_pct(task: Task) -> float | None:
     tw, epw = su
     total = tw * epw
     return round(100.0 / total, 4) if total > 0 else None
+
+
+def plan_for(st: SubTask, current_pct: float | None = None,
+             leo: date | None = None) -> dict | None:
+    """Tathmini: viingilio kwa wiki vinavyohitajika kufikia 100%.
+
+    Inatumia asilimia ya sasa (kwa kawaida ile HALISI ya ESS) na muda
+    uliobaki wa dirisha la shule. Rudi None kama hakuna dirisha/muda.
+
+    Funguo:
+      weeks_left, current, remaining, increment, epw_setting,
+      entries_needed, epw_needed, on_track, impossible
+    """
+    leo = leo or date.today()
+    tw = subtask_total_weeks(st)
+    if not tw or tw <= 0:
+        return None
+    weeks_left = max(0.0, tw - subtask_elapsed_weeks(st, leo))
+    if current_pct is None:
+        current_pct, _src = pct_auto_for(st)
+    if current_pct is None:
+        return None
+    remaining = max(0.0, 100.0 - float(current_pct))
+    inc = subtask_increment_pct(st)
+    epw_setting = entries_per_week(st.task.profile)
+    out = {
+        'weeks_left': round(weeks_left, 1),
+        'current': round(float(current_pct), 1),
+        'remaining': round(remaining, 1),
+        'increment': inc,
+        'epw_setting': epw_setting,
+        'entries_needed': 0,
+        'epw_needed': 0.0,
+        'on_track': True,
+        'impossible': False,
+    }
+    if remaining <= 0:
+        return out
+    if not inc or inc <= 0 or weeks_left <= 0:
+        out['on_track'] = False
+        out['impossible'] = True
+        return out
+    entries_needed = remaining / inc
+    epw_needed = entries_needed / weeks_left
+    out['entries_needed'] = int(math.ceil(entries_needed - 1e-9))
+    out['epw_needed'] = round(epw_needed, 1)
+    out['on_track'] = epw_needed <= epw_setting + 1e-9
+    return out
 
 
 def entry_fraction(st: SubTask, leo: date | None = None) -> float:
