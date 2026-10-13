@@ -92,20 +92,34 @@ Walimu wanajiandikisha mara moja, wanachagua sub-task na kubonyeza **Jaza**.
 ### 🛠️ Background services (workers + beat)
 
 Web service haitoshelezi ESS/resources peke yake — inahitaji **worker**, **worker
-wa foleni `essfill`**, na **beat**. Chagua mojawapo:
+wa foleni `essfill`**, na **beat**. Image moja inaendesha roles zote: kubadilisha
+env var **`SERVICE_ROLE`** (`web` | `worker` | `worker_fill` | `beat`) ndiyo
+inayoamua container inafanya nini (tazama `docker-entrypoint.sh`). Hakuna haja ya
+kubadilisha start command.
 
 **A) VPS / docker-compose** (tayari imewekwa kwenye `docker-compose.yml`):
-`web`, `celery` (default+emails), `celery-fill` (essfill), `celery-beat`.
-Weka `VAPID_*` kwenye `.env.docker` kisha `docker compose up -d`.
+`web` + `celery` (worker), `celery-fill` (worker_fill), `celery-beat` (beat).
+Weka `VAPID_*` kwenye `.env.docker` kisha:
+```bash
+docker compose build --no-cache web celery celery-fill celery-beat
+docker compose up -d
+```
 
-**B) Railway** — kwa kuwa `railway.toml` ina `startCommand` ya web pekee, undaa
-**services tatu za ziada** (repo hii hii) na uweke Start Command ya kila moja:
+**B) Railway** — undaa **services tatu za ziada** kutoka repo hii hii; kwenye
+kila moja weka variable `SERVICE_ROLE` pekee:
 
-| Service | Start Command |
+| Service | Variable |
 |---|---|
-| worker | `celery -A field_management worker --loglevel=info --concurrency=2 --queues=default,emails` |
-| worker-fill | `celery -A field_management worker --loglevel=info --concurrency=4 --queues=essfill --max-tasks-per-child=20` |
-| beat | `celery -A field_management beat --loglevel=info` |
+| worker | `SERVICE_ROLE=worker` |
+| worker-fill | `SERVICE_ROLE=worker_fill` |
+| beat | `SERVICE_ROLE=beat` |
 
-> Weka `VAPID_*`, `ESS_ENC_KEY` na `REDIS_URL` kwenye **kila** service. Beat iwe
-> **replica 1 pekee** (isijirudie).
+Au endesha helper (inaunda services + variables + deploy):
+```bash
+./scripts/setup_railway_workers.sh
+```
+
+> Weka `VAPID_*`, `ESS_ENC_KEY`, `DATABASE_URL` na `REDIS_URL` kwenye **kila**
+> service (au kama Shared Variables za project). Beat iwe **replica 1 pekee**.
+> Workers/beat **hawafungui HTTP port** — kama zinasimama kwa "healthcheck
+> failed", futa **Healthcheck Path** kwenye Settings → Deploy za service husika.

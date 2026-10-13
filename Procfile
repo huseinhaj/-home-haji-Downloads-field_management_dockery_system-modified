@@ -1,4 +1,4 @@
 web: /app/docker-entrypoint.sh
-worker: celery -A field_management worker --loglevel=info --concurrency=2 --queues=default,emails
-worker_fill: celery -A field_management worker --loglevel=info --concurrency=${ESS_FILL_CONCURRENCY:-4} --queues=essfill --max-tasks-per-child=20
-beat: celery -A field_management beat --loglevel=info
+worker: SERVICE_ROLE=worker /app/docker-entrypoint.sh
+worker_fill: SERVICE_ROLE=worker_fill /app/docker-entrypoint.sh
+beat: SERVICE_ROLE=beat /app/docker-entrypoint.sh

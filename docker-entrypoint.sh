@@ -10,6 +10,36 @@ echo "GDAL_LIBRARY_PATH=$GDAL_LIBRARY_PATH"
 echo "GEOS_LIBRARY_PATH=$GEOS_LIBRARY_PATH"
 
 # ═════════════════════════════════════════════════════════════════════════════
+# ROLE SWITCH — image moja inaendesha web / worker / worker-fill / beat.
+# Weka SERVICE_ROLE=<role> kwenye env ya service (Railway/docker). Default=web.
+# Workers NAFANYA migrations/collectstatic — web pekee inafanya hivyo.
+# ═════════════════════════════════════════════════════════════════════════════
+SERVICE_ROLE_NORM="$(printf '%s' "${SERVICE_ROLE:-web}" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+case "$SERVICE_ROLE_NORM" in
+    worker)
+        echo "🔧 SERVICE_ROLE=worker → Celery default,emails"
+        exec celery -A field_management worker --loglevel=info \
+            --concurrency="${CELERY_CONCURRENCY:-2}" --queues=default,emails
+        ;;
+    worker_fill|worker-fill|fill|workerfill)
+        echo "🔧 SERVICE_ROLE=worker_fill → Celery essfill"
+        exec celery -A field_management worker --loglevel=info \
+            --concurrency="${ESS_FILL_CONCURRENCY:-4}" --queues=essfill \
+            --max-tasks-per-child=20
+        ;;
+    beat)
+        echo "🔧 SERVICE_ROLE=beat → Celery beat"
+        exec celery -A field_management beat --loglevel=info
+        ;;
+    web|"")
+        : # endelea na web startup hapa chini
+        ;;
+    *)
+        echo "⚠️  SERVICE_ROLE='$SERVICE_ROLE' haijulikani — tunaendelea kama web."
+        ;;
+esac
+
+# ═════════════════════════════════════════════════════════════════════════════
 # TTC STUDENT PORTAL — separate Django project with its OWN database.
 # Deployed inside this same container under /ttc/ via container nginx.
 # Only active when TTC_PORTAL_ENABLED=true (set on Railway). When the flag is

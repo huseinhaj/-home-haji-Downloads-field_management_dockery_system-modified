@@ -43,10 +43,12 @@ services:
 
   celery:
     build: .
-    command: celery -A field_management worker --loglevel=info --concurrency=2 --queues=default,emails
+    command: /app/docker-entrypoint.sh
     env_file:
       - .env.docker
     environment:
+      - SERVICE_ROLE=worker
+      - CELERY_CONCURRENCY=2
       - DATABASE_URL=postgresql://field_user:field_pass@db:5432/field_db
       - REDIS_URL=redis://redis:6379/0
     volumes:
@@ -58,10 +60,12 @@ services:
 
   celery-fill:
     build: .
-    command: celery -A field_management worker --loglevel=info --concurrency=${ESS_FILL_CONCURRENCY:-4} --queues=essfill --max-tasks-per-child=20
+    command: /app/docker-entrypoint.sh
     env_file:
       - .env.docker
     environment:
+      - SERVICE_ROLE=worker_fill
+      - ESS_FILL_CONCURRENCY=${ESS_FILL_CONCURRENCY:-4}
       - DATABASE_URL=postgresql://field_user:field_pass@db:5432/field_db
       - REDIS_URL=redis://redis:6379/0
     volumes:
@@ -73,10 +77,11 @@ services:
 
   celery-beat:
     build: .
-    command: celery -A field_management beat --loglevel=info
+    command: /app/docker-entrypoint.sh
     env_file:
       - .env.docker
     environment:
+      - SERVICE_ROLE=beat
       - DATABASE_URL=postgresql://field_user:field_pass@db:5432/field_db
       - REDIS_URL=redis://redis:6379/0
     depends_on:
