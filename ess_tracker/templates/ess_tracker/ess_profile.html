@@ -44,6 +44,21 @@
         Siku za shule mwaka huu (bila likizo ulizochagua): <b>{{ school_days }}</b>.
       </div>
       {% endif %}
+      {% if recommend %}
+      <div class="alert {% if recommend.behind %}alert-warning{% else %}alert-success{% endif %} mt-3 mb-0 py-2 small">
+        {% if recommend.behind %}
+          <i class="fas fa-calculator me-1"></i>
+          Kwa mahesabu ya maendeleo yako, unahitaji kujaza
+          <b>mara {{ recommend.days }} kwa wiki</b>
+          (sub-task {{ recommend.behind }} ziko nyuma; zinahitaji hadi
+          ~{{ recommend.epw_needed }} kwa wiki). Chagua idadi hiyo hapa chini.
+        {% else %}
+          <i class="fas fa-check-circle me-1"></i>
+          Upo sawa na ratiba. Unaweza kuendelea na
+          <b>mara {{ recommend.setting }} kwa wiki</b>.
+        {% endif %}
+      </div>
+      {% endif %}
       {% if not creating %}
       <p class="text-muted mt-3 mb-0 small">
         Username na password za <b>ESS (e-Tendaji)</b> ni zile zile unazoingia
@@ -59,8 +74,9 @@
     <div class="card-header"><strong><i class="fas fa-bell me-2"></i>Arifa (Notifications)</strong></div>
     <div class="card-body">
       <p class="small text-muted mb-2">
-        Washa arifa upate kumbukumbu siku za kujaza (Jumatatu–Ijumaa) na taarifa
-        mara kazi inapokamilika. Arifa hufanya kazi kwenye simu/kompyuta hii.
+        Washa arifa upate kumbukumbu siku zako za kujaza (zilizogawanywa kutoka
+        idadi uliyochagua) na taarifa mara kazi inapokamilika. Arifa hufanya
+        kazi kwenye simu/kompyuta hii.
       </p>
       <div id="push-status" class="small mb-2 text-muted">Inaangalia hali…</div>
       <button type="button" id="push-enable" class="btn btn-primary btn-sm"><i class="fas fa-bell me-1"></i>Washa arifa</button>

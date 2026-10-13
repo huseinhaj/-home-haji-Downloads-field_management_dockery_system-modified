@@ -47,7 +47,11 @@ class TeacherProfile(models.Model):
         help_text='Tarehe shule inavyofungwa mwaka huu (mf. 2026-12-04)')
     entries_per_week = models.PositiveSmallIntegerField(
         default=3,
-        help_text='Mara ngapi kwa wiki mfumo ujaze maendeleo yako (2 au 3)')
+        help_text='Mara ngapi kwa wiki mfumo ujaze maendeleo yako (2–5)')
+    auto_subtasks = models.TextField(
+        blank=True,
+        help_text='ID za sub-task za kujaza kiotomatiki (zikitenganishwa kwa '
+                  'koma). Tupu = sub-task zote zinazohitaji.')
     holidays = models.ManyToManyField(
         'Holiday', blank=True, related_name='profiles',
         help_text='Likizo zilizochaguliwa — zinatolewa kwenye hesabu ya siku za shule (194)')
@@ -66,6 +70,15 @@ class TeacherProfile(models.Model):
 
     def set_ess_password(self, raw: str) -> None:
         self.ess_password = encrypt_password(raw)
+
+    def auto_subtask_ids(self) -> list[int]:
+        """ID za sub-task zilizochaguliwa kujazwa kiotomatiki (tupu = zote)."""
+        out = []
+        for part in (self.auto_subtasks or '').split(','):
+            part = part.strip()
+            if part.isdigit():
+                out.append(int(part))
+        return out
 
     def save(self, *args, **kwargs):
         self.ess_ready = bool(self.ess_username and self.ess_password)

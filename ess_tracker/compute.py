@@ -471,6 +471,48 @@ def plan_for(st: SubTask, current_pct: float | None = None,
     return out
 
 
+def recommend_entries_per_week(profile, leo: date | None = None) -> dict:
+    """Tathmini: pendekeza idadi ya siku za kujaza kwa wiki kutoka mahesabu.
+
+    Hutumia `plan_for` ya sub-task zote na kuchukua kiwango cha juu cha
+    `epw_needed` (ili sub-task inayohitaji zaidi iweze kufikia lengo).
+    Hurudisha {'days', 'epw_needed', 'behind', 'impossible'}.
+    """
+    leo = leo or date.today()
+    need = 0.0
+    behind = 0
+    impossible = 0
+    seen = 0
+    for task in profile.tasks.all():
+        for st in task.subtasks.all():
+            plan = plan_for(st, leo=leo)
+            if not plan:
+                continue
+            seen += 1
+            if plan.get('impossible'):
+                impossible += 1
+            if plan.get('on_track'):
+                continue
+            behind += 1
+            n = plan.get('epw_needed') or 0
+            if n > need:
+                need = n
+    setting = entries_per_week(profile)
+    if need > 0:
+        days = int(math.ceil(need - 1e-9))
+    else:
+        days = setting
+    days = max(1, min(5, days))
+    return {
+        'days': days,
+        'epw_needed': round(need, 1),
+        'setting': setting,
+        'behind': behind,
+        'seen': seen,
+        'impossible': impossible,
+    }
+
+
 def entry_fraction(st: SubTask, leo: date | None = None) -> float:
     """Sehemu ya ratiba ya viingilio (0..1).
 

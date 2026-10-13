@@ -101,10 +101,21 @@ class ProfileForm(forms.ModelForm):
     entries_per_week = forms.ChoiceField(
         label='Mfumo ujaze maendeleo yako mara ngapi kwa wiki?',
         required=False,
-        choices=[(2, 'Mara 2 kwa wiki'), (3, 'Mara 3 kwa wiki')],
+        choices=[(2, 'Mara 2 kwa wiki'), (3, 'Mara 3 kwa wiki'),
+                 (4, 'Mara 4 kwa wiki'), (5, 'Mara 5 kwa wiki')],
         widget=forms.Select(attrs={'class': 'form-select'}),
         help_text='Hesabu ya mwaka mzima (tarehe ya kufungua hadi kufunga) '
-                  'itagawanywa kwa mara hizi ili ufikie 100% tarehe ya kufunga.')
+                  'itagawanywa kwa mara hizi ili ufikie 100% tarehe ya kufunga. '
+                  'Mfumo hujaza siku zilizogawanywa kiotomatiki (mf. mara 3 = '
+                  'Jumatatu, Jumatano, Ijumaa).')
+
+    auto_subtasks = forms.ModelMultipleChoiceField(
+        label='Sub-task za kujaza kiotomatiki',
+        required=False,
+        queryset=SubTask.objects.none(),
+        widget=forms.SelectMultiple(attrs={'class': 'form-select', 'size': '10'}),
+        help_text='Chagua sub-task ambazo mfumo ujaze kiotomatiki. '
+                  'Bila kuchagua = sub-task zote zinazohitaji.')
 
     holidays = forms.ModelMultipleChoiceField(
         label='Likizo (chagua zinazohusu mwaka huu)',
@@ -119,6 +130,9 @@ class ProfileForm(forms.ModelForm):
             self.fields['school_open'].initial = self.instance.school_open
             self.fields['school_close'].initial = self.instance.school_close
             self.fields['entries_per_week'].initial = self.instance.entries_per_week
+            self.fields['auto_subtasks'].queryset = SubTask.objects.filter(
+                task__profile=self.instance).order_by('task_id', 'position')
+            self.fields['auto_subtasks'].initial = self.instance.auto_subtask_ids()
             self.fields['holidays'].queryset = Holiday.objects.filter(
                 Q(profile__isnull=True) | Q(profile=self.instance))
             self.fields['holidays'].initial = self.instance.holidays.all()
@@ -155,6 +169,8 @@ class ProfileForm(forms.ModelForm):
         profile.school_open = self.cleaned_data.get('school_open')
         profile.school_close = self.cleaned_data.get('school_close')
         profile.entries_per_week = int(self.cleaned_data.get('entries_per_week') or 3)
+        chosen = self.cleaned_data.get('auto_subtasks') or []
+        profile.auto_subtasks = ','.join(str(s.id) for s in chosen)
         if commit:
             profile.save()
             profile.holidays.set(self.cleaned_data.get('holidays') or [])

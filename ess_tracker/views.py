@@ -151,10 +151,15 @@ def ess_profile(request):
         messages.error(request, 'Tafadhali sahihisha makosa kwenye fomu.')
     else:
         form = ProfileForm(instance=profile)
+    recommend = None
+    if profile and not creating:
+        from .compute import recommend_entries_per_week
+        recommend = recommend_entries_per_week(profile)
     return render(request, 'ess_tracker/ess_profile.html', {
         'form': form,
         'creating': creating,
         'school_days': school_days(profile) if profile else None,
+        'recommend': recommend,
     })
 
 

@@ -3,6 +3,26 @@ from celery import shared_task
 # Siku za kujaza ESS: Jumatatu–Ijumaa (weekday 0=Jumatatu ... 4=Ijumaa).
 FILL_WEEKDAYS = (0, 1, 2, 3, 4)
 
+# Ugawanyaji wa siku za kujaza kwa wiki (Jumatatu–Ijumaa) kutoka idadi
+# aliyochagua mwalimu (entries_per_week).
+WEEKDAY_SPREAD = {
+    1: (0,),
+    2: (0, 3),          # Jumatatu, Alhamisi
+    3: (0, 2, 4),       # Jumatatu, Jumatano, Ijumaa
+    4: (0, 1, 3, 4),    # Jumatatu, Jumanne, Alhamisi, Ijumaa
+    5: (0, 1, 2, 3, 4),  # Jumatatu–Ijumaa
+}
+
+
+def fill_weekdays(entries=3):
+    """Siku za kujaza (weekday ints) kutoka idadi ya vipindi kwa wiki."""
+    try:
+        n = int(entries)
+    except (TypeError, ValueError):
+        n = 3
+    n = max(1, min(5, n))
+    return WEEKDAY_SPREAD[n]
+
 # Saa za Tanzania (EAT). TIME_ZONE ya Django ni UTC; hesabu za siku za kujaza
 # zinahitaji tarehe ya EAT ili usiku wa manane usisababishe kukosa/kuongeza siku.
 EAT = None  # hupangwa kwa lazy kwenye _eat_tz()
@@ -29,13 +49,12 @@ def _eat_day_bounds(day):
 
 
 def _fill_day(weekday, entries=None):
-    """True kama leo ni siku ya kujaza (Jumatatu–Ijumaa).
+    """True kama leo ni siku ya kujaza kwa mwalimu mwenye `entries` kwa wiki.
 
-    `entries` (entries_per_week) haitumiki tena kwa ratiba ya siku — siku
-    zote za kazi hujazwa. Bado zinatumika kwenye hesabu ya asilimia
-    (compute.py) kama ilivyo.
+    Siku huzagwa kutoka idadi aliyochagua mwalimu (mf. 3 = Jumatatu,
+    Jumatano, Ijumaa). Bila `entries`, hutumia 3 kama kawaida.
     """
-    return weekday in FILL_WEEKDAYS
+    return weekday in fill_weekdays(3 if entries is None else entries)
 
 
 @shared_task(bind=True, time_limit=120, soft_time_limit=100)
@@ -66,7 +85,8 @@ def auto_fill_due(self):
         if is_locked(prof.id):
             skipped.append({'id': prof.id, 'why': 'locked'})
             continue
-        run = EssFillRun.objects.create(profile=prof)
+        run = EssFillRun.objects.create(
+            profile=prof, only_subtasks=(prof.auto_subtasks or ''))
         from .tasks import run_ess_fill
         run_ess_fill.apply_async(args=[prof.id, run.id], queue='essfill')
         triggered.append(prof.id)
@@ -177,8 +197,6 @@ def notify_fill_due():
     from .push import push_configured, send_to_profile
 
     today = _today_eat()
-    if not _fill_day(today.weekday()):
-        return {'date': today.isoformat(), 'skipped': 'not-fill-day'}
     if not push_configured():
         return {'date': today.isoformat(), 'skipped': 'not-configured'}
 
@@ -188,6 +206,9 @@ def notify_fill_due():
     profs = TeacherProfile.objects.filter(
         push_subscriptions__active=True).distinct().select_related('user')
     for prof in profs:
+        if not _fill_day(today.weekday(), prof.entries_per_week):
+            skipped += 1
+            continue
         if prof.school_open and prof.school_close \
                 and not (prof.school_open <= today <= prof.school_close):
             skipped += 1
