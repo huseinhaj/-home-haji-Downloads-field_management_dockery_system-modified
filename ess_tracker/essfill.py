@@ -1151,6 +1151,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
 
     saved = skipped = not_found = failed = 0
     page = None
+    finalized = False
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(
@@ -1285,9 +1286,18 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                     nxt = page.query_selector(SELECTORS['paginator_next_selector'])
                     if not nxt or nxt.get_attribute('disabled') is not None or nxt.is_disabled():
                         break
+                    before = [v['text'] for v in visible]
                     nxt.click()
                     page.wait_for_timeout(700)
                     row_els = _rows(page)
+                    after = []
+                    for el in row_els:
+                        c = el.query_selector(SELECTORS['subtask_cell_selector'])
+                        if c:
+                            after.append(c.inner_text())
+                    # Kinga: usizunguke milele kama paginator haibadili ukurasa.
+                    if page_no >= 50 or after == before:
+                        break
 
             # Jaribu mwaka unaotarajiwa kwanza, kisha mingine hadi zipatikane.
             for cand in cands:
@@ -1296,8 +1306,31 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                 _process_year(cand)
 
             not_found = len(remaining) + failed
-            browser.close()
+
+            # Kamilisha run KABLA ya kufunga browser. `browser.close()` (na
+            # Playwright stop kwenye `with`) zinaweza kuning'inia, na hapo
+            # run ilibaki 'running' milele (Run #37). Kwa kuandika matokeo
+            # kwanza, UI inaonyesha 'done' hata kama close inakwama.
+            run.status = 'done'
+            run.finished = tz.now()
+            run.saved = saved
+            run.skipped = skipped
+            run.not_found = not_found
+            run.log = '\n'.join(log)
+            run.save()
+            for _st, text, _note, _p, _t in remaining:
+                emit(f'# haijapatikana: {text[:60]}')
+            _set_progress(run_id, done=True, status='done', saved=saved,
+                          skipped=skipped, not_found=not_found)
+            finalized = True
+            try:
+                browser.close()
+            except Exception:
+                pass
     except Exception as exc:  # noqa: BLE001
+        if finalized:
+            return {'status': 'done', 'saved': saved, 'skipped': skipped,
+                    'not_found': not_found}
         snippet = ''
         if page is not None:
             try:
@@ -1319,18 +1352,8 @@ def run_fill(profile_id: int, run_id: int) -> dict:
         _set_progress(run_id, done=True, error=str(exc), status='error')
         return {'status': 'error', 'msg': str(exc)}
 
-    run.status = 'done'
-    run.finished = tz.now()
-    run.saved = saved
-    run.skipped = skipped
-    run.not_found = not_found
-    run.log = '\n'.join(log)
-    run.save()
-    for _st, text, _note, _p, _t in remaining:
-        emit(f'# haijapatikana: {text[:60]}')
-    _set_progress(run_id, done=True, status='done', saved=saved,
-                  skipped=skipped, not_found=not_found)
-    return {'status': 'done', 'saved': saved, 'skipped': skipped, 'not_found': not_found}
+    return {'status': 'done', 'saved': saved, 'skipped': skipped,
+            'not_found': not_found}
 
 
 def _open_fill_save(page, row_index, text, pct, emit=None, note=None) -> str:
