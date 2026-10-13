@@ -1,15 +1,17 @@
 from celery import shared_task
 
-FILL_WEEKDAYS = {
-    2: (1, 4),      # Jumanne, Ijumaa
-    3: (0, 2, 4),   # Jumatatu, Jumatano, Ijumaa
-}
+# Siku za kujaza ESS: Jumatatu–Ijumaa (weekday 0=Jumatatu ... 4=Ijumaa).
+FILL_WEEKDAYS = (0, 1, 2, 3, 4)
 
 
-def _fill_day(weekday, entries):
-    if not entries or entries < 1:
-        return weekday == 0
-    return weekday in FILL_WEEKDAYS.get(int(entries), (0, 2, 4))
+def _fill_day(weekday, entries=None):
+    """True kama leo ni siku ya kujaza (Jumatatu–Ijumaa).
+
+    `entries` (entries_per_week) haitumiki tena kwa ratiba ya siku — siku
+    zote za kazi hujazwa. Bado zinatumika kwenye hesabu ya asilimia
+    (compute.py) kama ilivyo.
+    """
+    return weekday in FILL_WEEKDAYS
 
 
 @shared_task(bind=True, time_limit=120, soft_time_limit=100)
